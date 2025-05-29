@@ -10,6 +10,7 @@
 use std::fmt;
 
 use ctx::CtxKind;
+use elp_base_db::FileId;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_syntax::AstNode;
@@ -17,6 +18,7 @@ use elp_syntax::SourceFile;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::SyntaxToken;
+use elp_syntax::TextSize;
 use hir::InFile;
 use hir::Semantic;
 
@@ -55,23 +57,24 @@ pub struct Completion {
     pub position: Option<FilePosition>,
     pub sort_text: Option<String>,
     pub deprecated: bool,
-    pub additional_edit: Option<String>,
+    pub additional_edit: Option<(FileId, TextSize, String)>,
 }
 
 impl fmt::Display for Completion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.deprecated {
-            true => write!(
-                f,
-                "{{label:{}, kind:{:?}, contents:{:?}, position:{:?}, deprecated:{}}}",
-                self.label, self.kind, self.contents, self.position, self.deprecated
-            ),
-            false => write!(
-                f,
-                "{{label:{}, kind:{:?}, contents:{:?}, position:{:?}}}",
-                self.label, self.kind, self.contents, self.position
-            ),
-        }
+        let deprecated = match self.deprecated {
+            true => format!(", deprecated:{}", self.deprecated),
+            false => "".to_string(),
+        };
+        let include = match &self.additional_edit {
+            Some(stuff) => format!(", import_text:{:?}", &stuff),
+            None => "".to_string(),
+        };
+        write!(
+            f,
+            "{{label:{}, kind:{:?}, contents:{:?}, position:{:?}{}{}}}",
+            self.label, self.kind, self.contents, self.position, deprecated, include,
+        )
     }
 }
 

@@ -7,7 +7,9 @@
  * of this source tree.
  */
 
+use elp_base_db::FileId;
 use elp_syntax::AstNode;
+use elp_syntax::TextSize;
 use elp_syntax::algo;
 use elp_syntax::ast;
 use hir::MacroName;
@@ -67,7 +69,9 @@ pub(crate) fn add_completions(
             let well_known = well_known_macros
                 .iter()
                 .filter(|(name, _import)| (*name).starts_with(&prefix))
-                .map(|(name, import)| well_known_macro_name_to_completion(name, import));
+                .map(|(name, import)| {
+                    well_known_macro_name_to_completion(&file_position.file_id, name, import)
+                });
             acc.extend(well_known);
 
             // If we have a trigger character, it means we are completing a macro name. No need to compute other completions.
@@ -126,7 +130,7 @@ const BUILT_IN: [Name; 8] = [
     known::OTP_RELEASE,
 ];
 
-fn well_known_macro_name_to_completion(name: &Name, import: &str) -> Completion {
+fn well_known_macro_name_to_completion(file_id: &FileId, name: &Name, import: &str) -> Completion {
     Completion {
         label: name.to_string(),
         kind: Kind::Macro,
@@ -134,7 +138,7 @@ fn well_known_macro_name_to_completion(name: &Name, import: &str) -> Completion 
         position: None,
         sort_text: None,
         deprecated: false,
-        additional_edit: Some(import.to_owned()),
+        additional_edit: Some((*file_id, TextSize::from(0), import.to_owned())),
     }
 }
 
@@ -260,7 +264,7 @@ mod test {
     // -----------------------------------------------------------------
 
     #[test]
-    fn well_known_macros() {
+    fn well_known_macros_import() {
         assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
         check(
             r#"
@@ -269,9 +273,40 @@ mod test {
     "#,
             Some('?'),
             expect![[r#"
-                {label:assertEqual, kind:Macro, contents:SameAsLabel, position:None}
-                {label:assertEqualSorted, kind:Macro, contents:SameAsLabel, position:None}
-                {label:assertMatch, kind:Macro, contents:SameAsLabel, position:None}"#]],
+                {label:assertEqual, kind:Macro, contents:SameAsLabel, position:None, import_text:(FileId(0), 0, "-include_lib(\"stdlib/include/assert.hrl\").")}
+                {label:assertEqualSorted, kind:Macro, contents:SameAsLabel, position:None, import_text:(FileId(0), 0, "-include_lib(\"stdlib/include/assert.hrl\").")}
+                {label:assertMatch, kind:Macro, contents:SameAsLabel, position:None, import_text:(FileId(0), 0, "-include_lib(\"stdlib/include/assert.hrl\").")}"#]],
+        );
+    }
+
+    #[test]
+    fn well_known_macros_no_import() {
+        // This fails now, by re-doing the import. It will be fixed in the next diff on the stack
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
+        check(
+            r#"
+    -module(sample1).
+    -include_lib("stdlib/include/assert.hrl").
+    foo() -> ?asse~
+    "#,
+            Some('?'),
+            expect![[r#"
+                {label:assertEqual, kind:Macro, contents:SameAsLabel, position:None, import_text:(FileId(0), 0, "-include_lib(\"stdlib/include/assert.hrl\").")}
+                {label:assertEqualSorted, kind:Macro, contents:SameAsLabel, position:None, import_text:(FileId(0), 0, "-include_lib(\"stdlib/include/assert.hrl\").")}
+                {label:assertMatch, kind:Macro, contents:SameAsLabel, position:None, import_text:(FileId(0), 0, "-include_lib(\"stdlib/include/assert.hrl\").")}"#]],
+        );
+    }
+
+    #[test]
+    fn well_known_macros_no_match() {
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
+        check(
+            r#"
+    -module(sample1).
+    foo() -> ?assb~
+    "#,
+            Some('?'),
+            expect![""],
         );
     }
 }
