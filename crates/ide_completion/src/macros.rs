@@ -15,6 +15,8 @@ use elp_base_db::path_for_file;
 use elp_syntax::AstNode;
 use elp_syntax::algo;
 use elp_syntax::ast;
+use hir::DefineId;
+use hir::InFile;
 use hir::MacroName;
 use hir::Name;
 use hir::Semantic;
@@ -59,7 +61,9 @@ pub(crate) fn add_completions(
                 .get_macros()
                 .keys()
                 .filter(|macro_name| macro_name.name().starts_with(&prefix))
-                .map(|name| macro_name_to_completion(sema, file_position.file_id, name, None));
+                .map(|name| {
+                    macro_name_to_completion(sema, file_position.file_id, name, None, false)
+                });
 
             acc.extend(user_defined);
 
@@ -94,16 +98,11 @@ fn macro_index_completion(sema: &Semantic, file_id: FileId, prefix: &str) -> Vec
         index
             .complete(prefix)
             .iter()
-            .map(|(_chars, define)| {
-                let include_path = path_for_file(sema.db, define.file_id);
-                let include = if let Some(include_path) = include_path {
-                    get_include_file(sema.db, file_id, define.file_id, include_path.clone())
-                } else {
-                    None
-                };
-                let form_list = sema.form_list(define.file_id);
-                let define = &form_list[define.value];
-                macro_name_to_completion(sema, file_id, &define.name, include)
+            .flat_map(|(_chars, defines)| {
+                let with_app = defines.len() > 1;
+                defines
+                    .into_iter()
+                    .map(move |define| macro_define_as_completion(sema, file_id, define, with_app))
             })
             .collect()
     } else {
@@ -111,21 +110,46 @@ fn macro_index_completion(sema: &Semantic, file_id: FileId, prefix: &str) -> Vec
     }
 }
 
+fn macro_define_as_completion(
+    sema: &Semantic<'_>,
+    file_id: FileId,
+    define: &InFile<DefineId>,
+    with_app: bool,
+) -> Completion {
+    let include_path = path_for_file(sema.db, define.file_id);
+    let include = if let Some(include_path) = include_path {
+        get_include_file(sema.db, file_id, define.file_id, include_path.clone())
+    } else {
+        None
+    };
+    let form_list = sema.form_list(define.file_id);
+    let define = &form_list[define.value];
+    macro_name_to_completion(sema, file_id, &define.name, include, with_app)
+}
+
 fn macro_name_to_completion(
     sema: &Semantic,
     file_id: FileId,
     macro_name: &MacroName,
     include: Option<IncludeFile>,
+    with_app: bool,
 ) -> Completion {
-    let additional_edit = if let Some(inc) = include {
-        inc.insert_position_if_needed(sema, file_id)
-            .map(|pos| (pos, inc.clone()))
+    let (additional_edit, app_name) = if let Some(inc) = include {
+        (
+            inc.insert_position_if_needed(sema, file_id)
+                .map(|pos| (pos, inc.clone())),
+            if with_app { Some(inc.app_name) } else { None },
+        )
     } else {
-        None
+        (None, None)
+    };
+    let label = if let Some(app_name) = app_name {
+        format!("{} ({})", macro_name, app_name)
+    } else {
+        macro_name.to_string()
     };
     match macro_name.arity() {
         Some(arity) => {
-            let label = macro_name.to_string();
             let contents = helpers::format_call(macro_name.name(), arity);
             Completion {
                 label,
@@ -138,7 +162,7 @@ fn macro_name_to_completion(
             }
         }
         None => Completion {
-            label: macro_name.to_string(),
+            label,
             kind: Kind::Macro,
             contents: Contents::SameAsLabel,
             position: None,
@@ -196,6 +220,7 @@ lazy_static! {
     static ref INCLUDE_ASSERT: IncludeFile = IncludeFile {
         include_lib: true,
         path: "stdlib/include/assert.hrl".to_string(),
+        app_name: "stdlib".to_string()
     };
 }
 
@@ -241,6 +266,7 @@ pub fn get_include_file(
         Some(IncludeFile {
             include_lib: true,
             path: candidate,
+            app_name: inc_app_data.name.to_string(),
         })
     } else {
         None
@@ -419,6 +445,32 @@ mod test {
             expect![[r#"
                 {label:FOO, kind:Macro, contents:SameAsLabel, position:None}
                 {label:FOO/1, kind:Macro, contents:Snippet("FOO(${1:Arg1})"), position:None}"#]],
+        );
+    }
+
+    #[test]
+    fn detect_macros_multiple_match() {
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
+        check(
+            r#"
+         //- /src/sample1.erl
+           -module(sample1).
+           foo() -> ?FO~
+
+         //- /app_a/include/header.hrl app:app_a include_path:/app_a/include
+           -define(FOO,3).
+           -define(FOO(X),X+3).
+
+         //- /app_b/include/header.hrl app:app_b include_path:/app_b/include
+           -define(FOO,4).
+           -define(FOO(X),X+4).
+    "#,
+            Some('?'),
+            expect![[r#"
+                {label:FOO (app_a), kind:Macro, contents:SameAsLabel, position:None, include:20:"-include_lib(\"app_a/include/header.hrl\")."}
+                {label:FOO (app_b), kind:Macro, contents:SameAsLabel, position:None, include:20:"-include_lib(\"app_b/include/header.hrl\")."}
+                {label:FOO/1 (app_a), kind:Macro, contents:Snippet("FOO(${1:Arg1})"), position:None, include:20:"-include_lib(\"app_a/include/header.hrl\")."}
+                {label:FOO/1 (app_b), kind:Macro, contents:Snippet("FOO(${1:Arg1})"), position:None, include:20:"-include_lib(\"app_b/include/header.hrl\")."}"#]],
         );
     }
 }

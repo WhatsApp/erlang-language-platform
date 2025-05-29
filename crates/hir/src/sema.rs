@@ -923,20 +923,24 @@ impl Semantic<'_> {
     }
 
     pub fn macro_define_index(&self, project_id: ProjectId) -> Arc<MacroDefineIndex> {
-        let mut builder = map::TrieBuilder::<char, InFile<DefineId>>::new();
-
+        let mut defines: FxHashMap<String, Vec<InFile<DefineId>>> = FxHashMap::default();
         let include_file_index = self.db.include_file_index(project_id);
         for file_id in include_file_index.map.values() {
             let form_list = self.form_list(*file_id);
             for (define_id, define) in form_list.define_attributes() {
                 let name_arity = format!("{}", define.name);
-                builder.push(
-                    name_arity.chars().collect::<Vec<_>>(),
-                    InFile::new(*file_id, define_id),
-                )
+                let define = InFile::new(*file_id, define_id);
+                defines
+                    .entry(name_arity)
+                    .and_modify(|ds| ds.push(define))
+                    .or_insert(vec![define]);
             }
         }
 
+        let mut builder = map::TrieBuilder::<char, Vec<InFile<DefineId>>>::new();
+        for (name_arity, val) in defines {
+            builder.push(name_arity.chars().collect::<Vec<_>>(), val)
+        }
         let index = builder.build();
         Arc::new(MacroDefineIndex { index })
     }
@@ -1125,11 +1129,11 @@ fn fold_function_body<T>(
 
 #[derive(Debug)]
 pub struct MacroDefineIndex {
-    pub index: map::Trie<char, InFile<DefineId>>,
+    pub index: map::Trie<char, Vec<InFile<DefineId>>>,
 }
 
 impl MacroDefineIndex {
-    pub fn complete(&self, so_far: &str) -> Vec<(Vec<char>, &InFile<DefineId>)> {
+    pub fn complete(&self, so_far: &str) -> Vec<(Vec<char>, &Vec<InFile<DefineId>>)> {
         let chars: Vec<char> = so_far.chars().collect();
         self.index.postfix_search::<Vec<_>, _>(&chars).collect()
     }
@@ -1975,35 +1979,41 @@ mod tests {
         let (db, _fixture) = TestDB::with_fixture(fixture);
         let sema = Semantic::new(&db);
         let index = sema.macro_define_index(ProjectId(0));
-        let results: Vec<(String, &InFile<DefineId>)> = index.index.iter().collect();
+        let results: Vec<(String, &Vec<InFile<DefineId>>)> = index.index.iter().collect();
         expect![[r#"
             [
                 (
                     "A_MACRO/2",
-                    InFile {
-                        file_id: FileId(
-                            1,
-                        ),
-                        value: Idx::<Define>(0),
-                    },
+                    [
+                        InFile {
+                            file_id: FileId(
+                                1,
+                            ),
+                            value: Idx::<Define>(0),
+                        },
+                    ],
                 ),
                 (
                     "MACRO",
-                    InFile {
-                        file_id: FileId(
-                            0,
-                        ),
-                        value: Idx::<Define>(0),
-                    },
+                    [
+                        InFile {
+                            file_id: FileId(
+                                0,
+                            ),
+                            value: Idx::<Define>(0),
+                        },
+                    ],
                 ),
                 (
                     "MECRO",
-                    InFile {
-                        file_id: FileId(
-                            1,
-                        ),
-                        value: Idx::<Define>(1),
-                    },
+                    [
+                        InFile {
+                            file_id: FileId(
+                                1,
+                            ),
+                            value: Idx::<Define>(1),
+                        },
+                    ],
                 ),
             ]
         "#]]
@@ -2019,12 +2029,14 @@ mod tests {
                         'R',
                         'O',
                     ],
-                    InFile {
-                        file_id: FileId(
-                            0,
-                        ),
-                        value: Idx::<Define>(0),
-                    },
+                    [
+                        InFile {
+                            file_id: FileId(
+                                0,
+                            ),
+                            value: Idx::<Define>(0),
+                        },
+                    ],
                 ),
                 (
                     [
@@ -2033,12 +2045,14 @@ mod tests {
                         'R',
                         'O',
                     ],
-                    InFile {
-                        file_id: FileId(
-                            1,
-                        ),
-                        value: Idx::<Define>(1),
-                    },
+                    [
+                        InFile {
+                            file_id: FileId(
+                                1,
+                            ),
+                            value: Idx::<Define>(1),
+                        },
+                    ],
                 ),
             ]
         "#]]
@@ -2056,12 +2070,14 @@ mod tests {
                         'R',
                         'O',
                     ],
-                    InFile {
-                        file_id: FileId(
-                            0,
-                        ),
-                        value: Idx::<Define>(0),
-                    },
+                    [
+                        InFile {
+                            file_id: FileId(
+                                0,
+                            ),
+                            value: Idx::<Define>(0),
+                        },
+                    ],
                 ),
             ]
         "#]]
@@ -2075,15 +2091,81 @@ mod tests {
                         'R',
                         'O',
                     ],
-                    InFile {
-                        file_id: FileId(
-                            1,
-                        ),
-                        value: Idx::<Define>(1),
-                    },
+                    [
+                        InFile {
+                            file_id: FileId(
+                                1,
+                            ),
+                            value: Idx::<Define>(1),
+                        },
+                    ],
                 ),
             ]
         "#]]
         .assert_debug_eq(&index.complete("ME"));
+    }
+
+    #[test]
+    fn macro_define_index_duplicates() {
+        let fixture = r#"
+             //- /src/include.hrl
+             -define(MECRO, 3).
+             -define(MACRO, wrong).
+
+             //- /src/include2.hrl
+             -define(A_MACRO(X,Y), {X + Y}).
+             -define(MECRO, 2).
+
+             //- /src/main.erl
+             -module(main).
+             "#;
+        let (db, _fixture) = TestDB::with_fixture(fixture);
+        let sema = Semantic::new(&db);
+        let index = sema.macro_define_index(ProjectId(0));
+        let results: Vec<(String, &Vec<InFile<DefineId>>)> = index.index.iter().collect();
+        expect![[r#"
+            [
+                (
+                    "A_MACRO/2",
+                    [
+                        InFile {
+                            file_id: FileId(
+                                1,
+                            ),
+                            value: Idx::<Define>(0),
+                        },
+                    ],
+                ),
+                (
+                    "MACRO",
+                    [
+                        InFile {
+                            file_id: FileId(
+                                0,
+                            ),
+                            value: Idx::<Define>(1),
+                        },
+                    ],
+                ),
+                (
+                    "MECRO",
+                    [
+                        InFile {
+                            file_id: FileId(
+                                1,
+                            ),
+                            value: Idx::<Define>(1),
+                        },
+                        InFile {
+                            file_id: FileId(
+                                0,
+                            ),
+                            value: Idx::<Define>(0),
+                        },
+                    ],
+                ),
+            ]
+        "#]]
+        .assert_debug_eq(&results);
     }
 }
