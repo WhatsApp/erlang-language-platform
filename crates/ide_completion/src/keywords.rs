@@ -50,7 +50,15 @@ lazy_static! {
         "undefined",
         "true",
         "false"
-    ].iter().map(|label| Completion{ label: label.to_string(), kind: crate::Kind::Keyword, contents: Contents::SameAsLabel, position: None, sort_text: None, deprecated: false}).collect();
+    ].iter().map(|label| Completion{
+        label: label.to_string(),
+        kind: crate::Kind::Keyword,
+        contents: Contents::SameAsLabel,
+        position: None,
+        sort_text: None,
+        deprecated: false,
+        additional_edit: None,
+    }).collect();
 }
 
 pub(crate) fn add_completions(acc: &mut Vec<Completion>, Ctx { trigger, .. }: &Ctx) -> DoneFlag {

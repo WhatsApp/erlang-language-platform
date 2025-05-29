@@ -55,6 +55,7 @@ pub struct Completion {
     pub position: Option<FilePosition>,
     pub sort_text: Option<String>,
     pub deprecated: bool,
+    pub additional_edit: Option<String>,
 }
 
 impl fmt::Display for Completion {

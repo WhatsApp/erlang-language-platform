@@ -180,6 +180,7 @@ pub(crate) fn add_completions(
                                 }),
                                 sort_text: None,
                                 deprecated,
+                                additional_edit: None,
                             })
                         }
                     }

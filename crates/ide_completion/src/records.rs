@@ -89,6 +89,7 @@ fn add_token_based_completions(
                 position: None,
                 sort_text: None,
                 deprecated: false,
+                additional_edit: None,
             });
         acc.extend(completions);
         true
@@ -168,6 +169,7 @@ fn field_name_to_completion_with_equals(field_name: Name) -> Completion {
         position: None,
         sort_text: None,
         deprecated: false,
+        additional_edit: None,
     }
 }
 
@@ -179,6 +181,7 @@ fn field_name_to_completion(field_name: Name) -> Completion {
         position: None,
         sort_text: None,
         deprecated: false,
+        additional_edit: None,
     }
 }
 

@@ -143,6 +143,7 @@ fn completion(
         position: position(sema, def),
         sort_text: None,
         deprecated: false,
+        additional_edit: None,
     }
 }
 

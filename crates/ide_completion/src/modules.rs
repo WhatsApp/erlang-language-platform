@@ -38,6 +38,7 @@ pub(crate) fn add_completions(
                     position: None,
                     sort_text: None,
                     deprecated: false,
+                    additional_edit: None,
                 })
             } else {
                 None

@@ -112,6 +112,7 @@ fn create_call_completion(name_arity: &NameArity) -> Completion {
         position: None,
         sort_text: None,
         deprecated: false,
+        additional_edit: None,
     }
 }
 

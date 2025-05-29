@@ -71,6 +71,7 @@ pub(crate) fn name_slash_arity_completion(
             position: None,
             sort_text: None,
             deprecated: false,
+            additional_edit: None,
         })
     } else {
         None
@@ -118,6 +119,7 @@ pub(crate) fn name_arity_to_call_completion(
             position,
             sort_text: None,
             deprecated,
+            additional_edit: None,
         })
     } else {
         None

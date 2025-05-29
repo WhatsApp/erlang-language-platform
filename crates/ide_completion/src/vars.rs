@@ -71,6 +71,7 @@ fn complete_var(var: &SyntaxToken, candidate: &SyntaxToken, acc: &mut FxHashSet<
             position: None,
             sort_text: None,
             deprecated: false,
+            additional_edit: None,
         });
     }
 }

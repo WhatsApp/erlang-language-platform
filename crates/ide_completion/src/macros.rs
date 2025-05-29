@@ -80,6 +80,7 @@ fn macro_name_to_completion(macro_name: &MacroName) -> Completion {
                 position: None,
                 sort_text: None,
                 deprecated: false,
+                additional_edit: None,
             }
         }
         None => Completion {
@@ -89,6 +90,7 @@ fn macro_name_to_completion(macro_name: &MacroName) -> Completion {
             position: None,
             sort_text: None,
             deprecated: false,
+            additional_edit: None,
         },
     }
 }
@@ -101,6 +103,7 @@ fn built_in_macro_name_to_completion(name: &Name) -> Completion {
         position: None,
         sort_text: None,
         deprecated: false,
+        additional_edit: None,
     }
 }
 
