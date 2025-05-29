@@ -23,7 +23,7 @@ use elp_syntax::TextSize;
 use hir::InFile;
 use hir::IncludeAttribute;
 use hir::Semantic;
-pub use macros::WELL_KNOWN_MACROS;
+pub use macros::get_include_file;
 
 type DoneFlag = bool;
 

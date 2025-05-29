@@ -15,13 +15,13 @@ use elp_base_db::path_for_file;
 use elp_syntax::AstNode;
 use elp_syntax::algo;
 use elp_syntax::ast;
+use fxhash::FxHashSet;
 use hir::DefineId;
 use hir::InFile;
 use hir::MacroName;
 use hir::Name;
 use hir::Semantic;
 use hir::known;
-use lazy_static::lazy_static;
 
 use crate::Completion;
 use crate::Contents;
@@ -65,7 +65,13 @@ pub(crate) fn add_completions(
                     macro_name_to_completion(sema, file_position.file_id, name, None, false)
                 });
 
-            acc.extend(user_defined);
+            let mut known_macros = macro_index_completion(sema, file_position.file_id, &prefix);
+            // `known_macros` is a set, make sure we have no duplicates
+            // with `user_defined` ones The user-defined take
+            // precedence, so we will not insert an include if it is
+            // already visible.
+            known_macros.extend(user_defined);
+            acc.extend(known_macros);
 
             let built_in = BUILT_IN;
             let predefined = built_in
@@ -74,25 +80,13 @@ pub(crate) fn add_completions(
                 .map(built_in_macro_name_to_completion);
             acc.extend(predefined);
 
-            let well_known_macros = &WELL_KNOWN_MACROS;
-            let well_known = well_known_macros
-                .iter()
-                .filter(|(name, _include)| (*name).starts_with(&prefix))
-                .map(|(name, include)| {
-                    well_known_macro_name_to_completion(sema, file_position.file_id, name, include)
-                });
-            acc.extend(well_known);
-
-            let known_macros = macro_index_completion(sema, file_position.file_id, &prefix);
-            acc.extend(known_macros);
-
             // If we have a trigger character, it means we are completing a macro name. No need to compute other completions.
             trigger.is_some()
         }
     }
 }
 
-fn macro_index_completion(sema: &Semantic, file_id: FileId, prefix: &str) -> Vec<Completion> {
+fn macro_index_completion(sema: &Semantic, file_id: FileId, prefix: &str) -> FxHashSet<Completion> {
     if let Some(project_id) = sema.db.file_project_id(file_id) {
         let index = sema.macro_define_index(project_id);
         index
@@ -104,9 +98,10 @@ fn macro_index_completion(sema: &Semantic, file_id: FileId, prefix: &str) -> Vec
                     .into_iter()
                     .map(move |define| macro_define_as_completion(sema, file_id, define, with_app))
             })
+            .flatten()
             .collect()
     } else {
-        vec![]
+        FxHashSet::default()
     }
 }
 
@@ -115,16 +110,18 @@ fn macro_define_as_completion(
     file_id: FileId,
     define: &InFile<DefineId>,
     with_app: bool,
-) -> Completion {
-    let include_path = path_for_file(sema.db, define.file_id);
-    let include = if let Some(include_path) = include_path {
-        get_include_file(sema.db, file_id, define.file_id, include_path.clone())
-    } else {
-        None
-    };
+) -> Option<Completion> {
+    let include_path = path_for_file(sema.db, define.file_id)?;
+    let include = get_include_file(sema.db, file_id, define.file_id, include_path.clone())?;
     let form_list = sema.form_list(define.file_id);
     let define = &form_list[define.value];
-    macro_name_to_completion(sema, file_id, &define.name, include, with_app)
+    Some(macro_name_to_completion(
+        sema,
+        file_id,
+        &define.name,
+        Some(include),
+        with_app,
+    ))
 }
 
 fn macro_name_to_completion(
@@ -195,44 +192,6 @@ const BUILT_IN: [Name; 8] = [
     known::MACHINE,
     known::OTP_RELEASE,
 ];
-
-fn well_known_macro_name_to_completion(
-    sema: &Semantic,
-    file_id: FileId,
-    name: &Name,
-    include: &IncludeFile,
-) -> Completion {
-    let additional_edit = include
-        .insert_position_if_needed(sema, file_id)
-        .map(|pos| (pos, include.clone()));
-    Completion {
-        label: name.to_string(),
-        kind: Kind::Macro,
-        contents: Contents::SameAsLabel,
-        position: None,
-        sort_text: None,
-        deprecated: false,
-        additional_edit,
-    }
-}
-
-lazy_static! {
-    static ref INCLUDE_ASSERT: IncludeFile = IncludeFile {
-        include_lib: true,
-        path: "stdlib/include/assert.hrl".to_string(),
-        app_name: "stdlib".to_string()
-    };
-}
-
-lazy_static! {
-    pub static ref WELL_KNOWN_MACROS: Vec<(Name, IncludeFile)> = vec![
-        (known::assertEqual, INCLUDE_ASSERT.clone()),
-        (known::assertEqualSorted, INCLUDE_ASSERT.clone()),
-        (known::assertMatch, INCLUDE_ASSERT.clone()),
-    ]
-    .into_iter()
-    .collect();
-}
 
 // TODO: should this be done in the resolve step? Or, cached in the table
 // First make it work.
@@ -388,14 +347,16 @@ mod test {
         assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
         check(
             r#"
-    -module(sample1).
-    foo() -> ?asse~
+            //- /app/src/sample1.erl app:app
+            -module(sample1).
+            foo() -> ?asse~
+            //- /another-app/include/inc.hrl app:another include_path:/another-app/include
+            -define(assertEqual(A,B), A =:= B).
     "#,
             Some('?'),
-            expect![[r#"
-                {label:assertEqual, kind:Macro, contents:SameAsLabel, position:None, include:18:"-include_lib(\"stdlib/include/assert.hrl\")."}
-                {label:assertEqualSorted, kind:Macro, contents:SameAsLabel, position:None, include:18:"-include_lib(\"stdlib/include/assert.hrl\")."}
-                {label:assertMatch, kind:Macro, contents:SameAsLabel, position:None, include:18:"-include_lib(\"stdlib/include/assert.hrl\")."}"#]],
+            expect![[
+                r#"{label:assertEqual/2, kind:Macro, contents:Snippet("assertEqual(${1:Arg1}, ${2:Arg2})"), position:None, include:18:"-include_lib(\"another/include/inc.hrl\")."}"#
+            ]],
         );
     }
 
@@ -404,15 +365,16 @@ mod test {
         assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
         check(
             r#"
-    -module(sample1).
-    -include_lib("stdlib/include/assert.hrl").
-    foo() -> ?asse~
+            //- /app/src/sample1.erl app:app
+            -module(sample1).
+            -include_lib("another/include/inc.hrl").
+            foo() -> ?asse~
+            //- /another-app/include/inc.hrl app:another include_path:/another-app/include
+            -define(assertEqual(A,B), A =:= B).
     "#,
             Some('?'),
             expect![[r#"
-                {label:assertEqual, kind:Macro, contents:SameAsLabel, position:None}
-                {label:assertEqualSorted, kind:Macro, contents:SameAsLabel, position:None}
-                {label:assertMatch, kind:Macro, contents:SameAsLabel, position:None}"#]],
+                {label:assertEqual/2, kind:Macro, contents:Snippet("assertEqual(${1:Arg1}, ${2:Arg2})"), position:None}"#]],
         );
     }
 
@@ -437,14 +399,14 @@ mod test {
          //- /src/sample1.erl
            -module(sample1).
            foo() -> ?FO~
-         //- /src/header.hrl
+         //- /src/header.hrl include_path:/src
            -define(FOO,3).
            -define(FOO(X),X+3).
     "#,
             Some('?'),
             expect![[r#"
-                {label:FOO, kind:Macro, contents:SameAsLabel, position:None}
-                {label:FOO/1, kind:Macro, contents:Snippet("FOO(${1:Arg1})"), position:None}"#]],
+                {label:FOO, kind:Macro, contents:SameAsLabel, position:None, include:20:"-include_lib(\"test-fixture/src/header.hrl\")."}
+                {label:FOO/1, kind:Macro, contents:Snippet("FOO(${1:Arg1})"), position:None, include:20:"-include_lib(\"test-fixture/src/header.hrl\")."}"#]],
         );
     }
 
