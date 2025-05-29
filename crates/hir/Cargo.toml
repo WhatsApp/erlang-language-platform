@@ -23,6 +23,7 @@ profile.workspace = true
 regex.workspace = true
 stdx.workspace = true
 tracing.workspace = true
+trie-rs.workspace = true
 
 [dev-dependencies]
 expect-test.workspace = true

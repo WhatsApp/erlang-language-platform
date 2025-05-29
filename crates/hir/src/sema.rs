@@ -18,6 +18,7 @@ use elp_base_db::FileId;
 use elp_base_db::FileRange;
 use elp_base_db::ModuleIndex;
 use elp_base_db::ModuleName;
+use elp_base_db::ProjectId;
 use elp_base_db::module_name;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
@@ -34,6 +35,7 @@ use fxhash::FxHashSet;
 use la_arena::Arena;
 use la_arena::Idx;
 use la_arena::RawIdx;
+use trie_rs::map;
 
 use self::find::FindForm;
 pub use self::to_def::AtomDef;
@@ -50,6 +52,7 @@ use crate::BodySourceMap;
 use crate::CRClause;
 use crate::CallbackDef;
 use crate::DefMap;
+use crate::DefineId;
 use crate::Expr;
 use crate::ExprId;
 use crate::File;
@@ -919,6 +922,25 @@ impl Semantic<'_> {
         if vars.is_empty() { None } else { Some(vars) }
     }
 
+    pub fn macro_define_index(&self, project_id: ProjectId) -> Arc<MacroDefineIndex> {
+        let mut builder = map::TrieBuilder::<char, InFile<DefineId>>::new();
+
+        let include_file_index = self.db.include_file_index(project_id);
+        for file_id in include_file_index.map.values() {
+            let form_list = self.form_list(*file_id);
+            for (define_id, define) in form_list.define_attributes() {
+                let name_arity = format!("{}", define.name);
+                builder.push(
+                    name_arity.chars().collect::<Vec<_>>(),
+                    InFile::new(*file_id, define_id),
+                )
+            }
+        }
+
+        let index = builder.build();
+        Arc::new(MacroDefineIndex { index })
+    }
+
     // -----------------------------------------------------------------
     // Folds
 
@@ -1099,9 +1121,21 @@ fn fold_function_body<T>(
             clause.fold(strategy, acc, &mut |acc, ctx| callback(acc, clause_id, ctx))
         })
 }
-
 // ---------------------------------------------------------------------
 
+#[derive(Debug)]
+pub struct MacroDefineIndex {
+    pub index: map::Trie<char, InFile<DefineId>>,
+}
+
+impl MacroDefineIndex {
+    pub fn complete(&self, so_far: &str) -> Vec<(Vec<char>, &InFile<DefineId>)> {
+        let chars: Vec<char> = so_far.chars().collect();
+        self.index.postfix_search::<Vec<_>, _>(&chars).collect()
+    }
+}
+
+// ---------------------------------------------------------------------
 struct BoundVarsInPat<'a> {
     sema: &'a Semantic<'a>,
     resolver: &'a mut InFunctionClauseBody<'a, Resolver>,
@@ -1608,6 +1642,7 @@ impl<T> Index<TermId> for InFunctionClauseBody<'_, T> {
 
 #[cfg(test)]
 mod tests {
+    use elp_base_db::ProjectId;
     use elp_base_db::SourceDatabase;
     use elp_base_db::fixture::WithFixture;
     use elp_syntax::AstNode;
@@ -1618,6 +1653,7 @@ mod tests {
     use itertools::Itertools;
 
     use crate::AnyExprId;
+    use crate::DefineId;
     use crate::InFile;
     use crate::InFunctionClauseBody;
     use crate::Semantic;
@@ -1919,5 +1955,135 @@ mod tests {
                 }
             "#]],
         );
+    }
+
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn macro_define_index() {
+        let fixture = r#"
+             //- /src/include.hrl
+             -define(MACRO, wrong).
+
+             //- /src/include2.hrl
+             -define(A_MACRO(X,Y), {X + Y}).
+             -define(MECRO, 2).
+
+             //- /src/main.erl
+             -module(main).
+             "#;
+        let (db, _fixture) = TestDB::with_fixture(fixture);
+        let sema = Semantic::new(&db);
+        let index = sema.macro_define_index(ProjectId(0));
+        let results: Vec<(String, &InFile<DefineId>)> = index.index.iter().collect();
+        expect![[r#"
+            [
+                (
+                    "A_MACRO/2",
+                    InFile {
+                        file_id: FileId(
+                            1,
+                        ),
+                        value: Idx::<Define>(0),
+                    },
+                ),
+                (
+                    "MACRO",
+                    InFile {
+                        file_id: FileId(
+                            0,
+                        ),
+                        value: Idx::<Define>(0),
+                    },
+                ),
+                (
+                    "MECRO",
+                    InFile {
+                        file_id: FileId(
+                            1,
+                        ),
+                        value: Idx::<Define>(1),
+                    },
+                ),
+            ]
+        "#]]
+        .assert_debug_eq(&results);
+
+        let completions_m: Vec<_> = index.index.postfix_search::<Vec<_>, _>(&['M']).collect();
+        expect![[r#"
+            [
+                (
+                    [
+                        'A',
+                        'C',
+                        'R',
+                        'O',
+                    ],
+                    InFile {
+                        file_id: FileId(
+                            0,
+                        ),
+                        value: Idx::<Define>(0),
+                    },
+                ),
+                (
+                    [
+                        'E',
+                        'C',
+                        'R',
+                        'O',
+                    ],
+                    InFile {
+                        file_id: FileId(
+                            1,
+                        ),
+                        value: Idx::<Define>(1),
+                    },
+                ),
+            ]
+        "#]]
+        .assert_debug_eq(&completions_m);
+
+        let completions_ma: Vec<_> = index
+            .index
+            .postfix_search::<Vec<_>, _>(&['M', 'A'])
+            .collect();
+        expect![[r#"
+            [
+                (
+                    [
+                        'C',
+                        'R',
+                        'O',
+                    ],
+                    InFile {
+                        file_id: FileId(
+                            0,
+                        ),
+                        value: Idx::<Define>(0),
+                    },
+                ),
+            ]
+        "#]]
+        .assert_debug_eq(&completions_ma);
+
+        expect![[r#"
+            [
+                (
+                    [
+                        'C',
+                        'R',
+                        'O',
+                    ],
+                    InFile {
+                        file_id: FileId(
+                            1,
+                        ),
+                        value: Idx::<Define>(1),
+                    },
+                ),
+            ]
+        "#]]
+        .assert_debug_eq(&index.complete("ME"));
     }
 }

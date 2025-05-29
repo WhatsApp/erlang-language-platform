@@ -37,6 +37,7 @@ hir = { path = "./crates/hir" }
 erl_ast = { path = "./crates/erl_ast" }
 
 # External crates
+trie-rs = "0.4.2"
 always-assert = "0.1.3"
 anyhow = "1.0.86"
 bpaf = { version = "=0.7.9", features = ["derive", "autocomplete", "batteries"] }
