@@ -34,7 +34,7 @@ pub(crate) fn add_assist(
         .complete(&macro_name)
         .iter()
         .flat_map(|(_chars, defines)| {
-            defines.into_iter().flat_map(|define| {
+            defines.iter().flat_map(|define| {
                 let include_path = path_for_file(sema.db, define.file_id);
                 if let Some(include_path) = include_path {
                     get_include_file(sema.db, file_id, define.file_id, include_path.clone())

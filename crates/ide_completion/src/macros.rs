@@ -95,7 +95,7 @@ fn macro_index_completion(sema: &Semantic, file_id: FileId, prefix: &str) -> FxH
             .flat_map(|(_chars, defines)| {
                 let with_app = defines.len() > 1;
                 defines
-                    .into_iter()
+                    .iter()
                     .map(move |define| macro_define_as_completion(sema, file_id, define, with_app))
             })
             .flatten()
