@@ -108,25 +108,34 @@
         "configurationAttributes": {
           "attach": {
             "required": [
-              "node",
-              "cwd"
+              "config"
             ],
             "properties": {
-              "node": {
-                "type": "string",
-                "description": "The node to attach to."
-              },
-              "cookie": {
-                "type": "string",
-                "description": "Connection cookie."
-              },
-              "cwd": {
-                "type": "string",
-                "description": "Path to prepend to any relative source file found in beam files. Typically the workspace folder."
-              },
-              "stripSourcePrefix": {
-                "type": "string",
-                "description": "When source paths in beam files are relative, this can be used to strip a prefix so that they match the filename in the current workspace."
+              "config": {
+                "type": "object",
+                "description": "Debugger configuration",
+                "required": [
+                  "node",
+                  "cwd"
+                ],
+                "properties": {
+                  "node": {
+                    "type": "string",
+                    "description": "The node to attach to."
+                  },
+                  "cookie": {
+                    "type": "string",
+                    "description": "Connection cookie."
+                  },
+                  "cwd": {
+                    "type": "string",
+                    "description": "Path to prepend to any relative source file found in beam files. Typically the workspace folder."
+                  },
+                  "stripSourcePrefix": {
+                    "type": "string",
+                    "description": "When source paths in beam files are relative, this can be used to strip a prefix so that they match the filename in the current workspace."
+                  }
+                }
               }
             }
           },
