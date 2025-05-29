@@ -17,7 +17,7 @@ jobs:
         include:
           - otp-version: 26.2
             brew-otp-version: 26
-            vscode-publish: false
+            vscode-publish: true
           - otp-version: 27.1
             brew-otp-version: 27
             vscode-publish: false
