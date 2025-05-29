@@ -16,6 +16,7 @@ use elp_ide_db::ReferenceType;
 use elp_ide_db::SymbolClass;
 use elp_ide_db::SymbolDefinition;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::helpers::top_insert_position;
 use elp_ide_db::rename::is_safe_function;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::AstNode;
@@ -931,14 +932,9 @@ impl<'a> ExportBuilder<'a> {
             ExportForm::Functions => "export",
             ExportForm::Types => "export_type",
         };
-        let mut insert = self.insert_at.unwrap_or_else(|| {
-            if let Some(module_attr) = form_list.module_attribute() {
-                let module_attr_range = module_attr.form_id.get(&source).syntax().text_range();
-                module_attr_range.end() + TextSize::from(1)
-            } else {
-                TextSize::from(0)
-            }
-        });
+        let mut insert = self
+            .insert_at
+            .unwrap_or_else(|| top_insert_position(&form_list, &source));
 
         if self.export_form == ExportForm::Types {
             // Types are normally exported after function exports

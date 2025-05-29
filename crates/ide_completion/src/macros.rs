@@ -9,11 +9,11 @@
 
 use elp_base_db::FileId;
 use elp_syntax::AstNode;
-use elp_syntax::TextSize;
 use elp_syntax::algo;
 use elp_syntax::ast;
 use hir::MacroName;
 use hir::Name;
+use hir::Semantic;
 use hir::known;
 use lazy_static::lazy_static;
 
@@ -21,6 +21,7 @@ use crate::Completion;
 use crate::Contents;
 use crate::Ctx;
 use crate::DoneFlag;
+use crate::IncludeFile;
 use crate::Kind;
 use crate::helpers;
 
@@ -68,9 +69,9 @@ pub(crate) fn add_completions(
             let well_known_macros = &WELL_KNOWN_MACROS;
             let well_known = well_known_macros
                 .iter()
-                .filter(|(name, _import)| (*name).starts_with(&prefix))
-                .map(|(name, import)| {
-                    well_known_macro_name_to_completion(&file_position.file_id, name, import)
+                .filter(|(name, _include)| (*name).starts_with(&prefix))
+                .map(|(name, include)| {
+                    well_known_macro_name_to_completion(sema, file_position.file_id, name, include)
                 });
             acc.extend(well_known);
 
@@ -130,7 +131,15 @@ const BUILT_IN: [Name; 8] = [
     known::OTP_RELEASE,
 ];
 
-fn well_known_macro_name_to_completion(file_id: &FileId, name: &Name, import: &str) -> Completion {
+fn well_known_macro_name_to_completion(
+    sema: &Semantic,
+    file_id: FileId,
+    name: &Name,
+    include: &IncludeFile,
+) -> Completion {
+    let additional_edit = include
+        .insert_position_if_needed(sema, file_id)
+        .map(|pos| (pos, include.clone()));
     Completion {
         label: name.to_string(),
         kind: Kind::Macro,
@@ -138,16 +147,22 @@ fn well_known_macro_name_to_completion(file_id: &FileId, name: &Name, import: &s
         position: None,
         sort_text: None,
         deprecated: false,
-        additional_edit: Some((*file_id, TextSize::from(0), import.to_owned())),
+        additional_edit,
     }
 }
 
-const INCLUDE_ASSERT: &str = "-include_lib(\"stdlib/include/assert.hrl\").";
 lazy_static! {
-    static ref WELL_KNOWN_MACROS: Vec<(Name, &'static str)> = vec![
-        (known::assertEqual, INCLUDE_ASSERT),
-        (known::assertEqualSorted, INCLUDE_ASSERT),
-        (known::assertMatch, INCLUDE_ASSERT),
+    static ref INCLUDE_ASSERT: IncludeFile = IncludeFile {
+        include_lib: true,
+        path: "stdlib/include/assert.hrl".to_string(),
+    };
+}
+
+lazy_static! {
+    static ref WELL_KNOWN_MACROS: Vec<(Name, IncludeFile)> = vec![
+        (known::assertEqual, INCLUDE_ASSERT.clone()),
+        (known::assertEqualSorted, INCLUDE_ASSERT.clone()),
+        (known::assertMatch, INCLUDE_ASSERT.clone()),
     ]
     .into_iter()
     .collect();
@@ -273,15 +288,14 @@ mod test {
     "#,
             Some('?'),
             expect![[r#"
-                {label:assertEqual, kind:Macro, contents:SameAsLabel, position:None, import_text:(FileId(0), 0, "-include_lib(\"stdlib/include/assert.hrl\").")}
-                {label:assertEqualSorted, kind:Macro, contents:SameAsLabel, position:None, import_text:(FileId(0), 0, "-include_lib(\"stdlib/include/assert.hrl\").")}
-                {label:assertMatch, kind:Macro, contents:SameAsLabel, position:None, import_text:(FileId(0), 0, "-include_lib(\"stdlib/include/assert.hrl\").")}"#]],
+                {label:assertEqual, kind:Macro, contents:SameAsLabel, position:None, include:18:"-include_lib(\"stdlib/include/assert.hrl\")."}
+                {label:assertEqualSorted, kind:Macro, contents:SameAsLabel, position:None, include:18:"-include_lib(\"stdlib/include/assert.hrl\")."}
+                {label:assertMatch, kind:Macro, contents:SameAsLabel, position:None, include:18:"-include_lib(\"stdlib/include/assert.hrl\")."}"#]],
         );
     }
 
     #[test]
     fn well_known_macros_no_import() {
-        // This fails now, by re-doing the import. It will be fixed in the next diff on the stack
         assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
         check(
             r#"
@@ -291,9 +305,9 @@ mod test {
     "#,
             Some('?'),
             expect![[r#"
-                {label:assertEqual, kind:Macro, contents:SameAsLabel, position:None, import_text:(FileId(0), 0, "-include_lib(\"stdlib/include/assert.hrl\").")}
-                {label:assertEqualSorted, kind:Macro, contents:SameAsLabel, position:None, import_text:(FileId(0), 0, "-include_lib(\"stdlib/include/assert.hrl\").")}
-                {label:assertMatch, kind:Macro, contents:SameAsLabel, position:None, import_text:(FileId(0), 0, "-include_lib(\"stdlib/include/assert.hrl\").")}"#]],
+                {label:assertEqual, kind:Macro, contents:SameAsLabel, position:None}
+                {label:assertEqualSorted, kind:Macro, contents:SameAsLabel, position:None}
+                {label:assertMatch, kind:Macro, contents:SameAsLabel, position:None}"#]],
         );
     }
 

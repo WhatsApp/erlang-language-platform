@@ -10,11 +10,14 @@
 //! A module with ide helpers for high-level ide features.
 
 use elp_syntax::AstNode;
+use elp_syntax::SourceFile;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::SyntaxToken;
 use elp_syntax::TokenAtOffset;
 use elp_syntax::ast;
+use hir::FormList;
+use text_edit::TextSize;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SnippetCap {
@@ -44,5 +47,16 @@ pub fn get_call(syntax: &SyntaxNode) -> Option<ast::Call> {
         Some(call)
     } else {
         ast::Call::cast(syntax.parent()?.parent()?)
+    }
+}
+
+/// Find the first position at the top of the file to add a new
+/// form. It will be just after the module attribute, if there is one.
+pub fn top_insert_position(form_list: &FormList, source: &SourceFile) -> TextSize {
+    if let Some(module_attr) = form_list.module_attribute() {
+        let module_attr_range = module_attr.form_id.get(source).syntax().text_range();
+        module_attr_range.end() + TextSize::from(1)
+    } else {
+        TextSize::from(0)
     }
 }

@@ -371,16 +371,19 @@ fn completion_item(snap: &Snapshot, c: Completion) -> lsp_types::CompletionItem 
     if c.deprecated {
         tags.push(CompletionItemTag::DEPRECATED);
     };
-    let additional_text_edits = c.additional_edit.map(|(file_id, pos, new_text)| {
-        if let Ok(line_index) = snap.analysis.line_index(file_id) {
-            vec![lsp_types::TextEdit {
-                range: range(&line_index, TextRange::new(pos, pos)),
-                new_text,
-            }]
-        } else {
-            vec![]
-        }
-    });
+    let additional_text_edits =
+        c.additional_edit
+            .map(|(FilePosition { file_id, offset }, include)| {
+                let new_text = include.as_attribute();
+                if let Ok(line_index) = snap.analysis.line_index(file_id) {
+                    vec![lsp_types::TextEdit {
+                        range: range(&line_index, TextRange::new(offset, offset)),
+                        new_text,
+                    }]
+                } else {
+                    vec![]
+                }
+            });
     lsp_types::CompletionItem {
         label: c.label,
         kind: Some(match c.kind {

@@ -13,6 +13,7 @@ use ctx::CtxKind;
 use elp_base_db::FileId;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FilePosition;
+use elp_ide_db::helpers::top_insert_position;
 use elp_syntax::AstNode;
 use elp_syntax::SourceFile;
 use elp_syntax::SyntaxKind;
@@ -20,6 +21,7 @@ use elp_syntax::SyntaxNode;
 use elp_syntax::SyntaxToken;
 use elp_syntax::TextSize;
 use hir::InFile;
+use hir::IncludeAttribute;
 use hir::Semantic;
 
 type DoneFlag = bool;
@@ -57,7 +59,7 @@ pub struct Completion {
     pub position: Option<FilePosition>,
     pub sort_text: Option<String>,
     pub deprecated: bool,
-    pub additional_edit: Option<(FileId, TextSize, String)>,
+    pub additional_edit: Option<(FilePosition, IncludeFile)>,
 }
 
 impl fmt::Display for Completion {
@@ -67,7 +69,11 @@ impl fmt::Display for Completion {
             false => "".to_string(),
         };
         let include = match &self.additional_edit {
-            Some(stuff) => format!(", import_text:{:?}", &stuff),
+            Some((file_pos, include)) => format!(
+                ", include:{:?}:{:?}",
+                &file_pos.offset,
+                include.as_attribute().trim_end()
+            ),
             None => "".to_string(),
         };
         write!(
@@ -212,4 +218,40 @@ fn get_previous_tokens(
 
 fn right_biased_token(node: &SyntaxNode, file_position: FilePosition) -> Option<SyntaxToken> {
     node.token_at_offset(file_position.offset).right_biased()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct IncludeFile {
+    include_lib: bool,
+    path: String,
+}
+
+impl IncludeFile {
+    pub fn as_attribute(&self) -> String {
+        if self.include_lib {
+            format!("-include_lib(\"{}\").\n", self.path)
+        } else {
+            format!("-include(\"{}\").\n", self.path)
+        }
+    }
+
+    fn insert_position_if_needed(&self, sema: &Semantic, file_id: FileId) -> Option<FilePosition> {
+        let form_list = sema.form_list(file_id);
+        let existing_import = form_list.includes().any(|(_, include)| match include {
+            IncludeAttribute::Include { path, .. } => path == &self.path,
+            IncludeAttribute::IncludeLib { path, .. } => path == &self.path,
+        });
+        if existing_import {
+            None
+        } else {
+            let offset = if let Some((_, include)) = form_list.includes().last() {
+                let range = include.form_id().range(sema.db, file_id);
+                range.end() + TextSize::new(1)
+            } else {
+                let source = sema.parse(file_id);
+                top_insert_position(&form_list, &source.value)
+            };
+            Some(FilePosition { file_id, offset })
+        }
+    }
 }
