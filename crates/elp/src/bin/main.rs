@@ -333,12 +333,12 @@ mod tests {
     // with panics in case of failures, and checks eqWAlization results per module.
     pub fn eqwalize_all_snapshots(project: &str, app: &str, buck: bool, config: EqwalizerConfig) {
         if otp_supported_by_eqwalizer() && (!buck || cfg!(feature = "buck")) {
-            let mut cli = Fake::default();
+            let cli = Fake::default();
             let project_config = DiscoverConfig::new(!buck, "test");
             let str_path = project_path(project);
             let project_path: &Path = Path::new(&str_path);
             let mut loaded = load::load_project_at(
-                &mut cli,
+                &cli,
                 project_path,
                 project_config,
                 IncludeOtp::Yes,
@@ -351,7 +351,7 @@ mod tests {
                 .analysis_host
                 .raw_database_mut()
                 .set_eqwalizer_config(Arc::new(config));
-            build::compile_deps(&loaded, &mut cli)
+            build::compile_deps(&loaded, &cli)
                 .with_context(|| format!("Failed to compile deps for project {}", project))
                 .unwrap();
 
@@ -2314,6 +2314,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn check_lint_fix(
         args: Vec<OsString>,
         project: &str,
@@ -2341,6 +2342,7 @@ mod tests {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn check_lint_fix_stderr(
         args: Vec<OsString>,
         project: &str,

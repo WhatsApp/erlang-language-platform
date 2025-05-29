@@ -27,15 +27,15 @@ use crate::SsrSearchScope;
 
 #[track_caller]
 fn parse_error_text(query: &str) -> String {
-    let (mut db, _file_id) = RootDatabase::with_single_file(query);
-    let pattern = SsrRule::parse_str(&mut db, query);
+    let (db, _file_id) = RootDatabase::with_single_file(query);
+    let pattern = SsrRule::parse_str(&db, query);
     format!("{}", pattern.unwrap_err())
 }
 
 #[track_caller]
 fn parse_good_text(query: &str, expect: Expect) {
-    let (mut db, _file_id) = RootDatabase::with_single_file(query);
-    let pattern = SsrRule::parse_str(&mut db, query);
+    let (db, _file_id) = RootDatabase::with_single_file(query);
+    let pattern = SsrRule::parse_str(&db, query);
     let actual = pattern.unwrap().tree_print(&db);
     expect.assert_eq(actual.as_str());
 }

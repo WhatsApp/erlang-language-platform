@@ -822,7 +822,7 @@ mod tests {
         let clause_scope = scopes.get(clause_id).unwrap();
         let scope = clause_scope.scope_for_expr(expr_id);
 
-        let actual: _ = clause_scope
+        let actual = clause_scope
             .scope_chain(scope)
             .flat_map(|scope| clause_scope.entries(scope).names())
             .map(|it| db.lookup_var(it).as_str().to_string())

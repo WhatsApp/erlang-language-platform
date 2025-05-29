@@ -2530,6 +2530,7 @@ mod tests {
         xref_v2_check(spec);
     }
 
+    #[allow(clippy::type_complexity)]
     fn facts_with_annotations(
         spec: &str,
     ) -> (
@@ -2543,6 +2544,7 @@ mod tests {
         facts_with_annotations_with_config(spec, config)
     }
 
+    #[allow(clippy::type_complexity)]
     fn facts_with_annotations_with_config(
         spec: &str,
         config: IndexConfig,

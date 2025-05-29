@@ -403,7 +403,7 @@ mod tests {
     }
 
     #[track_caller]
-    pub(crate) fn check_fix_with_lints_from_config<'a>(
+    pub(crate) fn check_fix_with_lints_from_config(
         lints_from_config: LintsFromConfig,
         fixture_before: &str,
         fixture_after: Expect,

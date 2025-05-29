@@ -629,12 +629,12 @@ mod tests {
         diags: &mut Vec<Diagnostic>,
         sema: &Semantic,
         file_id: FileId,
-        match_spec: &Vec<Vec<FunctionMatch>>,
+        match_spec: &[Vec<FunctionMatch>],
         use_range: UseRange,
     ) {
-        sema.def_map(file_id)
-            .get_functions()
-            .for_each(|(_, def)| check_function(diags, sema, def, match_spec.clone(), use_range));
+        sema.def_map(file_id).get_functions().for_each(|(_, def)| {
+            check_function(diags, sema, def, match_spec.to_owned(), use_range)
+        });
     }
 
     fn check_function(
@@ -690,7 +690,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_adhoc_function_match(match_spec: &Vec<Vec<FunctionMatch>>, fixture: &str) {
+    fn check_adhoc_function_match(match_spec: &[Vec<FunctionMatch>], fixture: &str) {
         check_diagnostics_with_config_and_ad_hoc(
             DiagnosticsConfig::default()
                 .disable(DiagnosticCode::CrossNodeEval)
@@ -703,7 +703,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_adhoc_function_match_range_mf(match_spec: &Vec<Vec<FunctionMatch>>, fixture: &str) {
+    fn check_adhoc_function_match_range_mf(match_spec: &[Vec<FunctionMatch>], fixture: &str) {
         check_diagnostics_with_config_and_ad_hoc(
             DiagnosticsConfig::default()
                 .disable(DiagnosticCode::CrossNodeEval)
@@ -717,7 +717,7 @@ mod tests {
 
     #[track_caller]
     fn check_adhoc_function_fix(
-        match_spec: &Vec<Vec<FunctionMatch>>,
+        match_spec: &[Vec<FunctionMatch>],
         fixture_before: &str,
         fixture_after: Expect,
     ) {
@@ -738,7 +738,7 @@ mod tests {
     #[test]
     fn find_call_in_function_1() {
         check_adhoc_function_match(
-            &vec![FunctionMatch::mfas("foo", "fire_bombs", vec![1, 2])],
+            &[FunctionMatch::mfas("foo", "fire_bombs", vec![1, 2])],
             r#"
             -module(main).
 
@@ -754,7 +754,7 @@ mod tests {
     #[test]
     fn find_call_in_function_1a() {
         check_adhoc_function_match_range_mf(
-            &vec![FunctionMatch::mfas("foo", "fire_bombs", vec![1, 2])],
+            &[FunctionMatch::mfas("foo", "fire_bombs", vec![1, 2])],
             r#"
             -module(main).
 
@@ -770,7 +770,7 @@ mod tests {
     #[test]
     fn find_call_in_function_full_range_for_macro() {
         check_adhoc_function_match_range_mf(
-            &vec![FunctionMatch::mfas("foo", "fire_bombs", vec![1])],
+            &[FunctionMatch::mfas("foo", "fire_bombs", vec![1])],
             r#"
             -module(main).
 
@@ -786,7 +786,7 @@ mod tests {
     #[test]
     fn find_call_in_function_full_range_for_remote_macro() {
         check_adhoc_function_match_range_mf(
-            &vec![FunctionMatch::mfas("foo", "fire_bombs", vec![1])],
+            &[FunctionMatch::mfas("foo", "fire_bombs", vec![1])],
             r#"
             //- /src/main.erl
             -module(main).
@@ -806,7 +806,7 @@ mod tests {
     #[test]
     fn find_call_in_function_full_mf_auto_erlang() {
         check_adhoc_function_match_range_mf(
-            &vec![FunctionMatch::mfas("erlang", "spawn", vec![2, 4])],
+            &[FunctionMatch::mfas("erlang", "spawn", vec![2, 4])],
             r#"
             -module(main).
 
@@ -820,7 +820,7 @@ mod tests {
     #[test]
     fn find_call_in_function_erlang_module() {
         check_adhoc_function_match(
-            &vec![FunctionMatch::mfas("erlang", "spawn", vec![2, 4])],
+            &[FunctionMatch::mfas("erlang", "spawn", vec![2, 4])],
             r#"
             -module(main).
 
@@ -843,7 +843,7 @@ mod tests {
     fn find_call_in_function_erlang_module_2() {
         check_adhoc_function_match(
             // Not actually in the erlang module
-            &vec![FunctionMatch::mfas("erlang", "spawn", vec![0])],
+            &[FunctionMatch::mfas("erlang", "spawn", vec![0])],
             r#"
             -module(main).
 
@@ -858,7 +858,7 @@ mod tests {
     #[test]
     fn find_call_module_function() {
         check_adhoc_function_match(
-            &vec![vec![FunctionMatch::mf("foo", "bar")]],
+            &[vec![FunctionMatch::mf("foo", "bar")]],
             r#"
             -module(main).
 
@@ -877,7 +877,7 @@ mod tests {
     #[test]
     fn find_call_module_only() {
         check_adhoc_function_match(
-            &vec![vec![FunctionMatch::m("foo")]],
+            &[vec![FunctionMatch::m("foo")]],
             r#"
             -module(main).
 
@@ -894,7 +894,7 @@ mod tests {
     #[test]
     fn find_call_any() {
         check_adhoc_function_match(
-            &vec![vec![FunctionMatch::Any]],
+            &[vec![FunctionMatch::Any]],
             r#"
             -module(main).
 
@@ -913,7 +913,7 @@ mod tests {
     #[test]
     fn ignore_fix_1() {
         check_adhoc_function_fix(
-            &vec![vec![FunctionMatch::m("foo")]],
+            &[vec![FunctionMatch::m("foo")]],
             r#"
             -module(main).
 
@@ -934,7 +934,7 @@ mod tests {
     #[test]
     fn ignore_fix_2() {
         check_adhoc_function_fix(
-            &vec![vec![FunctionMatch::m("rpc")]],
+            &[vec![FunctionMatch::m("rpc")]],
             r#"
             -module(main).
             foo(Node, M,F,A) ->
@@ -953,7 +953,7 @@ mod tests {
     #[test]
     fn ignore_fix_3() {
         check_adhoc_function_fix(
-            &vec![vec![FunctionMatch::m("rpc")]],
+            &[vec![FunctionMatch::m("rpc")]],
             r#"
             -module(main).
             foo(Node, M,F,A) ->

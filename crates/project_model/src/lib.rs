@@ -1083,8 +1083,7 @@ mod tests {
     fn debug_normalise_temp_dir(dir: TempDir, actual: &impl fmt::Debug) -> String {
         let dir_str = dir.path().as_os_str().to_string_lossy().to_string();
         let actual_debug = format!("{:#?}\n", actual);
-        let replaced = actual_debug.replace(dir_str.as_str(), "TMPDIR");
-        replaced
+        actual_debug.replace(dir_str.as_str(), "TMPDIR")
     }
 
     #[test]
@@ -1596,8 +1595,7 @@ mod tests {
     fn normalise_temp_dir_in_err(dir: TempDir, err: anyhow::Error) -> String {
         let dir_str = dir.path().as_os_str().to_string_lossy().to_string();
         let err_str = format!("{err}");
-        let res = err_str.replace(dir_str.as_str(), "TMPDIR/");
-        res
+        err_str.replace(dir_str.as_str(), "TMPDIR/")
     }
 
     #[test]

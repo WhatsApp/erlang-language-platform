@@ -106,7 +106,6 @@ fn should_hint(db: &dyn InternDatabase, param_name: &ParamName, expr: &Expr) -> 
 #[cfg(test)]
 mod tests {
     use crate::inlay_hints::InlayHintsConfig;
-    use crate::inlay_hints::tests::DISABLED_CONFIG;
     use crate::inlay_hints::tests::check_with_config;
 
     #[track_caller]
@@ -114,7 +113,6 @@ mod tests {
         check_with_config(
             InlayHintsConfig {
                 parameter_hints: true,
-                ..DISABLED_CONFIG
             },
             fixture,
         );
