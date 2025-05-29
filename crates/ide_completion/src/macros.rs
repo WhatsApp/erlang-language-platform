@@ -75,9 +75,29 @@ pub(crate) fn add_completions(
                 });
             acc.extend(well_known);
 
+            let known_macros = macro_index_completion(sema, file_position.file_id, &prefix);
+            acc.extend(known_macros);
+
             // If we have a trigger character, it means we are completing a macro name. No need to compute other completions.
             trigger.is_some()
         }
+    }
+}
+
+fn macro_index_completion(sema: &Semantic, file_id: FileId, prefix: &str) -> Vec<Completion> {
+    if let Some(project_id) = sema.db.file_project_id(file_id) {
+        let index = sema.macro_define_index(project_id);
+        index
+            .complete(prefix)
+            .iter()
+            .map(|(_chars, define)| {
+                let form_list = sema.form_list(define.file_id);
+                let define = &form_list[define.value];
+                macro_name_to_completion(&define.name)
+            })
+            .collect()
+    } else {
+        vec![]
     }
 }
 
@@ -321,6 +341,25 @@ mod test {
     "#,
             Some('?'),
             expect![""],
+        );
+    }
+
+    #[test]
+    fn detect_macros_match() {
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
+        check(
+            r#"
+         //- /src/sample1.erl
+           -module(sample1).
+           foo() -> ?FO~
+         //- /src/header.hrl
+           -define(FOO,3).
+           -define(FOO(X),X+3).
+    "#,
+            Some('?'),
+            expect![[r#"
+                {label:FOO, kind:Macro, contents:SameAsLabel, position:None}
+                {label:FOO/1, kind:Macro, contents:Snippet("FOO(${1:Arg1})"), position:None}"#]],
         );
     }
 }
