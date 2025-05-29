@@ -159,7 +159,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    static ref WELL_KNOWN_MACROS: Vec<(Name, IncludeFile)> = vec![
+    pub static ref WELL_KNOWN_MACROS: Vec<(Name, IncludeFile)> = vec![
         (known::assertEqual, INCLUDE_ASSERT.clone()),
         (known::assertEqualSorted, INCLUDE_ASSERT.clone()),
         (known::assertMatch, INCLUDE_ASSERT.clone()),

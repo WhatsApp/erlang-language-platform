@@ -23,6 +23,7 @@ use elp_syntax::TextSize;
 use hir::InFile;
 use hir::IncludeAttribute;
 use hir::Semantic;
+pub use macros::WELL_KNOWN_MACROS;
 
 type DoneFlag = bool;
 
@@ -235,7 +236,11 @@ impl IncludeFile {
         }
     }
 
-    fn insert_position_if_needed(&self, sema: &Semantic, file_id: FileId) -> Option<FilePosition> {
+    pub fn insert_position_if_needed(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<FilePosition> {
         let form_list = sema.form_list(file_id);
         let existing_import = form_list.includes().any(|(_, include)| match include {
             IncludeAttribute::Include { path, .. } => path == &self.path,

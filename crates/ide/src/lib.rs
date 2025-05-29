@@ -506,6 +506,17 @@ impl Analysis {
             } else {
                 Vec::new()
             };
+            let erlang_service_assists = if include_fixes {
+                diagnostics_collection
+                    .erlang_service
+                    .get(&frange.file_id)
+                    .iter()
+                    .flat_map(|x| x.iter().filter_map(|it| it.fixes.clone()).flatten())
+                    .filter(|it| it.target.intersect(frange.range).is_some())
+                    .collect()
+            } else {
+                Vec::new()
+            };
             let assists = elp_ide_assists::assists(
                 db,
                 assist_config,
@@ -518,6 +529,7 @@ impl Analysis {
             let mut res = diagnostic_assists;
             res.extend(assists);
             res.extend(eqwalizer_assists);
+            res.extend(erlang_service_assists);
 
             res
         })

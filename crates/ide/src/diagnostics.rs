@@ -118,6 +118,7 @@ mod sets_version_2;
 mod simplify_negation;
 mod trivial_match;
 mod undefined_function;
+mod undefined_macro;
 mod undocumented_function;
 mod undocumented_module;
 mod unnecessary_fold_to_build_map;
@@ -1249,7 +1250,8 @@ pub fn erlang_service_diagnostics(
             )
             .collect();
 
-        // Remove diagnostics kinds already reported by ELP
+        // Remove diagnostics kinds already reported by ELP, and add
+        // any ELP-generated assists to those that remain
         let file_kind = db.file_kind(file_id);
         let diags: Vec<(FileId, Diagnostic)> = if remove_elp_reported == RemoveElpReported::Yes {
             diags
@@ -1265,6 +1267,12 @@ pub fn erlang_service_diagnostics(
             .into_iter()
             .filter(|(_file_id, d)| {
                 !d.should_be_suppressed(&metadata, config) && !config.disabled.contains(&d.code)
+            })
+            .map(|(file_id, d)| {
+                (
+                    file_id,
+                    add_elp_assists_to_erlang_service_diagnostic(db, file_id, d),
+                )
             })
             .collect_vec();
         let diags = if diags.is_empty() {
@@ -1296,6 +1304,24 @@ fn tag_erlang_service_diagnostic(d: Diagnostic) -> Diagnostic {
         d.deprecated()
     } else {
         d
+    }
+}
+
+fn add_elp_assists_to_erlang_service_diagnostic(
+    db: &RootDatabase,
+    file_id: FileId,
+    d: Diagnostic,
+) -> Diagnostic {
+    match &d.code {
+        DiagnosticCode::ErlangService(s) => match s.as_str() {
+            "E1508" => {
+                let mut d = d.clone();
+                undefined_macro::add_assist(&Semantic::new(db), file_id, &mut d);
+                d
+            }
+            _ => d,
+        },
+        _ => d,
     }
 }
 
