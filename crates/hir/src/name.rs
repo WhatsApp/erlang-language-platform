@@ -233,6 +233,10 @@ pub mod known {
         MODULE_STRING,
         MACHINE,
         OTP_RELEASE,
+        // well known macros
+        assertEqual,
+        assertEqualSorted,
+        assertMatch,
         // predefined values
         ELP,
         // known atoms

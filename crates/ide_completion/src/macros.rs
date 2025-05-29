@@ -13,6 +13,7 @@ use elp_syntax::ast;
 use hir::MacroName;
 use hir::Name;
 use hir::known;
+use lazy_static::lazy_static;
 
 use crate::Completion;
 use crate::Contents;
@@ -61,6 +62,13 @@ pub(crate) fn add_completions(
                 .filter(|name| name.starts_with(&prefix))
                 .map(built_in_macro_name_to_completion);
             acc.extend(predefined);
+
+            let well_known_macros = &WELL_KNOWN_MACROS;
+            let well_known = well_known_macros
+                .iter()
+                .filter(|(name, _import)| (*name).starts_with(&prefix))
+                .map(|(name, import)| well_known_macro_name_to_completion(name, import));
+            acc.extend(well_known);
 
             // If we have a trigger character, it means we are completing a macro name. No need to compute other completions.
             trigger.is_some()
@@ -117,6 +125,29 @@ const BUILT_IN: [Name; 8] = [
     known::MACHINE,
     known::OTP_RELEASE,
 ];
+
+fn well_known_macro_name_to_completion(name: &Name, import: &str) -> Completion {
+    Completion {
+        label: name.to_string(),
+        kind: Kind::Macro,
+        contents: Contents::SameAsLabel,
+        position: None,
+        sort_text: None,
+        deprecated: false,
+        additional_edit: Some(import.to_owned()),
+    }
+}
+
+const INCLUDE_ASSERT: &str = "-include_lib(\"stdlib/include/assert.hrl\").";
+lazy_static! {
+    static ref WELL_KNOWN_MACROS: Vec<(Name, &'static str)> = vec![
+        (known::assertEqual, INCLUDE_ASSERT),
+        (known::assertEqualSorted, INCLUDE_ASSERT),
+        (known::assertMatch, INCLUDE_ASSERT),
+    ]
+    .into_iter()
+    .collect();
+}
 
 #[cfg(test)]
 mod test {
@@ -223,6 +254,24 @@ mod test {
     "#,
             Some('?'),
             expect!["{label:OTP_RELEASE, kind:Macro, contents:SameAsLabel, position:None}"],
+        );
+    }
+
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn well_known_macros() {
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
+        check(
+            r#"
+    -module(sample1).
+    foo() -> ?asse~
+    "#,
+            Some('?'),
+            expect![[r#"
+                {label:assertEqual, kind:Macro, contents:SameAsLabel, position:None}
+                {label:assertEqualSorted, kind:Macro, contents:SameAsLabel, position:None}
+                {label:assertMatch, kind:Macro, contents:SameAsLabel, position:None}"#]],
         );
     }
 }
