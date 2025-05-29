@@ -8,6 +8,10 @@
  */
 
 use elp_base_db::FileId;
+use elp_base_db::IncludeCtx;
+use elp_base_db::SourceDatabase;
+use elp_base_db::VfsPath;
+use elp_base_db::path_for_file;
 use elp_syntax::AstNode;
 use elp_syntax::algo;
 use elp_syntax::ast;
@@ -91,9 +95,15 @@ fn macro_index_completion(sema: &Semantic, file_id: FileId, prefix: &str) -> Vec
             .complete(prefix)
             .iter()
             .map(|(_chars, define)| {
+                let include_path = path_for_file(sema.db, define.file_id);
+                let include = if let Some(include_path) = include_path {
+                    get_include_file(sema.db, file_id, define.file_id, include_path.clone())
+                } else {
+                    None
+                };
                 let form_list = sema.form_list(define.file_id);
                 let define = &form_list[define.value];
-                macro_name_to_completion(sema, file_id, &define.name, None)
+                macro_name_to_completion(sema, file_id, &define.name, include)
             })
             .collect()
     } else {
@@ -197,6 +207,44 @@ lazy_static! {
     ]
     .into_iter()
     .collect();
+}
+
+// TODO: should this be done in the resolve step? Or, cached in the table
+// First make it work.
+pub fn get_include_file(
+    db: &dyn SourceDatabase,
+    file_id: FileId,
+    included_file_id: FileId,
+    include_path: VfsPath,
+) -> Option<IncludeFile> {
+    // This function is the inverse of `base_db::include::resolve_remote_query`.
+    // If the result is passed to that function, it should return `included_file_id`.
+    let include_path = include_path.as_path()?;
+
+    let inc_app_data = db.file_app_data(included_file_id)?;
+    let candidate_path = include_path.strip_prefix(inc_app_data.dir.as_path())?;
+
+    // Validate that the path is in the local include list for the app
+    if !inc_app_data
+        .include_dirs
+        .iter()
+        .any(|dir| include_path.strip_prefix(dir).is_some())
+    {
+        return None;
+    }
+
+    let candidate = format!("{}/{}", inc_app_data.name, candidate_path.as_str());
+    // Check that it is valid
+    let resolved_file_id = IncludeCtx::new(db, file_id).resolve_include_lib(&candidate)?;
+    if resolved_file_id == included_file_id {
+        // We have an equivalent include
+        Some(IncludeFile {
+            include_lib: true,
+            path: candidate,
+        })
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
