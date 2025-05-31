@@ -14,8 +14,8 @@ use std::time::Duration;
 use std::time::Instant;
 use std::time::SystemTime;
 
-pub use env_logger::filter::Builder;
-pub use env_logger::filter::Filter;
+pub use env_filter::Builder;
+pub use env_filter::Filter;
 use fxhash::FxHashMap;
 use log::LevelFilter;
 use log::Log;

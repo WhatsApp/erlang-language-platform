@@ -8,7 +8,7 @@ workspace = true
 
 [dependencies]
 crossbeam-channel.workspace = true
-env_logger.workspace = true
+env_filter.workspace = true
 fxhash.workspace = true
 humantime.workspace = true
 lazy_static.workspace = true
