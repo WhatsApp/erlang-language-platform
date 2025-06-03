@@ -61,9 +61,10 @@ tracing.workspace = true
 vfs-notify.workspace = true
 vfs.workspace = true
 
-[target.'cfg(not(target_env = "msvc"))'.dependencies]
+[target.'cfg(not(any(target_env = "msvc", target_os = "openbsd")))'.dependencies]
 jemalloc-ctl.workspace = true
 jemallocator.workspace = true
+profile = { workspace = true, features = ["jemalloc"] }
 
 [dev-dependencies]
 expect-test.workspace = true

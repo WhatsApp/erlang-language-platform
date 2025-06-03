@@ -46,7 +46,7 @@ impl std::ops::Sub for MemoryUsage {
 
 impl MemoryUsage {
     pub fn now() -> MemoryUsage {
-        #[cfg(not(target_env = "msvc"))]
+        #[cfg(not(any(target_env = "msvc", target_os = "openbsd")))]
         {
             jemalloc_ctl::epoch::advance().unwrap();
             MemoryUsage {

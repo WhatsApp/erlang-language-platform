@@ -81,9 +81,7 @@ once_cell = "1.19.0"
 parking_lot = "0.12.3"
 paths = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-08-12" }
 proc-macro2 = "1.0.86"
-profile = { features = [
-    "jemalloc",
-], git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-08-12" }
+profile = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2024-08-12" }
 quote = "1.0.36"
 range-set = "0.0.10"
 rayon = "1.10.0"

@@ -43,12 +43,12 @@ mod reporting;
 mod shell;
 
 // Use jemalloc as the global allocator
-#[cfg(not(target_env = "msvc"))]
+#[cfg(not(any(target_env = "msvc", target_os = "openbsd")))]
 use jemallocator::Jemalloc;
 
 use crate::args::Args;
 
-#[cfg(not(target_env = "msvc"))]
+#[cfg(not(any(target_env = "msvc", target_os = "openbsd")))]
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 static EQWALIZER_SUPPORT_DIR: Dir = include_dir!("$EQWALIZER_SUPPORT_DIR");
