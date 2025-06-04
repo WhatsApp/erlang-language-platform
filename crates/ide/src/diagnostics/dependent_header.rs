@@ -16,6 +16,7 @@ use elp_ide_db::elp_base_db::FileKind;
 use elp_syntax::AstNode;
 use elp_syntax::ast;
 use elp_syntax::ast::RecordName;
+use elp_text_edit::TextRange;
 use hir::AnyExpr;
 use hir::InFile;
 use hir::Name;
@@ -23,7 +24,6 @@ use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use text_edit::TextRange;
 
 use super::Diagnostic;
 use super::DiagnosticCode;

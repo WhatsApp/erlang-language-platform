@@ -19,8 +19,8 @@ use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
+use elp_text_edit::TextEdit;
 use hir::Semantic;
-use text_edit::TextEdit;
 
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;

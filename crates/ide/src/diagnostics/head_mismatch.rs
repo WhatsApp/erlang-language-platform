@@ -18,9 +18,9 @@ use elp_syntax::ast;
 use elp_syntax::ast::AstNode;
 use elp_syntax::ast::ClauseSeparator;
 use elp_syntax::syntax_node::SyntaxNode;
+use elp_text_edit::TextEdit;
 use fxhash::FxHashMap;
 use hir::Semantic;
-use text_edit::TextEdit;
 
 use super::DiagnosticCode;
 use super::DiagnosticConditions;

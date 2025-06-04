@@ -12,11 +12,11 @@
 use std::hash::BuildHasherDefault;
 use std::ops::RangeInclusive;
 
+use elp_text_edit::TextEditBuilder;
 use fxhash::FxHashMap;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use rowan::NodeOrToken;
-use text_edit::TextEditBuilder;
 
 use crate::AstNode;
 use crate::Direction;
@@ -454,10 +454,10 @@ fn to_green_element(element: SyntaxElement) -> NodeOrToken<rowan::GreenNode, row
 
 #[cfg(test)]
 mod tests {
+    use elp_text_edit::TextEdit;
     use expect_test::Expect;
     use expect_test::expect;
     use itertools::Itertools;
-    use text_edit::TextEdit;
 
     use crate::AstNode;
     use crate::SyntaxElement;

@@ -16,6 +16,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::TextRange;
 use elp_syntax::ast;
+use elp_text_edit::TextEdit;
 use hir::AnyExprId;
 use hir::CallTarget;
 use hir::Expr;
@@ -30,7 +31,6 @@ use hir::fold::ParenStrategy;
 use itertools::Itertools;
 use serde::Deserialize;
 use serde::Serialize;
-use text_edit::TextEdit;
 
 use super::Diagnostic;
 use super::Severity;

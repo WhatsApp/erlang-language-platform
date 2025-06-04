@@ -167,8 +167,7 @@ pub fn setup_server(config: Config, connection: Connection, logger: Logger) -> R
 
 fn set_up_vfs_loader() -> VfsHandle {
     let (sender, receiver) = crossbeam_channel::unbounded();
-    let handle: vfs_notify::NotifyHandle =
-        loader::Handle::spawn(Box::new(move |msg| sender.send(msg).unwrap()));
+    let handle: vfs_notify::NotifyHandle = loader::Handle::spawn(sender);
     let handle = Box::new(handle) as Box<dyn loader::Handle>;
     Handle { handle, receiver }
 }

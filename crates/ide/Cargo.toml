@@ -15,6 +15,7 @@ elp_ide_db.workspace = true
 elp_ide_ssr.workspace = true
 elp_project_model.workspace = true
 elp_syntax.workspace = true
+elp_text_edit.workspace = true
 elp_types_db.workspace = true
 hir.workspace = true
 
@@ -33,7 +34,6 @@ smallvec.workspace = true
 stdx.workspace = true
 strsim.workspace = true
 tempfile.workspace = true
-text-edit.workspace = true
 toml.workspace = true
 tracing.workspace = true
 triple_accel.workspace = true

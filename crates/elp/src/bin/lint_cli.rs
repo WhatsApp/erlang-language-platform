@@ -53,6 +53,7 @@ use elp_project_model::AppName;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::buck::BuckQueryConfig;
+use elp_text_edit::TextSize;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use hir::FormIdx;
@@ -62,7 +63,6 @@ use itertools::Itertools;
 use paths::Utf8PathBuf;
 use rayon::prelude::ParallelBridge;
 use rayon::prelude::ParallelIterator;
-use text_edit::TextSize;
 
 use crate::args::Lint;
 use crate::reporting;
@@ -246,7 +246,8 @@ pub fn do_codemod(
                     (
                         loaded
                             .vfs
-                            .file_id(&VfsPath::new_real_path(path.to_string())),
+                            .file_id(&VfsPath::new_real_path(path.to_string()))
+                            .map(|(id, _)| id),
                         path_buf.as_path().file_name().map(ModuleName::new),
                     )
                 }
@@ -580,7 +581,11 @@ impl<'a> Lints<'a> {
                                 files_changed: vec![(file_id, Some(Arc::from(source)))],
                                 app_structure: None,
                             },
-                            &|path| self.vfs.file_id(&VfsPath::from(path.clone())),
+                            &|path| {
+                                self.vfs
+                                    .file_id(&VfsPath::from(path.clone()))
+                                    .map(|(id, _)| id)
+                            },
                         );
                         if self.args.check_eqwalize_all {
                             writeln!(cli, "Running eqwalize-all to check for knock-on problems.")?;

@@ -58,6 +58,7 @@ use elp_syntax::ast::edit::IndentLevel;
 use elp_syntax::ast::edit::start_of_line;
 use elp_syntax::label::Label;
 use elp_syntax::ted::Element;
+use elp_text_edit::TextEdit;
 use elp_types_db::TypedSemantic;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -69,7 +70,6 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
-use text_edit::TextEdit;
 
 use crate::RootDatabase;
 use crate::SourceDatabase;

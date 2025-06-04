@@ -178,10 +178,10 @@ mod tests {
     use elp_syntax::AstNode;
     use elp_syntax::algo;
     use elp_syntax::ast;
+    use elp_text_edit::TextEdit;
     use hir::AnyExprId;
     use hir::InFile;
     use hir::Semantic;
-    use text_edit::TextEdit;
 
     use super::rename_var;
     use crate::fixture;

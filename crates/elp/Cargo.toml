@@ -21,6 +21,7 @@ elp_ide.workspace = true
 elp_log.workspace = true
 elp_project_model.workspace = true
 elp_syntax.workspace = true
+elp_text_edit.workspace = true
 hir.workspace = true
 
 always-assert.workspace = true
@@ -53,7 +54,6 @@ serde.workspace = true
 stdx.workspace = true
 strsim.workspace = true
 tempfile.workspace = true
-text-edit.workspace = true
 threadpool.workspace = true
 timeout-readwrite.workspace = true
 toml.workspace = true

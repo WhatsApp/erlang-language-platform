@@ -14,6 +14,7 @@
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
+use elp_text_edit::TextRange;
 use hir::AnyExpr;
 use hir::FunctionDef;
 use hir::Literal;
@@ -23,7 +24,6 @@ use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use text_edit::TextRange;
 
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;

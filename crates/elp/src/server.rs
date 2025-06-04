@@ -710,7 +710,7 @@ impl Server {
                     // that are freshly opened so diagnostics are
                     // generated for them, despite no changes being
                     // registered in vfs.
-                    let file_id = vfs.file_id(&path).unwrap();
+                    let (file_id, _) = vfs.file_id(&path).unwrap();
                     this.newly_opened_documents.push(ChangedFile {
                         file_id,
                         change: Change::Modify(bytes, params.text_document.version as u64),
@@ -764,7 +764,7 @@ impl Server {
                     // If project-wide diagnostics are enabled, ensure we don't lose the eqwalizer ones.
                     if this.config.eqwalizer().all {
                         let vfs = this.vfs.read();
-                        if let Some(file_id) = vfs.file_id(&path) {
+                        if let Some((file_id, _)) = vfs.file_id(&path) {
                             Arc::make_mut(&mut this.diagnostics)
                                 .move_eqwalizer_diagnostics_to_project_diagnostics(file_id);
                             if let Ok(line_index) = analysis.line_index(file_id) {
@@ -1059,7 +1059,7 @@ impl Server {
                 .iter()
                 .for_each(|(path, app_data_id)| {
                     let vfs_path = VfsPath::from(path.clone());
-                    if let Some(file_id) = vfs.file_id(&vfs_path) {
+                    if let Some((file_id, _)) = vfs.file_id(&vfs_path) {
                         paths_to_remove.push(path.clone());
                         Arc::make_mut(&mut app_data_index)
                             .map
@@ -1098,7 +1098,7 @@ impl Server {
         self.mem_docs
             .read()
             .iter()
-            .map(|path| vfs.file_id(path).unwrap())
+            .map(|path| vfs.file_id(path).unwrap().0)
             .collect()
     }
 

@@ -19,10 +19,8 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::AstNode;
+use elp_text_edit::TextRange;
 use fxhash::FxHashSet;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
-use hir::known;
 use hir::AnyExpr;
 use hir::CompileOptionId;
 use hir::FoldCtx;
@@ -32,13 +30,15 @@ use hir::Name;
 use hir::Semantic;
 use hir::Strategy;
 use hir::Term;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
+use hir::known;
 use lazy_static::lazy_static;
-use text_edit::TextRange;
 
+use super::DIAGNOSTIC_WHOLE_FILE_RANGE;
 use super::Diagnostic;
 use super::DiagnosticConditions;
 use super::DiagnosticDescriptor;
-use super::DIAGNOSTIC_WHOLE_FILE_RANGE;
 use crate::fix;
 
 pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
@@ -187,8 +187,8 @@ fn report_diagnostic(
 mod tests {
 
     use elp_ide_db::DiagnosticCode;
-    use expect_test::expect;
     use expect_test::Expect;
+    use expect_test::expect;
 
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests::check_diagnostics_with_config;

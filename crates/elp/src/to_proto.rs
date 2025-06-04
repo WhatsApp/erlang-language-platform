@@ -47,13 +47,13 @@ use elp_ide::elp_ide_db::elp_base_db::FileRange;
 use elp_ide::elp_ide_db::rename::RenameError;
 use elp_ide::elp_ide_db::source_change::SourceChange;
 use elp_project_model::ProjectBuildData;
+use elp_text_edit::Indel;
+use elp_text_edit::TextEdit;
 use lsp_types::CompletionItemTag;
 use lsp_types::Hover;
 use lsp_types::HoverContents;
 use lsp_types::MarkupContent;
 use lsp_types::MarkupKind;
-use text_edit::Indel;
-use text_edit::TextEdit;
 
 use crate::LspError;
 use crate::Result;

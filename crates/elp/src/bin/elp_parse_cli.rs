@@ -104,7 +104,8 @@ pub fn parse_all(
                 (
                     loaded
                         .vfs
-                        .file_id(&VfsPath::new_real_path(path.to_string())),
+                        .file_id(&VfsPath::new_real_path(path.to_string()))
+                        .map(|(file_id, _)| file_id),
                     path_buf.as_path().file_name().map(ModuleName::new),
                 )
             }

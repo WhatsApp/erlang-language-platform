@@ -9,6 +9,7 @@ workspace = true
 [dependencies]
 elp_ide_db.workspace = true
 elp_syntax.workspace = true
+elp_text_edit.workspace = true
 hir.workspace = true
 
 cov-mark.workspace = true
@@ -18,7 +19,6 @@ lazy_static.workspace = true
 log.workspace = true
 regex.workspace = true
 stdx.workspace = true
-text-edit.workspace = true
 
 [dev-dependencies]
 expect-test.workspace = true

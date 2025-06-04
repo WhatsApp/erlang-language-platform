@@ -26,6 +26,8 @@ use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast;
 use elp_syntax::ast::BinaryOp;
 use elp_syntax::ast::LogicOp;
+use elp_text_edit::TextEdit;
+use elp_text_edit::TextRange;
 use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::AnyExprRef;
@@ -41,8 +43,6 @@ use hir::fold::AnyCallBackCtx;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::fold::ParentId;
-use text_edit::TextEdit;
-use text_edit::TextRange;
 
 use super::Diagnostic;
 use super::DiagnosticConditions;

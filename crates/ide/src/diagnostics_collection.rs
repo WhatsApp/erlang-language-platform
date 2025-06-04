@@ -252,9 +252,9 @@ mod tests {
 
     use elp_ide_db::elp_base_db::FileId;
     use elp_syntax::label::Label;
+    use elp_text_edit::TextRange;
     use fxhash::FxHashMap;
     use fxhash::FxHashSet;
-    use text_edit::TextRange;
 
     use super::are_diagnostics_equal;
     use crate::DiagnosticsConfig;

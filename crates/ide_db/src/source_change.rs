@@ -20,12 +20,12 @@ use elp_base_db::AnchoredPathBuf;
 use elp_base_db::FileId;
 use elp_syntax::SyntaxNode;
 use elp_syntax::algo;
+use elp_text_edit::TextEdit;
+use elp_text_edit::TextEditBuilder;
+use elp_text_edit::TextRange;
+use elp_text_edit::TextSize;
 use fxhash::FxHashMap;
 use stdx::never;
-use text_edit::TextEdit;
-use text_edit::TextEditBuilder;
-use text_edit::TextRange;
-use text_edit::TextSize;
 
 use crate::helpers::SnippetCap;
 

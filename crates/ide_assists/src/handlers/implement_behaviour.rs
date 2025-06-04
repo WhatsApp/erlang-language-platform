@@ -13,13 +13,13 @@ use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
 use elp_syntax::AstNode;
 use elp_syntax::ast::BehaviourAttribute;
+use elp_text_edit::TextRange;
+use elp_text_edit::TextSize;
 use hir::Callback;
 use hir::CallbackId;
 use hir::InFile;
 use hir::Module;
 use hir::NameArity;
-use text_edit::TextRange;
-use text_edit::TextSize;
 
 use crate::assist_context::AssistContext;
 use crate::assist_context::Assists;

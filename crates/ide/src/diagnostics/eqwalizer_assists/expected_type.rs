@@ -14,6 +14,8 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::find_best_token;
 use elp_ide_db::source_change::SourceChange;
+use elp_text_edit::TextEdit;
+use elp_text_edit::TextSize;
 use elp_types_db::eqwalizer::StructuredDiagnostic;
 use elp_types_db::eqwalizer::tc_diagnostics::ExpectedSubtype;
 use elp_types_db::eqwalizer::tc_diagnostics::TypeError;
@@ -28,8 +30,6 @@ use hir::SpecBody;
 use hir::SpecId;
 use hir::SpecSig;
 use hir::TypeExpr;
-use text_edit::TextEdit;
-use text_edit::TextSize;
 
 use crate::diagnostics::Diagnostic;
 use crate::fix;

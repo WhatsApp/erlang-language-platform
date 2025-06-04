@@ -15,6 +15,7 @@ use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::AstNode;
+use elp_text_edit::TextRange;
 use hir::AnyExpr;
 use hir::BasedInteger;
 use hir::Expr;
@@ -25,7 +26,6 @@ use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use text_edit::TextRange;
 
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticConditions;

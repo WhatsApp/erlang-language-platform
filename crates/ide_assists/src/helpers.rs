@@ -33,6 +33,8 @@ use elp_syntax::algo;
 use elp_syntax::algo::skip_inline_comment;
 use elp_syntax::ast;
 use elp_syntax::match_ast;
+use elp_text_edit::TextEdit;
+use elp_text_edit::TextSize;
 use fxhash::FxHashSet;
 use hir::Attribute;
 use hir::Body;
@@ -55,8 +57,6 @@ use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::fold::fold_body;
 use hir::known;
-use text_edit::TextEdit;
-use text_edit::TextSize;
 
 use crate::assist_context::AssistContext;
 

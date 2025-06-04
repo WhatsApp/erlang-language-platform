@@ -14,14 +14,14 @@ use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::AstNode;
+use elp_text_edit::TextRange;
+use elp_text_edit::TextSize;
 use fxhash::FxHashSet;
 use hir::Attribute;
 use hir::Semantic;
 use hir::edoc::EdocHeader;
 use hir::edoc::EdocHeaderKind;
 use hir::known;
-use text_edit::TextRange;
-use text_edit::TextSize;
 
 use super::Diagnostic;
 use super::DiagnosticCode;

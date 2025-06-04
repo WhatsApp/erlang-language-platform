@@ -31,6 +31,7 @@ use elp_syntax::TextSize;
 use elp_syntax::ast;
 use elp_syntax::ast::HasArity;
 use elp_syntax::ast::edit::IndentLevel;
+use elp_text_edit::TextEdit;
 use fxhash::FxHashSet;
 use hir::FunctionDef;
 use hir::InFile;
@@ -40,7 +41,6 @@ use hir::ScopeAnalysis;
 use hir::Semantic;
 use hir::Var;
 use itertools::izip;
-use text_edit::TextEdit;
 
 use crate::assist_context::AssistContext;
 use crate::assist_context::Assists;

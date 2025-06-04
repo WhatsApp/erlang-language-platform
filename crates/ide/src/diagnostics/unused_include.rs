@@ -18,6 +18,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::SmolStr;
 use elp_syntax::ast::AstNode;
+use elp_text_edit::TextEdit;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use hir::FormIdx;
@@ -28,7 +29,6 @@ use hir::Semantic;
 use hir::db::DefDatabase;
 use hir::known;
 use lazy_static::lazy_static;
-use text_edit::TextEdit;
 
 use super::Diagnostic;
 use crate::diagnostics::DiagnosticCode;

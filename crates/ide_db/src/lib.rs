@@ -418,7 +418,7 @@ impl TypedSemantic for RootDatabase {
 mod tests {
     use elp_base_db::SourceDatabase;
     use elp_base_db::fixture::WithFixture;
-    use text_edit::TextRange;
+    use elp_text_edit::TextRange;
 
     use crate::RootDatabase;
 

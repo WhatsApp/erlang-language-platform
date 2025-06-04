@@ -18,8 +18,8 @@ use elp_syntax::AstNode;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use elp_syntax::ast;
+use elp_text_edit::TextEdit;
 use hir::Semantic;
-use text_edit::TextEdit;
 
 use crate::Diagnostic;
 use crate::fix;

@@ -20,6 +20,7 @@ use elp_syntax::AstNode;
 use elp_syntax::SyntaxElement;
 use elp_syntax::SyntaxKind;
 use elp_syntax::ast;
+use elp_text_edit::TextEdit;
 use hir::AnyExprId;
 use hir::Expr;
 use hir::ExprId;
@@ -29,7 +30,6 @@ use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use text_edit::TextEdit;
 
 use super::Category;
 use super::Diagnostic;

@@ -54,7 +54,7 @@ fn load_info_from_fixture(fixture: &str) -> (Vfs, FxHashMap<FileId, LineEndings>
         let document = Document::from_bytes(&bytes);
         vfs.set_file_contents(path.clone(), Some(bytes));
         let (_text, line_ending) = document.vfs_to_salsa();
-        let file_id = vfs.file_id(&path).unwrap();
+        let (file_id, _) = vfs.file_id(&path).unwrap();
         line_ending_map.insert(file_id, line_ending);
     }
     (vfs, line_ending_map)

@@ -12,6 +12,7 @@ elp_eqwalizer.workspace = true
 elp_erlang_service.workspace = true
 elp_project_model.workspace = true
 elp_syntax.workspace = true
+elp_text_edit.workspace = true
 elp_types_db.workspace = true
 hir.workspace = true
 
@@ -34,7 +35,6 @@ stdx.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
 tempfile.workspace = true
-text-edit.workspace = true
 toml.workspace = true
 tracing.workspace = true
 

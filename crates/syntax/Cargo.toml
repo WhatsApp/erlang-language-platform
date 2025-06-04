@@ -7,6 +7,8 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+elp_text_edit.workspace = true
+
 cov-mark.workspace = true
 eetf.workspace = true
 fxhash.workspace = true
@@ -22,7 +24,6 @@ regex.workspace = true
 rowan.workspace = true
 smol_str.workspace = true
 stdx.workspace = true
-text-edit.workspace = true
 tracing.workspace = true
 tree-sitter.workspace = true
 tree-sitter-erlang.workspace = true

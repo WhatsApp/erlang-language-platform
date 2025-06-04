@@ -9,6 +9,8 @@
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
+use elp_text_edit::TextRange;
+use elp_text_edit::TextSize;
 use hir::AnyExprId;
 use hir::Expr;
 use hir::FunctionDef;
@@ -17,8 +19,6 @@ use hir::NameArity;
 use hir::Semantic;
 use hir::fold::ParentId;
 use hir::known;
-use text_edit::TextRange;
-use text_edit::TextSize;
 
 use crate::FunctionMatch;
 use crate::codemod_helpers::CheckCallCtx;

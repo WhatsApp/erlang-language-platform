@@ -11,9 +11,9 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::ast::AstNode;
 use elp_syntax::ast::WildAttribute;
+use elp_text_edit::TextEdit;
 use hir::Attribute;
 use hir::Semantic;
-use text_edit::TextEdit;
 
 use super::Diagnostic;
 use crate::TextRange;

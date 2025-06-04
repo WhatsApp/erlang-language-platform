@@ -20,9 +20,9 @@ use elp_ide_db::elp_base_db::assert_eq_text;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::remove_annotations;
 use elp_project_model::test_fixture::trim_indent;
+use elp_text_edit::TextRange;
 use expect_test::Expect;
 use itertools::Itertools;
-use text_edit::TextRange;
 
 use crate::Analysis;
 use crate::AnalysisHost;

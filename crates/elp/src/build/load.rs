@@ -101,8 +101,7 @@ fn load_project(
     let mut vfs = Vfs::default();
     let mut line_ending_map = FxHashMap::default();
     let mut loader = {
-        let loader =
-            vfs_notify::NotifyHandle::spawn(Box::new(move |msg| sender.send(msg).unwrap()));
+        let loader = vfs_notify::NotifyHandle::spawn(sender);
         Box::new(loader)
     };
 
@@ -191,9 +190,9 @@ fn load_database(
         db.set_source_root(root_id, Arc::new(root));
     }
 
-    project_apps
-        .app_structure()
-        .apply(db, &|path| vfs.file_id(&VfsPath::from(path.clone())));
+    project_apps.app_structure().apply(db, &|path| {
+        vfs.file_id(&VfsPath::from(path.clone())).map(|(id, _)| id)
+    });
 
     let changes = vfs.take_changes();
     for (_file_id, file) in changes {

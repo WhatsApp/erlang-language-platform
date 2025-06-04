@@ -139,7 +139,7 @@ impl Snapshot {
     pub(crate) fn url_to_file_id(&self, url: &Url) -> Result<FileId> {
         let path = convert::vfs_path(url)?;
         let vfs = self.vfs.read();
-        let res = vfs
+        let (res, _) = vfs
             .file_id(&path)
             .context(format!("file not found: {}", path))?;
         Ok(res)

@@ -316,7 +316,7 @@ pub fn eqwalize_target(
         if matches {
             for src in &target.src_files {
                 let vfs_path = VfsPath::from(src.clone());
-                if let Some(file_id) = loaded.vfs.file_id(&vfs_path) {
+                if let Some((file_id, _)) = loaded.vfs.file_id(&vfs_path) {
                     at_least_one_found = true;
                     if analysis.should_eqwalize(file_id).unwrap()
                         && !otp_file_to_ignore(analysis, file_id)

@@ -17,6 +17,7 @@ use elp_ide_assists::helpers::add_parens_edit;
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
+use elp_text_edit::TextRange;
 use hir::AnyExpr;
 use hir::AnyExprRef;
 use hir::Expr;
@@ -27,7 +28,6 @@ use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::fold::ParentId;
 use hir::fold::fold_file_functions;
-use text_edit::TextRange;
 
 use super::Diagnostic;
 use super::DiagnosticConditions;

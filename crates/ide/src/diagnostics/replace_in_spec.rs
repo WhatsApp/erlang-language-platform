@@ -16,6 +16,7 @@ use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::SmolStr;
+use elp_text_edit::TextEdit;
 use fxhash::FxHashSet;
 use hir::AnyExpr;
 use hir::InFile;
@@ -28,7 +29,6 @@ use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use serde::Deserialize;
 use serde::Serialize;
-use text_edit::TextEdit;
 
 use super::Diagnostic;
 use super::Severity;

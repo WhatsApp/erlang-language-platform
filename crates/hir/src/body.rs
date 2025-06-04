@@ -183,7 +183,8 @@ pub enum BodyOrigin {
 
 // We use this as a sentinel value to indicate that the body is not valid.
 // It is only used when lowering a SSR pattern.
-pub const SSR_SOURCE_FILE_ID: FileId = FileId::from_raw(FileId::MAX - 1);
+// 0x7fff_ffff is FileId::MAX but is private
+pub const SSR_SOURCE_FILE_ID: FileId = FileId::from_raw(0x7fff_ffff - 1);
 
 impl BodyOrigin {
     pub fn new(file_id: FileId, form_id: FormIdx) -> BodyOrigin {
