@@ -2639,6 +2639,22 @@ maps:fold(
     M
 ).
 
+-spec maps_fold_8(#{a => atom(), b => binary(), atom() => dynamic()}) -> [binary()].
+maps_fold_8(M) ->
+maps:fold(
+    fun(a, A, Acc) -> [atom_to_binary(A) | Acc]; (b, B, Acc) -> [B | Acc]; (_, _, Acc) -> Acc end,
+    [],
+    M
+).
+
+-spec maps_fold_9(#{undefined | binary() => binary()}) -> [{binary(), binary()}].
+maps_fold_9(M) ->
+maps:fold(
+    fun(undefined, _, Acc) -> Acc; (B1, B2, Acc) -> [{B1, B2} | Acc] end,
+    [],
+    M
+).
+
 -spec maps_filter_iter()
     -> #{number() => atom()}.
 maps_filter_iter() ->
