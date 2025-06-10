@@ -475,6 +475,13 @@ Context expected type: #{term() => term()} | maps:iterator()
   because
   'non_kv' is not compatible with #{term() => term()}
 
+error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
+    ┌─ check/src/custom.erl:538:9
+    │
+538 │         fun (K, V) -> [K, V] end, [], M).
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^ fun.
+fun with arity 2 used as fun with 3 arguments
+
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:544:5
     │    
@@ -3265,4 +3272,4 @@ Because in the expression's type:
   because
   binary() is not compatible with atom()
 
-201 ERRORS
+202 ERRORS
