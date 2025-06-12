@@ -402,3 +402,10 @@ test52(M, TTL) ->
 map_comprehension_iterator(M) ->
     It = maps:iterator(M),
     [{K, V} || K := V <- It].
+
+-spec bin_undefined(term()) -> binary() | undefined.
+bin_undefined(_) -> error(not_implemented).
+
+-spec bins([term()]) -> [binary()].
+bins(L) ->
+    [Conv || B <- L, (Conv = bin_undefined(B)) =/= undefined].
