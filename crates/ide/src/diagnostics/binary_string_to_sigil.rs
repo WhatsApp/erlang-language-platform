@@ -21,6 +21,7 @@ use hir::Semantic;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::fold::Strategy;
+use stdx::itertools::Itertools;
 
 use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticConditions;
@@ -71,8 +72,22 @@ fn make_diagnostic(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
         return None;
     }
 
+    // It might be a multi-line string, so handle the content line-by-line.
+    // Trim whitespaces, then trim quotes from the remainder.
+    let sigil_string = string_content_match_src
+        .lines()
+        .filter_map(|line| {
+            let trimmed = line.trim();
+            if trimmed.starts_with('"') && trimmed.ends_with('"') && trimmed.len() > 2 {
+                Some(trimmed[1..trimmed.len() - 1].to_string())
+            } else {
+                None
+            }
+        })
+        .join("\n");
+
     let mut builder = SourceChangeBuilder::new(file_id);
-    let sigil_string = format!("~{string_content_match_src}");
+    let sigil_string = format!("~\"{sigil_string}\"");
     builder.replace(binary_string_range, sigil_string);
     let fixes = vec![fix(
         "binary_string_to_sigil",
@@ -188,6 +203,27 @@ mod tests {
          -module(binary_string_to_sigil).
 
          fn() -> ~"hello".
+            "#]],
+        )
+    }
+
+    #[test]
+    fn fixes_multi_line_binary_string_to_sigil() {
+        check_fix(
+            r#"
+         //- /src/binary_string_to_sigil.erl
+         -module(binary_string_to_sigil).
+
+         fn() -> <<"Hel~lo everyone!"
+
+                   "    How are you?\n"
+                   "">>.
+            "#,
+            expect![[r#"
+         -module(binary_string_to_sigil).
+
+         fn() -> ~"Hello everyone!
+             How are you?\n".
             "#]],
         )
     }
