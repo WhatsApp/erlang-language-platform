@@ -15,6 +15,7 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
+use std::iter;
 use std::ops::Deref;
 use std::path::Path;
 use std::path::PathBuf;
@@ -333,6 +334,13 @@ impl Target {
             });
         }
         include_files
+    }
+
+    fn all_sub_targets(&self) -> impl Iterator<Item = &TargetFullName> {
+        self.apps
+            .iter()
+            .chain(self.deps.iter())
+            .chain(self.included_apps.iter())
     }
 }
 
@@ -1023,6 +1031,34 @@ fn targets_to_project_data_bxl(
     otp_root: &Utf8Path,
 ) -> Vec<ProjectAppData> {
     let mut result: Vec<ProjectAppData> = vec![];
+    //--------------------------------------------
+    let mut includes_by_target: FxHashMap<TargetFullName, FxHashSet<AbsPathBuf>> =
+        FxHashMap::default();
+    for target in targets.values() {
+        let mut includes = FxHashSet::from_iter(
+            target
+                .include_files
+                .iter()
+                .map(|inc| include_path_from_file(inc)),
+        );
+        if target.private_header {
+            target.src_files.iter().for_each(|path| {
+                if Some("hrl") == path.extension() {
+                    includes.insert(include_path_from_file(path));
+                }
+            });
+        }
+        includes_by_target.insert(target.name.clone(), includes);
+    }
+    //--------------------------------------------
+
+    let mut deps_cache: FxHashMap<TargetFullName, (IsCached, &Target, FxHashSet<TargetFullName>)> =
+        FxHashMap::default();
+    for target in targets.values() {
+        let deps = FxHashSet::from_iter(target.all_sub_targets().cloned());
+        deps_cache.insert(target.name.clone(), (IsCached::No, target, deps));
+    }
+    //--------------------------------------------
     let mut includes_cache: FxHashMap<TargetFullName, (IsCached, &Target, FxHashSet<AbsPathBuf>)> =
         FxHashMap::default();
     for target in targets.values() {
@@ -1039,11 +1075,23 @@ fn targets_to_project_data_bxl(
                 }
             });
         }
+
         includes_cache.insert(target.name.clone(), (IsCached::No, target, includes));
     }
+
+    //--------------------------------------------
     let otp_includes = FxHashSet::from_iter(vec![AbsPathBuf::assert(otp_root.to_path_buf())]);
+    let otp_deps = FxHashSet::default();
     for (target_full_name, target) in targets {
-        let includes = apps_and_deps_includes(&mut includes_cache, target_full_name, &otp_includes);
+        let deps = apps_and_deps_transitive(&mut deps_cache, target_full_name, &otp_deps);
+        let mut includes = otp_includes.clone();
+        iter::once(target_full_name)
+            .chain(deps.iter())
+            .for_each(|dep_target| {
+                if let Some(includes_by_target) = includes_by_target.get(dep_target) {
+                    includes.extend(includes_by_target.clone());
+                }
+            });
 
         let macros = if target.target_type != TargetType::ThirdParty {
             vec![Atom("TEST".into()), Atom("COMMON_TEST".into())]
@@ -1107,35 +1155,24 @@ fn targets_to_project_data_bxl(
     result
 }
 
-/// We have a map of the initial direct dependencies of each target,
-/// each with a flag as to whether the extended dependency includes
-/// have been calculated yet.  Look up the full includes for a target,
-/// populating the cache with the recursive closure of its dependent
-/// includes on the way.
-fn apps_and_deps_includes(
-    includes_cache: &mut FxHashMap<TargetFullName, (IsCached, &Target, FxHashSet<AbsPathBuf>)>,
+fn apps_and_deps_transitive(
+    deps_cache: &mut FxHashMap<TargetFullName, (IsCached, &Target, FxHashSet<TargetFullName>)>,
     target_name: &TargetFullName,
-    otp_include: &FxHashSet<AbsPathBuf>,
-) -> FxHashSet<AbsPathBuf> {
-    if let Some((is_cached, target, mut includes)) = includes_cache.get(target_name).cloned() {
+    otp_include: &FxHashSet<TargetFullName>,
+) -> FxHashSet<TargetFullName> {
+    if let Some((is_cached, target, mut deps)) = deps_cache.get(target_name).cloned() {
         if is_cached == IsCached::Yes {
-            includes.clone()
+            deps.clone()
         } else {
-            target
-                .apps
-                .iter()
-                .chain(target.deps.iter())
-                .chain(target.included_apps.iter())
-                .for_each(|sub_target| {
-                    let sub_includes =
-                        apps_and_deps_includes(includes_cache, sub_target, otp_include);
-                    includes.extend(sub_includes)
-                });
-            includes_cache.insert(
+            target.all_sub_targets().for_each(|sub_target| {
+                let sub_deps = apps_and_deps_transitive(deps_cache, sub_target, otp_include);
+                deps.extend(sub_deps)
+            });
+            deps_cache.insert(
                 target_name.to_string(),
-                (IsCached::Yes, target, includes.clone()),
+                (IsCached::Yes, target, deps.clone()),
             );
-            includes
+            deps
         }
     } else {
         otp_include.clone()
