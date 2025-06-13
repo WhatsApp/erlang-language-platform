@@ -601,6 +601,7 @@ fn semantic_token_type_and_modifiers(
         let modifier = match modifier {
             HlMod::Bound => semantic_tokens::BOUND,
             HlMod::ExportedFunction => semantic_tokens::EXPORTED_FUNCTION,
+            HlMod::ExportedType => semantic_tokens::EXPORTED_TYPE,
             HlMod::DeprecatedFunction => semantic_tokens::DEPRECATED_FUNCTION,
             HlMod::TypeDynamic => semantic_tokens::TYPE_DYNAMIC,
         };

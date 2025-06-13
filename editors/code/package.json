@@ -374,6 +374,10 @@
         "description": "Style for exported function declaration names"
       },
       {
+        "id": "exported_type",
+        "description": "Style for exported types"
+      },
+      {
         "id": "deprecated_function",
         "description": "Style for deprecated function declaration names"
       },
@@ -396,6 +400,9 @@
             "markup.underline"
           ],
           "*.exported_function": [
+            "markup.underline"
+          ],
+          "*.exported_type": [
             "markup.underline"
           ],
           "*.deprecated_function": [

@@ -83,6 +83,7 @@ pub(crate) fn highlight(
     let mut hl = highlights::Highlights::new(root.text_range());
     bound_vars_in_pattern_highlight(&sema, file_id, range_to_highlight, &mut hl);
     functions_highlight(&sema, file_id, range_to_highlight, &mut hl);
+    types_highlight(&sema, file_id, range_to_highlight, &mut hl);
     deprecated_func_highlight(&sema, file_id, range_to_highlight, &mut hl);
     dynamic_usages_highlight(types, range_to_highlight, &mut hl);
     hl.to_vec()
@@ -261,6 +262,37 @@ fn functions_highlight(
                     Some(ast::FunctionOrMacroClause::MacroCallExpr(_)) => {}
                     None => {}
                 })
+        }
+    }
+}
+
+fn types_highlight(
+    sema: &Semantic,
+    file_id: FileId,
+    range_to_highlight: TextRange,
+    hl: &mut Highlights,
+) {
+    let def_map = sema.def_map_local(file_id);
+    for def in def_map.get_types().values() {
+        if def.exported {
+            let type_alias_source = def.source(sema.db.upcast());
+
+            if let Some(type_name) = type_alias_source.type_name() {
+                if let Some(name) = type_name.name() {
+                    let range = name.syntax().text_range();
+
+                    let highlight = HlTag::Symbol(SymbolKind::Type) | HlMod::ExportedType;
+
+                    // Element inside the viewport, need to highlight
+                    if range_to_highlight.intersect(range).is_some() {
+                        hl.add(HlRange {
+                            range,
+                            highlight,
+                            binding_hash: None,
+                        })
+                    }
+                }
+            };
         }
     }
 }
@@ -444,5 +476,17 @@ mod tests {
               "#,
             )
         }
+    }
+
+    #[test]
+    fn exported_type() {
+        check_highlights(
+            r#"
+              -export_type([foo/0]).
+              -type foo() :: integer().
+           %%       ^^^exported_type
+              -type bar() :: integer().
+              "#,
+        )
     }
 }
