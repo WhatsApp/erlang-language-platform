@@ -925,7 +925,7 @@ impl Semantic<'_> {
     pub fn macro_define_index(&self, project_id: ProjectId) -> Arc<MacroDefineIndex> {
         let mut defines: FxHashMap<String, Vec<InFile<DefineId>>> = FxHashMap::default();
         let include_file_index = self.db.include_file_index(project_id);
-        for file_id in include_file_index.map.values() {
+        for file_id in include_file_index.path_to_file_id.values() {
             let form_list = self.form_list(*file_id);
             for (define_id, define) in form_list.define_attributes() {
                 let name_arity = format!("{}", define.name);

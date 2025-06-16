@@ -288,12 +288,12 @@ pub struct IncludeFileIndex {
     // the earliest match.  Or *a* match? Perhaps using a FileSet
     // This means we get candidate paths quickly, and just need to validate them.
     // Perhaps use a pre-cached version of the SourceRoot partition calcs.
-    pub map: FxHashMap<VfsPath, FileId>,
+    pub path_to_file_id: FxHashMap<VfsPath, FileId>,
 }
 
 impl IncludeFileIndex {
     pub fn add(&mut self, path: &VfsPath, file_id: FileId) {
-        self.map.insert(path.clone(), file_id);
+        self.path_to_file_id.insert(path.clone(), file_id);
     }
 }
 
@@ -341,7 +341,7 @@ fn include_file_id(
     path: VfsPath,
 ) -> Option<FileId> {
     let include_file_index = db.include_file_index(project_id);
-    include_file_index.map.get(&path).copied()
+    include_file_index.path_to_file_id.get(&path).copied()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
