@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 elp_log.workspace = true
+elp_syntax.workspace = true
 
 anyhow.workspace = true
 dirs.workspace = true

@@ -175,6 +175,8 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
 
     fn include_file_id(&self, project_id: ProjectId, path: VfsPath) -> Option<FileId>;
 
+    fn mapped_include_file(&self, project_id: ProjectId, path: SmolStr) -> Option<FileId>;
+
     #[salsa::input]
     fn project_data(&self, id: ProjectId) -> Arc<ProjectData>;
 
@@ -289,6 +291,9 @@ pub struct IncludeFileIndex {
     // This means we get candidate paths quickly, and just need to validate them.
     // Perhaps use a pre-cached version of the SourceRoot partition calcs.
     pub path_to_file_id: FxHashMap<VfsPath, FileId>,
+    /// Mapping from the raw text seen in an `-include` or
+    /// `-include_lib` directive to the associated file
+    pub include_mapping: Arc<FxHashMap<SmolStr, AbsPathBuf>>,
 }
 
 impl IncludeFileIndex {
@@ -313,6 +318,9 @@ fn include_file_index(db: &dyn SourceDatabase, project_id: ProjectId) -> Arc<Inc
                 );
             }
         });
+    if let Some(include_mapping) = &project_data.include_mapping {
+        include_file_index.include_mapping = include_mapping.clone();
+    }
     Arc::new(include_file_index)
 }
 
@@ -342,6 +350,19 @@ fn include_file_id(
 ) -> Option<FileId> {
     let include_file_index = db.include_file_index(project_id);
     include_file_index.path_to_file_id.get(&path).copied()
+}
+
+fn mapped_include_file(
+    db: &dyn SourceDatabase,
+    project_id: ProjectId,
+    path: SmolStr,
+) -> Option<FileId> {
+    let include_file_index = db.include_file_index(project_id);
+    let file_path = include_file_index.include_mapping.get(&path)?;
+    include_file_index
+        .path_to_file_id
+        .get(&VfsPath::from(file_path.clone()))
+        .copied()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

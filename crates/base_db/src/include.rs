@@ -61,12 +61,17 @@ impl<'a> IncludeCtx<'a> {
         file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId> {
-        let path: &str = &path;
-        let app_data = db.file_app_data(file_id)?;
-        app_data.include_path.iter().find_map(|include| {
-            let name = include.join(path);
-            db.include_file_id(app_data.project_id, VfsPath::from(name.clone()))
-        })
+        let project_id = db.file_project_id(file_id)?;
+        if let Some(file_id) = db.mapped_include_file(project_id, path.clone()) {
+            Some(file_id)
+        } else {
+            let path: &str = &path;
+            let app_data = db.file_app_data(file_id)?;
+            app_data.include_path.iter().find_map(|include| {
+                let name = include.join(path);
+                db.include_file_id(app_data.project_id, VfsPath::from(name.clone()))
+            })
+        }
     }
 
     /// Called via salsa for inserting in the graph
@@ -75,16 +80,25 @@ impl<'a> IncludeCtx<'a> {
         file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId> {
-        let app_data = db.file_app_data(file_id)?;
-        let project_data = db.project_data(app_data.project_id);
-        let (app_name, include_path) = path.split_once('/')?;
-        let source_root_id = project_data.app_roots.get(app_name)?;
-        let target_app_data = db.app_data(source_root_id)?;
-        let path = target_app_data.dir.join(include_path);
-        db.include_file_id(app_data.project_id, VfsPath::from(path.clone()))
-            .or_else(|| {
-                find_generated_include_lib(db, app_data.project_id, include_path, &target_app_data)
-            })
+        let project_id = db.file_project_id(file_id)?;
+        let project_data = db.project_data(project_id);
+        let include = if let Some(include_mapping) = &project_data.include_mapping {
+            include_mapping
+                .get(&path)
+                .map(|path| db.include_file_id(project_id, VfsPath::from(path.clone())))
+        } else {
+            None
+        };
+        include.unwrap_or_else(|| {
+            let (app_name, include_path) = path.split_once('/')?;
+            let source_root_id = project_data.app_roots.get(app_name)?;
+            let target_app_data = db.app_data(source_root_id)?;
+            let path = target_app_data.dir.join(include_path);
+            db.include_file_id(project_id, VfsPath::from(path.clone()))
+                .or_else(|| {
+                    find_generated_include_lib(db, project_id, include_path, &target_app_data)
+                })
+        })
     }
 }
 

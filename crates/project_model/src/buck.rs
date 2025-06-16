@@ -15,11 +15,12 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
-use std::iter;
+use std::fs;
 use std::ops::Deref;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::Arc;
 
 use anyhow::Result;
 use anyhow::bail;
@@ -27,6 +28,7 @@ use eetf::Term;
 use eetf::Term::Atom;
 use elp_log::timeit;
 use elp_log::timeit_with_telemetry;
+use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use indexmap::indexset;
@@ -168,13 +170,21 @@ impl BuckProject {
         buck_conf: &BuckConfig,
         query_config: &BuckQueryConfig,
         report_progress: &impl Fn(&str),
-    ) -> Result<(BuckProject, Vec<ProjectAppData>, Utf8PathBuf), anyhow::Error> {
+    ) -> Result<
+        (
+            BuckProject,
+            Vec<ProjectAppData>,
+            Utf8PathBuf,
+            Arc<FxHashMap<SmolStr, AbsPathBuf>>,
+        ),
+        anyhow::Error,
+    > {
         let _timer = timeit_with_telemetry!("BuckProject::load_from_config");
-        let (otp_root, project_app_data, project) = match query_config {
+        let (otp_root, project_app_data, project, include_mapping) = match query_config {
             BuckQueryConfig::Original => load_from_config_orig(buck_conf, report_progress)?,
             BuckQueryConfig::Bxl(build) => load_from_config_bxl(buck_conf, build, report_progress)?,
         };
-        Ok((project, project_app_data, otp_root))
+        Ok((project, project_app_data, otp_root, include_mapping))
     }
 
     pub fn target(&self, file_path: &AbsPathBuf) -> Option<String> {
@@ -185,7 +195,15 @@ impl BuckProject {
 fn load_from_config_orig(
     buck_conf: &BuckConfig,
     report_progress: &impl Fn(&str),
-) -> Result<(Utf8PathBuf, Vec<ProjectAppData>, BuckProject), anyhow::Error> {
+) -> Result<
+    (
+        Utf8PathBuf,
+        Vec<ProjectAppData>,
+        BuckProject,
+        Arc<FxHashMap<SmolStr, AbsPathBuf>>,
+    ),
+    anyhow::Error,
+> {
     let target_info = load_buck_targets_orig(buck_conf, report_progress)?;
     report_progress("Making project app data");
     let otp_root = Otp::find_otp()?;
@@ -194,23 +212,41 @@ fn load_from_config_orig(
         target_info,
         buck_conf: buck_conf.clone(),
     };
-    Ok((otp_root, project_app_data, project))
+    Ok((
+        otp_root,
+        project_app_data,
+        project,
+        Arc::new(FxHashMap::default()),
+    ))
 }
 
 fn load_from_config_bxl(
     buck_conf: &BuckConfig,
     build: &BuildGeneratedCode,
     report_progress: &impl Fn(&str),
-) -> Result<(Utf8PathBuf, Vec<ProjectAppData>, BuckProject), anyhow::Error> {
+) -> Result<
+    (
+        Utf8PathBuf,
+        Vec<ProjectAppData>,
+        BuckProject,
+        Arc<FxHashMap<SmolStr, AbsPathBuf>>,
+    ),
+    anyhow::Error,
+> {
     let target_info = load_buck_targets_bxl(buck_conf, build, report_progress)?;
     report_progress("Making project app data");
     let otp_root = Otp::find_otp()?;
-    let project_app_data = targets_to_project_data_bxl(&target_info.targets, &otp_root);
+    let (project_app_data, include_mapping) = targets_to_project_data_bxl(&target_info.targets);
     let project = BuckProject {
         target_info,
         buck_conf: buck_conf.clone(),
     };
-    Ok((otp_root, project_app_data, project))
+    Ok((
+        otp_root,
+        project_app_data,
+        project,
+        Arc::new(include_mapping),
+    ))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -334,13 +370,6 @@ impl Target {
             });
         }
         include_files
-    }
-
-    fn all_sub_targets(&self) -> impl Iterator<Item = &TargetFullName> {
-        self.apps
-            .iter()
-            .chain(self.deps.iter())
-            .chain(self.included_apps.iter())
     }
 }
 
@@ -1020,79 +1049,29 @@ fn targets_to_project_data_orig(
     result
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum IsCached {
-    Yes,
-    No,
-}
-
 fn targets_to_project_data_bxl(
     targets: &FxHashMap<TargetFullName, Target>,
-    otp_root: &Utf8Path,
-) -> Vec<ProjectAppData> {
+) -> (Vec<ProjectAppData>, FxHashMap<SmolStr, AbsPathBuf>) {
+    let mut include_mapping = FxHashMap::default();
     let mut result: Vec<ProjectAppData> = vec![];
-    //--------------------------------------------
-    let mut includes_by_target: FxHashMap<TargetFullName, FxHashSet<AbsPathBuf>> =
-        FxHashMap::default();
+
     for target in targets.values() {
-        let mut includes = FxHashSet::from_iter(
-            target
-                .include_files
-                .iter()
-                .map(|inc| include_path_from_file(inc)),
-        );
+        target.include_files.iter().for_each(|inc: &AbsPathBuf| {
+            let include_path = include_path_from_file(inc);
+            update_mapping_from_path(&target.app_name, &include_path, &mut include_mapping);
+        });
+
         if target.private_header {
-            target.src_files.iter().for_each(|path| {
+            target.src_files.iter().for_each(|path: &AbsPathBuf| {
                 if Some("hrl") == path.extension() {
-                    includes.insert(include_path_from_file(path));
+                    let include_path = include_path_from_file(path);
+                    update_mapping_from_path(&target.app_name, &include_path, &mut include_mapping);
                 }
             });
         }
-        includes_by_target.insert(target.name.clone(), includes);
     }
-    //--------------------------------------------
 
-    let mut deps_cache: FxHashMap<TargetFullName, (IsCached, &Target, FxHashSet<TargetFullName>)> =
-        FxHashMap::default();
     for target in targets.values() {
-        let deps = FxHashSet::from_iter(target.all_sub_targets().cloned());
-        deps_cache.insert(target.name.clone(), (IsCached::No, target, deps));
-    }
-    //--------------------------------------------
-    let mut includes_cache: FxHashMap<TargetFullName, (IsCached, &Target, FxHashSet<AbsPathBuf>)> =
-        FxHashMap::default();
-    for target in targets.values() {
-        let mut includes = FxHashSet::from_iter(
-            target
-                .include_files
-                .iter()
-                .map(|inc| include_path_from_file(inc)),
-        );
-        if target.private_header {
-            target.src_files.iter().for_each(|path| {
-                if Some("hrl") == path.extension() {
-                    includes.insert(include_path_from_file(path));
-                }
-            });
-        }
-
-        includes_cache.insert(target.name.clone(), (IsCached::No, target, includes));
-    }
-
-    //--------------------------------------------
-    let otp_includes = FxHashSet::from_iter(vec![AbsPathBuf::assert(otp_root.to_path_buf())]);
-    let otp_deps = FxHashSet::default();
-    for (target_full_name, target) in targets {
-        let deps = apps_and_deps_transitive(&mut deps_cache, target_full_name, &otp_deps);
-        let mut includes = otp_includes.clone();
-        iter::once(target_full_name)
-            .chain(deps.iter())
-            .for_each(|dep_target| {
-                if let Some(includes_by_target) = includes_by_target.get(dep_target) {
-                    includes.extend(includes_by_target.clone());
-                }
-            });
-
         let macros = if target.target_type != TargetType::ThirdParty {
             vec![Atom("TEST".into()), Atom("COMMON_TEST".into())]
         } else {
@@ -1138,7 +1117,7 @@ fn targets_to_project_data_bxl(
             macros,
             parse_transforms: vec![],
             app_type: target.app_type(),
-            include_path: includes.into_iter().collect(),
+            include_path: vec![],
             applicable_files: Some(FxHashSet::from_iter(target.src_files.clone())),
             is_test_target: Some(target.target_type == TargetType::ErlangTest),
         };
@@ -1152,31 +1131,7 @@ fn targets_to_project_data_bxl(
         }
     }
 
-    result
-}
-
-fn apps_and_deps_transitive(
-    deps_cache: &mut FxHashMap<TargetFullName, (IsCached, &Target, FxHashSet<TargetFullName>)>,
-    target_name: &TargetFullName,
-    otp_include: &FxHashSet<TargetFullName>,
-) -> FxHashSet<TargetFullName> {
-    if let Some((is_cached, target, mut deps)) = deps_cache.get(target_name).cloned() {
-        if is_cached == IsCached::Yes {
-            deps.clone()
-        } else {
-            target.all_sub_targets().for_each(|sub_target| {
-                let sub_deps = apps_and_deps_transitive(deps_cache, sub_target, otp_include);
-                deps.extend(sub_deps)
-            });
-            deps_cache.insert(
-                target_name.to_string(),
-                (IsCached::Yes, target, deps.clone()),
-            );
-            deps
-        }
-    } else {
-        otp_include.clone()
-    }
+    (result, include_mapping)
 }
 
 fn include_path_from_file(path: &AbsPath) -> AbsPathBuf {
@@ -1190,6 +1145,40 @@ fn include_path_from_file(path: &AbsPath) -> AbsPathBuf {
         AbsPathBuf::assert_utf8(parent.into())
     } else {
         AbsPathBuf::assert_utf8(path.into())
+    }
+}
+
+fn update_mapping_from_path(
+    app_name: &str,
+    path: &AbsPathBuf,
+    mapping: &mut FxHashMap<SmolStr, AbsPathBuf>,
+) {
+    let paths = fs::read_dir(path);
+    if let Ok(paths) = paths {
+        for path in paths.flatten() {
+            let path = path.path();
+            if path.is_file() {
+                match path.extension() {
+                    Some(ext) => {
+                        if let Some("hrl") = ext.to_str() {
+                            if let Some(basename) = path.file_name() {
+                                let local_include =
+                                    SmolStr::new(basename.to_string_lossy().as_ref());
+                                let remote_include =
+                                    SmolStr::new(format!("{}/include/{}", app_name, local_include));
+                                let path = AbsPathBuf::assert_utf8(path);
+                                // TODO: remove clone()
+                                mapping.insert(local_include, path.clone());
+                                mapping.insert(remote_include, path.clone());
+                            }
+                        } else {
+                            continue;
+                        }
+                    }
+                    _ => continue,
+                }
+            }
+        }
     }
 }
 

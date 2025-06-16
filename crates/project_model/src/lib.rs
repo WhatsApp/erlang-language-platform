@@ -29,6 +29,7 @@ use anyhow::bail;
 use buck::BuckConfig;
 use buck::BuckQueryConfig;
 use elp_log::timeit;
+use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use glob::glob;
@@ -654,6 +655,7 @@ pub struct Project {
     pub project_build_data: ProjectBuildData,
     pub project_apps: Vec<ProjectAppData>,
     pub eqwalizer_config: EqwalizerConfig,
+    pub include_mapping: Arc<FxHashMap<SmolStr, AbsPathBuf>>,
 }
 
 #[derive(Clone, Debug)]
@@ -688,6 +690,7 @@ impl Project {
             project_build_data: ProjectBuildData::Otp,
             project_apps,
             eqwalizer_config: EqwalizerConfig::default(),
+            include_mapping: Arc::new(FxHashMap::default()),
         }
     }
 
@@ -697,6 +700,7 @@ impl Project {
             project_build_data: ProjectBuildData::Rebar(Default::default()),
             project_apps: Vec::default(),
             eqwalizer_config: EqwalizerConfig::default(),
+            include_mapping: Arc::new(FxHashMap::default()),
         }
     }
 
@@ -963,7 +967,7 @@ impl Project {
         query_config: &BuckQueryConfig,
         report_progress: &impl Fn(&str),
     ) -> Result<Project> {
-        let (project_build_info, mut project_apps, otp_root) = match manifest {
+        let (project_build_info, mut project_apps, otp_root, include_mapping) = match manifest {
             ProjectManifest::Rebar(rebar_setting) => {
                 let _timer = timeit!(
                     "load project from rebar config {}",
@@ -989,13 +993,23 @@ impl Project {
                                 manifest
                             )
                         })?;
-                (ProjectBuildData::Rebar(rebar_project), apps, otp_root)
+                (
+                    ProjectBuildData::Rebar(rebar_project),
+                    apps,
+                    otp_root,
+                    Arc::new(FxHashMap::default()),
+                )
             }
             ProjectManifest::TomlBuck(buck) => {
                 // We only select this manifest if buck is actually enabled
-                let (project, apps, otp_root) =
+                let (project, apps, otp_root, include_mapping) =
                     BuckProject::load_from_config(buck, query_config, report_progress)?;
-                (ProjectBuildData::Buck(project), apps, otp_root)
+                (
+                    ProjectBuildData::Buck(project),
+                    apps,
+                    otp_root,
+                    include_mapping,
+                )
             }
             ProjectManifest::Json(config) => {
                 let otp_root = Otp::find_otp()?;
@@ -1003,7 +1017,12 @@ impl Project {
                 let (mut apps, deps) = json::gen_app_data(config, AbsPath::assert(&otp_root));
                 let project = StaticProject { config_path };
                 apps.extend(deps);
-                (ProjectBuildData::Static(project), apps, otp_root)
+                (
+                    ProjectBuildData::Static(project),
+                    apps,
+                    otp_root,
+                    Arc::new(FxHashMap::default()),
+                )
             }
             ProjectManifest::NoManifest(config) => {
                 let otp_root = Otp::find_otp()?;
@@ -1014,7 +1033,12 @@ impl Project {
                     eqwalizer_support::eqwalizer_suppport_data(abs_otp_root);
                 let project = StaticProject { config_path };
                 apps.push(eqwalizer_support_app);
-                (ProjectBuildData::Static(project), apps, otp_root)
+                (
+                    ProjectBuildData::Static(project),
+                    apps,
+                    otp_root,
+                    Arc::new(FxHashMap::default()),
+                )
             }
         };
 
@@ -1026,6 +1050,7 @@ impl Project {
             project_build_data: project_build_info,
             project_apps,
             eqwalizer_config,
+            include_mapping,
         })
     }
 
@@ -1923,7 +1948,7 @@ mod tests {
         //- /.elp.toml
         [build_info]
         apps = [ "lib/*",
-                 {"name" = "app_a", "dir" = "lib/app_a", "src_dirs" = ["src", "gen"]}, 
+                 {"name" = "app_a", "dir" = "lib/app_a", "src_dirs" = ["src", "gen"]},
                  "other_lib/*"
                ]
         //- /lib/app_a/src/app_a.erl

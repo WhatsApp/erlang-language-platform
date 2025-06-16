@@ -664,6 +664,9 @@ bar() -> ?FOO.
                                 enable_all: true,
                                 max_tasks: 4,
                             },
+                            include_mapping: Some(
+                                {},
+                            ),
                         },
                         ProjectId(
                             1,
@@ -696,6 +699,9 @@ bar() -> ?FOO.
                                 enable_all: true,
                                 max_tasks: 4,
                             },
+                            include_mapping: Some(
+                                {},
+                            ),
                         },
                     },
                     catch_all_source_root: SourceRootId(
@@ -822,6 +828,9 @@ foo() -> ?BAR.
                                 enable_all: true,
                                 max_tasks: 4,
                             },
+                            include_mapping: Some(
+                                {},
+                            ),
                         },
                         ProjectId(
                             1,
@@ -844,6 +853,9 @@ foo() -> ?BAR.
                                 enable_all: true,
                                 max_tasks: 4,
                             },
+                            include_mapping: Some(
+                                {},
+                            ),
                         },
                     },
                     catch_all_source_root: SourceRootId(

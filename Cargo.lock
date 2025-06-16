@@ -708,6 +708,7 @@ dependencies = [
  "dirs",
  "eetf",
  "elp_log",
+ "elp_syntax",
  "expect-test",
  "fxhash",
  "glob",
