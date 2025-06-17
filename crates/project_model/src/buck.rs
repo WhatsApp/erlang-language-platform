@@ -7,17 +7,12 @@
  * of this source tree.
  */
 
-extern crate serde;
-extern crate serde_json;
-
 use core::str;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
-use std::fs;
 use std::ops::Deref;
-use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
@@ -1058,14 +1053,14 @@ fn targets_to_project_data_bxl(
     for target in targets.values() {
         target.include_files.iter().for_each(|inc: &AbsPathBuf| {
             let include_path = include_path_from_file(inc);
-            update_mapping_from_path(&target.app_name, &include_path, &mut include_mapping);
+            update_mapping_from_path(&target.app_name, include_path, &mut include_mapping);
         });
 
         if target.private_header {
             target.src_files.iter().for_each(|path: &AbsPathBuf| {
                 if Some("hrl") == path.extension() {
                     let include_path = include_path_from_file(path);
-                    update_mapping_from_path(&target.app_name, &include_path, &mut include_mapping);
+                    update_mapping_from_path(&target.app_name, include_path, &mut include_mapping);
                 }
             });
         }
@@ -1136,7 +1131,7 @@ fn targets_to_project_data_bxl(
 
 fn include_path_from_file(path: &AbsPath) -> AbsPathBuf {
     // The bxl query returns directories already, do not parent unless it is a file
-    let parent = if <AbsPath as AsRef<Utf8Path>>::as_ref(path).is_file() {
+    let parent = if path.extension().is_some() {
         path.parent()
     } else {
         Some(path)
@@ -1150,32 +1145,21 @@ fn include_path_from_file(path: &AbsPath) -> AbsPathBuf {
 
 fn update_mapping_from_path(
     app_name: &str,
-    path: &AbsPathBuf,
+    path: AbsPathBuf,
     mapping: &mut FxHashMap<SmolStr, AbsPathBuf>,
 ) {
-    let paths = fs::read_dir(path);
-    if let Ok(paths) = paths {
+    if let Ok(paths) = Utf8PathBuf::from(path).read_dir_utf8() {
         for path in paths.flatten() {
-            let path = path.path();
-            if path.is_file() {
-                match path.extension() {
-                    Some(ext) => {
-                        if let Some("hrl") = ext.to_str() {
-                            if let Some(basename) = path.file_name() {
-                                let local_include =
-                                    SmolStr::new(basename.to_string_lossy().as_ref());
-                                let remote_include =
-                                    SmolStr::new(format!("{}/include/{}", app_name, local_include));
-                                let path = AbsPathBuf::assert_utf8(path);
-                                // TODO: remove clone()
-                                mapping.insert(local_include, path.clone());
-                                mapping.insert(remote_include, path.clone());
-                            }
-                        } else {
-                            continue;
-                        }
-                    }
-                    _ => continue,
+            let path = path.into_path();
+            if let Some("hrl") = path.extension() {
+                if let Some(basename) = path.file_name() {
+                    let local_include = SmolStr::new(basename);
+                    let remote_include =
+                        SmolStr::new(format!("{}/include/{}", app_name, local_include));
+                    let path = AbsPathBuf::assert(path);
+                    // TODO: remove clone()
+                    mapping.insert(local_include, path.clone());
+                    mapping.insert(remote_include, path);
                 }
             }
         }
@@ -1308,7 +1292,7 @@ impl ProjectAppDataAcc {
 
     fn add_include_if_not_exist(&mut self, path: &AbsPath) {
         // The bxl query returns directories already, do not parent unless it is a file
-        let include_dir = if <AbsPath as AsRef<Utf8Path>>::as_ref(path).is_file() {
+        let include_dir = if path.extension().is_some() {
             path.parent()
         } else {
             Some(path)
@@ -1329,8 +1313,7 @@ impl ProjectAppDataAcc {
             .include_files
             .iter()
             .filter_map(|inc| {
-                let path: &Path = inc.as_ref();
-                if path.is_file() {
+                if inc.extension().is_some() {
                     inc.parent()
                 } else {
                     Some(inc.deref())
