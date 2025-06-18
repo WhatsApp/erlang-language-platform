@@ -57,6 +57,8 @@
     "@babel/runtime-corejs3": ">=7.26.10",
     "image-size": ">=1.2.1",
     "estree-util-value-to-estree": ">=3.3.3",
-    "http-proxy-middleware": ">=2.0.9"
+    "http-proxy-middleware": ">=2.0.9",
+    "brace-expansion": ">=1.1.12",
+    "webpack-dev-server": ">=5.2.1"
   }
 }
