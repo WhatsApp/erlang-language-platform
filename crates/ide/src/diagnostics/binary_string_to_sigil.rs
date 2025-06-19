@@ -71,6 +71,11 @@ fn make_diagnostic(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
         return None;
     }
 
+    // Ignore multi-line binary strings
+    if string_content_match_src.contains('\n') {
+        return None;
+    }
+
     let mut builder = SourceChangeBuilder::new(file_id);
     let sigil_string = format!("~{string_content_match_src}");
     builder.replace(binary_string_range, sigil_string);
@@ -171,6 +176,19 @@ mod tests {
          fn() ->
              ~"monkey ~2..0b\n",
              ~b"monkey ~2..0b\n".
+            "#,
+        )
+    }
+
+    #[test]
+    fn ignores_multi_line_binary_string() {
+        check_diagnostics(
+            r#"
+         //- /src/binary_string_to_sigil.erl
+         -module(binary_string_to_sigil).
+
+         fn() -> <<"Hello everyone! "
+                   "Nice to meet you?">>.
             "#,
         )
     }
