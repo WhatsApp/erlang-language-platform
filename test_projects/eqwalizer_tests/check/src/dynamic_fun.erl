@@ -195,3 +195,19 @@ union_funs(F) ->
     case F of
         Fun when is_function(Fun, 1) -> F(abc)
     end.
+
+-spec apply_by_name1(Mod :: atom(), Name :: atom()) -> dynamic().
+apply_by_name1(Mod, Name) -> Mod:Name().
+
+-spec apply_by_name2(Mod :: atom(), Name :: atom()) -> dynamic().
+apply_by_name2(Mod, Name) ->
+  Res = Mod:Name(),
+  Res.
+
+-spec apply_by_name_neg1(Mod :: term(), Name :: term()) -> dynamic().
+apply_by_name_neg1(Mod, Name) -> Mod:Name().
+
+-spec apply_by_name_neg2(Mod :: term(), Name :: term()) -> dynamic().
+apply_by_name_neg2(Mod, Name) ->
+  Res = Mod:Name(),
+  Res.
