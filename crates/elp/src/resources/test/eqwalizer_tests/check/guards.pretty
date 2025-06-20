@@ -34,4 +34,19 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number()
 Context expected type: tuple()
 
-5 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/guards.erl:107:69
+    │
+107 │ guard_map_key(K) when is_map_key(K, #{foo => true, bar => true}) -> K.
+    │                                                                     ^
+    │                                                                     │
+    │                                                                     K.
+Expression has type:   term()
+Context expected type: 'foo' | 'bar'
+    │                                                                     
+
+  term() is not compatible with 'foo' | 'bar'
+  because
+  term() is not compatible with 'foo'
+
+6 ERRORS

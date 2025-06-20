@@ -102,3 +102,6 @@ guard_float_2(N)
     (number() | atom()) -> number().
 guard_float_3(N)
     when N =:= 1.0 -> N.
+
+-spec guard_map_key(term()) -> foo | bar.
+guard_map_key(K) when is_map_key(K, #{foo => true, bar => true}) -> K.
