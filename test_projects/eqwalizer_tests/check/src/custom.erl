@@ -2679,3 +2679,37 @@ maps_fold_iter() ->
 maps_to_list_iter(M) ->
     I = maps:iterator(M),
     maps:to_list(I).
+
+-spec maps_foreach(#{
+    foo => atom(),
+    bar => binary(),
+    {foo, bar} => integer(),
+    dynamic() => dynamic()
+}) -> ok.
+maps_foreach(M) ->
+    maps:foreach(
+        fun
+            (foo, A) -> atom_to_binary(A);
+            (bar, B) -> binary_to_integer(B);
+            ({foo, bar}, I) -> integer_to_binary(I);
+            (_, _) -> ok
+        end,
+        M
+    ).
+
+-spec maps_foreach_neg(#{
+    foo => atom(),
+    bar => binary(),
+    {foo, bar} => integer(),
+    dynamic() => dynamic()
+}) -> ok.
+maps_foreach_neg(M) ->
+    maps:foreach(
+        fun
+            (foo, A) -> binary_to_atom(A);
+            (bar, B) -> atom_to_binary(B);
+            ({foo, bar}, I) -> binary_to_integer(I);
+            (_, _) -> ok
+        end,
+        M
+    ).
