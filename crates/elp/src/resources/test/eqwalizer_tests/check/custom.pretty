@@ -3195,92 +3195,19 @@ Because in the expression's type:
 key `a` is declared as required in the latter but not in the former
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2692:40
-     │
-2692 │             (foo, A) -> atom_to_binary(A);
-     │                                        ^
-     │                                        │
-     │                                        A.
-Expression has type:   dynamic() | atom() | binary() | number()
-Context expected type: atom()
-     │                                        
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: dynamic() | atom()
-  However the following candidate: binary()
-  Differs from the expected type:  atom()
-
------------------------------- Detailed message ------------------------------
-
-  dynamic() | atom() | binary() | number() is not compatible with atom()
-  because
-  binary() is not compatible with atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2693:43
-     │
-2693 │             (bar, B) -> binary_to_integer(B);
-     │                                           ^
-     │                                           │
-     │                                           B.
-Expression has type:   dynamic() | atom() | binary() | number()
-Context expected type: binary()
-     │                                           
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: dynamic() | binary()
-  However the following candidate: atom()
-  Differs from the expected type:  binary()
-
------------------------------- Detailed message ------------------------------
-
-  dynamic() | atom() | binary() | number() is not compatible with binary()
-  because
-  atom() is not compatible with binary()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2694:50
-     │
-2694 │             ({foo, bar}, I) -> integer_to_binary(I);
-     │                                                  ^
-     │                                                  │
-     │                                                  I.
-Expression has type:   dynamic() | atom() | binary() | number()
-Context expected type: number()
-     │                                                  
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: dynamic() | number()
-  However the following candidate: atom()
-  Differs from the expected type:  number()
-
------------------------------- Detailed message ------------------------------
-
-  dynamic() | atom() | binary() | number() is not compatible with number()
-  because
-  atom() is not compatible with number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:2709:40
      │
 2709 │             (foo, A) -> binary_to_atom(A);
      │                                        ^
      │                                        │
      │                                        A.
-Expression has type:   dynamic() | atom() | binary() | number()
+Expression has type:   atom()
 Context expected type: binary()
      │                                        
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: dynamic() | binary()
-  However the following candidate: atom()
-  Differs from the expected type:  binary()
-
------------------------------- Detailed message ------------------------------
-
-  dynamic() | atom() | binary() | number() is not compatible with binary()
-  because
-  atom() is not compatible with binary()
+  Here the type is:     atom()
+  Context expects type: binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:2710:40
@@ -3289,20 +3216,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                                        ^
      │                                        │
      │                                        B.
-Expression has type:   dynamic() | atom() | binary() | number()
+Expression has type:   binary()
 Context expected type: atom()
      │                                        
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: dynamic() | atom()
-  However the following candidate: binary()
-  Differs from the expected type:  atom()
-
------------------------------- Detailed message ------------------------------
-
-  dynamic() | atom() | binary() | number() is not compatible with atom()
-  because
-  binary() is not compatible with atom()
+  Here the type is:     binary()
+  Context expects type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:2711:50
@@ -3311,19 +3231,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                                                  ^
      │                                                  │
      │                                                  I.
-Expression has type:   dynamic() | atom() | binary() | number()
+Expression has type:   number()
 Context expected type: binary()
      │                                                  
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: dynamic() | binary()
-  However the following candidate: atom()
-  Differs from the expected type:  binary()
+  Here the type is:     number()
+  Context expects type: binary()
 
------------------------------- Detailed message ------------------------------
-
-  dynamic() | atom() | binary() | number() is not compatible with binary()
-  because
-  atom() is not compatible with binary()
-
-205 ERRORS
+202 ERRORS
