@@ -610,6 +610,7 @@ fn check_call_hierarchy_incoming_calls(fixture: &str) {
     assert_eq!(actual, expected);
 }
 
+#[track_caller]
 fn check_call_hierarchy_outgoing_calls(fixture: &str) {
     let trimmed_fixture = trim_indent(fixture);
     let (analysis, fixture) = fixture::with_fixture(trimmed_fixture.as_str());

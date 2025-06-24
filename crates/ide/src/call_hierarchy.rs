@@ -437,4 +437,49 @@ mod tests {
    "#,
         );
     }
+
+    #[test]
+    #[should_panic] // Since it shows a bug, fixed in next diff
+    fn test_call_hierarchy_one_usage_in_macro_def() {
+        check_call_hierarchy(
+            // Prepare
+            r#"
+            //- /src/a.erl
+                 -module(a).
+                 -export([callee/0]).
+                 cal~ler() ->
+              %% ^^^^^^
+                   callee().
+                 callee() -> ok.
+            //- /include/inc.hrl
+                 -define(AA, a:callee()).
+               "#,
+            // Incoming calls
+            r#"
+            //- /src/a.erl
+                 -module(a).
+                 -export([callee/0]).
+                 caller() ->
+              %% ^^^^^^ from: caller/0
+                   callee().
+               %%  ^^^^^^ from_range: caller/0
+                 cal~lee() -> ok.
+            //- /include/inc.hrl
+                 -define(AA(), a:callee()).
+               "#,
+            // Outgoing calls
+            r#"
+            //- /src/a.erl
+                 -module(a).
+                 -export([callee/0]).
+                 ca~ller() ->
+                   callee().
+                %% ^^^^^^ from_range: callee/0
+                 callee() -> ok.
+              %% ^^^^^^ to: callee/0
+            //- /include/inc.hrl
+                 -define(AA, a:callee()).
+                 "#,
+        );
+    }
 }
