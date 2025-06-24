@@ -9,6 +9,7 @@
 
 use elp_ide_db::FxIndexMap;
 use elp_ide_db::RootDatabase;
+use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
@@ -18,6 +19,7 @@ use elp_syntax::algo;
 use elp_syntax::ast::{self};
 use hir::AnyExpr;
 use hir::Expr;
+use hir::FormList;
 use hir::InFile;
 use hir::Semantic;
 use hir::Strategy;
@@ -55,28 +57,47 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
         let form_list = sema.form_list(file_id);
 
         for range in ranges {
-            if let Some(ref_syntax) = call_or_internal_fun(syntax, &range) {
-                let enclosing_function_id =
-                    sema.find_enclosing_function_clause_id(file_id, &ref_syntax)?;
-                let enclosing_function_name = &form_list[enclosing_function_id].name;
-                let def_map = sema.def_map(file_id);
-                let enclosing_function_def = def_map.get_function(enclosing_function_name)?;
-                let mut enclosing_function_nav = enclosing_function_def.to_nav(db);
-                if file_id != position.file_id {
-                    if let Some(module_name) = sema.module_name(file_id) {
-                        enclosing_function_nav.name = SmolStr::new(format!(
-                            "{}:{}",
-                            module_name.as_str(),
-                            enclosing_function_nav.name
-                        ))
-                    }
-                }
-                calls.add(enclosing_function_nav, range);
-            }
+            process_call_range(
+                &sema,
+                syntax,
+                &form_list,
+                file_id,
+                position.file_id,
+                &range,
+                &mut calls,
+            );
         }
     }
 
     Some(calls.into_items())
+}
+
+fn process_call_range(
+    sema: &Semantic,
+    syntax: &SyntaxNode,
+    form_list: &FormList,
+    file_id: FileId,
+    position_file_id: FileId,
+    range: &TextRange,
+    calls: &mut CallLocations,
+) -> Option<()> {
+    let ref_syntax = call_or_internal_fun(syntax, range)?;
+    let enclosing_function_id = sema.find_enclosing_function_clause_id(file_id, &ref_syntax)?;
+    let enclosing_function_name = &form_list[enclosing_function_id].name;
+    let def_map = sema.def_map(file_id);
+    let enclosing_function_def = def_map.get_function(enclosing_function_name)?;
+    let mut enclosing_function_nav = enclosing_function_def.to_nav(sema.db);
+    if file_id != position_file_id {
+        if let Some(module_name) = sema.module_name(file_id) {
+            enclosing_function_nav.name = SmolStr::new(format!(
+                "{}:{}",
+                module_name.as_str(),
+                enclosing_function_nav.name
+            ))
+        }
+    }
+    calls.add(enclosing_function_nav, *range);
+    Some(())
 }
 
 fn call_or_internal_fun(syntax: &SyntaxNode, range: &TextRange) -> Option<SyntaxNode> {
@@ -439,7 +460,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic] // Since it shows a bug, fixed in next diff
     fn test_call_hierarchy_one_usage_in_macro_def() {
         check_call_hierarchy(
             // Prepare
