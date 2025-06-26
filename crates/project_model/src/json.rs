@@ -220,6 +220,9 @@ pub(crate) fn gen_app_data(
         include_path.extend(app.include_dirs());
         app.include_path = include_path.into_iter().collect();
     }
+    for app in &mut deps {
+        app.include_path = app.include_dirs();
+    }
     let eqwalizer_support_app = eqwalizer_support::eqwalizer_suppport_data(otp_root);
     deps.push(eqwalizer_support_app);
 
