@@ -184,6 +184,11 @@ Every diagnostic must have a corresponding `DiagnosticDescriptor` that defines w
 
 ### Tools
 
-- Use `./meta/cargo.sh` instead of `cargo` for building the code.
-- Use `arc lint` for formatting and linting the code, including `cargo fmt`. Accept the default proposed changes.
-- Use `./meta/cargo.sh test --workspace` for running the tests.
+- ELP uses a cargo workspace.
+- Inside Meta, use `./meta/cargo.sh` instead of `cargo`
+- Inside Meta, use `./meta/clippy.sh` to run clippy
+- Use `arc lint --apply-patches` for formatting.
+
+### Process
+- Always run tests before finishing.
+- Always run `./meta/cargo.sh clippy --tests` before submitting a diff
