@@ -281,7 +281,9 @@ fn types_highlight(
                 if let Some(name) = type_name.name() {
                     let range = name.syntax().text_range();
 
-                    let highlight = HlTag::Symbol(SymbolKind::Type) | HlMod::ExportedType;
+                    // The base highlighing currently uses SymbolKind::Function.
+                    // We cannot set a modifier only. so must repeat it here.
+                    let highlight = HlTag::Symbol(SymbolKind::Function) | HlMod::ExportedType;
 
                     // Element inside the viewport, need to highlight
                     if range_to_highlight.intersect(range).is_some() {
