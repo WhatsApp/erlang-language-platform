@@ -1,0 +1,168 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ eqwater/src/eqwater_lists.erl:31:51
+   │
+31 │ occ_list_04_neg(L = [H | _]) when is_binary(H) -> L.
+   │                                                   ^
+   │                                                   │
+   │                                                   L.
+Expression has type:   [binary() | atom()]
+Context expected type: [binary()]
+   │                                                   
+
+Because in the expression's type:
+  [
+    Here the type is a union type with some valid candidates: binary()
+    However the following candidate: atom()
+    Differs from the expected type:  binary()
+  ]
+
+------------------------------ Detailed message ------------------------------
+
+  [binary() | atom()] is not compatible with [binary()]
+  because
+  binary() | atom() is not compatible with binary()
+  because
+  atom() is not compatible with binary()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ eqwater/src/eqwater_lists.erl:48:23
+   │
+48 │ occ_list_07_neg(L) -> L.
+   │                       ^
+   │                       │
+   │                       L.
+Expression has type:   [term()]
+Context expected type: []
+   │                       
+
+Because in the expression's type:
+  [
+    Here the type is:     term()
+    Context expects type: none()
+  ]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ eqwater/src/eqwater_lists.erl:54:23
+   │
+54 │ occ_list_08_neg(A) -> A.
+   │                       ^
+   │                       │
+   │                       A.
+Expression has type:   none() | atom() | []
+Context expected type: atom()
+   │                       
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: atom()
+  However the following candidate: []
+  Differs from the expected type:  atom()
+
+------------------------------ Detailed message ------------------------------
+
+  none() | atom() | [] is not compatible with atom()
+  because
+  [] is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ eqwater/src/eqwater_lists.erl:61:19
+   │
+61 │ occ_list_09(A) -> A.
+   │                   ^
+   │                   │
+   │                   A.
+Expression has type:   none() | atom() | []
+Context expected type: atom()
+   │                   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: atom()
+  However the following candidate: []
+  Differs from the expected type:  atom()
+
+------------------------------ Detailed message ------------------------------
+
+  none() | atom() | [] is not compatible with atom()
+  because
+  [] is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ eqwater/src/eqwater_lists.erl:69:19
+   │
+69 │ occ_list_10(L) -> L.
+   │                   ^
+   │                   │
+   │                   L.
+Expression has type:   [term()]
+Context expected type: []
+   │                   
+
+Because in the expression's type:
+  [
+    Here the type is:     term()
+    Context expects type: none()
+  ]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ eqwater/src/eqwater_lists.erl:76:23
+   │
+76 │ occ_list_11_neg(L) -> L.
+   │                       ^
+   │                       │
+   │                       L.
+Expression has type:   [atom()] | [binary()]
+Context expected type: [binary()]
+   │                       
+
+Because in the expression's type:
+  The type is a union type with some valid candidates: [binary()]
+  However, the following candidate doesn't match:
+  [
+    Here the type is:     atom()
+    Context expects type: binary()
+  ]
+
+------------------------------ Detailed message ------------------------------
+
+  [atom()] | [binary()] is not compatible with [binary()]
+  because
+  [atom()] is not compatible with [binary()]
+  because
+  atom() is not compatible with binary()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ eqwater/src/eqwater_lists.erl:97:23
+   │
+97 │ occ_list_14_neg(L) -> L.
+   │                       ^ L.
+Expression has type:   []
+Context expected type: binary()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater_lists.erl:130:23
+    │
+130 │ occ_list_20_neg(V) -> [ok | [V]].
+    │                       ^^^^^^^^^^
+    │                       │
+    │                       ['ok', V].
+Expression has type:   [atom() | binary()]
+Context expected type: [atom()] | [binary()]
+    │                       
+
+Because in the expression's type:
+  [
+    Here the type is a union type with some valid candidates: atom()
+    However the following candidate: binary()
+    Differs from the expected type:  atom()
+  ]
+
+------------------------------ Detailed message ------------------------------
+
+  [atom() | binary()] is not compatible with [atom()] | [binary()]
+  because
+  [atom() | binary()] is not compatible with [atom()]
+  because
+  atom() | binary() is not compatible with atom()
+  because
+  binary() is not compatible with atom()
+
+8 ERRORS

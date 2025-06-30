@@ -1,0 +1,373 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/funs.erl:23:20
+   │
+23 │ check_fun_neg() -> fun() -> ok end.
+   │                    ^^^^^^^^^^^^^^^ fun.
+Expression has type:   fun(() -> 'ok')
+Context expected type: pid()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/funs.erl:28:27
+   │
+28 │     fun() -> list_to_atom(Tup) end.
+   │                           ^^^ Tup.
+Expression has type:   {}
+Context expected type: string()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/funs.erl:63:9
+   │
+63 │         X ++ [] end,
+   │         ^
+   │         │
+   │         X.
+Expression has type:   n()
+Context expected type: [term()]
+   │         
+
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: [term()]
+
+------------------------------ Detailed message ------------------------------
+
+  n() is not compatible with [term()]
+  because
+  number() is not compatible with [term()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/funs.erl:63:9
+   │
+63 │         X ++ [] end,
+   │         ^^^^^^^
+   │         │
+   │         _ ++ _.
+Expression has type:   [dynamic()]
+Context expected type: n()
+   │         
+
+Because in the expression's type:
+  Here the type is:     [dynamic()]
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
+
+  [dynamic()] is not compatible with n()
+  because
+  [dynamic()] is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/funs.erl:70:13
+   │
+70 │             erlang:atom_to_binary(X)
+   │             ^^^^^^^^^^^^^^^^^^^^^^^^
+   │             │
+   │             erlang:atom_to_binary(X).
+Expression has type:   binary()
+Context expected type: n()
+   │             
+
+Because in the expression's type:
+  Here the type is:     binary()
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
+
+  binary() is not compatible with n()
+  because
+  binary() is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/funs.erl:70:35
+   │
+70 │             erlang:atom_to_binary(X)
+   │                                   ^
+   │                                   │
+   │                                   X.
+Expression has type:   n()
+Context expected type: atom()
+   │                                   
+
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
+
+  n() is not compatible with atom()
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/funs.erl:77:5
+   │    
+77 │ ╭ ╭     lmap_n_to_n(
+78 │ │ │         fun(X) -> X end,
+79 │ │ │         [1,2,3]
+80 │ │ │     ).
+   │ ╰─│─────^ lmap_n_to_n(fun, [1, 2, 3]).
+Expression has type:   [n()]
+Context expected type: ['a']
+   │   ╰─────' 
+
+Because in the expression's type:
+  [
+    Here the type is:     number()
+    Context expects type: 'a'
+  ]
+
+------------------------------ Detailed message ------------------------------
+
+  [n()] is not compatible with ['a']
+  because
+  n() is not compatible with 'a'
+  because
+  number() is not compatible with 'a'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/funs.erl:90:18
+   │
+90 │     fun(X, Y) -> X ++ Y end.
+   │                  ^
+   │                  │
+   │                  X.
+Expression has type:   n()
+Context expected type: [term()]
+   │                  
+
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: [term()]
+
+------------------------------ Detailed message ------------------------------
+
+  n() is not compatible with [term()]
+  because
+  number() is not compatible with [term()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/funs.erl:90:18
+   │
+90 │     fun(X, Y) -> X ++ Y end.
+   │                  ^^^^^^
+   │                  │
+   │                  _ ++ _.
+Expression has type:   [dynamic()]
+Context expected type: n()
+   │                  
+
+Because in the expression's type:
+  Here the type is:     [dynamic()]
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
+
+  [dynamic()] is not compatible with n()
+  because
+  [dynamic()] is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/funs.erl:90:23
+   │
+90 │     fun(X, Y) -> X ++ Y end.
+   │                       ^
+   │                       │
+   │                       Y.
+Expression has type:   n()
+Context expected type: [term()]
+   │                       
+
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: [term()]
+
+------------------------------ Detailed message ------------------------------
+
+  n() is not compatible with [term()]
+  because
+  number() is not compatible with [term()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/funs.erl:96:31
+   │
+96 │         erlang:atom_to_binary(X),
+   │                               ^
+   │                               │
+   │                               X.
+Expression has type:   n()
+Context expected type: atom()
+   │                               
+
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: atom()
+
+------------------------------ Detailed message ------------------------------
+
+  n() is not compatible with atom()
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/funs.erl:97:9
+   │
+97 │         X ++ Y
+   │         ^
+   │         │
+   │         X.
+Expression has type:   n()
+Context expected type: [term()]
+   │         
+
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: [term()]
+
+------------------------------ Detailed message ------------------------------
+
+  n() is not compatible with [term()]
+  because
+  number() is not compatible with [term()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/funs.erl:97:9
+   │
+97 │         X ++ Y
+   │         ^^^^^^
+   │         │
+   │         _ ++ _.
+Expression has type:   [dynamic()]
+Context expected type: n()
+   │         
+
+Because in the expression's type:
+  Here the type is:     [dynamic()]
+  Context expects type: number()
+
+------------------------------ Detailed message ------------------------------
+
+  [dynamic()] is not compatible with n()
+  because
+  [dynamic()] is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/funs.erl:97:14
+   │
+97 │         X ++ Y
+   │              ^
+   │              │
+   │              Y.
+Expression has type:   n()
+Context expected type: [term()]
+   │              
+
+Because in the expression's type:
+  Here the type is:     number()
+  Context expects type: [term()]
+
+------------------------------ Detailed message ------------------------------
+
+  n() is not compatible with [term()]
+  because
+  number() is not compatible with [term()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/funs.erl:104:7
+    │
+104 │       erlang:is_number(X)
+    │       ^^^^^^^^^^^^^^^^^^^ erlang:is_number(X).
+Expression has type:   boolean()
+Context expected type: n()
+
+error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
+    ┌─ check/src/funs.erl:127:9
+    │
+127 │         fun (X, _) -> X end,
+    │         ^^^^^^^^^^^^^^^^^^^ fun.
+fun with arity 2 used as fun with 1 arguments
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/funs.erl:134:24
+    │
+134 │         fun (Y) -> Y + N end,
+    │                        ^ N.
+Expression has type:   atom()
+Context expected type: number()
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/funs.erl:155:1
+    │  
+155 │ ╭ x6(L, B) ->
+156 │ │     xmap(fun (_) -> B end, L).
+    │ ╰─────────────────────────────^ Clause is not covered by spec
+
+error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
+    ┌─ check/src/funs.erl:195:5
+    │
+195 │     (fun () -> ok end)(1, 2, 3).
+    │     ^^^^^^^^^^^^^^^^^^ fun.
+fun with arity 0 used as fun with 3 arguments
+
+error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
+    ┌─ check/src/funs.erl:199:5
+    │
+199 │     (fun (_X) -> ok end)(1, 2, 3).
+    │     ^^^^^^^^^^^^^^^^^^^^ fun.
+fun with arity 1 used as fun with 3 arguments
+
+error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
+    ┌─ check/src/funs.erl:203:5
+    │
+203 │     (fun (_X) -> ok end)().
+    │     ^^^^^^^^^^^^^^^^^^^^ fun.
+fun with arity 1 used as fun with 0 arguments
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/funs.erl:224:16
+    │
+224 │     fun F() -> F end.
+    │                ^ F.
+Expression has type:   fun(() -> 'a')
+Context expected type: 'a'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/funs.erl:329:9
+    │
+329 │         F(A)
+    │         ^^^^ F(A).
+Expression has type:   term()
+Context expected type: 'other'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/funs.erl:336:11
+    │
+336 │         F(A)
+    │           ^ A.
+Expression has type:   term()
+Context expected type: atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/funs.erl:363:5
+    │
+363 │     Fun().
+    │     ^^^^^ Fun().
+Expression has type:   'no_ok'
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/funs.erl:368:5
+    │
+368 │     Fun().
+    │     ^^^^^ Fun().
+Expression has type:   'no_ok'
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/funs.erl:374:54
+    │
+374 │ use_callback_test_neg() -> callback_test(fun (_T) -> ok end).
+    │                                                      ^^ 'ok'.
+Expression has type:   'ok'
+Context expected type: none()
+
+27 ERRORS

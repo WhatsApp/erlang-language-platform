@@ -1,0 +1,9 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/test/check_SUITE.erl:13:11
+   │
+13 │ fail() -> wrong_ret.
+   │           ^^^^^^^^^ 'wrong_ret'.
+Expression has type:   'wrong_ret'
+Context expected type: pid()
+
+1 ERROR

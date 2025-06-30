@@ -1,0 +1,53 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/error_messages.erl:16:22
+   │
+16 │ map_candidates(M) -> M.
+   │                      ^
+   │                      │
+   │                      M.
+Expression has type:   #{bar := atom(), baz := atom()}
+Context expected type: foo_map() | #{foo => atom()}
+   │                      
+
+Because in the expression's type:
+  #{ baz =>
+    Here the type is:     atom()
+    Context expects type: number()
+  , ... }
+
+------------------------------ Detailed message ------------------------------
+
+  #{bar := atom(), baz := atom()} is not compatible with foo_map() | #{foo => atom()}
+  because
+  #{bar := atom(), baz := atom()} is not compatible with foo_map()
+  because
+  #{bar := atom(), baz := atom()} is not compatible with #{bar => atom(), baz => number(), other => atom(), other2 => atom(), other3 => atom(), other4 => atom(), other5 => atom()}
+  because
+  at key `baz`:
+  #{bar := atom(), baz := atom()} is not compatible with #{bar => atom(), baz => number(), other => atom(), other2 => atom(), other3 => atom(), other4 => atom(), other5 => atom()}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/error_messages.erl:19:24
+   │
+19 │ map_candidates_2(M) -> M.
+   │                        ^
+   │                        │
+   │                        M.
+Expression has type:   [#{bar => 'a' | 'b'} | #{baz => 'a' | 'b'}]
+Context expected type: [#{bar => 'a'}]
+   │                        
+
+Because in the expression's type:
+  [
+    Here the type is:     #{baz => ...}
+    Context expects type: #{...}
+    The expected map has no corresponding key for: baz.
+  ]
+
+------------------------------ Detailed message ------------------------------
+
+  [#{bar => 'a' | 'b'} | #{baz => 'a' | 'b'}] is not compatible with [#{bar => 'a'}]
+  because
+  #{bar => 'a' | 'b'} | #{baz => 'a' | 'b'} is not compatible with #{bar => 'a'}
+
+2 ERRORS

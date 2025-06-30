@@ -1,0 +1,217 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_calls.erl:22:5
+   │
+22 │     F(X).
+   │     ^^^^ F(X).
+Expression has type:   'b'
+Context expected type: pid()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_calls.erl:38:5
+   │
+38 │     (Rec#rec.method)(atom).
+   │     ^^^^^^^^^^^^^^^^^^^^^^ (...#rec.method)('atom').
+Expression has type:   pid()
+Context expected type: number()
+
+error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
+   ┌─ check/src/dynamic_calls.erl:47:19
+   │
+47 │ test_06_neg(F) -> F(1, 2).
+   │                   ^ F.
+Expected fun type with arity 2
+Got: fun(('a') -> 'b')
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_calls.erl:57:5
+   │
+57 │     F().
+   │     ^^^ F().
+Expression has type:   'ok'
+Context expected type: pid()
+
+error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
+   ┌─ check/src/dynamic_calls.erl:62:5
+   │
+62 │     F(1).
+   │     ^ F.
+Expected fun type with arity 1
+Got: fun(() -> 'ok')
+
+error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
+   ┌─ check/src/dynamic_calls.erl:71:5
+   │
+71 │     (fun ret_ok/0)(1, 2).
+   │     ^^^^^^^^^^^^^^ ret_ok/0.
+Expected fun type with arity 2
+Got: fun(() -> 'ok')
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_calls.erl:78:5
+   │
+78 │     (FUnion)(false).
+   │     ^^^^^^^^^^^^^^^ FUnion('false').
+Expression has type:   'r1' | 'r2'
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_calls.erl:78:5
+   │
+78 │     (FUnion)(false).
+   │     ^^^^^^^^^^^^^^^ FUnion('false').
+Expression has type:   'r2' | 'r3'
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_calls.erl:78:14
+   │
+78 │     (FUnion)(false).
+   │              ^^^^^
+   │              │
+   │              'false'.
+Expression has type:   'false'
+Context expected type: 'a1' | 'a2'
+   │              
+
+  'false' is not compatible with 'a1' | 'a2'
+  because
+  'false' is not compatible with 'a1'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_calls.erl:78:14
+   │
+78 │     (FUnion)(false).
+   │              ^^^^^
+   │              │
+   │              'false'.
+Expression has type:   'false'
+Context expected type: 'a2' | 'a3'
+   │              
+
+  'false' is not compatible with 'a2' | 'a3'
+  because
+  'false' is not compatible with 'a2'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_calls.erl:86:20
+   │
+86 │     Res = (FUnion)(false),
+   │                    ^^^^^
+   │                    │
+   │                    'false'.
+Expression has type:   'false'
+Context expected type: 'a1' | 'a2'
+   │                    
+
+  'false' is not compatible with 'a1' | 'a2'
+  because
+  'false' is not compatible with 'a1'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_calls.erl:86:20
+   │
+86 │     Res = (FUnion)(false),
+   │                    ^^^^^
+   │                    │
+   │                    'false'.
+Expression has type:   'false'
+Context expected type: 'a2' | 'a3'
+   │                    
+
+  'false' is not compatible with 'a2' | 'a3'
+  because
+  'false' is not compatible with 'a2'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_calls.erl:87:5
+   │
+87 │     Res.
+   │     ^^^ Res.
+Expression has type:   'r1' | 'r2' | 'r3'
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_calls.erl:94:5
+   │
+94 │     (FUnion)(a2).
+   │     ^^^^^^^^^^^^
+   │     │
+   │     FUnion('a2').
+Expression has type:   'r1' | 'r2'
+Context expected type: 'r1'
+   │     
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: 'r1'
+  However the following candidate: 'r2'
+  Differs from the expected type:  'r1'
+
+------------------------------ Detailed message ------------------------------
+
+  'r1' | 'r2' is not compatible with 'r1'
+  because
+  'r2' is not compatible with 'r1'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_calls.erl:94:5
+   │
+94 │     (FUnion)(a2).
+   │     ^^^^^^^^^^^^ FUnion('a2').
+Expression has type:   'r2' | 'r3'
+Context expected type: 'r1'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/dynamic_calls.erl:102:5
+    │
+102 │     Res.
+    │     ^^^
+    │     │
+    │     Res.
+Expression has type:   'r1' | 'r2' | 'r3'
+Context expected type: 'r1'
+    │     
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: 'r1'
+  However the following candidate: 'r2'
+  Differs from the expected type:  'r1'
+
+------------------------------ Detailed message ------------------------------
+
+  'r1' | 'r2' | 'r3' is not compatible with 'r1'
+  because
+  'r2' is not compatible with 'r1'
+
+error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
+    ┌─ check/src/dynamic_calls.erl:108:5
+    │
+108 │     (F)(a).
+    │     ^^^ F.
+Expected fun type with arity 1
+Got: fun(('a') -> 'b') | 'z'
+
+error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
+    ┌─ check/src/dynamic_calls.erl:114:11
+    │
+114 │     Res = (F)(a),
+    │           ^^^ F.
+Expected fun type with arity 1
+Got: fun(('a') -> 'b') | 'z'
+
+error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
+    ┌─ check/src/dynamic_calls.erl:138:5
+    │
+138 │     (F)(a).
+    │     ^^^ F.
+Expected fun type with arity 1
+Got: fun(('a') -> 'b') | fun(() -> 'b')
+
+error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
+    ┌─ check/src/dynamic_calls.erl:144:11
+    │
+144 │     Res = (F)(a),
+    │           ^^^ F.
+Expected fun type with arity 1
+Got: fun(('a') -> 'b') | fun(() -> 'b')
+
+20 ERRORS

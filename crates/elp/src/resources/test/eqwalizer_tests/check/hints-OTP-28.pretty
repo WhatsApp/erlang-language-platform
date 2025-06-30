@@ -1,0 +1,83 @@
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/hints.erl:13:27
+   │
+13 │     eqwalizer:reveal_type(A),
+   │                           ^ atom()
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/hints.erl:24:27
+   │
+24 │     eqwalizer:reveal_type(_A),
+   │                           ^^ atom() | binary()
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/hints.erl:32:27
+   │
+32 │     eqwalizer:reveal_type(B),
+   │                           ^ none() | binary()
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/hints.erl:41:27
+   │
+41 │     eqwalizer:reveal_type(BT),
+   │                           ^^ none() | binary() | tuple()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/hints.erl:47:5
+   │
+47 │     Key.
+   │     ^^^
+   │     │
+   │     Key.
+Expression has type:   term() | 'undefined'
+Context expected type: atom()
+   │     
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: 'undefined'
+  However the following candidate: term()
+  Differs from the expected type:  atom()
+
+------------------------------ Detailed message ------------------------------
+
+  term() | 'undefined' is not compatible with atom()
+  because
+  term() is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/hints.erl:52:5
+   │
+52 │     Key.
+   │     ^^^
+   │     │
+   │     Key.
+Expression has type:   term() | 'undefined'
+Context expected type: atom()
+   │     
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: 'undefined'
+  However the following candidate: term()
+  Differs from the expected type:  atom()
+
+------------------------------ Detailed message ------------------------------
+
+  term() | 'undefined' is not compatible with atom()
+  because
+  term() is not compatible with atom()
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ check/src/hints.erl:55:1
+   │  
+55 │ ╭ reveal_none(X) ->
+56 │ │     eqwalizer:reveal_type(X),
+57 │ │     error(none).
+   │ ╰───────────────^ Clause is not covered by spec
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/hints.erl:56:27
+   │
+56 │     eqwalizer:reveal_type(X),
+   │                           ^ none()
+
+8 ERRORS

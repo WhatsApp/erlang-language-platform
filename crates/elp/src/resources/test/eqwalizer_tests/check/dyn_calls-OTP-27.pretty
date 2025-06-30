@@ -1,0 +1,8 @@
+error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
+   ┌─ check/src/dyn_calls.erl:49:3
+   │
+49 │   (fun() -> res end)(arg),
+   │   ^^^^^^^^^^^^^^^^^^ fun.
+fun with arity 0 used as fun with 1 arguments
+
+1 ERROR

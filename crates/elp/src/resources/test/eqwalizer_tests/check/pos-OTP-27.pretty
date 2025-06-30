@@ -1,0 +1,8 @@
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ check/src/pos.erl:15:1
+   │  
+15 │ ╭ atom_pat(1) ->
+16 │ │     ok.
+   │ ╰──────^ Clause is not covered by spec
+
+1 ERROR

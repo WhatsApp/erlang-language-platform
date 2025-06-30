@@ -1,0 +1,683 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:162:7
+    │
+162 │       B
+    │       ^
+    │       │
+    │       B.
+Expression has type:   none() | number() | binary()
+Context expected type: binary()
+    │       
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: number()
+  Differs from the expected type:  binary()
+
+------------------------------ Detailed message ------------------------------
+
+  none() | number() | binary() is not compatible with binary()
+  because
+  number() is not compatible with binary()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:172:22
+    │
+172 │ occ05_3_neg_cl(B) -> B.
+    │                      ^
+    │                      │
+    │                      B.
+Expression has type:   none() | number() | binary()
+Context expected type: binary()
+    │                      
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: number()
+  Differs from the expected type:  binary()
+
+------------------------------ Detailed message ------------------------------
+
+  none() | number() | binary() is not compatible with binary()
+  because
+  number() is not compatible with binary()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:183:7
+    │
+183 │       A
+    │       ^
+    │       │
+    │       A.
+Expression has type:   none() | number() | binary()
+Context expected type: binary()
+    │       
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: number()
+  Differs from the expected type:  binary()
+
+------------------------------ Detailed message ------------------------------
+
+  none() | number() | binary() is not compatible with binary()
+  because
+  number() is not compatible with binary()
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ eqwater/src/eqwater.erl:228:1
+    │
+228 │ occ08(A) when is_number(A) -> A.
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:340:13
+    │
+340 │ occ11(A) -> A.
+    │             ^
+    │             │
+    │             A.
+Expression has type:   #ab_rec{} | atom()
+Context expected type: atom()
+    │             
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: atom()
+  However the following candidate: #ab_rec{}
+  Differs from the expected type:  atom()
+
+------------------------------ Detailed message ------------------------------
+
+  #ab_rec{} | atom() is not compatible with atom()
+  because
+  #ab_rec{} is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:356:16
+    │
+356 │ occ13(A, _) -> A.
+    │                ^
+    │                │
+    │                A.
+Expression has type:   #ab_rec{} | atom()
+Context expected type: atom()
+    │                
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: atom()
+  However the following candidate: #ab_rec{}
+  Differs from the expected type:  atom()
+
+------------------------------ Detailed message ------------------------------
+
+  #ab_rec{} | atom() is not compatible with atom()
+  because
+  #ab_rec{} is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:404:25
+    │
+404 │ get_int4_neg({_, I}) -> I.
+    │                         ^ I.
+Expression has type:   atom()
+Context expected type: number()
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ eqwater/src/eqwater.erl:408:1
+    │  
+408 │ ╭ get_int5({A, A})
+409 │ │   when is_atom(A) -> A.
+    │ ╰──────────────────────^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ eqwater/src/eqwater.erl:413:1
+    │  
+413 │ ╭ get_int6({A1, A2})
+414 │ │   when is_atom(A1) and is_atom(A2) -> 1;
+    │ ╰───────────────────────────────────────^ Clause is not covered by spec
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:415:21
+    │
+415 │ get_int6({_, I}) -> I.
+    │                     ^
+    │                     │
+    │                     I.
+Expression has type:   number() | atom()
+Context expected type: number()
+    │                     
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | atom() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ eqwater/src/eqwater.erl:419:1
+    │  
+419 │ ╭ get_int7_neg({A, A})
+420 │ │   % A is none()
+421 │ │   when is_atom(A) -> 0;
+    │ ╰──────────────────────^ Clause is not covered by spec
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:422:25
+    │
+422 │ get_int7_neg({_, I}) -> I.
+    │                         ^
+    │                         │
+    │                         I.
+Expression has type:   number() | atom()
+Context expected type: number()
+    │                         
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | atom() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:429:25
+    │
+429 │ get_int8_neg({_, I}) -> I.
+    │                         ^
+    │                         │
+    │                         I.
+Expression has type:   number() | atom()
+Context expected type: number()
+    │                         
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | atom() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:496:3
+    │
+496 │   A.
+    │   ^
+    │   │
+    │   A.
+Expression has type:   atom() | none()
+Context expected type: binary()
+    │   
+
+Because in the expression's type:
+  Here the type is:     atom()
+  Context expects type: binary()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:521:22
+    │
+521 │   record_occ07_tuple(R).
+    │                      ^
+    │                      │
+    │                      R.
+Expression has type:   #union_field{}
+Context expected type: {'union_field', atom()}
+    │                      
+
+Because in the expression's type:
+  { 'union_field', 
+    Here the type is:     binary()
+    Context expects type: atom()
+  }
+
+------------------------------ Detailed message ------------------------------
+
+  at tuple index 2:
+  {'union_field', none() | binary()} is not compatible with {'union_field', atom()}
+  because
+  none() | binary() is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:559:50
+    │
+559 │ record_occ13_neg(#union_field4{x = A, y = _}) -> A.
+    │                                                  ^
+    │                                                  │
+    │                                                  A.
+Expression has type:   number() | 'ok'
+Context expected type: number()
+    │                                                  
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: 'ok'
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | 'ok' is not compatible with number()
+  because
+  'ok' is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:590:8
+    │
+590 │     -> B#b.id;
+    │        ^
+    │        │
+    │        B.
+Expression has type:   none() | #b{} | #c{}
+Context expected type: #b{}
+    │        
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: #b{}
+  However the following candidate: #c{}
+  Differs from the expected type:  #b{}
+
+------------------------------ Detailed message ------------------------------
+
+  none() | #b{} | #c{} is not compatible with #b{}
+  because
+  #c{} is not compatible with #b{}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:631:27
+    │
+631 │ occ23_neg({_, B}, F) -> F(B).
+    │                           ^
+    │                           │
+    │                           B.
+Expression has type:   A | B
+Context expected type: B
+    │                           
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: B
+  However the following candidate: A
+  Differs from the expected type:  B
+
+------------------------------ Detailed message ------------------------------
+
+  A | B is not compatible with B
+  because
+  A is not compatible with B
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:649:17
+    │
+649 │ occ26_neg(T) -> T.
+    │                 ^
+    │                 │
+    │                 T.
+Expression has type:   fun() | {term()}
+Context expected type: {term()}
+    │                 
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: {term()}
+  However the following candidate: fun()
+  Differs from the expected type:  {term()}
+
+------------------------------ Detailed message ------------------------------
+
+  fun() | {term()} is not compatible with {term()}
+  because
+  fun() is not compatible with {term()}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:660:17
+    │
+660 │ occ28_neg(A) -> A.
+    │                 ^
+    │                 │
+    │                 A.
+Expression has type:   tuple() | atom()
+Context expected type: atom()
+    │                 
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: atom()
+  However the following candidate: tuple()
+  Differs from the expected type:  atom()
+
+------------------------------ Detailed message ------------------------------
+
+  tuple() | atom() is not compatible with atom()
+  because
+  tuple() is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:681:18
+    │
+681 │     {_N, _N1} -> X#one_field.f1
+    │                  ^
+    │                  │
+    │                  X.
+Expression has type:   #one_field{} | #two_fields1{}
+Context expected type: #one_field{}
+    │                  
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: #one_field{}
+  However the following candidate: #two_fields1{}
+  Differs from the expected type:  #one_field{}
+
+------------------------------ Detailed message ------------------------------
+
+  #one_field{} | #two_fields1{} is not compatible with #one_field{}
+  because
+  #two_fields1{} is not compatible with #one_field{}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:839:27
+    │
+839 │ multi_param2_neg(_, Y) -> Y.
+    │                           ^
+    │                           │
+    │                           Y.
+Expression has type:   number() | atom()
+Context expected type: number()
+    │                           
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | atom() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater.erl:997:31
+    │
+997 │ occ42_neg({F, S} = {_, _}) -> F.
+    │                               ^ F.
+Expression has type:   string() | 'undefined'
+Context expected type: string()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1004:31
+     │
+1004 │ occ43_neg({F, S} = {_, _}) -> F.
+     │                               ^ F.
+Expression has type:   string() | 'undefined'
+Context expected type: string()
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+     ┌─ eqwater/src/eqwater.erl:1090:1
+     │
+1090 │ occ53_neg(L, undefined) when is_integer(L) -> 0;
+     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1091:20
+     │
+1091 │ occ53_neg(_, I) -> I.
+     │                    ^
+     │                    │
+     │                    I.
+Expression has type:   number() | 'undefined'
+Context expected type: number()
+     │                    
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: 'undefined'
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | 'undefined' is not compatible with number()
+  because
+  'undefined' is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1122:14
+     │
+1122 │         A -> [A]
+     │              ^^^
+     │              │
+     │              [A].
+Expression has type:   [[atom()]] | [atom()]
+Context expected type: [atom()]
+     │              
+
+Because in the expression's type:
+  The type is a union type with some valid candidates: [atom()]
+  However, the following candidate doesn't match:
+  [
+    Here the type is:     [atom()]
+    Context expects type: atom()
+  ]
+
+------------------------------ Detailed message ------------------------------
+
+  [[atom()]] | [atom()] is not compatible with [atom()]
+  because
+  [[atom()]] is not compatible with [atom()]
+  because
+  [atom()] is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1131:15
+     │
+1131 │         A2 -> [A2]
+     │               ^^^^
+     │               │
+     │               [A2].
+Expression has type:   [[atom()]] | [atom()]
+Context expected type: [atom()]
+     │               
+
+Because in the expression's type:
+  The type is a union type with some valid candidates: [atom()]
+  However, the following candidate doesn't match:
+  [
+    Here the type is:     [atom()]
+    Context expects type: atom()
+  ]
+
+------------------------------ Detailed message ------------------------------
+
+  [[atom()]] | [atom()] is not compatible with [atom()]
+  because
+  [[atom()]] is not compatible with [atom()]
+  because
+  [atom()] is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1155:7
+     │
+1155 │       X
+     │       ^
+     │       │
+     │       X.
+Expression has type:   binary() | string()
+Context expected type: binary()
+     │       
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: string()
+  Differs from the expected type:  binary()
+
+------------------------------ Detailed message ------------------------------
+
+  binary() | string() is not compatible with binary()
+  because
+  string() is not compatible with binary()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1181:7
+     │
+1181 │       Y
+     │       ^
+     │       │
+     │       Y.
+Expression has type:   binary() | atom()
+Context expected type: binary()
+     │       
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: atom()
+  Differs from the expected type:  binary()
+
+------------------------------ Detailed message ------------------------------
+
+  binary() | atom() is not compatible with binary()
+  because
+  atom() is not compatible with binary()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1189:60
+     │
+1189 │ occ_guard_binary_2_neg(V) when V =:= <<"ok">>; V =:= ok -> V;
+     │                                                            ^
+     │                                                            │
+     │                                                            V.
+Expression has type:   'ok' | binary()
+Context expected type: binary()
+     │                                                            
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: 'ok'
+  Differs from the expected type:  binary()
+
+------------------------------ Detailed message ------------------------------
+
+  'ok' | binary() is not compatible with binary()
+  because
+  'ok' is not compatible with binary()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1194:30
+     │
+1194 │ occ_guard_binary_3_neg(V) -> V.
+     │                              ^
+     │                              │
+     │                              V.
+Expression has type:   binary() | 'ok'
+Context expected type: 'ok'
+     │                              
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: 'ok'
+  However the following candidate: binary()
+  Differs from the expected type:  'ok'
+
+------------------------------ Detailed message ------------------------------
+
+  binary() | 'ok' is not compatible with 'ok'
+  because
+  binary() is not compatible with 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1225:14
+     │
+1225 │         _ -> Args
+     │              ^^^^
+     │              │
+     │              Args.
+Expression has type:   {term(), my_list()} | none() | number()
+Context expected type: number()
+     │              
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: {term(), my_list()}
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  {term(), my_list()} | none() | number() is not compatible with number()
+  because
+  {term(), my_list()} is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1231:31
+     │
+1231 │         _ when is_tuple(T) -> T
+     │                               ^ T.
+Expression has type:   tuple()
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1257:29
+     │
+1257 │ non_linear_neg_1({B, B}) -> B.
+     │                             ^
+     │                             │
+     │                             B.
+Expression has type:   'a' | 'b'
+Context expected type: 'b'
+     │                             
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: 'b'
+  However the following candidate: 'a'
+  Differs from the expected type:  'b'
+
+------------------------------ Detailed message ------------------------------
+
+  'a' | 'b' is not compatible with 'b'
+  because
+  'a' is not compatible with 'b'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1269:5
+     │
+1269 │     V.
+     │     ^
+     │     │
+     │     V.
+Expression has type:   'a' | none()
+Context expected type: 'b'
+     │     
+
+Because in the expression's type:
+  Here the type is:     'a'
+  Context expects type: 'b'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1286:60
+     │
+1286 │ negate_atoms_neg(A) when not ((A == a) orelse (A == b)) -> A;
+     │                                                            ^
+     │                                                            │
+     │                                                            A.
+Expression has type:   none() | 'c'
+Context expected type: 'a' | 'b'
+     │                                                            
+
+Because in the expression's type:
+  Here the type is:     'c'
+  Context expects type: 'a' | 'b'
+  No candidate matches in the expected union.
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1291:43
+     │
+1291 │ negate_number_neg(N) when not (N == 1) -> N;
+     │                                           ^ N.
+Expression has type:   number()
+Context expected type: 'ok'
+
+38 ERRORS
