@@ -1,0 +1,60 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/tuple_union.erl:27:19
+   │
+27 │ test_03_neg(X) -> X.
+   │                   ^
+   │                   │
+   │                   X.
+Expression has type:   t4()
+Context expected type: t5()
+   │                   
+
+Because in the expression's type:
+  { 'msg', 
+    Here the type is a union type with some valid candidates: 'ok'
+    However the following candidate: 'err'
+    Differs from the expected type:  'ok'
+  , 'arg' | 'nil'}
+
+------------------------------ Detailed message ------------------------------
+
+  t4() is not compatible with t5()
+  because
+  {'msg', 'ok' | 'err', 'arg' | 'nil'} is not compatible with t5()
+  because
+  {'msg', 'ok' | 'err', 'arg' | 'nil'} is not compatible with {'msg', 'ok', 'arg'} | {'msg', 'err', 'arg'} | {'msg', 'ok', 'nil'} | {'msg', 'err', 'nil'}
+  because
+  at tuple index 2:
+  {'msg', 'ok' | 'err', 'arg' | 'nil'} is not compatible with {'msg', 'ok', 'arg'}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/tuple_union.erl:66:26
+   │
+66 │ tree3_as_tree1_neg(T) -> T.
+   │                          ^
+   │                          │
+   │                          T.
+Expression has type:   tree3()
+Context expected type: tree1()
+   │                          
+
+Because in the expression's type:
+  The type is a union type with some valid candidates: {'leaf', atom()}
+  However, the following candidate doesn't match:
+  { 
+    Here the type is:     'b1' | 'b2' | 'b3'
+    Context expects type: 'leaf'
+    No candidate of the expression's type matches the expected type.
+  , tree2()}
+
+------------------------------ Detailed message ------------------------------
+
+  tree3() is not compatible with tree1()
+  because
+  {'leaf', atom()} | {'b1' | 'b2' | 'b3', tree2()} is not compatible with tree1()
+  because
+  {'leaf', atom()} | {'b1' | 'b2' | 'b3', tree2()} is not compatible with {'leaf', atom()} | {'b1', tree1()} | {'b2', tree1()}
+  because
+  {'b1' | 'b2' | 'b3', tree2()} is not compatible with {'leaf', atom()} | {'b1', tree1()} | {'b2', tree1()}
+
+2 ERRORS

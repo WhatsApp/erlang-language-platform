@@ -1,0 +1,47 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_local_funs.erl:30:3
+   │
+30 │   lists:foldl(F, 0, L).
+   │   ^^^^^^^^^^^^^^^^^^^^
+   │   │
+   │   lists:foldl(F, 0, L).
+Expression has type:   dynamic() | number()
+Context expected type: atom()
+   │   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: dynamic()
+  However the following candidate: number()
+  Differs from the expected type:  atom()
+
+------------------------------ Detailed message ------------------------------
+
+  dynamic() | number() is not compatible with atom()
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_local_funs.erl:36:15
+   │
+36 │     N1 + N2 + binary_to_atom(Acc)
+   │               ^^^^^^^^^^^^^^^^^^^ erlang:binary_to_atom(Acc).
+Expression has type:   atom()
+Context expected type: number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_local_funs.erl:48:3
+   │
+48 │   X.
+   │   ^ X.
+Expression has type:   fun((dynamic(), dynamic()) -> dynamic())
+Context expected type: fun(('a') -> 'b')
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/dynamic_local_funs.erl:111:3
+    │
+111 │   ok.
+    │   ^^ 'ok'.
+Expression has type:   'ok'
+Context expected type: pid()
+
+4 ERRORS

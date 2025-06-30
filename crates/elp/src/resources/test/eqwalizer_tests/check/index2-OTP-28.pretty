@@ -1,0 +1,9 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/index2.erl:21:3
+   │
+21 │   X#rec.field.
+   │   ^^^^^^^^^^^ ...#rec.field.
+Expression has type:   [atom()]
+Context expected type: {ty_a(), index1:ty_a(), index1:rec()}
+
+1 ERROR

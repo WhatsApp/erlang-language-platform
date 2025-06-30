@@ -1,0 +1,60 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_misc.erl:15:3
+   │
+15 │   X.
+   │   ^
+   │   │
+   │   X.
+Expression has type:   opaque:contravariant('a')
+Context expected type: opaque:contravariant('a' | 'b')
+   │   
+
+Because in the expression's type:
+  fun((
+    Here the type is a union type with some valid candidates: 'a'
+    However the following candidate: 'b'
+    Differs from the expected type:  'a'
+  ) -> 'ok')
+
+------------------------------ Detailed message ------------------------------
+
+  opaque:contravariant('a') is not compatible with opaque:contravariant('a' | 'b')
+  because
+  fun(('a') -> 'ok') is not compatible with opaque:contravariant('a' | 'b')
+  because
+  fun(('a') -> 'ok') is not compatible with fun(('a' | 'b') -> 'ok')
+  because
+  'a' | 'b' is not compatible with 'a'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_misc.erl:38:5
+   │
+38 │     <<X || X <- [], (X ++ X) >>.
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ << || >>.
+Expression has type:   binary()
+Context expected type: 'ok'
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ check/src/gradual_misc.erl:41:1
+   │  
+41 │ ╭ fuzz03([_ | {}]) -> 
+42 │ │     ok.
+   │ ╰──────^ Clause is not covered by spec
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_misc.erl:46:41
+   │
+46 │ refine_tuple_neg(T) when is_tuple(T) -> T;
+   │                                         ^
+   │                                         │
+   │                                         T.
+Expression has type:   none() | {'b', 'c'}
+Context expected type: 'a' | {none()}
+   │                                         
+
+Because in the expression's type:
+  Here the type is:     {'b', 'c'}
+  Context expects type: 'a' | {none()}
+  No candidate matches in the expected union.
+
+4 ERRORS

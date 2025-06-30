@@ -1,0 +1,181 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_generics.erl:33:3
+   │
+33 │   lists:map(fun inc/1, Ns).
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^ lists:map(inc/1, Ns).
+Expression has type:   [number()]
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_generics.erl:43:3
+   │
+43 │   lists:map(fun dyn_fun/1, Ns).
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lists:map(dyn_fun/1, Ns).
+Expression has type:   [dynamic()]
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_generics.erl:53:3
+   │
+53 │   lists:foldl(fun add/2, 0, Ns).
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lists:foldl(add/2, 0, Ns).
+Expression has type:   number()
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_generics.erl:65:3
+   │
+65 │   lists:foldl(fun add/2, Acc, Ns).
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   │   │
+   │   lists:foldl(add/2, Acc, Ns).
+Expression has type:   number() | dynamic()
+Context expected type: none()
+   │   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: dynamic()
+  However the following candidate: number()
+  Differs from the expected type:  none()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | dynamic() is not compatible with none()
+  because
+  number() is not compatible with none()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_generics.erl:72:3
+   │
+72 │   {Res}.
+   │   ^^^^^ {Res}.
+Expression has type:   {number() | dynamic()}
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_generics.erl:78:3
+   │
+78 │   lists:foldl(fun dyn_fun/2, Acc, Ns).
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   │   │
+   │   lists:foldl(dyn_fun/2, Acc, Ns).
+Expression has type:   dynamic() | string()
+Context expected type: 'ok'
+   │   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: dynamic()
+  However the following candidate: string()
+  Differs from the expected type:  'ok'
+
+------------------------------ Detailed message ------------------------------
+
+  dynamic() | string() is not compatible with 'ok'
+  because
+  string() is not compatible with 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_generics.erl:87:3
+   │
+87 │   fapply(fun inc/1, dyn_val()).
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ fapply(inc/1, dyn_val()).
+Expression has type:   number()
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_generics.erl:92:3
+   │
+92 │   {Res}.
+   │   ^^^^^ {Res}.
+Expression has type:   {dynamic()}
+Context expected type: X
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/dynamic_generics.erl:108:3
+    │    
+108 │ ╭ ╭   lists:map(
+109 │ │ │     fun
+110 │ │ │       Fib(N) when N < 2
+111 │ │ │         -> 1;
+    · │ │
+117 │ │ │     [1, 2, 3]
+118 │ │ │   ).
+    │ ╰─│───^ lists:map(fun, [1, 2, 3]).
+Expression has type:   [number() | 'three']
+Context expected type: [number()]
+    │   ╰───' 
+
+Because in the expression's type:
+  [
+    Here the type is a union type with some valid candidates: number()
+    However the following candidate: 'three'
+    Differs from the expected type:  number()
+  ]
+
+------------------------------ Detailed message ------------------------------
+
+  [number() | 'three'] is not compatible with [number()]
+  because
+  number() | 'three' is not compatible with number()
+  because
+  'three' is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/dynamic_generics.erl:115:9
+    │
+115 │         Fib(N - 2) + Fib(N - 1)
+    │         ^^^^^^^^^^
+    │         │
+    │         Fib(_ - _).
+Expression has type:   number() | 'three'
+Context expected type: number()
+    │         
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: 'three'
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | 'three' is not compatible with number()
+  because
+  'three' is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/dynamic_generics.erl:115:22
+    │
+115 │         Fib(N - 2) + Fib(N - 1)
+    │                      ^^^^^^^^^^
+    │                      │
+    │                      Fib(_ - _).
+Expression has type:   number() | 'three'
+Context expected type: number()
+    │                      
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: 'three'
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | 'three' is not compatible with number()
+  because
+  'three' is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/dynamic_generics.erl:127:13
+    │
+127 │         Fib(undefined) + Fib(N - 1)
+    │             ^^^^^^^^^ 'undefined'.
+Expression has type:   'undefined'
+Context expected type: number()
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+    ┌─ check/src/dynamic_generics.erl:171:47
+    │
+171 │ unify_dyn_atom(D, A) -> eqwalizer:reveal_type(either(D, A)).
+    │                                               ^^^^^^^^^^^^ dynamic() | 'undef'
+
+13 ERRORS

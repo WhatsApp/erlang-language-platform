@@ -1,0 +1,13 @@
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ check/src/subtype_pos.erl:30:1
+   │
+30 │ f05(X) -> X.
+   │ ^^^^^^^^^^^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ check/src/subtype_pos.erl:41:1
+   │
+41 │ f08(X) -> X.
+   │ ^^^^^^^^^^^ Clause is not covered by spec
+
+2 ERRORS
