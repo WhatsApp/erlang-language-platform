@@ -1,0 +1,116 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_bounded.erl:16:21
+   │
+16 │ bd_unsafe_neg(V) -> V.
+   │                     ^
+   │                     │
+   │                     V.
+Expression has type:   dyn('a') | 'b'
+Context expected type: 'c'
+   │                     
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: dyn('a')
+  However the following candidate: 'b'
+  Differs from the expected type:  'c'
+
+------------------------------ Detailed message ------------------------------
+
+  dyn('a') | 'b' is not compatible with 'c'
+  because
+  'b' is not compatible with 'c'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_bounded.erl:25:26
+   │
+25 │ bd_coerce_safe_neg(V) -> V.
+   │                          ^
+   │                          │
+   │                          V.
+Expression has type:   'a'
+Context expected type: dyn('b')
+   │                          
+
+Because in the expression's type:
+  Here the type is:     'a'
+  Context expects type: 'b'
+
+------------------------------ Detailed message ------------------------------
+
+  'a' is not compatible with dyn('b')
+  because
+  'a' is not compatible with dynamic('b')
+  because
+  'a' is not compatible with dynamic('b')
+  because
+  'a' is not compatible with 'b'
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/gradual_bounded.erl:44:27
+   │
+44 │     eqwalizer:reveal_type(V).
+   │                           ^ #{b => dynamic('c'), number() => 'a'}
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/gradual_bounded.erl:51:27
+   │
+51 │     eqwalizer:reveal_type(V).
+   │                           ^ #{a := 'b', b => dynamic('c')}
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ check/src/gradual_bounded.erl:62:1
+   │
+62 │ bd_tuple_02({V, _}) -> V.
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/gradual_bounded.erl:66:51
+   │
+66 │ bd_distrib_print({a, V}) -> eqwalizer:reveal_type(V).
+   │                                                   ^ dynamic('b')
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_bounded.erl:79:5
+   │
+79 │     bd_generic_fun(test, 42).
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^
+   │     │
+   │     bd_generic_fun('test', 42).
+Expression has type:   'test' | number()
+Context expected type: number()
+   │     
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: 'test'
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  'test' | number() is not compatible with number()
+  because
+  'test' is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_bounded.erl:89:5
+   │
+89 │     bd_generic_fun(test, N).
+   │     ^^^^^^^^^^^^^^^^^^^^^^^
+   │     │
+   │     bd_generic_fun('test', N).
+Expression has type:   'test' | dyn(number())
+Context expected type: number()
+   │     
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: dyn(number())
+  However the following candidate: 'test'
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  'test' | dyn(number()) is not compatible with number()
+  because
+  'test' is not compatible with number()
+
+8 ERRORS

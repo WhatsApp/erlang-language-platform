@@ -1,0 +1,7 @@
+error: behaviour_does_not_exist (See https://fb.me/eqwalizer_errors#behaviour_does_not_exist)
+  ┌─ check/src/callbacks4_neg.erl:9:1
+  │
+9 │ -behaviour(nonexistent).
+  │ ^^^^^^^^^^^^^^^^^^^^^^^ Behaviour does not exist: nonexistent
+
+1 ERROR

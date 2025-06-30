@@ -215,6 +215,7 @@ mod tests {
     use elp_project_model::buck::BuckQueryConfig;
     use elp_project_model::buck::get_prelude_cell;
     use elp_project_model::otp;
+    use elp_project_model::otp::OTP_VERSION;
     use elp_project_model::otp::otp_supported_by_eqwalizer;
     use expect_test::Expect;
     use expect_test::ExpectFile;
@@ -416,11 +417,13 @@ mod tests {
                             })
                             .unwrap();
 
+                        let otp_version = OTP_VERSION.as_ref().expect("MISSING OTP VERSION");
                         let exp_path = expect_file!(format!(
-                            "../resources/test/{}/{}/{}.pretty",
+                            "../resources/test/{}/{}/{}-OTP-{}.pretty",
                             project,
                             app,
-                            module.as_str()
+                            module.as_str(),
+                            otp_version,
                         ));
                         let (stdout, _) = cli.to_strings();
                         assert_normalised_file(exp_path, &stdout, project_path.into(), false);

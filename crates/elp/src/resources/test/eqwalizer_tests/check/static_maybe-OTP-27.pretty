@@ -1,0 +1,17 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/static_maybe.erl:26:9
+   │
+26 │         A
+   │         ^ A.
+Expression has type:   term()
+Context expected type: atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/static_maybe.erl:50:14
+   │
+50 │         _ -> 3
+   │              ^ 3.
+Expression has type:   number()
+Context expected type: atom()
+
+2 ERRORS

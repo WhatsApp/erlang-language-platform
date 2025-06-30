@@ -1,0 +1,79 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/tries.erl:30:19
+   │
+30 │         {_, Y} -> Y
+   │                   ^ Y.
+Expression has type:   term()
+Context expected type: atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/tries.erl:42:5
+   │
+42 │     Res.
+   │     ^^^
+   │     │
+   │     Res.
+Expression has type:   [] | 'error'
+Context expected type: atom()
+   │     
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: 'error'
+  However the following candidate: []
+  Differs from the expected type:  atom()
+
+------------------------------ Detailed message ------------------------------
+
+  [] | 'error' is not compatible with atom()
+  because
+  [] is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/tries.erl:75:16
+   │
+75 │     catch _ -> error
+   │                ^^^^^ 'error'.
+Expression has type:   'error'
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/tries.erl:80:9
+   │
+80 │     try ok()
+   │         ^^^^ ok().
+Expression has type:   'ok'
+Context expected type: 'error'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/tries.erl:88:19
+   │
+88 │         only_atom(1)
+   │                   ^ 1.
+Expression has type:   number()
+Context expected type: atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/tries.erl:130:17
+    │
+130 │         true -> Y
+    │                 ^ Y.
+Expression has type:   number()
+Context expected type: atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/tries.erl:136:19
+    │
+136 │         {X, X} -> X
+    │                   ^ X.
+Expression has type:   term()
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/tries.erl:148:5
+    │
+148 │     Res.
+    │     ^^^ Res.
+Expression has type:   term()
+Context expected type: 'ok'
+
+8 ERRORS

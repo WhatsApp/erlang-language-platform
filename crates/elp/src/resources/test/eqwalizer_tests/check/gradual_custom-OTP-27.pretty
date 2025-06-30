@@ -1,0 +1,457 @@
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/gradual_custom.erl:14:27
+   │
+14 │     eqwalizer:reveal_type(element(42, Tup)).
+   │                           ^^^^^^^^^^^^^^^^ dynamic()
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/gradual_custom.erl:18:27
+   │
+18 │     eqwalizer:reveal_type(element(2, Tup)).
+   │                           ^^^^^^^^^^^^^^^ dynamic(atom())
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/gradual_custom.erl:22:27
+   │
+22 │     eqwalizer:reveal_type(element(1, Tup)).
+   │                           ^^^^^^^^^^^^^^^ dynamic(number())
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/gradual_custom.erl:26:27
+   │
+26 │     eqwalizer:reveal_type(element(1, Tup)).
+   │                           ^^^^^^^^^^^^^^^ dynamic(none())
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/gradual_custom.erl:30:27
+   │
+30 │     eqwalizer:reveal_type(element(N, Tup)).
+   │                           ^^^^^^^^^^^^^^^ dynamic(number() | atom())
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_custom.erl:43:3
+   │
+43 │   application:get_env(app1).
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^ application:get_env('app1').
+Expression has type:   'undefined' | {'ok', dynamic()}
+Context expected type: number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_custom.erl:56:3
+   │
+56 │   application:get_env(app1, key1).
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ application:get_env('app1', 'key1').
+Expression has type:   'undefined' | {'ok', dynamic()}
+Context expected type: number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_custom.erl:73:3
+   │
+73 │   lists:flatten(In).
+   │   ^^^^^^^^^^^^^^^^^ lists:flatten(In).
+Expression has type:   ['b' | 'c' | 'a']
+Context expected type: atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_custom.erl:85:3
+   │
+85 │   lists:flatten(In, Tail).
+   │   ^^^^^^^^^^^^^^^^^^^^^^^ lists:flatten(In, Tail).
+Expression has type:   ['b' | 'a' | 'y' | 'z' | 'c' | 'x']
+Context expected type: atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_custom.erl:94:3
+   │
+94 │   file:consult(some_file).
+   │   ^^^^^^^^^^^^^^^^^^^^^^^ file:consult('some_file').
+Expression has type:   {'ok', [dynamic()]} | {'error', {number(), atom(), term()} | 'terminated' | 'badarg' | file:posix() | 'system_limit'}
+Context expected type: 'nok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_custom.erl:99:3
+   │
+99 │   abs(dynamic()).
+   │   ^^^^^^^^^^^^^^ erlang:abs(dynamic()).
+Expression has type:   number()
+Context expected type: 'anything'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:108:3
+    │
+108 │   abs(N).
+    │   ^^^^^^ erlang:abs(N).
+Expression has type:   number()
+Context expected type: 'anything'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:108:7
+    │
+108 │   abs(N).
+    │       ^
+    │       │
+    │       N.
+Expression has type:   dynamic() | 'a'
+Context expected type: number()
+    │       
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: dynamic()
+  However the following candidate: 'a'
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  dynamic() | 'a' is not compatible with number()
+  because
+  'a' is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:120:3
+    │
+120 │   ets:lookup(tab, Any).
+    │   ^^^^^^^^^^^^^^^^^^^^ ets:lookup('tab', Any).
+Expression has type:   [dynamic()]
+Context expected type: pid()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:124:3
+    │
+124 │   ets:lookup("not atom", Any).
+    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ ets:lookup(string_lit, Any).
+Expression has type:   [dynamic()]
+Context expected type: pid()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:124:14
+    │
+124 │   ets:lookup("not atom", Any).
+    │              ^^^^^^^^^^ string_lit.
+Expression has type:   string()
+Context expected type: ets:tab()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:143:16
+    │
+143 │   ets:tab2list("not atom").
+    │                ^^^^^^^^^^ string_lit.
+Expression has type:   string()
+Context expected type: ets:tab()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:158:3
+    │  
+158 │ ╭   maps:without(
+159 │ │     [a],
+160 │ │     Dyn
+161 │ │   ).
+    │ ╰───^ maps:without(['a'], Dyn).
+Expression has type:   #{dynamic() => dynamic()}
+Context expected type: 'wrong_ret'
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/gradual_custom.erl:166:1
+    │  
+166 │ ╭ maps_without_3_neg(None) ->
+167 │ │   maps:without(
+168 │ │     [a, b],
+169 │ │     None
+170 │ │   ).
+    │ ╰───^ Clause is not covered by spec
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:185:3
+    │  
+185 │ ╭   maps:with(
+186 │ │     [a],
+187 │ │     Dyn
+188 │ │   ).
+    │ ╰───^ maps:with(['a'], Dyn).
+Expression has type:   #{a := dynamic()}
+Context expected type: 'wrong_ret'
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/gradual_custom.erl:193:1
+    │  
+193 │ ╭ maps_with_3(None) ->
+194 │ │   maps:with(
+195 │ │     [a, b],
+196 │ │     None
+197 │ │   ).
+    │ ╰───^ Clause is not covered by spec
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+    ┌─ check/src/gradual_custom.erl:203:25
+    │
+203 │   eqwalizer:reveal_type(Res),
+    │                         ^^^ file:filename_all()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:204:3
+    │
+204 │   Res.
+    │   ^^^
+    │   │
+    │   Res.
+Expression has type:   file:filename_all()
+Context expected type: 'ok'
+    │   
+
+Because in the expression's type:
+  Here the type is:     string() | binary()
+  Context expects type: 'ok'
+  No candidate of the expression's type matches the expected type.
+
+------------------------------ Detailed message ------------------------------
+
+  file:filename_all() is not compatible with 'ok'
+  because
+  string() | binary() is not compatible with 'ok'
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+    ┌─ check/src/gradual_custom.erl:210:25
+    │
+210 │   eqwalizer:reveal_type(Res),
+    │                         ^^^ file:filename_all()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:211:3
+    │
+211 │   Res.
+    │   ^^^
+    │   │
+    │   Res.
+Expression has type:   file:filename_all()
+Context expected type: 'ok'
+    │   
+
+Because in the expression's type:
+  Here the type is:     string() | binary()
+  Context expects type: 'ok'
+  No candidate of the expression's type matches the expected type.
+
+------------------------------ Detailed message ------------------------------
+
+  file:filename_all() is not compatible with 'ok'
+  because
+  string() | binary() is not compatible with 'ok'
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+    ┌─ check/src/gradual_custom.erl:217:25
+    │
+217 │   eqwalizer:reveal_type(Res),
+    │                         ^^^ file:filename_all()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:218:3
+    │
+218 │   Res.
+    │   ^^^
+    │   │
+    │   Res.
+Expression has type:   file:filename_all()
+Context expected type: 'ok'
+    │   
+
+Because in the expression's type:
+  Here the type is:     string() | binary()
+  Context expects type: 'ok'
+  No candidate of the expression's type matches the expected type.
+
+------------------------------ Detailed message ------------------------------
+
+  file:filename_all() is not compatible with 'ok'
+  because
+  string() | binary() is not compatible with 'ok'
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+    ┌─ check/src/gradual_custom.erl:224:25
+    │
+224 │   eqwalizer:reveal_type(Res),
+    │                         ^^^ file:filename_all()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:225:3
+    │
+225 │   Res.
+    │   ^^^
+    │   │
+    │   Res.
+Expression has type:   file:filename_all()
+Context expected type: 'ok'
+    │   
+
+Because in the expression's type:
+  Here the type is:     string() | binary()
+  Context expects type: 'ok'
+  No candidate of the expression's type matches the expected type.
+
+------------------------------ Detailed message ------------------------------
+
+  file:filename_all() is not compatible with 'ok'
+  because
+  string() | binary() is not compatible with 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:245:19
+    │
+245 │ min3_neg(X, Y) -> min(X, Y).
+    │                   ^^^^^^^^^
+    │                   │
+    │                   erlang:min(X, Y).
+Expression has type:   number() | 'undefined'
+Context expected type: number()
+    │                   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: 'undefined'
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | 'undefined' is not compatible with number()
+  because
+  'undefined' is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:257:19
+    │
+257 │ min5_neg(X, Y) -> min(X, Y).
+    │                   ^^^^^^^^^
+    │                   │
+    │                   erlang:min(X, Y).
+Expression has type:   number() | atom() | binary()
+Context expected type: number()
+    │                   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | atom() | binary() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:263:19
+    │
+263 │ min6_neg(X, Y) -> min(X, Y).
+    │                   ^^^^^^^^^
+    │                   │
+    │                   erlang:min(X, Y).
+Expression has type:   number() | dynamic() | number() | atom() | dynamic()
+Context expected type: number()
+    │                   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number() | dynamic()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | dynamic() | number() | atom() | dynamic() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:269:19
+    │
+269 │ min7_neg(X, Y) -> min(X, Y).
+    │                   ^^^^^^^^^
+    │                   │
+    │                   erlang:min(X, Y).
+Expression has type:   number() | dynamic() | atom() | dynamic()
+Context expected type: number()
+    │                   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: number() | dynamic()
+  However the following candidate: atom()
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  number() | dynamic() | atom() | dynamic() is not compatible with number()
+  because
+  atom() is not compatible with number()
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+    ┌─ check/src/gradual_custom.erl:277:25
+    │
+277 │   eqwalizer:reveal_type(Y),
+    │                         ^ dynamic() | {none()}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:278:3
+    │
+278 │   Y.
+    │   ^
+    │   │
+    │   Y.
+Expression has type:   dynamic() | {none()}
+Context expected type: number()
+    │   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: dynamic()
+  However the following candidate: {none()}
+  Differs from the expected type:  number()
+
+------------------------------ Detailed message ------------------------------
+
+  dynamic() | {none()} is not compatible with number()
+  because
+  {none()} is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:325:13
+    │
+325 │     true -> Atom;
+    │             ^^^^
+    │             │
+    │             Atom.
+Expression has type:   'bar' | 'undefined' | 'foo'
+Context expected type: 'foo' | 'bar' | binary()
+    │             
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: 'bar' | 'foo'
+  However the following candidate: 'undefined'
+  Differs from the expected type:  'foo' | 'bar' | binary()
+
+------------------------------ Detailed message ------------------------------
+
+  'bar' | 'undefined' | 'foo' is not compatible with 'foo' | 'bar' | binary()
+  because
+  'undefined' is not compatible with 'foo' | 'bar' | binary()
+  because
+  'undefined' is not compatible with 'foo'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:343:3
+    │
+343 │   parse_atom(Bin, [foo, bar]).
+    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    │   │
+    │   parse_atom(Bin, ['foo', 'bar']).
+Expression has type:   'foo' | 'bar'
+Context expected type: 'foo'
+    │   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: 'foo'
+  However the following candidate: 'bar'
+  Differs from the expected type:  'foo'
+
+------------------------------ Detailed message ------------------------------
+
+  'foo' | 'bar' is not compatible with 'foo'
+  because
+  'bar' is not compatible with 'foo'
+
+37 ERRORS

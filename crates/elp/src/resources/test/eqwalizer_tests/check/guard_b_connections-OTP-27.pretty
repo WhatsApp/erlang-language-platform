@@ -1,0 +1,121 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/guard_b_connections.erl:22:3
+   │
+22 │   R.
+   │   ^
+   │   │
+   │   R.
+Expression has type:   #r1{} | #r2{}
+Context expected type: r1()
+   │   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: #r1{}
+  However the following candidate: #r2{}
+  Differs from the expected type:  #r1{}
+
+------------------------------ Detailed message ------------------------------
+
+  #r1{} | #r2{} is not compatible with r1()
+  because
+  #r1{} | #r2{} is not compatible with #r1{}
+  because
+  #r2{} is not compatible with #r1{}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/guard_b_connections.erl:27:3
+   │
+27 │   R.
+   │   ^
+   │   │
+   │   R.
+Expression has type:   #r1{} | #r2{}
+Context expected type: r1()
+   │   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: #r1{}
+  However the following candidate: #r2{}
+  Differs from the expected type:  #r1{}
+
+------------------------------ Detailed message ------------------------------
+
+  #r1{} | #r2{} is not compatible with r1()
+  because
+  #r1{} | #r2{} is not compatible with #r1{}
+  because
+  #r2{} is not compatible with #r1{}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/guard_b_connections.erl:32:3
+   │
+32 │   R.
+   │   ^
+   │   │
+   │   R.
+Expression has type:   #r1{} | #r2{}
+Context expected type: r1()
+   │   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: #r1{}
+  However the following candidate: #r2{}
+  Differs from the expected type:  #r1{}
+
+------------------------------ Detailed message ------------------------------
+
+  #r1{} | #r2{} is not compatible with r1()
+  because
+  #r1{} | #r2{} is not compatible with #r1{}
+  because
+  #r2{} is not compatible with #r1{}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/guard_b_connections.erl:38:3
+   │
+38 │   R.
+   │   ^
+   │   │
+   │   R.
+Expression has type:   #r1{} | #r2{}
+Context expected type: r1()
+   │   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: #r1{}
+  However the following candidate: #r2{}
+  Differs from the expected type:  #r1{}
+
+------------------------------ Detailed message ------------------------------
+
+  #r1{} | #r2{} is not compatible with r1()
+  because
+  #r1{} | #r2{} is not compatible with #r1{}
+  because
+  #r2{} is not compatible with #r1{}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/guard_b_connections.erl:44:3
+   │
+44 │   R.
+   │   ^
+   │   │
+   │   R.
+Expression has type:   #r1{} | #r2{}
+Context expected type: r1()
+   │   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: #r1{}
+  However the following candidate: #r2{}
+  Differs from the expected type:  #r1{}
+
+------------------------------ Detailed message ------------------------------
+
+  #r1{} | #r2{} is not compatible with r1()
+  because
+  #r1{} | #r2{} is not compatible with #r1{}
+  because
+  #r2{} is not compatible with #r1{}
+
+5 ERRORS

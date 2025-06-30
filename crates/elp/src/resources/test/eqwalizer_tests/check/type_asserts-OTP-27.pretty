@@ -1,0 +1,256 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/type_asserts.erl:39:3
+   │
+39 │   Arg.
+   │   ^^^ Arg.
+Expression has type:   string()
+Context expected type: binary()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/type_asserts.erl:48:3
+   │
+48 │   Arg.
+   │   ^^^
+   │   │
+   │   Arg.
+Expression has type:   string() | binary()
+Context expected type: binary()
+   │   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: string()
+  Differs from the expected type:  binary()
+
+------------------------------ Detailed message ------------------------------
+
+  string() | binary() is not compatible with binary()
+  because
+  string() is not compatible with binary()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/type_asserts.erl:63:26
+   │
+63 │     andalso list_to_atom(A).
+   │                          ^ A.
+Expression has type:   binary()
+Context expected type: string()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/type_asserts.erl:70:26
+   │
+70 │     andalso list_to_atom(A).
+   │                          ^ A.
+Expression has type:   binary()
+Context expected type: string()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/type_asserts.erl:84:3
+   │    
+84 │ ╭ ╭   is_number(N)
+85 │ │ │     andalso is_atom(A)
+86 │ │ │     andalso {N, A}.
+   │ ╰─│──────────────────^ _ andalso _.
+Expression has type:   'false' | {number(), atom()}
+Context expected type: 'false' | {atom(), number()}
+   │   ╰──────────────────' 
+
+Because in the expression's type:
+  The type is a union type with some valid candidates: 'false'
+  However, the following candidate doesn't match:
+  { 
+    Here the type is:     number()
+    Context expects type: atom()
+  , atom()}
+
+------------------------------ Detailed message ------------------------------
+
+  'false' | {number(), atom()} is not compatible with 'false' | {atom(), number()}
+  because
+  {number(), atom()} is not compatible with 'false' | {atom(), number()}
+  because
+  at tuple index 1:
+  {number(), atom()} is not compatible with {atom(), number()}
+  because
+  number() is not compatible with atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/type_asserts.erl:92:3
+   │
+92 │   {X, A}.
+   │   ^^^^^^
+   │   │
+   │   {X, A}.
+Expression has type:   {'false' | number(), term()}
+Context expected type: {'false' | number(), number()}
+   │   
+
+Because in the expression's type:
+  { 'false' | number(), 
+    Here the type is:     term()
+    Context expects type: number()
+  }
+
+------------------------------ Detailed message ------------------------------
+
+  at tuple index 2:
+  {'false' | number(), term()} is not compatible with {'false' | number(), number()}
+  because
+  term() is not compatible with number()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/type_asserts.erl:105:39
+    │
+105 │ checked_cast1_neg(A) -> ?checked_cast(A, ok).
+    │                                       ^ A.
+Expression has type:   atom()
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/type_asserts.erl:108:25
+    │
+108 │ checked_cast2_neg(A) -> ?checked_cast(A, atom()).
+    │                         ^^^^^^^^^^^^^^^^^^^^^^^^ .. :: ...
+Expression has type:   atom()
+Context expected type: 'ok'
+
+error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
+    ┌─ check/src/type_asserts.erl:110:20
+    │
+110 │ -type invalid() :: foo:non_exist().
+    │                    ^^^^^^^^^^^^^^^ Unknown id: foo:non_exist/0
+
+error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
+    ┌─ check/src/type_asserts.erl:113:42
+    │
+113 │ checked_cast3_neg(A) -> ?checked_cast(A, foo:non_exist()).
+    │                                          ^^^^^^^^^^^^^^^ Unknown id: foo:non_exist/0
+
+error: invalid_ref_in_type_cast (See https://fb.me/eqwalizer_errors#invalid_ref_in_type_cast)
+    ┌─ check/src/type_asserts.erl:116:42
+    │
+116 │ checked_cast4_neg(A) -> ?checked_cast(A, {ok, invalid()}).
+    │                                          ^^^^^^^^^^^^^^^ type cast references type with invalid definition: invalid/0
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/type_asserts.erl:126:9
+    │
+126 │         Acc#{K => V#{ka => va}};
+    │         ^^^^^^^^^^^^^^^^^^^^^^^
+    │         │
+    │         ..#{..}.
+Expression has type:   #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}}
+Context expected type: #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}}
+    │         
+
+Because in the expression's type:
+  #{ dynamic() =>
+    Here the type is:     #{kb := ...}
+    Context expects type: #{...}
+    The expected map has no corresponding key for: kb.
+  , ... }
+
+------------------------------ Detailed message ------------------------------
+
+  #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} is not compatible with #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}}
+  because
+  #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} is not compatible with #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}}
+  the default associations are not compatible
+  because
+  #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'} is not compatible with #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}
+  because
+  #{ka := 'va', kb := 'vb', kc := 'vc'} is not compatible with #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/type_asserts.erl:129:9
+    │
+129 │         Acc#{K => V#{kb => vb}};
+    │         ^^^^^^^^^^^^^^^^^^^^^^^
+    │         │
+    │         ..#{..}.
+Expression has type:   #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}}
+Context expected type: #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}}
+    │         
+
+Because in the expression's type:
+  #{ dynamic() =>
+    Here the type is:     #{kb := ...}
+    Context expects type: #{...}
+    The expected map has no corresponding key for: kb.
+  , ... }
+
+------------------------------ Detailed message ------------------------------
+
+  #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} is not compatible with #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}}
+  because
+  #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} is not compatible with #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}}
+  the default associations are not compatible
+  because
+  #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'} is not compatible with #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}
+  because
+  #{ka := 'va', kb := 'vb', kc := 'vc'} is not compatible with #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/type_asserts.erl:132:9
+    │
+132 │         Acc#{K => V#{kc => vc}}
+    │         ^^^^^^^^^^^^^^^^^^^^^^^
+    │         │
+    │         ..#{..}.
+Expression has type:   #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}}
+Context expected type: #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}}
+    │         
+
+Because in the expression's type:
+  #{ dynamic() =>
+    Here the type is:     #{kb := ...}
+    Context expects type: #{...}
+    The expected map has no corresponding key for: kb.
+  , ... }
+
+------------------------------ Detailed message ------------------------------
+
+  #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} is not compatible with #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}}
+  because
+  #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} is not compatible with #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}}
+  the default associations are not compatible
+  because
+  #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'} is not compatible with #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}
+  because
+  #{ka := 'va', kb := 'vb', kc := 'vc'} is not compatible with #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/type_asserts.erl:156:24
+    │
+156 │ unsafe_cast1_neg(A) -> ?unchecked_cast(A, err).
+    │                        ^^^^^^^^^^^^^^^^^^^^^^^ .. :: ...
+Expression has type:   'err'
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/type_asserts.erl:159:40
+    │
+159 │ unsafe_cast2_neg(D) -> ?unchecked_cast(a + D, ok).
+    │                                        ^ 'a'.
+Expression has type:   'a'
+Context expected type: number()
+
+error: variables_in_type_cast (See https://fb.me/eqwalizer_errors#variables_in_type_cast)
+    ┌─ check/src/type_asserts.erl:163:21
+    │
+163 │   ?checked_cast(ok, A).
+    │                     ^ type variables are not allowed in type casts, found: A
+
+error: variables_in_type_cast (See https://fb.me/eqwalizer_errors#variables_in_type_cast)
+    ┌─ check/src/type_asserts.erl:167:23
+    │
+167 │   ?unchecked_cast(ok, A | B).
+    │                       ^^^^^ type variables are not allowed in type casts, found: A, B
+
+error: refined_record_in_type_cast (See https://fb.me/eqwalizer_errors#refined_record_in_type_cast)
+    ┌─ check/src/type_asserts.erl:173:22
+    │
+173 │   ?unchecked_cast(1, #rec{bad_field :: atom()}).
+    │                      ^^^^^^^^^^^^^^^^^^^^^^^^^ refined records are not allowed in type casts, found: rec
+
+19 ERRORS
