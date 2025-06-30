@@ -215,13 +215,10 @@ pub(crate) fn gen_app_data(
     let mut apps = make_app_data(path, &config.apps, false, &mut global_includes);
     let mut deps = make_app_data(path, &config.deps, true, &mut global_includes);
 
-    for app in &mut apps {
+    for app in apps.iter_mut().chain(deps.iter_mut()) {
         let mut include_path = global_includes.clone();
         include_path.extend(app.include_dirs());
         app.include_path = include_path.into_iter().collect();
-    }
-    for app in &mut deps {
-        app.include_path = app.include_dirs();
     }
     let eqwalizer_support_app = eqwalizer_support::eqwalizer_suppport_data(otp_root);
     deps.push(eqwalizer_support_app);
