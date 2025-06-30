@@ -13,12 +13,12 @@ jobs:
       fail-fast: false
       matrix:
         platform-arch: [ubuntu-22.04-x64, ubuntu-22.04-arm, macos-13-x64, macos-latest-arm]
-        otp-version: [26.2, 27.1]
+        otp-version: [26.2, 27.3]
         include:
           - otp-version: 26.2
             brew-otp-version: 26
             vscode-publish: true
-          - otp-version: 27.1
+          - otp-version: 27.3
             brew-otp-version: 27
             vscode-publish: false
           - platform-arch: ubuntu-22.04-x64
