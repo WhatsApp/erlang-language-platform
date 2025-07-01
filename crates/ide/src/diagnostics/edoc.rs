@@ -31,7 +31,6 @@ use super::Severity;
 
 const DIAGNOSTIC_CODE: DiagnosticCode = DiagnosticCode::OldEdocSyntax;
 const DIAGNOSTIC_MESSAGE: &str = "EDoc style comments are deprecated. Please use Markdown instead.";
-const DIAGNOSTIC_SEVERITY: Severity = Severity::WeakWarning;
 const CONVERT_FIX_ID: &str = "convert_to_markdown";
 const CONVERT_FIX_LABEL: &str = "Convert to Markdown";
 
@@ -137,8 +136,15 @@ fn old_edoc_syntax_diagnostic(
     let source_change = builder.finish();
     let fix = crate::fix(CONVERT_FIX_ID, CONVERT_FIX_LABEL, source_change, show_range);
     Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, show_range)
-        .with_severity(DIAGNOSTIC_SEVERITY)
+        .with_severity(severity(sema, file_id))
         .with_fixes(Some(vec![fix]))
+}
+
+fn severity(sema: &Semantic, file_id: FileId) -> Severity {
+    match sema.db.is_test_suite_or_test_helper(file_id) {
+        Some(true) => Severity::WeakWarning,
+        _ => Severity::Warning,
+    }
 }
 
 fn author_exists(author: &str, authors: &FxHashSet<String>) -> bool {
@@ -219,7 +225,7 @@ mod tests {
     %% This is some license text.
     %%%-------------------------------------------------------------------
     %% @doc This is the module documentation.
-    %% ^^^^ 💡 weak: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
     %%      With some more text.
     %%      And some more lines.
     %% @end
@@ -241,6 +247,22 @@ mod tests {
             r#"
     -module(main).
     %% @doc This is the main function documentation.
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    main() ->
+      dep().
+
+    dep() -> ok.
+        "#,
+        )
+    }
+
+    #[test]
+    fn test_function_doc_in_test_file() {
+        check_diagnostics(
+            r#"
+    //- /test/main_SUITE.erl extra:test
+    -module(main_SUITE).
+    %% @doc This is the main function documentation.
     %% ^^^^ 💡 weak: EDoc style comments are deprecated. Please use Markdown instead.
     main() ->
       dep().
@@ -258,14 +280,14 @@ mod tests {
     -export([main/0, main/2]).
 
     %% @doc This is the main function documentation.
-    %% ^^^^ 💡 weak: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
     %% @see main/2 for more information.
     -spec main() -> tuple().
     main() ->
       main([], []).
 
     %% @doc This is the main function with two arguments documentation.
-    %% ^^^^ 💡 weak: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
     -spec main(any(), any()) -> tuple().
     main(A, B) ->
       {A, B}.
@@ -282,7 +304,7 @@ mod tests {
     -export_type([my_integer/0]).
 
     %% @doc This is an incorrect type doc
-    %% ^^^^ 💡 weak: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
     -type my_integer() :: integer().
 
     -type my_integer2() :: integer().
@@ -310,7 +332,7 @@ mod tests {
     -type my_integer2() :: integer().
 
     %% @doc These are docs for the main function
-    %% ^^^^ 💡 weak: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
     -spec main(any(), any()) -> ok.
     main(A, B) ->
         dep().
@@ -328,7 +350,7 @@ mod tests {
     -export([main/0, main/2]).
 
     %% @doc This is the main function documentation.
-    %% ^^^^ 💡 weak: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
     %% @see main/2 which is a great function to look at
     %% with a very long description that goes on and on
     -spec main() -> tuple().
@@ -336,7 +358,7 @@ mod tests {
         main([], []).
 
     %% @doc This is the main function with two arguments documentation.
-    %% ^^^^ 💡 weak: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
     -spec main(any(), any()) -> tuple().
     main(A, B) ->
         {A, B}.

@@ -141,7 +141,7 @@ mod tests {
         check_diagnostics(
             r#"
      % @doc
-    %% ^^^^ 💡 weak: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
      % This is a module
      -module(main).
          "#,
