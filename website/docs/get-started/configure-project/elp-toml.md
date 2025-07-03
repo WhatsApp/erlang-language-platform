@@ -25,7 +25,7 @@ file = "my_hand_crafted_build_info.json"
 [eqwalizer]
 enable_all = true
 max_tasks = 32
-ingnore_modules = ["very_big_generated_module"]
+ignore_modules = ["very_big_generated_module"]
 
 [buck]
 enabled = false
