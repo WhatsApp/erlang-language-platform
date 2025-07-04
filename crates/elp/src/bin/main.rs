@@ -214,6 +214,7 @@ mod tests {
     use elp_project_model::DiscoverConfig;
     use elp_project_model::buck::BuckConfig;
     use elp_project_model::buck::BuckQueryConfig;
+    use elp_project_model::buck::BuildGeneratedCode;
     use elp_project_model::buck::get_prelude_cell;
     use elp_project_model::otp;
     use elp_project_model::otp::OTP_VERSION;
@@ -234,7 +235,7 @@ mod tests {
     use super::reporting::Reporter;
     use super::*;
 
-    const BUCK_QUERY_CONFIG: BuckQueryConfig = BuckQueryConfig::Original;
+    const BUCK_QUERY_CONFIG: BuckQueryConfig = BuckQueryConfig::Bxl(BuildGeneratedCode::Yes);
 
     macro_rules! args_vec {
         ($($e:expr_2021$(,)?)+) => {
