@@ -102,6 +102,8 @@ jobs:
       - name: Assemble eqwalizer binary
         working-directory: eqwalizer/eqwalizer
         run: 'native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target/scala-3.6.4/eqwalizer.jar eqwalizer'
+      - name: Ensure elp is formatted
+        run: 'cargo fmt -- --check'
       - name: Test elp
         # Do not run the tests in case of cross-compilation
         if: matrix.platform-arch != 'macos-latest-arm'
