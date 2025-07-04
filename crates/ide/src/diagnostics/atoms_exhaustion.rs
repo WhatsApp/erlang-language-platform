@@ -73,6 +73,7 @@ fn check_function(
     def: &FunctionDef,
     mfas: &[(&FunctionMatch, ())],
 ) {
+    #[rustfmt::skip]
     find_call_in_function(
         diags,
         sema,

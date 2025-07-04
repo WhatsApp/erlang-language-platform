@@ -562,6 +562,7 @@ pub fn resolve_call_target(
             let name = sema.db.lookup_atom(body[*name].as_atom()?);
             (name, arity, file_id)
         }
+        #[rustfmt::skip]
         CallTarget::Remote { module, name, .. } => {
             let module_name = sema.db.lookup_atom(body[*module].as_atom()?);
             let fn_name: Name = sema.db.lookup_atom(body[*name].as_atom()?);

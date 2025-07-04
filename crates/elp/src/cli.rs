@@ -33,9 +33,9 @@ pub trait Cli: Write + WriteColor {
 pub struct Real(StandardStream, Stderr);
 
 impl Default for Real {
-    fn default() -> Self {
+      fn default() -> Self {
         Self(
-            StandardStream::stdout(ColorChoice::Always),
+              StandardStream::stdout(ColorChoice::Always),
             std::io::stderr(),
         )
     }
