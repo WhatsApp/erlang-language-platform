@@ -108,6 +108,7 @@ mod module_mismatch;
 mod mutable_variable;
 mod no_catch;
 mod no_dialyzer_attribute;
+mod no_error_logger;
 mod no_garbage_collect;
 mod no_size;
 mod nonstandard_integer_formatting;
@@ -919,6 +920,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &no_size::DESCRIPTOR,
         &binary_string_to_sigil::DESCRIPTOR,
         &no_catch::DESCRIPTOR,
+        &no_error_logger::DESCRIPTOR,
     ]
 }
 
