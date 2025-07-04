@@ -223,6 +223,7 @@ mod tests {
     use expect_test::expect;
     use expect_test::expect_file;
     use lazy_static::lazy_static;
+    use paths::Utf8PathBuf;
     use rayon::prelude::*;
     use regex::Regex;
     use tempfile::Builder;
@@ -546,10 +547,15 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn eqwalize_app_diagnostics_match_snapshot_pretty(buck: bool) {
         if otp_supported_by_eqwalizer() {
+            let expected = if buck {
+                expect_file!("../resources/test/standard/eqwalize_app_diagnostics.pretty")
+            } else {
+                expect_file!("../resources/test/standard/eqwalize_app_diagnostics_rebar.pretty")
+            };
             simple_snapshot(
-                args_vec!["--no-buck-bxl", "eqwalize-app", "app_a",],
+                args_vec!["eqwalize-app", "app_a",],
                 "standard",
-                expect_file!("../resources/test/standard/eqwalize_app_diagnostics.pretty"),
+                expected,
                 buck,
                 None,
             );
@@ -575,11 +581,17 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_app_diagnostics_match_snapshot_pretty_gen(buck: bool) {
+        let expected = if buck {
+            expect_file!("../resources/test/standard/eqwalize_app_diagnostics_gen.pretty")
+        } else {
+            expect_file!("../resources/test/standard/eqwalize_app_diagnostics_gen_rebar.pretty")
+        };
+
         if otp_supported_by_eqwalizer() {
             simple_snapshot(
-                args_vec!["--no-buck-bxl", "eqwalize-app", "app_a",],
+                args_vec!["eqwalize-app", "app_a",],
                 "standard",
-                expect_file!("../resources/test/standard/eqwalize_app_diagnostics_gen.pretty"),
+                expected,
                 buck,
                 None,
             );
@@ -613,7 +625,7 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn parse_all_diagnostics1(buck: bool) {
         simple_snapshot_expect_error(
-            args_vec!["parse-elp", "--no-buck-bxl", "--module", "diagnostics",],
+            args_vec!["parse-elp", "--module", "diagnostics",],
             "diagnostics",
             expect_file!("../resources/test/diagnostics/parse_all_diagnostics1.stdout"),
             buck,
@@ -651,14 +663,7 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn parse_all_diagnostics_json(buck: bool) {
         simple_snapshot_expect_error(
-            args_vec![
-                "parse-elp",
-                "--no-buck-bxl",
-                "--module",
-                "diagnostics",
-                "--format",
-                "json"
-            ],
+            args_vec!["parse-elp", "--module", "diagnostics", "--format", "json"],
             "diagnostics",
             expect_file!("../resources/test/diagnostics/parse_all_diagnostics_json.stdout"),
             buck,
@@ -875,11 +880,10 @@ mod tests {
             let path_str = project_path(project);
             let args = args_vec![
                 "build-info",
-                "--no-buck-bxl",
                 "--to",
                 tmp_file.clone(),
                 "--project",
-                path_str
+                path_str.clone()
             ];
             let (stdout, stderr, code) = elp(args);
             assert_eq!(
@@ -894,66 +898,13 @@ mod tests {
             );
             assert!(tmp_file.clone().exists());
             let content = fs::read_to_string(tmp_file).unwrap();
-            expect![[r#"
-                {
-                  "apps": [
-                    {
-                      "name": "app_a",
-                      "dir": "app_a",
-                      "src_dirs": [
-                        "src"
-                      ],
-                      "extra_src_dirs": [
-                        "test"
-                      ],
-                      "include_dirs": [
-                        "include"
-                      ],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      }
-                    }
-                  ],
-                  "deps": []
-                }"#]]
-            .assert_eq(content.as_str());
-        }
-    }
 
-    #[test]
-    #[ignore]
-    fn build_info_json_buck_bxl() {
-        if cfg!(feature = "buck") {
-            let tmp_dir = make_tmp_dir();
-            let tmp_file = tmp_dir.path().join("test_build_info.json");
-            let project = "diagnostics";
-            let path_str = project_path(project);
-            let args = args_vec![
-                "build-info",
-                "--to",
-                tmp_file.clone(),
-                "--project",
-                path_str
-            ];
-            let (stdout, stderr, code) = elp(args);
-            assert_eq!(
-                code, 0,
-                "failed with unexpected exit code: got {} not {}\nstdout:\n{}\nstderr:\n{}",
-                code, 0, stdout, stderr
-            );
-            assert!(
-                stderr.is_empty(),
-                "expected stderr to be empty, got:\n{}",
-                stderr
-            );
-            assert!(tmp_file.clone().exists());
-            let content = fs::read_to_string(tmp_file).unwrap();
             let mut buck_config = BuckConfig::default();
-            buck_config.buck_root = Some(AbsPathBuf::assert_utf8(current_dir().unwrap()));
-            let prelude_cell = get_prelude_cell(&buck_config).expect("could not get prelude");
-            let prelude_cell = prelude_cell.strip_prefix("/").unwrap();
-            let content = content.replace(prelude_cell, "/[prelude]/");
+
+            let abs = fs::canonicalize(path_str).unwrap();
+            buck_config.buck_root =
+                Some(AbsPathBuf::assert(Utf8PathBuf::from_path_buf(abs).unwrap()));
+            let content = normalise_prelude_path(content, buck_config);
             expect![[r#"
                 {
                   "apps": [
@@ -965,10 +916,7 @@ mod tests {
                       ],
                       "extra_src_dirs": [],
                       "include_dirs": [],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      }
+                      "macros": {}
                     },
                     {
                       "name": "diagnostics_app_a",
@@ -1008,10 +956,7 @@ mod tests {
                       "include_dirs": [
                         "include"
                       ],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      }
+                      "macros": {}
                     },
                     {
                       "name": "cth_hooks",
@@ -1023,10 +968,7 @@ mod tests {
                       "include_dirs": [
                         ""
                       ],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      }
+                      "macros": {}
                     },
                     {
                       "name": "buck2_shell_utils",
@@ -1036,10 +978,7 @@ mod tests {
                       ],
                       "extra_src_dirs": [],
                       "include_dirs": [],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      }
+                      "macros": {}
                     },
                     {
                       "name": "test_binary",
@@ -1049,10 +988,7 @@ mod tests {
                       ],
                       "extra_src_dirs": [],
                       "include_dirs": [],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      }
+                      "macros": {}
                     },
                     {
                       "name": "test_cli_lib",
@@ -1062,16 +998,162 @@ mod tests {
                       ],
                       "extra_src_dirs": [],
                       "include_dirs": [],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      }
+                      "macros": {}
                     }
                   ],
                   "deps": []
                 }"#]]
             .assert_eq(content.as_str());
         }
+    }
+
+    #[test]
+    #[ignore]
+    fn build_info_json_buck_bxl() {
+        if cfg!(feature = "buck") {
+            let tmp_dir = make_tmp_dir();
+            let tmp_file = tmp_dir.path().join("test_build_info.json");
+            let project = "diagnostics";
+            let path_str = project_path(project);
+            let args = args_vec![
+                "build-info",
+                "--to",
+                tmp_file.clone(),
+                "--project",
+                path_str.clone()
+            ];
+            let (stdout, stderr, code) = elp(args);
+            assert_eq!(
+                code, 0,
+                "failed with unexpected exit code: got {} not {}\nstdout:\n{}\nstderr:\n{}",
+                code, 0, stdout, stderr
+            );
+            assert!(
+                stderr.is_empty(),
+                "expected stderr to be empty, got:\n{}",
+                stderr
+            );
+            assert!(tmp_file.clone().exists());
+            let content = fs::read_to_string(tmp_file).unwrap();
+            let mut buck_config = BuckConfig::default();
+            buck_config.buck_root = Some(AbsPathBuf::assert_utf8(current_dir().unwrap()));
+            let prelude_cell = get_prelude_cell(&buck_config).expect("could not get prelude");
+            let prelude_cell = prelude_cell.strip_prefix("/").unwrap();
+            let content = content.replace(prelude_cell, "/[prelude]/");
+
+            let mut buck_config = BuckConfig::default();
+
+            let abs = fs::canonicalize(path_str).unwrap();
+            buck_config.buck_root =
+                Some(AbsPathBuf::assert(Utf8PathBuf::from_path_buf(abs).unwrap()));
+            let content = normalise_prelude_path(content, buck_config);
+
+            expect![[r#"
+                {
+                  "apps": [
+                    {
+                      "name": "test_exec",
+                      "dir": "/[prelude]//erlang/common_test/test_exec/src",
+                      "src_dirs": [
+                        ""
+                      ],
+                      "extra_src_dirs": [],
+                      "include_dirs": [],
+                      "macros": {}
+                    },
+                    {
+                      "name": "diagnostics_app_a",
+                      "dir": "app_a",
+                      "src_dirs": [
+                        "src"
+                      ],
+                      "extra_src_dirs": [],
+                      "include_dirs": [
+                        "include"
+                      ],
+                      "macros": {
+                        "COMMON_TEST": "true",
+                        "TEST": "true"
+                      }
+                    },
+                    {
+                      "name": "app_a_SUITE",
+                      "dir": "app_a/test",
+                      "src_dirs": [],
+                      "extra_src_dirs": [
+                        ""
+                      ],
+                      "include_dirs": [],
+                      "macros": {
+                        "COMMON_TEST": "true",
+                        "TEST": "true"
+                      }
+                    },
+                    {
+                      "name": "common",
+                      "dir": "/[prelude]//erlang/common_test/common",
+                      "src_dirs": [
+                        "src"
+                      ],
+                      "extra_src_dirs": [],
+                      "include_dirs": [
+                        "include"
+                      ],
+                      "macros": {}
+                    },
+                    {
+                      "name": "cth_hooks",
+                      "dir": "/[prelude]//erlang/common_test/cth_hooks/src",
+                      "src_dirs": [
+                        ""
+                      ],
+                      "extra_src_dirs": [],
+                      "include_dirs": [
+                        ""
+                      ],
+                      "macros": {}
+                    },
+                    {
+                      "name": "buck2_shell_utils",
+                      "dir": "/[prelude]//erlang/shell/src",
+                      "src_dirs": [
+                        ""
+                      ],
+                      "extra_src_dirs": [],
+                      "include_dirs": [],
+                      "macros": {}
+                    },
+                    {
+                      "name": "test_binary",
+                      "dir": "/[prelude]//erlang/common_test/test_binary/src",
+                      "src_dirs": [
+                        ""
+                      ],
+                      "extra_src_dirs": [],
+                      "include_dirs": [],
+                      "macros": {}
+                    },
+                    {
+                      "name": "test_cli_lib",
+                      "dir": "/[prelude]//erlang/common_test/test_cli_lib/src",
+                      "src_dirs": [
+                        ""
+                      ],
+                      "extra_src_dirs": [],
+                      "include_dirs": [],
+                      "macros": {}
+                    }
+                  ],
+                  "deps": []
+                }"#]]
+            .assert_eq(content.as_str());
+        }
+    }
+
+    fn normalise_prelude_path(content: String, buck_config: BuckConfig) -> String {
+        let prelude_cell = get_prelude_cell(&buck_config).expect("could not get prelude");
+        let prelude_cell = prelude_cell.strip_prefix("/").unwrap();
+        content.replace(prelude_cell, "/[prelude]/")
     }
 
     #[test]

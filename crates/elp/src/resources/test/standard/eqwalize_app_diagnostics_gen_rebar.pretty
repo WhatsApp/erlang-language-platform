@@ -112,6 +112,14 @@ Because in the expression's type:
   #{c := #{d := pid(), e := pid()}} is not compatible with #{c := id(#{d := atom(), e := atom()})}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ app_a/test/app_a_SUITE.erl:18:5
+   │
+18 │     app_a_test_helpers:fail().
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^ app_a_test_helpers:fail().
+Expression has type:   'error'
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
   ┌─ app_a/src/app_a_errors_generated.erl:8:10
   │
 8 │ foo() -> wrong_ret.
@@ -214,4 +222,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'an_atom'
 Context expected type: number()
 
-17 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+  ┌─ app_a/test/app_a_test_helpers.erl:6:11
+  │
+6 │ fail() -> wrong_ret.
+  │           ^^^^^^^^^ 'wrong_ret'.
+Expression has type:   'wrong_ret'
+Context expected type: 'error'
+
+19 ERRORS
