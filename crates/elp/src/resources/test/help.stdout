@@ -1,11 +1,10 @@
-Usage: [--log-file LOG_FILE] [--erl ERL] [--escript ESCRIPT] [--no-log-buffering] [--no-buck-bxl] [--buck-generated] [--no-buck-generated] [COMMAND ...]
+Usage: [--log-file LOG_FILE] [--erl ERL] [--escript ESCRIPT] [--no-log-buffering] [--buck-generated] [--no-buck-generated] [COMMAND ...]
 
 Available options:
         --log-file <LOG_FILE>
         --erl <ERL>
         --escript <ESCRIPT>
         --no-log-buffering
-        --no-buck-bxl          Do not use BXL when querying for a buck project model
         --buck-generated       When using buck, invoke a build step for generated files.
         --no-buck-generated    When using buck, do not invoke a build step for generated files.
     -h, --help                 Prints help information

@@ -899,143 +899,6 @@ mod tests {
             );
             assert!(tmp_file.clone().exists());
             let content = fs::read_to_string(tmp_file).unwrap();
-
-            let mut buck_config = BuckConfig::default();
-
-            let abs = fs::canonicalize(path_str).unwrap();
-            buck_config.buck_root =
-                Some(AbsPathBuf::assert(Utf8PathBuf::from_path_buf(abs).unwrap()));
-            let content = normalise_prelude_path(content, buck_config);
-            expect![[r#"
-                {
-                  "apps": [
-                    {
-                      "name": "test_exec",
-                      "dir": "/[prelude]//erlang/common_test/test_exec/src",
-                      "src_dirs": [
-                        ""
-                      ],
-                      "extra_src_dirs": [],
-                      "include_dirs": [],
-                      "macros": {}
-                    },
-                    {
-                      "name": "diagnostics_app_a",
-                      "dir": "app_a",
-                      "src_dirs": [
-                        "src"
-                      ],
-                      "extra_src_dirs": [],
-                      "include_dirs": [
-                        "include"
-                      ],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      }
-                    },
-                    {
-                      "name": "app_a_SUITE",
-                      "dir": "app_a/test",
-                      "src_dirs": [],
-                      "extra_src_dirs": [
-                        ""
-                      ],
-                      "include_dirs": [],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      }
-                    },
-                    {
-                      "name": "common",
-                      "dir": "/[prelude]//erlang/common_test/common",
-                      "src_dirs": [
-                        "src"
-                      ],
-                      "extra_src_dirs": [],
-                      "include_dirs": [
-                        "include"
-                      ],
-                      "macros": {}
-                    },
-                    {
-                      "name": "cth_hooks",
-                      "dir": "/[prelude]//erlang/common_test/cth_hooks/src",
-                      "src_dirs": [
-                        ""
-                      ],
-                      "extra_src_dirs": [],
-                      "include_dirs": [
-                        ""
-                      ],
-                      "macros": {}
-                    },
-                    {
-                      "name": "buck2_shell_utils",
-                      "dir": "/[prelude]//erlang/shell/src",
-                      "src_dirs": [
-                        ""
-                      ],
-                      "extra_src_dirs": [],
-                      "include_dirs": [],
-                      "macros": {}
-                    },
-                    {
-                      "name": "test_binary",
-                      "dir": "/[prelude]//erlang/common_test/test_binary/src",
-                      "src_dirs": [
-                        ""
-                      ],
-                      "extra_src_dirs": [],
-                      "include_dirs": [],
-                      "macros": {}
-                    },
-                    {
-                      "name": "test_cli_lib",
-                      "dir": "/[prelude]//erlang/common_test/test_cli_lib/src",
-                      "src_dirs": [
-                        ""
-                      ],
-                      "extra_src_dirs": [],
-                      "include_dirs": [],
-                      "macros": {}
-                    }
-                  ],
-                  "deps": []
-                }"#]]
-            .assert_eq(content.as_str());
-        }
-    }
-
-    #[test]
-    #[ignore]
-    fn build_info_json_buck_bxl() {
-        if cfg!(feature = "buck") {
-            let tmp_dir = make_tmp_dir();
-            let tmp_file = tmp_dir.path().join("test_build_info.json");
-            let project = "diagnostics";
-            let path_str = project_path(project);
-            let args = args_vec![
-                "build-info",
-                "--to",
-                tmp_file.clone(),
-                "--project",
-                path_str.clone()
-            ];
-            let (stdout, stderr, code) = elp(args);
-            assert_eq!(
-                code, 0,
-                "failed with unexpected exit code: got {} not {}\nstdout:\n{}\nstderr:\n{}",
-                code, 0, stdout, stderr
-            );
-            assert!(
-                stderr.is_empty(),
-                "expected stderr to be empty, got:\n{}",
-                stderr
-            );
-            assert!(tmp_file.clone().exists());
-            let content = fs::read_to_string(tmp_file).unwrap();
             let mut buck_config = BuckConfig::default();
             buck_config.buck_root = Some(AbsPathBuf::assert_utf8(current_dir().unwrap()));
             let prelude_cell = get_prelude_cell(&buck_config).expect("could not get prelude");
@@ -1167,7 +1030,6 @@ mod tests {
             let path_str = project_path(project);
             let args = args_vec![
                 "build-info",
-                "--buck-generated",
                 "--to",
                 tmp_file.clone(),
                 "--project",
@@ -1967,7 +1829,7 @@ mod tests {
     fn lint_resolves_generated_includes() {
         if cfg!(feature = "buck") {
             simple_snapshot_expect_error(
-                args_vec!["lint", "--buck-generated"],
+                args_vec!["lint"],
                 "buck_tests_2",
                 expect_file!("../resources/test/buck_tests_2/resolves_generated_includes.stdout"),
                 true,

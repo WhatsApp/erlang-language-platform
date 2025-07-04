@@ -400,10 +400,8 @@ pub struct Args {
     pub escript: Option<PathBuf>,
     pub no_log_buffering: bool,
 
-    /// Do not use BXL when querying for a buck project model
-    pub no_buck_bxl: bool,
-
     /// When using buck, invoke a build step for generated files.
+    #[allow(dead_code)] // Until T208401551 done
     pub buck_generated: bool,
 
     /// When using buck, do not invoke a build step for generated files.
@@ -415,11 +413,7 @@ pub struct Args {
 
 impl Args {
     pub fn query_config(&self) -> BuckQueryConfig {
-        if self.buck_generated {
-            BuckQueryConfig::Bxl(BuildGeneratedCode::Yes)
-        } else if self.no_buck_bxl {
-            BuckQueryConfig::Original
-        } else if self.no_buck_generated {
+        if self.no_buck_generated {
             BuckQueryConfig::Bxl(BuildGeneratedCode::No)
         } else {
             BuckQueryConfig::Bxl(BuildGeneratedCode::Yes)
