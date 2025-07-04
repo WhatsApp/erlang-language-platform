@@ -471,11 +471,11 @@ foo() -> main:bar().
             -export([loop/0]).
 
             loop() ->
-              timer:sleep(1_000),
+              my_timer:sleep(1_000),
               ?MODULE:loop().
 
-            //- /src/timer.erl
-            -module(timer).
+            //- /src/my_timer.erl
+            -module(my_timer).
             -export([sleep/1]).
             sleep(X) -> X.
             "#,
