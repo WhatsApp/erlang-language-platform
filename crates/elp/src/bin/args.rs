@@ -18,7 +18,6 @@ use bpaf::Parser;
 use bpaf::construct;
 use bpaf::long;
 use elp_project_model::buck::BuckQueryConfig;
-use elp_project_model::buck::BuildGeneratedCode;
 use itertools::Itertools;
 use serde::Deserialize;
 
@@ -414,9 +413,9 @@ pub struct Args {
 impl Args {
     pub fn query_config(&self) -> BuckQueryConfig {
         if self.no_buck_generated {
-            BuckQueryConfig::Bxl(BuildGeneratedCode::No)
+            BuckQueryConfig::NoBuildGeneratedCode
         } else {
-            BuckQueryConfig::Bxl(BuildGeneratedCode::Yes)
+            BuckQueryConfig::BuildGeneratedCode
         }
     }
 }

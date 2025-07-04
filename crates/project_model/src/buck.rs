@@ -170,9 +170,8 @@ impl BuckProject {
         anyhow::Error,
     > {
         let _timer = timeit_with_telemetry!("BuckProject::load_from_config");
-        let (otp_root, project_app_data, project, include_mapping) = match query_config {
-            BuckQueryConfig::Bxl(build) => load_from_config_bxl(buck_conf, build, report_progress)?,
-        };
+        let (otp_root, project_app_data, project, include_mapping) =
+            load_from_config_bxl(buck_conf, query_config, report_progress)?;
         Ok((project, project_app_data, otp_root, include_mapping))
     }
 
@@ -183,7 +182,7 @@ impl BuckProject {
 
 fn load_from_config_bxl(
     buck_conf: &BuckConfig,
-    build: &BuildGeneratedCode,
+    build: &BuckQueryConfig,
     report_progress: &impl Fn(&str),
 ) -> Result<
     (
@@ -345,7 +344,7 @@ pub enum TargetType {
 
 fn load_buck_targets_bxl(
     buck_config: &BuckConfig,
-    build: &BuildGeneratedCode,
+    build: &BuckQueryConfig,
     report_progress: &impl Fn(&str),
 ) -> Result<TargetInfo> {
     let _timer = timeit!("loading info from buck");
@@ -359,11 +358,13 @@ fn load_buck_targets_bxl(
     };
 
     match build {
-        BuildGeneratedCode::Yes => report_progress("Querying and generating buck targets"),
-        BuildGeneratedCode::No => report_progress("Querying buck targets"),
+        BuckQueryConfig::BuildGeneratedCode => {
+            report_progress("Querying and generating buck targets")
+        }
+        BuckQueryConfig::NoBuildGeneratedCode => report_progress("Querying buck targets"),
     }
 
-    let buck_targets = query_buck_targets(buck_config, &BuckQueryConfig::Bxl(*build))?;
+    let buck_targets = query_buck_targets(buck_config, build)?;
 
     report_progress("Making target info");
     let mut target_info = TargetInfo::default();
@@ -526,13 +527,8 @@ fn find_root(buck_config: &BuckConfig) -> Result<AbsPathBuf> {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum BuckQueryConfig {
-    Bxl(BuildGeneratedCode),
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum BuildGeneratedCode {
-    Yes,
-    No,
+    BuildGeneratedCode,
+    NoBuildGeneratedCode,
 }
 
 fn query_buck_targets(
@@ -540,7 +536,7 @@ fn query_buck_targets(
     query_config: &BuckQueryConfig,
 ) -> Result<FxHashMap<TargetFullName, BuckTarget>> {
     let _timer = timeit!("load buck targets");
-    let result = query_buck_targets_raw(buck_config, query_config)?;
+    let result = query_buck_targets_bxl(buck_config, query_config)?;
 
     let result = result
         .into_iter()
@@ -561,18 +557,9 @@ fn query_buck_targets(
     Ok(result)
 }
 
-pub fn query_buck_targets_raw(
+pub fn query_buck_targets_bxl(
     buck_config: &BuckConfig,
-    query_config: &BuckQueryConfig,
-) -> Result<FxHashMap<String, BuckTarget>> {
-    match query_config {
-        BuckQueryConfig::Bxl(build) => query_buck_targets_bxl(buck_config, build),
-    }
-}
-
-fn query_buck_targets_bxl(
-    buck_config: &BuckConfig,
-    build: &BuildGeneratedCode,
+    build: &BuckQueryConfig,
 ) -> Result<FxHashMap<String, BuckTarget>> {
     let mut targets = Vec::default();
     for target in &buck_config.included_targets {
@@ -583,7 +570,7 @@ fn query_buck_targets_bxl(
         targets.push("--deps_targets");
         targets.push(deps_target);
     }
-    let build_args = if build == &BuildGeneratedCode::Yes {
+    let build_args = if build == &BuckQueryConfig::BuildGeneratedCode {
         vec!["--build_generated_code", "true"]
     } else {
         vec![]

@@ -22,7 +22,6 @@ use elp_ide::elp_ide_assists::AssistConfig;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::helpers::SnippetCap;
 use elp_project_model::buck::BuckQueryConfig;
-use elp_project_model::buck::BuildGeneratedCode;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use lsp_types::ClientCapabilities;
@@ -369,7 +368,7 @@ impl Config {
     }
 
     pub fn buck_query(&self) -> BuckQueryConfig {
-        BuckQueryConfig::Bxl(BuildGeneratedCode::Yes)
+        BuckQueryConfig::BuildGeneratedCode
     }
 
     pub fn set_eqwalizer_all(&mut self, value: bool) {

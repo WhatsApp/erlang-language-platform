@@ -26,7 +26,6 @@ use elp_project_model::ProjectAppData;
 use elp_project_model::ProjectBuildData;
 use elp_project_model::ProjectManifest;
 use elp_project_model::buck::BuckQueryConfig;
-use elp_project_model::buck::BuildGeneratedCode;
 use elp_project_model::json::JsonConfig;
 use elp_project_model::otp::OTP_ERLANG_APP;
 use elp_project_model::otp::OTP_ERLANG_MODULE;
@@ -297,7 +296,7 @@ impl ChangeFixture {
             let loaded_project = Project::load(
                 &manifest,
                 elp_config.eqwalizer,
-                &BuckQueryConfig::Bxl(BuildGeneratedCode::Yes),
+                &BuckQueryConfig::BuildGeneratedCode,
                 &|_| {},
             )
             .unwrap();

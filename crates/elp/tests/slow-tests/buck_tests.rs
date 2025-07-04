@@ -23,11 +23,10 @@ mod tests {
     use elp_project_model::ProjectAppData;
     use elp_project_model::ProjectManifest;
     use elp_project_model::buck::BuckQueryConfig;
-    use elp_project_model::buck::BuildGeneratedCode;
     use elp_project_model::to_abs_path_buf;
     use itertools::Itertools;
 
-    const BUCK_QUERY_CONFIG: BuckQueryConfig = BuckQueryConfig::Bxl(BuildGeneratedCode::Yes);
+    const BUCK_QUERY_CONFIG: BuckQueryConfig = BuckQueryConfig::BuildGeneratedCode;
 
     #[test]
     #[ignore]
