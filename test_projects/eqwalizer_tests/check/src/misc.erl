@@ -1012,3 +1012,13 @@ non_exported_id(F) -> F.
 
 -spec mk_map() -> #{'' => ''}.
 mk_map() -> #{'' => ''}.
+
+-spec assert(binary() | undefined) -> binary().
+assert(Arg) ->
+    (fun() ->
+        case Arg of
+            undefined -> throw({error, undefined});
+            _ -> ok
+        end
+    end)(),
+    Arg.
