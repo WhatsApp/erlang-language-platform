@@ -1,4 +1,4 @@
-Usage: [--project PROJECT] [--as PROFILE] [--rebar] [--bail-on-error] <APP>
+Usage: [--project PROJECT] [--as PROFILE] [--include-tests] [--rebar] [--bail-on-error] <APP>
 
 Available positional items:
     <APP>  app name
@@ -6,6 +6,7 @@ Available positional items:
 Available options:
         --project <PROJECT>  Path to directory with project, or to a JSON file (defaults to `.`)
         --as <PROFILE>       Rebar3 profile to pickup (default is test)
+        --include-tests      Also eqwalize test modules from project
         --rebar              Run with rebar
         --bail-on-error      Exit with a non-zero status code if any errors are found
     -h, --help               Prints help information

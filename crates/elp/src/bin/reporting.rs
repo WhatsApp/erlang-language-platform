@@ -225,7 +225,8 @@ impl Reporter for JsonReporter<'_> {
         diagnostics: &[EqwalizerDiagnostic],
     ) -> Result<()> {
         let line_index = self.analysis.line_index(file_id)?;
-        let eqwalizer_enabled = self.analysis.is_eqwalizer_enabled(file_id).unwrap();
+        // Pass include_Tests = false so that errors for tests files that are not opted-in are tagged as arc_types::Severity::Disabled
+        let eqwalizer_enabled = self.analysis.is_eqwalizer_enabled(file_id, false).unwrap();
         let file_path = &self.loaded.vfs.file_path(file_id);
         let root_path = &self
             .analysis

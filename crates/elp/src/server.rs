@@ -1871,7 +1871,7 @@ impl Server {
             };
 
             for (_, _, file_id) in module_index.iter_own() {
-                match snapshot.analysis.should_eqwalize(file_id) {
+                match snapshot.analysis.should_eqwalize(file_id, false) {
                     Ok(true) => {
                         files.push(file_id);
                     }

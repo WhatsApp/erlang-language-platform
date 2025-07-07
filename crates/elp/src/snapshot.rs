@@ -170,7 +170,7 @@ impl Snapshot {
     ) -> Result<()> {
         let _ = self.analysis.def_map(file_id)?;
         if optimize_for_eqwalizer {
-            let should_eqwalize = self.analysis.should_eqwalize(file_id)?;
+            let should_eqwalize = self.analysis.should_eqwalize(file_id, false)?;
             if should_eqwalize {
                 let _ = self.analysis.module_ast(file_id)?;
             }
@@ -219,7 +219,7 @@ impl Snapshot {
         let file_ids: Vec<FileId> = module_index
             .iter_own()
             .filter_map(|(_, _, file_id)| {
-                if let Ok(true) = self.analysis.should_eqwalize(file_id) {
+                if let Ok(true) = self.analysis.should_eqwalize(file_id, false) {
                     Some(file_id)
                 } else {
                     None

@@ -177,7 +177,10 @@ pub fn do_eqwalize_all(
         .par_bridge()
         .progress_with(pb.clone())
         .map_with(analysis.clone(), |analysis, (name, _source, file_id)| {
-            if analysis.should_eqwalize(file_id).unwrap() && !otp_file_to_ignore(analysis, file_id)
+            if analysis
+                .should_eqwalize(file_id, args.include_tests)
+                .unwrap()
+                && !otp_file_to_ignore(analysis, file_id)
             {
                 if args.stats {
                     add_stat(name.to_string());
@@ -253,7 +256,9 @@ pub fn do_eqwalize_app(
         .iter_own()
         .filter_map(|(_name, _source, file_id)| {
             if analysis.file_app_name(file_id).ok()? == Some(AppName(args.app.clone()))
-                && analysis.should_eqwalize(file_id).unwrap()
+                && analysis
+                    .should_eqwalize(file_id, args.include_tests)
+                    .unwrap()
                 && !otp_file_to_ignore(analysis, file_id)
             {
                 Some(file_id)
@@ -319,7 +324,9 @@ pub fn eqwalize_target(
                 let vfs_path = VfsPath::from(src.clone());
                 if let Some((file_id, _)) = loaded.vfs.file_id(&vfs_path) {
                     at_least_one_found = true;
-                    if analysis.should_eqwalize(file_id).unwrap()
+                    if analysis
+                        .should_eqwalize(file_id, args.include_tests)
+                        .unwrap()
                         && !otp_file_to_ignore(analysis, file_id)
                     {
                         file_ids.push(file_id);
@@ -384,7 +391,9 @@ pub fn eqwalize_stats(
         .par_bridge()
         .progress_with(pb.clone())
         .map_with(analysis.clone(), |analysis, (name, _source, file_id)| {
-            if analysis.should_eqwalize(file_id).expect("cancelled")
+            if analysis
+                .should_eqwalize(file_id, args.include_tests)
+                .expect("cancelled")
                 && !otp_file_to_ignore(analysis, file_id)
             {
                 analysis

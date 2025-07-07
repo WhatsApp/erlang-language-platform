@@ -155,9 +155,10 @@ impl ShellCommand {
                 }
                 "eqwalize-app" => {
                     let include_generated = options.contains(&"--include-generated");
+                    let include_tests = options.contains(&"--include-tests");
                     if let Some(other) = options
                         .into_iter()
-                        .find(|&opt| opt != "--include-generated")
+                        .find(|&opt| opt != "--include-generated" && opt != "--include-tests")
                     {
                         return Err(ShellError::UnexpectedOption(
                             "eqwalize-app".into(),
@@ -174,6 +175,7 @@ impl ShellCommand {
                             rebar,
                             app: app.into(),
                             include_generated,
+                            include_tests,
                             bail_on_error: false,
                         })));
                     }
@@ -181,9 +183,10 @@ impl ShellCommand {
                 }
                 "eqwalize-all" => {
                     let include_generated = options.contains(&"--include-generated");
+                    let include_tests = options.contains(&"--include-tests");
                     if let Some(other) = options
                         .into_iter()
-                        .find(|&opt| opt != "--include-generated")
+                        .find(|&opt| opt != "--include-generated" && opt != "--include-tests")
                     {
                         return Err(ShellError::UnexpectedOption(
                             "eqwalize-all".into(),
@@ -199,6 +202,7 @@ impl ShellCommand {
                         rebar,
                         format: None,
                         include_generated,
+                        include_tests,
                         bail_on_error: false,
                         stats: false,
                         list_modules: false,
@@ -220,8 +224,10 @@ COMMANDS:
     eqwalize <modules>         Eqwalize specified modules
         --clause-coverage      Use experimental clause coverage checker
     eqwalize-all               Eqwalize all modules in the current project
+        --include-tests        Also eqwalize test modules from project
         --clause-coverage      Use experimental clause coverage checker
     eqwalize-app <app>         Eqwalize all modules in specified application
+        --include-tests        Also eqwalize test modules from project
         --clause-coverage      Use experimental clause coverage checker
 ";
 
