@@ -632,8 +632,8 @@ impl CallTarget<ExprId> {
         match self {
             CallTarget::Local { name: _ } => false,
             CallTarget::Remote { module, name, .. } => {
-                sema.is_atom_named(&in_clause[*module], module_name)
-                    && sema.is_atom_named(&in_clause[*name], fun_name)
+                sema.is_atom_named(&in_clause[*module], &module_name)
+                    && sema.is_atom_named(&in_clause[*name], &fun_name)
             }
         }
     }

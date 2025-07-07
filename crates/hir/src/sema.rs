@@ -1089,9 +1089,9 @@ impl Semantic<'_> {
         )
     }
 
-    pub fn is_atom_named(&self, expr: &Expr, known_atom: crate::Name) -> bool {
+    pub fn is_atom_named(&self, expr: &Expr, known_atom: &Name) -> bool {
         match expr {
-            Expr::Literal(Literal::Atom(atom)) => self.db.lookup_atom(*atom) == known_atom,
+            Expr::Literal(Literal::Atom(atom)) => &self.db.lookup_atom(*atom) == known_atom,
             _ => false,
         }
     }

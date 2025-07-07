@@ -141,18 +141,19 @@ fn is_automatically_added(sema: &Semantic, module: Module, function: &Expr, arit
         .next()
         .is_some();
 
-    let function_name_is_behaviour_info: bool = sema.is_atom_named(function, known::behaviour_info)
-        || sema.is_atom_named(function, known::behavior_info);
+    let function_name_is_behaviour_info: bool = sema
+        .is_atom_named(function, &known::behaviour_info)
+        || sema.is_atom_named(function, &known::behavior_info);
 
     function_name_is_behaviour_info && arity == 1 && module_has_callbacks_defined
 }
 
 fn in_exclusion_list(sema: &Semantic, module: &Expr, function: &Expr, arity: u32) -> bool {
-    sema.is_atom_named(function, known::module_info) && (arity == 0 || arity == 1)
-        || sema.is_atom_named(module, known::graphql_scanner)
-        || sema.is_atom_named(module, known::graphql_parser)
-        || sema.is_atom_named(module, known::thrift_scanner)
-        || sema.is_atom_named(module, known::thrift_parser)
+    sema.is_atom_named(function, &known::module_info) && (arity == 0 || arity == 1)
+        || sema.is_atom_named(module, &known::graphql_scanner)
+        || sema.is_atom_named(module, &known::graphql_parser)
+        || sema.is_atom_named(module, &known::thrift_scanner)
+        || sema.is_atom_named(module, &known::thrift_parser)
 }
 
 fn make_diagnostic(
