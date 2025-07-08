@@ -300,11 +300,11 @@ pub struct BuckTarget {
 }
 
 impl BuckTarget {
-    fn name(&self) -> String {
+    fn name(&self) -> AppName {
         if let Some(name) = self.app_name.clone() {
-            name
+            AppName(name)
         } else {
-            self.name.clone()
+            AppName(self.name.clone())
         }
     }
 }
@@ -313,7 +313,7 @@ impl BuckTarget {
 pub struct Target {
     // full-name, like cell//path/to/target/...
     pub name: TargetFullName,
-    pub app_name: String,
+    pub app_name: AppName,
     pub dir: AbsPathBuf,
     pub src_files: Vec<AbsPathBuf>,
     pub include_files: Vec<AbsPathBuf>,
@@ -772,14 +772,18 @@ fn targets_to_project_data_bxl(
     for target in targets.values() {
         target.include_files.iter().for_each(|inc: &AbsPathBuf| {
             let include_path = include_path_from_file(inc);
-            update_mapping_from_path(&target.app_name, include_path, &mut include_mapping);
+            update_mapping_from_path(&target.app_name.0, include_path, &mut include_mapping);
         });
 
         if target.private_header {
             target.src_files.iter().for_each(|path: &AbsPathBuf| {
                 if Some("hrl") == path.extension() {
                     let include_path = include_path_from_file(path);
-                    update_mapping_from_path(&target.app_name, include_path, &mut include_mapping);
+                    update_mapping_from_path(
+                        &target.app_name.0,
+                        include_path,
+                        &mut include_mapping,
+                    );
                 }
             });
         }
@@ -836,7 +840,7 @@ fn targets_to_project_data_bxl(
             ),
         };
         let project_app_data = ProjectAppData {
-            name: AppName(target.app_name.clone()),
+            name: target.app_name.clone(),
             dir: target.dir.clone(),
             ebin: None,
             extra_src_dirs: extra_src_dirs.into_iter().collect(),
