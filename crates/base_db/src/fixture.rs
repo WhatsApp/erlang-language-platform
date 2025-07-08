@@ -666,7 +666,9 @@ bar() -> ?FOO.
                                 max_tasks: 4,
                             },
                             include_mapping: Some(
-                                {},
+                                IncludeMapping {
+                                    includes: {},
+                                },
                             ),
                         },
                         ProjectId(
@@ -701,7 +703,9 @@ bar() -> ?FOO.
                                 max_tasks: 4,
                             },
                             include_mapping: Some(
-                                {},
+                                IncludeMapping {
+                                    includes: {},
+                                },
                             ),
                         },
                     },
@@ -830,7 +834,9 @@ foo() -> ?BAR.
                                 max_tasks: 4,
                             },
                             include_mapping: Some(
-                                {},
+                                IncludeMapping {
+                                    includes: {},
+                                },
                             ),
                         },
                         ProjectId(
@@ -855,7 +861,9 @@ foo() -> ?BAR.
                                 max_tasks: 4,
                             },
                             include_mapping: Some(
-                                {},
+                                IncludeMapping {
+                                    includes: {},
+                                },
                             ),
                         },
                     },

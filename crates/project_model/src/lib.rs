@@ -691,7 +691,7 @@ impl Project {
             project_build_data: ProjectBuildData::Otp,
             project_apps,
             eqwalizer_config: EqwalizerConfig::default(),
-            include_mapping: Arc::new(FxHashMap::default()),
+            include_mapping: Arc::new(IncludeMapping::default()),
         }
     }
 
@@ -701,7 +701,7 @@ impl Project {
             project_build_data: ProjectBuildData::Rebar(Default::default()),
             project_apps: Vec::default(),
             eqwalizer_config: EqwalizerConfig::default(),
-            include_mapping: Arc::new(FxHashMap::default()),
+            include_mapping: Arc::new(IncludeMapping::default()),
         }
     }
 
@@ -998,7 +998,7 @@ impl Project {
                     ProjectBuildData::Rebar(rebar_project),
                     apps,
                     otp_root,
-                    Arc::new(FxHashMap::default()),
+                    Arc::new(IncludeMapping::default()),
                 )
             }
             ProjectManifest::TomlBuck(buck) => {
@@ -1022,7 +1022,7 @@ impl Project {
                     ProjectBuildData::Static(project),
                     apps,
                     otp_root,
-                    Arc::new(FxHashMap::default()),
+                    Arc::new(IncludeMapping::default()),
                 )
             }
             ProjectManifest::NoManifest(config) => {
@@ -1038,7 +1038,7 @@ impl Project {
                     ProjectBuildData::Static(project),
                     apps,
                     otp_root,
-                    Arc::new(FxHashMap::default()),
+                    Arc::new(IncludeMapping::default()),
                 )
             }
         };

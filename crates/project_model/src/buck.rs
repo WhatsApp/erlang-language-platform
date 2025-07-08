@@ -155,7 +155,20 @@ pub struct BuckProject {
     pub buck_conf: BuckConfig,
 }
 
-pub type IncludeMapping = FxHashMap<SmolStr, AbsPathBuf>;
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
+pub struct IncludeMapping {
+    includes: FxHashMap<SmolStr, AbsPathBuf>,
+}
+
+impl IncludeMapping {
+    pub fn get(&self, path: &SmolStr) -> Option<&AbsPathBuf> {
+        self.includes.get(path)
+    }
+
+    pub fn insert(&mut self, path: SmolStr, abs_path: AbsPathBuf) -> Option<AbsPathBuf> {
+        self.includes.insert(path, abs_path)
+    }
+}
 
 impl BuckProject {
     pub fn load_from_config(
@@ -753,7 +766,7 @@ fn common_prefix(a: &AbsPathBuf, b: &AbsPathBuf) -> AbsPathBuf {
 fn targets_to_project_data_bxl(
     targets: &FxHashMap<TargetFullName, Target>,
 ) -> (Vec<ProjectAppData>, IncludeMapping) {
-    let mut include_mapping = FxHashMap::default();
+    let mut include_mapping = IncludeMapping::default();
     let mut result: Vec<ProjectAppData> = vec![];
 
     for target in targets.values() {
