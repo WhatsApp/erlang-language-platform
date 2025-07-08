@@ -29,8 +29,8 @@ use anyhow::Result;
 use anyhow::bail;
 use buck::BuckConfig;
 use buck::BuckQueryConfig;
+use buck::IncludeMapping;
 use elp_log::timeit;
-use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use glob::glob;
@@ -656,7 +656,7 @@ pub struct Project {
     pub project_build_data: ProjectBuildData,
     pub project_apps: Vec<ProjectAppData>,
     pub eqwalizer_config: EqwalizerConfig,
-    pub include_mapping: Arc<FxHashMap<SmolStr, AbsPathBuf>>,
+    pub include_mapping: Arc<IncludeMapping>,
 }
 
 #[derive(Clone, Debug)]

@@ -155,6 +155,8 @@ pub struct BuckProject {
     pub buck_conf: BuckConfig,
 }
 
+pub type IncludeMapping = FxHashMap<SmolStr, AbsPathBuf>;
+
 impl BuckProject {
     pub fn load_from_config(
         buck_conf: &BuckConfig,
@@ -165,7 +167,7 @@ impl BuckProject {
             BuckProject,
             Vec<ProjectAppData>,
             Utf8PathBuf,
-            Arc<FxHashMap<SmolStr, AbsPathBuf>>,
+            Arc<IncludeMapping>,
         ),
         anyhow::Error,
     > {
@@ -189,7 +191,7 @@ fn load_from_config_bxl(
         Utf8PathBuf,
         Vec<ProjectAppData>,
         BuckProject,
-        Arc<FxHashMap<SmolStr, AbsPathBuf>>,
+        Arc<IncludeMapping>,
     ),
     anyhow::Error,
 > {
@@ -750,7 +752,7 @@ fn common_prefix(a: &AbsPathBuf, b: &AbsPathBuf) -> AbsPathBuf {
 
 fn targets_to_project_data_bxl(
     targets: &FxHashMap<TargetFullName, Target>,
-) -> (Vec<ProjectAppData>, FxHashMap<SmolStr, AbsPathBuf>) {
+) -> (Vec<ProjectAppData>, IncludeMapping) {
     let mut include_mapping = FxHashMap::default();
     let mut result: Vec<ProjectAppData> = vec![];
 
@@ -847,11 +849,7 @@ fn include_path_from_file(path: &AbsPath) -> AbsPathBuf {
     }
 }
 
-fn update_mapping_from_path(
-    app_name: &str,
-    path: AbsPathBuf,
-    mapping: &mut FxHashMap<SmolStr, AbsPathBuf>,
-) {
+fn update_mapping_from_path(app_name: &str, path: AbsPathBuf, mapping: &mut IncludeMapping) {
     if let Ok(paths) = Utf8PathBuf::from(path).read_dir_utf8() {
         for path in paths.flatten() {
             let path = path.into_path();

@@ -12,6 +12,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use elp_project_model::AppName;
+use elp_project_model::buck::IncludeMapping;
 use elp_syntax::AstNode;
 use elp_syntax::Parse;
 use elp_syntax::SmolStr;
@@ -294,7 +295,7 @@ pub struct IncludeFileIndex {
     pub path_to_file_id: FxHashMap<VfsPath, FileId>,
     /// Mapping from the raw text seen in an `-include` or
     /// `-include_lib` directive to the associated file
-    pub include_mapping: Arc<FxHashMap<SmolStr, AbsPathBuf>>,
+    pub include_mapping: Arc<IncludeMapping>,
 }
 
 impl IncludeFileIndex {

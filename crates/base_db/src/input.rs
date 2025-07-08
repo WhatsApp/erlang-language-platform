@@ -19,7 +19,7 @@ use elp_project_model::ApplicableFiles;
 use elp_project_model::EqwalizerConfig;
 use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
-use elp_syntax::SmolStr;
+use elp_project_model::buck::IncludeMapping;
 use fxhash::FxHashMap;
 use paths::RelPath;
 use paths::Utf8Path;
@@ -115,7 +115,7 @@ pub struct ProjectData {
     pub otp_project_id: Option<ProjectId>,
     pub app_roots: AppRoots,
     pub eqwalizer_config: EqwalizerConfig,
-    pub include_mapping: Option<Arc<FxHashMap<SmolStr, AbsPathBuf>>>,
+    pub include_mapping: Option<Arc<IncludeMapping>>,
 }
 
 /// `AppData` is stored in salsa, indexed by `SourceRootId`.
