@@ -29,7 +29,7 @@ You can update all packages managed by `mason.nvim` by running `:Mason` and pres
 
 ### Manual installation
 
-Alternatively, if you don't have `mason.nvim` installed, you can [install the ELP binary](../install/#from-binary) and configure key mappings manually.
+Alternatively, if you don't have `mason.nvim` installed, you can [install the ELP binary](../install.md#from-binary) and configure key mappings manually.
 
 #### Example config
 
