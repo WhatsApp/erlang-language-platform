@@ -1317,7 +1317,7 @@ fn add_elp_assists_to_erlang_service_diagnostic(
 ) -> Diagnostic {
     match &d.code {
         DiagnosticCode::ErlangService(s) => match s.as_str() {
-            "E1508" => {
+            "E1507" | "E1508" => {
                 let mut d = d.clone();
                 undefined_macro::add_assist(&Semantic::new(db), file_id, &mut d);
                 d

@@ -362,6 +362,24 @@ mod test {
     }
 
     #[test]
+    fn well_known_macros_no_args_import() {
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
+        check(
+            r#"
+            //- /app/src/sample1.erl app:app
+            -module(sample1).
+            foo() -> ?CON~
+            //- /another-app/include/inc.hrl app:another include_path:/another-app/include
+            -define(CONSTANT, constant).
+    "#,
+            Some('?'),
+            expect![[
+                r#"{label:CONSTANT, kind:Macro, contents:SameAsLabel, position:None, include:18:"-include_lib(\"another/include/inc.hrl\")."}"#
+            ]],
+        );
+    }
+
+    #[test]
     fn well_known_macros_no_import() {
         assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
         check(

@@ -929,7 +929,7 @@ impl Semantic<'_> {
         for file_id in include_file_index.path_to_file_id.values() {
             let form_list = self.form_list(*file_id);
             for (define_id, define) in form_list.define_attributes() {
-                let name_arity = format!("{}", define.name);
+                let name_arity = define.name.extended_display_name();
                 let define = InFile::new(*file_id, define_id);
                 defines
                     .entry(name_arity)
@@ -1995,7 +1995,7 @@ mod tests {
                     ],
                 ),
                 (
-                    "MACRO",
+                    "MACRO/NOARGS",
                     [
                         InFile {
                             file_id: FileId(
@@ -2006,7 +2006,7 @@ mod tests {
                     ],
                 ),
                 (
-                    "MECRO",
+                    "MECRO/NOARGS",
                     [
                         InFile {
                             file_id: FileId(
@@ -2029,6 +2029,13 @@ mod tests {
                         'C',
                         'R',
                         'O',
+                        '/',
+                        'N',
+                        'O',
+                        'A',
+                        'R',
+                        'G',
+                        'S',
                     ],
                     [
                         InFile {
@@ -2045,6 +2052,13 @@ mod tests {
                         'C',
                         'R',
                         'O',
+                        '/',
+                        'N',
+                        'O',
+                        'A',
+                        'R',
+                        'G',
+                        'S',
                     ],
                     [
                         InFile {
@@ -2070,6 +2084,13 @@ mod tests {
                         'C',
                         'R',
                         'O',
+                        '/',
+                        'N',
+                        'O',
+                        'A',
+                        'R',
+                        'G',
+                        'S',
                     ],
                     [
                         InFile {
@@ -2091,6 +2112,13 @@ mod tests {
                         'C',
                         'R',
                         'O',
+                        '/',
+                        'N',
+                        'O',
+                        'A',
+                        'R',
+                        'G',
+                        'S',
                     ],
                     [
                         InFile {
@@ -2138,7 +2166,7 @@ mod tests {
                     ],
                 ),
                 (
-                    "MACRO",
+                    "MACRO/NOARGS",
                     [
                         InFile {
                             file_id: FileId(
@@ -2149,7 +2177,7 @@ mod tests {
                     ],
                 ),
                 (
-                    "MECRO",
+                    "MECRO/NOARGS",
                     [
                         InFile {
                             file_id: FileId(

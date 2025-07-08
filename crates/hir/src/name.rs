@@ -171,6 +171,13 @@ impl MacroName {
     pub fn with_arity(self, arity: Option<u32>) -> Self {
         MacroName(self.0, arity)
     }
+
+    pub fn extended_display_name(&self) -> String {
+        match self.arity() {
+            Some(_arity) => format!("{}", self),
+            None => format!("{}/NOARGS", self),
+        }
+    }
 }
 
 // There's explicitly no conversion from `ast::Name`

@@ -11,6 +11,7 @@
 // Add an assist to an erlang service diagnostic for an undefined macro.
 
 use elp_ide_completion::get_include_file;
+use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::path_for_file;
 use elp_ide_db::source_change::SourceChange;
@@ -27,10 +28,14 @@ pub(crate) fn add_assist(
     file_id: FileId,
     diagnostic: &mut Diagnostic,
 ) -> Option<()> {
-    let (macro_name, macro_arity_str) = macro_undefined_from_message(&diagnostic.message)?;
+    let (macro_name, macro_arity) =
+        macro_undefined_from_message(&diagnostic.code, &diagnostic.message)?;
     let project_id = sema.db.file_project_id(file_id)?;
     let index = sema.macro_define_index(project_id);
-    let name = format!("{macro_name}/{macro_arity_str}");
+    let name = match macro_arity {
+        Some(macro_arity) => format!("{macro_name}/{macro_arity}"),
+        None => macro_name.clone(),
+    };
     let includes: Vec<_> = index
         .complete(&macro_name)
         .iter()
@@ -67,14 +72,31 @@ pub(crate) fn add_assist(
     Some(())
 }
 
-pub fn macro_undefined_from_message(s: &str) -> Option<(String, String)> {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"^undefined macro '([^/]+)/([^\s]+)'$").unwrap();
+fn split_at_last_slash(s: &str) -> Option<(&str, &str)> {
+    if let Some(pos) = s.rfind('/') {
+        Some((&s[..pos], &s[pos + 1..]))
+    } else {
+        None
     }
+}
 
+pub fn macro_undefined_from_message(
+    code: &DiagnosticCode,
+    s: &str,
+) -> Option<(String, Option<String>)> {
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"^undefined macro '(.*)'$").unwrap();
+    }
     let captures = RE.captures(s)?;
-    if RE.captures_len() == 3 {
-        Some((captures[1].to_string(), captures[2].to_string()))
+    if RE.captures_len() == 2 {
+        let macro_name = captures[1].to_string();
+        let macro_name_has_arity = code == &DiagnosticCode::ErlangService("E1508".to_string());
+        if macro_name_has_arity {
+            let (macro_name, macro_arity) = split_at_last_slash(&macro_name)?;
+            Some((macro_name.to_string(), Some(macro_arity.to_string())))
+        } else {
+            Some((macro_name, None))
+        }
     } else {
         None
     }
@@ -124,6 +146,54 @@ mod tests {
 
                 foo(X) -> ?assertEqual(X,2).
             "#]],
+        );
+    }
+
+    #[test]
+    fn undefined_macro_no_args() {
+        check_diagnostics(
+            r#"
+            //- erlang_service
+            //- /app/src/main.erl
+            -module(main).
+
+            foo(X) -> ?LIFE.
+            %%        ^^^^^ 💡 error: undefined macro 'LIFE'
+            //- /another-app/include/inc.hrl app:another include_path:/another-app/include
+            -define(LIFE, 42).
+           "#,
+        );
+    }
+
+    #[test]
+    fn undefined_macro_no_args_slash_in_name() {
+        check_diagnostics(
+            r#"
+            //- erlang_service
+            //- /app/src/main.erl
+            -module(main).
+
+            foo(X) -> ?'LIFE/42'.
+            %%        ^^^^^^^^^^ 💡 error: undefined macro 'LIFE/42'
+            //- /another-app/include/inc.hrl app:another include_path:/another-app/include
+            -define('LIFE/42', 42).
+           "#,
+        );
+    }
+
+    #[test]
+    fn undefined_macro_with_args_slash_in_name() {
+        check_diagnostics(
+            r#"
+            //- erlang_service
+            //- /app/src/main.erl
+            -module(main).
+
+            foo(X) -> ?'LIFE/42'(42).
+            %%        ^^^^^^^^^^ 💡 error: undefined macro 'LIFE/42/1'
+            //- /another-app/include/inc.hrl app:another include_path:/another-app/include
+            -define('LIFE/42(X)', X).
+           "#,
         );
     }
 
