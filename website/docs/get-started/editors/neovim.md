@@ -90,7 +90,7 @@ The Lua code then defines the following key mappings in "normal" Vim mode:
 * `<space>ca` suggests code actions for warnings displayed ELP
 * `<space>ih` toggles displaying inlay hints (for example function argument hints)
 
-Finally, you can disable some [warnings](../../erlang-error-index/w/about/) globally for all your Erlang projects.
+Finally, you can disable some [warnings](../../erlang-error-index/w/about.md) globally for all your Erlang projects.
 
 ## Troubleshooting
 
