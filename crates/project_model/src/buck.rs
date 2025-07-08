@@ -158,6 +158,7 @@ pub struct BuckProject {
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct IncludeMapping {
     includes: FxHashMap<SmolStr, AbsPathBuf>,
+    deps: FxHashMap<TargetFullName, FxHashSet<TargetFullName>>,
 }
 
 impl IncludeMapping {
@@ -434,8 +435,6 @@ fn make_buck_target(
     dep_path: &mut FxHashMap<String, AbsPathBuf>,
     target_info: &mut TargetInfo,
 ) -> Result<Target> {
-    let mut private_header = false;
-
     let dir = find_app_root_bxl(root, name, target).expect("could not find app root");
 
     let (src_files, include_files, target_type, private_header, ebin) =
@@ -453,6 +452,7 @@ fn make_buck_target(
             }
             (src, include_files, TargetType::ErlangTest, false, None)
         } else {
+            let mut private_header = false;
             let target_type = compute_target_type(name, target);
             let mut src_files = vec![];
             for src in &target.srcs {
@@ -783,6 +783,20 @@ fn targets_to_project_data_bxl(
                 }
             });
         }
+    }
+
+    // Track target dependencies, as a check in the include_mapping, which is global.
+    // The app being looked up must be in the dependency relation of the app.
+    // Note: This step must be fast, so we do not build out the graph.
+    for (target_name, target) in targets {
+        let all_deps: FxHashSet<TargetFullName> = FxHashSet::from_iter(
+            target
+                .deps
+                .iter()
+                .chain(target.apps.iter().chain(target.included_apps.iter()))
+                .cloned(),
+        );
+        include_mapping.deps.insert(target_name.clone(), all_deps);
     }
 
     for target in targets.values() {

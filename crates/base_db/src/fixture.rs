@@ -668,6 +668,7 @@ bar() -> ?FOO.
                             include_mapping: Some(
                                 IncludeMapping {
                                     includes: {},
+                                    deps: {},
                                 },
                             ),
                         },
@@ -705,6 +706,7 @@ bar() -> ?FOO.
                             include_mapping: Some(
                                 IncludeMapping {
                                     includes: {},
+                                    deps: {},
                                 },
                             ),
                         },
@@ -836,6 +838,7 @@ foo() -> ?BAR.
                             include_mapping: Some(
                                 IncludeMapping {
                                     includes: {},
+                                    deps: {},
                                 },
                             ),
                         },
@@ -863,6 +866,7 @@ foo() -> ?BAR.
                             include_mapping: Some(
                                 IncludeMapping {
                                     includes: {},
+                                    deps: {},
                                 },
                             ),
                         },
