@@ -464,7 +464,10 @@ fn make_buck_target(
             }
             let mut include_files = vec![];
             for include in &target.includes {
-                let inc = buck_path_to_abs_path(root, include).unwrap();
+                let mut inc = buck_path_to_abs_path(root, include).unwrap();
+                if inc.extension().is_some() {
+                    inc.pop();
+                }
                 include_files.push(inc);
             }
 
