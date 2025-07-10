@@ -307,17 +307,29 @@ pub(crate) fn check_specific_fix_with_config_and_adhoc(
     let actual = convert_diagnostics_to_annotations(diagnostics.clone());
     assert_eq!(expected, actual);
 
-    let fix: &Assist = if let Some(label) = assist_label {
-        if let Some(fix) = diagnostics
+    let fix: Assist = if let Some(label) = assist_label {
+        let fixes: Vec<_> = diagnostics
             .iter()
-            .filter_map(|d| {
-                d.fixes
-                    .as_ref()
-                    .and_then(|fixes| fixes.iter().find(|f| f.label == label))
-            })
-            .next()
-        {
-            fix
+            .flat_map(|d| d.fixes.clone().unwrap_or_default())
+            .filter(|f| f.label == label)
+            .collect();
+        if fixes.len() == 1 {
+            fixes.into_iter().next().unwrap()
+        } else if fixes.len() > 1 {
+            panic!(
+                "Expecting one \"{}\", but multiple found in {:?}",
+                label,
+                diagnostics
+                    .iter()
+                    .flat_map(|d| match d.fixes.as_ref() {
+                        None => vec![],
+                        Some(fixes) => fixes
+                            .iter()
+                            .map(|f| (d.code.clone(), f.label.clone()))
+                            .collect_vec(),
+                    })
+                    .collect_vec()
+            );
         } else {
             panic!(
                 "Expecting \"{}\", but not found in {:?}",

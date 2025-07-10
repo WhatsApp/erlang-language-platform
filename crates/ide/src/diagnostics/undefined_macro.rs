@@ -252,4 +252,40 @@ mod tests {
             "#]],
         );
     }
+
+    #[test]
+    #[should_panic(
+        expected = "Expecting one \"Add required include for 'assertEqual/2' (app_a)\", but multiple found in [(ErlangService(\"E1508\"), \"Add required include for 'assertEqual/2' (app_b)\"), (ErlangService(\"E1508\"), \"Add required include for 'assertEqual/2' (app_a)\"), (ErlangService(\"E1508\"), \"Add required include for 'assertEqual/2' (app_a)\")]"
+    )]
+    fn undefined_macro_fix_duplicate_definitions() {
+        check_specific_fix(
+            "Add required include for 'assertEqual/2' (app_a)",
+            r#"
+            //- erlang_service
+            //- /main/src/main.erl app:main
+            -module(main).
+
+            foo(X) -> ?assert~Equal(X,2).
+            %%        ^^^^^^^^^^^^ 💡 error: undefined macro 'assertEqual/2'
+
+            //- /app_a/include/inc.hrl app:app_a include_path:/app_a/include
+
+            -ifdef(NOASSERT).
+            -define(assertEqual(A,B), ok).
+            -else.
+            -define(assertEqual(A,B), A =:= B).
+            -endif.
+
+            //- /app_b/include/inc.hrl app:app_b include_path:/app_b/include
+            -define(assertEqual(A,B), A =:= B).
+           "#,
+            expect![[r#"
+                -module(main).
+                -include_lib("app_a/include/inc.hrl").
+
+                foo(X) -> ?assertEqual(X,2).
+
+            "#]],
+        );
+    }
 }
