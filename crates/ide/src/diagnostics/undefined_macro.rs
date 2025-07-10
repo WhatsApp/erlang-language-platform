@@ -16,6 +16,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::path_for_file;
 use elp_ide_db::source_change::SourceChange;
 use elp_text_edit::TextEdit;
+use fxhash::FxHashSet;
 use hir::Semantic;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -36,7 +37,7 @@ pub(crate) fn add_assist(
         Some(macro_arity) => format!("{macro_name}/{macro_arity}"),
         None => macro_name.clone(),
     };
-    let includes: Vec<_> = index
+    let includes: FxHashSet<_> = index
         .complete(&macro_name)
         .iter()
         .flat_map(|(_chars, defines)| {
@@ -254,9 +255,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(
-        expected = "Expecting one \"Add required include for 'assertEqual/2' (app_a)\", but multiple found in [(ErlangService(\"E1508\"), \"Add required include for 'assertEqual/2' (app_b)\"), (ErlangService(\"E1508\"), \"Add required include for 'assertEqual/2' (app_a)\"), (ErlangService(\"E1508\"), \"Add required include for 'assertEqual/2' (app_a)\")]"
-    )]
     fn undefined_macro_fix_duplicate_definitions() {
         check_specific_fix(
             "Add required include for 'assertEqual/2' (app_a)",
