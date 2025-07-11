@@ -19,7 +19,7 @@ use elp_base_db::AppType;
 use elp_base_db::FileId;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
-use elp_base_db::SourceDatabase;
+use elp_base_db::RootQueryDb;
 use elp_types_db::StringId;
 use elp_types_db::eqwalizer::AST;
 use elp_types_db::eqwalizer::Id;
@@ -76,8 +76,8 @@ pub trait ELPDbApi {
     fn module_ipc_handle(&self, module: ModuleName) -> Option<Arc<Mutex<IpcHandle>>>;
 }
 
-#[salsa::query_group(EqwalizerDiagnosticsDatabaseStorage)]
-pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + SourceDatabase + ELPDbApi {
+#[ra_ap_query_group_macro::query_group]
+pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + ELPDbApi {
     #[salsa::input]
     fn eqwalizer_config(&self) -> Arc<EqwalizerConfig>;
 

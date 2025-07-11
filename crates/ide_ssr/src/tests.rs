@@ -1570,7 +1570,7 @@ fn ssr_predicates_on_match_expr_pat() {
     expect![[r#"
         Some(
             Var(
-                3,
+                Id(3803),
             ),
         )
     "#]]
@@ -1584,7 +1584,7 @@ fn ssr_predicates_on_match_expr_pat() {
     expect![[r#"
         Some(
             Atom(
-                1,
+                Id(6801),
             ),
         )
     "#]]
@@ -1596,7 +1596,7 @@ fn ssr_predicates_on_match_expr_pat() {
     expect![[r#"
         Some(
             Var(
-                3,
+                Id(3803),
             ),
         )
     "#]]
@@ -1609,7 +1609,7 @@ fn ssr_predicates_on_match_expr_pat() {
     expect![[r#"
         Some(
             Var(
-                3,
+                Id(3803),
             ),
         )
     "#]]
@@ -1623,7 +1623,7 @@ fn ssr_predicates_on_match_expr_pat() {
     expect![[r#"
         Some(
             Atom(
-                2,
+                Id(6802),
             ),
         )
     "#]]

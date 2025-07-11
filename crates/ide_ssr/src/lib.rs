@@ -61,7 +61,7 @@ use std::sync::Arc;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
-use elp_ide_db::elp_base_db::SourceDatabaseExt;
+use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
@@ -428,7 +428,7 @@ impl<'a> MatchFinder<'a> {
     pub fn debug_where_text_equal(&self, file_id: FileId, snippet: &str) -> Vec<MatchDebugInfo> {
         let file = self.sema.parse(file_id);
         let mut res = Vec::new();
-        let file_text = self.sema.db.file_text(file_id);
+        let file_text = self.sema.db.file_text(file_id).text(self.sema.db);
         let mut remaining_text = &*file_text;
         let mut base = 0;
         let len = snippet.len() as u32;
@@ -530,7 +530,7 @@ impl SsrMatches {
 
 impl Match {
     pub fn matched_text(&self, db: &RootDatabase) -> String {
-        let file_text = db.file_text(self.range.file_id);
+        let file_text = SourceDatabase::file_text(db, self.range.file_id).text(db);
         file_text[self.range.range.start().into()..self.range.range.end().into()].to_string()
     }
 
@@ -755,7 +755,7 @@ mod test {
                         },
                         placeholders_by_var: {
                             Var(
-                                0,
+                                Id(3c00),
                             ): {
                                 AnyExprId(
                                     Expr(
@@ -841,7 +841,7 @@ mod test {
                         },
                         placeholders_by_var: {
                             Var(
-                                0,
+                                Id(3c00),
                             ): {
                                 AnyExprId(
                                     Expr(

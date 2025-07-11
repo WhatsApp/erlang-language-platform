@@ -11,11 +11,12 @@
 use std::sync::Arc;
 
 use elp_base_db::salsa;
+use elp_base_db::salsa::plumbing::AsId;
 
 use crate::Name;
 
-#[salsa::query_group(InternDatabaseStorage)]
-pub trait InternDatabase {
+#[ra_ap_query_group_macro::query_group]
+pub trait InternDatabase: salsa::Database {
     #[salsa::interned]
     fn atom(&self, name: Name) -> Atom;
 
@@ -26,43 +27,19 @@ pub trait InternDatabase {
     fn ssr(&self, source: Arc<str>) -> SsrSource;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Atom(salsa::InternId);
-
-impl salsa::InternKey for Atom {
-    fn from_intern_id(v: salsa::InternId) -> Self {
-        Atom(v)
-    }
-
-    fn as_intern_id(&self) -> salsa::InternId {
-        self.0
-    }
+#[salsa::interned(no_lifetime)]
+pub struct Atom {
+    pub name: Name,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Var(salsa::InternId);
-
-impl salsa::InternKey for Var {
-    fn from_intern_id(v: salsa::InternId) -> Self {
-        Var(v)
-    }
-
-    fn as_intern_id(&self) -> salsa::InternId {
-        self.0
-    }
+#[salsa::interned(no_lifetime)]
+pub struct Var {
+    pub name: Name,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SsrSource(salsa::InternId);
-
-impl salsa::InternKey for SsrSource {
-    fn from_intern_id(v: salsa::InternId) -> Self {
-        SsrSource(v)
-    }
-
-    fn as_intern_id(&self) -> salsa::InternId {
-        self.0
-    }
+#[salsa::interned(no_lifetime)]
+pub struct SsrSource {
+    pub source: Arc<str>,
 }
 
 impl Atom {

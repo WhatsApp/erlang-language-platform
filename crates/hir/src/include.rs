@@ -58,7 +58,8 @@ mod tests {
                     .resolve_include(InFile::new(file_id, idx))
                     .unwrap_or_else(|| panic!("unresolved include: {:?}", include));
                 let resolved_path = db
-                    .source_root(db.file_source_root(resolved))
+                    .source_root(db.file_source_root(resolved).source_root_id(&db))
+                    .source_root(&db)
                     .path_for_file(&resolved)
                     .unwrap()
                     .clone();

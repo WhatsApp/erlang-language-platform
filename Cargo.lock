@@ -116,6 +116,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b8e56985ec62d17e9c1001dc89c88ecd7dc08e47eba5ec7c29c7b5eeecde967"
 
 [[package]]
+name = "boxcar"
+version = "0.2.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66bb12751a83493ef4b8da1120451a262554e216a247f14b48cb5e8fe7ed8bdf"
+
+[[package]]
 name = "bpaf"
 version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -302,6 +308,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-queue"
+version = "0.3.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f58bbc28f91df819d0aa2a2c00cd19754769c2fad90579b3592b1c9ba7a3115"
+dependencies = [
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "crossbeam-utils"
 version = "0.8.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -347,6 +362,20 @@ name = "dary_heap"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04d2cd9c18b9f454ed67da600630b021a8a80bf33f8c95896ab33aaf1c26b728"
+
+[[package]]
+name = "dashmap"
+version = "6.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5041cc499144891f3790297212f32a74fb938e5136a14943f338ef9e0ae276cf"
+dependencies = [
+ "cfg-if",
+ "crossbeam-utils",
+ "hashbrown 0.14.5",
+ "lock_api",
+ "once_cell",
+ "parking_lot_core",
+]
 
 [[package]]
 name = "deranged"
@@ -456,7 +485,7 @@ dependencies = [
  "fxhash",
  "hir",
  "include_dir",
- "indexmap 2.9.0",
+ "indexmap",
  "indicatif",
  "itertools 0.10.5",
  "jod-thread",
@@ -464,7 +493,7 @@ dependencies = [
  "log",
  "lsp-server",
  "lsp-types",
- "parking_lot 0.12.4",
+ "parking_lot",
  "paths",
  "profile",
  "range-set",
@@ -494,6 +523,7 @@ name = "elp_base_db"
 version = "1.1.0"
 dependencies = [
  "anyhow",
+ "dashmap",
  "dissimilar",
  "eetf",
  "either",
@@ -505,6 +535,7 @@ dependencies = [
  "log",
  "paths",
  "profile",
+ "ra_ap_query-group-macro",
  "regex",
  "salsa",
  "serde_json",
@@ -525,7 +556,8 @@ dependencies = [
  "fxhash",
  "itertools 0.10.5",
  "log",
- "parking_lot 0.12.4",
+ "parking_lot",
+ "ra_ap_query-group-macro",
  "salsa",
  "serde",
  "serde_json",
@@ -552,7 +584,7 @@ dependencies = [
  "jod-thread",
  "lazy_static",
  "log",
- "parking_lot 0.12.4",
+ "parking_lot",
  "regex",
  "stdx",
  "tempfile",
@@ -582,7 +614,7 @@ dependencies = [
  "itertools 0.10.5",
  "lazy_static",
  "log",
- "parking_lot 0.12.4",
+ "parking_lot",
  "profile",
  "rayon",
  "regex",
@@ -649,14 +681,15 @@ dependencies = [
  "expect-test",
  "fxhash",
  "hir",
- "indexmap 2.9.0",
+ "indexmap",
  "lazy_static",
  "log",
  "memchr",
  "once_cell",
- "parking_lot 0.12.4",
+ "parking_lot",
  "paths",
  "profile",
+ "ra_ap_query-group-macro",
  "regex",
  "rustc-hash 1.1.0",
  "serde",
@@ -693,7 +726,7 @@ dependencies = [
  "humantime",
  "lazy_static",
  "log",
- "parking_lot 0.12.4",
+ "parking_lot",
  "regex",
  "serde",
  "serde_json",
@@ -713,11 +746,11 @@ dependencies = [
  "fxhash",
  "glob",
  "include_dir",
- "indexmap 2.9.0",
+ "indexmap",
  "itertools 0.10.5",
  "lazy_static",
  "log",
- "parking_lot 0.12.4",
+ "parking_lot",
  "paths",
  "regex",
  "semver",
@@ -740,7 +773,7 @@ dependencies = [
  "elp_text_edit",
  "expect-test",
  "fxhash",
- "indexmap 2.9.0",
+ "indexmap",
  "itertools 0.10.5",
  "lazy_static",
  "log",
@@ -977,12 +1010,6 @@ checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
 name = "hashbrown"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
-
-[[package]]
-name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
@@ -997,16 +1024,18 @@ version = "0.15.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "84b26c544d002229e640969970a2e74021aadf6e2f96372b9c58eff97de08eb3"
 dependencies = [
+ "allocator-api2",
+ "equivalent",
  "foldhash",
 ]
 
 [[package]]
-name = "heck"
-version = "0.3.3"
+name = "hashlink"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d621efb26863f0e9924c6ac577e8275e5e6b77455db64ffa6c65c904e9e132c"
+checksum = "7382cf6263419f2d8df38c55d7da83da5c18aef87fc7a7fc1fb1e344edfe14c1"
 dependencies = [
- "unicode-segmentation",
+ "hashbrown 0.15.3",
 ]
 
 [[package]]
@@ -1014,6 +1043,12 @@ name = "heck"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
+
+[[package]]
+name = "heck"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
 name = "hermit-abi"
@@ -1037,6 +1072,7 @@ dependencies = [
  "lazy_static",
  "log",
  "profile",
+ "ra_ap_query-group-macro",
  "regex",
  "stdx",
  "tracing",
@@ -1204,22 +1240,13 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
-dependencies = [
- "autocfg",
- "hashbrown 0.12.3",
-]
-
-[[package]]
-name = "indexmap"
 version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cea70ddb795996207ad57735b50c5982d8844f38ba9ee5f1aedcfb708a2aa11e"
 dependencies = [
  "equivalent",
  "hashbrown 0.15.3",
+ "serde",
 ]
 
 [[package]]
@@ -1254,15 +1281,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e05c02b5e89bff3b946cedeca278abc628fe811e604f027c45a8aa3cf793d0eb"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "instant"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0242819d153cba4b4b05a5a8f2a7e9bbf97b6055b2a002b395c96b5ff3c0222"
-dependencies = [
- "cfg-if",
 ]
 
 [[package]]
@@ -1370,7 +1388,7 @@ dependencies = [
 [[package]]
 name = "la-arena"
 version = "0.3.1"
-source = "git+https://github.com/rust-lang/rust-analyzer?rev=2025-03-04#02862f5d52c30b476a5dca909a17aa4386d1fdc5"
+source = "git+https://github.com/rust-lang/rust-analyzer?rev=2025-03-17#b0632f749e6abf0f82f71755d7eaca4884c1a808"
 
 [[package]]
 name = "lazy_static"
@@ -1416,7 +1434,7 @@ checksum = "c0ff37bd590ca25063e35af745c343cb7a0271906fb7b37e4813e8f79f00268d"
 dependencies = [
  "bitflags 2.9.1",
  "libc",
- "redox_syscall 0.5.12",
+ "redox_syscall",
 ]
 
 [[package]]
@@ -1685,12 +1703,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4895175b425cb1f87721b59f0f286c2092bd4af812243672510e1ac53e2e0ad"
 
 [[package]]
-name = "oorandom"
-version = "11.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6790f58c7ff633d8771f42965289203411a5e5c68388703c06e14f24770b41e"
-
-[[package]]
 name = "option-ext"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1707,37 +1719,12 @@ dependencies = [
 
 [[package]]
 name = "parking_lot"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d17b78036a60663b797adeaee46f5c9dfebb86948d1255007a1d6be0271ff99"
-dependencies = [
- "instant",
- "lock_api",
- "parking_lot_core 0.8.6",
-]
-
-[[package]]
-name = "parking_lot"
 version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70d58bf43669b5795d1576d0641cfb6fbb2057bf629506267a92807158584a13"
 dependencies = [
  "lock_api",
- "parking_lot_core 0.9.11",
-]
-
-[[package]]
-name = "parking_lot_core"
-version = "0.8.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60a2cfe6f0ad2bfc16aefa463b497d5c7a5ecd44a23efa72aa342d90177356dc"
-dependencies = [
- "cfg-if",
- "instant",
- "libc",
- "redox_syscall 0.2.16",
- "smallvec",
- "winapi",
+ "parking_lot_core",
 ]
 
 [[package]]
@@ -1748,7 +1735,7 @@ checksum = "bc838d2a56b5b1a6c25f55575dfc605fabb63bb2365f6c2353ef9159aa69e4a5"
 dependencies = [
  "cfg-if",
  "libc",
- "redox_syscall 0.5.12",
+ "redox_syscall",
  "smallvec",
  "windows-targets 0.52.6",
 ]
@@ -1762,7 +1749,7 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 [[package]]
 name = "paths"
 version = "0.0.0"
-source = "git+https://github.com/rust-lang/rust-analyzer?rev=2025-03-04#02862f5d52c30b476a5dca909a17aa4386d1fdc5"
+source = "git+https://github.com/rust-lang/rust-analyzer?rev=2025-03-17#b0632f749e6abf0f82f71755d7eaca4884c1a808"
 dependencies = [
  "camino",
 ]
@@ -1799,7 +1786,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
 dependencies = [
  "fixedbitset",
- "indexmap 2.9.0",
+ "indexmap",
 ]
 
 [[package]]
@@ -1874,7 +1861,7 @@ dependencies = [
 [[package]]
 name = "profile"
 version = "0.0.0"
-source = "git+https://github.com/rust-lang/rust-analyzer?rev=2025-03-04#02862f5d52c30b476a5dca909a17aa4386d1fdc5"
+source = "git+https://github.com/rust-lang/rust-analyzer?rev=2025-03-17#b0632f749e6abf0f82f71755d7eaca4884c1a808"
 dependencies = [
  "cfg-if",
  "libc",
@@ -1897,6 +1884,19 @@ name = "r-efi"
 version = "5.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74765f6d916ee2faa39bc8e68e4f3ed8949b48cccdac59983d287a7cb71ce9c5"
+
+[[package]]
+name = "ra_ap_query-group-macro"
+version = "0.0.270"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f1a38f07b442e47a234cbe2e8fd1b8a41ff0cc5123cb1cf994c5ce20edb5bd6"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro2",
+ "quote",
+ "salsa",
+ "syn 2.0.101",
+]
 
 [[package]]
 name = "radix_trie"
@@ -1936,15 +1936,6 @@ checksum = "1465873a3dfdaa8ae7cb14b4383657caab0b3e8a0aa9ae8e04b044854c8dfce2"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
-]
-
-[[package]]
-name = "redox_syscall"
-version = "0.2.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb5a58c1855b4b6819d59012155603f0b22ad30cad752600aadfcb695265519a"
-dependencies = [
- "bitflags 1.3.2",
 ]
 
 [[package]]
@@ -2089,31 +2080,43 @@ checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 
 [[package]]
 name = "salsa"
-version = "0.17.0-pre.2"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b223dccb46c32753144d0b51290da7230bb4aedcd8379d6b4c9a474c18bf17a"
+checksum = "dd55c6549513b2a42884dae31e3d4f4ac8a6cc51062e68e24d162133889f327c"
 dependencies = [
- "crossbeam-utils",
- "indexmap 1.9.3",
- "lock_api",
- "log",
- "oorandom",
- "parking_lot 0.11.2",
- "rustc-hash 1.1.0",
+ "boxcar",
+ "crossbeam-queue",
+ "dashmap",
+ "hashbrown 0.15.3",
+ "hashlink",
+ "indexmap",
+ "parking_lot",
+ "portable-atomic",
+ "rayon",
+ "rustc-hash 2.1.1",
+ "salsa-macro-rules",
  "salsa-macros",
  "smallvec",
+ "tracing",
 ]
 
 [[package]]
-name = "salsa-macros"
-version = "0.17.0-pre.2"
+name = "salsa-macro-rules"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac6c2e352df550bf019da7b16164ed2f7fa107c39653d1311d1bba42d1582ff7"
+checksum = "2619b4b451beab0a7e4364ff1e6f31950e7e418888fd9bf2f28889671563166a"
+
+[[package]]
+name = "salsa-macros"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4be57a99b3896e8d26850428a6874fb86849e2db874e1db3528e5cee4337d277"
 dependencies = [
- "heck 0.3.3",
+ "heck 0.5.0",
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.101",
+ "synstructure",
 ]
 
 [[package]]
@@ -2245,7 +2248,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 [[package]]
 name = "stdx"
 version = "0.0.0"
-source = "git+https://github.com/rust-lang/rust-analyzer?rev=2025-03-04#02862f5d52c30b476a5dca909a17aa4386d1fdc5"
+source = "git+https://github.com/rust-lang/rust-analyzer?rev=2025-03-17#b0632f749e6abf0f82f71755d7eaca4884c1a808"
 dependencies = [
  "crossbeam-channel",
  "itertools 0.12.1",
@@ -2607,7 +2610,7 @@ dependencies = [
  "ahash",
  "byteorder",
  "lazy_static",
- "parking_lot 0.12.4",
+ "parking_lot",
  "serde",
 ]
 
@@ -2632,11 +2635,11 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vfs"
 version = "0.0.0"
-source = "git+https://github.com/rust-lang/rust-analyzer?rev=2025-03-04#02862f5d52c30b476a5dca909a17aa4386d1fdc5"
+source = "git+https://github.com/rust-lang/rust-analyzer?rev=2025-03-17#b0632f749e6abf0f82f71755d7eaca4884c1a808"
 dependencies = [
  "crossbeam-channel",
  "fst",
- "indexmap 2.9.0",
+ "indexmap",
  "nohash-hasher",
  "paths",
  "rustc-hash 2.1.1",
@@ -2647,7 +2650,7 @@ dependencies = [
 [[package]]
 name = "vfs-notify"
 version = "0.0.0"
-source = "git+https://github.com/rust-lang/rust-analyzer?rev=2025-03-04#02862f5d52c30b476a5dca909a17aa4386d1fdc5"
+source = "git+https://github.com/rust-lang/rust-analyzer?rev=2025-03-17#b0632f749e6abf0f82f71755d7eaca4884c1a808"
 dependencies = [
  "crossbeam-channel",
  "notify",

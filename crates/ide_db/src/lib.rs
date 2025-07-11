@@ -15,13 +15,24 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use elp_base_db::AbsPathBuf;
+use elp_base_db::AppData;
+use elp_base_db::AppDataId;
+use elp_base_db::AppDataInput;
 use elp_base_db::FileId;
-use elp_base_db::FileLoader;
-use elp_base_db::FileLoaderDelegate;
 use elp_base_db::FilePosition;
 use elp_base_db::FileRange;
+use elp_base_db::FileSourceRootInput;
+use elp_base_db::FileText;
+use elp_base_db::Files;
+use elp_base_db::ProjectData;
+use elp_base_db::ProjectDataInput;
 use elp_base_db::ProjectId;
+use elp_base_db::RootQueryDb;
+use elp_base_db::SourceAppDataInput;
 use elp_base_db::SourceDatabase;
+use elp_base_db::SourceRoot;
+use elp_base_db::SourceRootId;
+use elp_base_db::SourceRootInput;
 use elp_base_db::Upcast;
 use elp_base_db::limit_logged_string;
 use elp_base_db::salsa;
@@ -100,22 +111,11 @@ pub trait EqwalizerProgressReporter: Send + Sync + RefUnwindSafe {
     fn done_module(&mut self, module: &str);
 }
 
-#[salsa::database(
-    LineIndexDatabaseStorage,
-    docs::DocDatabaseStorage,
-    elp_base_db::SourceDatabaseExtStorage,
-    elp_base_db::SourceDatabaseStorage,
-    eqwalizer::EqwalizerDatabaseStorage,
-    common_test::CommonTestDatabaseStorage,
-    elp_eqwalizer::db::EqwalizerDiagnosticsDatabaseStorage,
-    elp_eqwalizer::analyses::EqwalizerAnalysesDatabaseStorage,
-    erl_ast::ErlAstDatabaseStorage,
-    hir::db::InternDatabaseStorage,
-    hir::db::DefDatabaseStorage
-)]
+#[salsa::db]
 #[allow(clippy::type_complexity)]
 pub struct RootDatabase {
     storage: salsa::Storage<Self>,
+    files: Arc<Files>,
     erlang_services: Arc<AssertUnwindSafe<RwLock<FxHashMap<ProjectId, Connection>>>>,
     eqwalizer: Eqwalizer,
     eqwalizer_progress_reporter: EqwalizerProgressReporterBox,
@@ -125,6 +125,7 @@ impl Default for RootDatabase {
     fn default() -> Self {
         let mut db = RootDatabase {
             storage: salsa::Storage::default(),
+            files: Arc::default(),
             erlang_services: Arc::default(),
             eqwalizer: Eqwalizer::default(),
             eqwalizer_progress_reporter: EqwalizerProgressReporterBox::default(),
@@ -135,8 +136,23 @@ impl Default for RootDatabase {
     }
 }
 
-impl Upcast<dyn SourceDatabase> for RootDatabase {
-    fn upcast(&self) -> &(dyn SourceDatabase + 'static) {
+impl RefUnwindSafe for RootDatabase {}
+
+impl Clone for RootDatabase {
+    fn clone(&self) -> Self {
+        Self {
+            storage: self.storage.clone(),
+            files: self.files.clone(),
+            erlang_services: self.erlang_services.clone(),
+            eqwalizer: self.eqwalizer.clone(),
+            eqwalizer_progress_reporter: self.eqwalizer_progress_reporter.clone(),
+            ipc_handles: self.ipc_handles.clone(),
+        }
+    }
+}
+
+impl Upcast<dyn RootQueryDb> for RootDatabase {
+    fn upcast(&self) -> &(dyn RootQueryDb + 'static) {
         self
     }
 }
@@ -153,37 +169,89 @@ impl Upcast<dyn DefDatabase> for RootDatabase {
     }
 }
 
-impl FileLoader for RootDatabase {
-    fn file_text(&self, file_id: FileId) -> Arc<str> {
-        FileLoaderDelegate(self).file_text(file_id)
-    }
-}
-
 impl fmt::Debug for RootDatabase {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RootDatabase").finish_non_exhaustive()
     }
 }
 
-impl salsa::Database for RootDatabase {}
+#[salsa::db]
+impl salsa::Database for RootDatabase {
+    fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
+}
 
-impl salsa::ParallelDatabase for RootDatabase {
-    fn snapshot(&self) -> salsa::Snapshot<RootDatabase> {
-        salsa::Snapshot::new(RootDatabase {
-            storage: self.storage.snapshot(),
-            erlang_services: self.erlang_services.clone(),
-            eqwalizer: self.eqwalizer.clone(),
-            eqwalizer_progress_reporter: self.eqwalizer_progress_reporter.clone(),
-            ipc_handles: self.ipc_handles.clone(),
-        })
+#[salsa::db]
+impl SourceDatabase for RootDatabase {
+    fn file_text(&self, file_id: FileId) -> FileText {
+        self.files.file_text(file_id)
+    }
+
+    fn set_file_text(&mut self, file_id: FileId, text: Arc<str>) {
+        let files = self.files.clone();
+        files.set_file_text(self, file_id, text);
+    }
+
+    fn source_root(&self, source_root_id: SourceRootId) -> SourceRootInput {
+        self.files.source_root(source_root_id)
+    }
+
+    fn set_source_root(&mut self, source_root_id: SourceRootId, source_root: Arc<SourceRoot>) {
+        let files = self.files.clone();
+        files.set_source_root(self, source_root_id, source_root);
+    }
+
+    fn file_source_root(&self, id: FileId) -> FileSourceRootInput {
+        self.files.file_source_root(id)
+    }
+
+    fn set_file_source_root(&mut self, id: FileId, source_root_id: SourceRootId) {
+        let files = self.files.clone();
+        files.set_file_source_root(self, id, source_root_id);
+    }
+
+    fn app_data_by_id(&self, id: AppDataId) -> AppDataInput {
+        self.files.app_data(id)
+    }
+
+    fn set_app_data_by_id(&mut self, id: AppDataId, app_data: Option<Arc<AppData>>) {
+        let files = self.files.clone();
+        files.set_app_data(self, id, app_data)
+    }
+
+    fn app_data_id(&self, source_root_id: SourceRootId) -> SourceAppDataInput {
+        self.files.source_app_data(source_root_id)
+    }
+
+    fn set_app_data_id(&mut self, id: SourceRootId, app_data_id: AppDataId) {
+        let files = self.files.clone();
+        files.set_source_app_data(self, id, app_data_id)
+    }
+
+    fn project_data(&self, project_id: ProjectId) -> ProjectDataInput {
+        self.files.project_data(project_id)
+    }
+
+    fn set_project_data(&mut self, id: ProjectId, project_data: Arc<ProjectData>) {
+        let files = self.files.clone();
+        files.set_project_data(self, id, project_data)
     }
 }
 
 impl RootDatabase {
+    pub fn snapshot(&self) -> Self {
+        Self {
+            storage: self.storage.clone(),
+            files: self.files.clone(),
+            erlang_services: self.erlang_services.clone(),
+            eqwalizer: self.eqwalizer.clone(),
+            eqwalizer_progress_reporter: self.eqwalizer_progress_reporter.clone(),
+            ipc_handles: self.ipc_handles.clone(),
+        }
+    }
+
     pub fn request_cancellation(&mut self) {
         let _p = tracing::info_span!("RootDatabase::request_cancellation").entered();
-        self.salsa_runtime_mut()
-            .synthetic_write(salsa::Durability::LOW);
+        self.synthetic_write(salsa::Durability::LOW);
     }
 
     pub fn clear_erlang_services(&mut self) {
@@ -200,7 +268,7 @@ impl RootDatabase {
             .entry(project_id)
             .or_insert_with(|| {
                 let conn = Connection::start().expect("failed to establish connection");
-                let project_data = self.project_data(project_id);
+                let project_data = self.project_data(project_id).project_data(self);
                 let path: Vec<PathBuf> = project_data
                     .deps_ebins
                     .iter()
@@ -217,7 +285,7 @@ impl RootDatabase {
 
     pub fn update_erlang_service_paths(&self) {
         for (&project_id, connection) in self.erlang_services.read().iter() {
-            let project_data = self.project_data(project_id);
+            let project_data = self.project_data(project_id).project_data(self);
             let paths = project_data
                 .deps_ebins
                 .iter()
@@ -247,7 +315,7 @@ impl RootDatabase {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nresolved_includes: {:?}", file_id));
         let project_id = self.file_app_data(file_id)?.project_id;
-        let root_abs = &self.project_data(project_id).root_dir;
+        let root_abs = &self.project_data(project_id).project_data(self).root_dir;
         let form_list = self.file_form_list(file_id);
         let line_index = self.file_line_index(file_id);
         let includes: Vec<_> = form_list
@@ -279,13 +347,13 @@ impl RootDatabase {
     }
 }
 
-#[salsa::query_group(LineIndexDatabaseStorage)]
-pub trait LineIndexDatabase: SourceDatabase {
+#[ra_ap_query_group_macro::query_group(LineIndexDatabaseStorage)]
+pub trait LineIndexDatabase: RootQueryDb {
     fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 }
 
 fn file_line_index(db: &dyn LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
-    let text = db.file_text(file_id);
+    let text = db.file_text(file_id).text(db);
     Arc::new(LineIndex::new(&text))
 }
 
@@ -315,8 +383,8 @@ impl Includes {
     ) -> Option<Utf8PathBuf> {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\napp_file_path: {:?}", file_id));
-        let root_id = db.file_source_root(file_id);
-        let root = db.source_root(root_id);
+        let root_id = db.file_source_root(file_id).source_root_id(db);
+        let root = db.source_root(root_id).source_root(db);
         let path = root.path_for_file(&file_id)?;
         let app_data = db.file_app_data(file_id)?;
 
@@ -417,7 +485,7 @@ impl TypedSemantic for RootDatabase {
 
 #[cfg(test)]
 mod tests {
-    use elp_base_db::SourceDatabase;
+    use elp_base_db::RootQueryDb;
     use elp_base_db::fixture::WithFixture;
     use elp_text_edit::TextRange;
 

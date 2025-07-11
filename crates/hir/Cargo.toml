@@ -20,6 +20,7 @@ la-arena.workspace = true
 lazy_static.workspace = true
 log.workspace = true
 profile.workspace = true
+ra_ap_query-group-macro.workspace = true
 regex.workspace = true
 stdx.workspace = true
 tracing.workspace = true

@@ -13,7 +13,7 @@ use std::sync::Arc;
 use elp_base_db::FileId;
 use elp_base_db::FileKind;
 use elp_base_db::ModuleName;
-use elp_base_db::SourceDatabase;
+use elp_base_db::RootQueryDb;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::SmolStr;
@@ -65,18 +65,20 @@ pub struct File {
 }
 
 impl File {
-    pub fn source(&self, db: &dyn SourceDatabase) -> ast::SourceFile {
+    pub fn source(&self, db: &dyn RootQueryDb) -> ast::SourceFile {
         db.parse(self.file_id).tree()
     }
 
-    pub fn kind(&self, db: &dyn SourceDatabase) -> FileKind {
+    pub fn kind(&self, db: &dyn RootQueryDb) -> FileKind {
         db.file_kind(self.file_id)
     }
 
-    pub fn name(&self, db: &dyn SourceDatabase) -> SmolStr {
+    pub fn name(&self, db: &dyn RootQueryDb) -> SmolStr {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nFile::name: {:?}", self.file_id));
-        let source_root = db.source_root(db.file_source_root(self.file_id));
+        let source_root = db
+            .source_root(db.file_source_root(self.file_id).source_root_id(db))
+            .source_root(db);
         if let Some((name, Some(ext))) = source_root
             .path_for_file(&self.file_id)
             .and_then(|path| path.name_and_extension())
@@ -125,7 +127,7 @@ pub struct FunctionClauseDef {
 }
 
 impl FunctionClauseDef {
-    pub fn source(&self, db: &dyn SourceDatabase) -> ast::FunDecl {
+    pub fn source(&self, db: &dyn RootQueryDb) -> ast::FunDecl {
         let source_file = self.file.source(db);
         self.function_clause.form_id.get(&source_file)
     }
@@ -172,7 +174,7 @@ pub struct FunctionDef {
 }
 
 impl FunctionDef {
-    pub fn source(&self, db: &dyn SourceDatabase) -> Vec<ast::FunDecl> {
+    pub fn source(&self, db: &dyn RootQueryDb) -> Vec<ast::FunDecl> {
         let source_file = self.file.source(db);
         self.function_clauses
             .iter()
@@ -180,11 +182,11 @@ impl FunctionDef {
             .collect()
     }
 
-    pub fn first_clause_name(&self, db: &dyn SourceDatabase) -> Option<ast::Name> {
+    pub fn first_clause_name(&self, db: &dyn RootQueryDb) -> Option<ast::Name> {
         self.source(db).first()?.name()
     }
 
-    pub fn range(&self, db: &dyn SourceDatabase) -> Option<TextRange> {
+    pub fn range(&self, db: &dyn RootQueryDb) -> Option<TextRange> {
         let sources = self.source(db);
         let start = sources.first()?;
         let end = sources.last()?;
@@ -222,7 +224,7 @@ impl FunctionDef {
         )
     }
 
-    pub fn spec_range(&self, db: &dyn SourceDatabase) -> Option<TextRange> {
+    pub fn spec_range(&self, db: &dyn RootQueryDb) -> Option<TextRange> {
         self.spec.as_ref().map(|spec| spec.range(db))
     }
 
@@ -266,7 +268,7 @@ impl FunctionDef {
         Some(res)
     }
 
-    pub fn arg_names(&self, db: &dyn SourceDatabase) -> Option<Vec<String>> {
+    pub fn arg_names(&self, db: &dyn RootQueryDb) -> Option<Vec<String>> {
         match &self.spec {
             Some(spec_def) => match spec_def.arg_names(db) {
                 Some(arg_names_from_spec) => {
@@ -383,17 +385,17 @@ pub struct SpecDef {
 }
 
 impl SpecDef {
-    pub fn source(&self, db: &dyn SourceDatabase) -> ast::Spec {
+    pub fn source(&self, db: &dyn RootQueryDb) -> ast::Spec {
         let source_file = self.file.source(db);
         self.spec.form_id.get(&source_file)
     }
 
-    pub fn range(&self, db: &dyn SourceDatabase) -> TextRange {
+    pub fn range(&self, db: &dyn RootQueryDb) -> TextRange {
         let source = self.source(db);
         source.syntax().text_range()
     }
 
-    pub fn arg_names(&self, db: &dyn SourceDatabase) -> Option<Vec<SpecArgName>> {
+    pub fn arg_names(&self, db: &dyn RootQueryDb) -> Option<Vec<SpecArgName>> {
         let spec = self.source(db);
         let first_sig = spec.sigs().next()?;
         Some(
@@ -449,12 +451,12 @@ pub struct RecordDef {
 }
 
 impl RecordDef {
-    pub fn source(&self, db: &dyn SourceDatabase) -> ast::RecordDecl {
+    pub fn source(&self, db: &dyn RootQueryDb) -> ast::RecordDecl {
         let source_file = self.file.source(db);
         self.record.form_id.get(&source_file)
     }
 
-    pub fn range(&self, db: &dyn SourceDatabase) -> TextRange {
+    pub fn range(&self, db: &dyn RootQueryDb) -> TextRange {
         let source = self.source(db);
         source.syntax().text_range()
     }
@@ -514,7 +516,7 @@ pub struct RecordFieldDef {
 }
 
 impl RecordFieldDef {
-    pub fn source(&self, db: &dyn SourceDatabase) -> ast::RecordField {
+    pub fn source(&self, db: &dyn RootQueryDb) -> ast::RecordField {
         let record = self.record.source(db);
         record.fields().nth(self.field.idx as usize).unwrap()
     }
@@ -534,7 +536,7 @@ pub enum TypeAliasSource {
 }
 
 impl TypeAliasDef {
-    pub fn source(&self, db: &dyn SourceDatabase) -> TypeAliasSource {
+    pub fn source(&self, db: &dyn RootQueryDb) -> TypeAliasSource {
         let source_file = self.file.source(db);
         match self.type_alias {
             TypeAlias::Opaque { form_id, .. } => TypeAliasSource::Opaque(form_id.get(&source_file)),
@@ -555,14 +557,14 @@ impl TypeAliasDef {
         }
     }
 
-    pub fn range(&self, db: &dyn SourceDatabase) -> Option<TextRange> {
+    pub fn range(&self, db: &dyn RootQueryDb) -> Option<TextRange> {
         let source = self.source(db);
         Some(source.syntax().text_range())
     }
 
     /// This information is used for completion.
     /// We deliberately return nothing for an opaque type
-    pub fn map_expr_for_completion(&self, db: &dyn SourceDatabase) -> Option<MapExpr> {
+    pub fn map_expr_for_completion(&self, db: &dyn RootQueryDb) -> Option<MapExpr> {
         let source = self.source(db);
         match source {
             TypeAliasSource::Regular(alias) => match alias.ty()? {
@@ -604,7 +606,7 @@ pub struct CallbackDef {
 }
 
 impl CallbackDef {
-    pub fn source(&self, db: &dyn SourceDatabase) -> ast::Callback {
+    pub fn source(&self, db: &dyn RootQueryDb) -> ast::Callback {
         let source_file = self.file.source(db);
         self.callback.form_id.get(&source_file)
     }
@@ -617,7 +619,7 @@ pub struct DefineDef {
 }
 
 impl DefineDef {
-    pub fn source(&self, db: &dyn SourceDatabase) -> ast::PpDefine {
+    pub fn source(&self, db: &dyn RootQueryDb) -> ast::PpDefine {
         let source_file = self.file.source(db);
         self.define.form_id.get(&source_file)
     }
@@ -633,7 +635,7 @@ pub struct VarDef {
 }
 
 impl VarDef {
-    pub fn source(&self, db: &dyn SourceDatabase) -> ast::Var {
+    pub fn source(&self, db: &dyn RootQueryDb) -> ast::Var {
         let source_file = self.file.source(db);
         self.var.to_node(source_file.syntax())
     }
@@ -649,7 +651,7 @@ fn is_in_otp(file_id: FileId, db: &dyn DefDatabase) -> bool {
     match db.file_app_data(file_id) {
         Some(app_data) => {
             let project_id = app_data.project_id;
-            db.project_data(project_id).otp_project_id == Some(project_id)
+            db.project_data(project_id).project_data(db).otp_project_id == Some(project_id)
         }
         None => false,
     }

@@ -11,7 +11,7 @@
 use std::sync::Arc;
 
 use elp_base_db::FileId;
-use elp_base_db::SourceDatabase;
+use elp_base_db::RootQueryDb;
 use elp_base_db::Upcast;
 use elp_base_db::salsa;
 use elp_syntax::ast;
@@ -50,17 +50,12 @@ use crate::edoc;
 use crate::edoc::EdocHeader;
 use crate::include;
 pub use crate::intern::InternDatabase;
-pub use crate::intern::InternDatabaseStorage;
 use crate::macro_exp;
 use crate::macro_exp::MacroResolution;
 
-#[salsa::query_group(DefDatabaseStorage)]
+#[ra_ap_query_group_macro::query_group]
 pub trait DefDatabase:
-    InternDatabase
-    + Upcast<dyn InternDatabase>
-    + SourceDatabase
-    + Upcast<dyn SourceDatabase>
-    + TypedSemantic
+    InternDatabase + Upcast<dyn InternDatabase> + RootQueryDb + Upcast<dyn RootQueryDb> + TypedSemantic
 {
     #[salsa::invoke(FormList::file_form_list_query)]
     fn file_form_list(&self, file_id: FileId) -> Arc<FormList>;

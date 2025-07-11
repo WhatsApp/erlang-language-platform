@@ -48,10 +48,9 @@ use elp_ide_db::elp_base_db::ModuleIndex;
 use elp_ide_db::elp_base_db::ModuleName;
 use elp_ide_db::elp_base_db::ProjectData;
 use elp_ide_db::elp_base_db::ProjectId;
+use elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide_db::elp_base_db::SourceDatabase;
-use elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide_db::elp_base_db::salsa;
-use elp_ide_db::elp_base_db::salsa::ParallelDatabase;
 use elp_ide_db::eqwalizer::type_references;
 use elp_ide_db::erlang_service::ParseResult;
 use elp_ide_db::rename::RenameError;
@@ -207,7 +206,7 @@ impl AnalysisHost {
 /// `Analysis` are canceled (most method return `Err(Canceled)`).
 #[derive(Debug)]
 pub struct Analysis {
-    db: salsa::Snapshot<RootDatabase>,
+    db: RootDatabase,
 }
 
 // As a general design guideline, `Analysis` API are intended to be independent
@@ -384,7 +383,10 @@ impl Analysis {
         self.with_db(|db| {
             // Context for T171541590
             let _ = stdx::panic_context::enter(format!("\nproject_data: {:?}", file_id));
-            Some(db.project_data(db.file_app_data(file_id)?.project_id))
+            Some(
+                db.project_data(db.file_app_data(file_id)?.project_id)
+                    .project_data(db),
+            )
         })
     }
 
@@ -429,7 +431,7 @@ impl Analysis {
 
     /// Returns the contents of a file
     pub fn file_text(&self, file_id: FileId) -> Cancellable<Arc<str>> {
-        self.with_db(|db| db.file_text(file_id))
+        self.with_db(|db| db.file_text(file_id).text(db))
     }
 
     /// Returns the app_type for a file

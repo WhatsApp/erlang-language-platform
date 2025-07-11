@@ -29,7 +29,7 @@ use vfs::VfsPath;
 use vfs::file_set::FileSet;
 
 use crate::AppDataIndex;
-use crate::SourceDatabaseExt;
+use crate::RootQueryDb;
 
 /// Files are grouped into source roots. A source root is a directory on the
 /// file systems which is watched for changes. Typically it corresponds to an OTP
@@ -204,7 +204,7 @@ impl AppStructure {
     /// Set the salsa inputs according to this AppStructure
     pub fn apply(
         self,
-        db: &mut dyn SourceDatabaseExt,
+        db: &mut dyn RootQueryDb,
         resolve_file_id: &impl Fn(&AbsPathBuf) -> Option<FileId>,
     ) -> FxHashMap<AbsPathBuf, AppDataId> {
         let mut app_index = AppDataIndex::default();

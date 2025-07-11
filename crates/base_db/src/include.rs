@@ -16,21 +16,21 @@ use vfs::VfsPath;
 
 use crate::AppData;
 use crate::ProjectId;
-use crate::SourceDatabase;
+use crate::RootQueryDb;
 use crate::SourceRoot;
 
 pub struct IncludeCtx<'a> {
-    db: &'a dyn SourceDatabase,
+    db: &'a dyn RootQueryDb,
     source_root: Arc<SourceRoot>,
     pub file_id: FileId,
 }
 
 impl<'a> IncludeCtx<'a> {
-    pub fn new(db: &'a dyn SourceDatabase, file_id: FileId) -> Self {
+    pub fn new(db: &'a dyn RootQueryDb, file_id: FileId) -> Self {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nIncludeCtx::new: {:?}", file_id));
-        let source_root_id = db.file_source_root(file_id);
-        let source_root = db.source_root(source_root_id);
+        let source_root_id = db.file_source_root(file_id).source_root_id(db);
+        let source_root = db.source_root(source_root_id).source_root(db);
         Self {
             db,
             file_id,
@@ -58,7 +58,7 @@ impl<'a> IncludeCtx<'a> {
 
     /// Called via salsa for inserting in the graph
     pub(crate) fn resolve_local_query(
-        db: &dyn SourceDatabase,
+        db: &dyn RootQueryDb,
         file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId> {
@@ -77,12 +77,12 @@ impl<'a> IncludeCtx<'a> {
 
     /// Called via salsa for inserting in the graph
     pub(crate) fn resolve_remote_query(
-        db: &dyn SourceDatabase,
+        db: &dyn RootQueryDb,
         file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId> {
         let project_id = db.file_project_id(file_id)?;
-        let project_data = db.project_data(project_id);
+        let project_data = db.project_data(project_id).project_data(db);
         let include = if let Some(include_mapping) = &project_data.include_mapping {
             include_mapping
                 .get(&path)
@@ -104,7 +104,7 @@ impl<'a> IncludeCtx<'a> {
 }
 
 fn find_generated_include_lib(
-    db: &dyn SourceDatabase,
+    db: &dyn RootQueryDb,
     project_id: ProjectId,
     include_path: &str,
     target_app_data: &AppData,
@@ -132,7 +132,7 @@ fn find_generated_include_lib(
 }
 
 pub fn generated_file_include_lib(
-    db: &dyn SourceDatabase,
+    db: &dyn RootQueryDb,
     file_id: FileId,
     included_file_id: FileId,
     include_path: VfsPath,

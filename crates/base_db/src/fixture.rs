@@ -47,12 +47,12 @@ use crate::FilePosition;
 use crate::FileRange;
 use crate::ProjectApps;
 use crate::ProjectId;
-use crate::SourceDatabaseExt;
+use crate::SourceDatabase;
 use crate::SourceRoot;
 use crate::change::Change;
 use crate::input::IncludeOtp;
 
-pub trait WithFixture: Default + SourceDatabaseExt + 'static {
+pub trait WithFixture: Default + SourceDatabase + 'static {
     #[track_caller]
     fn with_single_file(fixture: &str) -> (Self, FileId) {
         let (db, fixture) = Self::with_fixture(fixture);
@@ -91,7 +91,7 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
     }
 }
 
-impl<DB: SourceDatabaseExt + Default + 'static> WithFixture for DB {}
+impl<DB: SourceDatabase + Default + 'static> WithFixture for DB {}
 
 #[derive(Clone, Debug)]
 pub struct ChangeFixture {

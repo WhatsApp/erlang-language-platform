@@ -9,7 +9,7 @@
  */
 
 use elp_base_db::FileId;
-use elp_base_db::SourceDatabase;
+use elp_base_db::RootQueryDb;
 use elp_syntax::ast;
 
 mod body;
@@ -195,7 +195,7 @@ impl<T> InFile<T> {
         self.with_value(&self.value)
     }
 
-    pub fn file_syntax(&self, db: &dyn SourceDatabase) -> ast::SourceFile {
+    pub fn file_syntax(&self, db: &dyn RootQueryDb) -> ast::SourceFile {
         db.parse(self.file_id).tree()
     }
 }

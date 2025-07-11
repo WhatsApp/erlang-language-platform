@@ -13,9 +13,9 @@ use std::sync::Arc;
 
 use elp_base_db::AbsPath;
 use elp_base_db::FileId;
-use elp_base_db::FileLoader;
 use elp_base_db::IncludeCtx;
 use elp_base_db::ProjectId;
+use elp_base_db::RootQueryDb;
 use elp_base_db::SourceDatabase;
 use elp_base_db::path_for_file;
 use elp_base_db::salsa;
@@ -61,7 +61,7 @@ impl AstLoader for crate::RootDatabase {
             CompileOption::ElpMetadata(elp_metadata),
         ];
         let path: PathBuf = path.to_path_buf().into();
-        let file_text = self.file_text(file_id);
+        let file_text = SourceDatabase::file_text(self, file_id).text(self);
         let req = ParseRequest {
             options,
             file_id,
@@ -73,14 +73,14 @@ impl AstLoader for crate::RootDatabase {
 
         erlang_service.request_parse(
             req,
-            || self.unwind_if_cancelled(),
+            || self.unwind_if_revision_cancelled(),
             &move |file_id, include_type, path| resolve_include(self, file_id, include_type, path),
         )
     }
 }
 
 fn resolve_include(
-    db: &dyn SourceDatabase,
+    db: &dyn RootQueryDb,
     file_id: FileId,
     include_type: IncludeType,
     path: &str,
@@ -91,11 +91,15 @@ fn resolve_include(
         IncludeType::Doc => IncludeCtx::new(db, file_id).resolve_include_doc(path)?,
     };
     let path = path_for_file(db, include_file_id).map(|vfs_path| vfs_path.to_string())?;
-    Some((path, include_file_id, db.file_text(include_file_id)))
+    Some((
+        path,
+        include_file_id,
+        db.file_text(include_file_id).text(db),
+    ))
 }
 
-#[salsa::query_group(ErlAstDatabaseStorage)]
-pub trait ErlAstDatabase: SourceDatabase + AstLoader + LineIndexDatabase {
+#[ra_ap_query_group_macro::query_group(ErlAstDatabaseStorage)]
+pub trait ErlAstDatabase: RootQueryDb + AstLoader + LineIndexDatabase {
     fn module_ast(&self, file_id: FileId) -> Arc<ParseResult>;
     fn elp_metadata(&self, file_id: FileId) -> Metadata;
 }
@@ -103,8 +107,8 @@ pub trait ErlAstDatabase: SourceDatabase + AstLoader + LineIndexDatabase {
 fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId) -> Arc<ParseResult> {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nmodule_ast: {:?}", file_id));
-    let root_id = db.file_source_root(file_id);
-    let root = db.source_root(root_id);
+    let root_id = db.file_source_root(file_id).source_root_id(db);
+    let root = db.source_root(root_id).source_root(db);
     let path = root.path_for_file(&file_id).unwrap().as_path().unwrap();
     let metadata = db.elp_metadata(file_id);
     let app_data = if let Some(app_data) = db.file_app_data(file_id) {
@@ -129,7 +133,7 @@ fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId) -> Arc<ParseResult> {
 
 fn elp_metadata(db: &dyn ErlAstDatabase, file_id: FileId) -> Metadata {
     let line_index = db.file_line_index(file_id);
-    let file_text = db.file_text(file_id);
+    let file_text = db.file_text(file_id).text(db);
     let source = db.parse(file_id);
     metadata::collect_metadata(&line_index, &file_text, &source)
 }

@@ -25,7 +25,6 @@ use elp_eqwalizer::Mode;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
-use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide::elp_ide_db::elp_base_db::SourceRoot;
 use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
