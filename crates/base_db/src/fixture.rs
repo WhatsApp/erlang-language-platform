@@ -493,6 +493,7 @@ bar() -> ?FOO.
                                     name: AppName(
                                         "test-fixture",
                                     ),
+                                    buck_target_name: None,
                                     dir: AbsPathBuf(
                                         "/",
                                     ),
@@ -531,6 +532,7 @@ bar() -> ?FOO.
                                     name: AppName(
                                         "comp",
                                     ),
+                                    buck_target_name: None,
                                     dir: AbsPathBuf(
                                         "/opt/lib/comp-1.3",
                                     ),
@@ -580,6 +582,7 @@ bar() -> ?FOO.
                                     name: AppName(
                                         "foo-app",
                                     ),
+                                    buck_target_name: None,
                                     dir: AbsPathBuf(
                                         "/",
                                     ),
@@ -753,6 +756,7 @@ foo() -> ?BAR.
                                     name: AppName(
                                         "test-fixture",
                                     ),
+                                    buck_target_name: None,
                                     dir: AbsPathBuf(
                                         "/extra",
                                     ),

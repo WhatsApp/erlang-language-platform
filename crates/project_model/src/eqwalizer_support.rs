@@ -36,6 +36,7 @@ pub(crate) fn eqwalizer_suppport_data(otp_root: &AbsPath) -> ProjectAppData {
 
     ProjectAppData {
         name: AppName("eqwalizer_support".to_string()),
+        buck_target_name: None,
         dir: eqwalizer_support.clone(),
         include_dirs: vec![],
         abs_src_dirs: vec![eqwalizer_support.join("src")],

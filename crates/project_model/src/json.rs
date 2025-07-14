@@ -92,6 +92,7 @@ impl JsonProjectAppData {
         };
         Ok(ProjectAppData {
             name: AppName(self.name.clone()),
+            buck_target_name: None,
             dir,
             ebin,
             extra_src_dirs: self.extra_src_dirs.clone(),

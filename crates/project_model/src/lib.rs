@@ -30,6 +30,7 @@ use anyhow::bail;
 use buck::BuckConfig;
 use buck::BuckQueryConfig;
 use buck::IncludeMapping;
+use buck::TargetFullName;
 use elp_log::timeit;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -832,6 +833,8 @@ pub enum AppType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectAppData {
     pub name: AppName,
+    /// Target name if this application originates from a buck target
+    pub buck_target_name: Option<TargetFullName>,
     pub dir: AbsPathBuf,
     pub ebin: Option<AbsPathBuf>,
     pub extra_src_dirs: Vec<String>,
@@ -862,6 +865,7 @@ impl ProjectAppData {
     ) -> ProjectAppData {
         ProjectAppData {
             name,
+            buck_target_name: None,
             ebin: None,
             extra_src_dirs,
             include_dirs,
@@ -886,6 +890,7 @@ impl ProjectAppData {
         let abs_src_dir = dir.join("src");
         Self {
             name: AppName(name.to_string()),
+            buck_target_name: None,
             ebin: Some(dir.join("ebin")),
             extra_src_dirs: vec![],
             // This makes sure files in ./include are loaded into VFS

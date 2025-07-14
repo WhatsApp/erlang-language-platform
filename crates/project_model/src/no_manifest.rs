@@ -58,6 +58,7 @@ impl NoManifestConfig {
     pub fn to_project_app_data(&self, otp_root: &AbsPath) -> Vec<ProjectAppData> {
         let mut data = ProjectAppData {
             name: self.name.clone(),
+            buck_target_name: None,
             dir: self.root_path.clone(),
             include_dirs: self.include_dirs.clone(),
             abs_src_dirs: self.abs_src_dirs.clone(),

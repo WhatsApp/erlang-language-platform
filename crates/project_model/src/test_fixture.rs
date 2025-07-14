@@ -953,6 +953,7 @@ bar() -> ok.
                 name: AppName(
                     "test-fixture",
                 ),
+                buck_target_name: None,
                 dir: AbsPathBuf(
                     "/",
                 ),

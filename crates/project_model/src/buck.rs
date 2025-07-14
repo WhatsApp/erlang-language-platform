@@ -844,6 +844,7 @@ fn targets_to_project_data_bxl(
         };
         let project_app_data = ProjectAppData {
             name: target.app_name.clone(),
+            buck_target_name: Some(target.name.clone()),
             dir: target.dir.clone(),
             ebin: None,
             extra_src_dirs: extra_src_dirs.into_iter().collect(),

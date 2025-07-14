@@ -20,6 +20,7 @@ use elp_project_model::EqwalizerConfig;
 use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
 use elp_project_model::buck::IncludeMapping;
+use elp_project_model::buck::TargetFullName;
 use fxhash::FxHashMap;
 use paths::RelPath;
 use paths::Utf8Path;
@@ -124,6 +125,8 @@ pub struct ProjectData {
 pub struct AppData {
     pub project_id: ProjectId,
     pub name: AppName,
+    /// Target name if this application originates from a buck target
+    pub buck_target_name: Option<TargetFullName>,
     pub dir: AbsPathBuf,
     /// Include directories belonging to this app only. Used for
     /// include_lib resolution
@@ -365,6 +368,7 @@ impl<'a> ProjectApps<'a> {
                 let input_data = AppData {
                     project_id,
                     name: app.name.clone(),
+                    buck_target_name: app.buck_target_name.clone(),
                     dir: app.dir.clone(),
                     include_dirs: app.include_dirs.clone(),
                     include_path: app.include_path.clone(),

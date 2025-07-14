@@ -187,6 +187,7 @@ impl RebarProject {
                 .collect::<Result<_>>()?;
             Ok(ProjectAppData {
                 name: AppName(into_string(map_pop(&mut term, "name")?)?),
+                buck_target_name: None,
                 dir,
                 ebin: map_pop(&mut term, "ebin")
                     .ok()
