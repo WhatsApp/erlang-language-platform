@@ -566,16 +566,23 @@ impl Server {
                         break;
                     }
                 };
+                let (in_mem, version) = match convert::vfs_path(&url) {
+                    Ok(path) => match self.mem_docs.read().get(&path).cloned() {
+                        Some(d) => (true, Some(d.version)),
+                        None => (false, None),
+                    },
+                    Err(_) => (false, None),
+                };
+                if !in_mem {
+                    // Clear all but eqwalizer project diagnostics
+                    Arc::make_mut(&mut self.diagnostics).clear(*file_id);
+                }
                 let diagnostics = self
                     .diagnostics
                     .diagnostics_for(*file_id)
                     .iter()
                     .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d))
                     .collect();
-                let version = convert::vfs_path(&url)
-                    .map(|path| self.mem_docs.read().get(&path).cloned())
-                    .unwrap_or_default()
-                    .map(|doc_info| doc_info.version);
 
                 self.send_notification::<notification::PublishDiagnostics>(
                     lsp_types::PublishDiagnosticsParams {
@@ -762,20 +769,22 @@ impl Server {
                         this.vfs_loader.handle.invalidate(path.to_path_buf());
                     }
 
-                    // If project-wide diagnostics are enabled, ensure we don't lose the eqwalizer ones.
-                    if this.config.eqwalizer().all {
-                        let vfs = this.vfs.read();
-                        if let Some((file_id, _)) = vfs.file_id(&path) {
+                    let vfs = this.vfs.read();
+                    if let Some((file_id, _)) = vfs.file_id(&path) {
+                        // If project-wide diagnostics are enabled, ensure we don't lose the eqwalizer ones.
+                        if this.config.eqwalizer().all {
                             Arc::make_mut(&mut this.diagnostics)
                                 .move_eqwalizer_diagnostics_to_project_diagnostics(file_id);
-                            if let Ok(line_index) = analysis.line_index(file_id) {
-                                diagnostics = this
-                                    .diagnostics
-                                    .project_diagnostics_for(file_id)
-                                    .iter()
-                                    .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d))
-                                    .collect()
-                            }
+                        }
+                        Arc::make_mut(&mut this.diagnostics)
+                            .clear(file_id);
+                        if let Ok(line_index) = analysis.line_index(file_id) {
+                            diagnostics = this
+                                .diagnostics
+                                .diagnostics_for(file_id)
+                                .iter()
+                                .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d))
+                                .collect()
                         }
                     }
                 }
@@ -952,7 +961,7 @@ impl Server {
             }
             if !opened {
                 // This call will add the file to the changed_files, picked
-                // up in `process_changes`.
+                // up in `process_changes`, if it has changed.
                 vfs.set_file_contents(path, contents);
             }
         }

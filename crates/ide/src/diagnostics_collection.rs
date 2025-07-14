@@ -85,6 +85,20 @@ impl DiagnosticCollection {
         }
     }
 
+    /// Reset all diagnostics for a given file, by explicitly setting
+    /// them to an empty list.  The LSP server (ELP) is responsible
+    /// for the diagnostic database for a file, so we need to
+    /// explicitly clear them when the file closes.  This function
+    /// does not clear `eqwalizer_project` ones, as these are intended
+    /// to be valid regardless of whether the file is open or not.
+    pub fn clear(&mut self, file_id: FileId) {
+        self.set_native(file_id, LabeledDiagnostics::default());
+        self.set_eqwalizer(file_id, vec![]);
+        self.set_edoc(file_id, vec![]);
+        self.set_ct(file_id, vec![]);
+        self.set_erlang_service(file_id, LabeledDiagnostics::default());
+    }
+
     pub fn diagnostics_for(&self, file_id: FileId) -> Vec<Diagnostic> {
         let empty_diags = LabeledDiagnostics::default();
         let native = self.native.get(&file_id).unwrap_or(&empty_diags);
