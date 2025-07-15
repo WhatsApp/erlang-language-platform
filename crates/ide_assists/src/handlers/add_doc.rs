@@ -76,24 +76,20 @@ pub(crate) fn add_doc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             let mut idx = 1;
             let header = match ctx.config.snippet_cap {
                 Some(_cap) => {
-                    format!("-doc \"\"\"\n${{{}:{}}}\n\"\"\".", idx, DEFAULT_TEXT)
+                    format!("-doc \"\"\"\n${{{idx}:{DEFAULT_TEXT}}}\n\"\"\".")
                 }
                 None => {
-                    format!("-doc \"\"\"\n{}\n\"\"\".", DEFAULT_TEXT)
+                    format!("-doc \"\"\"\n{DEFAULT_TEXT}\n\"\"\".")
                 }
             };
             let params = arg_names.fold(String::new(), |mut output, arg_name| {
                 idx += 1;
                 match ctx.config.snippet_cap {
                     Some(_cap) => {
-                        let _ = write!(
-                            output,
-                            "\"{}\" => \"${{{}:{}}}\", ",
-                            arg_name, idx, ARG_TEXT
-                        );
+                        let _ = write!(output, "\"{arg_name}\" => \"${{{idx}:{ARG_TEXT}}}\", ");
                     }
                     None => {
-                        let _ = write!(output, "\"{}\" => \"{}\", ", arg_name, ARG_TEXT);
+                        let _ = write!(output, "\"{arg_name}\" => \"{ARG_TEXT}\", ");
                     }
                 }
                 output
@@ -106,7 +102,7 @@ pub(crate) fn add_doc(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             } else {
                 "".to_string()
             };
-            let text = format!("{}\n{}", header, params);
+            let text = format!("{header}\n{params}");
             builder.edit_file(ctx.frange.file_id);
             match ctx.config.snippet_cap {
                 Some(cap) => {
@@ -131,7 +127,7 @@ pub fn arg_name(arg_idx: usize, expr: ast::Expr) -> String {
     if let ast::Expr::ExprMax(ast::ExprMax::Var(var)) = expr {
         var.text().to_string()
     } else {
-        format!("Arg{}", arg_idx)
+        format!("Arg{arg_idx}")
     }
 }
 

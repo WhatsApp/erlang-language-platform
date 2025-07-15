@@ -234,7 +234,7 @@ impl Documentation<'_> {
 // None -> Unknown (e.g. because OTP is not being tracked)
 fn is_file_in_otp(db: &dyn DocDatabase, file_id: FileId) -> Option<bool> {
     // Context for T171541590
-    let _ = stdx::panic_context::enter(format!("\nis_file_in_otp: {:?}", file_id));
+    let _ = stdx::panic_context::enter(format!("\nis_file_in_otp: {file_id:?}"));
     if let Some(app_data) = db.file_app_data(file_id) {
         let project_id = app_data.project_id;
         Some(db.project_data(project_id).project_data(db).otp_project_id == Some(project_id))
@@ -305,9 +305,9 @@ fn merge_type_definitions_and_descriptions(
         .map(|(na, def)| {
             let type_def = def.source(db.upcast()).syntax().to_string();
             let markdown = if let Some(doc) = type_docs.get(na).map(|d| d.markdown_text()) {
-                format!("```erlang\n{}\n```\n\n-----\n\n{}", type_def, doc)
+                format!("```erlang\n{type_def}\n```\n\n-----\n\n{doc}")
             } else {
-                format!("```erlang\n{}\n```", type_def)
+                format!("```erlang\n{type_def}\n```")
             };
             (na.clone(), Doc::new(markdown))
         })
@@ -337,7 +337,7 @@ impl DocLoader for crate::RootDatabase {
     fn load_doc_descriptions(&self, file_id: FileId, doc_origin: DocOrigin) -> FileDoc {
         _ = SourceDatabase::file_text(self, file_id); // Take dependency on the contents of the file we're getting docs for
         // Context for T171541590
-        let _ = stdx::panic_context::enter(format!("\nload_doc_descriptions: {:?}", file_id));
+        let _ = stdx::panic_context::enter(format!("\nload_doc_descriptions: {file_id:?}"));
         let root_id = self.file_source_root(file_id).source_root_id(self);
         let root = self.source_root(root_id).source_root(self);
         let src_db: &dyn RootQueryDb = self.upcast();

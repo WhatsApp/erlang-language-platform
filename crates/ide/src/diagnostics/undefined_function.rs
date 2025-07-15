@@ -192,7 +192,7 @@ fn make_diagnostic(
             });
             let mut diagnostic = Diagnostic::new(
                 DiagnosticCode::UnexportedFunction,
-                format!("Function '{}' is not exported.", function_name),
+                format!("Function '{function_name}' is not exported."),
                 range,
             )
             .with_severity(Severity::Warning)
@@ -210,7 +210,7 @@ fn make_diagnostic(
         Some(
             Diagnostic::new(
                 DiagnosticCode::UndefinedFunction,
-                format!("Function '{}' is undefined.", function_name),
+                format!("Function '{function_name}' is undefined."),
                 range,
             )
             .with_severity(Severity::Warning)

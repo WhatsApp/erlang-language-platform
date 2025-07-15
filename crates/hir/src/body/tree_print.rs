@@ -128,12 +128,12 @@ pub(crate) fn print_function(
 
     if let Some((_, clause)) = body.clauses.iter().next() {
         if let Some(na) = clause.name.clone() {
-            write!(out, "function: {}", na).ok();
+            write!(out, "function: {na}").ok();
         }
     };
     let mut sep = "";
     for (_idx, clause) in body.clauses.iter() {
-        write!(out, "{}", sep).unwrap();
+        write!(out, "{sep}").unwrap();
         sep = ";";
         let fold_body = fold_body(strategy, &clause.body);
         let mut printer = Printer::new_with_strategy(db, &fold_body, strategy);
@@ -234,7 +234,7 @@ pub(crate) fn print_spec(
 
     let mut sep = "";
     body.sigs.iter().for_each(|sig| {
-        write!(printer, "{}", sep).unwrap();
+        write!(printer, "{sep}").unwrap();
         sep = ";\n";
 
         if sig.args.is_empty() {
@@ -244,7 +244,7 @@ pub(crate) fn print_spec(
             printer.indent_level += 1;
             let mut args_sep = "";
             for arg in &sig.args {
-                write!(printer, "{}", args_sep).unwrap();
+                write!(printer, "{args_sep}").unwrap();
                 args_sep = ",\n";
                 printer.print_type(arg);
             }
@@ -437,7 +437,7 @@ impl<'a> Printer<'a> {
                 self.print_herald("Expr::UnaryOp", &mut |this| {
                     this.print_expr(expr);
                     writeln!(this).ok();
-                    writeln!(this, "{:?},", op).ok();
+                    writeln!(this, "{op:?},").ok();
                 });
             }
             Expr::BinaryOp { lhs, rhs, op } => {
@@ -445,7 +445,7 @@ impl<'a> Printer<'a> {
                     this.print_labelled("lhs", true, &mut |this| this.print_expr(lhs));
                     this.print_labelled("rhs", true, &mut |this| this.print_expr(rhs));
                     this.print_labelled("op", true, &mut |this| {
-                        write!(this, "{:?},", op).ok();
+                        write!(this, "{op:?},").ok();
                     });
                 });
             }
@@ -513,7 +513,7 @@ impl<'a> Printer<'a> {
                             this.print_expr(name);
                             this.indent();
                             writeln!(this).ok();
-                            writeln!(this, "{:?}", op).ok();
+                            writeln!(this, "{op:?}").ok();
                             this.print_expr(value);
                             writeln!(this, ",").ok();
                             this.dedent();
@@ -535,7 +535,7 @@ impl<'a> Printer<'a> {
                 self.print_herald("Expr::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
                     this.print_labelled("macro_def", false, &mut |this| {
-                        writeln!(this, "{:?}", macro_def).ok();
+                        writeln!(this, "{macro_def:?}").ok();
                     });
                     if this.expand_macros {
                         this.print_labelled("expansion", true, &mut |this| {
@@ -797,7 +797,7 @@ impl<'a> Printer<'a> {
                 self.print_herald("Pat::UnaryOp", &mut |this| {
                     this.print_pat(pat);
                     writeln!(this).ok();
-                    writeln!(this, "{:?},", op).ok();
+                    writeln!(this, "{op:?},").ok();
                 });
             }
             Pat::BinaryOp { lhs, rhs, op } => {
@@ -805,7 +805,7 @@ impl<'a> Printer<'a> {
                     this.print_labelled("lhs", true, &mut |this| this.print_pat(lhs));
                     this.print_labelled("rhs", true, &mut |this| this.print_pat(rhs));
                     this.print_labelled("op", true, &mut |this| {
-                        write!(this, "{:?},", op).ok();
+                        write!(this, "{op:?},").ok();
                     });
                 });
             }
@@ -852,7 +852,7 @@ impl<'a> Printer<'a> {
                 self.print_herald("Pat::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
                     this.print_labelled("macro_def", false, &mut |this| {
-                        writeln!(this, "{:?}", macro_def).ok();
+                        writeln!(this, "{macro_def:?}").ok();
                     });
                     if this.expand_macros {
                         this.print_labelled("expansion", true, &mut |this| {
@@ -883,12 +883,12 @@ impl<'a> Printer<'a> {
             Term::Binary(bin) => {
                 self.print_herald("Term::Binary", &mut |this| {
                     if let Ok(str) = str::from_utf8(bin) {
-                        writeln!(this, "<<{:?}/utf8>>", str).ok();
+                        writeln!(this, "<<{str:?}/utf8>>").ok();
                     } else {
                         write!(this, "<<").ok();
                         let mut sep = "";
                         for byte in bin {
-                            write!(this, "{}{}", sep, byte).ok();
+                            write!(this, "{sep}{byte}").ok();
                             sep = ", ";
                         }
                         writeln!(this, ">>").ok();
@@ -959,7 +959,7 @@ impl<'a> Printer<'a> {
                 self.print_herald("Term::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
                     this.print_labelled("macro_def", false, &mut |this| {
-                        writeln!(this, "{:?}", macro_def).ok();
+                        writeln!(this, "{macro_def:?}").ok();
                     });
                     if this.expand_macros {
                         this.print_labelled("expansion", true, &mut |this| {
@@ -986,7 +986,7 @@ impl<'a> Printer<'a> {
                     this.print_labelled("lhs", true, &mut |this| this.print_type(lhs));
                     this.print_labelled("rhs", true, &mut |this| this.print_type(rhs));
                     this.print_labelled("op", true, &mut |this| {
-                        write!(this, "{:?},", op).ok();
+                        write!(this, "{op:?},").ok();
                     });
                 });
             }
@@ -1062,7 +1062,7 @@ impl<'a> Printer<'a> {
                         this.print_type(name);
                         this.indent();
                         writeln!(this).ok();
-                        writeln!(this, "{:?}", op).ok();
+                        writeln!(this, "{op:?}").ok();
                         this.print_type(value);
                         writeln!(this, ",").ok();
                         this.dedent();
@@ -1116,7 +1116,7 @@ impl<'a> Printer<'a> {
                 self.print_herald("TypeExpr::UnaryOp", &mut |this| {
                     this.print_type(type_expr);
                     writeln!(this).ok();
-                    writeln!(this, "{:?},", op).ok();
+                    writeln!(this, "{op:?},").ok();
                 });
             }
             TypeExpr::Var(var) => {
@@ -1131,7 +1131,7 @@ impl<'a> Printer<'a> {
                 self.print_herald("TypeExpr::MacroCall", &mut |this| {
                     this.print_labelled("args", false, &mut |this| this.print_exprs(args));
                     this.print_labelled("macro_def", false, &mut |this| {
-                        writeln!(this, "{:?}", macro_def).ok();
+                        writeln!(this, "{macro_def:?}").ok();
                     });
                     if this.expand_macros {
                         this.print_labelled("expansion", true, &mut |this| {
@@ -1146,8 +1146,8 @@ impl<'a> Printer<'a> {
 
     fn print_literal(&mut self, lit: &Literal) {
         match lit {
-            Literal::String(string) => write!(self, "String({:?})", string),
-            Literal::Char(char) => write!(self, "Char(${})", char),
+            Literal::String(string) => write!(self, "String({string:?})"),
+            Literal::Char(char) => write!(self, "Char(${char})"),
             Literal::Atom(atom) => write!(self, "Atom('{}')", self.db.lookup_atom(*atom)),
             Literal::Integer(int) => write!(self, "Integer({})", int.value), // TODO: other base
             Literal::Float(float) => write!(self, "Float({})", f64::from_bits(*float)),
@@ -1255,7 +1255,7 @@ impl<'a> Printer<'a> {
         final_newline: bool,
         print: &mut dyn FnMut(&mut Self),
     ) {
-        writeln!(self, "{}", label).ok();
+        writeln!(self, "{label}").ok();
         self.indent();
         print(self);
         if final_newline {
@@ -1290,7 +1290,7 @@ impl<'a> Printer<'a> {
             writeln!(this, "unit").ok();
             this.indent();
             if let Some(unit) = seg.unit {
-                writeln!(this, "{}", unit).ok();
+                writeln!(this, "{unit}").ok();
             };
             this.dedent();
         });
@@ -1333,10 +1333,10 @@ impl<'a> Printer<'a> {
     }
 
     fn print_args<T>(&mut self, name: &str, exprs: &[T], print: impl Fn(&mut Self, &T)) {
-        write!(self, "{}(", name).ok();
+        write!(self, "{name}(").ok();
         let mut sep = "";
         for expr in exprs {
-            write!(self, "{}", sep).ok();
+            write!(self, "{sep}").ok();
             sep = ", ";
             print(self, expr);
         }
@@ -1377,7 +1377,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_record_field(&mut self, field: &RecordFieldId) {
-        write!(self, "{:?}", field).ok();
+        write!(self, "{field:?}").ok();
     }
 }
 
@@ -1389,7 +1389,7 @@ fn print_comprehension_expr(this: &mut Printer<'_>, expr: &ComprehensionExpr) {
                 writeln!(this).ok();
                 this.print_expr(expr);
                 writeln!(this).ok();
-                writeln!(format!("strict: {}", strict)).ok();
+                writeln!(format!("strict: {strict}")).ok();
             });
         }
         ComprehensionExpr::ListGenerator { pat, expr, strict } => {
@@ -1398,7 +1398,7 @@ fn print_comprehension_expr(this: &mut Printer<'_>, expr: &ComprehensionExpr) {
                 writeln!(this).ok();
                 this.print_expr(expr);
                 writeln!(this).ok();
-                writeln!(format!("strict: {}", strict)).ok();
+                writeln!(format!("strict: {strict}")).ok();
             });
         }
         ComprehensionExpr::Expr(expr) => {
@@ -1420,7 +1420,7 @@ fn print_comprehension_expr(this: &mut Printer<'_>, expr: &ComprehensionExpr) {
                 writeln!(this, " <-").ok();
                 this.print_expr(expr);
                 writeln!(this).ok();
-                writeln!(format!("strict: {}", strict)).ok();
+                writeln!(format!("strict: {strict}")).ok();
             });
         }
         ComprehensionExpr::Zip(exprs) => {

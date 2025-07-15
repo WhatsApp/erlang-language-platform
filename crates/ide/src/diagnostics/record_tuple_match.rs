@@ -90,7 +90,7 @@ fn report(
 }
 
 fn make_diagnostic(range: TextRange, record_name: &Name) -> Diagnostic {
-    let message = format!("matching record '{}' as a tuple.", record_name);
+    let message = format!("matching record '{record_name}' as a tuple.");
     Diagnostic::new(DiagnosticCode::RecordTupleMatch, message, range)
         .with_severity(Severity::Warning)
 }

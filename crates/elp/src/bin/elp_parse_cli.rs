@@ -87,7 +87,7 @@ pub fn parse_all(
     let (file_id, name) = match &args.module {
         Some(module) => {
             if args.is_format_normal() {
-                writeln!(cli, "module specified: {}", module)?;
+                writeln!(cli, "module specified: {module}")?;
             }
             let file_id = analysis.module_file_id(loaded.project_id, module)?;
             (file_id, analysis.module_name(file_id.unwrap())?)
@@ -96,7 +96,7 @@ pub fn parse_all(
         None => match &args.file {
             Some(file_name) => {
                 if args.is_format_normal() {
-                    writeln!(cli, "file specified: {}", file_name)?;
+                    writeln!(cli, "file specified: {file_name}")?;
                 }
                 let path_buf = Utf8PathBuf::from_path_buf(fs::canonicalize(file_name).unwrap())
                     .expect("UTF8 conversion failed");
@@ -127,7 +127,7 @@ pub fn parse_all(
             do_parse_one(&analysis, &loaded.vfs, &cfg, &args.to, file_id, &name)?
                 .map_or(vec![], |x| vec![x])
         }
-        (Some(file_id), _, _) => panic!("Could not get name from file_id for {:?}", file_id),
+        (Some(file_id), _, _) => panic!("Could not get name from file_id for {file_id:?}"),
     };
 
     if args.dump_include_resolutions {
@@ -208,8 +208,7 @@ fn print_diagnostic_json(
         cli,
         "{}",
         serde_json::to_string(&converted_diagnostic).unwrap_or_else(|err| panic!(
-            "print_diagnostics_json failed for '{:?}': {}",
-            converted_diagnostic, err
+            "print_diagnostics_json failed for '{converted_diagnostic:?}': {err}"
         ))
     )?;
     Ok(())
@@ -247,7 +246,7 @@ fn print_diagnostic(
 fn maybe_code_as_string(mc: Option<NumberOrString>) -> String {
     match mc {
         Some(ns) => match ns {
-            NumberOrString::Number(n) => format!("{}", n),
+            NumberOrString::Number(n) => format!("{n}"),
             NumberOrString::String(s) => s,
         },
         None => "".to_string(),
@@ -336,16 +335,16 @@ fn do_parse_one(
         .unwrap_or(LabeledDiagnostics::default());
 
     if let Some(to) = to {
-        let to_path = to.join(format!("{}.diag", name));
+        let to_path = to.join(format!("{name}.diag"));
         let mut output = File::create(to_path)?;
 
         for diagnostic in native.iter() {
             let diagnostic = convert::ide_to_lsp_diagnostic(&line_index, &url, diagnostic);
-            writeln!(output, "{:?}", diagnostic)?;
+            writeln!(output, "{diagnostic:?}")?;
         }
         for diagnostic in erlang_service.iter() {
             let diagnostic = convert::ide_to_lsp_diagnostic(&line_index, &url, diagnostic);
-            writeln!(output, "{:?}", diagnostic)?;
+            writeln!(output, "{diagnostic:?}")?;
         }
     }
     if !(native.is_empty() && erlang_service.is_empty()) {

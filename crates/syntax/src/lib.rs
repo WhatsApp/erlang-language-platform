@@ -622,7 +622,7 @@ mod tests {
             match item {
                 ast::Form::ModuleAttribute(f) => module_attr = Some(f),
                 ast::Form::FunDecl(f) => func = Some(f),
-                x => panic!("{:?}", x),
+                x => panic!("{x:?}"),
                 // _ => unreachable!(),
             }
         }
@@ -639,7 +639,7 @@ mod tests {
                   ANON_DOT@12..13 "."
                 ,
             }"#]]
-        .assert_eq(format!("{:#?}", module).as_str());
+        .assert_eq(format!("{module:#?}").as_str());
 
         match module.name().unwrap() {
             ast::Name::Atom(name) => assert_eq!(name.raw_text(), "foo"),
@@ -675,7 +675,7 @@ mod tests {
                   ANON_DOT@31..32 "."
                 ,
             }"#]]
-        .assert_eq(format!("{:#?}", fun).as_str());
+        .assert_eq(format!("{fun:#?}").as_str());
         let fun_clauses = fun.clauses();
         assert_eq!(fun.clauses().count(), 1);
 
@@ -715,7 +715,7 @@ mod tests {
         for item in fun_clauses {
             match item {
                 ast::FunctionOrMacroClause::FunctionClause(f) => clause = Some(f),
-                x => panic!("{:?}", x),
+                x => panic!("{x:?}"),
                 // _ => unreachable!(),
             }
         }
@@ -788,7 +788,7 @@ mod tests {
                     INTEGER@30..31 "1"
                 ,
             }"#]]
-        .assert_eq(format!("{:#?}", bin_expr).as_str());
+        .assert_eq(format!("{bin_expr:#?}").as_str());
 
         // Besides the "typed" AST API, there's an untyped CST one as well.
         // To switch from AST to CST, call `.syntax()` method:

@@ -133,7 +133,7 @@ impl IndentLevel {
         });
         for token in tokens {
             if token.kind() == WHITESPACE && token.text().contains('\n') {
-                let new_ws = make_whitespace(&token.text().replace(&format!("\n{}", self), "\n"));
+                let new_ws = make_whitespace(&token.text().replace(&format!("\n{self}"), "\n"));
                 ted::replace(token, &new_ws);
             }
         }

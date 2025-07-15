@@ -136,7 +136,7 @@ impl NameArity {
     }
 
     pub fn as_label(&self) -> String {
-        format!("{}", self)
+        format!("{self}")
     }
 }
 
@@ -174,8 +174,8 @@ impl MacroName {
 
     pub fn extended_display_name(&self) -> String {
         match self.arity() {
-            Some(_arity) => format!("{}", self),
-            None => format!("{}/NOARGS", self),
+            Some(_arity) => format!("{self}"),
+            None => format!("{self}/NOARGS"),
         }
     }
 }

@@ -39,7 +39,7 @@ pub enum ConversionError {
 
 impl fmt::Display for ConversionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Common Test conversion failed with {:?}", self)
+        write!(f, "Common Test conversion failed with {self:?}")
     }
 }
 

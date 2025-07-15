@@ -2329,7 +2329,7 @@ bar() ->
                     macro_name: _,
                 }) => {
                     if let Some(def) = macro_def {
-                        acc.push(format!("Expr:{:?}", def));
+                        acc.push(format!("Expr:{def:?}"));
                         acc
                     } else {
                         acc
@@ -2342,7 +2342,7 @@ bar() ->
                     macro_name: _,
                 }) => {
                     if let Some(def) = macro_def {
-                        acc.push(format!("Pat:{:?}", def));
+                        acc.push(format!("Pat:{def:?}"));
                         acc
                     } else {
                         acc
@@ -2355,7 +2355,7 @@ bar() ->
                     macro_name: _,
                 }) => {
                     if let Some(def) = macro_def {
-                        acc.push(format!("TypeExpr:{:?}", def));
+                        acc.push(format!("TypeExpr:{def:?}"));
                         acc
                     } else {
                         acc
@@ -2368,7 +2368,7 @@ bar() ->
                     macro_name: _,
                 }) => {
                     if let Some(def) = macro_def {
-                        acc.push(format!("Term:{:?}", def));
+                        acc.push(format!("Term:{def:?}"));
                         acc
                     } else {
                         acc

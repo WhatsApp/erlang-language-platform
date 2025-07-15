@@ -550,8 +550,7 @@ pub fn check_no_parse_errors_with_config(
         .unwrap();
     assert!(
         diags.is_empty(),
-        "didn't expect parse errors in files: {:?}",
-        diags
+        "didn't expect parse errors in files: {diags:?}"
     );
 }
 

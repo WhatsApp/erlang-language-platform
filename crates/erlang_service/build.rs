@@ -37,17 +37,14 @@ fn main() {
                 String::from_utf8(output.stdout).expect("valid utf8 output from rebar3 escriptize");
             let stderr =
                 String::from_utf8(output.stderr).expect("valid utf8 output from rebar3 escriptize");
-            panic!(
-                "rebar3 escriptize failed with stdout:\n{}\n\nstderr:\n{}",
-                stdout, stderr
-            );
+            panic!("rebar3 escriptize failed with stdout:\n{stdout}\n\nstderr:\n{stderr}");
         }
 
         let source = dest_dir.join(profile).join("bin").join("erlang_service");
         fs::copy(source, dest_dir.join("erlang_service")).unwrap();
 
-        println!("cargo:rerun-if-changed={}/rebar.config", source_directory);
-        println!("cargo:rerun-if-changed={}/src", source_directory);
+        println!("cargo:rerun-if-changed={source_directory}/rebar.config");
+        println!("cargo:rerun-if-changed={source_directory}/src");
     }
 
     println!("cargo:rerun-if-env-changed=ELP_PARSE_SERVER_ESCRIPT_PATH");

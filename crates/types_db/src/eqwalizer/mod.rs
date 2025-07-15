@@ -62,7 +62,7 @@ pub enum StructuredDiagnostic {
 impl EqwalizerDiagnostic {
     pub fn expr_string(&self) -> String {
         match &self.expression {
-            Some(s) => format!("`{}`.\n", s),
+            Some(s) => format!("`{s}`.\n"),
             None => "".to_string(),
         }
     }

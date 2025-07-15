@@ -20,7 +20,7 @@ pub(crate) fn links(res: &mut Vec<DocLink>, sema: &Semantic, def: &SymbolDefinit
         SymbolDefinition::Module(module) => {
             if module.is_in_otp(sema.db) {
                 let name = module.name(sema.db);
-                let uri = format!("{}/doc/man/{}.html", OTP_BASE_URL, name);
+                let uri = format!("{OTP_BASE_URL}/doc/man/{name}.html");
                 let link = DocLink {
                     title: name.to_string(),
                     uri,
@@ -36,8 +36,7 @@ pub(crate) fn links(res: &mut Vec<DocLink>, sema: &Semantic, def: &SymbolDefinit
                     let function_arity = function_def.name.arity();
                     let title = format!("{module_name}:{function_name}/{function_arity}");
                     let uri = format!(
-                        "{}/doc/man/{}.html#{}/{}",
-                        OTP_BASE_URL, module_name, function_name, function_arity
+                        "{OTP_BASE_URL}/doc/man/{module_name}.html#{function_name}/{function_arity}"
                     );
                     let link = DocLink { title, uri };
                     res.push(link);

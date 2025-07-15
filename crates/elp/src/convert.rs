@@ -138,7 +138,7 @@ pub fn eqwalizer_to_arc_diagnostic(
     };
     // formatting: https://fburl.com/max_wiki_link_to_phabricator_rich_text
     let explanation = match &d.explanation {
-        Some(s) => format!("```\n{}\n```", s),
+        Some(s) => format!("```\n{s}\n```"),
         None => "".to_string(),
     };
     let link = format!("> [docs on `{}`]({})", d.code, d.uri);

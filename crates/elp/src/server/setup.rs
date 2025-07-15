@@ -78,10 +78,10 @@ impl ServerSetup {
 
         self.connection
             .initialize_finish(id, serde_json::to_value(result.clone()).unwrap())
-            .with_context(|| format!("during initialization finish: {:?}", result))?;
+            .with_context(|| format!("during initialization finish: {result:?}"))?;
 
         let otp_details =
-            Otp::system_version().unwrap_or_else(|err| format!("Could not find OTP: {}", err));
+            Otp::system_version().unwrap_or_else(|err| format!("Could not find OTP: {err}"));
         let message = format!(
             "ELP version: {}, OTP version: {}",
             crate::version(),
@@ -152,7 +152,7 @@ pub fn setup_server(config: Config, connection: Connection, logger: Logger) -> R
     let cache_pool = set_up_single_thread_pool();
     let eqwalizer_pool = set_up_eqwalizer_pool();
     let project_pool = set_up_single_thread_pool();
-    log::debug!("initial state: {:#?}", config);
+    log::debug!("initial state: {config:#?}");
 
     Ok(Server::new(
         connection,

@@ -28,7 +28,7 @@ pub struct IncludeCtx<'a> {
 impl<'a> IncludeCtx<'a> {
     pub fn new(db: &'a dyn RootQueryDb, file_id: FileId) -> Self {
         // Context for T171541590
-        let _ = stdx::panic_context::enter(format!("\nIncludeCtx::new: {:?}", file_id));
+        let _ = stdx::panic_context::enter(format!("\nIncludeCtx::new: {file_id:?}"));
         let source_root_id = db.file_source_root(file_id).source_root_id(db);
         let source_root = db.source_root(source_root_id).source_root(db);
         Self {

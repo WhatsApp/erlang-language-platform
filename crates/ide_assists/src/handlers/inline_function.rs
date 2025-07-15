@@ -591,10 +591,7 @@ fn params_text(args: &ast::ExprArgs) -> Option<String> {
     if args.args().count() == 1 {
         Some(args_str)
     } else {
-        Some(format!(
-            "{{{}}}", // open and closing braces, around params
-            args_str
-        ))
+        Some(format!("{{{args_str}}}"))
     }
 }
 

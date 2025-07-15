@@ -16,7 +16,7 @@ use crate::Completion;
 pub(crate) fn render_completions(completions: Vec<Completion>) -> String {
     completions
         .iter()
-        .map(|completion| format!("{}", completion))
+        .map(|completion| format!("{completion}"))
         .collect::<Vec<_>>()
         .join("\n")
 }

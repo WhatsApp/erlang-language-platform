@@ -202,7 +202,7 @@ impl ProgressBar {
     pub fn report(&self, done: usize, total: usize) {
         let percent_f = done as f64 / total.max(1) as f64;
         let percent = (percent_f * 100.0) as u32;
-        let message = format!("{}%", percent);
+        let message = format!("{percent}%");
         let msg = WorkDoneProgress::Report(WorkDoneProgressReport {
             cancellable: None,
             message: Some(message),
@@ -245,6 +245,6 @@ fn send_progress(sender: &Sender<ProgressTask>, token: NumberOrString, msg: Work
         value: ProgressParamsValue::WorkDone(msg),
     };
     if let Err(SendError(err)) = sender.send(ProgressTask::Notify(params)) {
-        log::error!("Failed to send progress message: {:?}", err);
+        log::error!("Failed to send progress message: {err:?}");
     }
 }

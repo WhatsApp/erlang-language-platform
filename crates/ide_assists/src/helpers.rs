@@ -311,7 +311,7 @@ pub(crate) fn change_indent(delta_indent: i8, str: String) -> String {
                     s.trim_start().to_string()
                 } else if delta_indent >= 0 {
                     if !s.is_empty() {
-                        format!("{}{}", indent_str, s)
+                        format!("{indent_str}{s}")
                     } else {
                         s.to_owned()
                     }

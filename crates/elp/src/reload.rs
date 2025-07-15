@@ -56,7 +56,7 @@ impl ProjectFolders {
             })
             .filter_map(|(project_id, root)| {
                 if Some(*project_id) != project_apps.otp_project_id {
-                    Some(format!("{}/**/*.{{e,h}}rl", root))
+                    Some(format!("{root}/**/*.{{e,h}}rl"))
                 } else {
                     None
                 }

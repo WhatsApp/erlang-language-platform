@@ -136,7 +136,7 @@ fn make_diagnostic(
     }]))
     .with_fixes(Some(vec![fix(
         "fix_misspelled_attribute",
-        format!("Change misspelled attribute to '{}'", suggested_rename).as_str(),
+        format!("Change misspelled attribute to '{suggested_rename}'").as_str(),
         SourceChange::from_text_edit(file_id, edit),
         attr_name_range,
     )]))
@@ -190,8 +190,7 @@ mod tests {
             .unwrap();
         assert!(
             diags.is_empty(),
-            "didn't expect diagnostic errors in files: {:?}",
-            diags
+            "didn't expect diagnostic errors in files: {diags:?}"
         );
     }
 
@@ -211,8 +210,7 @@ mod tests {
             .unwrap();
         assert!(
             diags.is_empty(),
-            "didn't expect diagnostic errors in files: {:?}",
-            diags
+            "didn't expect diagnostic errors in files: {diags:?}"
         );
     }
 }

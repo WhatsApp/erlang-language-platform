@@ -50,7 +50,7 @@ pub trait CommonTestDatabase: DefDatabase + RootQueryDb + CommonTestLoader {
 
 fn ct_info(db: &dyn CommonTestDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
     // Context for T171541590
-    let _ = stdx::panic_context::enter(format!("\nct_info: {:?}", file_id));
+    let _ = stdx::panic_context::enter(format!("\nct_info: {file_id:?}"));
     let def_map = db.def_map(file_id);
     if let Some(project_id) = db.file_project_id(file_id) {
         return Arc::new(db.check(project_id, file_id, &def_map));

@@ -347,10 +347,7 @@ impl Connection {
 
     fn request_reply(&self, tag: Tag, request: Vec<u8>, unwind: impl Fn()) -> Response {
         self.request_reply_handle(tag, request, unwind, |callback| {
-            panic!(
-                "Got unexpected callback processing {:?}: {:?}",
-                tag, callback
-            );
+            panic!("Got unexpected callback processing {tag:?}: {callback:?}");
         })
     }
 
@@ -381,7 +378,7 @@ impl Connection {
                             self.sender.send(request).unwrap();
                         }
                         Err(err) => {
-                            log::warn!("handle_callback gave err: {}, for {}", err, id);
+                            log::warn!("handle_callback gave err: {err}, for {id}");
                             // We must always reply, else the erlang side hangs
                             self.sender
                                 .send((
@@ -424,7 +421,7 @@ impl Connection {
                     b"AST" => ast = data,
                     b"WAR" => warnings = data,
                     b"ERR" => errors = data,
-                    _ => log::error!("unrecognised segment {:?}", tag),
+                    _ => log::error!("unrecognised segment {tag:?}"),
                 };
                 Ok(())
             })
@@ -439,7 +436,7 @@ impl Connection {
                 ParseResult::error(ParseError {
                     path,
                     location: None,
-                    msg: format!("Could not parse, error: {}", error),
+                    msg: format!("Could not parse, error: {error}"),
                     code: "L0002".to_string(),
                 })
             })
@@ -552,7 +549,7 @@ impl Connection {
                             log::error!("Could not capture in EDOC_DIAGNOSTICS: {text}");
                         }
                     }
-                    _ => log::error!("Unrecognised segment: {:?}", segment),
+                    _ => log::error!("Unrecognised segment: {segment:?}"),
                 };
                 Ok(())
             })
@@ -563,15 +560,8 @@ impl Connection {
                 diagnostics,
             })
             .map_err(|error| {
-                log::error!(
-                    "Erlang service crashed for: {:?}, error: {:?}",
-                    request,
-                    error
-                );
-                format!(
-                    "Erlang service crash when trying to load docs: {:?}",
-                    request
-                )
+                log::error!("Erlang service crashed for: {request:?}, error: {error:?}");
+                format!("Erlang service crash when trying to load docs: {request:?}")
             })
     }
 
@@ -593,7 +583,7 @@ impl Connection {
                 match segment {
                     b"ALL" => all = data,
                     b"GRP" => groups = data,
-                    _ => log::error!("Unrecognised segment: {:?}", segment),
+                    _ => log::error!("Unrecognised segment: {segment:?}"),
                 };
                 Ok(())
             })
@@ -604,8 +594,8 @@ impl Connection {
                 })
             })
             .map_err(|error| {
-                log::warn!("Failed to fetch CT Info for {:?}: {:?}", module, error);
-                format!("Failed to fetch CT Info for {:?}", module)
+                log::warn!("Failed to fetch CT Info for {module:?}: {error:?}");
+                format!("Failed to fetch CT Info for {module:?}")
             })
     }
 
@@ -633,7 +623,7 @@ fn stdio_transport(proc: &mut Child) -> (Sender<Request>, JoinHandle, JoinHandle
         let inflight = inflight.clone();
         move || match writer_run(writer_receiver, instream, inflight) {
             Result::Ok(()) => {}
-            Err(err) => log::error!("writer failed with {}", err),
+            Err(err) => log::error!("writer failed with {err}"),
         }
     });
 
@@ -644,11 +634,7 @@ fn stdio_transport(proc: &mut Child) -> (Sender<Request>, JoinHandle, JoinHandle
                 let mut buf = vec![0; 512];
                 let _ = outstream.read(&mut buf);
                 let remaining = String::from_utf8_lossy(&buf);
-                log::error!(
-                    "reader failed with {:?}\nremaining data:\n\n{}",
-                    err,
-                    remaining
-                );
+                log::error!("reader failed with {err:?}\nremaining data:\n\n{remaining}");
             }
         }
     });
@@ -679,7 +665,7 @@ fn reader_run(
             inflight.lock().remove(&id)
         };
         if let Err(err) = sender.expect("unexpected callback id").send(response) {
-            log::info!("Got response {}, but request was canceled: {}", id, err);
+            log::info!("Got response {id}, but request was canceled: {err}");
         };
     }
 }
@@ -786,11 +772,7 @@ fn safe_textrange(start: TextSize, end: TextSize) -> TextRange {
     if start <= end {
         TextRange::new(start, end)
     } else {
-        log::warn!(
-            "Bad diagnostic range from erlang_service: ({:?},{:?})",
-            start,
-            end
-        );
+        log::warn!("Bad diagnostic range from erlang_service: ({start:?},{end:?})");
         TextRange::new(end, start)
     }
 }

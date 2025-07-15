@@ -70,7 +70,7 @@ pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) -> Option<()>
     let parse = analysis.db.parse(file_id);
     let errors = parse.errors();
     if !errors.is_empty() {
-        assert_eq!(format!("{:?}\nin\n{text}", errors), "");
+        assert_eq!(format!("{errors:?}\nin\n{text}"), "");
     };
     Some(())
 }

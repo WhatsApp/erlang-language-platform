@@ -257,11 +257,9 @@ impl FixtureWithProjectMeta {
             if line.contains("//-") {
                 assert!(
                     line.starts_with("//-"),
-                    "Metadata line {} has invalid indentation. \
+                    "Metadata line {ix} has invalid indentation. \
                      All metadata lines need to have the same indentation.\n\
-                     The offending line: {:?}",
-                    ix,
-                    line
+                     The offending line: {line:?}"
                 );
             }
 
@@ -274,7 +272,7 @@ impl FixtureWithProjectMeta {
                     && !line.contains("::")
                     && line.chars().all(|it| !it.is_uppercase())
                 {
-                    panic!("looks like invalid metadata line: {:?}", line)
+                    panic!("looks like invalid metadata line: {line:?}")
                 }
 
                 if let Some(entry) = res.last_mut() {
@@ -333,8 +331,7 @@ impl FixtureWithProjectMeta {
         let path = components[0].to_string();
         assert!(
             path.starts_with('/'),
-            "fixture path does not start with `/`: {:?}",
-            path
+            "fixture path does not start with `/`: {path:?}"
         );
 
         let mut app_name = None;
@@ -346,7 +343,7 @@ impl FixtureWithProjectMeta {
         for component in components[1..].iter() {
             let (key, value) = component
                 .split_once(':')
-                .unwrap_or_else(|| panic!("invalid meta line: {:?}", meta));
+                .unwrap_or_else(|| panic!("invalid meta line: {meta:?}"));
             match key {
                 "app" => app_name = Some(AppName(value.to_string())),
                 "include_path" => include_dirs
@@ -369,7 +366,7 @@ impl FixtureWithProjectMeta {
                 "tag" => {
                     tag = Some(value.to_string());
                 }
-                _ => panic!("bad component: {:?}", component),
+                _ => panic!("bad component: {component:?}"),
             }
         }
 
@@ -448,7 +445,7 @@ pub fn extract_tags(mut text: &str, tag: &str) -> (Vec<(TextRange, Option<String
             }
         }
     }
-    assert!(stack.is_empty(), "unmatched <{}>", tag);
+    assert!(stack.is_empty(), "unmatched <{tag}>");
     ranges.sort_by_key(|r| (r.0.start(), r.0.end()));
     (ranges, res)
 }
@@ -503,10 +500,9 @@ pub fn extract_annotations(text: &str) -> (Vec<(TextRange, String)>, String) {
             }
         } else if line.contains(TOP_OF_FILE_MARKER) {
             panic!(
-                "Annotation line {} is invalid here. \
-                     The top of file marker '{}' can only appear first in the file on the left margin.\n\
-                     The offending line: {:?}",
-                idx, TOP_OF_FILE_MARKER, line
+                "Annotation line {idx} is invalid here. \
+                     The top of file marker '{TOP_OF_FILE_MARKER}' can only appear first in the file on the left margin.\n\
+                     The offending line: {line:?}"
             );
         }
         let mut this_line_annotations = Vec::new();
@@ -714,7 +710,7 @@ pub fn extract_offset(text: &str) -> (TextSize, String) {
 /// Infallible version of `try_extract_offset()`.
 pub fn extract_marker_offset(marker: &str, text: &str) -> (TextSize, String) {
     match try_extract_marker(marker, text) {
-        None => panic!("text should contain marker '{}'", marker),
+        None => panic!("text should contain marker '{marker}'"),
         Some(result) => result,
     }
 }
@@ -1046,7 +1042,7 @@ bar() -> ?FOO.
         let (annotations, _text_without_annotations) = extract_annotations(&text);
         let res = annotations
             .into_iter()
-            .map(|(range, ann)| (format!("{:?}", range), &text[range], ann))
+            .map(|(range, ann)| (format!("{range:?}"), &text[range], ann))
             .collect::<Vec<_>>();
 
         assert_eq!(

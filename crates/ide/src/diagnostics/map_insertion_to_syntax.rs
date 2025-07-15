@@ -93,7 +93,7 @@ fn map_put_to_syntax_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: 
             parens: ParenStrategy::InvisibleParens,
         },
         file_id,
-        format!("ssr: maps:put({},{},{}).", KEY_VAR, VALUE_VAR, MAP_VAR).as_str(),
+        format!("ssr: maps:put({KEY_VAR},{VALUE_VAR},{MAP_VAR}).").as_str(),
     );
     matches.matches.iter().for_each(|m| {
         if let Some(map_match) = m.get_placeholder_match(sema, MAP_VAR) {
@@ -116,7 +116,7 @@ fn map_update_to_syntax_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_i
             parens: ParenStrategy::InvisibleParens,
         },
         file_id,
-        format!("ssr: maps:update({},{},{}).", KEY_VAR, VALUE_VAR, MAP_VAR).as_str(),
+        format!("ssr: maps:update({KEY_VAR},{VALUE_VAR},{MAP_VAR}).").as_str(),
     );
     matches.matches.iter().for_each(|m| {
         if let Some(map_match) = m.get_placeholder_match(sema, MAP_VAR) {

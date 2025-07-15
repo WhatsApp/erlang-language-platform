@@ -165,9 +165,9 @@ fn pick_new_unused_var_names(
     let result = unused_var_names
         .iter()
         .map(|(k, v)| {
-            let mut new_var_name = format!("_{}", v);
+            let mut new_var_name = format!("_{v}");
             while other_ignored_var_names.contains(&new_var_name) {
-                new_var_name = format!("_{}", new_var_name);
+                new_var_name = format!("_{new_var_name}");
             }
             (*k, new_var_name)
         })

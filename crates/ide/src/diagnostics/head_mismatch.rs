@@ -266,7 +266,7 @@ impl Validate<String> for Name {
 
         Diagnostic::new(
             super::DiagnosticCode::HeadMismatch,
-            format!("head mismatch '{}' vs '{}'", attr, hattr),
+            format!("head mismatch '{attr}' vs '{hattr}'"),
             attr_loc,
         )
         .with_related(Some(vec![RelatedInformation {
@@ -301,7 +301,7 @@ impl Validate<usize> for Arity {
     ) -> Diagnostic {
         Diagnostic::new(
             DiagnosticCode::HeadMismatch,
-            format!("head arity mismatch {} vs {}", attr, hattr),
+            format!("head arity mismatch {attr} vs {hattr}"),
             attr_loc,
         )
         .with_related(Some(vec![RelatedInformation {

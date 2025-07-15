@@ -1299,7 +1299,7 @@ mod local_tests {
             if valid {
                 debug_assert_eq!(val, ast_found);
             } else {
-                panic!("expected invalid path, found {:?}", ast_found);
+                panic!("expected invalid path, found {ast_found:?}");
             }
         } else if valid {
             panic!("expected valid path, nothing found");

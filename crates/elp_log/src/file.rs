@@ -84,11 +84,11 @@ impl ReconfigureLog for FileLogger {
         );
         let should_flush = match &self.file {
             Some(w) => {
-                let _ = writeln!(w.lock(), "{}", formatted);
+                let _ = writeln!(w.lock(), "{formatted}");
                 self.no_buffering
             }
             None => {
-                eprintln!("{}", formatted);
+                eprintln!("{formatted}");
                 true // flush stderr unconditionally
             }
         };

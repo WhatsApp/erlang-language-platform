@@ -130,7 +130,7 @@ mod tests {
 
         let parsed = ast::SourceFile::parse_text(text);
         let d = form_missing_separator_diagnostics(&parsed);
-        assert_eq!(format!("{:?}", d), "[]")
+        assert_eq!(format!("{d:?}"), "[]")
     }
 
     #[test]
@@ -139,7 +139,7 @@ mod tests {
 
         let parsed = ast::SourceFile::parse_text(text);
         let d = form_missing_separator_diagnostics(&parsed);
-        assert_eq!(format!("{:?}", d), "[]")
+        assert_eq!(format!("{d:?}"), "[]")
     }
 
     #[test]

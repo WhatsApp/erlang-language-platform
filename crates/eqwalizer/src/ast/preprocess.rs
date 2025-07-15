@@ -135,7 +135,7 @@ impl Preprocessor {
     fn fresh_var(&mut self) -> StringId {
         let var = self.var;
         self.var += 1;
-        format!("$pp{}", var).into()
+        format!("$pp{var}").into()
     }
 
     fn eta_expand_unary_predicate(&mut self, location: &Pos, name: StringId) -> Lambda {

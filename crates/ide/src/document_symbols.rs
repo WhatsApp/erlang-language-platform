@@ -40,7 +40,7 @@ impl fmt::Display for DocumentSymbol {
         let mut s = format!("{:?} | {}", self.kind, self.name);
         match &self.detail {
             None => (),
-            Some(detail) => s.push_str(format!(" | {}", detail).as_str()),
+            Some(detail) => s.push_str(format!(" | {detail}").as_str()),
         };
         if self.deprecated {
             s.push_str(" | deprecated")

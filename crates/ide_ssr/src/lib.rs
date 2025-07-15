@@ -562,10 +562,7 @@ impl Match {
         } else {
             // We panic here because this should be used when doing
             // development only, give feedback to the dev.
-            panic!(
-                "expecting a single match for '{}', got multiple",
-                placeholder_name
-            );
+            panic!("expecting a single match for '{placeholder_name}', got multiple");
         }
     }
 

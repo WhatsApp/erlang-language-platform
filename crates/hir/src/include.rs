@@ -56,7 +56,7 @@ mod tests {
             .map(|(idx, include)| {
                 let resolved = db
                     .resolve_include(InFile::new(file_id, idx))
-                    .unwrap_or_else(|| panic!("unresolved include: {:?}", include));
+                    .unwrap_or_else(|| panic!("unresolved include: {include:?}"));
                 let resolved_path = db
                     .source_root(db.file_source_root(resolved).source_root_id(&db))
                     .source_root(&db)
@@ -67,10 +67,10 @@ mod tests {
             })
             .map(|(include, resolved)| match include {
                 IncludeAttribute::Include { path, .. } => {
-                    format!("-include({:?}). % => {}", path, resolved)
+                    format!("-include({path:?}). % => {resolved}")
                 }
                 IncludeAttribute::IncludeLib { path, .. } => {
-                    format!("-include_lib({:?}). % => {}", path, resolved)
+                    format!("-include_lib({path:?}). % => {resolved}")
                 }
             })
             .collect::<Vec<_>>()

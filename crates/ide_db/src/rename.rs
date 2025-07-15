@@ -57,7 +57,7 @@ pub use _rename_error as rename_error;
 
 // Delegate checking name validity to the parser
 pub fn is_valid_var_name(new_name: &String) -> bool {
-    let parse = ast::SourceFile::parse_text(format!("foo() -> {} = 1.", new_name).as_str());
+    let parse = ast::SourceFile::parse_text(format!("foo() -> {new_name} = 1.").as_str());
     parse.tree().syntax().descendants().any(|node| {
         if let Some(var) = ast::Var::cast(node) {
             var.syntax().text().to_string() == *new_name
@@ -69,7 +69,7 @@ pub fn is_valid_var_name(new_name: &String) -> bool {
 
 // Delegate checking name validity to the parser
 pub fn is_valid_function_name(new_name: &String) -> bool {
-    let parse = ast::SourceFile::parse_text(format!("{}() -> ok.", new_name).as_str());
+    let parse = ast::SourceFile::parse_text(format!("{new_name}() -> ok.").as_str());
     match parse.tree().forms().next() {
         Some(ast::Form::FunDecl(fun)) => match fun.name() {
             Some(ast::Name::Atom(atom)) => atom.syntax().text().to_string() == *new_name,
@@ -291,7 +291,7 @@ pub fn source_edit_from_references(
     let mut edited_ranges = Vec::new();
     for name in references {
         let new_name = if parens_needed_in_context(name) {
-            format!("({})", new_name)
+            format!("({new_name})")
         } else {
             new_name.clone()
         };

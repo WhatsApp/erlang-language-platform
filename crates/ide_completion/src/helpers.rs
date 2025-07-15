@@ -53,10 +53,10 @@ pub(crate) fn atom_value(parsed: &InFile<SourceFile>, offset: TextSize) -> Optio
 
 pub(crate) fn format_call(name: &str, arity: u32) -> Contents {
     let args = (1..(arity + 1))
-        .map(|n| format!("${{{}:Arg{}}}", n, n))
+        .map(|n| format!("${{{n}:Arg{n}}}"))
         .collect::<Vec<_>>()
         .join(", ");
-    Contents::Snippet(format!("{}({})", name, args))
+    Contents::Snippet(format!("{name}({args})"))
 }
 
 pub(crate) fn name_slash_arity_completion(

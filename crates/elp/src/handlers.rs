@@ -214,7 +214,7 @@ fn parse_action_id(action_id: &str) -> Result<(usize, SingleResolve), String> {
             let assist_kind: AssistKind = assist_kind_string.parse()?;
             let index: usize = match index_string.parse() {
                 Ok(index) => index,
-                Err(e) => return Err(format!("Incorrect index string: {}", e)),
+                Err(e) => return Err(format!("Incorrect index string: {e}")),
             };
             Ok((
                 index,
@@ -549,7 +549,7 @@ pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option
         if let Some(type_info) = snap.analysis.type_at_position(query_range)? {
             let (ty, range) = &*type_info;
             let text = &snap.analysis.file_text(range.file_id)?[range.range];
-            let type_doc = Doc::new(format!("```erlang\n{} :: {}\n```\n", text, ty));
+            let type_doc = Doc::new(format!("```erlang\n{text} :: {ty}\n```\n"));
             docs.push((type_doc, Some(range.to_owned())));
             let refs = snap.analysis.type_references(range.file_id, ty)?;
             if !refs.is_empty() {
@@ -569,7 +569,7 @@ pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option
                             .ok()
                     })
                     .join(" | ");
-                let goto_docs = Doc::new(format!("Go to: {}", goto_list));
+                let goto_docs = Doc::new(format!("Go to: {goto_list}"));
                 docs.push((goto_docs, None));
             }
         }

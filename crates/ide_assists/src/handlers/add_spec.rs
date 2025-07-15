@@ -80,7 +80,7 @@ pub(crate) fn add_spec(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                     let mut snippet_idx = 0;
                     let types_snippets = type_names.fold(String::new(), |mut output, arg_name| {
                         snippet_idx += 1;
-                        let _ = write!(output, "${{{}:{}}}, ", snippet_idx, arg_name);
+                        let _ = write!(output, "${{{snippet_idx}:{arg_name}}}, ");
                         output
                     });
                     snippet_idx += 1;
@@ -95,7 +95,7 @@ pub(crate) fn add_spec(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                 }
                 None => {
                     let types_text = type_names.fold(String::new(), |mut output, arg_name| {
-                        let _ = write!(output, "{}, ", arg_name);
+                        let _ = write!(output, "{arg_name}, ");
                         output
                     });
                     let text = format!(
@@ -115,7 +115,7 @@ pub fn type_name(arg_idx: usize, expr: ast::Expr) -> String {
     if let ast::Expr::ExprMax(ast::ExprMax::Var(var)) = expr {
         format!("{} :: type{}()", var.text(), arg_idx)
     } else {
-        format!("type{}()", arg_idx)
+        format!("type{arg_idx}()")
     }
 }
 

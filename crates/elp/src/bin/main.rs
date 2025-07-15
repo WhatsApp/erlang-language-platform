@@ -72,7 +72,7 @@ fn main() {
 
 fn handle_res(result: Result<()>, stderr: &mut dyn Write) -> i32 {
     if let Err(err) = result {
-        writeln!(stderr, "{:#}", err).unwrap();
+        writeln!(stderr, "{err:#}").unwrap();
         101
     } else {
         0
@@ -81,7 +81,7 @@ fn handle_res(result: Result<()>, stderr: &mut dyn Write) -> i32 {
 
 fn setup_static(args: &Args) {
     if let Err(err) = eqwalizer_support::setup_eqwalizer_support(&EQWALIZER_SUPPORT_DIR) {
-        log::warn!("Failed to setup eqwalizer_support: {}", err);
+        log::warn!("Failed to setup eqwalizer_support: {err}");
     }
     if let Some(erl) = &args.erl {
         let path = fs::canonicalize(erl).expect("erl path should be valid");
@@ -123,13 +123,13 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
         args::Command::Lint(args) => lint_cli::run_lint_command(&args, cli, &query_config)?,
         args::Command::GenerateCompletions(args) => {
             let instructions = args::gen_completions(&args.shell);
-            writeln!(cli, "#Please run this:\n{}", instructions)?
+            writeln!(cli, "#Please run this:\n{instructions}")?
         }
         args::Command::Version(_) => writeln!(cli, "elp {}", elp::version())?,
         args::Command::Shell(args) => shell::run_shell(&args, cli, &query_config)?,
         args::Command::Help() => {
             let help = batteries::get_usage(args::args());
-            writeln!(cli, "{}", help)?
+            writeln!(cli, "{help}")?
         }
         args::Command::Explain(args) => explain_cli::explain(&args, cli)?,
         args::Command::Glean(args) => glean::index(&args, cli, &query_config)?,
@@ -169,7 +169,7 @@ fn setup_thread_pool() {
         .stack_size(THREAD_STACK_SIZE)
         .build_global()
     {
-        log::warn!("Failed to setup thread pool: {}", err);
+        log::warn!("Failed to setup thread pool: {err}");
     }
 }
 
@@ -282,7 +282,7 @@ mod tests {
 
     fn parse_all_complete(project: &str) -> Result<i32> {
         // Just check the command returns.
-        let project_path = format!("../../test_projects/{}", project);
+        let project_path = format!("../../test_projects/{project}");
         let tmp = Builder::new().prefix("elp_parse_all_").tempdir().unwrap();
         let (_stdout, _stderr, code) = elp(args_vec![
             "parse-all",
@@ -348,20 +348,20 @@ mod tests {
                 Mode::Cli,
                 &BUCK_QUERY_CONFIG,
             )
-            .with_context(|| format!("Failed to load project at {}", str_path))
+            .with_context(|| format!("Failed to load project at {str_path}"))
             .unwrap();
             loaded
                 .analysis_host
                 .raw_database_mut()
                 .set_eqwalizer_config(Arc::new(config));
             build::compile_deps(&loaded, &cli)
-                .with_context(|| format!("Failed to compile deps for project {}", project))
+                .with_context(|| format!("Failed to compile deps for project {project}"))
                 .unwrap();
 
             let analysis = loaded.analysis();
             let module_index = analysis
                 .module_index(loaded.project_id)
-                .with_context(|| format!("No module index for project {}", project))
+                .with_context(|| format!("No module index for project {project}"))
                 .unwrap();
             let file_ids: Vec<FileId> = module_index
                 .iter_own()
@@ -432,13 +432,10 @@ mod tests {
                     }
                 }
                 EqwalizerDiagnostics::NoAst { module } => {
-                    panic!(
-                        "Could not run tests because module {} was not found",
-                        module
-                    )
+                    panic!("Could not run tests because module {module} was not found")
                 }
                 EqwalizerDiagnostics::Error(error) => {
-                    panic!("Could not run tests: {}", error)
+                    panic!("Could not run tests: {error}")
                 }
             }
         }
@@ -839,8 +836,7 @@ mod tests {
         );
         assert!(
             stderr.is_empty(),
-            "expected stderr to be empty, got:\n{}",
-            stderr
+            "expected stderr to be empty, got:\n{stderr}"
         );
         assert!(tmp_file.clone().exists());
         let content = fs::read_to_string(tmp_file).unwrap();
@@ -893,8 +889,7 @@ mod tests {
             );
             assert!(
                 stderr.is_empty(),
-                "expected stderr to be empty, got:\n{}",
-                stderr
+                "expected stderr to be empty, got:\n{stderr}"
             );
             assert!(tmp_file.clone().exists());
             let content = fs::read_to_string(tmp_file).unwrap();
@@ -1042,8 +1037,7 @@ mod tests {
             );
             assert!(
                 stderr.is_empty(),
-                "expected stderr to be empty, got:\n{}",
-                stderr
+                "expected stderr to be empty, got:\n{stderr}"
             );
             assert!(tmp_file.clone().exists());
             let content = fs::read_to_string(tmp_file).unwrap();
@@ -2179,15 +2173,13 @@ mod tests {
             let (stdout, stderr, code) = elp(args);
             assert_eq!(
                 code, expected_code,
-                "failed with unexpected exit code: got {} not {}\nstdout:\n{}\nstderr:\n{}",
-                code, expected_code, stdout, stderr
+                "failed with unexpected exit code: got {code} not {expected_code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
             );
             assert_normalised_file(expected, &stdout, path, false);
             if expected_code == 0 {
                 assert!(
                     stderr.is_empty(),
-                    "expected stderr to be empty, got:\n{}",
-                    stderr
+                    "expected stderr to be empty, got:\n{stderr}"
                 )
             }
         }
@@ -2203,16 +2195,14 @@ mod tests {
         let (stdout, stderr, code) = elp(args);
         assert_eq!(
             code, expected_code,
-            "failed with unexpected exit code: got {} not {}\nstdout:\n{}\nstderr:\n{}",
-            code, expected_code, stdout, stderr
+            "failed with unexpected exit code: got {code} not {expected_code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
         );
         let path = PathBuf::from("");
         assert_normalised_file(expected, &stdout, path, false);
         if expected_code == 0 {
             assert!(
                 stderr.is_empty(),
-                "expected stderr to be empty, got:\n{}",
-                stderr
+                "expected stderr to be empty, got:\n{stderr}"
             )
         }
     }
@@ -2232,8 +2222,7 @@ mod tests {
             let (stdout, stderr, code) = elp(args);
             assert_eq!(
                 code, 101,
-                "Expected exit code 101, got: {}\nstdout:\n{}\nstderr:\n{}",
-                code, stdout, stderr
+                "Expected exit code 101, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
             );
             assert_normalised_file(expected, &stdout, path, false);
         }
@@ -2255,8 +2244,7 @@ mod tests {
             let (stdout, stderr, code) = elp(args);
             assert_eq!(
                 code, 101,
-                "Expected exit code 101, got: {}\nstdout:\n{}\nstderr:\n{}",
-                code, stdout, stderr
+                "Expected exit code 101, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
             );
             assert_normalised_file(expected, &stderr, path, normalise_urls);
         }
@@ -2319,8 +2307,7 @@ mod tests {
             let (stdout, stderr, code) = elp(args);
             assert_eq!(
                 code, expected_code,
-                "Expected exit code {expected_code}, got: {}\nstdout:\n{}\nstderr:\n{}",
-                code, stdout, stderr
+                "Expected exit code {expected_code}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
             );
             if let Some(expected_stderr) = expected_stderr {
                 expected_stderr.assert_eq(&stderr);
@@ -2377,7 +2364,7 @@ mod tests {
         let project_path: PathBuf = path_str.clone().into();
         args.push("--project".into());
         if let Some(json_file) = json {
-            let full_file = format!("{}/{}", path_str, json_file);
+            let full_file = format!("{path_str}/{json_file}");
             args.push(full_file.into());
         } else {
             args.push(path_str.into());
@@ -2391,7 +2378,7 @@ mod tests {
     }
 
     fn project_path(project: &str) -> String {
-        format!("../../test_projects/{}", project)
+        format!("../../test_projects/{project}")
     }
 
     struct BackupFiles {

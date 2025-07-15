@@ -150,7 +150,7 @@ impl Runnable {
             RunnableKind::Test { group, .. } => match group {
                 common_test::GroupName::NoGroup => "▶\u{fe0e} Run in REPL".to_string(),
                 common_test::GroupName::Name(name) => {
-                    format!("▶\u{fe0e} Run in REPL (in {})", name)
+                    format!("▶\u{fe0e} Run in REPL (in {name})")
                 }
             },
             RunnableKind::Suite { .. } => "▶\u{fe0e} Open REPL".to_string(),
@@ -161,7 +161,7 @@ impl Runnable {
             RunnableKind::Test { group, .. } => match group {
                 common_test::GroupName::NoGroup => "▶\u{fe0e} Run Test".to_string(),
                 common_test::GroupName::Name(name) => {
-                    format!("▶\u{fe0e} Run Test (in {})", name)
+                    format!("▶\u{fe0e} Run Test (in {name})")
                 }
             },
             RunnableKind::Suite { .. } => "▶\u{fe0e} Run All Tests".to_string(),
@@ -172,7 +172,7 @@ impl Runnable {
             RunnableKind::Test { group, .. } => match group {
                 common_test::GroupName::NoGroup => "▶\u{fe0e} Debug".to_string(),
                 common_test::GroupName::Name(name) => {
-                    format!("▶\u{fe0e} Debug (in {})", name)
+                    format!("▶\u{fe0e} Debug (in {name})")
                 }
             },
             RunnableKind::Suite { .. } => "▶\u{fe0e} Debug".to_string(),

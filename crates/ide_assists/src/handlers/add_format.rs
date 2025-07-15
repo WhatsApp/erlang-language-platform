@@ -61,7 +61,7 @@ pub(crate) fn add_format(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         target,
         None,
         |builder| {
-            let text = format!("{}{}\n", PRAGMA_PREFIX, PRAGMA);
+            let text = format!("{PRAGMA_PREFIX}{PRAGMA}\n");
             builder.edit_file(ctx.frange.file_id);
             builder.insert(insert, text)
         },

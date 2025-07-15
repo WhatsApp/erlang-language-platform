@@ -242,8 +242,7 @@ fn make_implementation(
                 let addition = (
                     callback.name.clone(),
                     Some(format!(
-                        "\n{}({}) ->\n    erlang:error(not_implemented).",
-                        function_name, function_args
+                        "\n{function_name}({function_args}) ->\n    erlang:error(not_implemented)."
                     )),
                 );
                 Some(addition)

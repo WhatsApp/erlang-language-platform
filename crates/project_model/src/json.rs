@@ -141,7 +141,7 @@ fn convert_macro(mac: &eetf::Term) -> (String, String) {
             [Term::Atom(key), Term::Atom(value)] => (key.name.clone(), value.name.to_string()),
             _ => panic!("Invalid macro in ${tuple}"),
         },
-        term => panic!("Term not supported for macro definition: {}", term),
+        term => panic!("Term not supported for macro definition: {term}"),
     }
 }
 
@@ -201,7 +201,7 @@ pub(crate) fn gen_app_data(
             let app: ProjectAppData = match app.to_project_app_data(path, is_dep) {
                 Ok(data) => data,
                 Err(err) => {
-                    log::error!("Error parsing app: {:?}. Err: {}", app, err);
+                    log::error!("Error parsing app: {app:?}. Err: {err}");
                     continue;
                 }
             };

@@ -102,14 +102,14 @@ enum ShellError {
 impl fmt::Display for ShellError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ShellError::UnexpectedCommand(cmd) => write!(f, "Unexpected command {}", cmd),
+            ShellError::UnexpectedCommand(cmd) => write!(f, "Unexpected command {cmd}"),
             ShellError::UnexpectedOption(cmd, arg) => {
-                write!(f, "Unexpected option {} for command {}", arg, cmd)
+                write!(f, "Unexpected option {arg} for command {cmd}")
             }
             ShellError::UnexpectedArg(cmd, arg) => {
-                write!(f, "Unexpected arg {} for command {}", arg, cmd)
+                write!(f, "Unexpected arg {arg} for command {cmd}")
             }
-            ShellError::MissingArg(cmd) => write!(f, "Missing arg for command {}", cmd),
+            ShellError::MissingArg(cmd) => write!(f, "Missing arg for command {cmd}"),
         }
     }
 }
@@ -321,7 +321,7 @@ fn update_changes(
             vfs.set_file_contents(vfs_path, None);
         } else {
             let contents =
-                fs::read(&path).unwrap_or_else(|_| panic!("Cannot read created file {:?}", path));
+                fs::read(&path).unwrap_or_else(|_| panic!("Cannot read created file {path:?}"));
             vfs.set_file_contents(vfs_path, Some(contents));
         }
     });
@@ -345,7 +345,7 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfi
     )?;
     let mut rl = rustyline::DefaultEditor::new()?;
     let mut last_read = watchman.get_clock()?;
-    write!(cli, "{}", WELCOME)?;
+    write!(cli, "{WELCOME}")?;
     loop {
         let readline = rl.readline("> ");
         match readline {
@@ -367,21 +367,21 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfi
                 last_read = update_changes(&mut loaded, &watchman, &last_read)?;
                 match ShellCommand::parse(shell, line) {
                     Ok(None) => (),
-                    Ok(Some(ShellCommand::Help)) => write!(cli, "{}", HELP)?,
+                    Ok(Some(ShellCommand::Help)) => write!(cli, "{HELP}")?,
                     Ok(Some(ShellCommand::Quit)) => break,
                     Ok(Some(ShellCommand::ShellEqwalize(eqwalize))) => {
                         eqwalizer_cli::do_eqwalize_module(&eqwalize, &mut loaded, cli)
-                            .or_else(|e| writeln!(cli, "Error: {}", e))?;
+                            .or_else(|e| writeln!(cli, "Error: {e}"))?;
                     }
                     Ok(Some(ShellCommand::ShellEqwalizeApp(eqwalize_app))) => {
                         eqwalizer_cli::do_eqwalize_app(&eqwalize_app, &mut loaded, cli)
-                            .or_else(|e| writeln!(cli, "Error: {}", e))?;
+                            .or_else(|e| writeln!(cli, "Error: {e}"))?;
                     }
                     Ok(Some(ShellCommand::ShellEqwalizeAll(eqwalize_all))) => {
                         eqwalizer_cli::do_eqwalize_all(&eqwalize_all, &mut loaded, cli)
-                            .or_else(|e| writeln!(cli, "Error: {}", e))?;
+                            .or_else(|e| writeln!(cli, "Error: {e}"))?;
                     }
-                    Err(err) => write!(cli, "{}\n{}", err, HELP)?,
+                    Err(err) => write!(cli, "{err}\n{HELP}")?,
                 }
             }
             Err(ReadlineError::Interrupted) => {
@@ -392,7 +392,7 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfi
                 break;
             }
             Err(err) => {
-                writeln!(cli, "Error: {:?}", err)?;
+                writeln!(cli, "Error: {err:?}")?;
                 break;
             }
         }

@@ -16,5 +16,5 @@ use crate::args::ConfigStanza;
 
 pub fn config_stanza(_args: &ConfigStanza, cli: &mut dyn Cli) -> Result<()> {
     let schema = format!("{:#}", Config::json_schema());
-    Ok(writeln!(cli, "{}", schema)?)
+    Ok(writeln!(cli, "{schema}")?)
 }

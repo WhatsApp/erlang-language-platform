@@ -100,11 +100,10 @@ pub fn do_eqwalize_module(
     for module in &args.modules {
         let suggest_name = Path::new(module).file_stem().and_then(|name| name.to_str());
         let context_str = match suggest_name {
-            Some(name) if name != module => format!(
-                "Module {} not found. Did you mean elp eqwalize {}?",
-                module, name
-            ),
-            _ => format!("Module {} not found", module),
+            Some(name) if name != module => {
+                format!("Module {module} not found. Did you mean elp eqwalize {name}?")
+            }
+            _ => format!("Module {module} not found"),
         };
         let file_id = analysis
             .module_file_id(loaded.project_id, module)?
@@ -169,7 +168,7 @@ pub fn do_eqwalize_all(
     let module_index = analysis.module_index(loaded.project_id)?;
     let include_generated = args.include_generated;
     if include_generated {
-        write!(cli, "{}", DEPRECATED_INCLUDE_GENERATED)?;
+        write!(cli, "{DEPRECATED_INCLUDE_GENERATED}")?;
     }
     let pb = cli.progress(module_index.len_own() as u64, "Gathering modules");
     let file_ids: Vec<FileId> = module_index
@@ -250,7 +249,7 @@ pub fn do_eqwalize_app(
     let module_index = analysis.module_index(loaded.project_id)?;
     let include_generated = args.include_generated;
     if include_generated {
-        write!(cli, "{}", DEPRECATED_INCLUDE_GENERATED)?;
+        write!(cli, "{DEPRECATED_INCLUDE_GENERATED}")?;
     }
     let file_ids: Vec<FileId> = module_index
         .iter_own()
@@ -307,7 +306,7 @@ pub fn eqwalize_target(
     let analysis = &loaded.analysis();
     let include_generated = args.include_generated;
     if include_generated {
-        write!(cli, "{}", DEPRECATED_INCLUDE_GENERATED)?;
+        write!(cli, "{DEPRECATED_INCLUDE_GENERATED}")?;
     }
     let mut file_ids: Vec<FileId> = Default::default();
     let mut at_least_one_found = false;
@@ -382,7 +381,7 @@ pub fn eqwalize_stats(
     let module_index = analysis.module_index(loaded.project_id)?;
     let include_generated = args.include_generated;
     if include_generated {
-        write!(cli, "{}", DEPRECATED_INCLUDE_GENERATED)?;
+        write!(cli, "{DEPRECATED_INCLUDE_GENERATED}")?;
     }
     let project_id = loaded.project_id;
     let pb = cli.progress(module_index.len_own() as u64, "Computing stats");
@@ -446,8 +445,7 @@ fn print_diagnostic_json(
         cli,
         "{}",
         serde_json::to_string(&converted_diagnostic).unwrap_or_else(|err| panic!(
-            "print_diagnostics_json failed for '{:?}': {}",
-            converted_diagnostic, err
+            "print_diagnostics_json failed for '{converted_diagnostic:?}': {err}"
         ))
     )?;
     Ok(())
@@ -504,7 +502,7 @@ fn eqwalize(
                 let file_id = analysis
                     .module_index(loaded.project_id)?
                     .file_for_module(module.as_str())
-                    .with_context(|| format!("module {} not found", module))?;
+                    .with_context(|| format!("module {module} not found"))?;
                 reporter.write_eqwalizer_diagnostics(file_id, &diagnostics)?;
                 if !diagnostics.is_empty() {
                     has_errors = true;
@@ -559,8 +557,7 @@ fn eqwalize(
                 // The cached parse errors must be non-empty otherwise we wouldn't have `NoAst`
                 assert!(
                     !parse_diagnostics.is_empty(),
-                    "Expecting erlang service diagnostics, but none found, for '{}'",
-                    module
+                    "Expecting erlang service diagnostics, but none found, for '{module}'"
                 );
                 let parse_diagnostics: Vec<_> = parse_diagnostics
                     .into_iter()

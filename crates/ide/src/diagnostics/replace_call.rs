@@ -169,7 +169,7 @@ impl Replacement {
             Replacement::UseOk => "with ok".to_string(),
             Replacement::UseCallArg { n } => format!("with argument {n}"),
             Replacement::Invocation { replacement } => format!("with '{replacement}'"),
-            Replacement::ArgsPermutation { perm } => format!("with arguments permuted {:?}", perm),
+            Replacement::ArgsPermutation { perm } => format!("with arguments permuted {perm:?}"),
         }
     }
 }

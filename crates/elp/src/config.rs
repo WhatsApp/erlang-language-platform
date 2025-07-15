@@ -164,7 +164,7 @@ impl Config {
     }
 
     pub fn update(&mut self, json: serde_json::Value) {
-        log::info!("updating config from JSON: {:#}", json);
+        log::info!("updating config from JSON: {json:#}");
         if json.is_null() || json.as_object().is_some_and(|it| it.is_empty()) {
             return;
         }
@@ -173,13 +173,13 @@ impl Config {
     }
 
     pub fn update_gks(&mut self, json: serde_json::Value) {
-        log::info!("updating gks from JSON: {:#}", json);
+        log::info!("updating gks from JSON: {json:#}");
         if json.is_null() || json.as_object().is_some_and(|it| it.is_empty()) {
             return;
         }
         match from_json::<GKs>("GKs", json) {
             Ok(val) => self.gks = val,
-            Err(err) => log::warn!("could not update GKs from JSON: {:#}", err),
+            Err(err) => log::warn!("could not update GKs from JSON: {err:#}"),
         }
     }
 
@@ -465,7 +465,7 @@ fn schema(
         fn key(f: &str) -> &str {
             f.split_once('_').map_or(f, |x| x.0)
         }
-        assert!(key(f1) <= key(f2), "wrong field order: {:?} {:?}", f1, f2);
+        assert!(key(f1) <= key(f2), "wrong field order: {f1:?} {f2:?}");
     }
 
     let map = fields
@@ -490,9 +490,7 @@ fn field_props(
     let doc = doc.trim_end_matches('\n');
     assert!(
         doc.ends_with('.') && doc.starts_with(char::is_uppercase),
-        "bad docs for {}: {:?}",
-        field,
-        doc
+        "bad docs for {field}: {doc:?}"
     );
 
     let mut map = serde_json::Map::default();
@@ -541,7 +539,7 @@ fn field_props(
             "type": ["null", "array"],
             "items": { "type": "string" },
         },
-        _ => panic!("{}: {}", ty, default),
+        _ => panic!("{ty}: {default}"),
     }
 
     map.into()
@@ -551,14 +549,14 @@ fn doc_comment_to_string(doc: &[&str]) -> String {
     doc.iter()
         .map(|it| it.strip_prefix(' ').unwrap_or(it))
         .fold(String::new(), |mut output, it| {
-            let _ = writeln!(output, "{}", it);
+            let _ = writeln!(output, "{it}");
             output
         })
 }
 
 pub fn config_schema_json() -> String {
     let s = Config::json_schema();
-    let schema = format!("{:#}", s);
+    let schema = format!("{s:#}");
     let mut schema = schema
         .trim_start_matches('{')
         .trim_end_matches('}')

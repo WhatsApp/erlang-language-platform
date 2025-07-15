@@ -220,8 +220,7 @@ fn module_diagnostics(
         Ok(diag) => (Arc::new(diag), timestamp),
         Err(err) => (
             Arc::new(EqwalizerDiagnostics::Error(format!(
-                "eqWAlizing module {}:\n{}",
-                module, err
+                "eqWAlizing module {module}:\n{err}"
             ))),
             timestamp,
         ),

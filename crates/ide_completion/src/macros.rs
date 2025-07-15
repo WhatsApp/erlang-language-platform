@@ -142,7 +142,7 @@ fn macro_name_to_completion(
         (None, None)
     };
     let label = if let Some(app_name) = app_name {
-        format!("{} ({})", macro_name, app_name)
+        format!("{macro_name} ({app_name})")
     } else {
         macro_name.to_string()
     };

@@ -249,7 +249,7 @@ impl<'a, S, R> NotificationDispatcher<'a, S, R> {
 
     pub fn finish(self) {
         if let Some(notif) = self.notif {
-            log::error!("unhandled notification: {:?}", notif);
+            log::error!("unhandled notification: {notif:?}");
         }
     }
 }

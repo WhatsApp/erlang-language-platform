@@ -52,12 +52,12 @@ impl EqwalizerLoader for crate::RootDatabase {
                 Some(f) => module_names.push(f.as_str()),
                 None => {
                     // Context for T171541590
-                    let _ = stdx::panic_context::enter(format!("\ntypecheck: {:?}", module));
+                    let _ = stdx::panic_context::enter(format!("\ntypecheck: {module:?}"));
                     let source_root_id =
                         SourceDatabase::file_source_root(self, module).source_root_id(self);
                     let source_root = self.source_root(source_root_id).source_root(self);
                     let path = source_root.path_for_file(&module);
-                    log::error!("Can't find module for path: {:?}", path);
+                    log::error!("Can't find module for path: {path:?}");
                     continue;
                 }
             };
@@ -170,7 +170,7 @@ fn is_eqwalizer_enabled(db: &dyn EqwalizerDatabase, file_id: FileId, include_tes
     }
 
     // Context for T171541590
-    let _ = stdx::panic_context::enter(format!("\nis_eqwalizer_enabled: {:?}", file_id));
+    let _ = stdx::panic_context::enter(format!("\nis_eqwalizer_enabled: {file_id:?}"));
     let app_data = if let Some(app_data) = db.file_app_data(file_id) {
         app_data
     } else {
@@ -268,7 +268,7 @@ fn decl_location(
     let module_index = db.module_index(project_id);
     let module_file_id = module_index.file_for_module(&module)?;
     // Context for T171541590
-    let _ = stdx::panic_context::enter(format!("\ndecl_location: {:?}", module_file_id));
+    let _ = stdx::panic_context::enter(format!("\ndecl_location: {module_file_id:?}"));
     let source_root_id = db.file_source_root(module_file_id).source_root_id(db);
     let source_root = db.source_root(source_root_id).source_root(db);
     let decl_file_path = &source_root.path_for_file(&module_file_id)?;

@@ -105,7 +105,7 @@ impl fmt::Display for CommandProxy<'_> {
             .get_args()
             .map(|a| a.to_string_lossy())
             .join(" ");
-        write!(f, "{} {}", program, args)
+        write!(f, "{program} {args}")
     }
 }
 
@@ -588,7 +588,7 @@ impl ElpConfig {
                                     }
                                 }
                                 Err(e) => {
-                                    log::warn!("Glob Error: {:?}", e)
+                                    log::warn!("Glob Error: {e:?}")
                                 }
                             }
                         }
@@ -995,8 +995,7 @@ impl Project {
                     RebarProject::from_rebar_build_info(&loaded, rebar_setting.clone())
                         .with_context(|| {
                             format!(
-                                "Failed to decode rebar build info for config file {:?}",
-                                manifest
+                                "Failed to decode rebar build info for config file {manifest:?}"
                             )
                         })?;
                 (
@@ -1077,7 +1076,7 @@ impl Project {
 }
 
 pub fn utf8_stdout(cmd: &mut Command) -> Result<String> {
-    let output = cmd.output().with_context(|| format!("{:?} failed", cmd))?;
+    let output = cmd.output().with_context(|| format!("{cmd:?} failed"))?;
     let stdout = String::from_utf8(output.stdout)?;
     if !output.status.success() {
         match String::from_utf8(output.stderr) {
@@ -1113,7 +1112,7 @@ mod tests {
 
     fn debug_normalise_temp_dir(dir: TempDir, actual: &impl fmt::Debug) -> String {
         let dir_str = dir.path().as_os_str().to_string_lossy().to_string();
-        let actual_debug = format!("{:#?}\n", actual);
+        let actual_debug = format!("{actual:#?}\n");
         actual_debug.replace(dir_str.as_str(), "TMPDIR")
     }
 
@@ -1444,7 +1443,7 @@ mod tests {
                 .downcast_ref::<ProjectModelError>()
             {
                 Some(ProjectModelError::NotInBuckProject) => (),
-                Some(err) => panic!("Wrong err {:?}", err),
+                Some(err) => panic!("Wrong err {err:?}"),
                 None => panic!("Wrong error"),
             };
         }
@@ -1619,7 +1618,7 @@ mod tests {
             "#]]
             .assert_debug_eq(&res);
         } else {
-            panic!("Expected syntax error, got {:?}", manifest)
+            panic!("Expected syntax error, got {manifest:?}")
         }
     }
 
@@ -1653,7 +1652,7 @@ mod tests {
             "#]]
             .assert_debug_eq(&res);
         } else {
-            panic!("Expected syntax error, got {:?}", manifest)
+            panic!("Expected syntax error, got {manifest:?}")
         }
     }
 

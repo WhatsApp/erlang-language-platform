@@ -604,7 +604,7 @@ fn read_node_types() -> Result<Vec<NodeType>> {
             let id = SymbolId(language.id_for_node_kind(&node.nodetype, node.named));
             println!("processing {:?}", node.nodetype);
             if node.nodetype == "==>>" {
-                println!("processing {:?}", node);
+                println!("processing {node:?}");
             }
             if id.0 == 65535 {
                 None
@@ -616,8 +616,7 @@ fn read_node_types() -> Result<Vec<NodeType>> {
                         ..
                     } => {
                         panic!(
-                            "raw children without fields assigned are not supported, in {}",
-                            nodetype
+                            "raw children without fields assigned are not supported, in {nodetype}"
                         );
                     }
                     RawNodeType {
@@ -859,7 +858,7 @@ fn build_fields(fields: &BTreeMap<String, RawField>) -> Vec<Field> {
                 // we have some types overlapping with _expr, ignore them
                 [_, ty] if ty.nodetype == "_expr" => ty,
                 [] => panic!("field with no types"),
-                _ => panic!("fields with multiple types are not supported '{}'", k),
+                _ => panic!("fields with multiple types are not supported '{k}'"),
             };
             (k, v, ty)
         })

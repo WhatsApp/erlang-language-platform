@@ -180,7 +180,7 @@ fn check(
         let parse = sema.parse(frange.file_id);
         let errors = parse.errors();
         if !errors.is_empty() {
-            assert_eq!(format!("{:?}\nin\n{text}", errors), "");
+            assert_eq!(format!("{errors:?}\nin\n{text}"), "");
         }
     }
 
@@ -279,7 +279,7 @@ fn check(
                 let parse = SourceFile::parse_text(&text);
                 let errors = parse.errors();
                 if !errors.is_empty() {
-                    assert_eq!(format!("{:?}\nin\n{text}", errors), "");
+                    assert_eq!(format!("{errors:?}\nin\n{text}"), "");
                 }
             }
 
@@ -294,7 +294,7 @@ fn check(
                         .iter()
                         .map(|resolved| resolved.label.clone())
                         .collect::<Vec<_>>();
-                    panic!("Expecting \"{}\", but not found in {:?}", label, all);
+                    panic!("Expecting \"{label}\", but not found in {all:?}");
                 }
                 None => panic!("code action is not applicable"),
             };

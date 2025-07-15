@@ -117,7 +117,7 @@ impl Reporter for PrettyReporter<'_> {
             let range: Range<usize> =
                 diagnostic.range.start().into()..diagnostic.range.end().into();
             let expr = match &diagnostic.expression {
-                Some(s) => format!("{}.\n", s),
+                Some(s) => format!("{s}.\n"),
                 None => "".to_string(),
             };
 
@@ -127,7 +127,7 @@ impl Reporter for PrettyReporter<'_> {
             let mut labels = vec![msg_label];
             if let Some(s) = &diagnostic.explanation {
                 let explanation_label =
-                    Label::secondary(reporting_id, range).with_message(format!("\n\n{}", s));
+                    Label::secondary(reporting_id, range).with_message(format!("\n\n{s}"));
                 labels.push(explanation_label);
             };
             let d: ReportingDiagnostic<usize> = ReportingDiagnostic::error()
@@ -188,7 +188,7 @@ impl Reporter for PrettyReporter<'_> {
         let duration = self.start.elapsed().as_secs();
         self.cli.set_color(&YELLOW_COLOR_SPEC)?;
         if count == total {
-            write!(self.cli, "eqWAlized {} module(s) in {}s", count, duration)?;
+            write!(self.cli, "eqWAlized {count} module(s) in {duration}s")?;
         } else {
             write!(
                 self.cli,
@@ -242,7 +242,7 @@ impl Reporter for JsonReporter<'_> {
                 eqwalizer_enabled,
             );
             let diagnostic = serde_json::to_string(&diagnostic)?;
-            writeln!(self.cli, "{}", diagnostic)?;
+            writeln!(self.cli, "{diagnostic}")?;
         }
         Ok(())
     }
@@ -260,7 +260,7 @@ impl Reporter for JsonReporter<'_> {
                 None,
             );
             let diagnostic = serde_json::to_string(&diagnostic)?;
-            writeln!(self.cli, "{}", diagnostic)?;
+            writeln!(self.cli, "{diagnostic}")?;
         }
         Ok(())
     }
@@ -283,7 +283,7 @@ impl Reporter for JsonReporter<'_> {
             None,
         );
         let diagnostic = serde_json::to_string(&diagnostic)?;
-        writeln!(self.cli, "{}", diagnostic)?;
+        writeln!(self.cli, "{diagnostic}")?;
         Ok(())
     }
 
@@ -357,12 +357,12 @@ pub(crate) fn dump_stats(cli: &mut dyn Cli, list_modules: bool) {
     if list_modules {
         writeln!(cli, "--------------start of modules----------").ok();
         stats.iter().sorted().for_each(|stat| {
-            writeln!(cli, "{}", stat).ok();
+            writeln!(cli, "{stat}").ok();
         });
     }
     writeln!(cli, "{} modules processed", stats.len()).ok();
     let mem_usage = MemoryUsage::now();
-    writeln!(cli, "{}", mem_usage).ok();
+    writeln!(cli, "{mem_usage}").ok();
 }
 
 lazy_static! {

@@ -812,7 +812,7 @@ impl GleanIndexer {
                         );
                         result
                     }
-                    None => panic!("Can't find module {}", module),
+                    None => panic!("Can't find module {module}"),
                 }
             } else {
                 let iter = files
@@ -838,7 +838,7 @@ impl GleanIndexer {
                     .collect::<Vec<_>>()
                     .into_iter()
                     .enumerate()
-                    .map(|(id, facts)| (format!("{}.json", id), facts))
+                    .map(|(id, facts)| (format!("{id}.json"), facts))
                     .collect()
                 } else {
                     let mut result = FxHashMap::default();
@@ -927,12 +927,12 @@ impl GleanIndexer {
                     if let Some(def) = def {
                         let range = def.source(db).syntax().text_range();
                         let text = &db.file_text(id).text(db)[range];
-                        let text = format!("```erlang\n{}\n```", text);
+                        let text = format!("```erlang\n{text}\n```");
                         let doc = match (&x.key.expansion, &x.key.ods_url) {
                             (None, None) => text,
-                            (None, Some(o)) => format!("[ODS]({})\n{}", o, text),
-                            (Some(e), None) => format!("{}\n---\n\n{}", text, e),
-                            (Some(e), Some(o)) => format!("[ODS]({})\n{}\n---\n\n{}", o, text, e),
+                            (None, Some(o)) => format!("[ODS]({o})\n{text}"),
+                            (Some(e), None) => format!("{text}\n---\n\n{e}"),
+                            (Some(e), Some(o)) => format!("[ODS]({o})\n{text}\n---\n\n{e}"),
                         };
                         let decl = Declaration::MacroDeclaration(
                             MacroDecl {
@@ -1113,7 +1113,7 @@ impl GleanIndexer {
         for (ty, def) in def_map.get_types() {
             let range = def.source(db).syntax().text_range();
             let text = &db.file_text(file_id).text(db)[range];
-            let text = format!("```erlang\n{}\n```", text);
+            let text = format!("```erlang\n{text}\n```");
             let span: Location = range.into();
 
             let decl = Declaration::TypeDeclaration(
@@ -1140,7 +1140,7 @@ impl GleanIndexer {
         for (rec, def) in def_map.get_records() {
             let range = def.source(db).syntax().text_range();
             let text = &db.file_text(file_id).text(db)[range];
-            let text = format!("```erlang\n{}\n```", text);
+            let text = format!("```erlang\n{text}\n```");
             let span: Location = range.into();
 
             let decl = Declaration::RecordDeclaration(
@@ -1165,7 +1165,7 @@ impl GleanIndexer {
         if let Some((name, Some("hrl"))) = path.name_and_extension() {
             declarations.push(Declaration::HeaderDeclaration(
                 HeaderDecl {
-                    name: format!("{}.hrl", name),
+                    name: format!("{name}.hrl"),
                     span: Location {
                         start: 0,
                         length: 1,
@@ -1416,7 +1416,7 @@ impl GleanIndexer {
                     let range: TextRange = range.clone().into();
                     let range: Location = range.into();
                     if let Some(name) = vars.get(&range) {
-                        let text = format!("```erlang\n{} :: {}\n```", name, ty);
+                        let text = format!("```erlang\n{name} :: {ty}\n```");
                         let decl = VarDecl {
                             name: name.to_string(),
                             doc: text,
@@ -1463,7 +1463,7 @@ impl GleanIndexer {
                                 if let Some((name, Some("hrl"))) = path.name_and_extension() {
                                     let target = HeaderTarget {
                                         file_id: file.into(),
-                                        name: format!("{}.hrl", name),
+                                        name: format!("{name}.hrl"),
                                     };
                                     let xref = XRef {
                                         source: range,
@@ -1638,7 +1638,7 @@ impl GleanIndexer {
         if let ast::Expr::ExprMax(ExprMax::MacroCallExpr(macro_call)) = node {
             let (_, expansion) = sema.expand(InFile::new(source_file.file_id, &macro_call))?;
             let expansion = expansion.trim();
-            let expansion = format!("```erlang\n{}\n```", expansion);
+            let expansion = format!("```erlang\n{expansion}\n```");
             return Some(expansion);
         }
         None
@@ -1766,7 +1766,7 @@ impl GleanIndexer {
 fn path_to_module_name(path: &VfsPath) -> Option<String> {
     match path.name_and_extension() {
         Some((name, Some("erl"))) => Some(name.to_string()),
-        Some((name, Some("hrl"))) => Some(format!("{}.hrl", name)),
+        Some((name, Some("hrl"))) => Some(format!("{name}.hrl")),
         _ => None,
     }
 }
@@ -2642,7 +2642,7 @@ mod tests {
                 if label.is_empty() {
                     continue;
                 }
-                let label = format!("{}/{}", file_name, label);
+                let label = format!("{file_name}/{label}");
                 let tuple = (range, label);
                 let idx = annotations
                     .iter()
@@ -2791,7 +2791,7 @@ mod tests {
                         .strip_suffix("\n```")
                         .unwrap()
                         .to_string();
-                    f.write_str(format!("var/{}", ttype).as_str())
+                    f.write_str(format!("var/{ttype}").as_str())
                 }
                 Declaration::HeaderDeclaration(decl) => {
                     f.write_str(format!("header/{}", decl.key.name).as_str())

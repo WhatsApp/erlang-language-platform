@@ -739,7 +739,7 @@ main() ->
 
         let fmt_syntax = |syn: &SyntaxElement| match syn.kind() {
             SyntaxKind::WHITESPACE => format!("{:?}", syn.to_string()),
-            _ => format!("{}", syn),
+            _ => format!("{syn}"),
         };
 
         let insertions =
@@ -775,8 +775,7 @@ main() ->
         });
 
         let actual = format!(
-            "insertions:\n\n{}\n\nreplacements:\n\n{}\n\ndeletions:\n\n{}\n",
-            insertions, replacements, deletions
+            "insertions:\n\n{insertions}\n\nreplacements:\n\n{replacements}\n\ndeletions:\n\n{deletions}\n"
         );
         expected_diff.assert_eq(&actual);
 

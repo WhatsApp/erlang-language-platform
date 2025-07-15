@@ -74,7 +74,7 @@ mod tests {
 
         match analysis.goto_definition(position).unwrap() {
             Some(navs) if !navs.info.is_empty() => {
-                panic!("didn't expect this to resolve anywhere: {:?}", navs)
+                panic!("didn't expect this to resolve anywhere: {navs:?}")
             }
             Some(_) => {
                 panic!("got some with empty navs!");

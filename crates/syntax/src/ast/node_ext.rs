@@ -815,7 +815,7 @@ mod tests {
     use crate::ast;
 
     fn parse_expr(arg: &str) -> ast::Expr {
-        let text = format!("f() -> {}.", arg);
+        let text = format!("f() -> {arg}.");
         let parse = ast::SourceFile::parse_text(&text);
 
         if !parse.errors().is_empty() {
@@ -824,12 +824,12 @@ mod tests {
 
         let fun = match parse.tree().forms().next().expect("no form parsed") {
             ast::Form::FunDecl(fun) => fun,
-            got => panic!("expected fun, got: {:?}", got),
+            got => panic!("expected fun, got: {got:?}"),
         };
 
         let clause = match fun.clauses().next().expect("no clauses parsed") {
             ast::FunctionOrMacroClause::FunctionClause(clause) => clause,
-            got => panic!("expected clause, got: {:?}", got),
+            got => panic!("expected clause, got: {got:?}"),
         };
 
         clause
@@ -845,7 +845,7 @@ mod tests {
         fn check(parse: &str, expected_op_text: &str, expected_op: UnaryOp) {
             let (op, token) = match parse_expr(parse) {
                 ast::Expr::UnaryOpExpr(unary_op) => unary_op.op().expect("no operator found"),
-                got => panic!("expected unary op, got: {:?}", got),
+                got => panic!("expected unary op, got: {got:?}"),
             };
 
             assert_eq!(token.text(), expected_op_text);
@@ -864,7 +864,7 @@ mod tests {
         fn check(parse: &str, expected_op_text: &str, expected_op: BinaryOp) {
             let (op, token) = match parse_expr(parse) {
                 ast::Expr::BinaryOpExpr(binary_op) => binary_op.op().expect("no operator found"),
-                got => panic!("expected binary op, got: {:?}", got),
+                got => panic!("expected binary op, got: {got:?}"),
             };
 
             assert_eq!(token.text(), expected_op_text);
@@ -979,10 +979,10 @@ mod tests {
     #[test]
     fn test_unary_map_expr() {
         fn check(parse: &str, expected_op_text: &str, expected_op: MapOp) {
-            let parse = format!("#{{{}}}", parse);
+            let parse = format!("#{{{parse}}}");
             let map_expr = match parse_expr(&parse) {
                 ast::Expr::MapExpr(map_expr) => map_expr,
-                got => panic!("expected map expr, got: {:?}", got),
+                got => panic!("expected map expr, got: {got:?}"),
             };
 
             let field = map_expr.fields().next().expect("no map fields parsed");

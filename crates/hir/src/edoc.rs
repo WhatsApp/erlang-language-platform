@@ -355,7 +355,7 @@ fn reference_to_exdoc(text: &str) -> String {
     if text.contains('/') {
         text.to_string()
     } else {
-        format!("m:{}", text)
+        format!("m:{text}")
     }
 }
 
@@ -944,7 +944,7 @@ mod tests {
                     ..
                 },
             )| {
-                buf.push_str(&format!("{:?}\n", kind));
+                buf.push_str(&format!("{kind:?}\n"));
                 if let Some(doc) = doc {
                     if !doc.lines.is_empty() {
                         buf.push_str("  doc\n");

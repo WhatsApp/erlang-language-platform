@@ -214,7 +214,7 @@ impl EqwalizerExe {
                 vec!["-Xss20M".into(), "-jar".into(), path.into()],
             ),
             "" => (path, vec![]),
-            _ => panic!("Unknown eqwalizer executable {:?}", path),
+            _ => panic!("Unknown eqwalizer executable {path:?}"),
         };
 
         Self {
@@ -256,7 +256,7 @@ impl Eqwalizer {
 
         match do_typecheck(cmd, db, project_id) {
             Ok(diags) => diags,
-            Err(err) => EqwalizerDiagnostics::Error(format!("{:?}", err)),
+            Err(err) => EqwalizerDiagnostics::Error(format!("{err:?}")),
         }
     }
 }
@@ -270,7 +270,7 @@ fn do_typecheck(
     db.report_untracked_read();
     let handle = Arc::new(Mutex::new(
         IpcHandle::from_command(&mut cmd)
-            .with_context(|| format!("starting eqWAlizer process: {:?}", cmd))?,
+            .with_context(|| format!("starting eqWAlizer process: {cmd:?}"))?,
     ));
     let mut diagnostics = EqwalizerDiagnostics::default();
     loop {
@@ -297,7 +297,7 @@ fn do_typecheck(
             msg => {
                 log::warn!(
                     "received unexpected message from eqwalizer, ignoring: {}",
-                    limit_logged_string(&format!("{:?}", msg))
+                    limit_logged_string(&format!("{msg:?}"))
                 )
             }
         }
@@ -312,8 +312,7 @@ fn get_module_diagnostics(
     let handle_mutex = db
         .module_ipc_handle(ModuleName::new(&module))
         .ok_or(anyhow::Error::msg(format!(
-            "no eqWAlizer handle for module {}",
-            module
+            "no eqWAlizer handle for module {module}"
         )))?;
     let mut handle = handle_mutex.lock();
     handle.send(&MsgToEqWAlizer::ELPEnteringModule)?;
@@ -322,9 +321,7 @@ fn get_module_diagnostics(
         match handle.receive()? {
             MsgFromEqWAlizer::GetAstBytes { module, format } => {
                 log::debug!(
-                    "received from eqwalizer: GetAstBytes for module {} (format = {:?})",
-                    module,
-                    format
+                    "received from eqwalizer: GetAstBytes for module {module} (format = {format:?})"
                 );
                 let module_name = ModuleName::new(&module);
                 let ast = {
@@ -339,25 +336,20 @@ fn get_module_diagnostics(
                 };
                 match ast {
                     Ok(ast_bytes) => {
-                        log::debug!(
-                            "sending to eqwalizer: GetAstBytesReply for module {}",
-                            module
-                        );
+                        log::debug!("sending to eqwalizer: GetAstBytesReply for module {module}");
                         let len = ast_bytes.len().try_into()?;
                         let reply = &MsgToEqWAlizer::GetAstBytesReply { len };
                         handle.send(reply)?;
                         handle.receive_newline()?;
                         handle.send_bytes(&ast_bytes).with_context(|| {
                             format!(
-                                "sending to eqwalizer: bytes for module {} (format = {:?})",
-                                module, format
+                                "sending to eqwalizer: bytes for module {module} (format = {format:?})"
                             )
                         })?;
                     }
                     Err(Error::ModuleNotFound(_)) => {
                         log::debug!(
-                            "module not found, sending to eqwalizer: empty GetAstBytesReply for module {}",
-                            module
+                            "module not found, sending to eqwalizer: empty GetAstBytesReply for module {module}"
                         );
                         let len = 0;
                         let reply = &MsgToEqWAlizer::GetAstBytesReply { len };
@@ -366,8 +358,7 @@ fn get_module_diagnostics(
                     }
                     Err(Error::ParseError) => {
                         log::debug!(
-                            "parse error, sending to eqwalizer: CannotCompleteRequest for module {}",
-                            module
+                            "parse error, sending to eqwalizer: CannotCompleteRequest for module {module}"
                         );
                         let reply = &MsgToEqWAlizer::CannotCompleteRequest;
                         handle.send(reply)?;
@@ -375,9 +366,7 @@ fn get_module_diagnostics(
                     }
                     Err(err) => {
                         log::debug!(
-                            "error {} sending to eqwalizer: CannotCompleteRequest for module {}",
-                            err,
-                            module
+                            "error {err} sending to eqwalizer: CannotCompleteRequest for module {module}"
                         );
                         let reply = &MsgToEqWAlizer::CannotCompleteRequest;
                         handle.send(reply)?;
@@ -483,7 +472,7 @@ fn get_module_diagnostics(
             msg => {
                 log::warn!(
                     "received unexpected message from eqwalizer, ignoring: {}",
-                    limit_logged_string(&format!("{:?}", msg))
+                    limit_logged_string(&format!("{msg:?}"))
                 )
             }
         }

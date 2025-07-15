@@ -58,7 +58,7 @@ pub fn print_function_clause(
 
     let mut sep = "";
     for (_idx, clause) in body.clauses.iter() {
-        write!(out, "{}", sep).unwrap();
+        write!(out, "{sep}").unwrap();
         sep = ";";
         let mut printer = Printer::new(db, &clause.body);
         printer
@@ -106,7 +106,7 @@ pub fn print_spec(db: &dyn InternDatabase, body: &SpecBody, form: SpecOrCallback
 
     let mut sep = "";
     for sig in &body.sigs {
-        write!(printer, "{}", sep).unwrap();
+        write!(printer, "{sep}").unwrap();
         sep = ";\n";
         printer.print_sig(sig).unwrap();
     }
@@ -129,7 +129,7 @@ pub fn print_record(
 
     let mut sep = "\n";
     for field in &body.fields {
-        write!(printer, "{}", sep).unwrap();
+        write!(printer, "{sep}").unwrap();
         sep = ",\n";
         printer.print_field(field, form_list).unwrap();
     }
@@ -221,10 +221,10 @@ impl<'a> Printer<'a> {
     }
 
     fn print_clause(&mut self, clause: &Clause, name: &str) -> fmt::Result {
-        write!(self, "{}(", name)?;
+        write!(self, "{name}(")?;
         let mut sep = "";
         for pat in clause.pats.iter().map(|pat_id| &self.body[*pat_id]) {
-            write!(self, "{}", sep)?;
+            write!(self, "{sep}")?;
             sep = ", ";
             self.print_pat(pat)?;
         }
@@ -273,14 +273,14 @@ impl<'a> Printer<'a> {
                 self.print_pat(&self.body[*rhs])
             }
             Pat::UnaryOp { pat, op } => {
-                write!(self, "({} ", op)?;
+                write!(self, "({op} ")?;
                 self.print_pat(&self.body[*pat])?;
                 write!(self, ")")
             }
             Pat::BinaryOp { lhs, rhs, op } => {
                 write!(self, "(")?;
                 self.print_pat(&self.body[*lhs])?;
-                write!(self, " {} ", op)?;
+                write!(self, " {op} ")?;
                 self.print_pat(&self.body[*rhs])?;
                 write!(self, ")")
             }
@@ -328,11 +328,11 @@ impl<'a> Printer<'a> {
             }
             let mut sep = "";
             for guard_clause in guards {
-                write!(self, "{}", sep)?;
+                write!(self, "{sep}")?;
                 sep = ";\n";
                 let mut sep = "";
                 for expr in guard_clause {
-                    write!(self, "{}", sep)?;
+                    write!(self, "{sep}")?;
                     sep = ",\n";
                     self.print_expr(&self.body[*expr])?;
                 }
@@ -352,11 +352,11 @@ impl<'a> Printer<'a> {
         if !guards.is_empty() {
             let mut sep = "";
             for guard_clause in guards {
-                write!(self, "{}", sep)?;
+                write!(self, "{sep}")?;
                 sep = ";\n";
                 let mut sep = "";
                 for expr in guard_clause {
-                    write!(self, "{}", sep)?;
+                    write!(self, "{sep}")?;
                     sep = ",\n";
                     self.print_expr(&self.body[*expr])?;
                 }
@@ -384,7 +384,7 @@ impl<'a> Printer<'a> {
         self.indent_level += 1;
         let mut sep = "";
         for expr_id in exprs {
-            writeln!(self, "{}", sep)?;
+            writeln!(self, "{sep}")?;
             sep = ",";
             self.print_expr(&self.body[*expr_id])?;
         }
@@ -411,14 +411,14 @@ impl<'a> Printer<'a> {
                 self.print_expr(&self.body[*rhs])
             }
             Expr::UnaryOp { expr, op } => {
-                write!(self, "({} ", op)?;
+                write!(self, "({op} ")?;
                 self.print_expr(&self.body[*expr])?;
                 write!(self, ")")
             }
             Expr::BinaryOp { lhs, rhs, op } => {
                 write!(self, "(")?;
                 self.print_expr(&self.body[*lhs])?;
-                write!(self, " {} ", op)?;
+                write!(self, " {op} ")?;
                 self.print_expr(&self.body[*rhs])?;
                 write!(self, ")")
             }
@@ -433,7 +433,7 @@ impl<'a> Printer<'a> {
                 self.print_expr(&self.body[*expr])?;
                 self.print_seq(fields, None, "#{", "}", ",", |this, (key, op, value)| {
                     this.print_expr(&this.body[*key])?;
-                    write!(this, " {} ", op)?;
+                    write!(this, " {op} ")?;
                     this.print_expr(&this.body[*value])
                 })
             }
@@ -575,7 +575,7 @@ impl<'a> Printer<'a> {
                     ComprehensionBuilder::Binary(_) => ("<<", ">>"),
                     ComprehensionBuilder::Map(_, _) => ("#{", "}"),
                 };
-                writeln!(self, "{}", start)?;
+                writeln!(self, "{start}")?;
                 self.indent_level += 1;
                 match builder {
                     ComprehensionBuilder::List(expr) => self.print_expr(&self.body[*expr])?,
@@ -707,7 +707,7 @@ impl<'a> Printer<'a> {
             TypeExpr::Map { fields } => {
                 self.print_seq(fields, None, "#{", "}", ",", |this, (key, op, value)| {
                     this.print_type(&this.body[*key])?;
-                    write!(this, " {} ", op)?;
+                    write!(this, " {op} ")?;
                     this.print_type(&this.body[*value])
                 })
             }
@@ -735,7 +735,7 @@ impl<'a> Printer<'a> {
                 write!(self, ")")
             }
             TypeExpr::UnaryOp { type_expr, op } => {
-                write!(self, "({} ", op)?;
+                write!(self, "({op} ")?;
                 self.print_type(&self.body[*type_expr])?;
                 write!(self, ")")
             }
@@ -748,7 +748,7 @@ impl<'a> Printer<'a> {
             TypeExpr::BinaryOp { lhs, rhs, op } => {
                 write!(self, "(")?;
                 self.print_type(&self.body[*lhs])?;
-                write!(self, " {} ", op)?;
+                write!(self, " {op} ")?;
                 self.print_type(&self.body[*rhs])?;
                 write!(self, ")")
             }
@@ -799,12 +799,12 @@ impl<'a> Printer<'a> {
             }
             Term::Binary(bin) => {
                 if let Ok(str) = str::from_utf8(bin) {
-                    write!(self, "<<{:?}/utf8>>", str)
+                    write!(self, "<<{str:?}/utf8>>")
                 } else {
                     write!(self, "<<")?;
                     let mut sep = "";
                     for byte in bin {
-                        write!(self, "{}{}", sep, byte)?;
+                        write!(self, "{sep}{byte}")?;
                         sep = ", ";
                     }
                     write!(self, ">>")
@@ -849,11 +849,11 @@ impl<'a> Printer<'a> {
 
     fn print_literal(&mut self, lit: &Literal) -> fmt::Result {
         match lit {
-            Literal::String(StringVariant::Normal(string)) => write!(self, "{:?}", string),
+            Literal::String(StringVariant::Normal(string)) => write!(self, "{string:?}"),
             Literal::String(StringVariant::Verbatim(string)) => {
-                write!(self, "{}", string)
+                write!(self, "{string}")
             }
-            Literal::Char(char) => write!(self, "${}", char),
+            Literal::Char(char) => write!(self, "${char}"),
             Literal::Atom(atom) => write!(self, "'{}'", self.db.lookup_atom(*atom)),
             Literal::Integer(int) => write!(self, "{}", int.value), // TODO: other bases
             Literal::Float(float) => write!(self, "{}", f64::from_bits(*float)),
@@ -870,13 +870,13 @@ impl<'a> Printer<'a> {
         print: impl Fn(&mut Self, &T) -> fmt::Result,
     ) -> fmt::Result {
         if exprs.is_empty() && tail.is_none() {
-            write!(self, "{}{}", start, end)
+            write!(self, "{start}{end}")
         } else {
-            write!(self, "{}", start)?;
+            write!(self, "{start}")?;
             self.indent_level += 1;
             let mut sep = "";
             for expr in exprs {
-                writeln!(self, "{}", sep)?;
+                writeln!(self, "{sep}")?;
                 sep = base_sep;
                 print(self, expr)?;
             }
@@ -885,7 +885,7 @@ impl<'a> Printer<'a> {
                 print(self, tail)?;
             }
             self.indent_level -= 1;
-            write!(self, "\n{}", end)
+            write!(self, "\n{end}")
         }
     }
 
@@ -895,10 +895,10 @@ impl<'a> Printer<'a> {
         exprs: &[T],
         print: impl Fn(&mut Self, &T) -> fmt::Result,
     ) -> fmt::Result {
-        write!(self, "{}(", name)?;
+        write!(self, "{name}(")?;
         let mut sep = "";
         for expr in exprs {
-            write!(self, "{}", sep)?;
+            write!(self, "{sep}")?;
             sep = ", ";
             print(self, expr)?;
         }
@@ -923,7 +923,7 @@ impl<'a> Printer<'a> {
                 sep = "-";
             }
             if let Some(unit) = seg.unit {
-                write!(self, "{}unit:{}", sep, unit)?;
+                write!(self, "{sep}unit:{unit}")?;
             }
         }
         Ok(())

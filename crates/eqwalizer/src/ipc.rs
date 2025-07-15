@@ -188,10 +188,10 @@ impl IpcHandle {
 
     pub fn send(&mut self, msg: &MsgToEqWAlizer) -> Result<()> {
         let msg = serde_json::to_string(msg).expect("failed to serialize msg to eqwalizer");
-        writeln!(self.writer, "{}", msg).with_context(|| format!("writing message: {:?}", msg))?;
+        writeln!(self.writer, "{msg}").with_context(|| format!("writing message: {msg:?}"))?;
         self.writer
             .flush()
-            .with_context(|| format!("flushing message: {:?}", msg))?;
+            .with_context(|| format!("flushing message: {msg:?}"))?;
         Ok(())
     }
 

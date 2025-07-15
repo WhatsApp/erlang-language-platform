@@ -336,7 +336,7 @@ impl fmt::Display for Type {
                 "#{{{}}}",
                 ty.props
                     .iter()
-                    .map(|(k, p)| format!("{} {}", k, p))
+                    .map(|(k, p)| format!("{k} {p}"))
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
@@ -345,7 +345,7 @@ impl fmt::Display for Type {
                 "#{{{}, {} => {}}}",
                 ty.props
                     .iter()
-                    .map(|(k, p)| format!("{} {}", k, p))
+                    .map(|(k, p)| format!("{k} {p}"))
                     .collect::<Vec<_>>()
                     .join(", "),
                 ty.k_type,
@@ -472,6 +472,8 @@ impl std::str::FromStr for Key {
                     _ => (),
                 }
                 if in_parens == 0 && c == ',' {
+                    // TODO: fix this T231065083
+                    #[allow(clippy::char_indices_as_byte_indices)]
                     res.push(s[start..i].trim());
                     start = i + 1;
                 }

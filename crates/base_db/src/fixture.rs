@@ -142,7 +142,7 @@ impl Builder {
     fn absolute_path(&self, path: String) -> String {
         if let Some(project_dir) = &self.project_dir {
             let project_dir_str = project_dir.path().as_os_str().to_str().unwrap();
-            format!("{}/{}", project_dir_str, path)
+            format!("{project_dir_str}/{path}")
         } else {
             path
         }
@@ -272,7 +272,7 @@ impl ChangeFixture {
                 write!(tmp_file, "{}", &text).unwrap();
             }
 
-            let json_config_file = format!("{}/build_info.json", project_dir_str);
+            let json_config_file = format!("{project_dir_str}/build_info.json");
 
             let mut writer = File::create(&json_config_file).unwrap();
 

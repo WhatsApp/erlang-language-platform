@@ -765,7 +765,7 @@ pub fn eqwalizer_to_diagnostic(
         Severity::Information
     };
     let explanation = match &d.explanation {
-        Some(s) => format!("\n\n{}", s),
+        Some(s) => format!("\n\n{s}"),
         None => "".to_string(),
     };
     let message = format!(
@@ -848,7 +848,7 @@ pub fn native_diagnostics(
                 }
                 elp_syntax::SyntaxError::Missing(m, _) => (
                     DiagnosticCode::Missing("missing".to_string()),
-                    format!("Missing '{}'", m),
+                    format!("Missing '{m}'"),
                 ),
             };
             Diagnostic::error(code, widen_range(err.range()), message)
@@ -1159,7 +1159,7 @@ pub(crate) fn make_missing_diagnostic(
     item: &'static str,
     code: String,
 ) -> Diagnostic {
-    let message = format!("Missing '{}'", item);
+    let message = format!("Missing '{item}'");
     Diagnostic::new(DiagnosticCode::Missing(code), message, range).with_severity(Severity::Warning)
 }
 
@@ -1168,7 +1168,7 @@ pub(crate) fn make_unexpected_diagnostic(
     item: &'static str,
     code: String,
 ) -> Diagnostic {
-    let message = format!("Unexpected '{}'", item);
+    let message = format!("Unexpected '{item}'");
     Diagnostic::new(DiagnosticCode::Unexpected(code), message, range)
         .with_severity(Severity::Warning)
 }

@@ -229,7 +229,7 @@ pub fn do_codemod(
             Some(module) => match analysis.module_file_id(loaded.project_id, module)? {
                 Some(file_id) => {
                     if args.is_format_normal() {
-                        writeln!(cli, "module specified: {}", module)?;
+                        writeln!(cli, "module specified: {module}")?;
                     }
                     (Some(file_id), analysis.module_name(file_id)?)
                 }
@@ -238,7 +238,7 @@ pub fn do_codemod(
             None => match &args.file {
                 Some(file_name) => {
                     if args.is_format_normal() {
-                        writeln!(cli, "file specified: {}", file_name)?;
+                        writeln!(cli, "file specified: {file_name}")?;
                     }
                     let path_buf = Utf8PathBuf::from_path_buf(fs::canonicalize(file_name).unwrap())
                         .expect("UTF8 conversion failed");
@@ -272,7 +272,7 @@ pub fn do_codemod(
                     .map_or(vec![], |x| vec![x])
             }
             (Some(file_id), _) => {
-                panic!("Could not get name from file_id for {:?}", file_id)
+                panic!("Could not get name from file_id for {file_id:?}")
             }
         };
 
@@ -365,7 +365,7 @@ pub fn do_codemod(
             match lints.apply_relevant_fixes(args.is_format_normal(), cli) {
                 Ok(_) => {}
                 Err(err) => {
-                    writeln!(cli, "Apply fix failed: {:#}", err).ok();
+                    writeln!(cli, "Apply fix failed: {err:#}").ok();
                 }
             };
         }
@@ -424,8 +424,7 @@ fn print_diagnostic_json(
         cli,
         "{}",
         serde_json::to_string(&converted_diagnostic).unwrap_or_else(|err| panic!(
-            "print_diagnostics_json failed for '{:?}': {}",
-            converted_diagnostic, err
+            "print_diagnostics_json failed for '{converted_diagnostic:?}': {err}"
         ))
     )?;
     Ok(())
@@ -864,7 +863,7 @@ impl<'a> Lints<'a> {
             let mut output = File::create(to_path).ok()?;
             write!(output, "{file_text}").ok()?;
         } else if let Some(to) = &self.args.to {
-            let to_path = to.join(format!("{}.erl", name));
+            let to_path = to.join(format!("{name}.erl"));
             let mut output = File::create(to_path).ok()?;
             write!(output, "{file_text}").ok()?;
         } else {

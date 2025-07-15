@@ -370,10 +370,7 @@ impl DiagnosticCode {
     pub fn as_uri(&self) -> Option<String> {
         let namespace = self.as_namespace()?;
         let code = self.as_code();
-        Some(format!(
-            "{}/erlang-error-index/{namespace}/{code}",
-            BASE_URL
-        ))
+        Some(format!("{BASE_URL}/erlang-error-index/{namespace}/{code}"))
     }
 
     /// Check if the diagnostic label is for an AdHoc one.

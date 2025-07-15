@@ -70,11 +70,11 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let message: String = match self {
             Error::DecodeError(msg) => {
-                format!("EETF decoding failed with {}", msg)
+                format!("EETF decoding failed with {msg}")
             }
-            err => format!("{:?}", err),
+            err => format!("{err:?}"),
         };
-        write!(f, "eqWAlizer error:\n{}", message)
+        write!(f, "eqWAlizer error:\n{message}")
     }
 }
 
@@ -123,13 +123,13 @@ impl fmt::Display for ConversionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let message: String = match self {
             ConversionError::UnknownBuiltin(name, arity) => {
-                format!("unknown builtin {}/{}", name, arity)
+                format!("unknown builtin {name}/{arity}")
             }
             // All other cases are variants without parameters,
             // printing their name is enough info to debug
-            err => format!("{:?}", err),
+            err => format!("{err:?}"),
         };
-        write!(f, "eqWAlizer AST conversion failed with {}", message)
+        write!(f, "eqWAlizer AST conversion failed with {message}")
     }
 }
 
@@ -148,11 +148,11 @@ impl fmt::Display for TypeConversionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let message: String = match self {
             TypeConversionError::UnknownBuiltin(name, arity) => {
-                format!("unknown builtin {}/{}", name, arity)
+                format!("unknown builtin {name}/{arity}")
             }
-            err => format!("{:?}", err),
+            err => format!("{err:?}"),
         };
-        write!(f, "eqWAlizer stub expansion failed with {}", message)
+        write!(f, "eqWAlizer stub expansion failed with {message}")
     }
 }
 

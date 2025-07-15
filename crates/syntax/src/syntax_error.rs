@@ -44,7 +44,7 @@ impl fmt::Display for SyntaxError {
                 write!(f, "Syntax Error")
             }
             SyntaxError::Missing(m, _) => {
-                write!(f, "Missing '{}'", m)
+                write!(f, "Missing '{m}'")
             }
         }
     }

@@ -45,10 +45,7 @@ fn main() {
                 String::from_utf8(output.stdout).expect("valid utf8 output from sbt assembly");
             let stderr =
                 String::from_utf8(output.stderr).expect("valid utf8 output from sbt assembly");
-            panic!(
-                "sbt assembly failed with stdout:\n{}\n\nstderr:\n{}",
-                stdout, stderr
-            );
+            panic!("sbt assembly failed with stdout:\n{stdout}\n\nstderr:\n{stderr}");
         }
 
         let jar = fs::canonicalize(eqwalizer_out_dir.join("eqwalizer.jar")).unwrap();
@@ -74,10 +71,7 @@ fn main() {
                 String::from_utf8(output.stdout).expect("valid utf8 output from native-image");
             let stderr =
                 String::from_utf8(output.stderr).expect("valid utf8 output from native-image");
-            panic!(
-                "native-image failed with stdout:\n{}\n\nstderr:\n{}",
-                stdout, stderr
-            );
+            panic!("native-image failed with stdout:\n{stdout}\n\nstderr:\n{stderr}");
         }
 
         fs::copy(image_path, dest_path).expect("Copying fresh eqwalizer failed");
@@ -86,7 +80,7 @@ fn main() {
         rerun_if_changed(source_directory.join("src"));
     }
 
-    println!("cargo:rustc-env=ELP_EQWALIZER_EXT={}", extension);
+    println!("cargo:rustc-env=ELP_EQWALIZER_EXT={extension}");
     println!("cargo:rerun-if-env-changed=ELP_EQWALIZER_PATH");
 }
 

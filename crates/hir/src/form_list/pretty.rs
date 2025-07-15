@@ -434,7 +434,7 @@ impl Printer<'_> {
 impl fmt::Display for DeprecatedDesc {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            DeprecatedDesc::Str(s) => write!(f, "\"{}\"", s),
+            DeprecatedDesc::Str(s) => write!(f, "\"{s}\""),
             DeprecatedDesc::Atom(s) => fmt::Display::fmt(s, f),
         }
     }
@@ -447,10 +447,10 @@ impl fmt::Display for DeprecatedFa {
             name = &"'_'";
         }
         match (&self.arity, &self.desc) {
-            (Some(arity), Some(desc)) => write!(f, "{{{}, {}, {}}}", name, arity, desc),
-            (Some(arity), None) => write!(f, "{{{}, {}}}", name, arity),
-            (None, Some(desc)) => write!(f, "{{{}, '_', {}}}", name, desc),
-            (None, None) => write!(f, "{{{}, '_'}}", name),
+            (Some(arity), Some(desc)) => write!(f, "{{{name}, {arity}, {desc}}}"),
+            (Some(arity), None) => write!(f, "{{{name}, {arity}}}"),
+            (None, Some(desc)) => write!(f, "{{{name}, '_', {desc}}}"),
+            (None, None) => write!(f, "{{{name}, '_'}}"),
         }
     }
 }
@@ -464,7 +464,7 @@ impl fmt::Display for DeprecatedFas<'_> {
             if i > 0 {
                 write!(f, ",")?;
             }
-            write!(f, "{}", fa)?;
+            write!(f, "{fa}")?;
         }
         write!(f, "]")
     }
@@ -476,7 +476,7 @@ impl fmt::Display for BlankArgs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut join = "";
         for _ in 0..self.0 {
-            write!(f, "{}_", join)?;
+            write!(f, "{join}_")?;
             join = ", "
         }
         Ok(())

@@ -83,7 +83,7 @@ impl File {
             .path_for_file(&self.file_id)
             .and_then(|path| path.name_and_extension())
         {
-            SmolStr::new(format!("{}.{}", name, ext))
+            SmolStr::new(format!("{name}.{ext}"))
         } else {
             SmolStr::new_inline("unknown")
         }
@@ -435,12 +435,12 @@ fn arg_name(arg_idx: usize, expr: ast::Expr) -> SpecArgName {
         ann.var()
             .and_then(|var| var.var())
             .map(|var| SpecArgName::Name(var.text().to_string()))
-            .unwrap_or_else(|| SpecArgName::Generated(format!("Arg{}", arg_idx)))
+            .unwrap_or_else(|| SpecArgName::Generated(format!("Arg{arg_idx}")))
 
     // -spec f(bar()) -> ok.
     //   f(Arg1) -> ok.
     } else {
-        SpecArgName::Generated(format!("Arg{}", arg_idx))
+        SpecArgName::Generated(format!("Arg{arg_idx}"))
     }
 }
 
@@ -647,7 +647,7 @@ impl VarDef {
 
 fn is_in_otp(file_id: FileId, db: &dyn DefDatabase) -> bool {
     // Context for T171541590
-    let _ = stdx::panic_context::enter(format!("\nis_in_otp:2: {:?}", file_id));
+    let _ = stdx::panic_context::enter(format!("\nis_in_otp:2: {file_id:?}"));
     match db.file_app_data(file_id) {
         Some(app_data) => {
             let project_id = app_data.project_id;

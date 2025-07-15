@@ -136,9 +136,9 @@ fn replace_include_path(
 ) -> Assist {
     let mut builder = TextEdit::builder();
     if let Some(attr_range) = make_include_lib {
-        builder.replace(attr_range, format!("-include_lib(\"{}\").", filename));
+        builder.replace(attr_range, format!("-include_lib(\"{filename}\")."));
     } else {
-        builder.replace(range, format!("\"{}\"", filename));
+        builder.replace(range, format!("\"{filename}\""));
     }
     let edit = builder.finish();
     fix(

@@ -435,7 +435,7 @@ impl Server {
     }
 
     fn handle_event(&mut self, event: Event) -> Result<()> {
-        log::info!("handle_event {:?}", event);
+        log::info!("handle_event {event:?}");
 
         match event {
             Event::Lsp(msg) => match msg {
@@ -550,7 +550,7 @@ impl Server {
         }
 
         if let Some(diagnostic_changes) = Arc::make_mut(&mut self.diagnostics).take_changes() {
-            log::info!("changed diagnostics: {:?}", diagnostic_changes);
+            log::info!("changed diagnostics: {diagnostic_changes:?}");
 
             let snapshot = self.snapshot();
             for file_id in &diagnostic_changes {
@@ -561,7 +561,7 @@ impl Server {
                         // We have had a cancellation (How?). Restore
                         // the list of files to be published, and try
                         // again next time around the loop
-                        log::warn!("Snapshot cancelled while publishing diagnostics: {}", err);
+                        log::warn!("Snapshot cancelled while publishing diagnostics: {err}");
                         Arc::make_mut(&mut self.diagnostics).return_changes(diagnostic_changes);
                         break;
                     }
@@ -706,7 +706,7 @@ impl Server {
                         .is_err();
                     if already_exists {
                         tracing::error!("duplicate DidOpenTextDocument: {}", path);
-                        log::error!("duplicate DidOpenTextDocument: {}", path);
+                        log::error!("duplicate DidOpenTextDocument: {path}");
                     }
 
                     let mut vfs = this.vfs.write();
@@ -762,7 +762,7 @@ impl Server {
                 if let Ok(path) = convert::vfs_path(&url) {
                     if this.mem_docs.write().remove(&path).is_err() {
                         tracing::error!("orphan DidCloseTextDocument: {}", path);
-                        log::error!("unexpected DidCloseTextDocument: {}", path);
+                        log::error!("unexpected DidCloseTextDocument: {path}");
                     }
 
                     if let Some(path) = path.as_path() {
@@ -1404,12 +1404,12 @@ impl Server {
                 }],
             },
             |this, resp| {
-                log::debug!("config update response: '{:?}", resp);
+                log::debug!("config update response: '{resp:?}");
                 let lsp_server::Response { error, result, .. } = resp;
 
                 match (error, result) {
                     (Some(err), _) => {
-                        log::error!("failed to fetch the server settings: {:?}", err)
+                        log::error!("failed to fetch the server settings: {err:?}")
                     }
                     (None, Some(mut configs)) => {
                         if let Some(json) = configs.get_mut(0) {
@@ -1445,7 +1445,7 @@ impl Server {
         if let Some((path, _)) = loader.project_roots.iter().find(|(_k, v)| v.is_some()) {
             let path_buf: PathBuf = path.clone().into();
             if let Ok(lint_config) = read_lint_config_file(&path_buf, &None) {
-                log::warn!("update_configuration: read lint file: {:?}", lint_config);
+                log::warn!("update_configuration: read lint file: {lint_config:?}");
                 self.lint_config = Arc::new(lint_config);
 
                 // Diagnostic config may have changed, regen
@@ -1557,7 +1557,7 @@ impl Server {
                     // We have set the panic context to include the
                     // message, no need to repeat here.
                     // This way we do not have to clone it on the send
-                    panic!("Could not send message, got: {}", err);
+                    panic!("Could not send message, got: {err}");
                 }
             }
         }
@@ -1620,11 +1620,7 @@ impl Server {
         let manifest = match main {
             Ok(main) => main,
             Err(err) => {
-                log::error!(
-                    "Failed to discover manifest for path: {:?}, error: {:?}",
-                    path,
-                    err
-                );
+                log::error!("Failed to discover manifest for path: {path:?}, error: {err:?}");
                 fallback_used = true;
                 errors.push((err.to_string(), None));
                 fallback.clone()
@@ -1639,11 +1635,7 @@ impl Server {
             &|message| spinner.report(message.to_string()),
         );
         if let Err(err) = &project {
-            log::error!(
-                "Failed to load project for manifest {:?}, error: {:?}",
-                manifest,
-                err
-            );
+            log::error!("Failed to load project for manifest {manifest:?}, error: {err:?}");
             match err.downcast_ref::<BuckQueryError>() {
                 Some(e) => {
                     errors.push((
@@ -1663,9 +1655,7 @@ impl Server {
                     });
                 if let Err(err) = &project {
                     log::error!(
-                        "Failed to load project for fallback manifest {:?}, error: {:?}",
-                        manifest,
-                        err
+                        "Failed to load project for fallback manifest {manifest:?}, error: {err:?}"
                     );
                     errors.push((err.to_string(), None));
                 }
@@ -1721,7 +1711,7 @@ impl Server {
                 };
 
                 log::info!("did fetch project");
-                log::debug!("fetched projects {:?}", project);
+                log::debug!("fetched projects {project:?}");
                 if let Ok(project) = project {
                     sender
                         .send(Task::FetchProject(spinner, vec![project]))
@@ -1779,7 +1769,7 @@ impl Server {
                 },
                 |_, rsp| {
                     if rsp.error.is_some() {
-                        log::warn!("Dynamic registration failed, got {:?}", rsp);
+                        log::warn!("Dynamic registration failed, got {rsp:?}");
                     }
                     Ok(())
                 },
@@ -1865,7 +1855,7 @@ impl Server {
             Some(project) => project.name(),
             None => "undefined".to_string(),
         };
-        let message = format!("Eqwalize All ({})", project_name);
+        let message = format!("Eqwalize All ({project_name})");
         let bar = self.progress.begin_bar(message, None);
 
         self.eqwalizer_pool.handle.spawn_with_sender(move |sender| {
@@ -1975,11 +1965,9 @@ impl Server {
     fn on_telemetry(&mut self, message: TelemetryMessage) {
         match serde_json::to_value(message.clone()) {
             Ok(params) => self.send_notification::<lsp_types::notification::TelemetryEvent>(params),
-            Err(err) => log::warn!(
-                "Error serializing telemetry. message: {:?} error: {}",
-                message,
-                err
-            ),
+            Err(err) => {
+                log::warn!("Error serializing telemetry. message: {message:?} error: {err}")
+            }
         }
     }
 

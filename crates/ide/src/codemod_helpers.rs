@@ -221,7 +221,7 @@ impl<'a, T> FunctionMatcher<'a, T> {
                 labels_full_typed.insert(Some(mfa.label().into()), (types, *c, t));
             }
             FunctionMatch::MF { module, name } => {
-                let label = format!("{}:{}", module, name);
+                let label = format!("{module}:{name}");
                 labels_mf.insert(Some(label.into()), (*c, t));
             }
             FunctionMatch::M { module } => {
@@ -1002,7 +1002,7 @@ mod tests {
                     .map(|in_clause| sema.pat_type(&in_clause.body(), &in_clause.value).unwrap())
             });
         if let Some(type_info) = type_info {
-            let type_str = format!("{}", type_info);
+            let type_str = format!("{type_info}");
             if type_str != expected[0].1 {
                 panic!("Expected '{}', got '{}'", expected[0].1, type_str);
             }

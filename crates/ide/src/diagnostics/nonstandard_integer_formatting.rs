@@ -149,7 +149,7 @@ fn make_diagnostic(
     let mut builder = SourceChangeBuilder::new(file_id);
     builder.replace(integer_src_range, formatted_integer);
     let fix_msg: &str = if formatted_integer.len() < 16 {
-        &format!("Reformat integer to {}", formatted_integer)
+        &format!("Reformat integer to {formatted_integer}")
     } else {
         "Reformat integer"
     };

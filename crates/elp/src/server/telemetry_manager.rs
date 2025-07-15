@@ -60,11 +60,7 @@ impl TelemetryManager {
                     telemetry::send("periodic_memory_stats".to_string(), mem_usage_value);
                 }
                 Err(err) => {
-                    log::warn!(
-                        "on_periodic: unable to serialize {:?}, err: {}",
-                        mem_usage,
-                        err
-                    );
+                    log::warn!("on_periodic: unable to serialize {mem_usage:?}, err: {err}");
                 }
             };
         }

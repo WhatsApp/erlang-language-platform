@@ -63,7 +63,7 @@ impl SyntaxNodePtr {
                 .and_then(|it| it.into_node())
         })
         .find(|it| it.text_range() == self.range && it.kind() == self.kind)
-        .unwrap_or_else(|| panic!("can't resolve local ptr to SyntaxNode: {:?}", self))
+        .unwrap_or_else(|| panic!("can't resolve local ptr to SyntaxNode: {self:?}"))
     }
 
     pub fn cast<N: AstNode>(self) -> Option<AstPtr<N>> {

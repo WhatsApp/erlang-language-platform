@@ -151,7 +151,7 @@ fn simplify_binary_op(
         // -
         (lhs, BinaryOp::ArithOp(ArithOp::Sub), _rhs) if is_integer(0, lhs) => {
             let rhs_str = to_string(&rhs_id, sema, clause_id, def_fb)?;
-            Some(format!("-{}", rhs_str))
+            Some(format!("-{rhs_str}"))
         }
         (_lhs, BinaryOp::ArithOp(ArithOp::Sub), rhs) if is_integer(0, rhs) => {
             to_string(&lhs_id, sema, clause_id, def_fb)

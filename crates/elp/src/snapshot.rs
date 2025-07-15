@@ -61,29 +61,28 @@ impl fmt::Display for TelemetryData {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             TelemetryData::NativeDiagnostics { file_url } => {
-                write!(f, "Native Diagnostics file_url: {}", file_url)
+                write!(f, "Native Diagnostics file_url: {file_url}")
             }
             TelemetryData::EqwalizerDiagnostics { file_url } => {
-                write!(f, "Eqwalizer Diagnostics file_url: {}", file_url)
+                write!(f, "Eqwalizer Diagnostics file_url: {file_url}")
             }
             TelemetryData::EqwalizerProjectDiagnostics { project_name } => {
                 write!(
                     f,
-                    "Eqwalizer Project Diagnostics project_name: {}",
-                    project_name
+                    "Eqwalizer Project Diagnostics project_name: {project_name}"
                 )
             }
             TelemetryData::ParseServerDiagnostics { file_url } => {
-                write!(f, "Parse Server Diagnostics file_url: {}", file_url)
+                write!(f, "Parse Server Diagnostics file_url: {file_url}")
             }
             TelemetryData::EdocDiagnostics { file_url } => {
-                write!(f, "EDoc Diagnostics file_url: {}", file_url)
+                write!(f, "EDoc Diagnostics file_url: {file_url}")
             }
             TelemetryData::MetaDiagnostics { file_url } => {
-                write!(f, "Meta Diagnostics file_url: {}", file_url)
+                write!(f, "Meta Diagnostics file_url: {file_url}")
             }
             TelemetryData::CommonTestDiagnostics { file_url } => {
-                write!(f, "CT Diagnostics file_url: {}", file_url)
+                write!(f, "CT Diagnostics file_url: {file_url}")
             }
             TelemetryData::Initialize => {
                 write!(f, "Initialize")
@@ -142,7 +141,7 @@ impl Snapshot {
         let vfs = self.vfs.read();
         let (res, _) = vfs
             .file_id(&path)
-            .context(format!("file not found: {}", path))?;
+            .context(format!("file not found: {path}"))?;
         Ok(res)
     }
 

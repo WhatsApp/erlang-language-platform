@@ -24,7 +24,7 @@ impl RootDatabase {
     ) {
         let _p = tracing::info_span!("RootDatabase::apply_change").entered();
         self.request_cancellation();
-        log::info!("apply_change {:?}", change);
+        log::info!("apply_change {change:?}");
         change.apply(self, resolve_file_id);
     }
 }

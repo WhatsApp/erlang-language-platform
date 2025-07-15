@@ -351,10 +351,9 @@ mod tests {
         let (expected_range, _) = annos[0];
 
         let resolved = match resolved.expect("failed to resolve macro") {
-            ResolvedMacro::BuiltIn(built_in) => panic!(
-                "expected to resolve to a custom macro, got {:?} instead",
-                built_in
-            ),
+            ResolvedMacro::BuiltIn(built_in) => {
+                panic!("expected to resolve to a custom macro, got {built_in:?} instead")
+            }
             ResolvedMacro::User(def) => def,
         };
         let def = DefineDef {

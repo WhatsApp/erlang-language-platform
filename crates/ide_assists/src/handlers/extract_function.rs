@@ -129,7 +129,7 @@ fn make_function_name(ctx: &AssistContext<'_>) -> String {
     let names_in_scope: FxHashSet<_> = def_map
         .get_functions()
         .map(|(na, _)| na)
-        .chain(def_map.get_imports().iter().map(|(na, _)| na))
+        .chain(def_map.get_imports().keys())
         .map(|n| n.name().as_str().to_string())
         .collect();
     let default_name = "fun_name";

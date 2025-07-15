@@ -129,7 +129,7 @@ pub fn do_parse_one(
     let result = db.module_ast(file_id)?;
     if result.is_ok() {
         if let Some((name, to)) = to {
-            let to_path = to.join(format!("{}.etf", name));
+            let to_path = to.join(format!("{name}.etf"));
             fs::write(to_path, &*result.ast)?;
         }
         Ok(vec![])

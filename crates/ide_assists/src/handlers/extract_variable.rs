@@ -109,7 +109,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
             let offset = anchor.syntax().text_range().start();
             match ctx.config.snippet_cap {
                 Some(cap) => {
-                    let snip = buf.replace(&var_name.to_string(), &format!("$0{}", var_name));
+                    let snip = buf.replace(&var_name.to_string(), &format!("$0{var_name}"));
                     edit.insert_snippet(cap, offset, snip)
                 }
                 None => edit.insert(offset, buf),

@@ -106,7 +106,7 @@ pub trait ErlAstDatabase: RootQueryDb + AstLoader + LineIndexDatabase {
 
 fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId) -> Arc<ParseResult> {
     // Context for T171541590
-    let _ = stdx::panic_context::enter(format!("\nmodule_ast: {:?}", file_id));
+    let _ = stdx::panic_context::enter(format!("\nmodule_ast: {file_id:?}"));
     let root_id = db.file_source_root(file_id).source_root_id(db);
     let root = db.source_root(root_id).source_root(db);
     let path = root.path_for_file(&file_id).unwrap().as_path().unwrap();

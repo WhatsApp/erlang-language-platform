@@ -242,11 +242,8 @@ impl HirIdx {
                     let body = sema.db.function_clause_body(InFile::new(file_id, fun_idx));
                     body.body.tree_print_any_expr(sema.db.upcast(), self.idx)
                 }
-                _ => format!(
-                    "HirIdx::tree_print not implemented for FormIdx '{:?}'",
-                    form_id
-                )
-                .to_string(),
+                _ => format!("HirIdx::tree_print not implemented for FormIdx '{form_id:?}'")
+                    .to_string(),
             },
             BodyOrigin::Define {
                 file_id: _,

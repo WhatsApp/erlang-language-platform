@@ -323,7 +323,7 @@ impl TransitiveChecker<'_> {
             .to_string()
             .into(),
             Ref::RidRef(rid) => rid.to_string().into(),
-            Ref::RecRef(_, name) => format!("#{}{{}}", name).into(),
+            Ref::RecRef(_, name) => format!("#{name}{{}}").into(),
         }
     }
 

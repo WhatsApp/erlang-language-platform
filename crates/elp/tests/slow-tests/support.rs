@@ -271,7 +271,7 @@ impl TestServer {
         self.client.sender.send(r.clone().into()).unwrap();
         while let Some(msg) = self
             .recv()
-            .unwrap_or_else(|Timeout| panic!("timeout waiting for response to request: {:?}", r))
+            .unwrap_or_else(|Timeout| panic!("timeout waiting for response to request: {r:?}"))
         {
             match msg {
                 Message::Request(req) => {
@@ -293,18 +293,18 @@ impl TestServer {
                         if err.code == ErrorCode::ContentModified as i32 {
                             // "elp still loading".
                             // wait for notification before sending first request.
-                            log::error!("response: {:#?}", err);
+                            log::error!("response: {err:#?}");
                             std::thread::sleep(std::time::Duration::from_millis(100));
                             continue;
                         } else {
-                            panic!("error response: {:#?}", err);
+                            panic!("error response: {err:#?}");
                         }
                     }
                     return res.result.unwrap();
                 }
             }
         }
-        panic!("no response for {:?}", r);
+        panic!("no response for {r:?}");
     }
 
     pub(crate) fn wait_until_workspace_is_loaded(&self) {
@@ -320,7 +320,7 @@ impl TestServer {
                 // Filter our other requests such as "client/registerCapability"
                 Message::Request(_req) => {}
                 Message::Response(res) => {
-                    panic!("No request sent, didn't expect response: {:#?}", res);
+                    panic!("No request sent, didn't expect response: {res:#?}");
                 }
                 Message::Notification(notif) => match notif.method.as_str() {
                     "elp/status" => {
@@ -330,13 +330,13 @@ impl TestServer {
                         }
                     }
                     "textDocument/publishDiagnostics" | "$/progress" => {
-                        log::info!("======{:#?}", notif);
+                        log::info!("======{notif:#?}");
                     }
                     "telemetry/event" => {
-                        log::info!("------{:#?}", notif);
+                        log::info!("------{notif:#?}");
                     }
                     _ => {
-                        panic!("{:#?}", notif);
+                        panic!("{notif:#?}");
                     }
                 },
             }
@@ -354,7 +354,7 @@ impl TestServer {
                 // Filter our other requests such as "client/registerCapability"
                 Message::Request(_req) => {}
                 Message::Response(res) => {
-                    panic!("No request sent, didn't expect response: {:#?}", res);
+                    panic!("No request sent, didn't expect response: {res:#?}");
                 }
                 Message::Notification(notif) => {
                     match notif.method.as_str() {
@@ -368,7 +368,7 @@ impl TestServer {
                                 match diagnostics {
                                     Value::Array(_) => return notif.params,
                                     _ => {
-                                        panic!("Unexpected diagnostic format: {:#?}", diagnostics)
+                                        panic!("Unexpected diagnostic format: {diagnostics:#?}")
                                     }
                                 }
                             }

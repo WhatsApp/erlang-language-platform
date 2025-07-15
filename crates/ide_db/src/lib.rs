@@ -313,7 +313,7 @@ impl RootDatabase {
     pub fn resolved_includes(&self, file_id: FileId) -> Option<Includes> {
         let source_file = self.parse(file_id).tree();
         // Context for T171541590
-        let _ = stdx::panic_context::enter(format!("\nresolved_includes: {:?}", file_id));
+        let _ = stdx::panic_context::enter(format!("\nresolved_includes: {file_id:?}"));
         let project_id = self.file_app_data(file_id)?.project_id;
         let root_abs = &self.project_data(project_id).project_data(self).root_dir;
         let form_list = self.file_form_list(file_id);
@@ -382,7 +382,7 @@ impl Includes {
         root_abs: &AbsPathBuf,
     ) -> Option<Utf8PathBuf> {
         // Context for T171541590
-        let _ = stdx::panic_context::enter(format!("\napp_file_path: {:?}", file_id));
+        let _ = stdx::panic_context::enter(format!("\napp_file_path: {file_id:?}"));
         let root_id = db.file_source_root(file_id).source_root_id(db);
         let root = db.source_root(root_id).source_root(db);
         let path = root.path_for_file(&file_id)?;

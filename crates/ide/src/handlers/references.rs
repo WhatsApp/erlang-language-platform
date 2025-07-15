@@ -106,10 +106,7 @@ mod tests {
                     .position(|(range, _)| range == &res.declaration.file_range())
                 {
                     Some(idx) => annos.remove(idx).1,
-                    None => panic!(
-                        "definition not found for:\n{:#?}\nsearching:\n{:#?}",
-                        res, annos
-                    ),
+                    None => panic!("definition not found for:\n{res:#?}\nsearching:\n{annos:#?}"),
                 };
                 let key = def_name
                     .strip_prefix("def")

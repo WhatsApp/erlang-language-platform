@@ -33,7 +33,7 @@ pub(crate) fn module_mismatch(
 ) -> Option<()> {
     let module_name = ast::ModuleAttribute::cast(node.clone())?.name()?;
     // Context for T171541590
-    let _ = stdx::panic_context::enter(format!("\nmodule_mismatch: {:?}", file_id));
+    let _ = stdx::panic_context::enter(format!("\nmodule_mismatch: {file_id:?}"));
     let root_id = sema.db.file_source_root(file_id).source_root_id(sema.db);
     let root = sema.db.source_root(root_id).source_root(sema.db);
     let path = root.path_for_file(&file_id).unwrap();

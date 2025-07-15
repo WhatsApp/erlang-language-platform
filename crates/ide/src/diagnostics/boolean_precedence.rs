@@ -177,7 +177,7 @@ fn add_parens_fix(
     where_str: &str,
     diag: &mut Diagnostic,
 ) {
-    let assist_message = format!("Add parens to {}", where_str);
+    let assist_message = format!("Add parens to {where_str}");
     let edit = add_parens_edit(&expr_range);
     diag.add_fix(fix(
         "replace_boolean_operator_add_parens",

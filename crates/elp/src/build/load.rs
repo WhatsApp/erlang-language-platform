@@ -77,7 +77,7 @@ pub fn load_project_at(
         bail!("no projects")
     };
 
-    log::info!("Discovered project: {:?}", manifest);
+    log::info!("Discovered project: {manifest:?}");
     let pb = cli.spinner("Loading build info");
     let project = Project::load(
         &manifest,

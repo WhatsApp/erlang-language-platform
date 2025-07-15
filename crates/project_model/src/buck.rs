@@ -263,8 +263,7 @@ impl TryFrom<&str> for BuckTargetOrigin {
             "dep" => Ok(BuckTargetOrigin::Dep),
             "prelude" => Ok(BuckTargetOrigin::Prelude),
             _ => Err(format!(
-                "bad origin value '{}', expected 'app', 'dep', or 'prelude'.",
-                value
+                "bad origin value '{value}', expected 'app', 'dep', or 'prelude'."
             )),
         }
     }
@@ -518,7 +517,7 @@ fn find_root(buck_config: &BuckConfig) -> Result<AbsPathBuf> {
     let output = match buck_config.buck_command().arg("root").output() {
         Ok(out) => out,
         Err(err) => {
-            log::error!("Err executing buck2 root: {:?}", err);
+            log::error!("Err executing buck2 root: {err:?}");
             bail!(ProjectModelError::MissingBuck(err))
         }
     };
@@ -892,7 +891,7 @@ fn update_mapping_from_path(app_name: &str, path: AbsPathBuf, mapping: &mut Incl
                 if let Some(basename) = path.file_name() {
                     let local_include = SmolStr::new(basename);
                     let remote_include =
-                        SmolStr::new(format!("{}/include/{}", app_name, local_include));
+                        SmolStr::new(format!("{app_name}/include/{local_include}"));
                     let path = AbsPathBuf::assert(path);
                     // TODO: remove clone()
                     mapping.insert(local_include, path.clone());
@@ -1155,7 +1154,7 @@ mod tests {
                 .output()
                 .unwrap();
             if !output.status.success() {
-                panic!("{:#?}", output);
+                panic!("{output:#?}");
             }
             let string = String::from_utf8(output.stdout).unwrap();
             let prelude_cell = get_prelude_cell(&buck_config).expect("could not get prelude");

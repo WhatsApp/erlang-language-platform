@@ -195,7 +195,7 @@ mod tests {
         let (analysis, position, _) = fixture::position(fixture_before);
         let rename_result = analysis
             .rename(position, new_name)
-            .unwrap_or_else(|err| panic!("Rename to '{}' was cancelled: {}", new_name, err));
+            .unwrap_or_else(|err| panic!("Rename to '{new_name}' was cancelled: {err}"));
         match rename_result {
             Ok(source_change) => {
                 for edit in source_change.source_file_edits {
@@ -219,7 +219,7 @@ mod tests {
                         .collect::<String>();
                     assert_eq!(error_message.trim(), err.to_string());
                 } else {
-                    panic!("Rename to '{}' failed unexpectedly: {}", new_name, err)
+                    panic!("Rename to '{new_name}' failed unexpectedly: {err}")
                 }
             }
         };
@@ -1161,7 +1161,7 @@ mod tests {
                 }
             }
             None => {
-                panic!("Rename to '{}' failed", new_name)
+                panic!("Rename to '{new_name}' failed")
             }
         };
     }

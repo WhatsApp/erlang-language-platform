@@ -133,7 +133,7 @@ pub fn reformat(text: &str) -> Result<String> {
     let stdout = cmd!(sh, "rustfmt --config-path {rustfmt_toml} ")
         .stdin(text)
         .read()?;
-    Ok(format!("//! {}\n\n{}\n", PREAMBLE, stdout))
+    Ok(format!("//! {PREAMBLE}\n\n{stdout}\n"))
 }
 
 fn ensure_rustfmt(sh: &Shell) -> Result<()> {

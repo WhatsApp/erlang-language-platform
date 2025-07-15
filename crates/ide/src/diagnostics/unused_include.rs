@@ -74,7 +74,7 @@ pub(crate) fn unused_includes(
 
                 let diagnostic = Diagnostic::new(
                     DiagnosticCode::UnusedInclude,
-                    format!("Unused file: {}", path),
+                    format!("Unused file: {path}"),
                     attribute_range,
                 )
                 .with_severity(Severity::Warning)
@@ -85,7 +85,7 @@ pub(crate) fn unused_includes(
                     attribute_range,
                 )]));
 
-                log::debug!("Found unused include {:?}", path);
+                log::debug!("Found unused include {path:?}");
 
                 diagnostics.push(diagnostic);
             }
