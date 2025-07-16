@@ -407,10 +407,6 @@ pub struct Args {
     pub escript: Option<PathBuf>,
     pub no_log_buffering: bool,
 
-    /// When using buck, invoke a build step for generated files.
-    #[allow(dead_code)] // Until T208401551 done
-    pub buck_generated: bool,
-
     /// When using buck, do not invoke a build step for generated files.
     pub no_buck_generated: bool,
 
