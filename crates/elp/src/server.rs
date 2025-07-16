@@ -566,15 +566,13 @@ impl Server {
                         break;
                     }
                 };
-                let (in_mem, version) = match convert::vfs_path(&url) {
-                    Ok(path) => match self.mem_docs.read().get(&path).cloned() {
-                        Some(d) => (true, Some(d.version)),
-                        None => (false, None),
-                    },
-                    Err(_) => (false, None),
-                };
-                if !in_mem {
-                    // Clear all but eqwalizer project diagnostics
+                let version = convert::vfs_path(&url)
+                    .ok()
+                    .and_then(|path| self.mem_docs.read().get(&path).cloned())
+                    .map(|d| d.version);
+                if version.is_none() {
+                    // File is not in mem_docs, clear all but
+                    // eqwalizer project diagnostics
                     Arc::make_mut(&mut self.diagnostics).clear(*file_id);
                 }
                 let diagnostics = self
