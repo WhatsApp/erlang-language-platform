@@ -1946,6 +1946,36 @@ mod tests {
         }
     }
 
+    #[test]
+    fn eqwalize_specific_module_overrides_ignore_modules() {
+        if otp_supported_by_eqwalizer() {
+            simple_snapshot_expect_error(
+                args_vec!["eqwalize", "--bail-on-error", "app_b"],
+                "eqwalizer_ignore_modules",
+                expect_file!(
+                    "../resources/test/eqwalizer_ignore_modules/eqwalize_bail_on_error_failure.pretty"
+                ),
+                true,
+                None,
+            );
+        }
+    }
+
+    #[test]
+    fn eqwalize_all_ignore_modules_success() {
+        if otp_supported_by_eqwalizer() {
+            simple_snapshot(
+                args_vec!["eqwalize-all", "--bail-on-error"],
+                "eqwalizer_ignore_modules",
+                expect_file!(
+                    "../resources/test/eqwalizer_ignore_modules/eqwalize_all_bail_on_error_success.pretty"
+                ),
+                true,
+                None,
+            );
+        }
+    }
+
     // -----------------------------------------------------------------
 
     #[test]
