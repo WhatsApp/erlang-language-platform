@@ -860,6 +860,14 @@ fn path_into_list(path: PathBuf) -> eetf::ByteList {
     }
 }
 
+#[cfg(windows)]
+fn path_into_list(path: PathBuf) -> eetf::ByteList {
+    use std::os::windows::ffi::OsStrExt;
+    eetf::ByteList {
+        bytes: String::from_utf16_lossy(&path.as_os_str().encode_wide().collect::<Vec<u16>>()).into_bytes(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;

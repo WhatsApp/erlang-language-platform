@@ -12,6 +12,7 @@ use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::io::Write;
+#[cfg(unix)]
 use std::os::unix::prelude::PermissionsExt;
 use std::path::PathBuf;
 use std::process::Command;
@@ -202,7 +203,16 @@ impl EqwalizerExe {
             let mut perm = fs::metadata(&temp_file)
                 .expect("can't create eqwalizer temp executable")
                 .permissions();
-            perm.set_mode(0o755);
+
+            #[cfg(windows)]
+            {
+                perm.set_readonly(false);
+            }
+            #[cfg(unix)]
+            {
+                perm.set_mode(0o755);
+            }
+
             fs::set_permissions(&temp_file, perm).expect("can't create eqwalizer temp executable");
 
             (temp_file.to_path_buf(), extension, Some(temp_file))

@@ -35,8 +35,48 @@ use fxhash::FxHashMap;
 use serde::Deserialize;
 use serde::Serialize;
 use stdx::JodChild;
+#[cfg(unix)]
 use timeout_readwrite::TimeoutReader;
+#[cfg(unix)]
 use timeout_readwrite::TimeoutWriter;
+
+#[cfg(windows)]
+mod win_timeout {
+    use std::io::{Read, Write, Result};
+    use std::time::Duration;
+
+    pub struct TimeoutReader<R>(R, Duration);
+    pub struct TimeoutWriter<W>(W, Duration);
+
+    impl<R> TimeoutReader<R> {
+        pub fn new(inner: R, timeout: Duration) -> Self {
+            TimeoutReader(inner, timeout)
+        }
+    }
+    impl<W> TimeoutWriter<W> {
+        pub fn new(inner: W, timeout: Duration) -> Self {
+            TimeoutWriter(inner, timeout)
+        }
+    }
+
+    impl<R: Read> Read for TimeoutReader<R> {
+        fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+            self.0.read(buf)
+        }
+    }
+
+    impl<W: Write> Write for TimeoutWriter<W> {
+        fn write(&mut self, buf: &[u8]) -> Result<usize> {
+            self.0.write(buf)
+        }
+        fn flush(&mut self) -> Result<()> {
+            self.0.flush()
+        }
+    }
+}
+
+#[cfg(windows)]
+use win_timeout::{TimeoutReader, TimeoutWriter};
 
 use crate::ast::Pos;
 
