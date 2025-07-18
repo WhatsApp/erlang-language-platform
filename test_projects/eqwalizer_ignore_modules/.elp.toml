@@ -1,0 +1,6 @@
+[build_info]
+apps = "apps/*"
+deps = "deps/*"
+
+[eqwalizer]
+ignore_modules = ["*_a", "app_b"]

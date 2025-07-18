@@ -1,0 +1,9 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+  ┌─ apps/app_b/src/app_b.erl:5:15
+  │
+5 │ test_fun() -> type_error.
+  │               ^^^^^^^^^^ 'type_error'.
+Expression has type:   'type_error'
+Context expected type: 'ok'
+
+1 ERROR
