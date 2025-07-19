@@ -71,7 +71,15 @@ impl RebarConfig {
             static ref REBAR_GLOBAL_LOCK: Mutex<()> = Mutex::new(());
         }
         let guard = REBAR_GLOBAL_LOCK.lock();
-        let mut cmd = Command::new("rebar3");
+
+        let mut cmd = if cfg!(target_os = "windows") {
+            let mut cmd = Command::new("cmd");
+            cmd.args(["/C", "rebar3"]);
+            cmd
+        } else {
+           Command::new("rebar3")
+        };
+        
         cmd.arg("as");
         cmd.arg(&self.profile.0);
         if let Some(parent) = self.config_file.parent() {

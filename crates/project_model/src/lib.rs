@@ -980,7 +980,15 @@ impl Project {
                     rebar_setting.config_file
                 );
                 let rebar_version = {
-                    let mut cmd = Command::new("rebar3");
+
+                    let mut cmd = if cfg!(target_os = "windows") {
+                        let mut cmd = Command::new("cmd");
+                        cmd.args(["/C", "rebar3"]);
+                        cmd
+                    } else {
+                        Command::new("rebar3")
+                    };
+                    
                     cmd.arg("version");
                     utf8_stdout(&mut cmd)?
                 };
