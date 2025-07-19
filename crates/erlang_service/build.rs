@@ -24,7 +24,16 @@ fn main() {
             .expect("Copying precompiled erlang service escript failed");
     } else {
         let profile = env::var("PROFILE").unwrap();
-        let output = Command::new("rebar3")
+
+        let mut cmd = if cfg!(target_os = "windows") {
+            let mut cmd = Command::new("cmd");
+            cmd.args(["/C", "rebar3"]);
+            cmd
+        } else {
+           Command::new("rebar3")
+        };
+
+        let output = cmd
             .arg("escriptize")
             .env("REBAR_PROFILE", &profile)
             .env("REBAR_BASE_DIR", &dest_dir)
