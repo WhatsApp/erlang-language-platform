@@ -23,7 +23,6 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
 use std::vec;
-use std::env;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -982,27 +981,7 @@ impl Project {
                 );
                 let rebar_version = {
 
-                    let mut cmd = if cfg!(target_os = "windows") {
-                        let rebar3_name = "rebar3";
-                        let rebar3_path = env::var("PATH").ok().and_then(|paths| {
-                            env::split_paths(&paths).find_map(|dir| {
-                                let candidate = dir.join(rebar3_name);
-                                if candidate.exists() {
-                                    Some(candidate)
-                                } else {
-                                    None
-                                }
-                            })
-                        }).expect("rebar3 not found in PATH - install and add to PATH");
-
-                        let mut cmd = Command::new("escript");
-
-                        cmd.arg(rebar3_path);
-                        cmd
-                    } else {
-                    Command::new("rebar3")
-                    };
-                    
+                    let mut cmd = RebarConfig::rebar3_command_base();
                     cmd.arg("version");
                     utf8_stdout(&mut cmd)?
                 };
