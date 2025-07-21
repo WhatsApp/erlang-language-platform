@@ -205,43 +205,25 @@ impl BuckProject {
         anyhow::Error,
     > {
         let _timer = timeit_with_telemetry!("BuckProject::load_from_config");
-        let (otp_root, project_app_data, project, include_mapping) =
-            load_from_config_bxl(buck_conf, query_config, report_progress)?;
-        Ok((project, project_app_data, otp_root, include_mapping))
+        let target_info = load_buck_targets_bxl(buck_conf, query_config, report_progress)?;
+        report_progress("Making project app data");
+        let (project_app_data, include_mapping) = targets_to_project_data_bxl(&target_info.targets);
+        let project = BuckProject {
+            target_info,
+            buck_conf: buck_conf.clone(),
+        };
+        let otp_root = Otp::find_otp()?;
+        Ok((
+            project,
+            project_app_data,
+            otp_root,
+            Arc::new(include_mapping),
+        ))
     }
 
     pub fn target(&self, file_path: &AbsPathBuf) -> Option<String> {
         self.target_info.path_to_target_name.get(file_path).cloned()
     }
-}
-
-fn load_from_config_bxl(
-    buck_conf: &BuckConfig,
-    build: &BuckQueryConfig,
-    report_progress: &impl Fn(&str),
-) -> Result<
-    (
-        Utf8PathBuf,
-        Vec<ProjectAppData>,
-        BuckProject,
-        Arc<IncludeMapping>,
-    ),
-    anyhow::Error,
-> {
-    let target_info = load_buck_targets_bxl(buck_conf, build, report_progress)?;
-    report_progress("Making project app data");
-    let otp_root = Otp::find_otp()?;
-    let (project_app_data, include_mapping) = targets_to_project_data_bxl(&target_info.targets);
-    let project = BuckProject {
-        target_info,
-        buck_conf: buck_conf.clone(),
-    };
-    Ok((
-        otp_root,
-        project_app_data,
-        project,
-        Arc::new(include_mapping),
-    ))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
