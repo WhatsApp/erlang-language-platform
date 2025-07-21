@@ -162,6 +162,25 @@ pub struct IncludeMapping {
 }
 
 impl IncludeMapping {
+    fn update_mapping_from_path(&mut self, app_name: &str, path: AbsPathBuf) {
+        if let Ok(paths) = Utf8PathBuf::from(path).read_dir_utf8() {
+            for path in paths.flatten() {
+                let path = path.into_path();
+                if let Some("hrl") = path.extension() {
+                    if let Some(basename) = path.file_name() {
+                        let local_include = SmolStr::new(basename);
+                        let remote_include =
+                            SmolStr::new(format!("{app_name}/include/{local_include}"));
+                        let path = AbsPathBuf::assert(path);
+                        // TODO: remove clone()
+                        self.insert(local_include, path.clone());
+                        self.insert(remote_include, path);
+                    }
+                }
+            }
+        }
+    }
+
     pub fn get(&self, path: &SmolStr) -> Option<&AbsPathBuf> {
         self.includes.get(path)
     }
@@ -774,18 +793,14 @@ fn targets_to_project_data_bxl(
     for target in targets.values() {
         target.include_files.iter().for_each(|inc: &AbsPathBuf| {
             let include_path = include_path_from_file(inc);
-            update_mapping_from_path(&target.app_name.0, include_path, &mut include_mapping);
+            include_mapping.update_mapping_from_path(&target.app_name.0, include_path);
         });
 
         if target.private_header {
             target.src_files.iter().for_each(|path: &AbsPathBuf| {
                 if Some("hrl") == path.extension() {
                     let include_path = include_path_from_file(path);
-                    update_mapping_from_path(
-                        &target.app_name.0,
-                        include_path,
-                        &mut include_mapping,
-                    );
+                    include_mapping.update_mapping_from_path(&target.app_name.0, include_path);
                 }
             });
         }
@@ -880,25 +895,6 @@ fn include_path_from_file(path: &AbsPath) -> AbsPathBuf {
         AbsPathBuf::assert_utf8(parent.into())
     } else {
         AbsPathBuf::assert_utf8(path.into())
-    }
-}
-
-fn update_mapping_from_path(app_name: &str, path: AbsPathBuf, mapping: &mut IncludeMapping) {
-    if let Ok(paths) = Utf8PathBuf::from(path).read_dir_utf8() {
-        for path in paths.flatten() {
-            let path = path.into_path();
-            if let Some("hrl") = path.extension() {
-                if let Some(basename) = path.file_name() {
-                    let local_include = SmolStr::new(basename);
-                    let remote_include =
-                        SmolStr::new(format!("{app_name}/include/{local_include}"));
-                    let path = AbsPathBuf::assert(path);
-                    // TODO: remove clone()
-                    mapping.insert(local_include, path.clone());
-                    mapping.insert(remote_include, path);
-                }
-            }
-        }
     }
 }
 
