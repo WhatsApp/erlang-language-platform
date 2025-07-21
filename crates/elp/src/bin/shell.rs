@@ -83,7 +83,7 @@ impl Watchman {
     }
 
     fn get_changes(&self, from: &WatchmanClock, patterns: Vec<&str>) -> Result<WatchmanChanges> {
-        let mut cmd = Command::new("watchman");
+        let mut cmd = Self::cmd();
         cmd.arg("since");
         cmd.arg(self.watch.as_os_str());
         cmd.arg(&from.clock);
@@ -330,6 +330,11 @@ fn update_changes(
 }
 
 pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
+    let mut cmd = Command::new("watchman");
+    let _ = cmd.arg("--version").output().map_err(|_| {
+            anyhow::Error::msg("`watchman` command not found. install it from https://facebook.github.io/watchman/ to use `elp shell`.")
+        })?;
+
     let watchman = Watchman::new(&shell.project)
         .map_err(|_err| anyhow::Error::msg(
             "Could not find project. Are you in an Erlang project directory, or is one specified using --project?"
