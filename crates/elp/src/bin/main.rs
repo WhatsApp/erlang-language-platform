@@ -2206,7 +2206,7 @@ mod tests {
                 None,
             );
         } else {
-            simple_snapshot(
+            simple_snapshot_expect_error(
                 args_vec!["parse-elp", "--module", "main_app"],
                 "include_lib_dependency_test",
                 expect_file!(

@@ -2,7 +2,7 @@
  [{description, "Main application that tries to include_lib from non-dependency"},
   {vsn, "1.0.0"},
   {registered, []},
-  {applications, [kernel, stdlib]},
+  {applications, [normal_dep]},
   {env, []},
   {modules, []},
   {licenses, ["Apache-2.0"]},

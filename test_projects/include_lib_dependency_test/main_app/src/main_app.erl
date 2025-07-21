@@ -11,10 +11,14 @@
 %% Check that OTP libs are allowed
 -include_lib("stdlib/include/assert.hrl").
 
+%% Check that local includes resolve the dependent app version
+-include("assert.hrl").
+
 -export([test_function/0]).
 
 test_function() ->
     ?EXTRA_MACRO,
+    ?normalDepAssertEqual(3,4),
     %% Try to use something from the header that should not be
     %% available
     ?EXTERNAL_MACRO.

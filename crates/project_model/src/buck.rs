@@ -163,6 +163,7 @@ pub struct IncludeMapping {
     /// last part of its `TargetFullName` is ambiguous.  Keep a
     /// mapping from these to the corresponding `TargetFullName`.
     app_names: FxHashMap<AppName, TargetFullName>,
+    app_names_rev: FxHashMap<TargetFullName, AppName>,
     /// The OTP apps are always available as dependencies, keep track
     /// of what they are
     otp_apps: FxHashSet<AppName>,
@@ -170,7 +171,7 @@ pub struct IncludeMapping {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum IncludeMappingScope {
-    Local,
+    Local(AppName),
     Remote,
 }
 
@@ -196,8 +197,17 @@ impl IncludeMapping {
                 let path = path.into_path();
                 if let Some("hrl") = path.extension() {
                     if let Some(basename) = path.file_name() {
-                        let local_include =
-                            SmolStr::new(format!("{LOCAL_LOOKUP_INCLUDE_PREFIX}:{basename}"));
+                        // We encode the local include string as follows
+                        // - First an indicator to flag that it is local
+                        // - Next the app name that it is local to
+                        // - Then the base file name.
+                        // We always do the local lookup in the
+                        // context of a specific app, this ensures the
+                        // app matches, and allows different apps to
+                        // use the same include file base name.
+                        let local_include = SmolStr::new(format!(
+                            "{LOCAL_LOOKUP_INCLUDE_PREFIX}:{app_name}:{basename}"
+                        ));
                         let trimmed_app_name =
                             app_name.strip_suffix("_includes_only").unwrap_or(app_name);
                         let remote_include = SmolStr::new(format!(
@@ -215,8 +225,8 @@ impl IncludeMapping {
 
     pub fn get(&self, scope: IncludeMappingScope, path: &SmolStr) -> Option<&AbsPathBuf> {
         let lookup_path = match scope {
-            IncludeMappingScope::Local => {
-                SmolStr::new(format!("{LOCAL_LOOKUP_INCLUDE_PREFIX}:{path}"))
+            IncludeMappingScope::Local(app_name) => {
+                SmolStr::new(format!("{LOCAL_LOOKUP_INCLUDE_PREFIX}:{app_name}:{path}"))
             }
             IncludeMappingScope::Remote => {
                 SmolStr::new(format!("{REMOTE_LOOKUP_INCLUDE_PREFIX}:{path}"))
@@ -227,6 +237,46 @@ impl IncludeMapping {
 
     pub fn insert(&mut self, path: SmolStr, abs_path: AbsPathBuf) -> Option<AbsPathBuf> {
         self.includes.insert(path, abs_path)
+    }
+
+    /// Local lookup of `path` in the dependencies of `app_name`
+    pub fn find_local(&self, app_name: &AppName, path: &SmolStr) -> Option<AbsPathBuf> {
+        self.get(IncludeMappingScope::Local(app_name.clone()), path);
+        if let Some(current) = self.app_names.get(app_name) {
+            let mut visited = FxHashSet::default();
+            self.dfs_local(current, path, &mut visited)
+        } else {
+            None
+        }
+    }
+
+    fn dfs_local(
+        &self,
+        current: &TargetFullName,
+        path: &SmolStr,
+        visited: &mut FxHashSet<TargetFullName>,
+    ) -> Option<AbsPathBuf> {
+        if let Some(app_name) = self.app_names_rev.get(current) {
+            if let Some(abs_path) = self.get(IncludeMappingScope::Local(app_name.clone()), path) {
+                return Some(abs_path.clone());
+            }
+        }
+
+        if visited.contains(current) {
+            return None;
+        }
+
+        visited.insert(current.clone());
+
+        if let Some(deps) = self.deps.get(current) {
+            for dep in deps {
+                if let Some(abs_path) = self.dfs_local(dep, path, visited) {
+                    return Some(abs_path);
+                }
+            }
+        }
+
+        None
     }
 
     /// For each buck TargetFullName we have a set of immediate dependencies.
@@ -901,6 +951,9 @@ fn targets_to_project_data_bxl(
         include_mapping
             .app_names
             .insert(target.app_name.clone(), target_name.clone());
+        include_mapping
+            .app_names_rev
+            .insert(target_name.clone(), target.app_name.clone());
     }
 
     for target in targets.values() {

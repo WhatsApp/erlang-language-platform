@@ -54,6 +54,14 @@ impl<'a> IncludeCtx<'a> {
     }
 
     pub fn resolve_include(&self, path: &str) -> Option<FileId> {
+        // Note, from https://www.erlang.org/doc/apps/erts/erlc_cmd#generally-useful-flags
+        // When encountering an `-include` or `-include_lib` directive,
+        // the compiler searches for header files in the following directories:
+        //
+        //   - ".", the current working directory of the file server
+        //   - The base name of the compiled file
+        //   - The directories specified using option -I; the directory
+        //     specified last is searched first
         self.resolve_relative(path)
             .or_else(|| self.db.resolve_local(self.current_file_id, path.into()))
     }
@@ -73,24 +81,41 @@ impl<'a> IncludeCtx<'a> {
         self.source_root.relative_path(self.current_file_id, path)
     }
 
-    /// Called via salsa for inserting in the graph
+    /// Called via salsa for inserting in the graph.  We are looking
+    /// for a base filename in the includes of the current app (from
+    /// the `file_id`) or any of its dependencies
     pub(crate) fn resolve_local_query(
         db: &dyn RootQueryDb,
         file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId> {
         let project_id = db.file_project_id(file_id)?;
-        if let Some(file_id) =
-            db.mapped_include_file(project_id, IncludeMappingScope::Local, path.clone())
-        {
+        let app_data = db.file_app_data(file_id)?;
+        if let Some(file_id) = db.mapped_include_file(
+            project_id,
+            IncludeMappingScope::Local(app_data.name.clone()),
+            path.clone(),
+        ) {
             Some(file_id)
         } else {
-            let path: &str = &path;
-            let app_data = db.file_app_data(file_id)?;
-            app_data.include_path.iter().find_map(|include| {
-                let name = include.join(path);
-                db.include_file_id(app_data.project_id, VfsPath::from(name.clone()))
-            })
+            // Not in the current app, look in the dependencies
+            let include_file_index = db.include_file_index(project_id);
+            if let Some(file_path) = include_file_index
+                .include_mapping
+                .find_local(&app_data.name, &path)
+            {
+                include_file_index
+                    .path_to_file_id
+                    .get(&VfsPath::from(file_path.clone()))
+                    .copied()
+            } else {
+                // Fallback for non-buck2 projects
+                let path: &str = &path;
+                app_data.include_path.iter().find_map(|include| {
+                    let name = include.join(path);
+                    db.include_file_id(app_data.project_id, VfsPath::from(name.clone()))
+                })
+            }
         }
     }
 
