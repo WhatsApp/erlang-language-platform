@@ -1300,6 +1300,7 @@ mod local_tests {
     use crate::Semantic;
     use crate::Term;
     use crate::TypeExpr;
+    use crate::fold::default_fold_body;
     use crate::test_db::TestDB;
 
     fn check_is_macro_expr(fixture: &str) {
@@ -1415,7 +1416,7 @@ mod local_tests {
     }
 
     #[test]
-    fn verify_body_index_impl_for_references() {
+    fn verify_index_impl_for_references() {
         let mut body = Body::new(BodyOrigin::Invalid(FileId::from_raw(0)));
 
         let expr_id = body.exprs.alloc(Expr::Missing);
@@ -1423,11 +1424,20 @@ mod local_tests {
         let type_expr_id = body.type_exprs.alloc(TypeExpr::Missing);
         let term_id = body.terms.alloc(Term::Missing);
 
+        let fold_body = &default_fold_body(&body);
+
         // Test for Expr arena
         let expr = &body[expr_id];
         let expr_using_idref = &body[&expr_id];
+        let fold_body_expr = &fold_body[expr_id];
+        let fold_body_expr_using_idref = &fold_body[&expr_id];
 
-        let expr_tests = vec![expr, expr_using_idref];
+        let expr_tests = vec![
+            expr,
+            expr_using_idref,
+            fold_body_expr,
+            fold_body_expr_using_idref,
+        ];
 
         for test_val in expr_tests {
             expect![[r#"
@@ -1439,8 +1449,15 @@ mod local_tests {
         // Test for Pat arena
         let pat = &body[pat_id];
         let pat_using_idref = &body[&pat_id];
+        let fold_body_pat = &fold_body[pat_id];
+        let fold_body_pat_using_idref = &fold_body[&pat_id];
 
-        let pat_tests = vec![pat, pat_using_idref];
+        let pat_tests = vec![
+            pat,
+            pat_using_idref,
+            fold_body_pat,
+            fold_body_pat_using_idref,
+        ];
 
         for test_val in pat_tests {
             expect![[r#"
@@ -1452,8 +1469,15 @@ mod local_tests {
         // Test for TypeExpr arena
         let type_expr = &body[type_expr_id];
         let type_expr_using_idref = &body[&type_expr_id];
+        let fold_body_type_expr = &fold_body[type_expr_id];
+        let fold_body_type_expr_using_idref = &fold_body[&type_expr_id];
 
-        let type_expr_tests = vec![type_expr, type_expr_using_idref];
+        let type_expr_tests = vec![
+            type_expr,
+            type_expr_using_idref,
+            fold_body_type_expr,
+            fold_body_type_expr_using_idref,
+        ];
 
         for test_val in type_expr_tests {
             expect![[r#"
@@ -1465,8 +1489,15 @@ mod local_tests {
         // Test for Term arena
         let term = &body[term_id];
         let term_using_idref = &body[&term_id];
+        let fold_body_term = &fold_body[term_id];
+        let fold_body_term_using_idref = &fold_body[&term_id];
 
-        let term_tests = vec![term, term_using_idref];
+        let term_tests = vec![
+            term,
+            term_using_idref,
+            fold_body_term,
+            fold_body_term_using_idref,
+        ];
 
         for test_val in term_tests {
             expect![[r#"
