@@ -25,6 +25,7 @@ file = "my_hand_crafted_build_info.json"
 [eqwalizer]
 enable_all = true
 max_tasks = 32
+ignore_modules = ["very_big_generated_module"]
 
 [buck]
 enabled = false
@@ -87,8 +88,7 @@ type checker. The integration can be configured via this section.
 
 :::info
 
-By default eqWAlizer is enabled on all non-test modules. It is also disabled for
-modules containing the `@generated` keyword within their first 2000 characters.
+By default eqWAlizer is enabled on all non-test modules, including generated modules.
 This can be overriden per module via the following attributes:
 
 - `-eqwalizer(ignore).` Opt-out module unconditionally
@@ -96,10 +96,11 @@ This can be overriden per module via the following attributes:
 
 :::
 
-| Key         | Type    | Description                                                                                                                                          |
-| ----------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| enabled_all | Boolean | Disable eqwalizer for all modules by default, but still honours the module-specific overrides listed above                                           |
-| max_tasks   | Integer | Max number of parallel eqWAlizer tasks, defaults to 4 (eqWAlizer instances are memory intensive). This only applies to using eqWAlizer from the CLI. |
+| Key            | Type           | Description                                                                                                                                          |
+| -------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| enabled_all    | Boolean        | Enable eqwalizer for all modules by default, but still honours the module-specific overrides listed above and the ignore_modules list.               |
+| max_tasks      | Integer        | Max number of parallel eqWAlizer tasks, defaults to 4 (eqWAlizer instances are memory intensive). This only applies to using eqWAlizer from the CLI. |
+| ignore_modules | List of String | Disable eqwalizer for individual modules from the config.                                                                                            |
 
 ### \[buck\] {#buck}
 
