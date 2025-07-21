@@ -42,7 +42,7 @@ use timeout_readwrite::TimeoutWriter;
 
 #[cfg(windows)]
 mod win_timeout {
-    use std::io::{Read, Write, Result};
+    use std::io::{Read, Result, Write};
     use std::time::Duration;
 
     pub struct TimeoutReader<R>(R, Duration);

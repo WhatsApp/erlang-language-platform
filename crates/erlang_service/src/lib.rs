@@ -864,7 +864,8 @@ fn path_into_list(path: PathBuf) -> eetf::ByteList {
 fn path_into_list(path: PathBuf) -> eetf::ByteList {
     use std::os::windows::ffi::OsStrExt;
     eetf::ByteList {
-        bytes: String::from_utf16_lossy(&path.as_os_str().encode_wide().collect::<Vec<u16>>()).into_bytes(),
+        bytes: String::from_utf16_lossy(&path.as_os_str().encode_wide().collect::<Vec<u16>>())
+            .into_bytes(),
     }
 }
 

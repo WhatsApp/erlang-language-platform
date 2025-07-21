@@ -980,7 +980,6 @@ impl Project {
                     rebar_setting.config_file
                 );
                 let rebar_version = {
-
                     let mut cmd = RebarConfig::rebar3_command_base();
                     cmd.arg("version");
                     utf8_stdout(&mut cmd)?

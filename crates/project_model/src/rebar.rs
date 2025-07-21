@@ -72,16 +72,19 @@ impl RebarConfig {
             lazy_static! {
                 static ref REBAR3_PATH: PathBuf = {
                     let rebar3_name = "rebar3";
-                    env::var("PATH").ok().and_then(|paths| {
-                        env::split_paths(&paths).find_map(|dir| {
-                            let candidate = dir.join(rebar3_name);
-                            if candidate.exists() {
-                                Some(candidate)
-                            } else {
-                                None
-                            }
+                    env::var("PATH")
+                        .ok()
+                        .and_then(|paths| {
+                            env::split_paths(&paths).find_map(|dir| {
+                                let candidate = dir.join(rebar3_name);
+                                if candidate.exists() {
+                                    Some(candidate)
+                                } else {
+                                    None
+                                }
+                            })
                         })
-                    }).expect("rebar3 not found in PATH - install and add to PATH")
+                        .expect("rebar3 not found in PATH - install and add to PATH")
                 };
             }
 
@@ -100,7 +103,7 @@ impl RebarConfig {
         let guard = REBAR_GLOBAL_LOCK.lock();
 
         let mut cmd = Self::rebar3_command_base();
-        
+
         cmd.arg("as");
         cmd.arg(&self.profile.0);
         if let Some(parent) = self.config_file.parent() {
