@@ -949,6 +949,14 @@ impl Index<ClauseId> for FunctionBody {
     }
 }
 
+impl Index<&ClauseId> for FunctionBody {
+    type Output = Arc<FunctionClauseBody>;
+
+    fn index(&self, index: &ClauseId) -> &Self::Output {
+        self.index(*index)
+    }
+}
+
 impl Index<ExprId> for FoldBody<'_> {
     type Output = Expr;
 
@@ -967,6 +975,14 @@ impl Index<ExprId> for FoldBody<'_> {
     }
 }
 
+impl Index<&ExprId> for FoldBody<'_> {
+    type Output = Expr;
+
+    fn index(&self, index: &ExprId) -> &Self::Output {
+        self.index(*index)
+    }
+}
+
 impl Index<ExprId> for Body {
     type Output = Expr;
 
@@ -977,6 +993,14 @@ impl Index<ExprId> for Body {
             Expr::Paren { expr } => self.index(*expr),
             expr => expr,
         }
+    }
+}
+
+impl Index<&ExprId> for Body {
+    type Output = Expr;
+
+    fn index(&self, index: &ExprId) -> &Self::Output {
+        self.index(*index)
     }
 }
 
@@ -999,6 +1023,14 @@ impl Index<PatId> for FoldBody<'_> {
     }
 }
 
+impl Index<&PatId> for FoldBody<'_> {
+    type Output = Pat;
+
+    fn index(&self, index: &PatId) -> &Self::Output {
+        self.index(*index)
+    }
+}
+
 impl Index<PatId> for Body {
     type Output = Pat;
 
@@ -1009,6 +1041,14 @@ impl Index<PatId> for Body {
             Pat::Paren { pat } => self.index(*pat),
             pat => pat,
         }
+    }
+}
+
+impl Index<&PatId> for Body {
+    type Output = Pat;
+
+    fn index(&self, index: &PatId) -> &Self::Output {
+        self.index(*index)
     }
 }
 
@@ -1027,6 +1067,14 @@ impl Index<TypeExprId> for FoldBody<'_> {
     }
 }
 
+impl Index<&TypeExprId> for FoldBody<'_> {
+    type Output = TypeExpr;
+
+    fn index(&self, index: &TypeExprId) -> &Self::Output {
+        self.index(*index)
+    }
+}
+
 impl Index<TypeExprId> for Body {
     type Output = TypeExpr;
 
@@ -1036,6 +1084,14 @@ impl Index<TypeExprId> for Body {
             TypeExpr::MacroCall { expansion, .. } => self.index(*expansion),
             type_expr => type_expr,
         }
+    }
+}
+
+impl Index<&TypeExprId> for Body {
+    type Output = TypeExpr;
+
+    fn index(&self, index: &TypeExprId) -> &Self::Output {
+        self.index(*index)
     }
 }
 
@@ -1054,6 +1110,14 @@ impl Index<TermId> for FoldBody<'_> {
     }
 }
 
+impl Index<&TermId> for FoldBody<'_> {
+    type Output = Term;
+
+    fn index(&self, index: &TermId) -> &Self::Output {
+        self.index(*index)
+    }
+}
+
 impl Index<TermId> for Body {
     type Output = Term;
 
@@ -1063,6 +1127,14 @@ impl Index<TermId> for Body {
             Term::MacroCall { expansion, .. } => self.index(*expansion),
             term => term,
         }
+    }
+}
+
+impl Index<&TermId> for Body {
+    type Output = Term;
+
+    fn index(&self, index: &TermId) -> &Self::Output {
+        self.index(*index)
     }
 }
 
@@ -1211,15 +1283,23 @@ impl BodySourceMap {
 
 #[cfg(test)]
 mod local_tests {
+    use elp_base_db::FileId;
     use elp_base_db::RootQueryDb;
     use elp_base_db::fixture::WithFixture;
     use elp_syntax::AstNode;
     use elp_syntax::algo::find_node_at_offset;
     use elp_syntax::ast;
+    use expect_test::expect;
 
     use crate::AnyExprId;
+    use crate::Body;
+    use crate::BodyOrigin;
+    use crate::Expr;
     use crate::InFile;
+    use crate::Pat;
     use crate::Semantic;
+    use crate::Term;
+    use crate::TypeExpr;
     use crate::test_db::TestDB;
 
     fn check_is_macro_expr(fixture: &str) {
@@ -1332,5 +1412,69 @@ mod local_tests {
             foo() -> #{ k1 => #{ k2 => v~al}}.
             "#,
         )
+    }
+
+    #[test]
+    fn verify_body_index_impl_for_references() {
+        let mut body = Body::new(BodyOrigin::Invalid(FileId::from_raw(0)));
+
+        let expr_id = body.exprs.alloc(Expr::Missing);
+        let pat_id = body.pats.alloc(Pat::Missing);
+        let type_expr_id = body.type_exprs.alloc(TypeExpr::Missing);
+        let term_id = body.terms.alloc(Term::Missing);
+
+        // Test for Expr arena
+        let expr = &body[expr_id];
+        let expr_using_idref = &body[&expr_id];
+
+        let expr_tests = vec![expr, expr_using_idref];
+
+        for test_val in expr_tests {
+            expect![[r#"
+                Missing
+            "#]]
+            .assert_debug_eq(test_val);
+        }
+
+        // Test for Pat arena
+        let pat = &body[pat_id];
+        let pat_using_idref = &body[&pat_id];
+
+        let pat_tests = vec![pat, pat_using_idref];
+
+        for test_val in pat_tests {
+            expect![[r#"
+                Missing
+            "#]]
+            .assert_debug_eq(test_val);
+        }
+
+        // Test for TypeExpr arena
+        let type_expr = &body[type_expr_id];
+        let type_expr_using_idref = &body[&type_expr_id];
+
+        let type_expr_tests = vec![type_expr, type_expr_using_idref];
+
+        for test_val in type_expr_tests {
+            expect![[r#"
+                Missing
+            "#]]
+            .assert_debug_eq(test_val);
+        }
+
+        // Test for Term arena
+        let term = &body[term_id];
+        let term_using_idref = &body[&term_id];
+
+        let term_tests = vec![term, term_using_idref];
+
+        for test_val in term_tests {
+            expect![[r#"
+                Missing
+            "#]]
+            .assert_debug_eq(test_val);
+        }
+
+        return ();
     }
 }
