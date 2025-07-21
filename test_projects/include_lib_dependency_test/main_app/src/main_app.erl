@@ -8,6 +8,9 @@
 %% `extra_includes` for main_app
 -include_lib("extra_app/include/extra_header.hrl").
 
+%% Check that OTP libs are allowed
+-include_lib("stdlib/include/assert.hrl").
+
 -export([test_function/0]).
 
 test_function() ->

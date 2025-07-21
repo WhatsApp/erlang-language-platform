@@ -160,10 +160,7 @@ impl<'a> IncludeCtx<'a> {
                 }
             } else {
                 // We did not find an entry in the include mapping.
-
-                // TODO: remove when OTP and local includes resolved later in the stack
-                let path = target_app_data.dir.join(include_path);
-                db.include_file_id(project_id, VfsPath::from(path.clone()))
+                None
             }
         } else {
             // There is no include mapping.

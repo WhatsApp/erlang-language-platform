@@ -163,6 +163,9 @@ pub struct IncludeMapping {
     /// last part of its `TargetFullName` is ambiguous.  Keep a
     /// mapping from these to the corresponding `TargetFullName`.
     app_names: FxHashMap<AppName, TargetFullName>,
+    /// The OTP apps are always available as dependencies, keep track
+    /// of what they are
+    otp_apps: FxHashSet<AppName>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -178,6 +181,15 @@ const LOCAL_LOOKUP_INCLUDE_PREFIX: &str = "L";
 const REMOTE_LOOKUP_INCLUDE_PREFIX: &str = "R";
 
 impl IncludeMapping {
+    pub fn add_otp(&mut self, otp_apps: &[ProjectAppData]) {
+        for app in otp_apps {
+            self.otp_apps.insert(app.name.clone());
+            for inc in &app.include_dirs {
+                self.update_mapping_from_path(&app.name.0, inc.clone());
+            }
+        }
+    }
+
     fn update_mapping_from_path(&mut self, app_name: &str, path: AbsPathBuf) {
         if let Ok(paths) = Utf8PathBuf::from(path).read_dir_utf8() {
             for path in paths.flatten() {
@@ -219,7 +231,11 @@ impl IncludeMapping {
 
     /// For each buck TargetFullName we have a set of immediate dependencies.
     /// Check for the `source` one if the target is in the graph rooted at it.
+    /// If the target is an OTP app then it is always a dependency.
     pub fn is_dep(&self, source: &TargetFullName, target_app: &AppName) -> bool {
+        if self.otp_apps.contains(target_app) {
+            return true;
+        }
         if let Some(target) = self.app_names.get(target_app) {
             let mut visited = FxHashSet::default();
             self.dfs(source, target, &mut visited)
@@ -273,12 +289,16 @@ impl BuckProject {
         let _timer = timeit_with_telemetry!("BuckProject::load_from_config");
         let target_info = load_buck_targets_bxl(buck_conf, query_config, report_progress)?;
         report_progress("Making project app data");
-        let (project_app_data, include_mapping) = targets_to_project_data_bxl(&target_info.targets);
+        let (project_app_data, mut include_mapping) =
+            targets_to_project_data_bxl(&target_info.targets);
         let project = BuckProject {
             target_info,
             buck_conf: buck_conf.clone(),
         };
         let otp_root = Otp::find_otp()?;
+        // TODO: we now get these twice. Perhaps they should be cached?
+        let (_otp, otp_project_apps) = Otp::discover(otp_root.clone());
+        include_mapping.add_otp(&otp_project_apps);
         Ok((
             project,
             project_app_data,
@@ -850,6 +870,7 @@ fn targets_to_project_data_bxl(
 
     for target in targets.values() {
         target.include_files.iter().for_each(|inc: &AbsPathBuf| {
+            // TODO: make a FXHashSet of include paths, and use that to update the mapping
             let include_path = include_path_from_file(inc);
             include_mapping.update_mapping_from_path(&target.app_name.0, include_path);
         });

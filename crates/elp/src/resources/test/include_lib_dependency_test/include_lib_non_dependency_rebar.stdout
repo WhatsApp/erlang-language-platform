@@ -1,2 +1,4 @@
 module specified: main_app
-No errors reported
+Diagnostics reported in 1 modules:
+  main_app: 1
+      11:0-11:42::[Warning] [W0020] Unused file: stdlib/include/assert.hrl

@@ -1,6 +1,7 @@
 module specified: main_app
 Diagnostics reported in 1 modules:
-  main_app: 3
+  main_app: 4
       4:13-4:55::[Error] [E1516] can't find include lib "external_app/include/external_header.hrl"
-      10:9-10:24::[Error] [L1227] function test_function/0 undefined
-      16:4-16:19::[Error] [E1507] undefined macro 'EXTERNAL_MACRO'
+      11:0-11:42::[Warning] [W0020] Unused file: stdlib/include/assert.hrl
+      13:9-13:24::[Error] [L1227] function test_function/0 undefined
+      19:4-19:19::[Error] [E1507] undefined macro 'EXTERNAL_MACRO'
