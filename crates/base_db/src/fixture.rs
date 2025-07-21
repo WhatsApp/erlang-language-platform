@@ -667,6 +667,8 @@ bar() -> ?FOO.
                             eqwalizer_config: EqwalizerConfig {
                                 enable_all: true,
                                 max_tasks: 4,
+                                ignore_modules: [],
+                                ignore_modules_compiled_patterns: [],
                             },
                             include_mapping: Some(
                                 IncludeMapping {
@@ -705,6 +707,8 @@ bar() -> ?FOO.
                             eqwalizer_config: EqwalizerConfig {
                                 enable_all: true,
                                 max_tasks: 4,
+                                ignore_modules: [],
+                                ignore_modules_compiled_patterns: [],
                             },
                             include_mapping: Some(
                                 IncludeMapping {
@@ -838,6 +842,8 @@ foo() -> ?BAR.
                             eqwalizer_config: EqwalizerConfig {
                                 enable_all: true,
                                 max_tasks: 4,
+                                ignore_modules: [],
+                                ignore_modules_compiled_patterns: [],
                             },
                             include_mapping: Some(
                                 IncludeMapping {
@@ -866,6 +872,8 @@ foo() -> ?BAR.
                             eqwalizer_config: EqwalizerConfig {
                                 enable_all: true,
                                 max_tasks: 4,
+                                ignore_modules: [],
+                                ignore_modules_compiled_patterns: [],
                             },
                             include_mapping: Some(
                                 IncludeMapping {

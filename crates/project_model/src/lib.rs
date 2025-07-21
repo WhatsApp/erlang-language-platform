@@ -1175,6 +1175,8 @@ mod tests {
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
                             max_tasks: 4,
+                            ignore_modules: [],
+                            ignore_modules_compiled_patterns: [],
                         },
                         rebar: ElpRebarConfig {
                             profile: "test",
@@ -1238,6 +1240,8 @@ mod tests {
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
                             max_tasks: 4,
+                            ignore_modules: [],
+                            ignore_modules_compiled_patterns: [],
                         },
                         rebar: ElpRebarConfig {
                             profile: "test",
@@ -1346,6 +1350,8 @@ mod tests {
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
                             max_tasks: 4,
+                            ignore_modules: [],
+                            ignore_modules_compiled_patterns: [],
                         },
                         rebar: ElpRebarConfig {
                             profile: "test",
@@ -1499,6 +1505,8 @@ mod tests {
                         eqwalizer: EqwalizerConfig {
                             enable_all: true,
                             max_tasks: 4,
+                            ignore_modules: [],
+                            ignore_modules_compiled_patterns: [],
                         },
                         rebar: ElpRebarConfig {
                             profile: "test",
@@ -1566,6 +1574,8 @@ mod tests {
                             eqwalizer: EqwalizerConfig {
                                 enable_all: true,
                                 max_tasks: 4,
+                                ignore_modules: [],
+                                ignore_modules_compiled_patterns: [],
                             },
                             rebar: ElpRebarConfig {
                                 profile: "test",
@@ -1757,6 +1767,8 @@ mod tests {
                     eqwalizer: EqwalizerConfig {
                         enable_all: true,
                         max_tasks: 4,
+                        ignore_modules: [],
+                        ignore_modules_compiled_patterns: [],
                     },
                     rebar: ElpRebarConfig {
                         profile: "other",
@@ -1893,6 +1905,8 @@ mod tests {
                 eqwalizer: EqwalizerConfig {
                     enable_all: true,
                     max_tasks: 34,
+                    ignore_modules: [],
+                    ignore_modules_compiled_patterns: [],
                 },
                 rebar: ElpRebarConfig {
                     profile: "my_profile",
