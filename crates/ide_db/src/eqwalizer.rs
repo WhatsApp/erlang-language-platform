@@ -185,7 +185,15 @@ fn is_eqwalizer_enabled(db: &dyn EqwalizerDatabase, file_id: FileId, include_tes
     let global_opt_in = eqwalizer_config.enable_all;
     let opt_in =
         (global_opt_in && (is_src || is_test_opted_in)) || db.has_eqwalizer_module_marker(file_id);
-    let ignored = db.has_eqwalizer_ignore_marker(file_id);
+    let ignored_in_config = if let Some(module_name) = module_index.module_for_file(file_id) {
+        eqwalizer_config
+            .ignore_modules_compiled_patterns
+            .iter()
+            .any(|pattern| pattern.matches(module_name.as_str()))
+    } else {
+        false
+    };
+    let ignored = ignored_in_config || db.has_eqwalizer_ignore_marker(file_id);
     opt_in && !ignored
 }
 

@@ -34,6 +34,7 @@ use buck::TargetFullName;
 use elp_log::timeit;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
+use glob::Pattern;
 use glob::glob;
 use itertools::Either;
 use itertools::Itertools;
@@ -402,6 +403,11 @@ pub struct EqwalizerConfig {
     pub enable_all: bool,
     #[serde(default = "eqwalizer_max_tasks_default")]
     pub max_tasks: usize,
+    #[serde(default = "eqwalizer_ignore_modules_default")]
+    pub ignore_modules: Vec<String>,
+    #[serde(skip_deserializing)]
+    #[serde(skip_serializing)]
+    pub ignore_modules_compiled_patterns: Vec<Pattern>,
 }
 
 fn eqwalizer_enable_all_default() -> bool {
@@ -412,12 +418,28 @@ fn eqwalizer_max_tasks_default() -> usize {
     4
 }
 
+fn eqwalizer_ignore_modules_default() -> Vec<String> {
+    vec![]
+}
+
 impl Default for EqwalizerConfig {
     fn default() -> Self {
         Self {
             enable_all: eqwalizer_enable_all_default(),
             max_tasks: eqwalizer_max_tasks_default(),
+            ignore_modules: eqwalizer_ignore_modules_default(),
+            ignore_modules_compiled_patterns: vec![],
         }
+    }
+}
+
+impl EqwalizerConfig {
+    pub fn compile_patterns(&mut self) {
+        self.ignore_modules_compiled_patterns = self
+            .ignore_modules
+            .iter()
+            .map(|s| Pattern::new(s).unwrap())
+            .collect();
     }
 }
 
@@ -507,6 +529,7 @@ impl ElpConfig {
             Ok(mut config) => {
                 BuckConfig::make_config(&path, &mut config)?;
                 config.config_path = Some(path);
+                config.eqwalizer.compile_patterns();
 
                 Ok(config)
             }
@@ -1775,6 +1798,8 @@ mod tests {
             eqwalizer: EqwalizerConfig {
                 enable_all: true,
                 max_tasks: 34,
+                ignore_modules: vec!["some_module".to_string()],
+                ignore_modules_compiled_patterns: vec![Pattern::new("some_module").unwrap()],
             },
             rebar: ElpRebarConfig {
                 profile: "my_profile".to_string(),
@@ -1797,6 +1822,7 @@ mod tests {
             [eqwalizer]
             enable_all = true
             max_tasks = 34
+            ignore_modules = ["some_module"]
 
             [rebar]
             profile = "my_profile"
