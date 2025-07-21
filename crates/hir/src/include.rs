@@ -20,8 +20,8 @@ pub(crate) fn resolve(
     db: &dyn DefDatabase,
     include_id: InFile<IncludeAttributeId>,
 ) -> Option<FileId> {
-    let ctx = &IncludeCtx::new(db.upcast(), include_id.file_id);
-    let form_list = db.file_form_list(ctx.file_id);
+    let ctx = &IncludeCtx::new(db.upcast(), None, include_id.file_id);
+    let form_list = db.file_form_list(ctx.current_file_id);
     let (path, file_id) = match &form_list[include_id.value] {
         IncludeAttribute::Include { path, .. } => (path, ctx.resolve_include(path)),
         IncludeAttribute::IncludeLib { path, .. } => (path, ctx.resolve_include_lib(path)),
@@ -30,7 +30,7 @@ pub(crate) fn resolve(
         let module_str = if let Some(module_attribute) = form_list.module_attribute() {
             module_attribute.name.as_str().to_string()
         } else {
-            format!("{:?}", ctx.file_id)
+            format!("{:?}", ctx.current_file_id)
         };
         log::warn!("Unable to resolve \"{path}\" in '{module_str}'");
     }

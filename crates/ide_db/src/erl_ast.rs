@@ -74,22 +74,30 @@ impl AstLoader for crate::RootDatabase {
         erlang_service.request_parse(
             req,
             || self.unwind_if_revision_cancelled(),
-            &move |file_id, include_type, path| resolve_include(self, file_id, include_type, path),
+            &move |current_file_id, include_type, path| {
+                resolve_include(self, file_id, current_file_id, include_type, path)
+            },
         )
     }
 }
 
 fn resolve_include(
     db: &dyn RootQueryDb,
-    file_id: FileId,
+    orig_file_id: FileId,
+    current_file_id: FileId,
     include_type: IncludeType,
     path: &str,
 ) -> Option<(String, FileId, Arc<str>)> {
-    let include_file_id = match include_type {
-        IncludeType::Normal => IncludeCtx::new(db, file_id).resolve_include(path)?,
-        IncludeType::Lib => IncludeCtx::new(db, file_id).resolve_include_lib(path)?,
-        IncludeType::Doc => IncludeCtx::new(db, file_id).resolve_include_doc(path)?,
-    };
+    let include_file_id =
+        match include_type {
+            IncludeType::Normal => {
+                IncludeCtx::new(db, Some(orig_file_id), current_file_id).resolve_include(path)?
+            }
+            IncludeType::Lib => IncludeCtx::new(db, Some(orig_file_id), current_file_id)
+                .resolve_include_lib(path)?,
+            IncludeType::Doc => IncludeCtx::new(db, Some(orig_file_id), current_file_id)
+                .resolve_include_doc(path)?,
+        };
     let path = path_for_file(db, include_file_id).map(|vfs_path| vfs_path.to_string())?;
     Some((
         path,

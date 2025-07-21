@@ -22,30 +22,38 @@ use crate::SourceRoot;
 pub struct IncludeCtx<'a> {
     db: &'a dyn RootQueryDb,
     source_root: Arc<SourceRoot>,
-    pub file_id: FileId,
+    pub orig_file_id: Option<FileId>,
+    pub current_file_id: FileId,
 }
 
 impl<'a> IncludeCtx<'a> {
-    pub fn new(db: &'a dyn RootQueryDb, file_id: FileId) -> Self {
+    pub fn new(
+        db: &'a dyn RootQueryDb,
+        orig_file_id: Option<FileId>,
+        current_file_id: FileId,
+    ) -> Self {
         // Context for T171541590
-        let _ = stdx::panic_context::enter(format!("\nIncludeCtx::new: {file_id:?}"));
-        let source_root_id = db.file_source_root(file_id).source_root_id(db);
+        let _ = stdx::panic_context::enter(format!(
+            "\nIncludeCtx::new: {orig_file_id:?} {current_file_id:?}"
+        ));
+        let source_root_id = db.file_source_root(current_file_id).source_root_id(db);
         let source_root = db.source_root(source_root_id).source_root(db);
         Self {
             db,
-            file_id,
+            orig_file_id,
+            current_file_id,
             source_root,
         }
     }
 
     pub fn resolve_include(&self, path: &str) -> Option<FileId> {
         self.resolve_relative(path)
-            .or_else(|| self.db.resolve_local(self.file_id, path.into()))
+            .or_else(|| self.db.resolve_local(self.current_file_id, path.into()))
     }
 
     pub fn resolve_include_lib(&self, path: &str) -> Option<FileId> {
         self.resolve_include(path)
-            .or_else(|| self.db.resolve_remote(self.file_id, path.into()))
+            .or_else(|| self.db.resolve_remote(self.current_file_id, path.into()))
     }
 
     pub fn resolve_include_doc(&self, path: &str) -> Option<FileId> {
@@ -53,7 +61,7 @@ impl<'a> IncludeCtx<'a> {
     }
 
     fn resolve_relative(&self, path: &str) -> Option<FileId> {
-        self.source_root.relative_path(self.file_id, path)
+        self.source_root.relative_path(self.current_file_id, path)
     }
 
     /// Called via salsa for inserting in the graph
@@ -155,7 +163,8 @@ pub fn generated_file_include_lib(
         .iter()
         .find_map(|dir| include_path.as_path()?.strip_prefix(dir))?;
     let candidate = format!("{}/include/{}", inc_app_data.name, candidate_path.as_str());
-    let resolved_file_id = IncludeCtx::new(db, file_id).resolve_include_lib(&candidate)?;
+    let resolved_file_id =
+        IncludeCtx::new(db, Some(file_id), file_id).resolve_include_lib(&candidate)?;
     if resolved_file_id == included_file_id {
         // We have an equivalent include
         Some(candidate)
