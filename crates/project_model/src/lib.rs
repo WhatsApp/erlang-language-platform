@@ -680,7 +680,7 @@ pub struct Project {
     pub project_build_data: ProjectBuildData,
     pub project_apps: Vec<ProjectAppData>,
     pub eqwalizer_config: EqwalizerConfig,
-    pub include_mapping: Arc<IncludeMapping>,
+    pub include_mapping: Option<Arc<IncludeMapping>>,
 }
 
 #[derive(Clone, Debug)]
@@ -715,7 +715,7 @@ impl Project {
             project_build_data: ProjectBuildData::Otp,
             project_apps,
             eqwalizer_config: EqwalizerConfig::default(),
-            include_mapping: Arc::new(IncludeMapping::default()),
+            include_mapping: None,
         }
     }
 
@@ -725,7 +725,7 @@ impl Project {
             project_build_data: ProjectBuildData::Rebar(Default::default()),
             project_apps: Vec::default(),
             eqwalizer_config: EqwalizerConfig::default(),
-            include_mapping: Arc::new(IncludeMapping::default()),
+            include_mapping: None,
         }
     }
 
@@ -1021,12 +1021,7 @@ impl Project {
                                 "Failed to decode rebar build info for config file {manifest:?}"
                             )
                         })?;
-                (
-                    ProjectBuildData::Rebar(rebar_project),
-                    apps,
-                    otp_root,
-                    Arc::new(IncludeMapping::default()),
-                )
+                (ProjectBuildData::Rebar(rebar_project), apps, otp_root, None)
             }
             ProjectManifest::TomlBuck(buck) => {
                 // We only select this manifest if buck is actually enabled
@@ -1036,7 +1031,7 @@ impl Project {
                     ProjectBuildData::Buck(project),
                     apps,
                     otp_root,
-                    include_mapping,
+                    Some(include_mapping),
                 )
             }
             ProjectManifest::Json(config) => {
@@ -1045,12 +1040,7 @@ impl Project {
                 let (mut apps, deps) = json::gen_app_data(config, AbsPath::assert(&otp_root));
                 let project = StaticProject { config_path };
                 apps.extend(deps);
-                (
-                    ProjectBuildData::Static(project),
-                    apps,
-                    otp_root,
-                    Arc::new(IncludeMapping::default()),
-                )
+                (ProjectBuildData::Static(project), apps, otp_root, None)
             }
             ProjectManifest::NoManifest(config) => {
                 let otp_root = Otp::find_otp()?;
@@ -1061,12 +1051,7 @@ impl Project {
                     eqwalizer_support::eqwalizer_suppport_data(abs_otp_root);
                 let project = StaticProject { config_path };
                 apps.push(eqwalizer_support_app);
-                (
-                    ProjectBuildData::Static(project),
-                    apps,
-                    otp_root,
-                    Arc::new(IncludeMapping::default()),
-                )
+                (ProjectBuildData::Static(project), apps, otp_root, None)
             }
         };
 

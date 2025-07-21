@@ -670,12 +670,7 @@ bar() -> ?FOO.
                                 ignore_modules: [],
                                 ignore_modules_compiled_patterns: [],
                             },
-                            include_mapping: Some(
-                                IncludeMapping {
-                                    includes: {},
-                                    deps: {},
-                                },
-                            ),
+                            include_mapping: None,
                         },
                         ProjectId(
                             1,
@@ -710,12 +705,7 @@ bar() -> ?FOO.
                                 ignore_modules: [],
                                 ignore_modules_compiled_patterns: [],
                             },
-                            include_mapping: Some(
-                                IncludeMapping {
-                                    includes: {},
-                                    deps: {},
-                                },
-                            ),
+                            include_mapping: None,
                         },
                     },
                     catch_all_source_root: SourceRootId(
@@ -845,12 +835,7 @@ foo() -> ?BAR.
                                 ignore_modules: [],
                                 ignore_modules_compiled_patterns: [],
                             },
-                            include_mapping: Some(
-                                IncludeMapping {
-                                    includes: {},
-                                    deps: {},
-                                },
-                            ),
+                            include_mapping: None,
                         },
                         ProjectId(
                             1,
@@ -875,12 +860,7 @@ foo() -> ?BAR.
                                 ignore_modules: [],
                                 ignore_modules_compiled_patterns: [],
                             },
-                            include_mapping: Some(
-                                IncludeMapping {
-                                    includes: {},
-                                    deps: {},
-                                },
-                            ),
+                            include_mapping: None,
                         },
                     },
                     catch_all_source_root: SourceRootId(

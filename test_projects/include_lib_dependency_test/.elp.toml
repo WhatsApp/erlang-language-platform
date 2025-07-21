@@ -1,0 +1,5 @@
+[buck]
+enabled = true
+build_deps = false
+included_targets = [ "fbcode//whatsapp/elp/test_projects/include_lib_dependency_test/..." ]
+source_root = "whatsapp/elp/test_projects/include_lib_dependency_test"

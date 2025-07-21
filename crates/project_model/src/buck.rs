@@ -159,7 +159,23 @@ pub struct BuckProject {
 pub struct IncludeMapping {
     includes: FxHashMap<SmolStr, AbsPathBuf>,
     deps: FxHashMap<TargetFullName, FxHashSet<TargetFullName>>,
+    /// A buck target can have an alternative app name in case the
+    /// last part of its `TargetFullName` is ambiguous.  Keep a
+    /// mapping from these to the corresponding `TargetFullName`.
+    app_names: FxHashMap<AppName, TargetFullName>,
 }
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum IncludeMappingScope {
+    Local,
+    Remote,
+}
+
+/// We add a prefix to the local and remote lookup strings in the
+/// `IncludeMapping`, so we can do dependency checking on the remote
+/// one via `include_lib`
+const LOCAL_LOOKUP_INCLUDE_PREFIX: &str = "L";
+const REMOTE_LOOKUP_INCLUDE_PREFIX: &str = "R";
 
 impl IncludeMapping {
     fn update_mapping_from_path(&mut self, app_name: &str, path: AbsPathBuf) {
@@ -168,9 +184,13 @@ impl IncludeMapping {
                 let path = path.into_path();
                 if let Some("hrl") = path.extension() {
                     if let Some(basename) = path.file_name() {
-                        let local_include = SmolStr::new(basename);
-                        let remote_include =
-                            SmolStr::new(format!("{app_name}/include/{local_include}"));
+                        let local_include =
+                            SmolStr::new(format!("{LOCAL_LOOKUP_INCLUDE_PREFIX}:{basename}"));
+                        let trimmed_app_name =
+                            app_name.strip_suffix("_includes_only").unwrap_or(app_name);
+                        let remote_include = SmolStr::new(format!(
+                            "{REMOTE_LOOKUP_INCLUDE_PREFIX}:{trimmed_app_name}/include/{basename}"
+                        ));
                         let path = AbsPathBuf::assert(path);
                         // TODO: remove clone()
                         self.insert(local_include, path.clone());
@@ -181,12 +201,58 @@ impl IncludeMapping {
         }
     }
 
-    pub fn get(&self, path: &SmolStr) -> Option<&AbsPathBuf> {
-        self.includes.get(path)
+    pub fn get(&self, scope: IncludeMappingScope, path: &SmolStr) -> Option<&AbsPathBuf> {
+        let lookup_path = match scope {
+            IncludeMappingScope::Local => {
+                SmolStr::new(format!("{LOCAL_LOOKUP_INCLUDE_PREFIX}:{path}"))
+            }
+            IncludeMappingScope::Remote => {
+                SmolStr::new(format!("{REMOTE_LOOKUP_INCLUDE_PREFIX}:{path}"))
+            }
+        };
+        self.includes.get(&lookup_path)
     }
 
     pub fn insert(&mut self, path: SmolStr, abs_path: AbsPathBuf) -> Option<AbsPathBuf> {
         self.includes.insert(path, abs_path)
+    }
+
+    /// For each buck TargetFullName we have a set of immediate dependencies.
+    /// Check for the `source` one if the target is in the graph rooted at it.
+    pub fn is_dep(&self, source: &TargetFullName, target_app: &AppName) -> bool {
+        if let Some(target) = self.app_names.get(target_app) {
+            let mut visited = FxHashSet::default();
+            self.dfs(source, target, &mut visited)
+        } else {
+            false
+        }
+    }
+
+    fn dfs(
+        &self,
+        current: &TargetFullName,
+        target: &TargetFullName,
+        visited: &mut FxHashSet<TargetFullName>,
+    ) -> bool {
+        if current == target {
+            return true;
+        }
+
+        if visited.contains(current) {
+            return false;
+        }
+
+        visited.insert(current.clone());
+
+        if let Some(deps) = self.deps.get(current) {
+            for dep in deps {
+                if self.dfs(dep, target, visited) {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 }
 
@@ -270,6 +336,7 @@ impl TryFrom<&str> for BuckTargetOrigin {
     }
 }
 
+/// The interface type used in reading the output of running `elp.bxl`
 #[derive(Deserialize, Debug)]
 pub struct BuckTarget {
     name: String,
@@ -295,6 +362,13 @@ pub struct BuckTarget {
     /// path.
     #[serde(default)]
     included_apps: Vec<TargetFullName>,
+    /// extra_includes are a similar but slightly different
+    /// hack. buck2 creates a shadow target with only the include path
+    /// in it, as a proxy for the real target when building the graph.
+    /// These do not have dependencies, so make it possible for buck2
+    /// to build the graph.
+    #[serde(default)]
+    extra_includes: Vec<TargetFullName>,
     #[serde(default)]
     origin: BuckTargetOrigin,
 }
@@ -320,6 +394,7 @@ pub struct Target {
     pub deps: Vec<TargetFullName>,
     pub apps: Vec<TargetFullName>,
     pub included_apps: Vec<TargetFullName>,
+    pub extra_includes: Vec<TargetFullName>,
     pub ebin: Option<AbsPathBuf>,
     pub target_type: TargetType,
     /// true if there are .hrl files in the src dir
@@ -489,6 +564,7 @@ fn make_buck_target(
         deps: target.deps.clone(),
         apps: target.apps.clone(),
         included_apps: target.included_apps.clone(),
+        extra_includes: target.extra_includes.clone(),
         ebin,
         target_type,
         private_header,
@@ -797,9 +873,13 @@ fn targets_to_project_data_bxl(
                 .deps
                 .iter()
                 .chain(target.apps.iter().chain(target.included_apps.iter()))
+                .chain(target.apps.iter().chain(target.extra_includes.iter()))
                 .cloned(),
         );
         include_mapping.deps.insert(target_name.clone(), all_deps);
+        include_mapping
+            .app_names
+            .insert(target.app_name.clone(), target_name.clone());
     }
 
     for target in targets.values() {
@@ -947,6 +1027,7 @@ mod tests {
             deps: vec![],
             apps: vec![],
             included_apps: vec![],
+            extra_includes: vec![],
             origin: BuckTargetOrigin::App,
         };
 
@@ -974,6 +1055,7 @@ mod tests {
             deps: vec![],
             apps: vec![],
             included_apps: vec![],
+            extra_includes: vec![],
             origin: BuckTargetOrigin::App,
         };
 
@@ -1001,6 +1083,7 @@ mod tests {
             deps: vec![],
             apps: vec![],
             included_apps: vec![],
+            extra_includes: vec![],
             origin: BuckTargetOrigin::App,
         };
 
@@ -1032,6 +1115,7 @@ mod tests {
             deps: vec![],
             apps: vec![],
             included_apps: vec![],
+            extra_includes: vec![],
             origin: BuckTargetOrigin::App,
         };
 
@@ -1060,6 +1144,7 @@ mod tests {
             deps: vec![],
             apps: vec![],
             included_apps: vec![],
+            extra_includes: vec![],
             origin: BuckTargetOrigin::App,
         };
 
@@ -1088,6 +1173,7 @@ mod tests {
             deps: vec![],
             apps: vec![],
             included_apps: vec![],
+            extra_includes: vec![],
             origin: BuckTargetOrigin::App,
         };
 

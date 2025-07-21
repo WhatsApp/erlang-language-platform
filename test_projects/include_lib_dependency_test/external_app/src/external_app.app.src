@@ -1,0 +1,10 @@
+{application, external_app,
+ [{description, "External application that main_app should not be able to include_lib from"},
+  {vsn, "1.0.0"},
+  {registered, []},
+  {applications, [kernel, stdlib]},
+  {env, []},
+  {modules, []},
+  {licenses, ["Apache-2.0"]},
+  {links, []}
+ ]}.

@@ -2192,6 +2192,32 @@ mod tests {
         }
     }
 
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn include_lib_non_dependency_fails(buck: bool) {
+        if buck {
+            simple_snapshot_expect_error(
+                args_vec!["parse-elp", "--module", "main_app"],
+                "include_lib_dependency_test",
+                expect_file!(
+                    "../resources/test/include_lib_dependency_test/include_lib_non_dependency_fails.stdout"
+                ),
+                buck,
+                None,
+            );
+        } else {
+            simple_snapshot(
+                args_vec!["parse-elp", "--module", "main_app"],
+                "include_lib_dependency_test",
+                expect_file!(
+                    "../resources/test/include_lib_dependency_test/include_lib_non_dependency_rebar.stdout"
+                ),
+                buck,
+                None,
+            );
+        };
+    }
+
     #[track_caller]
     fn simple_snapshot(
         args: Vec<OsString>,

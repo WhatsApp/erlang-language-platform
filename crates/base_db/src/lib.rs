@@ -16,6 +16,7 @@ use dashmap::DashMap;
 use dashmap::Entry;
 use elp_project_model::AppName;
 use elp_project_model::buck::IncludeMapping;
+use elp_project_model::buck::IncludeMappingScope;
 use elp_syntax::AstNode;
 use elp_syntax::Parse;
 use elp_syntax::SmolStr;
@@ -360,7 +361,12 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
 
     fn include_file_id(&self, project_id: ProjectId, path: VfsPath) -> Option<FileId>;
 
-    fn mapped_include_file(&self, project_id: ProjectId, path: SmolStr) -> Option<FileId>;
+    fn mapped_include_file(
+        &self,
+        project_id: ProjectId,
+        scope: IncludeMappingScope,
+        path: SmolStr,
+    ) -> Option<FileId>;
 
     fn file_app_data(&self, file_id: FileId) -> Option<Arc<AppData>>;
 
@@ -404,7 +410,12 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     fn resolve_local(&self, file_id: FileId, path: SmolStr) -> Option<FileId>;
 
     #[salsa::invoke(IncludeCtx::resolve_remote_query)]
-    fn resolve_remote(&self, file_id: FileId, path: SmolStr) -> Option<FileId>;
+    fn resolve_remote(
+        &self,
+        orig_file_id: Option<FileId>,
+        current_file_id: FileId,
+        path: SmolStr,
+    ) -> Option<FileId>;
 }
 
 #[salsa::db]
@@ -563,10 +574,11 @@ fn include_file_id(db: &dyn RootQueryDb, project_id: ProjectId, path: VfsPath) -
 fn mapped_include_file(
     db: &dyn RootQueryDb,
     project_id: ProjectId,
+    scope: IncludeMappingScope,
     path: SmolStr,
 ) -> Option<FileId> {
     let include_file_index = db.include_file_index(project_id);
-    let file_path = include_file_index.include_mapping.get(&path)?;
+    let file_path = include_file_index.include_mapping.get(scope, &path)?;
     include_file_index
         .path_to_file_id
         .get(&VfsPath::from(file_path.clone()))

@@ -396,7 +396,7 @@ impl<'a> ProjectApps<'a> {
                 otp_project_id: self.otp_project_id,
                 app_roots,
                 eqwalizer_config: project.eqwalizer_config.clone(),
-                include_mapping: Some(project.include_mapping.clone()),
+                include_mapping: project.include_mapping.clone(),
             };
             app_structure.add_project_data(project_id, project_data);
         }

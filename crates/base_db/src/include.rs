@@ -10,6 +10,8 @@
 
 use std::sync::Arc;
 
+use elp_project_model::AppName;
+use elp_project_model::buck::IncludeMappingScope;
 use elp_syntax::SmolStr;
 use vfs::FileId;
 use vfs::VfsPath;
@@ -22,7 +24,12 @@ use crate::SourceRoot;
 pub struct IncludeCtx<'a> {
     db: &'a dyn RootQueryDb,
     source_root: Arc<SourceRoot>,
+    /// The starting .erl file when resolving includes
     pub orig_file_id: Option<FileId>,
+    /// The current `FileId`. This starts out the same as
+    /// `orig_file_id`, but will change if a nested include file is
+    /// processed.  The dependency graph for includes is calculated
+    /// based on the `orig_file_id`, if set.
     pub current_file_id: FileId,
 }
 
@@ -52,8 +59,10 @@ impl<'a> IncludeCtx<'a> {
     }
 
     pub fn resolve_include_lib(&self, path: &str) -> Option<FileId> {
-        self.resolve_include(path)
-            .or_else(|| self.db.resolve_remote(self.current_file_id, path.into()))
+        self.resolve_include(path).or_else(|| {
+            self.db
+                .resolve_remote(self.orig_file_id, self.current_file_id, path.into())
+        })
     }
 
     pub fn resolve_include_doc(&self, path: &str) -> Option<FileId> {
@@ -71,7 +80,9 @@ impl<'a> IncludeCtx<'a> {
         path: SmolStr,
     ) -> Option<FileId> {
         let project_id = db.file_project_id(file_id)?;
-        if let Some(file_id) = db.mapped_include_file(project_id, path.clone()) {
+        if let Some(file_id) =
+            db.mapped_include_file(project_id, IncludeMappingScope::Local, path.clone())
+        {
             Some(file_id)
         } else {
             let path: &str = &path;
@@ -84,30 +95,87 @@ impl<'a> IncludeCtx<'a> {
     }
 
     /// Called via salsa for inserting in the graph
+    /// When processing a .erl file, it can include other files, and so on recursively.
+    /// In this case, the starting file is the `orig_file_id`, and the current file is
+    /// the one being processed.
     pub(crate) fn resolve_remote_query(
         db: &dyn RootQueryDb,
-        file_id: FileId,
+        orig_file_id: Option<FileId>,
+        current_file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId> {
-        let project_id = db.file_project_id(file_id)?;
+        let project_id = db.file_project_id(current_file_id)?;
         let project_data = db.project_data(project_id).project_data(db);
-        let include = if let Some(include_mapping) = &project_data.include_mapping {
-            include_mapping
-                .get(&path)
+        // `app_data` represents the app that is doing the including.
+        // If `orig_file_id` is set, we are possibly processing a
+        // nested include file.  In this case we must do our checking
+        // based on its app data.
+        let app_data = orig_file_id
+            .map(|file_id| db.file_app_data(file_id))
+            .unwrap_or_else(|| db.file_app_data(current_file_id))?;
+        let (app_name, include_path) = path.split_once('/')?;
+        let source_root_id = project_data.app_roots.get(app_name)?;
+        let target_app_data = db.app_data(source_root_id)?;
+        if let Some(include_mapping) = &project_data.include_mapping {
+            if let Some(p) = include_mapping
+                .get(IncludeMappingScope::Remote, &path)
                 .map(|path| db.include_file_id(project_id, VfsPath::from(path.clone())))
+            {
+                if p.is_some() {
+                    // We have an entry in the include mapping, and it maps to a FileId
+                    if let Some(target_full_name) = &app_data.buck_target_name {
+                        // We have an entry for the lookup, only return it
+                        // if it is in the dependencies
+                        if include_mapping.is_dep(target_full_name, &AppName(app_name.to_string()))
+                        {
+                            p
+                        } else {
+                            // We have a lookup value, but it is not a
+                            // dependency, do not do fallback processing
+                            None
+                        }
+                    } else {
+                        // This should not be possible. We only have
+                        // an include mapping for a buck project, and
+                        // so the `buck_target_name` should be
+                        // populated.
+                        log::warn!(
+                            "include mapping without buck_target_name: app:{:?}, path:{}",
+                            &app_data.name,
+                            &path
+                        );
+                        None
+                    }
+                } else {
+                    // We do have an entry in the include mapping, but
+                    // it does not resolve to a valid FileId.
+                    // This should also not happen.
+                    log::warn!(
+                        "include mapping does not resolve to FileId: app:{:?}, path:{}, p:{:?}",
+                        &app_data.name,
+                        &path,
+                        &p
+                    );
+                    None
+                }
+            } else {
+                // We did not find an entry in the include mapping.
+
+                // TODO: remove when OTP and local includes resolved later in the stack
+                let path = target_app_data.dir.join(include_path);
+                db.include_file_id(project_id, VfsPath::from(path.clone()))
+            }
         } else {
-            None
-        };
-        include.unwrap_or_else(|| {
-            let (app_name, include_path) = path.split_once('/')?;
-            let source_root_id = project_data.app_roots.get(app_name)?;
-            let target_app_data = db.app_data(source_root_id)?;
+            // There is no include mapping.
+            // This is the path followed when it is not a buck2
+            // project, as those are currently the only ones that
+            // populate the include_mapping.
             let path = target_app_data.dir.join(include_path);
             db.include_file_id(project_id, VfsPath::from(path.clone()))
                 .or_else(|| {
                     find_generated_include_lib(db, project_id, include_path, &target_app_data)
                 })
-        })
+        }
     }
 }
 

@@ -1,0 +1,10 @@
+{application, extra_app,
+ [{description, "Extra application that main_app include_lib's from via `extra_includes`"},
+  {vsn, "1.0.0"},
+  {registered, []},
+  {applications, [kernel, stdlib]},
+  {env, []},
+  {modules, []},
+  {licenses, ["Apache-2.0"]},
+  {links, []}
+ ]}.

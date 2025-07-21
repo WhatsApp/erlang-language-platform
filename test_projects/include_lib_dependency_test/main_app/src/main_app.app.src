@@ -1,0 +1,10 @@
+{application, main_app,
+ [{description, "Main application that tries to include_lib from non-dependency"},
+  {vsn, "1.0.0"},
+  {registered, []},
+  {applications, [kernel, stdlib]},
+  {env, []},
+  {modules, []},
+  {licenses, ["Apache-2.0"]},
+  {links, []}
+ ]}.
