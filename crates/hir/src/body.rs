@@ -1505,7 +1505,5 @@ mod local_tests {
             "#]]
             .assert_debug_eq(test_val);
         }
-
-        return ();
     }
 }
