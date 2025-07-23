@@ -84,3 +84,18 @@ Run the _eqWAlizer_ typechecker against all _src_ modules in a project.
 ```
 $ elp eqwalize-all
 ```
+
+## `elp shell`
+
+Run the _eqWAlizer_ typechecker in a REPL. This means the startup processing is done
+once, so it's faster to run the typechecker on changed modules.
+
+:::warning
+
+`elp shell` relies on [watchman](https://facebook.github.io/watchman/). If you don't have it installed, it will not work.
+
+:::
+
+```
+$ elp shell
+```
