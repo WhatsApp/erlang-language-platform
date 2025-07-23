@@ -1003,7 +1003,7 @@ impl Project {
                     rebar_setting.config_file
                 );
                 let rebar_version = {
-                    let mut cmd = Command::new("rebar3");
+                    let mut cmd = RebarConfig::rebar3_command_base();
                     cmd.arg("version");
                     utf8_stdout(&mut cmd)?
                 };

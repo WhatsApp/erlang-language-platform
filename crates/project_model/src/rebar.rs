@@ -8,6 +8,7 @@
  * above-listed licenses.
  */
 
+use std::env;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
@@ -66,12 +67,43 @@ impl RebarConfig {
         Ok(config)
     }
 
+    pub fn rebar3_command_base() -> Command {
+        if cfg!(target_os = "windows") {
+            lazy_static! {
+                static ref REBAR3_PATH: PathBuf = {
+                    let rebar3_name = "rebar3";
+                    env::var("PATH")
+                        .ok()
+                        .and_then(|paths| {
+                            env::split_paths(&paths).find_map(|dir| {
+                                let candidate = dir.join(rebar3_name);
+                                if candidate.exists() {
+                                    Some(candidate)
+                                } else {
+                                    None
+                                }
+                            })
+                        })
+                        .expect("rebar3 not found in PATH - install and add to PATH")
+                };
+            }
+
+            let mut cmd = Command::new("escript");
+            cmd.arg(&*REBAR3_PATH);
+            cmd
+        } else {
+            Command::new("rebar3")
+        }
+    }
+
     pub fn rebar3_command(&self) -> CommandProxy<'_> {
         lazy_static! {
             static ref REBAR_GLOBAL_LOCK: Mutex<()> = Mutex::new(());
         }
         let guard = REBAR_GLOBAL_LOCK.lock();
-        let mut cmd = Command::new("rebar3");
+
+        let mut cmd = Self::rebar3_command_base();
+
         cmd.arg("as");
         cmd.arg(&self.profile.0);
         if let Some(parent) = self.config_file.parent() {

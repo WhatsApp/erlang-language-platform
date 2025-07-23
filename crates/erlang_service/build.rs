@@ -24,7 +24,32 @@ fn main() {
             .expect("Copying precompiled erlang service escript failed");
     } else {
         let profile = env::var("PROFILE").unwrap();
-        let output = Command::new("rebar3")
+
+        let mut cmd = if cfg!(target_os = "windows") {
+            let rebar3_name = "rebar3";
+            let rebar3_path = env::var("PATH")
+                .ok()
+                .and_then(|paths| {
+                    env::split_paths(&paths).find_map(|dir| {
+                        let candidate = dir.join(rebar3_name);
+                        if candidate.exists() {
+                            Some(candidate)
+                        } else {
+                            None
+                        }
+                    })
+                })
+                .expect("rebar3 not found in PATH - install and add to PATH");
+
+            let mut cmd = Command::new("escript");
+
+            cmd.arg(rebar3_path);
+            cmd
+        } else {
+            Command::new("rebar3")
+        };
+
+        let output = cmd
             .arg("escriptize")
             .env("REBAR_PROFILE", &profile)
             .env("REBAR_BASE_DIR", &dest_dir)
