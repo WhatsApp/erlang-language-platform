@@ -37,7 +37,6 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::ProjectId;
-use elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide_db::erlang_service::DiagnosticLocation;
 use elp_ide_db::erlang_service::ParseError;
 use elp_ide_db::metadata::Kind;
@@ -74,6 +73,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::RootDatabase;
+use crate::SourceDatabase;
 use crate::common_test;
 
 mod application_env;

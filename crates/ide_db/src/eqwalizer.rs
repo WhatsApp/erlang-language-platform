@@ -15,7 +15,6 @@ use elp_base_db::FileRange;
 use elp_base_db::FileSource;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
-use elp_base_db::RootQueryDb;
 use elp_base_db::SourceDatabase;
 use elp_base_db::VfsPath;
 use elp_base_db::salsa;
@@ -53,9 +52,8 @@ impl EqwalizerLoader for crate::RootDatabase {
                 None => {
                     // Context for T171541590
                     let _ = stdx::panic_context::enter(format!("\ntypecheck: {module:?}"));
-                    let source_root_id =
-                        SourceDatabase::file_source_root(self, module).source_root_id(self);
-                    let source_root = self.source_root(source_root_id).source_root(self);
+                    let source_root_id = self.file_source_root(module);
+                    let source_root = self.source_root(source_root_id);
                     let path = source_root.path_for_file(&module);
                     log::error!("Can't find module for path: {path:?}");
                     continue;
@@ -66,11 +64,11 @@ impl EqwalizerLoader for crate::RootDatabase {
     }
 }
 
-#[ra_ap_query_group_macro::query_group]
+#[salsa::query_group(EqwalizerDatabaseStorage)]
 pub trait EqwalizerDatabase:
     EqwalizerDiagnosticsDatabase
     + EqwalizerAnalysesDatabase
-    + RootQueryDb
+    + SourceDatabase
     + EqwalizerLoader
     + ErlAstDatabase
 {
@@ -177,7 +175,7 @@ fn is_eqwalizer_enabled(db: &dyn EqwalizerDatabase, file_id: FileId, include_tes
         return false;
     };
     let project_id = app_data.project_id;
-    let project = db.project_data(project_id).project_data(db);
+    let project = db.project_data(project_id);
     let eqwalizer_config = &project.eqwalizer_config;
     let module_index = db.module_index(project_id);
     let is_src = module_index.file_source_for_file(file_id) == Some(FileSource::Src);
@@ -250,21 +248,17 @@ fn find_path_in_project(
     project_id: ProjectId,
     path: &VfsPath,
 ) -> Option<FileId> {
-    let project = db.project_data(project_id).project_data(db);
+    let project = db.project_data(project_id);
     let source_roots = &project.source_roots;
     let mut otp_source_roots = Vec::new();
     if let Some(otp_project_id) = project.otp_project_id {
-        let otp_project = db.project_data(otp_project_id).project_data(db);
+        let otp_project = db.project_data(otp_project_id);
         otp_source_roots = otp_project.source_roots.clone();
     }
     source_roots
         .iter()
         .chain(&otp_source_roots)
-        .find_map(|&source_root_id| {
-            db.source_root(source_root_id)
-                .source_root(db)
-                .file_for_path(path)
-        })
+        .find_map(|&source_root_id| db.source_root(source_root_id).file_for_path(path))
 }
 
 fn decl_location(
@@ -277,8 +271,8 @@ fn decl_location(
     let module_file_id = module_index.file_for_module(&module)?;
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\ndecl_location: {module_file_id:?}"));
-    let source_root_id = db.file_source_root(module_file_id).source_root_id(db);
-    let source_root = db.source_root(source_root_id).source_root(db);
+    let source_root_id = db.file_source_root(module_file_id);
+    let source_root = db.source_root(source_root_id);
     let decl_file_path = &source_root.path_for_file(&module_file_id)?;
     let file_id = find_path_in_project(db, project_id, decl_file_path)?;
     let range: elp_syntax::TextRange = {

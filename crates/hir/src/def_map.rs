@@ -22,7 +22,6 @@ use std::sync::Arc;
 
 use elp_base_db::FileId;
 use elp_base_db::module_name;
-use elp_base_db::salsa::Cycle;
 use elp_syntax::AstNode;
 use elp_syntax::ast;
 use elp_syntax::match_ast;
@@ -46,7 +45,6 @@ use crate::PPDirective;
 use crate::RecordDef;
 use crate::TypeAliasDef;
 use crate::db::DefDatabase;
-use crate::db::DefDatabaseData;
 use crate::form_list::DeprecatedAttribute;
 use crate::form_list::DeprecatedDesc;
 use crate::form_list::DeprecatedFa;
@@ -378,11 +376,10 @@ impl DefMap {
     // Return just the local def map in such cases, not resolving nested includes at all
     pub(crate) fn recover_cycle(
         db: &dyn DefDatabase,
-        _cycle: &Cycle,
-        _data: DefDatabaseData,
-        file_id: FileId,
+        _cycle: &[String],
+        file_id: &FileId,
     ) -> Arc<DefMap> {
-        db.def_map_local(file_id)
+        db.def_map_local(*file_id)
     }
 
     pub fn get_by_function_id(&self, function_id: &InFile<FunctionDefId>) -> Option<&FunctionDef> {

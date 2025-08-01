@@ -15,8 +15,8 @@ use std::sync::Arc;
 use std::vec;
 
 use elp_base_db::FileId;
-use elp_base_db::RootQueryDb;
 use elp_base_db::SourceDatabase;
+use elp_base_db::SourceDatabaseExt;
 use elp_base_db::Upcast;
 use elp_base_db::salsa;
 use elp_erlang_service::DocDiagnostic;
@@ -183,8 +183,8 @@ pub struct FileDoc {
 }
 
 // TODO Add an input so we know when to invalidate?
-#[ra_ap_query_group_macro::query_group]
-pub trait DocDatabase: DefDatabase + RootQueryDb + DocLoader + Upcast<dyn DefDatabase> {
+#[salsa::query_group(DocDatabaseStorage)]
+pub trait DocDatabase: DefDatabase + SourceDatabase + DocLoader + Upcast<dyn DefDatabase> {
     #[salsa::invoke(get_file_docs)]
     fn file_doc(&self, file_id: FileId) -> Arc<FileDoc>;
 
@@ -237,7 +237,7 @@ fn is_file_in_otp(db: &dyn DocDatabase, file_id: FileId) -> Option<bool> {
     let _ = stdx::panic_context::enter(format!("\nis_file_in_otp: {file_id:?}"));
     if let Some(app_data) = db.file_app_data(file_id) {
         let project_id = app_data.project_id;
-        Some(db.project_data(project_id).project_data(db).otp_project_id == Some(project_id))
+        Some(db.project_data(project_id).otp_project_id == Some(project_id))
     } else {
         log::error!(
             "Unknown application - could not load app_data to determine whether file is on OTP"
@@ -335,12 +335,12 @@ fn get_file_function_specs(def_db: &dyn DefDatabase, file_id: FileId) -> FxHashM
 
 impl DocLoader for crate::RootDatabase {
     fn load_doc_descriptions(&self, file_id: FileId, doc_origin: DocOrigin) -> FileDoc {
-        _ = SourceDatabase::file_text(self, file_id); // Take dependency on the contents of the file we're getting docs for
+        _ = SourceDatabaseExt::file_text(self, file_id); // Take dependency on the contents of the file we're getting docs for
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nload_doc_descriptions: {file_id:?}"));
-        let root_id = self.file_source_root(file_id).source_root_id(self);
-        let root = self.source_root(root_id).source_root(self);
-        let src_db: &dyn RootQueryDb = self.upcast();
+        let root_id = self.file_source_root(file_id);
+        let root = self.source_root(root_id);
+        let src_db: &dyn SourceDatabase = self.upcast();
         let app_data = if let Some(app_data) = src_db.file_app_data(file_id) {
             app_data
         } else {
@@ -373,8 +373,7 @@ impl DocLoader for crate::RootDatabase {
                 ast: None,
             },
         };
-        let raw_doc =
-            erlang_service.request_doc(doc_request, || src_db.unwind_if_revision_cancelled());
+        let raw_doc = erlang_service.request_doc(doc_request, || src_db.unwind_if_cancelled());
         match raw_doc {
             Ok(d) => FileDoc {
                 module_doc: Some(Doc {

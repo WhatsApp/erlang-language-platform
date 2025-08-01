@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use elp_base_db::FileId;
 use elp_base_db::FileRange;
-use elp_base_db::RootQueryDb;
+use elp_base_db::SourceDatabase;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::SourceFile;
@@ -1184,7 +1184,7 @@ impl<T: AstNode> InFileAstPtr<T> {
             None
         }
     }
-    pub fn to_ast(&self, db: &dyn RootQueryDb) -> T {
+    pub fn to_ast(&self, db: &dyn SourceDatabase) -> T {
         let parse = db.parse(self.file_id());
         self.0.value.to_node(parse.tree().syntax())
     }
@@ -1284,7 +1284,7 @@ impl BodySourceMap {
 #[cfg(test)]
 mod local_tests {
     use elp_base_db::FileId;
-    use elp_base_db::RootQueryDb;
+    use elp_base_db::SourceDatabase;
     use elp_base_db::fixture::WithFixture;
     use elp_syntax::AstNode;
     use elp_syntax::algo::find_node_at_offset;

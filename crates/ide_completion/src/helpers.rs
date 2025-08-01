@@ -10,7 +10,7 @@
 
 use elp_base_db::FileId;
 use elp_base_db::FilePosition;
-use elp_base_db::RootQueryDb;
+use elp_base_db::SourceDatabase;
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_syntax::SourceFile;
@@ -134,7 +134,7 @@ pub(crate) fn should_include_args(next_token: &Option<SyntaxToken>) -> bool {
     }
 }
 
-fn function_arg_names(db: &dyn RootQueryDb, def: &FunctionDef) -> Option<String> {
+fn function_arg_names(db: &dyn SourceDatabase, def: &FunctionDef) -> Option<String> {
     let param_names = def.arg_names(db);
     let res = param_names?
         .iter()
@@ -149,7 +149,7 @@ fn function_arg_names(db: &dyn RootQueryDb, def: &FunctionDef) -> Option<String>
 }
 
 pub(crate) fn function_contents(
-    db: &dyn RootQueryDb,
+    db: &dyn SourceDatabase,
     def: &FunctionDef,
     function_name: &str,
     include_args: bool,

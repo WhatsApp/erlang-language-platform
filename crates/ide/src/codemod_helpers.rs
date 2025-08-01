@@ -602,7 +602,7 @@ pub(crate) fn find_call_in_function<CallCtx, MakeCtx, Res>(
 mod tests {
     use elp_ide_db::RootDatabase;
     use elp_ide_db::elp_base_db::FileId;
-    use elp_ide_db::elp_base_db::RootQueryDb;
+    use elp_ide_db::elp_base_db::SourceDatabase;
     use elp_ide_db::elp_base_db::fixture::WithFixture;
     use elp_project_model::otp::otp_supported_by_eqwalizer;
     use elp_syntax::algo::find_node_at_offset;

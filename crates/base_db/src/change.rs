@@ -17,7 +17,7 @@ use std::sync::Arc;
 use vfs::AbsPathBuf;
 use vfs::FileId;
 
-use crate::RootQueryDb;
+use crate::SourceDatabaseExt;
 use crate::SourceRoot;
 use crate::SourceRootId;
 use crate::input::AppStructure;
@@ -65,7 +65,7 @@ impl Change {
 
     pub fn apply(
         self,
-        db: &mut dyn RootQueryDb,
+        db: &mut dyn SourceDatabaseExt,
         resolve_file_id: &impl Fn(&AbsPathBuf) -> Option<FileId>,
     ) -> Vec<FileId> {
         let _p = tracing::info_span!("RootDatabase::apply_change").entered();

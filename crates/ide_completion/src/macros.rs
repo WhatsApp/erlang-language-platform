@@ -10,7 +10,7 @@
 
 use elp_base_db::FileId;
 use elp_base_db::IncludeCtx;
-use elp_base_db::RootQueryDb;
+use elp_base_db::SourceDatabase;
 use elp_base_db::VfsPath;
 use elp_base_db::path_for_file;
 use elp_syntax::AstNode;
@@ -197,7 +197,7 @@ const BUILT_IN: [Name; 8] = [
 // TODO: should this be done in the resolve step? Or, cached in the table
 // First make it work.
 pub fn get_include_file(
-    db: &dyn RootQueryDb,
+    db: &dyn SourceDatabase,
     file_id: FileId,
     included_file_id: FileId,
     include_path: VfsPath,

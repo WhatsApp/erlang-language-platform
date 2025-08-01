@@ -29,7 +29,6 @@ parking_lot.workspace = true
 paths.workspace = true
 profile.workspace = true
 regex.workspace = true
-ra_ap_query-group-macro.workspace = true
 rustc-hash.workspace = true
 serde.workspace = true
 stdx.workspace = true

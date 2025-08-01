@@ -1153,7 +1153,7 @@ mod tests {
                     for indel in edit.1.into_iter() {
                         text_edit_builder.replace(indel.delete, indel.insert);
                     }
-                    let mut result = sema.db.file_text(file_id).text(sema.db).to_string();
+                    let mut result = sema.db.file_text(file_id).to_string();
                     let edit = text_edit_builder.finish();
                     edit.apply(&mut result);
                     let expected = analysis_after.file_text(file_id).unwrap().to_string();

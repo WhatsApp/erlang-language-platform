@@ -277,14 +277,14 @@ fn do_typecheck(
     project_id: ProjectId,
 ) -> Result<EqwalizerDiagnostics, anyhow::Error> {
     // Never cache the results of this function
-    db.report_untracked_read();
+    db.salsa_runtime().report_untracked_read();
     let handle = Arc::new(Mutex::new(
         IpcHandle::from_command(&mut cmd)
             .with_context(|| format!("starting eqWAlizer process: {cmd:?}"))?,
     ));
     let mut diagnostics = EqwalizerDiagnostics::default();
     loop {
-        db.unwind_if_revision_cancelled();
+        db.unwind_if_cancelled();
         let msg = handle.lock().receive()?;
         match msg {
             MsgFromEqWAlizer::EnteringModule { module } => {
@@ -327,7 +327,7 @@ fn get_module_diagnostics(
     let mut handle = handle_mutex.lock();
     handle.send(&MsgToEqWAlizer::ELPEnteringModule)?;
     loop {
-        db.unwind_if_revision_cancelled();
+        db.unwind_if_cancelled();
         match handle.receive()? {
             MsgFromEqWAlizer::GetAstBytes { module, format } => {
                 log::debug!(

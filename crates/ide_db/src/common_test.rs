@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use elp_base_db::FileId;
 use elp_base_db::ProjectId;
-use elp_base_db::RootQueryDb;
+use elp_base_db::SourceDatabase;
 use elp_base_db::salsa;
 use elp_base_db::salsa::Database;
 use elp_erlang_service::CTInfoRequest;
@@ -42,8 +42,8 @@ pub enum CommonTestInfo {
     NoProjectInfoError,
 }
 
-#[ra_ap_query_group_macro::query_group(CommonTestDatabaseStorage)]
-pub trait CommonTestDatabase: DefDatabase + RootQueryDb + CommonTestLoader {
+#[salsa::query_group(CommonTestDatabaseStorage)]
+pub trait CommonTestDatabase: DefDatabase + SourceDatabase + CommonTestLoader {
     #[salsa::invoke(ct_info)]
     fn ct_info(&self, file_id: FileId) -> Arc<CommonTestInfo>;
 }
@@ -78,7 +78,7 @@ impl CommonTestLoader for crate::RootDatabase {
             should_request_groups,
             file_abstract_forms: module_ast.ast.clone(),
         };
-        match erlang_service.ct_info(module, request, || self.unwind_if_revision_cancelled()) {
+        match erlang_service.ct_info(module, request, || self.unwind_if_cancelled()) {
             Ok(result) => match result.all() {
                 Ok(all) => match result.groups() {
                     Ok(groups) => CommonTestInfo::Result { all, groups },

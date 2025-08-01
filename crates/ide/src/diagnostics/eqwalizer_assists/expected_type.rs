@@ -68,7 +68,7 @@ pub fn expected_type(
                 if let [atom @ Type::AtomLitType(AtomLitType { .. }), other] = &arg_tys[..] {
                     if other == other2 {
                         // Add wrapping tuple to return
-                        let file_text = sema.db.file_text(file_id).text(sema.db);
+                        let file_text = sema.db.file_text(file_id);
                         let current = &file_text[d.range.start().into()..d.range.end().into()];
                         let replacement = format!("{{{atom}, {current}}}");
                         let edit = TextEdit::replace(d.range, replacement.clone());

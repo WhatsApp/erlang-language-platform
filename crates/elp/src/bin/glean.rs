@@ -28,8 +28,8 @@ use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
-use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
+use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::elp_base_db::module_name;
 use elp_ide::elp_ide_db::elp_base_db::path_for_file;
@@ -793,8 +793,8 @@ impl GleanIndexer {
                 let file_id = index
                     .file_for_module(&ModuleName::new(module))
                     .expect("No module found");
-                let source_root_id = db.file_source_root(file_id).source_root_id(db);
-                let source_root = db.source_root(source_root_id).source_root(db);
+                let source_root_id = db.file_source_root(file_id);
+                let source_root = db.source_root(source_root_id);
                 let path = source_root.path_for_file(&file_id).unwrap();
                 match Self::index_file(
                     db,
@@ -859,12 +859,12 @@ impl GleanIndexer {
     }
 
     fn project_files(db: &RootDatabase, project_id: ProjectId) -> Vec<(FileId, VfsPath)> {
-        let project_data = db.project_data(project_id).project_data(db);
+        let project_data = db.project_data(project_id);
         let mut files = vec![];
         for &source_root_id in &project_data.source_roots {
             if let Some(app_data) = db.app_data(source_root_id) {
                 if app_data.app_type == AppType::App {
-                    let source_root = db.source_root(source_root_id).source_root(db);
+                    let source_root = db.source_root(source_root_id);
                     for file_id in source_root.iter() {
                         if let Some(path) = source_root.path_for_file(&file_id) {
                             files.push((file_id, path.clone()));
@@ -926,7 +926,7 @@ impl GleanIndexer {
                     let def = def_map.get_macros().get(&MacroName::new(name, x.key.arity));
                     if let Some(def) = def {
                         let range = def.source(db).syntax().text_range();
-                        let text = &db.file_text(id).text(db)[range];
+                        let text = &db.file_text(id)[range];
                         let text = format!("```erlang\n{text}\n```");
                         let doc = match (&x.key.expansion, &x.key.ods_url) {
                             (None, None) => text,
@@ -990,7 +990,7 @@ impl GleanIndexer {
         project_id: ProjectId,
         prefix: Option<&String>,
     ) -> Option<FileFact> {
-        let project_data = db.project_data(project_id).project_data(db);
+        let project_data = db.project_data(project_id);
         let root = project_data.root_dir.as_path();
         let file_path = path.as_path()?;
         let file_path = file_path.strip_prefix(root)?;
@@ -1013,7 +1013,7 @@ impl GleanIndexer {
             line += 1;
             prev_offset = curr_offset;
         }
-        let content = db.file_text(file_id).text(db);
+        let content = db.file_text(file_id);
         if !content.ends_with('\n') {
             ends_with_new_line = false;
             let len = if content.len() as u32 >= prev_offset {
@@ -1112,7 +1112,7 @@ impl GleanIndexer {
 
         for (ty, def) in def_map.get_types() {
             let range = def.source(db).syntax().text_range();
-            let text = &db.file_text(file_id).text(db)[range];
+            let text = &db.file_text(file_id)[range];
             let text = format!("```erlang\n{text}\n```");
             let span: Location = range.into();
 
@@ -1139,7 +1139,7 @@ impl GleanIndexer {
 
         for (rec, def) in def_map.get_records() {
             let range = def.source(db).syntax().text_range();
-            let text = &db.file_text(file_id).text(db)[range];
+            let text = &db.file_text(file_id)[range];
             let text = format!("```erlang\n{text}\n```");
             let span: Location = range.into();
 
@@ -2571,8 +2571,8 @@ mod tests {
         let db = host.raw_database();
         for file_id in &fixture.files {
             let file_id = *file_id;
-            let source_root_id = db.file_source_root(file_id).source_root_id(db);
-            let source_root = db.source_root(source_root_id).source_root(db);
+            let source_root_id = db.file_source_root(file_id);
+            let source_root = db.source_root(source_root_id);
             let path = source_root.path_for_file(&file_id).unwrap();
             let (name, ext) = path.name_and_extension().unwrap();
             let name = format!("{}.{}", name, ext.unwrap());

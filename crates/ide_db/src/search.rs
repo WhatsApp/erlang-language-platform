@@ -117,10 +117,9 @@ impl SearchScope {
     pub fn project(db: &dyn DefDatabase, project_id: ProjectId) -> SearchScope {
         let mut entries = FxHashMap::default();
 
-        for &source_root_id in &db.project_data(project_id).project_data(db).source_roots {
+        for &source_root_id in &db.project_data(project_id).source_roots {
             entries.extend(
                 db.source_root(source_root_id)
-                    .source_root(db)
                     .iter()
                     .map(|file_id| (file_id, None)),
             )
@@ -284,7 +283,7 @@ impl<'a> FindUsages<'a> {
             scope: &'a SearchScope,
         ) -> impl Iterator<Item = (Arc<str>, FileId, TextRange)> + 'a {
             scope.entries.iter().map(move |(&file_id, &search_range)| {
-                let text = sema.db.file_text(file_id).text(sema.db);
+                let text = sema.db.file_text(file_id);
                 let search_range =
                     search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
 

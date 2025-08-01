@@ -35,7 +35,7 @@ use std::sync::Arc;
 use std::sync::LazyLock;
 
 use elp_base_db::FileId;
-use elp_base_db::RootQueryDb;
+use elp_base_db::SourceDatabase;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::Direction;
@@ -120,12 +120,12 @@ impl EdocHeader {
         ))
     }
 
-    pub fn prev_divider(&self, db: &dyn RootQueryDb) -> Option<SyntaxNode> {
+    pub fn prev_divider(&self, db: &dyn SourceDatabase) -> Option<SyntaxNode> {
         let first_comment = self.comments().next()?;
         divider(first_comment.to_ast(db).syntax(), Direction::Prev)
     }
 
-    pub fn next_divider(&self, db: &dyn RootQueryDb) -> Option<SyntaxNode> {
+    pub fn next_divider(&self, db: &dyn SourceDatabase) -> Option<SyntaxNode> {
         let last_comment = self.comments().last()?;
         divider(last_comment.to_ast(db).syntax(), Direction::Next)
     }

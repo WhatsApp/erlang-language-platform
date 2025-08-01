@@ -18,11 +18,11 @@ use vfs::VfsPath;
 
 use crate::AppData;
 use crate::ProjectId;
-use crate::RootQueryDb;
+use crate::SourceDatabase;
 use crate::SourceRoot;
 
 pub struct IncludeCtx<'a> {
-    db: &'a dyn RootQueryDb,
+    db: &'a dyn SourceDatabase,
     source_root: Arc<SourceRoot>,
     /// The starting .erl file when resolving includes
     pub orig_file_id: Option<FileId>,
@@ -35,7 +35,7 @@ pub struct IncludeCtx<'a> {
 
 impl<'a> IncludeCtx<'a> {
     pub fn new(
-        db: &'a dyn RootQueryDb,
+        db: &'a dyn SourceDatabase,
         orig_file_id: Option<FileId>,
         current_file_id: FileId,
     ) -> Self {
@@ -43,8 +43,8 @@ impl<'a> IncludeCtx<'a> {
         let _ = stdx::panic_context::enter(format!(
             "\nIncludeCtx::new: {orig_file_id:?} {current_file_id:?}"
         ));
-        let source_root_id = db.file_source_root(current_file_id).source_root_id(db);
-        let source_root = db.source_root(source_root_id).source_root(db);
+        let source_root_id = db.file_source_root(current_file_id);
+        let source_root = db.source_root(source_root_id);
         Self {
             db,
             orig_file_id,
@@ -85,7 +85,7 @@ impl<'a> IncludeCtx<'a> {
     /// for a base filename in the includes of the current app (from
     /// the `file_id`) or any of its dependencies
     pub(crate) fn resolve_local_query(
-        db: &dyn RootQueryDb,
+        db: &dyn SourceDatabase,
         file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId> {
@@ -124,13 +124,13 @@ impl<'a> IncludeCtx<'a> {
     /// In this case, the starting file is the `orig_file_id`, and the current file is
     /// the one being processed.
     pub(crate) fn resolve_remote_query(
-        db: &dyn RootQueryDb,
+        db: &dyn SourceDatabase,
         orig_file_id: Option<FileId>,
         current_file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId> {
         let project_id = db.file_project_id(current_file_id)?;
-        let project_data = db.project_data(project_id).project_data(db);
+        let project_data = db.project_data(project_id);
         // `app_data` represents the app that is doing the including.
         // If `orig_file_id` is set, we are possibly processing a
         // nested include file.  In this case we must do our checking
@@ -202,7 +202,7 @@ impl<'a> IncludeCtx<'a> {
 }
 
 fn find_generated_include_lib(
-    db: &dyn RootQueryDb,
+    db: &dyn SourceDatabase,
     project_id: ProjectId,
     include_path: &str,
     target_app_data: &AppData,
@@ -230,7 +230,7 @@ fn find_generated_include_lib(
 }
 
 pub fn generated_file_include_lib(
-    db: &dyn RootQueryDb,
+    db: &dyn SourceDatabase,
     file_id: FileId,
     included_file_id: FileId,
     include_path: VfsPath,
