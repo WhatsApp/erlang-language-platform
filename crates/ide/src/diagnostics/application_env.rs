@@ -319,7 +319,7 @@ mod tests {
             //- /my_app/src/main.erl app:my_app
             -module(main).
 
-            -include("my_app/include/my_header.hrl").
+            -include_lib("my_app/include/my_header.hrl").
 
             get_mine() ->
                 ?get(misc, key).
