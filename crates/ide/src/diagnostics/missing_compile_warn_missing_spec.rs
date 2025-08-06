@@ -198,7 +198,8 @@ mod tests {
     #[track_caller]
     pub(crate) fn check_fix(fixture_before: &str, fixture_after: Expect) {
         let config =
-            DiagnosticsConfig::default().enable(DiagnosticCode::MissingCompileWarnMissingSpec);
+            DiagnosticsConfig::default()
+                .enable(DiagnosticCode::MissingCompileWarnMissingSpec);
         check_fix_with_config(config, fixture_before, fixture_after)
     }
 
@@ -217,13 +218,15 @@ mod tests {
     pub(crate) fn check_diagnostics(fixture: &str) {
         let config = DiagnosticsConfig::default()
             .enable(DiagnosticCode::MissingCompileWarnMissingSpec)
+            .disable(DiagnosticCode::NoNoWarnSuppressions)
             .disable(DiagnosticCode::UnspecificInclude);
         check_diagnostics_with_config(config, fixture)
     }
 
     #[track_caller]
     pub(crate) fn check_diagnostics_no_enable(fixture: &str) {
-        let config = DiagnosticsConfig::default();
+        let config = DiagnosticsConfig::default()
+            .disable(DiagnosticCode::NoNoWarnSuppressions);
         check_diagnostics_with_config(config, fixture)
     }
 

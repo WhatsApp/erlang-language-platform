@@ -244,12 +244,14 @@ fn check_valid_application(
 
 #[cfg(test)]
 mod tests {
+    use elp_ide_db::DiagnosticCode;
+
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests::check_diagnostics_with_config;
 
     #[track_caller]
     pub(crate) fn check_diagnostics(fixture: &str) {
-        let config = DiagnosticsConfig::default();
+        let config = DiagnosticsConfig::default().disable(DiagnosticCode::NoNoWarnSuppressions);
         check_diagnostics_with_config(config, fixture)
     }
 

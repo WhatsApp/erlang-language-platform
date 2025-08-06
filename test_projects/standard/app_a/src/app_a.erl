@@ -1,4 +1,5 @@
 -module(app_a).
+% elp:ignore no_nowarn_suppressions
 -compile([export_all, nowarn_export_all]).
 -typing([eqwalizer]).
 

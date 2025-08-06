@@ -196,11 +196,11 @@ fn test_e2e_eqwalizer_module() {
                       "range": {
                         "end": {
                           "character": 7,
-                          "line": 8
+                          "line": 9
                         },
                         "start": {
                           "character": 4,
-                          "line": 8
+                          "line": 9
                         }
                       },
                       "severity": 1,
@@ -215,11 +215,11 @@ fn test_e2e_eqwalizer_module() {
                       "range": {
                         "end": {
                           "character": 9,
-                          "line": 12
+                          "line": 13
                         },
                         "start": {
                           "character": 4,
-                          "line": 12
+                          "line": 13
                         }
                       },
                       "severity": 1,
@@ -234,11 +234,11 @@ fn test_e2e_eqwalizer_module() {
                       "range": {
                         "end": {
                           "character": 19,
-                          "line": 16
+                          "line": 17
                         },
                         "start": {
                           "character": 12,
-                          "line": 16
+                          "line": 17
                         }
                       },
                       "severity": 1,
@@ -253,11 +253,11 @@ fn test_e2e_eqwalizer_module() {
                       "range": {
                         "end": {
                           "character": 21,
-                          "line": 54
+                          "line": 55
                         },
                         "start": {
                           "character": 4,
-                          "line": 54
+                          "line": 55
                         }
                       },
                       "severity": 1,
@@ -272,11 +272,11 @@ fn test_e2e_eqwalizer_module() {
                       "range": {
                         "end": {
                           "character": 5,
-                          "line": 76
+                          "line": 77
                         },
                         "start": {
                           "character": 4,
-                          "line": 76
+                          "line": 77
                         }
                       },
                       "severity": 1,
@@ -291,11 +291,11 @@ fn test_e2e_eqwalizer_module() {
                       "range": {
                         "end": {
                           "character": 5,
-                          "line": 100
+                          "line": 101
                         },
                         "start": {
                           "character": 4,
-                          "line": 100
+                          "line": 101
                         }
                       },
                       "severity": 1,
@@ -310,11 +310,11 @@ fn test_e2e_eqwalizer_module() {
                       "range": {
                         "end": {
                           "character": 5,
-                          "line": 123
+                          "line": 124
                         },
                         "start": {
                           "character": 4,
-                          "line": 123
+                          "line": 124
                         }
                       },
                       "severity": 1,

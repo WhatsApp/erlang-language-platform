@@ -110,6 +110,7 @@ mod no_catch;
 mod no_dialyzer_attribute;
 mod no_error_logger;
 mod no_garbage_collect;
+mod no_nowarn_suppressions;
 mod no_size;
 mod nonstandard_integer_formatting;
 mod record_tuple_match;
@@ -921,6 +922,7 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &binary_string_to_sigil::DESCRIPTOR,
         &no_catch::DESCRIPTOR,
         &no_error_logger::DESCRIPTOR,
+        &no_nowarn_suppressions::DESCRIPTOR,
     ]
 }
 

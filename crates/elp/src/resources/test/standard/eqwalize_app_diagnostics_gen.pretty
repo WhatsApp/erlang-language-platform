@@ -1,37 +1,37 @@
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-  ┌─ app_a/src/app_a.erl:9:5
-  │
-9 │     ?OK.
-  │     ^^^ 'error'.
+   ┌─ app_a/src/app_a.erl:10:5
+   │
+10 │     ?OK.
+   │     ^^^ 'error'.
 Expression has type:   'error'
 Context expected type: 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ app_a/src/app_a.erl:13:5
+   ┌─ app_a/src/app_a.erl:14:5
    │
-13 │     error.
+14 │     error.
    │     ^^^^^ 'error'.
 Expression has type:   'error'
 Context expected type: 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ app_a/src/app_a.erl:17:13
+   ┌─ app_a/src/app_a.erl:18:13
    │
-17 │     _ = 3 * an_atom, ok.
+18 │     _ = 3 * an_atom, ok.
    │             ^^^^^^^ 'an_atom'.
 Expression has type:   'an_atom'
 Context expected type: number()
 
 error: redundant_fixme (See https://fb.me/eqwalizer_errors#redundant_fixme)
-   ┌─ app_a/src/app_a.erl:55:5
+   ┌─ app_a/src/app_a.erl:56:5
    │
-55 │     % eqwalizer:fixme redundant issue should be reported
+56 │     % eqwalizer:fixme redundant issue should be reported
    │     ^^^^^^^^^^^^^^^^^ redundant fixme
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ app_a/src/app_a.erl:77:5
+   ┌─ app_a/src/app_a.erl:78:5
    │
-77 │     X.
+78 │     X.
    │     ^
    │     │
    │     X.
@@ -49,9 +49,9 @@ Because in the expression's type:
 keys `k_req1`, `k_req2`, `k_req3` are declared as required in the latter but not in the former
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ app_a/src/app_a.erl:101:5
+    ┌─ app_a/src/app_a.erl:102:5
     │
-101 │     X.
+102 │     X.
     │     ^
     │     │
     │     X.
@@ -80,9 +80,9 @@ Because in the expression's type:
   #{c := #{d => atom()}} is not compatible with #{c := id(#{d := atom(), e := atom()})}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ app_a/src/app_a.erl:124:5
+    ┌─ app_a/src/app_a.erl:125:5
     │
-124 │     X.
+125 │     X.
     │     ^
     │     │
     │     X.

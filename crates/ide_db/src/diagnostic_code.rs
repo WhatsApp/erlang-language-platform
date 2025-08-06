@@ -87,6 +87,7 @@ pub enum DiagnosticCode {
     BinaryStringToSigil,
     NoCatch,
     NoErrorLogger,
+    NoNoWarnSuppressions,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -234,6 +235,7 @@ impl DiagnosticCode {
             DiagnosticCode::BinaryStringToSigil => "W0051".to_string(),
             DiagnosticCode::NoCatch => "W0052".to_string(),
             DiagnosticCode::NoErrorLogger => "W0053".to_string(),
+            DiagnosticCode::NoNoWarnSuppressions => "W0054".to_string(),
 
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
@@ -329,6 +331,7 @@ impl DiagnosticCode {
             DiagnosticCode::BinaryStringToSigil => "binary_string_to_sigil".to_string(),
             DiagnosticCode::NoCatch => "no_catch".to_string(),
             DiagnosticCode::NoErrorLogger => "no_error_logger".to_string(),
+            DiagnosticCode::NoNoWarnSuppressions => "no_nowarn_suppressions".to_string(),
 
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
@@ -472,6 +475,7 @@ impl DiagnosticCode {
             DiagnosticCode::NoSize => false,
             DiagnosticCode::NoCatch => false,
             DiagnosticCode::NoErrorLogger => false,
+            DiagnosticCode::NoNoWarnSuppressions => false,
 
             DiagnosticCode::BinaryStringToSigil => false,
             DiagnosticCode::ErlangService(_) => false,
