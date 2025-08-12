@@ -484,6 +484,10 @@ impl DiagnosticCode {
             // @fb-only
         }
     }
+
+    pub fn codes_iter() -> impl Iterator<Item = DiagnosticCode> {
+        DiagnosticCode::iter()
+    }
 }
 
 lazy_static! {

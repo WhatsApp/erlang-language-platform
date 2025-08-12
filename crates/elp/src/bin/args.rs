@@ -17,6 +17,7 @@ use bpaf::Bpaf;
 use bpaf::Parser;
 use bpaf::construct;
 use bpaf::long;
+use elp_ide::elp_ide_db::DiagnosticCode;
 use elp_project_model::buck::BuckQueryConfig;
 use itertools::Itertools;
 use serde::Deserialize;
@@ -285,7 +286,7 @@ pub struct Lint {
     #[bpaf(argument("CODE"))]
     pub diagnostic_ignore: Option<String>,
     /// Filter out all reported diagnostics except this one, by code or label
-    #[bpaf(argument("CODE"))]
+    #[bpaf(argument("CODE"), complete(diagnostic_code_completer))]
     pub diagnostic_filter: Option<String>,
     #[bpaf(external(parse_experimental_diags))]
     pub experimental_diags: bool,
@@ -599,6 +600,27 @@ fn module_completer(input: &String) -> Vec<(String, Option<String>)> {
         }
     }
     get_suggesions(input, modules)
+}
+
+fn diagnostic_code_completer(input: &Option<String>) -> Vec<(String, Option<String>)> {
+    let codes: Vec<String> = DiagnosticCode::codes_iter()
+        .filter(|code| match code {
+            DiagnosticCode::DefaultCodeForEnumIter
+            | DiagnosticCode::ErlangService(_)
+            | DiagnosticCode::Eqwalizer(_)
+            | DiagnosticCode::AdHoc(_) => false,
+            _ => true,
+        })
+        .flat_map(|code| vec![code.as_code().to_string(), code.as_label().to_string()])
+        .collect();
+    codes
+        .into_iter()
+        .filter(|code| match input {
+            None => true,
+            Some(prefix) => code.starts_with(prefix),
+        })
+        .map(|c| (c.to_string(), None))
+        .collect::<Vec<_>>()
 }
 
 fn format_completer(_: &Option<String>) -> Vec<(String, Option<String>)> {
