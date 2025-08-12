@@ -780,7 +780,8 @@ impl<'a> Lints<'a> {
                 fixes.iter().cloned().unzip();
             if format_normal {
                 writeln!(cli, "---------------------------------------------\n")?;
-                writeln!(cli, "Applying fix(es) in module '{name}' for")?;
+                let plural = if diagnostics.len() > 1 { "es" } else { "" };
+                writeln!(cli, "Applying fix{plural} in module '{name}' for")?;
                 for diagnostic in diagnostics {
                     print_diagnostic(
                         &diagnostic,

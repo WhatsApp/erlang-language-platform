@@ -5,7 +5,7 @@ Diagnostics reported in 1 modules:
       4:4-4:34::[WeakWarning] [ad-hoc: application:get_env/2] 'application:get_env/2' called
 ---------------------------------------------
 
-Applying fix(es) in module 'app_b' for
+Applying fixes in module 'app_b' for
       7:4-7:35::[WeakWarning] [ad-hoc: application:get_env/2] 'application:get_env/2' called
       4:4-4:34::[WeakWarning] [ad-hoc: application:get_env/2] 'application:get_env/2' called
 @@ -1,8 +1,8 @@
