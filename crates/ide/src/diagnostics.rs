@@ -148,6 +148,23 @@ pub use replace_in_spec::TypeReplacement;
 
 use self::eqwalizer_assists::add_eqwalizer_assists;
 
+/// Macro to create lazily-evaluated function matches for linters
+/// This centralizes the lazy_static logic to avoid repetition in every linter
+#[macro_export]
+macro_rules! lazy_function_matches {
+    ($($matches:expr),* $(,)?) => {
+        {
+            lazy_static::lazy_static! {
+                static ref MATCHES: Vec<$crate::FunctionMatch> = vec![$($matches),*]
+                    .into_iter()
+                    .flatten()
+                    .collect();
+            }
+            MATCHES.clone()
+        }
+    };
+}
+
 pub const DIAGNOSTIC_WHOLE_FILE_RANGE: TextRange = TextRange::empty(TextSize::new(0));
 
 /// A diagnostic may have a tag, which the client is allowed to use

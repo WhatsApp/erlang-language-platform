@@ -8,11 +8,10 @@
  * above-listed licenses.
  */
 
-use lazy_static::lazy_static;
-
 use crate::codemod_helpers::FunctionMatch;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::FunctionCallLinter;
+use crate::lazy_function_matches;
 
 pub(crate) struct SetsVersion2Linter;
 
@@ -27,16 +26,10 @@ impl FunctionCallLinter for SetsVersion2Linter {
         false
     }
     fn matches_functions(&self) -> Vec<FunctionMatch> {
-        lazy_static! {
-            static ref MATCHES: Vec<FunctionMatch> = vec![
-                FunctionMatch::mfas("sets", "new", vec![0]),
-                FunctionMatch::mfas("sets", "from_list", vec![1]),
-            ]
-            .into_iter()
-            .flatten()
-            .collect();
-        }
-        MATCHES.clone()
+        lazy_function_matches![
+            FunctionMatch::mfas("sets", "new", vec![0]),
+            FunctionMatch::mfas("sets", "from_list", vec![1]),
+        ]
     }
 }
 
