@@ -527,6 +527,11 @@ pub(crate) trait FunctionCallLinter {
         true
     }
 
+    // Specify if the linter should process the given file id.
+    fn should_process_file_id(&self, _sema: &Semantic, _file_id: FileId) -> bool {
+        true
+    }
+
     // Specify the list of functions the linter should emit issues for
     fn matches_functions(&self) -> Vec<FunctionMatch> {
         vec![]
@@ -1048,25 +1053,27 @@ fn diagnostics_from_linters(
 
     let mut specs = Vec::new();
     for linter in linters {
-        let conditions = DiagnosticConditions {
-            experimental: linter.is_experimental(),
-            include_generated: linter.should_process_generated_files(),
-            include_tests: linter.should_process_test_files(),
-            default_disabled: !linter.is_enabled(),
-        };
-        if conditions.enabled(config, is_generated, is_test) {
-            let diagnostic_template = DiagnosticTemplate {
-                code: linter.id(),
-                message: linter.description(),
-                severity: linter.severity(),
-                with_ignore_fix: linter.can_be_suppressed(),
-                use_range: UseRange::NameOnly,
+        if linter.should_process_file_id(sema, file_id) {
+            let conditions = DiagnosticConditions {
+                experimental: linter.is_experimental(),
+                include_generated: linter.should_process_generated_files(),
+                include_tests: linter.should_process_test_files(),
+                default_disabled: !linter.is_enabled(),
             };
-            let spec = vec![FunctionCallDiagnostic {
-                diagnostic_template,
-                matches: linter.matches_functions(),
-            }];
-            specs.extend(spec);
+            if conditions.enabled(config, is_generated, is_test) {
+                let diagnostic_template = DiagnosticTemplate {
+                    code: linter.id(),
+                    message: linter.description(),
+                    severity: linter.severity(),
+                    with_ignore_fix: linter.can_be_suppressed(),
+                    use_range: UseRange::NameOnly,
+                };
+                let spec = vec![FunctionCallDiagnostic {
+                    diagnostic_template,
+                    matches: linter.matches_functions(),
+                }];
+                specs.extend(spec);
+            }
         }
     }
     if !specs.is_empty() {
