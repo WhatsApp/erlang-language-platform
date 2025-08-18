@@ -8,46 +8,29 @@
  * above-listed licenses.
  */
 
-use lazy_static::lazy_static;
-
 use crate::codemod_helpers::FunctionMatch;
-use crate::codemod_helpers::UseRange;
 use crate::diagnostics::DiagnosticCode;
-use crate::diagnostics::DiagnosticConditions;
-use crate::diagnostics::DiagnosticDescriptor;
+use crate::diagnostics::FunctionCallLinter;
 use crate::diagnostics::Severity;
-use crate::diagnostics::helpers::DiagnosticTemplate;
-use crate::diagnostics::helpers::FunctionCallDiagnostic;
-use crate::diagnostics::helpers::check_used_functions;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        check_used_functions(sema, file_id, &USED_FUNCTIONS, diags);
-    },
-};
+pub(crate) struct NoErrorLoggerLinter;
 
-lazy_static! {
-    static ref USED_FUNCTIONS: Vec<FunctionCallDiagnostic> = make_static_used_functions();
+impl FunctionCallLinter for NoErrorLoggerLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::NoErrorLogger
+    }
+    fn description(&self) -> String {
+        "The `error_logger` module is deprecated.".to_string()
+    }
+    fn severity(&self) -> Severity {
+        Severity::Error
+    }
+    fn matches_functions(&self) -> Vec<FunctionMatch> {
+        crate::lazy_function_matches![vec![FunctionMatch::m("error_logger")]]
+    }
 }
 
-fn make_static_used_functions() -> Vec<FunctionCallDiagnostic> {
-    vec![FunctionCallDiagnostic {
-        diagnostic_template: DiagnosticTemplate {
-            code: DiagnosticCode::NoErrorLogger,
-            message: "The `error_logger` module is deprecated.".to_string(),
-            severity: Severity::Error,
-            with_ignore_fix: true,
-            use_range: UseRange::NameOnly,
-        },
-        matches: vec![FunctionMatch::m("error_logger")],
-    }]
-}
+pub static LINTER: NoErrorLoggerLinter = NoErrorLoggerLinter;
 
 #[cfg(test)]
 mod tests {

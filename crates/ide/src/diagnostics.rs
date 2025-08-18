@@ -985,7 +985,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &no_dialyzer_attribute::DESCRIPTOR,
         &binary_string_to_sigil::DESCRIPTOR,
         &no_catch::DESCRIPTOR,
-        &no_error_logger::DESCRIPTOR,
         &no_nowarn_suppressions::DESCRIPTOR,
     ]
 }
@@ -1028,6 +1027,7 @@ pub(crate) fn linters() -> Vec<&'static dyn FunctionCallLinter> {
         &sets_version_2::LINTER,
         &no_garbage_collect::LINTER,
         &no_size::LINTER,
+        &no_error_logger::LINTER,
     ];
     // @fb-only
     linters
