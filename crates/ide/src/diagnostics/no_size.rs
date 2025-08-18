@@ -8,48 +8,29 @@
  * above-listed licenses.
  */
 
-use lazy_static::lazy_static;
-
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use super::helpers::DiagnosticTemplate;
-use super::helpers::check_used_functions;
 use crate::codemod_helpers::FunctionMatch;
-use crate::codemod_helpers::UseRange;
 use crate::diagnostics::DiagnosticCode;
-use crate::diagnostics::Severity;
-use crate::diagnostics::helpers::FunctionCallDiagnostic;
+use crate::diagnostics::FunctionCallLinter;
+use crate::lazy_function_matches;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: false,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        check_used_functions(sema, file_id, &USED_FUNCTIONS, diags);
-    },
-};
+pub(crate) struct NoSizeLinter;
 
-lazy_static! {
-    static ref USED_FUNCTIONS: Vec<FunctionCallDiagnostic> = make_static_used_functions();
+impl FunctionCallLinter for NoSizeLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::NoSize
+    }
+    fn description(&self) -> String {
+        "Avoid using the `size/1` BIF.".to_string()
+    }
+    fn should_process_test_files(&self) -> bool {
+        false
+    }
+    fn matches_functions(&self) -> Vec<FunctionMatch> {
+        lazy_function_matches![vec![FunctionMatch::mfa("erlang", "size", 1)]]
+    }
 }
 
-fn make_static_used_functions() -> Vec<FunctionCallDiagnostic> {
-    vec![FunctionCallDiagnostic {
-        diagnostic_template: DiagnosticTemplate {
-            code: DiagnosticCode::NoSize,
-            message: "Avoid using the `size/1` BIF.".to_string(),
-            severity: Severity::Warning,
-            with_ignore_fix: true,
-            use_range: UseRange::NameOnly,
-        },
-        matches: vec![FunctionMatch::mfa("erlang", "size", 1)]
-            .into_iter()
-            .collect(),
-    }]
-}
+pub static LINTER: NoSizeLinter = NoSizeLinter;
 
 #[cfg(test)]
 mod tests {
