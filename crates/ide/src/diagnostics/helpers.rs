@@ -51,7 +51,7 @@ pub(crate) fn check_used_functions(
         .iter()
         .flat_map(|u| u.matches.iter().map(|m| (m, &u.diagnostic_template)))
         .collect();
-    sema.def_map(file_id)
+    sema.def_map_local(file_id)
         .get_functions()
         .for_each(|(_, def)| check_function_with_diagnostic_template(diags, sema, def, &mfas));
 }
