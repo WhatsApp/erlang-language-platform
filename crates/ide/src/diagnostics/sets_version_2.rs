@@ -10,50 +10,37 @@
 
 use lazy_static::lazy_static;
 
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use super::helpers::DiagnosticTemplate;
-use super::helpers::check_used_functions;
 use crate::codemod_helpers::FunctionMatch;
-use crate::codemod_helpers::UseRange;
 use crate::diagnostics::DiagnosticCode;
-use crate::diagnostics::Severity;
-use crate::diagnostics::helpers::FunctionCallDiagnostic;
+use crate::diagnostics::FunctionCallLinter;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: false,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        check_used_functions(sema, file_id, &USED_FUNCTIONS, diags);
-    },
-};
+pub(crate) struct SetsVersion2Linter;
 
-lazy_static! {
-    static ref USED_FUNCTIONS: Vec<FunctionCallDiagnostic> = make_static_used_functions();
+impl FunctionCallLinter for SetsVersion2Linter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::SetsVersion2
+    }
+    fn description(&self) -> String {
+        "Prefer `[{version, 2}]` when constructing a set.".to_string()
+    }
+    fn should_process_test_files(&self) -> bool {
+        false
+    }
+    fn matches_functions(&self) -> Vec<FunctionMatch> {
+        lazy_static! {
+            static ref MATCHES: Vec<FunctionMatch> = vec![
+                FunctionMatch::mfas("sets", "new", vec![0]),
+                FunctionMatch::mfas("sets", "from_list", vec![1]),
+            ]
+            .into_iter()
+            .flatten()
+            .collect();
+        }
+        MATCHES.clone()
+    }
 }
 
-fn make_static_used_functions() -> Vec<FunctionCallDiagnostic> {
-    vec![FunctionCallDiagnostic {
-        diagnostic_template: DiagnosticTemplate {
-            code: DiagnosticCode::SetsVersion2,
-            message: "Prefer `[{version, 2}]` when constructing a set.".to_string(),
-            severity: Severity::Warning,
-            with_ignore_fix: true,
-            use_range: UseRange::NameOnly,
-        },
-        matches: vec![
-            FunctionMatch::mfas("sets", "new", vec![0]),
-            FunctionMatch::mfas("sets", "from_list", vec![1]),
-        ]
-        .into_iter()
-        .flatten()
-        .collect(),
-    }]
-}
+pub static LINTER: SetsVersion2Linter = SetsVersion2Linter;
 
 #[cfg(test)]
 mod tests {

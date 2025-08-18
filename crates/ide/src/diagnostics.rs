@@ -72,9 +72,14 @@ use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::FunctionMatch;
 use crate::RootDatabase;
 use crate::SourceDatabase;
+use crate::codemod_helpers::UseRange;
 use crate::common_test;
+use crate::diagnostics::helpers::DiagnosticTemplate;
+use crate::diagnostics::helpers::FunctionCallDiagnostic;
+use crate::diagnostics::helpers::check_used_functions;
 
 mod application_env;
 mod atoms_exhaustion;
@@ -467,6 +472,50 @@ impl<F> AdhocSemanticDiagnostics for F where
 {
 }
 
+// A trait that simplifies writing linters matching function calls
+pub(crate) trait FunctionCallLinter {
+    // A unique identifier for the linter.
+    fn id(&self) -> DiagnosticCode;
+
+    // A plain-text description for the linter. Displayed to the end user.
+    fn description(&self) -> String;
+
+    // The severity for the lint issue. It defaults to `Warning`.
+    fn severity(&self) -> Severity {
+        Severity::Warning
+    }
+
+    // Specify if the linter issues can be suppressed via a `% elp:ignore` comment.
+    fn can_be_suppressed(&self) -> bool {
+        true
+    }
+
+    // Specify if the linter should only run when the `--experimental` flag is specified.
+    fn is_experimental(&self) -> bool {
+        false
+    }
+
+    // Specify if the linter is enabled by default.
+    fn is_enabled(&self) -> bool {
+        true
+    }
+
+    // Specify if the linter should process generated files.
+    fn should_process_generated_files(&self) -> bool {
+        false
+    }
+
+    // Specify if the linter should process generated test files (including test helpers)
+    fn should_process_test_files(&self) -> bool {
+        true
+    }
+
+    // Specify the list of functions the linter should emit issues for
+    fn matches_functions(&self) -> Vec<FunctionMatch> {
+        vec![]
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiagnosticConditions {
     pub experimental: bool,
@@ -841,6 +890,7 @@ pub fn native_diagnostics(
             config,
             &diagnostics_descriptors(),
         );
+        diagnostics_from_linters(&mut res, &sema, file_id, config, linters());
 
         let parse_diagnostics = parse.errors().iter().take(128).map(|err| {
             let (code, message) = match err {
@@ -917,7 +967,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &undocumented_module::DESCRIPTOR,
         &no_garbage_collect::DESCRIPTOR,
         &no_dialyzer_attribute::DESCRIPTOR,
-        &sets_version_2::DESCRIPTOR,
         &no_size::DESCRIPTOR,
         &binary_string_to_sigil::DESCRIPTOR,
         &no_catch::DESCRIPTOR,
@@ -956,6 +1005,54 @@ pub fn diagnostics_from_descriptors(
             }
         }
     });
+}
+
+/// Registry for function call linters that enables single AST traversal
+pub(crate) fn linters() -> Vec<&'static dyn FunctionCallLinter> {
+    let mut linters: Vec<&'static dyn FunctionCallLinter> = vec![&sets_version_2::LINTER];
+    // @fb-only
+    linters
+}
+
+fn diagnostics_from_linters(
+    res: &mut Vec<Diagnostic>,
+    sema: &Semantic,
+    file_id: FileId,
+    config: &DiagnosticsConfig,
+    linters: Vec<&'static dyn FunctionCallLinter>,
+) {
+    let is_generated = sema.db.is_generated(file_id);
+    let is_test = sema
+        .db
+        .is_test_suite_or_test_helper(file_id)
+        .unwrap_or(false);
+
+    let mut specs = Vec::new();
+    for linter in linters {
+        let conditions = DiagnosticConditions {
+            experimental: linter.is_experimental(),
+            include_generated: linter.should_process_generated_files(),
+            include_tests: linter.should_process_test_files(),
+            default_disabled: !linter.is_enabled(),
+        };
+        if conditions.enabled(config, is_generated, is_test) {
+            let diagnostic_template = DiagnosticTemplate {
+                code: linter.id(),
+                message: linter.description(),
+                severity: linter.severity(),
+                with_ignore_fix: linter.can_be_suppressed(),
+                use_range: UseRange::NameOnly,
+            };
+            let spec = vec![FunctionCallDiagnostic {
+                diagnostic_template,
+                matches: linter.matches_functions(),
+            }];
+            specs.extend(spec);
+        }
+    }
+    if !specs.is_empty() {
+        check_used_functions(sema, file_id, &specs, res);
+    }
 }
 
 fn label_syntax_errors(
