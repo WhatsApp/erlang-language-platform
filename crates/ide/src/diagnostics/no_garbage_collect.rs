@@ -8,75 +8,29 @@
  * above-listed licenses.
  */
 
-use elp_ide_db::elp_base_db::FileId;
-use hir::FunctionDef;
-use hir::Semantic;
-use lazy_static::lazy_static;
-
 use crate::FunctionMatch;
-use crate::codemod_helpers::CheckCallCtx;
-use crate::codemod_helpers::MatchCtx;
-use crate::codemod_helpers::find_call_in_function;
-use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
-use crate::diagnostics::DiagnosticConditions;
-use crate::diagnostics::DiagnosticDescriptor;
-use crate::diagnostics::Severity;
+use crate::diagnostics::FunctionCallLinter;
+use crate::lazy_function_matches;
 
-const DIAGNOSTIC_CODE: DiagnosticCode = DiagnosticCode::NoGarbageCollect;
-const DIAGNOSTIC_MESSAGE: &str = "Avoid forcing garbage collection.";
-const DIAGNOSTIC_SEVERITY: Severity = Severity::Warning;
+pub(crate) struct NoGarbageCollectLinter;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: false,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        no_garbage_collect(diags, sema, file_id);
-    },
-};
-
-fn no_garbage_collect(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    lazy_static! {
-        static ref BAD_CALLS: Vec<FunctionMatch> =
-            vec![FunctionMatch::mf("erlang", "garbage_collect")];
-        static ref BAD_CALLS_MFAS: Vec<(&'static FunctionMatch, ())> = BAD_CALLS
-            .iter()
-            .map(|matcher| (matcher, ()))
-            .collect::<Vec<_>>();
+impl FunctionCallLinter for NoGarbageCollectLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::NoGarbageCollect
     }
-
-    sema.def_map_local(file_id)
-        .get_functions()
-        .for_each(|(_arity, def)| {
-            check_function(diagnostics, sema, def, &BAD_CALLS_MFAS);
-        });
+    fn description(&self) -> String {
+        "Avoid forcing garbage collection.".to_string()
+    }
+    fn should_process_test_files(&self) -> bool {
+        false
+    }
+    fn matches_functions(&self) -> Vec<FunctionMatch> {
+        lazy_function_matches![vec![FunctionMatch::mf("erlang", "garbage_collect")]]
+    }
 }
 
-fn check_function(
-    diags: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    def: &FunctionDef,
-    mfas: &[(&FunctionMatch, ())],
-) {
-    find_call_in_function(
-        diags,
-        sema,
-        def,
-        mfas,
-        &move |CheckCallCtx { .. }: CheckCallCtx<'_, ()>| Some(()),
-        &move |ctx @ MatchCtx { .. }| {
-            let range = ctx.range_mf_or_macro();
-            let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, range.range)
-                .with_ignore_fix(sema, def.file.file_id)
-                .with_severity(DIAGNOSTIC_SEVERITY);
-            Some(diagnostic)
-        },
-    );
-}
+pub static LINTER: NoGarbageCollectLinter = NoGarbageCollectLinter;
 
 #[cfg(test)]
 mod tests {

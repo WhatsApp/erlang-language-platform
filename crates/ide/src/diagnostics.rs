@@ -982,7 +982,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &debugging_function::DESCRIPTOR,
         &duplicate_module::DESCRIPTOR,
         &undocumented_module::DESCRIPTOR,
-        &no_garbage_collect::DESCRIPTOR,
         &no_dialyzer_attribute::DESCRIPTOR,
         &no_size::DESCRIPTOR,
         &binary_string_to_sigil::DESCRIPTOR,
@@ -1026,7 +1025,8 @@ pub fn diagnostics_from_descriptors(
 
 /// Registry for function call linters that enables single AST traversal
 pub(crate) fn linters() -> Vec<&'static dyn FunctionCallLinter> {
-    let mut linters: Vec<&'static dyn FunctionCallLinter> = vec![&sets_version_2::LINTER];
+    let mut linters: Vec<&'static dyn FunctionCallLinter> =
+        vec![&sets_version_2::LINTER, &no_garbage_collect::LINTER];
     // @fb-only
     linters
 }
