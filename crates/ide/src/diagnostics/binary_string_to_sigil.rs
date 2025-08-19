@@ -12,93 +12,99 @@
 //!
 //! Warn on code of the form `<<"bar">>` and suggest `~"bar"` (Erlang sigil syntax)
 
+use elp_ide_assists::Assist;
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
-use elp_ide_ssr::Match;
-use elp_ide_ssr::match_pattern_in_file_functions;
 use elp_project_model::otp;
 use hir::Semantic;
+use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use hir::fold::Strategy;
 
-use crate::diagnostics::Diagnostic;
-use crate::diagnostics::DiagnosticConditions;
-use crate::diagnostics::DiagnosticDescriptor;
+use crate::diagnostics::Linter;
 use crate::diagnostics::Severity;
+use crate::diagnostics::SsrPatternsLinter;
 use crate::fix;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|acc, sema, file_id, _ext| {
-        if otp::supports_eep66_sigils() {
-            binary_string_to_sigil_ssr(acc, sema, file_id);
+pub(crate) struct BinaryStringToSigilLinter;
+
+impl Linter for BinaryStringToSigilLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::BinaryStringToSigil
+    }
+
+    fn description(&self) -> String {
+        "Binary string can be written using sigil syntax.".to_string()
+    }
+
+    fn severity(&self) -> Severity {
+        Severity::WeakWarning
+    }
+
+    fn is_enabled(&self) -> bool {
+        otp::supports_eep66_sigils()
+    }
+}
+
+impl SsrPatternsLinter for BinaryStringToSigilLinter {
+    type Context = ();
+
+    fn patterns(&self) -> Vec<(String, Self::Context)> {
+        vec![(format!("ssr: <<{STRING_CONTENT_VAR}>>."), ())]
+    }
+
+    fn is_match_valid(
+        &self,
+        _context: &Self::Context,
+        matched: &elp_ide_ssr::Match,
+        sema: &Semantic,
+        _file_id: FileId,
+    ) -> Option<bool> {
+        let string_content_match_src = matched.placeholder_text(sema, STRING_CONTENT_VAR)?;
+        // Only process if the content is a string literal (starts and ends with quotes)
+        if !string_content_match_src.starts_with('"') || !string_content_match_src.ends_with('"') {
+            return None;
         }
-    },
-};
+        // Ignore multi-line binary strings
+        if string_content_match_src.contains('\n') {
+            return None;
+        }
+        Some(true)
+    }
 
-static STRING_CONTENT_VAR: &str = "_@StringContent";
+    fn fixes(
+        &self,
+        _context: &Self::Context,
+        matched: &elp_ide_ssr::Match,
+        sema: &Semantic,
+        _file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        let string_content_match_src = matched.placeholder_text(sema, STRING_CONTENT_VAR)?;
+        let mut builder = SourceChangeBuilder::new(matched.range.file_id);
+        let sigil_string = format!("~{string_content_match_src}");
+        let binary_string_range = matched.range.range;
+        builder.replace(binary_string_range, sigil_string);
+        let fixes = vec![fix(
+            "binary_string_to_sigil",
+            "Convert to sigil syntax",
+            builder.finish(),
+            binary_string_range,
+        )];
+        Some(fixes)
+    }
 
-fn binary_string_to_sigil_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    let matches = match_pattern_in_file_functions(
-        sema,
+    fn strategy(&self) -> Strategy {
         Strategy {
             macros: MacroStrategy::DoNotExpand,
             parens: ParenStrategy::InvisibleParens,
-        },
-        file_id,
-        format!("ssr: <<{STRING_CONTENT_VAR}>>.").as_str(),
-    );
-    matches.matches.iter().for_each(|m| {
-        if let Some(diagnostic) = make_diagnostic(sema, m) {
-            diags.push(diagnostic);
         }
-    });
+    }
 }
 
-fn make_diagnostic(sema: &Semantic, matched: &Match) -> Option<Diagnostic> {
-    let file_id = matched.range.file_id;
-    let binary_string_range = matched.range.range;
-    let string_content_match_src = matched.placeholder_text(sema, STRING_CONTENT_VAR)?;
+pub(crate) static LINTER: BinaryStringToSigilLinter = BinaryStringToSigilLinter;
 
-    // Only process if the content is a string literal (starts and ends with quotes)
-    if !string_content_match_src.starts_with('"') || !string_content_match_src.ends_with('"') {
-        return None;
-    }
-
-    // Ignore multi-line binary strings
-    if string_content_match_src.contains('\n') {
-        return None;
-    }
-
-    let mut builder = SourceChangeBuilder::new(file_id);
-    let sigil_string = format!("~{string_content_match_src}");
-    builder.replace(binary_string_range, sigil_string);
-    let fixes = vec![fix(
-        "binary_string_to_sigil",
-        "Convert to sigil syntax",
-        builder.finish(),
-        binary_string_range,
-    )];
-
-    let message = "Binary string can be written using sigil syntax.".to_string();
-    Some(
-        Diagnostic::new(
-            DiagnosticCode::BinaryStringToSigil,
-            message,
-            binary_string_range,
-        )
-        .with_severity(Severity::WeakWarning)
-        .with_ignore_fix(sema, file_id)
-        .with_fixes(Some(fixes)),
-    )
-}
+static STRING_CONTENT_VAR: &str = "_@StringContent";
 
 #[cfg(test)]
 mod tests {

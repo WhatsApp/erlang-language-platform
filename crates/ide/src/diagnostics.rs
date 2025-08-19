@@ -1088,7 +1088,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &duplicate_module::DESCRIPTOR,
         &undocumented_module::DESCRIPTOR,
         &no_dialyzer_attribute::DESCRIPTOR,
-        &binary_string_to_sigil::DESCRIPTOR,
         &no_catch::DESCRIPTOR,
         &no_nowarn_suppressions::DESCRIPTOR,
     ]
@@ -1140,7 +1139,10 @@ pub(crate) fn function_call_linters() -> Vec<&'static dyn FunctionCallLinter> {
 
 /// Registry for SSR-based linters
 pub(crate) fn ssr_linters() -> Vec<&'static dyn SsrCheckPatterns> {
-    vec![&unnecessary_fold_to_build_map::LINTER]
+    vec![
+        &unnecessary_fold_to_build_map::LINTER,
+        &binary_string_to_sigil::LINTER,
+    ]
 }
 
 fn diagnostics_from_function_call_linters(
