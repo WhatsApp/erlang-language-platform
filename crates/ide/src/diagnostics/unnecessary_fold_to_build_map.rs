@@ -27,63 +27,112 @@ use elp_ide_ssr::Match;
 use elp_ide_ssr::PlaceholderMatch;
 use elp_ide_ssr::SubId;
 use elp_ide_ssr::is_placeholder_a_var_from_body;
-use elp_ide_ssr::match_pattern_in_file_functions;
 use hir::AnyExprId;
 use hir::Body;
 use hir::Expr;
 use hir::Semantic;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
-use hir::fold::Strategy;
 
-use crate::diagnostics::Category;
-use crate::diagnostics::Diagnostic;
-use crate::diagnostics::DiagnosticConditions;
-use crate::diagnostics::DiagnosticDescriptor;
+use crate::Assist;
+use crate::diagnostics::Linter;
 use crate::diagnostics::Severity;
+use crate::diagnostics::SsrPatternsLinter;
 use crate::fix;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|acc, sema, file_id, _ext| {
-        unnecessary_fold_to_build_map_from_list_ssr(acc, sema, file_id);
-        unnecessary_fold_to_build_map_from_keys_ssr(acc, sema, file_id);
-    },
-};
+pub(crate) struct UnnecessaryFoldToBuildMapLinter;
+
+impl Linter for UnnecessaryFoldToBuildMapLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::UnnecessaryFoldToBuildMapFromList
+    }
+
+    fn description(&self) -> String {
+        "Unnecessary explicit fold to construct map.".to_string()
+    }
+
+    fn severity(&self) -> Severity {
+        Severity::WeakWarning
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum PatternKind {
+    FromList,
+    FromKeys,
+}
+
+impl SsrPatternsLinter for UnnecessaryFoldToBuildMapLinter {
+    type Context = PatternKind;
+
+    fn patterns(&self) -> Vec<(String, Self::Context)> {
+        vec![
+            (
+                format!(
+                    "ssr: lists:foldl(fun({{{KEY_VAR},{VALUE_VAR}}}, {ACC_VAR}) -> {ACC_VAR}#{{{KEY_VAR} => {VALUE_VAR}}} end, #{{}}, {LIST_VAR})."
+                ),
+                PatternKind::FromList,
+            ),
+            (
+                format!(
+                    "ssr: lists:foldl(fun({KEY_VAR}, {ACC_VAR}) -> {ACC_VAR}#{{{KEY_VAR} => {VALUE_VAR}}} end, #{{}}, {LIST_VAR})."
+                ),
+                PatternKind::FromKeys,
+            ),
+        ]
+    }
+
+    fn pattern_description(&self, context: &Self::Context) -> String {
+        let origin = match context {
+            PatternKind::FromList => "list".to_string(),
+            PatternKind::FromKeys => "keys".to_string(),
+        };
+        format!("Unnecessary explicit fold to construct map from {origin}.")
+    }
+
+    fn is_match_valid(
+        &self,
+        context: &Self::Context,
+        matched: &elp_ide_ssr::Match,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<bool> {
+        if matched.range.file_id != file_id {
+            // We've somehow ended up with a match in a different file - this means we've
+            // accidentally expanded a macro from a different file, or some other complex case that
+            // gets hairy, so bail out.
+            return None;
+        }
+        if let Some(comments) = matched.comments(sema) {
+            // Avoid clobbering comments in the original source code
+            if !comments.is_empty() {
+                return None;
+            }
+        }
+        match context {
+            PatternKind::FromList => from_list_match_is_valid(sema, matched),
+            PatternKind::FromKeys => from_keys_match_is_valid(sema, matched),
+        }
+    }
+
+    fn fixes(
+        &self,
+        context: &Self::Context,
+        matched: &elp_ide_ssr::Match,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        match context {
+            PatternKind::FromList => from_list_fixes(sema, file_id, matched),
+            PatternKind::FromKeys => from_keys_fixes(sema, file_id, matched),
+        }
+    }
+}
+
+pub(crate) static LINTER: UnnecessaryFoldToBuildMapLinter = UnnecessaryFoldToBuildMapLinter;
 
 static KEY_VAR: &str = "_@Key";
 static VALUE_VAR: &str = "_@Value";
 static ACC_VAR: &str = "_@Acc";
 static LIST_VAR: &str = "_@List";
-
-fn unnecessary_fold_to_build_map_from_list_ssr(
-    diags: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-) {
-    let matches = match_pattern_in_file_functions(
-        sema,
-        Strategy {
-            macros: MacroStrategy::Expand,
-            parens: ParenStrategy::InvisibleParens,
-        },
-        file_id,
-        format!("ssr: lists:foldl(fun({{{KEY_VAR},{VALUE_VAR}}}, {ACC_VAR}) -> {ACC_VAR}#{{{KEY_VAR} => {VALUE_VAR}}} end, #{{}}, {LIST_VAR}).").as_str(),
-    );
-
-    matches.matches.iter().for_each(|m| {
-        if let Some(true) = from_list_match_is_valid(sema, m) {
-            if let Some(diagnostic) = make_diagnostic_maps_from_list(sema, file_id, m) {
-                diags.push(diagnostic);
-            }
-        }
-    });
-}
 
 fn from_list_match_is_valid(sema: &Semantic, m: &Match) -> Option<bool> {
     let body_arc = m.matched_node_body.get_body(sema)?;
@@ -99,30 +148,6 @@ fn from_list_match_is_valid(sema: &Semantic, m: &Match) -> Option<bool> {
             && is_placeholder_a_var_from_body(body, value)
             && is_placeholder_a_var_from_body(body, acc),
     )
-}
-
-fn unnecessary_fold_to_build_map_from_keys_ssr(
-    diags: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-) {
-    let matches = match_pattern_in_file_functions(
-        sema,
-        Strategy {
-            macros: MacroStrategy::Expand,
-            parens: ParenStrategy::InvisibleParens,
-        },
-        file_id,
-        format!("ssr: lists:foldl(fun({KEY_VAR}, {ACC_VAR}) -> {ACC_VAR}#{{{KEY_VAR} => {VALUE_VAR}}} end, #{{}}, {LIST_VAR}).").as_str(),
-    );
-
-    matches.matches.iter().for_each(|m| {
-        if let Some(true) = from_keys_match_is_valid(sema, m) {
-            if let Some(diagnostic) = make_diagnostic_maps_from_keys(sema, file_id, m) {
-                diags.push(diagnostic);
-            }
-        }
-    });
 }
 
 fn from_keys_match_is_valid(sema: &Semantic, m: &Match) -> Option<bool> {
@@ -172,21 +197,9 @@ fn is_pure_expr(body: &Body, expr: Expr) -> bool {
     }
 }
 
-fn make_diagnostic_maps_from_list(
-    sema: &Semantic,
-    original_file_id: FileId,
-    matched: &Match,
-) -> Option<Diagnostic> {
-    let file_id = matched.range.file_id;
-    if file_id != original_file_id {
-        // We've somehow ended up with a match in a different file - this means we've
-        // accidentally expanded a macro from a different file, or some other complex case that
-        // gets hairy, so bail out.
-        return None;
-    }
+fn from_list_fixes(sema: &Semantic, file_id: FileId, matched: &Match) -> Option<Vec<Assist>> {
     let unncessary_fold_range = matched.range.range;
     let list_arg = matched.placeholder_text(sema, LIST_VAR)?;
-    let message = "Unnecessary explicit fold to construct map from list.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
     let efficient_last = format!("maps:from_list({list_arg})");
     builder.replace(unncessary_fold_range, efficient_last);
@@ -196,60 +209,23 @@ fn make_diagnostic_maps_from_list(
         builder.finish(),
         unncessary_fold_range,
     )];
-    Some(
-        Diagnostic::new(
-            DiagnosticCode::UnnecessaryFoldToBuildMapFromList,
-            message,
-            unncessary_fold_range,
-        )
-        .with_severity(Severity::WeakWarning)
-        .with_ignore_fix(sema, file_id)
-        .with_fixes(Some(fixes)),
-    )
+    Some(fixes)
 }
 
-fn make_diagnostic_maps_from_keys(
-    sema: &Semantic,
-    original_file_id: FileId,
-    matched: &Match,
-) -> Option<Diagnostic> {
-    if let Some(comments) = matched.comments(sema) {
-        // Avoid clobbering comments in the original source code
-        if !comments.is_empty() {
-            return None;
-        }
-    }
-    let file_id = matched.range.file_id;
-    if file_id != original_file_id {
-        // We've somehow ended up with a match in a different file - this means we've
-        // accidentally expanded a macro from a different file, or some other complex case that
-        // gets hairy, so bail out.
-        return None;
-    }
+fn from_keys_fixes(sema: &Semantic, file_id: FileId, matched: &Match) -> Option<Vec<Assist>> {
     let unncessary_fold_range = matched.range.range;
     let list_arg = matched.placeholder_text(sema, LIST_VAR)?;
     let value = matched.placeholder_text(sema, VALUE_VAR)?;
-    let message = "Unnecessary explicit fold to construct map from list.".to_string();
     let mut builder = SourceChangeBuilder::new(file_id);
     let efficient_last = format!("maps:from_keys({list_arg}, {value})");
     builder.replace(unncessary_fold_range, efficient_last);
     let fixes = vec![fix(
-        "unnecessary_fold_to_build_map_from_list",
+        "unnecessary_fold_to_build_map_from_keys",
         "Rewrite to use maps:from_keys/2",
         builder.finish(),
         unncessary_fold_range,
     )];
-    Some(
-        Diagnostic::new(
-            DiagnosticCode::UnnecessaryFoldToBuildMapFromList,
-            message,
-            unncessary_fold_range,
-        )
-        .with_severity(Severity::WeakWarning)
-        .with_ignore_fix(sema, file_id)
-        .with_fixes(Some(fixes))
-        .add_categories([Category::SimplificationRule]),
-    )
+    Some(fixes)
 }
 
 #[cfg(test)]
@@ -285,7 +261,7 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(List) -> lists:foldl(fun(K, Acc) -> Acc#{K => []} end, #{}, List).
-         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unnecessary explicit fold to construct map from list.
+         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unnecessary explicit fold to construct map from keys.
             "#,
         )
     }

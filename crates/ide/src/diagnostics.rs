@@ -43,6 +43,7 @@ use elp_ide_db::metadata::Kind;
 use elp_ide_db::metadata::Metadata;
 use elp_ide_db::metadata::Source;
 use elp_ide_db::source_change::SourceChange;
+use elp_ide_ssr::match_pattern_in_file_functions;
 use elp_syntax::NodeOrToken;
 use elp_syntax::Parse;
 use elp_syntax::SourceFile;
@@ -66,6 +67,9 @@ use fxhash::FxHashSet;
 use hir::InFile;
 use hir::Semantic;
 use hir::db::DefDatabase;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
+use hir::fold::Strategy;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -541,6 +545,93 @@ pub(crate) trait FunctionCallLinter: Linter {
     }
 }
 
+/// A trait that simplifies writing linters using SSR patterns
+pub(crate) trait SsrPatternsLinter: Linter {
+    /// Associated type for the pattern enum - each linter defines its own
+    type Context: Clone + fmt::Debug + PartialEq;
+
+    /// Specify the SSR patterns to match
+    /// Use the `Context`` to distinguish between each variant
+    fn patterns(&self) -> Vec<(String, Self::Context)>;
+
+    /// Customize the description based on each matched pattern.
+    /// If implemented, it overrides the value of the `description()`.
+    fn pattern_description(&self, _context: &Self::Context) -> String {
+        self.description()
+    }
+
+    /// Check if a match is valid
+    fn is_match_valid(
+        &self,
+        _context: &Self::Context,
+        _matched: &elp_ide_ssr::Match,
+        _sema: &Semantic,
+        _file_id: FileId,
+    ) -> Option<bool> {
+        Some(true)
+    }
+
+    /// Calculate fixes for a specific match
+    fn fixes(
+        &self,
+        _context: &Self::Context,
+        _matched: &elp_ide_ssr::Match,
+        _sema: &Semantic,
+        _file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        None
+    }
+
+    /// Additional categories for each diagnostic produced.
+    /// See the `Category` type for details.
+    fn add_categories(&self, _context: &Self::Context) -> Vec<Category> {
+        vec![]
+    }
+
+    /// Specify how to treat macros and parentheses.
+    /// See the `Strategy` type for details.
+    fn strategy(&self) -> Strategy {
+        Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        }
+    }
+}
+
+// Instances of the SsrCheckPatternsLinter trait can specify a custom `Context` type,
+// which is passed around in callbacks.\
+// To be able to keep a registry of all linters in the `ssr_linters` function,
+// we define a blanket implementation for all the methods using the `Context``,
+// to keep the code generic while allowing individual linters to specify their own context type.
+pub(crate) trait SsrCheckPatterns: Linter {
+    fn diagnostics(&self, sema: &Semantic, file_id: FileId) -> Vec<Diagnostic>;
+}
+
+impl<T: SsrPatternsLinter> SsrCheckPatterns for T {
+    fn diagnostics(&self, sema: &Semantic, file_id: FileId) -> Vec<Diagnostic> {
+        let mut res = Vec::new();
+        for (pattern, context) in self.patterns() {
+            let matches = match_pattern_in_file_functions(sema, self.strategy(), file_id, &pattern);
+            for matched in &matches.matches {
+                if Some(true) == self.is_match_valid(&context, matched, sema, file_id) {
+                    let message = self.pattern_description(&context);
+                    let fixes = self.fixes(&context, matched, sema, file_id);
+                    let categories = self.add_categories(&context);
+                    let mut d = Diagnostic::new(self.id(), message, matched.range.range)
+                        .with_fixes(fixes)
+                        .add_categories(categories)
+                        .with_severity(self.severity());
+                    if self.can_be_suppressed() {
+                        d = d.with_ignore_fix(sema, file_id);
+                    }
+                    res.push(d);
+                }
+            }
+        }
+        res
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiagnosticConditions {
     pub experimental: bool,
@@ -922,6 +1013,7 @@ pub fn native_diagnostics(
             config,
             function_call_linters(),
         );
+        diagnostics_from_ssr_linters(&mut res, &sema, file_id, config, ssr_linters());
 
         let parse_diagnostics = parse.errors().iter().take(128).map(|err| {
             let (code, message) = match err {
@@ -975,7 +1067,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &nonstandard_integer_formatting::DESCRIPTOR,
         &unnecessary_map_from_list_around_comprehension::DESCRIPTOR,
         &unnecessary_map_to_list_in_comprehension::DESCRIPTOR,
-        &unnecessary_fold_to_build_map::DESCRIPTOR,
         &map_find_to_syntax::DESCRIPTOR,
         &expression_can_be_simplified::DESCRIPTOR,
         &application_env::DESCRIPTOR,
@@ -1047,6 +1138,11 @@ pub(crate) fn function_call_linters() -> Vec<&'static dyn FunctionCallLinter> {
     linters
 }
 
+/// Registry for SSR-based linters
+pub(crate) fn ssr_linters() -> Vec<&'static dyn SsrCheckPatterns> {
+    vec![&unnecessary_fold_to_build_map::LINTER]
+}
+
 fn diagnostics_from_function_call_linters(
     res: &mut Vec<Diagnostic>,
     sema: &Semantic,
@@ -1087,6 +1183,34 @@ fn diagnostics_from_function_call_linters(
     }
     if !specs.is_empty() {
         check_used_functions(sema, file_id, &specs, res);
+    }
+}
+
+fn diagnostics_from_ssr_linters(
+    res: &mut Vec<Diagnostic>,
+    sema: &Semantic,
+    file_id: FileId,
+    config: &DiagnosticsConfig,
+    linters: Vec<&'static dyn SsrCheckPatterns>,
+) {
+    let is_generated = sema.db.is_generated(file_id);
+    let is_test = sema
+        .db
+        .is_test_suite_or_test_helper(file_id)
+        .unwrap_or(false);
+
+    for linter in linters {
+        if linter.should_process_file_id(sema, file_id) {
+            let conditions = DiagnosticConditions {
+                experimental: linter.is_experimental(),
+                include_generated: linter.should_process_generated_files(),
+                include_tests: linter.should_process_test_files(),
+                default_disabled: !linter.is_enabled(),
+            };
+            if conditions.enabled(config, is_generated, is_test) {
+                res.extend(linter.diagnostics(sema, file_id));
+            }
+        }
     }
 }
 
