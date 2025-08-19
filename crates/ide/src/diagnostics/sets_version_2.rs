@@ -11,11 +11,12 @@
 use crate::codemod_helpers::FunctionMatch;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::FunctionCallLinter;
+use crate::diagnostics::Linter;
 use crate::lazy_function_matches;
 
 pub(crate) struct SetsVersion2Linter;
 
-impl FunctionCallLinter for SetsVersion2Linter {
+impl Linter for SetsVersion2Linter {
     fn id(&self) -> DiagnosticCode {
         DiagnosticCode::SetsVersion2
     }
@@ -25,6 +26,9 @@ impl FunctionCallLinter for SetsVersion2Linter {
     fn should_process_test_files(&self) -> bool {
         false
     }
+}
+
+impl FunctionCallLinter for SetsVersion2Linter {
     fn matches_functions(&self) -> Vec<FunctionMatch> {
         lazy_function_matches![
             FunctionMatch::mfas("sets", "new", vec![0]),

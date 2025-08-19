@@ -11,11 +11,12 @@
 use crate::FunctionMatch;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::FunctionCallLinter;
+use crate::diagnostics::Linter;
 use crate::lazy_function_matches;
 
 pub(crate) struct NoGarbageCollectLinter;
 
-impl FunctionCallLinter for NoGarbageCollectLinter {
+impl Linter for NoGarbageCollectLinter {
     fn id(&self) -> DiagnosticCode {
         DiagnosticCode::NoGarbageCollect
     }
@@ -25,6 +26,9 @@ impl FunctionCallLinter for NoGarbageCollectLinter {
     fn should_process_test_files(&self) -> bool {
         false
     }
+}
+
+impl FunctionCallLinter for NoGarbageCollectLinter {
     fn matches_functions(&self) -> Vec<FunctionMatch> {
         lazy_function_matches![vec![FunctionMatch::mf("erlang", "garbage_collect")]]
     }

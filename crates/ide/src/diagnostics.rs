@@ -489,8 +489,8 @@ impl<F> AdhocSemanticDiagnostics for F where
 {
 }
 
-// A trait that simplifies writing linters matching function calls
-pub(crate) trait FunctionCallLinter {
+// A base trait for linters
+pub(crate) trait Linter {
     // A unique identifier for the linter.
     fn id(&self) -> DiagnosticCode;
 
@@ -531,7 +531,10 @@ pub(crate) trait FunctionCallLinter {
     fn should_process_file_id(&self, _sema: &Semantic, _file_id: FileId) -> bool {
         true
     }
+}
 
+// A trait that simplifies writing linters matching function calls
+pub(crate) trait FunctionCallLinter: Linter {
     // Specify the list of functions the linter should emit issues for
     fn matches_functions(&self) -> Vec<FunctionMatch> {
         vec![]

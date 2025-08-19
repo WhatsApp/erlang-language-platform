@@ -11,11 +11,12 @@
 use crate::codemod_helpers::FunctionMatch;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::FunctionCallLinter;
+use crate::diagnostics::Linter;
 use crate::lazy_function_matches;
 
 pub(crate) struct NoSizeLinter;
 
-impl FunctionCallLinter for NoSizeLinter {
+impl Linter for NoSizeLinter {
     fn id(&self) -> DiagnosticCode {
         DiagnosticCode::NoSize
     }
@@ -25,6 +26,9 @@ impl FunctionCallLinter for NoSizeLinter {
     fn should_process_test_files(&self) -> bool {
         false
     }
+}
+
+impl FunctionCallLinter for NoSizeLinter {
     fn matches_functions(&self) -> Vec<FunctionMatch> {
         lazy_function_matches![vec![FunctionMatch::mfa("erlang", "size", 1)]]
     }

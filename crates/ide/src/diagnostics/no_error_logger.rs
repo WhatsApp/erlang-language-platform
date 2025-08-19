@@ -11,11 +11,12 @@
 use crate::codemod_helpers::FunctionMatch;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::FunctionCallLinter;
+use crate::diagnostics::Linter;
 use crate::diagnostics::Severity;
 
 pub(crate) struct NoErrorLoggerLinter;
 
-impl FunctionCallLinter for NoErrorLoggerLinter {
+impl Linter for NoErrorLoggerLinter {
     fn id(&self) -> DiagnosticCode {
         DiagnosticCode::NoErrorLogger
     }
@@ -25,6 +26,9 @@ impl FunctionCallLinter for NoErrorLoggerLinter {
     fn severity(&self) -> Severity {
         Severity::Error
     }
+}
+
+impl FunctionCallLinter for NoErrorLoggerLinter {
     fn matches_functions(&self) -> Vec<FunctionMatch> {
         crate::lazy_function_matches![vec![FunctionMatch::m("error_logger")]]
     }
