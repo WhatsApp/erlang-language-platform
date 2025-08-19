@@ -915,7 +915,13 @@ pub fn native_diagnostics(
             config,
             &diagnostics_descriptors(),
         );
-        diagnostics_from_linters(&mut res, &sema, file_id, config, linters());
+        diagnostics_from_function_call_linters(
+            &mut res,
+            &sema,
+            file_id,
+            config,
+            function_call_linters(),
+        );
 
         let parse_diagnostics = parse.errors().iter().take(128).map(|err| {
             let (code, message) = match err {
@@ -1030,7 +1036,7 @@ pub fn diagnostics_from_descriptors(
 }
 
 /// Registry for function call linters that enables single AST traversal
-pub(crate) fn linters() -> Vec<&'static dyn FunctionCallLinter> {
+pub(crate) fn function_call_linters() -> Vec<&'static dyn FunctionCallLinter> {
     let mut linters: Vec<&'static dyn FunctionCallLinter> = vec![
         &sets_version_2::LINTER,
         &no_garbage_collect::LINTER,
@@ -1041,7 +1047,7 @@ pub(crate) fn linters() -> Vec<&'static dyn FunctionCallLinter> {
     linters
 }
 
-fn diagnostics_from_linters(
+fn diagnostics_from_function_call_linters(
     res: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
