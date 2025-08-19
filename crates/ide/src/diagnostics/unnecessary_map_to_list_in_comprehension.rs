@@ -15,102 +15,94 @@
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
-use elp_ide_ssr::Match;
-use elp_ide_ssr::match_pattern_in_file_functions;
 use hir::Semantic;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
-use hir::fold::Strategy;
 
-use crate::diagnostics::Diagnostic;
-use crate::diagnostics::DiagnosticConditions;
-use crate::diagnostics::DiagnosticDescriptor;
+use crate::diagnostics::Linter;
 use crate::diagnostics::Severity;
+use crate::diagnostics::SsrPatternsLinter;
 use crate::fix;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|acc, sema, file_id, _ext| {
-        unnecessary_map_to_list_in_comprehension_ssr(acc, sema, file_id);
-    },
-};
+pub(crate) struct UnnecessaryMapToListInComprehensionLinter;
+
+impl Linter for UnnecessaryMapToListInComprehensionLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::UnnecessaryMapToListInComprehension
+    }
+
+    fn description(&self) -> String {
+        "Unnecessary intermediate list allocated.".to_string()
+    }
+
+    fn severity(&self) -> Severity {
+        Severity::WeakWarning
+    }
+}
+
+impl SsrPatternsLinter for UnnecessaryMapToListInComprehensionLinter {
+    type Context = ();
+
+    fn patterns(&self) -> Vec<(String, Self::Context)> {
+        vec![(
+            format!("ssr: [{BODY_VAR} || {{{KEY_VAR}, {VALUE_VAR}}} <- maps:to_list({MAP_VAR})]."),
+            (),
+        )]
+    }
+
+    fn is_match_valid(
+        &self,
+        _context: &Self::Context,
+        matched: &elp_ide_ssr::Match,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<bool> {
+        if let Some(comments) = matched.comments(sema) {
+            // Avoid clobbering comments in the original source code
+            if !comments.is_empty() {
+                return None;
+            }
+        }
+        if matched.range.file_id != file_id {
+            // We've somehow ended up with a match in a different file - this means we've
+            // accidentally expanded a macro from a different file, or some other complex case that
+            // gets hairy, so bail out.
+            return None;
+        }
+        Some(true)
+    }
+
+    fn fixes(
+        &self,
+        _context: &Self::Context,
+        matched: &elp_ide_ssr::Match,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<elp_ide_assists::Assist>> {
+        let inefficient_comprehension_range = matched.range.range;
+        let body = matched.placeholder_text(sema, BODY_VAR)?;
+        let key = matched.placeholder_text(sema, KEY_VAR)?;
+        let value = matched.placeholder_text(sema, VALUE_VAR)?;
+        let map = matched.placeholder_text(sema, MAP_VAR)?;
+
+        let mut builder = SourceChangeBuilder::new(file_id);
+        let direct_comprehension = format!("[{body} || {key} := {value} <- {map}]");
+        builder.replace(inefficient_comprehension_range, direct_comprehension);
+        let fixes = vec![fix(
+            "unnecessary_map_to_list_in_comprehension",
+            "Rewrite to iterate over the map directly",
+            builder.finish(),
+            inefficient_comprehension_range,
+        )];
+        Some(fixes)
+    }
+}
+
+pub(crate) static LINTER: UnnecessaryMapToListInComprehensionLinter =
+    UnnecessaryMapToListInComprehensionLinter;
 
 static MAP_VAR: &str = "_@Map";
 static KEY_VAR: &str = "_@Key";
 static VALUE_VAR: &str = "_@Value";
 static BODY_VAR: &str = "_@Body";
-
-fn unnecessary_map_to_list_in_comprehension_ssr(
-    diags: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-) {
-    let matches = match_pattern_in_file_functions(
-        sema,
-        Strategy {
-            macros: MacroStrategy::Expand,
-            parens: ParenStrategy::InvisibleParens,
-        },
-        file_id,
-        format!("ssr: [{BODY_VAR} || {{{KEY_VAR}, {VALUE_VAR}}} <- maps:to_list({MAP_VAR})].")
-            .as_str(),
-    );
-    matches.matches.iter().for_each(|m| {
-        if let Some(diagnostic) = make_diagnostic(sema, file_id, m) {
-            diags.push(diagnostic);
-        }
-    });
-}
-
-fn make_diagnostic(
-    sema: &Semantic,
-    original_file_id: FileId,
-    matched: &Match,
-) -> Option<Diagnostic> {
-    if let Some(comments) = matched.comments(sema) {
-        // Avoid clobbering comments in the original source code
-        if !comments.is_empty() {
-            return None;
-        }
-    }
-    let file_id = matched.range.file_id;
-    if matched.range.file_id != original_file_id {
-        // We've somehow ended up with a match in a different file - this means we've
-        // accidentally expanded a macro from a different file, or some other complex case that
-        // gets hairy, so bail out.
-        return None;
-    }
-    let inefficient_comprehension_range = matched.range.range;
-    let body = matched.placeholder_text(sema, BODY_VAR)?;
-    let key = matched.placeholder_text(sema, KEY_VAR)?;
-    let value = matched.placeholder_text(sema, VALUE_VAR)?;
-    let map = matched.placeholder_text(sema, MAP_VAR)?;
-    let message = "Unnecessary intermediate list allocated.".to_string();
-    let mut builder = SourceChangeBuilder::new(file_id);
-    let direct_comprehension = format!("[{body} || {key} := {value} <- {map}]");
-    builder.replace(inefficient_comprehension_range, direct_comprehension);
-    let fixes = vec![fix(
-        "unnecessary_map_to_list_in_comprehension",
-        "Rewrite to iterate over the map directly",
-        builder.finish(),
-        inefficient_comprehension_range,
-    )];
-    Some(
-        Diagnostic::new(
-            DiagnosticCode::UnnecessaryMapToListInComprehension,
-            message,
-            inefficient_comprehension_range,
-        )
-        .with_severity(Severity::WeakWarning)
-        .with_ignore_fix(sema, file_id)
-        .with_fixes(Some(fixes)),
-    )
-}
 
 #[cfg(test)]
 mod tests {

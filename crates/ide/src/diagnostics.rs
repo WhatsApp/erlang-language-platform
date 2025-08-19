@@ -1066,7 +1066,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &map_insertion_to_syntax::DESCRIPTOR,
         &nonstandard_integer_formatting::DESCRIPTOR,
         &unnecessary_map_from_list_around_comprehension::DESCRIPTOR,
-        &unnecessary_map_to_list_in_comprehension::DESCRIPTOR,
         &map_find_to_syntax::DESCRIPTOR,
         &expression_can_be_simplified::DESCRIPTOR,
         &application_env::DESCRIPTOR,
@@ -1142,6 +1141,7 @@ pub(crate) fn ssr_linters() -> Vec<&'static dyn SsrCheckPatterns> {
     vec![
         &unnecessary_fold_to_build_map::LINTER,
         &binary_string_to_sigil::LINTER,
+        &unnecessary_map_to_list_in_comprehension::LINTER,
     ]
 }
 
