@@ -42,7 +42,7 @@ use crate::fix;
 
 pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
     conditions: DiagnosticConditions {
-        // TODO: disable this check when T151727890 and T151605845 are resolved
+        // TODO: Remove experimental once T151727890 is resolved
         experimental: true,
         include_generated: false,
         include_tests: true,
