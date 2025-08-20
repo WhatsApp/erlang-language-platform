@@ -19,7 +19,7 @@ and the number is growing. It is usually a good idea to look at existing linters
 At high level, each linter consists of:
 
 1. A **DiagnosticCode** - A unique identifier for the diagnostic
-2. A **DiagnosticDescriptor** - Configuration for when and how the diagnostic runs
+2. A linter **module** - A file where the linter is implemented
 3. **Tests** - A number of test cases for the diagnostic
 4. **Documentation** - A user-facing explanation of the diagnostic
 
@@ -98,7 +98,7 @@ impl DiagnosticCode {
 }
 ```
 
-### Step 2: Create the diagnostic module
+### Step 2: Create the linter module
 
 Create a new file `elp/crates/ide/src/diagnostics/unsafe_function_call.rs`, with the following content.
 The code has comments to explain each part.
@@ -115,56 +115,50 @@ The code has comments to explain each part.
  */
 
 use elp_ide_db::DiagnosticCode;
-use elp_ide_ssr::match_pattern_in_file_functions;
-use hir::Strategy;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
 
-use crate::diagnostics::Diagnostic;
-use crate::diagnostics::DiagnosticConditions;
-use crate::diagnostics::DiagnosticDescriptor;
-use crate::diagnostics::Severity;
+use crate::diagnostics::Linter;
+use crate::diagnostics::SsrPatternsLinter;
 
-// This is the enum entry which will be used to identify the diagnostic
-const DIAGNOSTIC_CODE: DiagnosticCode = DiagnosticCode::UnsafeFunctionCall;
-// This is a human-readable message that will be displayed in the IDE
-const DIAGNOSTIC_MESSAGE: &str = "Do not use unsafe:operation/1 in production code.";
-// This is the severity of the diagnostic (Warning, Error, etc.)
-const DIAGNOSTIC_SEVERITY: Severity = Severity::Warning;
-// This is the strategy used to match the pattern in the code.
-const STRATEGY: Strategy = Strategy {
-    // In our case we want to expand macros before matching the pattern
-    macros: MacroStrategy::Expand,
-    // We don't care about parentheses in our case, so we ignore them
-    parens: ParenStrategy::InvisibleParens,
-};
+// We define a new linter, named `UnsafeFunctionCallLinter`
+pub(crate) struct UnsafeFunctionCallLinter;
 
-// This is the core of our linter.
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    // These are the conditions under which the diagnostic should run.
-    conditions: DiagnosticConditions {
-        experimental: false, // Experimental diagnostics are only enabled in `--experimental` mode
-        include_generated: false, // Do not run the linters against generated files
-        include_tests: false, // Do not run the linters against test files
-        default_disabled: false, // The diagnostic is enabled by default
-    },
-    // This is the function that will be called to run the diagnostic.
-    // `acc` is a vector of diagnostics which will be adding to.
-    checker: &|acc, sema, file_id, _ext| {
+// We implement the `Linter` trait. This is common to all kinds of ELP linters.
+impl Linter for UnsafeFunctionCallLinter {
+    // A unique identifier for the linter. This is the `DiagnosticCode` we just added.
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::UnsafeFunctionCall
+    }
+    // A human-readable description for the linter, which will be displayed in the IDE
+    fn description(&self) -> String {
+        "Do not use unsafe:operation/1 in production code.".to_string()
+    }
+    // By default test files (i.e. test suites and helpers) are processed by linters.
+    // Since we only care about "unsafe calls" from production code,
+    // here we override the default behaviour by skipping test files.
+    fn should_process_test_files(&self) -> bool {
+        false
+    }
+}
+
+// We will write our linter using the so-called "SSR" syntax.
+// SSR is a convenient way to match on parts of the Erlang AST.
+// Because of this, we decide to implement the additional `SsrPatternsLinter` trait.
+impl SsrPatternsLinter for UnsafeFunctionCallLinter {
+    // Linters can specify a custom context type. For now, we ignore it.
+    type Context = ();
+
+    // Here we specify which patterns we want to match.
+    // The function returns a vector of tuples, each one containing
+    // a SSR pattern and a context.
+    // For the time being, let's ignore the context.
+    // For SSR syntax, please refer to the `ide_ssr` crate.
+    // Here, we are matching on calls to the fully-qualified `unsafe:operation/1`
+    // function, ignoring its only argument.
+    fn patterns(&self) -> Vec<(String, Self::Context)> {
         // We use the SSR mechanism to match calls to `unsafe:operation/1`.
-        let pattern = "ssr: unsafe:operation(_@).";
-        // We use the `match_pattern_in_file_functions` function to match the pattern in the code.
-        let matches = match_pattern_in_file_functions(sema, STRATEGY, file_id, pattern);
-        // We iterate over the matches and add a diagnostic for each one
-        matches.matches.iter().for_each(|m| {
-            // We create a new diagnostic with the code, message, and range of the match
-            let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, m.range.range)
-                .with_severity(DIAGNOSTIC_SEVERITY);
-            // We add the diagnostic to the accumulator
-            acc.push(diagnostic);
-        });
-    },
-};
+        vec![("ssr: unsafe:operation(_@).".to_string(), ())]
+    }
+}
 ```
 
 ### Step 3: Register the diagnostic
@@ -175,11 +169,11 @@ Add your diagnostic module to [`elp/crates/ide/src/diagnostics.rs`](https://gith
 // Add the module declaration
 mod unsafe_function_call;
 
-// Register the descriptor in the diagnostics_descriptors function
-pub fn diagnostics_descriptors() -> Vec<&'static DiagnosticDescriptor> {
+// Register the linter in the `ssr_linters` function
+pub(crate) fn ssr_linters() -> Vec<&'static dyn FunctionCallLinter> {
     vec![
-        // ... existing descriptors ...
-        &unsafe_function_call::DESCRIPTOR, // We add the descriptor here
+        // ... existing linters ...
+        &unsafe_function_call::LINTER, // We add the linter here
     ]
 }
 ```
@@ -202,7 +196,7 @@ mod tests {
             -export([warn/0]).
             warn() ->
                 unsafe:operation(data),
-            %%  ^^^^^^^^^^^^^^^^^^^^^^ warning: Do not use unsafe:operation/1 in production code.
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Do not use unsafe:operation/1 in production code.
                 safe:operation(data).
             //- /src/unsafe.erl
             -module(unsafe).
