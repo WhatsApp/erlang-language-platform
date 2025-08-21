@@ -60,6 +60,7 @@
     "http-proxy-middleware": ">=2.0.9",
     "brace-expansion": ">=1.1.12",
     "webpack-dev-server": ">=5.2.1",
-    "on-headers": ">=1.1.0"
+    "on-headers": ">=1.1.0",
+    "mermaid": ">=11.10.0"
   }
 }
