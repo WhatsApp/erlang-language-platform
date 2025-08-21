@@ -60,6 +60,7 @@ const KNOWN_ATTRIBUTES: &[&str] = &[
     "include_lib",
     "export_type",
     "behaviour",
+    "moduledoc",
     "callback",
     "dialyzer",
     "behavior",
@@ -81,6 +82,7 @@ const KNOWN_ATTRIBUTES: &[&str] = &[
     "nifs",
     "file",
     "vsn",
+    "doc",
 ];
 
 fn looks_like_misspelling(attr: &Attribute) -> Option<&str> {
@@ -211,6 +213,33 @@ mod tests {
         assert!(
             diags.is_empty(),
             "didn't expect diagnostic errors in files: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn test_module_doc() {
+        check_diagnostics(
+            r#"
+    -module(main).
+    -module_doc """
+%%%  ^^^^^^^^^^ 💡 error: misspelled attribute, saw 'module_doc' but expected 'moduledoc'
+    Hola
+    """.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_docs() {
+        check_diagnostics(
+            r#"
+    -module(main).
+    -docs """
+%%%  ^^^^ 💡 error: misspelled attribute, saw 'docs' but expected 'doc'
+    Hola
+    """.
+    foo() -> ok.
+            "#,
         );
     }
 }
