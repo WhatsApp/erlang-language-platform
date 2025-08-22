@@ -63,7 +63,7 @@ use crate::expr::MaybeExpr;
 
 /// Choose the appropriate `FoldBody` to ensure macros and parens are
 /// visible or not according to the chosen strategy.
-pub fn fold_body(strategy: Strategy, body: &Body) -> FoldBody {
+pub fn fold_body(strategy: Strategy, body: &Body) -> FoldBody<'_> {
     match strategy.macros {
         MacroStrategy::DoNotExpand | MacroStrategy::ExpandButIncludeMacroCall => FoldBody {
             body,
@@ -78,7 +78,7 @@ pub fn fold_body(strategy: Strategy, body: &Body) -> FoldBody {
     }
 }
 
-pub fn default_fold_body(body: &Body) -> FoldBody {
+pub fn default_fold_body(body: &Body) -> FoldBody<'_> {
     fold_body(
         Strategy {
             macros: MacroStrategy::Expand,

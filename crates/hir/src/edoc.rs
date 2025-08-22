@@ -290,7 +290,7 @@ fn capitalize_first_char(word: &str) -> Option<String> {
         .map(|char| char.to_uppercase().to_string() + chars.as_str())
 }
 
-fn decode_html_entities(text: &str) -> Cow<str> {
+fn decode_html_entities(text: &str) -> Cow<'_, str> {
     let decoded = htmlentity::entity::decode(text.as_bytes());
     if decoded.entity_count() == 0 {
         Cow::Borrowed(text)
@@ -886,17 +886,17 @@ fn extract_edoc_tag_and_content(comment: &str) -> Option<(TextRange, &str, &str,
     ))
 }
 
-fn convert_single_quotes(comment: &str) -> Cow<str> {
+fn convert_single_quotes(comment: &str) -> Cow<'_, str> {
     static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"`([^']*)'").unwrap());
     RE.replace_all(comment, "`$1`")
 }
 
-fn convert_triple_quotes(comment: &str) -> Cow<str> {
+fn convert_triple_quotes(comment: &str) -> Cow<'_, str> {
     static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"'''[']*").unwrap());
     RE.replace_all(comment, "```")
 }
 
-fn convert_link_macros(comment: &str) -> Cow<str> {
+fn convert_link_macros(comment: &str) -> Cow<'_, str> {
     static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\{@link\s+([^\s]+)\}").unwrap());
     RE.replace_all(comment, |captures: &regex::Captures<'_>| {
         if let Some(m) = captures.get(1) {

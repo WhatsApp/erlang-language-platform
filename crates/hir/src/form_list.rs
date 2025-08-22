@@ -196,7 +196,7 @@ impl FormList {
         self.define_id_map.get(define).copied()
     }
 
-    pub fn get(&self, idx: FormIdx) -> Form {
+    pub fn get(&self, idx: FormIdx) -> Form<'_> {
         match idx {
             FormIdx::ModuleAttribute(idx) => Form::ModuleAttribute(&self[idx]),
             FormIdx::FunctionClause(idx) => Form::FunctionClause(&self[idx]),

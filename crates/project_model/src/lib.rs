@@ -758,7 +758,7 @@ impl Project {
             .filter(|app| app.app_type == AppType::Otp)
     }
 
-    pub fn root(&self) -> Cow<AbsPathBuf> {
+    pub fn root(&self) -> Cow<'_, AbsPathBuf> {
         match &self.project_build_data {
             ProjectBuildData::Otp => Cow::Borrowed(&self.otp.lib_dir),
             ProjectBuildData::Rebar(rebar) => Cow::Borrowed(&rebar.root),

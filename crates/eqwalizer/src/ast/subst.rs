@@ -95,7 +95,7 @@ impl Subst<'_> {
         ts.into_iter().map(|t| self.apply(t)).collect()
     }
 
-    fn subtract(&self, vars: &[u32]) -> Subst {
+    fn subtract(&self, vars: &[u32]) -> Subst<'_> {
         let mut sub = self.sub.to_owned();
         vars.iter().for_each(|v| {
             sub.remove(v);

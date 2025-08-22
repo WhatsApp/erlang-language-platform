@@ -105,7 +105,7 @@ impl BuckConfig {
         self.buck_root.as_ref().unwrap()
     }
 
-    pub fn source_root(&self) -> Cow<AbsPathBuf> {
+    pub fn source_root(&self) -> Cow<'_, AbsPathBuf> {
         let buck_root = self.buck_root();
         match self.source_root {
             None => Cow::Borrowed(buck_root),

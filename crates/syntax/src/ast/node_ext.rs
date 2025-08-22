@@ -99,7 +99,7 @@ fn match_clause_separator(c: &SyntaxToken) -> Option<ClauseSeparator> {
 }
 
 impl nodes::Atom {
-    pub fn raw_text(&self) -> TokenText {
+    pub fn raw_text(&self) -> TokenText<'_> {
         text_of_token(self.syntax())
     }
 
@@ -111,7 +111,7 @@ impl nodes::Atom {
 pub const SSR_PLACEHOLDER_PREFIX: &str = "_@";
 
 impl nodes::Var {
-    pub fn text(&self) -> TokenText {
+    pub fn text(&self) -> TokenText<'_> {
         text_of_token(self.syntax())
     }
 
@@ -124,30 +124,30 @@ impl nodes::Var {
 }
 
 impl nodes::Char {
-    pub fn text(&self) -> TokenText {
+    pub fn text(&self) -> TokenText<'_> {
         text_of_token(self.syntax())
     }
 }
 
 impl nodes::Float {
-    pub fn text(&self) -> TokenText {
+    pub fn text(&self) -> TokenText<'_> {
         text_of_token(self.syntax())
     }
 }
 
 impl nodes::Integer {
-    pub fn text(&self) -> TokenText {
+    pub fn text(&self) -> TokenText<'_> {
         text_of_token(self.syntax())
     }
 }
 
 impl nodes::String {
-    pub fn text(&self) -> TokenText {
+    pub fn text(&self) -> TokenText<'_> {
         text_of_token(self.syntax())
     }
 }
 
-fn text_of_token(node: &SyntaxNode) -> TokenText {
+fn text_of_token(node: &SyntaxNode) -> TokenText<'_> {
     fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
         green_ref
             .children()

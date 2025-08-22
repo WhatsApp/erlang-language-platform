@@ -35,7 +35,7 @@ impl ModuleName {
         self
     }
 
-    pub fn to_quoted_string(&self) -> Cow<str> {
+    pub fn to_quoted_string(&self) -> Cow<'_, str> {
         to_quoted_string(self.as_str())
     }
 }

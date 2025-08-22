@@ -559,7 +559,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
 
 /// If the `input` string represents an atom, and needs quoting, quote
 /// it.
-pub fn to_quoted_string(input: &str) -> Cow<str> {
+pub fn to_quoted_string(input: &str) -> Cow<'_, str> {
     fn is_valid_atom(input: &str) -> bool {
         let mut chars = input.chars();
         chars.next().is_some_and(|c| c.is_lowercase())

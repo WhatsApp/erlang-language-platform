@@ -318,7 +318,7 @@ impl Body {
     /// visibility of features like parens and macros. The default
     /// indexing on `Body` keeps both invisible. If they need to be
     /// seen, make a `FoldBody` with the appropriate strategy.
-    pub fn index_with_strategy(&self, strategy: Strategy) -> FoldBody {
+    pub fn index_with_strategy(&self, strategy: Strategy) -> FoldBody<'_> {
         fold_body(strategy, self)
     }
 

@@ -162,7 +162,7 @@ impl Semantic<'_> {
         def_map.function_def_id(&function_id.value).cloned()
     }
 
-    pub fn to_expr(&self, expr: InFile<&ast::Expr>) -> Option<InFunctionClauseBody<ExprId>> {
+    pub fn to_expr(&self, expr: InFile<&ast::Expr>) -> Option<InFunctionClauseBody<'_, ExprId>> {
         let function_id =
             self.find_enclosing_function_clause_id(expr.file_id, expr.value.syntax())?;
         let (body, body_map) = self
@@ -178,7 +178,7 @@ impl Semantic<'_> {
         })
     }
 
-    pub fn to_pat(&self, expr: InFile<&ast::Expr>) -> Option<InFunctionClauseBody<PatId>> {
+    pub fn to_pat(&self, expr: InFile<&ast::Expr>) -> Option<InFunctionClauseBody<'_, PatId>> {
         let function_id =
             self.find_enclosing_function_clause_id(expr.file_id, expr.value.syntax())?;
         let (body, body_map) = self
@@ -194,7 +194,7 @@ impl Semantic<'_> {
         })
     }
 
-    pub fn to_function_body(&self, function_id: InFile<FunctionDefId>) -> InFunctionBody<()> {
+    pub fn to_function_body(&self, function_id: InFile<FunctionDefId>) -> InFunctionBody<'_, ()> {
         let body = self.db.function_body(function_id);
         InFunctionBody::new(self, body, function_id, ())
     }
@@ -202,7 +202,7 @@ impl Semantic<'_> {
     pub fn to_function_clause_body(
         &self,
         function_clause_id: InFile<FunctionClauseId>,
-    ) -> InFunctionClauseBody<()> {
+    ) -> InFunctionClauseBody<'_, ()> {
         let (body, body_map) = self.db.function_clause_body_with_source(function_clause_id);
         InFunctionClauseBody {
             sema: self,
@@ -692,7 +692,7 @@ impl Semantic<'_> {
         &self,
         file_id: FileId,
         syntax: &SyntaxNode,
-    ) -> Option<InFunctionClauseBody<Resolver>> {
+    ) -> Option<InFunctionClauseBody<'_, Resolver>> {
         let function_clause_id = self.find_enclosing_function_clause_id(file_id, syntax)?;
         self.ast_clause_resolver(InFile::new(file_id, function_clause_id))
     }
@@ -700,7 +700,7 @@ impl Semantic<'_> {
     pub fn ast_clause_resolver(
         &self,
         function_clause_id: InFile<FunctionClauseId>,
-    ) -> Option<InFunctionClauseBody<Resolver>> {
+    ) -> Option<InFunctionClauseBody<'_, Resolver>> {
         let body = self.db.function_clause_body(function_clause_id);
         let scopes = self.db.function_clause_scopes(function_clause_id);
         let resolver = Resolver::new(scopes);
@@ -716,7 +716,7 @@ impl Semantic<'_> {
     pub fn clause_resolver(
         &self,
         function_clause_id: InFile<FunctionClauseId>,
-    ) -> Option<InFunctionClauseBody<Resolver>> {
+    ) -> Option<InFunctionClauseBody<'_, Resolver>> {
         let body = self.db.function_clause_body(function_clause_id);
         let scopes = self.db.function_clause_scopes(function_clause_id);
         let resolver = Resolver::new(scopes);
@@ -1268,11 +1268,11 @@ impl<'a, T: Clone> InFunctionBody<'a, T> {
         }
     }
 
-    pub fn as_ref(&self) -> InFunctionBody<&T> {
+    pub fn as_ref(&self) -> InFunctionBody<'_, &T> {
         self.with_value(&self.value)
     }
 
-    pub fn with_value<U>(&self, value: U) -> InFunctionBody<U>
+    pub fn with_value<U>(&self, value: U) -> InFunctionBody<'_, U>
     where
         U: Clone,
     {
@@ -1389,11 +1389,11 @@ impl<'a, T> InFunctionClauseBody<'a, T> {
         }
     }
 
-    pub fn as_ref(&self) -> InFunctionClauseBody<&T> {
+    pub fn as_ref(&self) -> InFunctionClauseBody<'_, &T> {
         self.with_value(&self.value)
     }
 
-    pub fn with_value<U>(&self, value: U) -> InFunctionClauseBody<U> {
+    pub fn with_value<U>(&self, value: U) -> InFunctionClauseBody<'_, U> {
         InFunctionClauseBody {
             sema: self.sema,
             body: self.body.clone(),

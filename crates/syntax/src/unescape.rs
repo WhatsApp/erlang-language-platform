@@ -28,7 +28,7 @@ macro_rules! try_option {
 /// backslash characters and converts it to a string with the proper
 /// escaped characters, according to Erlang syntax.
 /// Only unescape if the string is surrounded by ' or " chars
-pub fn unescape_string(s_in: &str) -> Option<Cow<str>> {
+pub fn unescape_string(s_in: &str) -> Option<Cow<'_, str>> {
     if !s_in.contains(['\'', '"', '\\', '$']) {
         return Some(Cow::Borrowed(s_in));
     }
