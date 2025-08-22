@@ -53,8 +53,6 @@ jobs:
     steps:
       - name: Checkout erlang-language-platform
         uses: "actions/checkout@v3"
-      - id: build-edb
-        uses: ./.github/actions/build-edb
       - name: Checkout eqwalizer
         uses: "actions/checkout@v3"
         with:
@@ -119,6 +117,8 @@ jobs:
       - name: Verify rebar3 version (Windows Only)
         if: matrix.os == 'windows'
         run: rebar3.cmd version
+      - id: build-edb
+        uses: ./.github/actions/build-edb
       - name: Assemble eqwalizer.jar (No Windows)
         if: matrix.os != 'windows'
         working-directory: eqwalizer/eqwalizer
