@@ -5,6 +5,14 @@ on:
     types: [published]
 
 jobs:
+  edb:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform-arch: [ubuntu-22.04-x64, ubuntu-22.04-arm, macos-13-x64, macos-latest-arm, windows-latest-x64]
+    - id: build-edb
+      uses: ./.github/actions/build-edb
+
   ci:
     strategy:
       fail-fast: false
@@ -16,17 +24,14 @@ jobs:
             brew-otp-version: 26
             vscode-publish: true
             choco-otp-version: 26.2.5.13
-            include-edb: false
           - otp-version: 27.3
             brew-otp-version: 27
             vscode-publish: false
             choco-otp-version: 27.3.4
-            include-edb: false
           - otp-version: 28.0
             brew-otp-version: 28
             vscode-publish: false
             choco-otp-version: 28.0.1
-            include-edb: true
           - platform-arch: ubuntu-22.04-x64
             platform: ubuntu-22.04
             os: linux
@@ -53,6 +58,7 @@ jobs:
             target: x86_64-pc-windows-msvc
             vscode-target: win32-x64
     runs-on: ${{ matrix.platform }}
+    needs: edb
     steps:
       - name: Checkout erlang-language-platform
         uses: "actions/checkout@v3"
@@ -120,9 +126,6 @@ jobs:
       - name: Verify rebar3 version (Windows Only)
         if: matrix.os == 'windows'
         run: rebar3.cmd version
-      - id: build-edb
-        if: matrix.include-edb
-        uses: ./.github/actions/build-edb
       - name: Package EDB escript into VS Code Extension (No Windows)
         if: matrix.include-edb && matrix.os != 'windows'
         run: cp edb/_build/default/bin/edb editors/code/bin
