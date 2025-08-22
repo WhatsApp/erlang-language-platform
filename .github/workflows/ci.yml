@@ -80,11 +80,17 @@ jobs:
           sudo apt-get install -y crossbuild-essential-arm64
       - id: setup-erlang-27
         uses: ./.github/actions/setup-erlang
-        if: matrix.otp-version == '26.2'
+        if: matrix.brew-otp-version == 26
         with:
           os: ${{ matrix.os }}
           otp-version: 27.3
           brew-otp-version: 27
+      - id: build-edb
+        uses: ./.github/actions/build-edb
+        with:
+          os: ${{ matrix.os }}
+          target: ${{ matrix.target }}
+          otp-version: ${{ matrix.otp-version}}
       - id: setup-erlang
         uses: ./.github/actions/setup-erlang
         with:
