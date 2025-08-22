@@ -32,7 +32,7 @@ runs:
     run: erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
     shell: bash
   - name: Install rebar3
-    run: "mkdir -p rebar3 && curl https://s3.amazonaws.com/rebar3/rebar3 -o rebar3/rebar3 && chmod +x rebar3/rebar3"
+    run: "mkdir rebar3 && curl https://s3.amazonaws.com/rebar3/rebar3 -o rebar3/rebar3 && chmod +x rebar3/rebar3"
     shell: bash
   - name: Create rebar3.cmd (Windows Only)
     if: inputs.os == 'windows'
