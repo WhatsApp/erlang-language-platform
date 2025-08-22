@@ -35,7 +35,6 @@ use super::PpDefine;
 use super::UnaryOp;
 use super::generated::nodes;
 use super::operators::GeneratorOp;
-use crate::SyntaxKind;
 use crate::SyntaxKind::*;
 use crate::SyntaxToken;
 use crate::ast::AstNode;
@@ -159,29 +158,6 @@ fn text_of_token(node: &SyntaxNode) -> TokenText<'_> {
     match node.green() {
         Cow::Borrowed(green_ref) => TokenText::borrowed(first_token(green_ref).text()),
         Cow::Owned(green) => TokenText::owned(first_token(&green).to_owned()),
-    }
-}
-
-// ---------------------------------------------------------------------
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Comment {
-    pub(crate) syntax: SyntaxNode,
-}
-
-impl AstNode for Comment {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == COMMENT
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
     }
 }
 

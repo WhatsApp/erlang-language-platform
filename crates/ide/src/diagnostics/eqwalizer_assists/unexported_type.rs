@@ -59,7 +59,7 @@ pub fn unexported_type(
                 sema,
                 module.file.file_id,
                 ExportForm::Types,
-                &[name.clone()],
+                std::slice::from_ref(&name),
                 &mut builder,
             )
             .finish();
