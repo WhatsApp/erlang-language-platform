@@ -17,25 +17,12 @@ runs:
       repository: WhatsApp/edb
       path: edb
       ref: otp-28.0
-  - name: Build EDB (No Windows)
-    if: inputs.os != 'windows'
+  - name: Build EDB
     run: rebar3 escriptize
     shell: bash
     working-directory: edb
-  - name: Build EDB (Windows Only)
-    if: inputs.os == 'windows'
-    run: rebar3.cmd escriptize
-    shell: bash
-    working-directory: edb
-  - name: Upload EDB binary (No Windows)
-    if: inputs.os != 'windows'
+  - name: Upload EDB binary
     uses: "actions/upload-artifact@v4"
     with:
-      name: edb-${{ inputs.os }}-${{ inputs.target }}-otp-${{ inputs.otp-version }}
-      path: _build/default/bin/edb
-  - name: Upload EDB binary (Windows Only)
-    if: inputs.os == 'windows'
-    uses: "actions/upload-artifact@v4"
-    with:
-      name: edb-${{ inputs.os }}-${{ inputs.target }}-otp-${{ inputs.otp-version }}
-      path: _build\default\bin\edb
+      name: edb
+      path: edb/_build/default/bin/edb
