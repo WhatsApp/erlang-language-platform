@@ -1829,7 +1829,9 @@ pub fn ct_diagnostics(
     };
     let metadata = db.elp_metadata(file_id);
     res.into_iter()
-        .filter(|d| !d.should_be_suppressed(&metadata, config))
+        .filter(|d| {
+            !config.disabled.contains(&d.code) && !d.should_be_suppressed(&metadata, config)
+        })
         .collect()
 }
 
