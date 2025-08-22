@@ -13,7 +13,9 @@ runs:
       if: matrix.os != 'windows'
       run: rebar3 escriptize
       shell: bash
+      working-directory: edb
     - name: Build EDB (Windows Only)
       if: matrix.os == 'windows'
       run: rebar3.cmd escriptize
       shell: bash
+      working-directory: edb
