@@ -10,8 +10,8 @@ runs:
         path: edb
         ref: otp-28.0
     - name: Build EDB (No Windows)
-        if: matrix.os != 'windows'
-        run: rebar3 escriptize
+      if: matrix.os != 'windows'
+      run: rebar3 escriptize
     - name: Build EDB (Windows Only)
-        if: matrix.os == 'windows'
-        run: rebar3.cmd escriptize
+      if: matrix.os == 'windows'
+      run: rebar3.cmd escriptize
