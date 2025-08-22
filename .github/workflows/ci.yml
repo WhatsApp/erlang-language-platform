@@ -53,22 +53,8 @@ jobs:
     steps:
       - name: Checkout erlang-language-platform
         uses: "actions/checkout@v3"
-      - name: Checkout eqwalizer
-        uses: "actions/checkout@v3"
-        with:
-          repository: WhatsApp/eqwalizer
-          path: eqwalizer
-          ref: main
-      - name: Set up GraalVM
-        uses: graalvm/setup-graalvm@v1
-        with:
-          java-version: '17'
-          distribution: 'graalvm'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set up SBT
-        uses: olafurpg/setup-scala@v14
-        with:
-          java-version: '17'
+      - id: eqwalizer
+        uses: ./.github/actions/eqwalizer
       - name: Set up rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -117,35 +103,8 @@ jobs:
       - name: Verify rebar3 version (Windows Only)
         if: matrix.os == 'windows'
         run: rebar3.cmd version
-      - name: Assemble eqwalizer.jar (No Windows)
-        if: matrix.os != 'windows'
-        working-directory: eqwalizer/eqwalizer
-        run: "sbt assembly"
-      - name: Assemble eqwalizer.jar (Windows Only)
-        if: matrix.os == 'windows'
-        working-directory: eqwalizer\eqwalizer
-        run: "sbt assembly"
-        shell: bash
-      - name: Assemble eqwalizer binary (No Windows)
-        if: matrix.os != 'windows'
-        working-directory: eqwalizer/eqwalizer
-        run: 'native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target/scala-3.6.4/eqwalizer.jar eqwalizer'
-      - name: Assemble eqwalizer binary (Windows Only)
-        if: matrix.os == 'windows'
-        working-directory: eqwalizer\eqwalizer
-        run: 'native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target\scala-3.6.4\eqwalizer.jar eqwalizer'
       - name: Ensure elp is formatted
         run: 'cargo fmt -- --check'
-      - name: Configure Environment (No Windows)
-        if: matrix.os != 'windows'
-        run: |
-          echo "EQWALIZER_DIR=${{ github.workspace }}/eqwalizer/eqwalizer" >> $GITHUB_ENV
-          echo "ELP_EQWALIZER_PATH=${{ github.workspace }}/eqwalizer/eqwalizer/eqwalizer" >> $GITHUB_ENV
-      - name: Configure Environment (Windows Only)
-        if: matrix.os == 'windows'
-        run: |
-          echo "EQWALIZER_DIR=${{ github.workspace }}\eqwalizer\eqwalizer" >> $env:GITHUB_ENV
-          echo "ELP_EQWALIZER_PATH=${{ github.workspace }}\eqwalizer\eqwalizer\eqwalizer.exe" >> $env:GITHUB_ENV
       - name: Test elp
         # Do not run the tests in case of cross-compilation or on Windows
         if: matrix.platform-arch != 'macos-latest-arm' && matrix.os != 'windows'
