@@ -195,29 +195,29 @@ impl IncludeMapping {
         if let Ok(paths) = Utf8PathBuf::from(path).read_dir_utf8() {
             for path in paths.flatten() {
                 let path = path.into_path();
-                if let Some("hrl") = path.extension() {
-                    if let Some(basename) = path.file_name() {
-                        // We encode the local include string as follows
-                        // - First an indicator to flag that it is local
-                        // - Next the app name that it is local to
-                        // - Then the base file name.
-                        // We always do the local lookup in the
-                        // context of a specific app, this ensures the
-                        // app matches, and allows different apps to
-                        // use the same include file base name.
-                        let local_include = SmolStr::new(format!(
-                            "{LOCAL_LOOKUP_INCLUDE_PREFIX}:{app_name}:{basename}"
-                        ));
-                        let trimmed_app_name =
-                            app_name.strip_suffix("_includes_only").unwrap_or(app_name);
-                        let remote_include = SmolStr::new(format!(
-                            "{REMOTE_LOOKUP_INCLUDE_PREFIX}:{trimmed_app_name}/include/{basename}"
-                        ));
-                        let path = AbsPathBuf::assert(path);
-                        // TODO: remove clone()
-                        self.insert(local_include, path.clone());
-                        self.insert(remote_include, path);
-                    }
+                if let Some("hrl") = path.extension()
+                    && let Some(basename) = path.file_name()
+                {
+                    // We encode the local include string as follows
+                    // - First an indicator to flag that it is local
+                    // - Next the app name that it is local to
+                    // - Then the base file name.
+                    // We always do the local lookup in the
+                    // context of a specific app, this ensures the
+                    // app matches, and allows different apps to
+                    // use the same include file base name.
+                    let local_include = SmolStr::new(format!(
+                        "{LOCAL_LOOKUP_INCLUDE_PREFIX}:{app_name}:{basename}"
+                    ));
+                    let trimmed_app_name =
+                        app_name.strip_suffix("_includes_only").unwrap_or(app_name);
+                    let remote_include = SmolStr::new(format!(
+                        "{REMOTE_LOOKUP_INCLUDE_PREFIX}:{trimmed_app_name}/include/{basename}"
+                    ));
+                    let path = AbsPathBuf::assert(path);
+                    // TODO: remove clone()
+                    self.insert(local_include, path.clone());
+                    self.insert(remote_include, path);
                 }
             }
         }
@@ -256,10 +256,10 @@ impl IncludeMapping {
         path: &SmolStr,
         visited: &mut FxHashSet<TargetFullName>,
     ) -> Option<AbsPathBuf> {
-        if let Some(app_name) = self.app_names_rev.get(current) {
-            if let Some(abs_path) = self.get(IncludeMappingScope::Local(app_name.clone()), path) {
-                return Some(abs_path.clone());
-            }
+        if let Some(app_name) = self.app_names_rev.get(current)
+            && let Some(abs_path) = self.get(IncludeMappingScope::Local(app_name.clone()), path)
+        {
+            return Some(abs_path.clone());
         }
 
         if visited.contains(current) {
@@ -533,40 +533,39 @@ fn load_buck_targets_bxl(
     let mut used_deps = FxHashSet::default();
 
     for (name, buck_target) in &buck_targets {
-        if buck_target.origin != BuckTargetOrigin::Prelude {
-            if let Ok(target) = make_buck_target(
+        if buck_target.origin != BuckTargetOrigin::Prelude
+            && let Ok(target) = make_buck_target(
                 root,
                 name,
                 buck_target,
                 buck_config.build_deps,
                 &mut dep_path,
                 &mut target_info,
-            ) {
-                for target_name in &target.apps {
-                    used_deps.insert(target_name.clone());
-                }
-                for target_name in &target.deps {
-                    used_deps.insert(target_name.clone());
-                }
-                target_info.targets.insert(name.clone(), target);
+            )
+        {
+            for target_name in &target.apps {
+                used_deps.insert(target_name.clone());
             }
+            for target_name in &target.deps {
+                used_deps.insert(target_name.clone());
+            }
+            target_info.targets.insert(name.clone(), target);
         }
     }
     // Insert used prelude values too
     for name in &used_deps {
-        if let Some(buck_target) = &buck_targets.get(name) {
-            if buck_target.origin == BuckTargetOrigin::Prelude {
-                if let Ok(target) = make_buck_target(
-                    root,
-                    name,
-                    buck_target,
-                    buck_config.build_deps,
-                    &mut dep_path,
-                    &mut target_info,
-                ) {
-                    target_info.targets.insert(name.clone(), target);
-                }
-            }
+        if let Some(buck_target) = &buck_targets.get(name)
+            && buck_target.origin == BuckTargetOrigin::Prelude
+            && let Ok(target) = make_buck_target(
+                root,
+                name,
+                buck_target,
+                buck_config.build_deps,
+                &mut dep_path,
+                &mut target_info,
+            )
+        {
+            target_info.targets.insert(name.clone(), target);
         }
     }
     Ok(target_info)

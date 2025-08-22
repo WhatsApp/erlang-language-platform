@@ -220,10 +220,11 @@ fn replace_call(
                         .map(|source| source.to_string())
                 })
                 .collect();
-            if let Some(args_str) = opt_args_str {
-                if !args_str.is_empty() {
-                    let mut permuted_args: Vec<&String> = Vec::default();
-                    perm.iter().for_each(|new| {
+            if let Some(args_str) = opt_args_str
+                && !args_str.is_empty()
+            {
+                let mut permuted_args: Vec<&String> = Vec::default();
+                perm.iter().for_each(|new| {
                     let new = *new as usize;
                     if new < args_str.len() {
                         permuted_args.push(&args_str[new]);
@@ -236,19 +237,18 @@ fn replace_call(
                         );
                     }
                 });
-                    let replacement = permuted_args.iter().join(", ");
-                    if let Some(range_args) = args
-                        .iter()
-                        .map(|&id| {
-                            in_clause
-                                .range_for_expr(id)
-                                .expect("arg in permutation not found in function body.")
-                                .range
-                        })
-                        .reduce(|a, b| a.cover(b))
-                    {
-                        edit_builder.replace(range_args, replacement);
-                    }
+                let replacement = permuted_args.iter().join(", ");
+                if let Some(range_args) = args
+                    .iter()
+                    .map(|&id| {
+                        in_clause
+                            .range_for_expr(id)
+                            .expect("arg in permutation not found in function body.")
+                            .range
+                    })
+                    .reduce(|a, b| a.cover(b))
+                {
+                    edit_builder.replace(range_args, replacement);
                 }
             }
             Some(edit_builder.finish())
@@ -333,21 +333,12 @@ fn match_fun_ref_in_list_in_call_arg<T>(
                         target,
                         arity: arity_expr_id,
                     } = list_elem
+                        && let Expr::Literal(Literal::Integer(arity)) = &in_clause[*arity_expr_id]
+                        && matcher
+                            .get_match(target, arity.value as u32, None, sema, &in_clause.body())
+                            .is_some()
                     {
-                        if let Expr::Literal(Literal::Integer(arity)) = &in_clause[*arity_expr_id] {
-                            if matcher
-                                .get_match(
-                                    target,
-                                    arity.value as u32,
-                                    None,
-                                    sema,
-                                    &in_clause.body(),
-                                )
-                                .is_some()
-                            {
-                                result.push((*list_elem_id, target.clone(), arity.value as u32));
-                            }
-                        }
+                        result.push((*list_elem_id, target.clone(), arity.value as u32));
                     }
                 })
             }

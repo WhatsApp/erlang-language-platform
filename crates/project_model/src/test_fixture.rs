@@ -379,13 +379,12 @@ impl FixtureWithProjectMeta {
             let app_name = app_name.unwrap_or(AppName("test-fixture".to_string()));
             let abs_path = AbsPathBuf::assert(Utf8PathBuf::from(path.clone()));
             let mut src_dirs = vec![];
-            if let Some(ext) = abs_path.extension() {
-                if ext == "erl" {
-                    if let Some(parent) = abs_path.parent() {
-                        let path = parent.to_path_buf();
-                        src_dirs.push(path)
-                    }
-                }
+            if let Some(ext) = abs_path.extension()
+                && ext == "erl"
+                && let Some(parent) = abs_path.parent()
+            {
+                let path = parent.to_path_buf();
+                src_dirs.push(path)
             }
             (
                 None,
@@ -491,12 +490,11 @@ pub fn extract_annotations(text: &str) -> (Vec<(TextRange, String)>, String) {
                 if let Some(anno) = line.strip_prefix(TOP_OF_FILE_MARKER) {
                     res.push((*TOP_OF_FILE_RANGE, anno.trim_end().to_string()));
                 }
-            } else if line.starts_with(&(CURSOR_MARKER.to_string() + TOP_OF_FILE_MARKER)) {
-                if let Some(anno) =
+            } else if line.starts_with(&(CURSOR_MARKER.to_string() + TOP_OF_FILE_MARKER))
+                && let Some(anno) =
                     line.strip_prefix(&(CURSOR_MARKER.to_string() + TOP_OF_FILE_MARKER))
-                {
-                    res.push((*TOP_OF_FILE_RANGE, anno.trim_end().to_string()));
-                }
+            {
+                res.push((*TOP_OF_FILE_RANGE, anno.trim_end().to_string()));
             }
         } else if line.contains(TOP_OF_FILE_MARKER) {
             panic!(

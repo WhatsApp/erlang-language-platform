@@ -158,10 +158,10 @@ impl EdocHeader {
 
     pub fn doc_content(&self) -> String {
         let mut res = String::new();
-        if let Some(doc) = &self.doc {
-            if let Some(markdown) = doc.to_markdown() {
-                res.push_str(&markdown);
-            }
+        if let Some(doc) = &self.doc
+            && let Some(markdown) = doc.to_markdown()
+        {
+            res.push_str(&markdown);
         }
         res
     }
@@ -210,10 +210,10 @@ impl EdocHeader {
                 EdocHeaderKind::Module => "-moduledoc hidden.",
                 EdocHeaderKind::Function => "-doc hidden.",
             };
-            if let Some(doc) = &self.doc {
-                if doc.to_markdown().is_some() {
-                    bug_9672 = true;
-                }
+            if let Some(doc) = &self.doc
+                && doc.to_markdown().is_some()
+            {
+                bug_9672 = true;
             }
             if bug_9672 {
                 // Due to a bug in OTP, we cannot add the hidden attribute if there's actual documentation
@@ -266,10 +266,10 @@ impl EdocHeader {
         if !params_metadata.is_empty() {
             res.push_str(&format!("params => #{{{}}}, ", params_metadata.trim()));
         }
-        if let Some(equiv) = &self.equiv {
-            if let Some(equivalent_to) = equiv.to_markdown() {
-                res.push_str(&format!("equiv => {}, ", equivalent_to.trim()));
-            }
+        if let Some(equiv) = &self.equiv
+            && let Some(equivalent_to) = equiv.to_markdown()
+        {
+            res.push_str(&format!("equiv => {}, ", equivalent_to.trim()));
         }
         let prefix = match self.kind {
             EdocHeaderKind::Module => "moduledoc",
@@ -310,13 +310,11 @@ fn is_divider(text: &str) -> bool {
 fn divider(syntax: &SyntaxNode, direction: Direction) -> Option<SyntaxNode> {
     if let Some(NodeOrToken::Node(node)) =
         algo::non_whitespace_sibling(NodeOrToken::Node(syntax.clone()), direction)
+        && node.kind() == SyntaxKind::COMMENT
+        && is_divider(&node.text().to_string())
+        && !next_to_empty_line(&node, direction)
     {
-        if node.kind() == SyntaxKind::COMMENT
-            && is_divider(&node.text().to_string())
-            && !next_to_empty_line(&node, direction)
-        {
-            return Some(node);
-        }
+        return Some(node);
     }
     None
 }
@@ -568,12 +566,11 @@ impl ParseContext {
         self.current_tag = tag
     }
     fn process_tag(&mut self) {
-        if let Some(last_comment) = self.lines.last() {
-            if let Some(content) = &last_comment.content {
-                if is_divider(content) {
-                    _ = self.lines.pop();
-                }
-            }
+        if let Some(last_comment) = self.lines.last()
+            && let Some(content) = &last_comment.content
+            && is_divider(content)
+        {
+            _ = self.lines.pop();
         }
         if let Some(tag_name) = &self.current_tag {
             match &tag_name.kind {
@@ -708,12 +705,12 @@ fn parse_edoc(
         let syntax = InFileAstPtr::new(form.file_id(), AstPtr::new(comment));
         match extract_edoc_tag_and_content(&text) {
             None => {
-                if let Some(captures) = COPYRIGHT_RE.captures(&text) {
-                    if let Some(content) = captures.get(1) {
-                        context
-                            .plaintext_copyrights
-                            .insert(content.as_str().to_string());
-                    }
+                if let Some(captures) = COPYRIGHT_RE.captures(&text)
+                    && let Some(content) = captures.get(1)
+                {
+                    context
+                        .plaintext_copyrights
+                        .insert(content.as_str().to_string());
                 }
                 if let Some(tag) = &context.current_tag {
                     context.ranges.push(comment.syntax().text_range());

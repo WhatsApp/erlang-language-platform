@@ -52,8 +52,8 @@ fn no_warn_suppression(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_
                 match_ast! {
                     match n {
                         ast::Atom(atom) => {
-                            if let Some(atom_text) = atom.text() {
-                                if NOWARN_REGEX.is_match(&atom_text) {
+                            if let Some(atom_text) = atom.text()
+                                && NOWARN_REGEX.is_match(&atom_text) {
                                     let diagnostic = Diagnostic::new(
                                         DIAGNOSTIC_CODE,
                                         DIAGNOSTIC_MESSAGE,
@@ -63,7 +63,6 @@ fn no_warn_suppression(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_
                                     .with_severity(DIAGNOSTIC_SEVERITY);
                                     diagnostics.push(diagnostic);
                                 }
-                            }
                         },
                         _ => {}
                     }

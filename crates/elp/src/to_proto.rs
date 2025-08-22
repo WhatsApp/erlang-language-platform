@@ -687,58 +687,58 @@ pub(crate) fn code_lens(
             match project_build_data {
                 ProjectBuildData::Buck(project) => {
                     let file_id = run.nav.file_id;
-                    if let Some(file_path) = snap.file_id_to_path(file_id) {
-                        if let Some(target) = project.target(&file_path) {
-                            let r = buck2_test_runnable(
-                                snap,
-                                run.clone(),
-                                lens_config.buck2_mode.clone(),
-                                target.clone(),
-                                lens_config.run_coverage,
-                            );
-                            if lens_config.run_interactive {
-                                let interactive_r = buck2_run_runnable(snap, run.clone(), target);
-                                match run.kind {
-                                    RunnableKind::Suite { .. } => {
-                                        let run_command = command::open_interactive(
-                                            &interactive_r,
-                                            run_interactive_title,
-                                        );
-                                        acc.push(lsp_types::CodeLens {
-                                            range: annotation_range,
-                                            command: Some(run_command),
-                                            data: None,
-                                        });
-                                    }
-                                    RunnableKind::Test { .. } => {
-                                        let run_command = command::run_interactive(
-                                            &interactive_r,
-                                            run_interactive_title,
-                                        );
-                                        acc.push(lsp_types::CodeLens {
-                                            range: annotation_range,
-                                            command: Some(run_command),
-                                            data: None,
-                                        });
-                                    }
+                    if let Some(file_path) = snap.file_id_to_path(file_id)
+                        && let Some(target) = project.target(&file_path)
+                    {
+                        let r = buck2_test_runnable(
+                            snap,
+                            run.clone(),
+                            lens_config.buck2_mode.clone(),
+                            target.clone(),
+                            lens_config.run_coverage,
+                        );
+                        if lens_config.run_interactive {
+                            let interactive_r = buck2_run_runnable(snap, run.clone(), target);
+                            match run.kind {
+                                RunnableKind::Suite { .. } => {
+                                    let run_command = command::open_interactive(
+                                        &interactive_r,
+                                        run_interactive_title,
+                                    );
+                                    acc.push(lsp_types::CodeLens {
+                                        range: annotation_range,
+                                        command: Some(run_command),
+                                        data: None,
+                                    });
+                                }
+                                RunnableKind::Test { .. } => {
+                                    let run_command = command::run_interactive(
+                                        &interactive_r,
+                                        run_interactive_title,
+                                    );
+                                    acc.push(lsp_types::CodeLens {
+                                        range: annotation_range,
+                                        command: Some(run_command),
+                                        data: None,
+                                    });
                                 }
                             }
-                            if lens_config.run {
-                                let run_command = command::run_single(&r, run_title);
-                                acc.push(lsp_types::CodeLens {
-                                    range: annotation_range,
-                                    command: Some(run_command),
-                                    data: None,
-                                });
-                            }
-                            if lens_config.debug {
-                                let debug_command = command::debug_single(&r, debug_title);
-                                acc.push(lsp_types::CodeLens {
-                                    range: annotation_range,
-                                    command: Some(debug_command),
-                                    data: None,
-                                });
-                            }
+                        }
+                        if lens_config.run {
+                            let run_command = command::run_single(&r, run_title);
+                            acc.push(lsp_types::CodeLens {
+                                range: annotation_range,
+                                command: Some(run_command),
+                                data: None,
+                            });
+                        }
+                        if lens_config.debug {
+                            let debug_command = command::debug_single(&r, debug_title);
+                            acc.push(lsp_types::CodeLens {
+                                range: annotation_range,
+                                command: Some(debug_command),
+                                data: None,
+                            });
                         }
                     }
                 }

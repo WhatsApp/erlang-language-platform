@@ -65,23 +65,23 @@ pub fn expected_type(
 
             // 2-Tuple with leading atom vs just the second part
             (Type::TupleType(TupleType { arg_tys }), other2) => {
-                if let [atom @ Type::AtomLitType(AtomLitType { .. }), other] = &arg_tys[..] {
-                    if other == other2 {
-                        // Add wrapping tuple to return
-                        let file_text = sema.db.file_text(file_id);
-                        let current = &file_text[d.range.start().into()..d.range.end().into()];
-                        let replacement = format!("{{{atom}, {current}}}");
-                        let edit = TextEdit::replace(d.range, replacement.clone());
-                        diagnostic.add_fix(fix(
-                            "fix_expected_type",
-                            format!("Update returned value to '{replacement}'").as_str(),
-                            SourceChange::from_text_edit(file_id, edit),
-                            d.range,
-                        ));
+                if let [atom @ Type::AtomLitType(AtomLitType { .. }), other] = &arg_tys[..]
+                    && other == other2
+                {
+                    // Add wrapping tuple to return
+                    let file_text = sema.db.file_text(file_id);
+                    let current = &file_text[d.range.start().into()..d.range.end().into()];
+                    let replacement = format!("{{{atom}, {current}}}");
+                    let edit = TextEdit::replace(d.range, replacement.clone());
+                    diagnostic.add_fix(fix(
+                        "fix_expected_type",
+                        format!("Update returned value to '{replacement}'").as_str(),
+                        SourceChange::from_text_edit(file_id, edit),
+                        d.range,
+                    ));
 
-                        // Remove tuple from spec
-                        add_spec_fix(sema, file_id, got, diagnostic);
-                    }
+                    // Remove tuple from spec
+                    add_spec_fix(sema, file_id, got, diagnostic);
                 }
             }
 

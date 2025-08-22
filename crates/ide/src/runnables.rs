@@ -81,10 +81,10 @@ impl Runnable {
         coverage_enabled: bool,
     ) -> Vec<String> {
         let mut args = Vec::new();
-        if let Some(mode) = mode {
-            if !mode.is_empty() {
-                args.push(mode)
-            }
+        if let Some(mode) = mode
+            && !mode.is_empty()
+        {
+            args.push(mode)
         };
         match &self.kind {
             RunnableKind::Test { .. } => {

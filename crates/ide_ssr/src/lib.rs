@@ -465,43 +465,39 @@ impl<'a> MatchFinder<'a> {
             if !node_range.contains_range(range.range) {
                 continue;
             }
-            if node_range == range.range {
-                if let Some(expr) = ast::Expr::cast(node.clone()) {
-                    if let Some(in_clause_expr) =
-                        self.sema.to_expr(InFile::new(range.file_id, &expr))
-                    {
-                        for rule in &self.rules {
-                            let any_expr_id = AnyExprId::Expr(in_clause_expr.value);
-                            let body_origin = in_clause_expr.body().origin;
-                            let pattern_body =
-                                rule.get_body(self.sema).expect("Cannot get pattern_body");
-                            let pattern_body = fold_body(self.strategy, &pattern_body);
-                            let code_body = &body_origin
-                                .get_body(self.sema)
-                                .expect("Could not get code Body");
-                            let code_body = fold_body(self.strategy, code_body);
-                            out.push(MatchDebugInfo {
-                                matched: matching::get_match(
-                                    true,
-                                    rule,
-                                    &rule.pattern_sub_id_for_code(&pattern_body, &any_expr_id),
-                                    &body_origin,
-                                    &any_expr_id,
-                                    restrict_range,
-                                    self.sema,
-                                    &code_body,
-                                    &pattern_body,
-                                )
-                                .map_err(|e| MatchFailureReason {
-                                    reason: e.reason.unwrap_or_else(|| {
-                                        "Match failed, but no reason was given".to_owned()
-                                    }),
-                                }),
-                                pattern: InSsr::new(rule.ssr_source, rule.pattern_node.clone()),
-                                node: node.clone(),
-                            });
-                        }
-                    }
+            if node_range == range.range
+                && let Some(expr) = ast::Expr::cast(node.clone())
+                && let Some(in_clause_expr) = self.sema.to_expr(InFile::new(range.file_id, &expr))
+            {
+                for rule in &self.rules {
+                    let any_expr_id = AnyExprId::Expr(in_clause_expr.value);
+                    let body_origin = in_clause_expr.body().origin;
+                    let pattern_body = rule.get_body(self.sema).expect("Cannot get pattern_body");
+                    let pattern_body = fold_body(self.strategy, &pattern_body);
+                    let code_body = &body_origin
+                        .get_body(self.sema)
+                        .expect("Could not get code Body");
+                    let code_body = fold_body(self.strategy, code_body);
+                    out.push(MatchDebugInfo {
+                        matched: matching::get_match(
+                            true,
+                            rule,
+                            &rule.pattern_sub_id_for_code(&pattern_body, &any_expr_id),
+                            &body_origin,
+                            &any_expr_id,
+                            restrict_range,
+                            self.sema,
+                            &code_body,
+                            &pattern_body,
+                        )
+                        .map_err(|e| MatchFailureReason {
+                            reason: e.reason.unwrap_or_else(|| {
+                                "Match failed, but no reason was given".to_owned()
+                            }),
+                        }),
+                        pattern: InSsr::new(rule.ssr_source, rule.pattern_node.clone()),
+                        node: node.clone(),
+                    });
                 }
             }
             self.output_debug_for_nodes_at_range(&node, range, restrict_range, out);

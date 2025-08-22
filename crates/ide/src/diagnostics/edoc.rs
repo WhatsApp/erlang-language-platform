@@ -76,16 +76,16 @@ fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
                         doc_start,
                     ));
                 }
-            } else if let Some(hidden) = &header.hidden {
-                if let Some(doc_start) = header.start() {
-                    diagnostics.push(old_edoc_syntax_diagnostic(
-                        sema,
-                        file_id,
-                        hidden.range,
-                        header,
-                        doc_start,
-                    ));
-                }
+            } else if let Some(hidden) = &header.hidden
+                && let Some(doc_start) = header.start()
+            {
+                diagnostics.push(old_edoc_syntax_diagnostic(
+                    sema,
+                    file_id,
+                    hidden.range,
+                    header,
+                    doc_start,
+                ));
             }
         }
     }

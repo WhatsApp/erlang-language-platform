@@ -158,13 +158,12 @@ impl fmt::Display for TypeConversionError {
 
 pub fn from_bytes(bytes: &Vec<u8>, filter_stub: bool) -> Result<AST, Error> {
     let term = eetf::Term::decode(Cursor::new(bytes))?;
-    if let Term::Tuple(res) = term {
-        if let [Term::Atom(ok), forms, _] = &res.elements[..] {
-            if ok.name == "ok" {
-                let converted_forms = convert::convert_forms(forms, false, filter_stub)?;
-                return Ok(preprocess::preprocess(converted_forms));
-            }
-        }
+    if let Term::Tuple(res) = term
+        && let [Term::Atom(ok), forms, _] = &res.elements[..]
+        && ok.name == "ok"
+    {
+        let converted_forms = convert::convert_forms(forms, false, filter_stub)?;
+        return Ok(preprocess::preprocess(converted_forms));
     }
     Err(Error::ConversionError(ConversionError::InvalidDecode))
 }
@@ -192,11 +191,11 @@ pub fn from_beam(bytes: &Vec<u8>) -> Result<AST, Error> {
         let length = u32::from_be_bytes(buf);
         if &tag == b"Dbgi" || &tag == b"Abst" {
             let t1 = Term::decode(&mut cursor)?;
-            if let Term::Tuple(terms) = t1 {
-                if let Term::Tuple(terms) = &terms.elements[2] {
-                    let ast = &terms.elements[0];
-                    return Ok(convert::convert_forms(ast, true, true)?);
-                }
+            if let Term::Tuple(terms) = t1
+                && let Term::Tuple(terms) = &terms.elements[2]
+            {
+                let ast = &terms.elements[0];
+                return Ok(convert::convert_forms(ast, true, true)?);
             }
         } else {
             cursor.consume(((length + 3) & !3) as usize);

@@ -295,27 +295,27 @@ impl<'a> FindUsages<'a> {
             let tree = Lazy::new(move || sema.parse(file_id).value.syntax().clone());
             // Search for occurrences of the items name
             for offset in match_indices(&text, &finder, search_range) {
-                if let Some(name) = algo::find_node_at_offset::<NameLike>(&tree, offset) {
-                    if let Some(token) = name.syntax().first_token() {
-                        match SymbolClass::classify(sema, InFile::new(file_id, token)) {
-                            Some(SymbolClass::Definition(_)) => {}
-                            Some(SymbolClass::Reference {
-                                refs: _,
-                                typ: ReferenceType::Fuzzy,
-                            }) => {}
-                            Some(SymbolClass::Reference { refs, typ }) => {
-                                if refs.iter().any(|def| {
-                                    def == self.def
-                                        && !(self.direct_only && typ != ReferenceType::Direct)
-                                }) {
-                                    match sink(file_id, name) {
-                                        ControlFlow::Continue(()) => {}
-                                        ControlFlow::Break(()) => return,
-                                    }
+                if let Some(name) = algo::find_node_at_offset::<NameLike>(&tree, offset)
+                    && let Some(token) = name.syntax().first_token()
+                {
+                    match SymbolClass::classify(sema, InFile::new(file_id, token)) {
+                        Some(SymbolClass::Definition(_)) => {}
+                        Some(SymbolClass::Reference {
+                            refs: _,
+                            typ: ReferenceType::Fuzzy,
+                        }) => {}
+                        Some(SymbolClass::Reference { refs, typ }) => {
+                            if refs.iter().any(|def| {
+                                def == self.def
+                                    && !(self.direct_only && typ != ReferenceType::Direct)
+                            }) {
+                                match sink(file_id, name) {
+                                    ControlFlow::Continue(()) => {}
+                                    ControlFlow::Break(()) => return,
                                 }
                             }
-                            None => {}
                         }
+                        None => {}
                     }
                 }
             }

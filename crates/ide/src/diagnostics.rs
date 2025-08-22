@@ -1360,14 +1360,14 @@ fn check_missing_sep<Node: AstNode + std::fmt::Debug>(
 
     for node in nodes.skip(1) {
         let syntax = node.syntax();
-        if let Some(previous) = non_whitespace_prev_token(syntax) {
-            if previous.kind() != separator {
-                diagnostics.push(make_missing_diagnostic(
-                    previous.text_range(),
-                    item,
-                    code.to_string(),
-                ))
-            }
+        if let Some(previous) = non_whitespace_prev_token(syntax)
+            && previous.kind() != separator
+        {
+            diagnostics.push(make_missing_diagnostic(
+                previous.text_range(),
+                item,
+                code.to_string(),
+            ))
         }
     }
 
@@ -1375,16 +1375,15 @@ fn check_missing_sep<Node: AstNode + std::fmt::Debug>(
 }
 
 fn record_decl_check_missing_comma(record: ast::RecordDecl) -> Vec<Diagnostic> {
-    if let Some(name) = record.name() {
-        if let Some(next) = non_whitespace_next_token(name.syntax()) {
-            if next.kind() != SyntaxKind::ANON_COMMA {
-                return vec![make_missing_diagnostic(
-                    name.syntax().text_range(),
-                    ",",
-                    "missing_comma".to_string(),
-                )];
-            }
-        }
+    if let Some(name) = record.name()
+        && let Some(next) = non_whitespace_next_token(name.syntax())
+        && next.kind() != SyntaxKind::ANON_COMMA
+    {
+        return vec![make_missing_diagnostic(
+            name.syntax().text_range(),
+            ",",
+            "missing_comma".to_string(),
+        )];
     }
 
     vec![]

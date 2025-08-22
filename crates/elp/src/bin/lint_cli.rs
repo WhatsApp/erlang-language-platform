@@ -261,12 +261,11 @@ pub fn do_codemod(
                 do_parse_all(cli, &analysis, &loaded.project_id, diagnostics_config, args)?
             }
             (Some(file_id), Some(name)) => {
-                if let Some(app) = &args.app {
-                    if let Ok(Some(file_app)) = analysis.file_app_name(file_id) {
-                        if file_app != AppName(app.to_string()) {
-                            panic!("Module {} does not belong to app {}", name.as_str(), app)
-                        }
-                    }
+                if let Some(app) = &args.app
+                    && let Ok(Some(file_app)) = analysis.file_app_name(file_id)
+                    && file_app != AppName(app.to_string())
+                {
+                    panic!("Module {} does not belong to app {}", name.as_str(), app)
                 }
                 do_parse_one(&analysis, diagnostics_config, file_id, &name, args)?
                     .map_or(vec![], |x| vec![x])

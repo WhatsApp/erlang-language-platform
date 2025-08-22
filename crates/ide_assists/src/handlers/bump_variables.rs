@@ -76,18 +76,18 @@ pub(crate) fn bump_variables(acc: &mut Assists, ctx: &AssistContext) -> Option<(
             FxHashSet::default(),
             &mut |mut acc, ctx| match ctx.item {
                 AnyExpr::Expr(Expr::Var(v)) => {
-                    if let Some(expr) = body_map.any(ctx.item_id) {
-                        if expr.file_id() == file_id {
-                            acc.insert((v, expr));
-                        }
+                    if let Some(expr) = body_map.any(ctx.item_id)
+                        && expr.file_id() == file_id
+                    {
+                        acc.insert((v, expr));
                     }
                     acc
                 }
                 AnyExpr::Pat(Pat::Var(v)) => {
-                    if let Some(pat) = body_map.any(ctx.item_id) {
-                        if pat.file_id() == file_id {
-                            acc.insert((v, pat));
-                        }
+                    if let Some(pat) = body_map.any(ctx.item_id)
+                        && pat.file_id() == file_id
+                    {
+                        acc.insert((v, pat));
                     }
                     acc
                 }

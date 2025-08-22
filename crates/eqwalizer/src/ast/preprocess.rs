@@ -179,36 +179,35 @@ impl Preprocessor {
             }
             Expr::Lambda(lambda) if lambda.clauses.len() == 1 => {
                 let clause = &lambda.clauses[0];
-                if let [body] = &clause.body.exprs[..] {
-                    if let [pat] = &clause.pats[..] {
-                        if let Some(test) = as_test(body.clone()) {
-                            return Expr::Lambda(Lambda {
-                                pos: lambda.pos.clone(),
-                                name: lambda.name,
-                                clauses: vec![
-                                    Clause {
-                                        pos: clause.pos.clone(),
-                                        pats: vec![pat.clone()],
-                                        guards: vec![Guard { tests: vec![test] }],
-                                        body: Body {
-                                            exprs: vec![Expr::atom_true(clause.pos.clone())],
-                                        },
-                                    },
-                                    Clause {
-                                        pos: clause.pos.clone(),
-                                        pats: vec![Pat::PatVar(PatVar {
-                                            pos: clause.pos.clone(),
-                                            n: self.fresh_var(),
-                                        })],
-                                        guards: vec![],
-                                        body: Body {
-                                            exprs: vec![Expr::atom_false(clause.pos.clone())],
-                                        },
-                                    },
-                                ],
-                            });
-                        }
-                    }
+                if let [body] = &clause.body.exprs[..]
+                    && let [pat] = &clause.pats[..]
+                    && let Some(test) = as_test(body.clone())
+                {
+                    return Expr::Lambda(Lambda {
+                        pos: lambda.pos.clone(),
+                        name: lambda.name,
+                        clauses: vec![
+                            Clause {
+                                pos: clause.pos.clone(),
+                                pats: vec![pat.clone()],
+                                guards: vec![Guard { tests: vec![test] }],
+                                body: Body {
+                                    exprs: vec![Expr::atom_true(clause.pos.clone())],
+                                },
+                            },
+                            Clause {
+                                pos: clause.pos.clone(),
+                                pats: vec![Pat::PatVar(PatVar {
+                                    pos: clause.pos.clone(),
+                                    n: self.fresh_var(),
+                                })],
+                                guards: vec![],
+                                body: Body {
+                                    exprs: vec![Expr::atom_false(clause.pos.clone())],
+                                },
+                            },
+                        ],
+                    });
                 }
                 Expr::Lambda(lambda)
             }

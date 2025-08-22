@@ -37,10 +37,10 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
 fn no_dialyzer_attribute(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
     let form_list = sema.db.file_form_list(file_id);
     form_list.attributes().for_each(|(_idx, attr)| {
-        if attr.name == known::dialyzer {
-            if let Some(diagnostic) = make_diagnostic(sema, file_id, attr) {
-                diagnostics.push(diagnostic);
-            }
+        if attr.name == known::dialyzer
+            && let Some(diagnostic) = make_diagnostic(sema, file_id, attr)
+        {
+            diagnostics.push(diagnostic);
         }
     });
 }

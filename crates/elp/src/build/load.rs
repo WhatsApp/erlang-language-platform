@@ -197,13 +197,13 @@ fn load_database(
 
     let changes = vfs.take_changes();
     for (_file_id, file) in changes {
-        if file.exists() {
-            if let vfs::Change::Create(v, _) | vfs::Change::Modify(v, _) = file.change {
-                let document = Document::from_bytes(&v);
-                let (text, line_ending) = document.vfs_to_salsa();
-                db.set_file_text(file.file_id, Arc::from(text));
-                line_ending_map.insert(file.file_id, line_ending);
-            }
+        if file.exists()
+            && let vfs::Change::Create(v, _) | vfs::Change::Modify(v, _) = file.change
+        {
+            let document = Document::from_bytes(&v);
+            let (text, line_ending) = document.vfs_to_salsa();
+            db.set_file_text(file.file_id, Arc::from(text));
+            line_ending_map.insert(file.file_id, line_ending);
         }
     }
 

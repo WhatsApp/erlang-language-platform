@@ -170,10 +170,10 @@ impl SymbolDefinition {
                 let mut def_usages = Vec::default();
                 let funs = function.source(sema.db.upcast());
                 for fun in funs {
-                    if let Some(ast::FunctionOrMacroClause::FunctionClause(fc)) = fun.clause() {
-                        if let Some(name) = fc.name() {
-                            def_usages.push(NameLike::Name(name));
-                        }
+                    if let Some(ast::FunctionOrMacroClause::FunctionClause(fc)) = fun.clause()
+                        && let Some(name) = fc.name()
+                    {
+                        def_usages.push(NameLike::Name(name));
                     };
                 }
                 if safety_check == SafetyChecks::Yes {

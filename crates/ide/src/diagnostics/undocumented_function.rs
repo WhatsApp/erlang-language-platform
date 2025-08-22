@@ -96,12 +96,11 @@ fn check_function(
         && def.doc_id.is_none()
         && def.doc_metadata_id.is_none()
         && def.edoc_comments(sema.db).is_none()
+        && let Some(name_range) = def.name_range(sema.db)
     {
-        if let Some(name_range) = def.name_range(sema.db) {
-            let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, name_range)
-                .with_severity(DIAGNOSTIC_SEVERITY);
-            diagnostics.push(diagnostic);
-        }
+        let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, name_range)
+            .with_severity(DIAGNOSTIC_SEVERITY);
+        diagnostics.push(diagnostic);
     }
 }
 

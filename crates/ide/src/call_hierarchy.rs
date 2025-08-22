@@ -88,14 +88,14 @@ fn process_call_range(
     let def_map = sema.def_map(file_id);
     let enclosing_function_def = def_map.get_function(enclosing_function_name)?;
     let mut enclosing_function_nav = enclosing_function_def.to_nav(sema.db);
-    if file_id != position_file_id {
-        if let Some(module_name) = sema.module_name(file_id) {
-            enclosing_function_nav.name = SmolStr::new(format!(
-                "{}:{}",
-                module_name.as_str(),
-                enclosing_function_nav.name
-            ))
-        }
+    if file_id != position_file_id
+        && let Some(module_name) = sema.module_name(file_id)
+    {
+        enclosing_function_nav.name = SmolStr::new(format!(
+            "{}:{}",
+            module_name.as_str(),
+            enclosing_function_nav.name
+        ))
     }
     calls.add(enclosing_function_nav, *range);
     Some(())
@@ -136,18 +136,15 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
                             nav.name = label
                         }
                         if let Some(expr) = &function_body.get_body_map(clause_id).any(ctx.item_id)
+                            && let Some(node) = expr.to_node(&source_file)
+                            && let Some(call) = algo::find_node_at_offset::<ast::Call>(
+                                node.syntax(),
+                                node.syntax().text_range().start(),
+                            )
+                            && let Some(expr) = call.expr()
                         {
-                            if let Some(node) = expr.to_node(&source_file) {
-                                if let Some(call) = algo::find_node_at_offset::<ast::Call>(
-                                    node.syntax(),
-                                    node.syntax().text_range().start(),
-                                ) {
-                                    if let Some(expr) = call.expr() {
-                                        let range = expr.syntax().text_range();
-                                        calls.add(nav, range);
-                                    }
-                                }
-                            }
+                            let range = expr.syntax().text_range();
+                            calls.add(nav, range);
                         }
                     }
                 }

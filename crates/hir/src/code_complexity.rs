@@ -26,10 +26,10 @@ pub fn compute(sema: &Semantic, def: &FunctionDef, score_cap: Option<usize>) -> 
     for decl in def.source(sema.db.upcast()) {
         for _line in decl.syntax().text().to_string().lines() {
             score += 1;
-            if let Some(score_cap) = score_cap {
-                if score >= score_cap {
-                    break;
-                }
+            if let Some(score_cap) = score_cap
+                && score >= score_cap
+            {
+                break;
             }
         }
     }

@@ -382,10 +382,10 @@ impl Server {
         }
 
         while let Some(event) = self.next_event() {
-            if let Event::Lsp(lsp_server::Message::Notification(notif)) = &event {
-                if notif.method == notification::Exit::METHOD {
-                    return Ok(());
-                }
+            if let Event::Lsp(lsp_server::Message::Notification(notif)) = &event
+                && notif.method == notification::Exit::METHOD
+            {
+                return Ok(());
             }
             let _timer1 = timeit_exceeds!("main_loop_health", SLOW_DURATION);
             let _timer2 = timeit_exceeds!(format!("slow_event:{:?}", event), TOO_SLOW_DURATION);
@@ -1027,16 +1027,14 @@ impl Server {
                         .write()
                         .insert(file.file_id, line_endings);
                 }
-                if let Some(path) = vfs.file_path(file.file_id).as_path() {
-                    if let Some(app_data_id) = self.unresolved_app_id_paths.get(&path.to_path_buf())
-                    {
-                        set_app_data_id_by_file(raw_database, file.file_id, *app_data_id);
-                        // This is not really necessary, but we do it
-                        // to be able to check that we resolve them
-                        // all eventually
-                        Arc::make_mut(&mut self.unresolved_app_id_paths)
-                            .remove(&path.to_path_buf());
-                    }
+                if let Some(path) = vfs.file_path(file.file_id).as_path()
+                    && let Some(app_data_id) = self.unresolved_app_id_paths.get(&path.to_path_buf())
+                {
+                    set_app_data_id_by_file(raw_database, file.file_id, *app_data_id);
+                    // This is not really necessary, but we do it
+                    // to be able to check that we resolve them
+                    // all eventually
+                    Arc::make_mut(&mut self.unresolved_app_id_paths).remove(&path.to_path_buf());
                 }
 
                 // causes us to remove stale squiggles from the UI.
@@ -1480,22 +1478,20 @@ impl Server {
 
     fn show_message_request(&mut self, params: ShowMessageRequestParams) {
         self.send_request::<request::ShowMessageRequest>(params, |this, resp| {
-            if let Some(res) = resp.result {
-                if let Ok(hm) = serde_json::from_value::<HashMap<String, String>>(res) {
-                    if let Some(url) = hm.get("URL") {
-                        if let Ok(uri) = Url::from_str(url) {
-                            this.send_request::<request::ShowDocument>(
-                                ShowDocumentParams {
-                                    uri,
-                                    external: Some(true),
-                                    take_focus: Some(true),
-                                    selection: None,
-                                },
-                                |_, _| Ok(()),
-                            );
-                        }
-                    }
-                }
+            if let Some(res) = resp.result
+                && let Ok(hm) = serde_json::from_value::<HashMap<String, String>>(res)
+                && let Some(url) = hm.get("URL")
+                && let Ok(uri) = Url::from_str(url)
+            {
+                this.send_request::<request::ShowDocument>(
+                    ShowDocumentParams {
+                        uri,
+                        external: Some(true),
+                        take_focus: Some(true),
+                        selection: None,
+                    },
+                    |_, _| Ok(()),
+                );
             }
 
             Ok(())
@@ -1581,8 +1577,8 @@ impl Server {
                     if loader.clear(&paths) {
                         for path in paths {
                             let manifest = loader.load_manifest_if_new(&path);
-                            if let Some((elp_config, main, fallback)) = manifest {
-                                if let Ok(project) = Server::load_project_or_fallback(
+                            if let Some((elp_config, main, fallback)) = manifest
+                                && let Ok(project) = Server::load_project_or_fallback(
                                     &path,
                                     elp_config,
                                     main,
@@ -1590,9 +1586,9 @@ impl Server {
                                     &sender,
                                     &query_config,
                                     &spinner,
-                                ) {
-                                    projects.push(project);
-                                }
+                                )
+                            {
+                                projects.push(project);
                             }
                         }
                         log::info!("did reload projects");

@@ -15,11 +15,11 @@ use elp_ide::diagnostics::DiagnosticCode;
 use crate::args::Explain;
 
 pub fn explain(args: &Explain, cli: &mut dyn Cli) -> Result<()> {
-    if let Some(code) = DiagnosticCode::maybe_from_string(&args.code) {
-        if let Some(uri) = DiagnosticCode::as_uri(&code) {
-            let label = code.as_label();
-            return Ok(writeln!(cli, "{uri} ({label})")?);
-        }
+    if let Some(code) = DiagnosticCode::maybe_from_string(&args.code)
+        && let Some(uri) = DiagnosticCode::as_uri(&code)
+    {
+        let label = code.as_label();
+        return Ok(writeln!(cli, "{uri} ({label})")?);
     }
     Ok(writeln!(cli, "Unkwnown code: {}", args.code)?)
 }

@@ -278,22 +278,22 @@ fn types_highlight(
         if def.exported {
             let type_alias_source = def.source(sema.db.upcast());
 
-            if let Some(type_name) = type_alias_source.type_name() {
-                if let Some(name) = type_name.name() {
-                    let range = name.syntax().text_range();
+            if let Some(type_name) = type_alias_source.type_name()
+                && let Some(name) = type_name.name()
+            {
+                let range = name.syntax().text_range();
 
-                    // The base highlighing currently uses SymbolKind::Function.
-                    // We cannot set a modifier only. so must repeat it here.
-                    let highlight = HlTag::Symbol(SymbolKind::Function) | HlMod::ExportedType;
+                // The base highlighing currently uses SymbolKind::Function.
+                // We cannot set a modifier only. so must repeat it here.
+                let highlight = HlTag::Symbol(SymbolKind::Function) | HlMod::ExportedType;
 
-                    // Element inside the viewport, need to highlight
-                    if range_to_highlight.intersect(range).is_some() {
-                        hl.add(HlRange {
-                            range,
-                            highlight,
-                            binding_hash: None,
-                        })
-                    }
+                // Element inside the viewport, need to highlight
+                if range_to_highlight.intersect(range).is_some() {
+                    hl.add(HlRange {
+                        range,
+                        highlight,
+                        binding_hash: None,
+                    })
                 }
             };
         }
@@ -310,16 +310,16 @@ fn dynamic_usages_highlight(
 
     if let Some(types) = types {
         types.iter().for_each(|(r, t)| {
-            if is_dynamic(t) {
-                if let Pos::TextRange(eq_range) = r {
-                    let range: TextRange = (eq_range.clone()).into();
-                    if range_to_highlight.intersect(range).is_some() {
-                        hl.add(HlRange {
-                            range,
-                            highlight: highlight_dynamic,
-                            binding_hash: None,
-                        });
-                    }
+            if is_dynamic(t)
+                && let Pos::TextRange(eq_range) = r
+            {
+                let range: TextRange = (eq_range.clone()).into();
+                if range_to_highlight.intersect(range).is_some() {
+                    hl.add(HlRange {
+                        range,
+                        highlight: highlight_dynamic,
+                        binding_hash: None,
+                    });
                 }
             }
         });

@@ -183,10 +183,10 @@ impl<'a> Ctx<'a> {
     fn get_macro_information(&self) -> MacroInformation {
         let mut macro_map: FxHashMap<MacroSource, ResolvedMacro> = FxHashMap::default();
         self.macro_stack.iter().for_each(|e| {
-            if let Some(macro_source) = self.macro_source_map.get(&e.name) {
-                if let Some(resolution) = self.source_map.macro_map.get(macro_source) {
-                    macro_map.insert(*macro_source, *resolution);
-                }
+            if let Some(macro_source) = self.macro_source_map.get(&e.name)
+                && let Some(resolution) = self.source_map.macro_map.get(macro_source)
+            {
+                macro_map.insert(*macro_source, *resolution);
             }
         });
         (self.macro_stack.clone(), self.macro_stack_id, macro_map)

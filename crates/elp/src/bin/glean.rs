@@ -862,13 +862,13 @@ impl GleanIndexer {
         let project_data = db.project_data(project_id);
         let mut files = vec![];
         for &source_root_id in &project_data.source_roots {
-            if let Some(app_data) = db.app_data(source_root_id) {
-                if app_data.app_type == AppType::App {
-                    let source_root = db.source_root(source_root_id);
-                    for file_id in source_root.iter() {
-                        if let Some(path) = source_root.path_for_file(&file_id) {
-                            files.push((file_id, path.clone()));
-                        }
+            if let Some(app_data) = db.app_data(source_root_id)
+                && app_data.app_type == AppType::App
+            {
+                let source_root = db.source_root(source_root_id);
+                for file_id in source_root.iter() {
+                    if let Some(path) = source_root.path_for_file(&file_id) {
+                        files.push((file_id, path.clone()));
                     }
                 }
             }
@@ -1198,54 +1198,52 @@ impl GleanIndexer {
             vec![],
             &mut |mut acc, ctx| match &ctx.item {
                 hir::AnyExpr::Expr(Expr::Call { target, args }) => {
-                    if let Some((body, _, expr_source)) = ctx.body_with_expr_source(&sema) {
-                        if let Some(range) =
+                    if let Some((body, _, expr_source)) = ctx.body_with_expr_source(&sema)
+                        && let Some(range) =
                             Self::find_range(&sema, &ctx, &source_file, &expr_source)
+                    {
+                        let arity = args.len() as u32;
+                        if let Some(fact) =
+                            Self::resolve_call(&sema, target, arity, file_id, &body, range)
                         {
-                            let arity = args.len() as u32;
-                            if let Some(fact) =
-                                Self::resolve_call(&sema, target, arity, file_id, &body, range)
-                            {
-                                acc.push(fact);
-                            }
+                            acc.push(fact);
                         }
                     }
                     acc
                 }
                 hir::AnyExpr::Expr(Expr::CaptureFun { target, arity }) => {
-                    if let Some((body, range)) = ctx.find_range(&sema) {
-                        if range.file_id == file_id {
-                            let arity: Option<u32> = match &body[*arity] {
-                                Expr::Literal(Literal::Integer(int)) => int.value.try_into().ok(),
-                                _ => None,
-                            };
-                            if let Some(arity) = arity {
-                                if let Some(fact) = Self::resolve_call(
-                                    &sema,
-                                    target,
-                                    arity,
-                                    file_id,
-                                    &body,
-                                    range.range,
-                                ) {
-                                    acc.push(fact);
-                                }
-                            }
+                    if let Some((body, range)) = ctx.find_range(&sema)
+                        && range.file_id == file_id
+                    {
+                        let arity: Option<u32> = match &body[*arity] {
+                            Expr::Literal(Literal::Integer(int)) => int.value.try_into().ok(),
+                            _ => None,
+                        };
+                        if let Some(arity) = arity
+                            && let Some(fact) = Self::resolve_call(
+                                &sema,
+                                target,
+                                arity,
+                                file_id,
+                                &body,
+                                range.range,
+                            )
+                        {
+                            acc.push(fact);
                         }
                     }
                     acc
                 }
                 hir::AnyExpr::TypeExpr(TypeExpr::Call { target, args }) => {
-                    if let Some((body, _, expr_source)) = ctx.body_with_expr_source(&sema) {
-                        if let Some(range) =
+                    if let Some((body, _, expr_source)) = ctx.body_with_expr_source(&sema)
+                        && let Some(range) =
                             Self::find_range(&sema, &ctx, &source_file, &expr_source)
+                    {
+                        let arity = args.len() as u32;
+                        if let Some(fact) =
+                            Self::resolve_type(&sema, target, arity, file_id, &body, range)
                         {
-                            let arity = args.len() as u32;
-                            if let Some(fact) =
-                                Self::resolve_type(&sema, target, arity, file_id, &body, range)
-                            {
-                                acc.push(fact);
-                            }
+                            acc.push(fact);
                         }
                     }
                     acc
@@ -1458,20 +1456,19 @@ impl GleanIndexer {
                         let include = &form_list[*idx];
                         let ast = include.form_id().get_ast(db, file_id);
                         let range = ast.syntax().text_range().into();
-                        if let Some(file) = db.resolve_include(InFile::new(file_id, *idx)) {
-                            if let Some(path) = path_for_file(db, file) {
-                                if let Some((name, Some("hrl"))) = path.name_and_extension() {
-                                    let target = HeaderTarget {
-                                        file_id: file.into(),
-                                        name: format!("{name}.hrl"),
-                                    };
-                                    let xref = XRef {
-                                        source: range,
-                                        target: XRefTarget::Header(target.into()),
-                                    };
-                                    acc.push(xref);
-                                }
-                            }
+                        if let Some(file) = db.resolve_include(InFile::new(file_id, *idx))
+                            && let Some(path) = path_for_file(db, file)
+                            && let Some((name, Some("hrl"))) = path.name_and_extension()
+                        {
+                            let target = HeaderTarget {
+                                file_id: file.into(),
+                                name: format!("{name}.hrl"),
+                            };
+                            let xref = XRef {
+                                source: range,
+                                target: XRefTarget::Header(target.into()),
+                            };
+                            acc.push(xref);
                         }
                     }
                     acc
@@ -1480,20 +1477,20 @@ impl GleanIndexer {
                     let export = &form_list[idx];
                     let ast = export.form_id.get_ast(db, file_id);
                     for fun in ast.funs() {
-                        if let Some(na) = Self::fa_name_arity(&fun) {
-                            if let Some(def) = sema.def_map(file_id).get_function(&na) {
-                                let range = fun.syntax().text_range().into();
-                                let target = FunctionTarget {
-                                    file_id: def.file.file_id.into(),
-                                    name: na.name().to_string(),
-                                    arity: na.arity(),
-                                };
-                                let xref = XRef {
-                                    source: range,
-                                    target: XRefTarget::Function(target.into()),
-                                };
-                                acc.push(xref);
-                            }
+                        if let Some(na) = Self::fa_name_arity(&fun)
+                            && let Some(def) = sema.def_map(file_id).get_function(&na)
+                        {
+                            let range = fun.syntax().text_range().into();
+                            let target = FunctionTarget {
+                                file_id: def.file.file_id.into(),
+                                name: na.name().to_string(),
+                                arity: na.arity(),
+                            };
+                            let xref = XRef {
+                                source: range,
+                                target: XRefTarget::Function(target.into()),
+                            };
+                            acc.push(xref);
                         }
                     }
                     acc

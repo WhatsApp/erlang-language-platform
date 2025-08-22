@@ -70,60 +70,56 @@ pub fn replace_in_spec(
             )
             .collect();
         def_map.get_functions().for_each(|(na, def)| {
-            if possibles.contains(&(&na.name().to_string(), &na.arity())) {
-                if let Some(spec) = &def.spec {
-                    let spec_id = InFile::new(spec.file.file_id, spec.spec_id);
-                    let spec = sema.db.spec_body(spec_id);
-                    Spec::fold(
-                        sema,
-                        Strategy {
-                            macros: MacroStrategy::Expand,
-                            parens: ParenStrategy::InvisibleParens,
-                        },
-                        spec_id,
-                        (),
-                        &mut |_acc, ctx| {
-                            if let AnyExpr::TypeExpr(TypeExpr::Call { target, ref args }) = ctx.item
+            if possibles.contains(&(&na.name().to_string(), &na.arity()))
+                && let Some(spec) = &def.spec
+            {
+                let spec_id = InFile::new(spec.file.file_id, spec.spec_id);
+                let spec = sema.db.spec_body(spec_id);
+                Spec::fold(
+                    sema,
+                    Strategy {
+                        macros: MacroStrategy::Expand,
+                        parens: ParenStrategy::InvisibleParens,
+                    },
+                    spec_id,
+                    (),
+                    &mut |_acc, ctx| {
+                        if let AnyExpr::TypeExpr(TypeExpr::Call { target, ref args }) = ctx.item {
+                            let arity = args.len();
+                            let type_label = target.label(arity as u32, sema, &spec.body);
+                            let from_label: SmolStr = action_from.label().into();
+                            if type_label == Some(from_label)
+                                && let Some(range) = spec.body.range_for_any(sema, ctx.item_id)
+                                && range.file_id == file_id
                             {
-                                let arity = args.len();
-                                let type_label = target.label(arity as u32, sema, &spec.body);
-                                let from_label: SmolStr = action_from.label().into();
-                                if type_label == Some(from_label) {
-                                    if let Some(range) = spec.body.range_for_any(sema, ctx.item_id)
-                                    {
-                                        if range.file_id == file_id {
-                                            let mut edit_builder = TextEdit::builder();
-                                            edit_builder
-                                                .replace(range.range, action_to.to_string());
-                                            let edit = edit_builder.finish();
+                                let mut edit_builder = TextEdit::builder();
+                                edit_builder.replace(range.range, action_to.to_string());
+                                let edit = edit_builder.finish();
 
-                                            let diag_label = format!(
-                                                "Replace '{}' with '{}'",
-                                                &action_from.label(),
-                                                action_to
-                                            );
+                                let diag_label = format!(
+                                    "Replace '{}' with '{}'",
+                                    &action_from.label(),
+                                    action_to
+                                );
 
-                                            let diag = Diagnostic::new(
-                                                DiagnosticCode::AdHoc(action_from.label()),
-                                                diag_label.clone(),
-                                                range.range,
-                                            )
-                                            .with_severity(Severity::WeakWarning)
-                                            .experimental()
-                                            .with_fixes(Some(vec![fix(
-                                                "replace_type",
-                                                &diag_label,
-                                                SourceChange::from_text_edit(file_id, edit),
-                                                range.range,
-                                            )]));
-                                            diags.push(diag);
-                                        }
-                                    }
-                                }
-                            };
-                        },
-                    )
-                }
+                                let diag = Diagnostic::new(
+                                    DiagnosticCode::AdHoc(action_from.label()),
+                                    diag_label.clone(),
+                                    range.range,
+                                )
+                                .with_severity(Severity::WeakWarning)
+                                .experimental()
+                                .with_fixes(Some(vec![fix(
+                                    "replace_type",
+                                    &diag_label,
+                                    SourceChange::from_text_edit(file_id, edit),
+                                    range.range,
+                                )]));
+                                diags.push(diag);
+                            }
+                        };
+                    },
+                )
             }
         });
     }

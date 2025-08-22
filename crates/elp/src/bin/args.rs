@@ -589,11 +589,11 @@ fn module_completer(input: &String) -> Vec<(String, Option<String>)> {
             potential_path = path.parent();
             continue;
         } else {
-            if let Ok(content) = fs::read_to_string(file_path) {
-                if let Ok(config) = toml::from_str::<ModuleConfig>(&content) {
-                    for module_name in config.modules.into_iter() {
-                        modules.push(module_name)
-                    }
+            if let Ok(content) = fs::read_to_string(file_path)
+                && let Ok(config) = toml::from_str::<ModuleConfig>(&content)
+            {
+                for module_name in config.modules.into_iter() {
+                    modules.push(module_name)
                 }
             }
             break;

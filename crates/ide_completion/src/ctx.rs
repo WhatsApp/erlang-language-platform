@@ -89,10 +89,10 @@ impl CtxKind {
         algo::find_node_at_offset::<ast::Spec>(node, offset).is_some()
     }
     fn is_dialyzer(node: &SyntaxNode, offset: TextSize) -> bool {
-        if let Some(wild_attr) = algo::find_node_at_offset::<ast::WildAttribute>(node, offset) {
-            if let Some(name) = wild_attr.name() {
-                return name.syntax().text() == "-dialyzer";
-            }
+        if let Some(wild_attr) = algo::find_node_at_offset::<ast::WildAttribute>(node, offset)
+            && let Some(name) = wild_attr.name()
+        {
+            return name.syntax().text() == "-dialyzer";
         }
         false
     }
@@ -135,13 +135,11 @@ impl CtxKind {
                             },
                             ast::MatchExpr(parent) => {
                                 let prev_token = Self::previous_non_trivia_sibling_or_token(parent.syntax());
-                                if Self::is_in_error(node, offset) {
-                                    if let Some(NodeOrToken::Token(token)) = prev_token {
-                                        if token.kind() == SyntaxKind::ANON_CASE {
+                                if Self::is_in_error(node, offset)
+                                    && let Some(NodeOrToken::Token(token)) = prev_token
+                                        && token.kind() == SyntaxKind::ANON_CASE {
                                             return false;
                                         }
-                                    }
-                                }
                                 if let Some(it) = parent.lhs() {
                                     return is_match(it.syntax())
                                 }

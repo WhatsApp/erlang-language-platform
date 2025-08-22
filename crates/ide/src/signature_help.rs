@@ -91,51 +91,48 @@ pub(crate) fn signature_help(
 
     let mut res = Vec::new();
 
-    if let Some(args) = call.args() {
-        if args
+    if let Some(args) = call.args()
+        && args
             .syntax()
             .text_range()
             .contains_range(token.text_range())
-        {
-            if let hir::Expr::Call { target, args } = &call_expr[call_expr.value] {
-                let arity = args.len() as u32;
-                match target {
-                    CallTarget::Local { name } => {
-                        let fun_atom = &call_expr[*name].as_atom()?;
-                        let fun_name = sema.db.lookup_atom(*fun_atom);
-                        signature_help_for_call(
-                            &mut res,
-                            sema,
-                            db,
-                            position.file_id,
-                            None,
-                            fun_name,
-                            arity,
-                            active_parameter,
-                        )
-                    }
-                    CallTarget::Remote { module, name, .. } => {
-                        let module_atom = &call_expr[*module].as_atom()?;
-                        let module_name = sema.db.lookup_atom(*module_atom);
-                        let fun_atom = &call_expr[*name].as_atom()?;
-                        let fun_name = sema.db.lookup_atom(*fun_atom);
-                        let module =
-                            sema.resolve_module_name(position.file_id, module_name.as_str())?;
-                        signature_help_for_call(
-                            &mut res,
-                            sema,
-                            db,
-                            module.file.file_id,
-                            Some(module_name),
-                            fun_name,
-                            arity,
-                            active_parameter,
-                        )
-                    }
-                }
-            };
+        && let hir::Expr::Call { target, args } = &call_expr[call_expr.value]
+    {
+        let arity = args.len() as u32;
+        match target {
+            CallTarget::Local { name } => {
+                let fun_atom = &call_expr[*name].as_atom()?;
+                let fun_name = sema.db.lookup_atom(*fun_atom);
+                signature_help_for_call(
+                    &mut res,
+                    sema,
+                    db,
+                    position.file_id,
+                    None,
+                    fun_name,
+                    arity,
+                    active_parameter,
+                )
+            }
+            CallTarget::Remote { module, name, .. } => {
+                let module_atom = &call_expr[*module].as_atom()?;
+                let module_name = sema.db.lookup_atom(*module_atom);
+                let fun_atom = &call_expr[*name].as_atom()?;
+                let fun_name = sema.db.lookup_atom(*fun_atom);
+                let module = sema.resolve_module_name(position.file_id, module_name.as_str())?;
+                signature_help_for_call(
+                    &mut res,
+                    sema,
+                    db,
+                    module.file.file_id,
+                    Some(module_name),
+                    fun_name,
+                    arity,
+                    active_parameter,
+                )
+            }
         }
-    }
+    };
     Some((res, active_parameter))
 }
 
@@ -175,21 +172,21 @@ fn signature_help_for_call(
             }
             None => {
                 // Function could be imported
-                if let Some(module_name) = def_map.get_imports().get(name_arity) {
-                    if let Some(module) = sema.resolve_module_name(file_id, module_name) {
-                        let def_map = sema.def_map(module.file.file_id);
-                        if let Some(def) = def_map.get_function(name_arity) {
-                            let help = build_signature_help(
-                                db,
-                                &sema,
-                                module.file.file_id,
-                                def,
-                                active_parameter,
-                                Some(module_name.clone()),
-                                &fun_name,
-                            );
-                            res.push(help)
-                        }
+                if let Some(module_name) = def_map.get_imports().get(name_arity)
+                    && let Some(module) = sema.resolve_module_name(file_id, module_name)
+                {
+                    let def_map = sema.def_map(module.file.file_id);
+                    if let Some(def) = def_map.get_function(name_arity) {
+                        let help = build_signature_help(
+                            db,
+                            &sema,
+                            module.file.file_id,
+                            def,
+                            active_parameter,
+                            Some(module_name.clone()),
+                            &fun_name,
+                        );
+                        res.push(help)
                     }
                 }
             }

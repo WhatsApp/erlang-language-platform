@@ -423,17 +423,17 @@ impl TryFrom<&str> for MFA {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"^([^:]+):([^:]+)\/(\d+)$").unwrap();
         }
-        if let Some(captures) = RE.captures(value) {
-            if captures.len() > 3 {
-                let arity = captures[3]
-                    .parse::<u32>()
-                    .unwrap_or_else(|_| panic!("bad arity field for `{value}'"));
-                return Ok(MFA {
-                    module: captures[1].to_string(),
-                    name: captures[2].to_string(),
-                    arity,
-                });
-            }
+        if let Some(captures) = RE.captures(value)
+            && captures.len() > 3
+        {
+            let arity = captures[3]
+                .parse::<u32>()
+                .unwrap_or_else(|_| panic!("bad arity field for `{value}'"));
+            return Ok(MFA {
+                module: captures[1].to_string(),
+                name: captures[2].to_string(),
+                arity,
+            });
         }
         Err(format!("invalid MFA '{value}'"))
     }
@@ -544,48 +544,46 @@ pub(crate) fn find_call_in_function<CallCtx, MakeCtx, Res>(
                 },
                 AnyExpr::Expr(Expr::Call { target, args }) => Some((target, Args::Args(args))),
                 _ => None,
-            } {
-                if let Some((mfa, t)) = matcher.get_match(
-                    &target,
-                    args.arity(),
-                    Some(&args.as_vec()),
-                    sema,
-                    &def_fb.body(clause_id),
-                ) {
-                    let in_clause = &def_fb.in_clause(clause_id);
-                    let context = CheckCallCtx {
-                        mfa,
-                        parents: ctx.parents,
-                        t,
-                        target: &target,
-                        args: args.clone(),
-                        in_clause,
+            } && let Some((mfa, t)) = matcher.get_match(
+                &target,
+                args.arity(),
+                Some(&args.as_vec()),
+                sema,
+                &def_fb.body(clause_id),
+            ) {
+                let in_clause = &def_fb.in_clause(clause_id);
+                let context = CheckCallCtx {
+                    mfa,
+                    parents: ctx.parents,
+                    t,
+                    target: &target,
+                    args: args.clone(),
+                    in_clause,
+                };
+                if let Some(extra) = check_call(context) {
+                    // Got one.
+                    let call_expr_id = if let Some(expr_id) = ctx.in_macro {
+                        expr_id.idx
+                    } else {
+                        ctx.item_id
                     };
-                    if let Some(extra) = check_call(context) {
-                        // Got one.
-                        let call_expr_id = if let Some(expr_id) = ctx.in_macro {
-                            expr_id.idx
+                    if let Some(range) = &def_fb.range_for_any(clause_id, call_expr_id) {
+                        let range_surface_mf = if ctx.in_macro.is_none() {
+                            target.range(in_clause)
                         } else {
-                            ctx.item_id
+                            // We need to rather use the full range, of the macro
+                            None
                         };
-                        if let Some(range) = &def_fb.range_for_any(clause_id, call_expr_id) {
-                            let range_surface_mf = if ctx.in_macro.is_none() {
-                                target.range(in_clause)
-                            } else {
-                                // We need to rather use the full range, of the macro
-                                None
-                            };
-                            if let Some(diag) = make(MatchCtx {
-                                sema,
-                                def_fb: in_clause,
-                                target: &target,
-                                args,
-                                extra: &extra,
-                                range_surface_mf,
-                                range: *range,
-                            }) {
-                                res.push(diag)
-                            }
+                        if let Some(diag) = make(MatchCtx {
+                            sema,
+                            def_fb: in_clause,
+                            target: &target,
+                            args,
+                            extra: &extra,
+                            range_surface_mf,
+                            range: *range,
+                        }) {
+                            res.push(diag)
                         }
                     }
                 }

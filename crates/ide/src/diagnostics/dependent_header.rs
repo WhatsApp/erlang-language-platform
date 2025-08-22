@@ -70,17 +70,16 @@ fn dependent_header(
                         _ => None,
                     } {
                         let record_name = sema.db.lookup_atom(name);
-                        if def_map.get_record(&record_name).is_none() {
-                            if let Some(in_file_ast_ptr) = body_map.any(ctx.item_id) {
-                                if let Some(expr_ast) = in_file_ast_ptr.to_node(&source_file) {
-                                    let diagnostic_range = match extract_record_name(&expr_ast) {
-                                        Some(name) => name.syntax().text_range(),
-                                        None => expr_ast.syntax().text_range(),
-                                    };
-                                    let d = make_diagnostic(diagnostic_range, record_name);
-                                    diagnostics.push(d);
-                                }
-                            }
+                        if def_map.get_record(&record_name).is_none()
+                            && let Some(in_file_ast_ptr) = body_map.any(ctx.item_id)
+                            && let Some(expr_ast) = in_file_ast_ptr.to_node(&source_file)
+                        {
+                            let diagnostic_range = match extract_record_name(&expr_ast) {
+                                Some(name) => name.syntax().text_range(),
+                                None => expr_ast.syntax().text_range(),
+                            };
+                            let d = make_diagnostic(diagnostic_range, record_name);
+                            diagnostics.push(d);
                         }
                     };
                     acc

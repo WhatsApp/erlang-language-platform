@@ -78,34 +78,31 @@ fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: F
                     *clause_arg_pat_id,
                     (),
                     &mut |(), ctx| {
-                        if let AnyExprId::Pat(pat_id) = ctx.item_id {
-                            if let Some(var) = match ctx.item {
+                        if let AnyExprId::Pat(pat_id) = ctx.item_id
+                            && let Some(var) = match ctx.item {
                                 AnyExpr::Pat(pat) => pat.as_var(),
                                 _ => None,
-                            } {
-                                if is_unused_var(sema, &in_clause, &body_map, &source_file, &pat_id)
-                                {
-                                    let var_name = var.as_string(sema.db.upcast());
-                                    if !var_name.starts_with('_') {
-                                        unused_vars_with_wrong_name.insert(pat_id, var_name);
-                                    }
-                                }
+                            }
+                            && is_unused_var(sema, &in_clause, &body_map, &source_file, &pat_id)
+                        {
+                            let var_name = var.as_string(sema.db.upcast());
+                            if !var_name.starts_with('_') {
+                                unused_vars_with_wrong_name.insert(pat_id, var_name);
                             }
                         }
                     },
                 );
             }
 
-            if !unused_vars_with_wrong_name.is_empty() {
-                if let Some(replacements) =
+            if !unused_vars_with_wrong_name.is_empty()
+                && let Some(replacements) =
                     pick_new_unused_var_names(sema, &in_clause, &unused_vars_with_wrong_name)
-                {
-                    for (pat_id, new_name) in replacements.iter() {
-                        if let Some(range) = in_clause.range_for_pat(*pat_id) {
-                            if range.file_id == file_id {
-                                diags.push(make_diagnostic(file_id, range.range, new_name.clone()));
-                            }
-                        }
+            {
+                for (pat_id, new_name) in replacements.iter() {
+                    if let Some(range) = in_clause.range_for_pat(*pat_id)
+                        && range.file_id == file_id
+                    {
+                        diags.push(make_diagnostic(file_id, range.range, new_name.clone()));
                     }
                 }
             }
@@ -121,14 +118,13 @@ fn is_unused_var(
 ) -> bool {
     match &in_clause[*pat_id].as_var() {
         Some(_var) => {
-            if let Some(infile_ast_ptr) = body_map.pat(*pat_id) {
-                if let Some(ast::Expr::ExprMax(ast::ExprMax::Var(ast_var))) =
+            if let Some(infile_ast_ptr) = body_map.pat(*pat_id)
+                && let Some(ast::Expr::ExprMax(ast::ExprMax::Var(ast_var))) =
                     infile_ast_ptr.to_node(source_file)
-                {
-                    let infile_ast_var = InFile::new(source_file.file_id, &ast_var);
-                    if let Some(var_usages) = sema.find_local_usages_ast(infile_ast_var) {
-                        return var_usages.len() == 1;
-                    }
+            {
+                let infile_ast_var = InFile::new(source_file.file_id, &ast_var);
+                if let Some(var_usages) = sema.find_local_usages_ast(infile_ast_var) {
+                    return var_usages.len() == 1;
                 }
             }
             false

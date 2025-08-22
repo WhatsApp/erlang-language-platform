@@ -232,10 +232,10 @@ fn from_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId, patte
             let body = body_arc.as_ref();
             if is_match_valid_pat(body, key) && is_match_valid_pat(body, value) {
                 if let Some(value2) = maybe_value2 {
-                    if is_match_valid_pat(body, value2) {
-                        if let Some(diagnostic) = make_diagnostic(sema, file_id, m) {
-                            diags.push(diagnostic)
-                        }
+                    if is_match_valid_pat(body, value2)
+                        && let Some(diagnostic) = make_diagnostic(sema, file_id, m)
+                    {
+                        diags.push(diagnostic)
                     }
                 } else if let Some(diagnostic) = make_diagnostic(sema, file_id, m) {
                     diags.push(diagnostic)

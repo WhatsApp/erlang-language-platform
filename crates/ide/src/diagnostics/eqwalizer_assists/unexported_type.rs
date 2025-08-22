@@ -43,35 +43,33 @@ pub fn unexported_type(
                     },
             }),
     }) = &d.diagnostic
+        && let Some(module) = resolve_module_name(sema, file_id, module)
     {
-        if let Some(module) = resolve_module_name(sema, file_id, module) {
-            let name = NameArity::new(Name::from_erlang_service(name), *arity);
-            if let Some(type_alias) = sema
-                .db
-                .def_map(module.file.file_id)
-                .get_types()
-                .get(&name)
-                .cloned()
-            {
-                if !type_alias.exported {
-                    let mut builder = SourceChangeBuilder::new(module.file.file_id);
-                    helpers::ExportBuilder::new(
-                        sema,
-                        module.file.file_id,
-                        ExportForm::Types,
-                        &[name.clone()],
-                        &mut builder,
-                    )
-                    .finish();
-                    let edit = builder.finish();
-                    diagnostic.add_fix(fix(
-                        "export_type",
-                        format!("Export the type `{name}`").as_str(),
-                        edit,
-                        diagnostic.range,
-                    ))
-                }
-            }
+        let name = NameArity::new(Name::from_erlang_service(name), *arity);
+        if let Some(type_alias) = sema
+            .db
+            .def_map(module.file.file_id)
+            .get_types()
+            .get(&name)
+            .cloned()
+            && !type_alias.exported
+        {
+            let mut builder = SourceChangeBuilder::new(module.file.file_id);
+            helpers::ExportBuilder::new(
+                sema,
+                module.file.file_id,
+                ExportForm::Types,
+                &[name.clone()],
+                &mut builder,
+            )
+            .finish();
+            let edit = builder.finish();
+            diagnostic.add_fix(fix(
+                "export_type",
+                format!("Export the type `{name}`").as_str(),
+                edit,
+                diagnostic.range,
+            ))
         }
     }
 }

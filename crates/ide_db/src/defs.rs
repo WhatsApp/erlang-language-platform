@@ -524,10 +524,10 @@ fn named_is_record(
     module: Option<&ExprId>,
     name: &ExprId,
 ) -> Option<()> {
-    if let Some(module) = module {
-        if body.get_atom_name(sema, module)? != known::erlang {
-            return None;
-        }
+    if let Some(module) = module
+        && body.get_atom_name(sema, module)? != known::erlang
+    {
+        return None;
     }
     if body.get_atom_name(sema, name)? != known::is_record {
         return None;

@@ -163,25 +163,24 @@ pub fn collect_metadata(
                 .syntax_node()
                 .token_at_offset(pattern_end)
                 .left_biased()
+                && token.kind() == SyntaxKind::COMMENT
             {
-                if token.kind() == SyntaxKind::COMMENT {
-                    let suppression_range = get_suppression_range(line_index, line_num, file_text);
-                    let comment = token.to_string();
-                    let comment_range = TextRange::new(pattern_start, pattern_end);
-                    let codes = comment
-                        .split_whitespace()
-                        .filter_map(DiagnosticCode::maybe_from_string)
-                        .collect();
+                let suppression_range = get_suppression_range(line_index, line_num, file_text);
+                let comment = token.to_string();
+                let comment_range = TextRange::new(pattern_start, pattern_end);
+                let codes = comment
+                    .split_whitespace()
+                    .filter_map(DiagnosticCode::maybe_from_string)
+                    .collect();
 
-                    annotations.push(Annotation {
-                        comment,
-                        comment_range,
-                        suppression_range,
-                        codes,
-                        source: pattern.source,
-                        kind: pattern.kind,
-                    });
-                }
+                annotations.push(Annotation {
+                    comment,
+                    comment_range,
+                    suppression_range,
+                    codes,
+                    source: pattern.source,
+                    kind: pattern.kind,
+                });
             }
         }
     }

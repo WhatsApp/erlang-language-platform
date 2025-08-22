@@ -73,14 +73,14 @@ fn find_local_refs(sema: &Semantic<'_>, position: FilePosition) -> Option<Vec<Hi
                 }
             })
             .collect();
-        if declaration.file_id == position.file_id {
-            if let Some(highlight_ranges) = declaration.highlight_ranges {
-                for range in highlight_ranges {
-                    references.push(HighlightedRange {
-                        range,
-                        category: decl_category,
-                    });
-                }
+        if declaration.file_id == position.file_id
+            && let Some(highlight_ranges) = declaration.highlight_ranges
+        {
+            for range in highlight_ranges {
+                references.push(HighlightedRange {
+                    range,
+                    category: decl_category,
+                });
             }
         };
 

@@ -202,11 +202,11 @@ impl<'tree, 'text> Converter<'tree, 'text> {
     }
 
     fn exit_node(&mut self, node: Node, is_root: bool) {
-        if let Some(syntax_error_node) = &self.pending_syntax_error {
-            if &node == syntax_error_node {
-                self.error_syntax(node.byte_range());
-                self.pending_syntax_error = None;
-            }
+        if let Some(syntax_error_node) = &self.pending_syntax_error
+            && &node == syntax_error_node
+        {
+            self.error_syntax(node.byte_range());
+            self.pending_syntax_error = None;
         }
         if !((is_root && node.is_error()) || node.is_missing() || node.child_count() == 0) {
             let range = node.byte_range();

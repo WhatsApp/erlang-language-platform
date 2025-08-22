@@ -96,14 +96,11 @@ fn map_put_to_syntax_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: 
         format!("ssr: maps:put({KEY_VAR},{VALUE_VAR},{MAP_VAR}).").as_str(),
     );
     matches.matches.iter().for_each(|m| {
-        if let Some(map_match) = m.get_placeholder_match(sema, MAP_VAR) {
-            if is_placeholder_a_var_from_sema_and_match(sema, m, &map_match) {
-                if let Some(diagnostic) =
-                    make_diagnostic(sema, file_id, m, MapInsertionFunction::Put)
-                {
-                    diags.push(diagnostic)
-                }
-            }
+        if let Some(map_match) = m.get_placeholder_match(sema, MAP_VAR)
+            && is_placeholder_a_var_from_sema_and_match(sema, m, &map_match)
+            && let Some(diagnostic) = make_diagnostic(sema, file_id, m, MapInsertionFunction::Put)
+        {
+            diags.push(diagnostic)
         }
     });
 }
@@ -119,14 +116,12 @@ fn map_update_to_syntax_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_i
         format!("ssr: maps:update({KEY_VAR},{VALUE_VAR},{MAP_VAR}).").as_str(),
     );
     matches.matches.iter().for_each(|m| {
-        if let Some(map_match) = m.get_placeholder_match(sema, MAP_VAR) {
-            if is_placeholder_a_var_from_sema_and_match(sema, m, &map_match) {
-                if let Some(diagnostic) =
-                    make_diagnostic(sema, file_id, m, MapInsertionFunction::Update)
-                {
-                    diags.push(diagnostic)
-                }
-            }
+        if let Some(map_match) = m.get_placeholder_match(sema, MAP_VAR)
+            && is_placeholder_a_var_from_sema_and_match(sema, m, &map_match)
+            && let Some(diagnostic) =
+                make_diagnostic(sema, file_id, m, MapInsertionFunction::Update)
+        {
+            diags.push(diagnostic)
         }
     });
 }

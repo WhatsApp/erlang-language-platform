@@ -78,35 +78,32 @@ fn mutable_variable_bug(
     sema.def_map(file_id)
         .get_function_clauses()
         .for_each(|(_, def)| {
-            if def.file.file_id == file_id {
-                if let Some(bound_vars) = bound_vars_by_function.get(&def.function_clause_id) {
-                    let in_clause = def.in_clause(sema, def);
-                    in_clause.fold_clause(
-                        Strategy {
-                            macros: MacroStrategy::Expand,
-                            parens: ParenStrategy::InvisibleParens,
-                        },
-                        (),
-                        &mut |acc, ctx| {
-                            if let AnyExpr::Expr(Expr::Match { lhs: _, rhs }) = ctx.item {
-                                if let Expr::Match { lhs, rhs: _ } = &in_clause[rhs] {
-                                    if bound_vars.contains(lhs) {
-                                        if let Some(range) = in_clause.range_for_any(ctx.item_id) {
-                                            if range.file_id == def.file.file_id {
-                                                diags.push(Diagnostic::new(
-                                                    DiagnosticCode::MutableVarBug,
-                                                    "Possible mutable variable bug",
-                                                    range.range,
-                                                ));
-                                            }
-                                        }
-                                    }
-                                }
-                            };
-                            acc
-                        },
-                    );
-                }
+            if def.file.file_id == file_id
+                && let Some(bound_vars) = bound_vars_by_function.get(&def.function_clause_id)
+            {
+                let in_clause = def.in_clause(sema, def);
+                in_clause.fold_clause(
+                    Strategy {
+                        macros: MacroStrategy::Expand,
+                        parens: ParenStrategy::InvisibleParens,
+                    },
+                    (),
+                    &mut |acc, ctx| {
+                        if let AnyExpr::Expr(Expr::Match { lhs: _, rhs }) = ctx.item
+                            && let Expr::Match { lhs, rhs: _ } = &in_clause[rhs]
+                            && bound_vars.contains(lhs)
+                            && let Some(range) = in_clause.range_for_any(ctx.item_id)
+                            && range.file_id == def.file.file_id
+                        {
+                            diags.push(Diagnostic::new(
+                                DiagnosticCode::MutableVarBug,
+                                "Possible mutable variable bug",
+                                range.range,
+                            ));
+                        };
+                        acc
+                    },
+                );
             }
         });
 

@@ -102,10 +102,10 @@ pub(crate) fn inline_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
         move |builder| {
             let file_id = ctx.frange.file_id;
             let ast_fun = fun.source(ctx.db().upcast());
-            if delete_definition {
-                if let Some(delete_ranges) = ranges_for_delete_function(ctx, &ast_fun[0]) {
-                    delete_ranges.delete(builder);
-                }
+            if delete_definition
+                && let Some(delete_ranges) = ranges_for_delete_function(ctx, &ast_fun[0])
+            {
+                delete_ranges.delete(builder);
             }
             for call in references {
                 let infile_ast_fun = InFile::new(fun.file.file_id, &ast_fun);
@@ -115,8 +115,7 @@ pub(crate) fn inline_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
                 if ast_fun.len() == 1 {
                     if let Some(ast::FunctionOrMacroClause::FunctionClause(ast_clause)) =
                         ast_fun[0].clause()
-                    {
-                        if let Some(clause) =
+                        && let Some(clause) =
                             function_body.clauses.iter().next().map(|(_, clause)| {
                                 InFunctionClauseBody::new(
                                     &ctx.sema,
@@ -126,18 +125,16 @@ pub(crate) fn inline_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
                                     (),
                                 )
                             })
-                        {
-                            if let Some((range, replacement)) = inline_single_function_clause(
-                                &ctx.sema,
-                                file_id,
-                                &infile_ast_fun,
-                                &ast_clause,
-                                &call,
-                                &clause,
-                            ) {
-                                builder.replace(range, replacement)
-                            }
-                        }
+                        && let Some((range, replacement)) = inline_single_function_clause(
+                            &ctx.sema,
+                            file_id,
+                            &infile_ast_fun,
+                            &ast_clause,
+                            &call,
+                            &clause,
+                        )
+                    {
+                        builder.replace(range, replacement)
                     };
                 } else if let Some((range, replacement)) =
                     inline_function_as_case(&infile_ast_fun, &call)
@@ -291,10 +288,10 @@ fn assign_params_for_begin(
         } else {
             false
         };
-        if idx == 0 {
-            if let Some(leading_comments) = get_val_preceding_comments(val.syntax()) {
-                final_text.push_str((format!("\n{body_indent}{leading_comments}")).as_str());
-            }
+        if idx == 0
+            && let Some(leading_comments) = get_val_preceding_comments(val.syntax())
+        {
+            final_text.push_str((format!("\n{body_indent}{leading_comments}")).as_str());
         };
 
         let var_str = var.syntax().text();
@@ -442,10 +439,10 @@ fn inline_simple_function_clause(
 }
 
 fn param_substitution(mvar: &ast::Name, val: &ast::Expr) -> bool {
-    if let ast::Name::Var(var) = mvar {
-        if let Some((_, needed)) = parens_needed(val, var) {
-            return needed;
-        }
+    if let ast::Name::Var(var) = mvar
+        && let Some((_, needed)) = parens_needed(val, var)
+    {
+        return needed;
     }
     false
 }
@@ -670,10 +667,10 @@ fn can_inline_function(ctx: &AssistContext) -> Option<InlineData> {
             usages.iter().for_each(|(_file_id, names)| {
                 for name_like in names {
                     if let Some(call) = get_call(name_like.syntax()) {
-                        if let Some(name) = call.expr() {
-                            if name.syntax().text_range().contains(ctx.offset()) {
-                                selected_call_reference.push(call.clone());
-                            }
+                        if let Some(name) = call.expr()
+                            && name.syntax().text_range().contains(ctx.offset())
+                        {
+                            selected_call_reference.push(call.clone());
                         }
                         all_references.push(call.clone());
                     };

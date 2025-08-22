@@ -105,18 +105,17 @@ fn eval_error_diagnostic(
     def_map: &Arc<DefMap>,
     name: &NameArity,
 ) {
-    if let Some(def) = def_map.get_function(name) {
-        if let Some(name) = def.first_clause_name(sema.db.upcast()) {
-            let range = name.syntax().text_range();
-            let d = Diagnostic::new(
-                DiagnosticCode::CannotEvaluateCTCallbacks,
-                "Could not evaluate function. No code lenses for tests will be available."
-                    .to_string(),
-                range,
-            )
-            .with_severity(Severity::Warning);
-            res.push(d);
-        }
+    if let Some(def) = def_map.get_function(name)
+        && let Some(name) = def.first_clause_name(sema.db.upcast())
+    {
+        let range = name.syntax().text_range();
+        let d = Diagnostic::new(
+            DiagnosticCode::CannotEvaluateCTCallbacks,
+            "Could not evaluate function. No code lenses for tests will be available.".to_string(),
+            range,
+        )
+        .with_severity(Severity::Warning);
+        res.push(d);
     }
 }
 
@@ -146,12 +145,10 @@ fn exported_test_ranges(sema: &Semantic, file_id: FileId) -> FxHashMap<NameArity
         if def.exported
             && !KNOWN_FUNCTIONS_ARITY_1.contains(name_arity)
             && !excludes.contains(name_arity)
+            && let Some(name) = def.source(sema.db.upcast()).first().and_then(|f| f.name())
+            && name_arity.arity() == 1
         {
-            if let Some(name) = def.source(sema.db.upcast()).first().and_then(|f| f.name()) {
-                if name_arity.arity() == 1 {
-                    res.insert(name_arity.clone(), name.syntax().text_range());
-                }
-            }
+            res.insert(name_arity.clone(), name.syntax().text_range());
         }
     }
     res
@@ -175,21 +172,21 @@ pub fn runnables(
     groups: &FxHashMap<SmolStr, GroupDef>,
 ) -> Result<Vec<Runnable>, ()> {
     let mut res = Vec::new();
-    if let Some(module_name) = sema.module_name(file_id) {
-        if is_suite(&module_name) {
-            // Add a runnable for the entire test suite
-            if let Some(suite_runnable) = suite_to_runnable(sema, file_id) {
-                res.push(suite_runnable);
-            }
-            runnables_for_test_defs(
-                &mut res,
-                sema,
-                file_id,
-                all.iter(),
-                FxHashSet::default(),
-                groups,
-            );
+    if let Some(module_name) = sema.module_name(file_id)
+        && is_suite(&module_name)
+    {
+        // Add a runnable for the entire test suite
+        if let Some(suite_runnable) = suite_to_runnable(sema, file_id) {
+            res.push(suite_runnable);
         }
+        runnables_for_test_defs(
+            &mut res,
+            sema,
+            file_id,
+            all.iter(),
+            FxHashSet::default(),
+            groups,
+        );
     }
     Ok(res)
 }

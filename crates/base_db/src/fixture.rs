@@ -199,10 +199,10 @@ impl ChangeFixture {
 
             let app_name = entry.app_data.name.clone();
 
-            if let Some(otp_extra) = entry.otp {
-                if otp.is_none() {
-                    otp = Some(otp_extra);
-                }
+            if let Some(otp_extra) = entry.otp
+                && otp.is_none()
+            {
+                otp = Some(otp_extra);
             }
             app_map.combine(entry.app_data);
 

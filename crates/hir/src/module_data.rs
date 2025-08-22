@@ -309,14 +309,14 @@ impl FunctionDef {
 
     fn parameters_doc_from_doc_attribute(&self, db: &dyn DefDatabase) -> FxHashMap<String, String> {
         let mut res = FxHashMap::default();
-        if let Some(doc_metadata) = self.doc_metadata(db) {
-            if let Some(ast::Expr::MapExpr(doc_metadata)) = doc_metadata.value() {
-                let params = doc_metadata_params(&doc_metadata);
-                if let Some(ast::Expr::MapExpr(params)) = params {
-                    for param in params.fields() {
-                        if let Some((key, value)) = as_param(param) {
-                            res.insert(key, value);
-                        }
+        if let Some(doc_metadata) = self.doc_metadata(db)
+            && let Some(ast::Expr::MapExpr(doc_metadata)) = doc_metadata.value()
+        {
+            let params = doc_metadata_params(&doc_metadata);
+            if let Some(ast::Expr::MapExpr(params)) = params {
+                for param in params.fields() {
+                    if let Some((key, value)) = as_param(param) {
+                        res.insert(key, value);
                     }
                 }
             }

@@ -63,13 +63,13 @@ pub(crate) fn save_project_info(args: ProjectInfo, query_config: &BuckQueryConfi
         }
     };
 
-    if args.buck_query {
-        if let ProjectBuildData::Buck(buck) = &project.project_build_data {
-            let buck_targets_query = query_buck_targets_bxl(&buck.buck_conf, query_config);
-            writer.write_all(b"================buck targets query raw================\n")?;
-            writer.write_all(format!("{:#?}\n", &buck_targets_query).as_bytes())?;
-        };
-    }
+    if args.buck_query
+        && let ProjectBuildData::Buck(buck) = &project.project_build_data
+    {
+        let buck_targets_query = query_buck_targets_bxl(&buck.buck_conf, query_config);
+        writer.write_all(b"================buck targets query raw================\n")?;
+        writer.write_all(format!("{:#?}\n", &buck_targets_query).as_bytes())?;
+    };
     writer.write_all(b"================manifest================\n")?;
     writer.write_all(format!("{:#?}\n", &manifest).as_bytes())?;
     writer.write_all(b"================project_build_data================\n")?;

@@ -54,29 +54,24 @@ pub(super) fn hints(
                         if let Some(call_def) = target.resolve_call(arity, sema, file_id, body) {
                             let param_names = &call_def.function_clauses[0].param_names;
                             for (param_name, arg) in param_names.iter().zip(args) {
-                                if should_hint(sema.db.upcast(), param_name, &body[arg]) {
-                                    if let Some(arg_range) =
+                                if should_hint(sema.db.upcast(), param_name, &body[arg])
+                                    && let Some(arg_range) =
                                         function_body.range_for_expr(clause_id, arg)
-                                    {
-                                        if range_limit.is_none()
-                                            || range_limit.unwrap().contains_range(arg_range.range)
-                                        {
-                                            if let ParamName::Name(param_name) = param_name {
-                                                if arg_range.file_id == file_id {
-                                                    let hint = InlayHint {
-                                                        range: arg_range.range,
-                                                        kind: InlayKind::Parameter,
-                                                        label: InlayHintLabel::simple(
-                                                            param_name.as_str(),
-                                                            None,
-                                                            None,
-                                                        ),
-                                                    };
-                                                    res.push(hint);
-                                                }
-                                            }
-                                        }
-                                    }
+                                    && (range_limit.is_none()
+                                        || range_limit.unwrap().contains_range(arg_range.range))
+                                    && let ParamName::Name(param_name) = param_name
+                                    && arg_range.file_id == file_id
+                                {
+                                    let hint = InlayHint {
+                                        range: arg_range.range,
+                                        kind: InlayKind::Parameter,
+                                        label: InlayHintLabel::simple(
+                                            param_name.as_str(),
+                                            None,
+                                            None,
+                                        ),
+                                    };
+                                    res.push(hint);
                                 }
                             }
                         }

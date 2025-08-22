@@ -41,19 +41,17 @@ pub(crate) fn add_completions(
         ] if trigger.is_none() => {
             if let Some(spec) =
                 algo::find_node_at_offset::<ast::Spec>(parsed.value.syntax(), file_position.offset)
+                && let Some(sp) = sema.find_form::<ast::Spec>(InFile::new(parsed.file_id, &spec))
+                && let Some(mut completion) = helpers::name_arity_to_call_completion(
+                    sema,
+                    file_position.file_id,
+                    &sp.name,
+                    spec_fun_prefix.text(),
+                    next_token,
+                )
             {
-                if let Some(sp) = sema.find_form::<ast::Spec>(InFile::new(parsed.file_id, &spec)) {
-                    if let Some(mut completion) = helpers::name_arity_to_call_completion(
-                        sema,
-                        file_position.file_id,
-                        &sp.name,
-                        spec_fun_prefix.text(),
-                        next_token,
-                    ) {
-                        fun_completion_to_spec(&mut completion);
-                        acc.push(completion);
-                    }
-                }
+                fun_completion_to_spec(&mut completion);
+                acc.push(completion);
             }
 
             let def_map = sema.def_map(file_position.file_id);

@@ -60,32 +60,31 @@ fn check_file(acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: &FileId) {
     };
 
     fold_file_functions(sema, fold_strategy, *file_id, (), &mut |_acc, ctx| {
-        if let AnyExpr::Expr(Expr::MacroCall { expansion, .. }) = &ctx.item {
-            if let Some((body, _body_map, ast)) = ctx.body_with_expr_source(sema) {
-                let visible_parens_body = body.index_with_strategy(index_strategy);
-                if let Expr::BinaryOp { .. } = &visible_parens_body[*expansion] {
-                    if let ParentId::HirIdx(hir_idx) = ctx.parent() {
-                        if hir_idx.body_origin == ctx.body_origin {
-                            // We can have nested macro
-                            // calls, which are not
-                            // visible in the
-                            // visible_parens_body. Report
-                            // on the top-level one only.
-                            let fold_body = body.index_with_strategy(fold_strategy);
-                            match &fold_body.get_any(hir_idx.idx) {
-                                AnyExprRef::Expr(Expr::MacroCall { .. }) => {}
-                                _ => {
-                                    if let AnyExprRef::Expr(Expr::BinaryOp { .. }) =
-                                        &visible_parens_body.get_any(hir_idx.idx)
-                                    {
-                                        make_diagnostic(acc, file_id, ast);
-                                    }
-                                }
-                            };
+        if let AnyExpr::Expr(Expr::MacroCall { expansion, .. }) = &ctx.item
+            && let Some((body, _body_map, ast)) = ctx.body_with_expr_source(sema)
+        {
+            let visible_parens_body = body.index_with_strategy(index_strategy);
+            if let Expr::BinaryOp { .. } = &visible_parens_body[*expansion]
+                && let ParentId::HirIdx(hir_idx) = ctx.parent()
+                && hir_idx.body_origin == ctx.body_origin
+            {
+                // We can have nested macro
+                // calls, which are not
+                // visible in the
+                // visible_parens_body. Report
+                // on the top-level one only.
+                let fold_body = body.index_with_strategy(fold_strategy);
+                match &fold_body.get_any(hir_idx.idx) {
+                    AnyExprRef::Expr(Expr::MacroCall { .. }) => {}
+                    _ => {
+                        if let AnyExprRef::Expr(Expr::BinaryOp { .. }) =
+                            &visible_parens_body.get_any(hir_idx.idx)
+                        {
+                            make_diagnostic(acc, file_id, ast);
                         }
-                    };
-                }
-            }
+                    }
+                };
+            };
         }
     });
 }

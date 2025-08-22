@@ -126,10 +126,10 @@ pub(crate) fn print_function(
 ) -> String {
     let mut out = String::new();
 
-    if let Some((_, clause)) = body.clauses.iter().next() {
-        if let Some(na) = clause.name.clone() {
-            write!(out, "function: {na}").ok();
-        }
+    if let Some((_, clause)) = body.clauses.iter().next()
+        && let Some(na) = clause.name.clone()
+    {
+        write!(out, "function: {na}").ok();
     };
     let mut sep = "";
     for (_idx, clause) in body.clauses.iter() {

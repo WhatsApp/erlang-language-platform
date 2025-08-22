@@ -852,22 +852,22 @@ impl Semantic<'_> {
         // clause, and it has equivalents in another leg, then these
         // are also found.
         in_clause.body_exprs().for_each(|(expr_id, expr)| {
-            if let Expr::Var(v) = expr {
-                if let Some(ds) = resolver.resolve_expr_id(v, expr_id).cloned() {
-                    let ds_set = FxHashSet::from_iter(ds);
-                    if resolved_set.intersection(&ds_set).next().is_some() {
-                        resolved_set.extend(ds_set);
-                    }
+            if let Expr::Var(v) = expr
+                && let Some(ds) = resolver.resolve_expr_id(v, expr_id).cloned()
+            {
+                let ds_set = FxHashSet::from_iter(ds);
+                if resolved_set.intersection(&ds_set).next().is_some() {
+                    resolved_set.extend(ds_set);
                 }
             }
         });
         in_clause.body_pats().for_each(|(pat_id, pat)| {
-            if let Pat::Var(v) = pat {
-                if let Some(ds) = resolver.resolve_pat_id(v, pat_id).cloned() {
-                    let ds_set = FxHashSet::from_iter(ds);
-                    if resolved_set.intersection(&ds_set).next().is_some() {
-                        resolved_set.extend(ds_set);
-                    }
+            if let Pat::Var(v) = pat
+                && let Some(ds) = resolver.resolve_pat_id(v, pat_id).cloned()
+            {
+                let ds_set = FxHashSet::from_iter(ds);
+                if resolved_set.intersection(&ds_set).next().is_some() {
+                    resolved_set.extend(ds_set);
                 }
             }
         });
@@ -1061,29 +1061,21 @@ impl Semantic<'_> {
             *pat_id,
             FxHashSet::default(),
             &mut |mut acc, ctx| {
-                if let AnyExprId::Pat(pat_id) = ctx.item_id {
-                    if let Pat::Var(var) = &resolver[pat_id] {
-                        if let Some(pat_ids) = resolver.value.resolve_pat_id(var, pat_id) {
-                            pat_ids.iter().for_each(|def_pat_id| {
-                                if &pat_id != def_pat_id {
-                                    if let Some(pat_ptr) = body_map.pat(pat_id) {
-                                        if let Some(ast::Expr::ExprMax(ast::ExprMax::Var(var))) =
-                                            pat_ptr.to_node(&parse)
-                                        {
-                                            if var.syntax().text() != "_" {
-                                                acc.insert((
-                                                    resolver.function_clause_id,
-                                                    pat_id,
-                                                    var,
-                                                ));
-                                            }
-                                        }
-                                    };
-                                }
-                            });
-                        }
-                    };
-                }
+                if let AnyExprId::Pat(pat_id) = ctx.item_id
+                    && let Pat::Var(var) = &resolver[pat_id]
+                    && let Some(pat_ids) = resolver.value.resolve_pat_id(var, pat_id)
+                {
+                    pat_ids.iter().for_each(|def_pat_id| {
+                        if &pat_id != def_pat_id
+                            && let Some(pat_ptr) = body_map.pat(pat_id)
+                            && let Some(ast::Expr::ExprMax(ast::ExprMax::Var(var))) =
+                                pat_ptr.to_node(&parse)
+                            && var.syntax().text() != "_"
+                        {
+                            acc.insert((resolver.function_clause_id, pat_id, var));
+                        };
+                    });
+                };
                 acc
             },
         )

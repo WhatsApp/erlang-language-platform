@@ -141,10 +141,10 @@ pub(crate) fn skip_trailing_separator(node: &SyntaxNode) -> Option<TextRange> {
         (*n).next_sibling_or_token()
     });
     for element in elements {
-        if let Some(t) = &SyntaxElement::into_token(element) {
-            if t.kind() != SyntaxKind::WHITESPACE {
-                return Some(t.text_range());
-            }
+        if let Some(t) = &SyntaxElement::into_token(element)
+            && t.kind() != SyntaxKind::WHITESPACE
+        {
+            return Some(t.text_range());
         }
     }
     None
@@ -175,10 +175,10 @@ pub(crate) fn skip_trailing_newline(node: &SyntaxNode) -> Option<TextRange> {
 
 /// Extend the token `TextRange` to include preceding whitespace
 pub fn include_preceding_whitespace(token: &SyntaxToken) -> TextRange {
-    if let Some(prev) = token.prev_token() {
-        if let Some(prev) = algo::skip_whitespace_token(prev, Direction::Prev) {
-            return TextRange::new(prev.text_range().end(), token.text_range().end());
-        }
+    if let Some(prev) = token.prev_token()
+        && let Some(prev) = algo::skip_whitespace_token(prev, Direction::Prev)
+    {
+        return TextRange::new(prev.text_range().end(), token.text_range().end());
     }
     token.text_range()
 }
@@ -428,10 +428,9 @@ pub fn adjacent_newline(syntax: &SyntaxNode) -> Option<SyntaxToken> {
 pub fn extend_range(syntax: &SyntaxNode) -> TextRange {
     if let Some(NodeOrToken::Node(node)) =
         algo::non_whitespace_sibling(NodeOrToken::Node(syntax.clone()), Direction::Next)
+        && node.kind() == syntax.kind()
     {
-        if node.kind() == syntax.kind() {
-            return extend_form_range_for_delete(syntax);
-        }
+        return extend_form_range_for_delete(syntax);
     }
     extend_range_to_adjacent_newline(syntax)
 }
@@ -598,16 +597,15 @@ fn add_or_update_list(list: &ast::List, key: &str, value: &str, builder: &mut So
     let option = format!("{{{key}, {value}}}");
     let mut done = false;
     list.exprs().for_each(|e| {
-        if let ast::Expr::ExprMax(ast::ExprMax::Tuple(e)) = e {
-            if let Some(ast::Expr::ExprMax(ast::ExprMax::Atom(a))) = e.expr().next() {
-                if a.text() == Some(key.to_string()) {
-                    if e.syntax().text().to_string() != option {
-                        // We found an existing key, with different value, replace the tuple with the new one
-                        builder.replace(e.syntax().text_range(), option.to_string());
-                    };
-                    done = true;
-                }
-            }
+        if let ast::Expr::ExprMax(ast::ExprMax::Tuple(e)) = e
+            && let Some(ast::Expr::ExprMax(ast::ExprMax::Atom(a))) = e.expr().next()
+            && a.text() == Some(key.to_string())
+        {
+            if e.syntax().text().to_string() != option {
+                // We found an existing key, with different value, replace the tuple with the new one
+                builder.replace(e.syntax().text_range(), option.to_string());
+            };
+            done = true;
         };
     });
     if !done {

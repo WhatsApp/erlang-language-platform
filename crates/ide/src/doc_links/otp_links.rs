@@ -29,18 +29,18 @@ pub(crate) fn links(res: &mut Vec<DocLink>, sema: &Semantic, def: &SymbolDefinit
             }
         }
         SymbolDefinition::Function(function_def) => {
-            if function_def.is_in_otp(sema.db) {
-                if let Some(module_name) = sema.module_name(function_def.file.file_id) {
-                    let module_name = module_name.to_string();
-                    let function_name = function_def.name.name();
-                    let function_arity = function_def.name.arity();
-                    let title = format!("{module_name}:{function_name}/{function_arity}");
-                    let uri = format!(
-                        "{OTP_BASE_URL}/doc/man/{module_name}.html#{function_name}/{function_arity}"
-                    );
-                    let link = DocLink { title, uri };
-                    res.push(link);
-                }
+            if function_def.is_in_otp(sema.db)
+                && let Some(module_name) = sema.module_name(function_def.file.file_id)
+            {
+                let module_name = module_name.to_string();
+                let function_name = function_def.name.name();
+                let function_arity = function_def.name.arity();
+                let title = format!("{module_name}:{function_name}/{function_arity}");
+                let uri = format!(
+                    "{OTP_BASE_URL}/doc/man/{module_name}.html#{function_name}/{function_arity}"
+                );
+                let link = DocLink { title, uri };
+                res.push(link);
             }
         }
         _ => (),

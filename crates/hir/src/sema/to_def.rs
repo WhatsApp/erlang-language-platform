@@ -471,7 +471,7 @@ impl ToDef for ast::Fa {
                         .cloned()
                         .map(FaDef::Callback)
                 },
-                _ => return None,
+                _ => None,
             }
         }
     }

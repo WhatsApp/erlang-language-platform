@@ -371,15 +371,13 @@ impl<'a> Matcher<'a> {
     }
 
     fn try_match(&self, debug_active: bool, code: &SubId) -> Result<Match, MatchFailed> {
-        if debug_active {
-            if let SubId::AnyExprId(any_expr_id) = code {
-                println!(
-                    "Matcher::try_match:code:---------------\n{}----------------\n",
-                    self.code_body
-                        .body
-                        .tree_print_any_expr(self.sema.db.upcast(), *any_expr_id)
-                );
-            }
+        if debug_active && let SubId::AnyExprId(any_expr_id) = code {
+            println!(
+                "Matcher::try_match:code:---------------\n{}----------------\n",
+                self.code_body
+                    .body
+                    .tree_print_any_expr(self.sema.db.upcast(), *any_expr_id)
+            );
         }
 
         // First pass at matching, where we check that node types and idents match.
@@ -410,12 +408,11 @@ impl<'a> Matcher<'a> {
     /// want to fail the match if we're working with a node that
     /// didn't originate from the location of the macro call.
     fn validate_range(&self, range: &FileRange) -> Result<(), MatchFailed> {
-        if let Some(restrict_range) = &self.restrict_range {
-            if restrict_range.file_id != range.file_id
-                || !restrict_range.range.contains_range(range.range)
-            {
-                fail_match!("Node originated from a macro");
-            }
+        if let Some(restrict_range) = &self.restrict_range
+            && (restrict_range.file_id != range.file_id
+                || !restrict_range.range.contains_range(range.range))
+        {
+            fail_match!("Node originated from a macro");
         }
         Ok(())
     }
@@ -464,53 +461,51 @@ impl<'a> Matcher<'a> {
         code: &SubId,
         phase: &mut Phase<'_>,
     ) -> Result<bool, MatchFailed> {
-        if self.is_placeholder(pattern) {
-            if let Some(placeholder) = self.get_placeholder_for_node(pattern) {
-                if let Phase::Second(matches_out) = phase {
-                    // check constraints
-                    if let Some(condition) = self.rule.conditions.get(placeholder) {
-                        self.check_condition(code, condition)?;
-                    }
-                    if let Some(original_range) = self.get_code_range(code) {
-                        // We validated the range for the node
-                        // when we started the match, so the
-                        // placeholder probably can't fail range
-                        // validation, but just to be safe...
-                        self.validate_range(&original_range)?;
-
-                        // If there is already a match for the same
-                        // placeholder.var, fail if they are not compatible.
-                        if let Some(match_ids) =
-                            matches_out.placeholders_by_var.get(&placeholder.var)
-                        {
-                            for match_id in match_ids.iter() {
-                                if let Some(m) = matches_out.placeholder_values.get(match_id) {
-                                    if !m.equivalent(self.sema, self.rule, self.code_body, code) {
-                                        fail_match!(
-                                            "placeholder match failed: different occurrences do not match:\n---------------\n{:?}\n-----------",
-                                            &m
-                                        );
-                                    }
-                                }
-                            }
-                            // })
-                        }
-
-                        matches_out.placeholder_values.insert(
-                            pattern.clone(),
-                            PlaceholderMatch::new(original_range, code.clone()),
-                        );
-                        matches_out
-                            .placeholders_by_var
-                            .entry(placeholder.var)
-                            .and_modify(|s| {
-                                s.insert(pattern.clone());
-                            })
-                            .or_insert(FxHashSet::from_iter(vec![pattern.clone()]));
-                    }
+        if self.is_placeholder(pattern)
+            && let Some(placeholder) = self.get_placeholder_for_node(pattern)
+        {
+            if let Phase::Second(matches_out) = phase {
+                // check constraints
+                if let Some(condition) = self.rule.conditions.get(placeholder) {
+                    self.check_condition(code, condition)?;
                 }
-                return Ok(true);
+                if let Some(original_range) = self.get_code_range(code) {
+                    // We validated the range for the node
+                    // when we started the match, so the
+                    // placeholder probably can't fail range
+                    // validation, but just to be safe...
+                    self.validate_range(&original_range)?;
+
+                    // If there is already a match for the same
+                    // placeholder.var, fail if they are not compatible.
+                    if let Some(match_ids) = matches_out.placeholders_by_var.get(&placeholder.var) {
+                        for match_id in match_ids.iter() {
+                            if let Some(m) = matches_out.placeholder_values.get(match_id)
+                                && !m.equivalent(self.sema, self.rule, self.code_body, code)
+                            {
+                                fail_match!(
+                                    "placeholder match failed: different occurrences do not match:\n---------------\n{:?}\n-----------",
+                                    &m
+                                );
+                            }
+                        }
+                        // })
+                    }
+
+                    matches_out.placeholder_values.insert(
+                        pattern.clone(),
+                        PlaceholderMatch::new(original_range, code.clone()),
+                    );
+                    matches_out
+                        .placeholders_by_var
+                        .entry(placeholder.var)
+                        .and_modify(|s| {
+                            s.insert(pattern.clone());
+                        })
+                        .or_insert(FxHashSet::from_iter(vec![pattern.clone()]));
+                }
             }
+            return Ok(true);
         }
         Ok(false)
     }

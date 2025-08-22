@@ -545,33 +545,33 @@ pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option
 
     let mut docs: Vec<(Doc, Option<FileRange>)> = Vec::default();
 
-    if snap.config.types_on_hover() {
-        if let Some(type_info) = snap.analysis.type_at_position(query_range)? {
-            let (ty, range) = &*type_info;
-            let text = &snap.analysis.file_text(range.file_id)?[range.range];
-            let type_doc = Doc::new(format!("```erlang\n{text} :: {ty}\n```\n"));
-            docs.push((type_doc, Some(range.to_owned())));
-            let refs = snap.analysis.type_references(range.file_id, ty)?;
-            if !refs.is_empty() {
-                let goto_list = refs
-                    .into_iter()
-                    .flat_map(|(name, range)| {
-                        to_proto::location(&snap, range)
-                            .map(|loc| {
-                                format!(
-                                    "[{}]({}#L{}-{})",
-                                    name,
-                                    loc.uri,
-                                    loc.range.start.line + 1,
-                                    loc.range.end.line + 1
-                                )
-                            })
-                            .ok()
-                    })
-                    .join(" | ");
-                let goto_docs = Doc::new(format!("Go to: {goto_list}"));
-                docs.push((goto_docs, None));
-            }
+    if snap.config.types_on_hover()
+        && let Some(type_info) = snap.analysis.type_at_position(query_range)?
+    {
+        let (ty, range) = &*type_info;
+        let text = &snap.analysis.file_text(range.file_id)?[range.range];
+        let type_doc = Doc::new(format!("```erlang\n{text} :: {ty}\n```\n"));
+        docs.push((type_doc, Some(range.to_owned())));
+        let refs = snap.analysis.type_references(range.file_id, ty)?;
+        if !refs.is_empty() {
+            let goto_list = refs
+                .into_iter()
+                .flat_map(|(name, range)| {
+                    to_proto::location(&snap, range)
+                        .map(|loc| {
+                            format!(
+                                "[{}]({}#L{}-{})",
+                                name,
+                                loc.uri,
+                                loc.range.start.line + 1,
+                                loc.range.end.line + 1
+                            )
+                        })
+                        .ok()
+                })
+                .join(" | ");
+            let goto_docs = Doc::new(format!("Go to: {goto_list}"));
+            docs.push((goto_docs, None));
         }
     }
 
@@ -844,12 +844,12 @@ pub(crate) fn handle_semantic_tokens_full_delta(
     let mut cache = snap.semantic_tokens_cache.lock();
     let cached_tokens = cache.entry(params.text_document.uri).or_default();
 
-    if let Some(prev_id) = &cached_tokens.result_id {
-        if *prev_id == params.previous_result_id {
-            let delta = to_proto::semantic_token_delta(cached_tokens, &semantic_tokens);
-            *cached_tokens = semantic_tokens;
-            return Ok(Some(delta.into()));
-        }
+    if let Some(prev_id) = &cached_tokens.result_id
+        && *prev_id == params.previous_result_id
+    {
+        let delta = to_proto::semantic_token_delta(cached_tokens, &semantic_tokens);
+        *cached_tokens = semantic_tokens;
+        return Ok(Some(delta.into()));
     }
 
     *cached_tokens = semantic_tokens.clone();
