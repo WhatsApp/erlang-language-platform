@@ -1,7 +1,7 @@
 name: 'Build EDB'
 description: 'Build the EDB debugger from source'
 runs:
-  using: "composite"
+  using: composite
   steps:
     - name: Checkout EDB
       uses: "actions/checkout@v4"
