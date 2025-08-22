@@ -53,31 +53,31 @@ jobs:
     steps:
       - name: Checkout erlang-language-platform
         uses: "actions/checkout@v3"
-      - name: Checkout eqwalizer
-        uses: "actions/checkout@v3"
-        with:
-          repository: WhatsApp/eqwalizer
-          path: eqwalizer
-          ref: main
-      - name: Set up GraalVM
-        uses: graalvm/setup-graalvm@v1
-        with:
-          java-version: '17'
-          distribution: 'graalvm'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set up SBT
-        uses: olafurpg/setup-scala@v14
-        with:
-          java-version: '17'
-      - name: Set up rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          target: ${{ matrix.target }}
-      - name: Set up cross-compiler
-        if: matrix.platform-arch == 'ubuntu-22.04-arm'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y crossbuild-essential-arm64
+      # - name: Checkout eqwalizer
+      #   uses: "actions/checkout@v3"
+      #   with:
+      #     repository: WhatsApp/eqwalizer
+      #     path: eqwalizer
+      #     ref: main
+      # - name: Set up GraalVM
+      #   uses: graalvm/setup-graalvm@v1
+      #   with:
+      #     java-version: '17'
+      #     distribution: 'graalvm'
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Set up SBT
+      #   uses: olafurpg/setup-scala@v14
+      #   with:
+      #     java-version: '17'
+      # - name: Set up rust toolchain
+      #   uses: dtolnay/rust-toolchain@stable
+      #   with:
+      #     target: ${{ matrix.target }}
+      # - name: Set up cross-compiler
+      #   if: matrix.platform-arch == 'ubuntu-22.04-arm'
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y crossbuild-essential-arm64
       - name: Install Erlang/OTP (Linux, Windows)
         if: matrix.os == 'linux' || matrix.os == 'windows'
         uses: erlef/setup-beam@v1
@@ -119,97 +119,97 @@ jobs:
         run: rebar3.cmd version
       - id: build-edb
         uses: ./.github/actions/build-edb
-      - name: Assemble eqwalizer.jar (No Windows)
-        if: matrix.os != 'windows'
-        working-directory: eqwalizer/eqwalizer
-        run: "sbt assembly"
-      - name: Assemble eqwalizer.jar (Windows Only)
-        if: matrix.os == 'windows'
-        working-directory: eqwalizer\eqwalizer
-        run: "sbt assembly"
-        shell: bash
-      - name: Assemble eqwalizer binary (No Windows)
-        if: matrix.os != 'windows'
-        working-directory: eqwalizer/eqwalizer
-        run: 'native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target/scala-3.6.4/eqwalizer.jar eqwalizer'
-      - name: Assemble eqwalizer binary (Windows Only)
-        if: matrix.os == 'windows'
-        working-directory: eqwalizer\eqwalizer
-        run: 'native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target\scala-3.6.4\eqwalizer.jar eqwalizer'
-      - name: Ensure elp is formatted
-        run: 'cargo fmt -- --check'
-      - name: Configure Environment (No Windows)
-        if: matrix.os != 'windows'
-        run: |
-          echo "EQWALIZER_DIR=${{ github.workspace }}/eqwalizer/eqwalizer" >> $GITHUB_ENV
-          echo "ELP_EQWALIZER_PATH=${{ github.workspace }}/eqwalizer/eqwalizer/eqwalizer" >> $GITHUB_ENV
-      - name: Configure Environment (Windows Only)
-        if: matrix.os == 'windows'
-        run: |
-          echo "EQWALIZER_DIR=${{ github.workspace }}\eqwalizer\eqwalizer" >> $env:GITHUB_ENV
-          echo "ELP_EQWALIZER_PATH=${{ github.workspace }}\eqwalizer\eqwalizer\eqwalizer.exe" >> $env:GITHUB_ENV
-      - name: Test elp
-        # Do not run the tests in case of cross-compilation or on Windows
-        if: matrix.platform-arch != 'macos-latest-arm' && matrix.os != 'windows'
-        run: 'cargo test --no-default-features --workspace --target ${{ matrix.target }}'
-      - name: Build elp (No Windows)
-        if: matrix.os != 'windows'
-        run: 'cargo build --release  --target ${{ matrix.target }} --config target.aarch64-unknown-linux-gnu.linker=\"aarch64-linux-gnu-gcc\"'
-      - name: Build elp (Windows Only)
-        if: matrix.os == 'windows'
-        run: 'cargo build --release  --target ${{ matrix.target }}'
-      - name: Add elp to path (No Windows)
-        if: matrix.os != 'windows'
-        run: 'echo "$GITHUB_WORKSPACE/target/${{ matrix.target}}/release" >> $GITHUB_PATH'
-      - name: Add elp to path (Windows Only)
-        if: matrix.os == 'windows'
-        run: '"$env:GITHUB_WORKSPACE\target\${{ matrix.target }}\release" | Out-File -FilePath "$env:GITHUB_PATH" -Append'
-      - name: Upload elp binary (No Windows)
-        if: matrix.os != 'windows'
-        uses: "actions/upload-artifact@v4"
-        with:
-          name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
-          path: target/${{ matrix.target }}/release/elp
-      - name: Upload elp binary (Windows Only)
-        if: matrix.os == 'windows'
-        uses: "actions/upload-artifact@v4"
-        with:
-          name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
-          path: target\${{ matrix.target }}\release\elp.exe
-      - name: Upload eqwalizer native binary (No Windows)
-        if: matrix.os != 'windows'
-        uses: "actions/upload-artifact@v4"
-        with:
-          name: eqwalizer-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
-          path: ./eqwalizer/eqwalizer/eqwalizer
-      - name: Upload eqwalizer native binary (Windows Only)
-        if: matrix.os == 'windows'
-        uses: "actions/upload-artifact@v4"
-        with:
-          name: eqwalizer-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
-          path: .\eqwalizer\eqwalizer\eqwalizer.exe
-      - name: Make elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz (No Windows)
-        if: matrix.os != 'windows'
-        run: 'tar -zcvf elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz -C target/${{ matrix.target}}/release/ elp'
-      - name: Make elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz (Windows Only)
-        if: matrix.os == 'windows'
-        run: 'tar -zcvf elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz -C target\${{ matrix.target}}\release elp.exe'
-      - env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        id: get_release_url
-        name: Get release url
-        if: ${{ github.event_name == 'release' }}
-        uses: "bruceadams/get-release@v1.3.2"
-      - env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        name: Upload release elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
-        if: ${{ github.event_name == 'release' }}
-        uses: "actions/upload-release-asset@v1.0.2"
-        with:
-          asset_content_type: application/octet-stream
-          asset_name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.tar.gz
-          asset_path: elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
-          upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
+      # - name: Assemble eqwalizer.jar (No Windows)
+      #   if: matrix.os != 'windows'
+      #   working-directory: eqwalizer/eqwalizer
+      #   run: "sbt assembly"
+      # - name: Assemble eqwalizer.jar (Windows Only)
+      #   if: matrix.os == 'windows'
+      #   working-directory: eqwalizer\eqwalizer
+      #   run: "sbt assembly"
+      #   shell: bash
+      # - name: Assemble eqwalizer binary (No Windows)
+      #   if: matrix.os != 'windows'
+      #   working-directory: eqwalizer/eqwalizer
+      #   run: 'native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target/scala-3.6.4/eqwalizer.jar eqwalizer'
+      # - name: Assemble eqwalizer binary (Windows Only)
+      #   if: matrix.os == 'windows'
+      #   working-directory: eqwalizer\eqwalizer
+      #   run: 'native-image -H:IncludeResources=application.conf --no-server --no-fallback -jar target\scala-3.6.4\eqwalizer.jar eqwalizer'
+      # - name: Ensure elp is formatted
+      #   run: 'cargo fmt -- --check'
+      # - name: Configure Environment (No Windows)
+      #   if: matrix.os != 'windows'
+      #   run: |
+      #     echo "EQWALIZER_DIR=${{ github.workspace }}/eqwalizer/eqwalizer" >> $GITHUB_ENV
+      #     echo "ELP_EQWALIZER_PATH=${{ github.workspace }}/eqwalizer/eqwalizer/eqwalizer" >> $GITHUB_ENV
+      # - name: Configure Environment (Windows Only)
+      #   if: matrix.os == 'windows'
+      #   run: |
+      #     echo "EQWALIZER_DIR=${{ github.workspace }}\eqwalizer\eqwalizer" >> $env:GITHUB_ENV
+      #     echo "ELP_EQWALIZER_PATH=${{ github.workspace }}\eqwalizer\eqwalizer\eqwalizer.exe" >> $env:GITHUB_ENV
+      # - name: Test elp
+      #   # Do not run the tests in case of cross-compilation or on Windows
+      #   if: matrix.platform-arch != 'macos-latest-arm' && matrix.os != 'windows'
+      #   run: 'cargo test --no-default-features --workspace --target ${{ matrix.target }}'
+      # - name: Build elp (No Windows)
+      #   if: matrix.os != 'windows'
+      #   run: 'cargo build --release  --target ${{ matrix.target }} --config target.aarch64-unknown-linux-gnu.linker=\"aarch64-linux-gnu-gcc\"'
+      # - name: Build elp (Windows Only)
+      #   if: matrix.os == 'windows'
+      #   run: 'cargo build --release  --target ${{ matrix.target }}'
+      # - name: Add elp to path (No Windows)
+      #   if: matrix.os != 'windows'
+      #   run: 'echo "$GITHUB_WORKSPACE/target/${{ matrix.target}}/release" >> $GITHUB_PATH'
+      # - name: Add elp to path (Windows Only)
+      #   if: matrix.os == 'windows'
+      #   run: '"$env:GITHUB_WORKSPACE\target\${{ matrix.target }}\release" | Out-File -FilePath "$env:GITHUB_PATH" -Append'
+      # - name: Upload elp binary (No Windows)
+      #   if: matrix.os != 'windows'
+      #   uses: "actions/upload-artifact@v4"
+      #   with:
+      #     name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
+      #     path: target/${{ matrix.target }}/release/elp
+      # - name: Upload elp binary (Windows Only)
+      #   if: matrix.os == 'windows'
+      #   uses: "actions/upload-artifact@v4"
+      #   with:
+      #     name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
+      #     path: target\${{ matrix.target }}\release\elp.exe
+      # - name: Upload eqwalizer native binary (No Windows)
+      #   if: matrix.os != 'windows'
+      #   uses: "actions/upload-artifact@v4"
+      #   with:
+      #     name: eqwalizer-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
+      #     path: ./eqwalizer/eqwalizer/eqwalizer
+      # - name: Upload eqwalizer native binary (Windows Only)
+      #   if: matrix.os == 'windows'
+      #   uses: "actions/upload-artifact@v4"
+      #   with:
+      #     name: eqwalizer-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
+      #     path: .\eqwalizer\eqwalizer\eqwalizer.exe
+      # - name: Make elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz (No Windows)
+      #   if: matrix.os != 'windows'
+      #   run: 'tar -zcvf elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz -C target/${{ matrix.target}}/release/ elp'
+      # - name: Make elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz (Windows Only)
+      #   if: matrix.os == 'windows'
+      #   run: 'tar -zcvf elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz -C target\${{ matrix.target}}\release elp.exe'
+      # - env:
+      #     GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      #   id: get_release_url
+      #   name: Get release url
+      #   if: ${{ github.event_name == 'release' }}
+      #   uses: "bruceadams/get-release@v1.3.2"
+      # - env:
+      #     GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      #   name: Upload release elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
+      #   if: ${{ github.event_name == 'release' }}
+      #   uses: "actions/upload-release-asset@v1.0.2"
+      #   with:
+      #     asset_content_type: application/octet-stream
+      #     asset_name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.tar.gz
+      #     asset_path: elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
+      #     upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
@@ -223,12 +223,12 @@ jobs:
         if: matrix.os == 'windows'
         run: if not exist "editors\code\bin" mkdir "editors\code\bin"
         shell: cmd
-      - name: Package eqWAlizer binary into VS Code Extension (No Windows)
-        if: matrix.os != 'windows'
-        run: cp eqwalizer/eqwalizer/eqwalizer editors/code/bin
-      - name: Package ELP binary into VS Code Extension (Windows Only)
-        if: matrix.os == 'windows'
-        run: cp target\${{ matrix.target}}\release/elp.exe editors\code\bin
+      # - name: Package eqWAlizer binary into VS Code Extension (No Windows)
+      #   if: matrix.os != 'windows'
+      #   run: cp eqwalizer/eqwalizer/eqwalizer editors/code/bin
+      # - name: Package ELP binary into VS Code Extension (Windows Only)
+      #   if: matrix.os == 'windows'
+      #   run: cp target\${{ matrix.target}}\release/elp.exe editors\code\bin
       - name: Ensure binaries are executable
         run: chmod +x editors/code/bin/*
       - name: npm install
