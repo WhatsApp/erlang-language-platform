@@ -9,4 +9,3 @@ runs:
         repository: WhatsApp/edb
         path: edb
         ref: otp-28.0
-        submodules: true
