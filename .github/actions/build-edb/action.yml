@@ -8,4 +8,4 @@ runs:
       with:
         repository: WhatsApp/edb
         path: edb
-        ref: otp-28
+        ref: otp-28.0
