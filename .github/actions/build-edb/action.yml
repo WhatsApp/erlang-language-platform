@@ -1,0 +1,11 @@
+name: 'Build EDB'
+description: 'Build the EDB debugger from source'
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout EDB
+      uses: "actions/checkout@v3"
+      with:
+        repository: WhatsApp/edb
+        path: edb
+        ref: otp-28

@@ -53,6 +53,8 @@ jobs:
     steps:
       - name: Checkout erlang-language-platform
         uses: "actions/checkout@v3"
+      - id: build-edb
+        uses: ./.github/actions/build-edb
       - name: Checkout eqwalizer
         uses: "actions/checkout@v3"
         with:
