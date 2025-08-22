@@ -1,0 +1,61 @@
+name: 'Setup Erlang/OTP'
+description: 'Setup Erlang/OTP + rebar3'
+inputs:
+  os:
+    required: true
+  otp-version:
+    required: true
+  brew-otp-version:
+    required: true
+
+runs:
+  using: composite
+  steps:
+  - name: Install Erlang/OTP (Linux, Windows)
+    if: inputs.os == 'linux' || inputs.os == 'windows'
+    uses: erlef/setup-beam@v1
+    with:
+      otp-version: ${{ inputs.otp-version }}
+      install-rebar: false
+      install-hex: false
+  - name: Install Erlang/OTP (MacOS Only)
+    if: inputs.os == 'macos'
+    run: brew install erlang@${{ inputs.brew-otp-version }}
+    shell: bash
+  - name: Add erl to path (MacOS Only)
+    if: inputs.os == 'macos'
+    run: |
+      echo '/opt/homebrew/opt/erlang@${{ inputs.brew-otp-version }}/bin' >> $GITHUB_PATH
+      echo '/usr/local/opt/erlang@${{ inputs.brew-otp-version }}/bin' >> $GITHUB_PATH
+    shell: bash
+  - name: Verify Erlang version
+    run: erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
+    shell: bash
+  - name: Install rebar3
+    run: "mkdir rebar3 && curl https://s3.amazonaws.com/rebar3/rebar3 -o rebar3/rebar3 && chmod +x rebar3/rebar3"
+    shell: bash
+  - name: Create rebar3.cmd (Windows Only)
+    if: inputs.os == 'windows'
+    working-directory: rebar3
+    run: |
+      echo '@echo off' > rebar3.cmd
+      echo 'setlocal' >> rebar3.cmd
+      echo 'set rebarscript=%~f0' >> rebar3.cmd
+      echo 'escript.exe "%rebarscript:.cmd=%" %*' >> rebar3.cmd
+    shell: pwsh
+  - name: Add rebar3 to path (No Windows)
+    if: inputs.os != 'windows'
+    run: 'echo "$GITHUB_WORKSPACE/rebar3" >> $GITHUB_PATH'
+    shell: bash
+  - name: Add rebar3 to path (Windows Only)
+    if: inputs.os == 'windows'
+    run: '"$env:GITHUB_WORKSPACE\rebar3" | Out-File -FilePath "$env:GITHUB_PATH" -Append'
+    shell: pwsh
+  - name: Verify rebar3 version (No Windows)
+    if: inputs.os != 'windows'
+    run: rebar3 version
+    shell: bash
+  - name: Verify rebar3 version (Windows Only)
+    if: inputs.os == 'windows'
+    run: rebar3.cmd version
+    shell: cmd
