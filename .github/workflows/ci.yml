@@ -124,10 +124,10 @@ jobs:
         if: matrix.include-edb
         uses: ./.github/actions/build-edb
       - name: Package EDB escript into VS Code Extension (No Windows)
-        if: matrix.os != 'windows'
+        if: matrix.include-edb && matrix.os != 'windows'
         run: cp edb/_build/default/bin/edb editors/code/bin
       - name: Package EDB escript into VS Code Extension (Windows Only)
-        if: matrix.os == 'windows'
+        if: matrix.include-edb && matrix.os == 'windows'
         run: cp edb\_build\default\bin\edb editors\code\bin
       # - name: Assemble eqwalizer.jar (No Windows)
       #   if: matrix.os != 'windows'
