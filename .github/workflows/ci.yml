@@ -64,6 +64,47 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y crossbuild-essential-arm64
+      # OTP 27 - Should only be done for 26
+      - name: Install Erlang/OTP (Linux, Windows)
+        if: matrix.os == 'linux' || matrix.os == 'windows'
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: 27.3
+          install-rebar: false
+          install-hex: false
+      - name: Install Erlang/OTP (MacOS Only)
+        if: matrix.os == 'macos'
+        run: brew install erlang@27
+      - name: Add erl to path (MacOS Only)
+        if: matrix.os == 'macos'
+        run: |
+          echo '/opt/homebrew/opt/erlang@27/bin' >> $GITHUB_PATH
+          echo '/usr/local/opt/erlang@27/bin' >> $GITHUB_PATH
+      - name: Verify Erlang version
+        run: erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
+      - name: Install rebar3
+        run: "mkdir rebar3 && curl https://s3.amazonaws.com/rebar3/rebar3 -o rebar3/rebar3 && chmod +x rebar3/rebar3"
+      - name: Create rebar3.cmd (Windows Only)
+        if: matrix.os == 'windows'
+        working-directory: rebar3
+        run: |
+          echo '@echo off' > rebar3.cmd
+          echo 'setlocal' >> rebar3.cmd
+          echo 'set rebarscript=%~f0' >> rebar3.cmd
+          echo 'escript.exe "%rebarscript:.cmd=%" %*' >> rebar3.cmd
+      - name: Add rebar3 to path (No Windows)
+        if: matrix.os != 'windows'
+        run: 'echo "$GITHUB_WORKSPACE/rebar3" >> $GITHUB_PATH'
+      - name: Add rebar3 to path (Windows Only)
+        if: matrix.os == 'windows'
+        run: '"$env:GITHUB_WORKSPACE\rebar3" | Out-File -FilePath "$env:GITHUB_PATH" -Append'
+      - name: Verify rebar3 version (No Windows)
+        if: matrix.os != 'windows'
+        run: rebar3 version
+      - name: Verify rebar3 version (Windows Only)
+        if: matrix.os == 'windows'
+        run: rebar3.cmd version
+      # Regular OTP
       - name: Install Erlang/OTP (Linux, Windows)
         if: matrix.os == 'linux' || matrix.os == 'windows'
         uses: erlef/setup-beam@v1
