@@ -1,0 +1,28 @@
+name: 'Build EDB'
+description: 'Build the EDB debugger from source'
+inputs:
+  os:
+    required: true
+  target:
+    required: true
+  otp-version:
+    required: true
+
+runs:
+  using: composite
+  steps:
+  - name: Checkout EDB
+    uses: "actions/checkout@v4"
+    with:
+      repository: WhatsApp/edb
+      path: edb
+      ref: otp-28.0
+  - name: Build EDB
+    run: rebar3 escriptize
+    shell: bash
+    working-directory: edb
+  - name: Upload EDB binary
+    uses: "actions/upload-artifact@v4"
+    with:
+      name: edb
+      path: edb/_build/default/bin/edb

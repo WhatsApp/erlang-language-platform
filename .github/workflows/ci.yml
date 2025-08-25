@@ -5,6 +5,24 @@ on:
     types: [published]
 
 jobs:
+  edb:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout erlang-language-platform
+        uses: "actions/checkout@v3"
+      - id: setup-erlang
+        uses: ./.github/actions/setup-erlang
+        with:
+          os: linux
+          otp-version: 27.3
+          brew-otp-version: 27
+      - id: build-edb
+        uses: ./.github/actions/build-edb
+        with:
+          os: ${{ matrix.os }}
+          target: ${{ matrix.target }}
+          otp-version: ${{ matrix.otp-version}}
+
   ci:
     strategy:
       fail-fast: false
@@ -50,6 +68,7 @@ jobs:
             target: x86_64-pc-windows-msvc
             vscode-target: win32-x64
     runs-on: ${{ matrix.platform }}
+    needs: edb
     steps:
       - name: Checkout erlang-language-platform
         uses: "actions/checkout@v3"
@@ -188,6 +207,22 @@ jobs:
         if: matrix.os == 'windows'
         run: if not exist "editors\code\bin" mkdir "editors\code\bin"
         shell: cmd
+      - name: Fetch EDB escript
+        uses: actions/download-artifact@v4
+        with:
+          name: edb
+      - name: Ensure escript is executable
+        run: chmod +x edb
+        shell: bash
+      - name: Verify EDB escript
+        run: ./edb -h || true
+        shell: bash
+      - name: Package EDB escript into VS Code Extension (No Windows)
+        if: matrix.os != 'windows'
+        run: cp edb editors/code/bin
+      - name: Package EDB escript into VS Code Extension (Windows Only)
+        if: matrix.os == 'windows'
+        run: cp edb editors\code\bin
       - name: Package eqWAlizer binary into VS Code Extension (No Windows)
         if: matrix.os != 'windows'
         run: cp eqwalizer/eqwalizer/eqwalizer editors/code/bin
