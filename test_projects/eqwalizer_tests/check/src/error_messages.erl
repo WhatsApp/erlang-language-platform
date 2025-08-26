@@ -20,3 +20,14 @@ map_candidates_2(M) -> M.
 
 -spec no_map_rewrite(#{undefined | binary() => atom()}) -> #{binary() => atom()}.
 no_map_rewrite(M) -> M.
+
+-record(foo, {bar :: atom(), baz :: atom()}).
+
+-spec no_record_conversion_1(#foo{}) -> {foobar, atom()}.
+no_record_conversion_1(Foo) -> Foo.
+
+-spec no_record_conversion_2(#foo{}) -> {binary(), atom(), atom()}.
+no_record_conversion_2(Foo) -> Foo.
+
+-spec record_conversion(#foo{}) -> {foo, binary(), atom()}.
+record_conversion(Foo) -> Foo.
