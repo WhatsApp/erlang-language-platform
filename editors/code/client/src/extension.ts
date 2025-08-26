@@ -68,7 +68,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Create the language client and start the client.
 	client = new LanguageClient(
-		'elp',
+		'erlang-elp',
 		'Erlang Language Platform',
 		serverOptions,
 		clientOptions

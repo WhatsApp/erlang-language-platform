@@ -214,6 +214,17 @@
       "type": "object",
       "title": "Erlang Language Platform",
       "properties": {
+        "erlang-elp.trace.server": {
+          "scope": "window",
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the Erlang language server."
+        },
         "elpClient.serverPath": {
           "type": "string",
           "description": "The path to the ELP executable. If empty, uses the binary included in the extension",
