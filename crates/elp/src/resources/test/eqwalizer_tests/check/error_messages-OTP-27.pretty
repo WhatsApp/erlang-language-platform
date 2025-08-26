@@ -81,16 +81,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ check/src/error_messages.erl:27:32
    │
 27 │ no_record_conversion_1(Foo) -> Foo.
-   │                                ^^^
-   │                                │
-   │                                Foo.
+   │                                ^^^ Foo.
 Expression has type:   #foo{}
 Context expected type: {'foobar', atom()}
-   │                                
-
-Because in the expression's type:
-  Here the type is:     {'foo', atom(), atom()}
-  Context expects type: {'foobar', atom()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/error_messages.erl:30:32
@@ -102,14 +95,6 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #foo{}
 Context expected type: {binary(), atom(), atom()}
    │                                
-
-Because in the expression's type:
-  { 
-    Here the type is:     'foo'
-    Context expects type: binary()
-  , atom(), atom()}
-
------------------------------- Detailed message ------------------------------
 
   at tuple index 1:
   {'foo', atom(), atom()} is not compatible with {binary(), atom(), atom()}
