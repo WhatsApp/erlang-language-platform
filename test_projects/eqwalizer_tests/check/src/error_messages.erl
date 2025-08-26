@@ -17,3 +17,6 @@ map_candidates(M) -> M.
 
 -spec map_candidates_2([#{bar => a | b} | #{baz => a | b}]) -> [#{bar => a}].
 map_candidates_2(M) -> M.
+
+-spec no_map_rewrite(#{undefined | binary() => atom()}) -> #{binary() => atom()}.
+no_map_rewrite(M) -> M.
