@@ -286,5 +286,5 @@ jobs:
           upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
       - name: Publish extension to marketplace
         working-directory: editors/code
-        if: ${{ github.event_name == 'release' && matrix.vscode-publish }}
+        if: ${{ github.event_name == 'release' && matrix.vscode-publish }} && matrix.os != 'windows'
         run: vsce publish -p ${{ secrets.VSCE_PAT }} --packagePath erlang-language-platform.vsix
