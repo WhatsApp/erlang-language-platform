@@ -237,7 +237,7 @@ mod tests {
     const BUCK_QUERY_CONFIG: BuckQueryConfig = BuckQueryConfig::BuildGeneratedCode;
 
     macro_rules! args_vec {
-        ($($e:expr_2021$(,)?)+) => {
+        ($($e:expr$(,)?)+) => {
             vec![$(OsString::from($e),)+]
         }
     }

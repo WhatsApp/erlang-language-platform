@@ -374,9 +374,9 @@ impl SourceFile {
 macro_rules! match_ast {
     (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
 
-    (match ($node:expr_2021) {
-        $( ast::$ast:ident($it:pat) => $res:expr_2021, )*
-        _ => $catch_all:expr_2021 $(,)?
+    (match ($node:expr) {
+        $( ast::$ast:ident($it:pat) => $res:expr, )*
+        _ => $catch_all:expr $(,)?
     }) => {{
         $( if let Some($it) = ast::$ast::cast($node.clone()) { $res } else )*
         { $catch_all }

@@ -2436,7 +2436,7 @@ fn triple_quoted_strings_2() {
 // - Proper location reporting for failing tests
 macro_rules! my_expect {
     [$data:literal] => { $crate::expect![[$data]] };
-    [[$data:expr_2021]] => {expect_test::Expect {
+    [[$data:expr]] => {expect_test::Expect {
         position: expect_test::Position {
             file: file!(),
             line: line!(),
