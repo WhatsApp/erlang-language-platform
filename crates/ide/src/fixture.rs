@@ -110,10 +110,9 @@ pub fn diagnostics_for(
             diagnostics.set_erlang_service(file_id, diags)
         }
     }
-    if *use_eqwalizer {
-        if let Some(diags) = analysis.eqwalizer_diagnostics_for_file(file_id).unwrap() {
-            diagnostics.set_eqwalizer(file_id, diags);
-        }
+    if *use_eqwalizer && let Some(diags) = analysis.eqwalizer_diagnostics_for_file(file_id).unwrap()
+    {
+        diagnostics.set_eqwalizer(file_id, diags);
     }
     if *use_ct {
         diagnostics.set_ct(file_id, analysis.ct_diagnostics(file_id, config).unwrap());

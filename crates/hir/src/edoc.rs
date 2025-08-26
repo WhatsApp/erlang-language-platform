@@ -942,33 +942,33 @@ mod tests {
                 },
             )| {
                 buf.push_str(&format!("{kind:?}\n"));
-                if let Some(doc) = doc {
-                    if !doc.lines.is_empty() {
-                        buf.push_str("  doc\n");
-                        doc.lines.iter().for_each(|line| {
-                            if let Some(text) = &line.content {
-                                buf.push_str(&format!(
-                                    "    {:?}: \"{}\"\n",
-                                    line.syntax.range().range,
-                                    text
-                                ));
-                            }
-                        });
-                    }
+                if let Some(doc) = doc
+                    && !doc.lines.is_empty()
+                {
+                    buf.push_str("  doc\n");
+                    doc.lines.iter().for_each(|line| {
+                        if let Some(text) = &line.content {
+                            buf.push_str(&format!(
+                                "    {:?}: \"{}\"\n",
+                                line.syntax.range().range,
+                                text
+                            ));
+                        }
+                    });
                 }
-                if let Some(Tag { lines, .. }) = deprecated {
-                    if !lines.is_empty() {
-                        buf.push_str("  deprecated\n");
-                        lines.iter().for_each(|line| {
-                            if let Some(text) = &line.content {
-                                buf.push_str(&format!(
-                                    "    {:?}: \"{}\"\n",
-                                    line.syntax.range().range,
-                                    text
-                                ));
-                            }
-                        });
-                    }
+                if let Some(Tag { lines, .. }) = deprecated
+                    && !lines.is_empty()
+                {
+                    buf.push_str("  deprecated\n");
+                    lines.iter().for_each(|line| {
+                        if let Some(text) = &line.content {
+                            buf.push_str(&format!(
+                                "    {:?}: \"{}\"\n",
+                                line.syntax.range().range,
+                                text
+                            ));
+                        }
+                    });
                 }
                 if !params.is_empty() {
                     buf.push_str("  params\n");
@@ -987,33 +987,33 @@ mod tests {
                         }
                     });
                 }
-                if let Some(Tag { lines, .. }) = returns {
-                    if !lines.is_empty() {
-                        buf.push_str("  returns\n");
-                        lines.iter().for_each(|line| {
-                            if let Some(text) = &line.content {
-                                buf.push_str(&format!(
-                                    "    {:?}: \"{}\"\n",
-                                    line.syntax.range().range,
-                                    text
-                                ));
-                            }
-                        });
-                    }
+                if let Some(Tag { lines, .. }) = returns
+                    && !lines.is_empty()
+                {
+                    buf.push_str("  returns\n");
+                    lines.iter().for_each(|line| {
+                        if let Some(text) = &line.content {
+                            buf.push_str(&format!(
+                                "    {:?}: \"{}\"\n",
+                                line.syntax.range().range,
+                                text
+                            ));
+                        }
+                    });
                 }
-                if let Some(Tag { lines, .. }) = equiv {
-                    if !lines.is_empty() {
-                        buf.push_str("  equiv\n");
-                        lines.iter().for_each(|line| {
-                            if let Some(text) = &line.content {
-                                buf.push_str(&format!(
-                                    "    {:?}: \"{}\"\n",
-                                    line.syntax.range().range,
-                                    text
-                                ));
-                            }
-                        });
-                    }
+                if let Some(Tag { lines, .. }) = equiv
+                    && !lines.is_empty()
+                {
+                    buf.push_str("  equiv\n");
+                    lines.iter().for_each(|line| {
+                        if let Some(text) = &line.content {
+                            buf.push_str(&format!(
+                                "    {:?}: \"{}\"\n",
+                                line.syntax.range().range,
+                                text
+                            ));
+                        }
+                    });
                 }
                 if let Some(Tag { .. }) = hidden {
                     buf.push_str("  hidden\n");

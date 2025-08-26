@@ -126,7 +126,7 @@ mod tests {
 
     #[test]
     fn fun_decl_missing_semi_no_warning() {
-        let text = concat!("foo(2)->3.");
+        let text = "foo(2)->3.";
 
         let parsed = ast::SourceFile::parse_text(text);
         let d = form_missing_separator_diagnostics(&parsed);
