@@ -64,7 +64,7 @@ Context expected type: #{binary() => atom()}
 Because in the expression's type:
   #{ map domains are incompatible:
     Here the type is a union type with some valid candidates: binary()
-    However the following candidate: none()
+    However the following candidate: 'undefined'
     Differs from the expected type:  binary()
   , ... }
 
