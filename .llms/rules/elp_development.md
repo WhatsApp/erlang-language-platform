@@ -1,6 +1,6 @@
 ---
 llms-gk: 'devmate_elp_development_md'
-apply_to: '*.rs,*.md'
+apply_to_regex: '^(.*\.rs|.*\.md)$'
 ---
 
 # ELP Development Rules for LLMs
