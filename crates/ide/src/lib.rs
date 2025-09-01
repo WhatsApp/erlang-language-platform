@@ -66,6 +66,8 @@ use elp_syntax::label::Label;
 use elp_types_db::eqwalizer;
 use elp_types_db::eqwalizer::types::Type;
 use expand_macro::ExpandedMacro;
+use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 use handlers::get_docs;
 use handlers::goto_definition;
 use handlers::goto_type_definition;
@@ -726,7 +728,12 @@ impl Analysis {
             CommonTestInfo::Result { all, groups } => {
                 annotations::ct_annotations(db, file_id, all, groups)
             }
-            _ => annotations::annotations(db, file_id),
+            _ => annotations::ct_annotations(
+                db,
+                file_id,
+                &FxHashSet::default(),
+                &FxHashMap::default(),
+            ),
         })
     }
 
