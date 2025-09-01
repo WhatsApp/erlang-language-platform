@@ -59,7 +59,7 @@ use crate::name::erlang_funs;
 pub struct DefMap {
     included: FxHashSet<FileId>,
 
-    function_clauses: FxHashMap<FunctionClauseId, FunctionClauseDef>,
+    pub function_clauses: FxHashMap<FunctionClauseId, FunctionClauseDef>,
     functions: FxHashMap<InFile<FunctionDefId>, FunctionDef>,
 
     function_clauses_by_fa: FxHashMap<NameArity, FunctionClauseId>,

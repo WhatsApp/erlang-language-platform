@@ -21,6 +21,7 @@ use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use elp_syntax::ast;
 use elp_syntax::ast::Expr;
+use elp_syntax::ast::FunctionOrMacroClause;
 use elp_syntax::ast::MapExpr;
 use elp_syntax::ast::MapField;
 use elp_syntax::ast::WildAttribute;
@@ -128,6 +129,29 @@ impl FunctionClauseDef {
     pub fn source(&self, db: &dyn SourceDatabase) -> ast::FunDecl {
         let source_file = self.file.source(db);
         self.function_clause.form_id.get(&source_file)
+    }
+
+    pub fn range(&self, db: &dyn SourceDatabase) -> TextRange {
+        let source = self.source(db);
+        source.syntax().text_range()
+    }
+
+    pub fn name_range(&self, db: &dyn SourceDatabase) -> Option<TextRange> {
+        Some(self.source(db).name()?.syntax().text_range())
+    }
+
+    pub fn label(&self, db: &dyn SourceDatabase) -> String {
+        let source = self.source(db);
+        let name = self.function_clause.name.name();
+        let args = match source.clause() {
+            None => Name::MISSING.to_string(),
+            Some(FunctionOrMacroClause::FunctionClause(clause)) => match clause.args() {
+                None => Name::MISSING.to_string(),
+                Some(args) => args.to_string(),
+            },
+            Some(FunctionOrMacroClause::MacroCallExpr(expr)) => expr.syntax().text().to_string(),
+        };
+        format!("{name}{args}")
     }
 
     pub fn in_clause<'a, T>(
@@ -459,6 +483,10 @@ impl RecordDef {
         source.syntax().text_range()
     }
 
+    pub fn name_range(&self, db: &dyn SourceDatabase) -> Option<TextRange> {
+        Some(self.source(db).name()?.syntax().text_range())
+    }
+
     pub fn fields(
         &self,
         db: &dyn DefDatabase,
@@ -560,6 +588,11 @@ impl TypeAliasDef {
         Some(source.syntax().text_range())
     }
 
+    pub fn name_range(&self, db: &dyn SourceDatabase) -> Option<TextRange> {
+        let range = self.source(db).type_name()?.syntax().text_range();
+        Some(range)
+    }
+
     /// This information is used for completion.
     /// We deliberately return nothing for an opaque type
     pub fn map_expr_for_completion(&self, db: &dyn SourceDatabase) -> Option<MapExpr> {
@@ -620,6 +653,15 @@ impl DefineDef {
     pub fn source(&self, db: &dyn SourceDatabase) -> ast::PpDefine {
         let source_file = self.file.source(db);
         self.define.form_id.get(&source_file)
+    }
+
+    pub fn range(&self, db: &dyn SourceDatabase) -> TextRange {
+        let source = self.source(db);
+        source.syntax().text_range()
+    }
+
+    pub fn name_range(&self, db: &dyn SourceDatabase) -> Option<TextRange> {
+        Some(self.source(db).name()?.syntax().text_range())
     }
 }
 

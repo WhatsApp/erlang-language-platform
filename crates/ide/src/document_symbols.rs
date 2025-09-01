@@ -13,12 +13,11 @@ use std::fmt;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::SymbolKind;
 use elp_ide_db::elp_base_db::FileId;
-use elp_syntax::AstNode;
 use elp_syntax::TextRange;
-use elp_syntax::ast::FunctionOrMacroClause;
+use hir::DefMap;
 use hir::DefineDef;
+use hir::FunctionClauseDef;
 use hir::FunctionDef;
-use hir::Name;
 use hir::RecordDef;
 use hir::Semantic;
 use hir::TypeAliasDef;
@@ -50,74 +49,66 @@ impl fmt::Display for DocumentSymbol {
 }
 
 pub trait ToDocumentSymbol {
-    fn to_document_symbol(&self, db: &dyn DefDatabase) -> DocumentSymbol;
+    fn to_document_symbol(&self, db: &dyn DefDatabase, def_map: &DefMap) -> Option<DocumentSymbol>;
 }
 
 impl ToDocumentSymbol for FunctionDef {
-    fn to_document_symbol(&self, db: &dyn DefDatabase) -> DocumentSymbol {
-        let source = self.source(db.upcast());
-        let range = self
-            .range(db.upcast())
-            .unwrap_or(TextRange::new(0.into(), 0.into())); // default should never be needed
+    fn to_document_symbol(&self, db: &dyn DefDatabase, def_map: &DefMap) -> Option<DocumentSymbol> {
         let mut children = Vec::new();
-        for fun_clause in source.iter() {
-            if let Some(clause) = fun_clause.clause() {
-                let function_name = self.name.to_string();
-                let function_name_no_arity = self.name.name().to_string();
-                let clause_name = match &clause {
-                    FunctionOrMacroClause::FunctionClause(clause) => match clause.args() {
-                        None => Name::MISSING.to_string(),
-                        Some(args) => args.to_string(),
-                    },
-                    FunctionOrMacroClause::MacroCallExpr(_) => Name::MISSING.to_string(),
-                };
-                let range = clause.syntax().text_range();
-                let selection_range = match &clause {
-                    FunctionOrMacroClause::FunctionClause(clause) => match clause.name() {
-                        None => range,
-                        Some(name) => name.syntax().text_range(),
-                    },
-                    FunctionOrMacroClause::MacroCallExpr(_) => range,
-                };
-                let symbol = DocumentSymbol {
-                    name: format!("{function_name_no_arity}{clause_name}"),
-                    kind: SymbolKind::Function,
-                    range,
-                    selection_range,
-                    deprecated: self.deprecated,
-                    detail: Some(function_name),
-                    children: None,
-                };
-                children.push(symbol);
+        if self.function_clause_ids.len() > 1 {
+            for clause_id in &self.function_clause_ids {
+                if let Some(function_clause_def) = def_map.function_clauses.get(clause_id)
+                    && let Some(child) = function_clause_def.to_document_symbol(db, def_map)
+                {
+                    children.push(child);
+                }
             }
         }
-        let selection_range = children.first().map_or(range, |c| c.selection_range);
         let children = if !children.is_empty() {
             Some(children)
         } else {
             None
         };
-        DocumentSymbol {
+        let symbol = DocumentSymbol {
             name: self.name.to_string(),
             kind: SymbolKind::Function,
-            range,
-            selection_range,
+            range: self.range(db)?,
+            selection_range: self.name_range(db)?,
             deprecated: self.deprecated,
             detail: None,
             children,
-        }
+        };
+        Some(symbol)
+    }
+}
+
+impl ToDocumentSymbol for FunctionClauseDef {
+    fn to_document_symbol(&self, db: &dyn DefDatabase, def_map: &DefMap) -> Option<DocumentSymbol> {
+        let deprecated = def_map.is_deprecated(&self.function_clause.name);
+        let range = self.range(db);
+        let selection_range = self.name_range(db).unwrap_or(range);
+        let symbol = DocumentSymbol {
+            name: self.label(db),
+            kind: SymbolKind::Function,
+            range,
+            selection_range,
+            deprecated,
+            detail: Some(self.function_clause.name.to_string()),
+            children: None,
+        };
+        Some(symbol)
     }
 }
 
 impl ToDocumentSymbol for TypeAliasDef {
-    fn to_document_symbol(&self, db: &dyn DefDatabase) -> DocumentSymbol {
-        let source = self.source(db.upcast());
-        let range = source.syntax().text_range();
-        let selection_range = match &source.type_name() {
-            None => range,
-            Some(name) => name.syntax().text_range(),
-        };
-        DocumentSymbol {
+    fn to_document_symbol(
+        &self,
+        db: &dyn DefDatabase,
+        _def_map: &DefMap,
+    ) -> Option<DocumentSymbol> {
+        let range = self.range(db)?;
+        let selection_range = self.name_range(db).unwrap_or(range);
+        let symbol = DocumentSymbol {
             name: self.name().to_string(),
             kind: SymbolKind::Type,
             range,
@@ -125,19 +116,20 @@ impl ToDocumentSymbol for TypeAliasDef {
             deprecated: false,
             detail: None,
             children: None,
-        }
+        };
+        Some(symbol)
     }
 }
 
 impl ToDocumentSymbol for RecordDef {
-    fn to_document_symbol(&self, db: &dyn DefDatabase) -> DocumentSymbol {
-        let source = self.source(db.upcast());
-        let range = source.syntax().text_range();
-        let selection_range = match &source.name() {
-            None => range,
-            Some(name) => name.syntax().text_range(),
-        };
-        DocumentSymbol {
+    fn to_document_symbol(
+        &self,
+        db: &dyn DefDatabase,
+        _def_map: &DefMap,
+    ) -> Option<DocumentSymbol> {
+        let range = self.range(db);
+        let selection_range = self.name_range(db).unwrap_or(range);
+        let symbol = DocumentSymbol {
             name: self.record.name.to_string(),
             kind: SymbolKind::Record,
             range,
@@ -145,20 +137,20 @@ impl ToDocumentSymbol for RecordDef {
             deprecated: false,
             detail: None,
             children: None,
-        }
+        };
+        Some(symbol)
     }
 }
 
 impl ToDocumentSymbol for DefineDef {
-    fn to_document_symbol(&self, db: &dyn DefDatabase) -> DocumentSymbol {
-        let source = self.source(db.upcast());
-        let range = source.syntax().text_range();
-        let selection_range = if let Some(lhs) = &source.lhs() {
-            lhs.syntax().text_range()
-        } else {
-            range
-        };
-        DocumentSymbol {
+    fn to_document_symbol(
+        &self,
+        db: &dyn DefDatabase,
+        _def_map: &DefMap,
+    ) -> Option<DocumentSymbol> {
+        let range = self.range(db);
+        let selection_range = self.name_range(db).unwrap_or(range);
+        let symbol = DocumentSymbol {
             name: self.define.name.to_string(),
             kind: SymbolKind::Define,
             range,
@@ -166,7 +158,8 @@ impl ToDocumentSymbol for DefineDef {
             deprecated: false,
             detail: None,
             children: None,
-        }
+        };
+        Some(symbol)
     }
 }
 
@@ -189,21 +182,25 @@ pub(crate) fn document_symbols(db: &RootDatabase, file_id: FileId) -> Vec<Docume
 
     let mut res = Vec::new();
 
-    for (name, def) in def_map.get_functions() {
-        let mut symbol = def.to_document_symbol(db);
-        if def_map.is_deprecated(name) {
-            symbol.deprecated = true;
+    for (_name, def) in def_map.get_functions() {
+        if let Some(symbol) = def.to_document_symbol(db, &def_map) {
+            res.push(symbol);
         }
-        res.push(symbol);
     }
     for def in def_map.get_records().values() {
-        res.push(def.to_document_symbol(db));
+        if let Some(symbol) = def.to_document_symbol(db, &def_map) {
+            res.push(symbol);
+        }
     }
     for def in def_map.get_macros().values() {
-        res.push(def.to_document_symbol(db));
+        if let Some(symbol) = def.to_document_symbol(db, &def_map) {
+            res.push(symbol);
+        }
     }
     for def in def_map.get_types().values() {
-        res.push(def.to_document_symbol(db));
+        if let Some(symbol) = def.to_document_symbol(db, &def_map) {
+            res.push(symbol);
+        }
     }
 
     res.sort_by(|a, b| a.range.start().cmp(&b.range.start()));
@@ -272,25 +269,21 @@ mod tests {
    -define(MEANING_OF_LIFE, 42).
 %%         ^^^^^^^^^^^^^^^ Define | MEANING_OF_LIFE
    -define(MEANING_OF_LIFE(X), X). % You are the owner of your own destiny.
-%%         ^^^^^^^^^^^^^^^^^^ Define | MEANING_OF_LIFE/1
+%%         ^^^^^^^^^^^^^^^ Define | MEANING_OF_LIFE/1
 
    a(_) -> a.
 %% ^ Function | a/1
-%% ^ Function | a(_) | a/1
    b() -> b.
 %% ^ Function | b/0
-%% ^ Function | b() | b/0
 
    c() ->
 %% ^ Function | c/0
-%% ^ Function | c() | c/0
      a(),
      b(),
      ok.
 
    ?MEANING_OF_LIFE(X, Y) ->
 %% ^^^^^^^^^^^^^^^^ Function | [missing name]/2
-%% ^^^^^^^^^^^^^^^^ Function | [missing name](X, Y) | [missing name]/2
      X + Y.
 "#,
         );
@@ -305,10 +298,8 @@ mod tests {
    -deprecated({a, 1}).
    a(_) -> a.
 %% ^ Function | a/1 | deprecated
-%% ^ Function | a(_) | a/1 | deprecated
    b() -> b.
 %% ^ Function | b/0
-%% ^ Function | b() | b/0
 "#,
         );
     }
@@ -327,7 +318,6 @@ mod tests {
 %% ^ Function | a(2) | a/1 | deprecated
    b() -> b.
 %% ^ Function | b/0
-%% ^ Function | b() | b/0
 "#,
         );
     }
@@ -353,7 +343,6 @@ mod tests {
 %%        ^^^^^^^^^^^^ Type | local_type/0
     local_function() -> ok.
 %%  ^^^^^^^^^^^^^^ Function | local_function/0
-%%  ^^^^^^^^^^^^^^ Function | local_function() | local_function/0
 "#,
         );
     }
