@@ -175,7 +175,7 @@ impl Runnable {
                     format!("▶\u{fe0e} Debug (in {name})")
                 }
             },
-            RunnableKind::Suite { .. } => "▶\u{fe0e} Debug".to_string(),
+            RunnableKind::Suite { .. } => "▶\u{fe0e} Open Debug REPL".to_string(),
         }
     }
 }

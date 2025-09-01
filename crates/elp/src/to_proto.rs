@@ -733,12 +733,24 @@ pub(crate) fn code_lens(
                             });
                         }
                         if lens_config.debug {
-                            let debug_command = command::debug_single(&r, debug_title);
-                            acc.push(lsp_types::CodeLens {
-                                range: annotation_range,
-                                command: Some(debug_command),
-                                data: None,
-                            });
+                            match run.kind {
+                                RunnableKind::Suite { .. } => {
+                                    let debug_command = command::debug_interactive(&r, debug_title);
+                                    acc.push(lsp_types::CodeLens {
+                                        range: annotation_range,
+                                        command: Some(debug_command),
+                                        data: None,
+                                    });
+                                }
+                                RunnableKind::Test { .. } => {
+                                    let debug_command = command::debug_single(&r, debug_title);
+                                    acc.push(lsp_types::CodeLens {
+                                        range: annotation_range,
+                                        command: Some(debug_command),
+                                        data: None,
+                                    });
+                                }
+                            }
                         }
                     }
                 }
@@ -809,6 +821,17 @@ pub(crate) mod command {
         lsp_types::Command {
             title: title.to_string(),
             command: "elp.runSingle".into(),
+            arguments: Some(vec![to_value(runnable).unwrap()]),
+        }
+    }
+
+    pub(crate) fn debug_interactive(
+        runnable: &lsp_ext::Runnable,
+        title: &str,
+    ) -> lsp_types::Command {
+        lsp_types::Command {
+            title: title.to_string(),
+            command: "elp.debugInteractive".into(),
             arguments: Some(vec![to_value(runnable).unwrap()]),
         }
     }
