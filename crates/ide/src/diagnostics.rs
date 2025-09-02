@@ -727,6 +727,7 @@ pub struct DiagnosticsConfig {
     pub disabled: FxHashSet<DiagnosticCode>,
     pub enabled: EnabledDiagnostics,
     pub lints_from_config: LintsFromConfig,
+    pub lint_config: Option<LintConfig>,
     pub include_generated: bool,
     pub include_suppressed: bool,
     pub include_otp: bool,
@@ -786,6 +787,7 @@ impl DiagnosticsConfig {
             self.enabled = EnabledDiagnostics::from_set(allowed_diagnostics);
         }
         self.lints_from_config = lint_config.ad_hoc_lints.clone();
+        self.lint_config = Some(lint_config.clone());
         self.request_erlang_service_diagnostics = self.request_erlang_service_diagnostics();
         Ok(self)
     }
@@ -850,11 +852,18 @@ impl DiagnosticsConfig {
     }
 }
 
+impl LintConfig {
+    /// Get the severity override for a linter based on its diagnostic code
+    pub fn get_severity_override(&self, diagnostic_code: &DiagnosticCode) -> Option<Severity> {
+        self.linters.get(diagnostic_code)?.severity
+    }
+}
+
 // ---------------------------------------------------------------------
 
 /// Configuration file format for lints. Deserialized from .toml
 /// initially.  But could by anything supported by serde.
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct LintConfig {
     #[serde(default)]
     pub enabled_lints: Vec<DiagnosticCode>,
@@ -862,6 +871,49 @@ pub struct LintConfig {
     pub disabled_lints: Vec<DiagnosticCode>,
     #[serde(default)]
     pub ad_hoc_lints: LintsFromConfig,
+    #[serde(default)]
+    pub linters: FxHashMap<DiagnosticCode, LinterConfig>,
+}
+
+/// Configuration for a specific linter that allows overriding default settings
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Default)]
+pub struct LinterConfig {
+    pub severity: Option<Severity>,
+}
+
+impl<'de> Deserialize<'de> for Severity {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match s.to_lowercase().as_str() {
+            "error" => Ok(Severity::Error),
+            "warning" => Ok(Severity::Warning),
+            "weak" => Ok(Severity::WeakWarning),
+            "info" => Ok(Severity::Information),
+            _ => Err(serde::de::Error::custom(format!(
+                "Unknown severity: {}. Expected one of: error, warning, info, weak",
+                s
+            ))),
+        }
+    }
+}
+
+impl Serialize for Severity {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let s = match self {
+            Severity::Error => "error",
+            Severity::Warning => "warning",
+            Severity::WeakWarning => "weak",
+            Severity::Information => "info",
+        };
+        serializer.serialize_str(s)
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -1168,10 +1220,19 @@ fn diagnostics_from_function_call_linters(
                 default_disabled: !linter.is_enabled(),
             };
             if conditions.enabled(config, is_generated, is_test) {
+                // Check if there is a severity override in the config
+                let severity = if let Some(lint_config) = config.lint_config.as_ref() {
+                    lint_config
+                        .get_severity_override(&linter.id())
+                        .unwrap_or_else(|| linter.severity())
+                } else {
+                    linter.severity()
+                };
+
                 let diagnostic_template = DiagnosticTemplate {
                     code: linter.id(),
                     message: linter.description(),
-                    severity: linter.severity(),
+                    severity,
                     with_ignore_fix: linter.can_be_suppressed(),
                     use_range: UseRange::NameOnly,
                 };
@@ -1210,7 +1271,20 @@ fn diagnostics_from_ssr_linters(
                 default_disabled: !linter.is_enabled(),
             };
             if conditions.enabled(config, is_generated, is_test) {
-                res.extend(linter.diagnostics(sema, file_id));
+                let mut diagnostics = linter.diagnostics(sema, file_id);
+
+                // Apply severity overrides for SSR linters
+                if let Some(lint_config) = config.lint_config.as_ref() {
+                    for diagnostic in &mut diagnostics {
+                        if let Some(override_severity) =
+                            lint_config.get_severity_override(&linter.id())
+                        {
+                            diagnostic.severity = override_severity;
+                        }
+                    }
+                }
+
+                res.extend(diagnostics);
             }
         }
     }
@@ -3040,5 +3114,42 @@ baz(1)->4.
                 "#,
             );
         }
+    }
+
+    #[test]
+    fn test_linter_severity_override() {
+        let mut lint_config = LintConfig::default();
+        lint_config.linters.insert(
+            DiagnosticCode::NoGarbageCollect,
+            LinterConfig {
+                severity: Some(Severity::Error),
+            },
+        );
+
+        let config = DiagnosticsConfig::default()
+            .configure_diagnostics(
+                &lint_config,
+                &Some("no_garbage_collect".to_string()),
+                &None,
+                FallBackToAll::No,
+            )
+            .unwrap();
+        check_diagnostics_with_config(
+            config,
+            r#"
+            //- /src/main.erl
+            -module(main).
+            -export([error/0]).
+
+            -spec error() -> ok.
+            error() ->
+                erlang:garbage_collect().
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Avoid forcing garbage collection.
+            //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+            -module(erlang).
+            -export([garbage_collect/0]).
+            garbage_collect() -> ok.
+            "#,
+        );
     }
 }

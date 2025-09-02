@@ -164,7 +164,9 @@ mod tests {
     use elp_ide::diagnostics::ReplaceCall;
     use elp_ide::diagnostics::ReplaceCallAction;
     use elp_ide::diagnostics::Replacement;
+    use elp_ide::diagnostics::Severity;
     use expect_test::expect;
+    use fxhash::FxHashMap;
 
     use crate::LintConfig;
 
@@ -187,6 +189,7 @@ mod tests {
                     }),
                 ],
             },
+            linters: FxHashMap::default(),
         };
         expect![[r#"
             enabled_lints = ["W0011"]
@@ -214,6 +217,8 @@ mod tests {
             action = "Replace"
             type = "ArgsPermutation"
             perm = [1, 2]
+
+            [linters]
         "#]]
         .assert_eq(&toml::to_string::<LintConfig>(&lint_config).unwrap());
     }
@@ -226,5 +231,22 @@ mod tests {
         let config = toml::from_str::<LintConfig>(content).unwrap();
         assert_eq!(config.enabled_lints, vec![]);
         assert_eq!(config.disabled_lints, vec![]);
+    }
+
+    #[test]
+    fn serde_read_lint_config_linters_overrides() {
+        let content = r#"
+            [linters.no_garbage_collect]
+            severity = "error"
+            "#;
+        let config = toml::from_str::<LintConfig>(content).unwrap();
+        assert_eq!(
+            config
+                .linters
+                .get(&DiagnosticCode::NoGarbageCollect)
+                .unwrap()
+                .severity,
+            Some(Severity::Error)
+        );
     }
 }

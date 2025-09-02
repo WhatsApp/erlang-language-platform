@@ -942,6 +942,7 @@ mod tests {
     use elp_ide::diagnostics::Replacement;
     use expect_test::Expect;
     use expect_test::expect;
+    use fxhash::FxHashMap;
 
     use super::LintConfig;
     use super::do_codemod;
@@ -966,6 +967,7 @@ mod tests {
             },
             enabled_lints: vec![DiagnosticCode::HeadMismatch],
             disabled_lints: vec![],
+            linters: FxHashMap::default(),
         })
         .unwrap();
 
@@ -983,6 +985,8 @@ mod tests {
             [ad_hoc_lints.lints.action]
             action = "Replace"
             type = "UseOk"
+
+            [linters]
         "#]]
         .assert_eq(&result);
     }
@@ -1006,6 +1010,7 @@ mod tests {
                 ad_hoc_lints: LintsFromConfig {
                     lints: [],
                 },
+                linters: {},
             }
         "#]]
         .assert_debug_eq(&lint_config);
