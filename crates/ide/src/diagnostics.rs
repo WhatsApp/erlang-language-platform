@@ -867,6 +867,11 @@ impl LintConfig {
     pub fn get_include_generated_override(&self, diagnostic_code: &DiagnosticCode) -> Option<bool> {
         self.linters.get(diagnostic_code)?.include_generated
     }
+
+    /// Get the experimental override for a linter based on its diagnostic code
+    pub fn get_experimental_override(&self, diagnostic_code: &DiagnosticCode) -> Option<bool> {
+        self.linters.get(diagnostic_code)?.experimental
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -892,6 +897,7 @@ pub struct LinterConfig {
     pub severity: Option<Severity>,
     pub include_tests: Option<bool>,
     pub include_generated: Option<bool>,
+    pub experimental: Option<bool>,
 }
 
 impl<'de> Deserialize<'de> for Severity {
@@ -1243,8 +1249,17 @@ fn diagnostics_from_function_call_linters(
                 linter.should_process_generated_files()
             };
 
+            // Check if there is an experimental override in the config
+            let experimental = if let Some(lint_config) = config.lint_config.as_ref() {
+                lint_config
+                    .get_experimental_override(&linter.id())
+                    .unwrap_or_else(|| linter.is_experimental())
+            } else {
+                linter.is_experimental()
+            };
+
             let conditions = DiagnosticConditions {
-                experimental: linter.is_experimental(),
+                experimental,
                 include_generated,
                 include_tests,
                 default_disabled: !linter.is_enabled(),
@@ -1312,8 +1327,17 @@ fn diagnostics_from_ssr_linters(
                 linter.should_process_generated_files()
             };
 
+            // Check if there is an experimental override in the config
+            let experimental = if let Some(lint_config) = config.lint_config.as_ref() {
+                lint_config
+                    .get_experimental_override(&linter.id())
+                    .unwrap_or_else(|| linter.is_experimental())
+            } else {
+                linter.is_experimental()
+            };
+
             let conditions = DiagnosticConditions {
-                experimental: linter.is_experimental(),
+                experimental,
                 include_generated,
                 include_tests,
                 default_disabled: !linter.is_enabled(),
@@ -3173,6 +3197,7 @@ baz(1)->4.
                 severity: Some(Severity::Error),
                 include_tests: None,
                 include_generated: None,
+                experimental: None,
             },
         );
 
@@ -3212,6 +3237,7 @@ baz(1)->4.
                 severity: None,
                 include_tests: Some(true),
                 include_generated: None,
+                experimental: None,
             },
         );
 
@@ -3250,6 +3276,7 @@ baz(1)->4.
                 severity: None,
                 include_tests: None,
                 include_generated: Some(true),
+                experimental: None,
             },
         );
 
@@ -3264,6 +3291,45 @@ baz(1)->4.
             .set_include_generated(true);
         check_diagnostics_with_config(
             config,
+            r#"
+            //- /src/main_generated.erl extra:generated
+            -module(main_generated).
+            -export([warning/0]).
+
+            warning() ->
+                erlang:garbage_collect().
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Avoid forcing garbage collection.
+            //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+            -module(erlang).
+            -export([garbage_collect/0]).
+            garbage_collect() -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_linter_experimental_override() {
+        let mut lint_config = LintConfig::default();
+        lint_config.linters.insert(
+            DiagnosticCode::NoGarbageCollect,
+            LinterConfig {
+                severity: None,
+                include_tests: None,
+                include_generated: None,
+                experimental: Some(true),
+            },
+        );
+
+        let config = DiagnosticsConfig::default()
+            .configure_diagnostics(
+                &lint_config,
+                &Some("no_garbage_collect".to_string()),
+                &None,
+                FallBackToAll::No,
+            )
+            .unwrap();
+        check_diagnostics_with_config(
+            config,
             &format!(
                 r#"
             //- /src/main.erl
@@ -3273,7 +3339,6 @@ baz(1)->4.
 
             warning() ->
                 erlang:garbage_collect().
-            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Avoid forcing garbage collection.
             //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
             -module(erlang).
             -export([garbage_collect/0]).
