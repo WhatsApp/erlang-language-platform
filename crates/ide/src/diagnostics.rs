@@ -537,6 +537,36 @@ pub(crate) trait Linter {
     }
 }
 
+fn conditions(linter: &dyn Linter, config: &DiagnosticsConfig) -> DiagnosticConditions {
+    let include_tests = if let Some(lint_config) = config.lint_config.as_ref() {
+        lint_config
+            .get_include_tests_override(&linter.id())
+            .unwrap_or_else(|| linter.should_process_test_files())
+    } else {
+        linter.should_process_test_files()
+    };
+    let include_generated = if let Some(lint_config) = config.lint_config.as_ref() {
+        lint_config
+            .get_include_generated_override(&linter.id())
+            .unwrap_or_else(|| linter.should_process_generated_files())
+    } else {
+        linter.should_process_generated_files()
+    };
+    let experimental = if let Some(lint_config) = config.lint_config.as_ref() {
+        lint_config
+            .get_experimental_override(&linter.id())
+            .unwrap_or_else(|| linter.is_experimental())
+    } else {
+        linter.is_experimental()
+    };
+    DiagnosticConditions {
+        experimental,
+        include_generated,
+        include_tests,
+        default_disabled: !linter.is_enabled(),
+    }
+}
+
 // A trait that simplifies writing linters matching function calls
 pub(crate) trait FunctionCallLinter: Linter {
     // Specify the list of functions the linter should emit issues for
@@ -1231,39 +1261,7 @@ fn diagnostics_from_function_call_linters(
     let mut specs = Vec::new();
     for linter in linters {
         if linter.should_process_file_id(sema, file_id) {
-            // Check if there is an include_tests override in the config
-            let include_tests = if let Some(lint_config) = config.lint_config.as_ref() {
-                lint_config
-                    .get_include_tests_override(&linter.id())
-                    .unwrap_or_else(|| linter.should_process_test_files())
-            } else {
-                linter.should_process_test_files()
-            };
-
-            // Check if there is an include_generated override in the config
-            let include_generated = if let Some(lint_config) = config.lint_config.as_ref() {
-                lint_config
-                    .get_include_generated_override(&linter.id())
-                    .unwrap_or_else(|| linter.should_process_generated_files())
-            } else {
-                linter.should_process_generated_files()
-            };
-
-            // Check if there is an experimental override in the config
-            let experimental = if let Some(lint_config) = config.lint_config.as_ref() {
-                lint_config
-                    .get_experimental_override(&linter.id())
-                    .unwrap_or_else(|| linter.is_experimental())
-            } else {
-                linter.is_experimental()
-            };
-
-            let conditions = DiagnosticConditions {
-                experimental,
-                include_generated,
-                include_tests,
-                default_disabled: !linter.is_enabled(),
-            };
+            let conditions = conditions(linter, config);
             if conditions.enabled(config, is_generated, is_test) {
                 // Check if there is a severity override in the config
                 let severity = if let Some(lint_config) = config.lint_config.as_ref() {
@@ -1309,39 +1307,7 @@ fn diagnostics_from_ssr_linters(
 
     for linter in linters {
         if linter.should_process_file_id(sema, file_id) {
-            // Check if there is an include_tests override in the config
-            let include_tests = if let Some(lint_config) = config.lint_config.as_ref() {
-                lint_config
-                    .get_include_tests_override(&linter.id())
-                    .unwrap_or_else(|| linter.should_process_test_files())
-            } else {
-                linter.should_process_test_files()
-            };
-
-            // Check if there is an include_generated override in the config
-            let include_generated = if let Some(lint_config) = config.lint_config.as_ref() {
-                lint_config
-                    .get_include_generated_override(&linter.id())
-                    .unwrap_or_else(|| linter.should_process_generated_files())
-            } else {
-                linter.should_process_generated_files()
-            };
-
-            // Check if there is an experimental override in the config
-            let experimental = if let Some(lint_config) = config.lint_config.as_ref() {
-                lint_config
-                    .get_experimental_override(&linter.id())
-                    .unwrap_or_else(|| linter.is_experimental())
-            } else {
-                linter.is_experimental()
-            };
-
-            let conditions = DiagnosticConditions {
-                experimental,
-                include_generated,
-                include_tests,
-                default_disabled: !linter.is_enabled(),
-            };
+            let conditions = conditions(linter, config);
             if conditions.enabled(config, is_generated, is_test) {
                 let mut diagnostics = linter.diagnostics(sema, file_id);
 
