@@ -590,7 +590,11 @@ pub(crate) trait FunctionCallLinter: Linter {
     // Custom check for the function call. Returning None for a given call skips processing.
     // By default all calls are included.
     // The callback returns a function that can be used in subsequent callbacks.
-    fn is_match_valid(&self, _check_call_context: &CheckCallCtx<'_, ()>) -> Option<Self::Context> {
+    fn is_match_valid(
+        &self,
+        _check_call_context: &CheckCallCtx<'_, ()>,
+        _sema: &Semantic,
+    ) -> Option<Self::Context> {
         Some(Self::Context::default())
     }
 
@@ -638,7 +642,7 @@ impl<T: FunctionCallLinter> FunctionCallDiagnostics for T {
                     sema,
                     def,
                     &mfas,
-                    &move |ctx| self.is_match_valid(&ctx),
+                    &move |ctx| self.is_match_valid(&ctx, sema),
                     &move |ctx @ MatchCtx { sema, def_fb, .. }| {
                         let range = ctx.range(&UseRange::NameOnly);
                         if range.file_id == def.file.file_id {
@@ -1268,7 +1272,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &head_mismatch::DESCRIPTOR_SEMANTIC,
         &missing_separator::DESCRIPTOR,
         &cross_node_eval::DESCRIPTOR,
-        &atoms_exhaustion::DESCRIPTOR,
         &boolean_precedence::DESCRIPTOR,
         &record_tuple_match::DESCRIPTOR,
         &unspecific_include::DESCRIPTOR,
@@ -1339,6 +1342,7 @@ pub(crate) fn linters() -> Vec<DiagnosticLinter> {
         DiagnosticLinter::FunctionCall(&no_size::LINTER),
         DiagnosticLinter::FunctionCall(&no_error_logger::LINTER),
         DiagnosticLinter::FunctionCall(&debugging_function::LINTER),
+        DiagnosticLinter::FunctionCall(&atoms_exhaustion::LINTER),
         // SSR linters
         DiagnosticLinter::SsrPatterns(&unnecessary_fold_to_build_map::LINTER),
         DiagnosticLinter::SsrPatterns(&binary_string_to_sigil::LINTER),

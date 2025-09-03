@@ -57,7 +57,11 @@ impl FunctionCallLinter for NoDebuggingFunctionLinter {
         ]
     }
 
-    fn is_match_valid(&self, context: &CheckCallCtx<'_, ()>) -> Option<Self::Context> {
+    fn is_match_valid(
+        &self,
+        context: &CheckCallCtx<'_, ()>,
+        _sema: &Semantic,
+    ) -> Option<Self::Context> {
         let call_expr_id = context.parents.last().cloned();
         Some(call_expr_id)
     }

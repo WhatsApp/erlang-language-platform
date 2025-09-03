@@ -9,112 +9,82 @@
  */
 
 use elp_ide_db::elp_base_db::FileId;
-use elp_text_edit::TextRange;
-use hir::FunctionDef;
 use hir::Semantic;
-use lazy_static::lazy_static;
 
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
 use crate::FunctionMatch;
-use crate::codemod_helpers::MatchCtx;
-use crate::codemod_helpers::find_call_in_function;
+use crate::codemod_helpers::CheckCallCtx;
 // @fb-only
-use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
-use crate::diagnostics::Severity;
+use crate::diagnostics::FunctionCallLinter;
+use crate::diagnostics::Linter;
+use crate::lazy_function_matches;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: true,
-        include_tests: false,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        atoms_exhaustion(diags, sema, file_id);
-    },
-};
+pub(crate) struct AtomsExhaustionLinter;
 
-fn atoms_exhaustion(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    lazy_static! {
-        static ref BAD_CALLS: Vec<FunctionMatch> = vec![
-            FunctionMatch::mfa("erlang", "binary_to_atom", 1),
-            FunctionMatch::mfa("erlang", "binary_to_atom", 2),
-            FunctionMatch::mfa("erlang", "list_to_atom", 1),
-            // T187850479: Make it configurable
-            // FunctionMatch::mfa("erlang", "binary_to_term", 1),
-            // FunctionMatch::mfa("erlang", "binary_to_term", 2),
-        ]
-        .into_iter()
+impl Linter for AtomsExhaustionLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::AtomsExhaustion
+    }
+    fn description(&self) -> String {
+        "Risk of atoms exhaustion.".to_string()
+    }
+    fn should_process_generated_files(&self) -> bool {
+        true
+    }
+    fn should_process_test_files(&self) -> bool {
+        false
+    }
+    fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
         // @fb-only
-        .collect();
+        true // @oss-only
+    }
+}
 
-        static ref BAD_CALLS_MFAS: Vec<(&'static FunctionMatch, ())> = BAD_CALLS
-            .iter()
-            .map(|matcher| (matcher, ()))
-            .collect::<Vec<_>>();
+impl FunctionCallLinter for AtomsExhaustionLinter {
+    type Context = ();
+
+    fn matches_functions(&self) -> Vec<FunctionMatch> {
+        lazy_function_matches![
+            vec![
+                FunctionMatch::mfa("erlang", "binary_to_atom", 1),
+                FunctionMatch::mfa("erlang", "binary_to_atom", 2),
+                FunctionMatch::mfa("erlang", "list_to_atom", 1),
+                // T187850479: Make it configurable
+                // FunctionMatch::mfa("erlang", "binary_to_term", 1),
+                // FunctionMatch::mfa("erlang", "binary_to_term", 2),
+            ]
+            .into_iter()
+            // @fb-only
+            .collect::<Vec<_>>()
+        ]
     }
 
-    sema.def_map_local(file_id)
-        .get_functions()
-        .for_each(|(_arity, def)| {
+    fn is_match_valid(
+        &self,
+        context: &CheckCallCtx<'_, ()>,
+        sema: &Semantic,
+    ) -> Option<Self::Context> {
+        // @fb-only
             // @fb-only
-            let is_relevant = true; // @oss-only
-            if is_relevant {
-                check_function(diagnostics, sema, def, &BAD_CALLS_MFAS);
-            }
-        });
-}
-
-fn check_function(
-    diags: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    def: &FunctionDef,
-    mfas: &[(&FunctionMatch, ())],
-) {
-    #[rustfmt::skip]
-    find_call_in_function(
-        diags,
-        sema,
-        def,
-        mfas,
-        &move |ctx| {
-            // @fb-only
-                // @fb-only
-            let is_safe = false; // @oss-only
-            if !is_safe {
-                match ctx.args.as_vec()[..] {
-                    [_, options] => {
-                        let body = ctx.in_clause.body();
-                        match &body[options].literal_list_contains_atom(ctx.in_clause, "safe") {
-                            Some(true) => None,
-                            _ => Some(("".to_string(), "".to_string())),
-                        }
+        let is_safe = false; // @oss-only
+        if !is_safe {
+            match context.args.as_vec()[..] {
+                [_, options] => {
+                    let body = context.in_clause.body();
+                    match &body[options].literal_list_contains_atom(context.in_clause, "safe") {
+                        Some(true) => None,
+                        _ => Some(()),
                     }
-                    _ => Some(("".to_string(), "".to_string())),
                 }
-            } else {
-                None
+                _ => Some(()),
             }
-        },
-        &move |MatchCtx { sema, range, .. }| {
-            if range.file_id == def.file.file_id {
-                let diag = make_diagnostic(sema, def.file.file_id, range.range);
-                Some(diag)
-            } else {
-                None
-            }
-        },
-    );
+        } else {
+            None
+        }
+    }
 }
 
-fn make_diagnostic(sema: &Semantic, file_id: FileId, range: TextRange) -> Diagnostic {
-    let message = "Risk of atoms exhaustion.".to_string();
-    Diagnostic::new(DiagnosticCode::AtomsExhaustion, message, range)
-        .with_severity(Severity::Warning)
-        .with_ignore_fix(sema, file_id)
-}
+pub static LINTER: AtomsExhaustionLinter = AtomsExhaustionLinter;
 
 #[cfg(test)]
 mod tests {
@@ -130,9 +100,9 @@ mod tests {
    -export([main/0]).
    main() ->
      erlang:list_to_atom(foo),
-%%   ^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Risk of atoms exhaustion.
+%%   ^^^^^^^^^^^^^^^^^^^ 💡 warning: Risk of atoms exhaustion.
      list_to_atom(foo).
-%%   ^^^^^^^^^^^^^^^^^ 💡 warning: Risk of atoms exhaustion.
+%%   ^^^^^^^^^^^^ 💡 warning: Risk of atoms exhaustion.
 
 //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
    -module(erlang).
@@ -151,9 +121,9 @@ mod tests {
    -export([main/0]).
    main() ->
      erlang:binary_to_atom(foo),
-%%   ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Risk of atoms exhaustion.
+%%   ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Risk of atoms exhaustion.
      binary_to_atom(foo).
-%%   ^^^^^^^^^^^^^^^^^^^ 💡 warning: Risk of atoms exhaustion.
+%%   ^^^^^^^^^^^^^^ 💡 warning: Risk of atoms exhaustion.
 
 //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
    -module(erlang).
