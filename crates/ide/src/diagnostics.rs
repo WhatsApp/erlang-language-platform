@@ -79,11 +79,11 @@ use serde::Serialize;
 use crate::FunctionMatch;
 use crate::RootDatabase;
 use crate::SourceDatabase;
+use crate::codemod_helpers::CheckCallCtx;
+use crate::codemod_helpers::MatchCtx;
 use crate::codemod_helpers::UseRange;
+use crate::codemod_helpers::find_call_in_function;
 use crate::common_test;
-use crate::diagnostics::helpers::DiagnosticTemplate;
-use crate::diagnostics::helpers::FunctionCallDiagnostic;
-use crate::diagnostics::helpers::check_used_functions;
 
 mod application_env;
 mod atoms_exhaustion;
@@ -101,7 +101,6 @@ mod eqwalizer_assists;
 mod expression_can_be_simplified;
 mod from_config;
 mod head_mismatch;
-mod helpers;
 mod inefficient_enumerate;
 mod inefficient_flatlength;
 mod inefficient_last;
@@ -580,9 +579,86 @@ fn should_run(
 
 // A trait that simplifies writing linters matching function calls
 pub(crate) trait FunctionCallLinter: Linter {
+    /// Associated type - each linter defines its own
+    type Context: Clone + fmt::Debug + PartialEq + Default;
+
     // Specify the list of functions the linter should emit issues for
     fn matches_functions(&self) -> Vec<FunctionMatch> {
         vec![]
+    }
+
+    // Custom check for the function call. Returning None for a given call skips processing.
+    // By default all calls are included.
+    // The callback returns a function that can be used in subsequent callbacks.
+    fn is_match_valid(&self, _check_call_context: &CheckCallCtx<'_, ()>) -> Option<Self::Context> {
+        Some(Self::Context::default())
+    }
+
+    /// Return an optional vector of quick-fixes
+    fn fixes(
+        &self,
+        _match_context: &MatchCtx<Self::Context>,
+        _sema: &Semantic,
+        _file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        None
+    }
+}
+
+// Instances of the FunctionCallLinter trait can specify a custom `Context` type,
+// which is passed around in callbacks.
+// To be able to keep a registry of all linters we define a blanket implementation for all the methods using the `Context`,
+// to keep the code generic while allowing individual linters to specify their own context type.
+pub(crate) trait FunctionCallDiagnostics: Linter {
+    fn diagnostics(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+        severity: Severity,
+        cli_severity: Severity,
+    ) -> Vec<Diagnostic>;
+}
+
+impl<T: FunctionCallLinter> FunctionCallDiagnostics for T {
+    fn diagnostics(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+        severity: Severity,
+        cli_severity: Severity,
+    ) -> Vec<Diagnostic> {
+        let mut diagnostics = Vec::new();
+        let matches = self.matches_functions();
+        let mfas: Vec<(&FunctionMatch, ())> = matches.iter().map(|m| (m, ())).collect();
+        sema.def_map_local(file_id)
+            .get_functions()
+            .for_each(|(_, def)| {
+                find_call_in_function(
+                    &mut diagnostics,
+                    sema,
+                    def,
+                    &mfas,
+                    &move |ctx| self.is_match_valid(&ctx),
+                    &move |ctx @ MatchCtx { sema, def_fb, .. }| {
+                        let range = ctx.range(&UseRange::NameOnly);
+                        if range.file_id == def.file.file_id {
+                            let fixes = self.fixes(&ctx, sema, file_id);
+                            let mut diag =
+                                Diagnostic::new(self.id(), self.description(), range.range)
+                                    .with_fixes(fixes)
+                                    .with_severity(severity)
+                                    .with_cli_severity(cli_severity);
+                            if self.can_be_suppressed() {
+                                diag = diag.with_ignore_fix(sema, def_fb.file_id());
+                            };
+                            Some(diag)
+                        } else {
+                            None
+                        }
+                    },
+                );
+            });
+        diagnostics
     }
 }
 
@@ -639,12 +715,11 @@ pub(crate) trait SsrPatternsLinter: Linter {
     }
 }
 
-// Instances of the SsrCheckPatternsLinter trait can specify a custom `Context` type,
-// which is passed around in callbacks.\
-// To be able to keep a registry of all linters in the `ssr_linters` function,
-// we define a blanket implementation for all the methods using the `Context``,
+// Instances of the SsrPatternsLinter trait can specify a custom `Context` type,
+// which is passed around in callbacks.
+// To be able to keep a registry of all linters we define a blanket implementation for all the methods using the `Context`,
 // to keep the code generic while allowing individual linters to specify their own context type.
-pub(crate) trait SsrCheckPatterns: Linter {
+pub(crate) trait SsrPatternsDiagnostics: Linter {
     fn diagnostics(
         &self,
         sema: &Semantic,
@@ -654,7 +729,7 @@ pub(crate) trait SsrCheckPatterns: Linter {
     ) -> Vec<Diagnostic>;
 }
 
-impl<T: SsrPatternsLinter> SsrCheckPatterns for T {
+impl<T: SsrPatternsLinter> SsrPatternsDiagnostics for T {
     fn diagnostics(
         &self,
         sema: &Semantic,
@@ -1200,7 +1275,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &edoc::DESCRIPTOR,
         &macro_precedence_suprise::DESCRIPTOR,
         &undocumented_function::DESCRIPTOR,
-        &debugging_function::DESCRIPTOR,
         &duplicate_module::DESCRIPTOR,
         &undocumented_module::DESCRIPTOR,
         &no_dialyzer_attribute::DESCRIPTOR,
@@ -1243,8 +1317,8 @@ pub fn diagnostics_from_descriptors(
 
 /// Enum to represent either type of linter for unified processing
 pub(crate) enum DiagnosticLinter {
-    FunctionCall(&'static dyn FunctionCallLinter),
-    SsrPatterns(&'static dyn SsrCheckPatterns),
+    FunctionCall(&'static dyn FunctionCallDiagnostics),
+    SsrPatterns(&'static dyn SsrPatternsDiagnostics),
 }
 
 impl DiagnosticLinter {
@@ -1264,6 +1338,7 @@ pub(crate) fn linters() -> Vec<DiagnosticLinter> {
         DiagnosticLinter::FunctionCall(&no_garbage_collect::LINTER),
         DiagnosticLinter::FunctionCall(&no_size::LINTER),
         DiagnosticLinter::FunctionCall(&no_error_logger::LINTER),
+        DiagnosticLinter::FunctionCall(&debugging_function::LINTER),
         // SSR linters
         DiagnosticLinter::SsrPatterns(&unnecessary_fold_to_build_map::LINTER),
         DiagnosticLinter::SsrPatterns(&binary_string_to_sigil::LINTER),
@@ -1289,11 +1364,8 @@ fn diagnostics_from_linters(
         .is_test_suite_or_test_helper(file_id)
         .unwrap_or(false);
 
-    let mut specs = Vec::new();
-
     for l in linters {
         let linter = l.as_linter();
-        let code = linter.id();
         if linter.should_process_file_id(sema, file_id)
             && should_run(linter, config, is_generated, is_test)
         {
@@ -1313,19 +1385,9 @@ fn diagnostics_from_linters(
             };
             match l {
                 DiagnosticLinter::FunctionCall(function_linter) => {
-                    let diagnostic_template = DiagnosticTemplate {
-                        code,
-                        message: linter.description(),
-                        severity,
-                        cli_severity,
-                        with_ignore_fix: linter.can_be_suppressed(),
-                        use_range: UseRange::NameOnly,
-                    };
-                    let spec = vec![FunctionCallDiagnostic {
-                        diagnostic_template,
-                        matches: function_linter.matches_functions(),
-                    }];
-                    specs.extend(spec);
+                    let diagnostics =
+                        function_linter.diagnostics(sema, file_id, severity, cli_severity);
+                    res.extend(diagnostics);
                 }
                 DiagnosticLinter::SsrPatterns(ssr_linter) => {
                     let diagnostics = ssr_linter.diagnostics(sema, file_id, severity, cli_severity);
@@ -1333,11 +1395,6 @@ fn diagnostics_from_linters(
                 }
             }
         }
-    }
-
-    // Handle function call linters specs
-    if !specs.is_empty() {
-        check_used_functions(sema, file_id, &specs, res);
     }
 }
 

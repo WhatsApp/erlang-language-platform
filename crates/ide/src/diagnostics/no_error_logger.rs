@@ -29,6 +29,8 @@ impl Linter for NoErrorLoggerLinter {
 }
 
 impl FunctionCallLinter for NoErrorLoggerLinter {
+    type Context = ();
+
     fn matches_functions(&self) -> Vec<FunctionMatch> {
         crate::lazy_function_matches![vec![FunctionMatch::m("error_logger")]]
     }

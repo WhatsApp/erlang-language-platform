@@ -29,6 +29,8 @@ impl Linter for SetsVersion2Linter {
 }
 
 impl FunctionCallLinter for SetsVersion2Linter {
+    type Context = ();
+
     fn matches_functions(&self) -> Vec<FunctionMatch> {
         lazy_function_matches![
             FunctionMatch::mfas("sets", "new", vec![0]),

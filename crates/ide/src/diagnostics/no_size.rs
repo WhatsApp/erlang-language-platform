@@ -29,6 +29,8 @@ impl Linter for NoSizeLinter {
 }
 
 impl FunctionCallLinter for NoSizeLinter {
+    type Context = ();
+
     fn matches_functions(&self) -> Vec<FunctionMatch> {
         lazy_function_matches![vec![FunctionMatch::mfa("erlang", "size", 1)]]
     }

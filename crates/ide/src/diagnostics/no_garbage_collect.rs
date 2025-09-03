@@ -29,6 +29,8 @@ impl Linter for NoGarbageCollectLinter {
 }
 
 impl FunctionCallLinter for NoGarbageCollectLinter {
+    type Context = ();
+
     fn matches_functions(&self) -> Vec<FunctionMatch> {
         lazy_function_matches![vec![FunctionMatch::mf("erlang", "garbage_collect")]]
     }
