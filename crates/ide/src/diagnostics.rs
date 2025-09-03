@@ -506,6 +506,11 @@ pub(crate) trait Linter {
         Severity::Warning
     }
 
+    // For CLI, when using the --use-cli-severity flag. It defaults to `severity()`
+    fn cli_severity(&self) -> Severity {
+        self.severity()
+    }
+
     // Specify if the linter issues can be suppressed via a `% elp:ignore` comment.
     fn can_be_suppressed(&self) -> bool {
         true
@@ -640,11 +645,23 @@ pub(crate) trait SsrPatternsLinter: Linter {
 // we define a blanket implementation for all the methods using the `Context``,
 // to keep the code generic while allowing individual linters to specify their own context type.
 pub(crate) trait SsrCheckPatterns: Linter {
-    fn diagnostics(&self, sema: &Semantic, file_id: FileId, severity: Severity) -> Vec<Diagnostic>;
+    fn diagnostics(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+        severity: Severity,
+        cli_severity: Severity,
+    ) -> Vec<Diagnostic>;
 }
 
 impl<T: SsrPatternsLinter> SsrCheckPatterns for T {
-    fn diagnostics(&self, sema: &Semantic, file_id: FileId, severity: Severity) -> Vec<Diagnostic> {
+    fn diagnostics(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+        severity: Severity,
+        cli_severity: Severity,
+    ) -> Vec<Diagnostic> {
         let mut res = Vec::new();
         for (pattern, context) in self.patterns() {
             let matches = match_pattern_in_file_functions(sema, self.strategy(), file_id, &pattern);
@@ -656,7 +673,8 @@ impl<T: SsrPatternsLinter> SsrCheckPatterns for T {
                     let mut d = Diagnostic::new(self.id(), message, matched.range.range)
                         .with_fixes(fixes)
                         .add_categories(categories)
-                        .with_severity(severity);
+                        .with_severity(severity)
+                        .with_cli_severity(cli_severity);
                     if self.can_be_suppressed() {
                         d = d.with_ignore_fix(sema, file_id);
                     }
@@ -1286,12 +1304,20 @@ fn diagnostics_from_linters(
             } else {
                 linter.severity()
             };
+            let cli_severity = if let Some(lint_config) = config.lint_config.as_ref() {
+                lint_config
+                    .get_severity_override(&linter.id())
+                    .unwrap_or_else(|| linter.cli_severity())
+            } else {
+                linter.cli_severity()
+            };
             match l {
                 DiagnosticLinter::FunctionCall(function_linter) => {
                     let diagnostic_template = DiagnosticTemplate {
                         code,
                         message: linter.description(),
                         severity,
+                        cli_severity,
                         with_ignore_fix: linter.can_be_suppressed(),
                         use_range: UseRange::NameOnly,
                     };
@@ -1302,7 +1328,7 @@ fn diagnostics_from_linters(
                     specs.extend(spec);
                 }
                 DiagnosticLinter::SsrPatterns(ssr_linter) => {
-                    let diagnostics = ssr_linter.diagnostics(sema, file_id, severity);
+                    let diagnostics = ssr_linter.diagnostics(sema, file_id, severity, cli_severity);
                     res.extend(diagnostics);
                 }
             }

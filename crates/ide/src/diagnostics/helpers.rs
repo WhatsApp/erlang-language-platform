@@ -29,6 +29,7 @@ pub(crate) struct DiagnosticTemplate {
     pub(crate) code: DiagnosticCode,
     pub(crate) message: String,
     pub(crate) severity: Severity,
+    pub(crate) cli_severity: Severity,
     pub(crate) with_ignore_fix: bool,
     pub(crate) use_range: UseRange,
 }
@@ -77,7 +78,8 @@ pub(crate) fn check_function_with_diagnostic_template(
             let range = ctx.range(&extra.use_range);
             if range.file_id == def.file.file_id {
                 let diag = Diagnostic::new(extra.code.clone(), extra.message.clone(), range.range)
-                    .with_severity(extra.severity);
+                    .with_severity(extra.severity)
+                    .with_cli_severity(extra.cli_severity);
                 let diag = if extra.with_ignore_fix {
                     diag.with_ignore_fix(sema, def_fb.file_id())
                 } else {
@@ -130,6 +132,7 @@ mod tests {
                             code: DiagnosticCode::AdHoc("a code".to_string()),
                             message: "diagnostic message".to_string(),
                             severity: Severity::Warning,
+                            cli_severity: Severity::Warning,
                             with_ignore_fix: true,
                             use_range: UseRange::WithArgs,
                         },
