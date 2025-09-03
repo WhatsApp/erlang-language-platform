@@ -537,7 +537,12 @@ pub(crate) trait Linter {
     }
 }
 
-fn conditions(linter: &dyn Linter, config: &DiagnosticsConfig) -> DiagnosticConditions {
+fn should_run(
+    linter: &dyn Linter,
+    config: &DiagnosticsConfig,
+    is_generated: bool,
+    is_test: bool,
+) -> bool {
     let include_tests = if let Some(lint_config) = config.lint_config.as_ref() {
         lint_config
             .get_include_tests_override(&linter.id())
@@ -559,12 +564,13 @@ fn conditions(linter: &dyn Linter, config: &DiagnosticsConfig) -> DiagnosticCond
     } else {
         linter.is_experimental()
     };
-    DiagnosticConditions {
+    let conditions = DiagnosticConditions {
         experimental,
         include_generated,
         include_tests,
         default_disabled: !linter.is_enabled(),
-    }
+    };
+    conditions.enabled(config, is_generated, is_test)
 }
 
 // A trait that simplifies writing linters matching function calls
@@ -634,11 +640,11 @@ pub(crate) trait SsrPatternsLinter: Linter {
 // we define a blanket implementation for all the methods using the `Context``,
 // to keep the code generic while allowing individual linters to specify their own context type.
 pub(crate) trait SsrCheckPatterns: Linter {
-    fn diagnostics(&self, sema: &Semantic, file_id: FileId) -> Vec<Diagnostic>;
+    fn diagnostics(&self, sema: &Semantic, file_id: FileId, severity: Severity) -> Vec<Diagnostic>;
 }
 
 impl<T: SsrPatternsLinter> SsrCheckPatterns for T {
-    fn diagnostics(&self, sema: &Semantic, file_id: FileId) -> Vec<Diagnostic> {
+    fn diagnostics(&self, sema: &Semantic, file_id: FileId, severity: Severity) -> Vec<Diagnostic> {
         let mut res = Vec::new();
         for (pattern, context) in self.patterns() {
             let matches = match_pattern_in_file_functions(sema, self.strategy(), file_id, &pattern);
@@ -650,7 +656,7 @@ impl<T: SsrPatternsLinter> SsrCheckPatterns for T {
                     let mut d = Diagnostic::new(self.id(), message, matched.range.range)
                         .with_fixes(fixes)
                         .add_categories(categories)
-                        .with_severity(self.severity());
+                        .with_severity(severity);
                     if self.can_be_suppressed() {
                         d = d.with_ignore_fix(sema, file_id);
                     }
@@ -1106,14 +1112,7 @@ pub fn native_diagnostics(
             config,
             &diagnostics_descriptors(),
         );
-        diagnostics_from_function_call_linters(
-            &mut res,
-            &sema,
-            file_id,
-            config,
-            function_call_linters(),
-        );
-        diagnostics_from_ssr_linters(&mut res, &sema, file_id, config, ssr_linters());
+        diagnostics_from_linters(&mut res, &sema, file_id, config, linters());
 
         let parse_diagnostics = parse.errors().iter().take(128).map(|err| {
             let (code, message) = match err {
@@ -1224,33 +1223,47 @@ pub fn diagnostics_from_descriptors(
     });
 }
 
-/// Registry for function call linters that enables single AST traversal
-pub(crate) fn function_call_linters() -> Vec<&'static dyn FunctionCallLinter> {
-    let mut linters: Vec<&'static dyn FunctionCallLinter> = vec![
-        &sets_version_2::LINTER,
-        &no_garbage_collect::LINTER,
-        &no_size::LINTER,
-        &no_error_logger::LINTER,
+/// Enum to represent either type of linter for unified processing
+pub(crate) enum DiagnosticLinter {
+    FunctionCall(&'static dyn FunctionCallLinter),
+    SsrPatterns(&'static dyn SsrCheckPatterns),
+}
+
+impl DiagnosticLinter {
+    fn as_linter(&self) -> &dyn Linter {
+        match self {
+            DiagnosticLinter::FunctionCall(linter) => *linter,
+            DiagnosticLinter::SsrPatterns(linter) => *linter,
+        }
+    }
+}
+
+/// Unified registry for all types of linters
+pub(crate) fn linters() -> Vec<DiagnosticLinter> {
+    let mut all_linters = vec![
+        // Function call linters
+        DiagnosticLinter::FunctionCall(&sets_version_2::LINTER),
+        DiagnosticLinter::FunctionCall(&no_garbage_collect::LINTER),
+        DiagnosticLinter::FunctionCall(&no_size::LINTER),
+        DiagnosticLinter::FunctionCall(&no_error_logger::LINTER),
+        // SSR linters
+        DiagnosticLinter::SsrPatterns(&unnecessary_fold_to_build_map::LINTER),
+        DiagnosticLinter::SsrPatterns(&binary_string_to_sigil::LINTER),
+        DiagnosticLinter::SsrPatterns(&unnecessary_map_to_list_in_comprehension::LINTER),
     ];
+
+    // Add meta-only linters
     // @fb-only
-    linters
+
+    all_linters
 }
 
-/// Registry for SSR-based linters
-pub(crate) fn ssr_linters() -> Vec<&'static dyn SsrCheckPatterns> {
-    vec![
-        &unnecessary_fold_to_build_map::LINTER,
-        &binary_string_to_sigil::LINTER,
-        &unnecessary_map_to_list_in_comprehension::LINTER,
-    ]
-}
-
-fn diagnostics_from_function_call_linters(
+fn diagnostics_from_linters(
     res: &mut Vec<Diagnostic>,
     sema: &Semantic,
     file_id: FileId,
     config: &DiagnosticsConfig,
-    linters: Vec<&'static dyn FunctionCallLinter>,
+    linters: Vec<DiagnosticLinter>,
 ) {
     let is_generated = sema.db.is_generated(file_id);
     let is_test = sema
@@ -1259,72 +1272,46 @@ fn diagnostics_from_function_call_linters(
         .unwrap_or(false);
 
     let mut specs = Vec::new();
-    for linter in linters {
-        if linter.should_process_file_id(sema, file_id) {
-            let conditions = conditions(linter, config);
-            if conditions.enabled(config, is_generated, is_test) {
-                // Check if there is a severity override in the config
-                let severity = if let Some(lint_config) = config.lint_config.as_ref() {
-                    lint_config
-                        .get_severity_override(&linter.id())
-                        .unwrap_or_else(|| linter.severity())
-                } else {
-                    linter.severity()
-                };
 
-                let diagnostic_template = DiagnosticTemplate {
-                    code: linter.id(),
-                    message: linter.description(),
-                    severity,
-                    with_ignore_fix: linter.can_be_suppressed(),
-                    use_range: UseRange::NameOnly,
-                };
-                let spec = vec![FunctionCallDiagnostic {
-                    diagnostic_template,
-                    matches: linter.matches_functions(),
-                }];
-                specs.extend(spec);
+    for l in linters {
+        let linter = l.as_linter();
+        let code = linter.id();
+        if linter.should_process_file_id(sema, file_id)
+            && should_run(linter, config, is_generated, is_test)
+        {
+            let severity = if let Some(lint_config) = config.lint_config.as_ref() {
+                lint_config
+                    .get_severity_override(&linter.id())
+                    .unwrap_or_else(|| linter.severity())
+            } else {
+                linter.severity()
+            };
+            match l {
+                DiagnosticLinter::FunctionCall(function_linter) => {
+                    let diagnostic_template = DiagnosticTemplate {
+                        code,
+                        message: linter.description(),
+                        severity,
+                        with_ignore_fix: linter.can_be_suppressed(),
+                        use_range: UseRange::NameOnly,
+                    };
+                    let spec = vec![FunctionCallDiagnostic {
+                        diagnostic_template,
+                        matches: function_linter.matches_functions(),
+                    }];
+                    specs.extend(spec);
+                }
+                DiagnosticLinter::SsrPatterns(ssr_linter) => {
+                    let diagnostics = ssr_linter.diagnostics(sema, file_id, severity);
+                    res.extend(diagnostics);
+                }
             }
         }
     }
+
+    // Handle function call linters specs
     if !specs.is_empty() {
         check_used_functions(sema, file_id, &specs, res);
-    }
-}
-
-fn diagnostics_from_ssr_linters(
-    res: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-    config: &DiagnosticsConfig,
-    linters: Vec<&'static dyn SsrCheckPatterns>,
-) {
-    let is_generated = sema.db.is_generated(file_id);
-    let is_test = sema
-        .db
-        .is_test_suite_or_test_helper(file_id)
-        .unwrap_or(false);
-
-    for linter in linters {
-        if linter.should_process_file_id(sema, file_id) {
-            let conditions = conditions(linter, config);
-            if conditions.enabled(config, is_generated, is_test) {
-                let mut diagnostics = linter.diagnostics(sema, file_id);
-
-                // Apply severity overrides for SSR linters
-                if let Some(lint_config) = config.lint_config.as_ref() {
-                    for diagnostic in &mut diagnostics {
-                        if let Some(override_severity) =
-                            lint_config.get_severity_override(&linter.id())
-                        {
-                            diagnostic.severity = override_severity;
-                        }
-                    }
-                }
-
-                res.extend(diagnostics);
-            }
-        }
     }
 }
 
