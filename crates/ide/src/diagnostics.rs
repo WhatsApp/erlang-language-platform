@@ -1333,21 +1333,40 @@ impl DiagnosticLinter {
     }
 }
 
+/// Function call linters that detect issues in function calls
+const FUNCTION_CALL_LINTERS: &[&dyn FunctionCallDiagnostics] = &[
+    &sets_version_2::LINTER,
+    &no_garbage_collect::LINTER,
+    &no_size::LINTER,
+    &no_error_logger::LINTER,
+    &debugging_function::LINTER,
+    &atoms_exhaustion::LINTER,
+];
+
+/// SSR pattern linters that use structural search and replace patterns
+const SSR_PATTERN_LINTERS: &[&dyn SsrPatternsDiagnostics] = &[
+    &unnecessary_fold_to_build_map::LINTER,
+    &binary_string_to_sigil::LINTER,
+    &unnecessary_map_to_list_in_comprehension::LINTER,
+];
+
 /// Unified registry for all types of linters
 pub(crate) fn linters() -> Vec<DiagnosticLinter> {
-    let mut all_linters = vec![
-        // Function call linters
-        DiagnosticLinter::FunctionCall(&sets_version_2::LINTER),
-        DiagnosticLinter::FunctionCall(&no_garbage_collect::LINTER),
-        DiagnosticLinter::FunctionCall(&no_size::LINTER),
-        DiagnosticLinter::FunctionCall(&no_error_logger::LINTER),
-        DiagnosticLinter::FunctionCall(&debugging_function::LINTER),
-        DiagnosticLinter::FunctionCall(&atoms_exhaustion::LINTER),
-        // SSR linters
-        DiagnosticLinter::SsrPatterns(&unnecessary_fold_to_build_map::LINTER),
-        DiagnosticLinter::SsrPatterns(&binary_string_to_sigil::LINTER),
-        DiagnosticLinter::SsrPatterns(&unnecessary_map_to_list_in_comprehension::LINTER),
-    ];
+    let mut all_linters = Vec::new();
+
+    // Add function call linters
+    all_linters.extend(
+        FUNCTION_CALL_LINTERS
+            .iter()
+            .map(|linter| DiagnosticLinter::FunctionCall(*linter)),
+    );
+
+    // Add SSR pattern linters
+    all_linters.extend(
+        SSR_PATTERN_LINTERS
+            .iter()
+            .map(|linter| DiagnosticLinter::SsrPatterns(*linter)),
+    );
 
     // Add meta-only linters
     // @fb-only
