@@ -317,6 +317,8 @@ pub(crate) struct RecordTarget {
     #[serde(rename = "file")]
     file_id: GleanFileId,
     name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    wam_url: Option<String>,
 }
 
 #[derive(Serialize, Debug)]
@@ -967,6 +969,38 @@ impl GleanIndexer {
                         file_decl.declarations.push(doc_decl);
                         x.key.file_id = file_id.into();
                         x.key.arity = Some(xref.source.start);
+                    }
+                }
+                XRefTarget::Record(x) => {
+                    // Add WAM documentation for records that have wam_url
+                    if let Some(wam_url) = &x.key.wam_url {
+                        let id: FileId = x.key.file_id.clone().into();
+                        let def_map = db.def_map(id);
+                        let record_name = Name::from_erlang_service(&x.key.name);
+                        if let Some(def) = def_map.get_record(&record_name) {
+                            let range = def.source(db).syntax().text_range();
+                            let text = &db.file_text(id)[range];
+                            let text = format!("```erlang\n{text}\n```");
+                            let doc = format!("[WAM]({})\n{}", wam_url, text);
+                            let decl = Declaration::RecordDeclaration(
+                                RecordDecl {
+                                    name: x.key.name.clone(),
+                                    span: xref.source.clone(),
+                                }
+                                .into(),
+                            );
+                            let doc_decl = Declaration::DocDeclaration(
+                                DocDecl {
+                                    target: Box::new(decl.clone()),
+                                    span: xref.source.clone(),
+                                    text: doc,
+                                }
+                                .into(),
+                            );
+                            file_decl.declarations.push(decl);
+                            file_decl.declarations.push(doc_decl);
+                            x.key.file_id = file_id.into();
+                        }
                     }
                 }
                 _ => (),
@@ -1725,12 +1759,19 @@ impl GleanIndexer {
         let (_, _, expr_source) = ctx.body_with_expr_source(sema)?;
         let source_file = sema.parse(file_id);
         let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
+
+        // Check if this is a WAM event record and build link
+        use elp_ide::meta_only::wam_links;
+        let wam_ctx = wam_links::WamEventCtx::new(sema.db.upcast());
+        let wam_url = wam_ctx.build_wam_link(name).map(|link| link.url());
+
         Some(XRef {
             source: range.into(),
             target: XRefTarget::Record(
                 RecordTarget {
                     file_id: def.file.file_id.into(),
                     name: def.record.name.to_string(),
+                    wam_url,
                 }
                 .into(),
             ),
@@ -2288,7 +2329,7 @@ mod tests {
         }).
         baz(A) ->
             #query{ size = A }.
-        %%  ^^^^^^ glean_module9.erl/rec/query
+        %%  ^^^^^^ glean_module9.erl/rec/query/no_wam
         "#;
 
         xref_v2_check(spec);
@@ -2318,9 +2359,9 @@ mod tests {
         -record(stats, {count, time}).
         baz(Time) ->
             [{#stats.count, 1},
-        %%    ^^^^^^ glean_module10.erl/rec/stats
+        %%    ^^^^^^ glean_module10.erl/rec/stats/no_wam
             {#stats.time, Time}].
-        %%   ^^^^^^ glean_module10.erl/rec/stats
+        %%   ^^^^^^ glean_module10.erl/rec/stats/no_wam
 
         "#;
 
@@ -2349,7 +2390,7 @@ mod tests {
         -record(stats, {count, time}).
         baz(Stats) ->
             Stats#stats.count.
-        %%       ^^^^^^ glean_module11.erl/rec/stats
+        %%       ^^^^^^ glean_module11.erl/rec/stats/no_wam
         "#;
 
         xref_v2_check(spec);
@@ -2377,7 +2418,7 @@ mod tests {
         -record(stats, {count, time}).
         baz(Stats, NewCnt) ->
             Stats#stats{count = NewCnt}.
-        %%       ^^^^^^ glean_module12.erl/rec/stats
+        %%       ^^^^^^ glean_module12.erl/rec/stats/no_wam
         "#;
 
         xref_v2_check(spec);
@@ -2407,7 +2448,7 @@ mod tests {
         -record(stats, {count, time}).
         baz(Stats) ->
             #stats{count = Count, time = Time} = Stats.
-        %%  ^^^^^^ glean_module13.erl/rec/stats
+        %%  ^^^^^^ glean_module13.erl/rec/stats/no_wam
         "#;
 
         xref_v2_check(spec);
@@ -2431,7 +2472,7 @@ mod tests {
         //- /glean/app_glean/src/glean_module14.erl
         -record(rec, {field}).
         foo(#rec.field) -> ok.
-        %%  ^^^^ glean_module14.erl/rec/rec
+        %%  ^^^^ glean_module14.erl/rec/rec/no_wam
         "#;
 
         xref_v2_check(spec);
@@ -2457,13 +2498,29 @@ mod tests {
         //- /glean/app_glean/src/glean_module15.erl
         -record(stats, {count, time}).
         -spec baz() -> #stats{}.
-        %%             ^^^^^^ glean_module15.erl/rec/stats
+        %%             ^^^^^^ glean_module15.erl/rec/stats/no_wam
         baz() ->
             #stats{count = 1, time = 2}.
-        %%  ^^^^^^ glean_module15.erl/rec/stats
+        %%  ^^^^^^ glean_module15.erl/rec/stats/no_wam
         "#;
 
         xref_v2_check(spec);
+    }
+
+    #[test]
+    fn xref_wam_record_v2_test() {
+        let spec = r#"
+        //- /src/record.erl
+            -module(record).
+            -record(wam_event_chatd_c2s_logout, {data, reason}).
+
+            baz(Data) ->
+                Event = #wam_event_chatd_c2s_logout{data = Data},
+            %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ record.erl/rec/wam_event_chatd_c2s_logout/has_wam
+                Event.
+
+        "#;
+        // @fb-only
     }
 
     #[test]
@@ -2866,7 +2923,13 @@ mod tests {
                     )
                 }
                 XRefTarget::Header(_) => f.write_str("header"),
-                XRefTarget::Record(xref) => f.write_str(format!("rec/{}", xref.key.name).as_str()),
+                XRefTarget::Record(xref) => {
+                    let wam_link = match &xref.key.wam_url {
+                        Some(_) => "has_wam",
+                        None => "no_wam",
+                    };
+                    f.write_str(format!("rec/{}/{}", xref.key.name, wam_link).as_str())
+                }
                 XRefTarget::Type(xref) => {
                     f.write_str(format!("type/{}/{}", xref.key.name, xref.key.arity).as_str())
                 }
