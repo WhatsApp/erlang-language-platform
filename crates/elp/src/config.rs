@@ -89,6 +89,12 @@ config_data! {
       /// Whether to show the `Link` lenses. Only applies when
       /// `#elp.lens.enable#` is set.
       lens_links_enable: bool = json! { false },
+      /// Whether to enable LogView lens links.
+      lens_logview_links: bool = json! { false },
+      /// Whether to enable Scuba lens links.
+      lens_scuba_links: bool = json! { false },
+      /// Whether to enable WAM lens links.
+      lens_wam_links: bool = json! { false },
       /// Configure LSP-based logging using env_logger syntax.
       log: String = json! { "error" },
       /// Whether to show Signature Help.
@@ -128,6 +134,9 @@ pub struct LensConfig {
     pub buck2_mode: Option<String>,
     pub debug: bool,
     pub links: bool,
+    pub logview_links: bool,
+    pub scuba_links: bool,
+    pub wam_links: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -323,6 +332,9 @@ impl Config {
                 && self.data.lens_run_coverage_enable,
             debug: self.data.lens_enable && self.data.lens_debug_enable,
             links: self.data.lens_enable && self.data.lens_links_enable,
+            logview_links: self.data.lens_enable && self.data.lens_logview_links,
+            scuba_links: self.data.lens_enable && self.data.lens_scuba_links,
+            wam_links: self.data.lens_enable && self.data.lens_wam_links,
         }
     }
 
@@ -373,6 +385,18 @@ impl Config {
 
     pub fn set_eqwalizer_all(&mut self, value: bool) {
         self.data.eqwalizer_all = value;
+    }
+
+    pub fn set_lens_logview_links(&mut self, value: bool) {
+        self.data.lens_logview_links = value;
+    }
+
+    pub fn set_lens_scuba_links(&mut self, value: bool) {
+        self.data.lens_scuba_links = value;
+    }
+
+    pub fn set_lens_wam_links(&mut self, value: bool) {
+        self.data.lens_wam_links = value;
     }
 
     pub fn inlay_hints(&self) -> InlayHintsConfig {
@@ -580,7 +604,7 @@ mod tests {
 
         let s = remove_ws(&schema);
 
-        expect![[r#""elp.diagnostics.disabled":{"default":[],"items":{"type":"string"},"markdownDescription":"ListofELPdiagnosticstodisable.","type":"array","uniqueItems":true},"elp.diagnostics.enableExperimental":{"default":false,"markdownDescription":"WhethertoshowexperimentalELPdiagnosticsthatmight\nhavemorefalsepositivesthanusual.","type":"boolean"},"elp.diagnostics.enableOtp":{"default":false,"markdownDescription":"WhethertoreportdiagnosticsforOTPfiles.","type":"boolean"},"elp.diagnostics.onSave.enable":{"default":false,"markdownDescription":"Updatenativediagnosticsonlywhenthefileissaved.","type":"boolean"},"elp.edoc.enable":{"default":false,"markdownDescription":"WhethertoreportEDocdiagnostics.","type":"boolean"},"elp.eqwalizer.all":{"default":false,"markdownDescription":"WhethertoreportEqwalizerdiagnosticsforthewholeprojectandnotonlyforopenedfiles.","type":"boolean"},"elp.eqwalizer.chunkSize":{"default":100,"markdownDescription":"Chunksizetouseforproject-wideeqwalization.","minimum":0,"type":"integer"},"elp.eqwalizer.maxTasks":{"default":32,"markdownDescription":"Maximumnumberoftaskstoruninparallelforproject-wideeqwalization.","minimum":0,"type":"integer"},"elp.highlightDynamic.enable":{"default":false,"markdownDescription":"Ifenabled,highlightvariableswithtype`dynamic()`whenEqwalizerresultsareavailable.","type":"boolean"},"elp.hoverActions.docLinks.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActionsoftype`docs`.Onlyapplieswhen\n`#elp.hoverActions.enable#`isset.","type":"boolean"},"elp.hoverActions.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActions.","type":"boolean"},"elp.inlayHints.parameterHints.enable":{"default":true,"markdownDescription":"Whethertoshowfunctionparameternameinlayhintsatthecall\nsite.","type":"boolean"},"elp.lens.buck2.mode":{"default":null,"markdownDescription":"Thebuck2modetouseforrunningtestsviathecodelenses.","type":["null","string"]},"elp.lens.debug.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Debug`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.enable":{"default":false,"markdownDescription":"WhethertoshowCodeLensesinErlangfiles.","type":"boolean"},"elp.lens.links.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Link`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.run.coverage.enable":{"default":true,"markdownDescription":"Displaycodecoverageinformationwhenrunningtestsviathe\nCodeLenses.Onlyapplieswhen`#elp.lens.enabled`and\n`#elp.lens.run.enable#`areset.","type":"boolean"},"elp.lens.run.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Run`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.run.interactive.enable":{"default":false,"markdownDescription":"Whethertoshowthe`RunInteractive`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.log":{"default":"error","markdownDescription":"ConfigureLSP-basedloggingusingenv_loggersyntax.","type":"string"},"elp.signatureHelp.enable":{"default":true,"markdownDescription":"WhethertoshowSignatureHelp.","type":"boolean"},"elp.typesOnHover.enable":{"default":false,"markdownDescription":"Displaytypeswhenhoveringoverexpressions.","type":"boolean"},"#]]
+        expect![[r#""elp.diagnostics.disabled":{"default":[],"items":{"type":"string"},"markdownDescription":"ListofELPdiagnosticstodisable.","type":"array","uniqueItems":true},"elp.diagnostics.enableExperimental":{"default":false,"markdownDescription":"WhethertoshowexperimentalELPdiagnosticsthatmight\nhavemorefalsepositivesthanusual.","type":"boolean"},"elp.diagnostics.enableOtp":{"default":false,"markdownDescription":"WhethertoreportdiagnosticsforOTPfiles.","type":"boolean"},"elp.diagnostics.onSave.enable":{"default":false,"markdownDescription":"Updatenativediagnosticsonlywhenthefileissaved.","type":"boolean"},"elp.edoc.enable":{"default":false,"markdownDescription":"WhethertoreportEDocdiagnostics.","type":"boolean"},"elp.eqwalizer.all":{"default":false,"markdownDescription":"WhethertoreportEqwalizerdiagnosticsforthewholeprojectandnotonlyforopenedfiles.","type":"boolean"},"elp.eqwalizer.chunkSize":{"default":100,"markdownDescription":"Chunksizetouseforproject-wideeqwalization.","minimum":0,"type":"integer"},"elp.eqwalizer.maxTasks":{"default":32,"markdownDescription":"Maximumnumberoftaskstoruninparallelforproject-wideeqwalization.","minimum":0,"type":"integer"},"elp.highlightDynamic.enable":{"default":false,"markdownDescription":"Ifenabled,highlightvariableswithtype`dynamic()`whenEqwalizerresultsareavailable.","type":"boolean"},"elp.hoverActions.docLinks.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActionsoftype`docs`.Onlyapplieswhen\n`#elp.hoverActions.enable#`isset.","type":"boolean"},"elp.hoverActions.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActions.","type":"boolean"},"elp.inlayHints.parameterHints.enable":{"default":true,"markdownDescription":"Whethertoshowfunctionparameternameinlayhintsatthecall\nsite.","type":"boolean"},"elp.lens.buck2.mode":{"default":null,"markdownDescription":"Thebuck2modetouseforrunningtestsviathecodelenses.","type":["null","string"]},"elp.lens.debug.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Debug`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.enable":{"default":false,"markdownDescription":"WhethertoshowCodeLensesinErlangfiles.","type":"boolean"},"elp.lens.links.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Link`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.logview.links":{"default":false,"markdownDescription":"WhethertoenableLogViewlenslinks.","type":"boolean"},"elp.lens.run.coverage.enable":{"default":true,"markdownDescription":"Displaycodecoverageinformationwhenrunningtestsviathe\nCodeLenses.Onlyapplieswhen`#elp.lens.enabled`and\n`#elp.lens.run.enable#`areset.","type":"boolean"},"elp.lens.run.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Run`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.run.interactive.enable":{"default":false,"markdownDescription":"Whethertoshowthe`RunInteractive`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.scuba.links":{"default":false,"markdownDescription":"WhethertoenableScubalenslinks.","type":"boolean"},"elp.lens.wam.links":{"default":false,"markdownDescription":"WhethertoenableWAMlenslinks.","type":"boolean"},"elp.log":{"default":"error","markdownDescription":"ConfigureLSP-basedloggingusingenv_loggersyntax.","type":"string"},"elp.signatureHelp.enable":{"default":true,"markdownDescription":"WhethertoshowSignatureHelp.","type":"boolean"},"elp.typesOnHover.enable":{"default":false,"markdownDescription":"Displaytypeswhenhoveringoverexpressions.","type":"boolean"},"#]]
         .assert_eq(s.as_str());
 
         expect![[r#"
@@ -673,6 +697,11 @@ mod tests {
               "markdownDescription": "Whether to show the `Link` lenses. Only applies when\n`#elp.lens.enable#` is set.",
               "type": "boolean"
             },
+            "elp.lens.logview.links": {
+              "default": false,
+              "markdownDescription": "Whether to enable LogView lens links.",
+              "type": "boolean"
+            },
             "elp.lens.run.coverage.enable": {
               "default": true,
               "markdownDescription": "Display code coverage information when running tests via the\nCode Lenses. Only applies when `#elp.lens.enabled` and\n`#elp.lens.run.enable#` are set.",
@@ -686,6 +715,16 @@ mod tests {
             "elp.lens.run.interactive.enable": {
               "default": false,
               "markdownDescription": "Whether to show the `Run Interactive` lenses. Only applies when\n`#elp.lens.enable#` is set.",
+              "type": "boolean"
+            },
+            "elp.lens.scuba.links": {
+              "default": false,
+              "markdownDescription": "Whether to enable Scuba lens links.",
+              "type": "boolean"
+            },
+            "elp.lens.wam.links": {
+              "default": false,
+              "markdownDescription": "Whether to enable WAM lens links.",
               "type": "boolean"
             },
             "elp.log": {

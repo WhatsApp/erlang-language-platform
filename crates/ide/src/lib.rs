@@ -112,6 +112,7 @@ mod highlight_related;
 
 pub use annotations::Annotation;
 pub use annotations::AnnotationKind;
+pub use annotations::LinkKind;
 pub use codemod_helpers::FunctionMatch;
 pub use codemod_helpers::MFA;
 pub use common_test::GroupName;

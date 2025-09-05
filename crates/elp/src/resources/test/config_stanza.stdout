@@ -88,6 +88,11 @@
     "markdownDescription": "Whether to show the `Link` lenses. Only applies when\n`#elp.lens.enable#` is set.",
     "type": "boolean"
   },
+  "elp.lens.logview.links": {
+    "default": false,
+    "markdownDescription": "Whether to enable LogView lens links.",
+    "type": "boolean"
+  },
   "elp.lens.run.coverage.enable": {
     "default": true,
     "markdownDescription": "Display code coverage information when running tests via the\nCode Lenses. Only applies when `#elp.lens.enabled` and\n`#elp.lens.run.enable#` are set.",
@@ -101,6 +106,16 @@
   "elp.lens.run.interactive.enable": {
     "default": false,
     "markdownDescription": "Whether to show the `Run Interactive` lenses. Only applies when\n`#elp.lens.enable#` is set.",
+    "type": "boolean"
+  },
+  "elp.lens.scuba.links": {
+    "default": false,
+    "markdownDescription": "Whether to enable Scuba lens links.",
+    "type": "boolean"
+  },
+  "elp.lens.wam.links": {
+    "default": false,
+    "markdownDescription": "Whether to enable WAM lens links.",
     "type": "boolean"
   },
   "elp.log": {

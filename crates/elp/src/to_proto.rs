@@ -26,6 +26,7 @@ use elp_ide::HoverAction;
 use elp_ide::InlayHintLabel;
 use elp_ide::InlayHintLabelPart;
 use elp_ide::InlayKind;
+use elp_ide::LinkKind;
 use elp_ide::NavigationTarget;
 use elp_ide::Runnable;
 use elp_ide::RunnableKind;
@@ -778,7 +779,14 @@ pub(crate) fn code_lens(
             }
         }
         AnnotationKind::Link(link) => {
-            if lens_config.links {
+            if lens_config.links
+                && match link.kind {
+                    LinkKind::LogView => lens_config.logview_links,
+                    LinkKind::Scuba => lens_config.scuba_links,
+                    LinkKind::WAM => lens_config.wam_links,
+                    _ => true,
+                }
+            {
                 let annotation_range = range(line_index, annotation.range);
                 let url = link.url;
                 let text = link.text;

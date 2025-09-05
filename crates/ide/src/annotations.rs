@@ -38,7 +38,18 @@ pub enum AnnotationKind {
 }
 
 #[derive(Debug)]
+pub enum LinkKind {
+    Configerator,
+    ExDocs,
+    LogView,
+    ODS,
+    Scuba,
+    WAM,
+}
+
+#[derive(Debug)]
 pub struct Link {
+    pub kind: LinkKind,
     pub file_id: FileId,
     pub text_range: TextRange,
     pub url: String,
