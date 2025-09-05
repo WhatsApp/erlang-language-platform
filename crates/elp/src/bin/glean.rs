@@ -8,6 +8,7 @@
  * above-listed licenses.
  */
 
+use core::option::Option::None;
 use std::io::Write;
 use std::mem;
 use std::path::Path;
@@ -300,6 +301,8 @@ pub(crate) struct MacroTarget {
     expansion: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     ods_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    logview_url: Option<String>,
 }
 
 #[derive(Serialize, Debug)]
@@ -928,12 +931,22 @@ impl GleanIndexer {
                         let range = def.source(db).syntax().text_range();
                         let text = &db.file_text(id)[range];
                         let text = format!("```erlang\n{text}\n```");
-                        let doc = match (&x.key.expansion, &x.key.ods_url) {
-                            (None, None) => text,
-                            (None, Some(o)) => format!("[ODS]({o})\n{text}"),
-                            (Some(e), None) => format!("{text}\n---\n\n{e}"),
-                            (Some(e), Some(o)) => format!("[ODS]({o})\n{text}\n---\n\n{e}"),
-                        };
+                        let doc = format!(
+                            "{}{}{}{}",
+                            x.key
+                                .ods_url
+                                .as_ref()
+                                .map_or(String::new(), |o| format!("[ODS]({})\n", o)),
+                            x.key
+                                .logview_url
+                                .as_ref()
+                                .map_or(String::new(), |l| format!("[LogView]({})\n", l)),
+                            text,
+                            x.key
+                                .expansion
+                                .as_ref()
+                                .map_or(String::new(), |e| format!("\n---\n\n{}", e))
+                        );
                         let decl = Declaration::MacroDeclaration(
                             MacroDecl {
                                 name: x.key.name.clone(),
@@ -1619,6 +1632,7 @@ impl GleanIndexer {
             arity: define.name.arity(),
             expansion,
             ods_url: None,
+            logview_url: None,
         };
         Some(XRef {
             source: range.into(),
@@ -2487,6 +2501,19 @@ mod tests {
     }
 
     #[test]
+    fn xref_macro_logview_v2_test() {
+        let spec = r#"
+        //- /src/macro.erl
+            -module(macro).
+            -define(LOG_E(X), (fun() -> wa_log:send_if(X) end)()).
+            baz(atom) -> ?LOG_E("test"),
+        %%                ^^^^^ macro.erl/macro/LOG_E/97/has_logview/fun () -> 'wa_log':'send_if'( "test" ) end()
+
+        "#;
+        // @fb-only
+    }
+
+    #[test]
     fn xref_macro_in_pat_v2_test() {
         let spec = r#"
         //- /src/macro.erl
@@ -2818,9 +2845,10 @@ mod tests {
                         Some(arity) => arity.to_string(),
                         None => "no_arity".to_string(),
                     };
-                    let ods_link = match &xref.key.ods_url {
-                        Some(_) => "has_ods",
-                        None => "no_ods",
+                    let ods_link = match (&xref.key.ods_url, &xref.key.logview_url) {
+                        (Some(_), _) => "has_ods",
+                        (None, Some(_)) => "has_logview",
+                        (None, None) => "no_ods",
                     };
                     let exp = match &xref.key.expansion {
                         Some(exp) => exp
