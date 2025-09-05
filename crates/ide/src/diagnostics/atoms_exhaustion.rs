@@ -64,6 +64,7 @@ impl FunctionCallLinter for AtomsExhaustionLinter {
         context: &CheckCallCtx<'_, ()>,
         sema: &Semantic,
     ) -> Option<Self::Context> {
+        #[rustfmt::skip]
         // @fb-only
             // @fb-only
         let is_safe = false; // @oss-only
