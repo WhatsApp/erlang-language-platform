@@ -303,6 +303,8 @@ pub(crate) struct MacroTarget {
     ods_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     logview_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    scuba_urls: Option<Vec<(String, String)>>,
 }
 
 #[derive(Serialize, Debug)]
@@ -933,8 +935,28 @@ impl GleanIndexer {
                         let range = def.source(db).syntax().text_range();
                         let text = &db.file_text(id)[range];
                         let text = format!("```erlang\n{text}\n```");
+                        let scuba_links =
+                            x.key
+                                .scuba_urls
+                                .as_ref()
+                                .map_or(String::new(), |scuba_urls| {
+                                    scuba_urls
+                                        .iter()
+                                        .map(|(display_name, url)| {
+                                            format!("[{}]({})", display_name, url)
+                                        })
+                                        .collect::<Vec<_>>()
+                                        .join(" | ")
+                                });
+
+                        let scuba_section = if !scuba_links.is_empty() {
+                            format!("Scuba: {}\n", scuba_links)
+                        } else {
+                            String::new()
+                        };
+
                         let doc = format!(
-                            "{}{}{}{}",
+                            "{}{}{}{}{}",
                             x.key
                                 .ods_url
                                 .as_ref()
@@ -943,6 +965,7 @@ impl GleanIndexer {
                                 .logview_url
                                 .as_ref()
                                 .map_or(String::new(), |l| format!("[LogView]({})\n", l)),
+                            scuba_section,
                             text,
                             x.key
                                 .expansion
@@ -1667,6 +1690,7 @@ impl GleanIndexer {
             expansion,
             ods_url: None,
             logview_url: None,
+            scuba_urls: None,
         };
         Some(XRef {
             source: range.into(),
@@ -2571,6 +2595,19 @@ mod tests {
     }
 
     #[test]
+    fn xref_macro_scuba_v2_test() {
+        let spec = r#"
+        //- /src/macro.erl
+            -module(macro).
+            -define(LOG_SCUBA(X), wa_scuba:log_tablename(pii, X)).
+            baz(atom) -> ?LOG_SCUBA(test_event),
+        %%                ^^^^^^^^^ macro.erl/macro/LOG_SCUBA/97/has_scuba/'wa_scuba':'log_tablename'( 'pii', 'test_event' )
+
+        "#;
+        // @fb-only
+    }
+
+    #[test]
     fn xref_macro_in_pat_v2_test() {
         let spec = r#"
         //- /src/macro.erl
@@ -2902,10 +2939,15 @@ mod tests {
                         Some(arity) => arity.to_string(),
                         None => "no_arity".to_string(),
                     };
-                    let ods_link = match (&xref.key.ods_url, &xref.key.logview_url) {
-                        (Some(_), _) => "has_ods",
-                        (None, Some(_)) => "has_logview",
-                        (None, None) => "no_ods",
+                    let ods_link = match (
+                        &xref.key.ods_url,
+                        &xref.key.logview_url,
+                        &xref.key.scuba_urls,
+                    ) {
+                        (Some(_), _, _) => "has_ods",
+                        (None, Some(_), _) => "has_logview",
+                        (None, None, Some(_)) => "has_scuba",
+                        (None, None, None) => "no_ods",
                     };
                     let exp = match &xref.key.expansion {
                         Some(exp) => exp
