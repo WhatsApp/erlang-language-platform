@@ -162,8 +162,8 @@ fn simple() {
 foo(ok) -> ok.
 "#,
         expect![[r#"
-            foo('ok') ->
-                'ok'.
+            foo(ok) ->
+                ok.
         "#]],
     );
 }
@@ -304,8 +304,8 @@ foo({a, b}) -> {1, 2, 3}.
 "#,
         expect![[r#"
             foo({
-                'a',
-                'b'
+                a,
+                b
             }) ->
                 {
                     1,
@@ -324,8 +324,8 @@ foo([a, b]) -> [1, 2, 3].
 "#,
         expect![[r#"
             foo([
-                'a',
-                'b'
+                a,
+                b
             ]) ->
                 [
                     1,
@@ -341,8 +341,8 @@ foo([a | b]) -> [1, 2 | 3].
 "#,
         expect![[r#"
             foo([
-                'a'
-                | 'b'
+                a
+                | b
             ]) ->
                 [
                     1,
@@ -400,14 +400,14 @@ fn map() {
         r#"
 foo(#{1 + 2 := 3 + 4}) -> #{a => b}.
 "#,
-        expect![[r##"
+        expect![[r#"
             foo(#{
                 (1 + 2) := (3 + 4)
             }) ->
                 #{
-                    'a' => 'b'
+                    a => b
                 }.
-        "##]],
+        "#]],
     );
 }
 
@@ -417,15 +417,15 @@ fn map_update() {
         r#"
 foo() -> #{a => b}#{a := b, c => d}.
 "#,
-        expect![[r##"
+        expect![[r#"
             foo() ->
                 #{
-                    'a' => 'b'
+                    a => b
                 }#{
-                    'a' := 'b',
-                    'c' => 'd'
+                    a := b,
+                    c => d
                 }.
-        "##]],
+        "#]],
     );
 }
 
@@ -474,18 +474,18 @@ fn record_update() {
 foo1() -> Expr#record{field = undefined}.
 foo2() -> Expr#record{field = ok, missing = }.
 "#,
-        expect![[r##"
+        expect![[r#"
             foo1() ->
                 Expr#record{
-                    field = 'undefined'
+                    field = undefined
                 }.
 
             foo2() ->
                 Expr#record{
-                    field = 'ok',
+                    field = ok,
                     missing = [missing]
                 }.
-        "##]],
+        "#]],
     );
 }
 
@@ -563,13 +563,13 @@ foo() ->
             foo() ->
                 case (1 + 2) of
                     X when
-                        (X andalso 'true');
+                        (X andalso true);
                         (X < 100),
                         (X >= 5)
                     ->
-                        'ok';
+                        ok;
                     _ ->
-                        'error'
+                        error
                 end.
         "#]],
     );
@@ -589,14 +589,14 @@ foo() ->
         expect![[r#"
             foo() ->
                 receive
-                    'ok' when
-                        'true'
+                    ok when
+                        true
                     ->
-                        'ok';
+                        ok;
                     _ ->
-                        'error'
+                        error
                 after Timeout ->
-                    'timeout'
+                    timeout
                 end.
         "#]],
     );
@@ -614,12 +614,12 @@ foo() ->
 "#,
         expect![[r#"
             foo() ->
-                'foo'(),
-                'erlang':'size'(
+                foo(),
+                erlang:size(
                     A
                 ),
-                'size'(),
-                'foo':'bar'(
+                size(),
+                foo:bar(
                     A
                 ).
         "#]],
@@ -638,9 +638,9 @@ foo() ->
 "#,
         expect![[r#"
             foo() ->
-                fun 'foo'/1,
-                fun 'erlang':'halt'/0,
-                fun 'mod':'foo'/1,
+                fun foo/1,
+                fun erlang:halt/0,
+                fun mod:foo/1,
                 fun Mod:Foo/Arity.
         "#]],
     );
@@ -658,12 +658,12 @@ foo() ->
         expect![[r#"
             foo() ->
                 if
-                    'erlang':'is_atom'(
+                    erlang:is_atom(
                         X
                     ) ->
-                        'ok';
-                    'true' ->
-                        'error'
+                        ok;
+                    true ->
+                        error
                 end.
         "#]],
     );
@@ -690,16 +690,16 @@ foo() ->
                     2
                 of
                     _ ->
-                        'ok'
+                        ok
                 catch
                     Pat when
-                        'true'
+                        true
                     ->
-                        'ok';
-                    'error':'undef':Stack ->
+                        ok;
+                    error:undef:Stack ->
                         Stack
                 after
-                    'ok'
+                    ok
                 end.
         "#]],
     );
@@ -817,10 +817,10 @@ foo() ->
         expect![[r#"
             foo() ->
                 fun
-                    ('ok') ->
-                        'ok';
-                    ('error') ->
-                        'error'
+                    (ok) ->
+                        ok;
+                    (error) ->
+                        error
                 end,
                 fun
                     Named() ->
@@ -839,8 +839,8 @@ foo((ok), ()) ->
     ().
 "#,
         expect![[r#"
-            foo('ok', [missing]) ->
-                'ok',
+            foo(ok, [missing]) ->
+                ok,
                 [missing].
         "#]],
     );
@@ -880,7 +880,7 @@ foo(bar()) -> ok.
 "#,
         expect![[r#"
             foo([missing]) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -893,7 +893,7 @@ foo(catch 1) -> ok.
 "#,
         expect![[r#"
             foo([missing]) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -906,7 +906,7 @@ foo(X#{}) -> ok.
 "#,
         expect![[r#"
             foo([missing]) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -945,7 +945,7 @@ foo(X#foo.bar) -> ok.
 "#,
         expect![[r#"
             foo([missing]) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -958,7 +958,7 @@ foo(X#foo{}) -> ok.
 "#,
         expect![[r#"
             foo([missing]) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -984,7 +984,7 @@ foo(fun() -> ok end) -> ok.
 "#,
         expect![[r#"
             foo([missing]) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -997,7 +997,7 @@ foo(<<Byte || Byte <- List>>, [Byte || Byte <- List]]) -> ok.
 "#,
         expect![[r#"
             foo([missing], [missing]) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -1010,7 +1010,7 @@ foo(begin foo end) -> ok.
 "#,
         expect![[r#"
             foo([missing]) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -1023,7 +1023,7 @@ foo(case X of _ -> ok end) -> ok.
 "#,
         expect![[r#"
             foo([missing]) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -1036,7 +1036,7 @@ foo(fun erlang:self/0, fun foo/2) -> ok.
 "#,
         expect![[r#"
             foo([missing], [missing]) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -1062,7 +1062,7 @@ foo(if true -> ok end) -> ok.
 "#,
         expect![[r#"
             foo([missing]) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -1088,7 +1088,7 @@ foo(receive _ -> ok after X -> timeout end) -> ok.
 "#,
         expect![[r#"
             foo([missing]) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -1101,7 +1101,7 @@ foo(try 1 of _ -> ok catch _ -> error end) -> ok.
 "#,
         expect![[r#"
             foo([missing]) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -1132,8 +1132,8 @@ foo() ->
         expect![[r#"
             foo() ->
                 case X of
-                    'ok' ->
-                        'ok'
+                    ok ->
+                        ok
                 end.
         "#]],
     );
@@ -1159,7 +1159,7 @@ fn simple_type() {
 -type foo() :: ok.
 "#,
         expect![[r#"
-            -type foo() :: 'ok'.
+            -type foo() :: ok.
         "#]],
     );
 }
@@ -1171,7 +1171,7 @@ fn simple_nominal_type() {
 -nominal foo() :: ok.
 "#,
         expect![[r#"
-            -nominal foo() :: 'ok'.
+            -nominal foo() :: ok.
         "#]],
     );
 }
@@ -1183,7 +1183,7 @@ fn simple_opaque() {
 -opaque foo() :: ok.
 "#,
         expect![[r#"
-            -opaque foo() :: 'ok'.
+            -opaque foo() :: ok.
         "#]],
     );
 }
@@ -1219,7 +1219,7 @@ fn ann_type() {
 -type foo() :: A :: any().
 "#,
         expect![[r#"
-            -type foo() :: (A  :: 'erlang':'any'()).
+            -type foo() :: (A  :: erlang:any()).
         "#]],
     );
 }
@@ -1232,9 +1232,9 @@ fn list_type() {
 -type bar() :: [bar, ...].
 "#,
         expect![[r#"
-            -type foo() :: ['foo'].
+            -type foo() :: [foo].
 
-            -type bar() :: ['bar', ...].
+            -type bar() :: [bar, ...].
         "#]],
     );
 }
@@ -1247,9 +1247,9 @@ fn tuple_type() {
 "#,
         expect![[r#"
             -type foo() :: {
-                'a',
-                'b',
-                'c'
+                a,
+                b,
+                c
             }.
         "#]],
     );
@@ -1273,12 +1273,12 @@ fn map_type() {
         r#"
 -type foo() :: #{a => b, c := d}.
 "#,
-        expect![[r##"
+        expect![[r#"
             -type foo() :: #{
-                'a' => 'b',
-                'c' := 'd'
+                a => b,
+                c := d
             }.
-        "##]],
+        "#]],
     );
 }
 
@@ -1294,11 +1294,11 @@ fn fun_type() {
         expect![[r#"
             -type foo1() :: fun().
 
-            -type foo2() :: fun(() -> 'ok').
+            -type foo2() :: fun(() -> ok).
 
-            -type foo3() :: fun(('a', 'b') -> 'ok').
+            -type foo3() :: fun((a, b) -> ok).
 
-            -type foo4() :: fun((...) -> 'ok').
+            -type foo4() :: fun((...) -> ok).
         "#]],
     );
 }
@@ -1313,22 +1313,22 @@ fn union_type() {
 "#,
         expect![[r#"
             -type foo1() :: (
-                'a' |
-                'b'
+                a |
+                b
             ).
 
             -type foo2() :: (
-                'a' |
-                'b' |
-                'c'
+                a |
+                b |
+                c
             ).
 
             -type foo3() :: (
                 (
-                    'a' |
-                    'b'
+                    a |
+                    b
                 ) |
-                'c'
+                c
             ).
         "#]],
     );
@@ -1354,17 +1354,17 @@ fn call_type() {
 -type remote(A) :: module:remote(A | integer()).
 "#,
         expect![[r#"
-            -type local(A) :: 'local'(
+            -type local(A) :: local(
                 (
                     A |
-                    'erlang':'integer'()
+                    erlang:integer()
                 )
             ).
 
-            -type remote(A) :: 'module':'remote'(
+            -type remote(A) :: module:remote(
                 (
                     A |
-                    'erlang':'integer'()
+                    erlang:integer()
                 )
             ).
         "#]],
@@ -1379,8 +1379,8 @@ fn call_type_erlang_bif() {
 "#,
         expect![[r#"
             -type remote() :: (
-                'erlang':'pid'() |
-                'erlang':'pid'()
+                erlang:pid() |
+                erlang:pid()
             ).
         "#]],
     );
@@ -1398,7 +1398,7 @@ fn record_type() {
             -type foo1() :: #record{}.
 
             -type foo2(B) :: #record{
-                a :: 'erlang':'integer'(),
+                a :: erlang:integer(),
                 b :: B
             }.
 
@@ -1429,7 +1429,7 @@ fn simple_spec() {
 "#,
         expect![[r#"
             -spec foo
-                () -> 'ok'.
+                () -> ok.
         "#]],
     );
 }
@@ -1442,7 +1442,7 @@ fn simple_callback() {
 "#,
         expect![[r#"
             -callback foo
-                () -> 'ok'.
+                () -> ok.
         "#]],
     );
 }
@@ -1456,8 +1456,8 @@ fn multi_sig_spec() {
 "#,
         expect![[r#"
             -spec foo
-                ('erlang':'atom'()) -> 'erlang':'atom'();
-                ('erlang':'integer'()) -> 'erlang':'integer'().
+                (erlang:atom()) -> erlang:atom();
+                (erlang:integer()) -> erlang:integer().
         "#]],
     );
 }
@@ -1470,7 +1470,7 @@ fn ann_var_spec() {
 "#,
         expect![[r#"
             -spec foo
-                ((A  :: 'erlang':'any'())) -> 'ok'.
+                ((A  :: erlang:any())) -> ok.
         "#]],
     );
 }
@@ -1485,7 +1485,7 @@ fn guarded_spec() {
         expect![[r#"
             -spec foo
                 (A) -> A
-                    when A :: 'erlang':'any'().
+                    when A :: erlang:any().
         "#]],
     );
 }
@@ -1509,15 +1509,15 @@ fn record_definition() {
             }).
 
             -record(foo, {
-                field = 'value'
+                field = value
             }).
 
             -record(foo, {
-                field :: 'type'
+                field :: type
             }).
 
             -record(foo, {
-                field = 'value' :: 'type'
+                field = value :: type
             }).
         "#]],
     );
@@ -1531,7 +1531,7 @@ fn simple_term() {
 -missing_value().
 "#,
         expect![[r#"
-            -foo('ok').
+            -foo(ok).
 
             -missing_value([missing]).
         "#]],
@@ -1548,7 +1548,7 @@ fn tuple_term() {
             -foo({
                 1,
                 2,
-                'ok',
+                ok,
                 "abc"
             }).
         "#]],
@@ -1645,15 +1645,15 @@ fn binary_op_term() {
 "#,
         expect![[r#"
             -foo({
-                'foo',
+                foo,
                 1
             }).
 
             -compile({
-                'inline',
+                inline,
                 [
                     {
-                        'foo',
+                        foo,
                         1
                     }
                 ]
@@ -1701,7 +1701,7 @@ foo(1) -> 1;
             foo(1) ->
                 1;
             foo(_) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -1720,7 +1720,7 @@ foo(1) -> 1.
                 1.
 
             bar(_) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -1738,7 +1738,7 @@ foo(1) -> 1;
             foo(1) ->
                 1;
             foo(_) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -1758,7 +1758,7 @@ fn expand_macro_function_multiple_clauses() {
             foo(1) ->
                 1;
             foo(_) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -1781,7 +1781,7 @@ fn expand_macro_function_multiple_files() {
             foo(1) ->
                 1;
             foo(_) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -1826,7 +1826,7 @@ foo() -> ?NAME(2).
 "#,
         expect![[r#"
             foo() ->
-                'name'(
+                name(
                     2
                 ).
         "#]],
@@ -1843,7 +1843,7 @@ foo() -> ?NAME(2).
 "#,
         expect![[r#"
             foo() ->
-                'module':'name'(
+                module:name(
                     2
                 ).
         "#]],
@@ -1862,7 +1862,7 @@ foo(?PAT) -> ok.
             foo([
                 _
             ]) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -1879,7 +1879,7 @@ foo(?PAT(_)) -> ok.
             foo([
                 _
             ]) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -1894,8 +1894,8 @@ fn expand_macro_type() {
 "#,
         expect![[r#"
             -type foo() :: (
-                'a' |
-                'b'
+                a |
+                b
             ).
         "#]],
     );
@@ -1910,7 +1910,7 @@ fn expand_macro_type_call() {
 -type foo() :: ?NAME().
 "#,
         expect![[r#"
-            -type foo() :: 'name'().
+            -type foo() :: name().
         "#]],
     );
 }
@@ -1924,7 +1924,7 @@ fn expand_macro_remote_type() {
 -type foo() :: ?NAME().
 "#,
         expect![[r#"
-            -type foo() :: 'module':'name'().
+            -type foo() :: module:name().
         "#]],
     );
 }
@@ -1939,8 +1939,8 @@ fn expand_macro_var_in_type() {
 "#,
         expect![[r#"
             -type foo() :: (
-                'a' |
-                'b'
+                a |
+                b
             ).
         "#]],
     );
@@ -1994,11 +1994,11 @@ foo() ->
 "#,
         expect![[r#"
             foo() ->
-                case 'bar'() of
-                    'ok' ->
-                        'ok';
+                case bar() of
+                    ok ->
+                        ok;
                     _ ->
-                        'error'
+                        error
                 end.
         "#]],
     );
@@ -2016,8 +2016,8 @@ foo() ->
 "#,
         expect![[r#"
             foo() ->
-                fun 'local'/1,
-                fun 'remote':'function'/2.
+                fun local/1,
+                fun remote:function/2.
         "#]],
     );
 }
@@ -2034,7 +2034,7 @@ foo() ->
         expect![[r#"
             foo() ->
                 #name{
-                    name = 'name'
+                    name = name
                 }.
         "#]],
     );
@@ -2055,28 +2055,28 @@ foo() ->
         expect![[r#"
             foo() ->
                 {
-                    'm1',
+                    m1,
                     {
-                        'm2',
+                        m2,
                         1,
                         {
-                            'm3',
+                            m3,
                             {
-                                'm3',
+                                m3,
                                 2
                             }
                         }
                     }
                 },
                 {
-                    'm1',
+                    m1,
                     {
-                        'm2',
+                        m2,
                         A,
                         {
-                            'm3',
+                            m3,
                             {
-                                'm3',
+                                m3,
                                 B
                             }
                         }
@@ -2093,8 +2093,8 @@ fn expand_built_in_function_name() {
 foo(?FUNCTION_NAME) -> ?FUNCTION_NAME.
 "#,
         expect![[r#"
-            foo('foo') ->
-                'foo'.
+            foo(foo) ->
+                foo.
         "#]],
     );
 
@@ -2104,7 +2104,7 @@ foo() -> ?FUNCTION_NAME().
 "#,
         expect![[r#"
             foo() ->
-                'foo'().
+                foo().
         "#]],
     );
 }
@@ -2201,10 +2201,10 @@ fn expand_built_in_module() {
 foo(?MODULE) -> ?MODULE.
 "#,
         expect![[r#"
-            -type foo() :: 'foobar'.
+            -type foo() :: foobar.
 
-            foo('foobar') ->
-                'foobar'.
+            foo(foobar) ->
+                foobar.
         "#]],
     );
 }
@@ -2318,19 +2318,19 @@ maybe
     A + B
 end."#,
         expect![[r#"
-        foo() ->
-            maybe
-                {
-                    'ok',
-                    A
-                } ?= 'a'(),
-                'true' = (A >= 0),
-                {
-                    'ok',
-                    B
-                } ?= 'b'(),
-                (A + B)
-            end.
+            foo() ->
+                maybe
+                    {
+                        ok,
+                        A
+                    } ?= a(),
+                    true = (A >= 0),
+                    {
+                        ok,
+                        B
+                    } ?= b(),
+                    (A + B)
+                end.
         "#]],
     );
 }
@@ -2349,22 +2349,22 @@ else
     Other when Other == 0 -> error
 end."#,
         expect![[r#"
-        foo() ->
-            maybe
-                {
-                    'ok',
+            foo() ->
+                maybe
+                    {
+                        ok,
+                        A
+                    } ?= a(),
+                    true = (A >= 0),
                     A
-                } ?= 'a'(),
-                'true' = (A >= 0),
-                A
-            else
-                'error' ->
-                    'error';
-                Other when
-                    (Other == 0)
-                ->
-                    'error'
-            end.
+                else
+                    error ->
+                        error;
+                    Other when
+                        (Other == 0)
+                    ->
+                        error
+                end.
         "#]],
     );
 }
@@ -2378,9 +2378,9 @@ fn fundecl_clauses_1() {
         "#,
         expect![[r#"
             foo(0) ->
-                'ok';
+                ok;
             foo(_) ->
-                'not_ok'.
+                not_ok.
         "#]],
     );
 }
@@ -2397,10 +2397,7 @@ fn triple_quoted_strings_1() {
         "#,
         expect![[r#"
             foo() ->
-                """
-                         hello
-                         there
-                         """.
+                "\"\"\"\n         hello\n         there\n         \"\"\"".
         "#]],
     );
 }
@@ -2418,11 +2415,7 @@ fn triple_quoted_strings_2() {
         "#,
         expect![[r#"
             foo() ->
-                """"""
-                         hello
-                          """
-                         there
-                         """""".
+                "\"\"\"\"\"\"\n         hello\n          \"\"\"\n         there\n         \"\"\"\"\"\"".
         "#]],
     );
 }
@@ -2456,7 +2449,7 @@ macro_rules! my_expect {
 const QUOTED_BINARY_EXPECT: &str = r#"
             f() ->
                 <<
-                    "ab\"c\"\u{7f}"/utf8
+                    "ab\"c\"\d"/utf8
                 >>.
         "#;
 
@@ -2570,7 +2563,7 @@ fn verbatim_binary_in_verbatim_sigil_tq_string() {
 
 const QUOTED_STRING_EXPECT: &str = r#"
             f() ->
-                "ab\"c\"\u{7f}".
+                "ab\"c\"\d".
         "#;
 
 #[test]
@@ -2686,7 +2679,7 @@ fn verbatim_binary_sigil_in_pat() {
             f(<<
                 "ab\"c\"\\d"/utf8
             >>) ->
-                'ok'.
+                ok.
         "#]],
     );
 }
@@ -2731,8 +2724,8 @@ fn lowering_with_error_nodes() {
             f(1a) -> ok begin 1 end.
         "#,
         expect![[r#"
-            f('a') ->
-                'ok'.
+            f(a) ->
+                ok.
         "#]],
     );
 }

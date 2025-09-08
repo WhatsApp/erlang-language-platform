@@ -116,7 +116,7 @@ bar() -> ?F~OO.
 "#,
             expect![[r#"
                 FOO
-                'foo'
+                foo
             "#]],
         );
     }
@@ -131,7 +131,7 @@ bar() -> ?F~OO.
 "#,
             expect![[r#"
                 FOO
-                ('foo' + 1)
+                (foo + 1)
             "#]],
         );
     }
@@ -146,7 +146,7 @@ bar() -> ?F~OO(4).
 "#,
             expect![[r#"
                 FOO/1
-                ('foo' + 4)
+                (foo + 4)
             "#]],
         );
     }
@@ -161,7 +161,7 @@ bar() -> ?F~OO(4,5).
 "#,
             expect![[r#"
                 FOO/2
-                ((('foo' + 4) + 5) + 1)
+                (((foo + 4) + 5) + 1)
             "#]],
         );
     }
@@ -176,7 +176,7 @@ bar() -> ?F~OO(4,(baz(42))).
 "#,
             expect![[r#"
                 FOO/2
-                ((('foo' + 4) + 'baz'(
+                (((foo + 4) + baz(
                     42
                 )) + 1)
             "#]],
@@ -217,7 +217,7 @@ bar() -> ?F~OO(4).
 "#,
             expect![[r#"
                 FOO/1
-                (('foo' + 4) + [missing])
+                ((foo + 4) + [missing])
             "#]],
         );
     }
@@ -233,7 +233,7 @@ bar() -> ?F~OO(4).
 "#,
             expect![[r#"
                 FOO/1
-                (('foo' + 4) + 'baz')
+                ((foo + 4) + baz)
             "#]],
         );
     }
@@ -250,7 +250,7 @@ bar() -> ?F~OO(4).
 "#,
             expect![[r#"
                 FOO/1
-                (('foo' + 4) + [missing])
+                ((foo + 4) + [missing])
             "#]],
         );
     }
@@ -267,7 +267,7 @@ bar() -> ?F~OO(4).
 "#,
             expect![[r#"
                 FOO/1
-                (('foo' + 4) + 'foo'(
+                ((foo + 4) + foo(
                     6
                 ))
             "#]],
@@ -338,36 +338,36 @@ baz() ->
                     fun
                         () ->
                             {
-                                'ok',
+                                ok,
                                 Actual
-                            } = 'lookup_mod':'get'(
-                                'a_mod':'get_val'(
+                            } = lookup_mod:get(
+                                a_mod:get_val(
                                     Alice
                                 ),
-                                'val'
+                                val
                             ),
                             [missing],
                             DebugComment = [
                                 {
-                                    'actual',
+                                    actual,
                                     Actual
                                 },
                                 {
-                                    'expected',
+                                    expected,
                                     []
                                 }
                             ],
                             SortFun = fun
                                 (A, B) ->
-                                    ('maps':'get'(
-                                        'code',
+                                    (maps:get(
+                                        code,
                                         A
-                                    ) =< 'maps':'get'(
-                                        'code',
+                                    ) =< maps:get(
+                                        code,
                                         B
                                     ))
                             end,
-                            'lists':'foreach'(
+                            lists:foreach(
                                 fun
                                     ({
                                         ExpectedVal,
@@ -375,25 +375,25 @@ baz() ->
                                     }) ->
                                         [missing],
                                         [missing],
-                                        ExpectedType = case 'val' of
-                                            'all' ->
-                                                'maps':'get'(
-                                                    'type',
+                                        ExpectedType = case val of
+                                            all ->
+                                                maps:get(
+                                                    type,
                                                     ExpectedVal,
-                                                    'missing_expected_type'
+                                                    missing_expected_type
                                                 );
                                             _ ->
-                                                'val'
+                                                val
                                         end,
                                         [missing],
                                         [missing]
                                 end,
-                                'lists':'zip'(
-                                    'lists':'sort'(
+                                lists:zip(
+                                    lists:sort(
                                         SortFun,
                                         []
                                     ),
-                                    'lists':'sort'(
+                                    lists:sort(
                                         SortFun,
                                         Actual
                                     )
@@ -428,15 +428,15 @@ baz() ->
 "#,
             expect![[r#"
                 assertQrs/3
-                ExpectedType = case 'qr_type_message' of
-                    'qr_type_all' ->
-                        'maps':'get'(
-                            'type',
+                ExpectedType = case qr_type_message of
+                    qr_type_all ->
+                        maps:get(
+                            type,
                             ExpectedQr,
-                            'missing_expected_type'
+                            missing_expected_type
                         );
                     _ ->
-                        'qr_type_message'
+                        qr_type_message
                 end
             "#]],
         );
@@ -463,7 +463,7 @@ baz() ->
                 FOO/1
                 case 3 of
                     1 ->
-                        'one';
+                        one;
                     _ ->
                         3
                 end
@@ -500,7 +500,7 @@ f() ->
 "#,
             expect![[r#"
                 C
-                'm':'f'()
+                m:f()
             "#]],
         );
     }
@@ -515,7 +515,7 @@ f() ->
 "#,
             expect![[r#"
                 C
-                'm':'f'(
+                m:f(
                     1,
                     2
                 )
@@ -566,7 +566,7 @@ get_partition(Who) ->
 "#,
             expect![[r#"
                 HASH_FUN
-                'wa_pg2':'hash'(
+                wa_pg2:hash(
                     Who,
                     5
                 )

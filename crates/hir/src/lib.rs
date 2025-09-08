@@ -26,6 +26,7 @@ mod intern;
 mod macro_exp;
 mod module_data;
 mod name;
+pub mod quote;
 pub mod resolver;
 pub mod sema;
 #[cfg(test)]

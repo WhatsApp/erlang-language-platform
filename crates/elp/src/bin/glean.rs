@@ -2562,7 +2562,7 @@ mod tests {
             baz(1) -> ?TAU;
         %%             ^^^ macro.erl/macro/TAU/117/no_ods/6.28
             baz(N) -> ?MAX(N, 200).
-        %%             ^^^ macro.erl/macro/MAX/137/no_ods/if (N > 200) -> N; 'true' -> 200 end
+        %%             ^^^ macro.erl/macro/MAX/137/no_ods/if (N > 200) -> N; true -> 200 end
 
         "#;
         xref_v2_check(spec);
@@ -2575,7 +2575,7 @@ mod tests {
             -module(macro).
             -define(COUNT_INFRA(X), wa_stats_counter:count(X)).
             baz(atom) -> ?COUNT_INFRA(atom),
-        %%                ^^^^^^^^^^^ macro.erl/macro/COUNT_INFRA/94/has_ods/'wa_stats_counter':'count'( 'atom' )
+        %%                ^^^^^^^^^^^ macro.erl/macro/COUNT_INFRA/94/has_ods/wa_stats_counter:count( atom )
 
         "#;
         // @fb-only
@@ -2588,7 +2588,7 @@ mod tests {
             -module(macro).
             -define(LOG_E(X), (fun() -> wa_log:send_if(X) end)()).
             baz(atom) -> ?LOG_E("test"),
-        %%                ^^^^^ macro.erl/macro/LOG_E/97/has_logview/fun () -> 'wa_log':'send_if'( "test" ) end()
+        %%                ^^^^^ macro.erl/macro/LOG_E/97/has_logview/fun () -> wa_log:send_if( "test" ) end()
 
         "#;
         // @fb-only
@@ -2601,7 +2601,7 @@ mod tests {
             -module(macro).
             -define(LOG_SCUBA(X), wa_scuba:log_tablename(pii, X)).
             baz(atom) -> ?LOG_SCUBA(test_event),
-        %%                ^^^^^^^^^ macro.erl/macro/LOG_SCUBA/97/has_scuba/'wa_scuba':'log_tablename'( 'pii', 'test_event' )
+        %%                ^^^^^^^^^ macro.erl/macro/LOG_SCUBA/97/has_scuba/wa_scuba:log_tablename( pii, test_event )
 
         "#;
         // @fb-only
@@ -2629,7 +2629,7 @@ mod tests {
             -define(TYPE, integer()).
 
             -spec baz(ok) -> ?TYPE.
-        %%                    ^^^^ macro.erl/macro/TYPE/73/no_ods/'erlang':'integer'()
+        %%                    ^^^^ macro.erl/macro/TYPE/73/no_ods/erlang:integer()
             baz(ok) -> 1.
 
         "#;
@@ -2643,7 +2643,7 @@ mod tests {
             -module(macro).
            -define(FOO(X), X).
            -wild(?FOO(atom)).
-        %%        ^^^ macro.erl/macro/FOO/53/no_ods/'atom'
+        %%        ^^^ macro.erl/macro/FOO/53/no_ods/atom
 
         "#;
         xref_v2_check(spec);

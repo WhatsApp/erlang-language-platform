@@ -8,6 +8,7 @@
  * above-listed licenses.
  */
 
+use core::iter::Iterator;
 use std::fmt;
 use std::fmt::Write as _;
 use std::str;
@@ -48,6 +49,7 @@ use crate::expr::Guards;
 use crate::expr::MaybeExpr;
 use crate::expr::SsrPlaceholder;
 use crate::expr::StringVariant;
+use crate::quote;
 
 pub fn print_function_clause(
     db: &dyn InternDatabase,
@@ -849,12 +851,20 @@ impl<'a> Printer<'a> {
 
     fn print_literal(&mut self, lit: &Literal) -> fmt::Result {
         match lit {
-            Literal::String(StringVariant::Normal(string)) => write!(self, "{string:?}"),
-            Literal::String(StringVariant::Verbatim(string)) => {
-                write!(self, "{string}")
+            Literal::String(StringVariant::Normal(string)) => {
+                write!(self, "{}", quote::escape_and_quote_string(string))
             }
-            Literal::Char(char) => write!(self, "${char}"),
-            Literal::Atom(atom) => write!(self, "'{}'", self.db.lookup_atom(*atom)),
+            Literal::String(StringVariant::Verbatim(string)) => {
+                write!(self, "{}", quote::escape_and_quote_string(string))
+            }
+            Literal::Char(char) => write!(self, "${char}"), // TODO Escaping
+            Literal::Atom(atom) => {
+                write!(
+                    self,
+                    "{}",
+                    quote::escape_and_quote_atom(self.db.lookup_atom(*atom).as_str())
+                )
+            }
             Literal::Integer(int) => write!(self, "{}", int.value), // TODO: other bases
             Literal::Float(float) => write!(self, "{}", f64::from_bits(*float)),
         }
