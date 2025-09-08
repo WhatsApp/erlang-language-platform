@@ -22,8 +22,8 @@ use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::FunctionCallLinter;
 use crate::diagnostics::Linter;
 use crate::diagnostics::Severity;
-use crate::diagnostics::meta_only;
 // @fb-only
+use crate::lazy_function_matches;
 
 pub(crate) struct NoDebuggingFunctionLinter;
 
