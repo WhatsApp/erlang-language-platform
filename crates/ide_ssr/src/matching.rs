@@ -218,6 +218,31 @@ impl PlaceholderMatch {
         }
     }
 
+    // N.B. that if the body was not indexed with macros included, you definitely will not find any!
+    // As such, if you want to find macros you will need to make sure you used `MacroStrategy::DoNotExpand`
+    // or `MacroStrategy::ExpandButIncludeMacroCall` when constructing the `Body` given as an argument here.
+    pub fn is_macro(&self, body: &FoldBody) -> Option<bool> {
+        match self.code_id {
+            SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match &body[expr_id] {
+                Expr::MacroCall { .. } => Some(true),
+                _ => Some(false),
+            },
+            SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match &body[pat_id] {
+                Pat::MacroCall { .. } => Some(true),
+                _ => Some(false),
+            },
+            SubId::AnyExprId(AnyExprId::TypeExpr(type_expr_id)) => match &body[type_expr_id] {
+                TypeExpr::MacroCall { .. } => Some(true),
+                _ => Some(false),
+            },
+            SubId::AnyExprId(AnyExprId::Term(term_id)) => match &body[term_id] {
+                Term::MacroCall { .. } => Some(true),
+                _ => Some(false),
+            },
+            _ => Some(false),
+        }
+    }
+
     /// Return any comments on the matched item
     pub fn comments(&self, sema: &Semantic, body_map: &BodySourceMap) -> Option<Vec<ast::Comment>> {
         match self.code_id {

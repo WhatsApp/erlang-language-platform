@@ -89,6 +89,7 @@ mod application_env;
 mod atoms_exhaustion;
 mod binary_string_to_sigil;
 mod boolean_precedence;
+mod could_be_a_string_literal;
 mod cross_node_eval;
 mod debugging_function;
 mod dependent_header;
@@ -743,7 +744,8 @@ impl<T: SsrPatternsLinter> SsrPatternsDiagnostics for T {
     ) -> Vec<Diagnostic> {
         let mut res = Vec::new();
         for (pattern, context) in self.patterns() {
-            let matches = match_pattern_in_file_functions(sema, self.strategy(), file_id, &pattern);
+            let strategy = self.strategy();
+            let matches = match_pattern_in_file_functions(sema, strategy, file_id, &pattern);
             for matched in &matches.matches {
                 if Some(true) == self.is_match_valid(&context, matched, sema, file_id) {
                     let message = self.pattern_description(&context);
@@ -1348,6 +1350,7 @@ const SSR_PATTERN_LINTERS: &[&dyn SsrPatternsDiagnostics] = &[
     &unnecessary_fold_to_build_map::LINTER,
     &binary_string_to_sigil::LINTER,
     &unnecessary_map_to_list_in_comprehension::LINTER,
+    &could_be_a_string_literal::LINTER,
 ];
 
 /// Unified registry for all types of linters

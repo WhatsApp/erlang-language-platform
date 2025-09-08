@@ -618,6 +618,16 @@ impl Match {
         let body = self.matched_node_body.get_body(sema)?;
         placeholder_match.is_var(&body)
     }
+
+    pub fn placeholder_is_macro(&self, sema: &Semantic, placeholder_name: &str) -> Option<bool> {
+        let body = self.matched_node_body.get_body(sema)?;
+        let body_with_visible_macros = body.index_with_strategy(Strategy {
+            macros: MacroStrategy::DoNotExpand,
+            parens: ParenStrategy::InvisibleParens,
+        });
+        let placeholder_match = self.get_placeholder_match(sema, placeholder_name)?;
+        placeholder_match.is_macro(&body_with_visible_macros)
+    }
 }
 
 pub struct MatchDebugInfo {

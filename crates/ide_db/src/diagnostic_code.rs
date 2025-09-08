@@ -88,6 +88,7 @@ pub enum DiagnosticCode {
     NoCatch,
     NoErrorLogger,
     NoNoWarnSuppressions,
+    CouldBeAStringLiteral,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -236,7 +237,7 @@ impl DiagnosticCode {
             DiagnosticCode::NoCatch => "W0052".to_string(),
             DiagnosticCode::NoErrorLogger => "W0053".to_string(),
             DiagnosticCode::NoNoWarnSuppressions => "W0054".to_string(),
-
+            DiagnosticCode::CouldBeAStringLiteral => "W0055".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -332,6 +333,7 @@ impl DiagnosticCode {
             DiagnosticCode::NoCatch => "no_catch".to_string(),
             DiagnosticCode::NoErrorLogger => "no_error_logger".to_string(),
             DiagnosticCode::NoNoWarnSuppressions => "no_nowarn_suppressions".to_string(),
+            DiagnosticCode::CouldBeAStringLiteral => "could_be_a_binary_string_literal".to_string(),
 
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
@@ -422,6 +424,7 @@ impl DiagnosticCode {
             DiagnosticCode::RecordTupleMatch => true,
             DiagnosticCode::DebuggingFunction => true,
             DiagnosticCode::NonStandardIntegerFormatting => true,
+            DiagnosticCode::CouldBeAStringLiteral => true,
 
             // False
             DiagnosticCode::DefaultCodeForEnumIter => false,
