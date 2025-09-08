@@ -201,6 +201,23 @@ pub enum Status {
     ShuttingDown,
 }
 
+/// For buck projects we cannot rely on source roots, so if a new file
+/// is added we need to query the project model for where it fits in.
+/// But we must distinguish between the initial load, where every file
+/// shows up as newly created, and files added after the initial load.
+/// There is a wrinkle, in that we receive a VFS loader complete
+/// message immediately after the last batch of files is loaded, but
+/// before we have processed changes.  In order to not trigger a
+/// project reload through thinking this are newly added, we introduce
+/// a state tracker, which steps to the final state after the VFS
+/// changes are processed.
+#[derive(PartialEq)]
+pub enum InitialLoading {
+    Initial,
+    DoneButVfsChanges,
+    Done,
+}
+
 impl Status {
     pub fn as_lsp_status(&self) -> lsp_ext::Status {
         match self {
@@ -251,6 +268,7 @@ pub struct Server {
     status: Status,
     projects: Arc<Vec<Project>>,
     project_loader: Arc<Mutex<ProjectLoader>>,
+    initial_load_status: InitialLoading,
     reload_manager: Arc<Mutex<ReloadManager>>,
     unresolved_app_id_paths: Arc<FxHashMap<AbsPathBuf, AppDataId>>,
     update_app_data_ids: bool,
@@ -317,6 +335,7 @@ impl Server {
             status: Status::Initialising,
             projects: Arc::new(vec![]),
             project_loader: Arc::new(Mutex::new(ProjectLoader::new())),
+            initial_load_status: InitialLoading::Initial,
             reload_manager: Arc::new(Mutex::new(ReloadManager::new())),
             unresolved_app_id_paths: Arc::new(FxHashMap::default()),
             update_app_data_ids: false,
@@ -934,6 +953,7 @@ impl Server {
                     self.show_message(params);
                 }
                 self.transition(Status::Running);
+                self.initial_load_status = InitialLoading::DoneButVfsChanges;
                 self.schedule_compile_deps();
                 self.schedule_cache();
                 // Not all clients send config in the `initialize` message, request it
@@ -1027,6 +1047,15 @@ impl Server {
                         .write()
                         .insert(file.file_id, line_endings);
                 }
+
+                if self.initial_load_status == InitialLoading::Done
+                    && let vfs::Change::Create(_, _) = &file.change
+                    && let Some(path) = vfs.file_path(file.file_id).as_path()
+                    && (path.extension() == Some("hrl") || path.extension() == Some("erl"))
+                {
+                    self.reload_manager.lock().add(path.to_path_buf());
+                }
+
                 if let Some(path) = vfs.file_path(file.file_id).as_path()
                     && let Some(app_data_id) = self.unresolved_app_id_paths.get(&path.to_path_buf())
                 {
@@ -1051,6 +1080,9 @@ impl Server {
                 // We can't actually delete things from salsa, just set it to empty
                 raw_database.set_file_text(file.file_id, Arc::from(""));
             };
+        }
+        if self.initial_load_status == InitialLoading::DoneButVfsChanges {
+            self.initial_load_status = InitialLoading::Done;
         }
 
         if self.update_app_data_ids {
