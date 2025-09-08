@@ -1784,10 +1784,10 @@ impl GleanIndexer {
         let source_file = sema.parse(file_id);
         let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
 
-        // Check if this is a WAM event record and build link
-        use elp_ide::meta_only::wam_links;
-        let wam_ctx = wam_links::WamEventCtx::new(sema.db.upcast());
-        let wam_url = wam_ctx.build_wam_link(name).map(|link| link.url());
+        // @fb-only
+        // @fb-only
+        // @fb-only
+        let wam_url = None; // @oss-only
 
         Some(XRef {
             source: range.into(),
