@@ -262,6 +262,7 @@ pub mod known {
         handle,
         hidden,
         is_record,
+        lager,
         main,
         module_info,
         ok,

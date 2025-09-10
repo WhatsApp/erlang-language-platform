@@ -148,8 +148,10 @@ fn is_automatically_added(sema: &Semantic, module: Module, function: &Expr, arit
     function_name_is_behaviour_info && arity == 1 && module_has_callbacks_defined
 }
 
+// T237551085: Once linters can take a custom configuration via the TOML files, move this to a config
 fn in_exclusion_list(sema: &Semantic, module: &Expr, function: &Expr, arity: u32) -> bool {
     sema.is_atom_named(function, &known::module_info) && (arity == 0 || arity == 1)
+        || sema.is_atom_named(module, &known::lager)
         || sema.is_atom_named(module, &known::graphql_scanner)
         || sema.is_atom_named(module, &known::graphql_parser)
         || sema.is_atom_named(module, &known::thrift_scanner)
@@ -590,6 +592,18 @@ private() -> ok.
   -module(dependency).
   -compile(export_all).
   exists() -> ok.
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_exclusion_list() {
+        check_diagnostics(
+            r#"
+    //- /src/main.erl
+    -module(main).
+    main() ->
+      lager:warning("Some ~p", [Message]).
             "#,
         )
     }
