@@ -1,0 +1,89 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "ELP: build (debug)",
+            "type": "shell",
+            "command": "/data/sandcastle/boxes/fbsource/fbcode/whatsapp/elp/meta/cargo.sh build",
+            "group": {
+                "kind": "build",
+                "is_default": true,
+
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "ELP: build (release)",
+            "type": "shell",
+            "command": "/data/sandcastle/boxes/fbsource/fbcode/whatsapp/elp/meta/cargo.sh build --release",
+            "group": {
+                "kind": "build",
+                "is_default": true,
+
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "ELP: build (release-thin)",
+            "type": "shell",
+            "command": "/data/sandcastle/boxes/fbsource/fbcode/whatsapp/elp/meta/cargo.sh build --profile release-thin --bins",
+            "group": {
+                "kind": "build",
+                "is_default": true,
+
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "ELP: run clippy on workspace",
+            "type": "shell",
+            "command": "/data/sandcastle/boxes/fbsource/fbcode/whatsapp/elp/meta/clippy.sh --workspace --tests",
+            "group": {
+                "kind": "build",
+                "is_default": true,
+
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "ELP: run clippy on workspace, apply fixes",
+            "type": "shell",
+            "command": "/data/sandcastle/boxes/fbsource/fbcode/whatsapp/elp/meta/clippy.sh --workspace --tests --fix",
+            "group": {
+                "kind": "build",
+                "is_default": true,
+
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "ELP: run tests on workspace",
+            "type": "shell",
+            "command": "/data/sandcastle/boxes/fbsource/fbcode/whatsapp/elp/meta/cargo.sh test --workspace",
+            "group": {
+                "kind": "build",
+                "is_default": true,
+
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+    ]
+}
