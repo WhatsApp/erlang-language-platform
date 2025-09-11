@@ -641,19 +641,16 @@ pub(crate) fn buck2_test_runnable(
     )
 }
 
-pub(crate) fn rebar3_test_runnable(
-    snap: &Snapshot,
-    runnable: Runnable,
-    coverage_enabled: bool,
-) -> lsp_ext::Runnable {
+pub(crate) fn rebar3_ct_runnable(snap: &Snapshot, runnable: Runnable) -> lsp_ext::Runnable {
     let file_id = runnable.nav.file_id;
     let location = location_link(snap, None, runnable.clone().nav).ok();
-    lsp_ext::Runnable::rebar3_test(
-        runnable,
-        location,
-        snap.workspace_root(file_id).into(),
-        coverage_enabled,
-    )
+    lsp_ext::Runnable::rebar3_ct(runnable, location, snap.workspace_root(file_id).into())
+}
+
+pub(crate) fn rebar3_shell_runnable(snap: &Snapshot, runnable: Runnable) -> lsp_ext::Runnable {
+    let file_id = runnable.nav.file_id;
+    let location = location_link(snap, None, runnable.clone().nav).ok();
+    lsp_ext::Runnable::rebar3_shell(runnable, location, snap.workspace_root(file_id).into())
 }
 
 pub(crate) fn buck2_run_runnable(
@@ -756,9 +753,34 @@ pub(crate) fn code_lens(
                     }
                 }
                 ProjectBuildData::Rebar(_) => {
-                    let r = rebar3_test_runnable(snap, run.clone(), lens_config.run_coverage);
+                    let ct_runnable = rebar3_ct_runnable(snap, run.clone());
+                    let shell_runnable = rebar3_shell_runnable(snap, run.clone());
+                    if lens_config.run_interactive {
+                        match run.kind {
+                            RunnableKind::Suite { .. } => {
+                                let command = command::open_interactive(
+                                    &shell_runnable,
+                                    run_interactive_title,
+                                );
+                                acc.push(lsp_types::CodeLens {
+                                    range: annotation_range,
+                                    command: Some(command),
+                                    data: None,
+                                });
+                            }
+                            RunnableKind::Test { .. } => {
+                                let command =
+                                    command::run_interactive(&ct_runnable, run_interactive_title);
+                                acc.push(lsp_types::CodeLens {
+                                    range: annotation_range,
+                                    command: Some(command),
+                                    data: None,
+                                });
+                            }
+                        }
+                    }
                     if lens_config.run {
-                        let run_command = command::run_single(&r, run_title);
+                        let run_command = command::run_single(&ct_runnable, run_title);
                         acc.push(lsp_types::CodeLens {
                             range: annotation_range,
                             command: Some(run_command),
@@ -766,12 +788,26 @@ pub(crate) fn code_lens(
                         });
                     }
                     if lens_config.debug {
-                        let debug_command = command::debug_single(&r, debug_title);
-                        acc.push(lsp_types::CodeLens {
-                            range: annotation_range,
-                            command: Some(debug_command),
-                            data: None,
-                        });
+                        match run.kind {
+                            RunnableKind::Suite { .. } => {
+                                let debug_command =
+                                    command::debug_interactive(&ct_runnable, debug_title);
+                                acc.push(lsp_types::CodeLens {
+                                    range: annotation_range,
+                                    command: Some(debug_command),
+                                    data: None,
+                                });
+                            }
+                            RunnableKind::Test { .. } => {
+                                let debug_command =
+                                    command::debug_single(&ct_runnable, debug_title);
+                                acc.push(lsp_types::CodeLens {
+                                    range: annotation_range,
+                                    command: Some(debug_command),
+                                    data: None,
+                                });
+                            }
+                        }
                     }
                 }
                 ProjectBuildData::Static(_) => {}

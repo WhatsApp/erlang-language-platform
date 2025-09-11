@@ -307,7 +307,7 @@
           "type": "boolean"
         },
         "elp.lens.debug.enable": {
-          "default": false,
+          "default": true,
           "markdownDescription": "Whether to show the `Debug` lenses. Only applies when\n`#elp.lens.enable#` is set.",
           "type": "boolean"
         },
@@ -332,7 +332,7 @@
           "type": "boolean"
         },
         "elp.lens.run.interactive.enable": {
-          "default": false,
+          "default": true,
           "markdownDescription": "Whether to show the `Run Interactive` lenses. Only applies when\n`#elp.lens.enable#` is set.",
           "type": "boolean"
         },

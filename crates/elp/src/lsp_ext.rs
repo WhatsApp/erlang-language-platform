@@ -148,11 +148,10 @@ impl Runnable {
         }
     }
 
-    pub fn rebar3_test(
+    pub fn rebar3_ct(
         runnable: elp_ide::Runnable,
         location: Option<lsp_types::LocationLink>,
         workspace_root: PathBuf,
-        _coverage_enabled: bool,
     ) -> Self {
         Self {
             label: "Rebar3".to_string(),
@@ -162,6 +161,23 @@ impl Runnable {
                 workspace_root,
                 command: "ct".to_string(),
                 args: runnable.rebar3_test_args(),
+            }),
+        }
+    }
+
+    pub fn rebar3_shell(
+        _runnable: elp_ide::Runnable,
+        location: Option<lsp_types::LocationLink>,
+        workspace_root: PathBuf,
+    ) -> Self {
+        Self {
+            label: "Rebar3".to_string(),
+            location,
+            kind: RunnableKind::Rebar3,
+            args: RunnableArgs::Rebar3(Rebar3RunnableArgs {
+                workspace_root,
+                command: "as".to_string(),
+                args: vec!["test".to_string(), "shell".to_string()],
             }),
         }
     }
