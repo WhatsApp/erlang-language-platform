@@ -4,7 +4,8 @@
         {
             "label": "ELP: build (debug)",
             "type": "shell",
-            "command": "/data/sandcastle/boxes/fbsource/fbcode/whatsapp/elp/meta/cargo.sh build",
+            // @fb-only
+            "command": "cargo build", // @oss-only
             "group": {
                 "kind": "build",
                 "is_default": true,
@@ -18,7 +19,8 @@
         {
             "label": "ELP: build (release)",
             "type": "shell",
-            "command": "/data/sandcastle/boxes/fbsource/fbcode/whatsapp/elp/meta/cargo.sh build --release",
+            // @fb-only
+            "command": "cargo build --release", // @oss-only
             "group": {
                 "kind": "build",
                 "is_default": true,
@@ -32,7 +34,8 @@
         {
             "label": "ELP: build (release-thin)",
             "type": "shell",
-            "command": "/data/sandcastle/boxes/fbsource/fbcode/whatsapp/elp/meta/cargo.sh build --profile release-thin --bins",
+            // @fb-only
+            "command": "cargo build --profile release-thin --bins", // @oss-only
             "group": {
                 "kind": "build",
                 "is_default": true,
@@ -46,7 +49,8 @@
         {
             "label": "ELP: run clippy on workspace",
             "type": "shell",
-            "command": "/data/sandcastle/boxes/fbsource/fbcode/whatsapp/elp/meta/clippy.sh --workspace --tests",
+            // @fb-only
+            "command": "cargo clippy --workspace --tests", // @oss-only
             "group": {
                 "kind": "build",
                 "is_default": true,
@@ -60,7 +64,8 @@
         {
             "label": "ELP: run clippy on workspace, apply fixes",
             "type": "shell",
-            "command": "/data/sandcastle/boxes/fbsource/fbcode/whatsapp/elp/meta/clippy.sh --workspace --tests --fix",
+            // @fb-only
+            "command": "cargo clippy --workspace --tests --fix", // @oss-only
             "group": {
                 "kind": "build",
                 "is_default": true,
@@ -74,7 +79,8 @@
         {
             "label": "ELP: run tests on workspace",
             "type": "shell",
-            "command": "/data/sandcastle/boxes/fbsource/fbcode/whatsapp/elp/meta/cargo.sh test --workspace",
+            // @fb-only
+            "command": "cargo test --workspace", // @oss-only
             "group": {
                 "kind": "build",
                 "is_default": true,
