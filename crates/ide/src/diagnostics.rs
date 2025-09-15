@@ -591,7 +591,7 @@ pub(crate) trait FunctionCallLinter: Linter {
     // Custom check for the function call. Returning None for a given call skips processing.
     // By default all calls are included.
     // The callback returns a function that can be used in subsequent callbacks.
-    fn is_match_valid(
+    fn check_match(
         &self,
         _check_call_context: &CheckCallCtx<'_, ()>,
         _sema: &Semantic,
@@ -644,7 +644,7 @@ impl<T: FunctionCallLinter> FunctionCallDiagnostics for T {
                     sema,
                     def,
                     &mfas,
-                    &move |ctx| self.is_match_valid(&ctx, sema, file_id),
+                    &move |ctx| self.check_match(&ctx, sema, file_id),
                     &move |ctx @ MatchCtx { sema, def_fb, .. }| {
                         let range = ctx.range(&UseRange::NameOnly);
                         if range.file_id == def.file.file_id {

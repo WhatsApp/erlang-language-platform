@@ -57,7 +57,7 @@ impl FunctionCallLinter for NoDebuggingFunctionLinter {
         ]
     }
 
-    fn is_match_valid(
+    fn check_match(
         &self,
         context: &CheckCallCtx<'_, ()>,
         _sema: &Semantic,

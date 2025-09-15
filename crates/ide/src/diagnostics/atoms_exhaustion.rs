@@ -59,7 +59,7 @@ impl FunctionCallLinter for AtomsExhaustionLinter {
         ]
     }
 
-    fn is_match_valid(
+    fn check_match(
         &self,
         context: &CheckCallCtx<'_, ()>,
         sema: &Semantic,
