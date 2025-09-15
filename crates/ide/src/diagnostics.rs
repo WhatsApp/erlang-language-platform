@@ -499,7 +499,7 @@ pub(crate) trait Linter {
     fn id(&self) -> DiagnosticCode;
 
     // A plain-text description for the linter. Displayed to the end user.
-    fn description(&self) -> String;
+    fn description(&self) -> &'static str;
 
     // The severity for the lint issue. It defaults to `Warning`.
     fn severity(&self) -> Severity {
@@ -674,7 +674,7 @@ pub(crate) trait SsrPatternsLinter: Linter {
 
     /// Customize the description based on each matched pattern.
     /// If implemented, it overrides the value of the `description()`.
-    fn pattern_description(&self, _context: &Self::Context) -> String {
+    fn pattern_description(&self, _context: &Self::Context) -> &'static str {
         self.description()
     }
 

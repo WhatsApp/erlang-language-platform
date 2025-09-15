@@ -34,8 +34,8 @@ impl Linter for BinaryStringToSigilLinter {
         DiagnosticCode::BinaryStringToSigil
     }
 
-    fn description(&self) -> String {
-        "Binary string can be written using sigil syntax.".to_string()
+    fn description(&self) -> &'static str {
+        "Binary string can be written using sigil syntax."
     }
 
     fn severity(&self) -> Severity {

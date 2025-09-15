@@ -25,8 +25,8 @@ impl Linter for AtomsExhaustionLinter {
     fn id(&self) -> DiagnosticCode {
         DiagnosticCode::AtomsExhaustion
     }
-    fn description(&self) -> String {
-        "Risk of atoms exhaustion.".to_string()
+    fn description(&self) -> &'static str {
+        "Risk of atoms exhaustion."
     }
     fn should_process_generated_files(&self) -> bool {
         true

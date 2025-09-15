@@ -29,8 +29,8 @@ impl Linter for UnnecessaryMapToListInComprehensionLinter {
         DiagnosticCode::UnnecessaryMapToListInComprehension
     }
 
-    fn description(&self) -> String {
-        "Unnecessary intermediate list allocated.".to_string()
+    fn description(&self) -> &'static str {
+        "Unnecessary intermediate list allocated."
     }
 
     fn severity(&self) -> Severity {

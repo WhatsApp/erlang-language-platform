@@ -20,8 +20,8 @@ impl Linter for NoSizeLinter {
     fn id(&self) -> DiagnosticCode {
         DiagnosticCode::NoSize
     }
-    fn description(&self) -> String {
-        "Avoid using the `size/1` BIF.".to_string()
+    fn description(&self) -> &'static str {
+        "Avoid using the `size/1` BIF."
     }
     fn should_process_test_files(&self) -> bool {
         false

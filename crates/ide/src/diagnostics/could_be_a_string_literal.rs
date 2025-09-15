@@ -35,8 +35,8 @@ impl Linter for CouldBeAStringLiteralLinter {
         DiagnosticCode::CouldBeAStringLiteral
     }
 
-    fn description(&self) -> String {
-        "Could be rewritten as a literal.".to_string()
+    fn description(&self) -> &'static str {
+        "Could be rewritten as a literal."
     }
 
     fn severity(&self) -> Severity {
@@ -95,11 +95,11 @@ impl SsrPatternsLinter for CouldBeAStringLiteralLinter {
         ]
     }
 
-    fn pattern_description(&self, context: &Self::Context) -> String {
+    fn pattern_description(&self, context: &Self::Context) -> &'static str {
         match context.to {
-            StringKind::List => "Could be rewritten as a string literal.".to_string(),
-            StringKind::Binary => "Could be rewritten as a binary string literal.".to_string(),
-            StringKind::Atom => "Could be rewritten as an atom literal.".to_string(),
+            StringKind::List => "Could be rewritten as a string literal.",
+            StringKind::Binary => "Could be rewritten as a binary string literal.",
+            StringKind::Atom => "Could be rewritten as an atom literal.",
         }
     }
 

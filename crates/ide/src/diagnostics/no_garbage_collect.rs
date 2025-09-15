@@ -20,8 +20,8 @@ impl Linter for NoGarbageCollectLinter {
     fn id(&self) -> DiagnosticCode {
         DiagnosticCode::NoGarbageCollect
     }
-    fn description(&self) -> String {
-        "Avoid forcing garbage collection.".to_string()
+    fn description(&self) -> &'static str {
+        "Avoid forcing garbage collection."
     }
     fn should_process_test_files(&self) -> bool {
         false

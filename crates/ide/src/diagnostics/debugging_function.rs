@@ -31,8 +31,8 @@ impl Linter for NoDebuggingFunctionLinter {
     fn id(&self) -> DiagnosticCode {
         DiagnosticCode::DebuggingFunction
     }
-    fn description(&self) -> String {
-        "Debugging functions should only be used during local debugging and usages should not be checked in.".to_string()
+    fn description(&self) -> &'static str {
+        "Debugging functions should only be used during local debugging and usages should not be checked in."
     }
     fn severity(&self) -> Severity {
         Severity::WeakWarning

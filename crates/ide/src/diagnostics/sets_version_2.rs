@@ -20,8 +20,8 @@ impl Linter for SetsVersion2Linter {
     fn id(&self) -> DiagnosticCode {
         DiagnosticCode::SetsVersion2
     }
-    fn description(&self) -> String {
-        "Prefer `[{version, 2}]` when constructing a set.".to_string()
+    fn description(&self) -> &'static str {
+        "Prefer `[{version, 2}]` when constructing a set."
     }
     fn should_process_test_files(&self) -> bool {
         false

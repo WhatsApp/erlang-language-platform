@@ -20,8 +20,8 @@ impl Linter for NoErrorLoggerLinter {
     fn id(&self) -> DiagnosticCode {
         DiagnosticCode::NoErrorLogger
     }
-    fn description(&self) -> String {
-        "The `error_logger` module is deprecated.".to_string()
+    fn description(&self) -> &'static str {
+        "The `error_logger` module is deprecated."
     }
     fn severity(&self) -> Severity {
         Severity::Error

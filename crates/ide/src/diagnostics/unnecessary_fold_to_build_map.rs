@@ -45,8 +45,8 @@ impl Linter for UnnecessaryFoldToBuildMapLinter {
         DiagnosticCode::UnnecessaryFoldToBuildMapFromList
     }
 
-    fn description(&self) -> String {
-        "Unnecessary explicit fold to construct map.".to_string()
+    fn description(&self) -> &'static str {
+        "Unnecessary explicit fold to construct map."
     }
 
     fn severity(&self) -> Severity {
@@ -80,12 +80,11 @@ impl SsrPatternsLinter for UnnecessaryFoldToBuildMapLinter {
         ]
     }
 
-    fn pattern_description(&self, context: &Self::Context) -> String {
-        let origin = match context {
-            PatternKind::FromList => "list".to_string(),
-            PatternKind::FromKeys => "keys".to_string(),
-        };
-        format!("Unnecessary explicit fold to construct map from {origin}.")
+    fn pattern_description(&self, context: &Self::Context) -> &'static str {
+        match context {
+            PatternKind::FromList => "Unnecessary explicit fold to construct map from list.",
+            PatternKind::FromKeys => "Unnecessary explicit fold to construct map from keys.",
+        }
     }
 
     fn is_match_valid(
