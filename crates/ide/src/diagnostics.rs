@@ -595,6 +595,7 @@ pub(crate) trait FunctionCallLinter: Linter {
         &self,
         _check_call_context: &CheckCallCtx<'_, ()>,
         _sema: &Semantic,
+        _file_id: FileId,
     ) -> Option<Self::Context> {
         Some(Self::Context::default())
     }
@@ -643,7 +644,7 @@ impl<T: FunctionCallLinter> FunctionCallDiagnostics for T {
                     sema,
                     def,
                     &mfas,
-                    &move |ctx| self.is_match_valid(&ctx, sema),
+                    &move |ctx| self.is_match_valid(&ctx, sema, file_id),
                     &move |ctx @ MatchCtx { sema, def_fb, .. }| {
                         let range = ctx.range(&UseRange::NameOnly);
                         if range.file_id == def.file.file_id {

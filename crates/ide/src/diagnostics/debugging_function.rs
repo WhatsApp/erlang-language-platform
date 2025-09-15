@@ -61,6 +61,7 @@ impl FunctionCallLinter for NoDebuggingFunctionLinter {
         &self,
         context: &CheckCallCtx<'_, ()>,
         _sema: &Semantic,
+        _file_id: FileId,
     ) -> Option<Self::Context> {
         let call_expr_id = context.parents.last().cloned();
         Some(call_expr_id)

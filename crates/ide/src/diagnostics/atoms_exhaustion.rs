@@ -63,6 +63,7 @@ impl FunctionCallLinter for AtomsExhaustionLinter {
         &self,
         context: &CheckCallCtx<'_, ()>,
         sema: &Semantic,
+        _file_id: FileId,
     ) -> Option<Self::Context> {
         #[rustfmt::skip]
         // @fb-only
