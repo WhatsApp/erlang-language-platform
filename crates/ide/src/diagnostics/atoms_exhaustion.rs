@@ -59,13 +59,9 @@ impl FunctionCallLinter for AtomsExhaustionLinter {
         ]
     }
 
-    fn check_match(
-        &self,
-        context: &CheckCallCtx<'_, ()>,
-        sema: &Semantic,
-        _file_id: FileId,
-    ) -> Option<Self::Context> {
+    fn check_match(&self, context: &CheckCallCtx<'_, ()>) -> Option<Self::Context> {
         #[rustfmt::skip]
+        // @fb-only
         // @fb-only
             // @fb-only
         let is_safe = false; // @oss-only
