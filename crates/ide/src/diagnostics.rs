@@ -630,6 +630,7 @@ pub(crate) trait FunctionCallDiagnostics: Linter {
         file_id: FileId,
         severity: Severity,
         cli_severity: Severity,
+        config: &FunctionCallLinterConfig,
     ) -> Vec<Diagnostic>;
 }
 
@@ -640,13 +641,18 @@ impl<T: FunctionCallLinter> FunctionCallDiagnostics for T {
         file_id: FileId,
         severity: Severity,
         cli_severity: Severity,
+        config: &FunctionCallLinterConfig,
     ) -> Vec<Diagnostic> {
         let mut diagnostics = Vec::new();
         let matches = self.matches_functions();
         let excluded_matches = self.excludes_functions();
+        let excluded_matches_from_config = &config.exclude.clone().unwrap_or_default();
         let mfas: Vec<(&FunctionMatch, ())> = matches.iter().map(|m| (m, ())).collect();
-        let excluded_mfas: Vec<(&FunctionMatch, ())> =
-            excluded_matches.iter().map(|m| (m, ())).collect();
+        let excluded_mfas: Vec<(&FunctionMatch, ())> = excluded_matches
+            .iter()
+            .chain(excluded_matches_from_config)
+            .map(|m| (m, ()))
+            .collect();
         sema.def_map_local(file_id)
             .get_functions()
             .for_each(|(_, def)| {
@@ -749,6 +755,7 @@ pub(crate) trait SsrPatternsDiagnostics: Linter {
         file_id: FileId,
         severity: Severity,
         cli_severity: Severity,
+        linter_config: &SsrPatternsLinterConfig,
     ) -> Vec<Diagnostic>;
 }
 
@@ -759,6 +766,7 @@ impl<T: SsrPatternsLinter> SsrPatternsDiagnostics for T {
         file_id: FileId,
         severity: Severity,
         cli_severity: Severity,
+        _linter_config: &SsrPatternsLinterConfig,
     ) -> Vec<Diagnostic> {
         let mut res = Vec::new();
         for (pattern, context) in self.patterns() {
@@ -1025,6 +1033,26 @@ impl LintConfig {
     pub fn get_experimental_override(&self, diagnostic_code: &DiagnosticCode) -> Option<bool> {
         self.linters.get(diagnostic_code)?.experimental
     }
+
+    pub fn get_function_call_linter_config(
+        &self,
+        diagnostic_code: &DiagnosticCode,
+    ) -> Option<FunctionCallLinterConfig> {
+        match self.linters.get(diagnostic_code)?.config.clone()? {
+            LinterTraitConfig::FunctionCallLinterConfig(config) => Some(config),
+            _ => None,
+        }
+    }
+
+    pub fn get_ssr_patterns_linter_config(
+        &self,
+        diagnostic_code: &DiagnosticCode,
+    ) -> Option<SsrPatternsLinterConfig> {
+        match self.linters.get(diagnostic_code)?.config.clone()? {
+            LinterTraitConfig::SsrPatternsLinterConfig(config) => Some(config),
+            _ => None,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -1043,14 +1071,30 @@ pub struct LintConfig {
     pub linters: FxHashMap<DiagnosticCode, LinterConfig>,
 }
 
-/// Configuration for a specific linter that allows overriding default settings
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
+pub struct FunctionCallLinterConfig {
+    exclude: Option<Vec<FunctionMatch>>,
+}
+
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
+pub struct SsrPatternsLinterConfig {}
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
-#[derive(Default)]
+#[serde(untagged)]
+pub enum LinterTraitConfig {
+    FunctionCallLinterConfig(FunctionCallLinterConfig),
+    SsrPatternsLinterConfig(SsrPatternsLinterConfig),
+}
+
+/// Configuration for a specific linter that allows overriding default settings
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct LinterConfig {
     pub severity: Option<Severity>,
     pub include_tests: Option<bool>,
     pub include_generated: Option<bool>,
     pub experimental: Option<bool>,
+    #[serde(flatten)]
+    pub config: Option<LinterTraitConfig>,
 }
 
 impl<'de> Deserialize<'de> for Severity {
@@ -1430,12 +1474,37 @@ fn diagnostics_from_linters(
             };
             match l {
                 DiagnosticLinter::FunctionCall(function_linter) => {
-                    let diagnostics =
-                        function_linter.diagnostics(sema, file_id, severity, cli_severity);
+                    let linter_config = if let Some(lint_config) = config.lint_config.as_ref() {
+                        lint_config
+                            .get_function_call_linter_config(&linter.id())
+                            .unwrap_or_else(FunctionCallLinterConfig::default)
+                    } else {
+                        FunctionCallLinterConfig::default()
+                    };
+                    let diagnostics = function_linter.diagnostics(
+                        sema,
+                        file_id,
+                        severity,
+                        cli_severity,
+                        &linter_config,
+                    );
                     res.extend(diagnostics);
                 }
                 DiagnosticLinter::SsrPatterns(ssr_linter) => {
-                    let diagnostics = ssr_linter.diagnostics(sema, file_id, severity, cli_severity);
+                    let linter_config = if let Some(lint_config) = config.lint_config.as_ref() {
+                        lint_config
+                            .get_ssr_patterns_linter_config(&linter.id())
+                            .unwrap_or_else(SsrPatternsLinterConfig::default)
+                    } else {
+                        SsrPatternsLinterConfig::default()
+                    };
+                    let diagnostics = ssr_linter.diagnostics(
+                        sema,
+                        file_id,
+                        severity,
+                        cli_severity,
+                        &linter_config,
+                    );
                     res.extend(diagnostics);
                 }
             }
@@ -3279,6 +3348,7 @@ baz(1)->4.
                 include_tests: None,
                 include_generated: None,
                 experimental: None,
+                config: None,
             },
         );
 
@@ -3319,6 +3389,7 @@ baz(1)->4.
                 include_tests: Some(true),
                 include_generated: None,
                 experimental: None,
+                config: None,
             },
         );
 
@@ -3358,6 +3429,7 @@ baz(1)->4.
                 include_tests: None,
                 include_generated: Some(true),
                 experimental: None,
+                config: None,
             },
         );
 
@@ -3398,6 +3470,7 @@ baz(1)->4.
                 include_tests: None,
                 include_generated: None,
                 experimental: Some(true),
+                config: None,
             },
         );
 
