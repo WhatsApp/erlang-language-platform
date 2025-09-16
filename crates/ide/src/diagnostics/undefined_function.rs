@@ -52,14 +52,9 @@ impl FunctionCallLinter for UndefinedFunctionLinter {
         lazy_function_matches![vec![FunctionMatch::any()]]
     }
 
-    // T237551085: Once linters can take a custom configuration via the TOML files, move this to a config
     fn excludes_functions(&self) -> Vec<FunctionMatch> {
         lazy_function_matches![vec![
-            FunctionMatch::m("lager"),
-            FunctionMatch::m("graphql_scanner"),
-            FunctionMatch::m("graphql_parser"),
-            FunctionMatch::m("thrift_scanner"),
-            FunctionMatch::m("thrift_parser"),
+            FunctionMatch::m("lager"), // Lager functions are produced by parse transforms
         ]]
     }
 
