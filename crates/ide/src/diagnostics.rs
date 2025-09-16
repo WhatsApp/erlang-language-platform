@@ -8,6 +8,7 @@
  * above-listed licenses.
  */
 
+use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::fmt;
 use std::sync::Arc;
@@ -133,6 +134,7 @@ mod undefined_function;
 mod undefined_macro;
 mod undocumented_function;
 mod undocumented_module;
+mod unexported_function;
 mod unnecessary_fold_to_build_map;
 mod unnecessary_map_from_list_around_comprehension;
 mod unnecessary_map_to_list_in_comprehension;
@@ -583,6 +585,12 @@ pub(crate) trait FunctionCallLinter: Linter {
     /// Associated type - each linter defines its own
     type Context: Clone + fmt::Debug + PartialEq + Default;
 
+    /// Customize the description based on each match.
+    /// If implemented, it overrides the value of the `description()`.
+    fn match_description(&self, _context: &Self::Context) -> Cow<'_, str> {
+        Cow::Borrowed(self.description())
+    }
+
     // Specify the list of functions the linter should emit issues for
     fn matches_functions(&self) -> Vec<FunctionMatch> {
         vec![]
@@ -640,15 +648,20 @@ impl<T: FunctionCallLinter> FunctionCallDiagnostics for T {
                     def,
                     &mfas,
                     &move |ctx| self.check_match(&ctx),
-                    &move |ctx @ MatchCtx { sema, def_fb, .. }| {
+                    &move |ctx @ MatchCtx {
+                               sema,
+                               def_fb,
+                               extra,
+                               ..
+                           }| {
                         let range = ctx.range(&UseRange::NameOnly);
                         if range.file_id == def.file.file_id {
                             let fixes = self.fixes(&ctx, sema, file_id);
-                            let mut diag =
-                                Diagnostic::new(self.id(), self.description(), range.range)
-                                    .with_fixes(fixes)
-                                    .with_severity(severity)
-                                    .with_cli_severity(cli_severity);
+                            let description = self.match_description(extra);
+                            let mut diag = Diagnostic::new(self.id(), description, range.range)
+                                .with_fixes(fixes)
+                                .with_severity(severity)
+                                .with_cli_severity(cli_severity);
                             if self.can_be_suppressed() {
                                 diag = diag.with_ignore_fix(sema, def_fb.file_id());
                             };
@@ -1266,7 +1279,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &missing_compile_warn_missing_spec::DESCRIPTOR,
         &dependent_header::DESCRIPTOR,
         &deprecated_function::DESCRIPTOR,
-        &undefined_function::DESCRIPTOR,
         &head_mismatch::DESCRIPTOR_SEMANTIC,
         &missing_separator::DESCRIPTOR,
         &cross_node_eval::DESCRIPTOR,
@@ -1339,6 +1351,8 @@ const FUNCTION_CALL_LINTERS: &[&dyn FunctionCallDiagnostics] = &[
     &no_error_logger::LINTER,
     &debugging_function::LINTER,
     &atoms_exhaustion::LINTER,
+    &undefined_function::LINTER,
+    &unexported_function::LINTER,
 ];
 
 /// SSR pattern linters that use structural search and replace patterns

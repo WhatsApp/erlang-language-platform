@@ -16,122 +16,79 @@
 // Only fully qualified calls are reported by this diagnostic (e.g. `foo:bar/2`), since
 // calls to undefined local functions are already reported by the Erlang linter itself (L1227).
 
-use elp_ide_assists::helpers;
-use elp_ide_assists::helpers::ExportForm;
-use elp_ide_db::elp_base_db::FileId;
-use elp_ide_db::elp_base_db::FileRange;
-use elp_ide_db::source_change::SourceChangeBuilder;
+use std::borrow::Cow;
+
+use elp_syntax::SmolStr;
 use hir::Expr;
-use hir::FunctionDef;
 use hir::Module;
-use hir::NameArity;
 use hir::Semantic;
 use hir::known;
 
-use super::Diagnostic;
 use super::DiagnosticCode;
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use super::Severity;
 use crate::FunctionMatch;
 use crate::codemod_helpers::CheckCallCtx;
-use crate::codemod_helpers::MatchCtx;
-use crate::codemod_helpers::find_call_in_function;
-// @fb-only
-use crate::fix;
+use crate::diagnostics::FunctionCallLinter;
+use crate::diagnostics::Linter;
+use crate::lazy_function_matches;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: true,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        undefined_function(diags, sema, file_id);
-    },
-};
+pub(crate) struct UndefinedFunctionLinter;
 
-fn undefined_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    let check_for_unexported = true; // @oss-only
-    // @fb-only
-    sema.def_map_local(file_id)
-        .get_functions()
-        .for_each(|(_arity, def)| check_function(diagnostics, sema, def, check_for_unexported));
+impl Linter for UndefinedFunctionLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::UndefinedFunction
+    }
+    fn description(&self) -> &'static str {
+        "Function is undefined."
+    }
+    fn should_process_generated_files(&self) -> bool {
+        true
+    }
 }
 
-fn check_function(
-    diags: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    def: &FunctionDef,
-    check_for_unexported: bool,
-) {
-    let matcher = FunctionMatch::any();
-    find_call_in_function(
-        diags,
-        sema,
-        def,
-        &[(&matcher, ())],
-        &move |CheckCallCtx {
-                   target,
-                   args,
-                   in_clause: def_fb,
-                   ..
-               }: CheckCallCtx<'_, ()>| {
-            let arity = args.arity();
-            match target {
-                hir::CallTarget::Remote { module, name, .. } => {
-                    let module = &def_fb[*module];
-                    let name = &def_fb[*name];
-                    if in_exclusion_list(sema, module, name, arity)
-                        || sema
-                            .resolve_module_expr(def_fb.file_id(), module)
-                            .is_some_and(|module| is_automatically_added(sema, module, name, arity))
-                    {
-                        None
-                    } else {
-                        let maybe_function_def =
-                            target.resolve_call(arity, sema, def_fb.file_id(), &def_fb.body());
-                        let function_exists = maybe_function_def.is_some();
-                        let is_exported = maybe_function_def.clone().is_some_and(|fun_def| {
-                            is_exported_function(fun_def.file.file_id, sema, &fun_def.name)
-                        });
+impl FunctionCallLinter for UndefinedFunctionLinter {
+    type Context = Option<SmolStr>;
 
-                        if function_exists && (is_exported) {
-                            None
-                        } else {
-                            target.label(arity, sema, &def_fb.body()).map(|label| {
-                                (
-                                    label.to_string(),
-                                    "".to_string(),
-                                    function_exists && !is_exported,
-                                    maybe_function_def,
-                                )
-                            })
-                        }
-                    }
+    fn matches_functions(&self) -> Vec<FunctionMatch> {
+        lazy_function_matches![vec![FunctionMatch::any()]]
+    }
+
+    fn match_description(&self, context: &Self::Context) -> Cow<'_, str> {
+        match context {
+            None => Cow::Borrowed(self.description()),
+            Some(function_name) => Cow::Owned(format!("Function '{function_name}' is undefined.")),
+        }
+    }
+
+    fn check_match(&self, context: &CheckCallCtx<'_, ()>) -> Option<Self::Context> {
+        match context.target {
+            hir::CallTarget::Remote { module, name, .. } => {
+                let sema = context.in_clause.sema;
+                let def_fb = context.in_clause;
+                let arity = context.args.arity();
+                let module = &def_fb[*module];
+                let name = &def_fb[*name];
+                if in_exclusion_list(sema, module, name, arity)
+                    || sema
+                        .resolve_module_expr(def_fb.file_id(), module)
+                        .is_some_and(|module| is_automatically_added(sema, module, name, arity))
+                {
+                    return None;
                 }
-                // Diagnostic L1227 already covers the case for local calls, so avoid double-reporting
-                hir::CallTarget::Local { .. } => None,
+                match context
+                    .target
+                    .resolve_call(arity, sema, def_fb.file_id(), &def_fb.body())
+                {
+                    Some(_) => None,
+                    None => Some(context.target.label(arity, sema, &def_fb.body())),
+                }
             }
-        },
-        &move |ctx @ MatchCtx { sema, extra, .. }| {
-            make_diagnostic(
-                sema,
-                def.file.file_id,
-                ctx.range_mf_or_macro(),
-                &extra.0,
-                extra.2,
-                extra.3.clone(),
-                check_for_unexported,
-            )
-        },
-    );
+            // Diagnostic L1227 already covers the case for local calls, so avoid double-reporting
+            hir::CallTarget::Local { .. } => None,
+        }
+    }
 }
 
-fn is_exported_function(file_id: FileId, sema: &Semantic, name: &NameArity) -> bool {
-    sema.def_map(file_id).is_function_exported(name)
-}
+pub static LINTER: UndefinedFunctionLinter = UndefinedFunctionLinter;
 
 fn is_automatically_added(sema: &Semantic, module: Module, function: &Expr, arity: u32) -> bool {
     // If the module defines callbacks, {behaviour,behavior}_info are automatically defined
@@ -158,69 +115,6 @@ fn in_exclusion_list(sema: &Semantic, module: &Expr, function: &Expr, arity: u32
         || sema.is_atom_named(module, &known::thrift_parser)
 }
 
-fn make_diagnostic(
-    sema: &Semantic,
-    file_id: FileId,
-    range: FileRange,
-    function_name: &str,
-    is_private: bool,
-    maybe_function_def: Option<FunctionDef>,
-    check_for_unexported: bool,
-) -> Option<Diagnostic> {
-    let range = if range.file_id == file_id {
-        Some(range.range)
-    } else {
-        None
-    }?;
-    if is_private {
-        if check_for_unexported {
-            let maybe_fix = maybe_function_def.map(|function_def| {
-                let mut builder = SourceChangeBuilder::new(function_def.file.file_id);
-                helpers::ExportBuilder::new(
-                    sema,
-                    function_def.file.file_id,
-                    ExportForm::Functions,
-                    &[function_def.name],
-                    &mut builder,
-                )
-                .finish();
-
-                fix(
-                    "export_function",
-                    format!("Export the function `{function_name}`").as_str(),
-                    builder.finish(),
-                    range,
-                )
-            });
-            let mut diagnostic = Diagnostic::new(
-                DiagnosticCode::UnexportedFunction,
-                format!("Function '{function_name}' is not exported."),
-                range,
-            )
-            .with_severity(Severity::Warning)
-            .with_ignore_fix(sema, file_id);
-
-            maybe_fix.inspect(|fix| {
-                diagnostic.add_fix(fix.clone());
-            });
-
-            Some(diagnostic)
-        } else {
-            None
-        }
-    } else {
-        Some(
-            Diagnostic::new(
-                DiagnosticCode::UndefinedFunction,
-                format!("Function '{function_name}' is undefined."),
-                range,
-            )
-            .with_severity(Severity::Warning)
-            .with_ignore_fix(sema, file_id),
-        )
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
@@ -229,7 +123,6 @@ mod tests {
     use crate::DiagnosticsConfig;
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix;
-    use crate::tests::check_nth_fix;
 
     pub(crate) fn check_diagnostics(fixture: &str) {
         let config = DiagnosticsConfig::default().disable(elp_ide_db::DiagnosticCode::NoSize);
@@ -336,60 +229,6 @@ mod tests {
    go() -> ok.
     "#,
         )
-    }
-
-    #[test]
-    fn test_private() {
-        check_diagnostics(
-            r#"
-//- /src/main.erl
-  -module(main).
-  main() ->
-    dependency:exists(),
-    dependency:private().
-%%  ^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'dependency:private/0' is not exported.
-  exists() -> ok.
-//- /src/dependency.erl
-  -module(dependency).
-  -export([exists/0]).
-  exists() -> ok.
-  private() -> ok.
-            "#,
-        )
-    }
-
-    #[test]
-    fn test_private_same_module() {
-        check_diagnostics(
-            r#"
-//- /src/main.erl
-  -module(main).
-  main() ->
-    ?MODULE:private(),
-%%  ^^^^^^^^^^^^^^^ 💡 warning: Function 'main:private/0' is not exported.
-    main:private().
-%%  ^^^^^^^^^^^^ 💡 warning: Function 'main:private/0' is not exported.
-
-  private() -> ok.
-            "#,
-        )
-    }
-
-    #[test]
-    fn remote_call_to_header() {
-        check_diagnostics(
-            r#"
-//- /src/main.erl
--module(main).
--include("header.hrl").
-
-foo() -> main:bar().
-%%       ^^^^^^^^ 💡 warning: Function 'main:bar/0' is not exported.
-
-//- /src/header.hrl
-  bar() -> ok.
-"#,
-        );
     }
 
     #[test]
@@ -512,66 +351,6 @@ main() ->
 
 exists() -> ok.
 "#]],
-        )
-    }
-
-    #[test]
-    fn test_export_fix_ignore() {
-        check_fix(
-            r#"
-//- /src/main.erl
--module(main).
-
-main() ->
-  dep:exists(),
-  dep:pr~ivate().
-
-//- /src/dep.erl
--module(dep).
--export([exists/0]).
-exists() -> ok.
-private() -> ok.
-"#,
-            expect![[r#"
--module(main).
-
-main() ->
-  dep:exists(),
-  % elp:ignore W0026 (unexported_function)
-  dep:private().
-
-"#]],
-        )
-    }
-
-    #[test]
-    fn test_export_fix() {
-        check_nth_fix(
-            1,
-            r#"
-//- /src/main.erl
--module(main).
-
-main() ->
-  dep:exists(),
-  dep:pr~ivate().
-
-exists() -> ok.
-//- /src/dep.erl
--module(dep).
--export([exists/0]).
-exists() -> ok.
-private() -> ok.
-"#,
-            expect![[r#"
--module(dep).
--export([exists/0, private/0]).
-exists() -> ok.
-private() -> ok.
-"#]],
-            DiagnosticsConfig::default().set_experimental(true),
-            &vec![],
-            crate::tests::IncludeCodeActionAssists::Yes,
         )
     }
 
