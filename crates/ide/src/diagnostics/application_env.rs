@@ -135,6 +135,7 @@ fn process_badmatches(
         sema,
         def,
         mfas,
+        &[],
         &move |CheckCallCtx {
                    t, args, in_clause, ..
                }: CheckCallCtx<'_, &BadEnvCallAction>| match t {

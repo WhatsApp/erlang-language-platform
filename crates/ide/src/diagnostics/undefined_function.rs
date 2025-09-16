@@ -52,6 +52,17 @@ impl FunctionCallLinter for UndefinedFunctionLinter {
         lazy_function_matches![vec![FunctionMatch::any()]]
     }
 
+    // T237551085: Once linters can take a custom configuration via the TOML files, move this to a config
+    fn excludes_functions(&self) -> Vec<FunctionMatch> {
+        lazy_function_matches![vec![
+            FunctionMatch::m("lager"),
+            FunctionMatch::m("graphql_scanner"),
+            FunctionMatch::m("graphql_parser"),
+            FunctionMatch::m("thrift_scanner"),
+            FunctionMatch::m("thrift_parser"),
+        ]]
+    }
+
     fn match_description(&self, context: &Self::Context) -> Cow<'_, str> {
         match context {
             None => Cow::Borrowed(self.description()),
@@ -67,7 +78,7 @@ impl FunctionCallLinter for UndefinedFunctionLinter {
                 let arity = context.args.arity();
                 let module = &def_fb[*module];
                 let name = &def_fb[*name];
-                if in_exclusion_list(sema, module, name, arity)
+                if sema.is_atom_named(name, &known::module_info) && (arity == 0 || arity == 1)
                     || sema
                         .resolve_module_expr(def_fb.file_id(), module)
                         .is_some_and(|module| is_automatically_added(sema, module, name, arity))
@@ -103,16 +114,6 @@ fn is_automatically_added(sema: &Semantic, module: Module, function: &Expr, arit
         || sema.is_atom_named(function, &known::behavior_info);
 
     function_name_is_behaviour_info && arity == 1 && module_has_callbacks_defined
-}
-
-// T237551085: Once linters can take a custom configuration via the TOML files, move this to a config
-fn in_exclusion_list(sema: &Semantic, module: &Expr, function: &Expr, arity: u32) -> bool {
-    sema.is_atom_named(function, &known::module_info) && (arity == 0 || arity == 1)
-        || sema.is_atom_named(module, &known::lager)
-        || sema.is_atom_named(module, &known::graphql_scanner)
-        || sema.is_atom_named(module, &known::graphql_parser)
-        || sema.is_atom_named(module, &known::thrift_scanner)
-        || sema.is_atom_named(module, &known::thrift_parser)
 }
 
 #[cfg(test)]

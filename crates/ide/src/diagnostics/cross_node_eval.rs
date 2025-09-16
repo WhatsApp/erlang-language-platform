@@ -83,6 +83,7 @@ fn process_badmatches(
         sema,
         def,
         bad,
+        &[],
         &move |ctx| match ctx.t {
             Some(m) => Some(*m),
             None => Some(r#"Production code must not use cross node eval (e.g. `rpc:call()`)"#),

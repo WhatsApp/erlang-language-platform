@@ -522,11 +522,13 @@ pub(crate) fn find_call_in_function<CallCtx, MakeCtx, Res>(
     sema: &Semantic,
     def: &FunctionDef,
     mfas: &[(&FunctionMatch, CallCtx)],
+    excluded_mfas: &[(&FunctionMatch, CallCtx)],
     check_call: CheckCall<CallCtx, MakeCtx>,
     make: Make<MakeCtx, Res>,
 ) -> Option<()> {
     let def_fb = def.in_function_body(sema, def);
     let matcher = FunctionMatcher::new(mfas);
+    let excluded_matcher = FunctionMatcher::new(excluded_mfas);
     def_fb.clone().fold_function(
         Strategy {
             macros: MacroStrategy::ExpandButIncludeMacroCall,
@@ -544,7 +546,13 @@ pub(crate) fn find_call_in_function<CallCtx, MakeCtx, Res>(
                 },
                 AnyExpr::Expr(Expr::Call { target, args }) => Some((target, Args::Args(args))),
                 _ => None,
-            } && let Some((mfa, t)) = matcher.get_match(
+            } && let None = excluded_matcher.get_match(
+                &target,
+                args.arity(),
+                Some(&args.as_vec()),
+                sema,
+                &def_fb.body(clause_id),
+            ) && let Some((mfa, t)) = matcher.get_match(
                 &target,
                 args.arity(),
                 Some(&args.as_vec()),
@@ -664,6 +672,7 @@ mod tests {
             sema,
             def,
             &mfas,
+            &[],
             &move |_ctx| Some("Diagnostic Message"),
             &move |ctx @ MatchCtx {
                        sema,

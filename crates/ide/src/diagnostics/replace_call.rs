@@ -82,6 +82,7 @@ pub fn replace_call_site_if_args_match(
             sema,
             def,
             &[(fm, ())],
+            &[],
             &args_match,
             &move |MatchCtx {
                        sema,

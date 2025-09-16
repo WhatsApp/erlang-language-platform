@@ -65,6 +65,7 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
         sema,
         def,
         &[(&FunctionMatch::mf("meck", "new"), ())],
+        &[],
         &move |CheckCallCtx {
                    args,
                    in_clause: def_fb,

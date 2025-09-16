@@ -596,6 +596,11 @@ pub(crate) trait FunctionCallLinter: Linter {
         vec![]
     }
 
+    // Specify a list of functions the linter should exclude from the check.
+    fn excludes_functions(&self) -> Vec<FunctionMatch> {
+        vec![]
+    }
+
     // Custom check for the function call. Returning None for a given call skips processing.
     // By default all calls are included.
     // The callback returns a function that can be used in subsequent callbacks.
@@ -638,7 +643,10 @@ impl<T: FunctionCallLinter> FunctionCallDiagnostics for T {
     ) -> Vec<Diagnostic> {
         let mut diagnostics = Vec::new();
         let matches = self.matches_functions();
+        let excluded_matches = self.excludes_functions();
         let mfas: Vec<(&FunctionMatch, ())> = matches.iter().map(|m| (m, ())).collect();
+        let excluded_mfas: Vec<(&FunctionMatch, ())> =
+            excluded_matches.iter().map(|m| (m, ())).collect();
         sema.def_map_local(file_id)
             .get_functions()
             .for_each(|(_, def)| {
@@ -647,6 +655,7 @@ impl<T: FunctionCallLinter> FunctionCallDiagnostics for T {
                     sema,
                     def,
                     &mfas,
+                    &excluded_mfas,
                     &move |ctx| self.check_match(&ctx),
                     &move |ctx @ MatchCtx {
                                sema,
