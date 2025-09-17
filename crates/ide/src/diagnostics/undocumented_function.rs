@@ -93,8 +93,8 @@ fn check_function(
     callbacks: &FxHashSet<NameArity>,
 ) {
     if function_should_be_checked(sema, def, callbacks)
-        && def.doc_id.is_none()
-        && def.doc_metadata_id.is_none()
+        && !def.has_doc_attribute()
+        && !def.has_doc_attribute_metadata()
         && def.edoc_comments(sema.db).is_none()
         && let Some(name_range) = def.name_range(sema.db)
     {

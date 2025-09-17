@@ -113,6 +113,11 @@ impl Module {
     pub fn is_in_otp(&self, db: &dyn DefDatabase) -> bool {
         is_in_otp(self.file.file_id, db)
     }
+
+    pub fn has_moduledoc(&self, db: &dyn DefDatabase) -> bool {
+        let forms = db.file_form_list(self.file.file_id);
+        forms.moduledoc_attributes().next().is_some()
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -350,6 +355,14 @@ impl FunctionDef {
 
     pub fn code_complexity(&self, sema: &Semantic, score_cap: Option<usize>) -> CodeComplexity {
         code_complexity::compute(sema, self, score_cap)
+    }
+
+    pub fn has_doc_attribute(&self) -> bool {
+        self.doc_id.is_some()
+    }
+
+    pub fn has_doc_attribute_metadata(&self) -> bool {
+        self.doc_metadata_id.is_some()
     }
 }
 
