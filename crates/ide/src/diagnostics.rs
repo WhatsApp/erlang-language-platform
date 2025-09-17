@@ -1011,6 +1011,15 @@ impl DiagnosticsConfig {
                 _ => false,
             })
     }
+
+    fn erlang_service_warning_severity(&self) -> Severity {
+        if let Some(lint_config) = &self.lint_config
+            && lint_config.erlang_service.warnings_as_errors
+        {
+            return Severity::Error;
+        }
+        Severity::Warning
+    }
 }
 
 impl LintConfig {
@@ -1066,9 +1075,17 @@ pub struct LintConfig {
     #[serde(default)]
     pub disabled_lints: Vec<DiagnosticCode>,
     #[serde(default)]
+    pub erlang_service: ErlangServiceConfig,
+    #[serde(default)]
     pub ad_hoc_lints: LintsFromConfig,
     #[serde(default)]
     pub linters: FxHashMap<DiagnosticCode, LinterConfig>,
+}
+
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
+pub struct ErlangServiceConfig {
+    #[serde(default)]
+    pub warnings_as_errors: bool,
 }
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
@@ -1774,6 +1791,8 @@ pub fn erlang_service_diagnostics(
                 warning_info.insert(val);
             });
 
+        let warning_severity = config.erlang_service_warning_severity();
+
         let diags: Vec<(FileId, Diagnostic)> = error_info
             .into_iter()
             .map(|(file_id, start, end, code, msg)| {
@@ -1801,7 +1820,7 @@ pub fn erlang_service_diagnostics(
                                     msg,
                                     TextRange::new(start, end),
                                 )
-                                .with_severity(Severity::Warning),
+                                .with_severity(warning_severity),
                             ),
                         )
                     }),

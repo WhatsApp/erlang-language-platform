@@ -1863,6 +1863,21 @@ mod tests {
         }
     }
 
+    #[test]
+    fn lint_warnings_as_errors() {
+        simple_snapshot_expect_error(
+            args_vec![
+                "lint",
+                "--config-file",
+                "../../test_projects/linter/elp_lint_warnings_as_errors.toml"
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/warnings_as_errors.stdout"),
+            true,
+            None,
+        )
+    }
+
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalizer_tests_check(buck: bool) {

@@ -159,6 +159,7 @@ pub fn read_lint_config_file(project: &Path, config_file: &Option<String>) -> Re
 mod tests {
     use elp_ide::FunctionMatch;
     use elp_ide::diagnostics::DiagnosticCode;
+    use elp_ide::diagnostics::ErlangServiceConfig;
     use elp_ide::diagnostics::Lint;
     use elp_ide::diagnostics::LintsFromConfig;
     use elp_ide::diagnostics::ReplaceCall;
@@ -190,10 +191,14 @@ mod tests {
                 ],
             },
             linters: FxHashMap::default(),
+            erlang_service: ErlangServiceConfig::default(),
         };
         expect![[r#"
             enabled_lints = ["W0011"]
             disabled_lints = []
+
+            [erlang_service]
+            warnings_as_errors = false
             [[ad_hoc_lints.lints]]
             type = "ReplaceCall"
 

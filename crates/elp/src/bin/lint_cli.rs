@@ -935,6 +935,7 @@ mod tests {
     use elp::cli::Fake;
     use elp_ide::FunctionMatch;
     use elp_ide::diagnostics::DiagnosticCode;
+    use elp_ide::diagnostics::ErlangServiceConfig;
     use elp_ide::diagnostics::Lint;
     use elp_ide::diagnostics::LintsFromConfig;
     use elp_ide::diagnostics::ReplaceCall;
@@ -968,12 +969,18 @@ mod tests {
             enabled_lints: vec![DiagnosticCode::HeadMismatch],
             disabled_lints: vec![],
             linters: FxHashMap::default(),
+            erlang_service: ErlangServiceConfig {
+                warnings_as_errors: true,
+            },
         })
         .unwrap();
 
         expect![[r#"
             enabled_lints = ["P1700"]
             disabled_lints = []
+            
+            [erlang_service]
+            warnings_as_errors = true
             [[ad_hoc_lints.lints]]
             type = "ReplaceCall"
 
@@ -1007,6 +1014,9 @@ mod tests {
                     TrivialMatch,
                 ],
                 disabled_lints: [],
+                erlang_service: ErlangServiceConfig {
+                    warnings_as_errors: false,
+                },
                 ad_hoc_lints: LintsFromConfig {
                     lints: [],
                 },
