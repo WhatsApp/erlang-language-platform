@@ -369,7 +369,6 @@ enum BuckTargetOrigin {
     #[default]
     App,
     Dep,
-    Prelude,
 }
 
 // Serde serialization via String
@@ -378,7 +377,6 @@ impl From<BuckTargetOrigin> for String {
         match val {
             BuckTargetOrigin::App => "app".to_string(),
             BuckTargetOrigin::Dep => "dep".to_string(),
-            BuckTargetOrigin::Prelude => "prelude".to_string(),
         }
     }
 }
@@ -398,7 +396,6 @@ impl TryFrom<&str> for BuckTargetOrigin {
         match value {
             "app" => Ok(BuckTargetOrigin::App),
             "dep" => Ok(BuckTargetOrigin::Dep),
-            "prelude" => Ok(BuckTargetOrigin::Prelude),
             _ => Err(format!(
                 "bad origin value '{value}', expected 'app', 'dep', or 'prelude'."
             )),
@@ -533,38 +530,20 @@ fn load_buck_targets_bxl(
     let mut used_deps = FxHashSet::default();
 
     for (name, buck_target) in &buck_targets {
-        if buck_target.origin != BuckTargetOrigin::Prelude
-            && let Ok(target) = make_buck_target(
-                root,
-                name,
-                buck_target,
-                buck_config.build_deps,
-                &mut dep_path,
-                &mut target_info,
-            )
-        {
+        if let Ok(target) = make_buck_target(
+            root,
+            name,
+            buck_target,
+            buck_config.build_deps,
+            &mut dep_path,
+            &mut target_info,
+        ) {
             for target_name in &target.apps {
                 used_deps.insert(target_name.clone());
             }
             for target_name in &target.deps {
                 used_deps.insert(target_name.clone());
             }
-            target_info.targets.insert(name.clone(), target);
-        }
-    }
-    // Insert used prelude values too
-    for name in &used_deps {
-        if let Some(buck_target) = &buck_targets.get(name)
-            && buck_target.origin == BuckTargetOrigin::Prelude
-            && let Ok(target) = make_buck_target(
-                root,
-                name,
-                buck_target,
-                buck_config.build_deps,
-                &mut dep_path,
-                &mut target_info,
-            )
-        {
             target_info.targets.insert(name.clone(), target);
         }
     }
