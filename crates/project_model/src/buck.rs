@@ -729,10 +729,6 @@ pub fn query_buck_targets_bxl(
         targets.push("--included_targets");
         targets.push(target);
     }
-    for deps_target in &buck_config.deps_targets {
-        targets.push("--deps_targets");
-        targets.push(deps_target);
-    }
     let build_args = if build == &BuckQueryConfig::BuildGeneratedCode {
         vec!["--build_generated_code", "true"]
     } else {
