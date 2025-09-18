@@ -1330,7 +1330,7 @@ mod tests {
     fn lint_config_file_used(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix(
+        check_lint_fix_stderr(
             args_vec![
                 "lint",
                 "--diagnostic-filter",
@@ -1347,6 +1347,9 @@ mod tests {
             Path::new("../resources/test/lint/lint_recursive"),
             &[],
             false,
+            Some(expect![[r#"
+                Errors found
+            "#]]),
         )
         .expect("bad test");
     }
@@ -1537,7 +1540,7 @@ mod tests {
     fn lint_explicit_enable_diagnostic(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix(
+        check_lint_fix_stderr(
             args_vec![
                 "lint",
                 "--config-file",
@@ -1552,6 +1555,9 @@ mod tests {
             Path::new("../resources/test/lint/lint_recursive"),
             &[],
             false,
+            Some(expect![[r#"
+                Errors found
+            "#]]),
         )
         .expect("bad test");
     }
@@ -1561,7 +1567,7 @@ mod tests {
     fn lint_json_output(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix(
+        check_lint_fix_stderr(
             args_vec![
                 "lint",
                 "--diagnostic-filter",
@@ -1579,6 +1585,9 @@ mod tests {
             Path::new("../resources/test/lint/lint_recursive"),
             &[],
             false,
+            Some(expect![[r#"
+                Errors found
+            "#]]),
         )
         .expect("bad test");
     }
@@ -1588,7 +1597,7 @@ mod tests {
     fn lint_json_output_prefix(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix(
+        check_lint_fix_stderr(
             args_vec![
                 "lint",
                 "--diagnostic-filter",
@@ -1608,6 +1617,9 @@ mod tests {
             Path::new("../resources/test/lint/lint_recursive"),
             &[],
             false,
+            Some(expect![[r#"
+                Errors found
+            "#]]),
         )
         .expect("bad test");
     }
@@ -1617,7 +1629,7 @@ mod tests {
     fn lint_applies_fix_using_to_dir(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix(
+        check_lint_fix_stderr(
             args_vec![
                 "lint",
                 "--module",
@@ -1626,7 +1638,7 @@ mod tests {
                 "P1700",
                 "--to",
                 tmp_path,
-                "--apply-fix"
+                "--apply-fix",
             ],
             "diagnostics",
             expect_file!("../resources/test/diagnostics/parse_elp_lint_fix.stdout"),
@@ -1637,6 +1649,9 @@ mod tests {
             Path::new("../resources/test/lint/head_mismatch"),
             &[("app_a/src/lints.erl", "lints.erl")],
             false,
+            Some(expect![[r#"
+                Errors found
+            "#]]),
         )
         .expect("Bad test");
     }
@@ -1646,7 +1661,7 @@ mod tests {
     fn lint_applies_fix_using_to_dir_json_output(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix(
+        check_lint_fix_stderr(
             args_vec![
                 "lint",
                 "--module",
@@ -1668,6 +1683,9 @@ mod tests {
             Path::new("../resources/test/lint/head_mismatch"),
             &[("app_a/src/lints.erl", "lints.erl")],
             false,
+            Some(expect![[r#"
+                Errors found
+            "#]]),
         )
         .expect("Bad test");
     }
@@ -1688,7 +1706,7 @@ mod tests {
 
     fn do_lint_applies_fix_in_place(buck: bool) {
         let project = "in_place_tests";
-        check_lint_fix(
+        check_lint_fix_stderr(
             args_vec![
                 "lint",
                 "--module",
@@ -1707,6 +1725,9 @@ mod tests {
             Path::new("../resources/test/lint/head_mismatch"),
             &[("app_a/src/lints.erl", "app_a/src/lints.erl")],
             true,
+            Some(expect![[r#"
+                Errors found
+            "#]]),
         )
         .expect("Bad test");
     }
@@ -1746,7 +1767,7 @@ mod tests {
     fn lint_applies_code_action_fixme_if_requested(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix(
+        check_lint_fix_stderr(
             args_vec![
                 "lint",
                 "--module",
@@ -1767,6 +1788,9 @@ mod tests {
             Path::new("../resources/test/lint/ignore_app_env"),
             &[("app_a/src/spelling.erl", "spelling.erl")],
             false,
+            Some(expect![[r#"
+                Errors found
+            "#]]),
         )
         .expect("Bad test");
     }
@@ -2400,6 +2424,8 @@ mod tests {
             );
             if let Some(expected_stderr) = expected_stderr {
                 expected_stderr.assert_eq(&stderr);
+            } else {
+                expect![[""]].assert_eq(&stderr);
             }
             assert_normalised_file(expected, &stdout, path, false);
             for (expected_file, file) in files {
