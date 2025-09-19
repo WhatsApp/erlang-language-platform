@@ -12,102 +12,56 @@
 //!
 //! Return a diagnostic for rpc calls to remote nodes.
 
-use elp_ide_db::elp_base_db::FileId;
-use hir::FunctionDef;
-use hir::Semantic;
-use lazy_static::lazy_static;
-
-use super::Diagnostic;
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
 use crate::codemod_helpers::FunctionMatch;
-use crate::codemod_helpers::MatchCtx;
-use crate::codemod_helpers::find_call_in_function;
-// @fb-only
 use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::FunctionCallLinter;
+use crate::diagnostics::Linter;
 use crate::diagnostics::Severity;
+use crate::lazy_function_matches;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: false,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        cross_node_eval(diags, sema, file_id);
-    },
-};
+pub(crate) struct CrossNodeEvalLinter;
 
-fn cross_node_eval(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    sema.def_map(file_id)
-        .get_functions()
-        .for_each(|(_, def)| check_function(diags, sema, def));
-}
-
-fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
-    lazy_static! {
-        static ref BAD_MATCHES: Vec<(FunctionMatch, Option<&'static str>)> = vec![
-            vec![(FunctionMatch::m("rpc"), None)],
-            vec![(FunctionMatch::mf(
-                "erts_internal_dist",
-                "dist_spawn_request",
-            ), None)],
-            vec![(FunctionMatch::mf("sys", "install"), None)],
-            FunctionMatch::mfas("erlang", "spawn", vec![2, 4]).into_iter().map(|fm| (fm,None)).collect(),
-            FunctionMatch::mfas("erlang", "spawn_link", vec![2, 4]).into_iter().map(|fm| (fm,None)).collect(),
-            FunctionMatch::mfas("erlang", "spawn_monitor", vec![2, 4]).into_iter().map(|fm| (fm,None)).collect(),
-            FunctionMatch::mfas("erlang", "spawn_opt", vec![3, 5]).into_iter().map(|fm| (fm,None)).collect(),
-            FunctionMatch::mfas("sys", "install", vec![2, 3]).into_iter().map(|fm| (fm,None)).collect(),
-            // @fb-only
-        ]
-        .into_iter()
-        .flatten()
-        .collect::<Vec<_>>();
-
-        static ref BAD_MATCHES_MFAS: Vec<(&'static FunctionMatch, &'static Option<&'static str>)>
-            = BAD_MATCHES.iter().map(|(b, m)| (b, m)).collect::<Vec<_>>();
+impl Linter for CrossNodeEvalLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::CrossNodeEval
     }
-
-    process_badmatches(diags, sema, def, &BAD_MATCHES_MFAS);
+    fn description(&self) -> &'static str {
+        "Production code must not use cross node eval (e.g. `rpc:call()`)"
+    }
+    fn severity(&self) -> Severity {
+        Severity::Error
+    }
+    fn should_process_test_files(&self) -> bool {
+        false
+    }
 }
 
-fn process_badmatches(
-    diags: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    def: &FunctionDef,
-    bad: &[(&FunctionMatch, &Option<&str>)],
-) {
-    find_call_in_function(
-        diags,
-        sema,
-        def,
-        bad,
-        &[],
-        &move |ctx| match ctx.t {
-            Some(m) => Some(*m),
-            None => Some(r#"Production code must not use cross node eval (e.g. `rpc:call()`)"#),
-        },
-        &move |ctx @ MatchCtx {
-                   sema,
-                   def_fb,
-                   extra,
-                   ..
-               }: MatchCtx<'_, &str>| {
-            let range = ctx.range_mf_or_macro();
-            if def.file.file_id == range.file_id {
-                let diag = Diagnostic::new(DiagnosticCode::CrossNodeEval, *extra, range.range)
-                    .with_severity(Severity::Error)
-                    .with_ignore_fix(sema, def_fb.file_id());
-                Some(diag)
-            } else {
-                None
-            }
-        },
-    );
+impl FunctionCallLinter for CrossNodeEvalLinter {
+    type Context = ();
+
+    fn matches_functions(&self) -> Vec<FunctionMatch> {
+        lazy_function_matches![
+            vec![
+                vec![FunctionMatch::m("rpc")],
+                vec![FunctionMatch::mf(
+                    "erts_internal_dist",
+                    "dist_spawn_request"
+                )],
+                vec![FunctionMatch::mf("sys", "install")],
+                FunctionMatch::mfas("erlang", "spawn", vec![2, 4]),
+                FunctionMatch::mfas("erlang", "spawn_link", vec![2, 4]),
+                FunctionMatch::mfas("erlang", "spawn_monitor", vec![2, 4]),
+                FunctionMatch::mfas("erlang", "spawn_opt", vec![3, 5]),
+                FunctionMatch::mfas("sys", "install", vec![2, 3]),
+            ]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+        ]
+    }
 }
 
-// ---------------------------------------------------------------------
+pub static LINTER: CrossNodeEvalLinter = CrossNodeEvalLinter;
 
 #[cfg(test)]
 mod tests {

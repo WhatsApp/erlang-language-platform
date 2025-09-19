@@ -1902,6 +1902,23 @@ mod tests {
         )
     }
 
+    #[test]
+    fn lint_custom_function_matches() {
+        simple_snapshot(
+            args_vec![
+                "lint",
+                "--config-file",
+                "../../test_projects/linter/elp_lint_custom_function_matches.toml",
+                "--module",
+                "custom_function_matches"
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/custom_function_matches.stdout"),
+            true,
+            None,
+        )
+    }
+
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalizer_tests_check(buck: bool) {

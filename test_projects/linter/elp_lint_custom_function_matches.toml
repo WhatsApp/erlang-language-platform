@@ -1,0 +1,10 @@
+[linters.undefined_function]
+exclude = [
+    {type = "MFA", mfa = "excluded:function/0"},
+    {type = "M", module = "cross"}
+]
+
+[linters.cross_node_eval]
+include = [
+    {type = "M", module = "cross_node"}
+]

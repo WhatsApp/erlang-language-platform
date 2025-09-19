@@ -1,5 +1,5 @@
 Reporting all diagnostics codes
-Diagnostics reported in 7 modules:
+Diagnostics reported in 8 modules:
   app_a: 8
       4:4-4:34::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
       0:0-0:0::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
@@ -24,6 +24,10 @@ Diagnostics reported in 7 modules:
       0:0-0:0::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
       0:8-0:26::[WeakWarning] [W0046] The module is not documented.
       4:4-4:5::[Error] [L1268] variable 'X' is unused
+  custom_function_matches: 3
+      12:4-12:21::[Warning] [W0017] Function 'excluded:function/0' is undefined.
+      13:4-13:25::[Warning] [W0017] Function 'not_excluded:function/0' is undefined.
+      14:4-14:14::[Warning] [W0017] Function 'cross:call/0' is undefined.
   expression_updates_literal: 3
       1:8-1:34::[WeakWarning] [W0046] The module is not documented.
       6:0-6:5::[Error] [L1309] missing specification for function a_fun/0

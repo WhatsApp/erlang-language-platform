@@ -645,9 +645,14 @@ impl<T: FunctionCallLinter> FunctionCallDiagnostics for T {
     ) -> Vec<Diagnostic> {
         let mut diagnostics = Vec::new();
         let matches = self.matches_functions();
+        let included_matches_from_config = &config.include.clone().unwrap_or_default();
         let excluded_matches = self.excludes_functions();
         let excluded_matches_from_config = &config.exclude.clone().unwrap_or_default();
-        let mfas: Vec<(&FunctionMatch, ())> = matches.iter().map(|m| (m, ())).collect();
+        let mfas: Vec<(&FunctionMatch, ())> = matches
+            .iter()
+            .chain(included_matches_from_config)
+            .map(|m| (m, ()))
+            .collect();
         let excluded_mfas: Vec<(&FunctionMatch, ())> = excluded_matches
             .iter()
             .chain(excluded_matches_from_config)
@@ -1090,6 +1095,7 @@ pub struct ErlangServiceConfig {
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct FunctionCallLinterConfig {
+    include: Option<Vec<FunctionMatch>>,
     exclude: Option<Vec<FunctionMatch>>,
 }
 
@@ -1351,7 +1357,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &deprecated_function::DESCRIPTOR,
         &head_mismatch::DESCRIPTOR_SEMANTIC,
         &missing_separator::DESCRIPTOR,
-        &cross_node_eval::DESCRIPTOR,
         &boolean_precedence::DESCRIPTOR,
         &record_tuple_match::DESCRIPTOR,
         &unspecific_include::DESCRIPTOR,
@@ -1423,6 +1428,7 @@ const FUNCTION_CALL_LINTERS: &[&dyn FunctionCallDiagnostics] = &[
     &atoms_exhaustion::LINTER,
     &undefined_function::LINTER,
     &unexported_function::LINTER,
+    &cross_node_eval::LINTER,
 ];
 
 /// SSR pattern linters that use structural search and replace patterns
