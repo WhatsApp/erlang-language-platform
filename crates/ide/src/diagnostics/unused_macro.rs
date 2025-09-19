@@ -48,14 +48,11 @@ fn unused_macro(
     file_kind: FileKind,
 ) -> Option<()> {
     if file_kind.is_module() {
-        let def_map = sema.def_map(file_id);
+        let def_map = sema.def_map_local(file_id);
         for (name, def) in def_map.get_macros() {
-            // Only run the check for macros defined in the local module,
-            // not in the included files.
-            if def.file.file_id == file_id
-                && !SymbolDefinition::Define(def.clone())
-                    .usages(sema)
-                    .at_least_one()
+            if !SymbolDefinition::Define(def.clone())
+                .usages(sema)
+                .at_least_one()
             {
                 let source = def.source(sema.db.upcast());
                 let macro_range = extend_range(source.syntax());
