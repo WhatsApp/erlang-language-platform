@@ -32,6 +32,7 @@ use elp_ide::elp_ide_db::elp_base_db::FilePosition;
 use elp_ide::elp_ide_db::elp_base_db::FileRange;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_log::telemetry;
+use elp_syntax::SmolStr;
 use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::CallHierarchyIncomingCall;
@@ -339,16 +340,22 @@ fn goto_definition_telemetry(snap: &Snapshot, targets: &[NavigationTarget], star
         .iter()
         .map(|tgt| snap.file_id_to_url(tgt.file_id))
         .collect();
+    let target_names: Vec<_> = targets.iter().map(|tgt| tgt.name.clone()).collect();
+    let target_kinds: Vec<_> = targets.iter().map(|tgt| tgt.kind).collect();
 
     #[derive(serde::Serialize)]
     struct Data {
         targets_include_generated: bool,
         target_urls: Vec<Url>,
+        target_names: Vec<SmolStr>,
+        target_kinds: Vec<SymbolKind>,
     }
 
     let detail = Data {
         targets_include_generated,
         target_urls,
+        target_names,
+        target_kinds,
     };
     let duration = start.elapsed().map(|e| e.as_millis()).unwrap_or(0) as u32;
     let data = serde_json::to_value(detail).unwrap_or_else(|err| {
