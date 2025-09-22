@@ -79,7 +79,7 @@ fn do_send(
 }
 
 pub fn send(typ: String, data: serde_json::Value) {
-    do_send(typ, data, None, None);
+    do_send(typ, data, None, Some(SystemTime::now()));
 }
 
 pub fn send_with_duration(
@@ -93,6 +93,8 @@ pub fn send_with_duration(
 
 #[cfg(test)]
 mod tests {
+    use std::time::SystemTime;
+
     use expect_test::expect;
 
     #[test]
@@ -101,12 +103,18 @@ mod tests {
         let data = serde_json::to_value("Hello telemetry!").unwrap();
         super::send(typ, data);
 
-        let msg = super::receiver().try_recv().unwrap();
+        let mut msg = super::receiver().try_recv().unwrap();
+        msg.start_time = msg.start_time.map(|_st| SystemTime::UNIX_EPOCH);
         expect![[r#"
             TelemetryMessage {
                 typ: "telemetry",
                 duration_ms: None,
-                start_time: None,
+                start_time: Some(
+                    SystemTime {
+                        tv_sec: 0,
+                        tv_nsec: 0,
+                    },
+                ),
                 data: String("Hello telemetry!"),
             }
         "#]]

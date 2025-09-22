@@ -90,6 +90,7 @@ use lsp_types::request::Request as _;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
 use parking_lot::RwLockWriteGuard;
+use serde::Serialize;
 use telemetry_manager::TelemetryManager;
 use vfs::Change;
 use vfs::loader::LoadingProgress;
@@ -199,6 +200,17 @@ pub enum Status {
     Loading(ProgressBar),
     Running,
     ShuttingDown,
+}
+
+impl std::fmt::Display for Status {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Status::Initialising => write!(f, "Initialising"),
+            Status::Loading(_progress_bar) => write!(f, "Loading"),
+            Status::Running => write!(f, "Running"),
+            Status::ShuttingDown => write!(f, "ShuttingDown"),
+        }
+    }
 }
 
 /// For buck projects we cannot rely on source roots, so if a new file
@@ -1495,6 +1507,7 @@ impl Server {
     fn transition(&mut self, status: Status) {
         if self.status != status {
             log::info!("transitioning from {:?} to {:?}", self.status, status);
+            self.send_state_change_telemetry(&status);
             self.status = status;
             if self.config.server_status_notification() {
                 self.send_notification::<lsp_ext::StatusNotification>(lsp_ext::StatusParams {
@@ -1502,6 +1515,24 @@ impl Server {
                 });
             }
         }
+    }
+
+    fn send_state_change_telemetry(&mut self, status: &Status) {
+        #[derive(Serialize)]
+        struct ServertState {
+            title: String,
+            old_state: String,
+            new_state: String,
+        }
+        let data = ServertState {
+            title: "ELP changing state".to_string(),
+            old_state: self.status.to_string(),
+            new_state: status.to_string(),
+        };
+        let data = serde_json::to_value(data).unwrap_or_else(|err| {
+            serde_json::Value::String(format!("JSON serialization failed: {err}"))
+        });
+        telemetry::send("elp_reporter_telemetry".to_string(), data);
     }
 
     fn show_message(&mut self, params: ShowMessageParams) {
