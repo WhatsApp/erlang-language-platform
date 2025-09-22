@@ -29,7 +29,7 @@ use hir::Semantic;
 use itertools::Itertools;
 use stdx::format_to;
 
-use crate::handlers::get_docs::get_doc_at_position;
+use crate::handlers::get_docs::get_doc_for_token;
 
 /// Contains information about an item signature as seen from a use site.
 ///
@@ -245,7 +245,8 @@ fn get_function_doc(
             .text_range()
             .start(),
     };
-    let (doc, _file_range) = get_doc_at_position(db, position)?;
+    let token = find_best_token(sema, position)?;
+    let doc = get_doc_for_token(db, sema, &token)?;
     Some(doc.markdown_text().to_string())
 }
 

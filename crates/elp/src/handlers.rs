@@ -17,6 +17,7 @@ use std::time::SystemTime;
 use anyhow::Result;
 use anyhow::bail;
 use elp_ide::Cancellable;
+use elp_ide::DocResult;
 use elp_ide::HighlightedRange;
 use elp_ide::NavigationTarget;
 use elp_ide::RangeInfo;
@@ -364,6 +365,24 @@ fn goto_definition_telemetry(snap: &Snapshot, targets: &[NavigationTarget], star
     telemetry::send_with_duration("goto_definition".to_string(), data, duration, start);
 }
 
+fn send_hover_telemetry(doc_result: &DocResult) {
+    #[derive(serde::Serialize)]
+    struct Data {
+        docs_found: bool,
+        text: String,
+        kind: String,
+    }
+    let detail = Data {
+        docs_found: doc_result.doc.is_some(),
+        text: doc_result.token_text.clone(),
+        kind: format!("{:?}", doc_result.token_kind),
+    };
+    let data = serde_json::to_value(detail).unwrap_or_else(|err| {
+        serde_json::Value::String(format!("JSON serialization failed: {err}"))
+    });
+    telemetry::send("hover".to_string(), data);
+}
+
 pub(crate) fn handle_goto_type_definition(
     snap: Snapshot,
     params: lsp_types::GotoDefinitionParams,
@@ -456,8 +475,10 @@ pub(crate) fn handle_completion_resolve(
             position.offset = snap
                 .analysis
                 .clamp_offset(position.file_id, position.offset)?;
-            if let Ok(Some(res)) = snap.analysis.get_docs_at_position(position) {
-                let docs = res.0.markdown_text().to_string();
+            if let Ok(Some(doc_result)) = snap.analysis.get_docs_at_position(position)
+                && let Some(doc) = doc_result.doc
+            {
+                let docs = doc.markdown_text().to_string();
                 let documentation =
                     lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
                         kind: lsp_types::MarkupKind::Markdown,
@@ -582,8 +603,13 @@ pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option
         }
     }
 
-    if let Some(hover) = snap.analysis.get_docs_at_position(position)? {
-        docs.push(hover);
+    if let Some(doc_result) = snap.analysis.get_docs_at_position(position)? {
+        send_hover_telemetry(&doc_result);
+        let doc = doc_result.doc;
+        if let Some(doc) = doc {
+            let range = doc_result.token_range;
+            docs.push((doc, Some(range)));
+        }
     }
 
     if let Some(macro_expansion) = snap.analysis.expand_macro(position)? {

@@ -54,12 +54,14 @@ use elp_ide_db::elp_base_db::salsa;
 use elp_ide_db::elp_base_db::salsa::ParallelDatabase;
 use elp_ide_db::eqwalizer::type_references;
 use elp_ide_db::erlang_service::ParseResult;
+use elp_ide_db::find_best_token;
 use elp_ide_db::rename::RenameError;
 use elp_ide_db::source_change::SourceChange;
 use elp_project_model::AppName;
 use elp_project_model::AppType;
 use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
+use elp_syntax::SyntaxKind;
 use elp_syntax::algo::ancestors_at_offset;
 use elp_syntax::ast;
 use elp_syntax::label::Label;
@@ -166,6 +168,13 @@ impl<T> RangeInfo<T> {
 #[derive(Debug, Default)]
 pub struct AnalysisHost {
     db: RootDatabase,
+}
+
+pub struct DocResult {
+    pub doc: Option<Doc>,
+    pub token_kind: SyntaxKind,
+    pub token_text: String,
+    pub token_range: FileRange,
 }
 
 impl AnalysisHost {
@@ -609,11 +618,24 @@ impl Analysis {
     }
 
     /// Returns the docs for the symbol at the given position
-    pub fn get_docs_at_position(
-        &self,
-        position: FilePosition,
-    ) -> Cancellable<Option<(Doc, Option<FileRange>)>> {
-        self.with_db(|db| get_docs::get_doc_at_position(db, position))
+    pub fn get_docs_at_position(&self, position: FilePosition) -> Cancellable<Option<DocResult>> {
+        self.with_db(|db| {
+            let sema = hir::Semantic::new(db);
+            let token = find_best_token(&sema, position)?;
+            let doc = get_docs::get_doc_for_token(db, &sema, &token);
+            let range = FileRange {
+                file_id: token.file_id,
+                range: token.value.text_range(),
+            };
+            let text = token.value.text().to_string();
+            let kind = token.value.kind();
+            Some(DocResult {
+                doc,
+                token_range: range,
+                token_text: text,
+                token_kind: kind,
+            })
+        })
     }
 
     /// Returns available hover actions (rendered as buttons)
