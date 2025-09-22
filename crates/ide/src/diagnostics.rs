@@ -178,15 +178,8 @@ pub const DIAGNOSTIC_WHOLE_FILE_RANGE: TextRange = TextRange::empty(TextSize::ne
 /// strikethough for Deprecated
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiagnosticTag {
-    None,
     Unused,
     Deprecated,
-}
-
-impl Default for DiagnosticTag {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -195,7 +188,7 @@ pub struct Diagnostic {
     pub range: TextRange,
     pub severity: Severity,
     pub cli_severity: Option<Severity>,
-    pub tag: DiagnosticTag,
+    pub tag: Option<DiagnosticTag>,
     pub categories: FxHashSet<Category>,
     pub fixes: Option<Vec<Assist>>,
     pub related_info: Option<Vec<RelatedInformation>>,
@@ -212,7 +205,7 @@ impl Diagnostic {
             range,
             severity: Severity::Error,
             cli_severity: None,
-            tag: DiagnosticTag::None,
+            tag: None,
             categories: FxHashSet::default(),
             fixes: None,
             related_info: None,
@@ -253,13 +246,18 @@ impl Diagnostic {
         self
     }
 
+    pub(crate) fn with_tag(mut self, tag: Option<DiagnosticTag>) -> Diagnostic {
+        self.tag = tag;
+        self
+    }
+
     pub(crate) fn unused(mut self) -> Diagnostic {
-        self.tag = DiagnosticTag::Unused;
+        self.tag = Some(DiagnosticTag::Unused);
         self
     }
 
     pub(crate) fn deprecated(mut self) -> Diagnostic {
-        self.tag = DiagnosticTag::Deprecated;
+        self.tag = Some(DiagnosticTag::Deprecated);
         self
     }
 
@@ -798,6 +796,89 @@ impl<T: SsrPatternsLinter> SsrPatternsDiagnostics for T {
     }
 }
 
+pub(crate) struct GenericLinterMatchContext<Context> {
+    range: TextRange,
+    context: Context,
+}
+
+// A trait that simplifies writing generic linters
+pub(crate) trait GenericLinter: Linter {
+    /// Associated type - each linter defines its own
+    type Context: Clone + fmt::Debug + PartialEq + Default;
+
+    /// Return a list of matches for the linter
+    fn matches(
+        &self,
+        _sema: &Semantic,
+        _file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
+        None
+    }
+
+    /// Customize the description based on each match.
+    /// If implemented, it overrides the value of the `description()`.
+    fn match_description(&self, _context: &Self::Context) -> Cow<'_, str> {
+        Cow::Borrowed(self.description())
+    }
+
+    fn tag(&self, _context: &Self::Context) -> Option<DiagnosticTag> {
+        None
+    }
+
+    /// Return an optional vector of quick-fixes
+    fn fixes(
+        &self,
+        _context: &Self::Context,
+        _sema: &Semantic,
+        _file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        None
+    }
+}
+
+// Instances of the GenericLinter trait can specify a custom `Context` type,
+// which is passed around in callbacks.
+// To be able to keep a registry of all linters we define a blanket implementation for all the methods using the `Context`,
+// to keep the code generic while allowing individual linters to specify their own context type.
+pub(crate) trait GenericDiagnostics: Linter {
+    fn diagnostics(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+        severity: Severity,
+        cli_severity: Severity,
+    ) -> Vec<Diagnostic>;
+}
+
+impl<T: GenericLinter> GenericDiagnostics for T {
+    fn diagnostics(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+        severity: Severity,
+        cli_severity: Severity,
+    ) -> Vec<Diagnostic> {
+        let mut res = Vec::new();
+        if let Some(matches) = self.matches(sema, file_id) {
+            for matched in matches {
+                let message = self.match_description(&matched.context);
+                let fixes = self.fixes(&matched.context, sema, file_id);
+                let tag = self.tag(&matched.context);
+                let mut d = Diagnostic::new(self.id(), message, matched.range)
+                    .with_fixes(fixes)
+                    .with_tag(tag)
+                    .with_severity(severity)
+                    .with_cli_severity(cli_severity);
+                if self.can_be_suppressed() {
+                    d = d.with_ignore_fix(sema, file_id);
+                }
+                res.push(d);
+            }
+        }
+        res
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiagnosticConditions {
     pub experimental: bool,
@@ -1235,7 +1316,7 @@ pub fn eqwalizer_to_diagnostic(
         range,
         severity,
         cli_severity: None,
-        tag: DiagnosticTag::None,
+        tag: None,
         code: DiagnosticCode::Eqwalizer(d.code.clone()),
         message,
         categories: FxHashSet::default(),
@@ -1337,7 +1418,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &unused_function_args::DESCRIPTOR,
         &trivial_match::DESCRIPTOR,
         &redundant_assignment::DESCRIPTOR,
-        &unused_macro::DESCRIPTOR,
         &unused_record_field::DESCRIPTOR,
         &mutable_variable::DESCRIPTOR,
         &effect_free_statement::DESCRIPTOR,
@@ -1407,6 +1487,7 @@ pub fn diagnostics_from_descriptors(
 pub(crate) enum DiagnosticLinter {
     FunctionCall(&'static dyn FunctionCallDiagnostics),
     SsrPatterns(&'static dyn SsrPatternsDiagnostics),
+    Generic(&'static dyn GenericDiagnostics),
 }
 
 impl DiagnosticLinter {
@@ -1414,6 +1495,7 @@ impl DiagnosticLinter {
         match self {
             DiagnosticLinter::FunctionCall(linter) => *linter,
             DiagnosticLinter::SsrPatterns(linter) => *linter,
+            DiagnosticLinter::Generic(linter) => *linter,
         }
     }
 }
@@ -1439,6 +1521,9 @@ const SSR_PATTERN_LINTERS: &[&dyn SsrPatternsDiagnostics] = &[
     &could_be_a_string_literal::LINTER,
 ];
 
+/// Generic linters
+const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[&unused_macro::LINTER];
+
 /// Unified registry for all types of linters
 pub(crate) fn linters() -> Vec<DiagnosticLinter> {
     let mut all_linters = Vec::new();
@@ -1455,6 +1540,13 @@ pub(crate) fn linters() -> Vec<DiagnosticLinter> {
         SSR_PATTERN_LINTERS
             .iter()
             .map(|linter| DiagnosticLinter::SsrPatterns(*linter)),
+    );
+
+    // Add generic linters
+    all_linters.extend(
+        GENERIC_LINTERS
+            .iter()
+            .map(|linter| DiagnosticLinter::Generic(*linter)),
     );
 
     // Add meta-only linters
@@ -1528,6 +1620,11 @@ fn diagnostics_from_linters(
                         cli_severity,
                         &linter_config,
                     );
+                    res.extend(diagnostics);
+                }
+                DiagnosticLinter::Generic(generic_linter) => {
+                    let diagnostics =
+                        generic_linter.diagnostics(sema, file_id, severity, cli_severity);
                     res.extend(diagnostics);
                 }
             }
@@ -2905,7 +3002,7 @@ baz(1)->4.
                     range: TextRange::new(21.into(), 43.into()),
                     severity: Severity::Error,
                     cli_severity: None,
-                    tag: DiagnosticTag::None,
+                    tag: None,
                     categories: FxHashSet::default(),
                     fixes: None,
                     related_info: None,
@@ -2917,7 +3014,7 @@ baz(1)->4.
                     range: TextRange::new(74.into(), 79.into()),
                     severity: Severity::Error,
                     cli_severity: None,
-                    tag: DiagnosticTag::None,
+                    tag: None,
                     categories: FxHashSet::default(),
                     fixes: None,
                     related_info: None,
@@ -2929,7 +3026,7 @@ baz(1)->4.
                     range: TextRange::new(82.into(), 99.into()),
                     severity: Severity::Error,
                     cli_severity: None,
-                    tag: DiagnosticTag::None,
+                    tag: None,
                     categories: FxHashSet::default(),
                     fixes: None,
                     related_info: None,
@@ -2945,7 +3042,7 @@ baz(1)->4.
                 range: TextRange::new(106.into(), 108.into()),
                 severity: Severity::Error,
                 cli_severity: None,
-                tag: DiagnosticTag::None,
+                tag: None,
                 categories: FxHashSet::default(),
                 fixes: None,
                 related_info: None,

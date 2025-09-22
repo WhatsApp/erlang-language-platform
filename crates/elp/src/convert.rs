@@ -91,16 +91,15 @@ pub fn ide_to_lsp_diagnostic(
         source,
         message: d.message.clone(),
         related_information: from_related(line_index, url, &d.related_info),
-        tags: lsp_diagnostic_tags(&d.tag),
+        tags: d.tag.as_ref().map(lsp_diagnostic_tags),
         data: None,
     }
 }
 
-fn lsp_diagnostic_tags(d: &DiagnosticTag) -> Option<Vec<lsp_types::DiagnosticTag>> {
+fn lsp_diagnostic_tags(d: &DiagnosticTag) -> Vec<lsp_types::DiagnosticTag> {
     match d {
-        DiagnosticTag::None => None,
-        DiagnosticTag::Unused => Some(vec![lsp_types::DiagnosticTag::UNNECESSARY]),
-        DiagnosticTag::Deprecated => Some(vec![lsp_types::DiagnosticTag::DEPRECATED]),
+        DiagnosticTag::Unused => vec![lsp_types::DiagnosticTag::UNNECESSARY],
+        DiagnosticTag::Deprecated => vec![lsp_types::DiagnosticTag::DEPRECATED],
     }
 }
 

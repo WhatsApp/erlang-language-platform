@@ -12,73 +12,92 @@
 //
 // Return a warning if a macro defined in an .erl file has no references to it
 
+use std::borrow::Cow;
+
 use elp_ide_assists::Assist;
 use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::SymbolDefinition;
 use elp_ide_db::elp_base_db::FileId;
-use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::source_change::SourceChange;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
 use elp_text_edit::TextEdit;
 use hir::Semantic;
 
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use crate::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::DiagnosticTag;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
 use crate::fix;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: true,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, file_kind| {
-        unused_macro(diags, sema, file_id, file_kind);
-    },
-};
+pub(crate) struct UnusedMacroLinter;
 
-fn unused_macro(
-    acc: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-    file_kind: FileKind,
-) -> Option<()> {
-    if file_kind.is_module() {
+impl Linter for UnusedMacroLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::UnusedMacro
+    }
+    fn description(&self) -> &'static str {
+        "Unused macro."
+    }
+    fn should_process_generated_files(&self) -> bool {
+        true
+    }
+    fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
+        sema.db.file_kind(file_id).is_module()
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Context {
+    delete_range: TextRange,
+    name: String,
+}
+
+impl GenericLinter for UnusedMacroLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Context>>> {
+        let mut res = Vec::new();
         let def_map = sema.def_map_local(file_id);
         for (name, def) in def_map.get_macros() {
             if !SymbolDefinition::Define(def.clone())
                 .usages(sema)
                 .at_least_one()
+                && let Some(range) = def.name_range(sema.db)
             {
-                let source = def.source(sema.db.upcast());
-                let macro_range = extend_range(source.syntax());
-                let name_range = source.name()?.syntax().text_range();
-                let d = make_diagnostic(file_id, macro_range, name_range, &name.to_string());
-                acc.push(d);
+                let context = Context {
+                    delete_range: extend_range(def.source(sema.db).syntax()),
+                    name: name.to_string(),
+                };
+                res.push(GenericLinterMatchContext { range, context });
             }
         }
+        Some(res)
     }
-    Some(())
+
+    fn match_description(&self, context: &Self::Context) -> Cow<'_, str> {
+        Cow::Owned(format!("Unused macro ({})", context.name))
+    }
+
+    fn tag(&self, _context: &Self::Context) -> Option<super::DiagnosticTag> {
+        Some(DiagnosticTag::Unused)
+    }
+
+    fn fixes(&self, context: &Context, _sema: &Semantic, file_id: FileId) -> Option<Vec<Assist>> {
+        Some(vec![delete_unused_macro(
+            file_id,
+            context.delete_range,
+            &context.name,
+        )])
+    }
 }
 
-fn make_diagnostic(
-    file_id: FileId,
-    macro_range: TextRange,
-    name_range: TextRange,
-    name: &str,
-) -> Diagnostic {
-    Diagnostic::warning(
-        DiagnosticCode::UnusedMacro,
-        name_range,
-        format!("Unused macro ({name})"),
-    )
-    .unused()
-    .with_fixes(Some(vec![delete_unused_macro(file_id, macro_range, name)]))
-}
+pub static LINTER: UnusedMacroLinter = UnusedMacroLinter;
 
 fn delete_unused_macro(file_id: FileId, range: TextRange, name: &str) -> Assist {
     let mut builder = TextEdit::builder();
