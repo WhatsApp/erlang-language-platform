@@ -115,7 +115,7 @@ pub(crate) struct ReporterTelemetry {
     segment_start_time: SystemTime,
     #[serde(skip_serializing)]
     segment_message: String,
-    segments: FxHashMap<String, u32>,
+    segments: Vec<(String, u32)>,
 }
 
 impl ReporterTelemetryManager {
@@ -130,7 +130,7 @@ impl ReporterTelemetryManager {
             title: title.clone(),
             segment_start_time: time,
             segment_message: title,
-            segments: FxHashMap::default(),
+            segments: Vec::new(),
         };
         self.active.insert(token, val.clone());
         val
@@ -151,10 +151,10 @@ impl ReporterTelemetryManager {
 impl ReporterTelemetry {
     fn update(&mut self, message: Option<String>) {
         // First capture the prior segment timing
-        self.segments.insert(
+        self.segments.push((
             self.segment_message.clone(),
             self.segment_duration().as_millis() as u32,
-        );
+        ));
         // Then do the update
         if let Some(message) = message {
             let time = SystemTime::now();
@@ -231,10 +231,16 @@ mod test {
             // We sometimes run on a rollover boundary
             let expected = expected.replace("1", "0");
             expect![[r#"
-                {
-                    "Start message": 0,
-                    "update message": 0,
-                }
+                [
+                    (
+                        "Start message",
+                        0,
+                    ),
+                    (
+                        "update message",
+                        0,
+                    ),
+                ]
             "#]]
             .assert_eq(&expected);
         }
