@@ -20,6 +20,7 @@
 
 use std::time::SystemTime;
 
+use humantime::format_rfc3339_millis;
 use lazy_static::lazy_static;
 use serde::Deserialize;
 use serde::Serialize;
@@ -32,6 +33,8 @@ pub struct TelemetryMessage {
     pub typ: String,
     pub duration_ms: Option<Duration>,
     pub start_time: Option<SystemTime>,
+    pub start_time_string: Option<String>,
+    pub end_time_string: Option<String>,
     pub data: TelemetryData,
 }
 
@@ -56,6 +59,14 @@ fn build_message(
     duration_ms: Option<Duration>,
     start_time: Option<SystemTime>,
 ) -> TelemetryMessage {
+    let start_time_string = start_time.map(|time| format_rfc3339_millis(time).to_string());
+    let end_time_string = start_time.map(|time| match duration_ms {
+        Some(d) => {
+            format_rfc3339_millis(time + std::time::Duration::from_millis(d as u64)).to_string()
+        }
+        None => format_rfc3339_millis(time).to_string(),
+    });
+
     TelemetryMessage {
         // Note: the "type" field is required, otherwise the telemetry
         // mapper in the vscode extension will not route the message
@@ -64,6 +75,8 @@ fn build_message(
         typ,
         duration_ms,
         start_time,
+        start_time_string,
+        end_time_string,
         data,
     }
 }
@@ -105,6 +118,12 @@ mod tests {
 
         let mut msg = super::receiver().try_recv().unwrap();
         msg.start_time = msg.start_time.map(|_st| SystemTime::UNIX_EPOCH);
+        msg.start_time_string = msg
+            .start_time_string
+            .map(|_| "2025-09-22T11:38:41.274Z".to_string());
+        msg.end_time_string = msg
+            .end_time_string
+            .map(|_| "2025-09-22T11:38:41.321".to_string());
         expect![[r#"
             TelemetryMessage {
                 typ: "telemetry",
@@ -114,6 +133,12 @@ mod tests {
                         tv_sec: 0,
                         tv_nsec: 0,
                     },
+                ),
+                start_time_string: Some(
+                    "2025-09-22T11:38:41.274Z",
+                ),
+                end_time_string: Some(
+                    "2025-09-22T11:38:41.321",
                 ),
                 data: String("Hello telemetry!"),
             }
