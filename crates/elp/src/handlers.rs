@@ -33,6 +33,7 @@ use elp_ide::elp_ide_db::elp_base_db::FilePosition;
 use elp_ide::elp_ide_db::elp_base_db::FileRange;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_log::telemetry;
+use elp_log::timeit_with_telemetry;
 use elp_syntax::SmolStr;
 use itertools::Itertools;
 use lsp_server::ErrorCode;
@@ -66,6 +67,7 @@ use crate::convert::lsp_to_assist_context_diagnostic;
 use crate::from_proto;
 use crate::lsp_ext;
 use crate::snapshot::Snapshot;
+use crate::snapshot::TelemetryData;
 use crate::to_proto;
 
 pub(crate) fn handle_code_action(
@@ -412,10 +414,16 @@ pub(crate) fn handle_references(
     params: lsp_types::ReferenceParams,
 ) -> Result<Option<Vec<lsp_types::Location>>> {
     let _p = tracing::info_span!("handle_references").entered();
+    let _timer = timeit_with_telemetry!(TelemetryData::References {
+        file_url: params.text_document_position.text_document.uri.clone(),
+        position: params.text_document_position.position
+    });
+
     let mut position = from_proto::file_position(&snap, params.text_document_position)?;
     position.offset = snap
         .analysis
         .clamp_offset(position.file_id, position.offset)?;
+
     let refs = match snap.analysis.find_all_refs(position)? {
         None => return Ok(None),
         Some(it) => it,
@@ -439,6 +447,7 @@ pub(crate) fn handle_references(
                 .chain(decl)
         })
         .collect();
+
     Ok(Some(locations))
 }
 

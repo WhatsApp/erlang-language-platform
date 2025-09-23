@@ -47,14 +47,32 @@ use crate::server::file_id_to_url;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TelemetryData {
-    NativeDiagnostics { file_url: Url },
-    EqwalizerDiagnostics { file_url: Url },
-    EqwalizerProjectDiagnostics { project_name: String },
-    ParseServerDiagnostics { file_url: Url },
-    EdocDiagnostics { file_url: Url },
-    MetaDiagnostics { file_url: Url },
-    CommonTestDiagnostics { file_url: Url },
+    NativeDiagnostics {
+        file_url: Url,
+    },
+    EqwalizerDiagnostics {
+        file_url: Url,
+    },
+    EqwalizerProjectDiagnostics {
+        project_name: String,
+    },
+    ParseServerDiagnostics {
+        file_url: Url,
+    },
+    EdocDiagnostics {
+        file_url: Url,
+    },
+    MetaDiagnostics {
+        file_url: Url,
+    },
+    CommonTestDiagnostics {
+        file_url: Url,
+    },
     Initialize,
+    References {
+        file_url: Url,
+        position: lsp_types::Position,
+    },
 }
 
 impl fmt::Display for TelemetryData {
@@ -86,6 +104,12 @@ impl fmt::Display for TelemetryData {
             }
             TelemetryData::Initialize => {
                 write!(f, "Initialize")
+            }
+            TelemetryData::References {
+                file_url,
+                position: _,
+            } => {
+                write!(f, "Find References file_url: {file_url}")
             }
         }
     }
