@@ -44,7 +44,9 @@ use elp_ide_db::metadata::Kind;
 use elp_ide_db::metadata::Metadata;
 use elp_ide_db::metadata::Source;
 use elp_ide_db::source_change::SourceChange;
-use elp_ide_ssr::match_pattern_in_file_functions;
+use elp_ide_ssr::Match;
+use elp_ide_ssr::SsrSearchScope;
+use elp_ide_ssr::match_pattern;
 use elp_syntax::NodeOrToken;
 use elp_syntax::Parse;
 use elp_syntax::SourceFile;
@@ -745,6 +747,19 @@ pub(crate) trait SsrPatternsLinter: Linter {
             parens: ParenStrategy::InvisibleParens,
         }
     }
+
+    /// Specify the search scope: the entire file or function definitions only
+    fn scope(&self, file_id: FileId) -> SsrSearchScope {
+        SsrSearchScope::FunctionsOnly(file_id)
+    }
+
+    /// Customize the range of the diagnostic. Default to the range of the entire
+    /// matched element.
+    fn range(&self, _sema: &Semantic, _matched: &Match) -> Option<TextRange> {
+        // Notice we don't default here to the matched range directly,
+        // since we want to specify a meaningful in case the user override returns None.
+        None
+    }
 }
 
 // Instances of the SsrPatternsLinter trait can specify a custom `Context` type,
@@ -774,13 +789,18 @@ impl<T: SsrPatternsLinter> SsrPatternsDiagnostics for T {
         let mut res = Vec::new();
         for (pattern, context) in self.patterns() {
             let strategy = self.strategy();
-            let matches = match_pattern_in_file_functions(sema, strategy, file_id, &pattern);
+            let scope = self.scope(file_id);
+            let matches = match_pattern(sema, strategy, &pattern, scope);
             for matched in &matches.matches {
                 if Some(true) == self.is_match_valid(&context, matched, sema, file_id) {
                     let message = self.pattern_description(&context);
                     let fixes = self.fixes(&context, matched, sema, file_id);
                     let categories = self.add_categories(&context);
-                    let mut d = Diagnostic::new(self.id(), message, matched.range.range)
+                    let range = match self.range(sema, matched) {
+                        None => matched.range.range,
+                        Some(range) => range,
+                    };
+                    let mut d = Diagnostic::new(self.id(), message, range)
                         .with_fixes(fixes)
                         .add_categories(categories)
                         .with_severity(severity)

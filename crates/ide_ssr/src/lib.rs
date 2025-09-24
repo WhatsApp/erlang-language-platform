@@ -142,19 +142,27 @@ impl SsrSearchScope {
     }
 }
 
+pub fn match_pattern(
+    sema: &Semantic,
+    strategy: Strategy,
+    pattern: &str,
+    scope: SsrSearchScope,
+) -> SsrMatches {
+    let pattern = SsrRule::parse_str(sema.db, pattern).expect("could not parse SSR pattern");
+    let mut match_finder = MatchFinder::in_context(sema, strategy, scope);
+    match_finder.debug_print = false;
+    match_finder.add_search_pattern(pattern);
+    let matches: SsrMatches = match_finder.matches().flattened();
+    matches
+}
+
 pub fn match_pattern_in_file(
     sema: &Semantic,
     strategy: Strategy,
     file_id: FileId,
     pattern: &str,
 ) -> SsrMatches {
-    let pattern = SsrRule::parse_str(sema.db, pattern).expect("could not parse SSR pattern");
-    let mut match_finder =
-        MatchFinder::in_context(sema, strategy, SsrSearchScope::WholeFile(file_id));
-    match_finder.debug_print = false;
-    match_finder.add_search_pattern(pattern);
-    let matches: SsrMatches = match_finder.matches().flattened();
-    matches
+    match_pattern(sema, strategy, pattern, SsrSearchScope::WholeFile(file_id))
 }
 
 pub fn match_pattern_in_file_functions(
@@ -163,13 +171,12 @@ pub fn match_pattern_in_file_functions(
     file_id: FileId,
     pattern: &str,
 ) -> SsrMatches {
-    let pattern = SsrRule::parse_str(sema.db, pattern).expect("could not parse SSR pattern");
-    let mut match_finder =
-        MatchFinder::in_context(sema, strategy, SsrSearchScope::FunctionsOnly(file_id));
-    match_finder.debug_print = false;
-    match_finder.add_search_pattern(pattern);
-    let matches: SsrMatches = match_finder.matches().flattened();
-    matches
+    match_pattern(
+        sema,
+        strategy,
+        pattern,
+        SsrSearchScope::FunctionsOnly(file_id),
+    )
 }
 
 pub fn is_placeholder_a_var_from_body(body: &Body, m: &PlaceholderMatch) -> bool {
