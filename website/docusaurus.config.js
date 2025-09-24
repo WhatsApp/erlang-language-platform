@@ -9,6 +9,9 @@
  */
 
 import {themes as prismThemes} from 'prism-react-renderer';
+import stripMetaOnlyImport from './src/remark/strip-meta-only-import';
+
+const {fbContent} = require('docusaurus-plugin-internaldocs-fb/internal');
 
 // With JSDoc @type annotations, IDEs can provide config autocompletion
 /** @type {import('@docusaurus/types').DocusaurusConfig} */
@@ -31,6 +34,10 @@ import {themes as prismThemes} from 'prism-react-renderer';
       ({
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
+          remarkPlugins: fbContent({
+            internal: [],
+            external: [stripMetaOnlyImport]
+          }),
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
