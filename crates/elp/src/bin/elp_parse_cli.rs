@@ -21,6 +21,7 @@ use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
+use elp::memory_usage::MemoryUsage;
 use elp::otp_file_to_ignore;
 use elp::server::file_id_to_url;
 use elp_eqwalizer::Mode;
@@ -67,6 +68,9 @@ pub fn parse_all(
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
     log::info!("Loading project at: {:?}", args.project);
+
+    // Track memory usage at the start
+    let memory_start = MemoryUsage::now();
 
     let config = DiscoverConfig::new(args.rebar, &args.profile);
     let loaded = load::load_project_at(
@@ -140,9 +144,15 @@ pub fn parse_all(
     // printing, but do not print it out. So just create a dummy value
     let url = lsp_types::Url::parse("file:///unused_url").ok().unwrap();
 
+    let memory_end = MemoryUsage::now();
+    let memory_used = memory_end - memory_start;
+
     if res.is_empty() {
         if args.is_format_normal() {
             writeln!(cli, "No errors reported")?;
+        }
+        if args.is_format_normal() && args.report_system_stats {
+            writeln!(cli, "{}", memory_used)?;
         }
         Ok(())
     } else {
@@ -185,6 +195,11 @@ pub fn parse_all(
                 }
             }
         }
+
+        if args.is_format_normal() && args.report_system_stats {
+            writeln!(cli, "{}", memory_used)?;
+        }
+
         if err_in_diag {
             bail!("Parse failures found")
         } else {

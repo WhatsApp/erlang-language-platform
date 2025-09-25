@@ -63,6 +63,9 @@ pub struct ParseAllElp {
         guard(format_guard, "Please use json")
     )]
     pub format: Option<String>,
+    /// Report system memory usage and other statistics
+    #[bpaf(long("report-system-stats"))]
+    pub report_system_stats: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]

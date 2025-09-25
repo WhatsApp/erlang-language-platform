@@ -1,17 +1,18 @@
-Usage: [--project PROJECT] [--module MODULE] [--file ARG] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [--dump-includes] [--rebar] [--include-generated] [--serial] [--use-cli-severity] [[--format FORMAT]]
+Usage: [--project PROJECT] [--module MODULE] [--file ARG] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [--dump-includes] [--rebar] [--include-generated] [--serial] [--use-cli-severity] [[--format FORMAT]] [--report-system-stats]
 
 Available options:
-        --project <PROJECT>  Path to directory with project, or to a JSON file (defaults to `.`)
-        --module <MODULE>    Parse a single module from the project, not the entire project
-        --file <ARG>         Parse a single file from the project, not the entire project. \nThis can be an include file or escript, etc.
-        --to <TO>            Path to a directory where to dump result files
-        --no-diags           Do not print the full diagnostics for a file, just the count
-        --experimental       Report experimental diagnostics too, if diagnostics are enabled
-        --as <PROFILE>       Rebar3 profile to pickup (default is test)
-        --dump-includes      Report the resolution of include directives for comparison with OTP ones
-        --rebar              Run with rebar
-        --include-generated  Also process generated modules
-        --serial             Parse the files serially, not in parallel
-        --use-cli-severity   If specified, use the provided CLI severity mapping instead of the default one
-        --format <FORMAT>    Show diagnostics in JSON format
-    -h, --help               Prints help information
+        --project <PROJECT>    Path to directory with project, or to a JSON file (defaults to `.`)
+        --module <MODULE>      Parse a single module from the project, not the entire project
+        --file <ARG>           Parse a single file from the project, not the entire project. \nThis can be an include file or escript, etc.
+        --to <TO>              Path to a directory where to dump result files
+        --no-diags             Do not print the full diagnostics for a file, just the count
+        --experimental         Report experimental diagnostics too, if diagnostics are enabled
+        --as <PROFILE>         Rebar3 profile to pickup (default is test)
+        --dump-includes        Report the resolution of include directives for comparison with OTP ones
+        --rebar                Run with rebar
+        --include-generated    Also process generated modules
+        --serial               Parse the files serially, not in parallel
+        --use-cli-severity     If specified, use the provided CLI severity mapping instead of the default one
+        --format <FORMAT>      Show diagnostics in JSON format
+        --report-system-stats  Report system memory usage and other statistics
+    -h, --help                 Prints help information
