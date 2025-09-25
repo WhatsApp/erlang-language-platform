@@ -13,6 +13,7 @@ use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::fmt;
 use std::path::PathBuf;
+use std::process;
 use std::process::Command;
 use std::sync::Arc;
 
@@ -337,6 +338,7 @@ impl BuckProject {
         anyhow::Error,
     > {
         let _timer = timeit_with_telemetry!("BuckProject::load_from_config");
+        let _ = set_cell_info(buck_conf)?;
         let target_info = load_buck_targets_bxl(buck_conf, query_config, report_progress)?;
         report_progress("Making project app data");
         let (project_app_data, mut include_mapping) =
@@ -721,6 +723,85 @@ pub fn query_buck_targets_bxl(
         .arg("--")
         .args(build_args)
         .args(targets);
+    let output = run_buck_command(command)?;
+    let string = String::from_utf8(output.stdout)?;
+    let result: FxHashMap<TargetFullName, BuckTarget> = serde_json::from_str(&string)?;
+    Ok(result)
+}
+
+// ---------------------------------------------------------------------
+
+#[derive(Debug, Clone)]
+struct BuckCellInfo {
+    cells: FxHashMap<String, String>,
+}
+
+impl BuckCellInfo {
+    fn make_absolute(&self, target: &str) -> String {
+        self.make_absolute_maybe(target)
+            .unwrap_or(target.to_string())
+    }
+
+    fn make_absolute_maybe(&self, target: &str) -> Option<String> {
+        let parts: Vec<_> = target.split("//").collect();
+        let cell = *parts.first()?;
+        let path = *parts.get(1)?;
+        let base = self.cells.get(cell)?;
+        Some(format!("{base}/{path}"))
+    }
+}
+
+lazy_static! {
+    /// Mapping from cell name to absolute path.
+    static ref BUCK_CELL_INFO: Mutex<Option<(BuckCellInfo, Option<AbsPathBuf>)>> = Mutex::new(None);
+}
+
+fn set_cell_info(buck_config: &BuckConfig) -> Result<BuckCellInfo> {
+    let cell_info = BUCK_CELL_INFO.lock();
+    if let Some(ref cached_cell_info) = *cell_info {
+        if cached_cell_info.1 == buck_config.buck_root {
+            return Ok(cached_cell_info.0.clone());
+        } else {
+            log::warn!(
+                "buck::set_cell_info:different buck root used: [{:?}] vs [{:?}]",
+                buck_config.buck_root,
+                cached_cell_info.1
+            )
+        }
+    };
+    drop(cell_info); // Release the lock before the second lock attempt
+    let mut cell_info = BUCK_CELL_INFO.lock();
+    let info = query_buck_cell_info(buck_config)?;
+    *cell_info = Some((info.clone(), buck_config.buck_root.clone()));
+    Ok(info)
+}
+
+fn buck_cell_info() -> Result<BuckCellInfo> {
+    let cell_info = BUCK_CELL_INFO.lock();
+    if let Some(ref cached_cell_info) = *cell_info {
+        Ok(cached_cell_info.0.clone())
+    } else {
+        Err(anyhow::anyhow!("BUCK_CELL_INFO not set yet"))
+    }
+}
+
+fn query_buck_cell_info(buck_config: &BuckConfig) -> Result<BuckCellInfo> {
+    let mut command = buck_config.buck_command();
+    command.arg("audit").arg("cell").arg("--json");
+    let output = run_buck_command(command)?;
+    let string = String::from_utf8(output.stdout)?;
+    let mut cells: FxHashMap<String, String> = serde_json::from_str(&string)?;
+    if let Some(path) = &buck_config.buck_root {
+        // Set the default cell to the buck root
+        cells.insert("".to_string(), path.as_str().to_string());
+    }
+
+    Ok(BuckCellInfo { cells })
+}
+
+// ---------------------------------------------------------------------
+
+fn run_buck_command(mut command: CommandProxy<'_>) -> Result<process::Output> {
     let output = command.output()?;
     if !output.status.success() {
         let reason = match output.status.code() {
@@ -733,9 +814,7 @@ pub fn query_buck_targets_bxl(
         };
         bail!(error);
     }
-    let string = String::from_utf8(output.stdout)?;
-    let result: FxHashMap<TargetFullName, BuckTarget> = serde_json::from_str(&string)?;
-    Ok(result)
+    Ok(output)
 }
 
 #[derive(Error, Debug)]
@@ -816,16 +895,9 @@ fn build_third_party_targets(
 
 /// Convert cell//path/to/project_file.erl to /Users/$USER/buckroot/path/to/project_file.erl
 fn buck_path_to_abs_path(root: &AbsPath, target: &str) -> Result<AbsPathBuf> {
-    // TODO: remove this function once the BXL query is used instead.
-    //       It is an approximation, targets may be in different cells.
-    //       T188371274
     if target.contains("//") {
-        let mut split = target.split("//");
-        let _ = split.next(); // "cell" or empty in case of //...
-        match split.next() {
-            None => bail!("couldn't find a path for target {:?}", target),
-            Some(path) => Ok(root.join(path)),
-        }
+        let cell_info = buck_cell_info()?;
+        Ok(AbsPathBuf::assert(cell_info.make_absolute(target).into()))
     } else {
         Ok(root.join(target))
     }
@@ -1150,6 +1222,10 @@ mod tests {
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(Utf8Path::from_path(dir.path()).unwrap());
         let target_name = "cell//app_a:app_a".to_string();
+        set_test_cell_info(vec![(
+            "cell".to_string(),
+            dir.path().to_string_lossy().into_owned(),
+        )]);
         let target = BuckTarget {
             name: "app_a".to_string(),
             app_name: None,
@@ -1181,6 +1257,10 @@ mod tests {
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(Utf8Path::from_path(dir.path()).unwrap());
+        set_test_cell_info(vec![(
+            "cell".to_string(),
+            dir.path().to_string_lossy().into_owned(),
+        )]);
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -1615,8 +1695,20 @@ mod tests {
         }
     }
 
+    fn set_test_cell_info(cells: Vec<(String, String)>) {
+        let mut cell_info = BUCK_CELL_INFO.lock();
+        let info = BuckCellInfo {
+            cells: FxHashMap::from_iter(cells),
+        };
+        *cell_info = Some((info, None))
+    }
+
     #[test]
     fn test_buck_path_to_abs_path() {
+        set_test_cell_info(vec![
+            ("".to_string(), "/blah".to_string()),
+            ("cell".to_string(), "/blah".to_string()),
+        ]);
         let root = AbsPath::assert(Utf8Path::new("/blah"));
         expect![[r#"
             Ok(
@@ -1663,5 +1755,26 @@ mod tests {
             "reason".to_string(),
             "Buck UI: https://a.b.com/buck2/ref-hash\nblah".to_string(),
         ));
+    }
+
+    #[test]
+    fn cell_to_absolute() {
+        let cells = BuckCellInfo {
+            cells: FxHashMap::from_iter(vec![
+                ("cell1".to_string(), "/a/path".to_string()),
+                ("cell2".to_string(), "/another/path".to_string()),
+            ]),
+        };
+
+        expect![[r#"
+            Some(
+                "/a/path/a/b/c.erl",
+            )
+        "#]]
+        .assert_debug_eq(&cells.make_absolute_maybe("cell1//a/b/c.erl"));
+        expect![[r#"
+            "/another/path/a/b/c.erl"
+        "#]]
+        .assert_debug_eq(&cells.make_absolute("cell2//a/b/c.erl"));
     }
 }
