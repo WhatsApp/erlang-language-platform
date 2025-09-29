@@ -9,7 +9,7 @@
  */
 
 import {themes as prismThemes} from 'prism-react-renderer';
-import stripMetaOnlyImport from './src/remark/strip-meta-only-import';
+import stripMetaOnlyImport from './src/remark/strip-meta-only-import.js';
 
 const {fbContent} = require('docusaurus-plugin-internaldocs-fb/internal');
 
