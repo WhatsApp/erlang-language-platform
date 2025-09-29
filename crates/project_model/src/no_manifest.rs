@@ -68,6 +68,7 @@ impl NoManifestConfig {
             macros: vec![],
             parse_transforms: vec![],
             include_path: vec![otp_root.to_path_buf()],
+            gen_src_files: None,
             applicable_files: None,
             is_test_target: None,
         };

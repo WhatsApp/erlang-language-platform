@@ -870,6 +870,9 @@ pub struct ProjectAppData {
     //list of directories required by module to compile
     //usually includes all dependencies include paths and otp
     pub include_path: Vec<AbsPathBuf>,
+    // Originating from buck2 model, the set of specific input files
+    // this data was generated from.
+    pub gen_src_files: Option<ApplicableFiles>,
     // Originating from buck2 model, the set of specific files this
     // data applies to.
     pub applicable_files: Option<ApplicableFiles>,
@@ -898,6 +901,7 @@ impl ProjectAppData {
             app_type: AppType::App,
             include_path: vec![],
             abs_src_dirs: src_dirs,
+            gen_src_files: None,
             applicable_files: None,
             is_test_target: None,
         }
@@ -924,6 +928,7 @@ impl ProjectAppData {
             app_type: AppType::Otp,
             include_path: vec![include, src, parent],
             abs_src_dirs: vec![abs_src_dir],
+            gen_src_files: None,
             applicable_files: None,
             is_test_target: None,
         }

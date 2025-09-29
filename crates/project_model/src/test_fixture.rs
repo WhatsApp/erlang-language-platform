@@ -963,6 +963,7 @@ bar() -> ok.
                 parse_transforms: [],
                 app_type: App,
                 include_path: [],
+                gen_src_files: None,
                 applicable_files: None,
                 is_test_target: None,
             }"#]]

@@ -237,6 +237,7 @@ impl RebarProject {
                 app_type: is_dep,
                 include_path: vec![],
                 abs_src_dirs,
+                gen_src_files: None,
                 applicable_files: None,
                 is_test_target: None,
             })

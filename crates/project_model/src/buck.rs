@@ -418,6 +418,16 @@ pub struct BuckTarget {
     srcs: Vec<String>,
     #[serde(default)]
     includes: Vec<String>,
+    /// The set of input files used in a target that was generated.
+    /// These are used to set file watchers on them, so the target can
+    /// be re-run if any input changes.
+    ///
+    /// NOTE: the generation happens on a call to elp.bxl, which runs
+    /// in a buck2 isolation directory for lsp usage. This means the
+    /// output will not be updated unless elp.bxl is called again for it.
+    /// Hence watching the inputs.
+    #[serde(default)]
+    gen_srcs: Vec<String>,
     #[serde(default)]
     labels: FxHashSet<String>,
     #[serde(default)]
@@ -460,6 +470,7 @@ pub struct Target {
     pub dir: AbsPathBuf,
     pub src_files: Vec<AbsPathBuf>,
     pub include_files: Vec<AbsPathBuf>,
+    pub gen_src_files: Vec<AbsPathBuf>,
     pub deps: Vec<TargetFullName>,
     pub apps: Vec<TargetFullName>,
     pub included_apps: Vec<TargetFullName>,
@@ -605,12 +616,18 @@ fn make_buck_target(
             };
             (src_files, include_files, target_type, private_header, ebin)
         };
+    let gen_src_files = target
+        .gen_srcs
+        .iter()
+        .flat_map(|f| buck_path_to_abs_path(root, f).ok())
+        .collect();
     Ok(Target {
         name: name.clone(),
         app_name: target.name(),
         dir,
         src_files,
         include_files,
+        gen_src_files,
         deps: target.deps.clone(),
         apps: target.apps.clone(),
         included_apps: target.included_apps.clone(),
@@ -1050,6 +1067,7 @@ fn targets_to_project_data_bxl(
             parse_transforms: vec![],
             app_type: target.app_type(),
             include_path: vec![],
+            gen_src_files: Some(FxHashSet::from_iter(target.gen_src_files.clone())),
             applicable_files: Some(FxHashSet::from_iter(target.src_files.clone())),
             is_test_target: Some(target.target_type == TargetType::ErlangTest),
         };
@@ -1143,6 +1161,7 @@ mod tests {
             suite: None,
             srcs: vec![as_absolute_string(&dir, "app_a/src/app.erl")],
             includes: vec![],
+            gen_srcs: vec![],
             labels: FxHashSet::default(),
             deps: vec![],
             apps: vec![],
@@ -1171,6 +1190,7 @@ mod tests {
             suite: None,
             srcs: vec![],
             includes: vec![as_absolute_string(&dir, "app_a/include/app.hrl")],
+            gen_srcs: vec![],
             labels: FxHashSet::default(),
             deps: vec![],
             apps: vec![],
@@ -1199,6 +1219,7 @@ mod tests {
             suite: Some(as_absolute_string(&dir, "app_a/test/app_SUITE.erl")),
             srcs: vec![],
             includes: vec![],
+            gen_srcs: vec![],
             labels: FxHashSet::default(),
             deps: vec![],
             apps: vec![],
@@ -1235,6 +1256,7 @@ mod tests {
                 "cell//app_a/src/app.erl".to_string(),
             ],
             includes: vec![],
+            gen_srcs: vec![],
             labels: FxHashSet::default(),
             deps: vec![],
             apps: vec![],
@@ -1268,6 +1290,7 @@ mod tests {
             suite: None,
             srcs: vec!["cell//app_a/app.erl".to_string()],
             includes: vec!["cell//app_a/app.hrl".to_string()],
+            gen_srcs: vec![],
             labels: FxHashSet::default(),
             deps: vec![],
             apps: vec![],
@@ -1297,6 +1320,7 @@ mod tests {
             suite: None,
             srcs: vec![as_absolute_string(&dir, "app_a/sub/app.erl")],
             includes: vec![as_absolute_string(&dir, "app_a/sub/app.hrl")],
+            gen_srcs: vec![],
             labels: FxHashSet::default(),
             deps: vec![],
             apps: vec![],
