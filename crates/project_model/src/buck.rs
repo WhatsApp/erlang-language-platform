@@ -1135,9 +1135,22 @@ mod tests {
 
     use expect_test::Expect;
     use expect_test::expect;
+    use fxhash::FxHashMap;
+    use fxhash::FxHashSet;
+    use parking_lot::Mutex;
+    use parking_lot::MutexGuard;
+    use paths::AbsPath;
     use paths::Utf8Path;
 
-    use super::*;
+    use super::BUCK_CELL_INFO;
+    use super::BuckCellInfo;
+    use crate::buck::BuckConfig;
+    use crate::buck::BuckQueryError;
+    use crate::buck::BuckTarget;
+    use crate::buck::BuckTargetOrigin;
+    use crate::buck::buck_path_to_abs_path;
+    use crate::buck::find_app_root_bxl;
+    use crate::buck::get_prelude_cell;
     use crate::temp_dir::TempDir;
     use crate::test_fixture::FixtureWithProjectMeta;
     use crate::to_abs_path_buf;
@@ -1243,7 +1256,7 @@ mod tests {
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(Utf8Path::from_path(dir.path()).unwrap());
         let target_name = "cell//app_a:app_a".to_string();
-        set_test_cell_info(vec![(
+        let _guard = set_test_cell_info(vec![(
             "cell".to_string(),
             dir.path().to_string_lossy().into_owned(),
         )]);
@@ -1279,7 +1292,7 @@ mod tests {
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(Utf8Path::from_path(dir.path()).unwrap());
-        set_test_cell_info(vec![(
+        let _guard = set_test_cell_info(vec![(
             "cell".to_string(),
             dir.path().to_string_lossy().into_owned(),
         )]);
@@ -1719,17 +1732,23 @@ mod tests {
         }
     }
 
-    fn set_test_cell_info(cells: Vec<(String, String)>) {
+    fn set_test_cell_info<'a>(cells: Vec<(String, String)>) -> MutexGuard<'a, ()> {
+        /// Lock to be taken in a test using the BUCK_CELL_INFO, so it
+        /// is not updated by a test running in parallel
+        static BUCK_CELL_INFO_TEST_ACTIVE: Mutex<()> = Mutex::new(());
+
+        let _guard = BUCK_CELL_INFO_TEST_ACTIVE.lock();
         let mut cell_info = BUCK_CELL_INFO.lock();
         let info = BuckCellInfo {
             cells: FxHashMap::from_iter(cells),
         };
-        *cell_info = Some((info, None))
+        *cell_info = Some((info, None));
+        _guard
     }
 
     #[test]
     fn test_buck_path_to_abs_path() {
-        set_test_cell_info(vec![
+        let _guard = set_test_cell_info(vec![
             ("".to_string(), "/blah".to_string()),
             ("cell".to_string(), "/blah".to_string()),
         ]);
