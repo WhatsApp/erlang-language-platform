@@ -9,7 +9,6 @@
  */
 
 use std::cmp;
-use std::iter;
 
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
@@ -52,14 +51,18 @@ impl ProjectFolders {
             .all_apps
             .iter()
             .flat_map(|(project_id, app)| {
-                iter::repeat(project_id).zip(app.all_source_and_include_dirs())
-            })
-            .filter_map(|(project_id, root)| {
-                if Some(*project_id) != project_apps.otp_project_id {
-                    Some(format!("{root}/**/*.{{e,h}}rl"))
-                } else {
-                    None
+                let mut paths = Vec::new();
+                // Add all_dirs_to_watch() with project_id check and glob
+                for root in app.all_dirs_to_watch() {
+                    if Some(*project_id) != project_apps.otp_project_id {
+                        paths.push(format!("{root}/**/*.{{e,h}}rl"));
+                    }
                 }
+                // Add all_files_to_watch() directly, no project_id check or glob
+                for file in app.all_files_to_watch() {
+                    paths.push(file.to_string());
+                }
+                paths
             })
             .collect();
 

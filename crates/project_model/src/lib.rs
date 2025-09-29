@@ -942,9 +942,7 @@ impl ProjectAppData {
             .collect()
     }
 
-    /// Source directories for the application including the extra
-    /// sources and includes
-    pub fn all_source_and_include_dirs(&self) -> FxHashSet<AbsPathBuf> {
+    pub fn all_dirs_to_watch(&self) -> FxHashSet<AbsPathBuf> {
         self.extra_src_dirs
             .iter()
             .map(|src_dir| self.dir.join(src_dir))
@@ -953,6 +951,11 @@ impl ProjectAppData {
             .chain(self.include_path.iter().cloned())
             .collect()
     }
+
+    pub fn all_files_to_watch(&self) -> FxHashSet<AbsPathBuf> {
+        self.gen_src_files.clone().unwrap_or_default()
+    }
+
     /// Source directories for the application
     pub fn all_source_dirs(&self) -> FxHashSet<AbsPathBuf> {
         self.extra_src_dirs
