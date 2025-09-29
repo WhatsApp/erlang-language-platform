@@ -484,8 +484,8 @@ bar() -> ?FOO.
                     app_map: {
                         SourceRootId(
                             0,
-                        ): (
-                            Some(
+                        ): AppMapData {
+                            app_data: Some(
                                 AppData {
                                     project_id: ProjectId(
                                         0,
@@ -519,12 +519,13 @@ bar() -> ?FOO.
                                     is_test_target: None,
                                 },
                             ),
-                            None,
-                        ),
+                            applicable_files: None,
+                            gen_src_files: None,
+                        },
                         SourceRootId(
                             2,
-                        ): (
-                            Some(
+                        ): AppMapData {
+                            app_data: Some(
                                 AppData {
                                     project_id: ProjectId(
                                         1,
@@ -569,12 +570,13 @@ bar() -> ?FOO.
                                     is_test_target: None,
                                 },
                             ),
-                            None,
-                        ),
+                            applicable_files: None,
+                            gen_src_files: None,
+                        },
                         SourceRootId(
                             1,
-                        ): (
-                            Some(
+                        ): AppMapData {
+                            app_data: Some(
                                 AppData {
                                     project_id: ProjectId(
                                         0,
@@ -608,14 +610,16 @@ bar() -> ?FOO.
                                     is_test_target: None,
                                 },
                             ),
-                            None,
-                        ),
+                            applicable_files: None,
+                            gen_src_files: None,
+                        },
                         SourceRootId(
                             3,
-                        ): (
-                            None,
-                            None,
-                        ),
+                        ): AppMapData {
+                            app_data: None,
+                            applicable_files: None,
+                            gen_src_files: None,
+                        },
                     },
                     project_map: {
                         ProjectId(
@@ -741,8 +745,8 @@ foo() -> ?BAR.
                     app_map: {
                         SourceRootId(
                             0,
-                        ): (
-                            Some(
+                        ): AppMapData {
+                            app_data: Some(
                                 AppData {
                                     project_id: ProjectId(
                                         0,
@@ -792,14 +796,16 @@ foo() -> ?BAR.
                                     is_test_target: None,
                                 },
                             ),
-                            None,
-                        ),
+                            applicable_files: None,
+                            gen_src_files: None,
+                        },
                         SourceRootId(
                             1,
-                        ): (
-                            None,
-                            None,
-                        ),
+                        ): AppMapData {
+                            app_data: None,
+                            applicable_files: None,
+                            gen_src_files: None,
+                        },
                     },
                     project_map: {
                         ProjectId(

@@ -872,14 +872,12 @@ pub struct ProjectAppData {
     pub include_path: Vec<AbsPathBuf>,
     // Originating from buck2 model, the set of specific input files
     // this data was generated from.
-    pub gen_src_files: Option<ApplicableFiles>,
+    pub gen_src_files: Option<FxHashSet<AbsPathBuf>>,
     // Originating from buck2 model, the set of specific files this
     // data applies to.
-    pub applicable_files: Option<ApplicableFiles>,
+    pub applicable_files: Option<FxHashSet<AbsPathBuf>>,
     pub is_test_target: Option<bool>,
 }
-
-pub type ApplicableFiles = FxHashSet<AbsPathBuf>;
 
 impl ProjectAppData {
     pub fn fixture_app_data(

@@ -49,12 +49,15 @@ impl ProjectLoader {
         let mut result = false;
         for path in paths {
             let mut path_it: &AbsPath = path.as_ref();
-            while let Some(path) = path_it.parent() {
-                if self.project_roots.remove(path).is_some() {
+            loop {
+                if self.project_roots.remove(path_it).is_some() {
                     result = true;
                     break;
                 }
-                path_it = path;
+                match path_it.parent() {
+                    Some(parent) => path_it = parent,
+                    None => break,
+                }
             }
         }
         result
@@ -95,12 +98,16 @@ impl ProjectLoader {
         path: &AbsPath,
     ) -> Option<(ElpConfig, Result<ProjectManifest>, ProjectManifest)> {
         let mut path_it = path;
-        while let Some(path) = path_it.parent() {
-            if self.project_roots.contains_key(path) {
+        loop {
+            if self.project_roots.contains_key(path_it) {
                 return None;
             }
-            path_it = path;
+            match path_it.parent() {
+                Some(parent) => path_it = parent,
+                None => break,
+            }
         }
+
         Some(self.load_manifest(path))
     }
 

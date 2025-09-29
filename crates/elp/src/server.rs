@@ -283,6 +283,7 @@ pub struct Server {
     initial_load_status: InitialLoading,
     reload_manager: Arc<Mutex<ReloadManager>>,
     unresolved_app_id_paths: Arc<FxHashMap<AbsPathBuf, AppDataId>>,
+    generated_app_inputs: Arc<FxHashMap<AbsPathBuf, AppDataId>>,
     update_app_data_ids: bool,
     reset_source_roots: bool,
     native_diagnostics_requested: bool,
@@ -350,6 +351,7 @@ impl Server {
             initial_load_status: InitialLoading::Initial,
             reload_manager: Arc::new(Mutex::new(ReloadManager::new())),
             unresolved_app_id_paths: Arc::new(FxHashMap::default()),
+            generated_app_inputs: Arc::new(FxHashMap::default()),
             update_app_data_ids: false,
             reset_source_roots: false,
             native_diagnostics_requested: false,
@@ -905,6 +907,9 @@ impl Server {
     }
 
     fn should_reload_project_for_path(&self, path: &AbsPath, change: &FileEvent) -> bool {
+        if self.generated_app_inputs.contains_key(path) {
+            return true;
+        }
         let path_ref: &Path = path.as_ref();
         let file_name = path.file_stem();
         let ext = path.extension();
@@ -1389,10 +1394,11 @@ impl Server {
         let project_apps = ProjectApps::new(&projects, IncludeOtp::Yes);
         spinner.report("Gathering file paths".to_string());
         let folders = ProjectFolders::new(&project_apps);
+        let apply_data = project_apps.app_structure().apply(raw_db, &|_path| None);
         // We will set the FileId -> AppDataIndex structure when the file
         // loads
-        self.unresolved_app_id_paths =
-            Arc::new(project_apps.app_structure().apply(raw_db, &|_path| None));
+        self.unresolved_app_id_paths = Arc::new(apply_data.unresolved_app_id_paths);
+        self.generated_app_inputs = Arc::new(apply_data.gen_src_inputs);
 
         self.file_set_config = folders.file_set_config;
 
@@ -1630,6 +1636,7 @@ impl Server {
         if !paths.is_empty() {
             let loader = self.project_loader.clone();
             let query_config = self.config.buck_query();
+            let paths = self.resolve_generated_project_paths(paths);
             let spinner = self
                 .progress
                 .begin_spinner_with_telemetry("ELP reloading project config".to_string());
@@ -1661,6 +1668,35 @@ impl Server {
                 }
             });
         }
+    }
+
+    fn resolve_generated_project_paths(
+        &mut self,
+        paths: FxHashSet<AbsPathBuf>,
+    ) -> FxHashSet<AbsPathBuf> {
+        let paths: FxHashSet<AbsPathBuf> = paths
+            .into_iter()
+            .map(|path| {
+                if let Some(app_data_id) = self.generated_app_inputs.get(&path) {
+                    if let Some(app_data) = self
+                        .analysis_host
+                        .raw_database()
+                        .app_data_by_id(*app_data_id)
+                    {
+                        let project = self
+                            .analysis_host
+                            .raw_database()
+                            .project_data(app_data.project_id);
+                        project.root_dir.clone()
+                    } else {
+                        path
+                    }
+                } else {
+                    path
+                }
+            })
+            .collect();
+        paths
     }
 
     fn load_project_or_fallback(

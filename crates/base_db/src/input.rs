@@ -15,13 +15,13 @@ use std::sync::Arc;
 
 use elp_project_model::AppName;
 use elp_project_model::AppType;
-use elp_project_model::ApplicableFiles;
 use elp_project_model::EqwalizerConfig;
 use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
 use elp_project_model::buck::IncludeMapping;
 use elp_project_model::buck::TargetFullName;
 use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 use paths::RelPath;
 use paths::Utf8Path;
 use vfs::AbsPathBuf;
@@ -179,9 +179,21 @@ impl AppData {
 /// Note that `AppStructure` is build-system agnostic
 #[derive(Debug, Clone, Default /* Serialize, Deserialize */)]
 pub struct AppStructure {
-    pub(crate) app_map: FxHashMap<SourceRootId, (Option<AppData>, Option<ApplicableFiles>)>,
+    pub(crate) app_map: FxHashMap<SourceRootId, AppMapData>,
     pub(crate) project_map: FxHashMap<ProjectId, ProjectData>,
     pub(crate) catch_all_source_root: SourceRootId,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct AppMapData {
+    app_data: Option<AppData>, // TODO: should this be Arc?
+    applicable_files: Option<FxHashSet<AbsPathBuf>>,
+    gen_src_files: Option<FxHashSet<AbsPathBuf>>,
+}
+
+pub struct ApplyOutput {
+    pub unresolved_app_id_paths: FxHashMap<AbsPathBuf, AppDataId>,
+    pub gen_src_inputs: FxHashMap<AbsPathBuf, AppDataId>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
@@ -192,13 +204,20 @@ impl AppStructure {
         &mut self,
         source_root_id: SourceRootId,
         app_data: Option<AppData>,
-        applicable_files: Option<ApplicableFiles>,
+        applicable_files: Option<FxHashSet<AbsPathBuf>>,
+        gen_src_files: Option<FxHashSet<AbsPathBuf>>,
     ) {
-        let prev = self
-            .app_map
-            .insert(source_root_id, (app_data, applicable_files));
+        let prev = self.app_map.insert(
+            source_root_id,
+            AppMapData {
+                app_data,
+                applicable_files,
+                gen_src_files,
+            },
+        );
         assert!(prev.is_none());
     }
+
     pub fn add_project_data(&mut self, project_id: ProjectId, project_data: ProjectData) {
         let prev = self.project_map.insert(project_id, project_data);
         assert!(prev.is_none());
@@ -209,15 +228,16 @@ impl AppStructure {
         self,
         db: &mut dyn SourceDatabaseExt,
         resolve_file_id: &impl Fn(&AbsPathBuf) -> Option<FileId>,
-    ) -> FxHashMap<AbsPathBuf, AppDataId> {
+    ) -> ApplyOutput {
         let mut app_index = AppDataIndex::default();
         let mut app_data_id = AppDataId(0);
         let mut unresolved_paths = FxHashMap::default();
-        for (source_root_id, (data, applicable_files)) in self.app_map {
-            let arc_data = data.map(Arc::new);
+        let mut gen_src_inputs = FxHashMap::default();
+        for (source_root_id, app_map_data) in self.app_map {
+            let arc_data = app_map_data.app_data.map(Arc::new);
             db.set_app_data_by_id(app_data_id, arc_data);
             db.set_app_data_id(source_root_id, app_data_id);
-            if let Some(files) = applicable_files {
+            if let Some(files) = app_map_data.applicable_files {
                 files.iter().for_each(|path| {
                     if let Some(file_id) = resolve_file_id(path) {
                         app_index.map.insert(file_id, app_data_id);
@@ -225,6 +245,11 @@ impl AppStructure {
                         unresolved_paths.insert(path.clone(), app_data_id);
                     }
                 })
+            }
+            if let Some(files) = app_map_data.gen_src_files {
+                for file in files {
+                    gen_src_inputs.insert(file.clone(), app_data_id);
+                }
             }
             app_data_id = AppDataId(app_data_id.0 + 1);
         }
@@ -234,7 +259,10 @@ impl AppStructure {
         db.set_app_index(Arc::new(app_index));
         db.set_catch_all_source_root(self.catch_all_source_root);
 
-        unresolved_paths
+        ApplyOutput {
+            unresolved_app_id_paths: unresolved_paths,
+            gen_src_inputs,
+        }
     }
 }
 
@@ -380,7 +408,12 @@ impl<'a> ProjectApps<'a> {
                     ebin_path: app.ebin.clone(),
                     is_test_target: app.is_test_target,
                 };
-                app_structure.add_app_data(root_id, Some(input_data), app.applicable_files.clone());
+                app_structure.add_app_data(
+                    root_id,
+                    Some(input_data),
+                    app.applicable_files.clone(),
+                    app.gen_src_files.clone(),
+                );
             }
 
             let mut app_roots = project_root_map.remove(&project_id).unwrap_or_default();
@@ -403,7 +436,7 @@ impl<'a> ProjectApps<'a> {
 
         // Final SourceRoot for out-of-project files
         log::info!("Final source root: {:?}", SourceRootId(app_idx));
-        app_structure.add_app_data(SourceRootId(app_idx), None, None);
+        app_structure.add_app_data(SourceRootId(app_idx), None, None, None);
         app_structure.catch_all_source_root = SourceRootId(app_idx);
         app_structure
     }
