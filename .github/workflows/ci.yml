@@ -95,6 +95,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           target: ${{ matrix.target }}
+          components: rustfmt
       # - name: Set up cross-compiler
       #   if: matrix.platform-arch == 'ubuntu-22.04-arm'
       #   run: |
