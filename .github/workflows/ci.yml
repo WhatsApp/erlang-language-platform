@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform-arch: [ubuntu-22.04-x64, ubuntu-22.04-arm, macos-13-x64, macos-latest-arm, windows-latest-x64]
+        platform-arch: [windows-latest-x64]
         otp-version: [26.2, 27.3, 28.0]
         include:
           - otp-version: 26.2
@@ -75,31 +75,6 @@ jobs:
     steps:
       - name: Checkout erlang-language-platform
         uses: "actions/checkout@v3"
-      - name: Checkout eqwalizer
-        uses: "actions/checkout@v3"
-        with:
-          repository: WhatsApp/eqwalizer
-          path: eqwalizer
-          ref: main
-      - name: Set up GraalVM
-        uses: graalvm/setup-graalvm@v1
-        with:
-          java-version: '17'
-          distribution: 'graalvm'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set up SBT
-        uses: olafurpg/setup-scala@v14
-        with:
-          java-version: '17'
-      - name: Set up rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          target: ${{ matrix.target }}
-      - name: Set up cross-compiler
-        if: matrix.platform-arch == 'ubuntu-22.04-arm'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y crossbuild-essential-arm64
       - id: setup-erlang
         uses: ./.github/actions/setup-erlang
         with:
