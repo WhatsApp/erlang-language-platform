@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform-arch: [windows-latest-x64]
+        platform-arch: [windows-2022-x64]
         otp-version: [26.2, 27.3, 28.0]
         include:
           - otp-version: 26.2
@@ -65,8 +65,8 @@ jobs:
             os: macos
             target: aarch64-apple-darwin
             vscode-target: darwin-arm64
-          - platform-arch: windows-latest-x64
-            platform: windows-latest
+          - platform-arch: windows-2022-x64
+            platform: windows-2022
             os: windows
             target: x86_64-pc-windows-msvc
             vscode-target: win32-x64
