@@ -156,6 +156,16 @@ impl FromStr for Namespace {
     }
 }
 
+impl Namespace {
+    pub fn supports_doc_path(&self) -> bool {
+        match self {
+            Namespace::WhatsApp => true,
+            // @fb-only
+            _ => false,
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for DiagnosticCode {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -372,6 +382,37 @@ impl DiagnosticCode {
         }
     }
 
+    pub fn supports_doc_path(&self) -> bool {
+        match self {
+            DiagnosticCode::DefaultCodeForEnumIter => false,
+            // @fb-only
+            _ => true,
+        }
+    }
+
+    pub fn as_doc_path_extension(&self) -> &str {
+        match self {
+            DiagnosticCode::CrossNodeEval => "mdx",
+            _ => "md",
+        }
+    }
+
+    // Return the path to the documentation for this diagnostic code, relative to the ELP repo root.
+    pub fn as_doc_path(&self) -> Option<String> {
+        if !self.supports_doc_path() {
+            return None;
+        };
+        let namespace = self.as_namespace()?;
+        if namespace.supports_doc_path() {
+            let code = self.as_code();
+            let ext = self.as_doc_path_extension();
+            return Some(format!(
+                "website/docs/erlang-error-index/{namespace}/{code}.{ext}"
+            ));
+        }
+        None
+    }
+
     pub fn as_uri(&self) -> Option<String> {
         let namespace = self.as_namespace()?;
         let code = self.as_code();
@@ -532,8 +573,11 @@ impl fmt::Display for DiagnosticCode {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use expect_test::expect;
     use serde::Deserialize;
+    use strum::IntoEnumIterator;
 
     use super::DiagnosticCode;
 
@@ -663,5 +707,29 @@ mod tests {
             }
         "#]]
         .assert_debug_eq(&config);
+    }
+
+    #[test]
+    fn all_diagnostic_codes_have_documentation() {
+        let mut missing_docs = Vec::new();
+
+        for code in DiagnosticCode::iter() {
+            if let Some(doc_path) = code.as_doc_path() {
+                let manifest_dir = env!("CARGO_MANIFEST_DIR");
+                let elp_root = Path::new(manifest_dir).parent().unwrap().parent().unwrap();
+                let absolute_path = elp_root.join(doc_path);
+
+                if !absolute_path.exists() {
+                    missing_docs.push(format!("{}: {}", code.as_code(), absolute_path.display()));
+                }
+            }
+        }
+
+        if !missing_docs.is_empty() {
+            panic!(
+                "The following diagnostic codes are missing their documentation files:\n{}",
+                missing_docs.join("\n")
+            );
+        }
     }
 }

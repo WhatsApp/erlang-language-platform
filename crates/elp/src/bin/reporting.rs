@@ -258,6 +258,7 @@ impl Reporter for JsonReporter<'_> {
                 "ELP".to_string(),
                 diagnostic.msg.clone(),
                 None,
+                None,
             );
             let diagnostic = serde_json::to_string(&diagnostic)?;
             writeln!(self.cli, "{diagnostic}")?;
@@ -280,6 +281,7 @@ impl Reporter for JsonReporter<'_> {
             arc_types::Severity::Advice,
             "ELP".to_string(),
             description,
+            None,
             None,
         );
         let diagnostic = serde_json::to_string(&diagnostic)?;

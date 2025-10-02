@@ -162,6 +162,7 @@ pub fn eqwalizer_to_arc_diagnostic(
         name,
         message,
         d.expression.clone(),
+        None,
     )
 }
 
@@ -250,6 +251,7 @@ pub fn ide_to_arc_diagnostic(
         None => message,
     };
     let severity = diagnostic.severity(use_cli_severity);
+    let doc_path = diagnostic.code.as_doc_path();
     arc_types::Diagnostic::new(
         path,
         line_num,
@@ -258,5 +260,6 @@ pub fn ide_to_arc_diagnostic(
         diagnostic.code.as_labeled_code(),
         description,
         None,
+        doc_path,
     )
 }

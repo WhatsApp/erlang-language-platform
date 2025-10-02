@@ -15,6 +15,7 @@ use std::path::Path;
 use serde::Serialize;
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct Diagnostic {
     // Filepath
     path: String,
@@ -29,6 +30,7 @@ pub struct Diagnostic {
     original: Option<String>,
     replacement: Option<String>,
     description: Option<String>,
+    doc_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -42,6 +44,7 @@ pub enum Severity {
 }
 
 impl Diagnostic {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         path: &Path,
         line: u32,
@@ -50,6 +53,7 @@ impl Diagnostic {
         name: String,
         description: String,
         original: Option<String>,
+        doc_path: Option<String>,
     ) -> Self {
         Diagnostic {
             path: path.display().to_string(), // lossy on Windows for unicode paths
@@ -61,6 +65,7 @@ impl Diagnostic {
             original,
             replacement: None,
             description: Some(description),
+            doc_path,
         }
     }
 }
