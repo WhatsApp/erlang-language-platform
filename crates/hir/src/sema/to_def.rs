@@ -794,8 +794,10 @@ struct DynamicCallPattern {
     module_arg_index: Option<usize>,
     /// Index of the target function argument
     function_arg_index: usize,
-    /// Index of the arguments list
+    /// Index of the arguments list or arity argument
     args_list_index: usize,
+    /// Whether to extract arity directly from an integer argument (true) or from list length (false)
+    direct_arity: bool,
 }
 
 static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
@@ -807,6 +809,7 @@ static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
         module_arg_index: None,
         function_arg_index: 0,
         args_list_index: 1,
+        direct_arity: false,
     },
     // apply/3 (implicit erlang:apply/3) - apply(Module, Function, Args)
     DynamicCallPattern {
@@ -816,6 +819,7 @@ static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
         module_arg_index: Some(0),
         function_arg_index: 1,
         args_list_index: 2,
+        direct_arity: false,
     },
     // erlang:apply/2 (explicit) - erlang:apply(Fun, Args)
     DynamicCallPattern {
@@ -825,6 +829,7 @@ static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
         module_arg_index: None,
         function_arg_index: 0,
         args_list_index: 1,
+        direct_arity: false,
     },
     // erlang:apply/3 (explicit) - erlang:apply(Module, Function, Args)
     DynamicCallPattern {
@@ -834,6 +839,7 @@ static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
         module_arg_index: Some(0),
         function_arg_index: 1,
         args_list_index: 2,
+        direct_arity: false,
     },
     // rpc:call/4 - rpc:call(Node, Module, Function, Args)
     DynamicCallPattern {
@@ -843,6 +849,7 @@ static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
         module_arg_index: Some(1),
         function_arg_index: 2,
         args_list_index: 3,
+        direct_arity: false,
     },
     // rpc:call/5 - rpc:call(Node, Module, Function, Args, Timeout)
     DynamicCallPattern {
@@ -852,6 +859,7 @@ static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
         module_arg_index: Some(1),
         function_arg_index: 2,
         args_list_index: 3,
+        direct_arity: false,
     },
     // rpc:async_call/4 - rpc:async_call(Node, Module, Function, Args)
     DynamicCallPattern {
@@ -861,6 +869,7 @@ static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
         module_arg_index: Some(1),
         function_arg_index: 2,
         args_list_index: 3,
+        direct_arity: false,
     },
     // rpc:cast/4 - rpc:cast(Node, Module, Function, Args)
     DynamicCallPattern {
@@ -870,6 +879,7 @@ static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
         module_arg_index: Some(1),
         function_arg_index: 2,
         args_list_index: 3,
+        direct_arity: false,
     },
     // rpc:multicall/3 - rpc:multicall(Module, Function, Args)
     DynamicCallPattern {
@@ -879,6 +889,7 @@ static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
         module_arg_index: Some(0),
         function_arg_index: 1,
         args_list_index: 2,
+        direct_arity: false,
     },
     // rpc:multicall/4 - rpc:multicall(Module, Function, Args, Timeout)
     DynamicCallPattern {
@@ -888,6 +899,7 @@ static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
         module_arg_index: Some(0),
         function_arg_index: 1,
         args_list_index: 2,
+        direct_arity: false,
     },
     // rpc:multicall/5 - rpc:multicall(Nodes, Module, Function, Args, Timeout)
     DynamicCallPattern {
@@ -897,6 +909,247 @@ static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
         module_arg_index: Some(1),
         function_arg_index: 2,
         args_list_index: 3,
+        direct_arity: false,
+    },
+    // function_exported/3 (implicit erlang:function_exported/3) - function_exported(Module, Function, Arity)
+    DynamicCallPattern {
+        module: None,
+        function: "function_exported",
+        arity: 3,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+        direct_arity: true,
+    },
+    // erlang:function_exported/3 (explicit) - erlang:function_exported(Module, Function, Arity)
+    DynamicCallPattern {
+        module: Some("erlang"),
+        function: "function_exported",
+        arity: 3,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+        direct_arity: true,
+    },
+    // is_builtin/3 (implicit erlang:is_builtin/3) - is_builtin(Module, Function, Arity)
+    DynamicCallPattern {
+        module: None,
+        function: "is_builtin",
+        arity: 3,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+        direct_arity: true,
+    },
+    // erlang:is_builtin/3 (explicit) - erlang:is_builtin(Module, Function, Arity)
+    DynamicCallPattern {
+        module: Some("erlang"),
+        function: "is_builtin",
+        arity: 3,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+        direct_arity: true,
+    },
+    // hibernate/3 (implicit erlang:hibernate/3) - hibernate(Module, Function, Args)
+    DynamicCallPattern {
+        module: None,
+        function: "hibernate",
+        arity: 3,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+        direct_arity: false,
+    },
+    // erlang:hibernate/3 (explicit) - erlang:hibernate(Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("erlang"),
+        function: "hibernate",
+        arity: 3,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+        direct_arity: false,
+    },
+    // spawn/3 (implicit erlang:spawn/3) - spawn(Module, Function, Args)
+    DynamicCallPattern {
+        module: None,
+        function: "spawn",
+        arity: 3,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+        direct_arity: false,
+    },
+    // erlang:spawn/3 (explicit) - erlang:spawn(Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("erlang"),
+        function: "spawn",
+        arity: 3,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+        direct_arity: false,
+    },
+    // spawn/4 (implicit erlang:spawn/4) - spawn(Node, Module, Function, Args)
+    DynamicCallPattern {
+        module: None,
+        function: "spawn",
+        arity: 4,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
+    // erlang:spawn/4 (explicit) - erlang:spawn(Node, Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("erlang"),
+        function: "spawn",
+        arity: 4,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
+    // spawn_link/3 (implicit erlang:spawn_link/3) - spawn_link(Module, Function, Args)
+    DynamicCallPattern {
+        module: None,
+        function: "spawn_link",
+        arity: 3,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+        direct_arity: false,
+    },
+    // erlang:spawn_link/3 (explicit) - erlang:spawn_link(Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("erlang"),
+        function: "spawn_link",
+        arity: 3,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+        direct_arity: false,
+    },
+    // spawn_link/4 (implicit erlang:spawn_link/4) - spawn_link(Node, Module, Function, Args)
+    DynamicCallPattern {
+        module: None,
+        function: "spawn_link",
+        arity: 4,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
+    // erlang:spawn_link/4 (explicit) - erlang:spawn_link(Node, Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("erlang"),
+        function: "spawn_link",
+        arity: 4,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
+    // spawn_monitor/3 (implicit erlang:spawn_monitor/3) - spawn_monitor(Module, Function, Args)
+    DynamicCallPattern {
+        module: None,
+        function: "spawn_monitor",
+        arity: 3,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+        direct_arity: false,
+    },
+    // erlang:spawn_monitor/3 (explicit) - erlang:spawn_monitor(Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("erlang"),
+        function: "spawn_monitor",
+        arity: 3,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+        direct_arity: false,
+    },
+    // spawn_monitor/4 (implicit erlang:spawn_monitor/4) - spawn_monitor(Node, Module, Function, Args)
+    DynamicCallPattern {
+        module: None,
+        function: "spawn_monitor",
+        arity: 4,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
+    // erlang:spawn_monitor/4 (explicit) - erlang:spawn_monitor(Node, Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("erlang"),
+        function: "spawn_monitor",
+        arity: 4,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
+    // spawn_opt/4 (implicit erlang:spawn_opt/4) - spawn_opt(Module, Function, Args, Options)
+    DynamicCallPattern {
+        module: None,
+        function: "spawn_opt",
+        arity: 4,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+        direct_arity: false,
+    },
+    // erlang:spawn_opt/4 (explicit) - erlang:spawn_opt(Module, Function, Args, Options)
+    DynamicCallPattern {
+        module: Some("erlang"),
+        function: "spawn_opt",
+        arity: 4,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+        direct_arity: false,
+    },
+    // spawn_opt/5 (implicit erlang:spawn_opt/5) - spawn_opt(Node, Module, Function, Args, Options)
+    DynamicCallPattern {
+        module: None,
+        function: "spawn_opt",
+        arity: 5,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
+    // erlang:spawn_opt/5 (explicit) - erlang:spawn_opt(Node, Module, Function, Args, Options)
+    DynamicCallPattern {
+        module: Some("erlang"),
+        function: "spawn_opt",
+        arity: 5,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
+    // spawn_request/5 (implicit erlang:spawn_request/5) - spawn_request(Node, Module, Function, Args, Options)
+    DynamicCallPattern {
+        module: None,
+        function: "spawn_request",
+        arity: 5,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
+    // erlang:spawn_request/5 (explicit) - erlang:spawn_request(Node, Module, Function, Args, Options)
+    DynamicCallPattern {
+        module: Some("erlang"),
+        function: "spawn_request",
+        arity: 5,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
     },
 ];
 
@@ -958,8 +1211,14 @@ fn resolve_dynamic_call(
     args: &[ExprId],
     body: &Body,
 ) -> Option<CallDef> {
-    // Extract arity from the arguments list
-    let arity = arity_from_apply_args(args[pattern.args_list_index], body)?;
+    // Extract arity based on pattern type
+    let arity = if pattern.direct_arity {
+        // Extract arity directly from an integer argument
+        arity_from_integer_arg(args[pattern.args_list_index], body)?
+    } else {
+        // Extract arity from list length
+        arity_from_apply_args(args[pattern.args_list_index], body)?
+    };
 
     // Build the call target
     let call_target = if let Some(module_idx) = pattern.module_arg_index {
@@ -985,4 +1244,13 @@ fn resolve_dynamic_call(
 fn arity_from_apply_args(args: ExprId, body: &Body) -> Option<u32> {
     // Deal with a simple list only.
     body[args].list_length().map(|l| l as u32)
+}
+
+/// Extract arity directly from an integer argument.
+/// Given the `ExprId` of an integer parameter, return its value as arity.
+fn arity_from_integer_arg(arity_arg: ExprId, body: &Body) -> Option<u32> {
+    match &body[arity_arg] {
+        Expr::Literal(Literal::Integer(int)) => int.value.try_into().ok(),
+        _ => None,
+    }
 }

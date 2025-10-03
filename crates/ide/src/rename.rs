@@ -1336,4 +1336,532 @@ mod tests {
                     ok."#,
         );
     }
+
+    #[test]
+    fn test_rename_in_function_exported() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   function_exported(?MODULE, bar, 0).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   function_exported(?MODULE, new_name, 0).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erlang_function_exported() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erlang:function_exported(?MODULE, bar, 0).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erlang:function_exported(?MODULE, new_name, 0).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_is_builtin() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   is_builtin(?MODULE, bar, 0).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   is_builtin(?MODULE, new_name, 0).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erlang_is_builtin() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erlang:is_builtin(?MODULE, bar, 0).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erlang:is_builtin(?MODULE, new_name, 0).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_hibernate() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   hibernate(?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   hibernate(?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erlang_hibernate() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erlang:hibernate(?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erlang:hibernate(?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_spawn() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   spawn(?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   spawn(?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erlang_spawn() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erlang:spawn(?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erlang:spawn(?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_spawn_4() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   spawn(node, ?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   spawn(node, ?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erlang_spawn_4() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erlang:spawn(node, ?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erlang:spawn(node, ?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_spawn_link() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   spawn_link(?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   spawn_link(?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erlang_spawn_link() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erlang:spawn_link(?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erlang:spawn_link(?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_spawn_link_4() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   spawn_link(node, ?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   spawn_link(node, ?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erlang_spawn_link_4() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erlang:spawn_link(node, ?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erlang:spawn_link(node, ?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_spawn_monitor() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   spawn_monitor(?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   spawn_monitor(?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erlang_spawn_monitor() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erlang:spawn_monitor(?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erlang:spawn_monitor(?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_spawn_monitor_4() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   spawn_monitor(node, ?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   spawn_monitor(node, ?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erlang_spawn_monitor_4() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erlang:spawn_monitor(node, ?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erlang:spawn_monitor(node, ?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_spawn_opt() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   spawn_opt(?MODULE, bar, [], []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   spawn_opt(?MODULE, new_name, [], []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erlang_spawn_opt() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erlang:spawn_opt(?MODULE, bar, [], []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erlang:spawn_opt(?MODULE, new_name, [], []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_spawn_opt_5() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   spawn_opt(node, ?MODULE, bar, [], []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   spawn_opt(node, ?MODULE, new_name, [], []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erlang_spawn_opt_5() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erlang:spawn_opt(node, ?MODULE, bar, [], []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erlang:spawn_opt(node, ?MODULE, new_name, [], []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_spawn_request() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   spawn_request(node, ?MODULE, bar, [], []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   spawn_request(node, ?MODULE, new_name, [], []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erlang_spawn_request() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erlang:spawn_request(node, ?MODULE, bar, [], []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erlang:spawn_request(node, ?MODULE, new_name, [], []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
 }
