@@ -781,15 +781,12 @@ impl ToDef for ast::ExprArgs {
     }
 }
 
+use fxhash::FxHashMap;
+use lazy_static::lazy_static;
+
 /// Pattern for matching dynamic call expressions (apply, rpc calls, etc.)
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct DynamicCallPattern {
-    /// Expected module name (None means no explicit module prefix, i.e., implicit erlang module)
-    module: Option<&'static str>,
-    /// Expected function name
-    function: &'static str,
-    /// Expected arity for this pattern
-    arity: usize,
     /// Index of the target module argument (None when target function is in same module)
     module_arg_index: Option<usize>,
     /// Index of the target function argument
@@ -800,428 +797,106 @@ struct DynamicCallPattern {
     direct_arity: bool,
 }
 
-static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
-    // apply/2 (implicit erlang:apply/2) - apply(Fun, Args)
-    DynamicCallPattern {
-        module: None,
-        function: "apply",
-        arity: 2,
-        module_arg_index: None,
-        function_arg_index: 0,
-        args_list_index: 1,
-        direct_arity: false,
-    },
-    // apply/3 (implicit erlang:apply/3) - apply(Module, Function, Args)
-    DynamicCallPattern {
-        module: None,
-        function: "apply",
-        arity: 3,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: false,
-    },
-    // erlang:apply/2 (explicit) - erlang:apply(Fun, Args)
-    DynamicCallPattern {
-        module: Some("erlang"),
-        function: "apply",
-        arity: 2,
-        module_arg_index: None,
-        function_arg_index: 0,
-        args_list_index: 1,
-        direct_arity: false,
-    },
-    // erlang:apply/3 (explicit) - erlang:apply(Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("erlang"),
-        function: "apply",
-        arity: 3,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: false,
-    },
-    // rpc:call/4 - rpc:call(Node, Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("rpc"),
-        function: "call",
-        arity: 4,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // rpc:call/5 - rpc:call(Node, Module, Function, Args, Timeout)
-    DynamicCallPattern {
-        module: Some("rpc"),
-        function: "call",
-        arity: 5,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // rpc:async_call/4 - rpc:async_call(Node, Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("rpc"),
-        function: "async_call",
-        arity: 4,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // rpc:cast/4 - rpc:cast(Node, Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("rpc"),
-        function: "cast",
-        arity: 4,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // rpc:multicall/3 - rpc:multicall(Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("rpc"),
-        function: "multicall",
-        arity: 3,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: false,
-    },
-    // rpc:multicall/4 - rpc:multicall(Module, Function, Args, Timeout)
-    DynamicCallPattern {
-        module: Some("rpc"),
-        function: "multicall",
-        arity: 4,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: false,
-    },
-    // rpc:multicall/5 - rpc:multicall(Nodes, Module, Function, Args, Timeout)
-    DynamicCallPattern {
-        module: Some("rpc"),
-        function: "multicall",
-        arity: 5,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // function_exported/3 (implicit erlang:function_exported/3) - function_exported(Module, Function, Arity)
-    DynamicCallPattern {
-        module: None,
-        function: "function_exported",
-        arity: 3,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: true,
-    },
-    // erlang:function_exported/3 (explicit) - erlang:function_exported(Module, Function, Arity)
-    DynamicCallPattern {
-        module: Some("erlang"),
-        function: "function_exported",
-        arity: 3,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: true,
-    },
-    // is_builtin/3 (implicit erlang:is_builtin/3) - is_builtin(Module, Function, Arity)
-    DynamicCallPattern {
-        module: None,
-        function: "is_builtin",
-        arity: 3,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: true,
-    },
-    // erlang:is_builtin/3 (explicit) - erlang:is_builtin(Module, Function, Arity)
-    DynamicCallPattern {
-        module: Some("erlang"),
-        function: "is_builtin",
-        arity: 3,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: true,
-    },
-    // hibernate/3 (implicit erlang:hibernate/3) - hibernate(Module, Function, Args)
-    DynamicCallPattern {
-        module: None,
-        function: "hibernate",
-        arity: 3,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: false,
-    },
-    // erlang:hibernate/3 (explicit) - erlang:hibernate(Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("erlang"),
-        function: "hibernate",
-        arity: 3,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: false,
-    },
-    // spawn/3 (implicit erlang:spawn/3) - spawn(Module, Function, Args)
-    DynamicCallPattern {
-        module: None,
-        function: "spawn",
-        arity: 3,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: false,
-    },
-    // erlang:spawn/3 (explicit) - erlang:spawn(Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("erlang"),
-        function: "spawn",
-        arity: 3,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: false,
-    },
-    // spawn/4 (implicit erlang:spawn/4) - spawn(Node, Module, Function, Args)
-    DynamicCallPattern {
-        module: None,
-        function: "spawn",
-        arity: 4,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // erlang:spawn/4 (explicit) - erlang:spawn(Node, Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("erlang"),
-        function: "spawn",
-        arity: 4,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // spawn_link/3 (implicit erlang:spawn_link/3) - spawn_link(Module, Function, Args)
-    DynamicCallPattern {
-        module: None,
-        function: "spawn_link",
-        arity: 3,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: false,
-    },
-    // erlang:spawn_link/3 (explicit) - erlang:spawn_link(Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("erlang"),
-        function: "spawn_link",
-        arity: 3,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: false,
-    },
-    // spawn_link/4 (implicit erlang:spawn_link/4) - spawn_link(Node, Module, Function, Args)
-    DynamicCallPattern {
-        module: None,
-        function: "spawn_link",
-        arity: 4,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // erlang:spawn_link/4 (explicit) - erlang:spawn_link(Node, Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("erlang"),
-        function: "spawn_link",
-        arity: 4,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // spawn_monitor/3 (implicit erlang:spawn_monitor/3) - spawn_monitor(Module, Function, Args)
-    DynamicCallPattern {
-        module: None,
-        function: "spawn_monitor",
-        arity: 3,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: false,
-    },
-    // erlang:spawn_monitor/3 (explicit) - erlang:spawn_monitor(Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("erlang"),
-        function: "spawn_monitor",
-        arity: 3,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: false,
-    },
-    // spawn_monitor/4 (implicit erlang:spawn_monitor/4) - spawn_monitor(Node, Module, Function, Args)
-    DynamicCallPattern {
-        module: None,
-        function: "spawn_monitor",
-        arity: 4,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // erlang:spawn_monitor/4 (explicit) - erlang:spawn_monitor(Node, Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("erlang"),
-        function: "spawn_monitor",
-        arity: 4,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // spawn_opt/4 (implicit erlang:spawn_opt/4) - spawn_opt(Module, Function, Args, Options)
-    DynamicCallPattern {
-        module: None,
-        function: "spawn_opt",
-        arity: 4,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: false,
-    },
-    // erlang:spawn_opt/4 (explicit) - erlang:spawn_opt(Module, Function, Args, Options)
-    DynamicCallPattern {
-        module: Some("erlang"),
-        function: "spawn_opt",
-        arity: 4,
-        module_arg_index: Some(0),
-        function_arg_index: 1,
-        args_list_index: 2,
-        direct_arity: false,
-    },
-    // spawn_opt/5 (implicit erlang:spawn_opt/5) - spawn_opt(Node, Module, Function, Args, Options)
-    DynamicCallPattern {
-        module: None,
-        function: "spawn_opt",
-        arity: 5,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // erlang:spawn_opt/5 (explicit) - erlang:spawn_opt(Node, Module, Function, Args, Options)
-    DynamicCallPattern {
-        module: Some("erlang"),
-        function: "spawn_opt",
-        arity: 5,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // spawn_request/5 (implicit erlang:spawn_request/5) - spawn_request(Node, Module, Function, Args, Options)
-    DynamicCallPattern {
-        module: None,
-        function: "spawn_request",
-        arity: 5,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // erlang:spawn_request/5 (explicit) - erlang:spawn_request(Node, Module, Function, Args, Options)
-    DynamicCallPattern {
-        module: Some("erlang"),
-        function: "spawn_request",
-        arity: 5,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // erpc:call/4 - erpc:call(Node, Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("erpc"),
-        function: "call",
-        arity: 4,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // erpc:call/5 - erpc:call(Node, Module, Function, Args, TimeoutOrOptions)
-    DynamicCallPattern {
-        module: Some("erpc"),
-        function: "call",
-        arity: 5,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // erpc:cast/4 - erpc:cast(Node, Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("erpc"),
-        function: "cast",
-        arity: 4,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // erpc:multicall/4 - erpc:multicall(Nodes, Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("erpc"),
-        function: "multicall",
-        arity: 4,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // erpc:multicall/5 - erpc:multicall(Nodes, Module, Function, Args, TimeoutOrOptions)
-    DynamicCallPattern {
-        module: Some("erpc"),
-        function: "multicall",
-        arity: 5,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // erpc:multicast/4 - erpc:multicast(Nodes, Module, Function, Args)
-    DynamicCallPattern {
-        module: Some("erpc"),
-        function: "multicast",
-        arity: 4,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-    // erpc:send_request/6 - erpc:send_request(Node, Module, Function, Args, Label, RequestIdCollection)
-    DynamicCallPattern {
-        module: Some("erpc"),
-        function: "send_request",
-        arity: 6,
-        module_arg_index: Some(1),
-        function_arg_index: 2,
-        args_list_index: 3,
-        direct_arity: false,
-    },
-];
+type PatternKey = (Option<&'static str>, &'static str, usize);
+
+macro_rules! add_patterns {
+    ($patterns:ident, [$(($module:expr, $func:literal, $arity:literal, $module_idx:expr, $func_idx:literal, $args_idx:literal, $direct:expr)),* $(,)?]) => {
+        $(
+            $patterns.insert(
+                ($module, $func, $arity),
+                DynamicCallPattern {
+                    module_arg_index: $module_idx,
+                    function_arg_index: $func_idx,
+                    args_list_index: $args_idx,
+                    direct_arity: $direct,
+                },
+            );
+        )*
+    };
+}
+
+fn create_dynamic_call_patterns() -> FxHashMap<PatternKey, DynamicCallPattern> {
+    let mut patterns = FxHashMap::default();
+
+    // Each entry follows the format:
+    //
+    // (module, function, arity, module_arg_index, function_arg_index, args_list_index, direct_arity)
+    //
+    // Where:
+    //
+    // module:             Module name (Some("erlang"), Some("rpc"), etc.) or None for implicit erlang functions
+    // function:           Function name as string literal (e.g., "apply", "call", "spawn")
+    // arity:              Number of arguments this function pattern expects
+    // module_arg_index:   Which argument position contains the target module name
+    // function_arg_index: Which argument position contains the target function name
+    // args_list_index:    Which argument position contains the arguments list or arity value
+    // direct_arity:       true if the argument contains the arity value, false if the argument contains a list of arguments
+    //
+    // All indexes are 0-based.
+    add_patterns!(
+        patterns,
+        [
+            // erlang module (implicit)
+            (None, "apply", 2, None, 0, 1, false),
+            (None, "apply", 3, Some(0), 1, 2, false),
+            (None, "function_exported", 3, Some(0), 1, 2, true),
+            (None, "hibernate", 3, Some(0), 1, 2, false),
+            (None, "is_builtin", 3, Some(0), 1, 2, true),
+            (None, "spawn_link", 3, Some(0), 1, 2, false),
+            (None, "spawn_link", 4, Some(1), 2, 3, false),
+            (None, "spawn_monitor", 3, Some(0), 1, 2, false),
+            (None, "spawn_monitor", 4, Some(1), 2, 3, false),
+            (None, "spawn_opt", 4, Some(0), 1, 2, false),
+            (None, "spawn_opt", 5, Some(1), 2, 3, false),
+            (None, "spawn_request", 5, Some(1), 2, 3, false),
+            (None, "spawn", 3, Some(0), 1, 2, false),
+            (None, "spawn", 4, Some(1), 2, 3, false),
+            // erlang module (explicit)
+            (Some("erlang"), "apply", 2, None, 0, 1, false),
+            (Some("erlang"), "apply", 3, Some(0), 1, 2, false),
+            (Some("erlang"), "function_exported", 3, Some(0), 1, 2, true),
+            (Some("erlang"), "hibernate", 3, Some(0), 1, 2, false),
+            (Some("erlang"), "is_builtin", 3, Some(0), 1, 2, true),
+            (Some("erlang"), "spawn_link", 3, Some(0), 1, 2, false),
+            (Some("erlang"), "spawn_link", 4, Some(1), 2, 3, false),
+            (Some("erlang"), "spawn_monitor", 3, Some(0), 1, 2, false),
+            (Some("erlang"), "spawn_monitor", 4, Some(1), 2, 3, false),
+            (Some("erlang"), "spawn_opt", 4, Some(0), 1, 2, false),
+            (Some("erlang"), "spawn_opt", 5, Some(1), 2, 3, false),
+            (Some("erlang"), "spawn_request", 5, Some(1), 2, 3, false),
+            (Some("erlang"), "spawn", 3, Some(0), 1, 2, false),
+            (Some("erlang"), "spawn", 4, Some(1), 2, 3, false),
+            // rpc
+            (Some("rpc"), "call", 4, Some(1), 2, 3, false),
+            (Some("rpc"), "call", 5, Some(1), 2, 3, false),
+            (Some("rpc"), "async_call", 4, Some(1), 2, 3, false),
+            (Some("rpc"), "cast", 4, Some(1), 2, 3, false),
+            (Some("rpc"), "multicall", 3, Some(0), 1, 2, false),
+            (Some("rpc"), "multicall", 4, Some(0), 1, 2, false),
+            (Some("rpc"), "multicall", 5, Some(1), 2, 3, false),
+            // erpc
+            (Some("erpc"), "call", 4, Some(1), 2, 3, false),
+            (Some("erpc"), "call", 5, Some(1), 2, 3, false),
+            (Some("erpc"), "cast", 4, Some(1), 2, 3, false),
+            (Some("erpc"), "multicall", 4, Some(1), 2, 3, false),
+            (Some("erpc"), "multicall", 5, Some(1), 2, 3, false),
+            (Some("erpc"), "multicast", 4, Some(1), 2, 3, false),
+            (Some("erpc"), "send_request", 6, Some(1), 2, 3, false),
+        ]
+    );
+
+    patterns
+}
+
+// Lazy static initialization for the patterns map
+lazy_static! {
+    static ref DYNAMIC_CALL_PATTERNS: FxHashMap<PatternKey, DynamicCallPattern> =
+        create_dynamic_call_patterns();
+}
+
+fn get_dynamic_call_patterns() -> &'static FxHashMap<PatternKey, DynamicCallPattern> {
+    &DYNAMIC_CALL_PATTERNS
+}
 
 fn look_for_dynamic_call(
     sema: &Semantic,
@@ -1241,37 +916,16 @@ fn look_for_dynamic_call(
     let function_atom = body[fun].as_atom()?;
     let function_name = sema.db.lookup_atom(function_atom);
 
-    for pattern in DYNAMIC_CALL_PATTERNS {
-        if matches_pattern(pattern, module_name.as_ref(), &function_name, args.len()) {
-            return resolve_dynamic_call(sema, file_id, pattern, args, body);
-        }
+    // Create pattern key and look up in HashMap for O(1) lookup
+    let module_str = module_name.as_ref().map(|name| name.as_str());
+    let pattern_key = (module_str, function_name.as_str(), args.len());
+
+    let patterns_map = get_dynamic_call_patterns();
+    if let Some(pattern) = patterns_map.get(&pattern_key) {
+        return resolve_dynamic_call(sema, file_id, pattern, args, body);
     }
 
     None
-}
-
-fn matches_pattern(
-    pattern: &DynamicCallPattern,
-    module_name: Option<&Name>,
-    function_name: &Name,
-    arity: usize,
-) -> bool {
-    // Check arity
-    if pattern.arity != arity {
-        return false;
-    }
-
-    // Check function name
-    if function_name.as_str() != pattern.function {
-        return false;
-    }
-
-    // Check module name
-    match (pattern.module, module_name) {
-        (None, None) => true, // No explicit module prefix expected and found
-        (Some(expected), Some(actual)) => expected == actual.as_str(),
-        _ => false, // Mismatch between expected and actual module presence
-    }
 }
 
 fn resolve_dynamic_call(
