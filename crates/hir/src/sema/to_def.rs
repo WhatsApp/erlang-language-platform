@@ -38,7 +38,6 @@ use crate::TypeAliasDef;
 use crate::TypeExpr;
 use crate::TypeExprId;
 use crate::VarDef;
-use crate::known;
 use crate::macro_exp;
 use crate::macro_exp::BuiltInMacro;
 use crate::macro_exp::MacroExpCtx;
@@ -760,8 +759,8 @@ impl ToDef for ast::Callback {
 impl ToDef for ast::ExprArgs {
     type Def = CallDef;
 
-    /// Looking specifically to pull out a function definition from an
-    /// `apply/2` or `apply/3` call.
+    /// Looking specifically to pull out a function definition from a dynamic call,
+    /// e.g. apply(Fun, Args) or rpc:call(Node, Module, Function, Args).
     fn to_def(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Def> {
         let (body, body_map) = sema.find_body_and_map(ast.file_id, ast.value.syntax())?;
         let call = ast::Expr::cast(ast.value.syntax().parent()?.clone())?;
@@ -770,10 +769,10 @@ impl ToDef for ast::ExprArgs {
         let def = match &body[expr_id] {
             Expr::Call { target, args } => match target {
                 CallTarget::Local { name } => {
-                    look_for_apply_call(sema, ast.file_id, None, *name, args, &body)
+                    look_for_dynamic_call(sema, ast.file_id, None, *name, args, &body)
                 }
                 CallTarget::Remote { module, name, .. } => {
-                    look_for_apply_call(sema, ast.file_id, Some(*module), *name, args, &body)
+                    look_for_dynamic_call(sema, ast.file_id, Some(*module), *name, args, &body)
                 }
             },
             _ => None,
@@ -782,7 +781,63 @@ impl ToDef for ast::ExprArgs {
     }
 }
 
-fn look_for_apply_call(
+/// Pattern for matching dynamic call expressions (apply, rpc calls, etc.)
+#[derive(Debug)]
+struct DynamicCallPattern {
+    /// Expected module name (None means no explicit module prefix, i.e., implicit erlang module)
+    module: Option<&'static str>,
+    /// Expected function name
+    function: &'static str,
+    /// Expected arity for this pattern
+    arity: usize,
+    /// Index of the target module argument (None when target function is in same module)
+    module_arg_index: Option<usize>,
+    /// Index of the target function argument
+    function_arg_index: usize,
+    /// Index of the arguments list
+    args_list_index: usize,
+}
+
+static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
+    // apply/2 (implicit erlang:apply/2) - apply(Fun, Args)
+    DynamicCallPattern {
+        module: None,
+        function: "apply",
+        arity: 2,
+        module_arg_index: None,
+        function_arg_index: 0,
+        args_list_index: 1,
+    },
+    // apply/3 (implicit erlang:apply/3) - apply(Module, Function, Args)
+    DynamicCallPattern {
+        module: None,
+        function: "apply",
+        arity: 3,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+    },
+    // erlang:apply/2 (explicit) - erlang:apply(Fun, Args)
+    DynamicCallPattern {
+        module: Some("erlang"),
+        function: "apply",
+        arity: 2,
+        module_arg_index: None,
+        function_arg_index: 0,
+        args_list_index: 1,
+    },
+    // erlang:apply/3 (explicit) - erlang:apply(Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("erlang"),
+        function: "apply",
+        arity: 3,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+    },
+];
+
+fn look_for_dynamic_call(
     sema: &Semantic,
     file_id: FileId,
     module: Option<ExprId>,
@@ -790,36 +845,75 @@ fn look_for_apply_call(
     args: &[ExprId],
     body: &Body,
 ) -> Option<CallDef> {
-    if let Some(module) = module {
+    let module_name = if let Some(module) = module {
         let atom = body[module].as_atom()?;
-        if sema.db.lookup_atom(atom) != known::erlang {
-            return None;
-        }
-    };
-    let atom = body[fun].as_atom()?;
-    if sema.db.lookup_atom(atom) == known::apply {
-        if args.len() == 2 {
-            // apply/2
-            let arity = arity_from_apply_args(args[1], body)?;
-            let apply_target = CallTarget::Local { name: args[0] };
-            resolve_call_target(sema, &apply_target, Some(arity), file_id, body)
-                .map(CallDef::Function)
-        } else if args.len() == 3 {
-            // apply/3
-            let arity = arity_from_apply_args(args[2], body)?;
-            let apply_target = CallTarget::Remote {
-                module: args[0],
-                name: args[1],
-                parens: false,
-            };
-            resolve_call_target(sema, &apply_target, Some(arity), file_id, body)
-                .map(CallDef::Function)
-        } else {
-            None
-        }
+        Some(sema.db.lookup_atom(atom))
     } else {
         None
+    };
+
+    let function_atom = body[fun].as_atom()?;
+    let function_name = sema.db.lookup_atom(function_atom);
+
+    for pattern in DYNAMIC_CALL_PATTERNS {
+        if matches_pattern(pattern, module_name.as_ref(), &function_name, args.len()) {
+            return resolve_dynamic_call(sema, file_id, pattern, args, body);
+        }
     }
+
+    None
+}
+
+fn matches_pattern(
+    pattern: &DynamicCallPattern,
+    module_name: Option<&Name>,
+    function_name: &Name,
+    arity: usize,
+) -> bool {
+    // Check arity
+    if pattern.arity != arity {
+        return false;
+    }
+
+    // Check function name
+    if function_name.as_str() != pattern.function {
+        return false;
+    }
+
+    // Check module name
+    match (pattern.module, module_name) {
+        (None, None) => true, // No explicit module prefix expected and found
+        (Some(expected), Some(actual)) => expected == actual.as_str(),
+        _ => false, // Mismatch between expected and actual module presence
+    }
+}
+
+fn resolve_dynamic_call(
+    sema: &Semantic,
+    file_id: FileId,
+    pattern: &DynamicCallPattern,
+    args: &[ExprId],
+    body: &Body,
+) -> Option<CallDef> {
+    // Extract arity from the arguments list
+    let arity = arity_from_apply_args(args[pattern.args_list_index], body)?;
+
+    // Build the call target
+    let call_target = if let Some(module_idx) = pattern.module_arg_index {
+        // Remote call
+        CallTarget::Remote {
+            module: args[module_idx],
+            name: args[pattern.function_arg_index],
+            parens: false,
+        }
+    } else {
+        // Local call
+        CallTarget::Local {
+            name: args[pattern.function_arg_index],
+        }
+    };
+
+    resolve_call_target(sema, &call_target, Some(arity), file_id, body).map(CallDef::Function)
 }
 
 /// The apply call has a last parameter being a list of arguments.
