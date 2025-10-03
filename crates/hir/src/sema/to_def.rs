@@ -835,6 +835,69 @@ static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
         function_arg_index: 1,
         args_list_index: 2,
     },
+    // rpc:call/4 - rpc:call(Node, Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("rpc"),
+        function: "call",
+        arity: 4,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+    },
+    // rpc:call/5 - rpc:call(Node, Module, Function, Args, Timeout)
+    DynamicCallPattern {
+        module: Some("rpc"),
+        function: "call",
+        arity: 5,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+    },
+    // rpc:async_call/4 - rpc:async_call(Node, Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("rpc"),
+        function: "async_call",
+        arity: 4,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+    },
+    // rpc:cast/4 - rpc:cast(Node, Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("rpc"),
+        function: "cast",
+        arity: 4,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+    },
+    // rpc:multicall/3 - rpc:multicall(Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("rpc"),
+        function: "multicall",
+        arity: 3,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+    },
+    // rpc:multicall/4 - rpc:multicall(Module, Function, Args, Timeout)
+    DynamicCallPattern {
+        module: Some("rpc"),
+        function: "multicall",
+        arity: 4,
+        module_arg_index: Some(0),
+        function_arg_index: 1,
+        args_list_index: 2,
+    },
+    // rpc:multicall/5 - rpc:multicall(Nodes, Module, Function, Args, Timeout)
+    DynamicCallPattern {
+        module: Some("rpc"),
+        function: "multicall",
+        arity: 5,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+    },
 ];
 
 fn look_for_dynamic_call(

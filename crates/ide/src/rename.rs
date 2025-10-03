@@ -1182,4 +1182,158 @@ mod tests {
              "#,
         );
     }
+
+    #[test]
+    fn test_rename_in_rpc_call_4() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   rpc:call(node, ?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   rpc:call(node, ?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_rpc_call_5() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   rpc:call(node, ?MODULE, bar, [], timeout).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   rpc:call(node, ?MODULE, new_name, [], timeout).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_rpc_async_call() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   rpc:async_call(node, ?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   rpc:async_call(node, ?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_rpc_cast() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   rpc:cast(node, ?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   rpc:cast(node, ?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_rpc_multicall_3() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   rpc:multicall(?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   rpc:multicall(?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_rpc_multicall_4() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   rpc:multicall(?MODULE, bar, [], timeout).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   rpc:multicall(?MODULE, new_name, [], timeout).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_rpc_multicall_5() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   rpc:multicall([node1, node2], ?MODULE, bar, [], timeout).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   rpc:multicall([node1, node2], ?MODULE, new_name, [], timeout).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
 }
