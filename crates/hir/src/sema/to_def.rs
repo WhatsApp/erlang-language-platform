@@ -1151,6 +1151,76 @@ static DYNAMIC_CALL_PATTERNS: &[DynamicCallPattern] = &[
         args_list_index: 3,
         direct_arity: false,
     },
+    // erpc:call/4 - erpc:call(Node, Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("erpc"),
+        function: "call",
+        arity: 4,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
+    // erpc:call/5 - erpc:call(Node, Module, Function, Args, TimeoutOrOptions)
+    DynamicCallPattern {
+        module: Some("erpc"),
+        function: "call",
+        arity: 5,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
+    // erpc:cast/4 - erpc:cast(Node, Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("erpc"),
+        function: "cast",
+        arity: 4,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
+    // erpc:multicall/4 - erpc:multicall(Nodes, Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("erpc"),
+        function: "multicall",
+        arity: 4,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
+    // erpc:multicall/5 - erpc:multicall(Nodes, Module, Function, Args, TimeoutOrOptions)
+    DynamicCallPattern {
+        module: Some("erpc"),
+        function: "multicall",
+        arity: 5,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
+    // erpc:multicast/4 - erpc:multicast(Nodes, Module, Function, Args)
+    DynamicCallPattern {
+        module: Some("erpc"),
+        function: "multicast",
+        arity: 4,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
+    // erpc:send_request/6 - erpc:send_request(Node, Module, Function, Args, Label, RequestIdCollection)
+    DynamicCallPattern {
+        module: Some("erpc"),
+        function: "send_request",
+        arity: 6,
+        module_arg_index: Some(1),
+        function_arg_index: 2,
+        args_list_index: 3,
+        direct_arity: false,
+    },
 ];
 
 fn look_for_dynamic_call(

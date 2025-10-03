@@ -1864,4 +1864,158 @@ mod tests {
                     ok."#,
         );
     }
+
+    #[test]
+    fn test_rename_in_erpc_call_4() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erpc:call(node, ?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erpc:call(node, ?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erpc_call_5() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erpc:call(node, ?MODULE, bar, [], timeout).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erpc:call(node, ?MODULE, new_name, [], timeout).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erpc_cast() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erpc:cast(node, ?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erpc:cast(node, ?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erpc_multicall_4() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erpc:multicall(nodes, ?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erpc:multicall(nodes, ?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erpc_multicall_5() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erpc:multicall(nodes, ?MODULE, bar, [], timeout).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erpc:multicall(nodes, ?MODULE, new_name, [], timeout).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erpc_multicast() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erpc:multicast(nodes, ?MODULE, bar, []).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erpc:multicast(nodes, ?MODULE, new_name, []).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_in_erpc_send_request() {
+        check(
+            "new_name",
+            r#"
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   erpc:send_request(node, ?MODULE, bar, [], label, collection).
+
+               b~ar() ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   erpc:send_request(node, ?MODULE, new_name, [], label, collection).
+
+               new_name() ->
+                    ok."#,
+        );
+    }
 }
