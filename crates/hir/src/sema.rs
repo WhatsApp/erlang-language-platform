@@ -823,6 +823,16 @@ impl Semantic<'_> {
         }
     }
 
+    pub fn attribute_value_as_string(&self, file_id: FileId, name: Name) -> Option<String> {
+        let attr = self.attribute(file_id, name)?;
+        match &attr.body[attr.value] {
+            Term::Literal(Literal::String(string_literal)) => {
+                Some(string_literal.chars().collect())
+            }
+            _ => None,
+        }
+    }
+
     /// Find all other variables within the function clause that resolve
     /// to the one given.
     pub fn find_local_usages(

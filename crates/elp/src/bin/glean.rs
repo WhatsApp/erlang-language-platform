@@ -25,6 +25,7 @@ use elp_ide::elp_ide_db::EqwalizerDatabase;
 use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::elp_ide_db::RootDatabase;
 use elp_ide::elp_ide_db::docs::DocDatabase;
+use elp_ide::elp_ide_db::docs::Documentation;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
@@ -52,9 +53,11 @@ use hir::DefineId;
 use hir::Expr;
 use hir::ExprId;
 use hir::ExprSource;
+use hir::File;
 use hir::InFile;
 use hir::Literal;
 use hir::MacroName;
+use hir::Module;
 use hir::Name;
 use hir::NameArity;
 use hir::PPDirective;
@@ -140,6 +143,45 @@ impl FileLinesFact {
             lengths,
             ends_with_new_line,
             unicode_or_tabs: true,
+        }
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct ModuleFact {
+    #[serde(rename = "file")]
+    file_id: GleanFileId,
+    name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    oncall: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    exports: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    behaviours: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    module_doc: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    exdoc_link: Option<String>,
+}
+
+impl ModuleFact {
+    fn new(
+        file_id: FileId,
+        name: String,
+        oncall: Option<String>,
+        exports: Option<Vec<String>>,
+        behaviours: Option<Vec<String>>,
+        module_doc: Option<String>,
+        exdoc_link: Option<String>,
+    ) -> Self {
+        Self {
+            file_id: file_id.into(),
+            name,
+            oncall,
+            exports,
+            behaviours,
+            module_doc,
+            exdoc_link,
         }
     }
 }
@@ -238,6 +280,8 @@ pub(crate) enum Fact {
     XRef { facts: Vec<Key<XRefFact>> },
     #[serde(rename = "erlang.DeclarationComment")]
     DeclarationComment { facts: Vec<Key<CommentFact>> },
+    #[serde(rename = "erlang.Module")]
+    Module { facts: Vec<Key<ModuleFact>> },
 }
 
 #[derive(Serialize, Debug)]
@@ -441,6 +485,7 @@ struct IndexedFacts {
     file_line_facts: Vec<FileLinesFact>,
     declaration_facts: Vec<FunctionDeclarationFact>,
     xref_facts: Vec<XRefFact>,
+    module_facts: Vec<ModuleFact>,
     //v2 facts
     file_declarations: Vec<FileDeclaration>,
     xref_v2: Vec<XRefFile>,
@@ -453,6 +498,7 @@ impl IndexedFacts {
         decl: FileDeclaration,
         xref: XRefFile,
         facts_v1: Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
+        module_fact: Option<ModuleFact>,
     ) -> Self {
         let mut facts = Self::default();
         facts.file_facts.push(file_fact);
@@ -462,6 +508,9 @@ impl IndexedFacts {
         if let Some((decl, xref)) = facts_v1 {
             facts.declaration_facts.extend(decl);
             facts.xref_facts.push(xref);
+        }
+        if let Some(module_fact) = module_fact {
+            facts.module_facts.push(module_fact);
         }
         facts
     }
@@ -473,6 +522,7 @@ impl IndexedFacts {
         decl: FileDeclaration,
         xref: XRefFile,
         facts: Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
+        module_fact: Option<ModuleFact>,
     ) {
         self.file_facts.push(file_fact);
         self.file_line_facts.push(line_fact);
@@ -481,6 +531,9 @@ impl IndexedFacts {
         if let Some((decl, xref)) = facts {
             self.declaration_facts.extend(decl);
             self.xref_facts.push(xref);
+        }
+        if let Some(module_fact) = module_fact {
+            self.module_facts.push(module_fact);
         }
     }
 
@@ -687,6 +740,8 @@ impl IndexedFacts {
             });
         }
         let xref_fact = xrefs.into_iter().map_into().collect();
+        let module_facts = mem::take(&mut self.module_facts);
+        let module_facts = module_facts.into_iter().map_into().collect();
         vec![
             Fact::File {
                 facts: mem::take(&mut self.file_facts),
@@ -699,6 +754,9 @@ impl IndexedFacts {
             },
             Fact::XRef { facts: xref_fact },
             Fact::DeclarationComment { facts: comments },
+            Fact::Module {
+                facts: module_facts,
+            },
         ]
     }
 }
@@ -811,11 +869,11 @@ impl GleanIndexer {
                     &module_index,
                     config.prefix.as_ref(),
                 ) {
-                    Some((file, line, decl, xref, facts)) => {
+                    Some((file, line, decl, xref, facts, module_fact)) => {
                         let mut result = FxHashMap::default();
                         result.insert(
                             FACTS_FILE.to_string(),
-                            IndexedFacts::new(file, line, decl, xref, facts),
+                            IndexedFacts::new(file, line, decl, xref, facts, module_fact),
                         );
                         result
                     }
@@ -839,8 +897,8 @@ impl GleanIndexer {
                     .flatten()
                     .flatten();
                 if config.multi {
-                    iter.map(|(file, line, decl, xref, facts)| {
-                        IndexedFacts::new(file, line, decl, xref, facts)
+                    iter.map(|(file, line, decl, xref, facts, module_fact)| {
+                        IndexedFacts::new(file, line, decl, xref, facts, module_fact)
                     })
                     .collect::<Vec<_>>()
                     .into_iter()
@@ -851,8 +909,8 @@ impl GleanIndexer {
                     let mut result = FxHashMap::default();
                     let facts = iter.collect::<Vec<_>>().into_iter().fold(
                         IndexedFacts::default(),
-                        |mut acc, (file_fact, line_fact, decl, xref, facts)| {
-                            acc.add(file_fact, line_fact, decl, xref, facts);
+                        |mut acc, (file_fact, line_fact, decl, xref, facts, module_fact)| {
+                            acc.add(file_fact, line_fact, decl, xref, facts, module_fact);
                             acc
                         },
                     );
@@ -897,6 +955,7 @@ impl GleanIndexer {
         FileDeclaration,
         XRefFile,
         Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
+        Option<ModuleFact>,
     )> {
         let file_fact = Self::file_fact(db, file_id, path, project_id, prefix)?;
         let line_fact = Self::line_fact(db, file_id);
@@ -908,9 +967,68 @@ impl GleanIndexer {
         if let Some(module) = elp_module_index.module_for_file(file_id) {
             let decl = Self::declarations_v1(db, file_id, module);
             let xref = Self::xrefs(db, file_id, module_index);
-            return Some((file_fact, line_fact, file_decl, xref_v2, Some((decl, xref))));
+            let module_fact = Self::module_fact(db, file_id, module);
+            return Some((
+                file_fact,
+                line_fact,
+                file_decl,
+                xref_v2,
+                Some((decl, xref)),
+                Some(module_fact),
+            ));
         }
-        Some((file_fact, line_fact, file_decl, xref_v2, None))
+        Some((file_fact, line_fact, file_decl, xref_v2, None, None))
+    }
+
+    fn module_fact(db: &RootDatabase, file_id: FileId, module_name: &ModuleName) -> ModuleFact {
+        let module = Module {
+            file: File { file_id },
+        };
+        let name = module_name.to_string();
+
+        // Extract exported functions from def_map
+        let def_map = db.def_map_local(file_id);
+
+        let mut exports = vec![];
+        for (fun, def) in def_map.get_functions() {
+            if def.exported {
+                exports.push(format!("{}/{}", fun.name(), fun.arity()));
+            }
+        }
+
+        // Extract oncall, behaviour, and moduledoc using form_list API
+        let sema = Semantic::new(db);
+        let form_list = sema.form_list(file_id);
+
+        let oncall = sema.attribute_value_as_string(file_id, hir::known::oncall);
+
+        let behaviours: Vec<String> = form_list
+            .behaviour_attributes()
+            .map(|(_, behaviour)| behaviour.name.to_string())
+            .collect();
+
+        let module_doc = sema.module_attribute(file_id).and_then(|module_attribute| {
+            let docs = Documentation::new(db, &sema);
+            docs.to_doc(InFile::new(file_id, &module_attribute))
+                .map(|doc| doc.markdown_text().to_string())
+                .filter(|text| !text.is_empty())
+        });
+
+        // @fb-only
+        let exdoc_link = (!module.is_in_otp(sema.db) && module.has_moduledoc(sema.db)).then(|| {
+            // @fb-only
+            // @fb-only
+        });
+
+        ModuleFact::new(
+            file_id,
+            name,
+            oncall,
+            (!exports.is_empty()).then_some(exports),
+            (!behaviours.is_empty()).then_some(behaviours),
+            module_doc,
+            exdoc_link,
+        )
     }
 
     fn add_xref_based_declarations(
@@ -1924,6 +2042,7 @@ mod tests {
             file_line_facts,
             declaration_facts: vec![],
             xref_facts: vec![],
+            module_facts: vec![],
             file_declarations: vec![decl],
             xref_v2: vec![xref],
         };
@@ -2647,6 +2766,185 @@ mod tests {
 
         "#;
         xref_v2_check(spec);
+    }
+
+    #[test]
+    fn module_fact_test() {
+        let spec = r#"
+        //- /src/sample_worker.erl
+        %%% This is a module documentation
+        %%% It explains what this module does
+        -module(sample_worker).
+        -oncall("platform_team").
+        -behaviour(gen_server).
+        -export([init/1, handle_task/2]).
+
+        init(Args) -> {ok, Args}.
+        handle_task(Task, State) -> {reply, ok, State}.
+        internal_helper(X) -> X + 1.
+        "#;
+        let (facts, _, _, _, _) = facts_with_annotations(spec);
+        assert_eq!(facts.module_facts.len(), 1);
+        let module_fact = &facts.module_facts[0];
+        assert_eq!(module_fact.name, "sample_worker");
+        assert_eq!(module_fact.oncall, Some("platform_team".to_string()));
+        assert_eq!(module_fact.behaviours, Some(vec!["gen_server".to_string()]));
+        assert_eq!(module_fact.exports.as_ref().map(|v| v.len()), Some(2));
+        for expected in ["handle_task/2", "init/1"] {
+            assert!(
+                module_fact
+                    .exports
+                    .as_ref()
+                    .unwrap()
+                    .contains(&expected.to_string())
+            );
+        }
+        assert!(module_fact.module_doc.is_none());
+    }
+
+    #[test]
+    fn module_fact_multiple_behaviours_test() {
+        let spec = r#"
+        //- /src/factory_service.erl
+        -module(factory_service).
+        -oncall("manufacturing_team").
+        -behaviour(supervisor).
+        -behaviour(gen_factory).
+        -behaviour(gen_industry).
+
+        start_supervision() -> supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+        create_product(Type, Config) -> gen_factory:produce(Type, Config).
+        manage_assembly(Parts) -> gen_industry:assemble(Parts).
+        "#;
+        let (facts, _, _, _, _) = facts_with_annotations(spec);
+        assert_eq!(facts.module_facts.len(), 1);
+        let module_fact = &facts.module_facts[0];
+        assert_eq!(module_fact.name, "factory_service");
+        assert_eq!(module_fact.oncall, Some("manufacturing_team".to_string()));
+        assert_eq!(module_fact.behaviours.as_ref().map(|v| v.len()), Some(3));
+        for expected in ["gen_factory", "gen_industry", "supervisor"] {
+            assert!(
+                module_fact
+                    .behaviours
+                    .as_ref()
+                    .unwrap()
+                    .contains(&expected.to_string())
+            );
+        }
+        assert!(module_fact.exports.is_none());
+        assert!(module_fact.module_doc.is_none());
+    }
+
+    #[test]
+    fn module_fact_moduledoc_multiple_line_test() {
+        let spec = r#"
+        //- /src/data_processor.erl
+        -module(data_processor).
+        -oncall("data_team").
+        -moduledoc """
+        Data processing module for batch operations
+        Handles various data transformation tasks
+        For more information see:
+        https://www.example.com/data/processing
+        """.
+        -behaviour(gen_statem).
+        -export([
+            start_link/0,
+            process_batch/1,
+            get_status/0
+        ]).
+
+        start_link() -> gen_statem:start_link(?MODULE, [], []).
+        process_batch(Data) -> gen_statem:call(?SERVER, {process, Data}).
+        get_status() -> gen_statem:call(?SERVER, status).
+        "#;
+        let (facts, _, _, _, _) = facts_with_annotations(spec);
+        assert_eq!(facts.module_facts.len(), 1);
+        let module_fact = &facts.module_facts[0];
+        assert_eq!(module_fact.name, "data_processor");
+        assert_eq!(module_fact.oncall, Some("data_team".to_string()));
+        assert_eq!(module_fact.behaviours, Some(vec!["gen_statem".to_string()]));
+        assert_eq!(module_fact.exports.as_ref().map(|v| v.len()), Some(3));
+        for expected in ["get_status/0", "process_batch/1", "start_link/0"] {
+            assert!(
+                module_fact
+                    .exports
+                    .as_ref()
+                    .unwrap()
+                    .contains(&expected.to_string())
+            );
+        }
+        assert!(module_fact.module_doc.is_some());
+        let doc = module_fact.module_doc.as_ref().unwrap();
+        assert!(doc.contains("Data processing module for batch operations"));
+        assert!(doc.contains("https://www.example.com/data/processing"));
+    }
+
+    #[test]
+    fn module_fact_moduledoc_single_line_test() {
+        let spec = r#"
+        //- /src/config_manager.erl
+        -module(config_manager).
+        -oncall("infra_team").
+        -moduledoc "Configuration management module for system settings".
+        -behaviour(application).
+        -export([load_config/1, save_config/2]).
+
+        load_config(File) -> {ok, config}.
+        save_config(File, Config) -> ok.
+        "#;
+        let (facts, _, _, _, _) = facts_with_annotations(spec);
+        assert_eq!(facts.module_facts.len(), 1);
+        let module_fact = &facts.module_facts[0];
+        assert_eq!(module_fact.name, "config_manager");
+        assert_eq!(module_fact.oncall, Some("infra_team".to_string()));
+        assert_eq!(
+            module_fact.behaviours,
+            Some(vec!["application".to_string()])
+        );
+        assert_eq!(module_fact.exports.as_ref().map(|v| v.len()), Some(2));
+        for expected in ["load_config/1", "save_config/2"] {
+            assert!(
+                module_fact
+                    .exports
+                    .as_ref()
+                    .unwrap()
+                    .contains(&expected.to_string())
+            );
+        }
+        assert!(module_fact.module_doc.is_some());
+        let doc = module_fact.module_doc.as_ref().unwrap();
+        assert_eq!(doc, "Configuration management module for system settings");
+    }
+
+    #[test]
+    fn module_fact_no_oncall_test() {
+        let spec = r#"
+        //- /src/utility_helper.erl
+        -module(utility_helper).
+        -behaviour(supervisor).
+        -export([start_link/0, add_child/2]).
+
+        start_link() -> supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+        add_child(ChildSpec, Opts) -> supervisor:start_child(?MODULE, {ChildSpec, Opts}).
+        "#;
+        let (facts, _, _, _, _) = facts_with_annotations(spec);
+        assert_eq!(facts.module_facts.len(), 1);
+        let module_fact = &facts.module_facts[0];
+        assert_eq!(module_fact.name, "utility_helper");
+        assert_eq!(module_fact.oncall, None);
+        assert_eq!(module_fact.behaviours, Some(vec!["supervisor".to_string()]));
+        assert_eq!(module_fact.exports.as_ref().map(|v| v.len()), Some(2));
+        for expected in ["add_child/2", "start_link/0"] {
+            assert!(
+                module_fact
+                    .exports
+                    .as_ref()
+                    .unwrap()
+                    .contains(&expected.to_string())
+            );
+        }
+        assert!(module_fact.module_doc.is_none());
     }
 
     #[allow(clippy::type_complexity)]
