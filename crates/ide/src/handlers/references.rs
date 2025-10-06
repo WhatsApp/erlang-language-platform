@@ -486,6 +486,27 @@ should_not_match() -> #foo{a = 1}.
     }
 
     #[test]
+    fn test_functions_dynamic_call() {
+        check(
+            r#"
+        //- /src/main.erl
+
+        -export([foo/0]).
+          foo~() -> ok.
+        %%^^^def
+
+        bar() -> apply(main, foo, []).
+        %%                   ^^^
+        baz() -> foo(1).
+
+        //- /src/another.erl
+
+        -import(main, [foo/0]).
+        "#,
+        );
+    }
+
+    #[test]
     fn test_functions_import_1() {
         check(
             r#"

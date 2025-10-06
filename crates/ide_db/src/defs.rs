@@ -234,7 +234,7 @@ impl SymbolClass {
                     reference_direct(sema.to_def(token.with_value(&include)))
                 },
                 ast::ExprArgs(args) => {
-                    from_apply(sema, &token, args.syntax())
+                    from_dynamic_call(sema, &token, args.syntax())
                     .or_else(|| from_is_record(sema, &token, args.syntax()))
                         .or_else(|| from_wrapper(sema, &token, wrapper))
                 },
@@ -452,7 +452,7 @@ fn reference_other<Def: Into<SymbolDefinition>>(def: Option<Def>) -> Option<Symb
     })
 }
 
-pub fn from_apply(
+pub fn from_dynamic_call(
     sema: &Semantic,
     token: &InFile<SyntaxToken>,
     syntax: &SyntaxNode,
@@ -463,7 +463,7 @@ pub fn from_apply(
         SymbolClass::Reference {
             refs: ReferenceClass::Definition(def),
             typ: _,
-        } => reference_other(Some(def)),
+        } => reference_direct(Some(def)),
         _ => None,
     }
 }
