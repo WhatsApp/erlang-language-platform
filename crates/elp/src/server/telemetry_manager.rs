@@ -28,11 +28,15 @@ const PERIODIC_INTERVAL_MS: Duration = Duration::from_millis(60_000);
 
 pub(crate) struct TelemetryManager {
     last_periodic_processed: Instant,
+    server_started_at: SystemTime,
+    already_operational: bool,
 }
 impl TelemetryManager {
     pub(crate) fn new() -> Self {
         Self {
             last_periodic_processed: Instant::now(),
+            server_started_at: SystemTime::now(),
+            already_operational: false,
         }
     }
 
@@ -63,6 +67,34 @@ impl TelemetryManager {
                     log::warn!("on_periodic: unable to serialize {mem_usage:?}, err: {err}");
                 }
             };
+        }
+    }
+
+    pub(crate) fn operational(&mut self) {
+        if !self.already_operational {
+            let duration = self
+                .server_started_at
+                .elapsed()
+                .map(|e| e.as_millis())
+                .unwrap_or(0) as u32;
+
+            #[derive(Serialize)]
+            struct Operational {
+                title: String,
+            }
+            let data = Operational {
+                title: "ELP operational".to_string(),
+            };
+            let data = serde_json::to_value(data).unwrap_or_else(|err| {
+                serde_json::Value::String(format!("JSON serialization failed: {err}"))
+            });
+            telemetry::send_with_duration(
+                String::from("telemetry"),
+                data,
+                duration,
+                self.server_started_at,
+            );
+            self.already_operational = true;
         }
     }
 }
