@@ -122,19 +122,11 @@ pub fn eqwalizer_to_arc_diagnostic(
     d: &EqwalizerDiagnostic,
     line_index: &LineIndex,
     relative_path: &Path,
-    eqwalizer_enabled: bool,
 ) -> arc_types::Diagnostic {
     let pos = position(line_index, d.range.start());
     let line_num = pos.line + 1;
     let character = Some(pos.character + 1);
-    let severity = if eqwalizer_enabled {
-        arc_types::Severity::Error
-    } else {
-        // We use Severity::Disabled so that we have the ability in our arc linter to choose
-        // to display lints for *new* files with errors that are not opted in (T118466310).
-        // See comment at the top of eqwalizer_cli.rs for more information.
-        arc_types::Severity::Disabled
-    };
+    let severity = arc_types::Severity::Error;
     // formatting: https://fburl.com/max_wiki_link_to_phabricator_rich_text
     let explanation = match &d.explanation {
         Some(s) => format!("```\n{s}\n```"),
