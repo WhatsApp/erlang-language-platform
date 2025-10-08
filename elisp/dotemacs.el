@@ -7,13 +7,6 @@
 ;;
 ;;  emacs -q --load dotemacs.el
 ;;
-;; Note:
-;; 1. The first time you open a new WASERVER repo, use the "choose
-;;    server root ineractively" option to choose
-;;    "~/local/whatsapp/server/erl" (or devserver equivalent) as the root.
-;; 2. When you first start up the server, emacs becomes unresponsive
-;;    for about a minute.  This is not an officially supported platform, sorry.
-
 
 ;; ---------------------------------------------------------------------
 
@@ -57,19 +50,11 @@
   :link '(url-link "https://github.com/WhatsApp/erlang-language-platform"))
 
 (defcustom lsp-erlang-elp-server-path
-  "~/local/whatsapp/server/erl/tools/elp"
+  "/usr/local/bin/elp"
   "Path to the ELP binary."
   :group 'lsp-erlang-elp
   :risky t
   :type 'file)
-
-(defcustom lsp-erlang-elp-erlang-ls-path
-  "~/fbsource/xplat/vscode/vscode-extensions/erlang/bin/erlang_ls"
-  "Path to the Erlang Language Server (erlang_ls) binary."
-  :group 'lsp-erlang-elp
-  :risky t
-  :type 'file)
-
 
 (defun lsp-erlang-elp-server-connection ()
   (lsp-stdio-connection
