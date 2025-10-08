@@ -1015,10 +1015,11 @@ impl GleanIndexer {
         });
 
         // @fb-only
-        let exdoc_link = (!module.is_in_otp(sema.db) && module.has_moduledoc(sema.db)).then(|| {
+        // @fb-only
+        // @fb-only
+        // @fb-only
             // @fb-only
-            // @fb-only
-        });
+        let exdoc_link: Option<String> = None; // @oss-only
 
         ModuleFact::new(
             file_id,
@@ -1998,22 +1999,22 @@ mod tests {
             start: 0,
             length: 10,
         };
-        let module = "smax_product_catalog";
-        let name = "product_visibility_update_request_iq";
+        let module_name = "test_module";
+        let func_name = "test_function";
         let arity = 0;
 
-        let file_facts = vec![
-            FileFact::new(
-                file_id,
-                "/local/whatsapp/server/erl/groupd_service/test/p13n/grpd_p13n_new_create_group_SUITE.erl".into(),
-            )
-        ];
+        let file_facts = vec![FileFact::new(
+            file_id,
+            "/test/app/src/test_module.erl".into(),
+        )];
+
         let file_line_facts = vec![FileLinesFact::new(file_id, vec![71, 42], true)];
+
         let decl = FileDeclaration {
             file_id: file_id.into(),
             declarations: vec![Declaration::FunctionDeclaration(
                 FuncDecl {
-                    name: name.to_string(),
+                    name: func_name.to_string(),
                     arity,
                     span: location.clone(),
                     exported: false,
@@ -2022,6 +2023,7 @@ mod tests {
                 .into(),
             )],
         };
+
         let xref = XRefFile {
             file_id: file_id.into(),
             xrefs: vec![XRef {
@@ -2029,7 +2031,7 @@ mod tests {
                 target: XRefTarget::Function(
                     FunctionTarget {
                         file_id: file_id.into(),
-                        name: name.to_string(),
+                        name: func_name.to_string(),
                         arity,
                     }
                     .into(),
@@ -2037,12 +2039,22 @@ mod tests {
             }],
         };
 
+        let module = ModuleFact {
+            file_id: file_id.into(),
+            name: module_name.to_string(),
+            oncall: Some("test_team".to_string()),
+            exports: Some(vec![format!("{func_name}/{arity}")]),
+            behaviours: Some(vec!["test_behaviour".to_string()]),
+            module_doc: Some("Test module documentation".to_string()),
+            exdoc_link: Some("https://example.com/docs/test_module.html".to_string()),
+        };
+
         let facts = IndexedFacts {
             file_facts,
             file_line_facts,
             declaration_facts: vec![],
             xref_facts: vec![],
-            module_facts: vec![],
+            module_facts: vec![module],
             file_declarations: vec![decl],
             xref_v2: vec![xref],
         };
@@ -2058,13 +2070,12 @@ mod tests {
             prefix: None,
         };
         let mut module_index = FxHashMap::default();
-        module_index.insert(file_id.into(), module.to_string());
+        module_index.insert(file_id.into(), module_name.to_string());
 
         write_results(map, module_index, &mut cli, &args).expect("success");
-
         let (out, err) = cli.to_strings();
         let expected = expect_file!["../resources/test/glean/serialization_test.out"];
-        expected.assert_eq(&out);
+        assert_eq!(expected.data().trim(), &out);
         assert_eq!(err, "")
     }
 
@@ -2776,7 +2787,7 @@ mod tests {
         %%% It explains what this module does
         -module(sample_worker).
         -oncall("platform_team").
-        -behaviour(gen_server).
+        -behaviour(test_behaviour).
         -export([init/1, handle_task/2]).
 
         init(Args) -> {ok, Args}.
@@ -2788,7 +2799,10 @@ mod tests {
         let module_fact = &facts.module_facts[0];
         assert_eq!(module_fact.name, "sample_worker");
         assert_eq!(module_fact.oncall, Some("platform_team".to_string()));
-        assert_eq!(module_fact.behaviours, Some(vec!["gen_server".to_string()]));
+        assert_eq!(
+            module_fact.behaviours,
+            Some(vec!["test_behaviour".to_string()])
+        );
         assert_eq!(module_fact.exports.as_ref().map(|v| v.len()), Some(2));
         for expected in ["handle_task/2", "init/1"] {
             assert!(
@@ -2809,12 +2823,12 @@ mod tests {
         -module(factory_service).
         -oncall("manufacturing_team").
         -behaviour(supervisor).
-        -behaviour(gen_factory).
-        -behaviour(gen_industry).
+        -behaviour(test_behaviour1).
+        -behaviour(test_behaviour2).
 
         start_supervision() -> supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-        create_product(Type, Config) -> gen_factory:produce(Type, Config).
-        manage_assembly(Parts) -> gen_industry:assemble(Parts).
+        create_product(Type, Config) -> test_behaviour1:produce(Type, Config).
+        manage_assembly(Parts) -> test_behaviour2:assemble(Parts).
         "#;
         let (facts, _, _, _, _) = facts_with_annotations(spec);
         assert_eq!(facts.module_facts.len(), 1);
@@ -2822,7 +2836,7 @@ mod tests {
         assert_eq!(module_fact.name, "factory_service");
         assert_eq!(module_fact.oncall, Some("manufacturing_team".to_string()));
         assert_eq!(module_fact.behaviours.as_ref().map(|v| v.len()), Some(3));
-        for expected in ["gen_factory", "gen_industry", "supervisor"] {
+        for expected in ["test_behaviour1", "test_behaviour2", "supervisor"] {
             assert!(
                 module_fact
                     .behaviours
@@ -2847,23 +2861,26 @@ mod tests {
         For more information see:
         https://www.example.com/data/processing
         """.
-        -behaviour(gen_statem).
+        -behaviour(test_behaviour).
         -export([
             start_link/0,
             process_batch/1,
             get_status/0
         ]).
 
-        start_link() -> gen_statem:start_link(?MODULE, [], []).
-        process_batch(Data) -> gen_statem:call(?SERVER, {process, Data}).
-        get_status() -> gen_statem:call(?SERVER, status).
+        start_link() -> test_behaviour:start_link(?MODULE, [], []).
+        process_batch(Data) -> test_behaviour:call(?SERVER, {process, Data}).
+        get_status() -> test_behaviour:call(?SERVER, status).
         "#;
         let (facts, _, _, _, _) = facts_with_annotations(spec);
         assert_eq!(facts.module_facts.len(), 1);
         let module_fact = &facts.module_facts[0];
         assert_eq!(module_fact.name, "data_processor");
         assert_eq!(module_fact.oncall, Some("data_team".to_string()));
-        assert_eq!(module_fact.behaviours, Some(vec!["gen_statem".to_string()]));
+        assert_eq!(
+            module_fact.behaviours,
+            Some(vec!["test_behaviour".to_string()])
+        );
         assert_eq!(module_fact.exports.as_ref().map(|v| v.len()), Some(3));
         for expected in ["get_status/0", "process_batch/1", "start_link/0"] {
             assert!(
