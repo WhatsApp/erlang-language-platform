@@ -172,6 +172,7 @@ pub struct ProgressBar {
     /// The message sent when sending the final end report.
     /// It is used in e2e tests to check for a specific task being done.
     end_message: String,
+    current_percent: u32,
 }
 
 impl ProgressBar {
@@ -196,21 +197,25 @@ impl ProgressBar {
             token,
             sender,
             end_message: title,
+            current_percent: 0,
         }
     }
 
-    pub fn report(&self, done: usize, total: usize) {
+    pub fn report(&mut self, done: usize, total: usize) {
         let percent_f = done as f64 / total.max(1) as f64;
         let percent = (percent_f * 100.0) as u32;
-        let message = format!("{percent}%");
-        let msg = WorkDoneProgress::Report(WorkDoneProgressReport {
-            cancellable: None,
-            message: Some(message),
-            percentage: Some(percent),
-        });
-        // We do not update any associated telemetry here, it will
-        // report on the whole bar at the end in the drop.
-        send_progress(&self.sender, self.token.clone(), msg);
+        if percent != self.current_percent {
+            self.current_percent = percent;
+            let message = format!("{percent}%");
+            let msg = WorkDoneProgress::Report(WorkDoneProgressReport {
+                cancellable: None,
+                message: Some(message),
+                percentage: Some(percent),
+            });
+            // We do not update any associated telemetry here, it will
+            // report on the whole bar at the end in the drop.
+            send_progress(&self.sender, self.token.clone(), msg);
+        }
     }
 
     pub fn end(self) {

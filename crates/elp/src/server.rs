@@ -957,7 +957,7 @@ impl Server {
                 self.transition(Status::Loading(pb));
             }
             LoadingProgress::Progress(n_done) => {
-                if let Status::Loading(pb) = &self.status {
+                if let Status::Loading(pb) = &mut self.status {
                     pb.report(n_done, n_total);
                 }
             }
@@ -1988,7 +1988,7 @@ impl Server {
 
     fn update_eqwalize_all(
         &mut self,
-        bar: ProgressBar,
+        mut bar: ProgressBar,
         project_id: ProjectId,
         project_name: String,
         mut files: Vec<FileId>,
