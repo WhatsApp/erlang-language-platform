@@ -89,7 +89,7 @@ repositories from the same starting directory, so they are
 `../eqwalizer/eqwalizer_support`.  If you are unable to do this, set
 
 ```
-export EQWALIZER_SUPPORT_DIR=</path/to/eqwalizer_repo>/eqwalizer_support
+export EQWALIZER_DIR=</path/to/eqwalizer_repo>/eqwalizer_support
 ```
 
 ### Compile ELP
