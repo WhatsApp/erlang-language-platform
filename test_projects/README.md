@@ -11,5 +11,3 @@ From this directory, you can manually test:
 ```
 
 Automated tests live in crates/elp/bin/main.rs
-
-See also //whatsapp/elp_test/README.md for additonal end-to-end LSP tests.
