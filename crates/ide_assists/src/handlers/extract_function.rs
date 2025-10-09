@@ -164,12 +164,12 @@ fn extraction_target(
     ctx: &AssistContext,
     node: &SyntaxNode,
     selection_range: TextRange,
-) -> Option<FunctionBody> {
+) -> Option<FunctionBodyToExtract> {
     // Covering element returned the parent block of one or multiple
     // expressions that have been selected
     if let Some(expr_list) = ast::ClauseBody::cast(node.clone()) {
         // Extract the full expressions.
-        return Some(FunctionBody::from_range_clause_body(
+        return Some(FunctionBodyToExtract::from_range_clause_body(
             expr_list,
             selection_range,
         ));
@@ -180,7 +180,10 @@ fn extraction_target(
         if let Some(clause) = fun_decl.clauses().next() {
             match clause {
                 ast::FunctionOrMacroClause::FunctionClause(_fun_clause) => {
-                    return Some(FunctionBody::from_range_fun_decl(fun_decl, selection_range));
+                    return Some(FunctionBodyToExtract::from_range_fun_decl(
+                        fun_decl,
+                        selection_range,
+                    ));
                 }
                 ast::FunctionOrMacroClause::MacroCallExpr(_) => {}
             };
@@ -190,19 +193,19 @@ fn extraction_target(
     let expr = ast::Expr::cast(node.clone())?;
     // A node got selected fully
     if node.text_range() == selection_range {
-        return FunctionBody::from_expr(ctx, expr);
+        return FunctionBodyToExtract::from_expr(ctx, expr);
     }
 
     node.ancestors()
         .find_map(ast::Expr::cast)
-        .and_then(|expr| FunctionBody::from_expr(ctx, expr))
+        .and_then(|expr| FunctionBodyToExtract::from_expr(ctx, expr))
 }
 
 #[derive(Debug)]
 struct Function {
     name: String,
     params: Vec<Param>,
-    body: FunctionBody,
+    body: FunctionBodyToExtract,
     outliving_locals: Vec<Var>,
 }
 
@@ -212,7 +215,7 @@ struct Param {
 }
 
 #[derive(Debug)]
-enum FunctionBody {
+enum FunctionBodyToExtract {
     Expr(ast::Expr),
     Span {
         parent: SpanParent,
@@ -245,7 +248,7 @@ impl SpanParent {
     }
 }
 
-impl FunctionBody {
+impl FunctionBodyToExtract {
     fn from_expr(ctx: &AssistContext, expr: ast::Expr) -> Option<Self> {
         if !valid_extraction(expr.syntax()) {
             return None;
@@ -255,7 +258,10 @@ impl FunctionBody {
             .map(|_| Self::Expr(expr))
     }
 
-    fn from_range_clause_body(parent: ast::ClauseBody, selected: TextRange) -> FunctionBody {
+    fn from_range_clause_body(
+        parent: ast::ClauseBody,
+        selected: TextRange,
+    ) -> FunctionBodyToExtract {
         let full_body = parent.syntax().children_with_tokens();
 
         let text_range = full_body
@@ -271,9 +277,9 @@ impl FunctionBody {
         }
     }
 
-    fn from_range_fun_decl(parent: ast::FunDecl, selected: TextRange) -> FunctionBody {
+    fn from_range_fun_decl(parent: ast::FunDecl, selected: TextRange) -> FunctionBodyToExtract {
         let parent = SpanParent::FunDecl(parent);
-        let text_range = FunctionBody::nodes_in_span_parent(&parent, &selected)
+        let text_range = FunctionBodyToExtract::nodes_in_span_parent(&parent, &selected)
             .iter()
             // Harvest commonality
             .map(|element| element.text_range())
@@ -321,18 +327,19 @@ impl FunctionBody {
 
     fn node(&self) -> &SyntaxNode {
         match self {
-            FunctionBody::Expr(e) => e.syntax(),
-            FunctionBody::Span { parent, .. } => parent.syntax(),
+            FunctionBodyToExtract::Expr(e) => e.syntax(),
+            FunctionBodyToExtract::Span { parent, .. } => parent.syntax(),
         }
     }
 
     fn indent_level(&self) -> IndentLevel {
         match &self {
-            FunctionBody::Expr(expr) => IndentLevel::from_node(expr.syntax()),
-            FunctionBody::Span { parent, text_range } => {
-                if let Some(element) = FunctionBody::nodes_in_span_parent(parent, text_range)
-                    .iter()
-                    .find(|it| text_range.contains_range(it.text_range()))
+            FunctionBodyToExtract::Expr(expr) => IndentLevel::from_node(expr.syntax()),
+            FunctionBodyToExtract::Span { parent, text_range } => {
+                if let Some(element) =
+                    FunctionBodyToExtract::nodes_in_span_parent(parent, text_range)
+                        .iter()
+                        .find(|it| text_range.contains_range(it.text_range()))
                 {
                     IndentLevel::from_element(element)
                 } else {
@@ -344,10 +351,10 @@ impl FunctionBody {
 
     fn walk_expr(&self, ctx: &AssistContext, analyzer: &mut ScopeAnalysis) {
         match self {
-            FunctionBody::Expr(expr) => {
+            FunctionBodyToExtract::Expr(expr) => {
                 analyzer.walk_ast_expr(&ctx.sema, ctx.file_id(), expr.clone())
             }
-            FunctionBody::Span { parent, text_range } => {
+            FunctionBodyToExtract::Span { parent, text_range } => {
                 if let Some(exprs) = parent.exprs() {
                     exprs
                         .filter(|expr| text_range.contains_range(expr.syntax().text_range()))
@@ -361,8 +368,8 @@ impl FunctionBody {
 
     fn text_range(&self) -> TextRange {
         match self {
-            FunctionBody::Expr(expr) => expr.syntax().text_range(),
-            &FunctionBody::Span { text_range, .. } => text_range,
+            FunctionBodyToExtract::Expr(expr) => expr.syntax().text_range(),
+            &FunctionBodyToExtract::Span { text_range, .. } => text_range,
         }
     }
 
@@ -381,7 +388,7 @@ impl FunctionBody {
         locals_bound_in_body: &'a FxHashSet<Resolution>,
     ) -> Vec<Var> {
         match &self {
-            FunctionBody::Expr(expr) => {
+            FunctionBodyToExtract::Expr(expr) => {
                 let parent = expr
                     .syntax()
                     .ancestors()
@@ -398,7 +405,7 @@ impl FunctionBody {
                     vec![]
                 }
             }
-            FunctionBody::Span { parent, text_range } => {
+            FunctionBodyToExtract::Span { parent, text_range } => {
                 calculate_ret_values(parent, text_range, ctx, locals_bound_in_body)
             }
         }
@@ -464,7 +471,7 @@ fn overlaps(range_a: &TextRange, range_b: &TextRange) -> bool {
 /// find where to put extracted function definition
 ///
 /// Function should be put right after returned node
-fn node_to_insert_after(body: &FunctionBody) -> Option<SyntaxNode> {
+fn node_to_insert_after(body: &FunctionBodyToExtract) -> Option<SyntaxNode> {
     let node = body.node();
     let mut last_ancestor = None;
     for next_ancestor in node.ancestors().peekable() {
@@ -588,10 +595,10 @@ impl Function {
 
         let mut last_tok = None;
         let block = match &self.body {
-            FunctionBody::Expr(expr) => {
+            FunctionBodyToExtract::Expr(expr) => {
                 change_indent(DEFAULT_INDENT_STEP, format!("\n{}", expr.syntax()))
             }
-            FunctionBody::Span { parent, text_range } => {
+            FunctionBodyToExtract::Span { parent, text_range } => {
                 let mut parts = " ".repeat(old_indent.0 as usize);
                 parts = "\n".to_owned() + &parts;
 
@@ -1290,6 +1297,33 @@ foo() ->
                     {ok, Version} = application:get_key(Application, vsn),
                     Version.
             "#]],
+        );
+    }
+
+    #[test]
+    fn check_extract_in_macro() {
+        check_assist(
+            extract_function,
+            "Extract into function",
+            r#"
+             -define(assertEqual(Expect, Expr),
+                     begin
+                     ((fun () ->
+                         X__X = (Expect)
+                       end)())
+                     end).
+             foo(X) -> ?assertEqual({x,1}, ~{y,2}~)."#,
+            expect![[r#"
+                -define(assertEqual(Expect, Expr),
+                        begin
+                        ((fun () ->
+                            X__X = (Expect)
+                          end)())
+                        end).
+                foo(X) -> ?assertEqual({x,1}, fun_name_edited()).
+
+                $0fun_name_edited() ->
+                    {y,2}."#]],
         );
     }
 }

@@ -13,7 +13,6 @@ use elp_ide_db::assists::AssistKind;
 use elp_ide_db::assists::AssistUserInput;
 use elp_ide_db::assists::AssistUserInputType;
 use elp_syntax::AstNode;
-use elp_syntax::NodeOrToken;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::ast;
@@ -45,13 +44,11 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         return None;
     }
 
-    let node = match ctx.covering_element() {
-        NodeOrToken::Node(it) => it,
-        NodeOrToken::Token(it) if it.kind() == SyntaxKind::COMMENT => {
-            return None;
-        }
-        NodeOrToken::Token(it) => it.parent()?,
-    };
+    let node = ctx.covering_element();
+    if node.kind() == SyntaxKind::COMMENT {
+        return None;
+    }
+
     let node = node
         .ancestors()
         .take_while(|anc| anc.text_range() == node.text_range())
@@ -145,10 +142,6 @@ impl Anchor {
                 !ast::ClauseBody::can_cast(it.kind()) || ast::MacroCallExpr::can_cast(it.kind())
             })
             .find_map(|node| {
-                if ast::MacroCallExpr::can_cast(node.kind()) {
-                    return None;
-                }
-
                 if let Some(_expr) = node.parent().and_then(ast::ClauseBody::cast) {
                     return Some(Anchor(node));
                 }
@@ -337,6 +330,30 @@ foo(X) ->
                   $0NameClash0 = (1 + 2),
                   NameClash0 * 4.
             "#]],
+        );
+    }
+
+    #[test]
+    fn check_extract_in_macro() {
+        check_assist(
+            extract_variable,
+            "Extract into variable",
+            r#"
+             -define(assertEqual(Expect, Expr),
+                     begin
+                     ((fun () ->
+                         X__X = (Expect)
+                       end)())
+                     end).
+             foo(X) -> ?assertEqual({x,1}, ~{y,2}~)."#,
+            expect![[r#"
+                -define(assertEqual(Expect, Expr),
+                        begin
+                        ((fun () ->
+                            X__X = (Expect)
+                          end)())
+                        end).
+                foo(X) -> $0VarNameEdited = {y,2}, ?assertEqual({x,1}, VarNameEdited)."#]],
         );
     }
 }
