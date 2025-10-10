@@ -1015,10 +1015,6 @@ impl GleanIndexer {
         });
 
         // @fb-only
-        // @fb-only
-        // @fb-only
-        // @fb-only
-            // @fb-only
         let exdoc_link: Option<String> = None; // @oss-only
 
         ModuleFact::new(
