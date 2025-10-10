@@ -34,7 +34,9 @@ impl Linter for AtomsExhaustionLinter {
     fn should_process_test_files(&self) -> bool {
         false
     }
-    fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
+    #[rustfmt::skip]
+    // @fb-only
+    fn should_process_file_id(&self, _sema: &Semantic, _file_id: FileId) -> bool { // @oss-only
         // @fb-only
         true // @oss-only
     }

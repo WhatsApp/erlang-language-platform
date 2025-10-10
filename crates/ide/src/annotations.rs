@@ -56,8 +56,11 @@ pub struct Link {
     pub text: String,
 }
 
-pub(crate) fn annotations(db: &RootDatabase, file_id: FileId) -> Vec<Annotation> {
-    let mut annotations = Vec::default();
+#[rustfmt::skip]
+// @fb-only
+pub(crate) fn annotations(_db: &RootDatabase, _file_id: FileId) -> Vec<Annotation> { // @oss-only
+    // @fb-only
+    let annotations = Vec::default(); // @oss-only
     // @fb-only
     annotations
 }
