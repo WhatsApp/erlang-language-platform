@@ -323,6 +323,10 @@ pub struct Lint {
     /// than one at a time.
     pub one_shot: bool,
 
+    /// Report system memory usage and other statistics
+    #[bpaf(long("report-system-stats"))]
+    pub report_system_stats: bool,
+
     /// Rest of args are space separated list of apps to ignore
     #[bpaf(positional("IGNORED_APPS"))]
     pub ignore_apps: Vec<String>,

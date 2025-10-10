@@ -29,6 +29,7 @@ use elp::cli::Cli;
 use elp::convert;
 use elp::memory_usage::MemoryUsage;
 use elp_ide::Analysis;
+use elp_ide::AnalysisHost;
 use elp_ide::TextRange;
 use elp_ide::elp_ide_db::EqwalizerDiagnostic;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
@@ -38,6 +39,7 @@ use indicatif::ProgressBar;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
+use vfs::Vfs;
 
 pub trait Reporter {
     fn write_eqwalizer_diagnostics(
@@ -371,4 +373,29 @@ lazy_static! {
 pub(crate) fn add_stat(stat: String) {
     let mut stats = STATS.lock();
     stats.push(stat);
+}
+
+pub(crate) fn print_memory_usage(
+    mut host: AnalysisHost,
+    vfs: Vfs,
+    cli: &mut dyn Cli,
+) -> Result<()> {
+    let mem = host.per_query_memory_usage();
+
+    let before = profile::memory_usage();
+    drop(vfs);
+    let vfs = before.allocated - profile::memory_usage().allocated;
+
+    let before = profile::memory_usage();
+    drop(host);
+    let unaccounted = before.allocated - profile::memory_usage().allocated;
+    let remaining = profile::memory_usage().allocated;
+
+    for (name, bytes, entries) in mem {
+        writeln!(cli, "{bytes:>8} {entries:>6} {name}")?;
+    }
+    writeln!(cli, "{vfs:>8}        VFS")?;
+    writeln!(cli, "{unaccounted:>8}        Unaccounted")?;
+    writeln!(cli, "{remaining:>8}        Remaining")?;
+    Ok(())
 }

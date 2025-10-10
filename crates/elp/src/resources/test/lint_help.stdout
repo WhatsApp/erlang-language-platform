@@ -1,4 +1,4 @@
-Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--rebar] [--as PROFILE] [--include-generated] [--include-tests] [--no-diags] [[--format FORMAT]] [--prefix ARG] [--include-erlc-diagnostics] [--include-ct-diagnostics] [--include-edoc-diagnostics] [--include-eqwalizer-diagnostics] [--include-suppressed] [--use-cli-severity] [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--experimental] [--read-config] [--config-file CONFIG_FILE] [--apply-fix] [--ignore-fix-only] [--in-place] [--to TO] [--recursive] [--with-check] [--check-eqwalize-all] [--one-shot] <IGNORED_APPS>...
+Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--rebar] [--as PROFILE] [--include-generated] [--include-tests] [--no-diags] [[--format FORMAT]] [--prefix ARG] [--include-erlc-diagnostics] [--include-ct-diagnostics] [--include-edoc-diagnostics] [--include-eqwalizer-diagnostics] [--include-suppressed] [--use-cli-severity] [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--experimental] [--read-config] [--config-file CONFIG_FILE] [--apply-fix] [--ignore-fix-only] [--in-place] [--to TO] [--recursive] [--with-check] [--check-eqwalize-all] [--one-shot] [--report-system-stats] <IGNORED_APPS>...
 
 Available positional items:
     <IGNORED_APPS>  Rest of args are space separated list of apps to ignore
@@ -37,4 +37,5 @@ Available options:
         --check-eqwalize-all             After applying a fix step, check that all eqwalizer project diagnostics are clear, else roll back
         --one-shot                       Apply to all matching diagnostic occurrences at once, rather
                                          than one at a time.
+        --report-system-stats            Report system memory usage and other statistics
     -h, --help                           Prints help information

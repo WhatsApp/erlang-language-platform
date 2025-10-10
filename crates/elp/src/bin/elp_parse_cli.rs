@@ -26,7 +26,6 @@ use elp::otp_file_to_ignore;
 use elp::server::file_id_to_url;
 use elp_eqwalizer::Mode;
 use elp_ide::Analysis;
-use elp_ide::AnalysisHost;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LabeledDiagnostics;
@@ -55,33 +54,13 @@ use vfs::AbsPath;
 
 use crate::args::ParseAllElp;
 use crate::reporting;
+use crate::reporting::print_memory_usage;
 
 #[derive(Debug)]
 struct ParseResult {
     name: String,
     file_id: FileId,
     diagnostics: DiagnosticCollection,
-}
-
-fn print_memory_usage(mut host: AnalysisHost, vfs: Vfs, cli: &mut dyn Cli) -> Result<()> {
-    let mem = host.per_query_memory_usage();
-
-    let before = profile::memory_usage();
-    drop(vfs);
-    let vfs = before.allocated - profile::memory_usage().allocated;
-
-    let before = profile::memory_usage();
-    drop(host);
-    let unaccounted = before.allocated - profile::memory_usage().allocated;
-    let remaining = profile::memory_usage().allocated;
-
-    for (name, bytes, entries) in mem {
-        writeln!(cli, "{bytes:>8} {entries:>6} {name}")?;
-    }
-    writeln!(cli, "{vfs:>8}        VFS")?;
-    writeln!(cli, "{unaccounted:>8}        Unaccounted")?;
-    writeln!(cli, "{remaining:>8}        Remaining")?;
-    Ok(())
 }
 
 pub fn parse_all(

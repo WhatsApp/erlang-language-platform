@@ -23,6 +23,7 @@ use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
+use elp::memory_usage::MemoryUsage;
 use elp::otp_file_to_ignore;
 use elp::read_lint_config_file;
 use elp_eqwalizer::Mode;
@@ -67,12 +68,15 @@ use rayon::prelude::ParallelIterator;
 
 use crate::args::Lint;
 use crate::reporting;
+use crate::reporting::print_memory_usage;
 
 pub fn run_lint_command(
     args: &Lint,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
+    let memory_start = MemoryUsage::now();
+
     if let Some(to) = &args.to {
         fs::create_dir_all(to)?
     };
@@ -83,7 +87,18 @@ pub fn run_lint_command(
     // errors. No point wasting time if the config is wrong.
     let mut loaded = load_project(args, cli, query_config)?;
 
-    do_codemod(cli, &mut loaded, &diagnostics_config, args)
+    let result = do_codemod(cli, &mut loaded, &diagnostics_config, args);
+
+    let memory_end = MemoryUsage::now();
+    let memory_used = memory_end - memory_start;
+
+    // Print memory usage at the end if requested and format is normal
+    if args.is_format_normal() && args.report_system_stats {
+        print_memory_usage(loaded.analysis_host, loaded.vfs, cli)?;
+        writeln!(cli, "{}", memory_used)?;
+    }
+
+    result
 }
 
 fn get_and_report_diagnostics_config(args: &Lint, cli: &mut dyn Cli) -> Result<DiagnosticsConfig> {
