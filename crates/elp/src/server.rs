@@ -282,6 +282,7 @@ pub struct Server {
     project_loader: Arc<Mutex<ProjectLoader>>,
     initial_load_status: InitialLoading,
     reload_manager: Arc<Mutex<ReloadManager>>,
+    dynamic_registrations_done: bool,
     unresolved_app_id_paths: Arc<FxHashMap<AbsPathBuf, AppDataId>>,
     generated_app_inputs: Arc<FxHashMap<AbsPathBuf, AppDataId>>,
     update_app_data_ids: bool,
@@ -350,6 +351,7 @@ impl Server {
             project_loader: Arc::new(Mutex::new(ProjectLoader::new())),
             initial_load_status: InitialLoading::Initial,
             reload_manager: Arc::new(Mutex::new(ReloadManager::new())),
+            dynamic_registrations_done: false,
             unresolved_app_id_paths: Arc::new(FxHashMap::default()),
             generated_app_inputs: Arc::new(FxHashMap::default()),
             update_app_data_ids: false,
@@ -1829,7 +1831,10 @@ impl Server {
             self.show_message(params);
         }
 
-        self.register_dynamic_now_operational();
+        if !self.dynamic_registrations_done {
+            self.register_dynamic_now_operational();
+            self.dynamic_registrations_done = true;
+        }
         Ok(())
     }
 
