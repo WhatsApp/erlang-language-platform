@@ -208,6 +208,11 @@ impl AnalysisHost {
         self.db.apply_change(change, resolve_file_id)
     }
 
+    /// NB: this clears the database
+    pub fn per_query_memory_usage(&mut self) -> Vec<(String, profile::Bytes, usize)> {
+        self.db.per_query_memory_usage()
+    }
+
     pub fn new(db: RootDatabase) -> AnalysisHost {
         AnalysisHost { db }
     }

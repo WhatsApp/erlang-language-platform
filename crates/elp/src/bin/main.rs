@@ -816,6 +816,46 @@ mod tests {
     }
 
     #[test]
+    fn parse_elp_report_system_stats() {
+        let (args, _path) = add_project(
+            args_vec!["parse-elp", "--report-system-stats", "--module", "app_a"],
+            "standard",
+            None,
+            None,
+        );
+        let (stdout, stderr, code) = elp(args);
+
+        // Should succeed with no errors
+        assert_eq!(
+            code, 0,
+            "Expected success, got code {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        );
+        assert!(stderr.is_empty(), "Expected empty stderr, got:\n{stderr}");
+
+        // Should contain memory usage information in stdout
+        assert!(
+            stdout.contains("Memory usage:"),
+            "Expected memory usage output in stdout:\n{stdout}"
+        );
+        assert!(
+            stdout.contains("allocated:"),
+            "Expected allocated memory info in stdout:\n{stdout}"
+        );
+        assert!(
+            stdout.contains("active:"),
+            "Expected active memory info in stdout:\n{stdout}"
+        );
+        assert!(
+            stdout.contains("resident:"),
+            "Expected resident memory info in stdout:\n{stdout}"
+        );
+        assert!(
+            stdout.contains("FileTextQuery"),
+            "Expected FileTextQuery info in stdout:\n{stdout}"
+        );
+    }
+
+    #[test]
     fn build_info_json_not_buck() {
         let tmp_dir = make_tmp_dir();
         let tmp_file = tmp_dir.path().join("test_build_info.json");
