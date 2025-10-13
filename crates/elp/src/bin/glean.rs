@@ -2658,22 +2658,6 @@ mod tests {
     }
 
     #[test]
-    fn xref_wam_record_v2_test() {
-        let spec = r#"
-        //- /src/record.erl
-            -module(record).
-            -record(wam_event_chatd_c2s_logout, {data, reason}).
-
-            baz(Data) ->
-                Event = #wam_event_chatd_c2s_logout{data = Data},
-            %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ record.erl/rec/wam_event_chatd_c2s_logout/has_wam
-                Event.
-
-        "#;
-        // @fb-only
-    }
-
-    #[test]
     fn xref_macro_v2_test() {
         let spec = r#"
         //- /include/macro.hrl include_path:/include
@@ -2692,45 +2676,6 @@ mod tests {
 
         "#;
         xref_v2_check(spec);
-    }
-
-    #[test]
-    fn xref_macro_ods_v2_test() {
-        let spec = r#"
-        //- /src/macro.erl
-            -module(macro).
-            -define(COUNT_INFRA(X), wa_stats_counter:count(X)).
-            baz(atom) -> ?COUNT_INFRA(atom),
-        %%                ^^^^^^^^^^^ macro.erl/macro/COUNT_INFRA/94/has_ods/wa_stats_counter:count( atom )
-
-        "#;
-        // @fb-only
-    }
-
-    #[test]
-    fn xref_macro_logview_v2_test() {
-        let spec = r#"
-        //- /src/macro.erl
-            -module(macro).
-            -define(LOG_E(X), (fun() -> wa_log:send_if(X) end)()).
-            baz(atom) -> ?LOG_E("test"),
-        %%                ^^^^^ macro.erl/macro/LOG_E/97/has_logview/fun () -> wa_log:send_if( "test" ) end()
-
-        "#;
-        // @fb-only
-    }
-
-    #[test]
-    fn xref_macro_scuba_v2_test() {
-        let spec = r#"
-        //- /src/macro.erl
-            -module(macro).
-            -define(LOG_SCUBA(X), wa_scuba:log_tablename(pii, X)).
-            baz(atom) -> ?LOG_SCUBA(test_event),
-        %%                ^^^^^^^^^ macro.erl/macro/LOG_SCUBA/97/has_scuba/wa_scuba:log_tablename( pii, test_event )
-
-        "#;
-        // @fb-only
     }
 
     #[test]
@@ -2846,91 +2791,6 @@ mod tests {
     }
 
     #[test]
-    fn module_fact_moduledoc_multiple_line_test() {
-        let spec = r#"
-        //- /src/data_processor.erl
-        -module(data_processor).
-        -oncall("data_team").
-        -moduledoc """
-        Data processing module for batch operations
-        Handles various data transformation tasks
-        For more information see:
-        https://www.example.com/data/processing
-        """.
-        -behaviour(test_behaviour).
-        -export([
-            start_link/0,
-            process_batch/1,
-            get_status/0
-        ]).
-
-        start_link() -> test_behaviour:start_link(?MODULE, [], []).
-        process_batch(Data) -> test_behaviour:call(?SERVER, {process, Data}).
-        get_status() -> test_behaviour:call(?SERVER, status).
-        "#;
-        let (facts, _, _, _, _) = facts_with_annotations(spec);
-        assert_eq!(facts.module_facts.len(), 1);
-        let module_fact = &facts.module_facts[0];
-        assert_eq!(module_fact.name, "data_processor");
-        assert_eq!(module_fact.oncall, Some("data_team".to_string()));
-        assert_eq!(
-            module_fact.behaviours,
-            Some(vec!["test_behaviour".to_string()])
-        );
-        assert_eq!(module_fact.exports.as_ref().map(|v| v.len()), Some(3));
-        for expected in ["get_status/0", "process_batch/1", "start_link/0"] {
-            assert!(
-                module_fact
-                    .exports
-                    .as_ref()
-                    .unwrap()
-                    .contains(&expected.to_string())
-            );
-        }
-        assert!(module_fact.module_doc.is_some());
-        let doc = module_fact.module_doc.as_ref().unwrap();
-        assert!(doc.contains("Data processing module for batch operations"));
-        assert!(doc.contains("https://www.example.com/data/processing"));
-    }
-
-    #[test]
-    fn module_fact_moduledoc_single_line_test() {
-        let spec = r#"
-        //- /src/config_manager.erl
-        -module(config_manager).
-        -oncall("infra_team").
-        -moduledoc "Configuration management module for system settings".
-        -behaviour(application).
-        -export([load_config/1, save_config/2]).
-
-        load_config(File) -> {ok, config}.
-        save_config(File, Config) -> ok.
-        "#;
-        let (facts, _, _, _, _) = facts_with_annotations(spec);
-        assert_eq!(facts.module_facts.len(), 1);
-        let module_fact = &facts.module_facts[0];
-        assert_eq!(module_fact.name, "config_manager");
-        assert_eq!(module_fact.oncall, Some("infra_team".to_string()));
-        assert_eq!(
-            module_fact.behaviours,
-            Some(vec!["application".to_string()])
-        );
-        assert_eq!(module_fact.exports.as_ref().map(|v| v.len()), Some(2));
-        for expected in ["load_config/1", "save_config/2"] {
-            assert!(
-                module_fact
-                    .exports
-                    .as_ref()
-                    .unwrap()
-                    .contains(&expected.to_string())
-            );
-        }
-        assert!(module_fact.module_doc.is_some());
-        let doc = module_fact.module_doc.as_ref().unwrap();
-        assert_eq!(doc, "Configuration management module for system settings");
-    }
-
-    #[test]
     fn module_fact_no_oncall_test() {
         let spec = r#"
         //- /src/utility_helper.erl
@@ -2961,7 +2821,7 @@ mod tests {
     }
 
     #[allow(clippy::type_complexity)]
-    fn facts_with_annotations(
+    pub(crate) fn facts_with_annotations(
         spec: &str,
     ) -> (
         IndexedFacts,
@@ -3055,7 +2915,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn xref_v2_check(spec: &str) {
+    pub(crate) fn xref_v2_check(spec: &str) {
         let (facts, mut expected_by_file, file_names, _d, _) = facts_with_annotations(spec);
         for xref_fact in facts.xref_v2 {
             let file_id = xref_fact.file_id;

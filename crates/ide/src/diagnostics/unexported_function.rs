@@ -43,7 +43,9 @@ impl Linter for UnexportedFunctionLinter {
     fn should_process_generated_files(&self) -> bool {
         true
     }
-    fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
+    #[rustfmt::skip]
+    fn should_process_file_id(&self, _sema: &Semantic, _file_id: FileId) -> bool { // @oss-only
+    // @fb-only
         true // @oss-only
         // @fb-only
     }
