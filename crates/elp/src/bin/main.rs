@@ -815,43 +815,22 @@ mod tests {
         );
     }
 
-    #[test]
-    fn parse_elp_report_system_stats() {
-        let (args, _path) = add_project(
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn parse_elp_report_system_stats(buck: bool) {
+        simple_snapshot_output_contains(
             args_vec!["parse-elp", "--report-system-stats", "--module", "app_a"],
             "standard",
+            &[
+                "Memory usage:",
+                "allocated:",
+                "active:",
+                "resident:",
+                "FileTextQuery",
+            ],
+            buck,
             None,
-            None,
-        );
-        let (stdout, stderr, code) = elp(args);
-
-        // Should succeed with no errors
-        assert_eq!(
-            code, 0,
-            "Expected success, got code {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
-        );
-        assert!(stderr.is_empty(), "Expected empty stderr, got:\n{stderr}");
-
-        // Should contain memory usage information in stdout
-        assert!(
-            stdout.contains("Memory usage:"),
-            "Expected memory usage output in stdout:\n{stdout}"
-        );
-        assert!(
-            stdout.contains("allocated:"),
-            "Expected allocated memory info in stdout:\n{stdout}"
-        );
-        assert!(
-            stdout.contains("active:"),
-            "Expected active memory info in stdout:\n{stdout}"
-        );
-        assert!(
-            stdout.contains("resident:"),
-            "Expected resident memory info in stdout:\n{stdout}"
-        );
-        assert!(
-            stdout.contains("FileTextQuery"),
-            "Expected FileTextQuery info in stdout:\n{stdout}"
+            0,
         );
     }
 
@@ -2417,6 +2396,41 @@ mod tests {
                 "Expected exit code 101, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
             );
             assert_normalised_file(expected, &stderr, path, normalise_urls);
+        }
+    }
+
+    #[track_caller]
+    fn simple_snapshot_output_contains(
+        args: Vec<OsString>,
+        project: &str,
+        expected_patterns: &[&str],
+        buck: bool,
+        file: Option<&str>,
+        expected_code: i32,
+    ) {
+        if !buck || cfg!(feature = "buck") {
+            let (mut args, _path) = add_project(args, project, file, None);
+            if !buck {
+                args.push("--rebar".into());
+            }
+            let (stdout, stderr, code) = elp(args);
+            assert_eq!(
+                code, expected_code,
+                "Expected exit code {expected_code}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
+            );
+
+            if expected_code == 0 {
+                assert!(stderr.is_empty(), "Expected empty stderr, got:\n{stderr}");
+            }
+
+            for pattern in expected_patterns {
+                assert!(
+                    stdout.contains(pattern),
+                    "Expected stdout to contain '{}', but got:\n{}",
+                    pattern,
+                    stdout
+                );
+            }
         }
     }
 
