@@ -86,7 +86,7 @@ mod handlers {
 
     pub(crate) fn all() -> &'static [Handler] {
         &[
-            // These are alphabetic for the foolish consistency
+            // These affect the order of display in the UI
             add_doc::add_doc,
             add_fixme::add_fixme,
             add_format::add_format,
@@ -97,22 +97,15 @@ mod handlers {
             delete_function::delete_function,
             export_function::export_function,
             export_type::export_type,
-            extract_function::extract_function,
+            // Put extract variable before extract function, so it is
+            // easier to access, as it is used more frequently
             extract_variable::extract_variable,
+            extract_function::extract_function,
             flip_sep::flip_sep,
             ignore_variable::ignore_variable,
             implement_behaviour::implement_behaviour,
             inline_function::inline_function,
             inline_local_variable::inline_local_variable,
-            // These are manually sorted for better priorities. By default,
-            // priority is determined by the size of the target range (smaller
-            // target wins). If the ranges are equal, position in this list is
-            // used as a tie-breaker.
-            // add_missing_impl_members::add_missing_impl_members,
-            // add_missing_impl_members::add_missing_default_members,
-
-            // Are you sure you want to add new assist here, and not to the
-            // sorted list above?
         ]
     }
 }
