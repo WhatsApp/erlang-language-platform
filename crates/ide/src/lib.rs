@@ -170,6 +170,7 @@ pub struct AnalysisHost {
     db: RootDatabase,
 }
 
+#[derive(Debug)]
 pub struct DocResult {
     pub doc: Option<Doc>,
     pub token_kind: SyntaxKind,

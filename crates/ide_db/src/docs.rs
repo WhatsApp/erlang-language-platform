@@ -137,7 +137,9 @@ impl ToDoc for InFile<&ast::Remote> {
                     let name_arity = fun_def.name;
                     docs.function_doc(file_id, name_arity)
                 }
-                CallDef::Type(_) | CallDef::FuzzyType(_) => None,
+                CallDef::Type(type_def) | CallDef::FuzzyType(type_def) => {
+                    docs.type_doc(type_def.file.file_id, type_def.name().clone())
+                }
             }
         } else {
             None
@@ -152,7 +154,9 @@ impl ToDoc for InFile<&ast::Call> {
                 CallDef::Function(fun_def) | CallDef::FuzzyFunction(fun_def) => {
                     docs.function_doc(fun_def.file.file_id, fun_def.name)
                 }
-                CallDef::Type(_) | CallDef::FuzzyType(_) => None,
+                CallDef::Type(type_def) | CallDef::FuzzyType(type_def) => {
+                    docs.type_doc(type_def.file.file_id, type_def.name().clone())
+                }
             }
         } else {
             None
