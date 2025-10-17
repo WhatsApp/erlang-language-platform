@@ -1,26 +1,4 @@
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/pats.erl:21:17
-   │
-21 │     maps:get(a, M).
-   │                 ^
-   │                 │
-   │                 M.
-Expression has type:   #{a => 'ok'} | 'error'
-Context expected type: #{term() => term()}
-   │                 
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: #{a => 'ok'}
-  However the following candidate: 'error'
-  Differs from the expected type:  #{term() => term()}
-
------------------------------- Detailed message ------------------------------
-
-  #{a => 'ok'} | 'error' is not compatible with #{term() => term()}
-  because
-  'error' is not compatible with #{term() => term()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/pats.erl:26:17
    │
 26 │     maps:get(a, M).
@@ -29,7 +7,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                 M.
 Expression has type:   #{a => 'ok'} | 'error'
 Context expected type: #{term() => term()}
-   │                 
+   │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: #{a => 'ok'}
@@ -42,4 +20,4 @@ Because in the expression's type:
   because
   'error' is not compatible with #{term() => term()}
 
-2 ERRORS
+1 ERROR
