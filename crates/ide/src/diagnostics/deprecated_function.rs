@@ -142,6 +142,13 @@ fn check_function(
                         if let Some(range) = def_fb.range_for_any(clause_id, expr_id)
                             && def.file.file_id == range.file_id
                         {
+                            let range_mf = if ctx.in_macro.is_none() {
+                                let in_clause = &def_fb.in_clause(clause_id);
+                                target.range(in_clause)
+                            } else {
+                                None
+                            };
+                            let range = range_mf.unwrap_or(range);
                             let d = make_diagnostic(range.range, &target_def, details)
                                 .with_fixes(Some(vec![fix_xref_ignore(
                                     sema,
@@ -256,7 +263,7 @@ mod tests {
     ok.
   main() ->
     not_ok_to_use().
-%%  ^^^^^^^^^^^^^^^ 💡 warning: Function 'not_ok_to_use/0' is deprecated.
+%%  ^^^^^^^^^^^^^ 💡 warning: Function 'not_ok_to_use/0' is deprecated.
             "#,
         )
     }
@@ -276,7 +283,7 @@ mod tests {
 
   main() ->
     b:not_ok_to_use().
-%%  ^^^^^^^^^^^^^^^^^ 💡 warning: Function 'not_ok_to_use/0' is deprecated.
+%%  ^^^^^^^^^^^^^^^ 💡 warning: Function 'not_ok_to_use/0' is deprecated.
             "#,
         )
     }
@@ -290,7 +297,7 @@ mod tests {
   -deprecated({do, 0}).
   main() ->
     do(),
-%%  ^^^^ 💡 warning: Function 'do/0' is deprecated.
+%%  ^^ 💡 warning: Function 'do/0' is deprecated.
     ?LAZY(do()).
 %%  ^^^^^^^^^^^ 💡 warning: Function 'do/0' is deprecated.
   do() ->
@@ -314,8 +321,8 @@ mod tests {
 
   main() ->
     b:not_ok_to_use().
-%%  ^^^^^^^^^^^^^^^^^ 💡 warning: Function 'not_ok_to_use/0' is deprecated.
-%%                  | Cause I said so.
+%%  ^^^^^^^^^^^^^^^ 💡 warning: Function 'not_ok_to_use/0' is deprecated.
+%%                | Cause I said so.
             "#,
         )
     }
