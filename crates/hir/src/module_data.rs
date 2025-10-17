@@ -91,6 +91,19 @@ impl File {
     pub fn def_map(&self, db: &dyn DefDatabase) -> Arc<DefMap> {
         db.def_map(self.file_id)
     }
+
+    pub fn is_in_otp(&self, db: &dyn DefDatabase) -> bool {
+        let file_id = self.file_id;
+        // Context for T171541590
+        let _ = stdx::panic_context::enter(format!("\nis_in_otp:2: {file_id:?}"));
+        match db.file_app_data(file_id) {
+            Some(app_data) => {
+                let project_id = app_data.project_id;
+                db.project_data(project_id).otp_project_id == Some(project_id)
+            }
+            None => false,
+        }
+    }
 }
 
 /// Represents a module definition
@@ -111,7 +124,7 @@ impl Module {
     }
 
     pub fn is_in_otp(&self, db: &dyn DefDatabase) -> bool {
-        is_in_otp(self.file.file_id, db)
+        self.file.is_in_otp(db)
     }
 
     pub fn has_moduledoc(&self, db: &dyn DefDatabase) -> bool {
@@ -270,7 +283,7 @@ impl FunctionDef {
     }
 
     pub fn is_in_otp(&self, db: &dyn DefDatabase) -> bool {
-        is_in_otp(self.file.file_id, db)
+        self.file.is_in_otp(db)
     }
 
     pub fn edoc_comments(&self, db: &dyn DefDatabase) -> Option<EdocHeader> {
@@ -695,17 +708,5 @@ impl VarDef {
 
     pub fn name(&self, db: &dyn InternDatabase) -> Name {
         db.lookup_var(self.hir_var).clone()
-    }
-}
-
-fn is_in_otp(file_id: FileId, db: &dyn DefDatabase) -> bool {
-    // Context for T171541590
-    let _ = stdx::panic_context::enter(format!("\nis_in_otp:2: {file_id:?}"));
-    match db.file_app_data(file_id) {
-        Some(app_data) => {
-            let project_id = app_data.project_id;
-            db.project_data(project_id).otp_project_id == Some(project_id)
-        }
-        None => false,
     }
 }
