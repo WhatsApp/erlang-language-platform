@@ -73,6 +73,13 @@ impl FunctionCallLinter for UndefinedFunctionLinter {
                 let arity = context.args.arity();
                 let module = &def_fb[*module];
                 let name = &def_fb[*name];
+
+                // If the module is a variable, we can't determine at compile time
+                // whether the function is defined or not, so don't report it
+                if module.as_var().is_some() {
+                    return None;
+                }
+
                 if sema.is_atom_named(name, &known::module_info) && (arity == 0 || arity == 1)
                     || sema
                         .resolve_module_expr(def_fb.file_id(), module)
@@ -379,6 +386,18 @@ exists() -> ok.
     -module(main).
     main() ->
       lager:warning("Some ~p", [Message]).
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_module_name_variable() {
+        check_diagnostics(
+            r#"
+    //- /src/main.erl
+    -module(main).
+    main(Callback) ->
+      Callback:main().
             "#,
         )
     }
