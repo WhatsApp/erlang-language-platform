@@ -199,7 +199,6 @@ fn make_diagnostic(
         .with_severity(severity)
         .deprecated()
         .with_uri(uri)
-        .experimental()
 }
 
 fn strip_quotes(s: &str) -> &str {
