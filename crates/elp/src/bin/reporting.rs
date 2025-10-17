@@ -227,6 +227,9 @@ impl Reporter for JsonReporter<'_> {
         diagnostics: &[EqwalizerDiagnostic],
     ) -> Result<()> {
         let line_index = self.analysis.line_index(file_id)?;
+        // Pass include_Tests = false so that errors for tests files that are not opted-in are tagged as
+        // arc_types::Severity::Disabled and don't break CI.
+        let eqwalizer_enabled = self.analysis.is_eqwalizer_enabled(file_id, false).unwrap();
         let file_path = &self.loaded.vfs.file_path(file_id);
         let root_path = &self
             .analysis
@@ -235,8 +238,12 @@ impl Reporter for JsonReporter<'_> {
             .root_dir;
         let relative_path = get_relative_path(root_path, file_path);
         for diagnostic in diagnostics {
-            let diagnostic =
-                convert::eqwalizer_to_arc_diagnostic(diagnostic, &line_index, relative_path);
+            let diagnostic = convert::eqwalizer_to_arc_diagnostic(
+                diagnostic,
+                &line_index,
+                relative_path,
+                eqwalizer_enabled,
+            );
             let diagnostic = serde_json::to_string(&diagnostic)?;
             writeln!(self.cli, "{diagnostic}")?;
         }

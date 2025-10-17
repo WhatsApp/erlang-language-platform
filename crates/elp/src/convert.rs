@@ -122,11 +122,18 @@ pub fn eqwalizer_to_arc_diagnostic(
     d: &EqwalizerDiagnostic,
     line_index: &LineIndex,
     relative_path: &Path,
+    eqwalizer_enabled: bool,
 ) -> arc_types::Diagnostic {
     let pos = position(line_index, d.range.start());
     let line_num = pos.line + 1;
     let character = Some(pos.character + 1);
-    let severity = arc_types::Severity::Error;
+    let severity = if eqwalizer_enabled {
+        arc_types::Severity::Error
+    } else {
+        // We use Severity::Disabled so that diagnostics are reported in cont lint
+        // but not in CI.
+        arc_types::Severity::Disabled
+    };
     // formatting: https://fburl.com/max_wiki_link_to_phabricator_rich_text
     let explanation = match &d.explanation {
         Some(s) => format!("```\n{s}\n```"),
