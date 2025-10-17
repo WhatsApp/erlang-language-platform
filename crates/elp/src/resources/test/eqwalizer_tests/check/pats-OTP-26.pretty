@@ -7,7 +7,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                 M.
 Expression has type:   #{a => 'ok'} | 'error'
 Context expected type: #{term() => term()}
-   │
+   │                 
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: #{a => 'ok'}
