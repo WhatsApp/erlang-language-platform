@@ -76,7 +76,7 @@ impl FunctionCallLinter for UndefinedFunctionLinter {
 
                 // If the module is a variable, we can't determine at compile time
                 // whether the function is defined or not, so don't report it
-                if module.as_var().is_some() {
+                if module.as_var().is_some() || name.as_var().is_some() {
                     return None;
                 }
 
@@ -398,6 +398,18 @@ exists() -> ok.
     -module(main).
     main(Callback) ->
       Callback:main().
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_function_name_variable() {
+        check_diagnostics(
+            r#"
+    //- /src/main.erl
+    -module(main).
+    main(Callback) ->
+      main:Callback().
             "#,
         )
     }
