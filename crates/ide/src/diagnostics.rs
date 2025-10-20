@@ -550,6 +550,17 @@ fn should_run(
     is_generated: bool,
     is_test: bool,
 ) -> bool {
+    let is_enabled = if let Some(lint_config) = config.lint_config.as_ref() {
+        lint_config
+            .get_is_enabled_override(&linter.id())
+            .unwrap_or_else(|| linter.is_enabled())
+    } else {
+        linter.is_enabled()
+    };
+    if !is_enabled {
+        return false;
+    }
+
     let include_tests = if let Some(lint_config) = config.lint_config.as_ref() {
         lint_config
             .get_include_tests_override(&linter.id())
@@ -1129,6 +1140,11 @@ impl DiagnosticsConfig {
 }
 
 impl LintConfig {
+    /// Get the is_enabled override for a linter based on its diagnostic code
+    pub fn get_is_enabled_override(&self, diagnostic_code: &DiagnosticCode) -> Option<bool> {
+        self.linters.get(diagnostic_code)?.is_enabled
+    }
+
     /// Get the severity override for a linter based on its diagnostic code
     pub fn get_severity_override(&self, diagnostic_code: &DiagnosticCode) -> Option<Severity> {
         self.linters.get(diagnostic_code)?.severity
@@ -1213,6 +1229,8 @@ pub enum LinterTraitConfig {
 /// Configuration for a specific linter that allows overriding default settings
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct LinterConfig {
+    #[serde(rename = "enabled")]
+    pub is_enabled: Option<bool>,
     pub severity: Option<Severity>,
     pub include_tests: Option<bool>,
     pub include_generated: Option<bool>,
@@ -3486,6 +3504,7 @@ baz(1)->4.
         lint_config.linters.insert(
             DiagnosticCode::NoGarbageCollect,
             LinterConfig {
+                is_enabled: None,
                 severity: Some(Severity::Error),
                 include_tests: None,
                 include_generated: None,
@@ -3527,6 +3546,7 @@ baz(1)->4.
         lint_config.linters.insert(
             DiagnosticCode::NoGarbageCollect,
             LinterConfig {
+                is_enabled: None,
                 severity: None,
                 include_tests: Some(true),
                 include_generated: None,
@@ -3567,6 +3587,7 @@ baz(1)->4.
         lint_config.linters.insert(
             DiagnosticCode::NoGarbageCollect,
             LinterConfig {
+                is_enabled: None,
                 severity: None,
                 include_tests: None,
                 include_generated: Some(true),
@@ -3608,6 +3629,7 @@ baz(1)->4.
         lint_config.linters.insert(
             DiagnosticCode::NoGarbageCollect,
             LinterConfig {
+                is_enabled: None,
                 severity: None,
                 include_tests: None,
                 include_generated: None,
@@ -3642,6 +3664,46 @@ baz(1)->4.
             "#,
                 "generated" // Separate string, to avoid to mark this module itself as generated
             ),
+        );
+    }
+
+    #[test]
+    fn test_linter_is_enabled_override() {
+        let mut lint_config = LintConfig::default();
+        lint_config.linters.insert(
+            DiagnosticCode::NoGarbageCollect,
+            LinterConfig {
+                is_enabled: Some(false),
+                severity: None,
+                include_tests: None,
+                include_generated: None,
+                experimental: None,
+                config: None,
+            },
+        );
+
+        let config = DiagnosticsConfig::default()
+            .configure_diagnostics(
+                &lint_config,
+                &Some("no_garbage_collect".to_string()),
+                &None,
+                FallBackToAll::No,
+            )
+            .unwrap();
+        check_diagnostics_with_config(
+            config,
+            r#"
+            //- /src/main.erl
+            -module(main).
+            -export([warning/0]).
+
+            warning() ->
+                erlang:garbage_collect().
+            //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+            -module(erlang).
+            -export([garbage_collect/0]).
+            garbage_collect() -> ok.
+            "#,
         );
     }
 }
