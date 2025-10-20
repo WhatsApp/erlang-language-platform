@@ -75,12 +75,8 @@ jobs:
     steps:
       - name: Checkout erlang-language-platform
         uses: "actions/checkout@v3"
-      - name: Checkout eqwalizer
-        uses: "actions/checkout@v3"
         with:
-          repository: WhatsApp/eqwalizer
-          path: eqwalizer
-          ref: main
+          submodules: true
       - name: Set up GraalVM
         uses: graalvm/setup-graalvm@v1
         with:
