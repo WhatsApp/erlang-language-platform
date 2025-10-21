@@ -1,0 +1,3 @@
+[submodule "eqwalizer"]
+	path = eqwalizer
+	url = https://github.com/WhatsApp/eqwalizer
