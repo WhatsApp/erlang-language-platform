@@ -616,7 +616,6 @@ pub(crate) fn find_call_in_function<CallCtx, MakeCtx, Res>(
 /// # Returns
 /// An `Assist` that replaces just the module name, or `None` if the target is not a
 /// remote call or if the module range is in a different file.
-#[allow(dead_code)]
 pub fn make_module_rename_fix<T>(
     match_context: &MatchCtx<T>,
     file_id: FileId,
