@@ -602,6 +602,43 @@ pub(crate) fn find_call_in_function<CallCtx, MakeCtx, Res>(
     Some(())
 }
 
+/// Helper function to create a fix that replaces the module name in a remote call.
+/// This is useful for linters that need to rename module references (e.g., replacing
+/// `old_module:function()` with `new_module:function()`).
+///
+/// # Arguments
+/// * `match_context` - The match context from the FunctionCallLinter
+/// * `file_id` - The file being analyzed
+/// * `new_module_name` - The new module name to replace with
+/// * `fix_id` - A unique identifier for this fix (e.g., "rename_module_to_new_name")
+/// * `fix_label` - A human-readable label for the fix (e.g., "Rename to new_module")
+///
+/// # Returns
+/// An `Assist` that replaces just the module name, or `None` if the target is not a
+/// remote call or if the module range is in a different file.
+#[allow(dead_code)]
+pub fn make_module_rename_fix<T>(
+    match_context: &MatchCtx<T>,
+    file_id: FileId,
+    new_module_name: &str,
+    fix_id: &'static str,
+    fix_label: &str,
+) -> Option<elp_ide_assists::Assist> {
+    use elp_ide_db::source_change::SourceChangeBuilder;
+
+    let module_range = match_context.target.module_range(match_context.def_fb)?;
+
+    let mut builder = SourceChangeBuilder::new(file_id);
+    builder.replace(module_range.range, new_module_name.to_string());
+
+    Some(crate::fix(
+        fix_id,
+        fix_label,
+        builder.finish(),
+        module_range.range,
+    ))
+}
+
 // ---------------------------------------------------------------------
 
 #[cfg(test)]
