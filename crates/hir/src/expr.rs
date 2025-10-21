@@ -657,6 +657,16 @@ impl CallTarget<ExprId> {
             }
         }
     }
+
+    pub fn module_range(
+        &self,
+        in_clause: &InFunctionClauseBody<&FunctionDef>,
+    ) -> Option<FileRange> {
+        match self {
+            CallTarget::Local { .. } => None,
+            CallTarget::Remote { module, .. } => in_clause.range_for_expr(*module),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
