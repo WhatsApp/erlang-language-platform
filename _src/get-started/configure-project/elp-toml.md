@@ -32,6 +32,9 @@ enabled = false
 
 [rebar]
 profile = "test"
+
+[otp]
+exclude_apps = ["megaco", "eunit"]
 ```
 
 ## Configuration Sections
@@ -126,3 +129,22 @@ Configure ELP for [rebar3](https://rebar3.org/)-based projects.
 | Key     | Type   | Description                                                                                                                                | Default |
 | ------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
 | profile | String | The `rebar3` profile to use for project discovery. Only used if the `file` property is specified in the [build_info](#build-info) section. | test    |
+
+### \[otp\] {#otp}
+
+Configure ELP's interaction with OTP (Open Telecom Platform) applications.
+
+| Key          | Type              | Description                                                                                                        | Default |
+| ------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------ | ------- |
+| exclude_apps | Array of Strings  | List of OTP application names to exclude from indexing. This can help improve performance by not loading rarely used OTP apps. | []      |
+
+The `exclude_apps` setting allows you to specify OTP applications that should not be indexed by ELP. This can be useful for:
+
+- Improving performance by excluding rarely used OTP applications like `megaco`
+- Reducing memory usage when working on projects that don't need certain OTP libraries
+
+Example usage:
+```toml
+[otp]
+exclude_apps = ["diameter", "megaco"]
+```
