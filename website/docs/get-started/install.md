@@ -51,18 +51,14 @@ correctly installed.
 
 ## From Source
 
-### Prerequisites
-
-To be able to compile ELP from source, you need a copy of the
-[eqWAlizer](https://github.com/WhatsApp/eqwalizer) typechecker for Erlang.
-
-Clone the eqWAlizer repository:
+Clone the ELP repository, including submodules:
 
 ```
-git clone https://github.com/WhatsApp/eqwalizer.git
+git clone --recurse-submodules https://github.com/WhatsApp/erlang-language-platform.git
+cd erlang-language-platform
 ```
 
-Enter the `eqwalizer` repository and build it. Notice the double `eqwalizer` in
+Enter the `eqwalizer` submodule and build it. Notice the double `eqwalizer` in
 the `pushd` command.
 
 ```
@@ -71,39 +67,21 @@ sbt assembly
 popd
 ```
 
-Get the path of the produced `eqwalizer.jar` file:
+Point the `ELP_EQWALIZER_PATH` environment variable to the path of the produced `eqwalizer.jar` file:
 
 ```
-find . -name eqwalizer.jar | readlink -f
+export ELP_EQWALIZER_PATH=$(find "$(pwd)" -name eqwalizer.jar)
 ```
 
-Point the `ELP_EQWALIZER_PATH` environment variable to the path returned above:
+Point the `EQWALIZER_DIR` environment variable to the path of the `eqwalizer_support` directory:
 
 ```
-export ELP_EQWALIZER_PATH=/path/to/eqwalizer.jar
+export EQWALIZER_DIR=$(find "$(pwd)" -name eqwalizer_support)
 ```
 
-Note: The ELP build assumes that you clone the eqwalizer and ELP
-repositories from the same starting directory, so they are
-"siblings". This is because there is a cross-reference within ELP to
-`../eqwalizer/eqwalizer_support`.  If you are unable to do this, set
+Now we can compile ELP:
 
 ```
-export EQWALIZER_DIR=</path/to/eqwalizer_repo>/eqwalizer_support
-```
-
-### Compile ELP
-
-Clone the ELP repository:
-
-```
-git clone https://github.com/WhatsApp/erlang-language-platform.git
-```
-
-Enter the ELP repo and compile it:
-
-```
-cd erlang-language-platform
 cargo build --release
 ```
 
