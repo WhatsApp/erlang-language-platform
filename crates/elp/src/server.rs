@@ -724,13 +724,12 @@ impl Server {
                 this.ct_diagnostics_requested = true;
                 this.native_diagnostics_requested = true;
                 if let Ok(path) = convert::abs_path(&params.text_document.uri) {
-                    this.fetch_projects_if_needed(&path);
-                    let path = VfsPath::from(path);
+                    let vfs_path = VfsPath::from(path.clone());
                     let already_exists = this
                         .mem_docs
                         .write()
                         .insert(
-                            path.clone(),
+                            vfs_path.clone(),
                             DocumentData::new(
                                 params.text_document.version,
                                 params.text_document.text.clone().into_bytes(),
@@ -738,24 +737,32 @@ impl Server {
                         )
                         .is_err();
                     if already_exists {
-                        tracing::error!("duplicate DidOpenTextDocument: {}", path);
-                        log::error!("duplicate DidOpenTextDocument: {path}");
+                        tracing::error!("duplicate DidOpenTextDocument: {}", &vfs_path);
+                        log::error!("duplicate DidOpenTextDocument: {vfs_path}");
                     }
 
-                    let mut vfs = this.vfs.write();
-                    let bytes = params.text_document.text.into_bytes();
-                    vfs.set_file_contents(path.clone(), Some(bytes.clone()));
+                    let file_id = {
+                        let mut vfs = this.vfs.write();
+                        let bytes = params.text_document.text.into_bytes();
+                        vfs.set_file_contents(vfs_path.clone(), Some(bytes.clone()));
 
-                    // Until we bring over the full rust-analyzer
-                    // style change processing, make a list of files
-                    // that are freshly opened so diagnostics are
-                    // generated for them, despite no changes being
-                    // registered in vfs.
-                    let (file_id, _) = vfs.file_id(&path).unwrap();
-                    this.newly_opened_documents.push(ChangedFile {
-                        file_id,
-                        change: Change::Modify(bytes, params.text_document.version as u64),
-                    });
+                        // Until we bring over the full rust-analyzer
+                        // style change processing, make a list of files
+                        // that are freshly opened so diagnostics are
+                        // generated for them, despite no changes being
+                        // registered in vfs.
+                        let (file_id, _) = vfs.file_id(&vfs_path).unwrap();
+                        this.newly_opened_documents.push(ChangedFile {
+                            file_id,
+                            change: Change::Modify(bytes, params.text_document.version as u64),
+                        });
+                        file_id
+                    };
+
+                    if this.status != Status::Running || this.analysis_host.raw_database().file_app_data(file_id).is_none() {
+                        // We do not have a project associated with this file
+                        this.fetch_projects_if_needed(&path);
+                    }
                 } else {
                     log::error!(
                         "DidOpenTextDocument: could not get vfs path for {}",
