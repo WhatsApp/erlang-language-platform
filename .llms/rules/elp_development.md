@@ -124,6 +124,38 @@ Every diagnostic must have a corresponding `DiagnosticDescriptor` that defines w
 - Use realistic Erlang code examples in tests
 - Test both positive and negative cases
 
+### Running Tests for Specific Crates
+
+When running tests for a specific crate, you need to specify the crate name, not the directory name. The mapping is:
+
+| Crate Name | Directory Name |
+|------------|----------------|
+| `elp_base_db` | `crates/base_db` |
+| `elp_eqwalizer` | `crates/eqwalizer` |
+| `elp_erlang_service` | `crates/erlang_service` |
+| `elp_ide` | `crates/ide` |
+| `elp_ide_assists` | `crates/ide_assists` |
+| `elp_ide_completion` | `crates/ide_completion` |
+| `elp_ide_db` | `crates/ide_db` |
+| `elp_ide_ssr` | `crates/ide_ssr` |
+| `elp_log` | `crates/elp_log` |
+| `elp_project_model` | `crates/project_model` |
+| `elp_syntax` | `crates/syntax` |
+| `elp_text_edit` | `crates/text_edit` |
+| `elp_types_db` | `crates/types_db` |
+| `hir` | `crates/hir` |
+| `erl_ast` | `crates/erl_ast` |
+
+Example: To run tests for the `elp_ide` crate:
+```bash
+./meta/cargo.sh test -p elp_ide
+```
+
+Or to run tests in a specific directory:
+```bash
+./meta/cargo.sh test --manifest-path crates/ide/Cargo.toml
+```
+
 ### Existing tests
 
 - Do not change existing tests without asking
