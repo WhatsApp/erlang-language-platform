@@ -295,7 +295,7 @@ impl ChangeFixture {
                 ProjectManifest::discover(&AbsPathBuf::assert(json_config_file.into())).unwrap();
             let loaded_project = Project::load(
                 &manifest,
-                elp_config.eqwalizer,
+                &elp_config,
                 &BuckQueryConfig::BuildGeneratedCode,
                 &|_| {},
             )

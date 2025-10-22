@@ -326,6 +326,7 @@ impl IncludeMapping {
 impl BuckProject {
     pub fn load_from_config(
         buck_conf: &BuckConfig,
+        elp_config: &ElpConfig,
         query_config: &BuckQueryConfig,
         report_progress: &impl Fn(&str),
     ) -> Result<
@@ -349,7 +350,7 @@ impl BuckProject {
         };
         let otp_root = Otp::find_otp()?;
         // TODO: we now get these twice. Perhaps they should be cached?
-        let (_otp, otp_project_apps) = Otp::discover(otp_root.clone());
+        let (_otp, otp_project_apps) = Otp::discover(otp_root.clone(), &elp_config.otp);
         include_mapping.add_otp(&otp_project_apps);
         Ok((
             project,

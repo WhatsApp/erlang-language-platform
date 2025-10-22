@@ -22,6 +22,7 @@ use paths::Utf8Path;
 use paths::Utf8PathBuf;
 
 use crate::AppName;
+use crate::OtpConfig;
 use crate::ProjectAppData;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,7 +71,7 @@ pub fn supports_eep66_sigils() -> bool {
 }
 
 fn get_erts_dir() -> AbsPathBuf {
-    let (_otp, apps) = Otp::discover(OTP_ROOT.to_path_buf());
+    let (_otp, apps) = Otp::discover(OTP_ROOT.to_path_buf(), &OtpConfig::default());
     for app in apps {
         if app.name == AppName("erts".to_string()) {
             return app.dir;
@@ -157,8 +158,8 @@ impl Otp {
         Ok(val)
     }
 
-    pub fn discover(path: Utf8PathBuf) -> (Otp, Vec<ProjectAppData>) {
-        let apps = Self::discover_otp_apps(&path);
+    pub fn discover(path: Utf8PathBuf, otp_config: &OtpConfig) -> (Otp, Vec<ProjectAppData>) {
+        let apps = Self::discover_otp_apps(&path, otp_config);
         (
             Otp {
                 lib_dir: AbsPathBuf::assert(path),
@@ -167,7 +168,8 @@ impl Otp {
         )
     }
 
-    fn discover_otp_apps(path: &Utf8Path) -> Vec<ProjectAppData> {
+    fn discover_otp_apps(path: &Utf8Path, otp_config: &OtpConfig) -> Vec<ProjectAppData> {
+        let exclude_apps = &otp_config.exclude_apps;
         log::info!("Loading OTP apps from {path:?}");
         if let Ok(entries) = fs::read_dir(path) {
             entries
@@ -175,15 +177,84 @@ impl Otp {
                 .filter_map(|entry| {
                     let entry = entry.ok()?;
                     let name = entry.file_name();
+                    let name_str = name.to_str()?;
+
+                    // Extract app name from versioned directory name (e.g., "megaco-4.5" -> "megaco")
+                    let app_name = name_str
+                        .split_once('-')
+                        .map_or(name_str, |(base, _version)| base);
+
+                    // Skip excluded applications
+                    if exclude_apps.contains(&app_name.to_string()) {
+                        log::info!("Excluding OTP app: {}", app_name);
+                        return None;
+                    }
+
                     let path = fs::canonicalize(entry.path()).expect("Could not canonicalize path");
                     let dir = AbsPathBuf::assert(
                         Utf8PathBuf::from_path_buf(path).expect("Could not convert to Utf8PathBuf"),
                     );
-                    Some(ProjectAppData::otp_app_data(name.to_str()?, &dir))
+                    Some(ProjectAppData::otp_app_data(name_str, &dir))
                 })
                 .collect()
         } else {
             vec![]
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_discover_with_excluded_apps() {
+        // Create a mock OTP directory structure
+        let temp_dir = tempfile::tempdir().unwrap();
+        let otp_lib_dir = temp_dir.path().join("lib");
+        std::fs::create_dir_all(&otp_lib_dir).unwrap();
+
+        // Create mock OTP app directories
+        let apps = vec![
+            "kernel-9.2",
+            "stdlib-5.2",
+            "megaco-4.5",
+            "eunit-2.8.2",
+            "common_test-1.25.1",
+        ];
+
+        for app in &apps {
+            let app_dir = otp_lib_dir.join(app);
+            std::fs::create_dir_all(app_dir.join("src")).unwrap();
+            std::fs::create_dir_all(app_dir.join("include")).unwrap();
+            std::fs::create_dir_all(app_dir.join("ebin")).unwrap();
+        }
+
+        let otp_path = Utf8PathBuf::from_path_buf(otp_lib_dir).unwrap();
+
+        // Test without exclusions
+        let (_otp, all_apps) = Otp::discover(otp_path.clone(), &OtpConfig::default());
+        let app_names: Vec<&str> = all_apps.iter().map(|app| app.name.as_str()).collect();
+        assert!(app_names.contains(&"kernel"));
+        assert!(app_names.contains(&"stdlib"));
+        assert!(app_names.contains(&"megaco"));
+        assert!(app_names.contains(&"eunit"));
+        assert!(app_names.contains(&"common_test"));
+
+        // Test with exclusions
+        let otp_config = OtpConfig {
+            exclude_apps: vec!["megaco".to_string(), "eunit".to_string()],
+        };
+        let (_otp, filtered_apps) = Otp::discover(otp_path, &otp_config);
+        let filtered_names: Vec<&str> = filtered_apps.iter().map(|app| app.name.as_str()).collect();
+        assert!(filtered_names.contains(&"kernel"));
+        assert!(filtered_names.contains(&"stdlib"));
+        assert!(filtered_names.contains(&"common_test"));
+        assert!(!filtered_names.contains(&"megaco"));
+        assert!(!filtered_names.contains(&"eunit"));
+
+        // Verify the filtered list is smaller
+        assert!(filtered_apps.len() < all_apps.len());
+        assert_eq!(filtered_apps.len(), all_apps.len() - 2);
     }
 }

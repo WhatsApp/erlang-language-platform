@@ -385,6 +385,8 @@ pub struct ElpConfig {
     pub eqwalizer: EqwalizerConfig,
     #[serde(default)]
     pub rebar: ElpRebarConfig,
+    #[serde(default)]
+    pub otp: OtpConfig,
 }
 
 #[derive(
@@ -501,6 +503,22 @@ impl Default for ElpRebarConfig {
     }
 }
 
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Ord,
+    PartialOrd,
+    Deserialize,
+    Serialize
+)]
+pub struct OtpConfig {
+    pub exclude_apps: Vec<String>,
+}
+
 impl ElpConfig {
     pub fn new(
         config_path: AbsPathBuf,
@@ -515,6 +533,7 @@ impl ElpConfig {
             build_info,
             eqwalizer,
             rebar,
+            otp: OtpConfig::default(),
         }
     }
     pub fn try_parse(path: &AbsPath) -> Result<ElpConfig> {
@@ -998,7 +1017,7 @@ impl Project {
 
     pub fn load(
         manifest: &ProjectManifest,
-        eqwalizer_config: EqwalizerConfig,
+        elp_config: &ElpConfig,
         query_config: &BuckQueryConfig,
         report_progress: &impl Fn(&str),
     ) -> Result<Project> {
@@ -1032,7 +1051,7 @@ impl Project {
             ProjectManifest::TomlBuck(buck) => {
                 // We only select this manifest if buck is actually enabled
                 let (project, apps, otp_root, include_mapping) =
-                    BuckProject::load_from_config(buck, query_config, report_progress)?;
+                    BuckProject::load_from_config(buck, elp_config, query_config, report_progress)?;
                 (
                     ProjectBuildData::Buck(project),
                     apps,
@@ -1061,14 +1080,14 @@ impl Project {
             }
         };
 
-        let (otp, otp_project_apps) = Otp::discover(otp_root);
+        let (otp, otp_project_apps) = Otp::discover(otp_root, &elp_config.otp);
         project_apps.extend(otp_project_apps);
         report_progress("Project info loaded");
         Ok(Project {
             otp,
             project_build_data: project_build_info,
             project_apps,
-            eqwalizer_config,
+            eqwalizer_config: elp_config.eqwalizer.clone(),
             include_mapping,
         })
     }
@@ -1172,6 +1191,9 @@ mod tests {
                         rebar: ElpRebarConfig {
                             profile: "test",
                         },
+                        otp: OtpConfig {
+                            exclude_apps: [],
+                        },
                     },
                     Rebar(
                         RebarConfig {
@@ -1236,6 +1258,9 @@ mod tests {
                         },
                         rebar: ElpRebarConfig {
                             profile: "test",
+                        },
+                        otp: OtpConfig {
+                            exclude_apps: [],
                         },
                     },
                     Json(
@@ -1346,6 +1371,9 @@ mod tests {
                         },
                         rebar: ElpRebarConfig {
                             profile: "test",
+                        },
+                        otp: OtpConfig {
+                            exclude_apps: [],
                         },
                     },
                     JsonConfig {
@@ -1502,6 +1530,9 @@ mod tests {
                         rebar: ElpRebarConfig {
                             profile: "test",
                         },
+                        otp: OtpConfig {
+                            exclude_apps: [],
+                        },
                     },
                     NoManifest(
                         NoManifestConfig {
@@ -1570,6 +1601,9 @@ mod tests {
                             },
                             rebar: ElpRebarConfig {
                                 profile: "test",
+                            },
+                            otp: OtpConfig {
+                                exclude_apps: [],
                             },
                         },
                         NoManifest(
@@ -1764,6 +1798,9 @@ mod tests {
                     rebar: ElpRebarConfig {
                         profile: "other",
                     },
+                    otp: OtpConfig {
+                        exclude_apps: [],
+                    },
                 }
             "#]]
             .assert_eq(&debug_normalise_temp_dir(dir, &elp_config));
@@ -1807,6 +1844,7 @@ mod tests {
             rebar: ElpRebarConfig {
                 profile: "my_profile".to_string(),
             },
+            otp: OtpConfig::default(),
         })
         .unwrap();
         expect![[r#"
@@ -1829,6 +1867,9 @@ mod tests {
 
             [rebar]
             profile = "my_profile"
+
+            [otp]
+            exclude_apps = []
         "#]]
         .assert_eq(&result);
     }
@@ -1901,6 +1942,9 @@ mod tests {
                 },
                 rebar: ElpRebarConfig {
                     profile: "my_profile",
+                },
+                otp: OtpConfig {
+                    exclude_apps: [],
                 },
             }
         "#]]
@@ -2016,5 +2060,113 @@ mod tests {
                 panic!("Expected json config")
             }
         }
+    }
+
+    #[test]
+    fn test_toml_otp_exclude_apps() {
+        let spec = r#"
+        //- /.elp.toml
+        [otp]
+        exclude_apps = ["megaco", "eunit"]
+        //- /app_a/src/app.erl
+        -module(app).
+        "#;
+        let dir = FixtureWithProjectMeta::gen_project(spec);
+        if let Ok((elp_config, ProjectManifest::NoManifest(_))) = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("app_a/src/app.erl")).unwrap(),
+        ) {
+            expect![[r#"
+                ElpConfig {
+                    config_path: Some(
+                        AbsPathBuf(
+                            "TMPDIR/.elp.toml",
+                        ),
+                    ),
+                    build_info: None,
+                    buck: None,
+                    eqwalizer: EqwalizerConfig {
+                        enable_all: true,
+                        max_tasks: 4,
+                        ignore_modules: [],
+                        ignore_modules_compiled_patterns: [],
+                    },
+                    rebar: ElpRebarConfig {
+                        profile: "test",
+                    },
+                    otp: OtpConfig {
+                        exclude_apps: [
+                            "megaco",
+                            "eunit",
+                        ],
+                    },
+                }
+            "#]]
+            .assert_eq(&debug_normalise_temp_dir(dir, &elp_config));
+        } else {
+            panic!()
+        }
+    }
+
+    #[test]
+    fn serde_serialize_elp_toml_with_otp() {
+        let result = toml::to_string::<ElpConfig>(&ElpConfig {
+            config_path: None,
+            build_info: None,
+            buck: None,
+            eqwalizer: EqwalizerConfig::default(),
+            rebar: ElpRebarConfig::default(),
+            otp: OtpConfig {
+                exclude_apps: vec!["megaco".to_string(), "eunit".to_string()],
+            },
+        })
+        .unwrap();
+        expect![[r#"
+            [eqwalizer]
+            enable_all = true
+            max_tasks = 4
+            ignore_modules = []
+
+            [rebar]
+            profile = "test"
+
+            [otp]
+            exclude_apps = ["megaco", "eunit"]
+        "#]]
+        .assert_eq(&result);
+    }
+
+    #[test]
+    fn serde_deserialize_elp_toml_with_otp() {
+        let config: ElpConfig = toml::from_str(
+            r#"
+            [otp]
+            exclude_apps = ["megaco", "eunit"]
+             "#,
+        )
+        .unwrap();
+
+        expect![[r#"
+            ElpConfig {
+                config_path: None,
+                build_info: None,
+                buck: None,
+                eqwalizer: EqwalizerConfig {
+                    enable_all: true,
+                    max_tasks: 4,
+                    ignore_modules: [],
+                    ignore_modules_compiled_patterns: [],
+                },
+                rebar: ElpRebarConfig {
+                    profile: "test",
+                },
+                otp: OtpConfig {
+                    exclude_apps: [
+                        "megaco",
+                        "eunit",
+                    ],
+                },
+            }
+        "#]]
+        .assert_debug_eq(&config);
     }
 }

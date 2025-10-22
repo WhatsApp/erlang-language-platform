@@ -1724,12 +1724,9 @@ impl Server {
         };
 
         spinner.report("Loading project".to_string());
-        let mut project = Project::load(
-            &manifest,
-            elp_config.eqwalizer.clone(),
-            query_config,
-            &|message| spinner.report(message.to_string()),
-        );
+        let mut project = Project::load(&manifest, &elp_config, query_config, &|message| {
+            spinner.report(message.to_string())
+        });
         if let Err(err) = &project {
             log::error!("Failed to load project for manifest {manifest:?}, error: {err:?}");
             match err.downcast_ref::<BuckQueryError>() {
@@ -1745,10 +1742,9 @@ impl Server {
                 }
             }
             if !fallback_used {
-                project =
-                    Project::load(&fallback, elp_config.eqwalizer, query_config, &|message| {
-                        spinner.report(message.to_string())
-                    });
+                project = Project::load(&fallback, &elp_config, query_config, &|message| {
+                    spinner.report(message.to_string())
+                });
                 if let Err(err) = &project {
                     log::error!(
                         "Failed to load project for fallback manifest {manifest:?}, error: {err:?}"

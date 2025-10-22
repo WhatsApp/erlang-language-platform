@@ -16,7 +16,6 @@ use anyhow::Result;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_project_model::ElpConfig;
-use elp_project_model::EqwalizerConfig;
 use elp_project_model::IncludeParentDirs;
 use elp_project_model::Project;
 use elp_project_model::ProjectBuildData;
@@ -31,8 +30,8 @@ use crate::args::ProjectInfo;
 pub(crate) fn save_build_info(args: BuildInfo, query_config: &BuckQueryConfig) -> Result<()> {
     let root = fs::canonicalize(&args.project)?;
     let root = AbsPathBuf::assert_utf8(root);
-    let (_elp_config, manifest) = ProjectManifest::discover(&root)?;
-    let project = Project::load(&manifest, EqwalizerConfig::default(), query_config, &|_| {})?;
+    let (elp_config, manifest) = ProjectManifest::discover(&root)?;
+    let project = Project::load(&manifest, &elp_config, query_config, &|_| {})?;
     let mut writer = File::create(&args.to)?;
     let json_str = serde_json::to_string_pretty::<JsonConfig>(&project.as_json(root))?;
     writer.write_all(json_str.as_bytes())?;
@@ -84,7 +83,7 @@ fn load_project(
     query_config: &BuckQueryConfig,
 ) -> Result<(ProjectManifest, Project)> {
     let (elp_config, manifest) = ProjectManifest::discover(root)?;
-    let project = Project::load(&manifest, elp_config.eqwalizer, query_config, &|_| {})?;
+    let project = Project::load(&manifest, &elp_config, query_config, &|_| {})?;
     Ok((manifest, project))
 }
 
@@ -94,6 +93,6 @@ fn load_fallback(
 ) -> Result<(ProjectManifest, Project)> {
     let manifest = ProjectManifest::discover_no_manifest(root, IncludeParentDirs::Yes);
     let elp_config = ElpConfig::default();
-    let project = Project::load(&manifest, elp_config.eqwalizer, query_config, &|_| {})?;
+    let project = Project::load(&manifest, &elp_config, query_config, &|_| {})?;
     Ok((manifest, project))
 }

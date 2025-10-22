@@ -82,13 +82,8 @@ mod tests {
         let (elp_config, buck_config) =
             ProjectManifest::discover(&to_abs_path_buf(&path).unwrap()).unwrap();
 
-        let project = Project::load(
-            &buck_config,
-            elp_config.eqwalizer,
-            &BUCK_QUERY_CONFIG,
-            &|_| {},
-        )
-        .unwrap();
+        let project =
+            Project::load(&buck_config, &elp_config, &BUCK_QUERY_CONFIG, &|_| {}).unwrap();
 
         let project_data: Vec<ProjectAppData> = project
             .non_otp_apps()

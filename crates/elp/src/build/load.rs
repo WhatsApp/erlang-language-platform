@@ -80,12 +80,7 @@ pub fn load_project_at(
 
     log::info!("Discovered project: {manifest:?}");
     let pb = cli.spinner("Loading build info");
-    let project = Project::load(
-        &manifest,
-        elp_config.eqwalizer.clone(),
-        query_config,
-        &|_progress| {},
-    )?;
+    let project = Project::load(&manifest, &elp_config, query_config, &|_progress| {})?;
     pb.finish();
 
     load_project(cli, project, include_otp, eqwalizer_mode)
