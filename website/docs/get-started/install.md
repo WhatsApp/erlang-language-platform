@@ -67,13 +67,15 @@ sbt assembly
 popd
 ```
 
-Point the `ELP_EQWALIZER_PATH` environment variable to the path of the produced `eqwalizer.jar` file:
+Point the `ELP_EQWALIZER_PATH` environment variable to the path of the produced
+`eqwalizer.jar` file:
 
 ```
 export ELP_EQWALIZER_PATH=$(find "$(pwd)" -name eqwalizer.jar)
 ```
 
-Point the `EQWALIZER_DIR` environment variable to the path of the `eqwalizer_support` directory:
+Point the `EQWALIZER_DIR` environment variable to the path of the
+`eqwalizer_support` directory:
 
 ```
 export EQWALIZER_DIR=$(find "$(pwd)" -name eqwalizer_support)
@@ -81,11 +83,22 @@ export EQWALIZER_DIR=$(find "$(pwd)" -name eqwalizer_support)
 
 Now we can compile ELP:
 
+:::tip
+
+The commands below will produce a release build, which has the best runtime
+performance, at the price of a slower compilation time. If you are developing
+ELP, consider using `cargo build --profile release-thin`, as it provides a much
+faster development loop while still producing a performant binary. You will find
+the corresponding binary in `target/release-thin/elp`.
+
+:::
+
 ```
 cargo build --release
 ```
 
-The produced executable will be available in: `target/release/elp`, so ensure it is included in your `PATH`. E.g.:
+The produced executable will be available in: `target/release/elp`, so ensure it
+is included in your `PATH`. E.g.:
 
 ```
 mkdir -p ~/bin
