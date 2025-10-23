@@ -12,7 +12,7 @@ Diagnostics reported in 4 modules:
   wa_buck2_module_search: 6
       19:0-19:18::[WeakWarning] [W0040] The function is non-trivial, exported, but not documented.
       2:8-2:30::[WeakWarning] [W0046] The module is not documented.
-      49:18-49:31::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
-      51:18-51:28::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
-      51:38-51:51::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
-      55:30-55:40::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
+      54:18-54:31::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
+      56:18-56:28::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
+      56:38-56:51::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
+      60:30-60:40::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
