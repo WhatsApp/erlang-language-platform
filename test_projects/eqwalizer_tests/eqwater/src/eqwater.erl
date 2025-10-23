@@ -1300,3 +1300,11 @@ negate_number(N) -> N.
   (dynamic(), ok | err) -> ok.
 refine_dynamic(D, A) when is_atom(D) andalso A == err -> ok;
 refine_dynamic(D, A) when is_atom(D) -> A.
+
+-spec negate_fun(F :: fun((number(), number()) -> term()) | ok) -> ok.
+negate_fun(F) when is_function(F, 2) -> ok;
+negate_fun(F) -> F.
+
+-spec negate_fun_neg(F :: fun((number(), number()) -> term()) | ok) -> ok.
+negate_fun_neg(F) when is_function(F, 2) -> F;
+negate_fun_neg(F) -> F.
