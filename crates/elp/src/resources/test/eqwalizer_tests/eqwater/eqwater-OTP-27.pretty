@@ -681,28 +681,6 @@ Expression has type:   number()
 Context expected type: 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1306:18
-     │
-1306 │ negate_fun(F) -> F.
-     │                  ^
-     │                  │
-     │                  F.
-Expression has type:   fun((number(), number()) -> term()) | 'ok'
-Context expected type: 'ok'
-     │                  
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: 'ok'
-  However the following candidate: fun((number(), number()) -> term())
-  Differs from the expected type:  'ok'
-
------------------------------- Detailed message ------------------------------
-
-  fun((number(), number()) -> term()) | 'ok' is not compatible with 'ok'
-  because
-  fun((number(), number()) -> term()) is not compatible with 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1309:45
      │
 1309 │ negate_fun_neg(F) when is_function(F, 2) -> F;
@@ -710,26 +688,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   fun((term(), term()) -> term())
 Context expected type: 'ok'
 
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1310:22
-     │
-1310 │ negate_fun_neg(F) -> F.
-     │                      ^
-     │                      │
-     │                      F.
-Expression has type:   fun((number(), number()) -> term()) | 'ok'
-Context expected type: 'ok'
-     │                      
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: 'ok'
-  However the following candidate: fun((number(), number()) -> term())
-  Differs from the expected type:  'ok'
-
------------------------------- Detailed message ------------------------------
-
-  fun((number(), number()) -> term()) | 'ok' is not compatible with 'ok'
-  because
-  fun((number(), number()) -> term()) is not compatible with 'ok'
-
-41 ERRORS
+39 ERRORS
