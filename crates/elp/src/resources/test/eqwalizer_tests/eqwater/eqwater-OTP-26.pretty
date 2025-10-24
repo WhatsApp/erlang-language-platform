@@ -7,7 +7,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │       B.
 Expression has type:   none() | number() | binary()
 Context expected type: binary()
-    │       
+    │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: binary()
@@ -29,7 +29,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                      B.
 Expression has type:   none() | number() | binary()
 Context expected type: binary()
-    │                      
+    │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: binary()
@@ -51,7 +51,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │       A.
 Expression has type:   none() | number() | binary()
 Context expected type: binary()
-    │       
+    │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: binary()
@@ -79,7 +79,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │             A.
 Expression has type:   #ab_rec{} | atom()
 Context expected type: atom()
-    │             
+    │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: atom()
@@ -101,7 +101,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                A.
 Expression has type:   #ab_rec{} | atom()
 Context expected type: atom()
-    │                
+    │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: atom()
@@ -124,14 +124,14 @@ Context expected type: number()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ eqwater/src/eqwater.erl:408:1
-    │  
+    │
 408 │ ╭ get_int5({A, A})
 409 │ │   when is_atom(A) -> A.
     │ ╰──────────────────────^ Clause is not covered by spec
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ eqwater/src/eqwater.erl:413:1
-    │  
+    │
 413 │ ╭ get_int6({A1, A2})
 414 │ │   when is_atom(A1) and is_atom(A2) -> 1;
     │ ╰───────────────────────────────────────^ Clause is not covered by spec
@@ -145,7 +145,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                     I.
 Expression has type:   number() | atom()
 Context expected type: number()
-    │                     
+    │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
@@ -160,7 +160,7 @@ Because in the expression's type:
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ eqwater/src/eqwater.erl:419:1
-    │  
+    │
 419 │ ╭ get_int7_neg({A, A})
 420 │ │   % A is none()
 421 │ │   when is_atom(A) -> 0;
@@ -175,7 +175,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                         I.
 Expression has type:   number() | atom()
 Context expected type: number()
-    │                         
+    │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
@@ -197,7 +197,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                         I.
 Expression has type:   number() | atom()
 Context expected type: number()
-    │                         
+    │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
@@ -219,7 +219,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │   A.
 Expression has type:   atom() | none()
 Context expected type: binary()
-    │   
+    │
 
 Because in the expression's type:
   Here the type is:     atom()
@@ -234,10 +234,10 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                      R.
 Expression has type:   #union_field{}
 Context expected type: {'union_field', atom()}
-    │                      
+    │
 
 Because in the expression's type:
-  { 'union_field', 
+  { 'union_field',
     Here the type is:     binary()
     Context expects type: atom()
   }
@@ -258,7 +258,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                                                  A.
 Expression has type:   number() | 'ok'
 Context expected type: number()
-    │                                                  
+    │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
@@ -280,7 +280,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │        B.
 Expression has type:   none() | #b{} | #c{}
 Context expected type: #b{}
-    │        
+    │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: #b{}
@@ -302,7 +302,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                           B.
 Expression has type:   A | B
 Context expected type: B
-    │                           
+    │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: B
@@ -324,7 +324,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                 T.
 Expression has type:   fun() | {term()}
 Context expected type: {term()}
-    │                 
+    │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: {term()}
@@ -346,7 +346,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                 A.
 Expression has type:   tuple() | atom()
 Context expected type: atom()
-    │                 
+    │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: atom()
@@ -368,7 +368,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                  X.
 Expression has type:   #one_field{} | #two_fields1{}
 Context expected type: #one_field{}
-    │                  
+    │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: #one_field{}
@@ -390,7 +390,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                           Y.
 Expression has type:   number() | atom()
 Context expected type: number()
-    │                           
+    │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
@@ -434,7 +434,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                    I.
 Expression has type:   number() | 'undefined'
 Context expected type: number()
-     │                    
+     │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
@@ -456,7 +456,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │              [A].
 Expression has type:   [[atom()]] | [atom()]
 Context expected type: [atom()]
-     │              
+     │
 
 Because in the expression's type:
   The type is a union type with some valid candidates: [atom()]
@@ -483,7 +483,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │               [A2].
 Expression has type:   [[atom()]] | [atom()]
 Context expected type: [atom()]
-     │               
+     │
 
 Because in the expression's type:
   The type is a union type with some valid candidates: [atom()]
@@ -510,7 +510,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │       X.
 Expression has type:   binary() | string()
 Context expected type: binary()
-     │       
+     │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: binary()
@@ -532,7 +532,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │       Y.
 Expression has type:   binary() | atom()
 Context expected type: binary()
-     │       
+     │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: binary()
@@ -554,7 +554,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                                                            V.
 Expression has type:   'ok' | binary()
 Context expected type: binary()
-     │                                                            
+     │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: binary()
@@ -576,7 +576,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                              V.
 Expression has type:   binary() | 'ok'
 Context expected type: 'ok'
-     │                              
+     │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: 'ok'
@@ -598,7 +598,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │              Args.
 Expression has type:   {term(), my_list()} | none() | number()
 Context expected type: number()
-     │              
+     │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
@@ -628,7 +628,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                             B.
 Expression has type:   'a' | 'b'
 Context expected type: 'b'
-     │                             
+     │
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: 'b'
@@ -650,7 +650,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │     V.
 Expression has type:   'a' | none()
 Context expected type: 'b'
-     │     
+     │
 
 Because in the expression's type:
   Here the type is:     'a'
@@ -665,7 +665,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                                                            A.
 Expression has type:   none() | 'c'
 Context expected type: 'a' | 'b'
-     │                                                            
+     │
 
 Because in the expression's type:
   Here the type is:     'c'
@@ -680,4 +680,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number()
 Context expected type: 'ok'
 
-38 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ eqwater/src/eqwater.erl:1309:45
+     │
+1309 │ negate_fun_neg(F) when is_function(F, 2) -> F;
+     │                                             ^ F.
+Expression has type:   fun((term(), term()) -> term())
+Context expected type: 'ok'
+
+39 ERRORS
