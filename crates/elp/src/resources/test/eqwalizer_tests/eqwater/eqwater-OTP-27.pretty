@@ -5,7 +5,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │       ^
     │       │
     │       B.
-Expression has type:   none() | number() | binary()
+Expression has type:   number() | binary()
 Context expected type: binary()
     │       
 
@@ -16,7 +16,7 @@ Because in the expression's type:
 
 ------------------------------ Detailed message ------------------------------
 
-  none() | number() | binary() is not compatible with binary()
+  number() | binary() is not compatible with binary()
   because
   number() is not compatible with binary()
 
@@ -27,7 +27,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                      ^
     │                      │
     │                      B.
-Expression has type:   none() | number() | binary()
+Expression has type:   number() | binary()
 Context expected type: binary()
     │                      
 
@@ -38,7 +38,7 @@ Because in the expression's type:
 
 ------------------------------ Detailed message ------------------------------
 
-  none() | number() | binary() is not compatible with binary()
+  number() | binary() is not compatible with binary()
   because
   number() is not compatible with binary()
 
@@ -49,7 +49,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │       ^
     │       │
     │       A.
-Expression has type:   none() | number() | binary()
+Expression has type:   number() | binary()
 Context expected type: binary()
     │       
 
@@ -60,7 +60,7 @@ Because in the expression's type:
 
 ------------------------------ Detailed message ------------------------------
 
-  none() | number() | binary() is not compatible with binary()
+  number() | binary() is not compatible with binary()
   because
   number() is not compatible with binary()
 
@@ -214,16 +214,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ eqwater/src/eqwater.erl:496:3
     │
 496 │   A.
-    │   ^
-    │   │
-    │   A.
-Expression has type:   atom() | none()
+    │   ^ A.
+Expression has type:   atom()
 Context expected type: binary()
-    │   
-
-Because in the expression's type:
-  Here the type is:     atom()
-  Context expects type: binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:521:22
@@ -245,9 +238,9 @@ Because in the expression's type:
 ------------------------------ Detailed message ------------------------------
 
   at tuple index 2:
-  {'union_field', none() | binary()} is not compatible with {'union_field', atom()}
+  {'union_field', binary()} is not compatible with {'union_field', atom()}
   because
-  none() | binary() is not compatible with atom()
+  binary() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:559:50
@@ -278,7 +271,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │        ^
     │        │
     │        B.
-Expression has type:   none() | #b{} | #c{}
+Expression has type:   #b{} | #c{}
 Context expected type: #b{}
     │        
 
@@ -289,7 +282,7 @@ Because in the expression's type:
 
 ------------------------------ Detailed message ------------------------------
 
-  none() | #b{} | #c{} is not compatible with #b{}
+  #b{} | #c{} is not compatible with #b{}
   because
   #c{} is not compatible with #b{}
 
@@ -596,7 +589,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │              ^^^^
      │              │
      │              Args.
-Expression has type:   {term(), my_list()} | none() | number()
+Expression has type:   {term(), my_list()} | number()
 Context expected type: number()
      │              
 
@@ -607,7 +600,7 @@ Because in the expression's type:
 
 ------------------------------ Detailed message ------------------------------
 
-  {term(), my_list()} | none() | number() is not compatible with number()
+  {term(), my_list()} | number() is not compatible with number()
   because
   {term(), my_list()} is not compatible with number()
 
@@ -645,16 +638,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      ┌─ eqwater/src/eqwater.erl:1269:5
      │
 1269 │     V.
-     │     ^
-     │     │
-     │     V.
-Expression has type:   'a' | none()
+     │     ^ V.
+Expression has type:   'a'
 Context expected type: 'b'
-     │     
-
-Because in the expression's type:
-  Here the type is:     'a'
-  Context expects type: 'b'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1286:60
@@ -663,14 +649,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                                                            ^
      │                                                            │
      │                                                            A.
-Expression has type:   none() | 'c'
+Expression has type:   'c'
 Context expected type: 'a' | 'b'
      │                                                            
 
-Because in the expression's type:
-  Here the type is:     'c'
-  Context expects type: 'a' | 'b'
-  No candidate matches in the expected union.
+  'c' is not compatible with 'a' | 'b'
+  because
+  'c' is not compatible with 'a'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1291:43

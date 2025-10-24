@@ -61,7 +61,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │              ^^^^^^
     │              │
     │              {'p', X}.
-Expression has type:   {'p', none() | pid() | reference()}
+Expression has type:   {'p', pid() | reference()}
 Context expected type: {'a', atom()} | {'p', pid()}
     │              
 
@@ -74,12 +74,12 @@ Because in the expression's type:
 
 ------------------------------ Detailed message ------------------------------
 
-  {'p', none() | pid() | reference()} is not compatible with {'a', atom()} | {'p', pid()}
+  {'p', pid() | reference()} is not compatible with {'a', atom()} | {'p', pid()}
   because
   at tuple index 2:
-  {'p', none() | pid() | reference()} is not compatible with {'p', pid()}
+  {'p', pid() | reference()} is not compatible with {'p', pid()}
   because
-  none() | pid() | reference() is not compatible with pid()
+  pid() | reference() is not compatible with pid()
   because
   reference() is not compatible with pid()
 
@@ -90,7 +90,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │          ^
     │          │
     │          X.
-Expression has type:   'undefined' | none() | 'restarting'
+Expression has type:   'undefined' | 'restarting'
 Context expected type: {'p', pid()} | 'undefined'
     │          
 
@@ -101,7 +101,7 @@ Because in the expression's type:
 
 ------------------------------ Detailed message ------------------------------
 
-  'undefined' | none() | 'restarting' is not compatible with {'p', pid()} | 'undefined'
+  'undefined' | 'restarting' is not compatible with {'p', pid()} | 'undefined'
   because
   'restarting' is not compatible with {'p', pid()} | 'undefined'
   because
@@ -111,30 +111,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ check/src/case_predicates.erl:174:16
     │
 174 │   lists:nth(1, L).
-    │                ^
-    │                │
-    │                L.
-Expression has type:   #{dynamic() => dynamic()} | none()
+    │                ^ L.
+Expression has type:   #{dynamic() => dynamic()}
 Context expected type: [T]
-    │                
-
-Because in the expression's type:
-  Here the type is:     #{dynamic() => dynamic()}
-  Context expects type: [T]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/case_predicates.erl:174:16
     │
 174 │   lists:nth(1, L).
-    │                ^
-    │                │
-    │                L.
-Expression has type:   #{dynamic() => dynamic()} | none()
+    │                ^ L.
+Expression has type:   #{dynamic() => dynamic()}
 Context expected type: [dynamic()]
-    │                
-
-Because in the expression's type:
-  Here the type is:     #{dynamic() => dynamic()}
-  Context expects type: [dynamic()]
 
 11 ERRORS

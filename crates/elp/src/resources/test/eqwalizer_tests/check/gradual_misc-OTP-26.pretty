@@ -48,13 +48,10 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                                         ^
    │                                         │
    │                                         T.
-Expression has type:   none() | {'b', 'c'}
+Expression has type:   {'b', 'c'}
 Context expected type: 'a' | {none()}
    │                                         
 
-Because in the expression's type:
-  Here the type is:     {'b', 'c'}
-  Context expects type: 'a' | {none()}
-  No candidate matches in the expected union.
+expected union does not contain any tuple type of size 2
 
 4 ERRORS

@@ -3041,7 +3041,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
-Expression has type:   {[number()], [atom() | none()]}
+Expression has type:   {[number()], [atom()]}
 Context expected type: {[atom()], [number()]}
      │     
 
@@ -3051,12 +3051,12 @@ Because in the expression's type:
       Here the type is:     number()
       Context expects type: atom()
     ]
-  , [atom() | none()]}
+  , [atom()]}
 
 ------------------------------ Detailed message ------------------------------
 
   at tuple index 1:
-  {[number()], [atom() | none()]} is not compatible with {[atom()], [number()]}
+  {[number()], [atom()]} is not compatible with {[atom()], [number()]}
   because
   [number()] is not compatible with [atom()]
   because
@@ -3069,7 +3069,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
-Expression has type:   {[{term(), number()}], [{term(), atom() | none()}]}
+Expression has type:   {[{term(), number()}], [{term(), atom()}]}
 Context expected type: {[{term(), atom()}], [{term(), number()}]}
      │     
 
@@ -3081,12 +3081,12 @@ Because in the expression's type:
         Context expects type: atom()
       }
     ]
-  , [{term(), atom() | none()}]}
+  , [{term(), atom()}]}
 
 ------------------------------ Detailed message ------------------------------
 
   at tuple index 1:
-  {[{term(), number()}], [{term(), atom() | none()}]} is not compatible with {[{term(), atom()}], [{term(), number()}]}
+  {[{term(), number()}], [{term(), atom()}]} is not compatible with {[{term(), atom()}], [{term(), number()}]}
   because
   [{term(), number()}] is not compatible with [{term(), atom()}]
   because
@@ -3198,45 +3198,24 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      ┌─ check/src/custom.erl:2709:40
      │
 2709 │             (foo, A) -> binary_to_atom(A);
-     │                                        ^
-     │                                        │
-     │                                        A.
+     │                                        ^ A.
 Expression has type:   atom()
 Context expected type: binary()
-     │                                        
-
-Because in the expression's type:
-  Here the type is:     atom()
-  Context expects type: binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:2710:40
      │
 2710 │             (bar, B) -> atom_to_binary(B);
-     │                                        ^
-     │                                        │
-     │                                        B.
+     │                                        ^ B.
 Expression has type:   binary()
 Context expected type: atom()
-     │                                        
-
-Because in the expression's type:
-  Here the type is:     binary()
-  Context expects type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:2711:50
      │
 2711 │             ({foo, bar}, I) -> binary_to_integer(I);
-     │                                                  ^
-     │                                                  │
-     │                                                  I.
+     │                                                  ^ I.
 Expression has type:   number()
 Context expected type: binary()
-     │                                                  
-
-Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: binary()
 
 202 ERRORS

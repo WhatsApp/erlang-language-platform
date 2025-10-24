@@ -52,3 +52,9 @@ elab_var_scope(_) ->
 
 -spec map_with_dup_keys(#{ak => av1, bk => bv1, ak => av2}) -> #{ak => av1, bk => bv1}.
 map_with_dup_keys(M) -> M.
+
+% none() unions are simplified from literals too
+-spec with_none(integer() | none()) -> ok.
+with_none(X) ->
+    eqwalizer:reveal_type(X),
+    ok.

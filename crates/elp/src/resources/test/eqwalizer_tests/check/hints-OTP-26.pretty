@@ -14,13 +14,13 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/hints.erl:32:27
    │
 32 │     eqwalizer:reveal_type(B),
-   │                           ^ none() | binary()
+   │                           ^ binary()
 
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/hints.erl:41:27
    │
 41 │     eqwalizer:reveal_type(BT),
-   │                           ^^ none() | binary() | tuple()
+   │                           ^^ binary() | tuple()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/hints.erl:47:5

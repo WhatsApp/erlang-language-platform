@@ -184,6 +184,8 @@ Because in the expression's type:
   [term()] is not compatible with [T | X]
   because
   term() is not compatible with T | X
+  because
+  term() is not compatible with T
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ app_a/src/app_a_lists.erl:1305:15

@@ -258,9 +258,15 @@ impl TypeConverter {
             ExtType::ListExtType(ty) => Ok(self
                 .convert_type(sub, *ty.t)?
                 .map(|t| Type::ListType(ListType { t: Box::new(t) }))),
-            ExtType::UnionExtType(tys) => Ok(self
-                .convert_types(sub, tys.tys)?
-                .map(|tys| Type::UnionType(UnionType { tys }))),
+            // unions with NoneType are meaningless, we can remove them early
+            ExtType::UnionExtType(tys) => Ok(self.convert_types(sub, tys.tys)?.map(|mut tys| {
+                tys.retain(|ty| *ty != Type::NoneType);
+                match tys.len() {
+                    0 => Type::NoneType,
+                    1 => tys.into_iter().next().unwrap(),
+                    _ => Type::UnionType(UnionType { tys }),
+                }
+            })),
             ExtType::RemoteExtType(ty)
                 if ty.id.module == "eqwalizer"
                     && ty.id.name == "refinable"

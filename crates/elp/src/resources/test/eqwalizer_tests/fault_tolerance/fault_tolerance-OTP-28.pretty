@@ -18,16 +18,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ fault_tolerance/src/fault_tolerance.erl:32:3
    │
 32 │   A.
-   │   ^
-   │   │
-   │   A.
-Expression has type:   'false' | none()
+   │   ^ A.
+Expression has type:   'false'
 Context expected type: number()
-   │   
-
-Because in the expression's type:
-  Here the type is:     'false'
-  Context expects type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ fault_tolerance/src/fault_tolerance.erl:37:3
@@ -41,16 +34,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ fault_tolerance/src/fault_tolerance.erl:39:3
    │
 39 │   A.
-   │   ^
-   │   │
-   │   A.
-Expression has type:   'false' | none()
+   │   ^ A.
+Expression has type:   'false'
 Context expected type: number()
-   │   
-
-Because in the expression's type:
-  Here the type is:     'false'
-  Context expects type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ fault_tolerance/src/fault_tolerance.erl:44:3

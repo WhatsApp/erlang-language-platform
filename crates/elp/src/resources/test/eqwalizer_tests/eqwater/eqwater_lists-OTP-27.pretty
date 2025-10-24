@@ -48,7 +48,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                       ^
    │                       │
    │                       A.
-Expression has type:   none() | atom() | []
+Expression has type:   atom() | []
 Context expected type: atom()
    │                       
 
@@ -59,7 +59,7 @@ Because in the expression's type:
 
 ------------------------------ Detailed message ------------------------------
 
-  none() | atom() | [] is not compatible with atom()
+  atom() | [] is not compatible with atom()
   because
   [] is not compatible with atom()
 
@@ -70,7 +70,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                   ^
    │                   │
    │                   A.
-Expression has type:   none() | atom() | []
+Expression has type:   atom() | []
 Context expected type: atom()
    │                   
 
@@ -81,7 +81,7 @@ Because in the expression's type:
 
 ------------------------------ Detailed message ------------------------------
 
-  none() | atom() | [] is not compatible with atom()
+  atom() | [] is not compatible with atom()
   because
   [] is not compatible with atom()
 

@@ -91,7 +91,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                            ^
     │                            │
     │                            D.
-Expression has type:   dynamic() | 'error' | none()
+Expression has type:   dynamic() | 'error'
 Context expected type: 'ok'
     │                            
 
@@ -102,7 +102,7 @@ Because in the expression's type:
 
 ------------------------------ Detailed message ------------------------------
 
-  dynamic() | 'error' | none() is not compatible with 'ok'
+  dynamic() | 'error' is not compatible with 'ok'
   because
   'error' is not compatible with 'ok'
 
