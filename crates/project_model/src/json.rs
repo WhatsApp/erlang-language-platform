@@ -229,7 +229,7 @@ pub(crate) fn gen_app_data(
     (apps, deps)
 }
 
-fn canonicalize(path: impl AsRef<Utf8Path>) -> Result<AbsPathBuf> {
+pub fn canonicalize(path: impl AsRef<Utf8Path>) -> Result<AbsPathBuf> {
     let abs = fs::canonicalize(path.as_ref())?;
     Ok(AbsPathBuf::assert(
         Utf8PathBuf::from_path_buf(abs).expect("Could not convert to UTF8"),

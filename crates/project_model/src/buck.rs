@@ -43,6 +43,7 @@ use crate::CommandProxy;
 use crate::ElpConfig;
 use crate::ProjectAppData;
 use crate::ProjectModelError;
+use crate::json;
 use crate::otp::Otp;
 
 pub type TargetFullName = String;
@@ -576,7 +577,7 @@ fn make_buck_target(
 
     let (src_files, include_files, target_type, private_header, ebin) =
         if let Some(ref suite) = target.suite {
-            let src_file = buck_path_to_abs_path(root, suite)?;
+            let src_file = json::canonicalize(buck_path_to_abs_path(root, suite)?)?;
             let src = vec![src_file.clone()];
             target_info
                 .path_to_target_name
@@ -593,7 +594,7 @@ fn make_buck_target(
             let target_type = compute_target_type(name, target);
             let mut src_files = vec![];
             for src in &target.srcs {
-                let src = buck_path_to_abs_path(root, src).unwrap();
+                let src = json::canonicalize(buck_path_to_abs_path(root, src).unwrap())?;
                 if Some("hrl") == src.extension() {
                     private_header = true;
                 }

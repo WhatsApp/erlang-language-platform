@@ -758,8 +758,7 @@ impl Server {
                         });
                         file_id
                     };
-
-                    if this.status != Status::Running || this.analysis_host.raw_database().file_app_data(file_id).is_none() {
+                    if this.status != Status::Running || this.analysis_host.raw_database().app_data_id_by_file(file_id).is_none() {
                         // We do not have a project associated with this file
                         this.fetch_projects_if_needed(&path);
                     }
