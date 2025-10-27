@@ -815,9 +815,7 @@ macro_rules! add_patterns {
     };
 }
 
-fn create_dynamic_call_patterns() -> FxHashMap<PatternKey, DynamicCallPattern> {
-    let mut patterns = FxHashMap::default();
-
+fn add_dynamic_call_patterns(patterns: &mut FxHashMap<PatternKey, DynamicCallPattern>) {
     // Each entry follows the format:
     //
     // (module, function, arity, module_arg_index, function_arg_index, args_list_index, direct_arity)
@@ -884,14 +882,15 @@ fn create_dynamic_call_patterns() -> FxHashMap<PatternKey, DynamicCallPattern> {
             (Some("erpc"), "send_request", 6, Some(1), 2, 3, false),
         ]
     );
-
-    patterns
 }
 
 // Lazy static initialization for the patterns map
 lazy_static! {
-    static ref DYNAMIC_CALL_PATTERNS: FxHashMap<PatternKey, DynamicCallPattern> =
-        create_dynamic_call_patterns();
+    static ref DYNAMIC_CALL_PATTERNS: FxHashMap<PatternKey, DynamicCallPattern> = {
+        let mut patterns = FxHashMap::default();
+        add_dynamic_call_patterns(&mut patterns);
+        patterns
+    };
 }
 
 fn get_dynamic_call_patterns() -> &'static FxHashMap<PatternKey, DynamicCallPattern> {
