@@ -11,6 +11,7 @@
 use std::fs;
 use std::path::Path;
 use std::str;
+use std::time::SystemTime;
 
 use anyhow::Context;
 use anyhow::Error;
@@ -26,6 +27,7 @@ use elp_ide::Analysis;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::erlang_service::DiagnosticLocation;
+use elp_log::telemetry;
 use elp_log::timeit;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
@@ -40,6 +42,7 @@ use crate::reporting::add_stat;
 use crate::reporting::dump_stats;
 
 pub fn parse_all(args: &ParseAll, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
+    let start_time = SystemTime::now();
     let config = DiscoverConfig::new(!args.buck, &args.profile);
     let loaded = load::load_project_at(
         cli,
@@ -52,10 +55,15 @@ pub fn parse_all(args: &ParseAll, cli: &mut dyn Cli, query_config: &BuckQueryCon
     build::compile_deps(&loaded, cli)?;
     fs::create_dir_all(&args.to)?;
 
+    telemetry::report_elapsed_time("parse-all operational", start_time);
+
     let parse_diagnostics = do_parse_all(cli, &loaded, &args.to, &args.module, args.buck)?;
     if args.stats {
         dump_stats(cli, args.list_modules);
     }
+
+    telemetry::report_elapsed_time("parse-all done", start_time);
+
     if !parse_diagnostics.is_empty() {
         writeln!(
             cli,

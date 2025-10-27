@@ -15,6 +15,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use anyhow::Result;
 use elp::build::load;
@@ -29,6 +30,7 @@ use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide::elp_ide_db::elp_base_db::SourceRoot;
 use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use elp_log::telemetry;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::buck::BuckQueryConfig;
 use paths::Utf8PathBuf;
@@ -331,6 +333,7 @@ fn update_changes(
 }
 
 pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
+    let start_time = SystemTime::now();
     let mut cmd = Command::new("watchman");
     let _ = cmd.arg("--version").output().map_err(|_| {
             anyhow::Error::msg("`watchman` command not found. install it from https://facebook.github.io/watchman/ to use `elp shell`.")
@@ -349,6 +352,7 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfi
         Mode::Shell,
         query_config,
     )?;
+    telemetry::report_elapsed_time("shell operational", start_time);
     let mut rl = rustyline::DefaultEditor::new()?;
     let mut last_read = watchman.get_clock()?;
     write!(cli, "{WELCOME}")?;
@@ -403,5 +407,6 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfi
             }
         }
     }
+    telemetry::report_elapsed_time("shell done", start_time);
     Ok(())
 }

@@ -14,6 +14,7 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str;
+use std::time::SystemTime;
 
 use anyhow::Result;
 use anyhow::bail;
@@ -40,6 +41,7 @@ use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use elp_log::telemetry;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::buck::BuckQueryConfig;
@@ -70,6 +72,7 @@ pub fn parse_all(
 ) -> Result<()> {
     log::info!("Loading project at: {:?}", args.project);
 
+    let start_time = SystemTime::now();
     // Track memory usage at the start
     let memory_start = MemoryUsage::now();
 
@@ -145,6 +148,8 @@ pub fn parse_all(
     // printing, but do not print it out. So just create a dummy value
     let url = lsp_types::Url::parse("file:///unused_url").ok().unwrap();
 
+    telemetry::report_elapsed_time("parse-elp operational", start_time);
+
     let memory_end = MemoryUsage::now();
     let memory_used = memory_end - memory_start;
 
@@ -197,6 +202,8 @@ pub fn parse_all(
                 }
             }
         }
+
+        telemetry::report_elapsed_time("parse-elp done", start_time);
 
         if args.is_format_normal() && args.report_system_stats {
             print_memory_usage(loaded.analysis_host, loaded.vfs, cli)?;

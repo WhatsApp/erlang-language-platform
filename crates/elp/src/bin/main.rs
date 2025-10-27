@@ -40,6 +40,7 @@ mod erlang_service_cli;
 mod explain_cli;
 mod glean;
 mod lint_cli;
+// @fb-only
 mod reporting;
 mod shell;
 
@@ -96,8 +97,21 @@ fn setup_static(args: &Args) {
     }
 }
 
+fn setup_cli_telemetry(args: &Args) {
+    match &args.command {
+        args::Command::RunServer(_) => {
+            // Do nothing, we have server telemetry
+        }
+        _ => {
+            // Initialize CLI telemetry, if used
+            // @fb-only
+        }
+    }
+}
+
 fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
     let logger = setup_logging(&args.log_file, args.no_log_buffering)?;
+    setup_cli_telemetry(&args);
 
     INIT.call_once(|| {
         setup_static(&args);

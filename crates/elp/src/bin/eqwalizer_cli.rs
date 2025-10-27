@@ -10,6 +10,7 @@
 
 use std::path::Path;
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -38,6 +39,7 @@ use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use elp_log::telemetry;
 use elp_project_model::AppName;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::ProjectBuildData;
@@ -76,6 +78,7 @@ pub fn eqwalize_module(
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
+    let start_time = SystemTime::now();
     let config = DiscoverConfig::new(args.rebar, &args.profile);
     let mut loaded = load::load_project_at(
         cli,
@@ -86,7 +89,10 @@ pub fn eqwalize_module(
         query_config,
     )?;
     build::compile_deps(&loaded, cli)?;
-    do_eqwalize_module(args, &mut loaded, cli)
+    telemetry::report_elapsed_time("eqwalize operational", start_time);
+    let r = do_eqwalize_module(args, &mut loaded, cli);
+    telemetry::report_elapsed_time("eqwalize done", start_time);
+    r
 }
 
 pub fn do_eqwalize_module(
@@ -143,6 +149,7 @@ pub fn eqwalize_all(
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
+    let start_time = SystemTime::now();
     // Hack to avoid hint appearing in tests
     cli.spinner(SHELL_HINT).finish();
     let config = DiscoverConfig::new(args.rebar, &args.profile);
@@ -155,7 +162,10 @@ pub fn eqwalize_all(
         query_config,
     )?;
     build::compile_deps(&loaded, cli)?;
-    do_eqwalize_all(args, &mut loaded, cli)
+    telemetry::report_elapsed_time("eqwalize-all operational", start_time);
+    let r = do_eqwalize_all(args, &mut loaded, cli);
+    telemetry::report_elapsed_time("eqwalize-all done", start_time);
+    r
 }
 
 pub fn do_eqwalize_all(
@@ -226,6 +236,7 @@ pub fn eqwalize_app(
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
+    let start_time = SystemTime::now();
     let config = DiscoverConfig::new(args.rebar, &args.profile);
     let mut loaded = load::load_project_at(
         cli,
@@ -236,7 +247,10 @@ pub fn eqwalize_app(
         query_config,
     )?;
     build::compile_deps(&loaded, cli)?;
-    do_eqwalize_app(args, &mut loaded, cli)
+    telemetry::report_elapsed_time("eqwalize-app operational", start_time);
+    let r = do_eqwalize_app(args, &mut loaded, cli);
+    telemetry::report_elapsed_time("eqwalize-app done", start_time);
+    r
 }
 
 pub fn do_eqwalize_app(
@@ -283,6 +297,7 @@ pub fn eqwalize_target(
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
+    let start_time = SystemTime::now();
     let config = DiscoverConfig::buck();
     let mut loaded = load::load_project_at(
         cli,
@@ -294,6 +309,7 @@ pub fn eqwalize_target(
     )?;
 
     set_eqwalizer_config(&mut loaded);
+    telemetry::report_elapsed_time("eqwalize-target operational", start_time);
 
     let buck = match &loaded.project.project_build_data {
         ProjectBuildData::Buck(buck) => buck,
@@ -353,13 +369,15 @@ elp eqwalize-target erl/chatd #same as //erl/chatd/... but enables shell complet
     let mut reporter = reporting::PrettyReporter::new(analysis, &loaded, cli);
     let bail_on_error = args.bail_on_error;
 
-    eqwalize(EqwalizerInternalArgs {
+    let r = eqwalize(EqwalizerInternalArgs {
         analysis,
         loaded: &loaded,
         file_ids,
         reporter: &mut reporter,
         bail_on_error,
-    })
+    });
+    telemetry::report_elapsed_time("eqwalize-target done", start_time);
+    r
 }
 
 pub fn eqwalize_stats(

@@ -20,18 +20,18 @@
 
 use std::time::SystemTime;
 
-use humantime::format_rfc3339_millis;
+pub use humantime::format_rfc3339_millis;
 use lazy_static::lazy_static;
 use serde::Deserialize;
 use serde::Serialize;
 
 pub type TelemetryData = serde_json::Value;
-pub type Duration = u32;
+pub type DurationMs = u32;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TelemetryMessage {
     #[serde(rename = "type")]
     pub typ: String,
-    pub duration_ms: Option<Duration>,
+    pub duration_ms: Option<DurationMs>,
     pub start_time: Option<SystemTime>,
     pub start_time_string: Option<String>,
     pub end_time_string: Option<String>,
@@ -56,7 +56,7 @@ pub fn receiver() -> &'static TelemetryReceiver {
 fn build_message(
     typ: String,
     data: TelemetryData,
-    duration_ms: Option<Duration>,
+    duration_ms: Option<DurationMs>,
     start_time: Option<SystemTime>,
 ) -> TelemetryMessage {
     let start_time_string = start_time.map(|time| format_rfc3339_millis(time).to_string());
@@ -84,7 +84,7 @@ fn build_message(
 fn do_send(
     typ: String,
     data: serde_json::Value,
-    duration: Option<Duration>,
+    duration: Option<DurationMs>,
     start_time: Option<SystemTime>,
 ) {
     let message = build_message(typ, data, duration, start_time);
@@ -98,10 +98,16 @@ pub fn send(typ: String, data: serde_json::Value) {
 pub fn send_with_duration(
     typ: String,
     data: serde_json::Value,
-    duration: Duration,
+    duration: DurationMs,
     start_time: SystemTime,
 ) {
     do_send(typ, data, Some(duration), Some(start_time));
+}
+
+pub fn report_elapsed_time(what: &str, start_time: SystemTime) {
+    let data = serde_json::Value::String(what.to_string());
+    let duration = start_time.elapsed().map(|e| e.as_millis()).unwrap_or(0) as u32;
+    send_with_duration("telemetry".to_string(), data, duration, start_time);
 }
 
 #[cfg(test)]
