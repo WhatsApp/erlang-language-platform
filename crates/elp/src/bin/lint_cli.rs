@@ -993,7 +993,7 @@ mod tests {
         expect![[r#"
             enabled_lints = ["P1700"]
             disabled_lints = []
-            
+
             [erlang_service]
             warnings_as_errors = true
             [[ad_hoc_lints.lints]]

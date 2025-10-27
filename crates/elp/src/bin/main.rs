@@ -1938,6 +1938,37 @@ mod tests {
         )
     }
 
+    #[test]
+    fn lint_ssr_from_config() {
+        simple_snapshot(
+            args_vec![
+                "lint",
+                "--config-file",
+                "../../test_projects/linter/elp_lint_ssr_adhoc.toml",
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/ssr_ad_hoc.stdout"),
+            true,
+            None,
+        )
+    }
+
+    #[test]
+    fn lint_ssr_from_bad_config() {
+        simple_snapshot_expect_stderror(
+            args_vec![
+                "lint",
+                "--config-file",
+                "../../test_projects/linter/elp_lint_ssr_adhoc_parse_fail.toml",
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/ssr_ad_hoc_parse_fail.stdout"),
+            true,
+            None,
+            false,
+        )
+    }
+
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalizer_tests_check(buck: bool) {

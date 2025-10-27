@@ -162,6 +162,7 @@ mod tests {
     use elp_ide::diagnostics::ErlangServiceConfig;
     use elp_ide::diagnostics::Lint;
     use elp_ide::diagnostics::LintsFromConfig;
+    use elp_ide::diagnostics::MatchSsr;
     use elp_ide::diagnostics::ReplaceCall;
     use elp_ide::diagnostics::ReplaceCallAction;
     use elp_ide::diagnostics::Replacement;
@@ -187,6 +188,10 @@ mod tests {
                         action: ReplaceCallAction::Replace(Replacement::ArgsPermutation {
                             perm: vec![1, 2],
                         }),
+                    }),
+                    Lint::LintMatchSsr(MatchSsr {
+                        ssr_pattern: "ssr: _@A = 10.".to_string(),
+                        message: None,
                     }),
                 ],
             },
@@ -222,6 +227,10 @@ mod tests {
             action = "Replace"
             type = "ArgsPermutation"
             perm = [1, 2]
+
+            [[ad_hoc_lints.lints]]
+            type = "LintMatchSsr"
+            ssr_pattern = "ssr: _@A = 10."
 
             [linters]
         "#]]

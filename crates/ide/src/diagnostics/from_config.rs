@@ -10,12 +10,21 @@
 
 //! Read a section of the config file and generate diagnostics from it.
 
+use elp_ide_db::DiagnosticCode;
+use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_ssr::SsrRule;
+use elp_ide_ssr::SsrSearchScope;
+use elp_ide_ssr::match_pattern;
 use hir::Semantic;
+use hir::Strategy;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 use serde::Deserialize;
 use serde::Serialize;
 
 use super::Diagnostic;
+use super::Severity;
 use super::TypeReplacement;
 use super::replace_call;
 use super::replace_call::Replacement;
@@ -41,6 +50,7 @@ impl LintsFromConfig {
 pub enum Lint {
     ReplaceCall(ReplaceCall),
     ReplaceInSpec(ReplaceInSpec),
+    LintMatchSsr(MatchSsr),
 }
 
 impl Lint {
@@ -48,6 +58,7 @@ impl Lint {
         match self {
             Lint::ReplaceCall(l) => l.get_diagnostics(acc, sema, file_id),
             Lint::ReplaceInSpec(l) => l.get_diagnostics(acc, sema, file_id),
+            Lint::LintMatchSsr(l) => l.get_diagnostics(acc, sema, file_id),
         }
     }
 }
@@ -115,12 +126,82 @@ impl ReplaceInSpec {
 
 // ---------------------------------------------------------------------
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct MatchSsr {
+    pub ssr_pattern: String,
+    #[serde(default)]
+    pub message: Option<String>,
+}
+
+impl<'de> Deserialize<'de> for MatchSsr {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        #[derive(Deserialize)]
+        struct MatchSsrHelper {
+            ssr_pattern: String,
+            #[serde(default)]
+            message: Option<String>,
+        }
+
+        let helper = MatchSsrHelper::deserialize(deserializer)?;
+
+        // Validate the SSR pattern by trying to parse it
+        // Use a minimal database for validation
+        let db = RootDatabase::default();
+        SsrRule::parse_str(&db, &helper.ssr_pattern).map_err(|e| {
+            D::Error::custom(format!(
+                "invalid SSR pattern '{}': {}",
+                helper.ssr_pattern, e
+            ))
+        })?;
+
+        Ok(MatchSsr {
+            ssr_pattern: helper.ssr_pattern,
+            message: helper.message,
+        })
+    }
+}
+
+impl MatchSsr {
+    pub fn get_diagnostics(&self, acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
+        let strategy = Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        };
+
+        let scope = SsrSearchScope::WholeFile(file_id);
+        let matches = match_pattern(sema, strategy, &self.ssr_pattern, scope);
+
+        for matched in matches.matches {
+            let message = self
+                .message
+                .clone()
+                .unwrap_or_else(|| format!("SSR pattern matched: {}", self.ssr_pattern));
+
+            let diag = Diagnostic::new(
+                DiagnosticCode::AdHoc("ssr-match".to_string()),
+                message,
+                matched.range.range,
+            )
+            .with_severity(Severity::WeakWarning);
+            acc.push(diag);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------
+
 #[cfg(test)]
 mod tests {
     use expect_test::expect;
 
     use super::Lint;
     use super::LintsFromConfig;
+    use super::MatchSsr;
     use super::ReplaceCall;
     use super::ReplaceCallAction;
     use super::ReplaceInSpec;
@@ -489,6 +570,59 @@ mod tests {
             type = "TypeAliasWithString"
             from = "modu:one/0"
             to = "modu:other()"
+        "#]]
+        .assert_eq(&result);
+    }
+
+    #[test]
+    fn serde_serialize_match_ssr() {
+        let result = toml::to_string::<MatchSsr>(&MatchSsr {
+            ssr_pattern: "ssr: _@A = 10.".to_string(),
+            message: Some("Found pattern".to_string()),
+        })
+        .unwrap();
+        expect![[r#"
+            ssr_pattern = "ssr: _@A = 10."
+            message = "Found pattern"
+        "#]]
+        .assert_eq(&result);
+    }
+
+    #[test]
+    fn serde_deserialize_match_ssr() {
+        let match_ssr: MatchSsr = toml::from_str(
+            r#"
+              ssr_pattern = "ssr: _@A = 10."
+              message = "Found pattern"
+             "#,
+        )
+        .unwrap();
+
+        expect![[r#"
+            MatchSsr {
+                ssr_pattern: "ssr: _@A = 10.",
+                message: Some(
+                    "Found pattern",
+                ),
+            }
+        "#]]
+        .assert_debug_eq(&match_ssr);
+    }
+
+    #[test]
+    fn serde_serialize_lint_match_ssr() {
+        let result = toml::to_string::<LintsFromConfig>(&LintsFromConfig {
+            lints: vec![Lint::LintMatchSsr(MatchSsr {
+                ssr_pattern: "ssr: _@A = 10.".to_string(),
+                message: Some("Found pattern".to_string()),
+            })],
+        })
+        .unwrap();
+        expect![[r#"
+            [[lints]]
+            type = "LintMatchSsr"
+            ssr_pattern = "ssr: _@A = 10."
+            message = "Found pattern"
         "#]]
         .assert_eq(&result);
     }
