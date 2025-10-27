@@ -786,19 +786,20 @@ use lazy_static::lazy_static;
 
 /// Pattern for matching dynamic call expressions (apply, rpc calls, etc.)
 #[derive(Debug, Clone)]
-struct DynamicCallPattern {
+pub(crate) struct DynamicCallPattern {
     /// Index of the target module argument (None when target function is in same module)
-    module_arg_index: Option<usize>,
+    pub(crate) module_arg_index: Option<usize>,
     /// Index of the target function argument
-    function_arg_index: usize,
+    pub(crate) function_arg_index: usize,
     /// Index of the arguments list or arity argument
-    args_list_index: usize,
+    pub(crate) args_list_index: usize,
     /// Whether to extract arity directly from an integer argument (true) or from list length (false)
-    direct_arity: bool,
+    pub(crate) direct_arity: bool,
 }
 
-type PatternKey = (Option<&'static str>, &'static str, usize);
+pub(crate) type PatternKey = (Option<&'static str>, &'static str, usize);
 
+#[macro_export]
 macro_rules! add_patterns {
     ($patterns:ident, [$(($module:expr, $func:literal, $arity:literal, $module_idx:expr, $func_idx:literal, $args_idx:literal, $direct:expr)),* $(,)?]) => {
         $(
@@ -889,6 +890,7 @@ lazy_static! {
     static ref DYNAMIC_CALL_PATTERNS: FxHashMap<PatternKey, DynamicCallPattern> = {
         let mut patterns = FxHashMap::default();
         add_dynamic_call_patterns(&mut patterns);
+        // @fb-only
         patterns
     };
 }

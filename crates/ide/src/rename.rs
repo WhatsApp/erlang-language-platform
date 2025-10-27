@@ -171,7 +171,7 @@ pub fn rename_var(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use elp_ide_db::RootDatabase;
     use elp_ide_db::elp_base_db::assert_eq_text;
     use elp_ide_db::elp_base_db::fixture::WithFixture as _;
@@ -188,7 +188,7 @@ mod tests {
     use crate::fixture;
 
     #[track_caller]
-    fn check(new_name: &str, fixture_before: &str, fixture_after_str: &str) {
+    pub(crate) fn check_rename(new_name: &str, fixture_before: &str, fixture_after_str: &str) {
         let fixture_after_str = &trim_indent(fixture_after_str);
         let analysis_after = fixture::multi_file(fixture_after_str);
 
@@ -227,12 +227,12 @@ mod tests {
 
     #[test]
     fn test_rename_var_1() {
-        check("Y", r#"main() -> I~ = 1."#, r#"main() -> Y = 1."#);
+        check_rename("Y", r#"main() -> I~ = 1."#, r#"main() -> Y = 1."#);
     }
 
     #[test]
     fn test_rename_var_2() {
-        check(
+        check_rename(
             "Y",
             r#"main() ->
                    I~ = 1,
@@ -245,7 +245,7 @@ mod tests {
 
     #[test]
     fn test_rename_var_3() {
-        check(
+        check_rename(
             "Y",
             r#"main(X) ->
                    case X of
@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     fn test_rename_var_4() {
-        check(
+        check_rename(
             "Y",
             r#"testz() ->
                    case rand:uniform(2) of
@@ -291,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_rename_var_5() {
-        check(
+        check_rename(
             "YY",
             r#"main(_) ->
                    Y = 5,
@@ -316,7 +316,7 @@ mod tests {
 
     #[test]
     fn test_rename_var_6() {
-        check(
+        check_rename(
             "ZZ",
             r#"main(_) ->
                    Z = 2,
@@ -333,7 +333,7 @@ mod tests {
 
     #[test]
     fn test_rename_var_7() {
-        check(
+        check_rename(
             "Y",
             r#"main() ->
                    I = 1,
@@ -346,7 +346,7 @@ mod tests {
 
     #[test]
     fn test_rename_var_name_clash_1() {
-        check(
+        check_rename(
             "Y",
             r#"main(Y) ->
                    I~ = 1,
@@ -357,7 +357,7 @@ mod tests {
 
     #[test]
     fn test_rename_var_but_not_shadowed() {
-        check(
+        check_rename(
             "Z",
             r#"triples( Self, X, Y, none )->
                    [ Result || Result = { X~, Y, _} <- Self ]."#,
@@ -370,7 +370,7 @@ mod tests {
 
     #[test]
     fn test_rename_local_function_no_calls() {
-        check(
+        check_rename(
             "new_fun",
             r#"trip~les( Self, X, Y, none )->
                    [ Result || Result = { X, Y, _} <- Self ]."#,
@@ -381,7 +381,7 @@ mod tests {
 
     #[test]
     fn test_rename_local_function_with_calls_1() {
-        check(
+        check_rename(
             "new_fun",
             r#"fo~o() -> ok.
                bar() -> foo()."#,
@@ -392,7 +392,7 @@ mod tests {
 
     #[test]
     fn test_rename_local_function_with_calls_2() {
-        check(
+        check_rename(
             "new_fun",
             r#"fo~o() -> ok.
                bar() -> baz(),foo()."#,
@@ -403,7 +403,7 @@ mod tests {
 
     #[test]
     fn test_rename_local_function_with_calls_3() {
-        check(
+        check_rename(
             "new_fun",
             r#"fo~o(0) -> 0;
                foo(X) -> foo(X - 1).
@@ -416,7 +416,7 @@ mod tests {
 
     #[test]
     fn test_rename_local_function_with_calls_4() {
-        check(
+        check_rename(
             "new_fun",
             r#"test1() ->
                    ok.
@@ -429,7 +429,7 @@ mod tests {
 
     #[test]
     fn test_rename_local_function_fails_name_clash_1() {
-        check(
+        check_rename(
             "new_fun",
             r#"fo~o() -> ok.
                new_fun() -> ok."#,
@@ -439,7 +439,7 @@ mod tests {
 
     #[test]
     fn test_rename_local_function_fails_name_clash_2() {
-        check(
+        check_rename(
             "foo",
             r#"foo() -> ok.
                b~ar() -> ok."#,
@@ -449,7 +449,7 @@ mod tests {
 
     #[test]
     fn test_rename_local_function_fails_name_clash_checks_arity() {
-        check(
+        check_rename(
             "new_fun",
             r#"fo~o() -> ok.
                new_fun(X) -> ok."#,
@@ -460,7 +460,7 @@ mod tests {
 
     #[test]
     fn test_rename_local_function_fails_name_clash_imported_function() {
-        check(
+        check_rename(
             "new_fun",
             r#"-import(bar, [new_fun/0]).
                fo~o() -> ok."#,
@@ -470,7 +470,7 @@ mod tests {
 
     #[test]
     fn test_rename_local_function_fails_name_clash_erlang_function() {
-        check(
+        check_rename(
             "alias",
             r#"fo~o() -> ok."#,
             r#"error: Function 'alias/0' already in scope"#,
@@ -479,7 +479,7 @@ mod tests {
 
     #[test]
     fn test_rename_local_function_also_name_in_macro() {
-        check(
+        check_rename(
             "new",
             r#"-define(FOO, foo).
                fo~o() -> ok.
@@ -492,17 +492,17 @@ mod tests {
 
     #[test]
     fn test_rename_local_var_trims_surrounding_spaces() {
-        check("  Aaa  ", r#"foo() -> V~ar = 3."#, r#"foo() -> Aaa = 3."#);
+        check_rename("  Aaa  ", r#"foo() -> V~ar = 3."#, r#"foo() -> Aaa = 3."#);
     }
 
     #[test]
     fn test_rename_local_function_trims_surrounding_spaces() {
-        check("  aaa  ", r#"fo~o() -> Var = 3."#, r#"aaa() -> Var = 3."#);
+        check_rename("  aaa  ", r#"fo~o() -> Var = 3."#, r#"aaa() -> Var = 3."#);
     }
 
     #[test]
     fn test_rename_local_var_fails_invalid_var_name() {
-        check(
+        check_rename(
             "aaa",
             r#"foo() -> V~ar = 3."#,
             r#"error: Invalid new variable name: 'aaa'"#,
@@ -511,7 +511,7 @@ mod tests {
 
     #[test]
     fn test_rename_local_function_fails_invalid_function_name_1() {
-        check(
+        check_rename(
             "Foo",
             r#"fo~o() -> ok."#,
             r#"error: Invalid new function name: 'Foo'"#,
@@ -520,7 +520,7 @@ mod tests {
 
     #[test]
     fn test_rename_local_function_fails_invalid_function_name_2() {
-        check(
+        check_rename(
             "TT TTT",
             r#"fo~o() -> ok."#,
             r#"error: Invalid new function name: 'TT TTT'"#,
@@ -529,7 +529,7 @@ mod tests {
 
     #[test]
     fn test_rename_local_function_fails_invalid_function_name_3() {
-        check(
+        check_rename(
             "TTT",
             r#"fo~o() -> ok."#,
             r#"error: Invalid new function name: 'TTT'"#,
@@ -538,7 +538,7 @@ mod tests {
 
     #[test]
     fn test_rename_var_d39578003_case_5() {
-        check(
+        check_rename(
             "_G",
             r#"main(_) ->
                   fun F() ->
@@ -561,7 +561,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_spawn_1() {
-        check(
+        check_rename(
             "new_name",
             r#"foo() ->
                  Pid = erlang:spawn(fun noop_~group_leader/0),
@@ -578,7 +578,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_spawn_2() {
-        check(
+        check_rename(
             "new_name",
             r#"foo() ->
                  Pid = erlang:spawn(fun noop_group_leader/0),
@@ -595,7 +595,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_apply_1() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -617,7 +617,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_apply_2() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -637,7 +637,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_apply_args_1() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -661,7 +661,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_apply_args_2() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -678,7 +678,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_apply_3() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -700,7 +700,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_apply_4() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -722,7 +722,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_apply_5() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -737,7 +737,7 @@ mod tests {
 
     #[test]
     fn test_rename_function_with_spec_1() {
-        check(
+        check_rename(
             "new_name",
             r#"
                -spec foo() -> ok.
@@ -752,7 +752,7 @@ mod tests {
 
     #[test]
     fn test_rename_function_with_spec_2() {
-        check(
+        check_rename(
             "new_name",
             r#"
                -spec f~oo() -> ok.
@@ -767,7 +767,7 @@ mod tests {
 
     #[test]
     fn test_rename_function_with_spec_3() {
-        check(
+        check_rename(
             "new_name",
             r#"
                -spec f~oo(any()) -> ok.
@@ -782,7 +782,7 @@ mod tests {
 
     #[test]
     fn test_rename_underscore_1() {
-        check(
+        check_rename(
             "NewName",
             r#"
                foo() ->
@@ -794,7 +794,7 @@ mod tests {
 
     #[test]
     fn test_rename_underscore_2() {
-        check(
+        check_rename(
             "NewName",
             r#"
                foo(X) ->
@@ -807,7 +807,7 @@ mod tests {
 
     #[test]
     fn test_rename_case_1() {
-        check(
+        check_rename(
             "XX",
             r#"
                foo(X) ->
@@ -828,7 +828,7 @@ mod tests {
 
     #[test]
     fn test_rename_case_2() {
-        check(
+        check_rename(
             "XX",
             r#"
               foo() ->
@@ -845,7 +845,7 @@ mod tests {
 
     #[test]
     fn test_rename_case_3() {
-        check(
+        check_rename(
             "XX",
             r#"
               foo() ->
@@ -860,7 +860,7 @@ mod tests {
 
     #[test]
     fn rename_export_function() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -893,7 +893,7 @@ mod tests {
 
     #[test]
     fn rename_export_function_2() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -928,7 +928,7 @@ mod tests {
 
     #[test]
     fn rename_export_function_fails() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -951,7 +951,7 @@ mod tests {
 
     #[test]
     fn rename_export_function_ok_no_local_import() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -988,7 +988,7 @@ mod tests {
     fn rename_function_in_include() {
         // We do not have functions defined in our header files, but
         // confirm it does the right thing anyway
-        check(
+        check_rename(
             "new_name",
             r#"
              //- /src/main.hrl
@@ -1041,7 +1041,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_macro_rhs_1() {
-        check(
+        check_rename(
             "new_name",
             r#"
                -define(BAR(X), foo(X)).
@@ -1058,7 +1058,7 @@ mod tests {
 
     #[test]
     fn rename_with_macro() {
-        check(
+        check_rename(
             "NewName",
             r#"
              //- /src/main.hrl
@@ -1094,7 +1094,7 @@ mod tests {
     // See T157498333
     #[test]
     fn rename_function_with_macro_type() {
-        check(
+        check_rename(
             "newFoo",
             r#"
             -module(main).
@@ -1185,7 +1185,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_rpc_call_4() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1207,7 +1207,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_rpc_call_5() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1229,7 +1229,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_rpc_async_call() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1251,7 +1251,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_rpc_cast() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1273,7 +1273,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_rpc_multicall_3() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1295,7 +1295,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_rpc_multicall_4() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1317,7 +1317,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_rpc_multicall_5() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1339,7 +1339,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_function_exported() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1361,7 +1361,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erlang_function_exported() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1383,7 +1383,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_is_builtin() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1405,7 +1405,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erlang_is_builtin() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1427,7 +1427,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_hibernate() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1449,7 +1449,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erlang_hibernate() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1471,7 +1471,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_spawn() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1493,7 +1493,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erlang_spawn() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1515,7 +1515,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_spawn_4() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1537,7 +1537,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erlang_spawn_4() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1559,7 +1559,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_spawn_link() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1581,7 +1581,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erlang_spawn_link() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1603,7 +1603,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_spawn_link_4() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1625,7 +1625,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erlang_spawn_link_4() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1647,7 +1647,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_spawn_monitor() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1669,7 +1669,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erlang_spawn_monitor() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1691,7 +1691,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_spawn_monitor_4() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1713,7 +1713,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erlang_spawn_monitor_4() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1735,7 +1735,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_spawn_opt() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1757,7 +1757,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erlang_spawn_opt() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1779,7 +1779,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_spawn_opt_5() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1801,7 +1801,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erlang_spawn_opt_5() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1823,7 +1823,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_spawn_request() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1845,7 +1845,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erlang_spawn_request() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1867,7 +1867,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erpc_call_4() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1889,7 +1889,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erpc_call_5() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1911,7 +1911,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erpc_cast() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1933,7 +1933,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erpc_multicall_4() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1955,7 +1955,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erpc_multicall_5() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1977,7 +1977,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erpc_multicast() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
@@ -1999,7 +1999,7 @@ mod tests {
 
     #[test]
     fn test_rename_in_erpc_send_request() {
-        check(
+        check_rename(
             "new_name",
             r#"
                //- /src/baz.erl
