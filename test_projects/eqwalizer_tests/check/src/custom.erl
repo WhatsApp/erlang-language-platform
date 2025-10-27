@@ -3,7 +3,7 @@
 %%% This source code is licensed under the Apache 2.0 license found in
 %%% the LICENSE file in the root directory of this source tree.
 
--module(custom).
+-module(custom). % @OTPVersionDependent
 
 -import(maps, [get/2, get/3]).
 -compile([export_all, nowarn_export_all]).

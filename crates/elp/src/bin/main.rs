@@ -434,13 +434,30 @@ mod tests {
                             .unwrap();
 
                         let otp_version = OTP_VERSION.as_ref().expect("MISSING OTP VERSION");
-                        let exp_path = expect_file!(format!(
-                            "../resources/test/{}/{}/{}-OTP-{}.pretty",
-                            project,
-                            app,
-                            module.as_str(),
-                            otp_version,
-                        ));
+                        let otp_version_regex =
+                            regex::bytes::Regex::new(&format!("{}OTPVersionDependent", "@"))
+                                .unwrap();
+                        let contents = analysis.file_text(file_id).unwrap();
+                        let otp_version_dependent = otp_version_regex
+                            .is_match(&contents.as_bytes()[0..(2001.min(contents.len()))]);
+                        let exp_path = {
+                            if otp_version_dependent {
+                                expect_file!(format!(
+                                    "../resources/test/{}/{}/{}-OTP-{}.pretty",
+                                    project,
+                                    app,
+                                    module.as_str(),
+                                    otp_version,
+                                ))
+                            } else {
+                                expect_file!(format!(
+                                    "../resources/test/{}/{}/{}.pretty",
+                                    project,
+                                    app,
+                                    module.as_str(),
+                                ))
+                            }
+                        };
                         let (stdout, _) = cli.to_strings();
                         assert_normalised_file(exp_path, &stdout, project_path.into(), false);
                     }
