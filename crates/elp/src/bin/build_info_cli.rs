@@ -21,8 +21,10 @@ use elp_project_model::Project;
 use elp_project_model::ProjectBuildData;
 use elp_project_model::ProjectManifest;
 use elp_project_model::buck::BuckQueryConfig;
+use elp_project_model::buck::BuckTarget;
 use elp_project_model::buck::query_buck_targets;
 use elp_project_model::json::JsonConfig;
+use fxhash::FxHashMap;
 
 use crate::args::BuildInfo;
 use crate::args::ProjectInfo;
@@ -66,16 +68,29 @@ pub(crate) fn save_project_info(args: ProjectInfo, query_config: &BuckQueryConfi
         && let ProjectBuildData::Buck(buck) = &project.project_build_data
     {
         let buck_targets_query = query_buck_targets(&buck.buck_conf, query_config);
-        writer.write_all(b"================buck targets query raw================\n")?;
-        writer.write_all(format!("{:#?}\n", &buck_targets_query).as_bytes())?;
-    };
-    writer.write_all(b"================manifest================\n")?;
-    writer.write_all(format!("{:#?}\n", &manifest).as_bytes())?;
-    writer.write_all(b"================project_build_data================\n")?;
-    writer.write_all(format!("{:#?}\n", &project.project_build_data).as_bytes())?;
-    writer.write_all(b"================project_app_data================\n")?;
-    writer.write_all(format!("{:#?}\n", &project.project_apps).as_bytes())?;
+        if let Ok(targets) = &buck_targets_query {
+            writer.write_all(format!("{:#?}\n", sort_buck_targets(targets)).as_bytes())?;
+        } else {
+            writer.write_all(format!("{:#?}\n", &buck_targets_query).as_bytes())?;
+        }
+    } else {
+        writer.write_all(b"================manifest================\n")?;
+        writer.write_all(format!("{:#?}\n", &manifest).as_bytes())?;
+        writer.write_all(b"================project_build_data================\n")?;
+        writer.write_all(format!("{:#?}\n", &project.project_build_data).as_bytes())?;
+        writer.write_all(b"================project_app_data================\n")?;
+        writer.write_all(format!("{:#?}\n", &project.project_apps).as_bytes())?;
+    }
     Ok(())
+}
+
+fn sort_buck_targets(hash_map: &FxHashMap<String, BuckTarget>) -> Vec<(String, &BuckTarget)> {
+    let mut vec = hash_map
+        .iter()
+        .map(|(n, t)| (format!("target_name:{}", n), t))
+        .collect::<Vec<_>>();
+    vec.sort_by(|a, b| a.0.cmp(&b.0));
+    vec
 }
 
 fn load_project(
