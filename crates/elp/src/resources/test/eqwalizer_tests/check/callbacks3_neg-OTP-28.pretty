@@ -5,7 +5,7 @@ error: incorrect_return_type_in_cb_implementation (See https://fb.me/eqwalizer_e
    │ ^^^^^^^^^^^^^^^^^^^^^
    │ │
    │ Incorrect return type for implementation of gen_server:handle_cast/2. Expected: {'noreply', term()} | {'noreply', term(), gen_server:action()} | {'stop', term(), term()}, Got: 'wrong_ret'.
-   │
+   │ 
 
   'wrong_ret' is not compatible with {'noreply', term()} | {'noreply', term(), gen_server:action()} | {'stop', term(), term()}
   because
