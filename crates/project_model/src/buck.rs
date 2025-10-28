@@ -644,16 +644,20 @@ impl Target {
         }
     }
 
-    fn include_files(&self) -> Vec<AbsPathBuf> {
-        let mut include_files = self.include_files.clone();
+    fn include_dirs(&self) -> Vec<AbsPathBuf> {
+        let mut include_dirs = FxHashSet::from_iter(
+            self.include_files
+                .iter()
+                .map(|path| include_path_from_file(path)),
+        );
         if self.private_header {
             self.src_files.iter().for_each(|path| {
                 if Some("hrl") == path.extension() {
-                    include_files.push(include_path_from_file(path));
+                    include_dirs.insert(include_path_from_file(path));
                 }
             });
         }
-        include_files
+        include_dirs.iter().cloned().collect()
     }
 }
 
@@ -750,49 +754,42 @@ fn make_buck_target(
 ) -> Result<Target> {
     let dir = find_app_root_bxl(root, name, target).expect("could not find app root");
 
-    let (src_files, include_files, target_type, private_header, ebin) =
-        if let Some(ref suite) = target.suite {
-            let src_file = json::canonicalize(buck_path_to_abs_path(root, suite)?)?;
-            let src = vec![src_file.clone()];
-            target_info
-                .path_to_target_name
-                .insert(src_file, name.clone());
-            let mut include_files = vec![];
-            for include in &target.includes {
-                if let Ok(inc) = AbsPathBuf::try_from(include.as_str()) {
-                    include_files.push(inc);
-                }
+    let (src_files, target_type, private_header, ebin) = if let Some(ref suite) = target.suite {
+        let src_file = json::canonicalize(buck_path_to_abs_path(root, suite)?)?;
+        let src = vec![src_file.clone()];
+        target_info
+            .path_to_target_name
+            .insert(src_file, name.clone());
+        (src, TargetType::ErlangTest, false, None)
+    } else {
+        let mut private_header = false;
+        let target_type = compute_target_type(name, target, targets_include_only_prelude);
+        let mut src_files = vec![];
+        for src in &target.srcs {
+            let src = json::canonicalize(buck_path_to_abs_path(root, src).unwrap())?;
+            if Some("hrl") == src.extension() {
+                private_header = true;
             }
-            (src, include_files, TargetType::ErlangTest, false, None)
-        } else {
-            let mut private_header = false;
-            let target_type = compute_target_type(name, target, targets_include_only_prelude);
-            let mut src_files = vec![];
-            for src in &target.srcs {
-                let src = json::canonicalize(buck_path_to_abs_path(root, src).unwrap())?;
-                if Some("hrl") == src.extension() {
-                    private_header = true;
-                }
-                src_files.push(src);
-            }
-            let mut include_files = vec![];
-            for include in &target.includes {
-                let mut inc = buck_path_to_abs_path(root, include).unwrap();
-                if inc.extension().is_some() {
-                    inc.pop();
-                }
-                include_files.push(inc);
-            }
+            src_files.push(src);
+        }
 
-            let ebin = match target_type {
-                TargetType::ThirdParty if build_deps => dep_path
-                    .remove(name)
-                    .map(|dir| dir.join(Utf8PathBuf::from("ebin"))),
-                TargetType::ThirdParty => Some(dir.clone()),
-                _ => None,
-            };
-            (src_files, include_files, target_type, private_header, ebin)
+        let ebin = match target_type {
+            TargetType::ThirdParty if build_deps => dep_path
+                .remove(name)
+                .map(|dir| dir.join(Utf8PathBuf::from("ebin"))),
+            TargetType::ThirdParty => Some(dir.clone()),
+            _ => None,
         };
+        (src_files, target_type, private_header, ebin)
+    };
+    let mut include_files = vec![];
+    for include in &target.includes {
+        if let Ok(inc_abs) = buck_path_to_abs_path(root, include)
+            && let Ok(inc) = json::canonicalize(inc_abs)
+        {
+            include_files.push(inc);
+        }
+    }
     let gen_src_files = target
         .gen_srcs
         .iter()
@@ -1297,14 +1294,20 @@ fn targets_to_project_data_bxl(
             dir: target.dir.clone(),
             ebin: None,
             extra_src_dirs: extra_src_dirs.into_iter().collect(),
-            include_dirs: target.include_files(),
+            include_dirs: target.include_dirs(),
             abs_src_dirs: abs_src_dirs.into_iter().collect(),
             macros,
             parse_transforms: vec![],
             app_type: target.app_type(),
             include_path: vec![],
             gen_src_files: Some(FxHashSet::from_iter(target.gen_src_files.clone())),
-            applicable_files: Some(FxHashSet::from_iter(target.src_files.clone())),
+            applicable_files: Some(FxHashSet::from_iter(
+                target
+                    .src_files
+                    .iter()
+                    .cloned()
+                    .chain(target.include_files.iter().cloned()),
+            )),
             is_test_target: Some(target.target_type == TargetType::ErlangTest),
             is_buck_generated: Some(target.buck_generated),
         };
