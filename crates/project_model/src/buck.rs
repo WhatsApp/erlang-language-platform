@@ -452,8 +452,6 @@ pub struct BuckTarget {
     /// to build the graph.
     #[serde(default)]
     extra_includes: Vec<TargetFullName>,
-    #[serde(default)]
-    origin: BuckTargetOrigin,
 }
 
 impl BuckTarget {
@@ -585,7 +583,6 @@ impl BuckTargetBare {
                         .to_string()
                 })
                 .collect::<Vec<_>>(),
-            origin: BuckTargetOrigin::App,
         }
     }
 
@@ -710,12 +707,17 @@ fn load_buck_targets_bxl(
 
     let mut used_deps = FxHashSet::default();
 
+    let targets_include_only_prelude = buck_config
+        .included_targets
+        .iter()
+        .all(|t| t.starts_with("prelude//"));
     for (name, buck_target) in &buck_targets {
         if let Ok(target) = make_buck_target(
             root,
             name,
             buck_target,
             buck_config.build_deps,
+            targets_include_only_prelude,
             &mut dep_path,
             &mut target_info,
         ) {
@@ -736,6 +738,7 @@ fn make_buck_target(
     name: &String,
     target: &BuckTarget,
     build_deps: bool,
+    targets_include_only_prelude: bool,
     dep_path: &mut FxHashMap<String, AbsPathBuf>,
     target_info: &mut TargetInfo,
 ) -> Result<Target> {
@@ -757,7 +760,7 @@ fn make_buck_target(
             (src, include_files, TargetType::ErlangTest, false, None)
         } else {
             let mut private_header = false;
-            let target_type = compute_target_type(name, target);
+            let target_type = compute_target_type(name, target, targets_include_only_prelude);
             let mut src_files = vec![];
             for src in &target.srcs {
                 let src = json::canonicalize(buck_path_to_abs_path(root, src).unwrap())?;
@@ -806,10 +809,14 @@ fn make_buck_target(
     })
 }
 
-fn compute_target_type(name: &TargetFullName, target: &BuckTarget) -> TargetType {
-    if target.origin != BuckTargetOrigin::App && (name.starts_with("prelude//"))
-        || name.contains("//third-party")
-    {
+fn compute_target_type(
+    name: &TargetFullName,
+    target: &BuckTarget,
+    targets_include_only_prelude: bool,
+) -> TargetType {
+    // Check if we are trying to work on the prelude itself
+    let is_prelude_dep = !targets_include_only_prelude && (name.starts_with("prelude//"));
+    if is_prelude_dep || name.contains("//third-party") {
         TargetType::ThirdParty
     } else {
         let test_utils = target.labels.contains("test_utils");
@@ -1022,29 +1029,36 @@ fn run_buck_command(mut command: CommandProxy<'_>) -> Result<process::Output> {
 }
 
 fn query_buck_targets_bare(buck_config: &BuckConfig) -> Result<FxHashMap<String, BuckTarget>> {
-    let mut targets: Vec<&str> = Vec::default();
-    for target in &buck_config.included_targets {
-        targets.push(target);
-    }
-    for target in &buck_config.deps_targets {
-        targets.push(target);
-    }
-    let mut command = buck_config.buck_command();
-    command.arg("targets").arg("--json").args(targets);
-    let output = run_buck_command(command)?;
-    let string = String::from_utf8(output.stdout)?;
-    let bare_targets: Vec<BuckTargetBare> = serde_json::from_str(&string)?;
-
     let cells = buck_cell_info()?;
+
+    let bare_targets_apps = do_buck_query_bare(buck_config, &buck_config.included_targets)?;
+    let bare_targets_deps = do_buck_query_bare(buck_config, &buck_config.deps_targets)?;
+
     let mut result = FxHashMap::default();
-    for bare in bare_targets {
+
+    let mut do_one = |bare: BuckTargetBare| {
         if !bare.skipped_target_type() {
             let target_full_name = bare.target_full_name();
             let target: BuckTarget = BuckTargetBare::as_buck_target(bare, &cells);
             result.insert(target_full_name, target);
         }
+    };
+    for bare in bare_targets_apps {
+        do_one(bare);
+    }
+    for bare in bare_targets_deps {
+        do_one(bare);
     }
     Ok(result)
+}
+
+fn do_buck_query_bare(buck_config: &BuckConfig, targets: &[String]) -> Result<Vec<BuckTargetBare>> {
+    let mut command = buck_config.buck_command();
+    command.arg("targets").arg("--json").args(targets);
+    let output = run_buck_command(command)?;
+    let string = String::from_utf8(output.stdout)?;
+    let bare_targets: Vec<BuckTargetBare> = serde_json::from_str(&string)?;
+    Ok(bare_targets)
 }
 
 // ---------------------------------------------------------------------
@@ -1364,7 +1378,6 @@ mod tests {
     use crate::buck::BuckQueryError;
     use crate::buck::BuckTarget;
     use crate::buck::BuckTargetBare;
-    use crate::buck::BuckTargetOrigin;
     use crate::buck::buck_path_to_abs_path;
     use crate::buck::find_app_root_bxl;
     use crate::buck::get_prelude_cell;
@@ -1397,7 +1410,6 @@ mod tests {
             apps: vec![],
             included_apps: vec![],
             extra_includes: vec![],
-            origin: BuckTargetOrigin::App,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1426,7 +1438,6 @@ mod tests {
             apps: vec![],
             included_apps: vec![],
             extra_includes: vec![],
-            origin: BuckTargetOrigin::App,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1455,7 +1466,6 @@ mod tests {
             apps: vec![],
             included_apps: vec![],
             extra_includes: vec![],
-            origin: BuckTargetOrigin::App,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1492,7 +1502,6 @@ mod tests {
             apps: vec![],
             included_apps: vec![],
             extra_includes: vec![],
-            origin: BuckTargetOrigin::App,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1526,7 +1535,6 @@ mod tests {
             apps: vec![],
             included_apps: vec![],
             extra_includes: vec![],
-            origin: BuckTargetOrigin::App,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1556,7 +1564,6 @@ mod tests {
             apps: vec![],
             included_apps: vec![],
             extra_includes: vec![],
-            origin: BuckTargetOrigin::App,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -2168,7 +2175,6 @@ mod tests {
                     apps: [],
                     included_apps: [],
                     extra_includes: [],
-                    origin: App,
                 },
             ]
         "#]]
