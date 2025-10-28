@@ -26,17 +26,23 @@ use crate::memory_usage::MemoryUsage;
 
 const PERIODIC_INTERVAL_MS: Duration = Duration::from_millis(60_000);
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum OperationalState {
+    NotStarted,
+    Started,
+    Restarted,
+}
 pub(crate) struct TelemetryManager {
     last_periodic_processed: Instant,
     server_started_at: SystemTime,
-    already_operational: bool,
+    operational_state: OperationalState,
 }
 impl TelemetryManager {
     pub(crate) fn new() -> Self {
         Self {
             last_periodic_processed: Instant::now(),
             server_started_at: SystemTime::now(),
-            already_operational: false,
+            operational_state: OperationalState::NotStarted,
         }
     }
 
@@ -70,32 +76,48 @@ impl TelemetryManager {
         }
     }
 
-    pub(crate) fn operational(&mut self) {
-        if !self.already_operational {
-            let duration = self
-                .server_started_at
-                .elapsed()
-                .map(|e| e.as_millis())
-                .unwrap_or(0) as u32;
-
-            #[derive(Serialize)]
-            struct Operational {
-                title: String,
+    pub(crate) fn operational(&mut self, buck_quick_start: bool) {
+        let title = if buck_quick_start {
+            match self.operational_state {
+                OperationalState::NotStarted => "ELP operational (quick start)",
+                OperationalState::Started => "ELP operational (fully)",
+                OperationalState::Restarted => return,
             }
-            let data = Operational {
-                title: "ELP operational".to_string(),
-            };
-            let data = serde_json::to_value(data).unwrap_or_else(|err| {
-                serde_json::Value::String(format!("JSON serialization failed: {err}"))
-            });
-            telemetry::send_with_duration(
-                String::from("telemetry"),
-                data,
-                duration,
-                self.server_started_at,
-            );
-            self.already_operational = true;
+        } else {
+            match self.operational_state {
+                OperationalState::NotStarted => "ELP operational",
+                OperationalState::Started => return,
+                OperationalState::Restarted => return,
+            }
+        };
+
+        let duration = self
+            .server_started_at
+            .elapsed()
+            .map(|e| e.as_millis())
+            .unwrap_or(0) as u32;
+
+        #[derive(Serialize)]
+        struct Operational {
+            title: String,
         }
+        let data = Operational {
+            title: title.to_string(),
+        };
+        let data = serde_json::to_value(data).unwrap_or_else(|err| {
+            serde_json::Value::String(format!("JSON serialization failed: {err}"))
+        });
+        telemetry::send_with_duration(
+            String::from("telemetry"),
+            data,
+            duration,
+            self.server_started_at,
+        );
+        self.operational_state = if self.operational_state == OperationalState::NotStarted {
+            OperationalState::Started
+        } else {
+            OperationalState::Restarted
+        };
     }
 }
 

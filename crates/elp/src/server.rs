@@ -991,7 +991,8 @@ impl Server {
                     self.show_message(params);
                 }
                 self.transition(Status::Running);
-                self.telemetry_manager.operational();
+                self.telemetry_manager
+                    .operational(self.config.buck_quick_start());
                 self.initial_load_status = InitialLoading::DoneButVfsChanges;
                 self.schedule_compile_deps();
                 self.schedule_cache();
