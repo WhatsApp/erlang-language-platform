@@ -333,6 +333,50 @@ pub struct Lint {
 }
 
 #[derive(Clone, Debug, Bpaf)]
+pub struct Ssr {
+    /// Path to directory with project, or to a JSON file (defaults to `.`)
+    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
+    pub project: PathBuf,
+    /// Parse a single module from the project, not the entire project.
+    #[bpaf(argument("MODULE"))]
+    pub module: Option<String>,
+    /// Parse a single application from the project, not the entire project.
+    #[bpaf(long("app"), long("application"), argument("APP"))]
+    pub app: Option<String>,
+    /// Parse a single file from the project, not the entire project. This can be an include file or escript, etc.
+    #[bpaf(argument("FILE"))]
+    pub file: Option<String>,
+
+    /// Run with rebar
+    pub rebar: bool,
+    /// Rebar3 profile to pickup (default is test)
+    #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
+    pub profile: String,
+
+    /// Also generate diagnostics for generated files
+    pub include_generated: bool,
+    /// Also generate diagnostics for test files
+    pub include_tests: bool,
+
+    /// Show diagnostics in JSON format
+    #[bpaf(
+        argument("FORMAT"),
+        complete(format_completer),
+        fallback(None),
+        guard(format_guard, "Please use json")
+    )]
+    pub format: Option<String>,
+
+    /// Report system memory usage and other statistics
+    #[bpaf(long("report-system-stats"))]
+    pub report_system_stats: bool,
+
+    /// SSR spec to use
+    #[bpaf(positional("SSR_SPEC"))]
+    pub ssr_spec: String,
+}
+
+#[derive(Clone, Debug, Bpaf)]
 pub struct Explain {
     /// Error code to explain
     #[bpaf(argument("CODE"))]
@@ -397,6 +441,7 @@ pub enum Command {
     GenerateCompletions(GenerateCompletions),
     RunServer(RunServer),
     Lint(Lint),
+    Ssr(Ssr),
     Version(Version),
     Shell(Shell),
     Explain(Explain),
@@ -507,6 +552,12 @@ pub fn command() -> impl Parser<Command> {
         .command("lint")
         .help("Parse files in project and emit diagnostics, optionally apply fixes.");
 
+    let ssr = ssr()
+        .map(Command::Ssr)
+        .to_options()
+        .command("ssr")
+        .help("Run SSR (Structural Search and Replace) pattern matching on project files.");
+
     let run_server = run_server()
         .map(Command::RunServer)
         .to_options()
@@ -556,6 +607,7 @@ pub fn command() -> impl Parser<Command> {
         eqwalize_target,
         dialyze_all,
         lint,
+        ssr,
         run_server,
         generate_completions,
         parse_all,

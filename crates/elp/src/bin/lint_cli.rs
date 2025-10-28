@@ -109,7 +109,7 @@ fn get_and_report_diagnostics_config(args: &Lint, cli: &mut dyn Cli) -> Result<D
     Ok(diagnostics_config)
 }
 
-fn load_project(
+pub fn load_project(
     args: &Lint,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
@@ -396,6 +396,7 @@ fn get_diagnostics_config(args: &Lint) -> Result<DiagnosticsConfig> {
     } else {
         LintConfig::default()
     };
+
     let cfg = DiagnosticsConfig::default()
         .configure_diagnostics(
             &cfg_from_file,

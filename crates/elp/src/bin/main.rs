@@ -43,6 +43,7 @@ mod lint_cli;
 // @fb-only
 mod reporting;
 mod shell;
+mod ssr_cli;
 
 // Use jemalloc as the global allocator
 #[cfg(not(any(target_env = "msvc", target_os = "openbsd")))]
@@ -135,6 +136,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
         args::Command::BuildInfo(args) => build_info_cli::save_build_info(args, &query_config)?,
         args::Command::ProjectInfo(args) => build_info_cli::save_project_info(args, &query_config)?,
         args::Command::Lint(args) => lint_cli::run_lint_command(&args, cli, &query_config)?,
+        args::Command::Ssr(args) => ssr_cli::run_ssr_command(&args, cli, &query_config)?,
         args::Command::GenerateCompletions(args) => {
             let instructions = args::gen_completions(&args.shell);
             writeln!(cli, "#Please run this:\n{instructions}")?
@@ -2000,6 +2002,40 @@ mod tests {
         )
     }
 
+    #[test]
+    fn lint_ssr_as_cli_arg() {
+        simple_snapshot(
+            args_vec!["ssr", "ssr: {_@A, _@B}.",],
+            "linter",
+            expect_file!("../resources/test/linter/ssr_ad_hoc.stdout"),
+            true,
+            None,
+        )
+    }
+
+    #[test]
+    fn lint_ssr_as_cli_arg_without_prefix() {
+        simple_snapshot(
+            args_vec!["ssr", "{_@A, _@B}",],
+            "linter",
+            expect_file!("../resources/test/linter/ssr_ad_hoc.stdout"),
+            true,
+            None,
+        )
+    }
+
+    #[test]
+    fn lint_ssr_as_cli_arg_malformed() {
+        simple_snapshot_expect_stderror(
+            args_vec!["ssr", "ssr: {_@A, = _@B}.",],
+            "linter",
+            expect_file!("../resources/test/linter/ssr_ad_hoc_cli_parse_error.stdout"),
+            true,
+            None,
+            false,
+        )
+    }
+
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalizer_tests_check(buck: bool) {
@@ -2217,6 +2253,16 @@ mod tests {
             .run_inner(Args::from(&["lint", "--help"]))
             .unwrap_err();
         let expected = expect_file!["../resources/test/lint_help.stdout"];
+        let stdout = args.unwrap_stdout();
+        expected.assert_eq(&stdout);
+    }
+
+    #[test]
+    fn ssr_help() {
+        let args = args::args()
+            .run_inner(Args::from(&["ssr", "--help"]))
+            .unwrap_err();
+        let expected = expect_file!["../resources/test/ssr_help.stdout"];
         let stdout = args.unwrap_stdout();
         expected.assert_eq(&stdout);
     }

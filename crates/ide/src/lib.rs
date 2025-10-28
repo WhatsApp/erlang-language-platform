@@ -566,6 +566,16 @@ impl Analysis {
         self.with_db(|db| db.is_otp(file_id))
     }
 
+    /// Validates an SSR pattern string by attempting to parse it.
+    /// Returns `Ok(())` if the pattern is valid, or an error message if parsing fails.
+    pub fn validate_ssr_pattern(&self, pattern: &str) -> Cancellable<Result<(), String>> {
+        self.with_db(|db| {
+            elp_ide_ssr::SsrRule::parse_str(db, pattern)
+                .map(|_| ())
+                .map_err(|e| e.to_string())
+        })
+    }
+
     /// Search symbols. Only module names are currently supported.
     pub fn symbol_search(
         &self,
