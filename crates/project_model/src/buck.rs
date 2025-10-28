@@ -12,6 +12,7 @@ use core::str;
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::fmt;
+use std::path::Path;
 use std::path::PathBuf;
 use std::process;
 use std::process::Command;
@@ -34,6 +35,7 @@ use paths::RelPathBuf;
 use paths::Utf8PathBuf;
 use regex::Regex;
 use serde::Deserialize;
+use serde::Deserializer;
 use serde::Serialize;
 use thiserror::Error;
 
@@ -464,6 +466,152 @@ impl BuckTarget {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum BuckTargetType {
+    App,
+    Test,
+    Other(String),
+}
+
+impl<'de> Deserialize<'de> for BuckTargetType {
+    fn deserialize<D>(deserializer: D) -> Result<BuckTargetType, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match s.as_str() {
+            "prelude//rules.bzl:erlang_app" => Ok(BuckTargetType::App),
+            "prelude//rules.bzl:erlang_test" => Ok(BuckTargetType::Test),
+            other => {
+                log::info!("Ignoring buck target type: {}", &other);
+                Ok(BuckTargetType::Other(other.to_string()))
+            }
+        }
+    }
+}
+
+/// The interface type used in reading the output of running `buck2 target --json`
+#[derive(Deserialize, Debug)]
+pub struct BuckTargetBare {
+    // Note that some of the fields are of type `serde_json::Value`.
+    //
+    // This is because for some target types that we are not
+    // interested in they are not simple lists of strings, so fail
+    // serialization, and there is no point having a complex rust type
+    // for a thing we don't care about.
+    //
+    // We can only make this decision after extracting the `buck_type`
+    // field and filtering for the target types we care about, so we
+    // initially deserialize the problematic fields to `Value`, and
+    // complete it when we use them.
+    //
+    // This also gives much better error messages, since `serde_json`
+    // is optimised for this, whereas deserializing from a `Value`
+    // gives no useful information.
+    name: String,
+    #[serde(default)]
+    app_name: Option<String>,
+
+    #[serde(rename = "buck.package")]
+    buck_package: String,
+
+    // Note: we are not using the following available fields
+    //   _includes_target
+    //   buck.deps
+    //   buck.inputs
+    #[serde(rename = "buck.type")]
+    buck_type: BuckTargetType,
+    #[serde(default)]
+    labels: serde_json::Value,
+
+    #[serde(default)]
+    applications: serde_json::Value,
+    #[serde(default)]
+    deps: serde_json::Value,
+    #[serde(default)]
+    extra_includes: Vec<String>,
+    #[serde(default)]
+    included_applications: Vec<String>,
+    #[serde(default)]
+    includes: Vec<String>,
+    #[serde(default)]
+    srcs: serde_json::Value,
+    #[serde(default)]
+    suite: Option<String>,
+}
+
+impl BuckTargetBare {
+    fn target_full_name(&self) -> String {
+        if let Some(name) = &self.app_name {
+            format!("{}:{}", &self.buck_package, &name)
+        } else {
+            format!("{}:{}", &self.buck_package, &self.name)
+        }
+    }
+
+    fn as_buck_target(bare: Self, cells: &BuckCellInfo) -> BuckTarget {
+        let srcs = match bare.srcs {
+            serde_json::Value::Array(values) => values
+                .iter()
+                .flat_map(|v| match v {
+                    serde_json::Value::String(s) => Some(cells.make_absolute(s)),
+                    _ => None,
+                })
+                .collect(),
+            _ => vec![],
+        };
+        let deps = Self::json_value_to_strings(&bare.deps);
+        let apps = Self::json_value_to_strings(&bare.applications);
+        let labels = Self::json_value_to_strings(&bare.labels)
+            .into_iter()
+            .collect();
+        BuckTarget {
+            name: bare.name,
+            app_name: bare.app_name,
+            suite: bare.suite.map(|tgt| cells.make_absolute(&tgt)),
+            srcs,
+            includes: includes_directories_only(&cells.make_all_absolute(&bare.includes)),
+            labels,
+            gen_srcs: vec![],
+            deps,
+            apps,
+            included_apps: bare.included_applications,
+            extra_includes: bare
+                .extra_includes
+                .iter()
+                .map(|inc| {
+                    inc.strip_suffix("_includes_only")
+                        .unwrap_or(inc)
+                        .to_string()
+                })
+                .collect::<Vec<_>>(),
+            origin: BuckTargetOrigin::App,
+        }
+    }
+
+    fn json_value_to_strings(val: &serde_json::Value) -> Vec<String> {
+        match val {
+            serde_json::Value::Array(values) => values
+                .iter()
+                .flat_map(|v| match v {
+                    serde_json::Value::String(s) => Some(s.clone()),
+                    _ => None,
+                })
+                .collect(),
+            _ => vec![],
+        }
+    }
+
+    fn skipped_target_type(&self) -> bool {
+        match self.buck_type {
+            BuckTargetType::App => false,
+            BuckTargetType::Test => false,
+
+            BuckTargetType::Other(_) => true,
+        }
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Target {
     // full-name, like cell//path/to/target/...
@@ -515,6 +663,20 @@ pub enum TargetType {
     ErlangTestUtils,
 }
 
+fn includes_directories_only(includes: &[String]) -> Vec<String> {
+    let mut set = FxHashSet::default();
+    for inc in includes {
+        let full_path = Path::new(inc);
+        let path = full_path
+            .extension()
+            .and_then(|_| full_path.parent())
+            .and_then(|p| p.to_str())
+            .unwrap_or(inc);
+        set.insert(path);
+    }
+    set.iter().map(|s| s.to_string()).collect()
+}
+
 fn load_buck_targets_bxl(
     buck_config: &BuckConfig,
     build: &BuckQueryConfig,
@@ -540,7 +702,8 @@ fn load_buck_targets_bxl(
         BuckQueryConfig::BuckTargetsOnly => report_progress("Querying buck targets, phase 1"),
     }
 
-    let buck_targets = query_buck_targets(buck_config, build)?;
+    let result = query_buck_targets(buck_config, build)?;
+    let buck_targets = filter_buck_targets(buck_config, result)?;
 
     report_progress("Making target info");
     let mut target_info = TargetInfo::default();
@@ -699,18 +862,10 @@ pub enum BuckQueryConfig {
     BuckTargetsOnly,
 }
 
-fn query_buck_targets(
+fn filter_buck_targets(
     buck_config: &BuckConfig,
-    query_config: &BuckQueryConfig,
+    result: FxHashMap<String, BuckTarget>,
 ) -> Result<FxHashMap<TargetFullName, BuckTarget>> {
-    let _timer = timeit!("load buck targets");
-    let result = match query_config {
-        BuckQueryConfig::BuildGeneratedCode | BuckQueryConfig::NoBuildGeneratedCode => {
-            query_buck_targets_bxl(buck_config, query_config)?
-        }
-        BuckQueryConfig::BuckTargetsOnly => todo!(),
-    };
-
     let result = result
         .into_iter()
         .filter(|(name, _)| {
@@ -730,7 +885,21 @@ fn query_buck_targets(
     Ok(result)
 }
 
-pub fn query_buck_targets_bxl(
+pub fn query_buck_targets(
+    buck_config: &BuckConfig,
+    query_config: &BuckQueryConfig,
+) -> Result<FxHashMap<String, BuckTarget>> {
+    let _timer = timeit!("load buck targets");
+    let result = match query_config {
+        BuckQueryConfig::BuildGeneratedCode | BuckQueryConfig::NoBuildGeneratedCode => {
+            query_buck_targets_bxl(buck_config, query_config)?
+        }
+        BuckQueryConfig::BuckTargetsOnly => query_buck_targets_bare(buck_config)?,
+    };
+    Ok(result)
+}
+
+fn query_buck_targets_bxl(
     buck_config: &BuckConfig,
     build: &BuckQueryConfig,
 ) -> Result<FxHashMap<String, BuckTarget>> {
@@ -766,6 +935,12 @@ struct BuckCellInfo {
 }
 
 impl BuckCellInfo {
+    fn make_all_absolute(&self, list: &[String]) -> Vec<String> {
+        list.iter()
+            .map(|buck_path| self.make_absolute(buck_path))
+            .collect()
+    }
+
     fn make_absolute(&self, target: &str) -> String {
         self.make_absolute_maybe(target)
             .unwrap_or(target.to_string())
@@ -845,6 +1020,34 @@ fn run_buck_command(mut command: CommandProxy<'_>) -> Result<process::Output> {
     }
     Ok(output)
 }
+
+fn query_buck_targets_bare(buck_config: &BuckConfig) -> Result<FxHashMap<String, BuckTarget>> {
+    let mut targets: Vec<&str> = Vec::default();
+    for target in &buck_config.included_targets {
+        targets.push(target);
+    }
+    for target in &buck_config.deps_targets {
+        targets.push(target);
+    }
+    let mut command = buck_config.buck_command();
+    command.arg("targets").arg("--json").args(targets);
+    let output = run_buck_command(command)?;
+    let string = String::from_utf8(output.stdout)?;
+    let bare_targets: Vec<BuckTargetBare> = serde_json::from_str(&string)?;
+
+    let cells = buck_cell_info()?;
+    let mut result = FxHashMap::default();
+    for bare in bare_targets {
+        if !bare.skipped_target_type() {
+            let target_full_name = bare.target_full_name();
+            let target: BuckTarget = BuckTargetBare::as_buck_target(bare, &cells);
+            result.insert(target_full_name, target);
+        }
+    }
+    Ok(result)
+}
+
+// ---------------------------------------------------------------------
 
 #[derive(Error, Debug)]
 pub struct BuckQueryError {
@@ -1153,12 +1356,14 @@ mod tests {
     use parking_lot::MutexGuard;
     use paths::AbsPath;
     use paths::Utf8Path;
+    use serde_json::Value;
 
     use super::BUCK_CELL_INFO;
     use super::BuckCellInfo;
     use crate::buck::BuckConfig;
     use crate::buck::BuckQueryError;
     use crate::buck::BuckTarget;
+    use crate::buck::BuckTargetBare;
     use crate::buck::BuckTargetOrigin;
     use crate::buck::buck_path_to_abs_path;
     use crate::buck::find_app_root_bxl;
@@ -1831,5 +2036,197 @@ mod tests {
             "/another/path/a/b/c.erl"
         "#]]
         .assert_debug_eq(&cells.make_absolute("cell2//a/b/c.erl"));
+    }
+
+    #[test]
+    fn deserialize_buck_target_bare() {
+        let string = r#"
+              [
+                {
+                  "_includes_target": "cell//linter:app_a_includes_only",
+                  "app_src": "cell//linter/app_a/src/app_a.app.src",
+                  "applications": [],
+                  "buck.deps": [
+                    "cell//linter:app_a_includes_only",
+                    "prelude//erlang/shell:buck2_shell_utils",
+                    "toolchains//:erlang-default"
+                  ],
+                  "buck.inputs": [
+                    "cell//linter/app_a/src/app_a.app.src",
+                    "cell//linter/app_a/include/app_a.hrl",
+                    "cell//linter/app_a/src/app_a.erl",
+                    "cell//linter/app_a/src/app_a_edoc.erl",
+                    "cell//linter/app_a/src/app_a_unused_param.erl",
+                    "cell//linter/app_a/src/expression_updates_literal.erl",
+                    "cell//linter/app_a/src/spelling.erl"
+                  ],
+                  "buck.oncall": "vscode_erlang",
+                  "buck.package": "cell//linter",
+                  "buck.type": "prelude//rules.bzl:erlang_app",
+                  "extra_includes": [],
+                  "included_applications": [],
+                  "includes": [
+                    "cell//linter/app_a/include/app_a.hrl"
+                  ],
+                  "labels": [
+                    "user_application"
+                  ],
+                  "name": "app_a_target",
+                  "app_name":"app_a",
+                  "srcs": [
+                    "cell//linter/app_a/src/app_a.erl",
+                    "cell//linter/app_a/src/app_a_edoc.erl",
+                    "cell//linter/app_a/src/app_a_unused_param.erl",
+                    "cell//linter/app_a/src/expression_updates_literal.erl",
+                    "cell//linter/app_a/src/spelling.erl"
+                  ],
+                  "version": "1.0.0",
+                  "visibility": [],
+                  "within_view": [
+                    "PUBLIC"
+                  ]
+                }
+              ]"#;
+        let result: Vec<BuckTargetBare> = serde_json::from_str(string).unwrap();
+        expect![[r#"
+            [
+                BuckTargetBare {
+                    name: "app_a_target",
+                    app_name: Some(
+                        "app_a",
+                    ),
+                    buck_package: "cell//linter",
+                    buck_type: App,
+                    labels: Array [
+                        String("user_application"),
+                    ],
+                    applications: Array [],
+                    deps: Null,
+                    extra_includes: [],
+                    included_applications: [],
+                    includes: [
+                        "cell//linter/app_a/include/app_a.hrl",
+                    ],
+                    srcs: Array [
+                        String("cell//linter/app_a/src/app_a.erl"),
+                        String("cell//linter/app_a/src/app_a_edoc.erl"),
+                        String("cell//linter/app_a/src/app_a_unused_param.erl"),
+                        String("cell//linter/app_a/src/expression_updates_literal.erl"),
+                        String("cell//linter/app_a/src/spelling.erl"),
+                    ],
+                    suite: None,
+                },
+            ]
+        "#]]
+        .assert_debug_eq(&result);
+
+        let full_target_names = result
+            .iter()
+            .map(|b| b.target_full_name())
+            .collect::<Vec<_>>();
+        expect![[r#"
+            [
+                "cell//linter:app_a",
+            ]
+        "#]]
+        .assert_debug_eq(&full_target_names);
+
+        let cells = BuckCellInfo {
+            cells: FxHashMap::from_iter(vec![
+                ("fbcode".to_string(), "/[fbcode]".to_string()),
+                ("prelude".to_string(), "/[prelude]".to_string()),
+            ]),
+        };
+
+        let converted: Vec<BuckTarget> = result
+            .into_iter()
+            .map(|bare| BuckTargetBare::as_buck_target(bare, &cells))
+            .collect();
+        expect![[r#"
+            [
+                BuckTarget {
+                    name: "app_a_target",
+                    app_name: Some(
+                        "app_a",
+                    ),
+                    suite: None,
+                    srcs: [
+                        "cell//linter/app_a/src/app_a.erl",
+                        "cell//linter/app_a/src/app_a_edoc.erl",
+                        "cell//linter/app_a/src/app_a_unused_param.erl",
+                        "cell//linter/app_a/src/expression_updates_literal.erl",
+                        "cell//linter/app_a/src/spelling.erl",
+                    ],
+                    includes: [
+                        "cell//linter/app_a/include",
+                    ],
+                    gen_srcs: [],
+                    labels: {
+                        "user_application",
+                    },
+                    deps: [],
+                    apps: [],
+                    included_apps: [],
+                    extra_includes: [],
+                    origin: App,
+                },
+            ]
+        "#]]
+        .assert_debug_eq(&converted);
+    }
+
+    #[test]
+    fn unusual_buck_target() {
+        let string = r#"
+              [
+
+                {
+                  "buck.type":"prelude//rules.bzl:erlang_release",
+                  "buck.deps":[
+                     "waserver//buck2/test/targets/apps:app_a",
+                     "waserver//buck2/test/targets/apps:app_e",
+                     "toolchains//:erlang-default"
+                  ],
+                  "buck.inputs":[],
+                  "buck.package":"waserver//buck2/test/targets/releases",
+                  "name":"rel4",
+                  "visibility":["PUBLIC"],
+                  "within_view":["PUBLIC"],
+                  "applications":[
+                       "waserver//buck2/test/targets/apps:app_a",
+                       ["waserver//buck2/test/targets/apps:app_e","load"]
+                   ]
+                }
+              ]"#;
+        let v: Value = serde_json::from_str(string).unwrap();
+        expect![[r#"
+            Array [
+                Object {
+                    "applications": Array [
+                        String("waserver//buck2/test/targets/apps:app_a"),
+                        Array [
+                            String("waserver//buck2/test/targets/apps:app_e"),
+                            String("load"),
+                        ],
+                    ],
+                    "buck.deps": Array [
+                        String("waserver//buck2/test/targets/apps:app_a"),
+                        String("waserver//buck2/test/targets/apps:app_e"),
+                        String("toolchains//:erlang-default"),
+                    ],
+                    "buck.inputs": Array [],
+                    "buck.package": String("waserver//buck2/test/targets/releases"),
+                    "buck.type": String("prelude//rules.bzl:erlang_release"),
+                    "name": String("rel4"),
+                    "visibility": Array [
+                        String("PUBLIC"),
+                    ],
+                    "within_view": Array [
+                        String("PUBLIC"),
+                    ],
+                },
+            ]
+        "#]]
+        .assert_debug_eq(&v);
     }
 }
