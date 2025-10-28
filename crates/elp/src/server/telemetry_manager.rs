@@ -278,12 +278,14 @@ mod test {
             // Control lock scope by having it in braces
             let mut telemetry = TEST_TELEMETRY.lock();
             telemetry.next_segment(token.clone(), None);
-            let new = telemetry.active.get(&token).unwrap();
+            let new = telemetry.active.get_mut(&token).unwrap();
             assert_ne!(orig.segment_start_time, new.segment_start_time);
             assert_eq!(orig.start_time, new.start_time);
+            // We sometimes run on a rollover boundary, set the value to zero to avoid flakiness
+            for seg in &mut new.segments {
+                seg.1 = 0;
+            }
             let expected = format!("{:#?}\n", &new.segments);
-            // We sometimes run on a rollover boundary
-            let expected = expected.replace("1", "0");
             expect![[r#"
                 [
                     (
