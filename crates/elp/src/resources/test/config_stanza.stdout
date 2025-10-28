@@ -1,4 +1,9 @@
 {
+  "elp.buck.quickStart": {
+    "default": false,
+    "markdownDescription": "Whether to use the expermintal `buck2 targets` quick start process.",
+    "type": "boolean"
+  },
   "elp.diagnostics.disabled": {
     "default": [],
     "items": {
