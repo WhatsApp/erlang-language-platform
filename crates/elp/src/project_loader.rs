@@ -18,6 +18,7 @@ use elp_log::telemetry;
 use elp_project_model::ElpConfig;
 use elp_project_model::IncludeParentDirs;
 use elp_project_model::ProjectManifest;
+use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::otp::Otp;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -121,12 +122,33 @@ impl ProjectLoader {
     }
 }
 
+/// If using buck quick start, it happens in two stages, first to
+/// get the basic project config, then to invoke the generation of
+/// any artifacts that will become part of the project.
+#[derive(Debug, PartialEq, Eq)]
+pub enum BuckGenerated {
+    /// Initial value
+    NoLoadDone,
+    /// After first load (buck targets)
+    NoGenerated,
+    /// After second load (elp.bxl)
+    Generated,
+}
+
 pub struct ReloadManager {
+    /// Files that have changed since the last reload.
     changed_files: FxHashSet<AbsPathBuf>,
+    /// This field is updated when a `changed_files` file is added.
+    /// It allows us to wait until the last file has been added
+    /// when a branch switch is done to avoid doing a reload for each.
+    /// We wait until RELOAD_QUIESCENT_WAIT_TIME has elapsed before doing
+    /// the reload.
     last_change: SystemTime,
     /// ReloadManager clients should ensure this is set when a reload
     /// task is active, reset when done.
     reload_in_progress: bool,
+    buck_generated: BuckGenerated,
+    buck_quick_start: bool,
 }
 
 /// How long to wait after the last changed file was added before
@@ -134,24 +156,76 @@ pub struct ReloadManager {
 const RELOAD_QUIESCENT_WAIT_TIME: Duration = Duration::from_millis(500);
 
 impl ReloadManager {
-    pub fn new() -> ReloadManager {
+    pub fn new(buck_quick_start: bool) -> ReloadManager {
         ReloadManager {
             changed_files: FxHashSet::default(),
             last_change: SystemTime::now(),
             reload_in_progress: false,
+            buck_generated: BuckGenerated::NoLoadDone,
+            buck_quick_start,
         }
     }
 
     /// Used to check if any files are queued, and if so cancel an
     /// existing reload
-    pub fn has_changed_files(&self) -> bool {
-        !self.changed_files.is_empty()
+    pub fn ok_to_switch_workspace(&self) -> bool {
+        if self.buck_quick_start {
+            // `BuckGenerated::NoLoadDone` or `BuckGenerated::NoGenerated`.
+
+            if self.buck_generated == BuckGenerated::NoLoadDone {
+                // We are doing a 2-stage load, and have just completed the `buck targets` step.
+                // So time to activate the Project, this is the whole point of the two stage process
+                true
+            } else {
+                self.changed_files.is_empty()
+            }
+        } else {
+            // Do not switch if there are files which will trigger a reload.
+            // This lets us start that process sooner without wasted effort
+            // switching when it is going to change anyway.
+            self.changed_files.is_empty()
+        }
     }
 
-    pub fn set_reload_active(&mut self) {
+    pub fn set_reload_active(&mut self) -> BuckQueryConfig {
         self.reload_in_progress = true;
+        self.get_query_config()
     }
-    pub fn set_reload_done(&mut self) {
+
+    fn get_query_config(&self) -> BuckQueryConfig {
+        if self.buck_quick_start {
+            match self.buck_generated {
+                BuckGenerated::NoLoadDone => BuckQueryConfig::BuckTargetsOnly,
+                BuckGenerated::NoGenerated => BuckQueryConfig::BuildGeneratedCode,
+                BuckGenerated::Generated => BuckQueryConfig::BuildGeneratedCode,
+            }
+        } else {
+            BuckQueryConfig::BuildGeneratedCode
+        }
+    }
+
+    /// This is called when the `Task::FetchProject` is done in `server.rs`,
+    /// but only after `switch_workspace_ok` has returned true.
+    pub fn set_reload_done(&mut self, a_file_per_project: FxHashSet<AbsPathBuf>) {
+        if self.buck_quick_start {
+            match &self.buck_generated {
+                BuckGenerated::NoLoadDone => {
+                    if self.changed_files.is_empty() && !a_file_per_project.is_empty() {
+                        // We have done the initial "buck targets" query on at least one Project,
+                        // move on to doing `elp.bxl`
+                        self.buck_generated = BuckGenerated::NoGenerated;
+                        self.changed_files = a_file_per_project;
+                    } else {
+                        // We already have changed files from another source, so
+                        // need to repeat this step. Do not change state.
+                    }
+                }
+                BuckGenerated::NoGenerated => {
+                    self.buck_generated = BuckGenerated::Generated;
+                }
+                BuckGenerated::Generated => {}
+            };
+        }
         self.reload_in_progress = false;
     }
 
@@ -180,5 +254,9 @@ impl ReloadManager {
             // Only update the time if the path is newly added
             self.last_change = SystemTime::now();
         }
+    }
+
+    pub fn set_buck_quickstart(&mut self, buck_quick_start: bool) {
+        self.buck_quick_start = buck_quick_start;
     }
 }

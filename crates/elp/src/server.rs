@@ -62,6 +62,7 @@ use elp_log::timeit;
 use elp_log::timeit_exceeds;
 use elp_project_model::ElpConfig;
 use elp_project_model::Project;
+use elp_project_model::ProjectBuildData;
 use elp_project_model::ProjectManifest;
 use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::buck::BuckQueryError;
@@ -350,7 +351,7 @@ impl Server {
             projects: Arc::new(vec![]),
             project_loader: Arc::new(Mutex::new(ProjectLoader::new())),
             initial_load_status: InitialLoading::Initial,
-            reload_manager: Arc::new(Mutex::new(ReloadManager::new())),
+            reload_manager: Arc::new(Mutex::new(ReloadManager::new(config.buck_quick_start()))),
             dynamic_registrations_done: false,
             unresolved_app_id_paths: Arc::new(FxHashMap::default()),
             generated_app_inputs: Arc::new(FxHashMap::default()),
@@ -499,9 +500,16 @@ impl Server {
             Event::Task(task) => match task {
                 Task::Response(response) => self.send_response(response),
                 Task::FetchProject(spinner, projects) => {
-                    self.fetch_project_completed(&spinner, projects)?;
+                    let mut a_file_per_project = extract_dirs_for_buck_projects(&projects);
+                    if !self.fetch_project_completed(&spinner, projects)? {
+                        // We already have changed files, will restart loading.
+                        // So no point heading to generate targets yet
+                        a_file_per_project = FxHashSet::default();
+                    }
                     spinner.end();
-                    self.reload_manager.lock().set_reload_done();
+                    self.reload_manager
+                        .lock()
+                        .set_reload_done(a_file_per_project);
                 }
                 Task::NativeDiagnostics(diags) => self.native_diagnostics_completed(diags),
                 Task::EqwalizerDiagnostics(spinner, diags_types) => {
@@ -550,8 +558,8 @@ impl Server {
 
         let to_reload = self.reload_manager.lock().query_changed_files();
         if let Some(to_reload) = to_reload {
-            self.reload_manager.lock().set_reload_active();
-            self.reload_project(to_reload);
+            let query_config = self.reload_manager.lock().set_reload_active();
+            self.reload_project(to_reload, query_config);
         }
 
         let (changed, highest_file_id) = self.process_changes_to_vfs_store();
@@ -959,9 +967,14 @@ impl Server {
         always!(config_version <= self.vfs_config_version);
         match progress {
             LoadingProgress::Started => {
+                let pb_message = if self.status != Status::Running {
+                    "Loading source files"
+                } else {
+                    "Reloading source files"
+                };
                 let pb = self
                     .progress
-                    .begin_bar_with_telemetry("Loading source files".into(), Some(n_total));
+                    .begin_bar_with_telemetry(pb_message.into(), Some(n_total));
                 self.transition(Status::Loading(pb));
             }
             LoadingProgress::Progress(n_done) => {
@@ -1431,6 +1444,7 @@ impl Server {
             watch: vec![],
             version: 0,
         };
+        spinner.report("Starting file loader".to_string());
         self.vfs_loader.handle.set_config(vfs_loader_config);
 
         self.projects = Arc::new(projects);
@@ -1487,11 +1501,17 @@ impl Server {
 
     fn update_configuration(&mut self, config: Config) {
         let _p = tracing::info_span!("Server::update_configuration").entered();
-        let _old_config = mem::replace(&mut self.config, Arc::new(config));
+        let old_config = mem::replace(&mut self.config, Arc::new(config));
 
         self.logger
             .reconfigure(LOGGER_NAME, self.config.log_filter());
         self.logger.reconfigure("default", self.config.log_filter());
+
+        if old_config.buck_quick_start() != self.config.buck_quick_start() {
+            self.reload_manager
+                .lock()
+                .set_buck_quickstart(self.config.buck_quick_start());
+        }
 
         // Read the lint config file
         let loader = self.project_loader.clone();
@@ -1641,14 +1661,15 @@ impl Server {
             .register(request.id.clone(), (request.method.clone(), received_timer))
     }
 
-    fn reload_project(&mut self, paths: FxHashSet<AbsPathBuf>) {
+    fn reload_project(&mut self, paths: FxHashSet<AbsPathBuf>, query_config: BuckQueryConfig) {
         if !paths.is_empty() {
             let loader = self.project_loader.clone();
-            let query_config = self.config.buck_query();
             let paths = self.resolve_generated_project_paths(paths);
-            let spinner = self
-                .progress
-                .begin_spinner_with_telemetry("ELP reloading project config".to_string());
+            let spinner_message = match query_config {
+                BuckQueryConfig::BuildGeneratedCode => "ELP generating projects".to_string(),
+                _ => "ELP reloading projects".to_string(),
+            };
+            let spinner = self.progress.begin_spinner_with_telemetry(spinner_message);
             self.project_pool.handle.spawn_with_sender({
                 move |sender| {
                     let mut loader = loader.lock();
@@ -1819,12 +1840,17 @@ impl Server {
         })
     }
 
-    fn fetch_project_completed(&mut self, spinner: &Spinner, projects: Vec<Project>) -> Result<()> {
-        if self.reload_manager.lock().has_changed_files() {
+    fn fetch_project_completed(
+        &mut self,
+        spinner: &Spinner,
+        projects: Vec<Project>,
+    ) -> Result<bool> {
+        if !self.reload_manager.lock().ok_to_switch_workspace() {
             // There are other changed files, abort this reload, to
             // allow the next one.
-            return Ok(());
+            return Ok(false);
         }
+        spinner.report("Switching to loaded projects".to_string());
         if let Err(err) = self.switch_workspaces(spinner, projects) {
             let params = lsp_types::ShowMessageParams {
                 typ: lsp_types::MessageType::ERROR,
@@ -1837,7 +1863,7 @@ impl Server {
             self.register_dynamic_now_operational();
             self.dynamic_registrations_done = true;
         }
-        Ok(())
+        Ok(true)
     }
 
     fn register_dynamic_now_operational(&mut self) {
@@ -2075,6 +2101,23 @@ impl Server {
     fn record_highest_file_id(&mut self, latest_high: u32) {
         self.highest_file_id = self.highest_file_id.max(latest_high);
     }
+}
+
+/// For each buck project, extract a directory inside it, for possible
+/// project reloading to generate targets
+fn extract_dirs_for_buck_projects(projects: &[Project]) -> FxHashSet<AbsPathBuf> {
+    let files: FxHashSet<AbsPathBuf> = projects
+        .iter()
+        .filter_map(|p| {
+            if let ProjectBuildData::Buck(_) = &p.project_build_data {
+                // We just need a single path inside the project somewhere
+                Some(p.project_apps.first()?.dir.clone())
+            } else {
+                None
+            }
+        })
+        .collect();
+    files
 }
 
 fn lsp_msg_for_context(message: &lsp_server::Message) -> String {

@@ -385,8 +385,16 @@ impl Config {
         self.data.buck_quickStart = value;
     }
 
+    pub fn buck_quick_start(&self) -> bool {
+        self.data.buck_quickStart
+    }
+
     pub fn buck_query(&self) -> BuckQueryConfig {
-        BuckQueryConfig::BuildGeneratedCode
+        if self.buck_quick_start() {
+            BuckQueryConfig::BuckTargetsOnly
+        } else {
+            BuckQueryConfig::BuildGeneratedCode
+        }
     }
 
     pub fn set_eqwalizer_all(&mut self, value: bool) {
