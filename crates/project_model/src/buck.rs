@@ -534,7 +534,10 @@ fn load_buck_targets_bxl(
         BuckQueryConfig::BuildGeneratedCode => {
             report_progress("Querying and generating buck targets")
         }
-        BuckQueryConfig::NoBuildGeneratedCode => report_progress("Querying buck targets"),
+        BuckQueryConfig::NoBuildGeneratedCode => {
+            report_progress("Querying buck targets without codegen")
+        }
+        BuckQueryConfig::BuckTargetsOnly => report_progress("Querying buck targets, phase 1"),
     }
 
     let buck_targets = query_buck_targets(buck_config, build)?;
@@ -692,6 +695,8 @@ fn find_root(buck_config: &BuckConfig) -> Result<AbsPathBuf> {
 pub enum BuckQueryConfig {
     BuildGeneratedCode,
     NoBuildGeneratedCode,
+    /// Instead of using elp.bxl, use `buck2 targets`.
+    BuckTargetsOnly,
 }
 
 fn query_buck_targets(
@@ -699,7 +704,12 @@ fn query_buck_targets(
     query_config: &BuckQueryConfig,
 ) -> Result<FxHashMap<TargetFullName, BuckTarget>> {
     let _timer = timeit!("load buck targets");
-    let result = query_buck_targets_bxl(buck_config, query_config)?;
+    let result = match query_config {
+        BuckQueryConfig::BuildGeneratedCode | BuckQueryConfig::NoBuildGeneratedCode => {
+            query_buck_targets_bxl(buck_config, query_config)?
+        }
+        BuckQueryConfig::BuckTargetsOnly => todo!(),
+    };
 
     let result = result
         .into_iter()
