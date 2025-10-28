@@ -3,7 +3,7 @@
 %%% This source code is licensed under the Apache 2.0 license found in
 %%% the LICENSE file in the root directory of this source tree.
 
--module(callbacks3_neg).
+-module(callbacks3_neg). % @OTPVersionDependent
 -export([
     init/1,
     handle_call/3,
