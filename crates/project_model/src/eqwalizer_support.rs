@@ -49,6 +49,7 @@ pub(crate) fn eqwalizer_suppport_data(otp_root: &AbsPath) -> ProjectAppData {
         gen_src_files: None,
         applicable_files: None,
         is_test_target: None,
+        is_buck_generated: None,
     }
 }
 

@@ -896,6 +896,9 @@ pub struct ProjectAppData {
     // data applies to.
     pub applicable_files: Option<FxHashSet<AbsPathBuf>>,
     pub is_test_target: Option<bool>,
+    /// Generated as part of the buck build process, via elp.bxl
+    /// Specifically not related to any marker tags in files
+    pub is_buck_generated: Option<bool>,
 }
 
 impl ProjectAppData {
@@ -921,6 +924,7 @@ impl ProjectAppData {
             gen_src_files: None,
             applicable_files: None,
             is_test_target: None,
+            is_buck_generated: None,
         }
     }
 
@@ -948,6 +952,7 @@ impl ProjectAppData {
             gen_src_files: None,
             applicable_files: None,
             is_test_target: None,
+            is_buck_generated: None,
         }
     }
 

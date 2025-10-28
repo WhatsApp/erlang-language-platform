@@ -462,6 +462,10 @@ impl BuckTarget {
             AppName(self.name.clone())
         }
     }
+
+    fn is_generated(&self) -> bool {
+        self.labels.contains("generated")
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -626,6 +630,8 @@ pub struct Target {
     pub target_type: TargetType,
     /// true if there are .hrl files in the src dir
     pub private_header: bool,
+    /// true if generated via elp.bxl
+    pub buck_generated: bool,
 }
 
 impl Target {
@@ -676,7 +682,7 @@ fn includes_directories_only(includes: &[String]) -> Vec<String> {
 
 fn load_buck_targets_bxl(
     buck_config: &BuckConfig,
-    build: &BuckQueryConfig,
+    query_config: &BuckQueryConfig,
     report_progress: &impl Fn(&str),
 ) -> Result<TargetInfo> {
     let _timer = timeit!("loading info from buck");
@@ -689,7 +695,7 @@ fn load_buck_targets_bxl(
         FxHashMap::default()
     };
 
-    match build {
+    match query_config {
         BuckQueryConfig::BuildGeneratedCode => {
             report_progress("Querying and generating buck targets")
         }
@@ -699,7 +705,7 @@ fn load_buck_targets_bxl(
         BuckQueryConfig::BuckTargetsOnly => report_progress("Querying buck targets, phase 1"),
     }
 
-    let result = query_buck_targets(buck_config, build)?;
+    let result = query_buck_targets(buck_config, query_config)?;
     let buck_targets = filter_buck_targets(buck_config, result)?;
 
     report_progress("Making target info");
@@ -806,6 +812,7 @@ fn make_buck_target(
         ebin,
         target_type,
         private_header,
+        buck_generated: target.is_generated(),
     })
 }
 
@@ -1299,6 +1306,7 @@ fn targets_to_project_data_bxl(
             gen_src_files: Some(FxHashSet::from_iter(target.gen_src_files.clone())),
             applicable_files: Some(FxHashSet::from_iter(target.src_files.clone())),
             is_test_target: Some(target.target_type == TargetType::ErlangTest),
+            is_buck_generated: Some(target.buck_generated),
         };
         // Do not bother with applications that exist purely as a
         // handle on dependencies for include_path.

@@ -240,6 +240,7 @@ impl RebarProject {
                 gen_src_files: None,
                 applicable_files: None,
                 is_test_target: None,
+                is_buck_generated: None,
             })
         }
     }
