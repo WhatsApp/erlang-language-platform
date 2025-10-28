@@ -356,6 +356,8 @@ pub struct ProjectInfo {
     pub to: Option<PathBuf>,
     /// Include the buck uquery results in the output
     pub buck_query: bool,
+    /// Dump a list of targets and their types
+    pub target_types: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]

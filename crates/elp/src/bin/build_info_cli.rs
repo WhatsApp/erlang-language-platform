@@ -15,9 +15,11 @@ use std::io::Write;
 use anyhow::Result;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
+use elp_project_model::AppType;
 use elp_project_model::ElpConfig;
 use elp_project_model::IncludeParentDirs;
 use elp_project_model::Project;
+use elp_project_model::ProjectAppData;
 use elp_project_model::ProjectBuildData;
 use elp_project_model::ProjectManifest;
 use elp_project_model::buck::BuckQueryConfig;
@@ -73,6 +75,11 @@ pub(crate) fn save_project_info(args: ProjectInfo, query_config: &BuckQueryConfi
         } else {
             writer.write_all(format!("{:#?}\n", &buck_targets_query).as_bytes())?;
         }
+    } else if args.target_types {
+        writer.write_all(b"================target types================\n")?;
+        for line in buck_targets_and_types(&project.project_apps) {
+            writer.write_all(format!("{}\n", line).as_bytes())?;
+        }
     } else {
         writer.write_all(b"================manifest================\n")?;
         writer.write_all(format!("{:#?}\n", &manifest).as_bytes())?;
@@ -90,6 +97,31 @@ fn sort_buck_targets(hash_map: &FxHashMap<String, BuckTarget>) -> Vec<(String, &
         .map(|(n, t)| (format!("target_name:{}", n), t))
         .collect::<Vec<_>>();
     vec.sort_by(|a, b| a.0.cmp(&b.0));
+    vec
+}
+
+fn buck_targets_and_types(apps: &[ProjectAppData]) -> Vec<String> {
+    let tn = |tn| -> String {
+        if let Some(tn) = tn {
+            tn
+        } else {
+            "".to_string()
+        }
+    };
+    let mut vec = apps
+        .iter()
+        .filter(|app| app.app_type != AppType::Otp)
+        .filter(|app| app.is_buck_generated != Some(true))
+        .map(|app| {
+            format!(
+                "{:?} {:<30} {}",
+                app.app_type,
+                app.name,
+                tn(app.buck_target_name.clone())
+            )
+        })
+        .collect::<Vec<_>>();
+    vec.sort();
     vec
 }
 
