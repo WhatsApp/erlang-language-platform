@@ -10,6 +10,9 @@ Available options:
     -h, --help                 Prints help information
 
 Available commands:
+    version               Print version
+    server                Run lsp server
+    shell                 Starts an interactive ELP shell
     eqwalize              Eqwalize specified module
     eqwalize-all          Eqwalize all opted-in modules in a project
     eqwalize-app          Eqwalize all opted-in modules in specified application
@@ -17,15 +20,11 @@ Available commands:
     dialyze-all           Run Dialyzer on the whole project by shelling out to a `dialyzer-run` tool on the path to do the legwork.
     lint                  Parse files in project and emit diagnostics, optionally apply fixes.
     ssr                   Run SSR (Structural Search and Replace) pattern matching on project files.
-    server                Run lsp server
-    generate-completions  Generate shell completions
     parse-all             Dump ast for all files in a project for specified rebar.config file
     parse-elp             Tree-sitter parse all files in a project for specified rebar.config file
-    build-info            Generate build info JSON file
-    version               Print version
-    shell                 Starts an interactive ELP shell
-    eqwalize-stats        Return statistics about code quality for eqWAlizer
     explain               Explain a diagnostic code
+    build-info            Generate build info JSON file
     project-info          Generate project info file
     glean                 Glean indexer
+    generate-completions  Generate shell completions
     config                Dump a JSON config stanza suitable for use in VS Code project.json

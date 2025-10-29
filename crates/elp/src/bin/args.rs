@@ -525,7 +525,8 @@ pub fn command() -> impl Parser<Command> {
         .map(Command::EqwalizeStats)
         .to_options()
         .command("eqwalize-stats")
-        .help("Return statistics about code quality for eqWAlizer");
+        .help("Return statistics about code quality for eqWAlizer")
+        .hide();
 
     let dialyze_all = dialyze_all()
         .map(Command::DialyzeAll)
@@ -601,24 +602,25 @@ pub fn command() -> impl Parser<Command> {
         .help("Dump a JSON config stanza suitable for use in VS Code project.json");
 
     construct!([
+        // Note: The order here is what is used for `elp --help` output
+        version,
+        run_server,
+        shell,
         eqwalize,
         eqwalize_all,
         eqwalize_app,
         eqwalize_target,
+        eqwalize_stats,
         dialyze_all,
         lint,
         ssr,
-        run_server,
-        generate_completions,
         parse_all,
         parse_elp,
-        build_info,
-        version,
-        shell,
-        eqwalize_stats,
         explain,
+        build_info,
         project_info,
         glean,
+        generate_completions,
         config_stanza,
     ])
     .fallback(Help())
