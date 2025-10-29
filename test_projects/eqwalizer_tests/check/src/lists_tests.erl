@@ -14,3 +14,15 @@ lists_union_neg(V1, V2) -> [V1, V2].
 -spec lists_union_2_neg
     (atom(), [atom()] | [binary()]) -> [atom()] | [binary()].
 lists_union_2_neg(V, L) -> [V | L].
+
+-type union1() :: a | b.
+-type union2() :: union1() | c.
+
+-spec unit_list1(union2()) -> [a] | [b] | [c].
+unit_list1(X) -> [X].
+
+-spec unit_list2(union2()) -> [union2()].
+unit_list2(X) -> [X].
+
+-spec unit_list3(union2()) -> [union1()] | [c].
+unit_list3(X) -> [X].

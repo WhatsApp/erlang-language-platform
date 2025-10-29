@@ -54,4 +54,60 @@ Because in the expression's type:
   because
   binary() is not compatible with atom()
 
-2 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/lists_tests.erl:22:18
+   │
+22 │ unit_list1(X) -> [X].
+   │                  ^^^
+   │                  │
+   │                  [X].
+Expression has type:   [union2()]
+Context expected type: ['a'] | ['b'] | ['c']
+   │                  
+
+Because in the expression's type:
+  [
+    Here the type is:     union1() | 'c'
+    Context expects type: 'a'
+    No candidate of the expression's type matches the expected type.
+  ]
+
+------------------------------ Detailed message ------------------------------
+
+  [union2()] is not compatible with ['a'] | ['b'] | ['c']
+  because
+  [union2()] is not compatible with ['a']
+  because
+  union2() is not compatible with 'a'
+  because
+  union1() | 'c' is not compatible with 'a'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/lists_tests.erl:28:18
+   │
+28 │ unit_list3(X) -> [X].
+   │                  ^^^
+   │                  │
+   │                  [X].
+Expression has type:   [union2()]
+Context expected type: [union1()] | ['c']
+   │                  
+
+Because in the expression's type:
+  [
+    Here the type is a union type with some valid candidates: union1()
+    However the following candidate: 'c'
+    Differs from the expected type:  'a' | 'b'
+  ]
+
+------------------------------ Detailed message ------------------------------
+
+  [union2()] is not compatible with [union1()] | ['c']
+  because
+  [union2()] is not compatible with [union1()]
+  because
+  union2() is not compatible with union1()
+  because
+  union1() | 'c' is not compatible with union1()
+
+4 ERRORS
