@@ -783,6 +783,16 @@ impl Lint {
     }
 }
 
+impl Ssr {
+    pub fn is_format_normal(&self) -> bool {
+        self.format.is_none()
+    }
+
+    pub fn is_format_json(&self) -> bool {
+        self.format == Some("json".to_string())
+    }
+}
+
 impl ParseAllElp {
     pub fn is_format_normal(&self) -> bool {
         self.format.is_none()

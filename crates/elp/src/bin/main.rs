@@ -2007,7 +2007,7 @@ mod tests {
         simple_snapshot(
             args_vec!["ssr", "ssr: {_@A, _@B}.",],
             "linter",
-            expect_file!("../resources/test/linter/ssr_ad_hoc.stdout"),
+            expect_file!("../resources/test/linter/ssr_ad_hoc_cli.stdout"),
             true,
             None,
         )
@@ -2018,7 +2018,7 @@ mod tests {
         simple_snapshot(
             args_vec!["ssr", "{_@A, _@B}",],
             "linter",
-            expect_file!("../resources/test/linter/ssr_ad_hoc.stdout"),
+            expect_file!("../resources/test/linter/ssr_ad_hoc_cli.stdout"),
             true,
             None,
         )
