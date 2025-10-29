@@ -16,6 +16,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::str;
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use anyhow::Result;
 use anyhow::bail;
@@ -51,6 +52,7 @@ use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::source_change::SourceChange;
+use elp_log::telemetry;
 use elp_project_model::AppName;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
@@ -75,6 +77,7 @@ pub fn run_lint_command(
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
+    let start_time = SystemTime::now();
     let memory_start = MemoryUsage::now();
 
     if let Some(to) = &args.to {
@@ -86,8 +89,11 @@ pub fn run_lint_command(
     // We load the project after loading config, in case it bails with
     // errors. No point wasting time if the config is wrong.
     let mut loaded = load_project(args, cli, query_config)?;
+    telemetry::report_elapsed_time("lint operational", start_time);
 
     let result = do_codemod(cli, &mut loaded, &diagnostics_config, args);
+
+    telemetry::report_elapsed_time("lint done", start_time);
 
     let memory_end = MemoryUsage::now();
     let memory_used = memory_end - memory_start;
