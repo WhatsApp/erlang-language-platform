@@ -241,84 +241,25 @@ Expression has type:   {'cons', 'nil' | my_list()}
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:177:24
+    ┌─ check/src/refine.erl:175:31
     │
-177 │ opaque1_neg({X, _}) -> X.
-    │                        ^ X.
-Expression has type:   number()
-Context expected type: pid()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:183:24
-    │
-183 │ opaque2_neg([X, _]) -> X.
-    │                        ^
-    │                        │
-    │                        X.
-Expression has type:   erl_anno:annotation()
-Context expected type: pid()
-    │                        
-
-Because in the expression's type:
-  Here the type is:     tuple()/2 | tuple()/2 | tuple()/2 | tuple()/2 | tuple()/2
-  Context expects type: pid()
-  No candidate of the expression's type matches the expected type.
-
------------------------------- Detailed message ------------------------------
-
-  erl_anno:annotation() is not compatible with pid()
-  because
-  {'file', erl_anno:filename()} | {'generated', erl_anno:generated()} | {'record', erl_anno:record()} | {'text', string()} | {'location', erl_anno:location()} is not compatible with pid()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:191:7
-    │
-191 │ }) -> X.
-    │       ^ X.
-Expression has type:   'set'
-Context expected type: pid()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:198:23
-    │
-198 │ opaque_4_neg(X, X) -> X.
-    │                       ^
-    │                       │
-    │                       X.
-Expression has type:   gb_sets:set(atom())
-Context expected type: pid()
-    │                       
-
-Because in the expression's type:
-  Here the type is:     {number(), gb_sets:gb_set_node(atom())}
-  Context expects type: pid()
-
------------------------------- Detailed message ------------------------------
-
-  gb_sets:set(atom()) is not compatible with pid()
-  because
-  {number(), gb_sets:gb_set_node(atom())} is not compatible with pid()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:202:31
-    │
-202 │ record_as_tuple1_neg(R, R) -> R.
+175 │ record_as_tuple1_neg(R, R) -> R.
     │                               ^ R.
 Expression has type:   #my_rec{}
 Context expected type: none()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:206:31
+    ┌─ check/src/refine.erl:179:31
     │
-206 │ record_as_tuple2_neg(R, R) -> R.
+179 │ record_as_tuple2_neg(R, R) -> R.
     │                               ^ R.
 Expression has type:   #my_rec{}
 Context expected type: none()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:222:28
+    ┌─ check/src/refine.erl:195:28
     │
-222 │ record_as_tuple6_neg(R) -> R.
+195 │ record_as_tuple6_neg(R) -> R.
     │                            ^
     │                            │
     │                            R.
@@ -340,22 +281,22 @@ Because in the expression's type:
   'my_rec' is not compatible with 'not_my_rec'
 
 error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
-    ┌─ check/src/refine.erl:226:10
+    ┌─ check/src/refine.erl:199:10
     │
-226 │     i :: unknown:unknown()
+199 │     i :: unknown:unknown()
     │          ^^^^^^^^^^^^^^^^^ Unknown id: unknown:unknown/0
 
 error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/refine.erl:228:1
+    ┌─ check/src/refine.erl:201:1
     │  
-228 │ ╭ -spec record_as_tuple7_neg
-229 │ │ (#bad_rec{}) -> {bad_rec, atom()}.
+201 │ ╭ -spec record_as_tuple7_neg
+202 │ │ (#bad_rec{}) -> {bad_rec, atom()}.
     │ ╰─────────────────────────────────^ record_as_tuple7_neg/1 references type with invalid definition: #bad_rec{}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:240:28
+    ┌─ check/src/refine.erl:213:28
     │
-240 │ tuple_as_record2_neg(R) -> R.
+213 │ tuple_as_record2_neg(R) -> R.
     │                            ^
     │                            │
     │                            R.
@@ -377,49 +318,49 @@ Because in the expression's type:
   atom() is not compatible with number()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/refine.erl:245:1
+    ┌─ check/src/refine.erl:218:1
     │  
-245 │ ╭ tup_guard_record1(X)
-246 │ │     when is_record(X, my_rec) ->
-247 │ │     X * 2.
+218 │ ╭ tup_guard_record1(X)
+219 │ │     when is_record(X, my_rec) ->
+220 │ │     X * 2.
     │ ╰─────────^ Clause is not covered by spec
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:253:5
+    ┌─ check/src/refine.erl:226:5
     │
-253 │     X * 2.
+226 │     X * 2.
     │     ^ X.
 Expression has type:   #my_rec{}
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:259:5
+    ┌─ check/src/refine.erl:232:5
     │
-259 │     X * 2.
+232 │     X * 2.
     │     ^ X.
 Expression has type:   #my_rec{}
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:262:14
+    ┌─ check/src/refine.erl:235:14
     │
-262 │ ftt(X, _) -> X.
+235 │ ftt(X, _) -> X.
     │              ^ X.
 Expression has type:   fun((T) -> 'ok')
 Context expected type: T
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:265:20
+    ┌─ check/src/refine.erl:238:20
     │
-265 │ my_rec_to_ok(X) -> X.
+238 │ my_rec_to_ok(X) -> X.
     │                    ^ X.
 Expression has type:   #my_rec{}
 Context expected type: 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:277:26
+    ┌─ check/src/refine.erl:250:26
     │
-277 │ use2_neg(F, X) -> ftt(F, X).
+250 │ use2_neg(F, X) -> ftt(F, X).
     │                          ^
     │                          │
     │                          X.
@@ -441,9 +382,9 @@ Because in the expression's type:
   atom() is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:277:26
+    ┌─ check/src/refine.erl:250:26
     │
-277 │ use2_neg(F, X) -> ftt(F, X).
+250 │ use2_neg(F, X) -> ftt(F, X).
     │                          ^
     │                          │
     │                          X.
@@ -467,9 +408,9 @@ Because in the expression's type:
   atom() is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:289:26
+    ┌─ check/src/refine.erl:262:26
     │
-289 │ use4_neg(F, X) -> ftt(F, X).
+262 │ use4_neg(F, X) -> ftt(F, X).
     │                          ^
     │                          │
     │                          X.
@@ -491,9 +432,9 @@ Because in the expression's type:
   number() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:289:26
+    ┌─ check/src/refine.erl:262:26
     │
-289 │ use4_neg(F, X) -> ftt(F, X).
+262 │ use4_neg(F, X) -> ftt(F, X).
     │                          ^
     │                          │
     │                          X.
@@ -517,9 +458,9 @@ Because in the expression's type:
   number() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:305:21
+    ┌─ check/src/refine.erl:278:21
     │
-305 │ use6_neg(X) -> ttt2(X, x).
+278 │ use6_neg(X) -> ttt2(X, x).
     │                     ^
     │                     │
     │                     X.
@@ -541,9 +482,9 @@ Because in the expression's type:
   number() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:309:16
+    ┌─ check/src/refine.erl:282:16
     │
-309 │ use7_neg(X) -> ttt1(X, 1).
+282 │ use7_neg(X) -> ttt1(X, 1).
     │                ^^^^^^^^^^
     │                │
     │                ttt1(X, 1).
@@ -563,9 +504,9 @@ Because in the expression's type:
   atom() is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:313:13
+    ┌─ check/src/refine.erl:286:13
     │
-313 │ deets(X) -> X.
+286 │ deets(X) -> X.
     │             ^
     │             │
     │             X.
@@ -585,9 +526,9 @@ Because in the expression's type:
   'a' is not compatible with {'my_rec', term(), term()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:323:5
+    ┌─ check/src/refine.erl:296:5
     │
-323 │     B.
+296 │     B.
     │     ^
     │     │
     │     B.
@@ -607,17 +548,17 @@ Because in the expression's type:
   'undefined' is not compatible with binary()
 
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-    ┌─ check/src/refine.erl:405:27
+    ┌─ check/src/refine.erl:378:27
     │
-405 │     eqwalizer:reveal_type(Name),
+378 │     eqwalizer:reveal_type(Name),
     │                           ^^^^ atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:406:5
+    ┌─ check/src/refine.erl:379:5
     │
-406 │     Name.
+379 │     Name.
     │     ^^^^ Name.
 Expression has type:   atom()
 Context expected type: 'ok'
 
-41 ERRORS
+37 ERRORS

@@ -170,33 +170,6 @@ exploit_recursive() ->
     refine_recursive_neg({cons, nil}) + 1,
     ok.
 
-% returns a number
--spec opaque1_neg(
-    gb_sets:set(atom())) ->
-    pid().
-opaque1_neg({X, _}) -> X.
-
-% returns a tuple
--spec opaque2_neg(
-    erl_anno:anno()) ->
-    pid().
-opaque2_neg([X, _]) -> X.
-
-% returns an atom
--spec opaque_3_neg(
-    sets:set(atom())
-) -> pid().
-opaque_3_neg({
-    X, _, _, _, _, _, _, _, _
-}) -> X.
-
-% returns a 2-tuple
--spec opaque_4_neg(
-    gb_sets:set(atom()),
-    {term(), term()}
-) -> pid().
-opaque_4_neg(X, X) -> X.
-
 -spec record_as_tuple1_neg
 (#my_rec{}, tuple()) -> none().
 record_as_tuple1_neg(R, R) -> R.
