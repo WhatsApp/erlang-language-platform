@@ -223,6 +223,13 @@ Expression has type:   'a'
 Context expected type: number() | boolean()
     │                           
 
+Because in the expression's type:
+  Here the type is:     'a'
+  Context expects type: number() | 'false' | 'true'
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
+
   'a' is not compatible with number() | boolean()
   because
   'a' is not compatible with number()
@@ -237,6 +244,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'a'
 Context expected type: number() | boolean()
     │                       
+
+Because in the expression's type:
+  Here the type is:     'a'
+  Context expects type: number() | 'false' | 'true'
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
 
   'a' is not compatible with number() | boolean()
   because
@@ -277,6 +291,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'a'
 Context expected type: number() | boolean()
     │                            
+
+Because in the expression's type:
+  Here the type is:     'a'
+  Context expects type: number() | 'false' | 'true'
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
 
   'a' is not compatible with number() | boolean()
   because
@@ -358,7 +379,7 @@ Context expected type: #int_bool_box{}
 Because in the expression's type:
   { 'int_bool_box', 
     Here the type is:     'a'
-    Context expects type: number() | boolean()
+    Context expects type: number() | 'false' | 'true'
     No candidate matches in the expected union.
   }
 
@@ -410,14 +431,14 @@ Context expected type: 'true'
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: 'true'
-  However the following candidate: boolean()
+  However the following candidate: 'false'
   Differs from the expected type:  'true'
 
 ------------------------------ Detailed message ------------------------------
 
   boolean() | 'true' is not compatible with 'true'
   because
-  boolean() is not compatible with 'true'
+  'false' is not compatible with 'true'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:355:13

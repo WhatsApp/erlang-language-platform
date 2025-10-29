@@ -811,7 +811,7 @@ Context expected type: fun((number()) -> boolean() | {'true', term()})
 Because in the expression's type:
   fun((binary()) ->
     Here the type is:     [number()]
-    Context expects type: boolean() | {'true', term()}
+    Context expects type: 'false' | 'true' | {'true', term()}
     No candidate matches in the expected union.
   )
 
@@ -821,7 +821,7 @@ Because in the expression's type:
   because
   [number()] is not compatible with boolean() | {'true', term()}
   because
-  [number()] is not compatible with boolean()
+  [number()] is not compatible with 'false'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:739:20
@@ -834,9 +834,16 @@ Expression has type:   'wrong_ret'
 Context expected type: boolean() | {'true', term()}
     │                    
 
+Because in the expression's type:
+  Here the type is:     'wrong_ret'
+  Context expects type: 'false' | 'true' | {'true', term()}
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
+
   'wrong_ret' is not compatible with boolean() | {'true', term()}
   because
-  'wrong_ret' is not compatible with boolean()
+  'wrong_ret' is not compatible with 'false'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:749:9
@@ -860,7 +867,7 @@ Context expected type: boolean() | {'true', term()}
 Because in the expression's type:
   Here the type is a union type with some valid candidates: {'true', 'a'}
   However the following candidate: 'wrong_ret'
-  Differs from the expected type:  boolean() | {'true', term()}
+  Differs from the expected type:  'false' | 'true' | {'true', term()}
 
 ------------------------------ Detailed message ------------------------------
 
@@ -868,7 +875,7 @@ Because in the expression's type:
   because
   'wrong_ret' is not compatible with boolean() | {'true', term()}
   because
-  'wrong_ret' is not compatible with boolean()
+  'wrong_ret' is not compatible with 'false'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:827:9
@@ -885,7 +892,7 @@ Because in the expression's type:
   fun(('a' | 'b') ->
     Here the type is a union type with some valid candidates: ['a'] | 'true'
     However the following candidate: 'wrong_ret'
-    Differs from the expected type:  boolean() | ['a' | 'b']
+    Differs from the expected type:  'false' | 'true' | ['a' | 'b']
   )
 
 ------------------------------ Detailed message ------------------------------
@@ -896,7 +903,7 @@ Because in the expression's type:
   because
   'wrong_ret' is not compatible with boolean() | ['a' | 'b']
   because
-  'wrong_ret' is not compatible with boolean()
+  'wrong_ret' is not compatible with 'false'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:829:20
@@ -909,9 +916,16 @@ Expression has type:   'wrong_ret'
 Context expected type: boolean() | ['a' | 'b']
     │                    
 
+Because in the expression's type:
+  Here the type is:     'wrong_ret'
+  Context expects type: 'false' | 'true' | ['a' | 'b']
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
+
   'wrong_ret' is not compatible with boolean() | ['a' | 'b']
   because
-  'wrong_ret' is not compatible with boolean()
+  'wrong_ret' is not compatible with 'false'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:837:9
@@ -927,7 +941,7 @@ Because in the expression's type:
   fun((dynamic()) ->
     Here the type is a union type with some valid candidates: 'true'
     However the following candidate: {'true', 'a'}
-    Differs from the expected type:  boolean() | [Item]
+    Differs from the expected type:  'false' | 'true' | [Item]
   )
 
 ------------------------------ Detailed message ------------------------------
@@ -937,8 +951,7 @@ Because in the expression's type:
   {'true', 'a'} | 'true' is not compatible with boolean() | [Item]
   because
   {'true', 'a'} is not compatible with boolean() | [Item]
-  because
-  {'true', 'a'} is not compatible with boolean()
+  expected union does not contain any tuple type of size 2
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:837:20
@@ -951,9 +964,14 @@ Expression has type:   {'true', 'a'}
 Context expected type: boolean() | [dynamic()]
     │                    
 
-  {'true', 'a'} is not compatible with boolean() | [dynamic()]
-  because
-  {'true', 'a'} is not compatible with boolean()
+Because in the expression's type:
+  Here the type is:     {'true', 'a'}
+  Context expects type: 'false' | 'true' | [dynamic()]
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
+
+expected union does not contain any tuple type of size 2
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:839:9
@@ -1025,7 +1043,7 @@ Because in the expression's type:
   fun(('a' | 'b') ->
     Here the type is a union type with some valid candidates: ['a'] | 'false'
     However the following candidate: {'true', 'a'}
-    Differs from the expected type:  boolean() | ['a' | 'b']
+    Differs from the expected type:  'false' | 'true' | ['a' | 'b']
   )
 
 ------------------------------ Detailed message ------------------------------
@@ -1035,8 +1053,7 @@ Because in the expression's type:
   ['a'] | 'false' | {'true', 'a'} is not compatible with boolean() | ['a' | 'b']
   because
   {'true', 'a'} is not compatible with boolean() | ['a' | 'b']
-  because
-  {'true', 'a'} is not compatible with boolean()
+  expected union does not contain any tuple type of size 2
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:857:20
@@ -1049,9 +1066,14 @@ Expression has type:   {'true', 'a'}
 Context expected type: boolean() | ['a' | 'b']
     │                    
 
-  {'true', 'a'} is not compatible with boolean() | ['a' | 'b']
-  because
-  {'true', 'a'} is not compatible with boolean()
+Because in the expression's type:
+  Here the type is:     {'true', 'a'}
+  Context expects type: 'false' | 'true' | ['a' | 'b']
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
+
+expected union does not contain any tuple type of size 2
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:873:9
@@ -1072,7 +1094,7 @@ Because in the expression's type:
   fun(('a' | 'b') ->
     Here the type is a union type with some valid candidates: ['a']
     However the following candidate: 'wrong_ret'
-    Differs from the expected type:  boolean() | ['a' | 'b']
+    Differs from the expected type:  'false' | 'true' | ['a' | 'b']
   )
 
 ------------------------------ Detailed message ------------------------------
@@ -1083,7 +1105,7 @@ Because in the expression's type:
   because
   'wrong_ret' is not compatible with boolean() | ['a' | 'b']
   because
-  'wrong_ret' is not compatible with boolean()
+  'wrong_ret' is not compatible with 'false'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:881:17
@@ -1099,7 +1121,7 @@ Context expected type: boolean() | ['a' | 'b']
 Because in the expression's type:
   Here the type is a union type with some valid candidates: ['a']
   However the following candidate: 'wrong_ret'
-  Differs from the expected type:  boolean() | ['a' | 'b']
+  Differs from the expected type:  'false' | 'true' | ['a' | 'b']
 
 ------------------------------ Detailed message ------------------------------
 
@@ -1107,7 +1129,7 @@ Because in the expression's type:
   because
   'wrong_ret' is not compatible with boolean() | ['a' | 'b']
   because
-  'wrong_ret' is not compatible with boolean()
+  'wrong_ret' is not compatible with 'false'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:891:9
@@ -1123,7 +1145,7 @@ Context expected type: fun((dynamic()) -> boolean() | [dynamic()])
 Because in the expression's type:
   fun((string()) ->
     Here the type is:     atom()
-    Context expects type: boolean() | [dynamic()]
+    Context expects type: 'false' | 'true' | [dynamic()]
     No candidate matches in the expected union.
   )
 
@@ -1133,7 +1155,7 @@ Because in the expression's type:
   because
   atom() is not compatible with boolean() | [dynamic()]
   because
-  atom() is not compatible with boolean()
+  atom() is not compatible with 'false'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:891:9
@@ -1149,7 +1171,7 @@ Context expected type: fun(('a' | 'b') -> boolean() | ['a' | 'b'])
 Because in the expression's type:
   fun((string()) ->
     Here the type is:     atom()
-    Context expects type: boolean() | ['a' | 'b']
+    Context expects type: 'false' | 'true' | ['a' | 'b']
     No candidate matches in the expected union.
   )
 
@@ -1159,7 +1181,7 @@ Because in the expression's type:
   because
   atom() is not compatible with boolean() | ['a' | 'b']
   because
-  atom() is not compatible with boolean()
+  atom() is not compatible with 'false'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:900:9
@@ -2921,9 +2943,16 @@ Expression has type:   'err'
 Context expected type: boolean() | {'true', term()}
      │                       
 
+Because in the expression's type:
+  Here the type is:     'err'
+  Context expects type: 'false' | 'true' | {'true', term()}
+  No candidate matches in the expected union.
+
+------------------------------ Detailed message ------------------------------
+
   'err' is not compatible with boolean() | {'true', term()}
   because
-  'err' is not compatible with boolean()
+  'err' is not compatible with 'false'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:2362:5
@@ -2987,13 +3016,14 @@ Context expected type: iodata() | unicode:charlist()
 
 Because in the expression's type:
   Here the type is:     atom()
-  Context expects type: iodata()
+  Context expects type: iolist() | binary()
+  No candidate matches in the expected union.
 
 ------------------------------ Detailed message ------------------------------
 
   atom() is not compatible with iodata() | unicode:charlist()
   because
-  atom() is not compatible with iodata()
+  atom() is not compatible with iolist()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:2386:5
