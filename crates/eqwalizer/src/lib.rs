@@ -220,7 +220,7 @@ impl EqwalizerExe {
 
         let (cmd, args) = match ext.as_str() {
             "jar" => (
-                "java".into(),
+                env!("ELP_EQWALIZER_JAVA").into(),
                 vec!["-Xss20M".into(), "-jar".into(), path.into()],
             ),
             "" => (path, vec![]),
