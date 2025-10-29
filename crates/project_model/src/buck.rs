@@ -717,17 +717,17 @@ fn load_buck_targets_bxl(
 
     let mut used_deps = FxHashSet::default();
 
-    let targets_include_only_prelude = buck_config
+    let targets_include_prelude = buck_config
         .included_targets
         .iter()
-        .all(|t| t.starts_with("prelude//"));
+        .any(|t| t.starts_with("prelude//"));
     for (name, buck_target) in &buck_targets {
         if let Ok(target) = make_buck_target(
             root,
             name,
             buck_target,
             buck_config.build_deps,
-            targets_include_only_prelude,
+            targets_include_prelude,
             &mut dep_path,
             &mut target_info,
         ) {
@@ -748,7 +748,7 @@ fn make_buck_target(
     name: &String,
     target: &BuckTarget,
     build_deps: bool,
-    targets_include_only_prelude: bool,
+    targets_include_prelude: bool,
     dep_path: &mut FxHashMap<String, AbsPathBuf>,
     target_info: &mut TargetInfo,
 ) -> Result<Target> {
@@ -763,7 +763,7 @@ fn make_buck_target(
         (src, TargetType::ErlangTest, false, None)
     } else {
         let mut private_header = false;
-        let target_type = compute_target_type(name, target, targets_include_only_prelude);
+        let target_type = compute_target_type(name, target, targets_include_prelude);
         let mut src_files = vec![];
         for src in &target.srcs {
             let src = json::canonicalize(buck_path_to_abs_path(root, src).unwrap())?;
@@ -816,11 +816,11 @@ fn make_buck_target(
 fn compute_target_type(
     name: &TargetFullName,
     target: &BuckTarget,
-    targets_include_only_prelude: bool,
+    targets_include_prelude: bool,
 ) -> TargetType {
     // Check if we are trying to work on the prelude itself
-    let is_prelude_dep = !targets_include_only_prelude && (name.starts_with("prelude//"));
-    if is_prelude_dep || name.contains("//third-party") {
+    let is_prelude_as_third_party = !targets_include_prelude && name.starts_with("prelude//");
+    if is_prelude_as_third_party || name.contains("//third-party") {
         TargetType::ThirdParty
     } else {
         let test_utils = target.labels.contains("test_utils");
