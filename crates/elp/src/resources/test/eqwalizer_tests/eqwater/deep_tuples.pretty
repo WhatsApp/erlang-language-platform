@@ -30,26 +30,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'ok'
 Context expected type: none()
 
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/deep_tuples.erl:38:19
-   │
-38 │ test5({ok, V}) -> V.
-   │                   ^
-   │                   │
-   │                   V.
-Expression has type:   'a' | 'ok'
-Context expected type: 'ok'
-   │                   
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: 'ok'
-  However the following candidate: 'a'
-  Differs from the expected type:  'ok'
-
------------------------------- Detailed message ------------------------------
-
-  'a' | 'ok' is not compatible with 'ok'
-  because
-  'a' is not compatible with 'ok'
-
-5 ERRORS
+4 ERRORS

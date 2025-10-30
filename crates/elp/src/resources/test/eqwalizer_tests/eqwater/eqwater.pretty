@@ -353,28 +353,6 @@ Because in the expression's type:
   tuple() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:681:18
-    │
-681 │     {_N, _N1} -> X#one_field.f1
-    │                  ^
-    │                  │
-    │                  X.
-Expression has type:   #one_field{} | #two_fields1{}
-Context expected type: #one_field{}
-    │                  
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: #one_field{}
-  However the following candidate: #two_fields1{}
-  Differs from the expected type:  #one_field{}
-
------------------------------- Detailed message ------------------------------
-
-  #one_field{} | #two_fields1{} is not compatible with #one_field{}
-  because
-  #two_fields1{} is not compatible with #one_field{}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:839:27
     │
 839 │ multi_param2_neg(_, Y) -> Y.
@@ -673,4 +651,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   fun((term(), term()) -> term())
 Context expected type: 'ok'
 
-39 ERRORS
+38 ERRORS
