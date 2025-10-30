@@ -30,3 +30,9 @@ test3_neg({{Tag1, _}, {_, _}}) ->
       -> none().
 test4_neg({{_, _}, {Tag2, _}}) ->
   Tag2.
+
+-record(foo, {f1 :: atom(), f2 :: atom()}).
+
+-spec test5(#foo{} | {ok, a | ok}) -> ok.
+test5({ok, a}) -> ok;
+test5({ok, V}) -> V.
