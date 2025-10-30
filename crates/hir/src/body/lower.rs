@@ -847,11 +847,8 @@ impl<'a> Ctx<'a> {
                 self.alloc_pat(Pat::Missing, Some(expr))
             }
             ast::ExprMax::ParenExpr(paren_expr) => {
-                if let Some(paren_expr) = paren_expr.expr() {
-                    let pat_id = self.lower_pat(&paren_expr);
-                    let ptr = AstPtr::new(&paren_expr);
-                    let source = InFileAstPtr::new(self.curr_file_id(), ptr);
-                    self.record_pat_source(pat_id, source);
+                if let Some(inner_paren_expr) = paren_expr.expr() {
+                    let pat_id = self.lower_pat(&inner_paren_expr);
                     self.alloc_pat(Pat::Paren { pat: pat_id }, Some(expr))
                 } else {
                     self.alloc_pat(Pat::Missing, Some(expr))
@@ -1486,11 +1483,8 @@ impl<'a> Ctx<'a> {
                 }),
             ast::ExprMax::MacroString(_) => self.alloc_expr(Expr::Missing, Some(expr)),
             ast::ExprMax::ParenExpr(paren_expr) => {
-                if let Some(paren_expr) = paren_expr.expr() {
-                    let expr_id = self.lower_expr(&paren_expr);
-                    let ptr = AstPtr::new(expr);
-                    let source = InFileAstPtr::new(self.curr_file_id(), ptr);
-                    self.record_expr_source(expr_id, source);
+                if let Some(inner_expr) = paren_expr.expr() {
+                    let expr_id = self.lower_expr(&inner_expr);
                     self.alloc_expr(Expr::Paren { expr: expr_id }, Some(expr))
                 } else {
                     self.alloc_expr(Expr::Missing, Some(expr))
@@ -2195,6 +2189,7 @@ impl<'a> Ctx<'a> {
                 }),
             ast::ExprMax::MacroString(_) => self.alloc_type_expr(TypeExpr::Missing, Some(expr)),
             ast::ExprMax::ParenExpr(paren_expr) => {
+                // TODO T243351061, update to include TypeExpr::Paren when it exists
                 if let Some(expr) = paren_expr.expr() {
                     let type_expr_id = self.lower_type_expr(&expr);
                     let ptr = AstPtr::new(&expr);

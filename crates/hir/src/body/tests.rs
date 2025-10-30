@@ -2765,7 +2765,7 @@ fn tree_print_function() {
 fn tree_print_function_with_ranges() {
     let (db, file_ids, _) = TestDB::with_many_files(
         r#"
-        foo() -> ((3)).
+        foo( (((A))) ) -> ((3)).
         "#,
     );
     let file_id = file_ids[0];
@@ -2807,16 +2807,19 @@ fn tree_print_function_with_ranges() {
         })
         .collect::<Vec<_>>()
         .join("");
-    // Note: the paren ranges are incorrect here, they will be fixed in the next diff
     expect![[r#"
-        function: foo/0
+        function: foo/1
 
         Clause {
             pats
+                Pat<3>:Pat::Paren { (range: 5..12)
+                    Pat<2>:Pat::Paren { (range: 6..11)
+                        Pat<1>:Pat::Paren { (range: 7..10)
+                            Pat<0>:Pat::Var(A)}}},
             guards
             exprs
-                Expr<3>:Expr::Paren { (range: 9..14)
-                    Expr<2>:Expr::Paren { (range: 9..14)
+                Expr<3>:Expr::Paren { (range: 18..23)
+                    Expr<2>:Expr::Paren { (range: 19..22)
                         Expr<1>:Literal(Integer(3))
                     }
                 },
