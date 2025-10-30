@@ -21,6 +21,7 @@ use super::RecordBody;
 use super::SpecBody;
 use super::SpecOrCallback;
 use crate::AnyAttribute;
+use crate::AnyExprId;
 use crate::AttributeBody;
 use crate::BinarySeg;
 use crate::CRClause;
@@ -175,6 +176,23 @@ pub(crate) fn print_function_clause_with_strategy(
     out
 }
 
+pub(crate) fn print_function_clause_with_strategy_and_range(
+    db: &dyn InternDatabase,
+    clause: &FunctionClauseBody,
+    strategy: Strategy,
+    source_map: &crate::BodySourceMap,
+) -> String {
+    let mut out = String::new();
+
+    let fold_body = fold_body(strategy, &clause.body);
+    let mut printer = Printer::new_with_strategy_and_range(db, &fold_body, strategy, source_map);
+    printer.print_clause(&clause.clause);
+    write!(out, "{}", printer.result_raw()).unwrap();
+    writeln!(out).unwrap();
+
+    out
+}
+
 pub(crate) fn print_type_alias(
     db: &dyn InternDatabase,
     body: &crate::TypeBody,
@@ -322,6 +340,8 @@ struct Printer<'a> {
     indent_level: usize,
     needs_indent: bool,
     include_id: bool,
+    source_map: Option<&'a crate::BodySourceMap>,
+    current: Option<AnyExprId>,
 }
 
 impl<'a> Printer<'a> {
@@ -334,6 +354,8 @@ impl<'a> Printer<'a> {
             indent_level: 0,
             needs_indent: true,
             include_id: true,
+            source_map: None,
+            current: None,
         }
     }
 
@@ -350,6 +372,27 @@ impl<'a> Printer<'a> {
             indent_level: 0,
             needs_indent: true,
             include_id: true,
+            source_map: None,
+            current: None,
+        }
+    }
+
+    fn new_with_strategy_and_range(
+        db: &'a dyn InternDatabase,
+        body: &'a FoldBody,
+        strategy: Strategy,
+        source_map: &'a crate::BodySourceMap,
+    ) -> Self {
+        Printer {
+            db,
+            body,
+            expand_macros: strategy.macros != MacroStrategy::DoNotExpand,
+            buf: String::new(),
+            indent_level: 0,
+            needs_indent: true,
+            include_id: true,
+            source_map: Some(source_map),
+            current: None,
         }
     }
 
@@ -373,6 +416,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_expr(&mut self, expr_id: &ExprId) {
+        self.current = Some(AnyExprId::Expr(*expr_id));
         if self.include_id {
             write!(self, "Expr<{}>:", expr_id.into_raw().into_u32()).ok();
         }
@@ -732,6 +776,7 @@ impl<'a> Printer<'a> {
             Expr::Paren { expr } => {
                 self.print_herald("Expr::Paren", &mut |this| {
                     this.print_expr(expr);
+                    writeln!(this).ok();
                 });
             }
             Expr::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
@@ -739,6 +784,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_pat(&mut self, pat: &PatId) {
+        self.current = Some(AnyExprId::Pat(*pat));
         if self.include_id {
             write!(self, "Pat<{}>:", pat.into_raw().into_u32()).ok();
         }
@@ -871,6 +917,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_term(&mut self, term: &TermId) {
+        self.current = Some(AnyExprId::Term(*term));
         match &self.body[*term] {
             Term::Missing => {
                 write!(self, "Term::Missing").ok();
@@ -972,6 +1019,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_type(&mut self, ty: &TypeExprId) {
+        self.current = Some(AnyExprId::TypeExpr(*ty));
         match &self.body[*ty] {
             TypeExpr::AnnType { var, ty } => {
                 self.print_herald("TypeExpr::AnnType", &mut |this| {
@@ -1234,7 +1282,16 @@ impl<'a> Printer<'a> {
     }
 
     fn print_herald(&mut self, label: &str, print: &mut dyn FnMut(&mut Self)) {
-        writeln!(self, "{label} {{").ok();
+        let range = self
+            .current
+            .and_then(|id| self.source_map.and_then(|sm| sm.any(id)))
+            .map(|es| es.range().range);
+
+        if let Some(r) = range {
+            writeln!(self, "{label} {{ (range: {r:?})").ok();
+        } else {
+            writeln!(self, "{label} {{").ok();
+        }
         self.indent();
         print(self);
         self.dedent();
@@ -3301,7 +3358,9 @@ mod tests {
                     exprs
                         Expr<3>:Expr::Paren {
                             Expr<2>:Expr::Paren {
-                                Expr<1>:Literal(Integer(3))}},
+                                Expr<1>:Literal(Integer(3))
+                            }
+                        },
                 }.
             "#]],
         );
@@ -3348,7 +3407,9 @@ mod tests {
                         Expr<4>:Expr::Tuple {
                             Expr<3>:Expr::Paren {
                                 Expr<2>:Expr::Paren {
-                                    Expr<1>:Literal(Integer(3))}},
+                                    Expr<1>:Literal(Integer(3))
+                                }
+                            },
                         },
                 }.
             "#]],

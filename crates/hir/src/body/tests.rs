@@ -8,6 +8,8 @@
  * above-listed licenses.
  */
 
+use std::fmt::Write;
+
 use elp_base_db::fixture::WithFixture;
 use expect_test::Expect;
 use expect_test::expect;
@@ -2757,6 +2759,71 @@ fn tree_print_function() {
             }.
         "#]],
     );
+}
+
+#[test]
+fn tree_print_function_with_ranges() {
+    let (db, file_ids, _) = TestDB::with_many_files(
+        r#"
+        foo() -> ((3)).
+        "#,
+    );
+    let file_id = file_ids[0];
+    let form_list = db.file_form_list(file_id);
+    let strategy = Strategy {
+        macros: MacroStrategy::ExpandButIncludeMacroCall,
+        parens: ParenStrategy::VisibleParens,
+    };
+    let pretty = form_list
+        .forms()
+        .iter()
+        .flat_map(|&form_idx| match form_idx {
+            FormIdx::FunctionClause(function_id) => {
+                let def_map = db.def_map(file_id);
+                let function_def_id = InFile::new(file_id, FunctionDefId::new(function_id));
+                if let Some(_fun_def) = def_map.get_by_function_id(&function_def_id) {
+                    let (body, source_maps) = db.function_body_with_source(function_def_id);
+                    let mut out = String::new();
+                    if let Some((_, clause)) = body.clauses.iter().next() {
+                        if let Some(na) = clause.name.clone() {
+                            writeln!(out, "function: {na}").ok();
+                        }
+                        if let Some(source_map) = source_maps.first() {
+                            write!(
+                                out,
+                                "{}",
+                                clause.tree_print_with_range(&db, strategy, source_map)
+                            )
+                            .ok();
+                        }
+                    }
+                    writeln!(out, ".").ok();
+                    Some(out)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("");
+    // Note: the paren ranges are incorrect here, they will be fixed in the next diff
+    expect![[r#"
+        function: foo/0
+
+        Clause {
+            pats
+            guards
+            exprs
+                Expr<3>:Expr::Paren { (range: 9..14)
+                    Expr<2>:Expr::Paren { (range: 9..14)
+                        Expr<1>:Literal(Integer(3))
+                    }
+                },
+        }
+        .
+    "#]]
+    .assert_eq(pretty.trim_start());
 }
 
 #[test]

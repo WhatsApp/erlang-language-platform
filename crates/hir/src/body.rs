@@ -661,6 +661,15 @@ impl FunctionClauseBody {
         tree_print::print_function_clause_with_strategy(db, self, strategy)
     }
 
+    pub fn tree_print_with_range(
+        &self,
+        db: &dyn InternDatabase,
+        strategy: Strategy,
+        source_map: &BodySourceMap,
+    ) -> String {
+        tree_print::print_function_clause_with_strategy_and_range(db, self, strategy, source_map)
+    }
+
     pub fn fold<T>(&self, strategy: Strategy, initial: T, callback: AnyCallBack<'_, T>) -> T {
         match &self.from_macro {
             Some(from_macro) if strategy.macros == MacroStrategy::DoNotExpand => {
