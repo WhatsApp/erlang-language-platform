@@ -371,9 +371,12 @@ pub struct Ssr {
     #[bpaf(long("report-system-stats"))]
     pub report_system_stats: bool,
 
-    /// SSR spec to use
-    #[bpaf(positional("SSR_SPEC"))]
-    pub ssr_spec: String,
+    /// SSR specs to use
+    #[bpaf(
+        positional("SSR_SPECS"),
+        guard(at_least_1, "there should be at least one spec")
+    )]
+    pub ssr_specs: Vec<String>,
 }
 
 #[derive(Clone, Debug, Bpaf)]

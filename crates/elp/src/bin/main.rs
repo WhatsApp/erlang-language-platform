@@ -2025,6 +2025,17 @@ mod tests {
     }
 
     #[test]
+    fn lint_ssr_as_cli_arg_multiple_patterns() {
+        simple_snapshot(
+            args_vec!["ssr", "3" "{4}",],
+            "linter",
+            expect_file!("../resources/test/linter/ssr_ad_hoc_cli_multiple.stdout"),
+            true,
+            None,
+        )
+    }
+
+    #[test]
     fn lint_ssr_as_cli_arg_malformed() {
         simple_snapshot_expect_stderror(
             args_vec!["ssr", "ssr: {_@A, = _@B}.",],

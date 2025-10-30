@@ -65,25 +65,29 @@ pub fn run_ssr_command(
 ) -> Result<()> {
     let start_time = SystemTime::now();
     let memory_start = MemoryUsage::now();
-    // Normalize the SSR pattern
-    let normalized_pattern = normalize_ssr_pattern(&args.ssr_spec);
 
-    // Validate the SSR pattern early
+    // Validate all SSR patterns early
     let analysis_host = AnalysisHost::default();
     let analysis = analysis_host.analysis();
-    match analysis.validate_ssr_pattern(&normalized_pattern) {
-        Ok(Ok(())) => {}
-        Ok(Err(e)) => bail!("invalid SSR pattern '{}': {}", args.ssr_spec, e),
-        Err(_cancelled) => bail!("SSR pattern validation was cancelled"),
+    for pattern in &args.ssr_specs {
+        let normalized_pattern = normalize_ssr_pattern(pattern);
+        match analysis.validate_ssr_pattern(&normalized_pattern) {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => bail!("invalid SSR pattern '{}': {}", pattern, e),
+            Err(_cancelled) => bail!("SSR pattern validation was cancelled"),
+        }
     }
 
-    // Create the lint config with the SSR pattern
+    // Create the lint config with all SSR patterns
     let mut lint_config = LintConfig::default();
-    let ssr_lint = diagnostics::Lint::LintMatchSsr(MatchSsr {
-        ssr_pattern: normalized_pattern,
-        message: None,
-    });
-    lint_config.ad_hoc_lints.lints.push(ssr_lint);
+    for pattern in &args.ssr_specs {
+        let normalized_pattern = normalize_ssr_pattern(pattern);
+        let ssr_lint = diagnostics::Lint::LintMatchSsr(MatchSsr {
+            ssr_pattern: normalized_pattern,
+            message: None,
+        });
+        lint_config.ad_hoc_lints.lints.push(ssr_lint);
+    }
 
     // Build the diagnostics config
     let diagnostics_config = DiagnosticsConfig::default()
