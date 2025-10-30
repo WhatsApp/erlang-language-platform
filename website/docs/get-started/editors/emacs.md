@@ -4,15 +4,35 @@ sidebar_position: 2
 
 # Emacs
 
-The ELP project can be used as a [language server](https://microsoft.github.io/language-server-protocol/overviews/lsp/overview/) in the Emacs text editor via the [lsp-mode](https://emacs-lsp.github.io/lsp-mode/) LSP client.
+The ELP project can be used as a [language server](https://microsoft.github.io/language-server-protocol/overviews/lsp/overview/) in the Emacs text editor via the [eglot](https://github.com/joaotavora/eglot) or [lsp-mode](https://emacs-lsp.github.io/lsp-mode/) LSP clients.
 
-## Requirements
+## Eglot
 
-### `lsp-mode`
+Eglot is part of Emacs core since Emacs 29.
+For earlier versions it can be installed with the `eglot` package.
+
+### Configuration
+
+```elisp
+(use-package eglot
+
+  :config
+  ;; Remove default LSP server
+  (setopt eglot-server-programs
+          (assq-delete-all 'erlang-mode eglot-server-programs))
+
+  ;; Enable ELP
+  (add-to-list 'eglot-server-programs
+               '(erlang-mode . ("elp" "server"))
+```
+
+Refer to the [manual](https://elpa.gnu.org/devel/doc/eglot.html#Customization-Variables) for additional configuration options.
+
+## lsp-mode
 
 Install the `lsp-mode` package, which is a generic Emacs client for LSP servers. You can follow [these instructions](https://emacs-lsp.github.io/lsp-mode/page/installation/) to install it.
 
-## Configure Emacs
+### Configuration
 
 Add the following to your emacs `.emacs` file or equivalent.
 
