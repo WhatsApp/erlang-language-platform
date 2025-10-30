@@ -166,9 +166,11 @@ Context expected type: mChainA()
     │                       
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: 'nil'
-  However the following candidate: #{b := mChainB()}
-  Differs from the expected type:  'nil' | #{a := mChainA()}
+  The type is a union type with some valid candidates: 'nil'
+  However, the following candidate doesn't match:
+  Here the type is:     #{...}
+  Context expects type: #{a := ..., ...}
+  The type of the expression is missing the following required keys: a.
 
 ------------------------------ Detailed message ------------------------------
 

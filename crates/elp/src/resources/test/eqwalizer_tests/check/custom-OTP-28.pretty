@@ -792,6 +792,13 @@ Expression has type:   #{'a' | 'b' => atom() | number()}
 Context expected type: #{a := atom(), b := number()} | #{a := atom()}
     │                         
 
+Because in the expression's type:
+  Here the type is:     #{...}
+  Context expects type: #{a := ..., b := ..., ...}
+  The type of the expression is missing the following required keys: a, b.
+
+------------------------------ Detailed message ------------------------------
+
   #{'a' | 'b' => atom() | number()} is not compatible with #{a := atom(), b := number()} | #{a := atom()}
   because
   #{'a' | 'b' => atom() | number()} is not compatible with #{a := atom(), b := number()}

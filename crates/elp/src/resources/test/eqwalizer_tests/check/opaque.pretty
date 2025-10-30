@@ -10,9 +10,11 @@ Context expected type: sets:set({'ok', 'ok'})
    │   
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: #set{}
-  However the following candidate: #{{ok, error} => []}
-  Differs from the expected type:  #set{} | #{{ok, ok} => []}
+  The type is a union type with some valid candidates: #set{}
+  However, the following candidate doesn't match:
+  Here the type is:     #{{ok, error} => ...}
+  Context expects type: #{...}
+  The expected map has no corresponding key for: {ok, error}.
 
 ------------------------------ Detailed message ------------------------------
 

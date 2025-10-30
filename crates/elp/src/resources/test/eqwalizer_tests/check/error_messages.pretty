@@ -138,9 +138,9 @@ Context expected type: #{foo => #{large_map_key_c => 'large_map_val_c'} | #{larg
 
 Because in the expression's type:
   #{ foo =>
-    Here the type is:     #{...}
-    Context expects type: #{...} | #{...}
-    No candidate matches in the expected union.
+    Here the type is:     #{large_map_key_a => ...}
+    Context expects type: #{...}
+    The expected map has no corresponding key for: large_map_key_a.
   , ... }
 
 ------------------------------ Detailed message ------------------------------
@@ -168,9 +168,9 @@ Context expected type: #{foo => #{large_map_key_c => 'large_map_val_c', large_ma
 
 Because in the expression's type:
   #{ foo =>
-    Here the type is:     #{...}
-    Context expects type: #{...} | 'any'
-    No candidate matches in the expected union.
+    Here the type is:     #{large_map_key_a => ...}
+    Context expects type: #{...}
+    The expected map has no corresponding key for: large_map_key_a.
   , ... }
 
 ------------------------------ Detailed message ------------------------------
