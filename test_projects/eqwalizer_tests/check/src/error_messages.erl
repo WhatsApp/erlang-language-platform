@@ -31,3 +31,11 @@ no_record_conversion_2(Foo) -> Foo.
 
 -spec record_conversion(#foo{}) -> {foo, binary(), atom()}.
 record_conversion(Foo) -> Foo.
+
+-spec no_good_map_candidate_1(#{foo => #{large_map_key_a => large_map_val_a, large_map_key_b => large_map_val_b}})
+    -> #{foo => #{large_map_key_c => large_map_val_c} | #{large_map_key_d => large_map_val_d}}.
+no_good_map_candidate_1(M) -> M.
+
+-spec no_good_map_candidate_2(#{foo => #{large_map_key_a => large_map_val_a, large_map_key_b => large_map_val_b}})
+    -> #{foo => #{large_map_key_c => large_map_val_c, large_map_key_d => large_map_val_d} | any}.
+no_good_map_candidate_2(M) -> M.
