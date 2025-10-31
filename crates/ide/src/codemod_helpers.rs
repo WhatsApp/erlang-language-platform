@@ -439,8 +439,9 @@ impl TryFrom<&str> for MFA {
     }
 }
 
+#[allow(unused)]
 pub struct CheckCallCtx<'a, T> {
-    #[allow(unused)]
+    pub sema: &'a Semantic<'a>,
     pub mfa: &'a FunctionMatch,
     pub parents: &'a Vec<ParentId>,
     pub target: &'a CallTarget<ExprId>,
@@ -561,6 +562,7 @@ pub(crate) fn find_call_in_function<CallCtx, MakeCtx, Res>(
             ) {
                 let in_clause = &def_fb.in_clause(clause_id);
                 let context = CheckCallCtx {
+                    sema,
                     mfa,
                     parents: ctx.parents,
                     t,
