@@ -78,6 +78,9 @@ pub fn run_ssr_command(
         }
     }
 
+    // Parse the strategy from CLI arguments
+    let strategy = args.parse_strategy()?;
+
     // Create the lint config with all SSR patterns
     let mut lint_config = LintConfig::default();
     for pattern in &args.ssr_specs {
@@ -85,6 +88,7 @@ pub fn run_ssr_command(
         let ssr_lint = diagnostics::Lint::LintMatchSsr(MatchSsr {
             ssr_pattern: normalized_pattern,
             message: None,
+            strategy: Some(strategy),
         });
         lint_config.ad_hoc_lints.lints.push(ssr_lint);
     }

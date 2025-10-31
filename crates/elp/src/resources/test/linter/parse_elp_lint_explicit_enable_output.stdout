@@ -1,8 +1,10 @@
-Diagnostics reported in 6 modules:
+Diagnostics reported in 7 modules:
   app_a: 2
       4:4-4:34::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
       0:0-0:0::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
   app_a_edoc: 1
+      0:0-0:0::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+  app_a_ssr: 1
       0:0-0:0::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
   app_a_unused_param: 2
       0:0-0:0::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.

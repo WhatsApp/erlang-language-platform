@@ -192,6 +192,7 @@ mod tests {
                     Lint::LintMatchSsr(MatchSsr {
                         ssr_pattern: "ssr: _@A = 10.".to_string(),
                         message: None,
+                        strategy: None,
                     }),
                 ],
             },

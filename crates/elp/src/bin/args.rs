@@ -13,12 +13,17 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
+use anyhow::Result;
+use anyhow::bail;
 use bpaf::Bpaf;
 use bpaf::Parser;
 use bpaf::construct;
 use bpaf::long;
 use elp_ide::elp_ide_db::DiagnosticCode;
 use elp_project_model::buck::BuckQueryConfig;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
+use hir::fold::Strategy;
 use itertools::Itertools;
 use serde::Deserialize;
 
@@ -367,6 +372,20 @@ pub struct Ssr {
     )]
     pub format: Option<String>,
 
+    /// Macro expansion strategy: expand | no-expand | visible-expand (default expand)
+    #[bpaf(
+        long("macros"),
+        argument("STRATEGY"),
+        complete(macros_completer),
+        fallback(None),
+        guard(macros_guard, "Please supply a valid macro expansion value")
+    )]
+    pub macro_strategy: Option<String>,
+
+    /// Explicitly match parentheses. If omitted, they are ignored.
+    #[bpaf(long("parens"))]
+    pub paren_strategy: bool,
+
     /// Report system memory usage and other statistics
     #[bpaf(long("report-system-stats"))]
     pub report_system_stats: bool,
@@ -706,6 +725,21 @@ fn format_guard(format: &Option<String>) -> bool {
     }
 }
 
+fn macros_completer(_: &Option<String>) -> Vec<(String, Option<String>)> {
+    vec![
+        ("expand".to_string(), None),
+        ("no-expand".to_string(), None),
+        ("visible-expand".to_string(), None),
+    ]
+}
+
+fn macros_guard(format: &Option<String>) -> bool {
+    match format {
+        None => true,
+        Some(_) => parse_macro_strategy(format).is_ok(),
+    }
+}
+
 #[allow(clippy::ptr_arg)] // This is needed in the BPAF macros
 fn at_least_1(data: &Vec<String>) -> bool {
     !data.is_empty()
@@ -788,6 +822,19 @@ impl Lint {
     }
 }
 
+fn parse_macro_strategy(macro_strategy: &Option<String>) -> Result<MacroStrategy> {
+    match macro_strategy.as_deref() {
+        Some("no-expand") => Ok(MacroStrategy::DoNotExpand),
+        Some("expand") => Ok(MacroStrategy::Expand),
+        Some("visible-expand") => Ok(MacroStrategy::ExpandButIncludeMacroCall),
+        None => Ok(MacroStrategy::Expand),
+        Some(s) => bail!(
+            "Invalid macro strategy '{}'. Valid options are: expand, no-expand, visible-expand",
+            s
+        ),
+    }
+}
+
 impl Ssr {
     pub fn is_format_normal(&self) -> bool {
         self.format.is_none()
@@ -795,6 +842,16 @@ impl Ssr {
 
     pub fn is_format_json(&self) -> bool {
         self.format == Some("json".to_string())
+    }
+
+    pub fn parse_strategy(&self) -> Result<Strategy> {
+        let macros = parse_macro_strategy(&self.macro_strategy)?;
+        let parens = if self.paren_strategy {
+            ParenStrategy::VisibleParens
+        } else {
+            ParenStrategy::InvisibleParens
+        };
+        Ok(Strategy { macros, parens })
     }
 }
 

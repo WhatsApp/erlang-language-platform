@@ -126,11 +126,50 @@ impl ReplaceInSpec {
 
 // ---------------------------------------------------------------------
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone)]
 pub struct MatchSsr {
     pub ssr_pattern: String,
-    #[serde(default)]
     pub message: Option<String>,
+    pub strategy: Option<Strategy>,
+}
+
+impl Serialize for MatchSsr {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("MatchSsr", 4)?;
+        state.serialize_field("ssr_pattern", &self.ssr_pattern)?;
+        if let Some(ref message) = self.message {
+            state.serialize_field("message", message)?;
+        }
+        if let Some(strategy) = self.strategy {
+            // Default strategy is Expand and InvisibleParens
+            let is_default = strategy.macros == MacroStrategy::Expand
+                && strategy.parens == ParenStrategy::InvisibleParens;
+
+            // Only serialize strategy if it's not the default
+            if !is_default {
+                // Serialize macro strategy
+                let macro_strategy = match strategy.macros {
+                    MacroStrategy::DoNotExpand => "no-expand",
+                    MacroStrategy::Expand => "expand",
+                    MacroStrategy::ExpandButIncludeMacroCall => "visible-expand",
+                };
+                state.serialize_field("macro_strategy", macro_strategy)?;
+
+                // Serialize paren strategy
+                let paren_strategy = match strategy.parens {
+                    ParenStrategy::VisibleParens => "visible",
+                    ParenStrategy::InvisibleParens => "invisible",
+                };
+                state.serialize_field("paren_strategy", paren_strategy)?;
+            }
+        }
+        state.end()
+    }
 }
 
 impl<'de> Deserialize<'de> for MatchSsr {
@@ -145,6 +184,10 @@ impl<'de> Deserialize<'de> for MatchSsr {
             ssr_pattern: String,
             #[serde(default)]
             message: Option<String>,
+            #[serde(default)]
+            macro_strategy: Option<String>,
+            #[serde(default)]
+            paren_strategy: Option<String>,
         }
 
         let helper = MatchSsrHelper::deserialize(deserializer)?;
@@ -159,19 +202,50 @@ impl<'de> Deserialize<'de> for MatchSsr {
             ))
         })?;
 
+        // Parse strategy from strings if provided
+        let strategy = if helper.macro_strategy.is_some() || helper.paren_strategy.is_some() {
+            let macros = match helper.macro_strategy.as_deref() {
+                Some("no-expand") => MacroStrategy::DoNotExpand,
+                Some("expand") | None => MacroStrategy::Expand,
+                Some("visible-expand") => MacroStrategy::ExpandButIncludeMacroCall,
+                Some(s) => {
+                    return Err(D::Error::custom(format!(
+                        "invalid macro strategy '{}'. Valid options are: expand, no-expand, visible-expand",
+                        s
+                    )));
+                }
+            };
+
+            let parens = match helper.paren_strategy.as_deref() {
+                Some("visible") => ParenStrategy::VisibleParens,
+                Some("invisible") | None => ParenStrategy::InvisibleParens,
+                Some(s) => {
+                    return Err(D::Error::custom(format!(
+                        "invalid paren strategy '{}'. Valid options are: visible, invisible",
+                        s
+                    )));
+                }
+            };
+
+            Some(Strategy { macros, parens })
+        } else {
+            None
+        };
+
         Ok(MatchSsr {
             ssr_pattern: helper.ssr_pattern,
             message: helper.message,
+            strategy,
         })
     }
 }
 
 impl MatchSsr {
     pub fn get_diagnostics(&self, acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-        let strategy = Strategy {
+        let strategy = self.strategy.unwrap_or(Strategy {
             macros: MacroStrategy::Expand,
             parens: ParenStrategy::InvisibleParens,
-        };
+        });
 
         let scope = SsrSearchScope::WholeFile(file_id);
         let matches = match_pattern(sema, strategy, &self.ssr_pattern, scope);
@@ -198,6 +272,9 @@ impl MatchSsr {
 #[cfg(test)]
 mod tests {
     use expect_test::expect;
+    use hir::Strategy;
+    use hir::fold::MacroStrategy;
+    use hir::fold::ParenStrategy;
 
     use super::Lint;
     use super::LintsFromConfig;
@@ -579,6 +656,7 @@ mod tests {
         let result = toml::to_string::<MatchSsr>(&MatchSsr {
             ssr_pattern: "ssr: _@A = 10.".to_string(),
             message: Some("Found pattern".to_string()),
+            strategy: None,
         })
         .unwrap();
         expect![[r#"
@@ -604,6 +682,7 @@ mod tests {
                 message: Some(
                     "Found pattern",
                 ),
+                strategy: None,
             }
         "#]]
         .assert_debug_eq(&match_ssr);
@@ -615,6 +694,7 @@ mod tests {
             lints: vec![Lint::LintMatchSsr(MatchSsr {
                 ssr_pattern: "ssr: _@A = 10.".to_string(),
                 message: Some("Found pattern".to_string()),
+                strategy: None,
             })],
         })
         .unwrap();
@@ -625,5 +705,88 @@ mod tests {
             message = "Found pattern"
         "#]]
         .assert_eq(&result);
+    }
+
+    #[test]
+    fn serde_serialize_lint_match_ssr_with_strategy() {
+        let result = toml::to_string::<LintsFromConfig>(&LintsFromConfig {
+            lints: vec![Lint::LintMatchSsr(MatchSsr {
+                ssr_pattern: "ssr: _@A = 10.".to_string(),
+                message: Some("Found pattern".to_string()),
+                strategy: Some(Strategy {
+                    macros: MacroStrategy::Expand,
+                    parens: ParenStrategy::InvisibleParens,
+                }),
+            })],
+        })
+        .unwrap();
+        expect![[r#"
+            [[lints]]
+            type = "LintMatchSsr"
+            ssr_pattern = "ssr: _@A = 10."
+            message = "Found pattern"
+        "#]]
+        .assert_eq(&result);
+    }
+
+    #[test]
+    fn serde_serialize_lint_match_ssr_with_non_default_strategy() {
+        let result = toml::to_string::<LintsFromConfig>(&LintsFromConfig {
+            lints: vec![Lint::LintMatchSsr(MatchSsr {
+                ssr_pattern: "ssr: _@A = 10.".to_string(),
+                message: Some("Found pattern".to_string()),
+                strategy: Some(Strategy {
+                    macros: MacroStrategy::DoNotExpand,
+                    parens: ParenStrategy::VisibleParens,
+                }),
+            })],
+        })
+        .unwrap();
+        expect![[r#"
+            [[lints]]
+            type = "LintMatchSsr"
+            ssr_pattern = "ssr: _@A = 10."
+            message = "Found pattern"
+            macro_strategy = "no-expand"
+            paren_strategy = "visible"
+        "#]]
+        .assert_eq(&result);
+    }
+
+    #[test]
+    fn serde_deserialize_lint_match_ssr_with_strategy() {
+        let match_ssr: LintsFromConfig = toml::from_str(
+            r#"
+              [[lints]]
+              type = "LintMatchSsr"
+              ssr_pattern = "ssr: _@A = 10."
+              message = "Found pattern"
+              macro_strategy = "visible-expand"
+              paren_strategy = "visible"
+             "#,
+        )
+        .unwrap();
+
+        expect![[r#"
+            LintsFromConfig {
+                lints: [
+                    LintMatchSsr(
+                        MatchSsr {
+                            ssr_pattern: "ssr: _@A = 10.",
+                            message: Some(
+                                "Found pattern",
+                            ),
+                            strategy: Some(
+                                Strategy {
+                                    macros: ExpandButIncludeMacroCall,
+                                    parens: VisibleParens,
+                                },
+                            ),
+                        },
+                    ),
+                ],
+            }
+        "#]]
+        .assert_debug_eq(&match_ssr);
     }
 }

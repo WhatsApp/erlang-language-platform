@@ -1,0 +1,5 @@
+Matches found in 1 modules:
+  app_a_ssr: 3
+      6:9-6:14::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: (_@A).
+      6:10-6:13::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: (_@A).
+      7:9-7:12::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: (_@A).

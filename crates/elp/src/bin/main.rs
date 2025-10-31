@@ -2047,6 +2047,73 @@ mod tests {
         )
     }
 
+    #[test]
+    fn lint_ssr_as_cli_parens_visible() {
+        simple_snapshot(
+            args_vec!["ssr", "--parens", "(_@A)",],
+            "linter",
+            expect_file!("../resources/test/linter/ssr_ad_hoc_cli_parens_visible.stdout"),
+            true,
+            None,
+        )
+    }
+
+    #[test]
+    fn lint_ssr_as_cli_parens_invisible() {
+        // Invisible parens are the default
+        simple_snapshot(
+            args_vec!["ssr", "(((3)))",],
+            "linter",
+            expect_file!("../resources/test/linter/ssr_ad_hoc_cli_parens_invisible.stdout"),
+            true,
+            None,
+        )
+    }
+
+    #[test]
+    fn lint_ssr_as_cli_macros_expand() {
+        simple_snapshot(
+            args_vec!["ssr", "--macros", "expand", "?BAR(_@AA)", "{4}"],
+            "linter",
+            expect_file!("../resources/test/linter/ssr_ad_hoc_cli_macros_expand.stdout"),
+            true,
+            None,
+        )
+    }
+
+    #[test]
+    fn lint_ssr_as_cli_macros_expand_is_default() {
+        simple_snapshot(
+            args_vec!["ssr", "?BAR(_@AA)", "{4}"],
+            "linter",
+            expect_file!("../resources/test/linter/ssr_ad_hoc_cli_macros_expand.stdout"),
+            true,
+            None,
+        )
+    }
+
+    #[test]
+    fn lint_ssr_as_cli_macros_visible_expand() {
+        simple_snapshot(
+            args_vec!["ssr", "--macros", "visible-expand", "?BAR(_@AA)", "{4}"],
+            "linter",
+            expect_file!("../resources/test/linter/ssr_ad_hoc_cli_macros_visible_expand.stdout"),
+            true,
+            None,
+        )
+    }
+
+    #[test]
+    fn lint_ssr_as_cli_macros_no_expand() {
+        simple_snapshot(
+            args_vec!["ssr", "--macros", "no-expand", "?BAR(_@AA)", "{4}"],
+            "linter",
+            expect_file!("../resources/test/linter/ssr_ad_hoc_cli_macros_no_expand.stdout"),
+            true,
+            None,
+        )
+    }
+
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalizer_tests_check(buck: bool) {
