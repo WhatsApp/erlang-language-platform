@@ -3255,34 +3255,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number()
 Context expected type: binary()
 
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2722:5
-     │    
-2722 │ ╭ ╭     maps:map(fun
-2723 │ │ │         (ka, va) -> va2;
-2724 │ │ │         (_K, V) -> V
-2725 │ │ │     end, M).
-     │ ╰─│───────────^ maps:map(fun, M).
-Expression has type:   #{ka => 'va' | 'vb' | 'vc' | 'va2', kb => 'va' | 'vb' | 'vc' | 'va2', kc => 'va' | 'vb' | 'vc' | 'va2'}
-Context expected type: #{ka => 'va2', kb => 'vb', kc => 'vc'}
-     │   ╰───────────' 
-
-Because in the expression's type:
-  #{ ka =>
-    Here the type is a union type with some valid candidates: 'va2'
-    However the following candidate: 'va'
-    Differs from the expected type:  'va2'
-  , ... }
-
------------------------------- Detailed message ------------------------------
-
-  #{ka => 'va' | 'vb' | 'vc' | 'va2', kb => 'va' | 'vb' | 'vc' | 'va2', kc => 'va' | 'vb' | 'vc' | 'va2'} is not compatible with #{ka => 'va2', kb => 'vb', kc => 'vc'}
-  because
-  at key `ka`:
-  #{ka => 'va' | 'vb' | 'vc' | 'va2', kb => 'va' | 'vb' | 'vc' | 'va2', kc => 'va' | 'vb' | 'vc' | 'va2'} is not compatible with #{ka => 'va2', kb => 'vb', kc => 'vc'}
-  because
-  'va' | 'vb' | 'vc' | 'va2' is not compatible with 'va2'
-  because
-  'va' is not compatible with 'va2'
-
-203 ERRORS
+202 ERRORS
