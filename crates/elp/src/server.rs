@@ -852,19 +852,14 @@ impl Server {
                 if let Ok(path) = convert::abs_path(&change.uri) {
                     // We only put .erl/.hrl files into the
                     // `mem_docs` store, but will get changes for
-                    // other kinds of files. So we neede to do
+                    // other kinds of files. So we need to do
                     // this check.
+                    // Note: we only receive DidSaveTextDocument notifications for files that pass the filter
+                    // in the TextDocumentRegistrationOptions setting at the beginning of main_loop.
                     let opened = convert::vfs_path(&change.uri)
                         .map(|vfs_path| this.mem_docs.read().contains(&vfs_path))
                         .unwrap_or(false);
                     if opened {
-                        if this.should_reload_config_for_path(&path) {
-                            // e.g. `.elp_lint.toml`
-                            this.refresh_config();
-                        }
-                        if this.should_reload_project_for_path(&path, &change) {
-                            this.reload_manager.lock().add(path.clone());
-                        }
                         this.eqwalizer_and_erlang_service_diagnostics_requested = true;
                         if this.config.eqwalizer().all {
                             this.eqwalizer_project_diagnostics_requested = true;
@@ -881,22 +876,31 @@ impl Server {
                 Ok(())
             })?
             .on::<notification::DidChangeWatchedFiles>(|this, params| {
+                // For some reason, we are seeing duplicate notifications for the same file.
+                // But we cannot use FxHashSet because change does not implement Hash.
                 let changes: &[FileEvent] = &params.changes;
                 let mut refresh_config = false;
+                let mut seen: FxHashMap<Url,FileChangeType> = FxHashMap::default();
                 for change in changes {
+                    if seen.get(&change.uri).is_some_and(|prev_typ| prev_typ == &change.typ) {
+                        continue;
+                    }
+                    seen.insert(change.uri.clone(), change.typ);
                     if let Ok(path) = convert::abs_path(&change.uri) {
                         let opened = convert::vfs_path(&change.uri)
                             .map(|vfs_path| this.mem_docs.read().contains(&vfs_path))
                             .unwrap_or(false);
                         log::info!(target: FILE_WATCH_LOGGER_NAME, "DidChangeWatchedFiles:{}:{}", &opened, &path);
+                        // We process config changes here, because we do not register to receive
+                        // DidSaveTextDocument notifiactions for these kinds of files
+                        if this.should_reload_project_for_path(&path, change) {
+                            this.reload_manager.lock().add(path.clone());
+                        }
+                        if this.should_reload_config_for_path(&path) {
+                            // e.g. `.elp_lint.toml`
+                            refresh_config = true;
+                        }
                         if !opened {
-                            if this.should_reload_project_for_path(&path, change) {
-                                this.reload_manager.lock().add(path.clone());
-                            }
-                            if this.should_reload_config_for_path(&path) {
-                                // e.g. `.elp_lint.toml`
-                                refresh_config = true;
-                            }
                             this.vfs_loader.handle.invalidate(path);
                         }
                     }
@@ -1429,8 +1433,24 @@ impl Server {
             watchers: folders.watch,
         };
 
+        let registration_id = "workspace/didChangeWatchedFiles".to_string();
+
+        // Unregister the old watcher
+        let unregistrations = vec![lsp_types::Unregistration {
+            id: registration_id.clone(),
+            method: notification::DidChangeWatchedFiles::METHOD.to_string(),
+        }];
+
+        self.send_request::<request::UnregisterCapability>(
+            lsp_types::UnregistrationParams {
+                unregisterations: unregistrations,
+            },
+            |_, _| Ok(()),
+        );
+
+        // Register the new watcher
         let registrations = vec![lsp_types::Registration {
-            id: "workspace/didChangeWatchedFiles".to_string(),
+            id: registration_id,
             method: notification::DidChangeWatchedFiles::METHOD.to_string(),
             register_options: Some(serde_json::to_value(register_options).unwrap()),
         }];
