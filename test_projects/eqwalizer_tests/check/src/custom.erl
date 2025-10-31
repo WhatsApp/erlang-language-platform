@@ -2713,3 +2713,13 @@ maps_foreach_neg(M) ->
         end,
         M
     ).
+
+-spec maps_map_2_13(
+    #{ka => va, kb => vb, kc => vc}
+) ->
+    #{ka => va2, kb => vb, kc => vc}.
+maps_map_2_13(M) ->
+    maps:map(fun
+        (ka, va) -> va2;
+        (_K, V) -> V
+    end, M).
