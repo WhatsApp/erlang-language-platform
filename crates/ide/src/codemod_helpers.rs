@@ -446,7 +446,7 @@ pub struct CheckCallCtx<'a, T> {
     pub parents: &'a Vec<ParentId>,
     pub target: &'a CallTarget<ExprId>,
     pub t: &'a T,
-    pub args: Args,
+    pub args: &'a Args,
     pub in_clause: &'a InFunctionClauseBody<'a, &'a FunctionDef>,
 }
 
@@ -471,10 +471,11 @@ impl Args {
         }
     }
 
-    pub fn as_vec(&self) -> Vec<ExprId> {
+    pub fn as_slice(&self) -> &[ExprId] {
+        const EMPTY_SLICE: &[ExprId] = &[];
         match self {
-            Args::Args(args) => args.to_vec(),
-            Args::Arity(_arity) => vec![],
+            Args::Args(args) => args,
+            Args::Arity(_arity) => EMPTY_SLICE,
         }
     }
 }
@@ -486,7 +487,7 @@ pub struct MatchCtx<'a, Extra> {
     pub sema: &'a Semantic<'a>,
     pub def_fb: &'a InFunctionClauseBody<'a, &'a FunctionDef>,
     pub target: &'a CallTarget<ExprId>,
-    pub args: Args,
+    pub args: &'a Args,
     /// Range of the module:fun part of an MFA, if not defined in a
     /// macro.
     pub range_surface_mf: Option<FileRange>,
@@ -550,13 +551,13 @@ pub(crate) fn find_call_in_function<CallCtx, MakeCtx, Res>(
             } && let None = excluded_matcher.get_match(
                 &target,
                 args.arity(),
-                Some(&args.as_vec()),
+                Some(args.as_slice()),
                 sema,
                 &def_fb.body(clause_id),
             ) && let Some((mfa, t)) = matcher.get_match(
                 &target,
                 args.arity(),
-                Some(&args.as_vec()),
+                Some(args.as_slice()),
                 sema,
                 &def_fb.body(clause_id),
             ) {
@@ -567,7 +568,7 @@ pub(crate) fn find_call_in_function<CallCtx, MakeCtx, Res>(
                     parents: ctx.parents,
                     t,
                     target: &target,
-                    args: args.clone(),
+                    args: &args,
                     in_clause,
                 };
                 if let Some(extra) = check_call(context) {
@@ -588,7 +589,7 @@ pub(crate) fn find_call_in_function<CallCtx, MakeCtx, Res>(
                             sema,
                             def_fb: in_clause,
                             target: &target,
-                            args,
+                            args: &args,
                             extra: &extra,
                             range_surface_mf,
                             range: *range,

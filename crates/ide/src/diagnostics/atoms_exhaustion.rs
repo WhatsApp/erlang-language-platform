@@ -68,7 +68,7 @@ impl FunctionCallLinter for AtomsExhaustionLinter {
             // @fb-only
         let is_safe = false; // @oss-only
         if !is_safe {
-            match context.args.as_vec()[..] {
+            match context.args.as_slice() {
                 [_, options] => {
                     let body = context.in_clause.body();
                     match &body[options].literal_list_contains_atom(context.in_clause, "safe") {

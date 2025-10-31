@@ -75,7 +75,7 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
             if in_anonymous_fun(def_fb, parents) {
                 return None;
             }
-            match args.as_vec()[..] {
+            match args.as_slice() {
                 [_module] => Some(()),
                 [_module, options] => {
                     let body = def_fb.body();
@@ -96,7 +96,7 @@ pub(crate) fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: 
                    args,
                    range,
                    ..
-               }| match args.as_vec()[..] {
+               }| match args.as_slice()[..] {
             [module] => {
                 if let Some(module_range) = def_fb.range_for_expr(module) {
                     if def.file.file_id == range.file_id {

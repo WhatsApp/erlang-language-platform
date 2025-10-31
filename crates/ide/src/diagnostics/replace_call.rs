@@ -109,7 +109,7 @@ pub fn replace_call_site_if_args_match(
                     sema,
                     def_fb,
                     file_id,
-                    &args.as_vec(),
+                    args.as_slice(),
                     target,
                     &range,
                 ) {
