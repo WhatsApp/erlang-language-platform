@@ -908,6 +908,13 @@ pub enum TypeExpr {
         macro_def: Option<InFile<DefineId>>,
         macro_name: MacroCallName,
     },
+    Paren {
+        // This constructor allows us to analyze the usage of parens
+        // when deciding on assists.
+        // Much like `TypeExpr::MacroCall`, it is normally hidden during a
+        // `fold`, but can be made visible if needed.
+        ty: TypeExprId,
+    },
     SsrPlaceholder(SsrPlaceholder),
 }
 
@@ -936,6 +943,7 @@ impl TypeExpr {
             TypeExpr::UnaryOp { .. } => "TypeExpr::UnaryOp",
             TypeExpr::Var(_) => "TypeExpr::Var",
             TypeExpr::MacroCall { .. } => "TypeExpr::MacroCall",
+            TypeExpr::Paren { .. } => "TypeExpr::Paren",
             TypeExpr::SsrPlaceholder(_) => "TypeExpr::SsrPlaceholder",
         }
     }

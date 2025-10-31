@@ -1065,8 +1065,12 @@ impl Index<TypeExprId> for FoldBody<'_> {
     type Output = TypeExpr;
 
     fn index(&self, index: TypeExprId) -> &Self::Output {
-        // Do not "look through" macro expansion
+        // Apply the visibility strategies to macros and parens
         match &self.body.type_exprs[index] {
+            TypeExpr::Paren { ty } => match self.parens {
+                ParenStrategy::VisibleParens => &self.body.type_exprs[index],
+                ParenStrategy::InvisibleParens => self.index(*ty),
+            },
             type_expr @ TypeExpr::MacroCall { expansion, .. } => match self.macros {
                 VisibleMacros::Yes => type_expr,
                 VisibleMacros::No => self.index(*expansion),

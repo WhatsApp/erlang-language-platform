@@ -1188,6 +1188,11 @@ impl<'a> Printer<'a> {
                     }
                 });
             }
+            TypeExpr::Paren { ty } => {
+                self.print_herald("TypeExpr::Paren", &mut |this| {
+                    this.print_type(ty);
+                });
+            }
             TypeExpr::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }

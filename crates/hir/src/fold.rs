@@ -1180,6 +1180,7 @@ impl<'a, T> FoldCtx<'a, T> {
                     e
                 }
             }
+            TypeExpr::Paren { ty } => self.do_fold_type_expr(*ty, acc),
             TypeExpr::SsrPlaceholder(_) => acc,
         };
         self.parents.pop();
@@ -1616,7 +1617,7 @@ bar() ->
              -define(AA, {foo,foo,foo}).
              bar(XX) ->
                begin %% clause.exprs[0]
-                 case XX of 
+                 case XX of
                    ?AA -> ok
                  end,
                  {fo~o}
@@ -1678,7 +1679,7 @@ bar() ->
              -define(AA, {foo,foo,foo}).
              bar(XX) ->
                begin %% clause.exprs[0]
-                 case XX of 
+                 case XX of
                    ?AA -> ok
                  end,
                  {fo~o}
@@ -2649,6 +2650,56 @@ bar() ->
                 (X) = 2.
              "#;
         count_parens(fixture_str, 3);
+    }
+
+    #[test]
+    fn parens_in_type_expr() {
+        let fixture_str = r#"
+              -type foo() :: ((integer())).
+             "#;
+        count_parens_in_type_expr(fixture_str, 2);
+    }
+
+    #[test]
+    fn parens_in_type_expr_complex() {
+        let fixture_str = r#"
+              -type bar() :: {((atom())), (integer() | (binary()))}.
+             "#;
+        count_parens_in_type_expr(fixture_str, 4);
+    }
+
+    #[track_caller]
+    fn count_parens_in_type_expr(fixture_str: &str, n: u32) {
+        let (db, fixture) = TestDB::with_fixture(fixture_str);
+        let file_id = fixture.files[0];
+        let sema = Semantic::new(&db);
+
+        let r = do_count_parens_in_type_expr(&sema, ParenStrategy::InvisibleParens, file_id);
+        assert_eq!(r, 0);
+
+        let r = do_count_parens_in_type_expr(&sema, ParenStrategy::VisibleParens, file_id);
+        assert_eq!(r, n);
+    }
+
+    fn do_count_parens_in_type_expr(
+        sema: &Semantic,
+        parens: ParenStrategy,
+        file_id: FileId,
+    ) -> u32 {
+        fold_file(
+            sema,
+            Strategy {
+                macros: MacroStrategy::Expand,
+                parens,
+            },
+            file_id,
+            0,
+            &mut |acc, ctx| match ctx.item {
+                AnyExpr::TypeExpr(TypeExpr::Paren { .. }) => acc + 1,
+                _ => acc,
+            },
+            &mut |acc, _on, _form_id| acc,
+        )
     }
 
     // End of testing paren visibility

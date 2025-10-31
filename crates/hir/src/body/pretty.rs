@@ -776,6 +776,7 @@ impl<'a> Printer<'a> {
                 macro_def: _,
                 macro_name: _,
             } => self.print_type(&self.body[*expansion]),
+            TypeExpr::Paren { ty } => self.print_type(&self.body[*ty]),
             TypeExpr::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }

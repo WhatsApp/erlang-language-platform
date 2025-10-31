@@ -2189,13 +2189,9 @@ impl<'a> Ctx<'a> {
                 }),
             ast::ExprMax::MacroString(_) => self.alloc_type_expr(TypeExpr::Missing, Some(expr)),
             ast::ExprMax::ParenExpr(paren_expr) => {
-                // TODO T243351061, update to include TypeExpr::Paren when it exists
-                if let Some(expr) = paren_expr.expr() {
-                    let type_expr_id = self.lower_type_expr(&expr);
-                    let ptr = AstPtr::new(&expr);
-                    let source = InFileAstPtr::new(self.curr_file_id(), ptr);
-                    self.record_type_source(type_expr_id, source);
-                    type_expr_id
+                if let Some(inner_expr) = paren_expr.expr() {
+                    let type_expr_id = self.lower_type_expr(&inner_expr);
+                    self.alloc_type_expr(TypeExpr::Paren { ty: type_expr_id }, Some(expr))
                 } else {
                     self.alloc_type_expr(TypeExpr::Missing, Some(expr))
                 }
