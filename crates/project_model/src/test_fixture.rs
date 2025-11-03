@@ -451,21 +451,26 @@ pub fn extract_tags(mut text: &str, tag: &str) -> (Vec<(TextRange, Option<String
 
 // ---------------------------------------------------------------------
 
-/// Extracts `%%^^^ some text` annotations.
+/// Extracts `%% ^^^ some text` annotations.
 ///
 /// A run of `^^^` can be arbitrary long and points to the corresponding range
 /// in the line above.
 ///
-/// The `%% ^file text` syntax can be used to attach `text` to the entirety of
-/// the file.
+/// The `%% <<< text` syntax (at the beginning of the file) creates an annotation
+/// at position 0..0, useful for file-level diagnostics.
 ///
-/// The `%%<^^^ text` syntax can be used to attach `text` the span
-/// starting at `%%`, rather than the first `^`.
+/// The `%% ^^^file text` syntax (with the keyword `file` after the carets) can be
+/// used to attach `text` to the entirety of the file contents.
 ///
-/// Multiline string values are supported:
+/// The `%%<^^^ text` syntax can be used to attach `text` to the span
+/// starting at the `%%` position (left margin), rather than at the first `^`.
 ///
+/// Multiline string values are supported using continuation lines:
+///
+/// ```not_rust
 /// %% ^^^ first line
 /// %%   | second line
+/// ```
 ///
 /// Annotations point to the last line that actually was long enough for the
 /// range, not counting annotations themselves. So overlapping annotations are

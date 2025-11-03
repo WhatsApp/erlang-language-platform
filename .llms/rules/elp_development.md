@@ -118,6 +118,40 @@ Every diagnostic must have a corresponding `DiagnosticDescriptor` that defines w
 - Group related tests in the same module
 - Use descriptive test names that explain the scenario
 
+### Declarative Test Fixtures
+
+ELP uses a declarative test fixture system that allows you to write tests with inline annotations and markers directly in test strings. This system is defined in `/data/sandcastle/boxes/fbsource/fbcode/whatsapp/elp/crates/project_model/src/test_fixture.rs`.
+
+#### Key Features
+
+1. **File Organization**: Use `//- /path/to/file.erl` to define multiple files in a single test
+2. **Metadata Markers**: Specify app names, include paths, OTP apps, etc. using metadata after the path
+3. **Annotations**: Mark expected diagnostics or ranges using `%% ^^^` syntax
+4. **Cursors and Ranges**: Use `~` markers to indicate positions or ranges in test code
+
+#### Annotation Syntax
+
+Annotations allow you to mark expected diagnostics, types, or other information directly in test code:
+
+- **Basic annotation**: `%% ^^^ some text` - Points to the range above matching the caret length
+- **Top-of-file marker**: `%% <<< text` (at file start) - Creates annotation at position 0..0
+- **File-wide annotation**: `%% ^^^file text` - Annotation spans the entire file contents
+- **Left-margin annotation**: `%%<^^^ text` - Annotation starts at `%%` position instead of first `^`
+- **Multiline annotations**: Use continuation lines with `%%   | next line`
+
+#### Example Test Fixture
+
+```rust
+let fixture = r#"
+//- /src/main.erl
+-module(main).
+
+foo(X) ->
+    X + undefined.
+  %%    ^^^^^^^^^ error: type mismatch
+"#;
+```
+
 ### Test Data
 
 - Create minimal test cases that focus on specific functionality
