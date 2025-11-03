@@ -92,7 +92,7 @@ mod tests {
                 -module(bar).
 
                 -spec baz() -> other:a_type().
-                %%             ^^^^^^^^^^^^^^ 💡 error: eqwalizer: non_exported_id
+                %%             ^^^^^^^^^^^^^^ 💡 error: eqwalizer: non_exported_id: eqwalizer: non_exported_id
                 baz() -> ok.
 
             //- /play/src/other.erl app:play

@@ -262,7 +262,7 @@ mod tests {
     ok.
   main() ->
     not_ok_to_use().
-%%  ^^^^^^^^^^^^^ 💡 warning: Function 'not_ok_to_use/0' is deprecated.
+%%  ^^^^^^^^^^^^^ 💡 warning: W0016: Function 'not_ok_to_use/0' is deprecated.
             "#,
         )
     }
@@ -282,7 +282,7 @@ mod tests {
 
   main() ->
     b:not_ok_to_use().
-%%  ^^^^^^^^^^^^^^^ 💡 warning: Function 'not_ok_to_use/0' is deprecated.
+%%  ^^^^^^^^^^^^^^^ 💡 warning: W0016: Function 'not_ok_to_use/0' is deprecated.
             "#,
         )
     }
@@ -296,9 +296,9 @@ mod tests {
   -deprecated({do, 0}).
   main() ->
     do(),
-%%  ^^ 💡 warning: Function 'do/0' is deprecated.
+%%  ^^ 💡 warning: W0016: Function 'do/0' is deprecated.
     ?LAZY(do()).
-%%  ^^^^^^^^^^^ 💡 warning: Function 'do/0' is deprecated.
+%%  ^^^^^^^^^^^ 💡 warning: W0016: Function 'do/0' is deprecated.
   do() ->
     ok.
             "#,
@@ -320,7 +320,7 @@ mod tests {
 
   main() ->
     b:not_ok_to_use().
-%%  ^^^^^^^^^^^^^^^ 💡 warning: Function 'not_ok_to_use/0' is deprecated.
+%%  ^^^^^^^^^^^^^^^ 💡 warning: W0016: Function 'not_ok_to_use/0' is deprecated.
 %%                | Cause I said so.
             "#,
         )

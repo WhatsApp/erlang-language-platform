@@ -118,6 +118,7 @@ mod tests {
             .disable(DiagnosticCode::OldEdocSyntax)
     }
 
+    #[track_caller]
     fn check_diagnostics(fixture: &str) {
         tests::check_diagnostics_with_config(config(), fixture);
     }
@@ -129,7 +130,7 @@ mod tests {
     -module(main).
     -export([main/0]).
     main() ->
- %% ^^^^ weak: The function is non-trivial, exported, but not documented.
+ %% ^^^^ weak: W0040: The function is non-trivial, exported, but not documented.
       [ok,
        ok,
        ok,
@@ -146,7 +147,7 @@ mod tests {
     -module(main).
     -export([main/0]).
     main() ->
- %% ^^^^ weak: The function is non-trivial, exported, but not documented.
+ %% ^^^^ weak: W0040: The function is non-trivial, exported, but not documented.
       [ok,
        ok,
        ok,
@@ -240,7 +241,7 @@ mod tests {
     -module(main).
     -moduledoc false.
     -export([main/0]).
-    
+
     main() ->
       [ok,
        ok,
@@ -258,7 +259,7 @@ mod tests {
     -module(main).
     -moduledoc(false).
     -export([main/0]).
-    
+
     main() ->
       [ok,
        ok,
@@ -276,7 +277,7 @@ mod tests {
     -module(main).
     -moduledoc hidden.
     -export([main/0]).
-    
+
     main() ->
       [ok,
        ok,
@@ -294,7 +295,7 @@ mod tests {
     -module(main).
     -moduledoc(hidden).
     -export([main/0]).
-    
+
     main() ->
       [ok,
        ok,
@@ -314,9 +315,9 @@ mod tests {
     -behaviour(gen_server).
     -export([main/0]).
     -export([handle_call/1]).
-    
+
     main() ->
-    %%<^ weak: The function is non-trivial, exported, but not documented.
+    %%<^ weak: W0040: The function is non-trivial, exported, but not documented.
       [ok,
        ok,
        ok,
@@ -343,12 +344,12 @@ mod tests {
             r#"
     -module(main).
     -export([simple/0, complex/0]).
-    
+
     simple() ->
       ok.
 
     complex() ->
-    %%<^^^^ weak: The function is non-trivial, exported, but not documented.
+    %%<^^^^ weak: W0040: The function is non-trivial, exported, but not documented.
       [ok,
        ok,
        ok,
@@ -364,12 +365,12 @@ mod tests {
             r#"
     -module(main).
     -export([simple/0, complex/1]).
-    
+
     simple() ->
       ok.
 
     complex(a) ->
-    %%<^^^^ weak: The function is non-trivial, exported, but not documented.
+    %%<^^^^ weak: W0040: The function is non-trivial, exported, but not documented.
       [ok];
     complex(b) ->
       [ok,

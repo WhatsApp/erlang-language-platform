@@ -536,7 +536,7 @@ mod tests {
                 foo:fire_bombs(Config, 44),
                 foo:fire_bombs(Config, 43),
                 foo:fire_bombs(Config, 42),
-            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: 'foo:fire_bombs/2' called with 42
+            %%% ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: ad-hoc: foo:fire_bombs/2: 'foo:fire_bombs/2' called with 42
                 foo:fire_bombs(Config, 41),
                 foo:fire_bombs(Config, 40).
             //- /src/foo.erl

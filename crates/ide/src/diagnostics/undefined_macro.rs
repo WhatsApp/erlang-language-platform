@@ -121,7 +121,7 @@ mod tests {
             -module(main).
 
             foo(X) -> ?assertEqual(X,2).
-            %%        ^^^^^^^^^^^^ 💡 error: undefined macro 'assertEqual/2'
+            %%        ^^^^^^^^^^^^ 💡 error: E1508: undefined macro 'assertEqual/2'
             //- /another-app/include/inc.hrl app:another include_path:/another-app/include
             -define(assertEqual(A,B), A =:= B).
            "#,
@@ -159,7 +159,7 @@ mod tests {
             -module(main).
 
             foo(X) -> ?LIFE.
-            %%        ^^^^^ 💡 error: undefined macro 'LIFE'
+            %%        ^^^^^ 💡 error: E1507: undefined macro 'LIFE'
             //- /another-app/include/inc.hrl app:another include_path:/another-app/include
             -define(LIFE, 42).
            "#,
@@ -175,7 +175,7 @@ mod tests {
             -module(main).
 
             foo(X) -> ?'LIFE/42'.
-            %%        ^^^^^^^^^^ 💡 error: undefined macro 'LIFE/42'
+            %%        ^^^^^^^^^^ 💡 error: E1507: undefined macro 'LIFE/42'
             //- /another-app/include/inc.hrl app:another include_path:/another-app/include
             -define('LIFE/42', 42).
            "#,
@@ -191,7 +191,7 @@ mod tests {
             -module(main).
 
             foo(X) -> ?'LIFE/42'(42).
-            %%        ^^^^^^^^^^ 💡 error: undefined macro 'LIFE/42/1'
+            %%        ^^^^^^^^^^ 💡 error: E1508: undefined macro 'LIFE/42/1'
             //- /another-app/include/inc.hrl app:another include_path:/another-app/include
             -define('LIFE/42(X)', X).
            "#,
@@ -208,7 +208,7 @@ mod tests {
             -module(main).
 
             foo(X) -> ?assert~Equal(X,2).
-            %%        ^^^^^^^^^^^^ 💡 error: undefined macro 'assertEqual/2'
+            %%        ^^^^^^^^^^^^ 💡 error: E1508: undefined macro 'assertEqual/2'
 
             //- /app_a/include/inc.hrl app:app_a include_path:/app_a/include
             -define(assertEqual(A,B), A =:= B).
@@ -236,7 +236,7 @@ mod tests {
             -module(main).
 
             foo(X) -> ?assert~Equal(X,2).
-            %%        ^^^^^^^^^^^^ 💡 error: undefined macro 'assertEqual/2'
+            %%        ^^^^^^^^^^^^ 💡 error: E1508: undefined macro 'assertEqual/2'
 
             //- /app_a/include/inc.hrl app:app_a include_path:/app_a/include
             -define(assertEqual(A,B), A =:= B).
@@ -264,7 +264,7 @@ mod tests {
             -module(main).
 
             foo(X) -> ?assert~Equal(X,2).
-            %%        ^^^^^^^^^^^^ 💡 error: undefined macro 'assertEqual/2'
+            %%        ^^^^^^^^^^^^ 💡 error: E1508: undefined macro 'assertEqual/2'
 
             //- /app_a/include/inc.hrl app:app_a include_path:/app_a/include
 

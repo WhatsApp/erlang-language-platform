@@ -50,10 +50,10 @@ mod tests {
   //- /src/main.erl
   -module(main).
   -export([error/0]).
-  
+
   error() ->
       erlang:garbage_collect().
-  %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Avoid forcing garbage collection.
+  %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
   //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
   -module(erlang).
   -export([garbage_collect/0]).
@@ -69,10 +69,10 @@ mod tests {
   //- /src/main.erl
   -module(main).
   -export([error/0]).
-  
+
   error() ->
       garbage_collect().
-  %%  ^^^^^^^^^^^^^^^ 💡 warning: Avoid forcing garbage collection.
+  %%  ^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
   //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
   -module(erlang).
   -export([garbage_collect/0]).

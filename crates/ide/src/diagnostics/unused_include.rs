@@ -265,7 +265,7 @@ mod tests {
 //- /src/foo.erl
   -module(foo).
   -include("foo.hrl").
-%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0020: Unused file: foo.hrl
         "#,
         );
     }
@@ -293,7 +293,7 @@ mod tests {
 //- /src/foo.erl
   -module(foo).
   -include("foo.hrl").
-%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0020: Unused file: foo.hrl
         "#,
         );
     }
@@ -321,7 +321,7 @@ mod tests {
 //- /src/foo.erl
   -module(foo).
   -include("foo.hrl").
-%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0020: Unused file: foo.hrl
         "#,
         );
     }
@@ -350,7 +350,7 @@ mod tests {
 //- /src/foo.erl
   -module(foo).
   -include("foo.hrl").
-%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0020: Unused file: foo.hrl
         "#,
         );
     }
@@ -580,7 +580,7 @@ foo() -> ok.
 //- /src/header.hrl
 %% The following shows up as a wild attribute, which we regard as being used.
    -defin e(X, 1).
-%%  ^^^^^ 💡 error: misspelled attribute, saw 'defin' but expected 'define'
+%%  ^^^^^ 💡 error: W0013: misspelled attribute, saw 'defin' but expected 'define'
 
 -def ine(Y, 2).
 "#,
@@ -594,7 +594,7 @@ foo() -> ok.
 //- /src/main.erl
 -module(main).
   -include("header.hrl").
-%%^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused file: header.hrl
+%%^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0020: Unused file: header.hrl
 
 foo() -> ok.
 

@@ -253,7 +253,7 @@ mod tests {
    all() -> [a].
    init_per_suite(Config) ->
      meck:new(my_module).
-%%   ^^^^^^^^^^^^^^^^^^^ 💡 warning: Missing no_link option.
+%%   ^^^^^^^^^^^^^^^^^^^ 💡 warning: W0022: Missing no_link option.
 
    a(_Config) ->
      ok.
@@ -277,7 +277,7 @@ mod tests {
    all() -> [a].
    init_per_group(_Group, Config) ->
      meck:new(my_module),
-%%   ^^^^^^^^^^^^^^^^^^^ 💡 warning: Missing no_link option.
+%%   ^^^^^^^^^^^^^^^^^^^ 💡 warning: W0022: Missing no_link option.
      Config.
 
    a(_Config) ->
@@ -326,7 +326,7 @@ mod tests {
    all() -> [a].
    init_per_suite(Config) ->
      meck:new(my_module, [passthrough, link]).
-%%   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Missing no_link option.
+%%   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0022: Missing no_link option.
 
    a(_Config) ->
      ok.

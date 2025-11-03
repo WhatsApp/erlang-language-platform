@@ -63,7 +63,7 @@ mod tests {
             r#"
     -module(main).
     -dialyzer({nowarn_function, foo/0}).
- %% ^^^^^^^^^ warning: Avoid -dialyzer attribute.
+ %% ^^^^^^^^^ warning: W0048: Avoid -dialyzer attribute.
               "#,
         )
     }

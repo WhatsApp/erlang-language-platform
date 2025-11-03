@@ -137,7 +137,7 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(Map) -> [K + V + 1 || {K,V} <- maps:to_list(Map)].
-         %%         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unnecessary intermediate list allocated.
+         %%         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0034: Unnecessary intermediate list allocated.
             "#,
         )
     }

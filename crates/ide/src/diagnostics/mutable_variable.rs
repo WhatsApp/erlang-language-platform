@@ -129,7 +129,7 @@ test() ->
     One = 1,
 
     Result = One = Zero,
-%%  ^^^^^^^^^^^^^^^^^^^ error: Possible mutable variable bug
+%%  ^^^^^^^^^^^^^^^^^^^ error: W0005: Possible mutable variable bug
 
     Result.
 "#,
@@ -137,7 +137,7 @@ test() ->
     }
 
     #[test]
-    fn mutable_variable_mutliple_clauses() {
+    fn mutable_variable_multiple_clauses() {
         check_diagnostics(
             r#"
 //- /src/test.erl
@@ -155,8 +155,8 @@ push_eligible(ProductPlatform, _Pu) ->
     false;
 push_eligible(_ProductPlatform, Pu) ->
     AppVersion = ABUserInfo = Pu,
-%%  ^^^^^^^^^^ 💡 warning: match is redundant
-%%               ^^^^^^^^^^ 💡 warning: match is redundant
+%%  ^^^^^^^^^^ 💡 warning: W0007: match is redundant
+%%               ^^^^^^^^^^ 💡 warning: W0007: match is redundant
     false.
 
 "#,

@@ -82,7 +82,7 @@ mod tests {
             r#"
   -module(main).
   -compile(nowarn_export_all).
-  %%       ^^^^^^^^^^^^^^^^^ 💡 warning: Do not suppress compiler warnings at module level.
+  %%       ^^^^^^^^^^^^^^^^^ 💡 warning: W0054: Do not suppress compiler warnings at module level.
               "#,
         )
     }
@@ -93,7 +93,7 @@ mod tests {
             r#"
   -module(main).
   -compile({nowarn_unused_function, {unused_function, 1}}).
-  %%        ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Do not suppress compiler warnings at module level.
+  %%        ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0054: Do not suppress compiler warnings at module level.
               "#,
         )
     }
@@ -105,9 +105,9 @@ mod tests {
   -module(main).
   -compile([
       nowarn_export_all,
-  %%  ^^^^^^^^^^^^^^^^^ 💡 warning: Do not suppress compiler warnings at module level.
+  %%  ^^^^^^^^^^^^^^^^^ 💡 warning: W0054: Do not suppress compiler warnings at module level.
       {nowarn_unused_function, {unused_function, 1}}
-  %%   ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Do not suppress compiler warnings at module level.
+  %%   ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0054: Do not suppress compiler warnings at module level.
   ]).
               "#,
         )

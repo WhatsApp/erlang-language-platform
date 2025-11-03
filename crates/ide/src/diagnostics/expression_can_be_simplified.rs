@@ -273,32 +273,32 @@ mod tests {
   -module(main).
   list_ops(X) ->
     f([] ++ [1]),
-   %% ^^^^^^^^^ 💡 warning: Can be simplified to `[1]`.
+   %% ^^^^^^^^^ 💡 warning: W0019: Can be simplified to `[1]`.
     f([2] ++ [1]),
     f(X ++ [1]),
     ok.
 
   arith_ops(X) ->
     f(0 + 42),
-   %% ^^^^^^ 💡 warning: Can be simplified to `42`.
+   %% ^^^^^^ 💡 warning: W0019: Can be simplified to `42`.
     f(40 + 2),
     f(X + 42),
     ok.
 
   short_circuit_boolean_ops(X) ->
     f(true andalso X),
-   %% ^^^^^^^^^^^^^^ 💡 warning: Can be simplified to `X`.
+   %% ^^^^^^^^^^^^^^ 💡 warning: W0019: Can be simplified to `X`.
     f(false orelse X),
-   %% ^^^^^^^^^^^^^^ 💡 warning: Can be simplified to `X`.
+   %% ^^^^^^^^^^^^^^ 💡 warning: W0019: Can be simplified to `X`.
     f(not false),
-   %% ^^^^^^^^^ 💡 warning: Can be simplified to `true`.
+   %% ^^^^^^^^^ 💡 warning: W0019: Can be simplified to `true`.
     f(not true),
-   %% ^^^^^^^^ 💡 warning: Can be simplified to `false`.
+   %% ^^^^^^^^ 💡 warning: W0019: Can be simplified to `false`.
 
       true andalso X,
-   %% ^^^^^^^^^^^^^^ 💡 warning: Can be simplified to `X`.
+   %% ^^^^^^^^^^^^^^ 💡 warning: W0019: Can be simplified to `X`.
     ok.
-      
+
 
   f(X) -> X.
             "#,

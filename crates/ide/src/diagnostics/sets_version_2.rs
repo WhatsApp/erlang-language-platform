@@ -53,11 +53,11 @@ mod tests {
              //- /src/main.erl
              -module(main).
              foo() -> sets:new().
-             %%       ^^^^^^^^ 💡 warning: Prefer `[{version, 2}]` when constructing a set.
-             
+             %%       ^^^^^^^^ 💡 warning: W0049: Prefer `[{version, 2}]` when constructing a set.
+
              bar() -> sets:from_list([]).
-             %%       ^^^^^^^^^^^^^^ 💡 warning: Prefer `[{version, 2}]` when constructing a set.
-             
+             %%       ^^^^^^^^^^^^^^ 💡 warning: W0049: Prefer `[{version, 2}]` when constructing a set.
+
              //- /src/sets.erl
              -module(sets).
              -export([new/0, from_list/1]).

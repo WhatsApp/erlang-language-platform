@@ -2745,7 +2745,7 @@ mod tests {
             r#"
 -module(main).
 foo() -> XX 3.0.
-    %%   ^^ error: Syntax Error
+    %%   ^^ error: P1711: Syntax Error
 "#,
         );
     }
@@ -2756,7 +2756,7 @@ foo() -> XX 3.0.
             r#"
 -module(main).
 -export([foo/0 bar/1]).
-    %%       ^ warning: Missing ','
+    %%       ^ warning: W0004: Missing ','
 "#,
         );
     }
@@ -2767,7 +2767,7 @@ foo() -> XX 3.0.
             r#"
 -module(main).
 -export_type([foo/0 bar/1]).
-         %%       ^ warning: Missing ','
+         %%       ^ warning: W0004: Missing ','
 "#,
         );
     }
@@ -2778,7 +2778,7 @@ foo() -> XX 3.0.
             r#"
 -module(main).
 -import(bb, [foo/0 bar/1]).
-         %%      ^ warning: Missing ','
+         %%      ^ warning: W0004: Missing ','
 "#,
         );
     }
@@ -2789,7 +2789,7 @@ foo() -> XX 3.0.
             r#"
 -module(main).
 -type foo(A B) :: [A,B].
-       %% ^ warning: Missing ','
+       %% ^ warning: W0004: Missing ','
 "#,
         );
     }
@@ -2800,7 +2800,7 @@ foo() -> XX 3.0.
             r#"
 -module(main).
 -record(foo  {f1, f2 = 3}).
-     %% ^^^ warning: Missing ','
+     %% ^^^ warning: W0004: Missing ','
 main(X) ->
   {X#foo.f1, X#foo.f2}.
 "#,
@@ -2851,7 +2851,7 @@ foo(2)->?baz.
   -file("foo.erl",1).
   -define(baz,4).
   foo(2)->?baz.
-%%^^^^^^^^^^^^^ error: no module definition
+%%^^^^^^^^^^^^^ error: L1201: no module definition
 "#,
         );
     }
@@ -2861,7 +2861,7 @@ foo(2)->?baz.
         check_diagnostics(
             r#"
   baz(1)->4.
-%%^^^^^^^^^^ error: no module definition
+%%^^^^^^^^^^ error: L1201: no module definition
   foo(2)->3.
 "#,
         );
@@ -2941,7 +2941,7 @@ baz(1)->4.
 
             do_foo() ->
               X = foo:bar(),
-            %%    ^^^^^^^^^ 💡 weak: 'foo:bar/0' called
+            %%    ^^^^^^^^^ 💡 weak: ad-hoc: foo:bar/0: 'foo:bar/0' called
               X.
             //- /src/foo.erl
             -module(foo).
@@ -2967,10 +2967,10 @@ baz(1)->4.
     #[test]
     fn label_syntax_error_not_function() {
         let fixture_str = r#"
-  -module(main).
-  -record(person, {(name + XXX)}).
-%%                 ^^^^^^^ error: Syntax Error
-%%                            ^ error: Syntax Error
+    -module(main).
+    -record(person, {(name + XXX)}).
+  %%                 ^^^^^^^ error: P1711: Syntax Error
+  %%                            ^ error: P1711: Syntax Error
 "#;
         check_diagnostics(fixture_str);
         let diagnostic = Diagnostic::error(
@@ -2982,7 +2982,7 @@ baz(1)->4.
         expect![[r#"
             Some(
                 Range(
-                    20..52,
+                    24..56,
                 ),
             )
         "#]]
@@ -2994,7 +2994,7 @@ baz(1)->4.
         check_diagnostics(
             r#"
   baz(1)->4.
-%%^^^^^^^^^^ error: no module definition
+%%^^^^^^^^^^ error: L1201: no module definition
   foo(2)->3.
 "#,
         );
@@ -3018,7 +3018,7 @@ baz(1)->4.
  %% elp:ignore L1201
 
   baz(1)->4.
-%%^^^^^^^^^^ error: no module definition
+%%^^^^^^^^^^ error: L1201: no module definition
   foo(2)->3.
 "#,
         );
@@ -3032,7 +3032,7 @@ baz(1)->4.
 
              baz()->
                Foo = 1,
-             %%^^^ 💡 warning: match is redundant
+             %%^^^ 💡 warning: W0007: match is redundant
                % elp:ignore W0007
                Bar = 2,
                ok.
@@ -3048,11 +3048,11 @@ baz(1)->4.
 
              baz()->
                Foo = 1,
-             %%^^^ 💡 warning: match is redundant
+             %%^^^ 💡 warning: W0007: match is redundant
                % elp:ignore W0007
 
                Bar = 2,
-             %%^^^ 💡 warning: match is redundant
+             %%^^^ 💡 warning: W0007: match is redundant
                ok.
              "#,
         );
@@ -3065,7 +3065,7 @@ baz(1)->4.
              //- edoc
              //- /main/src/main_edoc.erl app:main
              % @unknown
-             %%<^^^^^^^^  warning: tag @unknown not recognized.
+             %%<^^^^^^^^  warning: O0039: tag @unknown not recognized.
              -module(main_edoc).
 
              "#,
@@ -3150,7 +3150,7 @@ baz(1)->4.
 
              -spec foo() -> ok.
              foo( -> ok. %%
-             %%  ^ error: Missing ')'
+             %%  ^ error: W0004: Missing ')'
             "#,
         );
     }
@@ -3180,7 +3180,7 @@ baz(1)->4.
              -export([foo/0]).
 
              foo() -> syntax error oops.
-             %%              ^^^^^ error: syntax error before: error
+             %%              ^^^^^ error: P1711: syntax error before: error
             "#,
         );
     }
@@ -3199,10 +3199,10 @@ baz(1)->4.
 
              foo() ->
                   bar().
-             %%   ^^^^^ error: function bar/0 undefined
+             %%   ^^^^^ error: L1227: function bar/0 undefined
 
              bar() -> !!! %% syntax error
-             %%<^^^^^^^^^ error: Syntax Error
+             %%<^^^^^^^^^ error: P1711: Syntax Error
             "#,
         );
     }
@@ -3216,7 +3216,7 @@ baz(1)->4.
 
              baz()->
                Fo~o = 1.
-             %%^^^ 💡 warning: match is redundant
+             %%^^^ 💡 warning: W0007: match is redundant
              "#,
             expect![[r#"
              -module(main).
@@ -3260,7 +3260,7 @@ baz(1)->4.
 
                 -spec baz() -> ok.
                 baz() -> something_else.
-                %%       ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
+                %%       ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
             );
         }
@@ -3278,9 +3278,9 @@ baz(1)->4.
                         to_exit_code(run1(Root)),
                     catch
                         _:Reason -> to_exit_code(Reason)
-            %%          ^^^^^^^^^^^  error: Syntax Error
+            %%          ^^^^^^^^^^^  error: P1711: Syntax Error
                     end,
-            %%      ^^^  error: Syntax Error
+            %%      ^^^  error: P1711: Syntax Error
 
                 erlang:halt(ExitCode).
             "#,
@@ -3294,7 +3294,7 @@ baz(1)->4.
 //- erlang_service
   -module(main).
   -export([foo/0, bar/0]).
-%%                ^^^^^  error: function bar/0 undefined
+%%                ^^^^^  error: L1227: function bar/0 undefined
   foo() -> ok.
 "#,
         );
@@ -3307,7 +3307,7 @@ baz(1)->4.
 //- erlang_service
   -module(main).
   -export_type([foo/0, bar/3]).
-%%                     ^^^^^  error: type bar/3 undefined
+%%                     ^^^^^  error: L1295: type bar/3 undefined
   -type foo() :: integer().
 "#,
         );
@@ -3321,7 +3321,7 @@ baz(1)->4.
     -module(main).
     -export([foo/0]).
     -spec bar() -> ok.
-%%        ^^^  error: spec for undefined function bar/0
+%%        ^^^  error: L1308: spec for undefined function bar/0
     foo() -> ok.
 "#,
         );
@@ -3335,7 +3335,7 @@ baz(1)->4.
     -module(main).
 
     -type foo() :: ok.
-%%        ^^^  warning: type foo() is unused
+%%        ^^^  warning: L1296: type foo() is unused
 "#,
         );
 
@@ -3345,7 +3345,7 @@ baz(1)->4.
     -module(main).
 
     -type foo(A, B) :: {A, B}.
-%%        ^^^  warning: type foo(_,_) is unused
+%%        ^^^  warning: L1296: type foo(_,_) is unused
 "#,
         );
     }
@@ -3413,7 +3413,7 @@ baz(1)->4.
               -module(a_file).
 
               -doc {file,"../../doc/src/info.md"}.
-             %%          ^^^^^^^^^^^^^^^^^^^^^^^ warning: can't find doc file "../../doc/src/info.md"
+             %%          ^^^^^^^^^^^^^^^^^^^^^^^ warning: E1599: can't find doc file "../../doc/src/info.md"
 
             "#,
         );
@@ -3429,7 +3429,7 @@ baz(1)->4.
               -module(erlang).
 
               -doc {file,"../../doc/src/info.md"}.
-             %%          ^^^^^^^^^^^^^^^^^^^^^^^ warning: can't find doc file "../../doc/src/info.md"
+             %%          ^^^^^^^^^^^^^^^^^^^^^^^ warning: E1599: can't find doc file "../../doc/src/info.md"
             "#,
         );
     }
@@ -3483,7 +3483,7 @@ baz(1)->4.
                    foo() ->
                      \~"\"\\µA\"" = \~/"\\µA"/
                      X = 3.
-                  %% ^ error: syntax error before: X
+                  %% ^ error: P1711: syntax error before: X
             "#,
         );
     }
@@ -3519,7 +3519,7 @@ baz(1)->4.
                 -export([foo/0]).
 
                 % @docc
-                %%<^^^^^ warning: tag @docc not recognized.
+                %%<^^^^^ warning: O0039: tag @docc not recognized.
                 foo() -> \~"foo".
                 "#,
             );
@@ -3573,7 +3573,7 @@ baz(1)->4.
             -spec error() -> ok.
             error() ->
                 erlang:garbage_collect().
-            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Avoid forcing garbage collection.
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 error: W0047: Avoid forcing garbage collection.
             //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
             -module(erlang).
             -export([garbage_collect/0]).
@@ -3614,7 +3614,7 @@ baz(1)->4.
 
             warning() ->
                 erlang:garbage_collect().
-            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Avoid forcing garbage collection.
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
             //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
             -module(erlang).
             -export([garbage_collect/0]).
@@ -3656,7 +3656,7 @@ baz(1)->4.
 
             warning() ->
                 erlang:garbage_collect().
-            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Avoid forcing garbage collection.
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
             //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
             -module(erlang).
             -export([garbage_collect/0]).

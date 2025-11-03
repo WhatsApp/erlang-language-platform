@@ -67,11 +67,11 @@ mod test {
             r#"
              //- /src/dup_mod.erl
              -module(dup_mod).
-                  %% ^^^^^^^ warning: Duplicate module name
+                  %% ^^^^^^^ warning: W0045: Duplicate module name
 
              //- /src/sub/dup_mod.erl
              -module(dup_mod).
-                  %% ^^^^^^^ warning: Duplicate module name
+                  %% ^^^^^^^ warning: W0045: Duplicate module name
             "#,
         )
     }

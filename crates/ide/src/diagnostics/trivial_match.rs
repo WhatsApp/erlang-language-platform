@@ -348,16 +348,16 @@ mod tests {
 
             do_foo() ->
                 42 = 42,
-            %%  ^^ 💡 warning: match is redundant
+            %%  ^^ 💡 warning: W0007: match is redundant
                 42 = 43,
                 "blah" = "blah",
-            %%  ^^^^^^ 💡 warning: match is redundant
+            %%  ^^^^^^ 💡 warning: W0007: match is redundant
                 "blah" = "bleh",
                 'x' = 'x',
-            %%  ^^^ 💡 warning: match is redundant
+            %%  ^^^ 💡 warning: W0007: match is redundant
                 'x' = 'X',
                 true = true,
-            %%  ^^^^ 💡 warning: match is redundant
+            %%  ^^^^ 💡 warning: W0007: match is redundant
                 true = false,
                 ok.
             "#,
@@ -374,12 +374,12 @@ mod tests {
                 X = 42,
                 Y = 42,
                 X = X,
-            %%  ^ 💡 warning: match is redundant
+            %%  ^ 💡 warning: W0007: match is redundant
                 X = Y,
                 {Z} = {Y},
-            %%  ^^^ 💡 warning: match is redundant
+            %%  ^^^ 💡 warning: W0007: match is redundant
                 [W, ok] = [ok, ok],
-            %%  ^^^^^^^ 💡 warning: match is redundant
+            %%  ^^^^^^^ 💡 warning: W0007: match is redundant
                 [_W, ok] = [ok, ok],
                 ok.
             "#,
@@ -395,9 +395,9 @@ mod tests {
             do_foo() ->
                 X = 42,
                 <<"foo", 42>> = <<"foo", 42>>,
-            %%  ^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%  ^^^^^^^^^^^^^ 💡 warning: W0007: match is redundant
                 <<"foo", X>> = <<"foo", X>>,
-            %%  ^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%  ^^^^^^^^^^^^ 💡 warning: W0007: match is redundant
                 <<"foo", Y>> = <<"foo", 42>>,
                 Y.
             "#,
@@ -412,12 +412,12 @@ mod tests {
             do_foo() ->
                 X = 42,
                 {X, "foo", {foo, bar}} = {X, "foo", {foo, bar}},
-            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0007: match is redundant
                 {X, foo} = {X, bar},
                 {X, "foo", {foo, bar}} = {X, "foo", {foo, pub}},
                 {X, "foo", {foo, bar}} = {X, "foo", {foo, bar, hey}},
                 {} = {},
-            %%  ^^ 💡 warning: match is redundant
+            %%  ^^ 💡 warning: W0007: match is redundant
                 ok.
             "#,
         )
@@ -432,12 +432,12 @@ mod tests {
             do_foo() ->
                 X = 42,
                 [X, ["foo"], [foo, bar]] = [X, ["foo"], [foo, bar]],
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0007: match is redundant
                 [X, foo] = [X, bar],
                 [X, "foo", [foo, bar]] = [X, "foo", [foo, pub]],
                 [X, "foo", [foo, bar]] = [X, "foo", [foo, bar, hey]],
                 [] = [],
-            %%  ^^ 💡 warning: match is redundant
+            %%  ^^ 💡 warning: W0007: match is redundant
                 ok.
             "#,
         )
@@ -453,12 +453,12 @@ mod tests {
 
             do_foo() ->
                 #person{name = "Joe", age = 42} = #person{age = 42, name = "Joe"},
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0007: match is redundant
                 #person{name = "Joe", age = 43} = #person{age = 42, name = "Joe"},
                 #person{name = "Joe"} = #person{age = 42, name = "Joe"},
-            %%  ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%  ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0007: match is redundant
                 #person{age = 42} = #person{age = 42, name = "Joe"},
-            %%  ^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%  ^^^^^^^^^^^^^^^^^ 💡 warning: W0007: match is redundant
                 ok.
             "#,
         )
@@ -472,12 +472,12 @@ mod tests {
 
             do_foo() ->
                 #{name := "Joe", age := 42} = #{age => 42, name => "Joe"},
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0007: match is redundant
                 #{name := "Joe", age := 43} = #{age => 42, name => "Joe"},
                 #{name := "Joe"} = #{age => 42, name => "Joe"},
-            %%  ^^^^^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%  ^^^^^^^^^^^^^^^^ 💡 warning: W0007: match is redundant
                 #{age := 42} = #{age => 42, name => "Joe"},
-            %%  ^^^^^^^^^^^^ 💡 warning: match is redundant
+            %%  ^^^^^^^^^^^^ 💡 warning: W0007: match is redundant
                 ok.
             "#,
         )

@@ -100,7 +100,7 @@ mod tests {
 
 -record(used_field, {field_a, field_b = 42}).
 -record(unused_field, {field_c, field_d}).
-                             %% ^^^^^^^ warning: Unused record field (unused_field.field_d)
+                             %% ^^^^^^^ warning: W0003: Unused record field (unused_field.field_d)
 
 main(#used_field{field_a = A, field_b = B}) ->
     {A, B};
@@ -120,7 +120,7 @@ main(R) ->
 
 -record(used_field, {field_a, field_b = 42}).
 -record(unused_field, {field_c :: atom(), field_d :: number()}).
-                                       %% ^^^^^^^ warning: Unused record field (unused_field.field_d)
+                                       %% ^^^^^^^ warning: W0003: Unused record field (unused_field.field_d)
 
 main(#used_field{field_a = A, field_b = B}) ->
     {A, B};
@@ -189,9 +189,9 @@ main(#used_field{field_a = A}) ->
             r#"
 -module(main).
 -record(a, {a1, a2}).
-             %% ^^ warning: Unused record field (a.a2)
+             %% ^^ warning: W0003: Unused record field (a.a2)
 -record(b, {b1, b2}).
-         %% ^^ warning: Unused record field (b.b1)
+         %% ^^ warning: W0003: Unused record field (b.b1)
 main(#a{a1 = #b{b2 = B2}} = A) ->
     {A, B2}.
         "#,

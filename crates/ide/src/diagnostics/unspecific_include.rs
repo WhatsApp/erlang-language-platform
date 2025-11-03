@@ -179,7 +179,7 @@ mod tests {
          //- /app_a/src/unspecific_include.erl
            -module(unspecific_include).
            -include("some_header_from_app_a.hrl").
-           %%       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unspecific include.
+           %%       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0037: Unspecific include.
 
          //- /app_a/include/some_header_from_app_a.hrl include_path:/app_a/include
            -define(A,3).

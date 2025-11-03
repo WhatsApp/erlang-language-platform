@@ -148,7 +148,7 @@ mod tests {
             r#"
    -module(main).
    foo(1)->2
-        %% ^ warning: Missing ';'
+        %% ^ warning: W0004: Missing ';'
    foo(2)->3.
 "#,
         );
@@ -161,7 +161,7 @@ mod tests {
    -module(main).
    foo(1)->2;
    foo(2)->3
-        %% ^ warning: Missing ';'
+        %% ^ warning: W0004: Missing ';'
    foo(3)->4.
 "#,
         );
@@ -174,7 +174,7 @@ mod tests {
    -module(main).
    foo(1)->2;
    foo(2)->3
-        %% ^ warning: Missing '.'
+        %% ^ warning: W0004: Missing '.'
 "#,
         );
     }
@@ -186,7 +186,7 @@ mod tests {
    -module(main).
    foo(1)->2;
    foo(2)->3.
-         %% ^ warning: Unexpected '.'
+         %% ^ warning: W0018: Unexpected '.'
    foo(3)->4.
 "#,
         );
@@ -199,7 +199,7 @@ mod tests {
    -module(main).
    foo(1)->2;
    foo(2)->3;
-         %% ^ warning: Unexpected ';'
+         %% ^ warning: W0018: Unexpected ';'
 "#,
         );
     }

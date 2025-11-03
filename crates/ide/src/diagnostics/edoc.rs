@@ -226,7 +226,7 @@ mod tests {
     %% This is some license text.
     %%%-------------------------------------------------------------------
     %% @doc This is the module documentation.
-    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: W0038: EDoc style comments are deprecated. Please use Markdown instead.
     %%      With some more text.
     %%      And some more lines.
     %% @end
@@ -248,7 +248,7 @@ mod tests {
             r#"
     -module(main).
     %% @doc This is the main function documentation.
-    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: W0038: EDoc style comments are deprecated. Please use Markdown instead.
     main() ->
       dep().
 
@@ -264,7 +264,7 @@ mod tests {
     //- /test/main_SUITE.erl extra:test
     -module(main_SUITE).
     %% @doc This is the main function documentation.
-    %% ^^^^ 💡 weak: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 weak: W0038: EDoc style comments are deprecated. Please use Markdown instead.
     main() ->
       dep().
 
@@ -281,14 +281,14 @@ mod tests {
     -export([main/0, main/2]).
 
     %% @doc This is the main function documentation.
-    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: W0038: EDoc style comments are deprecated. Please use Markdown instead.
     %% @see main/2 for more information.
     -spec main() -> tuple().
     main() ->
       main([], []).
 
     %% @doc This is the main function with two arguments documentation.
-    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: W0038: EDoc style comments are deprecated. Please use Markdown instead.
     -spec main(any(), any()) -> tuple().
     main(A, B) ->
       {A, B}.
@@ -305,7 +305,7 @@ mod tests {
     -export_type([my_integer/0]).
 
     %% @doc This is an incorrect type doc
-    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: W0038: EDoc style comments are deprecated. Please use Markdown instead.
     -type my_integer() :: integer().
 
     -type my_integer2() :: integer().
@@ -333,7 +333,7 @@ mod tests {
     -type my_integer2() :: integer().
 
     %% @doc These are docs for the main function
-    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: W0038: EDoc style comments are deprecated. Please use Markdown instead.
     -spec main(any(), any()) -> ok.
     main(A, B) ->
         dep().
@@ -351,7 +351,7 @@ mod tests {
     -export([main/0, main/2]).
 
     %% @doc This is the main function documentation.
-    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: W0038: EDoc style comments are deprecated. Please use Markdown instead.
     %% @see main/2 which is a great function to look at
     %% with a very long description that goes on and on
     -spec main() -> tuple().
@@ -359,7 +359,7 @@ mod tests {
         main([], []).
 
     %% @doc This is the main function with two arguments documentation.
-    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: W0038: EDoc style comments are deprecated. Please use Markdown instead.
     -spec main(any(), any()) -> tuple().
     main(A, B) ->
         {A, B}.
@@ -604,7 +604,7 @@ dep() -> ok.
         check_fix(
             r#"
 -module(main).
-%% @d~oc   
+%% @d~oc
 %% This is some doc
 %% @end
 main() ->

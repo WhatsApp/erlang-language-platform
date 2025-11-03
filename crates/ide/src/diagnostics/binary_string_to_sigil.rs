@@ -143,7 +143,7 @@ mod tests {
          -module(binary_string_to_sigil).
 
          fn() -> <<"hello">>.
-         %%      ^^^^^^^^^^^ 💡 weak: Binary string can be written using sigil syntax.
+         %%      ^^^^^^^^^^^ 💡 weak: W0051: Binary string can be written using sigil syntax.
             "#,
         )
     }

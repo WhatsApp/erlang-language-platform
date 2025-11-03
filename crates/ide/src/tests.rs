@@ -396,6 +396,8 @@ fn convert_diagnostics_to_annotations(diagnostics: Vec<Diagnostic>) -> Vec<(Text
                 Severity::Information => "information",
             });
             annotation.push_str(": ");
+            annotation.push_str(&d.code.as_code());
+            annotation.push_str(": ");
             annotation.push_str(&convert_diagnostic_message(&d));
             (d.range, annotation)
         })
@@ -672,11 +674,11 @@ mod test {
     fn filtered_diagnostics_passes_syntax_errors() {
         check_filtered_diagnostics(
             r#"
-            %%<^^^^^^^^^^^^ error: no module definition
+            %%<^^^^^^^^^^^^ error: L1201: no module definition
             foo() ->
                bug bug.
-                %% ^^^^ error: Syntax Error
-               
+                %% ^^^^ error: P1711: Syntax Error
+
             "#,
             &filter,
         )

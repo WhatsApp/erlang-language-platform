@@ -619,7 +619,7 @@ mod tests {
 
          fn(A, Same, Diff) ->
             case A =:= b of true -> Same; false -> Diff end.
-         %%      ^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%      ^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         )
     }
@@ -633,7 +633,7 @@ mod tests {
 
          fn(A, Same, Diff) ->
             case A =:= b of false -> Diff; true -> Same end.
-         %%      ^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%      ^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         )
     }
@@ -724,7 +724,7 @@ mod tests {
 
          fn(B, Same, Diff) ->
             case a =:= B of true -> Same; _ -> Diff end.
-         %%      ^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%      ^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         )
     }
@@ -740,7 +740,7 @@ mod tests {
 
          fn(Same, Diff) ->
             case get_a() =:= foo of true -> Same; _ -> Diff end.
-         %%      ^^^^^^^^^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%      ^^^^^^^^^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         )
     }
@@ -756,7 +756,7 @@ mod tests {
 
          fn(Same, Diff) ->
             case foo =:= get_b() of true -> Same; _ -> Diff end.
-         %%      ^^^^^^^^^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%      ^^^^^^^^^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         )
     }
@@ -908,7 +908,7 @@ mod tests {
 
          fn(A, Same, Diff) ->
             case A =/= b of false -> Same; true -> Diff end.
-         %%      ^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%      ^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         );
         check_diagnostics(
@@ -918,7 +918,7 @@ mod tests {
 
          fn(B, Same, Diff) ->
             case a =/= B of false -> Same; true -> Diff end.
-         %%      ^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%      ^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         )
     }
@@ -932,7 +932,7 @@ mod tests {
 
          fn(A, Same, Diff) ->
             case A =/= b of true -> Diff; false -> Same end.
-         %%      ^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%      ^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         );
         check_diagnostics(
@@ -942,7 +942,7 @@ mod tests {
 
          fn(B, Same, Diff) ->
             case a =/= B of true -> Diff; false -> Same end.
-         %%      ^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%      ^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         )
     }
@@ -956,7 +956,7 @@ mod tests {
 
          fn(A, Same, Diff) ->
             case A =/= b of false -> Same; _ -> Diff end.
-         %%      ^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%      ^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         );
         check_diagnostics(
@@ -966,7 +966,7 @@ mod tests {
 
          fn(B, Same, Diff) ->
             case a =/= B of false -> Same; _ -> Diff end.
-         %%      ^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%      ^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         );
     }
@@ -982,7 +982,7 @@ mod tests {
 
          fn(Same, Diff) ->
             case get_a() =/= bar of false -> Same; _ -> Diff end.
-         %%      ^^^^^^^^^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%      ^^^^^^^^^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         )
     }
@@ -998,7 +998,7 @@ mod tests {
 
          fn(Same, Diff) ->
             case bar =/= get_b() of false -> Same; _ -> Diff end.
-         %%      ^^^^^^^^^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%      ^^^^^^^^^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         )
     }
@@ -1504,7 +1504,7 @@ mod tests {
 
          fn(A, Same, Diff) ->
             if A =:= b -> Same; true -> Diff end.
-         %%    ^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%    ^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         );
         check_diagnostics(
@@ -1514,7 +1514,7 @@ mod tests {
 
          fn(B, Same, Diff) ->
             if a =:= B -> Same; true -> Diff end.
-         %%    ^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%    ^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         );
     }
@@ -1528,7 +1528,7 @@ mod tests {
 
          fn(A, Same, Diff) ->
             if A =/= b -> Diff; true -> Same end.
-         %%    ^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%    ^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         );
         check_diagnostics(
@@ -1538,7 +1538,7 @@ mod tests {
 
          fn(B, Same, Diff) ->
             if a =/= B -> Diff; true -> Same end.
-         %%    ^^^^^^^💡 information: Consider rewriting to an equality match.
+         %%    ^^^^^^^💡 information: W0042: Consider rewriting to an equality match.
             "#,
         )
     }

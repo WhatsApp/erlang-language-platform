@@ -93,7 +93,7 @@ mod tests {
 
               catcher(X,Y) ->
               case catch X/Y of
-              %%   ^^^^^ warning: Avoid `catch`.
+              %%   ^^^^^ warning: W0052: Avoid `catch`.
                 {'EXIT', {badarith,_}} -> "uh oh";
                 N -> N
               end.

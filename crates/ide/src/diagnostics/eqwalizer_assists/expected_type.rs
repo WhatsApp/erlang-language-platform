@@ -192,7 +192,7 @@ mod tests {
 
                 -spec baz() -> spec_atom.
                 baz() -> something_else.
-                     %%% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
+                     %%% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
             )
         }
@@ -210,7 +210,7 @@ mod tests {
 
             -spec baz() -> spec_atom.
             baz() -> somet~hing_else.
-                  %% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
+                  %% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
                 expect![[r#"
             -module(bar3e).
@@ -234,7 +234,7 @@ mod tests {
 
             -spec baz() -> spec_atom.
             baz() -> somethin~g_else.
-                  %% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types
+                  %% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
                 expect![[r#"
             -module(bar4e).
@@ -258,7 +258,7 @@ mod tests {
 
             -spec baz() -> {ok, number()}.
             baz() -> 5~3.
-              %%     ^^ 💡 error: eqwalizer: incompatible_types
+              %%     ^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
                 expect![[r#"
             -module(bar5e).
@@ -282,7 +282,7 @@ mod tests {
 
             -spec baz() -> {ok, number()}.
             baz() -> 5~3.
-                  %% ^^ 💡 error: eqwalizer: incompatible_types
+                  %% ^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
                 expect![[r#"
             -module(bar6e).
@@ -306,7 +306,7 @@ mod tests {
 
             -spec foo() -> integer().
             foo() -> o~k.
-                  %% ^^ 💡 error: eqwalizer: incompatible_types
+                  %% ^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
                 expect![[r#"
             -module(bar).

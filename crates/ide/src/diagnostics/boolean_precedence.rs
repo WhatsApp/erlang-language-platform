@@ -275,7 +275,7 @@ mod tests {
             foo() ->
               F = fun(X) ->
                 my_is_integer(X) and X > 0 end,
-          %%                     ^^^ 💡 warning: Consider using the short-circuit expression 'andalso' instead of 'and'.
+          %%                     ^^^ 💡 warning: W0025: Consider using the short-circuit expression 'andalso' instead of 'and'.
           %%                       | Or add parentheses to avoid potential ambiguity.
               F.
 
@@ -317,7 +317,7 @@ mod tests {
             -module(main).
             foo(X) ->
               predicate(X) or X > 10.
-          %%               ^^ 💡 warning: Consider using the short-circuit expression 'orelse' instead of 'or'.
+          %%               ^^ 💡 warning: W0025: Consider using the short-circuit expression 'orelse' instead of 'or'.
           %%                | Or add parentheses to avoid potential ambiguity.
 
             predicate(_X) -> false.
@@ -332,7 +332,7 @@ mod tests {
             -module(main).
             foo(S,P) ->
                 (S or P > 3).
-          %%       ^^ 💡 warning: Consider using the short-circuit expression 'orelse' instead of 'or'.
+          %%       ^^ 💡 warning: W0025: Consider using the short-circuit expression 'orelse' instead of 'or'.
           %%        | Or add parentheses to avoid potential ambiguity.
                       "#,
         )
@@ -345,7 +345,7 @@ mod tests {
             -module(main).
             foo(S,P) ->
                 ((S or P > 3)).
-          %%        ^^ 💡 warning: Consider using the short-circuit expression 'orelse' instead of 'or'.
+          %%        ^^ 💡 warning: W0025: Consider using the short-circuit expression 'orelse' instead of 'or'.
           %%         | Or add parentheses to avoid potential ambiguity.
                       "#,
         )
@@ -360,7 +360,7 @@ mod tests {
                 foo() ->
                   F = fun(X) ->
                     my_is_integer(X) a~nd X > 0 end,
-                %%                   ^^^ 💡 warning: Consider using the short-circuit expression 'andalso' instead of 'and'.
+                %%                   ^^^ 💡 warning: W0025: Consider using the short-circuit expression 'andalso' instead of 'and'.
                 %%                     | Or add parentheses to avoid potential ambiguity.
                   F.
 
@@ -388,7 +388,7 @@ mod tests {
             foo() ->
               F = fun(X) ->
                 my_is_integer(X) a~nd X > 0 end,
-            %%                   ^^^ 💡 warning: Consider using the short-circuit expression 'andalso' instead of 'and'.
+            %%                   ^^^ 💡 warning: W0025: Consider using the short-circuit expression 'andalso' instead of 'and'.
             %%                     | Or add parentheses to avoid potential ambiguity.
               F.
 
@@ -412,7 +412,7 @@ mod tests {
             -module(main).
             foo(X) when X < 10 a~nd X > 0 ->
                X + 1.
-            %%                 ^^^ 💡 warning: Consider using the short-circuit expression ',' instead of 'and'.
+            %%                 ^^^ 💡 warning: W0025: Consider using the short-circuit expression ',' instead of 'and'.
             %%                   | Or add parentheses to avoid potential ambiguity.
             "#,
             expect![[r#"
@@ -432,7 +432,7 @@ mod tests {
             foo() ->
               F = fun(X) ->
                 my_is_integer(X) a~nd X > 0 end,
-            %%                   ^^^ 💡 warning: Consider using the short-circuit expression 'andalso' instead of 'and'.
+            %%                   ^^^ 💡 warning: W0025: Consider using the short-circuit expression 'andalso' instead of 'and'.
             %%                     | Or add parentheses to avoid potential ambiguity.
               F.
 
@@ -457,7 +457,7 @@ mod tests {
             foo() ->
               F = fun(X) ->
                 X < 0 o~r X > 10 end,
-            %%        ^^ 💡 warning: Consider using the short-circuit expression 'orelse' instead of 'or'.
+            %%        ^^ 💡 warning: W0025: Consider using the short-circuit expression 'orelse' instead of 'or'.
             %%         | Or add parentheses to avoid potential ambiguity.
               F.
 
@@ -481,7 +481,7 @@ mod tests {
             -module(main).
             foo(X) ->
               predicate(X) o~r X > 10.
-            %%             ^^ 💡 warning: Consider using the short-circuit expression 'orelse' instead of 'or'.
+            %%             ^^ 💡 warning: W0025: Consider using the short-circuit expression 'orelse' instead of 'or'.
             %%              | Or add parentheses to avoid potential ambiguity.
 
             predicate(_X) -> false."#,

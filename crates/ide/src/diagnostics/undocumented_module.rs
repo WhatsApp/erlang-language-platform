@@ -1,10 +1,11 @@
 /*
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
- * This source code is licensed under both the MIT license found in the
- * LICENSE-MIT file in the root directory of this source tree and the Apache
+ * This source code is dual-licensed under either the MIT license found in the
+ * LICENSE-MIT file in the root directory of this source tree or the Apache
  * License, Version 2.0 found in the LICENSE-APACHE file in the root directory
- * of this source tree.
+ * of this source tree. You may select, at your option, one of the
+ * above-listed licenses.
  */
 
 use elp_ide_assists::Assist;
@@ -83,6 +84,7 @@ mod tests {
         DiagnosticsConfig::default().enable(DiagnosticCode::UndocumentedModule)
     }
 
+    #[track_caller]
     fn check_diagnostics(fixture: &str) {
         tests::check_diagnostics_with_config(config(), fixture);
     }
@@ -96,7 +98,7 @@ mod tests {
         check_diagnostics(
             r#"
      -module(main).
-          %% ^^^^ 💡 weak: The module is not documented.
+          %% ^^^^ 💡 weak: W0046: The module is not documented.
          "#,
         )
     }
@@ -141,7 +143,7 @@ mod tests {
         check_diagnostics(
             r#"
      % @doc
-    %% ^^^^ 💡 warning: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ 💡 warning: W0038: EDoc style comments are deprecated. Please use Markdown instead.
      % This is a module
      -module(main).
          "#,

@@ -160,7 +160,7 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(List) -> maps:from_list([{K + 1, V + 2} || {K,V} <- List]).
-         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unnecessary intermediate list allocated.
+         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0036: Unnecessary intermediate list allocated.
             "#,
         )
     }
@@ -174,7 +174,7 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(List) -> maps:from_list([{element(1, Pair) + 1, element(2, Pair) + 2} || Pair <- List]).
-         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unnecessary intermediate list allocated.
+         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0036: Unnecessary intermediate list allocated.
             "#,
         )
     }

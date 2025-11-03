@@ -346,7 +346,7 @@ mod tests {
    a(_Config) ->
      ok.
    b(_Config) ->
-%% ^ 💡 error: Unreachable test (b/1)
+%% ^ 💡 error: W0008: Unreachable test (b/1)
      ok.
             "#,
         );
@@ -368,7 +368,7 @@ mod tests {
    a(_Config) ->
      ok.
    b(_Config) ->
-%% ^ 💡 error: Unreachable test (b/1)
+%% ^ 💡 error: W0008: Unreachable test (b/1)
      ok.
             "#,
         );
@@ -391,7 +391,7 @@ mod tests {
    a(_Config) ->
      ok.
    b(_Config) ->
-%% ^ 💡 error: Unreachable test (b/1)
+%% ^ 💡 error: W0008: Unreachable test (b/1)
      ok.
             "#,
         );
@@ -413,7 +413,7 @@ mod tests {
    b(_Config) ->
      ok.
    c(_Config) ->
-%% ^ 💡 error: Unreachable test (c/1)
+%% ^ 💡 error: W0008: Unreachable test (c/1)
      ok.
             "#,
         );
@@ -434,7 +434,7 @@ mod tests {
    b(_Config) ->
      ok.
    c(_Config) ->
-%% ^ 💡 error: Unreachable test (c/1)
+%% ^ 💡 error: W0008: Unreachable test (c/1)
      ok.
             "#,
         );
@@ -453,10 +453,10 @@ mod tests {
     a(_Config) ->
       ok.
     b(_Config) ->
- %% ^ 💡 error: Unreachable test (b/1)
+ %% ^ 💡 error: W0008: Unreachable test (b/1)
       ok.
     c(_Config) ->
- %% ^ 💡 error: Unreachable test (c/1)
+ %% ^ 💡 error: W0008: Unreachable test (c/1)
       ok.
      "#,
         );
@@ -501,7 +501,7 @@ c(_Config) ->
    -export([all/0]).
    -export([a/1, b/1, c/1]).
    all() -> my_external_helper:all().
-%% ^^^ warning: Could not evaluate function. No code lenses for tests will be available.
+%% ^^^ warning: W0021: Could not evaluate function. No code lenses for tests will be available.
    a(_Config) ->
      ok.
    b(_Config) ->
@@ -522,9 +522,9 @@ c(_Config) ->
    -export([all/0, groups/0]).
    -export([a/1, b/1, c/1]).
    all() -> [a].
-%% ^^^ warning: Could not evaluate function. No code lenses for tests will be available.
+%% ^^^ warning: W0021: Could not evaluate function. No code lenses for tests will be available.
    groups() -> my_external_helper:groups().
-%% ^^^^^^ warning: Could not evaluate function. No code lenses for tests will be available.
+%% ^^^^^^ warning: W0021: Could not evaluate function. No code lenses for tests will be available.
    a(_Config) ->
      ok.
    b(_Config) ->
@@ -550,7 +550,7 @@ c(_Config) ->
    a(_Config) ->
      ok.
    b(_Config) ->
-%% ^ 💡 error: Unreachable test (b/1)
+%% ^ 💡 error: W0008: Unreachable test (b/1)
      ok.
 //- /my_app/src/my_behaviour.erl
 -module(my_behaviour).

@@ -127,6 +127,7 @@ mod tests {
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_nth_fix;
 
+    #[track_caller]
     pub(crate) fn check_diagnostics(fixture: &str) {
         let config = DiagnosticsConfig::default().disable(elp_ide_db::DiagnosticCode::NoSize);
         check_diagnostics_with_config(config, fixture)
@@ -141,7 +142,7 @@ mod tests {
   main() ->
     dependency:exists(),
     dependency:private().
-%%  ^^^^^^^^^^^^^^^^^^ 💡 warning: Function 'dependency:private/0' is not exported.
+%%  ^^^^^^^^^^^^^^^^^^ 💡 warning: W0026: Function 'dependency:private/0' is not exported.
   exists() -> ok.
 //- /src/dependency.erl
   -module(dependency).
@@ -160,9 +161,9 @@ mod tests {
   -module(main).
   main() ->
     ?MODULE:private(),
-%%  ^^^^^^^^^^^^^^^ 💡 warning: Function 'main:private/0' is not exported.
+%%  ^^^^^^^^^^^^^^^ 💡 warning: W0026: Function 'main:private/0' is not exported.
     main:private().
-%%  ^^^^^^^^^^^^ 💡 warning: Function 'main:private/0' is not exported.
+%%  ^^^^^^^^^^^^ 💡 warning: W0026: Function 'main:private/0' is not exported.
 
   private() -> ok.
             "#,
@@ -178,7 +179,7 @@ mod tests {
 -include("header.hrl").
 
 foo() -> main:bar().
-%%       ^^^^^^^^ 💡 warning: Function 'main:bar/0' is not exported.
+%%       ^^^^^^^^ 💡 warning: W0026: Function 'main:bar/0' is not exported.
 
 //- /src/header.hrl
   bar() -> ok.

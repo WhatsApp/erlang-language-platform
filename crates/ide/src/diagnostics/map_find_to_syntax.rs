@@ -548,7 +548,7 @@ mod tests {
          fn(Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(my_key,M) of {ok, V} -> Found; error -> NotFound end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: Unnecessary allocation of result tuple when the key is found.
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
             "#,
         )
     }
@@ -563,7 +563,7 @@ mod tests {
          fn(Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find({key_a,key_b},M) of {ok, V} -> Found; error -> NotFound end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: Unnecessary allocation of result tuple when the key is found.
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
             "#,
         )
     }
@@ -578,7 +578,7 @@ mod tests {
          fn(K, Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(K,M) of {ok, V} -> Found; error -> NotFound end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: Unnecessary allocation of result tuple when the key is found.
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
             "#,
         )
     }
@@ -593,7 +593,7 @@ mod tests {
          fn(K, Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(K,M) of {ok, V} -> Found; _ -> NotFound end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: Unnecessary allocation of result tuple when the key is found.
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
             "#,
         )
     }

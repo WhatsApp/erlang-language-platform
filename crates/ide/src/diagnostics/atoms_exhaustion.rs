@@ -100,9 +100,9 @@ mod tests {
    -export([main/0]).
    main() ->
      erlang:list_to_atom(foo),
-%%   ^^^^^^^^^^^^^^^^^^^ 💡 warning: Risk of atoms exhaustion.
+%%   ^^^^^^^^^^^^^^^^^^^ 💡 warning: W0023: Risk of atoms exhaustion.
      list_to_atom(foo).
-%%   ^^^^^^^^^^^^ 💡 warning: Risk of atoms exhaustion.
+%%   ^^^^^^^^^^^^ 💡 warning: W0023: Risk of atoms exhaustion.
 
 //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
    -module(erlang).
@@ -121,9 +121,9 @@ mod tests {
    -export([main/0]).
    main() ->
      erlang:binary_to_atom(foo),
-%%   ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Risk of atoms exhaustion.
+%%   ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0023: Risk of atoms exhaustion.
      binary_to_atom(foo).
-%%   ^^^^^^^^^^^^^^ 💡 warning: Risk of atoms exhaustion.
+%%   ^^^^^^^^^^^^^^ 💡 warning: W0023: Risk of atoms exhaustion.
 
 //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
    -module(erlang).

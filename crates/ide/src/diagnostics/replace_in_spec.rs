@@ -185,7 +185,7 @@ mod tests {
 
             -type one() :: one.
             -spec fn(integer()) -> modu:one().
-            %%                     ^^^^^^^^^^ 💡 weak: Replace 'modu:one/0' with 'modu:other()'
+            %%                     ^^^^^^^^^^ 💡 weak: ad-hoc: modu:one/0: Replace 'modu:one/0' with 'modu:other()'
             fn(0) -> one.
 
             "#,

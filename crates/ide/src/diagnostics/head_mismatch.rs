@@ -393,7 +393,7 @@ mod tests {
     -module(main).
     foo(0) -> 1;
     boo(1) -> 2.
- %% ^^^ 💡 error: head mismatch 'boo' vs 'foo'
+ %% ^^^ 💡 error: P1700: head mismatch 'boo' vs 'foo'
             "#,
         );
         check_fix(
@@ -418,7 +418,7 @@ mod tests {
             food(0) ->
                 ok;
             fooX(_X) ->
-         %% ^^^^ 💡 error: head mismatch 'fooX' vs 'food'
+         %% ^^^^ 💡 error: P1700: head mismatch 'fooX' vs 'food'
                 no.
 
             bar() ->
@@ -447,7 +447,7 @@ mod tests {
             r#"
     -module(main).
     foo(0) -> 1;
- %% ^^^ 💡 error: head mismatch 'foo' vs 'boo'
+ %% ^^^ 💡 error: P1700: head mismatch 'foo' vs 'boo'
     boo(1) -> 2;
     boo(2) -> 3.
             "#,
@@ -475,7 +475,7 @@ mod tests {
     -module(main).
     foo(0) -> 1;
     foo(1,0) -> 2.
- %% ^^^^^^^^^^^^^ error: head arity mismatch 2 vs 1
+ %% ^^^^^^^^^^^^^ error: P1700: head arity mismatch 2 vs 1
             "#,
         );
     }
@@ -487,7 +487,7 @@ mod tests {
     -module(main).
     foo(2,0) -> 3;
     foo(0) -> 1;
- %% ^^^^^^^^^^^ error: head arity mismatch 1 vs 2
+ %% ^^^^^^^^^^^ error: P1700: head arity mismatch 1 vs 2
     foo(1,0) -> 2.
             "#,
         );
@@ -513,7 +513,7 @@ mod tests {
        F = fun
            (0) -> ok;
            A(N) -> ok
-        %% ^ 💡 error: head mismatch 'A' vs ''
+        %% ^ 💡 error: P1700: head mismatch 'A' vs ''
        end,
        F().
             "#,

@@ -126,6 +126,7 @@ mod tests {
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix;
 
+    #[track_caller]
     fn check_diagnostics(fixture: &str) {
         let config = DiagnosticsConfig::default()
             .enable(DiagnosticCode::OldEdocSyntax)
@@ -140,7 +141,7 @@ mod tests {
              -module(main).
              -define(MYOP(B,C), B + C).
              foo(A,B,C) -> A * ?MYOP(B,C).
-              %%               ^^^^^^^^^^ 💡 warning: The macro expansion can have unexpected precedence here
+              %%               ^^^^^^^^^^ 💡 warning: W0039: The macro expansion can have unexpected precedence here
              bar(B,C) -> ?MYOP(B,C).
             "#,
         )
@@ -177,7 +178,7 @@ mod tests {
              -define(MYOPB(B,C), ?MYOPA(B, C)).
              -define(MYOPC(B,C), ?MYOPB(B, C)).
              foo(A,B,C) -> A * ?MYOPC(B,C).
-              %%               ^^^^^^^^^^^ 💡 warning: The macro expansion can have unexpected precedence here
+              %%               ^^^^^^^^^^^ 💡 warning: W0039: The macro expansion can have unexpected precedence here
             "#,
         )
     }

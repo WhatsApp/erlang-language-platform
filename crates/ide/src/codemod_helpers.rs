@@ -791,9 +791,9 @@ mod tests {
 
             bar(Config) ->
                 foo:fire_bombs(Config),
-            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
                 foo:fire_bombs(Config, zz).
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
             "#,
         )
     }
@@ -807,9 +807,9 @@ mod tests {
 
             bar(Config) ->
                 foo:fire_bombs(Config),
-            %%  ^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
                 foo:fire_bombs(Config, zz).
-            %%  ^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
             "#,
         )
     }
@@ -825,7 +825,7 @@ mod tests {
 
             bar(Config) ->
                 ?MY_MACRO(Config).
-            %%  ^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
             "#,
         )
     }
@@ -842,7 +842,7 @@ mod tests {
 
             bar(Config) ->
                 ?MY_MACRO(Config).
-            %%  ^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
 
             //- /src/inc.hrl
             -define(MY_MACRO(A), fun() -> foo:fire_bombs(A) end).
@@ -859,7 +859,7 @@ mod tests {
 
             bar(Node) ->
                 spawn(Node, mod, fff, []).
-            %%  ^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
             "#,
         )
     }
@@ -875,13 +875,13 @@ mod tests {
                 erlang:spawn(fun() -> ok end),
                 spawn(fun() -> ok end),
                 erlang:spawn(Node, fun() -> ok end),
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
                 spawn(Node, fun() -> ok end),
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
                 erlang:spawn(Node, mod, fff, []),
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
                 spawn(Node, mod, fff, []).
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
             "#,
         )
     }
@@ -896,7 +896,7 @@ mod tests {
 
             bar() ->
                 erlang:spawn(),
-            %%  ^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
                 spawn().
             "#,
         )
@@ -911,11 +911,11 @@ mod tests {
 
             bar() ->
                 foo:bar(),
-            %%  ^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
                 foo:bar(x),
-            %%  ^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
                 foo:bar(x,y),
-            %%  ^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
                 baz:bar().
             "#,
         )
@@ -930,10 +930,10 @@ mod tests {
 
             bar() ->
                 foo:bar(),
-            %%  ^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
                 baz:bar(x),
                 foo:florgle(x,y).
-            %%  ^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
             "#,
         )
     }
@@ -947,11 +947,11 @@ mod tests {
 
             bar() ->
                 foo:bar(),
-            %%  ^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
                 baz:bar(x),
-            %%  ^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
                 local(x,y).
-            %%  ^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
             local(A,B) -> {A,B}.
             "#,
         )
@@ -966,7 +966,7 @@ mod tests {
 
             bar() ->
                 fo~o:bar().
-            %%  ^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%  ^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
              "#,
             expect![[r#"
             -module(main).
@@ -986,7 +986,7 @@ mod tests {
             -module(main).
             foo(Node, M,F,A) ->
                rpc:c~all(Node, M, F, A).
-            %% ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %% ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
              "#,
             expect![[r#"
             -module(main).
@@ -1005,7 +1005,7 @@ mod tests {
             -module(main).
             foo(Node, M,F,A) ->
                baz(rpc:c~all(Node, M, F, A)).
-            %%     ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Diagnostic Message
+            %%     ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: ad-hoc: test: Diagnostic Message
              "#,
             expect![[r#"
             -module(main).

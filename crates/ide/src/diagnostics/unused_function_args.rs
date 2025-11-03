@@ -210,8 +210,8 @@ mod tests {
             r#"
             -module(main).
             do_something(Unused, Used, _AlsoUsed, AlsoUnused, _UnusedButOk) ->
-                     %%% ^^^^^^ 💡 warning: this variable is unused
-                     %%%                          ^^^^^^^^^^ 💡 warning: this variable is unused
+                     %%% ^^^^^^ 💡 warning: W0010: this variable is unused
+                     %%%                          ^^^^^^^^^^ 💡 warning: W0010: this variable is unused
 
                 case Used of
                   undefined -> ok;
@@ -227,8 +227,8 @@ mod tests {
             r#"
             -module(main).
             do_something([Unused | Used], #{foo := {_AlsoUsed, AlsoUnused, _UnusedButOk}}) ->
-                     %%%  ^^^^^^ 💡 warning: this variable is unused
-                     %%%                                       ^^^^^^^^^^ 💡 warning: this variable is unused
+                     %%%  ^^^^^^ 💡 warning: W0010: this variable is unused
+                     %%%                                       ^^^^^^^^^^ 💡 warning: W0010: this variable is unused
 
                 case Used of
                   undefined -> ok;
@@ -302,7 +302,7 @@ mod tests {
                -module(main).
                foo(Args) -> {foo, Args};
                foo(Args2) -> ok.
-               %%  ^^^^^ 💡 warning: this variable is unused
+               %%  ^^^^^ 💡 warning: W0010: this variable is unused
                 "#,
         );
     }
@@ -314,7 +314,7 @@ mod tests {
                -module(main).
                foo(X, _Y = [_Z = {X, _, _} | _]) -> bar;
                foo(X, _Y) -> pub.
-               %%  ^ 💡 warning: this variable is unused
+               %%  ^ 💡 warning: W0010: this variable is unused
             "#,
         );
     }

@@ -133,7 +133,7 @@ mod tests {
             r#"
 -module(main).
 -define(MEANING_OF_LIFE, 42).
-    %%  ^^^^^^^^^^^^^^^ 💡 warning: Unused macro (MEANING_OF_LIFE)
+    %%  ^^^^^^^^^^^^^^^ 💡 warning: W0002: Unused macro (MEANING_OF_LIFE)
             "#,
         );
         check_fix(
@@ -176,9 +176,9 @@ main() ->
 -module(main).
 -define(USED_MACRO, used_macro).
 -define(UNUSED_MACRO, unused_macro).
-     %% ^^^^^^^^^^^^ 💡 warning: Unused macro (UNUSED_MACRO)
+     %% ^^^^^^^^^^^^ 💡 warning: W0002: Unused macro (UNUSED_MACRO)
 -define(UNUSED_MACRO_WITH_ARG(C), C).
-     %% ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: Unused macro (UNUSED_MACRO_WITH_ARG/1)
+     %% ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0002: Unused macro (UNUSED_MACRO_WITH_ARG/1)
 
 main() ->
   ?MOD:foo(),
@@ -211,7 +211,7 @@ main() ->
 -module(foo).
 -include("foo.hrl").
 -define(BAR, 42).
-     %% ^^^ 💡 warning: Unused macro (BAR)
+     %% ^^^ 💡 warning: W0002: Unused macro (BAR)
 main() ->
   ?A.
         "#,

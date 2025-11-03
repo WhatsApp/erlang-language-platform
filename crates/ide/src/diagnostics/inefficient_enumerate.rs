@@ -261,7 +261,7 @@ mod tests {
          -module(inefficient_enumerate).
 
          fn(List) -> lists:zip(lists:seq(1,length(List)),List).
-         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unnecessary intermediate list allocated.
+         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0033: Unnecessary intermediate list allocated.
             "#,
         )
     }
@@ -305,7 +305,7 @@ mod tests {
          -module(inefficient_enumerate).
 
          fn(N, List) -> lists:zip(lists:seq(N,length(List)),List).
-         %%             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unnecessary intermediate list allocated.
+         %%             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0033: Unnecessary intermediate list allocated.
             "#,
         )
     }
@@ -337,7 +337,7 @@ mod tests {
          -module(inefficient_enumerate).
 
          fn(N, Step, List) -> lists:zip(lists:seq(N,Step,length(List)),List).
-         %%                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unnecessary intermediate list allocated.
+         %%                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0033: Unnecessary intermediate list allocated.
             "#,
         )
     }

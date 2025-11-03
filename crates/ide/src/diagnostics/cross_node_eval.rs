@@ -111,7 +111,7 @@ mod tests {
 
             foo(Node) ->
                 erlang:spawn(Node, fun() -> ok end).
-            %%  ^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
             "#,
         )
     }
@@ -124,7 +124,7 @@ mod tests {
 
             foo(Node) ->
                 spawn(Node, fun() -> ok end).
-            %%  ^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )
@@ -138,7 +138,7 @@ mod tests {
 
             foo(Node) ->
                 erlang:spawn(Node, modu, ff, []).
-            %%  ^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )
@@ -152,7 +152,7 @@ mod tests {
 
             foo(Node) ->
                 spawn(Node, modu, ff, []).
-            %%  ^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )
@@ -168,7 +168,7 @@ mod tests {
 
             foo(Node) ->
                 erlang:spawn_link(Node, fun() -> ok end).
-            %%  ^^^^^^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
             "#,
         )
     }
@@ -181,7 +181,7 @@ mod tests {
 
             foo(Node) ->
                 spawn_link(Node, fun() -> ok end).
-            %%  ^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )
@@ -195,7 +195,7 @@ mod tests {
 
             foo(Node) ->
                 erlang:spawn_link(Node, modu, ff, []).
-            %%  ^^^^^^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )
@@ -209,7 +209,7 @@ mod tests {
 
             foo(Node) ->
                 spawn_link(Node, modu, ff, []).
-            %%  ^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )
@@ -225,7 +225,7 @@ mod tests {
 
             foo(Node) ->
                 erlang:spawn_monitor(Node, fun() -> ok end).
-            %%  ^^^^^^^^^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
             "#,
         )
     }
@@ -238,7 +238,7 @@ mod tests {
 
             foo(Node) ->
                 spawn_monitor(Node, fun() -> ok end).
-            %%  ^^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )
@@ -252,7 +252,7 @@ mod tests {
 
             foo(Node) ->
                 erlang:spawn_monitor(Node, modu, ff, []).
-            %%  ^^^^^^^^^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )
@@ -266,7 +266,7 @@ mod tests {
 
             foo(Node) ->
                 spawn_monitor(Node, modu, ff, []).
-            %%  ^^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )
@@ -282,7 +282,7 @@ mod tests {
 
             foo(Node) ->
                 erlang:spawn_opt(Node, fun() -> ok end, []).
-            %%  ^^^^^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
             "#,
         )
     }
@@ -295,7 +295,7 @@ mod tests {
 
             foo(Node) ->
                 spawn_opt(Node, fun() -> ok end, []).
-            %%  ^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )
@@ -309,7 +309,7 @@ mod tests {
 
             foo(Node) ->
                 erlang:spawn_opt(Node, modu, ff, [], []).
-            %%  ^^^^^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )
@@ -323,7 +323,7 @@ mod tests {
 
             foo(Node) ->
                 spawn_opt(Node, modu, ff, [], []).
-            %%  ^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )
@@ -337,9 +337,9 @@ mod tests {
 
             foo(Node) ->
                 erts_internal_dist:dist_spawn_request(Node, fun() -> ok end),
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
                 erts_internal_dist:dist_spawn_request(Node, modu, ff, [], []).
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )
@@ -353,9 +353,9 @@ mod tests {
 
             foo(Node) ->
                 rpc:call(Node, mod, func, []),
-            %%  ^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
                 rpc:multicall([Node], mod, func, []).
-            %%  ^^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )
@@ -369,9 +369,9 @@ mod tests {
 
             foo(Name, FuncSpec) ->
                 sys:install(Name, FuncSpec),
-            %%  ^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
                 sys:install(Name, FuncSpec, 500).
-            %%  ^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
         )
@@ -401,7 +401,7 @@ mod tests {
 
             foo(Name, FuncSpec) ->
                 sys:inst~all(Name, FuncSpec).
-            %%  ^^^^^^^^^^^^^ 💡 error: Production code must not use cross node eval (e.g. `rpc:call()`)
+            %%  ^^^^^^^^^^^^^ 💡 error: W0014: Production code must not use cross node eval (e.g. `rpc:call()`)
 
             "#,
             expect![[r#"

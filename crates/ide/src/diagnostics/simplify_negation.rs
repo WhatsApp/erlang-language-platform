@@ -246,7 +246,7 @@ mod tests {
 
          fn(A, TrueBranch, FalseBranch) ->
             case not A of true -> FalseBranch; false -> TrueBranch end.
-         %%          ^ 💡 information: Consider rewriting to match directly on the negated expression.
+         %%          ^ 💡 information: W0044: Consider rewriting to match directly on the negated expression.
             "#,
         )
     }
@@ -260,7 +260,7 @@ mod tests {
 
          fn(A, TrueBranch, FalseBranch) ->
             case not A of false -> TrueBranch; true -> FalseBranch end.
-         %%          ^ 💡 information: Consider rewriting to match directly on the negated expression.
+         %%          ^ 💡 information: W0044: Consider rewriting to match directly on the negated expression.
             "#,
         )
     }
@@ -274,7 +274,7 @@ mod tests {
 
          fn(A, TrueBranch, FalseBranch) ->
             if not A -> FalseBranch; true -> TrueBranch end.
-         %%        ^ 💡 information: Consider rewriting to match directly on the negated expression.
+         %%        ^ 💡 information: W0044: Consider rewriting to match directly on the negated expression.
             "#,
         )
     }

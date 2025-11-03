@@ -53,10 +53,10 @@ mod tests {
               //- /src/main.erl
               -module(main).
               foo() -> erlang:size({}).
-              %%       ^^^^^^^^^^^ 💡 warning: Avoid using the `size/1` BIF.
-              
+              %%       ^^^^^^^^^^^ 💡 warning: W0050: Avoid using the `size/1` BIF.
+
               bar() -> size(<<>>).
-              %%       ^^^^ 💡 warning: Avoid using the `size/1` BIF.
+              %%       ^^^^ 💡 warning: W0050: Avoid using the `size/1` BIF.
               //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
               -module(erlang).
               -export([size/1]).
@@ -72,7 +72,7 @@ mod tests {
               //- /src/main.erl
               -module(main).
               foo() -> er~lang:size({}).
-              
+
               bar() -> size(<<>>).
               //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
               -module(erlang).

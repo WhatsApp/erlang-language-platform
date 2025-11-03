@@ -50,7 +50,7 @@ mod tests {
               //- /src/main.erl
               -module(main).
               foo() -> error_logger:error_msg("ops").
-                    %% ^^^^^^^^^^^^^^^^^^^^^^ 💡 error: The `error_logger` module is deprecated.
+                    %% ^^^^^^^^^^^^^^^^^^^^^^ 💡 error: W0053: The `error_logger` module is deprecated.
               //- /src/error_logger.erl
               -module(error_logger).
               -export([error_msg/1]).
@@ -67,7 +67,7 @@ mod tests {
               -module(main).
               -import(error_logger, [error_msg/1]).
               foo() -> error_msg("ops").
-                    %% ^^^^^^^^^^^^^^^^ 💡 error: The `error_logger` module is deprecated.
+                    %% ^^^^^^^^^^^^^^^^ 💡 error: W0053: The `error_logger` module is deprecated.
               //- /src/error_logger.erl
               -module(error_logger).
               -export([error_msg/1]).

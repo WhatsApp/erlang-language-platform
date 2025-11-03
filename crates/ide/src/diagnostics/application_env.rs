@@ -265,11 +265,11 @@ mod tests {
 
             get_mine() ->
                 application:get_env(misc, key).
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: module `main` belongs to app `my_app`, but reads env for `misc`
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0011: module `main` belongs to app `my_app`, but reads env for `misc`
 
             get_mine3() ->
                 application:get_env(misc, key, def).
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: module `main` belongs to app `my_app`, but reads env for `misc`
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0011: module `main` belongs to app `my_app`, but reads env for `misc`
 
             //- /my_app/src/application.erl
             -module(application).
@@ -302,7 +302,7 @@ mod tests {
 
             steal() ->
                 application:get_env(debug, key).
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: module `app_env` belongs to app `misc`, but reads env for `debug`
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0011: module `app_env` belongs to app `misc`, but reads env for `debug`
 
             //- /misc/src/application.erl app:misc
             -module(application).
@@ -324,7 +324,7 @@ mod tests {
 
             get_mine() ->
                 ?get(misc, key).
-            %%  ^^^^^^^^^^^^^^^ 💡 warning: module `main` belongs to app `my_app`, but reads env for `misc`
+            %%  ^^^^^^^^^^^^^^^ 💡 warning: W0011: module `main` belongs to app `my_app`, but reads env for `misc`
 
             //- /my_app/include/my_header.hrl app:my_app
             -define(get(K,V), application:get_env(K,V)).

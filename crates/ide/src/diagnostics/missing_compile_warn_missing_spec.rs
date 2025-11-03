@@ -233,7 +233,7 @@ mod tests {
         check_diagnostics(
             r#"
             //- /erl/my_app/src/main.erl
-            %% <<< 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+            %% <<< 💡 error: W0012: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
 
             -module(main).
 
@@ -249,7 +249,7 @@ mod tests {
             -module(main).
 
             -compile([export_all, nowarn_export_all]).
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: W0012: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
 
             "#,
         )
@@ -275,7 +275,7 @@ mod tests {
             -module(main).
 
             -compile(warn_missing_spec).
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: W0012: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
 
             "#,
         )
@@ -289,7 +289,7 @@ mod tests {
             -module(main).
 
             -compile(nowarn_missing_spec).
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: W0012: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
 
             "#,
         )
@@ -342,7 +342,7 @@ mod tests {
             -module(main).
 
             -compile(export_all).
-         %% ^^^^^^^^^^^^^^^^^^^^^ 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+         %% ^^^^^^^^^^^^^^^^^^^^^ 💡 error: W0012: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
             -compile(nowarn_export_all).
             "#,
         )
@@ -516,8 +516,8 @@ mod tests {
             "Ignore problem",
             r#"
             //- /erl/my_app/src/main.erl
-            ~%% <<< 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
-            
+            ~%% <<< 💡 error: W0012: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+
             -module(main).
 
             "#,
@@ -535,7 +535,7 @@ mod tests {
             "Ignore problem",
             r#"
             //- /erl/my_app/src/main.erl
-            ~%% <<< 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+            ~%% <<< 💡 error: W0012: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
             %% a comment at the
             %% top of the file
 
@@ -559,7 +559,7 @@ mod tests {
             "Ignore problem",
             r#"
             //- /erl/my_app/src/main.erl
-            ~%% <<< 💡 error: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+            ~%% <<< 💡 error: W0012: Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
             %% a comment at the
             %% top of the file
 
