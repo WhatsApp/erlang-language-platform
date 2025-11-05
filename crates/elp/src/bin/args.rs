@@ -372,6 +372,10 @@ pub struct Ssr {
     )]
     pub format: Option<String>,
 
+    /// Report severity as Info instead of WeakWarning
+    #[bpaf(long("info"))]
+    pub info_severity: bool,
+
     /// Macro expansion strategy: expand | no-expand | visible-expand (default expand)
     #[bpaf(
         long("macros"),
@@ -385,6 +389,9 @@ pub struct Ssr {
     /// Explicitly match parentheses. If omitted, they are ignored.
     #[bpaf(long("parens"))]
     pub paren_strategy: bool,
+
+    /// Dump a configuration snippet that can be put in .elp_lint.toml to match the given SSR patterns
+    pub dump_config: bool,
 
     /// Report system memory usage and other statistics
     #[bpaf(long("report-system-stats"))]

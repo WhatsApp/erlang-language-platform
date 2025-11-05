@@ -28,6 +28,7 @@ use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::FallBackToAll;
 use elp_ide::diagnostics::LintConfig;
+use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::diagnostics::MatchSsr;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
@@ -85,10 +86,16 @@ pub fn run_ssr_command(
     let mut lint_config = LintConfig::default();
     for pattern in &args.ssr_specs {
         let normalized_pattern = normalize_ssr_pattern(pattern);
+        let severity = if args.info_severity {
+            Some(diagnostics::Severity::Information)
+        } else {
+            None
+        };
         let ssr_lint = diagnostics::Lint::LintMatchSsr(MatchSsr {
             ssr_pattern: normalized_pattern,
             message: None,
             strategy: Some(strategy),
+            severity,
         });
         lint_config.ad_hoc_lints.lints.push(ssr_lint);
     }
@@ -105,8 +112,13 @@ pub fn run_ssr_command(
         .set_experimental(false)
         .set_use_cli_severity(false);
 
-    if diagnostics_config.enabled.all_enabled() && args.is_format_normal() {
-        writeln!(cli, "Reporting all diagnostics codes")?;
+    if args.dump_config {
+        let result = toml::to_string::<LintsFromConfig>(&diagnostics_config.lints_from_config)?;
+        // This is a subsection of .elp_lint.toml, add subsection prefix
+        let result = result.replace("[[lints]]", "[[ad_hoc_lints.lints]]");
+        writeln!(cli, "\n# Add this to your .elp_lint.toml")?;
+        writeln!(cli, "{}", result)?;
+        return Ok(());
     }
 
     // Load the project

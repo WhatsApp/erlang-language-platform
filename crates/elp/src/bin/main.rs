@@ -2114,6 +2114,17 @@ mod tests {
         )
     }
 
+    #[test]
+    fn lint_ssr_as_cli_dump_config() {
+        simple_snapshot(
+            args_vec!["ssr", "--dump-config", "--info", "?BAR(_@AA)", "{4}"],
+            "linter",
+            expect_file!("../resources/test/linter/ssr_ad_hoc_cli_dump_config.stdout"),
+            true,
+            None,
+        )
+    }
+
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalizer_tests_check(buck: bool) {

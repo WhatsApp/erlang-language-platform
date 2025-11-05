@@ -1,0 +1,12 @@
+
+# Add this to your .elp_lint.toml
+[[ad_hoc_lints.lints]]
+type = "LintMatchSsr"
+ssr_pattern = "ssr: ?BAR(_@AA)."
+severity = "info"
+
+[[ad_hoc_lints.lints]]
+type = "LintMatchSsr"
+ssr_pattern = "ssr: {4}."
+severity = "info"
+

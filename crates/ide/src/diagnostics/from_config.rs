@@ -131,6 +131,7 @@ pub struct MatchSsr {
     pub ssr_pattern: String,
     pub message: Option<String>,
     pub strategy: Option<Strategy>,
+    pub severity: Option<Severity>,
 }
 
 impl Serialize for MatchSsr {
@@ -140,10 +141,13 @@ impl Serialize for MatchSsr {
     {
         use serde::ser::SerializeStruct;
 
-        let mut state = serializer.serialize_struct("MatchSsr", 4)?;
+        let mut state = serializer.serialize_struct("MatchSsr", 5)?;
         state.serialize_field("ssr_pattern", &self.ssr_pattern)?;
         if let Some(ref message) = self.message {
             state.serialize_field("message", message)?;
+        }
+        if let Some(ref severity) = self.severity {
+            state.serialize_field("severity", severity)?;
         }
         if let Some(strategy) = self.strategy {
             // Default strategy is Expand and InvisibleParens
@@ -184,6 +188,8 @@ impl<'de> Deserialize<'de> for MatchSsr {
             ssr_pattern: String,
             #[serde(default)]
             message: Option<String>,
+            #[serde(default)]
+            severity: Option<Severity>,
             #[serde(default)]
             macro_strategy: Option<String>,
             #[serde(default)]
@@ -236,6 +242,7 @@ impl<'de> Deserialize<'de> for MatchSsr {
             ssr_pattern: helper.ssr_pattern,
             message: helper.message,
             strategy,
+            severity: helper.severity,
         })
     }
 }
@@ -256,12 +263,13 @@ impl MatchSsr {
                 .clone()
                 .unwrap_or_else(|| format!("SSR pattern matched: {}", self.ssr_pattern));
 
+            let severity = self.severity.unwrap_or(Severity::WeakWarning);
             let diag = Diagnostic::new(
                 DiagnosticCode::AdHoc("ssr-match".to_string()),
                 message,
                 matched.range.range,
             )
-            .with_severity(Severity::WeakWarning);
+            .with_severity(severity);
             acc.push(diag);
         }
     }
@@ -657,6 +665,7 @@ mod tests {
             ssr_pattern: "ssr: _@A = 10.".to_string(),
             message: Some("Found pattern".to_string()),
             strategy: None,
+            severity: None,
         })
         .unwrap();
         expect![[r#"
@@ -683,6 +692,7 @@ mod tests {
                     "Found pattern",
                 ),
                 strategy: None,
+                severity: None,
             }
         "#]]
         .assert_debug_eq(&match_ssr);
@@ -695,6 +705,7 @@ mod tests {
                 ssr_pattern: "ssr: _@A = 10.".to_string(),
                 message: Some("Found pattern".to_string()),
                 strategy: None,
+                severity: None,
             })],
         })
         .unwrap();
@@ -717,6 +728,7 @@ mod tests {
                     macros: MacroStrategy::Expand,
                     parens: ParenStrategy::InvisibleParens,
                 }),
+                severity: None,
             })],
         })
         .unwrap();
@@ -739,6 +751,7 @@ mod tests {
                     macros: MacroStrategy::DoNotExpand,
                     parens: ParenStrategy::VisibleParens,
                 }),
+                severity: None,
             })],
         })
         .unwrap();
@@ -782,11 +795,189 @@ mod tests {
                                     parens: VisibleParens,
                                 },
                             ),
+                            severity: None,
                         },
                     ),
                 ],
             }
         "#]]
         .assert_debug_eq(&match_ssr);
+    }
+
+    #[test]
+    fn serde_serialize_match_ssr_with_severity_error() {
+        use crate::diagnostics::Severity;
+        let result = toml::to_string::<MatchSsr>(&MatchSsr {
+            ssr_pattern: "ssr: _@A = 10.".to_string(),
+            message: Some("Found pattern".to_string()),
+            strategy: None,
+            severity: Some(Severity::Error),
+        })
+        .unwrap();
+        expect![[r#"
+            ssr_pattern = "ssr: _@A = 10."
+            message = "Found pattern"
+            severity = "error"
+        "#]]
+        .assert_eq(&result);
+    }
+
+    #[test]
+    fn serde_serialize_match_ssr_with_severity_warning() {
+        use crate::diagnostics::Severity;
+        let result = toml::to_string::<MatchSsr>(&MatchSsr {
+            ssr_pattern: "ssr: _@A = 10.".to_string(),
+            message: Some("Found pattern".to_string()),
+            strategy: None,
+            severity: Some(Severity::Warning),
+        })
+        .unwrap();
+        expect![[r#"
+            ssr_pattern = "ssr: _@A = 10."
+            message = "Found pattern"
+            severity = "warning"
+        "#]]
+        .assert_eq(&result);
+    }
+
+    #[test]
+    fn serde_serialize_match_ssr_with_severity_weak() {
+        use crate::diagnostics::Severity;
+        let result = toml::to_string::<MatchSsr>(&MatchSsr {
+            ssr_pattern: "ssr: _@A = 10.".to_string(),
+            message: Some("Found pattern".to_string()),
+            strategy: None,
+            severity: Some(Severity::WeakWarning),
+        })
+        .unwrap();
+        expect![[r#"
+            ssr_pattern = "ssr: _@A = 10."
+            message = "Found pattern"
+            severity = "weak"
+        "#]]
+        .assert_eq(&result);
+    }
+
+    #[test]
+    fn serde_serialize_match_ssr_with_severity_info() {
+        use crate::diagnostics::Severity;
+        let result = toml::to_string::<MatchSsr>(&MatchSsr {
+            ssr_pattern: "ssr: _@A = 10.".to_string(),
+            message: Some("Found pattern".to_string()),
+            strategy: None,
+            severity: Some(Severity::Information),
+        })
+        .unwrap();
+        expect![[r#"
+            ssr_pattern = "ssr: _@A = 10."
+            message = "Found pattern"
+            severity = "info"
+        "#]]
+        .assert_eq(&result);
+    }
+
+    #[test]
+    fn serde_deserialize_match_ssr_with_severity() {
+        use crate::diagnostics::Severity;
+        let match_ssr: MatchSsr = toml::from_str(
+            r#"
+              ssr_pattern = "ssr: _@A = 10."
+              message = "Found pattern"
+              severity = "error"
+             "#,
+        )
+        .unwrap();
+
+        assert_eq!(match_ssr.severity, Some(Severity::Error));
+    }
+
+    #[test]
+    fn serde_deserialize_lint_match_ssr_with_severity() {
+        use crate::diagnostics::Severity;
+        let lints: LintsFromConfig = toml::from_str(
+            r#"
+              [[lints]]
+              type = "LintMatchSsr"
+              ssr_pattern = "ssr: _@A = 10."
+              message = "Found pattern"
+              severity = "warning"
+             "#,
+        )
+        .unwrap();
+
+        match &lints.lints[0] {
+            Lint::LintMatchSsr(match_ssr) => {
+                assert_eq!(match_ssr.severity, Some(Severity::Warning));
+            }
+            _ => panic!("Expected LintMatchSsr"),
+        }
+    }
+
+    #[test]
+    fn serde_serialize_lint_match_ssr_with_severity_and_strategy() {
+        use crate::diagnostics::Severity;
+        let result = toml::to_string::<LintsFromConfig>(&LintsFromConfig {
+            lints: vec![Lint::LintMatchSsr(MatchSsr {
+                ssr_pattern: "ssr: _@A = 10.".to_string(),
+                message: Some("Found pattern".to_string()),
+                strategy: Some(Strategy {
+                    macros: MacroStrategy::DoNotExpand,
+                    parens: ParenStrategy::VisibleParens,
+                }),
+                severity: Some(Severity::Error),
+            })],
+        })
+        .unwrap();
+        expect![[r#"
+            [[lints]]
+            type = "LintMatchSsr"
+            ssr_pattern = "ssr: _@A = 10."
+            message = "Found pattern"
+            severity = "error"
+            macro_strategy = "no-expand"
+            paren_strategy = "visible"
+        "#]]
+        .assert_eq(&result);
+    }
+
+    #[test]
+    fn serde_deserialize_lint_match_ssr_with_severity_and_strategy() {
+        let lints: LintsFromConfig = toml::from_str(
+            r#"
+              [[lints]]
+              type = "LintMatchSsr"
+              ssr_pattern = "ssr: _@A = 10."
+              message = "Found pattern"
+              severity = "error"
+              macro_strategy = "no-expand"
+              paren_strategy = "visible"
+             "#,
+        )
+        .unwrap();
+
+        expect![[r#"
+            LintsFromConfig {
+                lints: [
+                    LintMatchSsr(
+                        MatchSsr {
+                            ssr_pattern: "ssr: _@A = 10.",
+                            message: Some(
+                                "Found pattern",
+                            ),
+                            strategy: Some(
+                                Strategy {
+                                    macros: DoNotExpand,
+                                    parens: VisibleParens,
+                                },
+                            ),
+                            severity: Some(
+                                Error,
+                            ),
+                        },
+                    ),
+                ],
+            }
+        "#]]
+        .assert_debug_eq(&lints);
     }
 }
