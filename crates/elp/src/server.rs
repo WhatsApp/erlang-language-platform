@@ -1803,9 +1803,13 @@ impl Server {
         }
         for (err, uri) in errors {
             if let Some(uri) = uri {
+                // It is not possible to put line breaks or other formatting in the message
+                let error_message = format!(
+                    "Look at `Details` in the buck UI for more information, there is likely an invalid BUCK file: {err}"
+                );
                 let params = lsp_types::ShowMessageRequestParams {
                     typ: lsp_types::MessageType::ERROR,
-                    message: err,
+                    message: error_message,
                     actions: Some(vec![MessageActionItem {
                         title: "Open Buck UI".to_string(),
                         properties: HashMap::from_iter(vec![(
