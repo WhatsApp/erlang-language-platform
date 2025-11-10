@@ -155,9 +155,8 @@ let fixture = r#"
 //- /src/main.erl
 -module(main).
 
-foo(X) ->
-    X + undefined.
-  %%    ^^^^^^^^^ error: type mismatch
+foo( -> ok. %%
+%%  ^ error: W0004: Missing ')'~
 "#;
 ```
 
