@@ -34,9 +34,6 @@ elp_text_edit = { path = "./crates/text_edit" }
 elp_types_db = { path = "./crates/types_db" }
 hir = { path = "./crates/hir" }
 
-# Forks
-erl_ast = { path = "./crates/erl_ast" }
-
 # External crates
 trie-rs = "0.4.2"
 always-assert = "0.1.3"
