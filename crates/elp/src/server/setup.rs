@@ -33,6 +33,7 @@ use super::FILE_WATCH_LOGGER_NAME;
 use super::logger::LspLogger;
 use crate::config::Config;
 use crate::from_json;
+// @fb-only
 use crate::server::Handle;
 use crate::server::LOGGER_NAME;
 use crate::server::Server;
@@ -125,8 +126,9 @@ impl ServerSetup {
 
         // Set up a logger for tracking down why we are seeing stale
         // results when branches are switched, as per T218973130
-        let log_dir = "/tmp/elp";
-        let _ = fs::create_dir_all(log_dir);
+        // @fb-only
+        let log_dir = format!("{}/elp", std::env::temp_dir().display()); // @oss-only
+        let _ = fs::create_dir_all(&log_dir);
         let log_file = format!(
             "{}/elp_file_watch_reports-{}.log",
             log_dir,
