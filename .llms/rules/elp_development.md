@@ -3,13 +3,13 @@ llms-gk: 'devmate_elp_development_md'
 apply_to_regex: '^(.*\.rs|.*\.md)$'
 oncalls: ['vscode_erlang']
 ---
-
-# ELP Development Rules for LLMs
-
+# ELP Development Rules for LLMs (OSS)
 
 ## Project Overview
 
-ELP (Erlang Language Platform) is a language server and development tools suite for Erlang, built in Rust. This project provides IDE features, diagnostics, and code analysis for Erlang codebases.
+ELP (Erlang Language Platform) is a language server and development tools suite
+for Erlang, built in Rust. This project provides IDE features, diagnostics, and
+code analysis for Erlang codebases.
 
 ## Diagnostic Code Management
 
@@ -17,13 +17,13 @@ ELP (Erlang Language Platform) is a language server and development tools suite 
 
 When adding new diagnostic codes to `DiagnosticCode` enum:
 
-1. **Naming Convention**: Use descriptive PascalCase names that clearly indicate the issue
+1. **Naming Convention**: Use descriptive PascalCase names that clearly indicate
+   the issue
    - Good: `UnusedFunctionArg`, `MissingCompileWarnMissingSpec`
    - Bad: `Error1`, `BadCode`
 
 2. **Code Assignment**: Follow the established numbering scheme
    - `W0000-W9999`: Native ELP diagnostics, visible in the OSS version
-   - `WA000-WA999`: WhatsApp-specific warnings, only visible in Meta builds
    - Use the next available number in the appropriate range
    - Never change the number of an existing diagnostic code
    - Never change the label of an existing diagnostic code
@@ -37,7 +37,8 @@ When adding new diagnostic codes to `DiagnosticCode` enum:
 
 4. **Documentation**: Add comments explaining complex diagnostic codes
 
-5. **Documentation File**: Create a corresponding documentation file in the website
+5. **Documentation File**: Create a corresponding documentation file in the
+   website
    - Location: `website/docs/erlang-error-index/{namespace}/{code}.md`
    - Example: `W0051` → `website/docs/erlang-error-index/w/W0051.md`
    - Include frontmatter with `sidebar_position` matching the code number
@@ -51,16 +52,19 @@ When adding new diagnostic codes to `DiagnosticCode` enum:
 
 ### Creating DiagnosticDescriptor
 
-Every diagnostic must have a corresponding `DiagnosticDescriptor` that defines when and how the diagnostic runs:
+Every diagnostic must have a corresponding `DiagnosticDescriptor` that defines
+when and how the diagnostic runs:
 
-1. **Static Descriptor Declaration**: Create a public static descriptor in your diagnostic module
+1. **Static Descriptor Declaration**: Create a public static descriptor in your
+   diagnostic module
    - Use `pub(crate) static DESCRIPTOR: DiagnosticDescriptor` pattern
    - Define `DiagnosticConditions` with appropriate flags
    - Provide a checker function that implements the diagnostic logic
 
 2. **Diagnostic Conditions**: Configure when the diagnostic should run
    - `experimental`: Mark as true for experimental/unstable diagnostics
-   - `include_generated`: Set to false if diagnostic shouldn't run on generated code
+   - `include_generated`: Set to false if diagnostic shouldn't run on generated
+     code
    - `include_tests`: Set to false if diagnostic shouldn't run on test files
    - `default_disabled`: Set to true if diagnostic requires explicit enabling
 
@@ -69,7 +73,8 @@ Every diagnostic must have a corresponding `DiagnosticDescriptor` that defines w
    - Push diagnostics to the `diags` vector using `Diagnostic::new()`
    - Use helper functions to keep the checker clean and focused
 
-4. **Registration**: Add the descriptor to `diagnostics_descriptors()` function in `diagnostics.rs`
+4. **Registration**: Add the descriptor to `diagnostics_descriptors()` function
+   in `diagnostics.rs`
    - Include your module's `DESCRIPTOR` in the returned vector
 
 5. **Module Structure**: Follow the established pattern
@@ -77,12 +82,6 @@ Every diagnostic must have a corresponding `DiagnosticDescriptor` that defines w
    - Export the `DESCRIPTOR` as `pub(crate) static`
    - Include comprehensive tests with `#[cfg(test)]`
    - Use SSR patterns when appropriate for complex matching
-
-### Meta-Only vs OSS Code
-
-- Use `@fb-only` and `@oss-only` comments to mark platform-specific code
-- Meta-only diagnostics should use `MetaOnlyDiagnosticCode` wrapper
-- Ensure OSS builds work by providing fallbacks for Meta-only features
 
 ## Rust Code Style
 
@@ -120,23 +119,33 @@ Every diagnostic must have a corresponding `DiagnosticDescriptor` that defines w
 
 ### Declarative Test Fixtures
 
-ELP uses a declarative test fixture system that allows you to write tests with inline annotations and markers directly in test strings. This system is defined in `/data/sandcastle/boxes/fbsource/fbcode/whatsapp/elp/crates/project_model/src/test_fixture.rs`.
+ELP uses a declarative test fixture system that allows you to write tests with
+inline annotations and markers directly in test strings. This system is defined
+in `crates/project_model/src/test_fixture.rs`.
 
 #### Key Features
 
-1. **File Organization**: Use `//- /path/to/file.erl` to define multiple files in a single test
-2. **Metadata Markers**: Specify app names, include paths, OTP apps, etc. using metadata after the path
+1. **File Organization**: Use `//- /path/to/file.erl` to define multiple files
+   in a single test
+2. **Metadata Markers**: Specify app names, include paths, OTP apps, etc. using
+   metadata after the path
 3. **Annotations**: Mark expected diagnostics or ranges using `%% ^^^` syntax
-4. **Cursors and Ranges**: Use `~` markers to indicate positions or ranges in test code
+4. **Cursors and Ranges**: Use `~` markers to indicate positions or ranges in
+   test code
 
 #### Annotation Syntax
 
-Annotations allow you to mark expected diagnostics, types, or other information directly in test code:
+Annotations allow you to mark expected diagnostics, types, or other information
+directly in test code:
 
-- **Basic annotation**: `%% ^^^ some text` - Points to the range above matching the caret length
-- **Top-of-file marker**: `%% <<< text` (at file start) - Creates annotation at position 0..0
-- **File-wide annotation**: `%% ^^^file text` - Annotation spans the entire file contents
-- **Left-margin annotation**: `%%<^^^ text` - Annotation starts at `%%` position instead of first `^`
+- **Basic annotation**: `%% ^^^ some text` - Points to the range above matching
+  the caret length
+- **Top-of-file marker**: `%% <<< text` (at file start) - Creates annotation at
+  position 0..0
+- **File-wide annotation**: `%% ^^^file text` - Annotation spans the entire file
+  contents
+- **Left-margin annotation**: `%%<^^^ text` - Annotation starts at `%%` position
+  instead of first `^`
 - **Multiline annotations**: Use continuation lines with `%%   | next line`
 
 #### Example Test Fixture
@@ -146,9 +155,8 @@ let fixture = r#"
 //- /src/main.erl
 -module(main).
 
-foo(X) ->
-    X + undefined.
-  %%    ^^^^^^^^^ error: type mismatch
+foo( -> ok. %%
+%%  ^ error: W0004: Missing ')'~
 "#;
 ```
 
@@ -160,34 +168,37 @@ foo(X) ->
 
 ### Running Tests for Specific Crates
 
-When running tests for a specific crate, you need to specify the crate name, not the directory name. The mapping is:
+When running tests for a specific crate, you need to specify the crate name, not
+the directory name. The mapping is:
 
-| Crate Name | Directory Name |
-|------------|----------------|
-| `elp_base_db` | `crates/base_db` |
-| `elp_eqwalizer` | `crates/eqwalizer` |
+| Crate Name           | Directory Name          |
+| -------------------- | ----------------------- |
+| `elp`                | `crates/elp`            |
+| `elp_base_db`        | `crates/base_db`        |
+| `elp_eqwalizer`      | `crates/eqwalizer`      |
 | `elp_erlang_service` | `crates/erlang_service` |
-| `elp_ide` | `crates/ide` |
-| `elp_ide_assists` | `crates/ide_assists` |
+| `elp_ide`            | `crates/ide`            |
+| `elp_ide_assists`    | `crates/ide_assists`    |
 | `elp_ide_completion` | `crates/ide_completion` |
-| `elp_ide_db` | `crates/ide_db` |
-| `elp_ide_ssr` | `crates/ide_ssr` |
-| `elp_log` | `crates/elp_log` |
-| `elp_project_model` | `crates/project_model` |
-| `elp_syntax` | `crates/syntax` |
-| `elp_text_edit` | `crates/text_edit` |
-| `elp_types_db` | `crates/types_db` |
-| `hir` | `crates/hir` |
-| `erl_ast` | `crates/erl_ast` |
+| `elp_ide_db`         | `crates/ide_db`         |
+| `elp_ide_ssr`        | `crates/ide_ssr`        |
+| `elp_log`            | `crates/elp_log`        |
+| `elp_project_model`  | `crates/project_model`  |
+| `elp_syntax`         | `crates/syntax`         |
+| `elp_text_edit`      | `crates/text_edit`      |
+| `elp_types_db`       | `crates/types_db`       |
+| `hir`                | `crates/hir`            |
 
 Example: To run tests for the `elp_ide` crate:
+
 ```bash
-./meta/cargo.sh test -p elp_ide
+cargo test -p elp_ide
 ```
 
 Or to run tests in a specific directory:
+
 ```bash
-./meta/cargo.sh test --manifest-path crates/ide/Cargo.toml
+cargo test --manifest-path crates/ide/Cargo.toml
 ```
 
 ### Existing tests
@@ -277,14 +288,8 @@ Or to run tests in a specific directory:
 - Collect multiple errors rather than failing on the first one
 - Provide partial results when full analysis isn't possible
 
-### Tools
-
-- ELP uses a cargo workspace.
-- Inside Meta, use `./meta/cargo.sh` instead of `cargo`
-- Inside Meta, use `./meta/clippy.sh` to run clippy
-- Use `arc lint --apply-patches` for formatting.
-
 ### Process
 
-- Always run tests before finishing.
-- Always run `./meta/cargo.sh clippy --tests` before submitting a diff
+- Always run tests before finishing
+- Always run `cargo clippy --tests` before submitting PRs
+- Use `cargo fmt` for code formatting
