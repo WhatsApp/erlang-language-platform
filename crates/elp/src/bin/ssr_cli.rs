@@ -86,7 +86,8 @@ pub fn run_ssr_command(
     let mut lint_config = LintConfig::default();
     for pattern in &args.ssr_specs {
         let normalized_pattern = normalize_ssr_pattern(pattern);
-        let severity = if args.info_severity {
+        let severity = if args.dump_config {
+            // Set the severity so that squiggles are shown in the VS Code UI
             Some(diagnostics::Severity::Information)
         } else {
             None

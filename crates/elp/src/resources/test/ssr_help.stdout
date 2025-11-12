@@ -1,4 +1,4 @@
-Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--rebar] [--as PROFILE] [--include-generated] [--include-tests] [[--format FORMAT]] [--info] [[--macros STRATEGY]] [--parens] [--dump-config] [--report-system-stats] <SSR_SPECS>...
+Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--rebar] [--as PROFILE] [--include-generated] [--include-tests] [[--format FORMAT]] [[--macros STRATEGY]] [--parens] [--dump-config] [--report-system-stats] <SSR_SPECS>...
 
 Available positional items:
     <SSR_SPECS>  SSR specs to use
@@ -13,7 +13,6 @@ Available options:
         --include-generated    Also generate diagnostics for generated files
         --include-tests        Also generate diagnostics for test files
         --format <FORMAT>      Show diagnostics in JSON format
-        --info                 Report severity as Info instead of WeakWarning
         --macros <STRATEGY>    Macro expansion strategy: expand | no-expand | visible-expand (default expand)
         --parens               Explicitly match parentheses. If omitted, they are ignored.
         --dump-config          Dump a configuration snippet that can be put in .elp_lint.toml to match the given SSR patterns

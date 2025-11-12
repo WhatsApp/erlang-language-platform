@@ -372,10 +372,6 @@ pub struct Ssr {
     )]
     pub format: Option<String>,
 
-    /// Report severity as Info instead of WeakWarning
-    #[bpaf(long("info"))]
-    pub info_severity: bool,
-
     /// Macro expansion strategy: expand | no-expand | visible-expand (default expand)
     #[bpaf(
         long("macros"),
