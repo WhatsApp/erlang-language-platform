@@ -507,6 +507,7 @@ impl Server {
                         a_file_per_project = FxHashSet::default();
                     }
                     spinner.end();
+                    log::info!(target: FILE_WATCH_LOGGER_NAME, "Project reloading complete");
                     self.reload_manager
                         .lock()
                         .set_reload_done(a_file_per_project);
@@ -558,6 +559,7 @@ impl Server {
 
         let to_reload = self.reload_manager.lock().query_changed_files();
         if let Some(to_reload) = to_reload {
+            log::info!(target: FILE_WATCH_LOGGER_NAME, "Asking for project reload");
             let query_config = self.reload_manager.lock().set_reload_active();
             self.reload_project(to_reload, query_config);
         }
@@ -1022,8 +1024,10 @@ impl Server {
                 log::info!(target: FILE_WATCH_LOGGER_NAME, "VFS change:{}:{}", &opened, &path);
             }
             if !opened {
-                // This call will add the file to the changed_files, picked
-                // up in `process_changes`, if it has changed.
+                // This call will add the file to the changed_files,
+                // picked up in `process_changes`, only if the new
+                // content is different from the current, checked via
+                // a hash.
                 vfs.set_file_contents(path, contents);
             }
         }
@@ -1396,9 +1400,11 @@ impl Server {
     fn switch_workspaces(&mut self, spinner: &Spinner, new_projects: Vec<Project>) -> Result<()> {
         if new_projects.is_empty() {
             log::info!("nothing new, not switching workspaces");
+            log::info!(target: FILE_WATCH_LOGGER_NAME, "nothing new, not switching workspaces");
             return Ok(());
         }
         log::info!("will switch workspaces");
+        log::info!(target: FILE_WATCH_LOGGER_NAME, "will switch workspaces");
 
         let mut projects: Vec<Project> = self.projects.iter().cloned().collect();
         for project in new_projects {
@@ -1878,6 +1884,7 @@ impl Server {
         if !self.reload_manager.lock().ok_to_switch_workspace() {
             // There are other changed files, abort this reload, to
             // allow the next one.
+            log::info!(target: FILE_WATCH_LOGGER_NAME, "Not switching workspaces, more changed config files");
             return Ok(false);
         }
         spinner.report("Switching to loaded projects".to_string());
