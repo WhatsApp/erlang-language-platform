@@ -38,6 +38,7 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
     },
     checker: &|acc, sema, file_id, _ext| {
         inefficient_last_hd_ssr(acc, sema, file_id);
+        inefficient_last_nth_ssr(acc, sema, file_id);
         inefficient_last_pat_ssr(acc, sema, file_id);
     },
 };
@@ -54,6 +55,24 @@ fn inefficient_last_hd_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id
         },
         file_id,
         format!("ssr: hd(lists:reverse({LIST_VAR})).").as_str(),
+    );
+    matches.matches.iter().for_each(|m| {
+        if let Some(diagnostic) = make_diagnostic_hd(sema, file_id, m) {
+            diags.push(diagnostic)
+        }
+    });
+}
+
+// lists:nth(1, L) is functionally equivalent to hd(L)
+fn inefficient_last_nth_ssr(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
+    let matches = match_pattern_in_file_functions(
+        sema,
+        Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        file_id,
+        format!("ssr: lists:nth(1, lists:reverse({LIST_VAR})).").as_str(),
     );
     matches.matches.iter().for_each(|m| {
         if let Some(diagnostic) = make_diagnostic_hd(sema, file_id, m) {
@@ -245,6 +264,52 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(List) -> LastElem = lists:last(List), LastElem.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn ignores_inefficient_last_via_nth_when_index_is_not_one() {
+        check_diagnostics(
+            r#"
+         //- /src/inefficient_last.erl
+         -module(inefficient_last).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(List) -> lists:nth(3, lists:reverse(List)).
+            "#,
+        )
+    }
+
+    #[test]
+    fn detects_inefficient_last_via_nth() {
+        check_diagnostics(
+            r#"
+         //- /src/inefficient_last.erl
+         -module(inefficient_last).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(List) -> lists:nth(1, lists:reverse(List)).
+         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0029: Unnecessary intermediate reverse list allocated.
+            "#,
+        )
+    }
+
+    #[test]
+    fn fixes_inefficient_last_via_nth() {
+        check_fix(
+            r#"
+         //- /src/inefficient_last.erl
+         -module(inefficient_last).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(List) -> lists:nth(1, lists:re~verse(List)).
+            "#,
+            expect![[r#"
+         -module(inefficient_last).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(List) -> lists:last(List).
             "#]],
         )
     }
