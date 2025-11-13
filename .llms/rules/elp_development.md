@@ -11,6 +11,27 @@ ELP (Erlang Language Platform) is a language server and development tools suite
 for Erlang, built in Rust. This project provides IDE features, diagnostics, and
 code analysis for Erlang codebases.
 
+## Build System
+
+Use standard Cargo commands:
+
+```bash
+# Build
+cargo build --release
+
+# Run tests
+cargo test --workspace
+
+# Run clippy
+cargo clippy --tests
+
+# Format code
+cargo fmt
+
+# Code generation
+cargo xtask codegen
+```
+
 ## Diagnostic Code Management
 
 ### Adding New Diagnostic Codes
