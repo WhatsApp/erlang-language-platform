@@ -108,6 +108,7 @@ mod head_mismatch;
 mod inefficient_enumerate;
 mod inefficient_flatlength;
 mod inefficient_last;
+mod lists_reverse_append;
 mod macro_precedence_suprise;
 mod map_find_to_syntax;
 mod map_insertion_to_syntax;
@@ -1558,6 +1559,7 @@ const SSR_PATTERN_LINTERS: &[&dyn SsrPatternsDiagnostics] = &[
     &binary_string_to_sigil::LINTER,
     &unnecessary_map_to_list_in_comprehension::LINTER,
     &could_be_a_string_literal::LINTER,
+    &lists_reverse_append::LINTER,
 ];
 
 /// Generic linters
