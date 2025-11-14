@@ -5,8 +5,7 @@ Diagnostics reported in 3 modules:
   top_includer: 2
       0:1-0:1::[Error] [L0000] Issue in included file
       12:4-12:10::[Error] [E1508] undefined macro 'THIRD/2'
-  wa_buck2_module_search: 5
-      19:0-19:18::[WeakWarning] [W0040] The function is non-trivial, exported, but not documented.
+  wa_buck2_module_search: 4
       54:18-54:31::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
       56:18-56:28::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
       56:38-56:51::[WeakWarning] [W0051] Binary string can be written using sigil syntax.

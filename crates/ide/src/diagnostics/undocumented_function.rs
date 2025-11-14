@@ -8,11 +8,12 @@
  * above-listed licenses.
  */
 
-use elp_ide_assists::helpers::unwrap_parens;
 // Diagnostic: undocumented-function
+use elp_ide_assists::helpers::unwrap_parens;
 use elp_ide_db::elp_base_db::FileId;
 use elp_syntax::ast;
 use elp_syntax::ast::Atom;
+use elp_text_edit::TextRange;
 use fxhash::FxHashSet;
 use hir::AsName;
 use hir::FunctionDef;
@@ -21,36 +22,65 @@ use hir::Semantic;
 use hir::form_list::ModuleDocAttribute;
 use hir::known;
 
-use super::Diagnostic;
-use super::DiagnosticCode;
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use super::Severity;
+use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
+use crate::diagnostics::Severity;
 
-const DIAGNOSTIC_CODE: DiagnosticCode = DiagnosticCode::UndocumentedFunction;
-const DIAGNOSTIC_MESSAGE: &str = "The function is non-trivial, exported, but not documented.";
-const DIAGNOSTIC_SEVERITY: Severity = Severity::WeakWarning;
+pub(crate) struct UndocumentedFunctionLinter;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: false,
-        default_disabled: true,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        check(diags, sema, file_id);
-    },
-};
+impl Linter for UndocumentedFunctionLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::UndocumentedFunction
+    }
 
-fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    let callbacks = sema.resolve_callbacks(file_id);
-    if !contains_moduledoc_hidden_attribute(sema, file_id) {
-        sema.def_map_local(file_id)
-            .get_functions()
-            .for_each(|(_arity, def)| check_function(diagnostics, sema, def, &callbacks));
+    fn description(&self) -> &'static str {
+        "The function is non-trivial, exported, but not documented."
+    }
+
+    fn severity(&self) -> Severity {
+        Severity::WeakWarning
+    }
+
+    fn is_enabled(&self) -> bool {
+        false
+    }
+
+    fn should_process_test_files(&self) -> bool {
+        false
     }
 }
+
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Context {
+    range: TextRange,
+}
+
+impl GenericLinter for UndocumentedFunctionLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Context>>> {
+        let mut res = Vec::new();
+        let callbacks = sema.resolve_callbacks(file_id);
+        if !contains_moduledoc_hidden_attribute(sema, file_id) {
+            sema.def_map_local(file_id)
+                .get_functions()
+                .for_each(|(_arity, def)| {
+                    if let Some(match_context) = check_function(sema, def, &callbacks) {
+                        res.push(match_context);
+                    }
+                });
+        }
+        Some(res)
+    }
+}
+
+pub static LINTER: UndocumentedFunctionLinter = UndocumentedFunctionLinter;
 
 fn contains_moduledoc_hidden_attribute(sema: &Semantic, file_id: FileId) -> bool {
     sema.form_list(file_id)
@@ -87,20 +117,22 @@ fn function_should_be_checked(
 }
 
 fn check_function(
-    diagnostics: &mut Vec<Diagnostic>,
     sema: &Semantic,
     def: &FunctionDef,
     callbacks: &FxHashSet<NameArity>,
-) {
+) -> Option<GenericLinterMatchContext<Context>> {
     if function_should_be_checked(sema, def, callbacks)
         && !def.has_doc_attribute()
         && !def.has_doc_attribute_metadata()
         && def.edoc_comments(sema.db).is_none()
         && let Some(name_range) = def.name_range(sema.db)
     {
-        let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, name_range)
-            .with_severity(DIAGNOSTIC_SEVERITY);
-        diagnostics.push(diagnostic);
+        Some(GenericLinterMatchContext {
+            range: name_range,
+            context: Context { range: name_range },
+        })
+    } else {
+        None
     }
 }
 
@@ -130,7 +162,7 @@ mod tests {
     -module(main).
     -export([main/0]).
     main() ->
- %% ^^^^ weak: W0040: The function is non-trivial, exported, but not documented.
+ %% ^^^^ 💡 weak: W0040: The function is non-trivial, exported, but not documented.
       [ok,
        ok,
        ok,
@@ -147,7 +179,7 @@ mod tests {
     -module(main).
     -export([main/0]).
     main() ->
- %% ^^^^ weak: W0040: The function is non-trivial, exported, but not documented.
+ %% ^^^^ 💡 weak: W0040: The function is non-trivial, exported, but not documented.
       [ok,
        ok,
        ok,
@@ -317,7 +349,7 @@ mod tests {
     -export([handle_call/1]).
 
     main() ->
-    %%<^ weak: W0040: The function is non-trivial, exported, but not documented.
+    %%<^ 💡 weak: W0040: The function is non-trivial, exported, but not documented.
       [ok,
        ok,
        ok,
@@ -349,7 +381,7 @@ mod tests {
       ok.
 
     complex() ->
-    %%<^^^^ weak: W0040: The function is non-trivial, exported, but not documented.
+    %%<^^^^ 💡 weak: W0040: The function is non-trivial, exported, but not documented.
       [ok,
        ok,
        ok,
@@ -370,7 +402,7 @@ mod tests {
       ok.
 
     complex(a) ->
-    %%<^^^^ weak: W0040: The function is non-trivial, exported, but not documented.
+    %%<^^^^ 💡 weak: W0040: The function is non-trivial, exported, but not documented.
       [ok];
     complex(b) ->
       [ok,
