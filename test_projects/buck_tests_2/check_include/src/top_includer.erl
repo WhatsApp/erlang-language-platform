@@ -9,4 +9,6 @@
 -spec foo() -> ok.
 foo() ->
     ?FIRST,
-    ?SECOND.
+    ?SECOND,
+    ?THIRD(41,34),
+    ?FUNCTION_NAME.

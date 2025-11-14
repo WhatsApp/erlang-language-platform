@@ -38,6 +38,8 @@ use crate::AttributeBody;
 use crate::BasedInteger;
 use crate::BinarySeg;
 use crate::Body;
+use crate::BodyDiagnostic;
+use crate::BodyDiagnosticKind;
 use crate::BodySourceMap;
 use crate::CRClause;
 use crate::CallTarget;
@@ -116,6 +118,8 @@ pub struct Ctx<'a> {
     // This means we need to lower a Var specially when processing a SSR
     // template, where if it has a prefix of `_@` it is a placeholder.
     in_ssr: bool,
+    // Diagnostics collected during body lowering
+    diagnostics: Vec<BodyDiagnostic>,
 }
 
 #[derive(Debug)]
@@ -152,6 +156,7 @@ impl<'a> Ctx<'a> {
             starting_stack_size: 1,
             macro_source_map: FxHashMap::default(),
             in_ssr: false,
+            diagnostics: Vec::new(),
         }
     }
 
@@ -216,6 +221,7 @@ impl<'a> Ctx<'a> {
 
         assert!(self.body.origin.is_valid());
         self.body.shrink_to_fit();
+        self.source_map.diagnostics = self.diagnostics;
         (Arc::new(self.body), self.source_map)
     }
 
@@ -812,6 +818,9 @@ impl<'a> Ctx<'a> {
                     )
                 })
                 .unwrap_or_else(|| {
+                    // Record diagnostic for unresolved macro
+                    self.record_unresolved_macro(call);
+
                     let expansion = self.alloc_pat(Pat::Missing, Some(expr));
                     let args = call
                         .args()
@@ -1169,6 +1178,9 @@ impl<'a> Ctx<'a> {
                 })
                 .flatten()
                 .unwrap_or_else(|| {
+                    // Record diagnostic for unresolved macro
+                    self.record_unresolved_macro(call);
+
                     call.args()
                         .iter()
                         .flat_map(|args| args.args())
@@ -1400,8 +1412,8 @@ impl<'a> Ctx<'a> {
                 let exprs = self.lower_lc_exprs(lc.lc_exprs());
                 self.alloc_expr(Expr::Comprehension { builder, exprs }, Some(expr))
             }
-            ast::ExprMax::MacroCallExpr(call) => self
-                .resolve_macro(call, |this, source, replacement| match replacement {
+            ast::ExprMax::MacroCallExpr(call) => {
+                self.resolve_macro(call, |this, source, replacement| match replacement {
                     MacroReplacement::BuiltIn(built_in) => {
                         this.lower_built_in_macro(built_in).map(|literal| {
                             let expr_id = this.alloc_expr(Expr::Literal(literal), None);
@@ -1464,6 +1476,9 @@ impl<'a> Ctx<'a> {
                     )
                 })
                 .unwrap_or_else(|| {
+                    // Record diagnostic for unresolved macro
+                    self.record_unresolved_macro(call);
+
                     let expansion = self.alloc_expr(Expr::Missing, Some(expr));
                     let args = call
                         .args()
@@ -1480,7 +1495,8 @@ impl<'a> Ctx<'a> {
                         },
                         Some(expr),
                     )
-                }),
+                })
+            }
             ast::ExprMax::MacroString(_) => self.alloc_expr(Expr::Missing, Some(expr)),
             ast::ExprMax::ParenExpr(paren_expr) => {
                 if let Some(inner_expr) = paren_expr.expr() {
@@ -1990,6 +2006,9 @@ impl<'a> Ctx<'a> {
                 })
                 .flatten()
                 .unwrap_or_else(|| {
+                    // Record diagnostic for unresolved macro
+                    self.record_unresolved_macro(call);
+
                     call.args()
                         .iter()
                         .flat_map(|args| args.args())
@@ -2170,6 +2189,9 @@ impl<'a> Ctx<'a> {
                     )
                 })
                 .unwrap_or_else(|| {
+                    // Record diagnostic for unresolved macro
+                    self.record_unresolved_macro(call);
+
                     let expansion = self.alloc_type_expr(TypeExpr::Missing, Some(expr));
                     let args = call
                         .args()
@@ -2536,6 +2558,9 @@ impl<'a> Ctx<'a> {
                     )
                 })
                 .unwrap_or_else(|| {
+                    // Record diagnostic for unresolved macro
+                    self.record_unresolved_macro(call);
+
                     let expansion = self.alloc_term(Term::Missing, Some(expr));
                     let args = call
                         .args()
@@ -2995,6 +3020,14 @@ impl<'a> Ctx<'a> {
         let source = InFileAstPtr::new(self.curr_file_id(), ptr);
         self.source_map.macro_map.insert(source, res);
         self.macro_source_map.insert(name, source);
+    }
+
+    fn record_unresolved_macro(&mut self, call: &ast::MacroCallExpr) {
+        let source = InFileAstPtr::new(self.curr_file_id(), AstPtr::new(call).cast().unwrap());
+        self.diagnostics.push(BodyDiagnostic {
+            source,
+            kind: BodyDiagnosticKind::UnresolvedMacro,
+        });
     }
 
     fn curr_file_id(&self) -> FileId {

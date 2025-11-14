@@ -1155,6 +1155,21 @@ pub type ExprSource = InFileAstPtr<ast::Expr>;
 
 pub type MacroSource = InFileAstPtr<ast::MacroCallExpr>;
 
+/// Lightweight diagnostic for body lowering
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BodyDiagnostic {
+    /// Location of the problematic construct
+    pub source: MacroSource,
+    /// Type of diagnostic
+    pub kind: BodyDiagnosticKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BodyDiagnosticKind {
+    /// Macro failed to expand/resolve
+    UnresolvedMacro,
+}
+
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct InFileAstPtr<T>(InFile<AstPtr<T>>)
 where
@@ -1231,6 +1246,7 @@ pub struct BodySourceMap {
     term_map: FxHashMap<ExprSource, TermId>,
     term_map_back: ArenaMap<TermId, ExprSource>,
     macro_map: FxHashMap<MacroSource, ResolvedMacro>,
+    diagnostics: Vec<BodyDiagnostic>,
 }
 
 impl BodySourceMap {
@@ -1291,6 +1307,10 @@ impl BodySourceMap {
         self.macro_map
             .get(&InFileAstPtr::from_infile(call))
             .copied()
+    }
+
+    pub fn diagnostics(&self) -> &[BodyDiagnostic] {
+        &self.diagnostics
     }
 }
 
