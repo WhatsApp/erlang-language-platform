@@ -43,6 +43,7 @@ use crate::FormList;
 use crate::FunctionClause;
 use crate::FunctionClauseId;
 use crate::InFile;
+use crate::IncludeAttributeId;
 use crate::Literal;
 use crate::Name;
 use crate::NameArity;
@@ -1157,17 +1158,20 @@ pub type MacroSource = InFileAstPtr<ast::MacroCallExpr>;
 
 /// Lightweight diagnostic for body lowering
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BodyDiagnostic {
-    /// Location of the problematic construct
-    pub source: MacroSource,
-    /// Type of diagnostic
-    pub kind: BodyDiagnosticKind,
+pub enum BodyDiagnostic {
+    /// Macro failed to expand/resolve
+    UnresolvedMacro(MacroSource),
+    /// Include failed to resolve
+    UnresolvedInclude(InFile<IncludeAttributeId>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum BodyDiagnosticKind {
-    /// Macro failed to expand/resolve
-    UnresolvedMacro,
+impl BodyDiagnostic {
+    pub fn file_id(&self) -> FileId {
+        match self {
+            BodyDiagnostic::UnresolvedMacro(src) => src.file_id(),
+            BodyDiagnostic::UnresolvedInclude(include) => include.file_id,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]

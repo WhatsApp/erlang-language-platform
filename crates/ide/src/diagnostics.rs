@@ -1801,13 +1801,29 @@ pub fn collect_body_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<hir::
                 Some(body_map)
             }
             FormIdx::PPDirective(idx) => {
-                if let PPDirective::Define(define_id) = &form_list[*idx] {
-                    let (_, body_map) = sema
-                        .db
-                        .define_body_with_source(InFile::new(file_id, *define_id));
-                    Some(body_map)
-                } else {
-                    None
+                match &form_list[*idx] {
+                    PPDirective::Define(define_id) => {
+                        let (_, body_map) = sema
+                            .db
+                            .define_body_with_source(InFile::new(file_id, *define_id));
+                        Some(body_map)
+                    }
+                    PPDirective::Include(include_id) => {
+                        // Try to resolve the include
+                        if sema
+                            .db
+                            .resolve_include(InFile::new(file_id, *include_id))
+                            .is_none()
+                        {
+                            // Include resolution failed, create a diagnostic
+                            diagnostics.push(hir::BodyDiagnostic::UnresolvedInclude(InFile::new(
+                                file_id,
+                                *include_id,
+                            )));
+                        }
+                        None
+                    }
+                    _ => None,
                 }
             }
             _ => None,
@@ -1830,17 +1846,18 @@ pub fn get_hir_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic
     body_diagnostics
         .into_iter()
         .filter_map(|body_diag| {
-            let full_range = body_diag.source.range();
-
             // Only include diagnostics for the requested file
-            if full_range.file_id != file_id {
+            if body_diag.file_id() != file_id {
                 return None;
             }
 
-            let (code, message, range) = match body_diag.kind {
-                hir::BodyDiagnosticKind::UnresolvedMacro => {
+            let (code, message, range) = match &body_diag {
+                hir::BodyDiagnostic::UnresolvedMacro(macro_source) => {
+                    // Determine range for UnresolvedMacro
+                    let full_range = macro_source.range();
+
                     // Get the macro call AST node to extract name and arity
-                    let macro_call = body_diag.source.to_ast(db);
+                    let macro_call = macro_source.to_ast(db);
                     let macro_name = macro_call
                         .name()
                         .map(|name| name.to_string())
@@ -1870,6 +1887,28 @@ pub fn get_hir_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic
                         .unwrap_or(full_range.range);
 
                     (DiagnosticCode::HirUnresolvedMacro, message, range)
+                }
+                hir::BodyDiagnostic::UnresolvedInclude(include) => {
+                    // Get the include attribute from the form_list
+                    let sema = Semantic::new(db);
+                    let form_list = sema.form_list(file_id);
+                    let include_attr = &form_list[include.value];
+
+                    // Extract path and range from IncludeAttribute
+                    let path = include_attr.path().to_string();
+                    let range = include_attr.file_range(db, file_id);
+
+                    // Use appropriate message based on include type
+                    let message = match include_attr {
+                        hir::IncludeAttribute::Include { .. } => {
+                            format!("can't find include file \"{}\"", path)
+                        }
+                        hir::IncludeAttribute::IncludeLib { .. } => {
+                            format!("can't find include lib \"{}\"", path)
+                        }
+                    };
+
+                    (DiagnosticCode::HirUnresolvedInclude, message, range)
                 }
             };
 

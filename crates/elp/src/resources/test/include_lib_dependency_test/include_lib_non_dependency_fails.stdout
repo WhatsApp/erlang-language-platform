@@ -1,6 +1,7 @@
 module specified: main_app
 Diagnostics reported in 1 modules:
-  main_app: 5
+  main_app: 6
+      4:13-4:55::[Warning] [W0058] can't find include lib "external_app/include/external_header.hrl"
       4:13-4:55::[Error] [E1516] can't find include lib "external_app/include/external_header.hrl"
       11:0-11:42::[Warning] [W0020] Unused file: stdlib/include/assert.hrl
       14:9-14:21::[Hint] [W0037] Unspecific include.

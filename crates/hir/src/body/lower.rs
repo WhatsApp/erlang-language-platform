@@ -39,7 +39,6 @@ use crate::BasedInteger;
 use crate::BinarySeg;
 use crate::Body;
 use crate::BodyDiagnostic;
-use crate::BodyDiagnosticKind;
 use crate::BodySourceMap;
 use crate::CRClause;
 use crate::CallTarget;
@@ -3040,10 +3039,8 @@ impl<'a> Ctx<'a> {
         }
 
         let source = InFileAstPtr::new(self.curr_file_id(), AstPtr::new(call).cast().unwrap());
-        self.diagnostics.push(BodyDiagnostic {
-            source,
-            kind: BodyDiagnosticKind::UnresolvedMacro,
-        });
+        self.diagnostics
+            .push(BodyDiagnostic::UnresolvedMacro(source));
     }
 
     fn curr_file_id(&self) -> FileId {

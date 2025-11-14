@@ -650,6 +650,23 @@ impl IncludeAttribute {
     pub fn range(&self, db: &dyn DefDatabase, file_id: FileId) -> TextRange {
         self.form_id().get_ast(db, file_id).syntax().text_range()
     }
+
+    pub fn file_range(&self, db: &dyn DefDatabase, file_id: FileId) -> TextRange {
+        let form = self.form_id().get_ast(db, file_id);
+        match form {
+            ast::Form::PreprocessorDirective(ast::PreprocessorDirective::PpInclude(pp_include)) => {
+                pp_include
+                    .include_range()
+                    .unwrap_or_else(|| pp_include.text_range())
+            }
+            ast::Form::PreprocessorDirective(ast::PreprocessorDirective::PpIncludeLib(
+                pp_include_lib,
+            )) => pp_include_lib
+                .include_range()
+                .unwrap_or_else(|| pp_include_lib.text_range()),
+            _ => form.syntax().text_range(),
+        }
+    }
 }
 
 /// -deprecated

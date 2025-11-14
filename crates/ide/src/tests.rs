@@ -377,7 +377,8 @@ pub(crate) fn check_diagnostics(fixture: &str) {
         .set_experimental(true)
         .disable(DiagnosticCode::UnspecificInclude)
         .disable(DiagnosticCode::BinaryStringToSigil)
-        .disable(DiagnosticCode::HirUnresolvedMacro);
+        .disable(DiagnosticCode::HirUnresolvedMacro)
+        .disable(DiagnosticCode::HirUnresolvedInclude);
     check_diagnostics_with_config(config, fixture)
 }
 
