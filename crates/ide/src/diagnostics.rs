@@ -67,7 +67,9 @@ use elp_text_edit::TextEdit;
 use elp_types_db::TypedSemantic;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
+use hir::FormIdx;
 use hir::InFile;
+use hir::PPDirective;
 use hir::Semantic;
 use hir::db::DefDatabase;
 use hir::fold::MacroStrategy;
@@ -1400,6 +1402,7 @@ pub fn native_diagnostics(
         }
 
         res.append(&mut form_missing_separator_diagnostics(&parse));
+        res.extend(get_hir_diagnostics(db, file_id));
 
         adhoc_semantic_diagnostics
             .iter()
@@ -1741,6 +1744,143 @@ pub fn syntax_diagnostics(
 
 pub fn filter_diagnostics(diagnostics: Vec<Diagnostic>, code: DiagnosticCode) -> Vec<Diagnostic> {
     diagnostics.into_iter().filter(|d| d.code == code).collect()
+}
+
+/// Retrieve all BodyDiagnostic values from the BodySourceMaps from lowering
+/// all the bodies for a given FileId.
+///
+/// This function iterates through all forms in the file and collects diagnostics
+/// from the BodySourceMaps associated with each form's body.
+pub fn collect_body_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<hir::BodyDiagnostic> {
+    let sema = Semantic::new(db);
+    let form_list = sema.form_list(file_id);
+    let mut diagnostics = Vec::new();
+
+    for form_idx in form_list.forms().iter() {
+        let body_map = match form_idx {
+            FormIdx::FunctionClause(function_clause_id) => {
+                let (_, body_map) = sema
+                    .db
+                    .function_clause_body_with_source(InFile::new(file_id, *function_clause_id));
+                Some(body_map)
+            }
+            FormIdx::TypeAlias(type_alias_id) => {
+                let (_, body_map) = sema
+                    .db
+                    .type_body_with_source(InFile::new(file_id, *type_alias_id));
+                Some(body_map)
+            }
+            FormIdx::Spec(spec_id) => {
+                let (_, body_map) = sema
+                    .db
+                    .spec_body_with_source(InFile::new(file_id, *spec_id));
+                Some(body_map)
+            }
+            FormIdx::Callback(callback_id) => {
+                let (_, body_map) = sema
+                    .db
+                    .callback_body_with_source(InFile::new(file_id, *callback_id));
+                Some(body_map)
+            }
+            FormIdx::Record(record_id) => {
+                let (_, body_map) = sema
+                    .db
+                    .record_body_with_source(InFile::new(file_id, *record_id));
+                Some(body_map)
+            }
+            FormIdx::Attribute(attribute_id) => {
+                let (_, body_map) = sema
+                    .db
+                    .attribute_body_with_source(InFile::new(file_id, *attribute_id));
+                Some(body_map)
+            }
+            FormIdx::CompileOption(compile_option_id) => {
+                let (_, body_map) = sema
+                    .db
+                    .compile_body_with_source(InFile::new(file_id, *compile_option_id));
+                Some(body_map)
+            }
+            FormIdx::PPDirective(idx) => {
+                if let PPDirective::Define(define_id) = &form_list[*idx] {
+                    let (_, body_map) = sema
+                        .db
+                        .define_body_with_source(InFile::new(file_id, *define_id));
+                    Some(body_map)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        };
+
+        if let Some(body_map) = body_map {
+            diagnostics.extend_from_slice(body_map.diagnostics());
+        }
+    }
+
+    diagnostics
+}
+
+/// Convert HIR body diagnostics to IDE Diagnostics.
+/// This function takes the diagnostics collected during HIR lowering and converts
+/// them to the IDE Diagnostic format for display to users.
+pub fn get_hir_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
+    let body_diagnostics = collect_body_diagnostics(db, file_id);
+
+    body_diagnostics
+        .into_iter()
+        .filter_map(|body_diag| {
+            let full_range = body_diag.source.range();
+
+            // Only include diagnostics for the requested file
+            if full_range.file_id != file_id {
+                return None;
+            }
+
+            let (code, message, range) = match body_diag.kind {
+                hir::BodyDiagnosticKind::UnresolvedMacro => {
+                    // Get the macro call AST node to extract name and arity
+                    let macro_call = body_diag.source.to_ast(db);
+                    let macro_name = macro_call
+                        .name()
+                        .map(|name| name.to_string())
+                        .unwrap_or_else(|| "?".to_string());
+
+                    let message = match macro_call.arity() {
+                        Some(arity) => format!("undefined macro '{}/{}'", macro_name, arity),
+                        None => format!("undefined macro '{}'", macro_name),
+                    };
+
+                    // For macros with arguments, only highlight the name part, not the full call
+                    let range = macro_call
+                        .name()
+                        .map(|name| {
+                            // Get the syntax range of just the macro name
+                            let name_range = name.syntax().text_range();
+                            // Include the '?' prefix by extending one character to the left
+                            if name_range.start() > 0.into() {
+                                TextRange::new(
+                                    name_range.start() - TextSize::from(1),
+                                    name_range.end(),
+                                )
+                            } else {
+                                name_range
+                            }
+                        })
+                        .unwrap_or(full_range.range);
+
+                    (DiagnosticCode::HirUnresolvedMacro, message, range)
+                }
+            };
+
+            Some(
+                Diagnostic::new(code, message, range)
+                    // We set the severity to Warning for now, until we have cleaned
+                    // up the code base from this diagnostic
+                    .with_severity(Severity::Warning),
+            )
+        })
+        .collect()
 }
 
 fn no_module_definition_diagnostic(
@@ -3747,6 +3887,24 @@ baz(1)->4.
             -module(erlang).
             -export([garbage_collect/0]).
             garbage_collect() -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn no_unused_macro_in_macro_rhs_for_function_name() {
+        let config = DiagnosticsConfig::default()
+            .set_experimental(true)
+            .disable(DiagnosticCode::UnspecificInclude)
+            .disable(DiagnosticCode::BinaryStringToSigil);
+        check_diagnostics_with_config(
+            config,
+            r#"
+            //- /my_app/src/a_file.erl
+              -module(a_file).
+              -define(A_MACRO, ?FUNCTION_NAME).
+              foo() -> ?A_MACRO.
+
             "#,
         );
     }

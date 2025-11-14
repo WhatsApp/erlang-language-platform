@@ -90,6 +90,7 @@ pub enum DiagnosticCode {
     NoNoWarnSuppressions,
     CouldBeAStringLiteral,
     ListsReverseAppend,
+    HirUnresolvedMacro,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -250,6 +251,7 @@ impl DiagnosticCode {
             DiagnosticCode::NoNoWarnSuppressions => "W0054".to_string(),
             DiagnosticCode::CouldBeAStringLiteral => "W0055".to_string(),
             DiagnosticCode::ListsReverseAppend => "W0056".to_string(),
+            DiagnosticCode::HirUnresolvedMacro => "W0057".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -347,6 +349,7 @@ impl DiagnosticCode {
             DiagnosticCode::NoNoWarnSuppressions => "no_nowarn_suppressions".to_string(),
             DiagnosticCode::CouldBeAStringLiteral => "could_be_a_binary_string_literal".to_string(),
             DiagnosticCode::ListsReverseAppend => "lists_reverse_append".to_string(),
+            DiagnosticCode::HirUnresolvedMacro => "hir_unresolved_macro".to_string(),
 
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
@@ -524,6 +527,7 @@ impl DiagnosticCode {
             DiagnosticCode::NoErrorLogger => false,
             DiagnosticCode::NoNoWarnSuppressions => false,
             DiagnosticCode::ListsReverseAppend => false,
+            DiagnosticCode::HirUnresolvedMacro => false,
 
             DiagnosticCode::BinaryStringToSigil => false,
             DiagnosticCode::ErlangService(_) => false,

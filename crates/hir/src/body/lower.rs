@@ -118,6 +118,8 @@ pub struct Ctx<'a> {
     // This means we need to lower a Var specially when processing a SSR
     // template, where if it has a prefix of `_@` it is a placeholder.
     in_ssr: bool,
+    // Track when we're lowering the RHS of a define preprocessor directive
+    in_macro_rhs: bool,
     // Diagnostics collected during body lowering
     diagnostics: Vec<BodyDiagnostic>,
 }
@@ -156,6 +158,7 @@ impl<'a> Ctx<'a> {
             starting_stack_size: 1,
             macro_source_map: FxHashMap::default(),
             in_ssr: false,
+            in_macro_rhs: false,
             diagnostics: Vec::new(),
         }
     }
@@ -407,7 +410,9 @@ impl<'a> Ctx<'a> {
         let replacement = define.replacement();
         match replacement {
             Some(MacroDefReplacement::Expr(expr)) => {
+                self.in_macro_rhs = true;
                 let expr = self.lower_expr(&expr);
+                self.in_macro_rhs = false;
                 let (body, source_map) = self.finish();
                 (DefineBody { body, expr }, source_map)
             }
@@ -3023,6 +3028,17 @@ impl<'a> Ctx<'a> {
     }
 
     fn record_unresolved_macro(&mut self, call: &ast::MacroCallExpr) {
+        // If we're in a macro RHS and this is ?FUNCTION_NAME or ?FUNCTION_ARITY, skip the diagnostic
+        if self.in_macro_rhs {
+            let macro_name = self.macro_call_name(call.name());
+            if let MacroCallName::Var(var) = macro_name {
+                let name_str = var.as_string(self.db.upcast());
+                if name_str == "FUNCTION_NAME" || name_str == "FUNCTION_ARITY" {
+                    return;
+                }
+            }
+        }
+
         let source = InFileAstPtr::new(self.curr_file_id(), AstPtr::new(call).cast().unwrap());
         self.diagnostics.push(BodyDiagnostic {
             source,

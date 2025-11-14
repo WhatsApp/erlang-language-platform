@@ -9,12 +9,10 @@ Diagnostics reported in 5 modules:
       0:8-0:18::[WeakWarning] [W0046] The module is not documented.
   eqwalizer: 1
       1:8-1:17::[WeakWarning] [W0046] The module is not documented.
-  top_includer: 5
-      9:0-9:3::[WeakWarning] [W0040] The function is non-trivial, exported, but not documented.
+  top_includer: 3
+      12:4-12:10::[Warning] [W0057] undefined macro 'THIRD/2'
       0:8-0:20::[WeakWarning] [W0046] The module is not documented.
       12:4-12:10::[Error] [E1508] undefined macro 'THIRD/2'
-      4:9-4:14::[Error] [L1227] function foo/0 undefined
-      8:6-8:9::[Error] [L1308] spec for undefined function foo/0
   wa_buck2_module_search: 6
       19:0-19:18::[WeakWarning] [W0040] The function is non-trivial, exported, but not documented.
       2:8-2:30::[WeakWarning] [W0046] The module is not documented.
