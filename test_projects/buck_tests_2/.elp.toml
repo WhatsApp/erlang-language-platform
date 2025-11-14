@@ -1,7 +1,10 @@
 [buck]
 enabled = true
 build_deps = false
-included_targets = [ "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a/..." ]
+included_targets = [
+    "fbcode//whatsapp/elp/test_projects/buck_tests_2/util/app_a/...",
+    "fbcode//whatsapp/elp/test_projects/buck_tests_2:check_include"
+    ]
 excluded_targets = [ "fbcode//whatsapp/elp/test_projects/buck_tests_2:test_elp_ignored" ]
 source_root = "whatsapp/elp/test_projects/buck_tests_2"
 
