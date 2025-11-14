@@ -1106,13 +1106,29 @@ impl DiagnosticsConfig {
     }
 
     pub fn enable(mut self, code: DiagnosticCode) -> DiagnosticsConfig {
-        self.enabled.enable(code);
+        self.enabled.enable(code.clone());
+        self.set_linter_enabled(code, true);
         self
     }
 
     pub fn disable(mut self, code: DiagnosticCode) -> DiagnosticsConfig {
-        self.disabled.insert(code);
+        self.disabled.insert(code.clone());
+        self.set_linter_enabled(code, false);
         self
+    }
+
+    fn set_linter_enabled(&mut self, code: DiagnosticCode, is_enabled: bool) {
+        let lint_config = self.lint_config.get_or_insert_with(LintConfig::default);
+        lint_config
+            .linters
+            .entry(code)
+            .and_modify(|linter_config| {
+                linter_config.is_enabled = Some(is_enabled);
+            })
+            .or_insert_with(|| LinterConfig {
+                is_enabled: Some(is_enabled),
+                ..Default::default()
+            });
     }
 
     pub fn set_lints_from_config(
@@ -1475,7 +1491,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &map_find_to_syntax::DESCRIPTOR,
         &expression_can_be_simplified::DESCRIPTOR,
         &application_env::DESCRIPTOR,
-        &missing_compile_warn_missing_spec::DESCRIPTOR,
         &dependent_header::DESCRIPTOR,
         &deprecated_function::DESCRIPTOR,
         &head_mismatch::DESCRIPTOR_SEMANTIC,
@@ -1566,7 +1581,10 @@ const SSR_PATTERN_LINTERS: &[&dyn SsrPatternsDiagnostics] = &[
 ];
 
 /// Generic linters
-const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[&unused_macro::LINTER];
+const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
+    &unused_macro::LINTER,
+    &missing_compile_warn_missing_spec::LINTER,
+];
 
 /// Unified registry for all types of linters
 pub(crate) fn linters() -> Vec<DiagnosticLinter> {

@@ -1,10 +1,11 @@
 /*
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
- * This source code is licensed under both the MIT license found in the
- * LICENSE-MIT file in the root directory of this source tree and the Apache
+ * This source code is dual-licensed under either the MIT license found in the
+ * LICENSE-MIT file in the root directory of this source tree or the Apache
  * License, Version 2.0 found in the LICENSE-APACHE file in the root directory
- * of this source tree.
+ * of this source tree. You may select, at your option, one of the
+ * above-listed licenses.
  */
 
 //! Lint/fix: missing_compile_warn_missing_spec
@@ -15,6 +16,7 @@
 
 use elp_ide_assists::helpers::add_compile_option;
 use elp_ide_assists::helpers::rename_atom_in_compile_attribute;
+use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::source_change::SourceChangeBuilder;
@@ -36,94 +38,162 @@ use hir::known;
 use lazy_static::lazy_static;
 
 use super::DIAGNOSTIC_WHOLE_FILE_RANGE;
-use super::Diagnostic;
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
+use crate::diagnostics::Severity;
 use crate::fix;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: false,
-        default_disabled: true,
-    },
-    checker: &|diags, sema, file_id, file_kind| {
-        missing_compile_warn_missing_spec(diags, sema, file_id, file_kind);
-    },
-};
+pub(crate) struct MissingCompileWarnMissingSpec;
 
-fn missing_compile_warn_missing_spec(
-    diags: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-    file_kind: FileKind,
-) {
-    match file_kind {
-        FileKind::Header | FileKind::Other | FileKind::OutsideProjectModel => {
-            return;
-        }
-        _ => {}
+impl Linter for MissingCompileWarnMissingSpec {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::MissingCompileWarnMissingSpec
     }
-
-    let form_list = sema.form_list(file_id);
-    if form_list.compile_attributes().next().is_none() {
-        report_diagnostic(sema, None, file_id, (Found::No, None), diags);
+    fn description(&self) -> &'static str {
+        "Please add \"-compile(warn_missing_spec_all).\" to the module. If exported functions are not all specced, they need to be specced."
     }
-    let attributes = form_list
-        .compile_attributes()
-        .map(|(idx, compile_attribute)| {
-            let co = sema.db.compile_body(InFile::new(file_id, idx));
-            let is_present = FoldCtx::fold_term(
-                Strategy {
-                    macros: MacroStrategy::Expand,
-                    parens: ParenStrategy::InvisibleParens,
-                },
-                &co.body,
-                co.value,
-                (Found::No, None),
-                &mut |acc, ctx| match &ctx.item {
-                    AnyExpr::Term(Term::Literal(Literal::Atom(atom))) => {
-                        let name = sema.db.lookup_atom(*atom);
-                        if MISSING_SPEC_ALL_OPTIONS.contains(&name) {
-                            (Found::WarnMissingSpecAll, Some(idx))
-                        } else if MISSING_SPEC_OPTIONS.contains(&name) {
-                            (Found::WarnMissingSpec, Some(idx))
-                        } else {
-                            acc
-                        }
-                    }
-                    _ => acc,
-                },
-            );
-            (is_present, compile_attribute)
-        })
-        .collect::<Vec<_>>();
-
-    let what = attributes
-        .iter()
-        .fold((Found::No, None), |acc, ((present, idx), _)| {
-            if acc.0 == Found::No {
-                (*present, *idx)
-            } else {
-                acc
-            }
-        });
-    if what.0 != Found::WarnMissingSpecAll {
-        // Report on first compile attribute only
-        if let Some((_, compile_attribute)) = attributes.first() {
-            let range = compile_attribute
-                .form_id
-                .get_ast(sema.db, file_id)
-                .syntax()
-                .text_range();
-            report_diagnostic(sema, Some(range), file_id, what, diags)
+    fn severity(&self) -> Severity {
+        Severity::Error
+    }
+    fn should_process_test_files(&self) -> bool {
+        false
+    }
+    fn is_enabled(&self) -> bool {
+        false
+    }
+    fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
+        let file_kind = sema.db.file_kind(file_id);
+        match file_kind {
+            FileKind::Header | FileKind::Other | FileKind::OutsideProjectModel => false,
+            _ => true,
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Context {
+    found: Found,
+    compile_option_id: Option<CompileOptionId>,
+    target_range: TextRange,
+}
+
+impl GenericLinter for MissingCompileWarnMissingSpec {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Context>>> {
+        let mut res = Vec::new();
+        let form_list = sema.form_list(file_id);
+        if form_list.compile_attributes().next().is_none() {
+            res.push(GenericLinterMatchContext {
+                range: DIAGNOSTIC_WHOLE_FILE_RANGE,
+                context: Context {
+                    found: Found::No,
+                    compile_option_id: None,
+                    target_range: DIAGNOSTIC_WHOLE_FILE_RANGE,
+                },
+            });
+        }
+        let attributes = form_list
+            .compile_attributes()
+            .map(|(idx, compile_attribute)| {
+                let co = sema.db.compile_body(InFile::new(file_id, idx));
+                let is_present = FoldCtx::fold_term(
+                    Strategy {
+                        macros: MacroStrategy::Expand,
+                        parens: ParenStrategy::InvisibleParens,
+                    },
+                    &co.body,
+                    co.value,
+                    (Found::No, None),
+                    &mut |acc, ctx| match &ctx.item {
+                        AnyExpr::Term(Term::Literal(Literal::Atom(atom))) => {
+                            let name = sema.db.lookup_atom(*atom);
+                            if MISSING_SPEC_ALL_OPTIONS.contains(&name) {
+                                (Found::WarnMissingSpecAll, Some(idx))
+                            } else if MISSING_SPEC_OPTIONS.contains(&name) {
+                                (Found::WarnMissingSpec, Some(idx))
+                            } else {
+                                acc
+                            }
+                        }
+                        _ => acc,
+                    },
+                );
+                (is_present, compile_attribute)
+            })
+            .collect::<Vec<_>>();
+        let what = attributes
+            .iter()
+            .fold((Found::No, None), |acc, ((present, idx), _)| {
+                if acc.0 == Found::No {
+                    (*present, *idx)
+                } else {
+                    acc
+                }
+            });
+        if what.0 != Found::WarnMissingSpecAll {
+            // Report on first compile attribute only
+            if let Some((_, compile_attribute)) = attributes.first() {
+                let range = compile_attribute
+                    .form_id
+                    .get_ast(sema.db, file_id)
+                    .syntax()
+                    .text_range();
+                res.push(GenericLinterMatchContext {
+                    range,
+                    context: Context {
+                        found: what.0,
+                        compile_option_id: what.1,
+                        target_range: range,
+                    },
+                });
+            }
+        }
+        Some(res)
+    }
+
+    fn fixes(
+        &self,
+        context: &Self::Context,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<elp_ide_assists::Assist>> {
+        let mut builder = SourceChangeBuilder::new(file_id);
+        if context.found == Found::No {
+            add_compile_option(sema, file_id, "warn_missing_spec_all", None, &mut builder);
+        } else {
+            // We already have warn_missing_spec, upgrade it to warn_missing_spec_all
+            if let Some(co_id) = context.compile_option_id {
+                rename_atom_in_compile_attribute(
+                    sema,
+                    file_id,
+                    &co_id,
+                    "warn_missing_spec",
+                    "warn_missing_spec_all",
+                    &mut builder,
+                );
+            }
+        }
+        let edit = builder.finish();
+        Some(vec![fix(
+            "add_warn_missing_spec_all",
+            "Add compile option 'warn_missing_spec_all'",
+            edit,
+            context.target_range,
+        )])
+    }
+}
+
+pub static LINTER: MissingCompileWarnMissingSpec = MissingCompileWarnMissingSpec;
+
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
 enum Found {
+    #[default]
     No,
     WarnMissingSpec,
     WarnMissingSpecAll,
@@ -146,43 +216,6 @@ lazy_static! {
     };
 }
 
-fn report_diagnostic(
-    sema: &Semantic,
-    range: Option<TextRange>,
-    file_id: FileId,
-    what: (Found, Option<CompileOptionId>),
-    diags: &mut Vec<Diagnostic>,
-) {
-    let range = range.unwrap_or(DIAGNOSTIC_WHOLE_FILE_RANGE);
-
-    let mut builder = SourceChangeBuilder::new(file_id);
-    if what.0 == Found::No {
-        add_compile_option(sema, file_id, "warn_missing_spec_all", None, &mut builder);
-    } else {
-        // We already have warn_missing_spec, upgrade it to warn_missing_spec_all
-        if let Some(co_id) = what.1 {
-            rename_atom_in_compile_attribute(
-                sema,
-                file_id,
-                &co_id,
-                "warn_missing_spec",
-                "warn_missing_spec_all",
-                &mut builder,
-            );
-        }
-    }
-    let edit = builder.finish();
-    let d = Diagnostic::new(
-        crate::diagnostics::DiagnosticCode::MissingCompileWarnMissingSpec,
-            "Please add \"-compile(warn_missing_spec_all).\" to the module. If exported functions are not all specced, they need to be specced.".to_string(),
-        range,
-    ).with_fixes(Some(vec![fix("add_warn_missing_spec_all",
-                               "Add compile option 'warn_missing_spec_all'",
-                               edit, range)]))
-    .with_ignore_fix(sema, file_id);
-    diags.push(d);
-}
-
 #[cfg(test)]
 mod tests {
 
@@ -197,8 +230,9 @@ mod tests {
 
     #[track_caller]
     pub(crate) fn check_fix(fixture_before: &str, fixture_after: Expect) {
-        let config =
-            DiagnosticsConfig::default().enable(DiagnosticCode::MissingCompileWarnMissingSpec);
+        let config = DiagnosticsConfig::default()
+            .disable(DiagnosticCode::NoNoWarnSuppressions)
+            .enable(DiagnosticCode::MissingCompileWarnMissingSpec);
         check_fix_with_config(config, fixture_before, fixture_after)
     }
 
@@ -208,17 +242,17 @@ mod tests {
         fixture_before: &str,
         fixture_after: Expect,
     ) {
-        let config =
-            DiagnosticsConfig::default().enable(DiagnosticCode::MissingCompileWarnMissingSpec);
+        let config = DiagnosticsConfig::default()
+            .disable(DiagnosticCode::NoNoWarnSuppressions)
+            .enable(DiagnosticCode::MissingCompileWarnMissingSpec);
         check_specific_fix_with_config(Some(assist_label), fixture_before, fixture_after, config)
     }
 
     #[track_caller]
     pub(crate) fn check_diagnostics(fixture: &str) {
         let config = DiagnosticsConfig::default()
-            .enable(DiagnosticCode::MissingCompileWarnMissingSpec)
             .disable(DiagnosticCode::NoNoWarnSuppressions)
-            .disable(DiagnosticCode::UnspecificInclude);
+            .enable(DiagnosticCode::MissingCompileWarnMissingSpec);
         check_diagnostics_with_config(config, fixture)
     }
 
@@ -367,19 +401,20 @@ mod tests {
 
     #[test]
     fn not_in_generated_file() {
-        check_diagnostics(
+        check_diagnostics(&format!(
             r#"
             //- /erl/my_app/src/main.erl
             %% -*- coding: utf-8 -*-
             %% Automatically generated, do not edit
-            %% @generated from blah
+            %% @{} from blah
             %% To generate, see targets and instructions in local Makefile
             %% Version source: git
             -module(main).
             -eqwalizer(ignore).
 
             "#,
-        )
+            "generated" // Separate string, to avoid to mark this module itself as generated
+        ))
     }
 
     #[test]
