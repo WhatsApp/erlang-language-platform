@@ -14,61 +14,88 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::AstNode;
 use elp_text_edit::TextRange;
-use elp_text_edit::TextSize;
 use hir::Semantic;
 
-use super::Diagnostic;
-use super::DiagnosticCode;
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use super::Severity;
+use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
+use crate::diagnostics::Severity;
+use crate::fix;
 
-const DIAGNOSTIC_CODE: DiagnosticCode = DiagnosticCode::UndocumentedModule;
-const DIAGNOSTIC_MESSAGE: &str = "The module is not documented.";
-const DIAGNOSTIC_SEVERITY: Severity = Severity::WeakWarning;
-const FIX_ID: &str = "add_moduledoc_false";
-const FIX_LABEL: &str = "Add `-moduledoc false.` attribute";
+pub(crate) struct UndocumentedModuleLinter;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: false,
-        default_disabled: true,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        check(diags, sema, file_id);
-    },
-};
-
-fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) -> Option<()> {
-    let def_map = sema.def_map_local(file_id);
-    let module_attribute = sema.module_attribute(file_id)?;
-    let module_has_no_docs = def_map.moduledoc.is_empty()
-        && def_map.moduledoc_metadata.is_empty()
-        && sema
-            .module_edoc_header(file_id, &module_attribute)
-            .is_none();
-    if module_has_no_docs {
-        let module_name = module_attribute.name()?;
-        let module_name_range = module_name.syntax().text_range();
-        let moduledoc_insert_offset = helpers::moduledoc_insert_offset(sema, file_id)?;
-        let fixes = fixes(file_id, moduledoc_insert_offset, module_name_range);
-        let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, module_name_range)
-            .with_severity(DIAGNOSTIC_SEVERITY)
-            .with_fixes(Some(fixes));
-        diagnostics.push(diagnostic);
+impl Linter for UndocumentedModuleLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::UndocumentedModule
     }
-    Some(())
+
+    fn description(&self) -> &'static str {
+        "The module is not documented."
+    }
+
+    fn severity(&self) -> Severity {
+        Severity::WeakWarning
+    }
+
+    fn is_enabled(&self) -> bool {
+        false
+    }
+
+    fn should_process_test_files(&self) -> bool {
+        false
+    }
 }
 
-fn fixes(file_id: FileId, insert_offset: TextSize, show_range: TextRange) -> Vec<Assist> {
-    let mut builder = SourceChangeBuilder::new(file_id);
-    builder.insert(insert_offset, "-moduledoc false.\n");
-    let source_change = builder.finish();
-    let fix = crate::fix(FIX_ID, FIX_LABEL, source_change, show_range);
-    vec![fix]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Context {
+    module_name_range: TextRange,
 }
+
+impl GenericLinter for UndocumentedModuleLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Context>>> {
+        let mut res = Vec::new();
+        let def_map = sema.def_map_local(file_id);
+        let module_attribute = sema.module_attribute(file_id)?;
+        let module_has_no_docs = def_map.moduledoc.is_empty()
+            && def_map.moduledoc_metadata.is_empty()
+            && sema
+                .module_edoc_header(file_id, &module_attribute)
+                .is_none();
+        if module_has_no_docs {
+            let module_name = module_attribute.name()?;
+            let module_name_range = module_name.syntax().text_range();
+            let context = Context { module_name_range };
+            res.push(GenericLinterMatchContext {
+                range: module_name_range,
+                context,
+            });
+        }
+        Some(res)
+    }
+
+    fn fixes(&self, context: &Context, sema: &Semantic, file_id: FileId) -> Option<Vec<Assist>> {
+        let insert_offset = helpers::moduledoc_insert_offset(sema, file_id)?;
+        let mut builder = SourceChangeBuilder::new(file_id);
+        builder.insert(insert_offset, "-moduledoc false.\n");
+        let source_change = builder.finish();
+        let fix = fix(
+            "add_moduledoc_false",
+            "Add `-moduledoc false.` attribute",
+            source_change,
+            context.module_name_range,
+        );
+        Some(vec![fix])
+    }
+}
+
+pub static LINTER: UndocumentedModuleLinter = UndocumentedModuleLinter;
 
 #[cfg(test)]
 mod tests {

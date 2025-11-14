@@ -1,34 +1,24 @@
 Reporting all diagnostics codes
-Diagnostics reported in 9 modules:
-  app_a: 7
+Diagnostics reported in 7 modules:
+  app_a: 6
       4:4-4:34::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
       8:0-8:4::[Error] [P1700] head mismatch 'fooX' vs 'food'
       7:6-7:7::[Warning] [W0018] Unexpected ';'
-      0:8-0:13::[WeakWarning] [W0046] The module is not documented.
       12:4-12:13::[Warning] [W0026] Function 'app_a:baz/2' is not exported.
       11:0-11:3::[Error] [L1230] function bar/0 is unused
       15:0-15:3::[Error] [L1230] function baz/2 is unused
-  app_a_edoc: 1
-      0:8-0:18::[WeakWarning] [W0046] The module is not documented.
-  app_a_ssr: 1
-      0:8-0:17::[WeakWarning] [W0046] The module is not documented.
-  app_a_unused_param: 2
-      0:8-0:26::[WeakWarning] [W0046] The module is not documented.
+  app_a_unused_param: 1
       4:4-4:5::[Error] [L1268] variable 'X' is unused
-  app_b: 2
+  app_b: 1
       4:4-4:34::[Warning] [W0011] module `app_b` belongs to app `app_b`, but reads env for `misc`
-      0:8-0:13::[WeakWarning] [W0046] The module is not documented.
-  app_b_unused_param: 2
-      0:8-0:26::[WeakWarning] [W0046] The module is not documented.
+  app_b_unused_param: 1
       4:4-4:5::[Error] [L1268] variable 'X' is unused
   custom_function_matches: 3
       12:4-12:21::[Warning] [W0017] Function 'excluded:function/0' is undefined.
       13:4-13:25::[Warning] [W0017] Function 'not_excluded:function/0' is undefined.
       14:4-14:14::[Warning] [W0017] Function 'cross:call/0' is undefined.
-  expression_updates_literal: 3
-      1:8-1:34::[WeakWarning] [W0046] The module is not documented.
+  expression_updates_literal: 2
       6:0-6:5::[Error] [L1309] missing specification for function a_fun/0
       7:6-8:15::[Error] [L1318] expression updates a literal
-  spelling: 2
+  spelling: 1
       1:1-1:9::[Error] [W0013] misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
-      0:8-0:16::[WeakWarning] [W0046] The module is not documented.

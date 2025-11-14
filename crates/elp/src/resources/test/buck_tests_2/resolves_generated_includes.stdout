@@ -1,19 +1,12 @@
 Reporting all diagnostics codes
-Diagnostics reported in 5 modules:
-  app_a: 2
+Diagnostics reported in 3 modules:
+  app_a: 1
       5:9-5:31::[WeakWarning] [W0037] Unspecific include.
-      0:8-0:13::[WeakWarning] [W0046] The module is not documented.
-  auto_gen_a: 1
-      0:8-0:18::[WeakWarning] [W0046] The module is not documented.
-  eqwalizer: 1
-      1:8-1:17::[WeakWarning] [W0046] The module is not documented.
-  top_includer: 3
-      0:8-0:20::[WeakWarning] [W0046] The module is not documented.
+  top_includer: 2
       0:1-0:1::[Error] [L0000] Issue in included file
       12:4-12:10::[Error] [E1508] undefined macro 'THIRD/2'
-  wa_buck2_module_search: 6
+  wa_buck2_module_search: 5
       19:0-19:18::[WeakWarning] [W0040] The function is non-trivial, exported, but not documented.
-      2:8-2:30::[WeakWarning] [W0046] The module is not documented.
       54:18-54:31::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
       56:18-56:28::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
       56:38-56:51::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
