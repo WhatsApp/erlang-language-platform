@@ -9,8 +9,7 @@ Diagnostics reported in 5 modules:
       0:8-0:18::[WeakWarning] [W0046] The module is not documented.
   eqwalizer: 1
       1:8-1:17::[WeakWarning] [W0046] The module is not documented.
-  top_includer: 3
-      12:4-12:10::[Warning] [W0057] undefined macro 'THIRD/2'
+  top_includer: 2
       0:8-0:20::[WeakWarning] [W0046] The module is not documented.
       12:4-12:10::[Error] [E1508] undefined macro 'THIRD/2'
   wa_buck2_module_search: 6

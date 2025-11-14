@@ -2817,10 +2817,59 @@ pub fn attach_related_diagnostics(
         .filter(|(k, _)| !undefineds_to_remove.contains(k))
         .flat_map(|(_, v)| v);
 
-    native
-        .normal
-        .into_iter()
-        .chain(erlang_service.normal)
+    // Step 4.
+    // Split erlang service normal diagnostics into undefined macro diagnostics (E1507/E1508),
+    // and other diagnostics
+    let mut erlang_service_undefined_macros = Vec::new();
+    let mut erlang_service_other = Vec::new();
+
+    for d in erlang_service.normal {
+        match &d.code {
+            DiagnosticCode::ErlangService(code) if code == "E1507" || code == "E1508" => {
+                erlang_service_undefined_macros.push(d);
+            }
+            _ => {
+                erlang_service_other.push(d);
+            }
+        }
+    }
+
+    // Collect E1507/E1508 from labeled_undefined_errors for filtering
+    let undefined_macros_from_labeled: Vec<_> = erlang_service_undefined_not_related
+        .clone()
+        .filter(|d| {
+            matches!(&d.code, DiagnosticCode::ErlangService(code) if code == "E1507" || code == "E1508")
+        })
+        .cloned()
+        .collect();
+
+    // Combine all E1507/E1508 diagnostics for filtering (clone to avoid borrow issues)
+    let all_undefined_macros: Vec<_> = erlang_service_undefined_macros
+        .iter()
+        .cloned()
+        .chain(undefined_macros_from_labeled)
+        .collect();
+
+    // Step 5.
+    // Filter out W0056 diagnostics if there's a matching E1507/E1508 for the same macro
+    let filtered_native_normal = native.normal.into_iter().filter(|d| {
+        if d.code != DiagnosticCode::HirUnresolvedMacro {
+            return true; // Keep non-W0056 diagnostics
+        }
+
+        // Check if there's a matching E1507/E1508 diagnostic
+        let has_matching_erlang_service = all_undefined_macros.iter().any(|es_diag| {
+            // Check if ranges overlap
+            d.range.intersect(es_diag.range).is_some()
+        });
+
+        // Keep W0056 only if there's no matching E1507/E1508
+        !has_matching_erlang_service
+    });
+
+    filtered_native_normal
+        .chain(erlang_service_other)
+        .chain(erlang_service_undefined_macros)
         .chain(syntax_errors_with_related)
         .chain(erlang_service_undefined_not_related.cloned())
         // TODO:AZ: consider returning an iterator
