@@ -2858,14 +2858,18 @@ pub fn attach_related_diagnostics(
 
     // Step 4.
     // Split erlang service normal diagnostics into undefined macro diagnostics (E1507/E1508),
-    // and other diagnostics
+    // unresolved include diagnostics (E1516), and other diagnostics in a single pass
     let mut erlang_service_undefined_macros = Vec::new();
+    let mut erlang_service_unresolved_includes = Vec::new();
     let mut erlang_service_other = Vec::new();
 
     for d in erlang_service.normal {
         match &d.code {
             DiagnosticCode::ErlangService(code) if code == "E1507" || code == "E1508" => {
                 erlang_service_undefined_macros.push(d);
+            }
+            DiagnosticCode::ErlangService(code) if code == "E1516" => {
+                erlang_service_unresolved_includes.push(d);
             }
             _ => {
                 erlang_service_other.push(d);
@@ -2882,6 +2886,13 @@ pub fn attach_related_diagnostics(
         .cloned()
         .collect();
 
+    // Collect E1516 from labeled_undefined_errors for filtering
+    let unresolved_includes_from_labeled: Vec<_> = erlang_service_undefined_not_related
+        .clone()
+        .filter(|d| matches!(&d.code, DiagnosticCode::ErlangService(code) if code == "E1516"))
+        .cloned()
+        .collect();
+
     // Combine all E1507/E1508 diagnostics for filtering (clone to avoid borrow issues)
     let all_undefined_macros: Vec<_> = erlang_service_undefined_macros
         .iter()
@@ -2889,26 +2900,46 @@ pub fn attach_related_diagnostics(
         .chain(undefined_macros_from_labeled)
         .collect();
 
+    // Combine all E1516 diagnostics for filtering
+    let all_unresolved_includes: Vec<_> = erlang_service_unresolved_includes
+        .iter()
+        .cloned()
+        .chain(unresolved_includes_from_labeled)
+        .collect();
+
     // Step 5.
     // Filter out W0056 diagnostics if there's a matching E1507/E1508 for the same macro
+    // Filter out W0057 diagnostics if there's a matching E1516 for the same include
     let filtered_native_normal = native.normal.into_iter().filter(|d| {
-        if d.code != DiagnosticCode::HirUnresolvedMacro {
-            return true; // Keep non-W0056 diagnostics
+        if d.code == DiagnosticCode::HirUnresolvedMacro {
+            // Check if there's a matching E1507/E1508 diagnostic
+            let has_matching_erlang_service = all_undefined_macros.iter().any(|es_diag| {
+                // Check if ranges overlap
+                d.range.intersect(es_diag.range).is_some()
+            });
+
+            // Keep W0056 only if there's no matching E1507/E1508
+            return !has_matching_erlang_service;
         }
 
-        // Check if there's a matching E1507/E1508 diagnostic
-        let has_matching_erlang_service = all_undefined_macros.iter().any(|es_diag| {
-            // Check if ranges overlap
-            d.range.intersect(es_diag.range).is_some()
-        });
+        if d.code == DiagnosticCode::HirUnresolvedInclude {
+            // Check if there's a matching E1516 diagnostic
+            let has_matching_erlang_service = all_unresolved_includes.iter().any(|es_diag| {
+                // Check if ranges overlap
+                d.range.intersect(es_diag.range).is_some()
+            });
 
-        // Keep W0056 only if there's no matching E1507/E1508
-        !has_matching_erlang_service
+            // Keep W0057 only if there's no matching E1516
+            return !has_matching_erlang_service;
+        }
+
+        true // Keep all other diagnostics
     });
 
     filtered_native_normal
         .chain(erlang_service_other)
         .chain(erlang_service_undefined_macros)
+        .chain(erlang_service_unresolved_includes)
         .chain(syntax_errors_with_related)
         .chain(erlang_service_undefined_not_related.cloned())
         // TODO:AZ: consider returning an iterator
