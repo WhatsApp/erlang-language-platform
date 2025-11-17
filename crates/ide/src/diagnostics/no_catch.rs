@@ -8,7 +8,8 @@
  * above-listed licenses.
  */
 
-use elp_ide_db::DiagnosticCode;
+// Diagnostic: no-catch
+use elp_ide_db::elp_base_db::FileId;
 use elp_syntax::AstNode;
 use hir::AnyExpr;
 use hir::AnyExprId;
@@ -20,28 +21,48 @@ use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use crate::diagnostics::Diagnostic;
-use crate::diagnostics::Severity;
+use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
 
-const DIAGNOSTIC_CODE: DiagnosticCode = DiagnosticCode::NoCatch;
-const DIAGNOSTIC_MESSAGE: &str = "Avoid `catch`.";
-const DIAGNOSTIC_SEVERITY: Severity = Severity::Warning;
+pub(crate) struct NoCatchLinter;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diagnostics, sema, file_id, _ext| {
-        sema.for_each_function(file_id, |def| check_function(diagnostics, sema, def));
-    },
-};
+impl Linter for NoCatchLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::NoCatch
+    }
 
-fn check_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
+    fn description(&self) -> &'static str {
+        "Avoid `catch`."
+    }
+}
+
+impl GenericLinter for NoCatchLinter {
+    type Context = ();
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
+        let mut res = Vec::new();
+        sema.def_map_local(file_id)
+            .get_functions()
+            .for_each(|(_, def)| {
+                check_function(&mut res, sema, def);
+            });
+        Some(res)
+    }
+}
+
+pub static LINTER: NoCatchLinter = NoCatchLinter;
+
+fn check_function(
+    matches: &mut Vec<GenericLinterMatchContext<()>>,
+    sema: &Semantic,
+    def: &FunctionDef,
+) {
     let def_fb = def.in_function_body(sema, def);
     def_fb.fold_function(
         Strategy {
@@ -52,15 +73,19 @@ fn check_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, def: &Func
         &mut |_acc, clause_id, ctx| {
             if let AnyExpr::Expr(Expr::Catch { expr: _ }) = ctx.item {
                 let map = def_fb.get_body_map(clause_id);
-                if let Some(diagnostic) = make_diagnostic(sema, &map, ctx.item_id) {
-                    diagnostics.push(diagnostic);
+                if let Some(match_context) = make_match_context(sema, &map, ctx.item_id) {
+                    matches.push(match_context);
                 }
             };
         },
     )
 }
 
-fn make_diagnostic(sema: &Semantic, map: &BodySourceMap, item_id: AnyExprId) -> Option<Diagnostic> {
+fn make_match_context(
+    sema: &Semantic,
+    map: &BodySourceMap,
+    item_id: AnyExprId,
+) -> Option<GenericLinterMatchContext<()>> {
     match item_id {
         AnyExprId::Expr(expr_id) => {
             let ast_ptr = map.expr(expr_id)?;
@@ -68,9 +93,7 @@ fn make_diagnostic(sema: &Semantic, map: &BodySourceMap, item_id: AnyExprId) -> 
                 elp_syntax::ast::Expr::CatchExpr(catch_expr) => {
                     let catch_keyword = catch_expr.syntax().first_token()?;
                     let range = catch_keyword.text_range();
-                    let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, range)
-                        .with_severity(DIAGNOSTIC_SEVERITY);
-                    Some(diagnostic)
+                    Some(GenericLinterMatchContext { range, context: () })
                 }
                 _ => None,
             }
@@ -93,7 +116,7 @@ mod tests {
 
               catcher(X,Y) ->
               case catch X/Y of
-              %%   ^^^^^ warning: W0052: Avoid `catch`.
+              %%   ^^^^^ 💡 warning: W0052: Avoid `catch`.
                 {'EXIT', {badarith,_}} -> "uh oh";
                 N -> N
               end.
