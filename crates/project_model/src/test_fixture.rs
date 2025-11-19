@@ -472,6 +472,14 @@ pub fn extract_tags(mut text: &str, tag: &str) -> (Vec<(TextRange, Option<String
 /// %%   | second line
 /// ```
 ///
+/// This is useful for representing diagnostics with related information:
+///
+/// ```not_rust
+/// foo() -> syntax error oops.
+/// %%              ^^^^^ error: P1711: syntax error before: error
+/// %%                  | Related info: 0:25-30 function foo/0 undefined
+/// ```
+///
 /// Annotations point to the last line that actually was long enough for the
 /// range, not counting annotations themselves. So overlapping annotations are
 /// possible:
@@ -551,10 +559,16 @@ pub fn extract_annotations(text: &str) -> (Vec<(TextRange, String)>, String) {
                             if !res.is_empty() {
                                 offset += annotation_offset;
                                 this_line_annotations.push((offset, res.len() - 1));
-                                let &(_, idx) = prev_line_annotations
+                                // Try to find a previous annotation at the same offset
+                                let idx = if let Some(&(_, idx)) = prev_line_annotations
                                     .iter()
                                     .find(|&&(off, _idx)| off == offset)
-                                    .unwrap();
+                                {
+                                    idx
+                                } else {
+                                    // If no exact offset match, append to the most recent annotation
+                                    res.len() - 1
+                                };
                                 res[idx].1.push('\n');
                                 res[idx].1.push_str(&content);
                             }

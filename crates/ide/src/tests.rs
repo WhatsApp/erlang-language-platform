@@ -401,6 +401,23 @@ fn convert_diagnostics_to_annotations(diagnostics: Vec<Diagnostic>) -> Vec<(Text
             annotation.push_str(&d.code.as_code());
             annotation.push_str(": ");
             annotation.push_str(&convert_diagnostic_message(&d));
+
+            // Append related info to the annotation
+            if let Some(related_info) = &d.related_info {
+                // Sort related info alphabetically by message for consistent test output
+                let mut sorted_info = related_info.clone();
+                sorted_info.sort_by(|a, b| a.message.cmp(&b.message));
+                for info in sorted_info {
+                    annotation.push_str(&format!(
+                        "\nRelated info: {}:{}-{} {}",
+                        info.file_id.index(),
+                        u32::from(info.range.start()),
+                        u32::from(info.range.end()),
+                        info.message
+                    ));
+                }
+            }
+
             (d.range, annotation)
         })
         .collect::<Vec<_>>();

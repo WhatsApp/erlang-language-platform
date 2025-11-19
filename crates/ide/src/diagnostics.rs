@@ -3433,6 +3433,9 @@ baz(1)->4.
              -spec foo() -> ok.
              foo( -> ok. %%
              %%  ^ error: W0004: Missing ')'
+             %%  | Related info: 0:21-43 function foo/0 undefined
+             %%  | Related info: 0:74-79 function foo/0 undefined
+             %%  | Related info: 0:82-99 spec for undefined function foo/0
             "#,
         );
     }
@@ -3463,6 +3466,7 @@ baz(1)->4.
 
              foo() -> syntax error oops.
              %%              ^^^^^ error: P1711: syntax error before: error
+             %%                  | Related info: 0:25-30 function foo/0 undefined
             "#,
         );
     }
@@ -3766,6 +3770,7 @@ baz(1)->4.
                      \~"\"\\µA\"" = \~/"\\µA"/
                      X = 3.
                   %% ^ error: P1711: syntax error before: X
+                  %% | Related info: 0:32-37 function foo/0 undefined
             "#,
         );
     }

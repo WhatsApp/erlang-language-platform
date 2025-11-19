@@ -164,6 +164,7 @@ mod tests {
     -module(main).
     -dyalizer({nowarn_function, f/0}).
  %%% ^^^^^^^^ 💡 error: W0013: misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
+ %%%        | Related info: 0:22-30 Misspelled attribute
             "#,
         );
         check_fix(
@@ -224,6 +225,7 @@ mod tests {
     -module(main).
     -module_doc """
 %%%  ^^^^^^^^^^ 💡 error: W0013: misspelled attribute, saw 'module_doc' but expected 'moduledoc'
+%%%           | Related info: 0:24-34 Misspelled attribute
     Hola
     """.
             "#,
@@ -237,6 +239,7 @@ mod tests {
     -module(main).
     -docs """
 %%%  ^^^^ 💡 error: W0013: misspelled attribute, saw 'docs' but expected 'doc'
+%%%     | Related info: 0:24-28 Misspelled attribute
     Hola
     """.
     foo() -> ok.

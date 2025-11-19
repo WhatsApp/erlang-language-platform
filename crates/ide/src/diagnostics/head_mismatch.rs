@@ -396,6 +396,7 @@ mod tests {
     foo(0) -> 1;
     boo(1) -> 2.
  %% ^^^ 💡 error: P1700: head mismatch 'boo' vs 'foo'
+ %%   | Related info: 0:21-24 Mismatched clause name
             "#,
         );
         check_fix(
@@ -421,6 +422,7 @@ mod tests {
                 ok;
             fooX(_X) ->
          %% ^^^^ 💡 error: P1700: head mismatch 'fooX' vs 'food'
+         %%    | Related info: 0:21-25 Mismatched clause name
                 no.
 
             bar() ->
@@ -450,6 +452,7 @@ mod tests {
     -module(main).
     foo(0) -> 1;
  %% ^^^ 💡 error: P1700: head mismatch 'foo' vs 'boo'
+ %%   | Related info: 0:37-40 Mismatched clause name
     boo(1) -> 2;
     boo(2) -> 3.
             "#,
@@ -478,6 +481,7 @@ mod tests {
     foo(0) -> 1;
     foo(1,0) -> 2.
  %% ^^^^^^^^^^^^^ error: P1700: head arity mismatch 2 vs 1
+ %%             | Related info: 0:21-32 Mismatched clause
             "#,
         );
     }
@@ -490,6 +494,7 @@ mod tests {
     foo(2,0) -> 3;
     foo(0) -> 1;
  %% ^^^^^^^^^^^ error: P1700: head arity mismatch 1 vs 2
+ %%           | Related info: 0:21-34 Mismatched clause
     foo(1,0) -> 2.
             "#,
         );
@@ -516,6 +521,7 @@ mod tests {
            (0) -> ok;
            A(N) -> ok
         %% ^ 💡 error: P1700: head mismatch 'A' vs ''
+        %% | Related info: 0:44-53 Mismatched clause name
        end,
        F().
             "#,

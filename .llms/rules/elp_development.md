@@ -168,6 +168,12 @@ directly in test code:
 - **Left-margin annotation**: `%%<^^^ text` - Annotation starts at `%%` position
   instead of first `^`
 - **Multiline annotations**: Use continuation lines with `%%   | next line`
+  - Continuation lines are particularly useful for diagnostics with related information:
+    ```erlang
+    foo() -> syntax error oops.
+    %%              ^^^^^ error: P1711: syntax error before: error
+    %%                  | Related info: 0:45-50 function foo/0 undefined
+    ```
 
 #### Example Test Fixture
 

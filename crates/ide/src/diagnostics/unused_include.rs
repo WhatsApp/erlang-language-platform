@@ -581,6 +581,7 @@ foo() -> ok.
 %% The following shows up as a wild attribute, which we regard as being used.
    -defin e(X, 1).
 %%  ^^^^^ 💡 error: W0013: misspelled attribute, saw 'defin' but expected 'define'
+%%    | Related info: 1:82-87 Misspelled attribute
 
 -def ine(Y, 2).
 "#,
