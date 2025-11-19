@@ -270,6 +270,7 @@ impl Validate<String> for Name {
             attr_loc,
         )
         .with_related(Some(vec![RelatedInformation {
+            file_id,
             range: ref_loc,
             message: "Mismatched clause name".to_string(),
         }]))
@@ -293,7 +294,7 @@ impl Validate<usize> for Arity {
 
     fn make_diagnostic(
         self,
-        _file_id: FileId,
+        file_id: FileId,
         attr: &usize,
         hattr: &usize,
         attr_loc: TextRange,
@@ -305,6 +306,7 @@ impl Validate<usize> for Arity {
             attr_loc,
         )
         .with_related(Some(vec![RelatedInformation {
+            file_id,
             range: ref_loc,
             message: "Mismatched clause".to_string(),
         }]))

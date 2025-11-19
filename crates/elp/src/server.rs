@@ -624,7 +624,16 @@ impl Server {
                     .diagnostics
                     .diagnostics_for(*file_id)
                     .iter()
-                    .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d))
+                    .map(|d| {
+                        let vfs = self.vfs.clone();
+                        ide_to_lsp_diagnostic(&line_index, d, |related_file_id| {
+                            // Get the line index and URL for the related file
+                            let url = file_id_to_url(&vfs.read(), related_file_id);
+                            let snapshot = self.snapshot();
+                            let line_index = snapshot.analysis.line_index(related_file_id).ok()?;
+                            Some(((*line_index).clone(), url))
+                        })
+                    })
                     .collect();
 
                 self.send_notification::<notification::PublishDiagnostics>(
@@ -828,11 +837,20 @@ impl Server {
                         Arc::make_mut(&mut this.diagnostics)
                             .clear(file_id);
                         if let Ok(line_index) = analysis.line_index(file_id) {
+                            let vfs = this.vfs.clone();
                             diagnostics = this
                                 .diagnostics
                                 .diagnostics_for(file_id)
                                 .iter()
-                                .map(|d| ide_to_lsp_diagnostic(&line_index, &url, d))
+                                .map(|d| {
+                                    let snapshot = this.snapshot();
+                                    ide_to_lsp_diagnostic(&line_index, d, |related_file_id| {
+                                        // Get the line index and URL for the related file
+                                        let url = file_id_to_url(&vfs.read(), related_file_id);
+                                        let line_index = snapshot.analysis.line_index(related_file_id).ok()?;
+                                        Some(((*line_index).clone(), url))
+                                    })
+                                })
                                 .collect()
                         }
                     }

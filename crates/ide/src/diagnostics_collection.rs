@@ -104,7 +104,7 @@ impl DiagnosticCollection {
         let native = self.native.get(&file_id).unwrap_or(&empty_diags);
         let erlang_service = self.erlang_service.get(&file_id).unwrap_or(&empty_diags);
         let mut combined: Vec<Diagnostic> =
-            attach_related_diagnostics(native.clone(), erlang_service.clone());
+            attach_related_diagnostics(file_id, native.clone(), erlang_service.clone());
         let eqwalizer = self.eqwalizer.get(&file_id).into_iter().flatten().cloned();
         let eqwalizer_project = self
             .eqwalizer_project
@@ -348,7 +348,7 @@ mod tests {
             let file_id = *file_id;
             let diagnostics = diagnostics::native_diagnostics(&db, &config, &vec![], file_id);
 
-            let combined = attach_related_diagnostics(diagnostics, extra_diags.clone());
+            let combined = attach_related_diagnostics(file_id, diagnostics, extra_diags.clone());
             let expected = fixture.annotations_by_file_id(&file_id);
             let mut actual = combined
                 .into_iter()

@@ -513,7 +513,8 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
     for file_id in &fixture.files {
         let file_id = *file_id;
         let diagnostics = diagnostics::native_diagnostics(&analysis.db, &config, &vec![], file_id);
-        let diagnostics = diagnostics::attach_related_diagnostics(diagnostics, extra_diags.clone());
+        let diagnostics =
+            diagnostics::attach_related_diagnostics(file_id, diagnostics, extra_diags.clone());
 
         let expected = fixture.annotations_by_file_id(&file_id);
         let actual = convert_diagnostics_to_annotations(diagnostics);

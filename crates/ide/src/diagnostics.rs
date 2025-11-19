@@ -227,8 +227,9 @@ impl Diagnostic {
         self
     }
 
-    pub(crate) fn as_related(&self) -> RelatedInformation {
+    pub(crate) fn as_related(&self, file_id: FileId) -> RelatedInformation {
         RelatedInformation {
+            file_id,
             range: self.range,
             message: self.message.clone(),
         }
@@ -447,6 +448,7 @@ impl Diagnostic {
 
 #[derive(Debug, Clone)]
 pub struct RelatedInformation {
+    pub file_id: FileId,
     pub range: TextRange,
     pub message: String,
 }
@@ -2818,6 +2820,7 @@ fn combine_syntax_errors(native: &Labeled, erlang_service: &Labeled) -> Labeled 
 /// Combine the ELP and erlang_service diagnostics.  In particular,
 /// flatten any cascading diagnostics if possible.
 pub fn attach_related_diagnostics(
+    file_id: FileId,
     native: LabeledDiagnostics,
     erlang_service: LabeledDiagnostics,
 ) -> Vec<Diagnostic> {
@@ -2853,7 +2856,7 @@ pub fn attach_related_diagnostics(
         .flat_map(|(mfa_label, syntax_error_diags)| {
             if let Some(related) = erlang_service.labeled_undefined_errors.get(mfa_label) {
                 undefineds_to_remove.insert(mfa_label);
-                let related_info = related.iter().map(|d| d.as_related()).collect_vec();
+                let related_info = related.iter().map(|d| d.as_related(file_id)).collect_vec();
                 syntax_error_diags
                     .iter()
                     .map(|d| d.clone().with_related(Some(related_info.clone())))

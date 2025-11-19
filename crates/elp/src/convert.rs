@@ -26,6 +26,7 @@ use elp_ide::elp_ide_db::assists::AssistContextDiagnostic;
 use elp_ide::elp_ide_db::assists::AssistContextDiagnosticCode;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
+use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use lsp_types::DiagnosticRelatedInformation;
 use lsp_types::Location;
@@ -67,11 +68,14 @@ pub fn diagnostic_severity(severity: Severity) -> lsp_types::DiagnosticSeverity 
     }
 }
 
-pub fn ide_to_lsp_diagnostic(
+pub fn ide_to_lsp_diagnostic<F>(
     line_index: &LineIndex,
-    url: &Url,
     d: &Diagnostic,
-) -> lsp_types::Diagnostic {
+    get_file_info: F,
+) -> lsp_types::Diagnostic
+where
+    F: Fn(FileId) -> Option<(LineIndex, Url)>,
+{
     let code_description = match &d.code_doc_uri {
         Some(uri) => match lsp_types::Url::parse(uri) {
             Ok(href) => Some(lsp_types::CodeDescription { href }),
@@ -90,7 +94,7 @@ pub fn ide_to_lsp_diagnostic(
         code_description,
         source,
         message: d.message.clone(),
-        related_information: from_related(line_index, url, &d.related_info),
+        related_information: from_related(get_file_info, &d.related_info),
         tags: d.tag.as_ref().map(lsp_diagnostic_tags),
         data: None,
     }
@@ -165,22 +169,26 @@ pub fn eqwalizer_to_arc_diagnostic(
     )
 }
 
-fn from_related(
-    line_index: &LineIndex,
-    url: &Url,
+fn from_related<F>(
+    get_file_info: F,
     r: &Option<Vec<RelatedInformation>>,
-) -> Option<Vec<DiagnosticRelatedInformation>> {
+) -> Option<Vec<DiagnosticRelatedInformation>>
+where
+    F: Fn(elp_ide::elp_ide_db::elp_base_db::FileId) -> Option<(LineIndex, Url)>,
+{
     r.as_ref().map(|ri| {
         ri.iter()
-            .map(|i| {
+            .filter_map(|i| {
+                // Get the line index and URL for the file that contains the related information
+                let (line_index, uri) = get_file_info(i.file_id)?;
                 let location = Location {
-                    range: range(line_index, i.range),
-                    uri: url.clone(),
+                    range: range(&line_index, i.range),
+                    uri,
                 };
-                DiagnosticRelatedInformation {
+                Some(DiagnosticRelatedInformation {
                     location,
                     message: i.message.clone(),
-                }
+                })
             })
             .collect()
     })

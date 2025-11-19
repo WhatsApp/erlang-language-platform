@@ -133,6 +133,7 @@ fn make_diagnostic(
         attr_name_range,
     )
     .with_related(Some(vec![RelatedInformation {
+        file_id,
         range: attr_name_range,
         message: "Misspelled attribute".to_string(),
     }]))

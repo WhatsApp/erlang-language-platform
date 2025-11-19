@@ -24,7 +24,6 @@ use elp::cli::Cli;
 use elp::convert;
 use elp::memory_usage::MemoryUsage;
 use elp::otp_file_to_ignore;
-use elp::server::file_id_to_url;
 use elp_eqwalizer::Mode;
 use elp_ide::Analysis;
 use elp_ide::diagnostics;
@@ -132,8 +131,7 @@ pub fn parse_all(
         (None, _, true) => do_parse_all_seq(cli, &loaded, &cfg, &args.to)?,
         (None, _, false) => do_parse_all_par(cli, &loaded, &cfg, &args.to)?,
         (Some(file_id), Some(name), _) => {
-            do_parse_one(&analysis, &loaded.vfs, &cfg, &args.to, file_id, &name)?
-                .map_or(vec![], |x| vec![x])
+            do_parse_one(&analysis, &cfg, &args.to, file_id, &name)?.map_or(vec![], |x| vec![x])
         }
         (Some(file_id), _, _) => panic!("Could not get name from file_id for {file_id:?}"),
     };
@@ -143,10 +141,6 @@ pub fn parse_all(
     }
 
     let db = loaded.analysis_host.raw_database();
-
-    // We need a `Url` for converting to the lsp_types::Diagnostic for
-    // printing, but do not print it out. So just create a dummy value
-    let url = lsp_types::Url::parse("file:///unused_url").ok().unwrap();
 
     telemetry::report_elapsed_time("parse-elp operational", start_time);
 
@@ -197,7 +191,7 @@ pub fn parse_all(
                             cli,
                         )?;
                     } else {
-                        print_diagnostic(&diag, &line_index, &url, &mut err_in_diag, cli)?;
+                        print_diagnostic(&diag, &line_index, &mut err_in_diag, cli)?;
                     }
                 }
             }
@@ -242,11 +236,10 @@ fn print_diagnostic_json(
 fn print_diagnostic(
     diag: &diagnostics::Diagnostic,
     line_index: &LineIndex,
-    url: &lsp_types::Url,
     err_in_diag: &mut bool,
     cli: &mut dyn Cli,
 ) -> Result<(), anyhow::Error> {
-    let diag = convert::ide_to_lsp_diagnostic(line_index, url, diag);
+    let diag = convert::ide_to_lsp_diagnostic(line_index, diag, |_file_id| None);
     let severity = match diag.severity {
         None => DiagnosticSeverity::ERROR,
         Some(sev) => {
@@ -289,7 +282,6 @@ fn do_parse_all_par(
 
     let pb = cli.progress(module_iter.len() as u64, "Parsing modules");
 
-    let vfs = &loaded.vfs;
     Ok(module_iter
         .par_bridge()
         .progress_with(pb)
@@ -300,7 +292,7 @@ fn do_parse_all_par(
                     && file_source == FileSource::Src
                     && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
                 {
-                    do_parse_one(db, vfs, config, to, file_id, module_name.as_str()).unwrap()
+                    do_parse_one(db, config, to, file_id, module_name.as_str()).unwrap()
                 } else {
                     None
                 }
@@ -321,7 +313,6 @@ fn do_parse_all_seq(
 
     let pb = cli.progress(module_iter.len() as u64, "Parsing modules (sequential)");
 
-    let vfs = &loaded.vfs;
     let db = loaded.analysis();
     Ok(module_iter
         .progress_with(pb)
@@ -330,7 +321,7 @@ fn do_parse_all_seq(
                 && file_source == FileSource::Src
                 && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
             {
-                do_parse_one(&db, vfs, config, to, file_id, module_name.as_str()).unwrap()
+                do_parse_one(&db, config, to, file_id, module_name.as_str()).unwrap()
             } else {
                 None
             }
@@ -340,13 +331,11 @@ fn do_parse_all_seq(
 
 fn do_parse_one(
     db: &Analysis,
-    vfs: &Vfs,
     config: &DiagnosticsConfig,
     to: &Option<PathBuf>,
     file_id: FileId,
     name: &str,
 ) -> Result<Option<ParseResult>> {
-    let url = file_id_to_url(vfs, file_id);
     let native = db.native_diagnostics(config, &vec![], file_id)?;
     let erlang_service_diagnostics =
         db.erlang_service_diagnostics(file_id, config, RemoveElpReported::Yes)?;
@@ -364,11 +353,13 @@ fn do_parse_one(
         let mut output = File::create(to_path)?;
 
         for diagnostic in native.iter() {
-            let diagnostic = convert::ide_to_lsp_diagnostic(&line_index, &url, diagnostic);
+            let diagnostic =
+                convert::ide_to_lsp_diagnostic(&line_index, diagnostic, |_file_id| None);
             writeln!(output, "{diagnostic:?}")?;
         }
         for diagnostic in erlang_service.iter() {
-            let diagnostic = convert::ide_to_lsp_diagnostic(&line_index, &url, diagnostic);
+            let diagnostic =
+                convert::ide_to_lsp_diagnostic(&line_index, diagnostic, |_file_id| None);
             writeln!(output, "{diagnostic:?}")?;
         }
     }
