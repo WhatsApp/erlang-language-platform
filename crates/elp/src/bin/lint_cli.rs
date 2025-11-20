@@ -1088,11 +1088,11 @@ mod tests {
               head_mismatcX(0) -> 0.
           "#,
             expect![[r#"
-            module specified: lints
-            Diagnostics reported in 1 modules:
-              lints: 1
-                  4:2-4:15::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
-        "#]],
+                module specified: lints
+                Diagnostics reported in 1 modules:
+                  lints: 1
+                      5:3-5:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+            "#]],
             expect![""],
         );
     }
@@ -1111,7 +1111,7 @@ mod tests {
                 module specified: lints
                 Diagnostics reported in 1 modules:
                   lints: 1
-                      2:2-2:5::[Warning] [L1230] function foo/0 is unused
+                      3:3-3:6::[Warning] [L1230] function foo/0 is unused
             "#]],
             expect![""],
         );

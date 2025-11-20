@@ -1,12 +1,12 @@
 Reporting all diagnostics codes
 Diagnostics reported in 3 modules:
   app_a: 1
-      5:9-5:31::[WeakWarning] [W0037] Unspecific include.
+      6:10-6:32::[WeakWarning] [W0037] Unspecific include.
   top_includer: 2
-      0:1-0:1::[Error] [L0000] Issue in included file
-      12:4-12:10::[Error] [E1508] undefined macro 'THIRD/2'
+      1:2-1:2::[Error] [L0000] Issue in included file
+      13:5-13:11::[Error] [E1508] undefined macro 'THIRD/2'
   wa_buck2_module_search: 4
-      54:18-54:31::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
-      56:18-56:28::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
-      56:38-56:51::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
-      60:30-60:40::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
+      55:19-55:32::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
+      57:19-57:29::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
+      57:39-57:52::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
+      61:31-61:41::[WeakWarning] [W0051] Binary string can be written using sigil syntax.

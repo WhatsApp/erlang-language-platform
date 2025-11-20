@@ -1,12 +1,12 @@
 module specified: lint_recursive
 Diagnostics reported in 1 modules:
   lint_recursive: 2
-      18:4-18:11::[Warning] [W0007] match is redundant
-      13:4-13:11::[Warning] [W0007] match is redundant
+      19:5-19:12::[Warning] [W0007] match is redundant
+      14:5-14:12::[Warning] [W0007] match is redundant
 ---------------------------------------------
 
 Applying fix in module 'lint_recursive' for
-      18:4-18:11::[Warning] [W0007] match is redundant
+      19:5-19:12::[Warning] [W0007] match is redundant
 @@ -16,7 +16,7 @@
  
  test_foo2(Config) ->
@@ -21,12 +21,12 @@ Applying fix in module 'lint_recursive' for
 
 New filtered diagnostics
   lint_recursive: 2
-      13:4-13:11::[Warning] [W0007] match is redundant
-      18:4-18:10::[Warning] [W0006] this statement has no effect
+      14:5-14:12::[Warning] [W0007] match is redundant
+      19:5-19:11::[Warning] [W0006] this statement has no effect
 ---------------------------------------------
 
 Applying fix in module 'lint_recursive' for
-      13:4-13:11::[Warning] [W0007] match is redundant
+      14:5-14:12::[Warning] [W0007] match is redundant
 @@ -11,7 +11,7 @@
  %% something/0.
  test_foo(Config) ->
@@ -41,12 +41,12 @@ Applying fix in module 'lint_recursive' for
 
 New filtered diagnostics
   lint_recursive: 2
-      18:4-18:10::[Warning] [W0006] this statement has no effect
-      13:4-13:10::[Warning] [W0006] this statement has no effect
+      19:5-19:11::[Warning] [W0006] this statement has no effect
+      14:5-14:11::[Warning] [W0006] this statement has no effect
 ---------------------------------------------
 
 Applying fix in module 'lint_recursive' for
-      18:4-18:10::[Warning] [W0006] this statement has no effect
+      19:5-19:11::[Warning] [W0006] this statement has no effect
 @@ -16,7 +16,6 @@
  
  test_foo2(Config) ->
@@ -60,12 +60,12 @@ Applying fix in module 'lint_recursive' for
 
 New filtered diagnostics
   lint_recursive: 2
-      16:10-16:16::[Warning] [W0010] this variable is unused
-      13:4-13:10::[Warning] [W0006] this statement has no effect
+      17:11-17:17::[Warning] [W0010] this variable is unused
+      14:5-14:11::[Warning] [W0006] this statement has no effect
 ---------------------------------------------
 
 Applying fix in module 'lint_recursive' for
-      16:10-16:16::[Warning] [W0010] this variable is unused
+      17:11-17:17::[Warning] [W0010] this variable is unused
 @@ -14,7 +14,7 @@
      Config,
      clean_mocks().
@@ -80,11 +80,11 @@ Applying fix in module 'lint_recursive' for
 
 New filtered diagnostics
   lint_recursive: 1
-      13:4-13:10::[Warning] [W0006] this statement has no effect
+      14:5-14:11::[Warning] [W0006] this statement has no effect
 ---------------------------------------------
 
 Applying fix in module 'lint_recursive' for
-      13:4-13:10::[Warning] [W0006] this statement has no effect
+      14:5-14:11::[Warning] [W0006] this statement has no effect
 @@ -11,7 +11,6 @@
  %% something/0.
  test_foo(Config) ->
@@ -98,11 +98,11 @@ Applying fix in module 'lint_recursive' for
 
 New filtered diagnostics
   lint_recursive: 1
-      11:9-11:15::[Warning] [W0010] this variable is unused
+      12:10-12:16::[Warning] [W0010] this variable is unused
 ---------------------------------------------
 
 Applying fix in module 'lint_recursive' for
-      11:9-11:15::[Warning] [W0010] this variable is unused
+      12:10-12:16::[Warning] [W0010] this variable is unused
 @@ -9,7 +9,7 @@
  %% We want to check that the "no effect" statements in test_foo/1 and
  %% test_foo2/1 are removed, but not the ones in clean_mocks/0 and

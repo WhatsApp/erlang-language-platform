@@ -1,13 +1,13 @@
 module specified: app_b
 Diagnostics reported in 1 modules:
   app_b: 2
-      7:4-7:35::[WeakWarning] [ad-hoc: application:get_env/2] 'application:get_env/2' called
-      4:4-4:34::[WeakWarning] [ad-hoc: application:get_env/2] 'application:get_env/2' called
+      8:5-8:36::[WeakWarning] [ad-hoc: application:get_env/2] 'application:get_env/2' called
+      5:5-5:35::[WeakWarning] [ad-hoc: application:get_env/2] 'application:get_env/2' called
 ---------------------------------------------
 
 Applying fixes in module 'app_b' for
-      7:4-7:35::[WeakWarning] [ad-hoc: application:get_env/2] 'application:get_env/2' called
-      4:4-4:34::[WeakWarning] [ad-hoc: application:get_env/2] 'application:get_env/2' called
+      8:5-8:36::[WeakWarning] [ad-hoc: application:get_env/2] 'application:get_env/2' called
+      5:5-5:35::[WeakWarning] [ad-hoc: application:get_env/2] 'application:get_env/2' called
 @@ -1,8 +1,8 @@
  -module(app_b).
  -export([application_env_error/0, application_env_no_error/0]).

@@ -2,4 +2,4 @@ Reporting all diagnostics codes
 module specified: custom_function_matches
 Diagnostics reported in 1 modules:
   custom_function_matches: 1
-      13:4-13:25::[Warning] [W0017] Function 'not_excluded:function/0' is undefined.
+      14:5-14:26::[Warning] [W0017] Function 'not_excluded:function/0' is undefined.

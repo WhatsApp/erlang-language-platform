@@ -1,4 +1,4 @@
 module specified: suppressed
 Diagnostics reported in 1 modules:
   suppressed: 1
-      7:4-7:8::[Warning] [W0007] match is redundant
+      8:5-8:9::[Warning] [W0007] match is redundant
