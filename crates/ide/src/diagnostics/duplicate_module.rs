@@ -12,50 +12,57 @@
 //
 // Return a warning if more than one module has the same name
 
-use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::ModuleName;
 use elp_syntax::AstNode;
 use hir::Semantic;
 
-use super::Diagnostic;
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use crate::diagnostics::Severity;
+use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: false, // Allow duplication in test fixtures
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _file_kind| {
-        check_file(diags, sema, &file_id);
-    },
-};
+pub(crate) struct DuplicateModuleLinter;
 
-fn check_file(acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: &FileId) -> Option<()> {
-    // We cannot ask for the module name from the module_index, as
-    // this file_id may be discarded as a duplicate
-    let module_name_ast = sema.module_attribute_name(*file_id)?;
-    let module_name = ModuleName::new(module_name_ast.text()?.as_str());
-
-    let app_data = sema.db.file_app_data(*file_id)?;
-    let module_index = sema.db.module_index(app_data.project_id);
-    if let Some(_dups) = module_index.duplicates(&module_name) {
-        let range = module_name_ast.syntax().text_range();
-        acc.push(
-            Diagnostic::new(
-                DiagnosticCode::DuplicateModule,
-                "Duplicate module name",
-                range,
-            )
-            .with_severity(Severity::Warning),
-        );
+impl Linter for DuplicateModuleLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::DuplicateModule
     }
-    Some(())
+
+    fn description(&self) -> &'static str {
+        "A module with this name exists elsewhere"
+    }
+
+    fn should_process_test_files(&self) -> bool {
+        false // Allow duplication in test fixtures
+    }
 }
+
+impl GenericLinter for DuplicateModuleLinter {
+    type Context = ();
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
+        let mut res = Vec::new();
+        // We cannot ask for the module name from the module_index, as
+        // this file_id may be discarded as a duplicate
+        let module_name_ast = sema.module_attribute_name(file_id)?;
+        let module_name = ModuleName::new(module_name_ast.text()?.as_str());
+
+        let app_data = sema.db.file_app_data(file_id)?;
+        let module_index = sema.db.module_index(app_data.project_id);
+        if let Some(_dups) = module_index.duplicates(&module_name) {
+            let range = module_name_ast.syntax().text_range();
+            res.push(GenericLinterMatchContext { range, context: () });
+        }
+        Some(res)
+    }
+}
+
+pub static LINTER: DuplicateModuleLinter = DuplicateModuleLinter;
 
 #[cfg(test)]
 mod test {
@@ -67,11 +74,11 @@ mod test {
             r#"
              //- /src/dup_mod.erl
              -module(dup_mod).
-                  %% ^^^^^^^ warning: W0045: Duplicate module name
+                  %% ^^^^^^^ 💡 warning: W0045: A module with this name exists elsewhere
 
              //- /src/sub/dup_mod.erl
              -module(dup_mod).
-                  %% ^^^^^^^ warning: W0045: Duplicate module name
+                  %% ^^^^^^^ 💡 warning: W0045: A module with this name exists elsewhere
             "#,
         )
     }

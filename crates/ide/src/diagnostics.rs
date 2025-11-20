@@ -1510,7 +1510,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &unspecific_include::DESCRIPTOR,
         &edoc::DESCRIPTOR,
         &macro_precedence_suprise::DESCRIPTOR,
-        &duplicate_module::DESCRIPTOR,
         &no_nowarn_suppressions::DESCRIPTOR,
     ]
 }
@@ -1595,6 +1594,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &no_catch::LINTER,
     &unavailable_type::LINTER,
     &no_dialyzer_attribute::LINTER,
+    &duplicate_module::LINTER,
 ];
 
 /// Unified registry for all types of linters
