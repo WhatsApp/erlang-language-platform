@@ -1055,7 +1055,7 @@ impl DiagnosticsConfig {
             let diagnostic_filter = DiagnosticCode::from(diagnostic_filter.as_str());
             // Make sure we do not mask the one we explicitly asked for
             disabled_diagnostics.remove(&diagnostic_filter);
-            allowed_diagnostics.insert(diagnostic_filter);
+            allowed_diagnostics.insert(diagnostic_filter.clone());
         }
 
         // Make sure the enabled ones win out over disabled if a lint appears in both
@@ -1073,6 +1073,13 @@ impl DiagnosticsConfig {
         }
         self.lints_from_config = lint_config.ad_hoc_lints.clone();
         self.lint_config = Some(lint_config.clone());
+
+        // If a diagnostic_filter is specified, enable the corresponding linter in lint_config
+        if let Some(diagnostic_filter) = diagnostic_filter {
+            let diagnostic_filter_code = DiagnosticCode::from(diagnostic_filter.as_str());
+            self.set_linter_enabled(diagnostic_filter_code, true);
+        }
+
         self.request_erlang_service_diagnostics = self.request_erlang_service_diagnostics();
         Ok(self)
     }
@@ -4030,6 +4037,7 @@ baz(1)->4.
 
             warning() ->
                 erlang:garbage_collect().
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
             //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
             -module(erlang).
             -export([garbage_collect/0]).
