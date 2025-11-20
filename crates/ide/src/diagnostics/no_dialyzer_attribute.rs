@@ -8,49 +8,54 @@
  * above-listed licenses.
  */
 
-use elp_ide_db::DiagnosticCode;
+// Diagnostic: no-dialyzer-attribute
 use elp_ide_db::elp_base_db::FileId;
 use hir::Semantic;
 use hir::known;
 
-use crate::diagnostics::Diagnostic;
-use crate::diagnostics::DiagnosticConditions;
-use crate::diagnostics::DiagnosticDescriptor;
-use crate::diagnostics::Severity;
+use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
 
-const DIAGNOSTIC_CODE: DiagnosticCode = DiagnosticCode::NoDialyzerAttribute;
-const DIAGNOSTIC_MESSAGE: &str = "Avoid -dialyzer attribute.";
-const DIAGNOSTIC_SEVERITY: Severity = Severity::Warning;
+pub(crate) struct NoDialyzerAttributeLinter;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: false,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        no_dialyzer_attribute(diags, sema, file_id);
-    },
-};
+impl Linter for NoDialyzerAttributeLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::NoDialyzerAttribute
+    }
 
-fn no_dialyzer_attribute(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    let form_list = sema.db.file_form_list(file_id);
-    form_list.attributes().for_each(|(_idx, attr)| {
-        if attr.name == known::dialyzer
-            && let Some(diagnostic) = make_diagnostic(sema, file_id, attr)
-        {
-            diagnostics.push(diagnostic);
-        }
-    });
+    fn description(&self) -> &'static str {
+        "Avoid using the -dialyzer attribute."
+    }
+
+    fn should_process_test_files(&self) -> bool {
+        false
+    }
 }
 
-fn make_diagnostic(sema: &Semantic, file_id: FileId, attr: &hir::Attribute) -> Option<Diagnostic> {
-    let range = attr.name_range(sema.db, file_id)?;
-    let diagnostic = Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, range)
-        .with_severity(DIAGNOSTIC_SEVERITY);
-    Some(diagnostic)
+impl GenericLinter for NoDialyzerAttributeLinter {
+    type Context = ();
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
+        let mut res = Vec::new();
+        let form_list = sema.db.file_form_list(file_id);
+        form_list.attributes().for_each(|(_idx, attr)| {
+            if attr.name == known::dialyzer
+                && let Some(range) = attr.name_range(sema.db, file_id)
+            {
+                res.push(GenericLinterMatchContext { range, context: () })
+            }
+        });
+        Some(res)
+    }
 }
+
+pub static LINTER: NoDialyzerAttributeLinter = NoDialyzerAttributeLinter;
 
 #[cfg(test)]
 mod tests {
@@ -63,7 +68,7 @@ mod tests {
             r#"
     -module(main).
     -dialyzer({nowarn_function, foo/0}).
- %% ^^^^^^^^^ warning: W0048: Avoid -dialyzer attribute.
+ %% ^^^^^^^^^ 💡 warning: W0048: Avoid using the -dialyzer attribute.
               "#,
         )
     }
