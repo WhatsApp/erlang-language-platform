@@ -581,6 +581,26 @@ impl CallTarget<TypeExprId> {
             }
         }
     }
+
+    pub fn range(&self, sema: &Semantic, body: &Body) -> Option<FileRange> {
+        match self {
+            CallTarget::Local { name } => {
+                let name_any_id = AnyExprId::TypeExpr(*name);
+                body.range_for_any(sema, name_any_id)
+            }
+            CallTarget::Remote { module, name, .. } => {
+                let module_any_id = AnyExprId::TypeExpr(*module);
+                let name_any_id = AnyExprId::TypeExpr(*name);
+
+                let name_range = body.range_for_any(sema, name_any_id)?;
+                if let Some(module_range) = body.range_for_any(sema, module_any_id) {
+                    module_range.cover(name_range)
+                } else {
+                    Some(name_range)
+                }
+            }
+        }
+    }
 }
 
 impl CallTarget<ExprId> {

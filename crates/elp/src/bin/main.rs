@@ -1972,6 +1972,23 @@ mod tests {
     }
 
     #[test]
+    fn lint_unavailable_type() {
+        simple_snapshot(
+            args_vec![
+                "lint",
+                "--config-file",
+                "../../test_projects/xref/elp_lint_unavailable_type.toml",
+                "--module",
+                "unavailable_type"
+            ],
+            "xref",
+            expect_file!("../resources/test/xref/unavailable_type.stdout"),
+            true,
+            None,
+        )
+    }
+
+    #[test]
     fn lint_ssr_from_config() {
         simple_snapshot(
             args_vec![

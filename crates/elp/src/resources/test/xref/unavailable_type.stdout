@@ -1,0 +1,5 @@
+Reporting all diagnostics codes
+module specified: unavailable_type
+Diagnostics reported in 1 modules:
+  unavailable_type: 1
+      3:42-3:57::[Warning] [W0059] The type 'app_c:my_type_c/0' is defined in application 'app_c', but the application is not a dependency of 'app_a' (defined in 'fbcode//whatsapp/elp/test_projects/xref:app_a').

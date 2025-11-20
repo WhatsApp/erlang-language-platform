@@ -135,6 +135,7 @@ mod replace_in_spec;
 mod sets_version_2;
 mod simplify_negation;
 mod trivial_match;
+mod unavailable_type;
 mod undefined_function;
 mod undefined_macro;
 mod undocumented_function;
@@ -1586,6 +1587,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &undocumented_module::LINTER,
     &undocumented_function::LINTER,
     &no_catch::LINTER,
+    &unavailable_type::LINTER,
 ];
 
 /// Unified registry for all types of linters
