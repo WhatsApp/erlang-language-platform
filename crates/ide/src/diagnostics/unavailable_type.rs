@@ -24,6 +24,7 @@ use elp_project_model::AppName;
 use hir::AnyExpr;
 use hir::Callback;
 use hir::InFile;
+use hir::Record;
 use hir::Semantic;
 use hir::Spec;
 use hir::Strategy;
@@ -110,6 +111,18 @@ impl GenericLinter for UnavailableTypeLinter {
                 &referencing_app_data,
                 referencing_target,
                 callback_id,
+            );
+        }
+
+        // Check -record attributes
+        for (record_id, _record) in form_list.records() {
+            check_record(
+                &mut res,
+                sema,
+                file_id,
+                &referencing_app_data,
+                referencing_target,
+                record_id,
             );
         }
 
@@ -223,6 +236,39 @@ fn check_callback(
                 referencing_target,
                 &ctx,
                 &callback_body.body,
+            );
+        },
+    );
+}
+
+fn check_record(
+    matches: &mut Vec<GenericLinterMatchContext<Context>>,
+    sema: &Semantic,
+    file_id: FileId,
+    referencing_app_data: &AppData,
+    referencing_target: &String,
+    record_id: hir::RecordId,
+) {
+    let record_id = InFile::new(file_id, record_id);
+    let record_body = sema.db.record_body(record_id);
+
+    Record::fold(
+        sema,
+        Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        record_id,
+        (),
+        &mut |_acc, ctx| {
+            check_type_call(
+                matches,
+                sema,
+                file_id,
+                referencing_app_data,
+                referencing_target,
+                &ctx,
+                &record_body.body,
             );
         },
     );

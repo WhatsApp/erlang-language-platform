@@ -188,6 +188,11 @@ impl FormList {
         self.data.type_aliases.iter()
     }
 
+    /// Returns the -record declarations in the file
+    pub fn records(&self) -> impl Iterator<Item = (RecordId, &Record)> {
+        self.data.records.iter()
+    }
+
     pub fn find_form(&self, form: &ast::Form) -> Option<FormIdx> {
         self.map_back.get(&AstPtr::new(form)).copied()
     }
