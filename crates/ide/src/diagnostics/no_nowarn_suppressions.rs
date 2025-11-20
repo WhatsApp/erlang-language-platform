@@ -16,61 +16,62 @@ use hir::Semantic;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::diagnostics::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
-use crate::diagnostics::DiagnosticConditions;
-use crate::diagnostics::DiagnosticDescriptor;
-use crate::diagnostics::Severity;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
 
-const DIAGNOSTIC_CODE: DiagnosticCode = DiagnosticCode::NoNoWarnSuppressions;
-const DIAGNOSTIC_MESSAGE: &str = "Do not suppress compiler warnings at module level.";
-const DIAGNOSTIC_SEVERITY: Severity = Severity::Warning;
+pub(crate) struct NoNoWarnSuppressionsLinter;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        no_warn_suppression(diags, sema, file_id);
-    },
-};
-
-fn no_warn_suppression(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    lazy_static! {
-        static ref NOWARN_REGEX: Regex = Regex::new(r"^nowarn_").unwrap();
+impl Linter for NoNoWarnSuppressionsLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::NoNoWarnSuppressions
     }
 
-    let form_list = sema.db.file_form_list(file_id);
-    for (_compile_option_idx, compile_option) in form_list.compile_attributes() {
-        let attr = compile_option.form_id.get_ast(sema.db, file_id);
-        if let Some(expr) = attr.options() {
-            // Blindly search for any atom matching the nowarn_ prefix
-            for n in expr.syntax().descendants() {
-                match_ast! {
-                    match n {
-                        ast::Atom(atom) => {
-                            if let Some(atom_text) = atom.text()
-                                && NOWARN_REGEX.is_match(&atom_text) {
-                                    let diagnostic = Diagnostic::new(
-                                        DIAGNOSTIC_CODE,
-                                        DIAGNOSTIC_MESSAGE,
-                                        atom.syntax().text_range(),
-                                    )
-                                    .with_ignore_fix(sema, file_id)
-                                    .with_severity(DIAGNOSTIC_SEVERITY);
-                                    diagnostics.push(diagnostic);
-                                }
-                        },
-                        _ => {}
+    fn description(&self) -> &'static str {
+        "Do not suppress compiler warnings at module level."
+    }
+}
+
+impl GenericLinter for NoNoWarnSuppressionsLinter {
+    type Context = ();
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
+        lazy_static! {
+            static ref NOWARN_REGEX: Regex = Regex::new(r"^nowarn_").unwrap();
+        }
+
+        let mut res = Vec::new();
+        let form_list = sema.db.file_form_list(file_id);
+        for (_compile_option_idx, compile_option) in form_list.compile_attributes() {
+            let attr = compile_option.form_id.get_ast(sema.db, file_id);
+            if let Some(expr) = attr.options() {
+                // Blindly search for any atom matching the nowarn_ prefix
+                for n in expr.syntax().descendants() {
+                    match_ast! {
+                        match n {
+                            ast::Atom(atom) => {
+                                if let Some(atom_text) = atom.text()
+                                    && NOWARN_REGEX.is_match(&atom_text) {
+                                        let range = atom.syntax().text_range();
+                                        res.push(GenericLinterMatchContext { range, context: () });
+                                    }
+                            },
+                            _ => {}
+                        }
                     }
                 }
             }
         }
+        Some(res)
     }
 }
+
+pub static LINTER: NoNoWarnSuppressionsLinter = NoNoWarnSuppressionsLinter;
 
 #[cfg(test)]
 mod tests {
