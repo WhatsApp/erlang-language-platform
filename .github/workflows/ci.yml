@@ -200,6 +200,8 @@ jobs:
           node-version: 20
       - name: Install VSCE
         run: npm install -g vsce
+      - name: Install OVSX
+        run: npm install -g ovsx
       - name: Prepare VS Code Extension to host binaries (No Windows)
         if: matrix.os != 'windows'
         run: mkdir -p editors/code/bin
@@ -285,3 +287,7 @@ jobs:
         working-directory: editors/code
         if: ${{ github.event_name == 'release' && matrix.vscode-publish && matrix.os != 'windows' }}
         run: vsce publish -p ${{ secrets.VSCE_PAT }} --packagePath erlang-language-platform.vsix
+      - name: Publish extension to OpenVSX marketplace
+        working-directory: editors/code
+        if: ${{ github.event_name == 'release' && matrix.vscode-publish && matrix.os != 'windows' }}
+        run: ovsx publish -p ${{ secrets.OVSX_PAT }} --packagePath erlang-language-platform.vsix
