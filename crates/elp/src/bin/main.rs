@@ -2059,6 +2059,23 @@ mod tests {
     }
 
     #[test]
+    fn lint_ssr_with_context_and_separator_color() {
+        simple_snapshot(
+            args_vec![
+                "ssr",
+                "--context", "2",
+                "--group-separator", "====",
+                "--colour", "always"
+                "{_@A, _@B}",
+            ],
+            "linter",
+            expect_file!("../resources/test/linter/ssr_context_separator_color.stdout"),
+            true,
+            None,
+        )
+    }
+
+    #[test]
     fn lint_ssr_as_cli_arg_multiple_patterns() {
         simple_snapshot(
             args_vec!["ssr", "3" "{4}",],

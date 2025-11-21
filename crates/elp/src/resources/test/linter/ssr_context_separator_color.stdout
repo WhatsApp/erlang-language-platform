@@ -1,0 +1,18 @@
+  app_a: 2
+app_a/src/app_a.erl:16:13-16:18::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: {_@A, _@B}.
+[90m  14 |[0m     app_b:application_env_error().
+[90m  15 |[0m 
+[90m  16 |[0m baz(A,B) -> [91;1m{A,B}[0m.
+[90m  17 |[0m 
+[90m  18 |[0m % Some more context, see if it renders
+
+====
+app_a/src/app_a.erl:20:13-20:18::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: {_@A, _@B}.
+[90m  18 |[0m % Some more context, see if it renders
+[90m  19 |[0m 
+[90m  20 |[0m bat(A,B) -> [91;1m{A,B}[0m.
+[90m  21 |[0m 
+[90m  22 |[0m % And some more context, see if it renders
+
+
+Matches found in 1 modules
