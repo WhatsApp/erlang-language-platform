@@ -9,7 +9,6 @@ workspace = true
 [dependencies]
 elp_text_edit.workspace = true
 
-cov-mark.workspace = true
 eetf.workspace = true
 fxhash.workspace = true
 indexmap.workspace = true

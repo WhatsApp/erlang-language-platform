@@ -20,7 +20,6 @@ use std::mem;
 use elp_base_db::AnchoredPathBuf;
 use elp_base_db::FileId;
 use elp_syntax::SyntaxNode;
-use elp_syntax::algo;
 use elp_text_edit::TextEdit;
 use elp_text_edit::TextEditBuilder;
 use elp_text_edit::TextRange;
@@ -29,6 +28,7 @@ use fxhash::FxHashMap;
 use stdx::never;
 
 use crate::helpers::SnippetCap;
+use crate::tree_diff::diff;
 
 #[derive(Default, Debug, Clone)]
 pub struct SourceChange {
@@ -171,7 +171,7 @@ impl SourceChangeBuilder {
 
     fn commit(&mut self) {
         if let Some(tm) = self.mutated_tree.take() {
-            algo::diff(&tm.immutable, &tm.mutable_clone).into_text_edit(&mut self.edit)
+            diff(&tm.immutable, &tm.mutable_clone).into_text_edit(&mut self.edit)
         }
 
         let edit = mem::take(&mut self.edit).finish();

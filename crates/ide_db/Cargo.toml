@@ -17,10 +17,12 @@ elp_types_db.workspace = true
 hir.workspace = true
 
 anyhow.workspace = true
+cov-mark.workspace = true
 eetf.workspace = true
 either.workspace = true
 fxhash.workspace = true
 indexmap.workspace = true
+itertools.workspace = true
 lazy_static.workspace = true
 log.workspace = true
 memchr.workspace = true

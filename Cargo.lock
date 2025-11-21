@@ -637,6 +637,7 @@ name = "elp_ide_db"
 version = "1.1.0"
 dependencies = [
  "anyhow",
+ "cov-mark",
  "eetf",
  "either",
  "elp_base_db",
@@ -650,6 +651,7 @@ dependencies = [
  "fxhash",
  "hir",
  "indexmap 2.9.0",
+ "itertools 0.10.5",
  "lazy_static",
  "log",
  "memchr",
@@ -734,7 +736,6 @@ dependencies = [
 name = "elp_syntax"
 version = "1.1.0"
 dependencies = [
- "cov-mark",
  "eetf",
  "elp_ide_db",
  "elp_text_edit",

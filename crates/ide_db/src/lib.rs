@@ -66,6 +66,7 @@ pub mod assists;
 pub mod helpers;
 pub mod rename;
 pub mod source_change;
+pub mod tree_diff;
 
 pub use defs::ReferenceClass;
 pub use defs::ReferenceType;
