@@ -54,6 +54,8 @@ Add the following to your emacs `.emacs` file or equivalent.
 
 For a list of available configuration option, please refer to [this page](https://emacs-lsp.github.io/lsp-mode/page/lsp-erlang-elp/) and to the [`lsp-mode` settings documentation](https://emacs-lsp.github.io/lsp-mode/page/settings/mode/).
 
+There is also a [`.dotemacs`](https://github.com/WhatsApp/erlang-language-platform/blob/main/editors/emacs/dotemacs.el) file in the ELP repository that you can use as a reference.
+
 ## Troubleshooting
 
 #### The following servers support current file but do not have automatic installation
