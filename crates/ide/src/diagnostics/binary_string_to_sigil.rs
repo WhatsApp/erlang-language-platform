@@ -38,7 +38,7 @@ impl Linter for BinaryStringToSigilLinter {
         "Binary string can be written using sigil syntax."
     }
 
-    fn severity(&self) -> Severity {
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
         Severity::WeakWarning
     }
 

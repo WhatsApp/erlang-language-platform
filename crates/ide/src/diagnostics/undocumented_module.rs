@@ -34,7 +34,7 @@ impl Linter for UndocumentedModuleLinter {
         "The module is not documented."
     }
 
-    fn severity(&self) -> Severity {
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
         Severity::WeakWarning
     }
 

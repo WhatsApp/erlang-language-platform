@@ -39,7 +39,7 @@ impl Linter for UndocumentedFunctionLinter {
         "The function is non-trivial, exported, but not documented."
     }
 
-    fn severity(&self) -> Severity {
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
         Severity::WeakWarning
     }
 

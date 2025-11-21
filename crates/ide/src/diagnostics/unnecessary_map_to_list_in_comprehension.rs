@@ -33,7 +33,7 @@ impl Linter for UnnecessaryMapToListInComprehensionLinter {
         "Unnecessary intermediate list allocated."
     }
 
-    fn severity(&self) -> Severity {
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
         Severity::WeakWarning
     }
 }

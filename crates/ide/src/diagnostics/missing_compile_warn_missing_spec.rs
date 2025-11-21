@@ -53,7 +53,7 @@ impl Linter for MissingCompileWarnMissingSpec {
     fn description(&self) -> &'static str {
         "Please add \"-compile(warn_missing_spec_all).\" to the module. If exported functions are not all specced, they need to be specced."
     }
-    fn severity(&self) -> Severity {
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
         Severity::Error
     }
     fn should_process_test_files(&self) -> bool {

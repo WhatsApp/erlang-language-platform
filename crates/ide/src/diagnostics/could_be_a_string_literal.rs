@@ -39,7 +39,7 @@ impl Linter for CouldBeAStringLiteralLinter {
         "Could be rewritten as a literal."
     }
 
-    fn severity(&self) -> Severity {
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
         Severity::Information
     }
 }

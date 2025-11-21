@@ -511,13 +511,13 @@ pub(crate) trait Linter {
     fn description(&self) -> &'static str;
 
     // The severity for the lint issue. It defaults to `Warning`.
-    fn severity(&self) -> Severity {
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
         Severity::Warning
     }
 
     // For CLI, when using the --use-cli-severity flag. It defaults to `severity()`
-    fn cli_severity(&self) -> Severity {
-        self.severity()
+    fn cli_severity(&self, sema: &Semantic, file_id: FileId) -> Severity {
+        self.severity(sema, file_id)
     }
 
     // Specify if the linter issues can be suppressed via a `% elp:ignore` comment.
@@ -1649,16 +1649,16 @@ fn diagnostics_from_linters(
             let severity = if let Some(lint_config) = config.lint_config.as_ref() {
                 lint_config
                     .get_severity_override(&linter.id())
-                    .unwrap_or_else(|| linter.severity())
+                    .unwrap_or_else(|| linter.severity(sema, file_id))
             } else {
-                linter.severity()
+                linter.severity(sema, file_id)
             };
             let cli_severity = if let Some(lint_config) = config.lint_config.as_ref() {
                 lint_config
                     .get_severity_override(&linter.id())
-                    .unwrap_or_else(|| linter.cli_severity())
+                    .unwrap_or_else(|| linter.cli_severity(sema, file_id))
             } else {
-                linter.cli_severity()
+                linter.cli_severity(sema, file_id)
             };
             match l {
                 DiagnosticLinter::FunctionCall(function_linter) => {

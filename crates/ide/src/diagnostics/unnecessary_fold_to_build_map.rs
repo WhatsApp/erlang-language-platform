@@ -49,7 +49,7 @@ impl Linter for UnnecessaryFoldToBuildMapLinter {
         "Unnecessary explicit fold to construct map."
     }
 
-    fn severity(&self) -> Severity {
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
         Severity::WeakWarning
     }
 }

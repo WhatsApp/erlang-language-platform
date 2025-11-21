@@ -12,6 +12,9 @@
 //!
 //! Return a diagnostic for rpc calls to remote nodes.
 
+use elp_ide_db::elp_base_db::FileId;
+use hir::Semantic;
+
 use crate::codemod_helpers::FunctionMatch;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::FunctionCallLinter;
@@ -28,7 +31,7 @@ impl Linter for CrossNodeEvalLinter {
     fn description(&self) -> &'static str {
         "Production code must not use cross node eval (e.g. `rpc:call()`)"
     }
-    fn severity(&self) -> Severity {
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
         Severity::Error
     }
     fn should_process_test_files(&self) -> bool {

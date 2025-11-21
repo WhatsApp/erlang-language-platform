@@ -34,10 +34,10 @@ impl Linter for NoDebuggingFunctionLinter {
     fn description(&self) -> &'static str {
         "Debugging functions should only be used during local debugging and usages should not be checked in."
     }
-    fn severity(&self) -> Severity {
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
         Severity::WeakWarning
     }
-    fn cli_severity(&self) -> Severity {
+    fn cli_severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
         Severity::Error
     }
     fn should_process_generated_files(&self) -> bool {
