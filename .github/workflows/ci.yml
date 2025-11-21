@@ -289,5 +289,5 @@ jobs:
         run: vsce publish -p ${{ secrets.VSCE_PAT }} --packagePath erlang-language-platform.vsix
       - name: Publish extension to OpenVSX marketplace
         working-directory: editors/code
-        if: ${{ github.event_name == 'release' && matrix.vscode-publish && matrix.os != 'windows' }}
+        if: ${{ matrix.os != 'windows' }}
         run: ovsx publish -p ${{ secrets.OVSX_PAT }} --packagePath erlang-language-platform.vsix
