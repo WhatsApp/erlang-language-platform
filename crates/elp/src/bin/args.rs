@@ -389,6 +389,40 @@ pub struct Ssr {
     /// Dump a configuration snippet that can be put in .elp_lint.toml to match the given SSR patterns
     pub dump_config: bool,
 
+    /// Show source code context for matches
+    #[bpaf(long("show-source"))]
+    pub show_source: bool,
+
+    /// Print NUM lines of leading context, enables --show-source
+    #[bpaf(short('B'), long("before-context"), argument("NUM"))]
+    pub before_context: Option<usize>,
+
+    /// Print NUM lines of trailing context, enables --show-source
+    #[bpaf(short('A'), long("after-context"), argument("NUM"))]
+    pub after_context: Option<usize>,
+
+    /// Print NUM lines of output context, enables --show-source
+    #[bpaf(short('C'), long("context"), argument("NUM"))]
+    pub context: Option<usize>,
+
+    /// Print SEP on line between matches with context, enables --show-source
+    #[bpaf(long("group-separator"), argument("SEP"))]
+    pub group_separator: Option<String>,
+
+    /// Do not print separator for matches with context, enables --show-source
+    #[bpaf(long("no-group-separator"))]
+    pub no_group_separator: bool,
+
+    /// Use markers to highlight the matching strings; WHEN is 'always', 'never', or 'auto'
+    #[bpaf(
+        long("color"),
+        long("colour"),
+        argument("WHEN"),
+        fallback(Some("auto".to_string())),
+        guard(color_guard, "Please use always, never, or auto")
+    )]
+    pub color: Option<String>,
+
     /// Report system memory usage and other statistics
     #[bpaf(long("report-system-stats"))]
     pub report_system_stats: bool,
@@ -740,6 +774,14 @@ fn macros_guard(format: &Option<String>) -> bool {
     match format {
         None => true,
         Some(_) => parse_macro_strategy(format).is_ok(),
+    }
+}
+
+fn color_guard(color: &Option<String>) -> bool {
+    match color {
+        None => true,
+        Some(c) if c == "always" || c == "never" || c == "auto" => true,
+        _ => false,
     }
 }
 

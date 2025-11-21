@@ -1,20 +1,27 @@
-Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--rebar] [--as PROFILE] [--include-generated] [--include-tests] [[--format FORMAT]] [[--macros STRATEGY]] [--parens] [--dump-config] [--report-system-stats] <SSR_SPECS>...
+Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--rebar] [--as PROFILE] [--include-generated] [--include-tests] [[--format FORMAT]] [[--macros STRATEGY]] [--parens] [--dump-config] [--show-source] [-B NUM] [-A NUM] [-C NUM] [--group-separator SEP] [--no-group-separator] [[--color WHEN]] [--report-system-stats] <SSR_SPECS>...
 
 Available positional items:
     <SSR_SPECS>  SSR specs to use
 
 Available options:
-        --project <PROJECT>    Path to directory with project, or to a JSON file (defaults to `.`)
-        --module <MODULE>      Parse a single module from the project, not the entire project.
-        --app <APP>            Parse a single application from the project, not the entire project.
-        --file <FILE>          Parse a single file from the project, not the entire project. This can be an include file or escript, etc.
-        --rebar                Run with rebar
-        --as <PROFILE>         Rebar3 profile to pickup (default is test)
-        --include-generated    Also generate diagnostics for generated files
-        --include-tests        Also generate diagnostics for test files
-        --format <FORMAT>      Show diagnostics in JSON format
-        --macros <STRATEGY>    Macro expansion strategy: expand | no-expand | visible-expand (default expand)
-        --parens               Explicitly match parentheses. If omitted, they are ignored.
-        --dump-config          Dump a configuration snippet that can be put in .elp_lint.toml to match the given SSR patterns
-        --report-system-stats  Report system memory usage and other statistics
-    -h, --help                 Prints help information
+        --project <PROJECT>      Path to directory with project, or to a JSON file (defaults to `.`)
+        --module <MODULE>        Parse a single module from the project, not the entire project.
+        --app <APP>              Parse a single application from the project, not the entire project.
+        --file <FILE>            Parse a single file from the project, not the entire project. This can be an include file or escript, etc.
+        --rebar                  Run with rebar
+        --as <PROFILE>           Rebar3 profile to pickup (default is test)
+        --include-generated      Also generate diagnostics for generated files
+        --include-tests          Also generate diagnostics for test files
+        --format <FORMAT>        Show diagnostics in JSON format
+        --macros <STRATEGY>      Macro expansion strategy: expand | no-expand | visible-expand (default expand)
+        --parens                 Explicitly match parentheses. If omitted, they are ignored.
+        --dump-config            Dump a configuration snippet that can be put in .elp_lint.toml to match the given SSR patterns
+        --show-source            Show source code context for matches
+    -B, --before-context <NUM>   Print NUM lines of leading context, enables --show-source
+    -A, --after-context <NUM>    Print NUM lines of trailing context, enables --show-source
+    -C, --context <NUM>          Print NUM lines of output context, enables --show-source
+        --group-separator <SEP>  Print SEP on line between matches with context, enables --show-source
+        --no-group-separator     Do not print separator for matches with context, enables --show-source
+        --color <WHEN>           Use markers to highlight the matching strings; WHEN is 'always', 'never', or 'auto'
+        --report-system-stats    Report system memory usage and other statistics
+    -h, --help                   Prints help information

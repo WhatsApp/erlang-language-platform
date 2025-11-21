@@ -14,3 +14,9 @@ bar() ->
     app_b:application_env_error().
 
 baz(A,B) -> {A,B}.
+
+% Some more context, see if it renders
+
+bat(A,B) -> {A,B}.
+
+% And some more context, see if it renders

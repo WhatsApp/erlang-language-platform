@@ -1,0 +1,17 @@
+app_a/src/app_a.erl:16:13-16:18::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: {_@A, _@B}.
+  14 |     app_b:application_env_error().
+  15 | 
+  16 | baz(A,B) -> {A,B}.
+     |             ^^^^^
+  17 | 
+  18 | % Some more context, see if it renders
+
+====
+app_a/src/app_a.erl:20:13-20:18::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: {_@A, _@B}.
+  18 | % Some more context, see if it renders
+  19 | 
+  20 | bat(A,B) -> {A,B}.
+     |             ^^^^^
+  21 | 
+  22 | % And some more context, see if it renders
+
