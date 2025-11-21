@@ -18,9 +18,9 @@ use std::collections::HashSet;
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
+use elp_ide_db::text_edit::TextEdit;
+use elp_ide_db::text_edit::TextRange;
 use elp_syntax::ast;
-use elp_text_edit::TextEdit;
-use elp_text_edit::TextRange;
 use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::FunctionClauseDef;

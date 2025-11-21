@@ -19,9 +19,9 @@ use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::SymbolDefinition;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
+use elp_ide_db::text_edit::TextEdit;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
-use elp_text_edit::TextEdit;
 use hir::Semantic;
 
 use crate::diagnostics::DiagnosticCode;

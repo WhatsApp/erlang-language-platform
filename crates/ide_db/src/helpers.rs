@@ -15,9 +15,9 @@ use elp_syntax::SourceFile;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::SyntaxToken;
+use elp_syntax::TextSize;
 use elp_syntax::TokenAtOffset;
 use elp_syntax::ast;
-use elp_text_edit::TextSize;
 use hir::FormList;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

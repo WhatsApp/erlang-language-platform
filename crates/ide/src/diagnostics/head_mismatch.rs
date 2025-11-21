@@ -13,13 +13,13 @@ use std::hash::Hash;
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
+use elp_ide_db::text_edit::TextEdit;
 use elp_syntax::SyntaxToken;
 use elp_syntax::TextRange;
 use elp_syntax::ast;
 use elp_syntax::ast::AstNode;
 use elp_syntax::ast::ClauseSeparator;
 use elp_syntax::syntax_node::SyntaxNode;
-use elp_text_edit::TextEdit;
 use fxhash::FxHashMap;
 use hir::Semantic;
 

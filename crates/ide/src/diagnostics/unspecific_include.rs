@@ -14,9 +14,9 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::generated_file_include_lib;
 use elp_ide_db::elp_base_db::path_for_file;
 use elp_ide_db::source_change::SourceChange;
+use elp_ide_db::text_edit::TextEdit;
+use elp_ide_db::text_edit::TextRange;
 use elp_syntax::ast;
-use elp_text_edit::TextEdit;
-use elp_text_edit::TextRange;
 use hir::InFile;
 use hir::Semantic;
 

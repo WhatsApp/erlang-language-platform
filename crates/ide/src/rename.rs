@@ -175,11 +175,11 @@ pub(crate) mod tests {
     use elp_ide_db::RootDatabase;
     use elp_ide_db::elp_base_db::assert_eq_text;
     use elp_ide_db::elp_base_db::fixture::WithFixture as _;
+    use elp_ide_db::text_edit::TextEdit;
     use elp_project_model::test_fixture::trim_indent;
     use elp_syntax::AstNode;
     use elp_syntax::algo;
     use elp_syntax::ast;
-    use elp_text_edit::TextEdit;
     use hir::AnyExprId;
     use hir::InFile;
     use hir::Semantic;

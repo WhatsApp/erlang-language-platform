@@ -15,8 +15,8 @@
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
+use elp_ide_db::text_edit::TextRange;
 use elp_syntax::AstNode;
-use elp_text_edit::TextRange;
 use hir::AnyExpr;
 use hir::BasedInteger;
 use hir::Expr;

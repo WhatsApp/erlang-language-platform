@@ -15,7 +15,7 @@
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
-use elp_text_edit::TextRange;
+use elp_ide_db::text_edit::TextRange;
 use hir::AnyExpr;
 use hir::FunctionDef;
 use hir::Literal;

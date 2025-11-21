@@ -18,10 +18,10 @@ workspace = true
 [dependencies]
 elp_eqwalizer.workspace = true
 elp_ide.workspace = true
+elp_ide_db.workspace = true
 elp_log.workspace = true
 elp_project_model.workspace = true
 elp_syntax.workspace = true
-elp_text_edit.workspace = true
 hir.workspace = true
 
 always-assert.workspace = true

@@ -446,10 +446,10 @@ dependencies = [
  "crossbeam-channel",
  "elp_eqwalizer",
  "elp_ide",
+ "elp_ide_db",
  "elp_log",
  "elp_project_model",
  "elp_syntax",
- "elp_text_edit",
  "env_logger",
  "expect-test",
  "fs_extra",
@@ -572,7 +572,6 @@ dependencies = [
  "elp_ide_ssr",
  "elp_project_model",
  "elp_syntax",
- "elp_text_edit",
  "elp_types_db",
  "env_logger",
  "expect-test",
@@ -604,7 +603,6 @@ dependencies = [
  "cov-mark",
  "elp_ide_db",
  "elp_syntax",
- "elp_text_edit",
  "expect-test",
  "fxhash",
  "hir",
@@ -645,7 +643,6 @@ dependencies = [
  "elp_erlang_service",
  "elp_project_model",
  "elp_syntax",
- "elp_text_edit",
  "elp_types_db",
  "expect-test",
  "fxhash",
@@ -666,6 +663,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "tempfile",
+ "text-size",
  "toml",
  "tracing",
 ]
@@ -738,7 +736,6 @@ version = "1.1.0"
 dependencies = [
  "eetf",
  "elp_ide_db",
- "elp_text_edit",
  "expect-test",
  "fxhash",
  "indexmap 2.9.0",
@@ -756,14 +753,6 @@ dependencies = [
  "tracing",
  "tree-sitter",
  "tree-sitter-erlang",
-]
-
-[[package]]
-name = "elp_text_edit"
-version = "1.1.0"
-dependencies = [
- "itertools 0.10.5",
- "text-size",
 ]
 
 [[package]]

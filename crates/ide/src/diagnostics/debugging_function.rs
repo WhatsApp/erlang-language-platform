@@ -11,7 +11,7 @@
 use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
-use elp_text_edit::TextRange;
+use elp_ide_db::text_edit::TextRange;
 use hir::Semantic;
 
 use crate::FunctionMatch;

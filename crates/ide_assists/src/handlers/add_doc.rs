@@ -12,9 +12,9 @@ use std::fmt::Write;
 
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
+use elp_ide_db::text_edit::TextSize;
 use elp_syntax::AstNode;
 use elp_syntax::ast;
-use elp_text_edit::TextSize;
 use hir::FunctionDef;
 
 use crate::AssistContext;

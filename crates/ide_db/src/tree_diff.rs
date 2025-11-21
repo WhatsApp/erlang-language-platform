@@ -15,9 +15,10 @@ use std::hash::BuildHasherDefault;
 use elp_syntax::NodeOrToken;
 use elp_syntax::SyntaxElement;
 use elp_syntax::SyntaxNode;
-use elp_text_edit::TextEditBuilder;
 use fxhash::FxHashMap;
 use indexmap::IndexMap;
+
+use crate::text_edit::TextEditBuilder;
 
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<fxhash::FxHasher>>;
 
@@ -176,10 +177,11 @@ mod tests {
     use elp_syntax::SourceFile;
     use elp_syntax::SyntaxElement;
     use elp_syntax::SyntaxKind;
-    use elp_text_edit::TextEdit;
     use expect_test::Expect;
     use expect_test::expect;
     use itertools::Itertools;
+
+    use crate::text_edit::TextEdit;
 
     #[test]
     fn replace_node_token() {

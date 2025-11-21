@@ -60,6 +60,7 @@ mod line_index;
 // @fb-only
 pub mod metadata;
 mod search;
+pub mod text_edit;
 
 // ---------------------------------------------------------------------
 pub mod assists;
@@ -420,8 +421,8 @@ impl TypedSemantic for RootDatabase {
 mod tests {
     use elp_base_db::SourceDatabase;
     use elp_base_db::fixture::WithFixture;
-    use elp_text_edit::TextRange;
 
+    use super::text_edit::TextRange;
     use crate::RootDatabase;
 
     #[test]

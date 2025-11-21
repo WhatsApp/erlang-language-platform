@@ -10,12 +10,12 @@
 
 use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
+use elp_ide_db::text_edit::TextRange;
 use elp_syntax::AstNode;
 use elp_syntax::Direction;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxToken;
 use elp_syntax::algo::non_trivia_sibling;
-use elp_text_edit::TextRange;
 use fxhash::FxHashSet;
 use hir::InFile;
 

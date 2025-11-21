@@ -266,8 +266,8 @@ mod tests {
     use std::iter::once;
 
     use elp_ide_db::elp_base_db::FileId;
+    use elp_ide_db::text_edit::TextRange;
     use elp_syntax::label::Label;
-    use elp_text_edit::TextRange;
     use fxhash::FxHashMap;
     use fxhash::FxHashSet;
 

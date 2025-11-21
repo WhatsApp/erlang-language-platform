@@ -9,7 +9,6 @@ workspace = true
 [dependencies]
 elp_ide_db.workspace = true
 elp_syntax.workspace = true
-elp_text_edit.workspace = true
 hir.workspace = true
 
 cov-mark.workspace = true

@@ -20,14 +20,14 @@ use std::mem;
 use elp_base_db::AnchoredPathBuf;
 use elp_base_db::FileId;
 use elp_syntax::SyntaxNode;
-use elp_text_edit::TextEdit;
-use elp_text_edit::TextEditBuilder;
-use elp_text_edit::TextRange;
-use elp_text_edit::TextSize;
+use elp_syntax::TextRange;
+use elp_syntax::TextSize;
 use fxhash::FxHashMap;
 use stdx::never;
 
 use crate::helpers::SnippetCap;
+use crate::text_edit::TextEdit;
+use crate::text_edit::TextEditBuilder;
 use crate::tree_diff::diff;
 
 #[derive(Default, Debug, Clone)]

@@ -11,9 +11,9 @@
 // Diagnostic: undocumented-function
 use elp_ide_assists::helpers::unwrap_parens;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::text_edit::TextRange;
 use elp_syntax::ast;
 use elp_syntax::ast::Atom;
-use elp_text_edit::TextRange;
 use fxhash::FxHashSet;
 use hir::AsName;
 use hir::FunctionDef;

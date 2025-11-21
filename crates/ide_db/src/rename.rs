@@ -20,7 +20,6 @@ use elp_base_db::FileRange;
 use elp_syntax::AstNode;
 use elp_syntax::ast;
 use elp_syntax::ast::in_erlang_module;
-use elp_text_edit::TextEdit;
 use hir::InFile;
 use hir::Semantic;
 
@@ -28,6 +27,7 @@ use crate::SymbolDefinition;
 use crate::helpers::get_call;
 use crate::search::NameLike;
 use crate::source_change::SourceChange;
+use crate::text_edit::TextEdit;
 
 pub type RenameResult<T> = Result<T, RenameError>;
 

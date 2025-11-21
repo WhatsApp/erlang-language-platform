@@ -7,8 +7,6 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-elp_text_edit.workspace = true
-
 eetf.workspace = true
 fxhash.workspace = true
 indexmap.workspace = true

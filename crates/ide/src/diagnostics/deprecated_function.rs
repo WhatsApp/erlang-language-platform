@@ -21,10 +21,10 @@
 use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
+use elp_ide_db::text_edit::TextEdit;
+use elp_ide_db::text_edit::TextRange;
+use elp_ide_db::text_edit::TextSize;
 use elp_syntax::AstNode;
-use elp_text_edit::TextEdit;
-use elp_text_edit::TextRange;
-use elp_text_edit::TextSize;
 use hir::AnyExpr;
 use hir::Expr;
 use hir::FunctionDef;
