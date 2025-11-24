@@ -79,6 +79,18 @@ pub fn is_valid_function_name(new_name: &String) -> bool {
     }
 }
 
+// Delegate checking macro name validity to the parser
+// Macros can be either atoms or variables
+pub fn is_valid_macro_name(new_name: &String) -> bool {
+    let parse = ast::SourceFile::parse_text(format!("-define({new_name}, value).").as_str());
+    matches!(
+        parse.tree().forms().next(),
+        Some(ast::Form::PreprocessorDirective(
+            ast::PreprocessorDirective::PpDefine(_)
+        ))
+    )
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SafetyChecks {
     Yes,
@@ -123,8 +135,30 @@ impl SymbolDefinition {
             SymbolDefinition::Callback(_) => {
                 rename_error!("Cannot rename callback")
             }
-            SymbolDefinition::Define(_) => {
-                rename_error!("Cannot rename define")
+            SymbolDefinition::Define(define) => {
+                if safety_check == SafetyChecks::Yes && !is_valid_macro_name(new_name) {
+                    rename_error!("Invalid new macro name: '{}'", new_name);
+                }
+
+                let arity = define.define.name.arity();
+                if safety_check == SafetyChecks::Yes {
+                    // Check safety in the file where the macro is defined
+                    if !is_safe_macro(sema, define.file.file_id, new_name, arity) {
+                        rename_error!("Macro '{}' already in scope", new_name);
+                    }
+
+                    // Also check safety in all files where the macro is used
+                    let usages = self.clone().usages(sema).all();
+                    for (file_id, _refs) in usages.iter() {
+                        if file_id != define.file.file_id
+                            && !is_safe_macro(sema, file_id, new_name, arity)
+                        {
+                            rename_error!("Macro '{}' already in scope", new_name);
+                        }
+                    }
+                }
+
+                self.rename_reference(sema, new_name, parens_needed_in_context, safety_check)
             }
             SymbolDefinition::Header(_) => {
                 rename_error!("Cannot rename header")
@@ -150,6 +184,19 @@ impl SymbolDefinition {
                     file_id: v.file.file_id,
                     range,
                 })
+            }
+            SymbolDefinition::Define(d) => {
+                // Get the macro definition location
+                let source = d.source(sema.db.upcast());
+                if let Some(name) = source.name() {
+                    let range = name.syntax().text_range();
+                    Some(FileRange {
+                        file_id: d.file.file_id,
+                        range,
+                    })
+                } else {
+                    None
+                }
             }
             _ => None,
         }
@@ -210,6 +257,23 @@ impl SymbolDefinition {
                 source_edit_from_usages(
                     &mut source_change,
                     usages,
+                    new_name,
+                    parens_needed_in_context,
+                );
+                Ok(source_change)
+            }
+            SymbolDefinition::Define(_define) => {
+                // Find all usages of the macro
+                let usages = self.clone().usages(sema).all();
+
+                // Also need to rename the definition itself
+                // Get the macro definition location
+                let (file_id, def_edit) = source_edit_from_def(sema, self.clone(), new_name)?;
+                source_change.insert_source_edit(file_id, def_edit);
+
+                source_edit_from_usages(
+                    &mut source_change,
+                    usages.iter().collect(),
                     new_name,
                     parens_needed_in_context,
                 );
@@ -386,6 +450,19 @@ pub fn is_safe_function(sema: &Semantic, file_id: FileId, new_name: &str, arity:
         .all(|(name, _)| !(*name.name().to_string() == *new_name && name.arity() == arity));
 
     scope_ok && !in_erlang_module(new_name, arity as usize)
+}
+
+/// Check that the new macro name is not already defined in scope.
+/// Macros are identified by both name and arity, similar to functions.
+pub fn is_safe_macro(sema: &Semantic, file_id: FileId, new_name: &str, arity: Option<u32>) -> bool {
+    sema.db
+        .def_map(file_id)
+        .get_macros()
+        .iter()
+        .all(|(name, _)| {
+            // A macro is considered different if either the name or arity differs
+            *name.name().to_string() != *new_name || name.arity() != arity
+        })
 }
 
 /// Check that the new function name is not in scope already in the

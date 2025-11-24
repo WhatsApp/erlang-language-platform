@@ -77,6 +77,28 @@ fn find_definitions(
     syntax: &SyntaxNode,
     position: FilePosition,
 ) -> RenameResult<Vec<SymbolDefinition>> {
+    // Try to find a macro name and classify it to resolve definitions (including across includes)
+    if let Some(macro_name) = algo::find_node_at_offset::<ast::MacroName>(syntax, position.offset)
+        && let Some(token) = macro_name.syntax().first_token()
+    {
+        let location = InFile {
+            file_id: position.file_id,
+            value: token,
+        };
+        match SymbolClass::classify(sema, location) {
+            Some(SymbolClass::Definition(def)) => return Ok(vec![def]),
+            Some(SymbolClass::Reference { refs, typ: _ }) => match refs {
+                ReferenceClass::Definition(def) => return Ok(vec![def]),
+                ReferenceClass::MultiMacro(defs) => {
+                    return Ok(defs.into_iter().map(SymbolDefinition::Define).collect());
+                }
+                _ => {}
+            },
+            None => {}
+        }
+    }
+
+    // If not a macro, try to find a general name
     let symbols =
         if let Some(name_like) = algo::find_node_at_offset::<ast::Name>(syntax, position.offset) {
             match &name_like {
@@ -1184,6 +1206,258 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn test_rename_macro() {
+        check_rename(
+            "NEW_MACRO",
+            r#"
+            -define(OLD_~MACRO, value).
+            foo() -> ?OLD_MACRO.
+            "#,
+            r#"
+            -define(NEW_MACRO, value).
+            foo() -> ?NEW_MACRO.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_macro_from_reference() {
+        check_rename(
+            "NEW_MACRO",
+            r#"
+            -define(OLD_MACRO, value).
+            foo() -> ?OLD_~MACRO.
+            "#,
+            r#"
+            -define(NEW_MACRO, value).
+            foo() -> ?NEW_MACRO.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_macro_atom() {
+        check_rename(
+            "new_macro",
+            r#"
+            -define(old_~macro, value).
+            foo() -> ?old_macro.
+            "#,
+            r#"
+            -define(new_macro, value).
+            foo() -> ?new_macro.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_macro_atom_from_reference() {
+        check_rename(
+            "new_macro",
+            r#"
+            -define(old_macro, value).
+            foo() -> ?old_~macro.
+            "#,
+            r#"
+            -define(new_macro, value).
+            foo() -> ?new_macro.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_macro_from_definition_multi_file() {
+        check_rename(
+            "NEW_MACRO",
+            r#"
+            //- /src/common.hrl
+            -define(OLD_~MACRO, value).
+
+            //- /src/module_a.erl
+            -module(module_a).
+            -include("common.hrl").
+            foo() -> ?OLD_MACRO.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -include("common.hrl").
+            bar() -> ?OLD_MACRO.
+            "#,
+            r#"
+            //- /src/common.hrl
+            -define(NEW_MACRO, value).
+
+            //- /src/module_a.erl
+            -module(module_a).
+            -include("common.hrl").
+            foo() -> ?NEW_MACRO.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -include("common.hrl").
+            bar() -> ?NEW_MACRO.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_macro_from_usage_multi_file() {
+        check_rename(
+            "NEW_MACRO",
+            r#"
+            //- /src/common.hrl
+            -define(OLD_MACRO, value).
+
+            //- /src/module_a.erl
+            -module(module_a).
+            -include("common.hrl").
+            foo() -> ?OLD_~MACRO.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -include("common.hrl").
+            bar() -> ?OLD_MACRO.
+            "#,
+            r#"
+            //- /src/common.hrl
+            -define(NEW_MACRO, value).
+
+            //- /src/module_a.erl
+            -module(module_a).
+            -include("common.hrl").
+            foo() -> ?NEW_MACRO.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -include("common.hrl").
+            bar() -> ?NEW_MACRO.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_macro_name_clash() {
+        check_rename(
+            "EXISTING_MACRO",
+            r#"
+            -define(OLD_~MACRO, value1).
+            -define(EXISTING_MACRO, value2).
+            foo() -> ?OLD_MACRO.
+            "#,
+            r#"error: Macro 'EXISTING_MACRO' already in scope"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_macro_from_usage_ifdef() {
+        check_rename(
+            "NEW_MACRO",
+            r#"
+            //- /src/common.hrl
+            -ifndef(TEST).
+                -define(OLD_MACRO, value1).
+            -else.
+                -define(OLD_MACRO, value2).
+            -endif.
+
+            //- /src/module_a.erl
+            -module(module_a).
+            -include("common.hrl").
+            foo() -> ?OLD_~MACRO.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -include("common.hrl").
+            bar() -> ?OLD_MACRO.
+            "#,
+            r#"
+            //- /src/common.hrl
+            -ifndef(TEST).
+                -define(OLD_MACRO, value1).
+            -else.
+                -define(NEW_MACRO, value2).
+            -endif.
+
+            //- /src/module_a.erl
+            -module(module_a).
+            -include("common.hrl").
+            foo() -> ?NEW_MACRO.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -include("common.hrl").
+            bar() -> ?NEW_MACRO.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_macro_name_clash_from_reference() {
+        check_rename(
+            "EXISTING_MACRO",
+            r#"
+            -define(OLD_MACRO, value1).
+            -define(EXISTING_MACRO, value2).
+            foo() -> ?OLD_~MACRO.
+            "#,
+            r#"error: Macro 'EXISTING_MACRO' already in scope"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_macro_name_clash_from_reference_multi_file() {
+        check_rename(
+            "EXISTING_MACRO",
+            r#"
+            //- /src/common.hrl
+            -define(OLD_MACRO, value1).
+
+            //- /src/module_a.erl
+            -module(module_a).
+            -include("common.hrl").
+            foo() -> ?OLD_~MACRO.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -include("common.hrl").
+            -define(EXISTING_MACRO, value3).
+            bar() -> ?OLD_MACRO.
+            "#,
+            r#"error: Macro 'EXISTING_MACRO' already in scope"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_macro_different_arity_ok() {
+        check_rename(
+            "EXISTING_MACRO",
+            r#"
+            -define(OLD_~MACRO, value1).
+            -define(EXISTING_MACRO(X), X).
+            foo() -> ?OLD_MACRO.
+            "#,
+            r#"
+            -define(EXISTING_MACRO, value1).
+            -define(EXISTING_MACRO(X), X).
+            foo() -> ?EXISTING_MACRO.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_macro_same_arity_conflict() {
+        check_rename(
+            "EXISTING_MACRO",
+            r#"
+            -define(OLD_~MACRO(X), X).
+            -define(EXISTING_MACRO(Y), Y).
+            foo() -> ?OLD_MACRO(1).
+            "#,
+            r#"error: Macro 'EXISTING_MACRO' already in scope"#,
+        );
+    }
+
+    #[test]
     fn test_rename_in_rpc_call_4() {
         check_rename(
             "new_name",
@@ -2016,6 +2290,47 @@ pub(crate) mod tests {
 
                new_name() ->
                     ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_macro_separate_definitions() {
+        check_rename(
+            "NEW_MACRO",
+            r#"
+            //- /src/a.hrl
+            -define(MACRO, ok).
+
+            //- /src/a.erl
+            -module(a).
+            -include("a.hrl").
+            foo() -> ?MACRO~.
+
+            //- /src/b.hrl
+            -define(MACRO, error).
+
+            //- /src/b.erl
+            -module(b).
+            -include("b.hrl").
+            bar() -> ?MACRO.
+            "#,
+            r#"
+            //- /src/a.hrl
+            -define(NEW_MACRO, ok).
+
+            //- /src/a.erl
+            -module(a).
+            -include("a.hrl").
+            foo() -> ?NEW_MACRO.
+
+            //- /src/b.hrl
+            -define(MACRO, error).
+
+            //- /src/b.erl
+            -module(b).
+            -include("b.hrl").
+            bar() -> ?MACRO.
+            "#,
         );
     }
 }
