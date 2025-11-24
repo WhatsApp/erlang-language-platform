@@ -1,4 +1,5 @@
-Matches found in 1 modules:
   app_a: 2
       16:13-16:18::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: {_@A, _@B}.
       20:13-20:18::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: {_@A, _@B}.
+
+Matches found in 1 modules

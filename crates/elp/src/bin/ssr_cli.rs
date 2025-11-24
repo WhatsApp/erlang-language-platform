@@ -12,10 +12,12 @@ use std::fs;
 use std::io::IsTerminal;
 use std::path::Path;
 use std::str;
+use std::thread;
 use std::time::SystemTime;
 
 use anyhow::Result;
 use anyhow::bail;
+use crossbeam_channel::unbounded;
 use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
@@ -44,7 +46,6 @@ use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::buck::BuckQueryConfig;
 use hir::Semantic;
-use indicatif::ParallelProgressIterator;
 use paths::Utf8PathBuf;
 use rayon::prelude::ParallelBridge;
 use rayon::prelude::ParallelIterator;
@@ -181,8 +182,22 @@ pub fn run_ssr(
         },
     };
 
-    let mut diags = match (file_id, name) {
-        (None, _) => do_parse_all(cli, &analysis, &loaded.project_id, diagnostics_config, args)?,
+    let mut match_count = 0;
+
+    match (file_id, name) {
+        (None, _) => {
+            // Streaming case: process all modules
+            let project_id = loaded.project_id;
+            do_parse_all_streaming(
+                cli,
+                &analysis,
+                &project_id,
+                diagnostics_config,
+                args,
+                loaded,
+                &mut match_count,
+            )?;
+        }
         (Some(file_id), Some(name)) => {
             if let Some(app) = &args.app
                 && let Ok(Some(file_app)) = analysis.file_app_name(file_id)
@@ -190,115 +205,170 @@ pub fn run_ssr(
             {
                 panic!("Module {} does not belong to app {}", name.as_str(), app)
             }
-            do_parse_one(&analysis, diagnostics_config, file_id, &name, args)?
-                .map_or(vec![], |x| vec![x])
+            if let Some(diag) = do_parse_one(&analysis, diagnostics_config, file_id, &name, args)? {
+                match_count = 1;
+                print_single_result(cli, loaded, &diag, args)?;
+            }
         }
         (Some(file_id), _) => {
             panic!("Could not get name from file_id for {file_id:?}")
         }
     };
-    if diags.is_empty() {
+
+    if match_count == 0 {
         if args.is_format_normal() {
             writeln!(cli, "No matches found")?;
         }
-    } else {
-        diags.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
-        if args.is_format_json() {
-            for (_name, file_id, diags) in &diags {
-                for diag in diags {
-                    // We use JSON output for CI, and want to see warnings too.
-                    // So do not filter on errors only
-                    let vfs_path = loaded.vfs.file_path(*file_id);
-                    let analysis = loaded.analysis();
-                    let root_path = &analysis
-                        .project_data(*file_id)
-                        .unwrap_or_else(|_err| panic!("could not find project data"))
-                        .unwrap_or_else(|| panic!("could not find project data"))
-                        .root_dir;
-                    let relative_path = reporting::get_relative_path(root_path, vfs_path);
-                    print_diagnostic_json(diag, &analysis, *file_id, relative_path, false, cli)?;
-                }
-            }
-        } else {
-            // Determine if we should show source context
-            // If any context flags are set, automatically enable source display
-            let show_source = args.show_source
-                || args.before_context.is_some()
-                || args.after_context.is_some()
-                || args.context.is_some()
-                || args.group_separator.is_some()
-                || args.no_group_separator;
-            let (before_lines, after_lines) = calculate_context_lines(args);
-            let has_context = before_lines > 0 || after_lines > 0;
-            let group_separator = should_show_group_separator(args, has_context && show_source);
-            let mut first_match = true;
+    } else if args.is_format_normal() {
+        writeln!(cli, "\nMatches found in {} modules", match_count)?;
+    }
 
-            if !show_source {
-                writeln!(cli, "Matches found in {} modules:", diags.len())?;
-            }
+    Ok(())
+}
 
-            for (name, file_id, diags) in &diags {
-                if !show_source {
-                    writeln!(cli, "  {}: {}", name, diags.len())?;
-                }
-                for diag in diags {
-                    // Print group separator before each match (except the first) if showing source with context
-                    if show_source
-                        && !first_match
-                        && let Some(ref sep) = group_separator
+fn do_parse_all_streaming(
+    cli: &mut dyn Cli,
+    analysis: &Analysis,
+    project_id: &ProjectId,
+    config: &DiagnosticsConfig,
+    args: &Ssr,
+    loaded: &mut LoadResult,
+    match_count: &mut usize,
+) -> Result<()> {
+    let module_index = analysis.module_index(*project_id).unwrap();
+    let app_name = args.app.as_ref().map(|name| AppName(name.to_string()));
+
+    // Create a channel for streaming results
+    let (tx, rx) = unbounded();
+
+    // Spawn a thread to process modules in parallel and send results
+    let analysis_clone = analysis.clone();
+    let config_clone = config.clone();
+    let args_clone = args.clone();
+
+    // Collect modules into an owned vector
+    let modules: Vec<_> = module_index
+        .iter_own()
+        .map(|(name, source, file_id)| (name.as_str().to_string(), source, file_id))
+        .collect();
+
+    thread::spawn(move || {
+        modules
+            .into_iter()
+            .par_bridge()
+            .map_with(
+                (analysis_clone, tx),
+                |(db, tx), (module_name, _file_source, file_id)| {
+                    if !otp_file_to_ignore(db, file_id)
+                        && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
+                        && (app_name.is_none()
+                            || db.file_app_name(file_id).ok().as_ref() == Some(&app_name))
+                        && let Ok(Some(result)) =
+                            do_parse_one(db, &config_clone, file_id, &module_name, &args_clone)
                     {
-                        writeln!(cli, "{}", sep)?;
+                        // Send result through channel
+                        let _ = tx.send(result);
                     }
-                    first_match = false;
+                },
+            )
+            .for_each(|_| {}); // Consume the iterator
+        // Channel is dropped here, signaling end of results
+    });
 
-                    // Get relative path for diagnostic output
-                    let vfs_path = loaded.vfs.file_path(*file_id);
-                    let analysis = loaded.analysis();
-                    let root_path = &analysis
-                        .project_data(*file_id)
-                        .unwrap_or_else(|_err| panic!("could not find project data"))
-                        .unwrap_or_else(|| panic!("could not find project data"))
-                        .root_dir;
-                    let relative_path = reporting::get_relative_path(root_path, vfs_path);
+    // Process and print results as they arrive from the channel
+    for result in rx {
+        *match_count += 1;
+        print_single_result(cli, loaded, &result, args)?;
+    }
 
-                    // Only show path when showing source context
-                    let path_to_show = if show_source {
-                        Some(relative_path)
-                    } else {
-                        None
-                    };
-                    print_diagnostic(diag, &loaded.analysis(), *file_id, path_to_show, false, cli)?;
+    Ok(())
+}
 
-                    // Only show source context if --show-source or --show-source-markers is set
-                    if show_source {
-                        // Determine if color should be used
-                        let should_show_color = should_use_color(args);
+fn print_single_result(
+    cli: &mut dyn Cli,
+    loaded: &mut LoadResult,
+    result: &(String, FileId, Vec<diagnostics::Diagnostic>),
+    args: &Ssr,
+) -> Result<()> {
+    let (name, file_id, diags) = result;
 
-                        // When not using color, always use markers to indicate the match
-                        if should_show_color {
-                            print_source_with_context(
-                                diag,
-                                &loaded.analysis(),
-                                *file_id,
-                                before_lines,
-                                after_lines,
-                                true, // use_color
-                                cli,
-                            )?;
-                        } else {
-                            // No color: use markers to indicate the match
-                            print_source_with_context_markers(
-                                diag,
-                                &loaded.analysis(),
-                                *file_id,
-                                before_lines,
-                                after_lines,
-                                cli,
-                            )?;
-                        }
-                        writeln!(cli)?; // Add blank line after source context
-                    }
+    if args.is_format_json() {
+        for diag in diags {
+            let vfs_path = loaded.vfs.file_path(*file_id);
+            let analysis = loaded.analysis();
+            let root_path = &analysis
+                .project_data(*file_id)
+                .unwrap_or_else(|_err| panic!("could not find project data"))
+                .unwrap_or_else(|| panic!("could not find project data"))
+                .root_dir;
+            let relative_path = reporting::get_relative_path(root_path, vfs_path);
+            print_diagnostic_json(diag, &analysis, *file_id, relative_path, false, cli)?;
+        }
+    } else {
+        writeln!(cli, "  {}: {}", name, diags.len())?;
+
+        // Determine if we should show source context
+        let show_source = args.show_source
+            || args.before_context.is_some()
+            || args.after_context.is_some()
+            || args.context.is_some()
+            || args.group_separator.is_some()
+            || args.no_group_separator;
+        let (before_lines, after_lines) = calculate_context_lines(args);
+        let has_context = before_lines > 0 || after_lines > 0;
+        let group_separator = should_show_group_separator(args, has_context && show_source);
+
+        for (idx, diag) in diags.iter().enumerate() {
+            // Print group separator before each match (except the first) if showing source with context
+            if show_source
+                && idx > 0
+                && let Some(ref sep) = group_separator
+            {
+                writeln!(cli, "{}", sep)?;
+            }
+            // Get relative path for diagnostic output
+            let vfs_path = loaded.vfs.file_path(*file_id);
+            let analysis = loaded.analysis();
+            let root_path = &analysis
+                .project_data(*file_id)
+                .unwrap_or_else(|_err| panic!("could not find project data"))
+                .unwrap_or_else(|| panic!("could not find project data"))
+                .root_dir;
+            let relative_path = reporting::get_relative_path(root_path, vfs_path);
+
+            // Only show path when showing source context
+            let path_to_show = if show_source {
+                Some(relative_path)
+            } else {
+                None
+            };
+            print_diagnostic(diag, &loaded.analysis(), *file_id, path_to_show, false, cli)?;
+
+            // Only show source context if --show-source or --show-source-markers is set
+            if show_source {
+                let should_show_color = should_use_color(args);
+
+                if should_show_color {
+                    print_source_with_context(
+                        diag,
+                        &loaded.analysis(),
+                        *file_id,
+                        before_lines,
+                        after_lines,
+                        true,
+                        cli,
+                    )?;
+                } else {
+                    print_source_with_context_markers(
+                        diag,
+                        &loaded.analysis(),
+                        *file_id,
+                        before_lines,
+                        after_lines,
+                        cli,
+                    )?;
                 }
+                writeln!(cli)?;
             }
         }
     }
@@ -321,41 +391,6 @@ fn load_project(
         query_config,
     )
 }
-
-fn do_parse_all(
-    cli: &dyn Cli,
-    analysis: &Analysis,
-    project_id: &ProjectId,
-    config: &DiagnosticsConfig,
-    args: &Ssr,
-) -> Result<Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>> {
-    let module_index = analysis.module_index(*project_id).unwrap();
-    let module_iter = module_index.iter_own();
-
-    let pb = cli.progress(module_iter.len() as u64, "Scanning modules");
-    let app_name = args.app.as_ref().map(|name| AppName(name.to_string()));
-
-    Ok(module_iter
-        .par_bridge()
-        .progress_with(pb)
-        .map_with(
-            analysis.clone(),
-            |db, (module_name, _file_source, file_id)| {
-                if !otp_file_to_ignore(db, file_id)
-                    && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
-                    && (app_name.is_none()
-                        || db.file_app_name(file_id).ok().as_ref() == Some(&app_name))
-                {
-                    do_parse_one(db, config, file_id, module_name.as_str(), args).unwrap()
-                } else {
-                    None
-                }
-            },
-        )
-        .flatten()
-        .collect())
-}
-
 fn do_parse_one(
     db: &Analysis,
     config: &DiagnosticsConfig,
