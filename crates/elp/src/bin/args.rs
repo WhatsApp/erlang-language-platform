@@ -612,6 +612,12 @@ pub fn command() -> impl Parser<Command> {
         .command("lint")
         .help("Parse files in project and emit diagnostics, optionally apply fixes.");
 
+    let search = ssr()
+        .map(Command::Ssr)
+        .to_options()
+        .command("search")
+        .help("Alias for 'ssr': Run SSR (Structural Search and Replace) pattern matching on project files.");
+
     let ssr = ssr()
         .map(Command::Ssr)
         .to_options()
@@ -673,6 +679,7 @@ pub fn command() -> impl Parser<Command> {
         dialyze_all,
         lint,
         ssr,
+        search,
         parse_all,
         parse_elp,
         explain,

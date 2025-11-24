@@ -20,6 +20,7 @@ Available commands:
     dialyze-all           Run Dialyzer on the whole project by shelling out to a `dialyzer-run` tool on the path to do the legwork.
     lint                  Parse files in project and emit diagnostics, optionally apply fixes.
     ssr                   Run SSR (Structural Search and Replace) pattern matching on project files.
+    search                Alias for 'ssr': Run SSR (Structural Search and Replace) pattern matching on project files.
     parse-all             Dump ast for all files in a project for specified rebar.config file
     parse-elp             Tree-sitter parse all files in a project for specified rebar.config file
     explain               Explain a diagnostic code

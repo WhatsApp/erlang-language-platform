@@ -2419,6 +2419,16 @@ mod tests {
     }
 
     #[test]
+    fn search_help() {
+        let args = args::args()
+            .run_inner(Args::from(&["search", "--help"]))
+            .unwrap_err();
+        let expected = expect_file!["../resources/test/ssr_help.stdout"];
+        let stdout = args.unwrap_stdout();
+        expected.assert_eq(&stdout);
+    }
+
+    #[test]
     fn build_info_help() {
         let args = args::args()
             .run_inner(Args::from(&["build-info", "--help"]))
