@@ -91,6 +91,21 @@ pub fn is_valid_macro_name(new_name: &String) -> bool {
     )
 }
 
+// Delegate checking type name validity to the parser
+pub fn is_valid_type_name(new_name: &String) -> bool {
+    let parse = ast::SourceFile::parse_text(format!("-type {new_name}() :: ok.").as_str());
+    // Check that we got a TypeAlias form
+    if let Some(ast::Form::TypeAlias(type_alias)) = parse.tree().forms().next() {
+        // Check that the name is an atom (not a variable)
+        if let Some(type_name) = type_alias.name()
+            && let Some(ast::Name::Atom(_)) = type_name.name()
+        {
+            return true;
+        }
+    }
+    false
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SafetyChecks {
     Yes,
@@ -129,8 +144,30 @@ impl SymbolDefinition {
             SymbolDefinition::RecordField(_) => {
                 rename_error!("Cannot rename record field")
             }
-            SymbolDefinition::Type(_) => {
-                rename_error!("Cannot rename type")
+            SymbolDefinition::Type(type_alias) => {
+                if safety_check == SafetyChecks::Yes && !is_valid_type_name(new_name) {
+                    rename_error!("Invalid new type name: '{}'", new_name);
+                }
+
+                let arity = type_alias.name().arity();
+                if safety_check == SafetyChecks::Yes {
+                    // Check safety in the file where the type is defined
+                    if !is_safe_type(sema, type_alias.file.file_id, new_name, arity) {
+                        rename_error!("Type '{}/{}' already in scope", new_name, arity);
+                    }
+
+                    // Also check safety in all files where the type is used
+                    let usages = self.clone().usages(sema).all();
+                    for (file_id, _refs) in usages.iter() {
+                        if file_id != type_alias.file.file_id
+                            && !is_safe_type(sema, file_id, new_name, arity)
+                        {
+                            rename_error!("Type '{}/{}' already in scope", new_name, arity);
+                        }
+                    }
+                }
+
+                self.rename_reference(sema, new_name, parens_needed_in_context, safety_check)
             }
             SymbolDefinition::Callback(_) => {
                 rename_error!("Cannot rename callback")
@@ -197,6 +234,14 @@ impl SymbolDefinition {
                 } else {
                     None
                 }
+            }
+            SymbolDefinition::Type(t) => {
+                // Get the type definition location
+                let range = t.name_range(sema.db.upcast())?;
+                Some(FileRange {
+                    file_id: t.file.file_id,
+                    range,
+                })
             }
             _ => None,
         }
@@ -268,6 +313,23 @@ impl SymbolDefinition {
 
                 // Also need to rename the definition itself
                 // Get the macro definition location
+                let (file_id, def_edit) = source_edit_from_def(sema, self.clone(), new_name)?;
+                source_change.insert_source_edit(file_id, def_edit);
+
+                source_edit_from_usages(
+                    &mut source_change,
+                    usages.iter().collect(),
+                    new_name,
+                    parens_needed_in_context,
+                );
+                Ok(source_change)
+            }
+            SymbolDefinition::Type(_type_alias) => {
+                // Find all usages of the type
+                let usages = self.clone().usages(sema).all();
+
+                // Also need to rename the definition itself
+                // Get the type definition location
                 let (file_id, def_edit) = source_edit_from_def(sema, self.clone(), new_name)?;
                 source_change.insert_source_edit(file_id, def_edit);
 
@@ -461,6 +523,19 @@ pub fn is_safe_macro(sema: &Semantic, file_id: FileId, new_name: &str, arity: Op
         .iter()
         .all(|(name, _)| {
             // A macro is considered different if either the name or arity differs
+            *name.name().to_string() != *new_name || name.arity() != arity
+        })
+}
+
+/// Check that the new type name is not already defined in scope.
+/// Types are identified by both name and arity, similar to functions and macros.
+pub fn is_safe_type(sema: &Semantic, file_id: FileId, new_name: &str, arity: u32) -> bool {
+    sema.db
+        .def_map(file_id)
+        .get_types()
+        .iter()
+        .all(|(name, _)| {
+            // A type is considered different if either the name or arity differs
             *name.name().to_string() != *new_name || name.arity() != arity
         })
 }

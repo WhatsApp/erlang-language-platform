@@ -2276,20 +2276,362 @@ pub(crate) mod tests {
         check_rename(
             "new_name",
             r#"
-               //- /src/baz.erl
-               -module(baz).
-               foo() ->
-                   erpc:send_request(node, ?MODULE, bar, [], label, collection).
+                //- /src/baz.erl
+                -module(baz).
+                foo() ->
+                    erpc:send_request(node, ?MODULE, bar, [], label, collection).
 
-               b~ar() ->
-                    ok."#,
+                b~ar() ->
+                     ok."#,
             r#"
-               -module(baz).
-               foo() ->
-                   erpc:send_request(node, ?MODULE, new_name, [], label, collection).
+                -module(baz).
+                foo() ->
+                    erpc:send_request(node, ?MODULE, new_name, [], label, collection).
 
-               new_name() ->
-                    ok."#,
+                new_name() ->
+                     ok."#,
+        );
+    }
+
+    // ---------------------------------
+    // Type Renaming Tests
+    // ---------------------------------
+
+    #[test]
+    fn test_rename_type_simple() {
+        check_rename(
+            "new_type",
+            r#"
+            -module(main).
+            -type ol~d_type() :: ok.
+            -spec foo(old_type()) -> ok.
+            foo(_) -> ok.
+            "#,
+            r#"
+            -module(main).
+            -type new_type() :: ok.
+            -spec foo(new_type()) -> ok.
+            foo(_) -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_type_with_arity() {
+        check_rename(
+            "new_type",
+            r#"
+            -module(main).
+            -type old_~type(T) :: {ok, T}.
+            -spec foo(old_type(integer())) -> ok.
+            foo(_) -> ok.
+            "#,
+            r#"
+            -module(main).
+            -type new_type(T) :: {ok, T}.
+            -spec foo(new_type(integer())) -> ok.
+            foo(_) -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_type_from_usage() {
+        check_rename(
+            "new_type",
+            r#"
+            -module(main).
+            -type old_type() :: ok.
+            -spec foo(old_~type()) -> ok.
+            foo(_) -> ok.
+            "#,
+            r#"
+            -module(main).
+            -type new_type() :: ok.
+            -spec foo(new_type()) -> ok.
+            foo(_) -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_opaque_type() {
+        check_rename(
+            "new_type",
+            r#"
+            -module(main).
+            -opaque old_~type() :: {internal, term()}.
+            -spec create() -> old_type().
+            create() -> {internal, data}.
+            "#,
+            r#"
+            -module(main).
+            -opaque new_type() :: {internal, term()}.
+            -spec create() -> new_type().
+            create() -> {internal, data}.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_type_fails_name_clash() {
+        check_rename(
+            "existing_type",
+            r#"
+            -module(main).
+            -type old_~type() :: ok.
+            -type existing_type() :: error.
+            "#,
+            r#"error: Type 'existing_type/0' already in scope"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_type_allows_different_arity() {
+        check_rename(
+            "existing_type",
+            r#"
+            -module(main).
+            -type old_~type() :: ok.
+            -type existing_type(T) :: {error, T}.
+            "#,
+            r#"
+            -module(main).
+            -type existing_type() :: ok.
+            -type existing_type(T) :: {error, T}.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_type_invalid_name() {
+        check_rename(
+            "New_Type",
+            r#"
+            -module(main).
+            -type old_~type() :: ok.
+            "#,
+            r#"error: Invalid new type name: 'New_Type'"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_type_remote_reference() {
+        check_rename(
+            "new_type",
+            r#"
+            //- /src/module_a.erl
+            -module(module_a).
+            -export_type([old_~type/0]).
+            -type old_type() :: {ok, term()}.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -spec foo(module_a:old_type()) -> ok.
+            foo(_) -> ok.
+            "#,
+            r#"
+            //- /src/module_a.erl
+            -module(module_a).
+            -export_type([new_type/0]).
+            -type new_type() :: {ok, term()}.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -spec foo(module_a:new_type()) -> ok.
+            foo(_) -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_type_remote_reference_from_usage() {
+        check_rename(
+            "new_type",
+            r#"
+            //- /src/module_a.erl
+            -module(module_a).
+            -export_type([old_type/0]).
+            -type old_type() :: {ok, term()}.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -spec foo(module_a:old_~type()) -> ok.
+            foo(_) -> ok.
+            "#,
+            r#"
+            //- /src/module_a.erl
+            -module(module_a).
+            -export_type([new_type/0]).
+            -type new_type() :: {ok, term()}.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -spec foo(module_a:new_type()) -> ok.
+            foo(_) -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_type_from_header_multi_file() {
+        check_rename(
+            "new_type",
+            r#"
+            //- /src/types.hrl
+            -type old_~type() :: {ok, term()}.
+
+            //- /src/module_a.erl
+            -module(module_a).
+            -include("types.hrl").
+            -spec foo(old_type()) -> ok.
+            foo(_) -> ok.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -include("types.hrl").
+            -spec bar(old_type()) -> ok.
+            bar(_) -> ok.
+            "#,
+            r#"
+            //- /src/types.hrl
+            -type new_type() :: {ok, term()}.
+
+            //- /src/module_a.erl
+            -module(module_a).
+            -include("types.hrl").
+            -spec foo(new_type()) -> ok.
+            foo(_) -> ok.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -include("types.hrl").
+            -spec bar(new_type()) -> ok.
+            bar(_) -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_type_from_usage_in_header() {
+        check_rename(
+            "new_type",
+            r#"
+            //- /src/types.hrl
+            -type old_type() :: {ok, term()}.
+
+            //- /src/module_a.erl
+            -module(module_a).
+            -include("types.hrl").
+            -spec foo(old_~type()) -> ok.
+            foo(_) -> ok.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -include("types.hrl").
+            -spec bar(old_type()) -> ok.
+            bar(_) -> ok.
+            "#,
+            r#"
+            //- /src/types.hrl
+            -type new_type() :: {ok, term()}.
+
+            //- /src/module_a.erl
+            -module(module_a).
+            -include("types.hrl").
+            -spec foo(new_type()) -> ok.
+            foo(_) -> ok.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -include("types.hrl").
+            -spec bar(new_type()) -> ok.
+            bar(_) -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_type_name_clash_in_remote_module() {
+        check_rename(
+            "existing_type",
+            r#"
+            //- /src/module_a.erl
+            -module(module_a).
+            -export_type([old_type/0]).
+            -type old_~type() :: {ok, term()}.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -type existing_type() :: error.
+            -spec foo(module_a:old_type()) -> ok.
+            foo(_) -> ok.
+            "#,
+            r#"error: Type 'existing_type/0' already in scope"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_type_name_clash_from_header_multi_file() {
+        check_rename(
+            "existing_type",
+            r#"
+            //- /src/types.hrl
+            -type old_type() :: {ok, term()}.
+
+            //- /src/module_a.erl
+            -module(module_a).
+            -include("types.hrl").
+            -spec foo(old_~type()) -> ok.
+            foo(_) -> ok.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -include("types.hrl").
+            -type existing_type() :: error.
+            -spec bar(old_type()) -> ok.
+            bar(_) -> ok.
+            "#,
+            r#"error: Type 'existing_type/0' already in scope"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_opaque_type_from_header() {
+        check_rename(
+            "new_type",
+            r#"
+            //- /src/types.hrl
+            -opaque old_~type() :: {internal, term()}.
+
+            //- /src/module_a.erl
+            -module(module_a).
+            -include("types.hrl").
+            -spec create() -> old_type().
+            create() -> {internal, data}.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -include("types.hrl").
+            -spec use(old_type()) -> ok.
+            use(_) -> ok.
+            "#,
+            r#"
+            //- /src/types.hrl
+            -opaque new_type() :: {internal, term()}.
+
+            //- /src/module_a.erl
+            -module(module_a).
+            -include("types.hrl").
+            -spec create() -> new_type().
+            create() -> {internal, data}.
+
+            //- /src/module_b.erl
+            -module(module_b).
+            -include("types.hrl").
+            -spec use(new_type()) -> ok.
+            use(_) -> ok.
+            "#,
         );
     }
 

@@ -615,8 +615,9 @@ impl TypeAliasDef {
     }
 
     pub fn name_range(&self, db: &dyn SourceDatabase) -> Option<TextRange> {
-        let range = self.source(db).type_name()?.syntax().text_range();
-        Some(range)
+        let type_name = self.source(db).type_name()?;
+        let name = type_name.name()?;
+        Some(name.syntax().text_range())
     }
 
     /// This information is used for completion.

@@ -264,7 +264,7 @@ mod tests {
    -record(my_second_record, {my_list :: [] }).
 %%         ^^^^^^^^^^^^^^^^ Record | my_second_record
    -type my_integer() :: integer().
-%%       ^^^^^^^^^^^^ Type | my_integer/0
+%%       ^^^^^^^^^^ Type | my_integer/0
 
    -define(MEANING_OF_LIFE, 42).
 %%         ^^^^^^^^^^^^^^^ Define | MEANING_OF_LIFE
@@ -340,7 +340,7 @@ mod tests {
     -record(included_record, {my_field :: integer()}).
 %%          ^^^^^^^^^^^^^^^ Record | included_record
     -type local_type() :: integer().
-%%        ^^^^^^^^^^^^ Type | local_type/0
+%%        ^^^^^^^^^^ Type | local_type/0
     local_function() -> ok.
 %%  ^^^^^^^^^^^^^^ Function | local_function/0
 "#,
