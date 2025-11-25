@@ -1,4 +1,4 @@
-Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--rebar] [--as PROFILE] [--include-generated] [--include-tests] [[--format FORMAT]] [[--macros STRATEGY]] [--parens] [--dump-config] [--show-source] [-B NUM] [-A NUM] [-C NUM] [--group-separator SEP] [--no-group-separator] [[--color WHEN]] [--report-system-stats] <SSR_SPECS>...
+Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--rebar] [--as PROFILE] [--include-generated] [--include-tests] [[--format FORMAT]] [[--macros STRATEGY]] [--parens] [--dump-config] [--show-source] [-B NUM] [-A NUM] [-C NUM] [--group-separator SEP] [--no-group-separator] [--report-system-stats] <SSR_SPECS>...
 
 Available positional items:
     <SSR_SPECS>  SSR specs to use
@@ -22,6 +22,5 @@ Available options:
     -C, --context <NUM>          Print NUM lines of output context, enables --show-source
         --group-separator <SEP>  Print SEP on line between matches with context, enables --show-source
         --no-group-separator     Do not print separator for matches with context, enables --show-source
-        --color <WHEN>           Use markers to highlight the matching strings; WHEN is 'always', 'never', or 'auto'
         --report-system-stats    Report system memory usage and other statistics
     -h, --help                   Prints help information

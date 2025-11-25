@@ -1,4 +1,4 @@
-Usage: [--log-file LOG_FILE] [--erl ERL] [--escript ESCRIPT] [--no-log-buffering] [--no-buck-generated] [--buck-quick-start] [COMMAND ...]
+Usage: [--log-file LOG_FILE] [--erl ERL] [--escript ESCRIPT] [--no-log-buffering] [--no-buck-generated] [--buck-quick-start] [[--color WHEN]] [COMMAND ...]
 
 Available options:
         --log-file <LOG_FILE>
@@ -7,6 +7,7 @@ Available options:
         --no-log-buffering
         --no-buck-generated    When using buck, do not invoke a build step for generated files.
         --buck-quick-start     Use buck2 targets for first stage project loading
+        --color <WHEN>         Use color in output; WHEN is 'always', 'never', or 'auto'
     -h, --help                 Prints help information
 
 Available commands:

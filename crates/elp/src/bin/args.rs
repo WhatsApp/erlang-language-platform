@@ -413,16 +413,6 @@ pub struct Ssr {
     #[bpaf(long("no-group-separator"))]
     pub no_group_separator: bool,
 
-    /// Use markers to highlight the matching strings; WHEN is 'always', 'never', or 'auto'
-    #[bpaf(
-        long("color"),
-        long("colour"),
-        argument("WHEN"),
-        fallback(Some("auto".to_string())),
-        guard(color_guard, "Please use always, never, or auto")
-    )]
-    pub color: Option<String>,
-
     /// Report system memory usage and other statistics
     #[bpaf(long("report-system-stats"))]
     pub report_system_stats: bool,
@@ -526,6 +516,16 @@ pub struct Args {
 
     /// Use buck2 targets for first stage project loading
     pub buck_quick_start: bool,
+
+    /// Use color in output; WHEN is 'always', 'never', or 'auto'
+    #[bpaf(
+        long("color"),
+        long("colour"),
+        argument("WHEN"),
+        fallback(Some("always".to_string())),
+        guard(color_guard, "Please use always, never, or auto")
+    )]
+    pub color: Option<String>,
 
     #[bpaf(external(command))]
     pub command: Command,

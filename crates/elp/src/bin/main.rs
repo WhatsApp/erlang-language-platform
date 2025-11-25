@@ -10,6 +10,7 @@
 
 use std::env;
 use std::fs;
+use std::io::IsTerminal;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process;
@@ -65,9 +66,23 @@ const THREAD_STACK_SIZE: usize = 10_000_000;
 
 fn main() {
     let _timer = timeit!("main");
-    let mut cli = cli::Real::default();
     let args = args::args().run();
-    let res = try_main(&mut cli, args);
+    let use_color = match args.color.as_deref() {
+        Some("always") => true,
+        Some("never") => false,
+        Some("auto") | None => {
+            // Check NO_COLOR environment variable - if set (regardless of value), disable color
+            // Also check if stdout is connected to a TTY
+            env::var("NO_COLOR").is_err() && std::io::stdout().is_terminal()
+        }
+        _ => false, // Should be caught by the guard, but handle anyway
+    };
+    let mut cli: Box<dyn cli::Cli> = if use_color {
+        Box::new(cli::Real::default())
+    } else {
+        Box::new(cli::NoColor::default())
+    };
+    let res = try_main(&mut *cli, args);
     let code = handle_res(res, cli.err());
     process::exit(code);
 }
@@ -136,7 +151,9 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
         args::Command::BuildInfo(args) => build_info_cli::save_build_info(args, &query_config)?,
         args::Command::ProjectInfo(args) => build_info_cli::save_project_info(args, &query_config)?,
         args::Command::Lint(args) => lint_cli::run_lint_command(&args, cli, &query_config)?,
-        args::Command::Ssr(args) => ssr_cli::run_ssr_command(&args, cli, &query_config)?,
+        args::Command::Ssr(ssr_args) => {
+            ssr_cli::run_ssr_command(&ssr_args, cli, &query_config, &args.color)?
+        }
         args::Command::GenerateCompletions(args) => {
             let instructions = args::gen_completions(&args.shell);
             writeln!(cli, "#Please run this:\n{instructions}")?
@@ -2045,10 +2062,13 @@ mod tests {
     fn lint_ssr_with_context_and_separator() {
         simple_snapshot(
             args_vec![
+                "--colour",
+                "never",
                 "ssr",
-                "--context", "2",
-                "--group-separator", "====",
-                "--colour", "never"
+                "--context",
+                "2",
+                "--group-separator",
+                "====",
                 "{_@A, _@B}",
             ],
             "linter",
@@ -2062,10 +2082,13 @@ mod tests {
     fn lint_ssr_with_context_and_separator_color() {
         simple_snapshot(
             args_vec![
+                "--colour",
+                "always",
                 "ssr",
-                "--context", "2",
-                "--group-separator", "====",
-                "--colour", "always"
+                "--context",
+                "2",
+                "--group-separator",
+                "====",
                 "{_@A, _@B}",
             ],
             "linter",
@@ -2314,6 +2337,117 @@ mod tests {
                 ),
                 true,
                 None,
+            );
+        }
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn eqwalize_with_color_vs_no_color(buck: bool) {
+        if otp_supported_by_eqwalizer() {
+            // Test with color (default)
+            let (mut args_color, _path) =
+                add_project(args_vec!["eqwalize", "app_a"], "standard", None, None);
+            if !buck {
+                args_color.push("--rebar".into());
+            }
+
+            // Test without color
+            let (mut args_no_color, _) = add_project(
+                args_vec!["--color", "never", "eqwalize", "app_a"],
+                "standard",
+                None,
+                None,
+            );
+            if !buck {
+                args_no_color.push("--rebar".into());
+            }
+
+            let (stdout_color, stderr_color, code_color) = elp(args_color);
+            let (stdout_no_color, stderr_no_color, code_no_color) = elp(args_no_color);
+
+            // Both should have same exit code
+            assert_eq!(code_color, code_no_color);
+
+            // Both should have same stderr behavior
+            if code_color == 0 {
+                assert!(stderr_color.is_empty());
+                assert!(stderr_no_color.is_empty());
+            }
+
+            // The content should be similar but no-color version should not contain ANSI escape codes
+            // ANSI color codes typically start with \x1b[ or \u{1b}[
+            let _has_ansi_color = stdout_color.contains('\x1b');
+            let has_ansi_no_color = stdout_no_color.contains('\x1b');
+
+            // With --color never, there should be no ANSI escape sequences
+            assert!(
+                !has_ansi_no_color,
+                "Output with --color never should not contain ANSI escape codes"
+            );
+
+            // The outputs should be functionally equivalent when ANSI codes are stripped
+            let stripped_color = strip_ansi_codes(&stdout_color);
+            assert_eq!(
+                stripped_color, stdout_no_color,
+                "Content should be identical after stripping ANSI codes"
+            );
+        }
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn eqwalize_with_no_color_env_var(buck: bool) {
+        if otp_supported_by_eqwalizer() {
+            // Test with NO_COLOR environment variable set
+            unsafe {
+                env::set_var("NO_COLOR", "1");
+            }
+
+            let (mut args_no_color_env, _) =
+                add_project(args_vec!["eqwalize", "app_a"], "standard", None, None);
+            if !buck {
+                args_no_color_env.push("--rebar".into());
+            }
+
+            let (stdout_no_color_env, stderr_no_color_env, code_no_color_env) =
+                elp(args_no_color_env);
+
+            // Clean up environment variable
+            unsafe {
+                env::remove_var("NO_COLOR");
+            }
+
+            // Test with normal color (for comparison)
+            let (mut args_color, _) =
+                add_project(args_vec!["eqwalize", "app_a"], "standard", None, None);
+            if !buck {
+                args_color.push("--rebar".into());
+            }
+
+            let (stdout_color, stderr_color, code_color) = elp(args_color);
+
+            // Both should have same exit code
+            assert_eq!(code_color, code_no_color_env);
+
+            // Both should have same stderr behavior
+            if code_color == 0 {
+                assert!(stderr_color.is_empty());
+                assert!(stderr_no_color_env.is_empty());
+            }
+
+            // The NO_COLOR env var version should not contain ANSI escape codes
+            let has_ansi_no_color_env = stdout_no_color_env.contains('\x1b');
+            assert!(
+                !has_ansi_no_color_env,
+                "Output with NO_COLOR env var should not contain ANSI escape codes"
+            );
+
+            // The outputs should be functionally equivalent when ANSI codes are stripped
+            let stripped_color = strip_ansi_codes(&stdout_color);
+            assert_eq!(
+                stripped_color, stdout_no_color_env,
+                "Content should be identical after stripping ANSI codes"
             );
         }
     }
@@ -2834,6 +2968,13 @@ mod tests {
 
     fn project_path(project: &str) -> String {
         format!("../../test_projects/{project}")
+    }
+
+    fn strip_ansi_codes(s: &str) -> String {
+        lazy_static! {
+            static ref ANSI_RE: Regex = Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+        }
+        ANSI_RE.replace_all(s, "").to_string()
     }
 
     struct BackupFiles {

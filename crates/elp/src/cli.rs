@@ -30,18 +30,13 @@ pub trait Cli: Write + WriteColor {
     fn err(&mut self) -> &mut dyn Write;
 }
 
-pub struct Real(StandardStream, Stderr);
+pub struct StandardCli(StandardStream, Stderr);
 
-impl Default for Real {
-    fn default() -> Self {
-        Self(
-            StandardStream::stdout(ColorChoice::Always),
-            std::io::stderr(),
-        )
+impl StandardCli {
+    fn new(color_choice: ColorChoice) -> Self {
+        Self(StandardStream::stdout(color_choice), std::io::stderr())
     }
-}
 
-impl Real {
     fn progress_with_style(
         &self,
         len: u64,
@@ -59,7 +54,7 @@ impl Real {
     }
 }
 
-impl Cli for Real {
+impl Cli for StandardCli {
     fn progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
         self.progress_with_style(len, prefix, "  {prefix:25!} {bar} {pos}/{len} {wide_msg}")
     }
@@ -84,6 +79,63 @@ impl Cli for Real {
     }
 }
 
+impl Write for StandardCli {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0.write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.0.flush()
+    }
+}
+
+impl WriteColor for StandardCli {
+    fn supports_color(&self) -> bool {
+        self.0.supports_color()
+    }
+
+    fn set_color(&mut self, spec: &ColorSpec) -> std::io::Result<()> {
+        self.0.set_color(spec)
+    }
+
+    fn reset(&mut self) -> std::io::Result<()> {
+        self.0.reset()
+    }
+}
+
+pub struct Real(StandardCli);
+pub struct NoColor(StandardCli);
+
+impl Default for Real {
+    fn default() -> Self {
+        Real(StandardCli::new(ColorChoice::Always))
+    }
+}
+
+impl Default for NoColor {
+    fn default() -> Self {
+        NoColor(StandardCli::new(ColorChoice::Never))
+    }
+}
+
+impl Cli for Real {
+    fn progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
+        self.0.progress(len, prefix)
+    }
+
+    fn simple_progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
+        self.0.simple_progress(len, prefix)
+    }
+
+    fn spinner(&self, prefix: &'static str) -> ProgressBar {
+        self.0.spinner(prefix)
+    }
+
+    fn err(&mut self) -> &mut dyn Write {
+        self.0.err()
+    }
+}
+
 impl Write for Real {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         self.0.write(buf)
@@ -95,6 +147,48 @@ impl Write for Real {
 }
 
 impl WriteColor for Real {
+    fn supports_color(&self) -> bool {
+        self.0.supports_color()
+    }
+
+    fn set_color(&mut self, spec: &ColorSpec) -> std::io::Result<()> {
+        self.0.set_color(spec)
+    }
+
+    fn reset(&mut self) -> std::io::Result<()> {
+        self.0.reset()
+    }
+}
+
+impl Cli for NoColor {
+    fn progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
+        self.0.progress(len, prefix)
+    }
+
+    fn simple_progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
+        self.0.simple_progress(len, prefix)
+    }
+
+    fn spinner(&self, prefix: &'static str) -> ProgressBar {
+        self.0.spinner(prefix)
+    }
+
+    fn err(&mut self) -> &mut dyn Write {
+        self.0.err()
+    }
+}
+
+impl Write for NoColor {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0.write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.0.flush()
+    }
+}
+
+impl WriteColor for NoColor {
     fn supports_color(&self) -> bool {
         self.0.supports_color()
     }
