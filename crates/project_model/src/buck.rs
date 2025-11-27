@@ -873,6 +873,16 @@ pub enum BuckQueryConfig {
     BuckTargetsOnly,
 }
 
+impl fmt::Display for BuckQueryConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BuckQueryConfig::BuildGeneratedCode => write!(f, "BuildGeneratedCode"),
+            BuckQueryConfig::NoBuildGeneratedCode => write!(f, "NoBuildGeneratedCode"),
+            BuckQueryConfig::BuckTargetsOnly => write!(f, "BuckTargetsOnly"),
+        }
+    }
+}
+
 fn filter_buck_targets(
     buck_config: &BuckConfig,
     result: FxHashMap<String, BuckTarget>,

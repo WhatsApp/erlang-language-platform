@@ -192,7 +192,7 @@ impl ReloadManager {
         self.get_query_config()
     }
 
-    fn get_query_config(&self) -> BuckQueryConfig {
+    pub fn get_query_config(&self) -> BuckQueryConfig {
         if self.buck_quick_start {
             match self.buck_generated {
                 BuckGenerated::NoLoadDone => BuckQueryConfig::BuckTargetsOnly,
