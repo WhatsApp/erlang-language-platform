@@ -24,7 +24,7 @@ use anyhow::bail;
 use capabilities::text_document_symbols_dynamic_registration;
 use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
-use crossbeam_channel::select;
+use crossbeam_channel::select_biased;
 use dispatch::NotificationDispatcher;
 use elp_eqwalizer::ast::Pos;
 use elp_eqwalizer::types::Type;
@@ -434,25 +434,26 @@ impl Server {
     }
 
     fn next_event(&self) -> Option<Event> {
-        select! {
-            recv(self.connection.receiver) -> msg => {
-                msg.ok().map(Event::Lsp)
-            }
-
-            recv(self.vfs_loader.receiver) -> msg => {
-                Some(Event::Vfs(msg.unwrap()))
-            }
-
-            recv(self.task_pool.receiver) -> msg => {
-                Some(Event::Task(msg.unwrap()))
-            }
-
+        // Select the next event, in order of priority.
+        // If multiple operations are ready at the same time, the
+        // operation nearest to the front of the list is always selected.
+        select_biased! {
+            // We want to send progress messages as soon as possible
             recv(self.progress.receiver()) -> msg => {
                 Some(Event::Task(Task::Progress(msg.unwrap())))
             }
 
+            // Ditto telemetry
             recv(telemetry::receiver()) -> msg => {
                 Some(Event::Telemetry(msg.unwrap()))
+            }
+
+            recv(self.connection.receiver) -> msg => {
+                msg.ok().map(Event::Lsp)
+            }
+
+            recv(self.task_pool.receiver) -> msg => {
+                Some(Event::Task(msg.unwrap()))
             }
 
             recv (self.project_pool.receiver) -> msg => {
@@ -466,6 +467,16 @@ impl Server {
             recv (self.eqwalizer_pool.receiver) -> msg => {
                 Some(Event::Task(msg.unwrap()))
             }
+
+            // We put vfs loader events last, they run with all
+            // available threads, we do not want to starve the
+            // other sources.
+            // Note: when we do process one, we will coalesce
+            // all pending vfs loader events into a single main loop turn
+            recv(self.vfs_loader.receiver) -> msg => {
+                Some(Event::Vfs(msg.unwrap()))
+            }
+
 
         }
     }
