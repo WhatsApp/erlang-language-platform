@@ -88,6 +88,14 @@ pub struct BuckConfig {
     #[serde(default)]
     pub excluded_targets: Vec<String>,
     pub(crate) source_root: Option<PathBuf>,
+    /// Buck2 labels that denote test applications.
+    /// Defaults to ["test_application"] if not specified.
+    #[serde(default = "default_test_application_labels")]
+    pub test_application_labels: Vec<String>,
+}
+
+fn default_test_application_labels() -> Vec<String> {
+    vec!["test_application".to_string()]
 }
 
 impl BuckConfig {
@@ -726,7 +734,7 @@ fn load_buck_targets_bxl(
             root,
             name,
             buck_target,
-            buck_config.build_deps,
+            buck_config,
             targets_include_prelude,
             &mut dep_path,
             &mut target_info,
@@ -747,7 +755,7 @@ fn make_buck_target(
     root: &AbsPathBuf,
     name: &String,
     target: &BuckTarget,
-    build_deps: bool,
+    buck_config: &BuckConfig,
     targets_include_prelude: bool,
     dep_path: &mut FxHashMap<String, AbsPathBuf>,
     target_info: &mut TargetInfo,
@@ -763,7 +771,12 @@ fn make_buck_target(
         (src, TargetType::ErlangTest, false, None)
     } else {
         let mut private_header = false;
-        let target_type = compute_target_type(name, target, targets_include_prelude);
+        let target_type = compute_target_type(
+            name,
+            target,
+            targets_include_prelude,
+            &buck_config.test_application_labels,
+        );
         let mut src_files = vec![];
         for src in &target.srcs {
             let src = json::canonicalize(buck_path_to_abs_path(root, src).unwrap())?;
@@ -774,7 +787,7 @@ fn make_buck_target(
         }
 
         let ebin = match target_type {
-            TargetType::ThirdParty if build_deps => dep_path
+            TargetType::ThirdParty if buck_config.build_deps => dep_path
                 .remove(name)
                 .map(|dir| dir.join(Utf8PathBuf::from("ebin"))),
             TargetType::ThirdParty => Some(dir.clone()),
@@ -817,14 +830,17 @@ fn compute_target_type(
     name: &TargetFullName,
     target: &BuckTarget,
     targets_include_prelude: bool,
+    test_application_labels: &[String],
 ) -> TargetType {
     // Check if we are trying to work on the prelude itself
     let is_prelude_as_third_party = !targets_include_prelude && name.starts_with("prelude//");
     if is_prelude_as_third_party || name.contains("//third-party") {
         TargetType::ThirdParty
     } else {
-        let test_application = target.labels.contains("test_application");
-        if test_application {
+        let is_test_application = test_application_labels
+            .iter()
+            .any(|label| target.labels.contains(label));
+        if is_test_application {
             TargetType::ErlangTestUtils
         } else {
             TargetType::ErlangApp
@@ -1609,6 +1625,7 @@ mod tests {
                 included_targets: vec![],
                 excluded_targets: vec![],
                 source_root: None,
+                test_application_labels: vec!["test_application".to_string()],
             };
             let generated_args = if build_generated {
                 vec!["--build_generated_code", "true"]

@@ -1839,6 +1839,7 @@ mod tests {
                     "root//target/four".to_string(),
                 ],
                 source_root: Some(PathBuf::from("path/to/root")),
+                test_application_labels: vec!["test_application".to_string()],
             }),
             eqwalizer: EqwalizerConfig {
                 enable_all: true,
@@ -1864,6 +1865,7 @@ mod tests {
             included_targets = ["root//target/one", "root//target/two"]
             excluded_targets = ["root//target/three", "root//target/four"]
             source_root = "path/to/root"
+            test_application_labels = ["test_application"]
 
             [eqwalizer]
             enable_all = true
@@ -1937,6 +1939,9 @@ mod tests {
                         source_root: Some(
                             "path/to/root",
                         ),
+                        test_application_labels: [
+                            "test_application",
+                        ],
                     },
                 ),
                 eqwalizer: EqwalizerConfig {
