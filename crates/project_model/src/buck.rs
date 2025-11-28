@@ -823,13 +823,11 @@ fn compute_target_type(
     if is_prelude_as_third_party || name.contains("//third-party") {
         TargetType::ThirdParty
     } else {
-        let test_utils = target.labels.contains("test_utils");
         let test_application = target.labels.contains("test_application");
-        let elp_enabled = target.labels.contains("elp_enabled");
-        match (elp_enabled, test_application, test_utils) {
-            (true, _, _) => TargetType::ErlangApp,
-            (false, false, false) => TargetType::ErlangApp,
-            (_, _, _) => TargetType::ErlangTestUtils,
+        if test_application {
+            TargetType::ErlangTestUtils
+        } else {
+            TargetType::ErlangApp
         }
     }
 }
