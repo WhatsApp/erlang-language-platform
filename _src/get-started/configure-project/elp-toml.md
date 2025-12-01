@@ -111,9 +111,21 @@ Configure the interaction between ELP and the [Buck2](https://buck2.build/)
 build tool. See [this presentation](https://youtu.be/4ALgsBqNBhQ) for details
 about Erlang support for Buck2.
 
-| Key     | Type    | Description                      |
-| ------- | ------- | -------------------------------- |
-| enabled | Boolean | Discover the project using Buck2 |
+| Key                     | Type             | Description                                                                                                              | Default                |
+| ----------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
+| enabled                 | Boolean          | Discover the project using Buck2                                                                                         |                        |
+| test_application_labels | Array of Strings | Buck2 labels that identify test application targets. Targets with any of these labels will be treated as test utilities. | `["test_application"]` |
+
+The `test_application_labels` setting allows you to customize which Buck2 labels
+indicate test applications. This is useful for:
+
+Example usage:
+
+```toml
+[buck]
+enabled = true
+test_application_labels = ["test_application", "integration_test", "e2e_test"]
+```
 
 :::warning
 

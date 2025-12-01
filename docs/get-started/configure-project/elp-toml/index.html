@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.9.2">
 <title data-rh="true">The .elp.toml Configuration File | ELP</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://whatsapp.github.io/erlang-language-platform/docs/get-started/configure-project/elp-toml/"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="The .elp.toml Configuration File | ELP"><meta data-rh="true" name="description" content="A .elp.toml configuration file can be added to a project&#x27;s root directory to"><meta data-rh="true" property="og:description" content="A .elp.toml configuration file can be added to a project&#x27;s root directory to"><link data-rh="true" rel="icon" href="/erlang-language-platform/img/elp_icon_color.svg"><link data-rh="true" rel="canonical" href="https://whatsapp.github.io/erlang-language-platform/docs/get-started/configure-project/elp-toml/"><link data-rh="true" rel="alternate" href="https://whatsapp.github.io/erlang-language-platform/docs/get-started/configure-project/elp-toml/" hreflang="en"><link data-rh="true" rel="alternate" href="https://whatsapp.github.io/erlang-language-platform/docs/get-started/configure-project/elp-toml/" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Get Started","item":"https://whatsapp.github.io/erlang-language-platform/docs/get-started/"},{"@type":"ListItem","position":2,"name":"Configure Your Project","item":"https://whatsapp.github.io/erlang-language-platform/docs/get-started/configure-project/"},{"@type":"ListItem","position":3,"name":"The .elp.toml Configuration File","item":"https://whatsapp.github.io/erlang-language-platform/docs/get-started/configure-project/elp-toml"}]}</script><link rel="stylesheet" href="/erlang-language-platform/assets/css/styles.2348a915.css">
-<script src="/erlang-language-platform/assets/js/runtime~main.31f662cc.js" defer="defer"></script>
-<script src="/erlang-language-platform/assets/js/main.53ad72df.js" defer="defer"></script>
+<script src="/erlang-language-platform/assets/js/runtime~main.ae2a6be1.js" defer="defer"></script>
+<script src="/erlang-language-platform/assets/js/main.9d17afc8.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
 <svg style="display: none;"><defs>
@@ -119,7 +119,19 @@ about Erlang support for Buck2.</p>
 
 
 
-<table><thead><tr><th>Key</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td>enabled</td><td>Boolean</td><td>Discover the project using Buck2</td></tr></tbody></table>
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Key</th><th>Type</th><th>Description</th><th>Default</th></tr></thead><tbody><tr><td>enabled</td><td>Boolean</td><td>Discover the project using Buck2</td><td></td></tr><tr><td>test_application_labels</td><td>Array of Strings</td><td>Buck2 labels that identify test application targets. Targets with any of these labels will be treated as test utilities.</td><td><code>[&quot;test_application&quot;]</code></td></tr></tbody></table>
+<p>The <code>test_application_labels</code> setting allows you to customize which Buck2 labels
+indicate test applications. This is useful for:</p>
+<p>Example usage:</p>
+<div class="language-toml codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-toml codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">[buck]</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">enabled = true</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">test_application_labels = [&quot;test_application&quot;, &quot;integration_test&quot;, &quot;e2e_test&quot;]</span><br></span></code></pre></div></div>
 <div class="theme-admonition theme-admonition-warning admonition_xJq3 alert alert--warning"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"></path></svg></span>warning</div><div class="admonitionContent_BuS1"><p>The github version is not built with buck2 support enabled. This will change
 soon, once we tweak the tests.</p></div></div>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="rebar">[rebar]<a href="#rebar" class="hash-link" aria-label="Direct link to [rebar]" title="Direct link to [rebar]" translate="no">​</a></h3>
