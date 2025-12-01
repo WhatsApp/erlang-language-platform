@@ -10,6 +10,7 @@
 
 // Diagnostic: edoc
 
+use elp_ide_assists::Assist;
 use elp_ide_assists::helpers;
 use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::elp_base_db::FileId;
@@ -17,87 +18,136 @@ use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::text_edit::TextRange;
 use elp_ide_db::text_edit::TextSize;
 use elp_syntax::AstNode;
+use elp_syntax::ast;
 use fxhash::FxHashSet;
 use hir::Attribute;
+use hir::InFileAstPtr;
 use hir::Semantic;
 use hir::edoc::EdocHeader;
 use hir::edoc::EdocHeaderKind;
 use hir::known;
 
-use super::Diagnostic;
 use super::DiagnosticCode;
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
+use super::GenericLinter;
+use super::GenericLinterMatchContext;
+use super::Linter;
 use super::Severity;
 
-const DIAGNOSTIC_CODE: DiagnosticCode = DiagnosticCode::OldEdocSyntax;
-const DIAGNOSTIC_MESSAGE: &str = "EDoc style comments are deprecated. Please use Markdown instead.";
-const CONVERT_FIX_ID: &str = "convert_to_markdown";
-const CONVERT_FIX_LABEL: &str = "Convert to Markdown";
+pub(crate) struct EdocLinter;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        check(diags, sema, file_id);
-    },
-};
+impl Linter for EdocLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::OldEdocSyntax
+    }
 
-fn check(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    if let Some(comments) = sema.file_edoc_comments(file_id) {
-        for header in comments.values() {
-            if let Some(doc) = &header.doc {
-                if let Some(doc_start) = header.start() {
-                    diagnostics.push(old_edoc_syntax_diagnostic(
-                        sema, file_id, doc.range, header, doc_start,
-                    ));
-                }
-            } else if let Some(equiv) = &header.equiv {
-                if let Some(doc_start) = header.start() {
-                    diagnostics.push(old_edoc_syntax_diagnostic(
-                        sema,
-                        file_id,
-                        equiv.range,
-                        header,
-                        doc_start,
-                    ));
-                }
-            } else if let Some(deprecated) = &header.deprecated {
-                if let Some(doc_start) = header.start() {
-                    diagnostics.push(old_edoc_syntax_diagnostic(
-                        sema,
-                        file_id,
-                        deprecated.range,
-                        header,
-                        doc_start,
-                    ));
-                }
-            } else if let Some(hidden) = &header.hidden
-                && let Some(doc_start) = header.start()
-            {
-                diagnostics.push(old_edoc_syntax_diagnostic(
-                    sema,
-                    file_id,
-                    hidden.range,
-                    header,
-                    doc_start,
-                ));
-            }
+    fn description(&self) -> &'static str {
+        "EDoc style comments are deprecated. Please use Markdown instead."
+    }
+
+    fn severity(&self, sema: &Semantic, file_id: FileId) -> Severity {
+        match sema.db.is_test_suite_or_test_helper(file_id) {
+            Some(true) => Severity::WeakWarning,
+            _ => Severity::Warning,
         }
     }
 }
 
-fn old_edoc_syntax_diagnostic(
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Context {
+    header_ptr: Option<InFileAstPtr<ast::Form>>,
+    doc_start: TextSize,
+    range: TextRange,
+}
+
+impl GenericLinter for EdocLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Context>>> {
+        let mut res = Vec::new();
+        if let Some(comments) = sema.file_edoc_comments(file_id) {
+            for (header_ptr, header) in comments.iter() {
+                if let Some(doc) = &header.doc {
+                    if let Some(doc_start) = header.start() {
+                        res.push(GenericLinterMatchContext {
+                            range: doc.range,
+                            context: Context {
+                                header_ptr: Some(*header_ptr),
+                                doc_start,
+                                range: doc.range,
+                            },
+                        });
+                    }
+                } else if let Some(equiv) = &header.equiv {
+                    if let Some(doc_start) = header.start() {
+                        res.push(GenericLinterMatchContext {
+                            range: equiv.range,
+                            context: Context {
+                                header_ptr: Some(*header_ptr),
+                                doc_start,
+                                range: equiv.range,
+                            },
+                        });
+                    }
+                } else if let Some(deprecated) = &header.deprecated {
+                    if let Some(doc_start) = header.start() {
+                        res.push(GenericLinterMatchContext {
+                            range: deprecated.range,
+                            context: Context {
+                                header_ptr: Some(*header_ptr),
+                                doc_start,
+                                range: deprecated.range,
+                            },
+                        });
+                    }
+                } else if let Some(hidden) = &header.hidden
+                    && let Some(doc_start) = header.start()
+                {
+                    res.push(GenericLinterMatchContext {
+                        range: hidden.range,
+                        context: Context {
+                            header_ptr: Some(*header_ptr),
+                            doc_start,
+                            range: hidden.range,
+                        },
+                    });
+                }
+            }
+        }
+        Some(res)
+    }
+
+    fn fixes(
+        &self,
+        context: &Self::Context,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        let comments = sema.file_edoc_comments(file_id)?;
+        let header_ptr = context.header_ptr.as_ref()?;
+        let header = comments.get(header_ptr)?;
+        Some(vec![old_edoc_syntax_fix(
+            sema,
+            file_id,
+            header,
+            context.doc_start,
+            context.range,
+        )])
+    }
+}
+
+pub static LINTER: EdocLinter = EdocLinter;
+
+fn old_edoc_syntax_fix(
     sema: &Semantic,
     file_id: FileId,
-    show_range: TextRange,
     header: &EdocHeader,
     start_offset: TextSize,
-) -> Diagnostic {
+    range: TextRange,
+) -> Assist {
     let eep59_insert_offset = match header.kind {
         EdocHeaderKind::Module => {
             helpers::moduledoc_insert_offset(sema, file_id).unwrap_or(start_offset)
@@ -135,17 +185,12 @@ fn old_edoc_syntax_diagnostic(
     }
     builder.insert(eep59_insert_offset, header.to_eep59());
     let source_change = builder.finish();
-    let fix = crate::fix(CONVERT_FIX_ID, CONVERT_FIX_LABEL, source_change, show_range);
-    Diagnostic::new(DIAGNOSTIC_CODE, DIAGNOSTIC_MESSAGE, show_range)
-        .with_severity(severity(sema, file_id))
-        .with_fixes(Some(vec![fix]))
-}
-
-fn severity(sema: &Semantic, file_id: FileId) -> Severity {
-    match sema.db.is_test_suite_or_test_helper(file_id) {
-        Some(true) => Severity::WeakWarning,
-        _ => Severity::Warning,
-    }
+    crate::fix(
+        "convert_to_markdown",
+        "Convert to Markdown",
+        source_change,
+        range,
+    )
 }
 
 fn author_exists(author: &str, authors: &FxHashSet<String>) -> bool {
