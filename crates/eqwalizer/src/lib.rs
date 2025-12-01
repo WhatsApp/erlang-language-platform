@@ -244,7 +244,9 @@ impl EqwalizerExe {
 impl Eqwalizer {
     fn cmd(&self) -> Command {
         let mut exe = EQWALIZER_EXE.lock();
-        if !exe.cmd.is_file() {
+        // This check is for the temporary directory being removed by an external process.
+        // As such, it is only applicable if ther *is* a temporary directory.
+        if exe._file.is_some() && !exe.cmd.is_file() {
             log::error!("Eqwalizer exe has disappeared, recreating");
             // We have a problem with the eqwalizer exe file, recreate it
             *exe = EqwalizerExe::ensure_exe();
