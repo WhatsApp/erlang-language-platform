@@ -339,7 +339,13 @@ impl ProjectManifest {
     pub fn discover_in_place(path: &AbsPath, rebar_profile: Profile) -> Result<ProjectManifest> {
         let _timer = timeit!("discover projects in place");
         // We skip looking for the TOML file since we have already found it.
-        if let Some(r) = Self::discover_rebar(path, Some(rebar_profile), IncludeParentDirs::No)? {
+        if let Some(elp_config_basedir) = path.parent()
+            && let Some(r) = Self::discover_rebar(
+                &elp_config_basedir.to_path_buf(),
+                Some(rebar_profile),
+                IncludeParentDirs::No,
+            )?
+        {
             return Ok(r);
         }
         if let Some(s) = Self::discover_static(path, IncludeParentDirs::No)? {
@@ -1569,6 +1575,60 @@ mod tests {
             )
         "#]]
         .assert_eq(&debug_normalise_temp_dir(dir, &manifest));
+    }
+
+    #[test]
+    fn test_toml_empty_rebar_config() {
+        if cfg!(feature = "buck") {
+            let spec = r#"
+        //- /root/.elp.toml
+        //- /root/rebar.config
+        //- /root/app_a/src/app.erl
+        -module(app).
+        "#;
+            let dir = FixtureWithProjectMeta::gen_project(spec);
+            let discovered = ProjectManifest::discover(
+                &to_abs_path_buf(&dir.path().join("root/app_a/src/app.erl")).unwrap(),
+            );
+            expect![[r#"
+                Ok(
+                    (
+                        ElpConfig {
+                            config_path: Some(
+                                AbsPathBuf(
+                                    "TMPDIR/root/.elp.toml",
+                                ),
+                            ),
+                            build_info: None,
+                            buck: None,
+                            eqwalizer: EqwalizerConfig {
+                                enable_all: true,
+                                max_tasks: 4,
+                                ignore_modules: [],
+                                ignore_modules_compiled_patterns: [],
+                            },
+                            rebar: ElpRebarConfig {
+                                profile: "test",
+                            },
+                            otp: OtpConfig {
+                                exclude_apps: [],
+                            },
+                        },
+                        Rebar(
+                            RebarConfig {
+                                config_file: AbsPathBuf(
+                                    "TMPDIR/root/rebar.config",
+                                ),
+                                profile: Profile(
+                                    "test",
+                                ),
+                            },
+                        ),
+                    ),
+                )
+            "#]]
+            .assert_eq(&debug_normalise_temp_dir(dir, &discovered));
+        }
     }
 
     #[test]
