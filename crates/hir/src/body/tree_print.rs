@@ -15,6 +15,8 @@ use std::fmt;
 use std::fmt::Write as _;
 use std::str;
 
+use elp_base_db::FileId;
+
 use super::DefineBody;
 use super::FoldBody;
 use super::RecordBody;
@@ -33,11 +35,15 @@ use crate::ComprehensionExpr;
 use crate::Define;
 use crate::Expr;
 use crate::ExprId;
+use crate::FormIdx;
 use crate::FunType;
 use crate::FunctionBody;
 use crate::FunctionClauseBody;
+use crate::FunctionDefId;
+use crate::InFile;
 use crate::ListType;
 use crate::Literal;
+use crate::PPDirective;
 use crate::Pat;
 use crate::PatId;
 use crate::Record;
@@ -50,6 +56,7 @@ use crate::TermId;
 use crate::TypeAlias;
 use crate::TypeExpr;
 use crate::TypeExprId;
+use crate::db::DefDatabase;
 use crate::db::InternDatabase;
 use crate::expr::Guards;
 use crate::expr::MaybeExpr;
@@ -330,6 +337,63 @@ pub(crate) fn print_ssr(db: &dyn InternDatabase, body: &SsrBody) -> String {
     });
 
     printer.result()
+}
+
+#[allow(dead_code)] // This is used for debugging
+pub fn print_form_list(db: &dyn DefDatabase, file_id: FileId, strategy: Strategy) -> String {
+    let form_list = db.file_form_list(file_id);
+    let dbi: &dyn InternDatabase = db;
+    form_list
+        .forms()
+        .iter()
+        .flat_map(|&form_idx| -> Option<String> {
+            match form_idx {
+                FormIdx::FunctionClause(function_id) => {
+                    let body =
+                        db.function_body(InFile::new(file_id, FunctionDefId::new(function_id)));
+                    Some(body.tree_print(dbi, strategy))
+                }
+                FormIdx::TypeAlias(type_alias_id) => {
+                    let type_alias = &form_list[type_alias_id];
+                    let body = db.type_body(InFile::new(file_id, type_alias_id));
+                    Some(body.tree_print(dbi, type_alias))
+                }
+                FormIdx::Spec(spec_id) => {
+                    let spec = SpecOrCallback::Spec(form_list[spec_id].clone());
+                    let body = db.spec_body(InFile::new(file_id, spec_id));
+                    Some(body.tree_print(dbi, spec))
+                }
+                FormIdx::Callback(callback_id) => {
+                    let spec = SpecOrCallback::Callback(form_list[callback_id].clone());
+                    let body = db.callback_body(InFile::new(file_id, callback_id));
+                    Some(body.tree_print(dbi, spec))
+                }
+                FormIdx::Record(record_id) => {
+                    let body = db.record_body(InFile::new(file_id, record_id));
+                    Some(body.print(dbi, &form_list, record_id))
+                }
+                FormIdx::Attribute(attribute_id) => {
+                    let attribute = AnyAttribute::Attribute(form_list[attribute_id].clone());
+                    let body = db.attribute_body(InFile::new(file_id, attribute_id));
+                    Some(body.print(dbi, attribute))
+                }
+                FormIdx::CompileOption(attribute_id) => {
+                    let attribute = AnyAttribute::CompileOption(form_list[attribute_id].clone());
+                    let body = db.compile_body(InFile::new(file_id, attribute_id));
+                    Some(body.tree_print(dbi, attribute))
+                }
+                FormIdx::PPDirective(pp) => match form_list[pp] {
+                    PPDirective::Define(define) => {
+                        let body = db.define_body(InFile::new(file_id, define));
+                        Some(body.tree_print(dbi, &form_list[define]))
+                    }
+                    _ => None,
+                },
+                _ => None,
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("")
 }
 
 struct Printer<'a> {
@@ -1523,13 +1587,8 @@ mod tests {
     use expect_test::Expect;
     use expect_test::expect;
 
-    use crate::AnyAttribute;
-    use crate::FormIdx;
-    use crate::FunctionDefId;
-    use crate::InFile;
-    use crate::SpecOrCallback;
     use crate::Strategy;
-    use crate::db::DefDatabase;
+    use crate::body::tree_print::print_form_list;
     use crate::fold::MacroStrategy;
     use crate::fold::ParenStrategy;
     use crate::test_db::TestDB;
@@ -1546,52 +1605,7 @@ mod tests {
     #[track_caller]
     fn check_with_strategy(strategy: Strategy, fixture: &str, expect: Expect) {
         let (db, file_id) = TestDB::with_single_file(fixture);
-        let form_list = db.file_form_list(file_id);
-        let pretty = form_list
-            .forms()
-            .iter()
-            .flat_map(|&form_idx| -> Option<String> {
-                match form_idx {
-                    FormIdx::FunctionClause(function_id) => {
-                        let body =
-                            db.function_body(InFile::new(file_id, FunctionDefId::new(function_id)));
-                        Some(body.tree_print(&db, strategy))
-                    }
-                    FormIdx::TypeAlias(type_alias_id) => {
-                        let type_alias = &form_list[type_alias_id];
-                        let body = db.type_body(InFile::new(file_id, type_alias_id));
-                        Some(body.tree_print(&db, type_alias))
-                    }
-                    FormIdx::Spec(spec_id) => {
-                        let spec = SpecOrCallback::Spec(form_list[spec_id].clone());
-                        let body = db.spec_body(InFile::new(file_id, spec_id));
-                        Some(body.tree_print(&db, spec))
-                    }
-                    FormIdx::Callback(callback_id) => {
-                        let spec = SpecOrCallback::Callback(form_list[callback_id].clone());
-                        let body = db.callback_body(InFile::new(file_id, callback_id));
-                        Some(body.tree_print(&db, spec))
-                    }
-                    FormIdx::Record(record_id) => {
-                        let body = db.record_body(InFile::new(file_id, record_id));
-                        Some(body.print(&db, &form_list, record_id))
-                    }
-                    FormIdx::Attribute(attribute_id) => {
-                        let attribute = AnyAttribute::Attribute(form_list[attribute_id].clone());
-                        let body = db.attribute_body(InFile::new(file_id, attribute_id));
-                        Some(body.print(&db, attribute))
-                    }
-                    FormIdx::CompileOption(attribute_id) => {
-                        let attribute =
-                            AnyAttribute::CompileOption(form_list[attribute_id].clone());
-                        let body = db.compile_body(InFile::new(file_id, attribute_id));
-                        Some(body.tree_print(&db, attribute))
-                    }
-                    _ => None,
-                }
-            })
-            .collect::<Vec<_>>()
-            .join("");
+        let pretty = print_form_list(&db, file_id, strategy);
         expect.assert_eq(pretty.trim_start());
     }
 
@@ -1999,6 +2013,16 @@ mod tests {
             foo() -> ?EXPR(2).
             "#,
             expect![[r#"
+                -define(EXPR/1,
+                    Expr<2>:Expr::BinaryOp {
+                        lhs
+                            Expr<0>:Literal(Integer(1))
+                        rhs
+                            Expr<1>:Expr::Var(X)
+                        op
+                            ArithOp(Add),
+                    }
+                ).
                 function: foo/0
                 Clause {
                     pats
@@ -3417,6 +3441,104 @@ mod tests {
                             },
                         },
                 }.
+            "#]],
+        );
+    }
+
+    #[test]
+    fn top_level_macro() {
+        // Note: we currently lower a macro as an Expr only.
+        // We have special processing in lower_clause_or_macro_body
+        // to deal with top level macros, at the ast level.
+        check(
+            r#"
+             -define(FOO(X), baz() -> X).
+             -define(BAR(X), {X}).
+             ?FOO(42).
+             foo() -> ?BAR(42).
+            "#,
+            expect![[r#"
+                -define(FOO/1,
+                    Expr<0>:Expr::Missing
+                ).
+
+                -define(BAR/1,
+                    Expr<1>:Expr::Tuple {
+                        Expr<0>:Expr::Var(X),
+                    }
+                ).
+                function: baz/0
+                Clause {
+                    pats
+                    guards
+                    exprs
+                        Expr<2>:Literal(Integer(42)),
+                }.
+                function: foo/0
+                Clause {
+                    pats
+                    guards
+                    exprs
+                        Expr<4>:Expr::MacroCall {
+                            args
+                                Expr<3>:Literal(Integer(42)),
+                            macro_def
+                                Some(InFile { file_id: FileId(0), value: Idx::<Define>(1) })
+                            expansion
+                                Expr<2>:Expr::Tuple {
+                                    Expr<1>:Literal(Integer(42)),
+                                }
+                        },
+                }.
+            "#]],
+        );
+    }
+
+    #[test]
+    fn top_level_forms() {
+        check(
+            r#"
+             -module(main).
+             bug
+             -compile([export_all]).
+             -wild('foo').
+             -type foo() :: ok.
+             -spec bar() -> ok.
+             bar() -> ok.
+             -callback baz() -> ok.
+             -record(rec, {f}).
+            "#,
+            expect![[r#"
+                -compile(
+                    Term::List {
+                        exprs
+                            Literal(Atom('export_all')),
+                        tail
+                    }
+                ).
+
+                -wild(foo).
+
+                -type foo() :: Literal(Atom('ok')).
+
+                -spec bar
+                    () ->
+                        Literal(Atom('ok')).
+                function: bar/0
+                Clause {
+                    pats
+                    guards
+                    exprs
+                        Expr<1>:Literal(Atom('ok')),
+                }.
+
+                -callback baz
+                    () ->
+                        Literal(Atom('ok')).
+
+                -record(rec, {
+                    f
+                }).
             "#]],
         );
     }
