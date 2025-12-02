@@ -274,8 +274,6 @@ pub struct Lint {
         guard(format_guard, "Please use json")
     )]
     pub format: Option<String>,
-    /// Optional prefix to prepend to each diagnostic file path. Only used when --format=json is set
-    pub prefix: Option<String>,
 
     /// Include diagnostics produced by erlc
     pub include_erlc_diagnostics: bool,
@@ -469,8 +467,6 @@ pub struct Glean {
     pub pretty: bool,
     /// Output each fact separately
     pub multi: bool,
-    /// Optional prefix to prepend to each fact
-    pub prefix: Option<String>,
 }
 
 #[derive(Clone, Debug, Bpaf)]

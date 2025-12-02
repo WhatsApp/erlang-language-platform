@@ -1663,38 +1663,6 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
-    fn lint_json_output_prefix(buck: bool) {
-        let tmp_dir = make_tmp_dir();
-        let tmp_path = tmp_dir.path();
-        check_lint_fix_stderr(
-            args_vec![
-                "lint",
-                "--diagnostic-filter",
-                "W0010",
-                "--experimental",
-                "--format",
-                "json",
-                "--prefix",
-                "my/prefix"
-            ],
-            "linter",
-            expect_file!("../resources/test/linter/parse_elp_lint_json_output_prefix.stdout"),
-            101,
-            buck,
-            None,
-            tmp_path,
-            Path::new("../resources/test/lint/lint_recursive"),
-            &[],
-            false,
-            Some(expect![[r#"
-                Errors found
-            "#]]),
-        )
-        .expect("bad test");
-    }
-
-    #[test_case(false ; "rebar")]
-    #[test_case(true  ; "buck")]
     fn lint_applies_fix_using_to_dir(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();

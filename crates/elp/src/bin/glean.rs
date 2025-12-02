@@ -11,7 +11,6 @@
 use core::option::Option::None;
 use std::io::Write;
 use std::mem;
-use std::path::Path;
 
 use anyhow::Result;
 use elp::build::load;
@@ -93,7 +92,6 @@ struct GleanFileId(u32);
 #[derive(Clone, Debug, Default)]
 struct IndexConfig {
     pub multi: bool,
-    pub prefix: Option<String>,
 }
 
 impl From<GleanFileId> for FileId {
@@ -769,10 +767,7 @@ pub struct GleanIndexer {
 
 pub fn index(args: &Glean, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
     let (indexer, _loaded) = GleanIndexer::new(args, cli, query_config)?;
-    let config = IndexConfig {
-        multi: args.multi,
-        prefix: args.prefix.clone(),
-    };
+    let config = IndexConfig { multi: args.multi };
     let (facts, module_index) = indexer.index(config)?;
     write_results(facts, module_index, cli, args)
 }
@@ -861,14 +856,7 @@ impl GleanIndexer {
                 let source_root_id = db.file_source_root(file_id);
                 let source_root = db.source_root(source_root_id);
                 let path = source_root.path_for_file(&file_id).unwrap();
-                match Self::index_file(
-                    db,
-                    file_id,
-                    path,
-                    project_id,
-                    &module_index,
-                    config.prefix.as_ref(),
-                ) {
+                match Self::index_file(db, file_id, path, project_id, &module_index) {
                     Some((file, line, decl, xref, facts, module_fact)) => {
                         let mut result = FxHashMap::default();
                         result.insert(
@@ -884,14 +872,7 @@ impl GleanIndexer {
                     .into_par_iter()
                     .map_with(self.analysis.clone(), |analysis, (file_id, path)| {
                         analysis.with_db(|db| {
-                            Self::index_file(
-                                db,
-                                file_id,
-                                &path,
-                                project_id,
-                                &module_index,
-                                config.prefix.as_ref(),
-                            )
+                            Self::index_file(db, file_id, &path, project_id, &module_index)
                         })
                     })
                     .flatten()
@@ -948,7 +929,6 @@ impl GleanIndexer {
         path: &VfsPath,
         project_id: ProjectId,
         module_index: &FxHashMap<GleanFileId, String>,
-        prefix: Option<&String>,
     ) -> Option<(
         FileFact,
         FileLinesFact,
@@ -957,7 +937,7 @@ impl GleanIndexer {
         Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
         Option<ModuleFact>,
     )> {
-        let file_fact = Self::file_fact(db, file_id, path, project_id, prefix)?;
+        let file_fact = Self::file_fact(db, file_id, path, project_id)?;
         let line_fact = Self::line_fact(db, file_id);
         let mut xref_v2 = Self::xrefs_v2(db, file_id, module_index);
         let mut file_decl = Self::declarations_v2(db, file_id, path)?;
@@ -1173,16 +1153,12 @@ impl GleanIndexer {
         file_id: FileId,
         path: &VfsPath,
         project_id: ProjectId,
-        prefix: Option<&String>,
     ) -> Option<FileFact> {
         let project_data = db.project_data(project_id);
         let root = project_data.root_dir.as_path();
         let file_path = path.as_path()?;
         let file_path = file_path.strip_prefix(root)?;
-        let file_path = match prefix {
-            Some(prefix) => Path::new(&prefix).join(file_path).to_str()?.into(),
-            None => file_path.as_str().to_string(),
-        };
+        let file_path = file_path.as_str().to_string();
         Some(FileFact::new(file_id, file_path))
     }
 
@@ -2063,7 +2039,6 @@ mod tests {
             v2: true,
             pretty: false,
             multi: false,
-            prefix: None,
         };
         let mut module_index = FxHashMap::default();
         module_index.insert(file_id.into(), module_name.to_string());
@@ -2087,25 +2062,6 @@ mod tests {
         assert_eq!(
             file_fact.file_path.as_str(),
             "glean/app_glean/src/glean_module2.erl"
-        );
-    }
-
-    #[test]
-    fn file_fact_prefix_test() {
-        let spec = r#"
-        //- /glean/app_glean/src/glean_module2.erl
-        -module(glean_module2).
-        "#;
-        let config = IndexConfig {
-            multi: false,
-            prefix: Some("my/prefix".to_string()),
-        };
-        let result = facts_with_annotations_with_config(spec, config).0;
-        assert_eq!(result.file_facts.len(), 1);
-        let file_fact = &result.file_facts[0];
-        assert_eq!(
-            file_fact.file_path.as_str(),
-            "my/prefix/glean/app_glean/src/glean_module2.erl"
         );
     }
 
