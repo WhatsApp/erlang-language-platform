@@ -464,9 +464,10 @@ impl fmt::Display for Diagnostic {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub enum Severity {
     Error,
+    #[default]
     Warning,
     // `WeakWarning` maps onto a Notice warning when used in the LSP
     // environment, and in VS Code this means it does not show up in
@@ -474,12 +475,6 @@ pub enum Severity {
     // up on hover if the cursor is placed on it.
     WeakWarning,
     Information,
-}
-
-impl Default for Severity {
-    fn default() -> Self {
-        Self::Warning // Pick one
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
