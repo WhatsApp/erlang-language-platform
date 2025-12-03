@@ -11,6 +11,7 @@
 use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::fmt;
+use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -38,6 +39,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::ProjectId;
+use elp_ide_db::elp_base_db::VfsPath;
 use elp_ide_db::erlang_service::DiagnosticLocation;
 use elp_ide_db::erlang_service::ParseError;
 use elp_ide_db::metadata::Kind;
@@ -2166,51 +2168,54 @@ pub fn erlang_service_diagnostics(
         let mut warning_info: BTreeSet<(FileId, TextSize, TextSize, String, String)> =
             BTreeSet::default();
 
+        // Track related information for L0000 diagnostics from included files
+        let mut related_info_map: FxHashMap<(FileId, TextSize, TextSize), Vec<RelatedInformation>> =
+            FxHashMap::default();
+
         res.errors
             .iter()
-            .filter_map(|d| parse_error_to_diagnostic_info(db, file_id, d))
+            .filter_map(|d| parse_error_to_diagnostic_info(db, file_id, d, &mut related_info_map))
             .for_each(|val| {
                 error_info.insert(val);
             });
         res.warnings
             .iter()
-            .filter_map(|d| parse_error_to_diagnostic_info(db, file_id, d))
+            .filter_map(|d| parse_error_to_diagnostic_info(db, file_id, d, &mut related_info_map))
             .for_each(|val| {
                 warning_info.insert(val);
             });
 
         let warning_severity = config.erlang_service_warning_severity();
 
+        let to_diagnostic = |file_id: FileId,
+                             start: TextSize,
+                             end: TextSize,
+                             code: String,
+                             msg: String,
+                             severity: Severity| {
+            let range = TextRange::new(start, end);
+            let mut diagnostic = tag_erlang_service_diagnostic(
+                Diagnostic::new(DiagnosticCode::ErlangService(code.clone()), msg, range)
+                    .with_severity(severity),
+            );
+            if code == "L0000"
+                && let Some(related) = related_info_map.get(&(file_id, start, end))
+            {
+                diagnostic = diagnostic.with_related(Some(related.clone()));
+            }
+            (file_id, diagnostic)
+        };
+
         let diags: Vec<(FileId, Diagnostic)> = error_info
             .into_iter()
             .map(|(file_id, start, end, code, msg)| {
-                (
-                    file_id,
-                    tag_erlang_service_diagnostic(
-                        Diagnostic::new(
-                            DiagnosticCode::ErlangService(code),
-                            msg,
-                            TextRange::new(start, end),
-                        )
-                        .with_severity(Severity::Error),
-                    ),
-                )
+                to_diagnostic(file_id, start, end, code, msg, Severity::Error)
             })
             .chain(
                 warning_info
                     .into_iter()
                     .map(|(file_id, start, end, code, msg)| {
-                        (
-                            file_id,
-                            tag_erlang_service_diagnostic(
-                                Diagnostic::new(
-                                    DiagnosticCode::ErlangService(code),
-                                    msg,
-                                    TextRange::new(start, end),
-                                )
-                                .with_severity(warning_severity),
-                            ),
-                        )
+                        to_diagnostic(file_id, start, end, code, msg, warning_severity)
                     }),
             )
             .collect();
@@ -2599,20 +2604,68 @@ fn parse_error_to_diagnostic_info(
     db: &RootDatabase,
     file_id: FileId,
     parse_error: &ParseError,
+    related_info_map: &mut FxHashMap<(FileId, TextSize, TextSize), Vec<RelatedInformation>>,
 ) -> Option<(FileId, TextSize, TextSize, String, String)> {
-    match parse_error.location {
+    match &parse_error.location {
         Some(DiagnosticLocation::Included {
-            directive_location,
+            file_attribute_location,
+            error_path,
             error_location,
-        }) => included_file_file_id(db, file_id, directive_location).map(|included_file_id| {
-            (
-                included_file_id,
-                error_location.start(),
-                error_location.end(),
-                parse_error.code.clone(),
-                parse_error.msg.clone(),
-            )
-        }),
+        }) => {
+            // Get the FileId for the file containing the error by searching through source roots
+
+            // Note: we can have our .erl file which includes A.hrl which includes B.hrl, and B.hrl has an error.
+            // In this case, the error location will be in B.hrl, but the file_attribute_location will be 1..1, for the entry into B.hrl.
+            // The parse_error.path will correctly refer to B.hrl
+            // In this case, we need to report the error in the .erl file, at the include directive location.
+            // But how do we detemine that? We need to find an include chain from the .erl file to the included
+            // file. The A->B chain can be arbitrarily long.
+            // So, in the erlang service, we must report the chain of `file` attributes seen.
+
+            // For errors in included files, report L0000 at the include directive location
+            // and add the actual error as related information
+            if let Some(directive_range) =
+                include_directive_range(db, file_id, *file_attribute_location)
+            {
+                // Store related info about the actual error in the included file
+                if let Some(error_file_id) = related_file_id(db, file_id, error_path) {
+                    let related_info = RelatedInformation {
+                        file_id: error_file_id,
+                        range: *error_location,
+                        message: format!("{}: {}", parse_error.code, parse_error.msg),
+                    };
+                    related_info_map
+                        .entry((file_id, directive_range.start(), directive_range.end()))
+                        .or_default()
+                        .push(related_info);
+                } else {
+                    log::warn!("Could not find file for path {}", error_path.display());
+                }
+
+                // Return diagnostic at the include directive with code L0000
+                Some((
+                    file_id,
+                    directive_range.start(),
+                    directive_range.end(),
+                    "L0000".to_string(),
+                    "Issue in included file".to_string(),
+                ))
+            } else {
+                // Fallback: if we can't find the include directive range, try to report
+                // at the included file itself
+                included_file_file_id(db, file_id, *file_attribute_location).map(
+                    |included_file_id| {
+                        (
+                            included_file_id,
+                            error_location.start(),
+                            error_location.end(),
+                            parse_error.code.clone(),
+                            parse_error.msg.clone(),
+                        )
+                    },
+                )
+            }
+        }
         Some(DiagnosticLocation::Normal(range)) => {
             let default_range = (
                 file_id,
@@ -2622,11 +2675,13 @@ fn parse_error_to_diagnostic_info(
                 parse_error.msg.clone(),
             );
             match parse_error.code.as_str() {
+                // Do not report L0000, it is already reported via a DiagnosticLocation::Included parse error
+                "L0000" => None,
                 // For certain warnings, OTP returns a diagnostic with a wide range (e.g. a full record definition)
                 // That can be very verbose and distracting, so we try restricting the range to the relevant parts only.
                 "L1227" => {
                     let name = function_undefined_from_message(&parse_error.msg);
-                    match exported_function_name_range(db, file_id, name, range) {
+                    match exported_function_name_range(db, file_id, name, *range) {
                         Some(name_range) => Some((
                             file_id,
                             name_range.start(),
@@ -2639,7 +2694,7 @@ fn parse_error_to_diagnostic_info(
                 }
                 "L1295" => {
                     let name = type_undefined_from_message(&parse_error.msg);
-                    match exported_type_name_range(db, file_id, name, range) {
+                    match exported_type_name_range(db, file_id, name, *range) {
                         Some(name_range) => Some((
                             file_id,
                             name_range.start(),
@@ -2650,7 +2705,7 @@ fn parse_error_to_diagnostic_info(
                         None => Some(default_range),
                     }
                 }
-                "L1230" | "L1309" => match function_name_range(db, file_id, range) {
+                "L1230" | "L1309" => match function_name_range(db, file_id, *range) {
                     Some(name_range) => Some((
                         file_id,
                         name_range.start(),
@@ -2660,7 +2715,7 @@ fn parse_error_to_diagnostic_info(
                     )),
                     None => Some(default_range),
                 },
-                "L1296" => match type_alias_name_range(db, file_id, range) {
+                "L1296" => match type_alias_name_range(db, file_id, *range) {
                     Some(name_range) => Some((
                         file_id,
                         name_range.start(),
@@ -2670,7 +2725,7 @@ fn parse_error_to_diagnostic_info(
                     )),
                     None => Some(default_range),
                 },
-                "L1308" => match spec_name_range(db, file_id, range) {
+                "L1308" => match spec_name_range(db, file_id, *range) {
                     Some(name_range) => Some((
                         file_id,
                         name_range.start(),
@@ -2680,7 +2735,7 @@ fn parse_error_to_diagnostic_info(
                     )),
                     None => Some(default_range),
                 },
-                "L1260" => match record_name_range(db, file_id, range) {
+                "L1260" => match record_name_range(db, file_id, *range) {
                     Some(name_range) => Some((
                         file_id,
                         name_range.start(),
@@ -2701,6 +2756,22 @@ fn parse_error_to_diagnostic_info(
             parse_error.msg.clone(),
         )),
     }
+}
+
+fn related_file_id(db: &RootDatabase, file_id: FileId, path: &Path) -> Option<FileId> {
+    db.file_project_id(file_id).and_then(|project_id| {
+        let vfs_path = VfsPath::new_real_path(path.to_string_lossy().as_ref().to_string());
+
+        let project_data = db.project_data(project_id);
+        // Search through all source roots in the project to find the file
+        project_data
+            .source_roots
+            .iter()
+            .find_map(|&source_root_id| {
+                let source_root = db.source_root(source_root_id);
+                source_root.file_for_path(&vfs_path)
+            })
+    })
 }
 
 fn exported_function_name_range(
@@ -2787,19 +2858,43 @@ fn type_alias_name_range(
 pub fn included_file_file_id(
     db: &RootDatabase,
     file_id: FileId,
-    directive_range: TextRange,
+    file_attribute_location: TextRange,
 ) -> Option<FileId> {
     let parsed = db.parse(file_id);
     let form_list = db.file_form_list(file_id);
     let include = form_list.includes().find_map(|(idx, include)| {
         let form = include.form_id().get(&parsed.tree());
-        if form.syntax().text_range().contains(directive_range.start()) {
+        if form.syntax().text_range().start() >= file_attribute_location.start() {
             db.resolve_include(InFile::new(file_id, idx))
         } else {
             None
         }
     })?;
     Some(include)
+}
+
+/// For an error in an included file, find the next form occurring after `file_attribute_location`
+/// in the file, and return its full syntax range provided it is an include or include_lib
+fn include_directive_range(
+    db: &RootDatabase,
+    file_id: FileId,
+    file_attribute_location: TextRange,
+) -> Option<TextRange> {
+    let parsed = db.parse(file_id);
+    let form_list = db.file_form_list(file_id);
+
+    form_list.includes().find_map(|(_, include)| {
+        let form = include.form_id().get(&parsed.tree());
+        let form_range = form.syntax().text_range();
+
+        // Check if this form starts after directive_location
+        if form_range.start() >= file_attribute_location.start() {
+            // Return the full syntax range of the include directive
+            Some(form_range)
+        } else {
+            None
+        }
+    })
 }
 
 /// Given syntax errors from ELP native and erlang service, combine
@@ -3738,6 +3833,37 @@ baz(1)->4.
 
                //- /src/header.hrl
                    bar() -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn erlang_service_nested_include_resolution() {
+        check_diagnostics(
+            r#"
+               //- erlang_service
+               //- /src/app_a_include.erl
+                   -module(app_a_include).
+                   -export([test/0]).
+                %%          ^^^^^^ error: L1227: function test/0 undefined
+
+                   -include("first.hrl").
+                %% ^^^^^^^^^^^^^^^^^^^^^^ error: L0000: Issue in included file
+                %%                      | Related info: 1:13-30 E1516: can't find include file "second_typo.hrl"
+
+                   test() ->
+                       ?FIRST_MACRO,
+                       ?SECOND_MACRO.
+                    %% ^^^^^^^^^^^^^ error: E1507: undefined macro 'SECOND_MACRO'
+
+               //- /src/first.hrl
+                   -include("second_typo.hrl").
+                %%          ^^^^^^^^^^^^^^^^^ error: E1516: can't find include file "second_typo.hrl"
+
+                   -define(FIRST_MACRO, 1).
+
+               //- /src/second.hrl
+                   -define(SECOND_MACRO, "Hello from nested header").
             "#,
         );
     }

@@ -178,6 +178,7 @@ format_error(_Forms, _OriginalPath, Path, {Line, Mod, Reason}) when is_integer(L
     [
         {
             unicode:characters_to_list(Path),
+            unicode:characters_to_list("ignored"),
             none,
             unicode:characters_to_list(
                 io_lib:format("~p: ~ts", [Line, Mod:format_error(Reason)])
@@ -189,6 +190,7 @@ format_error(_Forms, SamePath, SamePath, {Location, Mod, Reason}) ->
     [
         {
             unicode:characters_to_list(SamePath),
+            unicode:characters_to_list("ignored"),
             % Location would be {Line, Col} for a erlc compiler error/warning,
             % but {ByteStart, ByteEnd} for an eqwalizer diagnostic.
             % This is deciphered on elp side.
@@ -199,18 +201,19 @@ format_error(_Forms, SamePath, SamePath, {Location, Mod, Reason}) ->
             erlang_service_error_codes:make_code(Mod, Reason)
         }
     ];
-format_error(Forms, OriginalPath, Path, {Location, Mod, Reason}) ->
+format_error(Forms, IncluderPath, ErrorPath, {Location, Mod, Reason}) ->
     %% The original path and reported error path are different, the
     %% error is in an included file.
     %% This can be from an include, include_lib, behaviour or parse_transform
-    IncludeLocation = inclusion_range(Forms, Path),
+    IncludeLocation = inclusion_range(Forms, ErrorPath),
 
     %% We return an error at the location the error occurs, as well as
     %% a list of the errors in the included file. ELP will determine
     %% the appropriate FileId and emit diagnostics for the include file.
     [
         {
-            unicode:characters_to_list(OriginalPath),
+            unicode:characters_to_list(IncluderPath),
+            unicode:characters_to_list(ErrorPath),
             % Location would be {Line, Col} for a erlc compiler error/warning,
             % but {ByteStart, ByteEnd} for an eqwalizer diagnostic.
             % This is deciphered on elp side.
@@ -219,7 +222,8 @@ format_error(Forms, OriginalPath, Path, {Location, Mod, Reason}) ->
             erlang_service_error_codes:make_code(erlang_service_error_codes, "Issue in included file")
         },
         {
-            unicode:characters_to_list(Path),
+            unicode:characters_to_list(IncluderPath),
+            unicode:characters_to_list(ErrorPath),
             % Location would be {Line, Col} for a erlc compiler error/warning,
             % but {ByteStart, ByteEnd} for an eqwalizer diagnostic.
             % This is deciphered on elp side.
@@ -232,12 +236,95 @@ format_error(Forms, OriginalPath, Path, {Location, Mod, Reason}) ->
     ].
 
 inclusion_range(Forms, Path) ->
-    case [Location || {attribute, Location, file, {FormPath, _}} <- Forms, FormPath == Path] of
-        [{Loc, _}] ->
-            {Loc, Loc};
+    %% The `include` or `include_lib` directive is processed by epp, so
+    %% it does not show up in the abstract forms directly. We infer its
+    %% location by looking for the `file` attribute with the same path,
+    %% which is inserted when epp starts processing a new file.
+    %% The wrinkle is that the range of the `file` attribute does not
+    %% correspond to the location of the `include` directive, but the last
+    %% thing processed in the current file.
+
+    %% Track the full include context for a given path.
+    %% In the forms, process the file attributes.
+    %% Every time it has a Location of {0,0}, the file has been entered or re-entered
+    %% Keep a stack for the current location, pushing to it when a {0,0} is found for it,
+    %% popping when a {0,0} with the same path is found.
+    FileAttrs = [{Loc, FormPath} || {attribute, Loc, file, {FormPath, _}} <- Forms],
+
+    Context = build_include_context(FileAttrs, Path),
+
+    case Context of
+        [ _, {IncludeLoc, _IncludePath} | _Rest] ->
+            %% Return the location from the second entry (the include directive location in the parent file)
+            %% Extract the position from the location tuple and return as a range
+            case IncludeLoc of
+                {Pos, _} -> {Pos, Pos};
+                Pos when is_integer(Pos) -> {Pos, Pos}
+            end;
         _ ->
             {1, 1}
     end.
+
+%% Build the include context stack for a given path
+build_include_context(FileAttrs, TargetPath) ->
+    {_FinalStack, Context} = lists:foldl(
+        fun({Location, FilePath}, {Stack, ContextAcc}) ->
+            case Location of
+                {0, 0} ->
+                    %% Entering or re-entering a file
+                    case find_in_stack(Stack, FilePath) of
+                        not_found ->
+                            %% First time seeing this path - push to stack
+                            NewStack = [{Location, FilePath} | Stack],
+                            NewContextAcc =
+                                case FilePath of
+                                    TargetPath ->
+                                        %% Found our target path, capture current stack (reversed to get bottom-up order)
+                                        lists:reverse(NewStack);
+                                    _ ->
+                                        ContextAcc
+                                end,
+                            {NewStack, NewContextAcc};
+                        _Found ->
+                            %% Re-entering a file that was on the stack - pop back to it
+                            NewStack = pop_to_path(Stack, FilePath),
+                            {NewStack, ContextAcc}
+                    end;
+                _ ->
+                    %% Non-zero location - this is an include directive
+                    %% Push this file onto the stack
+                    NewStack = [{Location, FilePath} | Stack],
+                    NewContextAcc =
+                        case FilePath of
+                            TargetPath ->
+                                %% Found our target path, capture current stack (reversed to get bottom-up order)
+                                lists:reverse(NewStack);
+                            _ ->
+                                ContextAcc
+                        end,
+                    {NewStack, NewContextAcc}
+            end
+        end,
+        {[], []},
+        FileAttrs
+    ),
+    Context.
+
+%% Find a path in the stack
+find_in_stack([], _Path) ->
+    not_found;
+find_in_stack([{Loc, Path} | _Rest], Path) ->
+    {found, Loc};
+find_in_stack([_ | Rest], Path) ->
+    find_in_stack(Rest, Path).
+
+%% Pop the stack until we find the given path (inclusive)
+pop_to_path([], _Path) ->
+    [];
+pop_to_path([{_Loc, Path} | _Rest] = Stack, Path) ->
+    Stack;
+pop_to_path([_ | Rest], Path) ->
+    pop_to_path(Rest, Path).
 
 extract_forms(Id, FileName, FileId, FileText, Options) ->
     case filename:extension(FileName) of

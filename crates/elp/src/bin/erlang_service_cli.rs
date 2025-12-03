@@ -150,14 +150,15 @@ pub fn do_parse_one(
             .chain(result.warnings.iter())
             .map(|err| {
                 let relative_path: &Path = err.path.strip_prefix(root_dir).unwrap_or(&err.path);
-                let (range, line_num) = match err.location {
+                let (range, line_num) = match &err.location {
                     None => (None, convert::position(&line_index, 0.into()).line + 1),
                     Some(DiagnosticLocation::Normal(range)) => (
                         Some(range),
                         convert::position(&line_index, range.start()).line + 1,
                     ),
                     Some(DiagnosticLocation::Included {
-                        directive_location,
+                        file_attribute_location: directive_location,
+                        error_path: _,
                         error_location: _,
                     }) => (
                         Some(directive_location),
@@ -169,7 +170,7 @@ pub fn do_parse_one(
                     relative_path: relative_path.to_owned(),
                     line_num,
                     msg: err.msg.to_owned(),
-                    range,
+                    range: range.copied(),
                 }
             })
             .collect();

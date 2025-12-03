@@ -59,12 +59,13 @@ lazy_static! {
     pub static ref ESCRIPT: RwLock<String> = RwLock::new("escript".to_string());
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum DiagnosticLocation {
     Normal(TextRange),
     Included {
-        directive_location: TextRange, // Location of include directive in the file compiled
-        error_location: TextRange,     // Location of the error in the included file
+        file_attribute_location: TextRange, // Location of file_attribute for included file in the file compiled abstract forms
+        error_path: PathBuf, // Path of the file containing the error. It could be via a deeply nested include
+        error_location: TextRange, // Location of the error in the included file
     },
 }
 
@@ -735,7 +736,8 @@ fn decode_errors(buf: &[u8]) -> Result<Vec<ParseError>> {
 
     eetf::Term::decode(buf)?
         .as_match(pattern::VarList((
-            Str,
+            Str, // path
+            Str, // error path
             pattern::Or((
                 (pattern::U32, pattern::U32), // Normal location
                 pattern::FixList(((pattern::U32, pattern::U32), (pattern::U32, pattern::U32))), // Location in include file
@@ -747,7 +749,7 @@ fn decode_errors(buf: &[u8]) -> Result<Vec<ParseError>> {
         .map_err(|err| anyhow!("Failed to decode errors: {:?}", err))
         .map(|res| {
             res.into_iter()
-                .map(|(path, position, msg, code)| ParseError {
+                .map(|(path, error_path, position, msg, code)| ParseError {
                     path: path.into(),
                     location: match position {
                         pattern::Union3::A((a, b)) => Some(DiagnosticLocation::Normal(
@@ -755,7 +757,8 @@ fn decode_errors(buf: &[u8]) -> Result<Vec<ParseError>> {
                         )),
                         pattern::Union3::B(((a, b), (c, d))) => {
                             Some(DiagnosticLocation::Included {
-                                directive_location: safe_textrange(a.into(), b.into()),
+                                file_attribute_location: safe_textrange(a.into(), b.into()),
+                                error_path: error_path.into(),
                                 error_location: safe_textrange(c.into(), d.into()),
                             })
                         }
