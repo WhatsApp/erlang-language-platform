@@ -3,6 +3,7 @@ Diagnostics reported in 7 modules:
   app_a: 7
       5:5-5:35::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
       9:1-9:5::[Error] [P1700] head mismatch 'fooX' vs 'food'
+        7:1-7:5: Mismatched clause name
       8:7-8:8::[Warning] [W0018] Unexpected ';'
       13:5-13:14::[Warning] [W0026] Function 'app_a:baz/2' is not exported.
       12:1-12:4::[Warning] [L1230] function bar/0 is unused
@@ -23,3 +24,4 @@ Diagnostics reported in 7 modules:
       8:7-9:16::[Warning] [L1318] expression updates a literal
   spelling: 1
       2:2-2:10::[Error] [W0013] misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
+        2:2-2:10: Misspelled attribute

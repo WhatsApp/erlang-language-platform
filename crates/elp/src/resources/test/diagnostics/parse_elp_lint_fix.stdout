@@ -2,10 +2,12 @@ module specified: lints
 Diagnostics reported in 1 modules:
   lints: 1
       5:1-5:14::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+        4:1-4:14: Mismatched clause name
 ---------------------------------------------
 
 Applying fix in module 'lints' for
       5:1-5:14::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+        4:1-4:14: Mismatched clause name
 @@ -1,6 +1,6 @@
  -module(lints).
  -export([head_mismatch/1]).

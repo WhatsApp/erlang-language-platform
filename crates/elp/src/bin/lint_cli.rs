@@ -353,6 +353,7 @@ pub fn do_codemod(
                         print_diagnostic(
                             diag,
                             &loaded.analysis(),
+                            &loaded.vfs,
                             *file_id,
                             args.use_cli_severity,
                             cli,
@@ -419,12 +420,76 @@ fn get_diagnostics_config(args: &Lint) -> Result<DiagnosticsConfig> {
 fn print_diagnostic(
     diag: &diagnostics::Diagnostic,
     analysis: &Analysis,
+    vfs: &Vfs,
     file_id: FileId,
     use_cli_severity: bool,
     cli: &mut dyn Cli,
 ) -> Result<(), anyhow::Error> {
     let line_index = analysis.line_index(file_id)?;
     writeln!(cli, "      {}", diag.print(&line_index, use_cli_severity))?;
+
+    // Print any related information, indented
+    if let Some(related_info) = &diag.related_info {
+        for info in related_info {
+            let info_line_index = analysis.line_index(info.file_id)?;
+            let start = info_line_index.line_col(info.range.start());
+            let end = info_line_index.line_col(info.range.end());
+
+            // Include file identifier if related info is from a different file
+            if info.file_id != file_id {
+                let file_identifier =
+                    if let Ok(Some(module_name)) = analysis.module_name(info.file_id) {
+                        // It's a module (.erl file), use module name
+                        format!("[{}]", module_name.as_str())
+                    } else {
+                        // Not a module (e.g., include file), use relative path
+                        let vfs_path = vfs.file_path(info.file_id);
+                        if let Ok(Some(project_data)) = analysis.project_data(info.file_id) {
+                            let relative_path =
+                                reporting::get_relative_path(&project_data.root_dir, vfs_path);
+                            format!("[{}]", relative_path.display())
+                        } else {
+                            // Fallback: just show location without file identifier
+                            String::new()
+                        }
+                    };
+
+                if file_identifier.is_empty() {
+                    writeln!(
+                        cli,
+                        "        {}:{}-{}:{}: {}",
+                        start.line + 1,
+                        start.col_utf16 + 1,
+                        end.line + 1,
+                        end.col_utf16 + 1,
+                        info.message
+                    )?;
+                } else {
+                    writeln!(
+                        cli,
+                        "        {} {}:{}-{}:{}: {}",
+                        file_identifier,
+                        start.line + 1,
+                        start.col_utf16 + 1,
+                        end.line + 1,
+                        end.col_utf16 + 1,
+                        info.message
+                    )?;
+                }
+            } else {
+                writeln!(
+                    cli,
+                    "        {}:{}-{}:{}: {}",
+                    start.line + 1,
+                    start.col_utf16 + 1,
+                    end.line + 1,
+                    end.col_utf16 + 1,
+                    info.message
+                )?;
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -663,6 +728,7 @@ impl<'a> Lints<'a> {
                         print_diagnostic(
                             diag,
                             &self.analysis_host.analysis(),
+                            self.vfs,
                             *file_id,
                             self.args.use_cli_severity,
                             cli,
@@ -738,6 +804,7 @@ impl<'a> Lints<'a> {
                     print_diagnostic(
                         diagnostic,
                         &self.analysis_host.analysis(),
+                        self.vfs,
                         file_id,
                         self.args.use_cli_severity,
                         cli,
@@ -805,6 +872,7 @@ impl<'a> Lints<'a> {
                     print_diagnostic(
                         &diagnostic,
                         &self.analysis_host.analysis(),
+                        self.vfs,
                         file_id,
                         self.args.use_cli_severity,
                         cli,
@@ -1083,6 +1151,7 @@ mod tests {
                 Diagnostics reported in 1 modules:
                   lints: 1
                       5:3-5:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+                        4:3-4:16: Mismatched clause name
             "#]],
             expect![""],
         );

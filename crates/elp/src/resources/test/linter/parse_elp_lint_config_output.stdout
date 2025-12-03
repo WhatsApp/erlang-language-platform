@@ -3,6 +3,7 @@ Diagnostics reported in 4 modules:
       9:6-9:7::[Warning] [W0010] this variable is unused
       5:5-5:35::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
       9:1-9:5::[Error] [P1700] head mismatch 'fooX' vs 'food'
+        7:1-7:5: Mismatched clause name
   app_a_unused_param: 2
       5:5-5:6::[Warning] [W0010] this variable is unused
       5:5-5:6::[Warning] [L1268] variable 'X' is unused
