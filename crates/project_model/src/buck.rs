@@ -1432,6 +1432,10 @@ mod tests {
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(Utf8Path::from_path(dir.path()).unwrap());
+        let _guard = set_test_cell_info(vec![(
+            "cell".to_string(),
+            dir.path().to_string_lossy().into_owned(),
+        )]);
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -1460,6 +1464,10 @@ mod tests {
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(Utf8Path::from_path(dir.path()).unwrap());
+        let _guard = set_test_cell_info(vec![(
+            "cell".to_string(),
+            dir.path().to_string_lossy().into_owned(),
+        )]);
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -1488,6 +1496,10 @@ mod tests {
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(Utf8Path::from_path(dir.path()).unwrap());
+        let _guard = set_test_cell_info(vec![(
+            "cell".to_string(),
+            dir.path().to_string_lossy().into_owned(),
+        )]);
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
@@ -1586,6 +1598,10 @@ mod tests {
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
         let root = AbsPath::assert(Utf8Path::from_path(dir.path()).unwrap());
+        let _guard = set_test_cell_info(vec![(
+            "cell".to_string(),
+            dir.path().to_string_lossy().into_owned(),
+        )]);
         let target_name = "cell//app_a:app_a".to_string();
         let target = BuckTarget {
             name: "app_a".to_string(),
