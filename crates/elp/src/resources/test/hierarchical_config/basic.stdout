@@ -1,0 +1,7 @@
+Reporting all diagnostics codes
+Diagnostics reported in 2 modules:
+  app_a: 1
+      6:1-6:5::[Warning] [L1230] function main/0 is unused
+  app_b: 2
+      4:9-4:16::[Warning] [W0002] Unused macro (MACRO_B)
+      6:1-6:5::[Warning] [L1230] function main/0 is unused

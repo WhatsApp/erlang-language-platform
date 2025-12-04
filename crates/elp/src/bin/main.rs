@@ -2180,6 +2180,19 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    #[should_panic] // Support for hierarchical config is not implemented yet
+    fn lint_hierarchical_config_basic(buck: bool) {
+        simple_snapshot(
+            args_vec!["lint", "--read-config"],
+            "hierarchical_config",
+            expect_file!("../resources/test/hierarchical_config/basic.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn eqwalizer_tests_check(buck: bool) {
         eqwalize_all_snapshots(
             "eqwalizer_tests",

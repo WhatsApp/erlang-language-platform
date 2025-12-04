@@ -1,0 +1,4 @@
+enabled_lints = []
+disabled_lints = [
+    "W0002"
+]
