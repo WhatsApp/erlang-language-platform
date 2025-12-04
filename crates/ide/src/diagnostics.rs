@@ -1167,6 +1167,29 @@ impl DiagnosticsConfig {
 }
 
 impl LintConfig {
+    /// Merges this LintConfig with another, with the other config taking precedence.
+    pub fn merge(mut self, other: LintConfig) -> LintConfig {
+        self.enabled_lints.extend(other.enabled_lints);
+        self.disabled_lints.extend(other.disabled_lints);
+
+        if other.erlang_service.warnings_as_errors {
+            self.erlang_service.warnings_as_errors = true;
+        }
+
+        self.ad_hoc_lints.lints.extend(other.ad_hoc_lints.lints);
+
+        for (key, other_linter_config) in other.linters {
+            self.linters
+                .entry(key)
+                .and_modify(|existing| {
+                    *existing = existing.clone().merge(other_linter_config.clone())
+                })
+                .or_insert(other_linter_config);
+        }
+
+        self
+    }
+
     /// Get the is_enabled override for a linter based on its diagnostic code
     pub fn get_is_enabled_override(&self, diagnostic_code: &DiagnosticCode) -> Option<bool> {
         self.linters.get(diagnostic_code)?.is_enabled
@@ -1243,14 +1266,67 @@ pub struct FunctionCallLinterConfig {
     exclude: Option<Vec<FunctionMatch>>,
 }
 
+impl FunctionCallLinterConfig {
+    /// Merges this FunctionCallLinterConfig with another, extending the include and exclude lists.
+    pub fn merge(self, other: FunctionCallLinterConfig) -> FunctionCallLinterConfig {
+        let mut merged_include = self.include.unwrap_or_default();
+        if let Some(other_include) = other.include {
+            merged_include.extend(other_include);
+        }
+        let include = if merged_include.is_empty() {
+            None
+        } else {
+            Some(merged_include)
+        };
+
+        let mut merged_exclude = self.exclude.unwrap_or_default();
+        if let Some(other_exclude) = other.exclude {
+            merged_exclude.extend(other_exclude);
+        }
+        let exclude = if merged_exclude.is_empty() {
+            None
+        } else {
+            Some(merged_exclude)
+        };
+
+        FunctionCallLinterConfig { include, exclude }
+    }
+}
+
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct SsrPatternsLinterConfig {}
+
+impl SsrPatternsLinterConfig {
+    /// Merges this SsrPatternsLinterConfig with another (trivial since it's empty).
+    pub fn merge(self, _other: SsrPatternsLinterConfig) -> SsrPatternsLinterConfig {
+        self
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum LinterTraitConfig {
     FunctionCallLinterConfig(FunctionCallLinterConfig),
     SsrPatternsLinterConfig(SsrPatternsLinterConfig),
+}
+
+impl LinterTraitConfig {
+    /// Merges this LinterTraitConfig with another. Only merges if both are the same variant.
+    /// If variants differ, returns the other config.
+    pub fn merge(self, other: LinterTraitConfig) -> LinterTraitConfig {
+        match (self, other) {
+            (
+                LinterTraitConfig::FunctionCallLinterConfig(self_config),
+                LinterTraitConfig::FunctionCallLinterConfig(other_config),
+            ) => LinterTraitConfig::FunctionCallLinterConfig(self_config.merge(other_config)),
+            (
+                LinterTraitConfig::SsrPatternsLinterConfig(self_config),
+                LinterTraitConfig::SsrPatternsLinterConfig(other_config),
+            ) => LinterTraitConfig::SsrPatternsLinterConfig(self_config.merge(other_config)),
+            // If variants differ, other takes precedence
+            (_, other) => other,
+        }
+    }
 }
 
 /// Configuration for a specific linter that allows overriding default settings
@@ -1264,6 +1340,27 @@ pub struct LinterConfig {
     pub experimental: Option<bool>,
     #[serde(flatten)]
     pub config: Option<LinterTraitConfig>,
+}
+
+impl LinterConfig {
+    /// Merges this LinterConfig with another, with the other config taking precedence
+    /// for any fields that are Some.
+    pub fn merge(self, other: LinterConfig) -> LinterConfig {
+        let merged_config = match (self.config, other.config) {
+            (Some(self_cfg), Some(other_cfg)) => Some(self_cfg.merge(other_cfg)),
+            (None, some_cfg) => some_cfg,
+            (some_cfg, None) => some_cfg,
+        };
+
+        LinterConfig {
+            is_enabled: other.is_enabled.or(self.is_enabled),
+            severity: other.severity.or(self.severity),
+            include_tests: other.include_tests.or(self.include_tests),
+            include_generated: other.include_generated.or(self.include_generated),
+            experimental: other.experimental.or(self.experimental),
+            config: merged_config,
+        }
+    }
 }
 
 impl<'de> Deserialize<'de> for Severity {
@@ -4183,5 +4280,142 @@ baz(1)->4.
 
             "#,
         );
+    }
+
+    #[test]
+    fn test_lint_config_merge() {
+        let code1 = DiagnosticCode::from("W0001");
+        let code2 = DiagnosticCode::from("W0002");
+        let code3 = DiagnosticCode::from("W0003");
+
+        let mut config1 = LintConfig {
+            enabled_lints: vec![code1.clone()],
+            disabled_lints: vec![code2.clone()],
+            ..Default::default()
+        };
+        config1.erlang_service.warnings_as_errors = false;
+
+        config1
+            .ad_hoc_lints
+            .lints
+            .push(Lint::ReplaceCall(ReplaceCall {
+                matcher: FunctionMatch::mf("mod1", "func1"),
+                action: ReplaceCallAction::Replace(Replacement::UseOk),
+            }));
+
+        config1.linters.insert(
+            code1.clone(),
+            LinterConfig {
+                is_enabled: Some(true),
+                severity: Some(Severity::Error),
+                include_tests: None,
+                include_generated: None,
+                experimental: None,
+                config: Some(LinterTraitConfig::FunctionCallLinterConfig(
+                    FunctionCallLinterConfig {
+                        include: Some(vec![FunctionMatch::mf("mod_a", "func_a")]),
+                        exclude: None,
+                    },
+                )),
+            },
+        );
+
+        let mut config2 = LintConfig {
+            enabled_lints: vec![code3.clone()],
+            disabled_lints: vec![code1.clone()],
+            ..Default::default()
+        };
+        config2.erlang_service.warnings_as_errors = true;
+
+        config2
+            .ad_hoc_lints
+            .lints
+            .push(Lint::ReplaceCall(ReplaceCall {
+                matcher: FunctionMatch::mf("mod2", "func2"),
+                action: ReplaceCallAction::Replace(Replacement::UseOk),
+            }));
+
+        config2.linters.insert(
+            code1.clone(),
+            LinterConfig {
+                is_enabled: Some(false),
+                severity: Some(Severity::Warning),
+                include_tests: Some(true),
+                include_generated: None,
+                experimental: None,
+                config: Some(LinterTraitConfig::FunctionCallLinterConfig(
+                    FunctionCallLinterConfig {
+                        include: Some(vec![FunctionMatch::mf("mod_b", "func_b")]),
+                        exclude: Some(vec![FunctionMatch::mf("mod_c", "func_c")]),
+                    },
+                )),
+            },
+        );
+
+        config2.linters.insert(
+            code2.clone(),
+            LinterConfig {
+                is_enabled: Some(true),
+                severity: None,
+                include_tests: None,
+                include_generated: Some(true),
+                experimental: None,
+                config: None,
+            },
+        );
+
+        let merged = config1.merge(config2);
+
+        assert_eq!(merged.enabled_lints.len(), 2);
+        assert!(merged.enabled_lints.contains(&code1));
+        assert!(merged.enabled_lints.contains(&code3));
+
+        assert_eq!(merged.disabled_lints.len(), 2);
+        assert!(merged.disabled_lints.contains(&code2));
+        assert!(merged.disabled_lints.contains(&code1));
+
+        assert!(merged.erlang_service.warnings_as_errors);
+
+        assert_eq!(merged.ad_hoc_lints.lints.len(), 2);
+
+        assert_eq!(merged.linters.len(), 2);
+        let linter_config1 = merged.linters.get(&code1).unwrap();
+        assert_eq!(linter_config1.is_enabled, Some(false));
+        assert_eq!(linter_config1.severity, Some(Severity::Warning));
+        assert_eq!(linter_config1.include_tests, Some(true));
+
+        if let Some(LinterTraitConfig::FunctionCallLinterConfig(function_config)) =
+            &linter_config1.config
+        {
+            assert_eq!(function_config.include.as_ref().unwrap().len(), 2);
+            assert!(
+                function_config
+                    .include
+                    .as_ref()
+                    .unwrap()
+                    .contains(&FunctionMatch::mf("mod_a", "func_a"))
+            );
+            assert!(
+                function_config
+                    .include
+                    .as_ref()
+                    .unwrap()
+                    .contains(&FunctionMatch::mf("mod_b", "func_b"))
+            );
+            assert_eq!(function_config.exclude.as_ref().unwrap().len(), 1);
+            assert!(
+                function_config
+                    .exclude
+                    .as_ref()
+                    .unwrap()
+                    .contains(&FunctionMatch::mf("mod_c", "func_c"))
+            );
+        } else {
+            panic!("Expected FunctionCallLinterConfig");
+        }
+
+        let linter_config2 = merged.linters.get(&code2).unwrap();
+        assert_eq!(linter_config2.is_enabled, Some(true));
+        assert_eq!(linter_config2.include_generated, Some(true));
     }
 }
