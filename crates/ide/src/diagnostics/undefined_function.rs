@@ -80,19 +80,45 @@ impl FunctionCallLinter for UndefinedFunctionLinter {
                     return None;
                 }
 
-                if sema.is_atom_named(name, &known::module_info) && (arity == 0 || arity == 1)
-                    || sema
-                        .resolve_module_expr(def_fb.file_id(), module)
-                        .is_some_and(|module| is_automatically_added(sema, module, name, arity))
-                {
+                if sema.is_atom_named(name, &known::module_info) && (arity == 0 || arity == 1) {
                     return None;
                 }
-                match context
-                    .target
-                    .resolve_call(arity, sema, def_fb.file_id(), &def_fb.body())
-                {
-                    Some(_) => None,
-                    None => Some(context.target.label(arity, sema, &def_fb.body())),
+
+                // Try to resolve the module expression to a static module
+                let resolved_module = sema.resolve_module_expr(def_fb.file_id(), module);
+
+                match resolved_module {
+                    Some(resolved_module) => {
+                        // Module exists, check if the function exists
+                        match context.target.resolve_call(
+                            arity,
+                            sema,
+                            def_fb.file_id(),
+                            &def_fb.body(),
+                        ) {
+                            Some(_) => None,
+                            None => {
+                                // Function doesn't exist - check if it would be automatically added
+                                if is_automatically_added(sema, resolved_module, name, arity) {
+                                    return None;
+                                }
+                                Some(context.target.label(arity, sema, &def_fb.body()))
+                            }
+                        }
+                    }
+                    None => {
+                        // Module cannot be resolved. If the module expression is a static atom,
+                        // it means the module doesn't exist and we should report it.
+                        // If it's a dynamic expression (e.g., a variable or function call),
+                        // we can't determine at compile time whether it's defined.
+                        if module.as_atom().is_some() {
+                            // Static module name that doesn't exist - report as undefined
+                            Some(context.target.label(arity, sema, &def_fb.body()))
+                        } else {
+                            // Dynamic module expression - can't determine at compile time
+                            None
+                        }
+                    }
                 }
             }
             // Diagnostic L1227 already covers the case for local calls, so avoid double-reporting
@@ -410,6 +436,31 @@ exists() -> ok.
     -module(main).
     main(Callback) ->
       main:Callback().
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_macro_remote_call() {
+        check_diagnostics(
+            r#"
+    //- /src/main.erl
+    -module(main).
+    -export([do/0]).
+    -define(COUNT_BACKEND, (count_backend:count_module())).
+    -define(COUNT(Name), ?COUNT_BACKEND:count(Name)).
+    
+    do() ->
+        ?COUNT('error.count').
+    
+    //- /src/stats.erl
+    -module(stats).
+    -export([count/1]).
+    count(_) -> ok.
+    //- /src/count_backend.erl
+    -module(count_backend).
+    -export([count_module/0]).
+    count_module() -> ?MODULE.
             "#,
         )
     }
