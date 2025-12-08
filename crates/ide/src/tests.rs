@@ -695,7 +695,7 @@ mod test {
     fn filtered_diagnostics_passes_syntax_errors() {
         check_filtered_diagnostics(
             r#"
-            %%<^^^^^^^^^^^^ error: L1201: no module definition
+            %%<^^^^^^^^^^^^ 💡 error: L1201: no module definition
             foo() ->
                bug bug.
                 %% ^^^^ error: P1711: Syntax Error

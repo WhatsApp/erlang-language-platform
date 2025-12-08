@@ -119,6 +119,7 @@ mod map_insertion_to_syntax;
 mod meck;
 // @fb-only
 mod missing_compile_warn_missing_spec;
+mod missing_module;
 mod missing_separator;
 mod misspelled_attribute;
 mod module_mismatch;
@@ -1514,11 +1515,8 @@ pub fn native_diagnostics(
     let labeled_syntax_errors = if report_diagnostics {
         let sema = Semantic::new(db);
 
-        if file_kind.is_module() {
-            no_module_definition_diagnostic(&mut res, &parse);
-            if config.include_generated || !db.is_generated(file_id) {
-                unused_include::unused_includes(&sema, db, &mut res, file_id);
-            }
+        if file_kind.is_module() && (config.include_generated || !db.is_generated(file_id)) {
+            unused_include::unused_includes(&sema, db, &mut res, file_id);
         }
 
         res.append(&mut form_missing_separator_diagnostics(&parse));
@@ -1689,6 +1687,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &no_nowarn_suppressions::LINTER,
     &macro_precedence_suprise::LINTER,
     &edoc::LINTER,
+    &missing_module::LINTER,
 ];
 
 /// Unified registry for all types of linters
@@ -2043,34 +2042,6 @@ pub fn get_hir_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic
             )
         })
         .collect()
-}
-
-fn no_module_definition_diagnostic(
-    diagnostics: &mut Vec<Diagnostic>,
-    parse: &Parse<ast::SourceFile>,
-) {
-    let mut report = |range| {
-        let diagnostic =
-            Diagnostic::new(DiagnosticCode::MissingModule, "no module definition", range);
-        diagnostics.push(diagnostic);
-    };
-    for form in parse.tree().forms() {
-        match form {
-            ast::Form::PreprocessorDirective(_) => {
-                continue; // skip any directives
-            }
-            ast::Form::FileAttribute(_) => {
-                continue; // skip
-            }
-            ast::Form::ModuleAttribute(_) => {
-                break;
-            }
-            other_form => {
-                report(other_form.syntax().text_range());
-                break;
-            }
-        }
-    }
 }
 
 fn form_missing_separator_diagnostics(parse: &Parse<ast::SourceFile>) -> Vec<Diagnostic> {
@@ -3311,53 +3282,6 @@ main(X) ->
     // }
 
     #[test]
-    fn fun_decl_module_decl_ok() {
-        check_diagnostics(
-            r#"
--file("main.erl",1).
--define(baz,4).
--module(main).
-foo(2)->?baz.
-"#,
-        );
-    }
-
-    #[test]
-    fn fun_decl_module_decl_missing() {
-        check_diagnostics(
-            r#"
-  -file("foo.erl",1).
-  -define(baz,4).
-  foo(2)->?baz.
-%%^^^^^^^^^^^^^ error: L1201: no module definition
-"#,
-        );
-    }
-
-    #[test]
-    fn fun_decl_module_decl_missing_2() {
-        check_diagnostics(
-            r#"
-  baz(1)->4.
-%%^^^^^^^^^^ error: L1201: no module definition
-  foo(2)->3.
-"#,
-        );
-    }
-
-    #[test]
-    fn fun_decl_module_decl_after_preprocessor() {
-        check_diagnostics(
-            r#"
--ifndef(snmpm_net_if_mt).
--module(main).
--endif.
-baz(1)->4.
-"#,
-        );
-    }
-
-    #[test]
     fn filter_diagnostics() {
         let diag1 = DiagnosticCode::ErlangService("P1700".to_string());
         let diag2 = DiagnosticCode::ErlangService("L1201".to_string());
@@ -3472,7 +3396,7 @@ baz(1)->4.
         check_diagnostics(
             r#"
   baz(1)->4.
-%%^^^^^^^^^^ error: L1201: no module definition
+%%^^^^^^^^^^ 💡 error: L1201: no module definition
   foo(2)->3.
 "#,
         );
@@ -3496,7 +3420,7 @@ baz(1)->4.
  %% elp:ignore L1201
 
   baz(1)->4.
-%%^^^^^^^^^^ error: L1201: no module definition
+%%^^^^^^^^^^ 💡 error: L1201: no module definition
   foo(2)->3.
 "#,
         );

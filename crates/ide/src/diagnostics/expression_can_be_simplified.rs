@@ -261,10 +261,19 @@ fn as_expr_id(any_expre_id: hir::AnyExprId) -> Option<hir::ExprId> {
 
 #[cfg(test)]
 mod tests {
+    use elp_ide_db::DiagnosticCode;
+    use expect_test::Expect;
     use expect_test::expect;
 
+    use crate::diagnostics::DiagnosticsConfig;
     use crate::tests::check_diagnostics;
-    use crate::tests::check_fix;
+    use crate::tests::check_fix_with_config;
+
+    #[track_caller]
+    fn check_fix(fixture_before: &str, fixture_after: Expect) {
+        let config = DiagnosticsConfig::default().disable(DiagnosticCode::MissingModule);
+        check_fix_with_config(config, fixture_before, fixture_after);
+    }
 
     #[test]
     fn test_generates_diagnostics() {
