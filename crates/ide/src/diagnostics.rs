@@ -1685,6 +1685,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &edoc::LINTER,
     &missing_module::LINTER,
     &unused_include::LINTER,
+    &misspelled_attribute::LINTER,
 ];
 
 /// Unified registry for all types of linters
@@ -1848,13 +1849,12 @@ fn widen_range(range: TextRange) -> TextRange {
     }
 }
 
-pub fn syntax_diagnostics(
+fn syntax_diagnostics(
     sema: &Semantic,
     parse: &Parse<ast::SourceFile>,
     res: &mut Vec<Diagnostic>,
     file_id: FileId,
 ) {
-    misspelled_attribute::misspelled_attribute(sema, res, file_id);
     for node in parse.tree().syntax().descendants() {
         head_mismatch::head_mismatch(res, file_id, &node);
         module_mismatch::module_mismatch(sema, res, file_id, &node);

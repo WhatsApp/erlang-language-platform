@@ -24,4 +24,3 @@ Diagnostics reported in 7 modules:
       8:7-9:16::[Warning] [L1318] expression updates a literal
   spelling: 1
       2:2-2:10::[Error] [W0013] misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
-        2:2-2:10: Misspelled attribute

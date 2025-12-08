@@ -2,12 +2,10 @@ module specified: spelling
 Diagnostics reported in 1 modules:
   spelling: 1
       2:2-2:10::[Error] [W0013] misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
-        2:2-2:10: Misspelled attribute
 ---------------------------------------------
 
 Applying fix in module 'spelling' for
       2:2-2:10::[Error] [W0013] misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
-        2:2-2:10: Misspelled attribute
 @@ -1,4 +1,5 @@
  -module(spelling).
 +% elp:fixme W0013 (misspelled_attribute)

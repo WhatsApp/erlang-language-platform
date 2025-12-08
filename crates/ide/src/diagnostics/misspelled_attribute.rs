@@ -12,14 +12,16 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use elp_syntax::ast::AstNode;
-use elp_syntax::ast::WildAttribute;
-use hir::Attribute;
 use hir::Semantic;
 
-use super::Diagnostic;
+use super::DiagnosticCode;
+use super::GenericLinter;
+use super::GenericLinterMatchContext;
+use super::Linter;
+use crate::Assist;
 use crate::TextRange;
 use crate::TextSize;
-use crate::diagnostics::RelatedInformation;
+use crate::diagnostics::Severity;
 use crate::fix;
 
 // Diagnostic: misspelled_attribute
@@ -34,26 +36,92 @@ use crate::fix;
 // ```
 // -include_lib("/foo/bar/baz.hrl").
 // ```
-pub(crate) fn misspelled_attribute(
-    sema: &Semantic,
-    diagnostics: &mut Vec<Diagnostic>,
-    file_id: FileId,
-) {
-    let form_list = sema.db.file_form_list(file_id);
-    let potential_misspellings = form_list.attributes().filter_map(|(id, attr)| {
-        looks_like_misspelling(attr).map(|suggested_rename| (id, attr, suggested_rename))
-    });
-    potential_misspellings.for_each(|(_id, attr, suggested_rename)| {
+
+pub(crate) struct MisspelledAttributeLinter;
+
+impl Linter for MisspelledAttributeLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::MisspelledAttribute
+    }
+
+    fn description(&self) -> &'static str {
+        "misspelled attribute"
+    }
+
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> super::Severity {
+        Severity::Error
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Context {
+    range: TextRange,
+    attr_name: String,
+    suggested_rename: String,
+}
+
+impl GenericLinter for MisspelledAttributeLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
+        let form_list = sema.db.file_form_list(file_id);
         let parsed_file = sema.db.parse(file_id);
-        let attr_form = attr.form_id.get(&parsed_file.tree());
-        diagnostics.push(make_diagnostic(
-            sema,
-            file_id,
-            attr,
-            attr_form,
-            suggested_rename,
-        ))
-    })
+        let mut res = Vec::new();
+
+        for (_id, attr) in form_list.attributes() {
+            if let Some(suggested_rename) = looks_like_misspelling(attr) {
+                let attr_form = attr.form_id.get(&parsed_file.tree());
+                if let Some(attr_name_node) = attr_form.name() {
+                    let attr_name_range_with_hyphen = attr_name_node.syntax().text_range();
+                    let attr_name_range = TextRange::new(
+                        attr_name_range_with_hyphen
+                            .start()
+                            .checked_add(TextSize::of('-'))
+                            .unwrap(),
+                        attr_name_range_with_hyphen.end(),
+                    );
+
+                    res.push(GenericLinterMatchContext {
+                        range: attr_name_range,
+                        context: Context {
+                            range: attr_name_range,
+                            attr_name: attr.name.to_string(),
+                            suggested_rename: suggested_rename.to_string(),
+                        },
+                    });
+                }
+            }
+        }
+        Some(res)
+    }
+
+    fn match_description(&self, context: &Self::Context) -> std::borrow::Cow<'_, str> {
+        format!(
+            "misspelled attribute, saw '{}' but expected '{}'",
+            context.attr_name, context.suggested_rename
+        )
+        .into()
+    }
+
+    fn fixes(
+        &self,
+        context: &Self::Context,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        let edit = TextEdit::replace(context.range, context.suggested_rename.clone());
+        let msg = format!("Change to '{}'", context.suggested_rename);
+        Some(vec![fix(
+            "fix_misspelled_attribute",
+            &msg,
+            SourceChange::from_text_edit(file_id, edit),
+            context.range,
+        )])
+    }
 }
 
 const KNOWN_ATTRIBUTES: &[&str] = &[
@@ -85,7 +153,7 @@ const KNOWN_ATTRIBUTES: &[&str] = &[
     "doc",
 ];
 
-fn looks_like_misspelling(attr: &Attribute) -> Option<&str> {
+fn looks_like_misspelling(attr: &hir::Attribute) -> Option<&str> {
     let mut suggestions: Vec<(&str, f64)> = KNOWN_ATTRIBUTES
         .iter()
         .filter(|&known| &attr.name != known)
@@ -103,48 +171,7 @@ fn looks_like_misspelling(attr: &Attribute) -> Option<&str> {
         .copied()
 }
 
-fn make_diagnostic(
-    sema: &Semantic,
-    file_id: FileId,
-    attr: &Attribute,
-    attr_form: WildAttribute,
-    suggested_rename: &str,
-) -> Diagnostic {
-    // Includes the '-', e.g. "-dialyzer" from `-dialyzer([]).`, but we don't
-    // want to apply another `.name()`, because for attributes with special
-    // meanings like `-record(foo, ...).` we would get "foo"
-    let attr_name_range_with_hyphen = attr_form.name().unwrap().syntax().text_range();
-    let attr_name_range = TextRange::new(
-        attr_name_range_with_hyphen
-            .start()
-            .checked_add(TextSize::of('-'))
-            .unwrap(),
-        attr_name_range_with_hyphen.end(),
-    );
-
-    let edit = TextEdit::replace(attr_name_range, suggested_rename.to_string());
-
-    Diagnostic::new(
-        super::DiagnosticCode::MisspelledAttribute,
-        format!(
-            "misspelled attribute, saw '{}' but expected '{}'",
-            attr.name, suggested_rename
-        ),
-        attr_name_range,
-    )
-    .with_related(Some(vec![RelatedInformation {
-        file_id,
-        range: attr_name_range,
-        message: "Misspelled attribute".to_string(),
-    }]))
-    .with_fixes(Some(vec![fix(
-        "fix_misspelled_attribute",
-        format!("Change misspelled attribute to '{suggested_rename}'").as_str(),
-        SourceChange::from_text_edit(file_id, edit),
-        attr_name_range,
-    )]))
-    .with_ignore_fix(sema, file_id)
-}
+pub static LINTER: MisspelledAttributeLinter = MisspelledAttributeLinter;
 
 // To run the tests via cargo
 // cargo test --package elp_ide --lib
@@ -164,7 +191,6 @@ mod tests {
     -module(main).
     -dyalizer({nowarn_function, f/0}).
  %%% ^^^^^^^^ 💡 error: W0013: misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
- %%%        | Related info: 0:22-30 Misspelled attribute
             "#,
         );
         check_fix(
@@ -225,7 +251,6 @@ mod tests {
     -module(main).
     -module_doc """
 %%%  ^^^^^^^^^^ 💡 error: W0013: misspelled attribute, saw 'module_doc' but expected 'moduledoc'
-%%%           | Related info: 0:24-34 Misspelled attribute
     Hola
     """.
             "#,
@@ -239,7 +264,6 @@ mod tests {
     -module(main).
     -docs """
 %%%  ^^^^ 💡 error: W0013: misspelled attribute, saw 'docs' but expected 'doc'
-%%%     | Related info: 0:24-28 Misspelled attribute
     Hola
     """.
     foo() -> ok.
