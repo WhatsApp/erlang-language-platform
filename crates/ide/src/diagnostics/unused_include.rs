@@ -12,6 +12,8 @@
 //
 // Return a warning if nothing is used from an include file
 
+use std::borrow::Cow;
+
 use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::SearchScope;
 use elp_ide_db::SymbolDefinition;
@@ -19,6 +21,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use elp_syntax::SmolStr;
+use elp_syntax::TextRange;
 use elp_syntax::ast::AstNode;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -31,9 +34,11 @@ use hir::db::DefDatabase;
 use hir::known;
 use lazy_static::lazy_static;
 
-use super::Diagnostic;
+use crate::Assist;
 use crate::diagnostics::DiagnosticCode;
-use crate::diagnostics::Severity;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
 use crate::fix;
 
 lazy_static! {
@@ -43,55 +48,112 @@ lazy_static! {
         .collect();
 }
 
-pub(crate) fn unused_includes(
-    sema: &Semantic,
-    db: &dyn DefDatabase,
-    diagnostics: &mut Vec<Diagnostic>,
-    file_id: FileId,
-) {
-    let form_list = db.file_form_list(file_id);
-    let mut cache = Default::default();
-    let source_file = db.parse(file_id);
-    for (include_idx, attr) in form_list.includes() {
-        if !EXCLUDES.contains(attr.path()) {
-            let in_file = InFile::new(file_id, include_idx);
-            if let Some(include_file_id) = db.resolve_include(in_file) {
-                if is_file_used(sema, db, include_file_id, file_id, &mut cache) {
-                    continue;
-                }
+pub(crate) struct UnusedIncludeLinter;
 
-                let path = match attr {
-                    IncludeAttribute::Include { path, .. } => path,
-                    IncludeAttribute::IncludeLib { path, .. } => path,
-                };
-                let attribute = attr.form_id().get(&source_file.tree());
-                let attribute_syntax = attribute.syntax();
-                let attribute_range = attribute_syntax.text_range();
-                let mut edit_builder = TextEdit::builder();
-                let extended_attribute_range = extend_range(attribute_syntax);
-                edit_builder.delete(extended_attribute_range);
-                let edit = edit_builder.finish();
+impl Linter for UnusedIncludeLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::UnusedInclude
+    }
 
-                let diagnostic = Diagnostic::new(
-                    DiagnosticCode::UnusedInclude,
-                    format!("Unused file: {path}"),
-                    attribute_range,
-                )
-                .with_severity(Severity::Warning)
-                .with_fixes(Some(vec![fix(
-                    "remove_unused_include",
-                    "Remove unused include",
-                    SourceChange::from_text_edit(file_id, edit.clone()),
-                    attribute_range,
-                )]));
+    fn description(&self) -> &'static str {
+        "Unused include file"
+    }
 
-                log::debug!("Found unused include {path:?}");
+    fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
+        let file_kind = sema.db.file_kind(file_id);
+        file_kind.is_module()
+    }
 
-                diagnostics.push(diagnostic);
-            }
+    fn should_process_generated_files(&self) -> bool {
+        true
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Context {
+    path: SmolStr,
+    extended_range: TextRange,
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Context {
+            path: SmolStr::new(""),
+            extended_range: TextRange::default(),
         }
     }
 }
+
+impl GenericLinter for UnusedIncludeLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
+        let db = sema.db;
+        let form_list = db.file_form_list(file_id);
+        let mut cache = Default::default();
+        let source_file = db.parse(file_id);
+        let mut res = Vec::new();
+
+        for (include_idx, attr) in form_list.includes() {
+            if !EXCLUDES.contains(attr.path()) {
+                let in_file = InFile::new(file_id, include_idx);
+                if let Some(include_file_id) = db.resolve_include(in_file) {
+                    if is_file_used(sema, db, include_file_id, file_id, &mut cache) {
+                        continue;
+                    }
+
+                    let path = match attr {
+                        IncludeAttribute::Include { path, .. } => path,
+                        IncludeAttribute::IncludeLib { path, .. } => path,
+                    };
+                    let attribute = attr.form_id().get(&source_file.tree());
+                    let attribute_syntax = attribute.syntax();
+                    let attribute_range = attribute_syntax.text_range();
+                    let extended_attribute_range = extend_range(attribute_syntax);
+
+                    log::debug!("Found unused include {path:?}");
+
+                    res.push(GenericLinterMatchContext {
+                        range: attribute_range,
+                        context: Context {
+                            path: path.clone(),
+                            extended_range: extended_attribute_range,
+                        },
+                    });
+                }
+            }
+        }
+        Some(res)
+    }
+
+    fn match_description(&self, context: &Self::Context) -> Cow<'_, str> {
+        Cow::Owned(format!("Unused file: {}", context.path))
+    }
+
+    fn fixes(
+        &self,
+        context: &Self::Context,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        let mut edit_builder = TextEdit::builder();
+        edit_builder.delete(context.extended_range);
+        let edit = edit_builder.finish();
+
+        Some(vec![fix(
+            "remove_unused_include",
+            "Remove unused include",
+            SourceChange::from_text_edit(file_id, edit),
+            context.extended_range,
+        )])
+    }
+}
+
+pub static LINTER: UnusedIncludeLinter = UnusedIncludeLinter;
 
 fn is_file_used(
     sema: &Semantic,

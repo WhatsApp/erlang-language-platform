@@ -1515,10 +1515,6 @@ pub fn native_diagnostics(
     let labeled_syntax_errors = if report_diagnostics {
         let sema = Semantic::new(db);
 
-        if file_kind.is_module() && (config.include_generated || !db.is_generated(file_id)) {
-            unused_include::unused_includes(&sema, db, &mut res, file_id);
-        }
-
         res.append(&mut form_missing_separator_diagnostics(&parse));
         res.extend(get_hir_diagnostics(db, file_id));
 
@@ -1688,6 +1684,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &macro_precedence_suprise::LINTER,
     &edoc::LINTER,
     &missing_module::LINTER,
+    &unused_include::LINTER,
 ];
 
 /// Unified registry for all types of linters
