@@ -1593,7 +1593,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &deprecated_function::DESCRIPTOR,
         &head_mismatch::DESCRIPTOR_SEMANTIC,
         &missing_separator::DESCRIPTOR,
-        &boolean_precedence::DESCRIPTOR,
         &record_tuple_match::DESCRIPTOR,
         &unspecific_include::DESCRIPTOR,
     ]
@@ -1686,6 +1685,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &missing_module::LINTER,
     &unused_include::LINTER,
     &misspelled_attribute::LINTER,
+    &boolean_precedence::LINTER,
 ];
 
 /// Unified registry for all types of linters

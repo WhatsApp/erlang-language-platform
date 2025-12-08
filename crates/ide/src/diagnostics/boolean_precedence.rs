@@ -15,6 +15,7 @@
 // https://www.erlang.org/doc/system/expressions.html#operator-precedence
 // So this often results in incorrect or buggy code.
 
+use std::borrow::Cow;
 use std::fmt;
 use std::fmt::Display;
 
@@ -45,29 +46,107 @@ use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::fold::ParentId;
 
-use super::Diagnostic;
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use super::Severity;
+use super::GenericLinter;
+use super::GenericLinterMatchContext;
+use super::Linter;
+use crate::Assist;
 use crate::fix;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        boolean_precedence(diags, sema, file_id);
-    },
-};
+pub(crate) struct BooleanPrecedenceLinter;
 
-fn boolean_precedence(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    sema.for_each_function(file_id, |def| check_function(diagnostics, sema, def));
+impl Linter for BooleanPrecedenceLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::BooleanPrecedence
+    }
+
+    fn description(&self) -> &'static str {
+        "boolean precedence"
+    }
 }
 
-fn check_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Context {
+    range: TextRange,
+    preceding_ws_range: TextRange,
+    op: Op,
+    lhs_complex: bool,
+    rhs_complex: bool,
+    add_parens_range: TextRange,
+}
+
+impl GenericLinter for BooleanPrecedenceLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
+        let mut res = Vec::new();
+        sema.for_each_function(file_id, |def| {
+            check_function(&mut res, sema, def);
+        });
+        Some(res)
+    }
+
+    fn match_description(&self, context: &Self::Context) -> Cow<'_, str> {
+        format!(
+            "Consider using the short-circuit expression '{}' instead of '{}'.\nOr add parentheses to avoid potential ambiguity.",
+            context.op.preferred(),
+            context.op,
+        )
+        .into()
+    }
+
+    fn fixes(
+        &self,
+        context: &Self::Context,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        let mut fixes = Vec::new();
+
+        // Add "replace with preferred operator" fix
+        let assist_message = format!("Replace '{}' with '{}'", context.op, context.op.preferred());
+        let edit = TextEdit::replace(
+            context.op.range(context.range, context.preceding_ws_range),
+            context.op.preferred().to_string(),
+        );
+        fixes.push(fix(
+            "replace_boolean_operator",
+            &assist_message,
+            SourceChange::from_text_edit(file_id, edit),
+            context.range,
+        ));
+
+        // Add "add parens" fixes if applicable
+        if context.lhs_complex {
+            fixes.push(parens_fix("LHS", file_id, context));
+        }
+        if context.rhs_complex {
+            fixes.push(parens_fix("RHS", file_id, context));
+        }
+
+        Some(fixes)
+    }
+}
+
+fn parens_fix(side: &str, file_id: FileId, context: &Context) -> Assist {
+    let assist_message = format!("Add parens to {side}");
+    let edit = add_parens_edit(&context.add_parens_range);
+    fix(
+        "replace_boolean_operator_add_parens",
+        &assist_message,
+        SourceChange::from_text_edit(file_id, edit),
+        context.range,
+    )
+}
+
+fn check_function(
+    matches: &mut Vec<GenericLinterMatchContext<Context>>,
+    sema: &Semantic,
+    def: &FunctionDef,
+) {
     let def_fb = def.in_function_body(sema, def);
     def_fb.clone().fold_function(
         Strategy {
@@ -91,28 +170,20 @@ fn check_function(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, def: &Func
                 _ => None,
             };
             if let Some(op) = op {
-                report(
-                    sema,
-                    &def_fb,
-                    def.file.file_id,
-                    clause_id,
-                    ctx,
-                    op,
-                    diagnostics,
-                );
+                collect_match(matches, sema, &def_fb, def.file.file_id, clause_id, ctx, op);
             }
         },
     )
 }
 
-fn report(
+fn collect_match(
+    matches: &mut Vec<GenericLinterMatchContext<Context>>,
     sema: &Semantic,
     def_fb: &InFunctionBody<&FunctionDef>,
     file_id: FileId,
     clause_id: ClauseId,
     ctx: AnyCallBackCtx,
     binop: (Op, ExprId, ExprId),
-    diagnostics: &mut Vec<Diagnostic>,
 ) -> Option<()> {
     /*
     we have (inserting parens for tree)
@@ -156,39 +227,26 @@ fn report(
             let (_op, token) = binop_ast.op()?;
             let range = token.text_range();
             let preceding_ws_range = include_preceding_whitespace(&token);
-            let mut d = make_diagnostic(file_id, range, preceding_ws_range, binop)
-                .with_ignore_fix(sema, def_fb.file_id());
-            if lhs_complex {
-                add_parens_fix(file_id, &range, add_parens_range, "LHS", &mut d);
-            }
-            if rhs_complex {
-                add_parens_fix(file_id, &range, add_parens_range, "RHS", &mut d);
-            }
-            diagnostics.push(d);
+
+            matches.push(GenericLinterMatchContext {
+                range,
+                context: Context {
+                    range,
+                    preceding_ws_range,
+                    op: binop,
+                    lhs_complex,
+                    rhs_complex,
+                    add_parens_range,
+                },
+            });
         }
     };
     Some(())
 }
 
-fn add_parens_fix(
-    file_id: FileId,
-    range: &TextRange,
-    expr_range: TextRange,
-    where_str: &str,
-    diag: &mut Diagnostic,
-) {
-    let assist_message = format!("Add parens to {where_str}");
-    let edit = add_parens_edit(&expr_range);
-    diag.add_fix(fix(
-        "replace_boolean_operator_add_parens",
-        &assist_message,
-        SourceChange::from_text_edit(file_id, edit.clone()),
-        *range,
-    ));
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 enum Op {
+    #[default]
     And,
     AndInGuard,
     Or,
@@ -223,31 +281,7 @@ impl Op {
     }
 }
 
-fn make_diagnostic(
-    file_id: FileId,
-    range: TextRange,
-    preceding_ws_range: TextRange,
-    op: Op,
-) -> Diagnostic {
-    let message = format!(
-        "Consider using the short-circuit expression '{}' instead of '{}'.\nOr add parentheses to avoid potential ambiguity.",
-        op.preferred(),
-        op,
-    );
-    let assist_message = format!("Replace '{}' with '{}'", op, op.preferred());
-    let edit = TextEdit::replace(
-        op.range(range, preceding_ws_range),
-        op.preferred().to_string(),
-    );
-    Diagnostic::new(DiagnosticCode::BooleanPrecedence, message, range)
-        .with_severity(Severity::Warning)
-        .with_fixes(Some(vec![fix(
-            "replace_boolean_operator",
-            &assist_message,
-            SourceChange::from_text_edit(file_id, edit.clone()),
-            range,
-        )]))
-}
+pub static LINTER: BooleanPrecedenceLinter = BooleanPrecedenceLinter;
 
 #[cfg(test)]
 mod tests {
