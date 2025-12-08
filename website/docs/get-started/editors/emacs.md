@@ -18,6 +18,7 @@ installed with the `eglot` package.
 
 ```elisp
 (use-package eglot
+  :ensure t
   :hook ((erlang-mode . eglot-ensure))
 
   :config
@@ -33,6 +34,64 @@ installed with the `eglot` package.
 Refer to the
 [manual](https://elpa.gnu.org/devel/doc/eglot.html#Customization-Variables) for
 additional configuration options.
+
+### Semantic tokens
+
+Semantic token support has been added to eglot, but is not yet in the
+released version. But it is possible to install the updated version
+of eglot.
+
+To do so, add
+
+```elisp
+(add-to-list 'package-archives '("gnu-devel" . "https://elpa.gnu.org/devel/"))
+```
+
+to your `init.el`, then run `M-x eglot-upgrade-eglot`
+
+Once upgraded, add the following to the `(use-package` entry for `eglot`
+
+```elisp
+  (setq eglot-semantic-token-modifiers '
+    ("bound" "exported_function" "exported_type" "deprecated_function" "type_dynamic"))
+
+  ;; Each face name arises as a template from the modifiers as
+  ;; "eglot-semantic-%s-face"
+  (defface eglot-semantic-bound-face
+    '((t :underline t))
+    "The face modification to use for bound variables in patterns."
+    :group 'eglot-semantic-semantic-tokens)
+
+  (defface eglot-semantic-exported_function-face
+    '((t :underline t))
+    "The face modification to use for exported functions."
+    :group 'eglot-semantic-semantic-tokens)
+
+  (defface eglot-semantic-exported_type-face
+    '((t :underline t))
+    "The face modification to use for exported types."
+    :group 'eglot-semantic-semantic-tokens)
+
+  (defface eglot-semantic-deprecated_function-face
+    '((t :strike-through t))
+    "The face modification to use for deprecated functions."
+    :group 'eglot-semantic-semantic-tokens)
+
+  (defface eglot-semantic-type_dynamic-face
+    '((t (:weight bold)))
+    "The face modification to use for dynamic types."
+    :group 'eglot-semantic-semantic-tokens)
+
+  ;; Bare eglot makes the refresh a no-op. Provide our own version for
+  ;; when Eqwalizer gets its results.
+  (cl-defmethod eglot-handle-request
+    (server (_method (eql workspace/semanticTokens/refresh)) &rest args)
+    "Handle workspace/semanticTokens/refresh by refreshing font-lock."
+    (dolist (buffer (eglot--managed-buffers server))
+      (eglot--when-live-buffer buffer
+        (eglot--widening (font-lock-flush)))))
+```
+
 
 ## lsp-mode
 
