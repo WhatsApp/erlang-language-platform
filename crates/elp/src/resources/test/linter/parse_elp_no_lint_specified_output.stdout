@@ -1,26 +1,19 @@
-Reporting all diagnostics codes
-Diagnostics reported in 7 modules:
-  app_a: 7
-      5:5-5:35::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
-      9:1-9:5::[Error] [P1700] head mismatch 'fooX' vs 'food'
         7:1-7:5: Mismatched clause name
-      8:7-8:8::[Warning] [W0018] Unexpected ';'
-      13:5-13:14::[Warning] [W0026] Function 'app_a:baz/2' is not exported.
-      12:1-12:4::[Warning] [L1230] function bar/0 is unused
-      16:1-16:4::[Warning] [L1230] function baz/2 is unused
-      20:1-20:4::[Warning] [L1230] function bat/2 is unused
-  app_a_unused_param: 1
-      5:5-5:6::[Warning] [L1268] variable 'X' is unused
-  app_b: 1
-      5:5-5:35::[Warning] [W0011] module `app_b` belongs to app `app_b`, but reads env for `misc`
-  app_b_unused_param: 1
-      5:5-5:6::[Warning] [L1268] variable 'X' is unused
-  custom_function_matches: 3
-      13:5-13:22::[Warning] [W0017] Function 'excluded:function/0' is undefined.
-      14:5-14:26::[Warning] [W0017] Function 'not_excluded:function/0' is undefined.
-      15:5-15:15::[Warning] [W0017] Function 'cross:call/0' is undefined.
-  expression_updates_literal: 2
-      7:1-7:6::[Warning] [L1309] missing specification for function a_fun/0
-      8:7-9:16::[Warning] [L1318] expression updates a literal
-  spelling: 1
-      2:2-2:10::[Error] [W0013] misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
+Diagnostics reported:
+Reporting all diagnostics codes
+app_a/src/app_a.erl:12:1-12:4::[Warning] [L1230] function bar/0 is unused
+app_a/src/app_a.erl:13:5-13:14::[Warning] [W0026] Function 'app_a:baz/2' is not exported.
+app_a/src/app_a.erl:16:1-16:4::[Warning] [L1230] function baz/2 is unused
+app_a/src/app_a.erl:20:1-20:4::[Warning] [L1230] function bat/2 is unused
+app_a/src/app_a.erl:5:5-5:35::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
+app_a/src/app_a.erl:8:7-8:8::[Warning] [W0018] Unexpected ';'
+app_a/src/app_a.erl:9:1-9:5::[Error] [P1700] head mismatch 'fooX' vs 'food'
+app_a/src/app_a_unused_param.erl:5:5-5:6::[Warning] [L1268] variable 'X' is unused
+app_a/src/custom_function_matches.erl:13:5-13:22::[Warning] [W0017] Function 'excluded:function/0' is undefined.
+app_a/src/custom_function_matches.erl:14:5-14:26::[Warning] [W0017] Function 'not_excluded:function/0' is undefined.
+app_a/src/custom_function_matches.erl:15:5-15:15::[Warning] [W0017] Function 'cross:call/0' is undefined.
+app_a/src/expression_updates_literal.erl:7:1-7:6::[Warning] [L1309] missing specification for function a_fun/0
+app_a/src/expression_updates_literal.erl:8:7-9:16::[Warning] [L1318] expression updates a literal
+app_a/src/spelling.erl:2:2-2:10::[Error] [W0013] misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
+app_b/src/app_b.erl:5:5-5:35::[Warning] [W0011] module `app_b` belongs to app `app_b`, but reads env for `misc`
+app_b/src/app_b_unused_param.erl:5:5-5:6::[Warning] [L1268] variable 'X' is unused

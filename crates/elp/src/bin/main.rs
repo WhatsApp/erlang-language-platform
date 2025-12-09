@@ -1347,6 +1347,7 @@ mod tests {
         check_lint_fix(
             args_vec![
                 "lint",
+                "--no-stream",
                 "--diagnostic-filter",
                 "W0010",
                 "--experimental",
@@ -1374,6 +1375,7 @@ mod tests {
         check_lint_fix(
             args_vec![
                 "lint",
+                "--no-stream",
                 "--diagnostic-filter",
                 "W0010",
                 "--experimental",
@@ -1399,7 +1401,7 @@ mod tests {
     fn lint_config_file_used(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix_stderr(
+        check_lint_fix_stderr_sorted(
             args_vec![
                 "lint",
                 "--diagnostic-filter",
@@ -1456,7 +1458,7 @@ mod tests {
     fn lint_custom_config_file_used(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix(
+        check_lint_fix_stderr_sorted(
             args_vec![
                 "lint",
                 "--experimental",
@@ -1472,6 +1474,7 @@ mod tests {
             Path::new("../resources/test/lint/lint_recursive"),
             &[],
             false,
+            None,
         )
         .expect("bad test");
     }
@@ -1510,7 +1513,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_diagnostic_ignore(buck: bool) {
-        simple_snapshot(
+        simple_snapshot_sorted(
             args_vec![
                 "lint",
                 "--experimental",
@@ -1570,8 +1573,8 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_no_diagnostics_filter_all_enabled(buck: bool) {
-        simple_snapshot_expect_error(
-            args_vec!["lint",],
+        simple_snapshot_expect_error_sorted(
+            args_vec!["lint"],
             "linter",
             expect_file!("../resources/test/linter/parse_elp_no_lint_specified_output.stdout"),
             buck,
@@ -1582,7 +1585,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_no_diagnostics_filter_all_enabled_json(buck: bool) {
-        simple_snapshot_expect_error(
+        simple_snapshot_expect_error_sorted(
             args_vec!["lint", "--format", "json"],
             "linter",
             expect_file!("../resources/test/linter/parse_elp_no_lint_specified_json_output.stdout"),
@@ -1609,7 +1612,7 @@ mod tests {
     fn lint_explicit_enable_diagnostic(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix_stderr(
+        check_lint_fix_stderr_sorted(
             args_vec![
                 "lint",
                 "--config-file",
@@ -1636,7 +1639,7 @@ mod tests {
     fn lint_json_output(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix_stderr(
+        check_lint_fix_stderr_sorted(
             args_vec![
                 "lint",
                 "--diagnostic-filter",
@@ -1848,7 +1851,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_edoc(buck: bool) {
-        simple_snapshot(
+        simple_snapshot_sorted(
             args_vec![
                 "lint",
                 "--include-edoc-diagnostics",
@@ -1882,7 +1885,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_ct_include_tests(buck: bool) {
-        simple_snapshot_expect_error(
+        simple_snapshot_expect_error_sorted(
             args_vec![
                 "lint",
                 "--include-ct-diagnostics",
@@ -1900,8 +1903,8 @@ mod tests {
     #[test]
     fn lint_resolves_generated_includes() {
         if cfg!(feature = "buck") {
-            simple_snapshot_expect_error(
-                args_vec!["lint"],
+            simple_snapshot_expect_error_sorted(
+                args_vec!["lint", "--module", "top_includer",],
                 "buck_tests_2",
                 expect_file!("../resources/test/buck_tests_2/resolves_generated_includes.stdout"),
                 true,
@@ -1926,9 +1929,10 @@ mod tests {
 
     #[test]
     fn lint_warnings_as_errors() {
-        simple_snapshot_expect_error(
+        simple_snapshot_expect_error_sorted(
             args_vec![
                 "lint",
+                "--no-stream"
                 "--config-file",
                 "../../test_projects/linter/elp_lint_warnings_as_errors.toml"
             ],
@@ -1975,7 +1979,7 @@ mod tests {
 
     #[test]
     fn lint_ssr_from_config() {
-        simple_snapshot(
+        simple_snapshot_sorted(
             args_vec![
                 "lint",
                 "--config-file",
@@ -2180,9 +2184,8 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
-    #[should_panic] // Support for hierarchical config is not implemented yet
     fn lint_hierarchical_config_basic(buck: bool) {
-        simple_snapshot(
+        simple_snapshot_sorted(
             args_vec!["lint", "--read-config"],
             "hierarchical_config",
             expect_file!("../resources/test/hierarchical_config/basic.stdout"),
@@ -2761,6 +2764,61 @@ mod tests {
         }
     }
 
+    fn simple_snapshot_expect_error_sorted(
+        args: Vec<OsString>,
+        project: &str,
+        expected: ExpectFile,
+        buck: bool,
+        file: Option<&str>,
+    ) {
+        if !buck || cfg!(feature = "buck") {
+            let (mut args, path) = add_project(args, project, file, None);
+            if !buck {
+                args.push("--rebar".into());
+            }
+            let (stdout, stderr, code) = elp(args);
+            assert_eq!(
+                code, 101,
+                "Expected exit code 101, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
+            );
+            let sorted_stdout = sort_lines(&stdout);
+            assert_normalised_file(expected, &sorted_stdout, path, false);
+        }
+    }
+
+    fn sort_lines(s: &str) -> String {
+        let mut lines: Vec<&str> = s.lines().collect();
+        lines.sort();
+        lines.join("\n")
+    }
+
+    #[track_caller]
+    fn simple_snapshot_sorted(
+        args: Vec<OsString>,
+        project: &str,
+        expected: ExpectFile,
+        buck: bool,
+        file: Option<&str>,
+    ) {
+        if !buck || cfg!(feature = "buck") {
+            let (mut args, path) = add_project(args, project, file, None);
+            if !buck {
+                args.push("--rebar".into());
+            }
+            let (stdout, stderr, code) = elp(args);
+            assert_eq!(
+                code, 0,
+                "failed with unexpected exit code: got {code} not 0\nstdout:\n{stdout}\nstderr:\n{stderr}"
+            );
+            let sorted_stdout = sort_lines(&stdout);
+            assert_normalised_file(expected, &sorted_stdout, path, false);
+            assert!(
+                stderr.is_empty(),
+                "expected stderr to be empty, got:\n{stderr}"
+            )
+        }
+    }
+
     fn simple_snapshot_expect_stderror(
         args: Vec<OsString>,
         project: &str,
@@ -2883,6 +2941,55 @@ mod tests {
                 expect![[""]].assert_eq(&stderr);
             }
             assert_normalised_file(expected, &stdout, path, false);
+            for (expected_file, file) in files {
+                let expected = expect_file!(expected_dir.join(expected_file));
+                let actual = actual_dir.join(file);
+                assert!(actual.exists());
+                let content = fs::read_to_string(actual).unwrap();
+                expected.assert_eq(content.as_str());
+            }
+        }
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn check_lint_fix_stderr_sorted(
+        args: Vec<OsString>,
+        project: &str,
+        expected: ExpectFile,
+        expected_code: i32,
+        buck: bool,
+        file: Option<&str>,
+        actual_dir: &Path,
+        expected_dir: &Path,
+        files: &[(&str, &str)],
+        backup_files: bool,
+        expected_stderr: Option<Expect>,
+    ) -> Result<()> {
+        if !buck || cfg!(feature = "buck") {
+            let (mut args, path) = add_project(args, project, file, None);
+            if !buck {
+                args.push("--rebar".into());
+            }
+            let orig_files = files.iter().map(|x| x.0).collect::<Vec<_>>();
+            // Take a backup. The Drop instance will restore at the end
+            let _backup = if backup_files {
+                BackupFiles::save_files(project, &orig_files)
+            } else {
+                BackupFiles::save_files(project, &[])
+            };
+            let (stdout, stderr, code) = elp(args);
+            assert_eq!(
+                code, expected_code,
+                "Expected exit code {expected_code}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
+            );
+            if let Some(expected_stderr) = expected_stderr {
+                expected_stderr.assert_eq(&stderr);
+            } else {
+                expect![[""]].assert_eq(&stderr);
+            }
+            let sorted_stdout = sort_lines(&stdout);
+            assert_normalised_file(expected, &sorted_stdout, path, false);
             for (expected_file, file) in files {
                 let expected = expect_file!(expected_dir.join(expected_file));
                 let actual = actual_dir.join(file);

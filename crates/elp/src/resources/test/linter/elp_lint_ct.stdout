@@ -1,3 +1,2 @@
-Diagnostics reported in 1 modules:
-  app_a_unreachable_test_SUITE: 1
-      8:1-8:2::[Error] [W0008] Unreachable test (b/1)
+Diagnostics reported:
+app_a/test/app_a_unreachable_test_SUITE.erl:8:1-8:2::[Error] [W0008] Unreachable test (b/1)

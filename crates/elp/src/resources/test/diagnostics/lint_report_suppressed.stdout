@@ -1,4 +1,3 @@
 module specified: suppressed
-Diagnostics reported in 1 modules:
-  suppressed: 1
-      8:5-8:9::[Warning] [W0007] match is redundant
+Diagnostics reported:
+app_a/src/suppressed.erl:8:5-8:9::[Warning] [W0007] match is redundant

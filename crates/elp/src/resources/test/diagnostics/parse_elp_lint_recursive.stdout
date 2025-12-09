@@ -1,8 +1,7 @@
 module specified: lint_recursive
-Diagnostics reported in 1 modules:
-  lint_recursive: 2
-      19:5-19:12::[Warning] [W0007] match is redundant
-      14:5-14:12::[Warning] [W0007] match is redundant
+Diagnostics reported:
+app_a/src/lint_recursive.erl:19:5-19:12::[Warning] [W0007] match is redundant
+app_a/src/lint_recursive.erl:14:5-14:12::[Warning] [W0007] match is redundant
 ---------------------------------------------
 
 Applying fix in module 'lint_recursive' for

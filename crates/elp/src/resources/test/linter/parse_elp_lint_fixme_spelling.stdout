@@ -1,7 +1,6 @@
 module specified: spelling
-Diagnostics reported in 1 modules:
-  spelling: 1
-      2:2-2:10::[Error] [W0013] misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
+Diagnostics reported:
+app_a/src/spelling.erl:2:2-2:10::[Error] [W0013] misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
 ---------------------------------------------
 
 Applying fix in module 'spelling' for

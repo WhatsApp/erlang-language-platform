@@ -1,14 +1,7 @@
-Reporting all diagnostics codes
-Diagnostics reported in 3 modules:
-  app_a: 1
-      6:10-6:32::[WeakWarning] [W0037] Unspecific include.
-  top_includer: 2
-      6:1-6:67::[Error] [L0000] Issue in included file
         [check_include_separate_1/include/include_with_bug.hrl] 5:14-5:18: E1507: undefined macro 'FOO'
         [check_include_separate_1/include/top_includer.hrl] 3:10-3:30: E1516: can't find include file "does_not_exist.hrl"
-      14:5-14:11::[Error] [E1508] undefined macro 'THIRD/2'
-  wa_buck2_module_search: 4
-      55:19-55:32::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
-      57:19-57:29::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
-      57:39-57:52::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
-      61:31-61:41::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
+Diagnostics reported:
+Reporting all diagnostics codes
+check_include/src/top_includer.erl:14:5-14:11::[Error] [E1508] undefined macro 'THIRD/2'
+check_include/src/top_includer.erl:6:1-6:67::[Error] [L0000] Issue in included file
+module specified: top_includer

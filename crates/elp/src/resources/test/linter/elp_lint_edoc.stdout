@@ -1,3 +1,2 @@
-Diagnostics reported in 1 modules:
-  app_a_edoc: 1
-      5:1-6:1::[Warning] [O0039] tag @docc not recognized.
+Diagnostics reported:
+app_a/src/app_a_edoc.erl:5:1-6:1::[Warning] [O0039] tag @docc not recognized.

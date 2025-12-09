@@ -1,3 +1,2 @@
-Diagnostics reported in 1 modules:
-  app_b_unused_param: 1
-      5:5-5:6::[Warning] [W0010] this variable is unused
+Diagnostics reported:
+app_b/src/app_b_unused_param.erl:5:5-5:6::[Warning] [W0010] this variable is unused

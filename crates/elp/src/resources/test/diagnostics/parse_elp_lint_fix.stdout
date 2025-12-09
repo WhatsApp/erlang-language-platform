@@ -1,7 +1,6 @@
 module specified: lints
-Diagnostics reported in 1 modules:
-  lints: 1
-      5:1-5:14::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+Diagnostics reported:
+app_a/src/lints.erl:5:1-5:14::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
         4:1-4:14: Mismatched clause name
 ---------------------------------------------
 

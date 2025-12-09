@@ -330,6 +330,9 @@ pub struct Lint {
     #[bpaf(long("report-system-stats"))]
     pub report_system_stats: bool,
 
+    /// Disable streaming of diagnostics when applying fixes (collect all before printing)
+    pub no_stream: bool,
+
     /// Rest of args are space separated list of apps to ignore
     #[bpaf(positional("IGNORED_APPS"))]
     pub ignore_apps: Vec<String>,
@@ -867,6 +870,11 @@ impl Lint {
 
     pub fn is_format_json(&self) -> bool {
         self.format == Some("json".to_string())
+    }
+
+    /// To prevent flaky test results we allow disabling streaming when applying fixes
+    pub fn skip_stream_print(&self) -> bool {
+        self.apply_fix && self.no_stream
     }
 }
 

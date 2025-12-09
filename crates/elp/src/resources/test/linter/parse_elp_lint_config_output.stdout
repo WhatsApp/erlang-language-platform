@@ -1,14 +1,10 @@
-Diagnostics reported in 4 modules:
-  app_a: 3
-      9:6-9:7::[Warning] [W0010] this variable is unused
-      5:5-5:35::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
-      9:1-9:5::[Error] [P1700] head mismatch 'fooX' vs 'food'
         7:1-7:5: Mismatched clause name
-  app_a_unused_param: 2
-      5:5-5:6::[Warning] [W0010] this variable is unused
-      5:5-5:6::[Warning] [L1268] variable 'X' is unused
-  app_b: 1
-      5:5-5:35::[Warning] [W0011] module `app_b` belongs to app `app_b`, but reads env for `misc`
-  app_b_unused_param: 2
-      5:5-5:6::[Warning] [W0010] this variable is unused
-      5:5-5:6::[Warning] [L1268] variable 'X' is unused
+Diagnostics reported:
+app_a/src/app_a.erl:5:5-5:35::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
+app_a/src/app_a.erl:9:1-9:5::[Error] [P1700] head mismatch 'fooX' vs 'food'
+app_a/src/app_a.erl:9:6-9:7::[Warning] [W0010] this variable is unused
+app_a/src/app_a_unused_param.erl:5:5-5:6::[Warning] [L1268] variable 'X' is unused
+app_a/src/app_a_unused_param.erl:5:5-5:6::[Warning] [W0010] this variable is unused
+app_b/src/app_b.erl:5:5-5:35::[Warning] [W0011] module `app_b` belongs to app `app_b`, but reads env for `misc`
+app_b/src/app_b_unused_param.erl:5:5-5:6::[Warning] [L1268] variable 'X' is unused
+app_b/src/app_b_unused_param.erl:5:5-5:6::[Warning] [W0010] this variable is unused

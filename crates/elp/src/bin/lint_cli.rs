@@ -15,10 +15,12 @@ use std::io::Write;
 use std::path::Path;
 use std::str;
 use std::sync::Arc;
+use std::thread;
 use std::time::SystemTime;
 
 use anyhow::Result;
 use anyhow::bail;
+use crossbeam_channel::unbounded;
 use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
@@ -61,7 +63,6 @@ use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use hir::FormIdx;
 use hir::InFile;
-use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
 use paths::Utf8PathBuf;
 use rayon::prelude::ParallelBridge;
@@ -131,47 +132,101 @@ pub fn load_project(
     )
 }
 
-fn do_parse_all(
-    cli: &dyn Cli,
+fn do_diagnostics_all(
+    cli: &mut dyn Cli,
     analysis: &Analysis,
     project_id: &ProjectId,
     config: &DiagnosticsConfig,
     args: &Lint,
-) -> Result<Vec<(String, FileId, DiagnosticCollection)>> {
+    loaded: &LoadResult,
+    module: &Option<String>,
+) -> Result<(Vec<(String, FileId, DiagnosticCollection)>, bool, bool)> {
     let module_index = analysis.module_index(*project_id).unwrap();
-    let module_iter = module_index.iter_own();
 
     let ignored_apps: FxHashSet<Option<Option<AppName>>> = args
         .ignore_apps
         .iter()
         .map(|name| Some(Some(AppName(name.to_string()))))
         .collect();
-    let pb = cli.progress(module_iter.len() as u64, "Parsing modules");
     let app_name = args.app.as_ref().map(|name| AppName(name.to_string()));
 
-    Ok(module_iter
-        .par_bridge()
-        .progress_with(pb)
-        .map_with(
-            analysis.clone(),
-            |db, (module_name, _file_source, file_id)| {
-                if !otp_file_to_ignore(db, file_id)
-                    && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
-                    && !ignored_apps.contains(&db.file_app_name(file_id).ok())
-                    && (app_name.is_none()
-                        || db.file_app_name(file_id).ok().as_ref() == Some(&app_name))
-                {
-                    do_parse_one(db, config, file_id, module_name.as_str(), args).unwrap()
-                } else {
-                    None
-                }
-            },
-        )
-        .flatten()
-        .collect())
+    // Create a channel for streaming results
+    let (tx, rx) = unbounded();
+
+    // Collect modules into an owned vector
+    let modules: Vec<_> = module_index
+        .iter_own()
+        .map(|(name, source, file_id)| (name.as_str().to_string(), source, file_id))
+        .collect();
+
+    let analysis_clone = analysis.clone();
+    let config_clone = config.clone();
+    let args_clone = args.clone();
+
+    let join_handle = thread::spawn(move || {
+        modules
+            .into_iter()
+            .par_bridge()
+            .map_with(
+                (analysis_clone, tx),
+                |(db, tx), (module_name, _file_source, file_id)| {
+                    if !otp_file_to_ignore(db, file_id)
+                        && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
+                        && !ignored_apps.contains(&db.file_app_name(file_id).ok())
+                        && (app_name.is_none()
+                            || db.file_app_name(file_id).ok().as_ref() == Some(&app_name))
+                        && let Ok(Some(result)) = do_diagnostics_one(
+                            db,
+                            &config_clone,
+                            file_id,
+                            &module_name,
+                            &args_clone,
+                        )
+                    {
+                        // Send result through channel
+                        let _ = tx.send(result);
+                    }
+                },
+            )
+            .for_each(|_| {}); // Consume the iterator
+    });
+
+    // Collect results as they arrive from the channel
+    let mut results = Vec::new();
+    let mut err_in_diag = false;
+    let mut module_count = 0;
+    let mut any_diagnostics_printed = false;
+
+    for result in rx {
+        let printed = if args.skip_stream_print() {
+            false
+        } else {
+            print_diagnostic_result(
+                cli,
+                analysis,
+                config,
+                args,
+                loaded,
+                module,
+                &mut err_in_diag,
+                &mut module_count,
+                &result,
+            )?
+        };
+        any_diagnostics_printed = any_diagnostics_printed || printed;
+        results.push(result);
+    }
+
+    // Wait for the thread to complete before returning
+    // This ensures that analysis_clone is dropped and its read lock is released
+    join_handle
+        .join()
+        .expect("Failed to join diagnostics thread");
+
+    Ok((results, err_in_diag, any_diagnostics_printed))
 }
 
-fn do_parse_one(
+fn do_diagnostics_one(
     db: &Analysis,
     config: &DiagnosticsConfig,
     file_id: FileId,
@@ -238,7 +293,9 @@ pub fn do_codemod(
 ) -> Result<()> {
     // Declare outside the block so it has the right lifetime for filter_diagnostics
     let res;
-    let mut initial_diags = {
+    let streamed_err_in_diag;
+    let mut any_diagnostics_printed = false;
+    let initial_diags = {
         // We put this in its own block so that analysis is
         // freed before we apply lints. To apply lints
         // recursively, we need to update the underlying
@@ -278,7 +335,18 @@ pub fn do_codemod(
 
         res = match (file_id, name) {
             (None, _) => {
-                do_parse_all(cli, &analysis, &loaded.project_id, diagnostics_config, args)?
+                let (results, err_in_diag, any_printed) = do_diagnostics_all(
+                    cli,
+                    &analysis,
+                    &loaded.project_id,
+                    diagnostics_config,
+                    args,
+                    loaded,
+                    &args.module,
+                )?;
+                streamed_err_in_diag = err_in_diag;
+                any_diagnostics_printed = any_printed;
+                results
             }
             (Some(file_id), Some(name)) => {
                 if let Some(app) = &args.app
@@ -287,87 +355,100 @@ pub fn do_codemod(
                 {
                     panic!("Module {} does not belong to app {}", name.as_str(), app)
                 }
-                do_parse_one(&analysis, diagnostics_config, file_id, &name, args)?
-                    .map_or(vec![], |x| vec![x])
+                let result =
+                    do_diagnostics_one(&analysis, diagnostics_config, file_id, &name, args)?
+                        .map_or(vec![], |x| vec![x]);
+
+                // Print diagnostics for the single file
+                let mut err_in_diag = false;
+                let mut module_count = 0;
+                if args.skip_stream_print() {
+                    any_diagnostics_printed = false;
+                } else {
+                    for r in &result {
+                        let printed = print_diagnostic_result(
+                            cli,
+                            &analysis,
+                            diagnostics_config,
+                            args,
+                            loaded,
+                            &args.module,
+                            &mut err_in_diag,
+                            &mut module_count,
+                            r,
+                        )?;
+                        any_diagnostics_printed = any_diagnostics_printed || printed;
+                    }
+                }
+
+                streamed_err_in_diag = err_in_diag;
+                result
             }
             (Some(file_id), _) => {
                 panic!("Could not get name from file_id for {file_id:?}")
             }
         };
 
-        filter_diagnostics(
-            &analysis,
-            &args.module,
-            Some(&diagnostics_config.enabled),
-            &res,
-            &FxHashSet::default(),
-        )?
+        res
     };
-    if initial_diags.is_empty() {
+    let mut err_in_diag = streamed_err_in_diag;
+    // At this point, the analysis variable from above is dropped
+
+    // Print "No diagnostics reported" if no diagnostics were found after filtering
+    if !any_diagnostics_printed {
         if args.is_format_normal() {
             writeln!(cli, "No diagnostics reported")?;
         }
     } else {
-        initial_diags.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
-        let mut err_in_diag = false;
-        if args.is_format_json() {
-            for (_name, file_id, diags) in &initial_diags {
-                if args.print_diags {
-                    for diag in diags {
-                        // We use JSON output for CI, and want to see warnings too.
-                        // So do not filter on errors only
-                        err_in_diag = true;
-                        let vfs_path = loaded.vfs.file_path(*file_id);
-                        let analysis = loaded.analysis();
-                        let root_path = &analysis
-                            .project_data(*file_id)
-                            .unwrap_or_else(|_err| panic!("could not find project data"))
-                            .unwrap_or_else(|| panic!("could not find project data"))
-                            .root_dir;
-                        let relative_path = reporting::get_relative_path(root_path, vfs_path);
-                        print_diagnostic_json(
-                            diag,
-                            &analysis,
-                            *file_id,
-                            relative_path,
-                            args.use_cli_severity,
-                            cli,
-                        )?;
-                    }
-                }
-            }
-        } else {
-            writeln!(
-                cli,
-                "Diagnostics reported in {} modules:",
-                initial_diags.len()
-            )?;
-
-            for (name, file_id, diags) in &initial_diags {
-                writeln!(cli, "  {}: {}", name, diags.len())?;
-                if args.print_diags {
-                    for diag in diags {
-                        if let diagnostics::Severity::Error = diag.severity {
-                            err_in_diag = true;
-                        };
-                        print_diagnostic(
-                            diag,
-                            &loaded.analysis(),
-                            &loaded.vfs,
-                            *file_id,
-                            args.use_cli_severity,
-                            cli,
-                        )?;
-                    }
-                }
-            }
-        }
         if args.apply_fix && diagnostics_config.enabled.all_enabled() {
             bail!(
                 "We cannot apply fixes if all diagnostics enabled. Perhaps provide --diagnostic-filter"
             );
         }
         if args.apply_fix && !diagnostics_config.enabled.all_enabled() {
+            let mut initial_diags = {
+                let analysis = loaded.analysis();
+                filter_diagnostics(
+                    &analysis,
+                    &args.module,
+                    Some(&diagnostics_config.enabled),
+                    &initial_diags,
+                    &FxHashSet::default(),
+                )?
+            };
+            if args.skip_stream_print() {
+                initial_diags.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
+                let module_count: &mut i32 = &mut 0;
+                let has_diagnostics: &mut bool = &mut false;
+                if args.is_format_json() {
+                    do_print_diagnostics_json_filtered(
+                        cli,
+                        args,
+                        loaded,
+                        &mut err_in_diag,
+                        module_count,
+                        has_diagnostics,
+                        &initial_diags,
+                    )?;
+                } else {
+                    {
+                        // Scope the analysis instance to ensure it's dropped before creating Lints
+                        let analysis = loaded.analysis();
+                        do_print_diagnostics_filtered(
+                            cli,
+                            &analysis,
+                            args,
+                            loaded,
+                            &mut err_in_diag,
+                            module_count,
+                            has_diagnostics,
+                            &initial_diags,
+                        )?;
+                        // Analysis is dropped here
+                    }
+                }
+            }
+
             let mut changed_files = FxHashSet::default();
             let mut lints = Lints::new(
                 &mut loaded.analysis_host,
@@ -392,6 +473,206 @@ pub fn do_codemod(
             bail!("Errors found")
         }
     }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn print_diagnostic_result(
+    cli: &mut dyn Cli,
+    analysis: &Analysis,
+    config: &DiagnosticsConfig,
+    args: &Lint,
+    loaded: &LoadResult,
+    module: &Option<String>,
+    err_in_diag: &mut bool,
+    module_count: &mut i32,
+    result: &(String, FileId, DiagnosticCollection),
+) -> Result<bool> {
+    if args.is_format_json() {
+        do_print_diagnostic_collection_json(
+            cli,
+            analysis,
+            config,
+            args,
+            loaded,
+            module,
+            err_in_diag,
+            module_count,
+            result,
+        )
+    } else {
+        do_print_diagnostic_collection(
+            cli,
+            analysis,
+            config,
+            args,
+            loaded,
+            module,
+            err_in_diag,
+            module_count,
+            result,
+        )
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn do_print_diagnostic_collection(
+    cli: &mut dyn Cli,
+    analysis: &Analysis,
+    config: &DiagnosticsConfig,
+    args: &Lint,
+    loaded: &LoadResult,
+    module: &Option<String>,
+    err_in_diag: &mut bool,
+    module_count: &mut i32,
+    result: &(String, FileId, DiagnosticCollection),
+) -> Result<bool> {
+    let single_result = vec![result.clone()];
+    let mut has_diagnostics = false;
+    if let Ok(filtered) = filter_diagnostics(
+        analysis,
+        module,
+        Some(&config.enabled),
+        &single_result,
+        &FxHashSet::default(),
+    ) {
+        do_print_diagnostics_filtered(
+            cli,
+            analysis,
+            args,
+            loaded,
+            err_in_diag,
+            module_count,
+            &mut has_diagnostics,
+            &filtered,
+        )?;
+    }
+    Ok(has_diagnostics)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn do_print_diagnostics_filtered(
+    cli: &mut dyn Cli,
+    analysis: &Analysis,
+    args: &Lint,
+    loaded: &LoadResult,
+    err_in_diag: &mut bool,
+    module_count: &mut i32,
+    has_diagnostics: &mut bool,
+    filtered: &[(String, FileId, Vec<diagnostics::Diagnostic>)],
+) -> Result<(), anyhow::Error> {
+    let _: () = for (name, file_id, diags) in filtered {
+        if !diags.is_empty() {
+            *has_diagnostics = true;
+            if *module_count == 0 {
+                writeln!(cli, "Diagnostics reported:")?;
+            }
+            *module_count += 1;
+            if !args.print_diags {
+                writeln!(cli, "  {}: {}", name, diags.len())?;
+            } else {
+                for diag in diags {
+                    if let diagnostics::Severity::Error = diag.severity {
+                        *err_in_diag = true;
+                    };
+                    // Get relative path for diagnostic output
+                    let vfs_path = loaded.vfs.file_path(*file_id);
+                    let root_path = &analysis
+                        .project_data(*file_id)
+                        .unwrap_or_else(|_err| panic!("could not find project data"))
+                        .unwrap_or_else(|| panic!("could not find project data"))
+                        .root_dir;
+                    let relative_path = reporting::get_relative_path(root_path, vfs_path);
+                    print_diagnostic(
+                        diag,
+                        analysis,
+                        &loaded.vfs,
+                        *file_id,
+                        Some(relative_path),
+                        args.use_cli_severity,
+                        cli,
+                    )?;
+                }
+            }
+        }
+    };
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn do_print_diagnostic_collection_json(
+    cli: &mut dyn Cli,
+    analysis: &Analysis,
+    config: &DiagnosticsConfig,
+    args: &Lint,
+    loaded: &LoadResult,
+    module: &Option<String>,
+    err_in_diag: &mut bool,
+    module_count: &mut i32,
+    result: &(String, FileId, DiagnosticCollection),
+) -> Result<bool> {
+    let single_result = vec![result.clone()];
+    let mut has_diagnostics = false;
+    if let Ok(filtered) = filter_diagnostics(
+        analysis,
+        module,
+        Some(&config.enabled),
+        &single_result,
+        &FxHashSet::default(),
+    ) {
+        do_print_diagnostics_json_filtered(
+            cli,
+            args,
+            loaded,
+            err_in_diag,
+            module_count,
+            &mut has_diagnostics,
+            &filtered,
+        )?;
+    }
+    Ok(has_diagnostics)
+}
+
+fn do_print_diagnostics_json_filtered(
+    cli: &mut dyn Cli,
+    args: &Lint,
+    loaded: &LoadResult,
+    err_in_diag: &mut bool,
+    module_count: &mut i32,
+    has_diagnostics: &mut bool,
+    filtered: &[(String, FileId, Vec<diagnostics::Diagnostic>)],
+) -> Result<(), anyhow::Error> {
+    let _: () = for (name, file_id, diags) in filtered {
+        if !diags.is_empty() {
+            *has_diagnostics = true;
+            *module_count += 1;
+            if !args.print_diags {
+                writeln!(cli, "  {}: {}", name, diags.len())?;
+            } else {
+                for diag in diags {
+                    *err_in_diag = true;
+
+                    // Get relative path for diagnostic output
+                    let vfs_path = loaded.vfs.file_path(*file_id);
+                    let analysis = loaded.analysis();
+                    let root_path = &analysis
+                        .project_data(*file_id)
+                        .unwrap_or_else(|_err| panic!("could not find project data"))
+                        .unwrap_or_else(|| panic!("could not find project data"))
+                        .root_dir;
+                    let relative_path = reporting::get_relative_path(root_path, vfs_path);
+                    print_diagnostic_json(
+                        diag,
+                        &analysis,
+                        *file_id,
+                        relative_path,
+                        args.use_cli_severity,
+                        cli,
+                    )?;
+                }
+            }
+        }
+    };
     Ok(())
 }
 
@@ -422,11 +703,17 @@ fn print_diagnostic(
     analysis: &Analysis,
     vfs: &Vfs,
     file_id: FileId,
+    path: Option<&Path>,
     use_cli_severity: bool,
     cli: &mut dyn Cli,
 ) -> Result<(), anyhow::Error> {
     let line_index = analysis.line_index(file_id)?;
-    writeln!(cli, "      {}", diag.print(&line_index, use_cli_severity))?;
+    let diag_str = diag.print(&line_index, use_cli_severity);
+    if let Some(path) = path {
+        writeln!(cli, "{}:{}", path.display(), diag_str)?;
+    } else {
+        writeln!(cli, "      {}", diag_str)?;
+    }
 
     // Print any related information, indented
     if let Some(related_info) = &diag.related_info {
@@ -674,13 +961,10 @@ impl<'a> Lints<'a> {
                         if self.args.check_eqwalize_all {
                             writeln!(cli, "Running eqwalize-all to check for knock-on problems.")?;
                         }
-                        let diags = do_parse_one(
-                            &self.analysis_host.analysis(),
-                            self.cfg,
-                            file_id,
-                            &name,
-                            self.args,
-                        )?;
+                        let diags = {
+                            let analysis = self.analysis_host.analysis();
+                            do_diagnostics_one(&analysis, self.cfg, file_id, &name, self.args)?
+                        };
                         let err_in_diags = diags.iter().any(|(_, file_id, diags)| {
                             let diags = diags.diagnostics_for(*file_id);
                             diags
@@ -691,14 +975,15 @@ impl<'a> Lints<'a> {
                             bail!("Applying change introduces an error diagnostic");
                         } else {
                             self.changed_files.insert((file_id, name.clone()));
-                            let changes = changes
-                                .iter()
-                                .filter_map(|d| {
-                                    form_from_diff(&self.analysis_host.analysis(), file_id, d)
-                                })
-                                .collect::<Vec<_>>();
+                            let changed_forms = {
+                                let analysis = self.analysis_host.analysis();
+                                changes
+                                    .iter()
+                                    .filter_map(|d| form_from_diff(&analysis, file_id, d))
+                                    .collect::<Vec<_>>()
+                            };
 
-                            for form_id in &changes {
+                            for form_id in &changed_forms {
                                 self.changed_forms.insert(InFile::new(file_id, *form_id));
                             }
 
@@ -711,25 +996,24 @@ impl<'a> Lints<'a> {
                 .flatten()
                 .collect::<Vec<_>>();
 
-            let new_diagnostics = filter_diagnostics(
-                &self.analysis_host.analysis(),
-                &None,
-                None,
-                &new_diags,
-                &self.changed_forms,
-            )?;
+            let new_diagnostics = {
+                let analysis = self.analysis_host.analysis();
+                filter_diagnostics(&analysis, &None, None, &new_diags, &self.changed_forms)?
+            };
             self.diags = diagnostics_by_file_id(&new_diagnostics);
             if !self.diags.is_empty() {
                 writeln!(cli, "---------------------------------------------\n")?;
                 writeln!(cli, "New filtered diagnostics")?;
+                let analysis = self.analysis_host.analysis();
                 for (file_id, (name, diags)) in &self.diags {
                     writeln!(cli, "  {}: {}", name, diags.len())?;
                     for diag in diags.iter() {
                         print_diagnostic(
                             diag,
-                            &self.analysis_host.analysis(),
+                            &analysis,
                             self.vfs,
                             *file_id,
+                            None,
                             self.args.use_cli_severity,
                             cli,
                         )?;
@@ -801,11 +1085,13 @@ impl<'a> Lints<'a> {
                 if format_normal {
                     writeln!(cli, "---------------------------------------------\n")?;
                     writeln!(cli, "Applying fix in module '{name}' for")?;
+                    let analysis = self.analysis_host.analysis();
                     print_diagnostic(
                         diagnostic,
-                        &self.analysis_host.analysis(),
+                        &analysis,
                         self.vfs,
                         file_id,
+                        None,
                         self.args.use_cli_severity,
                         cli,
                     )?;
@@ -874,6 +1160,7 @@ impl<'a> Lints<'a> {
                         &self.analysis_host.analysis(),
                         self.vfs,
                         file_id,
+                        None,
                         self.args.use_cli_severity,
                         cli,
                     )?;
@@ -1148,9 +1435,8 @@ mod tests {
           "#,
             expect![[r#"
                 module specified: lints
-                Diagnostics reported in 1 modules:
-                  lints: 1
-                      5:3-5:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+                Diagnostics reported:
+                app_a/src/lints.erl:5:3-5:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
                         4:3-4:16: Mismatched clause name
             "#]],
             expect![""],
@@ -1169,9 +1455,8 @@ mod tests {
           "#,
             expect![[r#"
                 module specified: lints
-                Diagnostics reported in 1 modules:
-                  lints: 1
-                      3:3-3:6::[Warning] [L1230] function foo/0 is unused
+                Diagnostics reported:
+                app_a/src/lints.erl:3:3-3:6::[Warning] [L1230] function foo/0 is unused
             "#]],
             expect![""],
         );
