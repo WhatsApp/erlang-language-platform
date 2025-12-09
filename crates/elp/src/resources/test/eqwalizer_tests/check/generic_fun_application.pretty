@@ -31,12 +31,6 @@ Because in the expression's type:
     Context expects type: atom()
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [number()] is not compatible with [atom()]
-  because
-  number() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:38:29
    │
@@ -53,14 +47,6 @@ Because in the expression's type:
     Here the type is:     number()
     Context expects type: atom()
   ]
-
------------------------------- Detailed message ------------------------------
-
-  [number()] is not compatible with [dynamic(atom())]
-  because
-  number() is not compatible with dynamic(atom())
-  because
-  number() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:43:5
@@ -87,12 +73,6 @@ Because in the expression's type:
     Context expects type: B
   )
 
------------------------------- Detailed message ------------------------------
-
-  fun((atom()) -> pid()) is not compatible with fun((number()) -> B)
-  because
-  pid() is not compatible with B
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:43:18
    │
@@ -111,14 +91,6 @@ Because in the expression's type:
     Differs from the expected type:  atom()
   ) -> pid())
 
------------------------------- Detailed message ------------------------------
-
-  fun((atom()) -> pid()) is not compatible with fun((dynamic() | number()) -> pid())
-  because
-  dynamic() | number() is not compatible with atom()
-  because
-  number() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:47:33
    │
@@ -136,12 +108,6 @@ Because in the expression's type:
     Context expects type: atom()
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [number()] is not compatible with [atom()]
-  because
-  number() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:47:33
    │
@@ -158,14 +124,6 @@ Because in the expression's type:
     Here the type is:     number()
     Context expects type: atom()
   ]
-
------------------------------- Detailed message ------------------------------
-
-  [number()] is not compatible with [dynamic(atom())]
-  because
-  number() is not compatible with dynamic(atom())
-  because
-  number() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:48:5
@@ -192,12 +150,6 @@ Because in the expression's type:
     Context expects type: B
   )
 
------------------------------- Detailed message ------------------------------
-
-  fun((atom()) -> pid()) is not compatible with fun((number()) -> B)
-  because
-  pid() is not compatible with B
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:52:22
    │
@@ -215,14 +167,6 @@ Because in the expression's type:
     However the following candidate: number()
     Differs from the expected type:  atom()
   ) -> pid())
-
------------------------------- Detailed message ------------------------------
-
-  fun((atom()) -> pid()) is not compatible with fun((dynamic() | number()) -> pid())
-  because
-  dynamic() | number() is not compatible with atom()
-  because
-  number() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:53:5
@@ -271,10 +215,6 @@ Because in the expression's type:
   Here the type is:     #{true => ...}
   Context expects type: #{...}
   The expected map has no corresponding key for: true.
-
------------------------------- Detailed message ------------------------------
-
-key `true` is declared in the former but not in the latter and the latter map has no default association
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generic_fun_application.erl:99:13
@@ -365,15 +305,6 @@ Because in the expression's type:
     Context expects type: T
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{a => number()} is not compatible with #{atom() => T}
-  because
-  #{a => number()} is not compatible with #{atom() => T}
-  key `a` is declared in the former but not in the latter and key `a` isn't compatible with the default association of the latter map
-  because
-  number() is not compatible with T
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:126:5
     │
@@ -414,12 +345,6 @@ Because in the expression's type:
   However the following candidate: 'b'
   Differs from the expected type:  'a'
 
------------------------------- Detailed message ------------------------------
-
-  'a' | 'b' is not compatible with 'a'
-  because
-  'b' is not compatible with 'a'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:157:5
     │
@@ -444,12 +369,6 @@ Because in the expression's type:
   However the following candidate: 'b'
   Differs from the expected type:  'a'
 
------------------------------- Detailed message ------------------------------
-
-  'a' | 'b' is not compatible with 'a'
-  because
-  'b' is not compatible with 'a'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:172:5
     │
@@ -465,12 +384,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: 'b'
   However the following candidate: 'a'
   Differs from the expected type:  'b'
-
------------------------------- Detailed message ------------------------------
-
-  'a' | 'b' is not compatible with 'b'
-  because
-  'a' is not compatible with 'b'
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/generic_fun_application.erl:226:1
@@ -521,12 +434,6 @@ Because in the expression's type:
     Context expects type: X
   )
 
------------------------------- Detailed message ------------------------------
-
-  fun(() -> A) is not compatible with fun(() -> X)
-  because
-  A is not compatible with X
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:276:5
     │
@@ -567,12 +474,6 @@ Because in the expression's type:
   However the following candidate: Last
   Differs from the expected type:  'first'
 
------------------------------- Detailed message ------------------------------
-
-  'first' | Last is not compatible with 'first'
-  because
-  Last is not compatible with 'first'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:296:5
     │
@@ -588,12 +489,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: atom()
   However the following candidate: T
   Differs from the expected type:  atom()
-
------------------------------- Detailed message ------------------------------
-
-  atom() | T is not compatible with atom()
-  because
-  T is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:322:5
@@ -611,13 +506,6 @@ Because in the expression's type:
     Here the type is:     number()
     Context expects type: pid()
   , pid()}
-
------------------------------- Detailed message ------------------------------
-
-  at tuple index 1:
-  {number(), pid()} is not compatible with {pid(), number()}
-  because
-  number() is not compatible with pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:330:5
@@ -677,12 +565,6 @@ Because in the expression's type:
   Context expects type: fun((A) -> A) with 0 type parameters
   The number of type parameters doesn't match.
 
------------------------------- Detailed message ------------------------------
-
-  fun((Z) -> Z) | fun((dynamic()) -> dynamic()) is not compatible with fun((A) -> A)
-  because
-  fun((Z) -> Z) with 1 type parameter is not compatible with fun((A) -> A) with 0 type parameters
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:346:9
     │
@@ -701,12 +583,6 @@ Because in the expression's type:
   Context expects type: fun((dynamic()) -> dynamic()) with 0 type parameters
   The number of type parameters doesn't match.
 
------------------------------- Detailed message ------------------------------
-
-  fun((Z) -> Z) | fun((dynamic()) -> dynamic()) is not compatible with fun((dynamic()) -> dynamic())
-  because
-  fun((Z) -> Z) with 1 type parameter is not compatible with fun((dynamic()) -> dynamic()) with 0 type parameters
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:346:9
     │
@@ -724,12 +600,6 @@ Because in the expression's type:
   Here the type is:     fun((Z) -> Z) with 1 type parameter
   Context expects type: fun((A) -> A) with 0 type parameters
   The number of type parameters doesn't match.
-
------------------------------- Detailed message ------------------------------
-
-  fun((Z) -> Z) | fun((dynamic()) -> dynamic()) is not compatible with fun((A) -> A)
-  because
-  fun((Z) -> Z) with 1 type parameter is not compatible with fun((A) -> A) with 0 type parameters
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:358:9
@@ -781,12 +651,6 @@ Because in the expression's type:
   Context expects type: fun((Z) -> Z) with 0 type parameters
   The number of type parameters doesn't match.
 
------------------------------- Detailed message ------------------------------
-
-  fun((Z) -> Z) | fun((dynamic()) -> dynamic()) is not compatible with fun((Z) -> Z)
-  because
-  fun((Z) -> Z) with 1 type parameter is not compatible with fun((Z) -> Z) with 0 type parameters
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:358:9
     │
@@ -805,12 +669,6 @@ Because in the expression's type:
   Context expects type: fun((dynamic()) -> dynamic()) with 0 type parameters
   The number of type parameters doesn't match.
 
------------------------------- Detailed message ------------------------------
-
-  fun((Z) -> Z) | fun((dynamic()) -> dynamic()) is not compatible with fun((dynamic()) -> dynamic())
-  because
-  fun((Z) -> Z) with 1 type parameter is not compatible with fun((dynamic()) -> dynamic()) with 0 type parameters
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:358:9
     │
@@ -828,12 +686,6 @@ Because in the expression's type:
   Here the type is:     fun((Z) -> Z) with 1 type parameter
   Context expects type: fun((Z) -> Z) with 0 type parameters
   The number of type parameters doesn't match.
-
------------------------------- Detailed message ------------------------------
-
-  fun((Z) -> Z) | fun((dynamic()) -> dynamic()) is not compatible with fun((Z) -> Z)
-  because
-  fun((Z) -> Z) with 1 type parameter is not compatible with fun((Z) -> Z) with 0 type parameters
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:432:18
@@ -875,10 +727,6 @@ Because in the expression's type:
   Context expects type: #{a := ..., ...}
   The type of the expression is missing the following required keys: a.
 
------------------------------- Detailed message ------------------------------
-
-key `a` is declared as required in the latter but not in the former
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:441:16
     │
@@ -894,10 +742,6 @@ Because in the expression's type:
   Here the type is:     #{...}
   Context expects type: #{a := ..., ...}
   The type of the expression is missing the following required keys: a.
-
------------------------------- Detailed message ------------------------------
-
-key `a` is declared as required in the latter but not in the former
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:446:15
@@ -915,12 +759,6 @@ Because in the expression's type:
     Here the type is:     number()
     Context expects type: T
   )
-
------------------------------- Detailed message ------------------------------
-
-  fun((#{a => number()}) -> number()) is not compatible with fun((#{{T} => T}) -> T)
-  because
-  number() is not compatible with T
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:446:15
@@ -940,15 +778,6 @@ Because in the expression's type:
     The expected map has no default association while the type of the expression has one.
   ) -> number())
 
------------------------------- Detailed message ------------------------------
-
-  fun((#{a => number()}) -> number()) is not compatible with fun((#{{number()} => number()}) -> number())
-  because
-  #{{number()} => number()} is not compatible with #{a => number()}
-  because
-  #{{number()} => number()} is not compatible with #{a => number()}
-  the latter map has no default association while the first map has one
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:471:24
     │
@@ -966,12 +795,6 @@ Because in the expression's type:
     Context expects type: 'c'
   )
 
------------------------------- Detailed message ------------------------------
-
-  fun(('a') -> 'b') is not compatible with fun(('a') -> 'c')
-  because
-  'b' is not compatible with 'c'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:478:17
     │
@@ -988,10 +811,6 @@ Because in the expression's type:
   Context expects type: #{a := ..., ...}
   The type of the expression is missing the following required keys: a.
 
------------------------------- Detailed message ------------------------------
-
-key `a` is declared as required in the latter but not in the former
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:478:17
     │
@@ -1007,10 +826,6 @@ Because in the expression's type:
   Here the type is:     #{...}
   Context expects type: #{a := ..., ...}
   The type of the expression is missing the following required keys: a.
-
------------------------------- Detailed message ------------------------------
-
-key `a` is declared as required in the latter but not in the former
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:500:36
@@ -1048,16 +863,6 @@ Because in the expression's type:
     ) -> 'ok')
   ) -> 'ok')
 
------------------------------- Detailed message ------------------------------
-
-  contravar(contravar('a' | 'b')) is not compatible with contravar(contravar('a'))
-  because
-  fun((contravar('a' | 'b')) -> 'ok') is not compatible with contravar(contravar('a'))
-  because
-  fun((contravar('a' | 'b')) -> 'ok') is not compatible with fun((contravar('a')) -> 'ok')
-  because
-  contravar('a') is not compatible with contravar('a' | 'b')
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:563:5
     │
@@ -1074,14 +879,6 @@ Because in the expression's type:
     Here the type is:     atom()
     Context expects type: 'a'
   ) -> 'a')
-
------------------------------- Detailed message ------------------------------
-
-  invar('a') is not compatible with fun((atom()) -> atom())
-  because
-  fun(('a') -> 'a') is not compatible with fun((atom()) -> atom())
-  because
-  atom() is not compatible with 'a'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:569:5
@@ -1100,16 +897,6 @@ Because in the expression's type:
     Context expects type: 'a'
   ) -> 'a')
 
------------------------------- Detailed message ------------------------------
-
-  invar('a') is not compatible with invar(atom())
-  because
-  fun(('a') -> 'a') is not compatible with invar(atom())
-  because
-  fun(('a') -> 'a') is not compatible with fun((atom()) -> atom())
-  because
-  atom() is not compatible with 'a'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:585:5
     │
@@ -1124,12 +911,6 @@ Context expected type: invar('a')
 Because in the expression's type:
   Here the type is:     'a'
   Context expects type: fun(('a') -> 'a')
-
------------------------------- Detailed message ------------------------------
-
-  'a' is not compatible with invar('a')
-  because
-  'a' is not compatible with fun(('a') -> 'a')
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/generic_fun_application.erl:625:1
@@ -1175,10 +956,6 @@ Because in the expression's type:
   Context expects type: #{...}
   The expected map has no corresponding key for: extra.
 
------------------------------- Detailed message ------------------------------
-
-key `extra` is declared in the former but not in the latter and the latter map has no default association
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:721:25
     │
@@ -1204,14 +981,6 @@ Because in the expression's type:
     However the following candidate: 'b'
     Differs from the expected type:  'a'
   ) -> 'a')
-
------------------------------- Detailed message ------------------------------
-
-  fun(('a') -> 'a') is not compatible with fun(('a' | 'b') -> 'a' | 'b')
-  because
-  'a' | 'b' is not compatible with 'a'
-  because
-  'b' is not compatible with 'a'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:752:32

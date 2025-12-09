@@ -100,12 +100,6 @@ Because in the expression's type:
   However the following candidate: 'error'
   Differs from the expected type:  'ok'
 
------------------------------- Detailed message ------------------------------
-
-  dynamic() | 'error' is not compatible with 'ok'
-  because
-  'error' is not compatible with 'ok'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_refine.erl:236:3
     │
@@ -138,12 +132,6 @@ Because in the expression's type:
   However the following candidate: 'err'
   Differs from the expected type:  'ok'
 
------------------------------- Detailed message ------------------------------
-
-  dyn_alias() | 'err' is not compatible with 'ok'
-  because
-  'err' is not compatible with 'ok'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_refine.erl:260:27
     │
@@ -161,16 +149,5 @@ Because in the expression's type:
     However the following candidate: 'err'
     Differs from the expected type:  'ok'
   }
-
------------------------------- Detailed message ------------------------------
-
-  union() is not compatible with {'ok'}
-  because
-  at tuple index 1:
-  {dyn_alias() | 'err'} is not compatible with {'ok'}
-  because
-  dyn_alias() | 'err' is not compatible with 'ok'
-  because
-  'err' is not compatible with 'ok'
 
 16 ERRORS

@@ -29,12 +29,6 @@ Because in the expression's type:
   Here the type is:     number()
   Context expects type: [term()]
 
------------------------------- Detailed message ------------------------------
-
-  n() is not compatible with [term()]
-  because
-  number() is not compatible with [term()]
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/funs.erl:63:9
    │
@@ -49,12 +43,6 @@ Context expected type: n()
 Because in the expression's type:
   Here the type is:     [dynamic()]
   Context expects type: number()
-
------------------------------- Detailed message ------------------------------
-
-  [dynamic()] is not compatible with n()
-  because
-  [dynamic()] is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/funs.erl:70:13
@@ -71,12 +59,6 @@ Because in the expression's type:
   Here the type is:     binary()
   Context expects type: number()
 
------------------------------- Detailed message ------------------------------
-
-  binary() is not compatible with n()
-  because
-  binary() is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/funs.erl:70:35
    │
@@ -91,12 +73,6 @@ Context expected type: atom()
 Because in the expression's type:
   Here the type is:     number()
   Context expects type: atom()
-
------------------------------- Detailed message ------------------------------
-
-  n() is not compatible with atom()
-  because
-  number() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/funs.erl:77:5
@@ -116,14 +92,6 @@ Because in the expression's type:
     Context expects type: 'a'
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [n()] is not compatible with ['a']
-  because
-  n() is not compatible with 'a'
-  because
-  number() is not compatible with 'a'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/funs.erl:90:18
    │
@@ -138,12 +106,6 @@ Context expected type: [term()]
 Because in the expression's type:
   Here the type is:     number()
   Context expects type: [term()]
-
------------------------------- Detailed message ------------------------------
-
-  n() is not compatible with [term()]
-  because
-  number() is not compatible with [term()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/funs.erl:90:18
@@ -160,12 +122,6 @@ Because in the expression's type:
   Here the type is:     [dynamic()]
   Context expects type: number()
 
------------------------------- Detailed message ------------------------------
-
-  [dynamic()] is not compatible with n()
-  because
-  [dynamic()] is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/funs.erl:90:23
    │
@@ -180,12 +136,6 @@ Context expected type: [term()]
 Because in the expression's type:
   Here the type is:     number()
   Context expects type: [term()]
-
------------------------------- Detailed message ------------------------------
-
-  n() is not compatible with [term()]
-  because
-  number() is not compatible with [term()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/funs.erl:96:31
@@ -202,12 +152,6 @@ Because in the expression's type:
   Here the type is:     number()
   Context expects type: atom()
 
------------------------------- Detailed message ------------------------------
-
-  n() is not compatible with atom()
-  because
-  number() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/funs.erl:97:9
    │
@@ -222,12 +166,6 @@ Context expected type: [term()]
 Because in the expression's type:
   Here the type is:     number()
   Context expects type: [term()]
-
------------------------------- Detailed message ------------------------------
-
-  n() is not compatible with [term()]
-  because
-  number() is not compatible with [term()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/funs.erl:97:9
@@ -244,12 +182,6 @@ Because in the expression's type:
   Here the type is:     [dynamic()]
   Context expects type: number()
 
------------------------------- Detailed message ------------------------------
-
-  [dynamic()] is not compatible with n()
-  because
-  [dynamic()] is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/funs.erl:97:14
    │
@@ -264,12 +196,6 @@ Context expected type: [term()]
 Because in the expression's type:
   Here the type is:     number()
   Context expects type: [term()]
-
------------------------------- Detailed message ------------------------------
-
-  n() is not compatible with [term()]
-  because
-  number() is not compatible with [term()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/funs.erl:104:7

@@ -17,16 +17,6 @@ Because in the expression's type:
     Context expects type: 'b'
   , chainA()}
 
------------------------------- Detailed message ------------------------------
-
-  chainA() is not compatible with chainB()
-  because
-  'nil' | {'a', chainA()} is not compatible with chainB()
-  because
-  'nil' | {'a', chainA()} is not compatible with 'nil' | {'b', chainB()}
-  because
-  {'a', chainA()} is not compatible with 'nil' | {'b', chainB()}
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/recursive_aliases.erl:62:20
    │
@@ -45,16 +35,6 @@ Because in the expression's type:
     Here the type is:     'b'
     Context expects type: 'a'
   , chainB()}
-
------------------------------- Detailed message ------------------------------
-
-  chainB() is not compatible with chainA()
-  because
-  'nil' | {'b', chainB()} is not compatible with chainA()
-  because
-  'nil' | {'b', chainB()} is not compatible with 'nil' | {'a', chainA()}
-  because
-  {'b', chainB()} is not compatible with 'nil' | {'a', chainA()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/recursive_aliases.erl:65:20
@@ -75,16 +55,6 @@ Because in the expression's type:
     Context expects type: 'a'
   , chainAB()}
 
------------------------------- Detailed message ------------------------------
-
-  chainAB() is not compatible with chainA()
-  because
-  'nil' | {'a', chainAB()} | {'b', chainAB()} is not compatible with chainA()
-  because
-  'nil' | {'a', chainAB()} | {'b', chainAB()} is not compatible with 'nil' | {'a', chainA()}
-  because
-  {'b', chainAB()} is not compatible with 'nil' | {'a', chainA()}
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/recursive_aliases.erl:68:20
    │
@@ -103,16 +73,6 @@ Because in the expression's type:
     Here the type is:     'a'
     Context expects type: 'b'
   , chainAB()}
-
------------------------------- Detailed message ------------------------------
-
-  chainAB() is not compatible with chainB()
-  because
-  'nil' | {'a', chainAB()} | {'b', chainAB()} is not compatible with chainB()
-  because
-  'nil' | {'a', chainAB()} | {'b', chainAB()} is not compatible with 'nil' | {'b', chainB()}
-  because
-  {'a', chainAB()} is not compatible with 'nil' | {'b', chainB()}
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
    ┌─ check/src/recursive_aliases.erl:70:1
@@ -143,17 +103,6 @@ Because in the expression's type:
   However the following candidate: {'a', atom(), pchainA(atom())}
   Differs from the expected type:  'nil' | {'a', pchainAB(atom())} | {'b', pchainAB(atom())}
 
------------------------------- Detailed message ------------------------------
-
-  pchainA(atom()) is not compatible with pchainAB(atom())
-  because
-  'nil' | {'a', atom(), pchainA(atom())} is not compatible with pchainAB(atom())
-  because
-  'nil' | {'a', atom(), pchainA(atom())} is not compatible with 'nil' | {'a', pchainAB(atom())} | {'b', pchainAB(atom())}
-  because
-  {'a', atom(), pchainA(atom())} is not compatible with 'nil' | {'a', pchainAB(atom())} | {'b', pchainAB(atom())}
-  expected union does not contain any tuple type of size 3
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/recursive_aliases.erl:113:23
     │
@@ -171,16 +120,6 @@ Because in the expression's type:
   Here the type is:     #{...}
   Context expects type: #{a := ..., ...}
   The type of the expression is missing the following required keys: a.
-
------------------------------- Detailed message ------------------------------
-
-  mChainB() is not compatible with mChainA()
-  because
-  'nil' | #{b := mChainB()} is not compatible with mChainA()
-  because
-  'nil' | #{b := mChainB()} is not compatible with 'nil' | #{a := mChainA()}
-  because
-  #{b := mChainB()} is not compatible with 'nil' | #{a := mChainA()}
 
 error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
     ┌─ check/src/recursive_aliases.erl:138:15
@@ -209,16 +148,6 @@ Because in the expression's type:
     Context expects type: 'b' | 'c'
     No candidate matches in the expected union.
   , pchainA('a')}
-
------------------------------- Detailed message ------------------------------
-
-  pchainA('a') is not compatible with pchainA('b' | 'c')
-  because
-  'nil' | {'a', 'a', pchainA('a')} is not compatible with pchainA('b' | 'c')
-  because
-  'nil' | {'a', 'a', pchainA('a')} is not compatible with 'nil' | {'a', 'b' | 'c', pchainA('b' | 'c')}
-  because
-  {'a', 'a', pchainA('a')} is not compatible with 'nil' | {'a', 'b' | 'c', pchainA('b' | 'c')}
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/recursive_aliases.erl:202:1

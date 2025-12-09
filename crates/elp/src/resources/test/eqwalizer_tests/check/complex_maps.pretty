@@ -14,10 +14,6 @@ Because in the expression's type:
   Context expects type: #{...}
   The expected map has no corresponding key for: c.
 
------------------------------- Detailed message ------------------------------
-
-key `c` is declared in the former but not in the latter and the latter map has no default association
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/complex_maps.erl:17:21
    │
@@ -35,15 +31,6 @@ Because in the expression's type:
     Context expects type: number()
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{a => 'b', c => 'd'} is not compatible with #{a => 'b', atom() => number()}
-  because
-  #{a => 'b', c => 'd'} is not compatible with #{a => 'b', atom() => number()}
-  key `c` is declared in the former but not in the latter and key `c` isn't compatible with the default association of the latter map
-  because
-  'd' is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/complex_maps.erl:20:19
    │
@@ -59,13 +46,6 @@ Because in the expression's type:
   Here the type is:     #{atom() => atom()}
   Context expects type: #{...} (no default association)
   The expected map has no default association while the type of the expression has one.
-
------------------------------- Detailed message ------------------------------
-
-  #{a => 'b', atom() => atom()} is not compatible with #{a => 'b', c => 'd'}
-  key c is not present in the former map but is incompatible with its default association
-  because
-  atom() is not compatible with 'd'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/complex_maps.erl:23:19
@@ -85,13 +65,6 @@ Because in the expression's type:
   , ... }
   The context introduces a new association c => 'd' which is incompatible with the expression's default association.
 
------------------------------- Detailed message ------------------------------
-
-  #{a => 'b', atom() => number()} is not compatible with #{a => 'b', c => 'd', atom() => number()}
-  key c is not present in the former map but is incompatible with its default association
-  because
-  number() is not compatible with 'd'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/complex_maps.erl:38:21
    │
@@ -107,13 +80,6 @@ Because in the expression's type:
   Here the type is:     #{atom() => atom()}
   Context expects type: #{...} (no default association)
   The expected map has no default association while the type of the expression has one.
-
------------------------------- Detailed message ------------------------------
-
-  #{a => 'b', atom() => atom()} is not compatible with #{a => 'b'}
-  because
-  #{a => 'b', atom() => atom()} is not compatible with #{a => 'b'}
-  the latter map has no default association while the first map has one
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/complex_maps.erl:44:26
@@ -131,13 +97,6 @@ Because in the expression's type:
   Context expects type: #{...} (no default association)
   The expected map has no default association while the type of the expression has one.
 
------------------------------- Detailed message ------------------------------
-
-  #{a => 'b', dynamic(atom()) => atom()} is not compatible with #{a => 'b'}
-  because
-  #{a => 'b', dynamic(atom()) => atom()} is not compatible with #{a => 'b'}
-  the latter map has no default association while the first map has one
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/complex_maps.erl:47:26
    │
@@ -153,13 +112,6 @@ Because in the expression's type:
   Here the type is:     #{atom() => dynamic(atom())}
   Context expects type: #{...} (no default association)
   The expected map has no default association while the type of the expression has one.
-
------------------------------- Detailed message ------------------------------
-
-  #{a => 'b', atom() => dynamic(atom())} is not compatible with #{a => 'b'}
-  because
-  #{a => 'b', atom() => dynamic(atom())} is not compatible with #{a => 'b'}
-  the latter map has no default association while the first map has one
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/complex_maps.erl:56:44
@@ -218,13 +170,6 @@ Because in the expression's type:
     Context expects type: atom()
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{atom() => binary()} is not compatible with #{a => binary(), atom() => atom()}
-  the default associations are not compatible
-  because
-  binary() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/complex_maps.erl:83:28
    │
@@ -241,13 +186,6 @@ Because in the expression's type:
     Here the type is:     binary()
     Context expects type: atom()
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  #{a := 'b', atom() => binary()} is not compatible with #{a => 'b', {c, d} => atom() | binary(), term() => atom()}
-  the default associations are not compatible
-  because
-  binary() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/complex_maps.erl:86:28
@@ -266,13 +204,6 @@ Because in the expression's type:
     Context expects type: atom()
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{a := 'b', atom() => binary()} is not compatible with #{a => 'b', {c, d} => atom() | binary(), atom() => atom()}
-  the default associations are not compatible
-  because
-  binary() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/complex_maps.erl:89:29
    │
@@ -289,12 +220,5 @@ Because in the expression's type:
     Here the type is:     atom()
     Context expects type: binary()
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  #{dynamic() => atom()} is not compatible with #{dynamic() => binary()}
-  the default associations are not compatible
-  because
-  atom() is not compatible with binary()
 
 16 ERRORS

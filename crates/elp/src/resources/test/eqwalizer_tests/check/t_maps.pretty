@@ -15,13 +15,6 @@ Because in the expression's type:
     Context expects type: atom()
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{number() => number()} is not compatible with #{number() => atom()}
-  the default associations are not compatible
-  because
-  number() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/t_maps.erl:41:5
    │
@@ -40,15 +33,6 @@ Because in the expression's type:
     Differs from the expected type:  atom()
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{number() => 'zero' | number()} is not compatible with #{number() => atom()}
-  the default associations are not compatible
-  because
-  'zero' | number() is not compatible with atom()
-  because
-  number() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/t_maps.erl:56:5
    │
@@ -65,15 +49,6 @@ Because in the expression's type:
     Here the type is:     'one'
     Context expects type: number()
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  #{one := 'one', zero := number()} is not compatible with #{one => number(), zero := number()}
-  because
-  at key `one`:
-  #{one := 'one', zero := number()} is not compatible with #{one => number(), zero := number()}
-  because
-  'one' is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/t_maps.erl:80:5
@@ -108,15 +83,6 @@ Because in the expression's type:
     Context expects type: n()
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{b() => term()} is not compatible with #{n() => term()}
-  the default associations are not compatible
-  because
-  b() is not compatible with n()
-  because
-  boolean() is not compatible with n()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:140:26
     │
@@ -133,17 +99,6 @@ Because in the expression's type:
     Here the type is:     boolean()
     Context expects type: n()
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  #{a := b()} is not compatible with #{a := n()}
-  because
-  at key `a`:
-  #{a := b()} is not compatible with #{a := n()}
-  because
-  b() is not compatible with n()
-  because
-  boolean() is not compatible with n()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:145:26
@@ -162,17 +117,6 @@ Because in the expression's type:
     Context expects type: n()
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{a := b()} is not compatible with #{a => n()}
-  because
-  at key `a`:
-  #{a := b()} is not compatible with #{a => n()}
-  because
-  b() is not compatible with n()
-  because
-  boolean() is not compatible with n()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:155:26
     │
@@ -188,10 +132,6 @@ Because in the expression's type:
   Here the type is:     #{a => ..., ...}
   Context expects type: #{a := ..., ...}
   The type of the expression is missing the following required keys: a.
-
------------------------------- Detailed message ------------------------------
-
-key `a` is declared as required in the latter but not in the former
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/t_maps.erl:165:1
@@ -216,17 +156,6 @@ Because in the expression's type:
     Context expects type: atom()
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{a := a(), n() => a()} is not compatible with #{a() => a()}
-  the default associations are not compatible
-  because
-  n() is not compatible with a()
-  because
-  number() is not compatible with a()
-  because
-  number() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:208:5
     │
@@ -243,17 +172,6 @@ Because in the expression's type:
     Here the type is:     'a'
     Context expects type: number()
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  #{a := a(), n() => a()} is not compatible with #{n() => a()}
-  because
-  #{a := a(), n() => a()} is not compatible with #{n() => a()}
-  key `a` is declared in the former but not in the latter and key `a` isn't compatible with the default association of the latter map
-  because
-  'a' is not compatible with n()
-  because
-  'a' is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:216:5
@@ -272,17 +190,6 @@ Because in the expression's type:
     Context expects type: number()
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{a := a(), n() => a()} is not compatible with #{n() => a()}
-  because
-  #{a := a(), n() => a()} is not compatible with #{n() => a()}
-  key `a` is declared in the former but not in the latter and key `a` isn't compatible with the default association of the latter map
-  because
-  'a' is not compatible with n()
-  because
-  'a' is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:224:5
     │
@@ -299,17 +206,6 @@ Because in the expression's type:
     Here the type is:     'a'
     Context expects type: number()
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  #{a => a(), n() => a()} is not compatible with #{n() => a()}
-  because
-  #{a => a(), n() => a()} is not compatible with #{n() => a()}
-  key `a` is declared in the former but not in the latter and key `a` isn't compatible with the default association of the latter map
-  because
-  'a' is not compatible with n()
-  because
-  'a' is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:242:5
@@ -328,17 +224,6 @@ Because in the expression's type:
     Context expects type: F1
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{bar := B1, foo := F1} is not compatible with foo_bar(B1, F1)
-  because
-  #{bar := B1, foo := F1} is not compatible with #{bar := F1, foo := B1}
-  because
-  at key `bar`:
-  #{bar := B1, foo := F1} is not compatible with #{bar := F1, foo := B1}
-  because
-  B1 is not compatible with F1
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:254:5
     │
@@ -355,17 +240,6 @@ Because in the expression's type:
     Here the type is:     B1
     Context expects type: F1
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  #{bar := B1, foo := F1} is not compatible with foo_bar_opt(B1, F1)
-  because
-  #{bar := B1, foo := F1} is not compatible with #{bar => F1, foo => B1}
-  because
-  at key `bar`:
-  #{bar := B1, foo := F1} is not compatible with #{bar => F1, foo => B1}
-  because
-  B1 is not compatible with F1
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:266:5
@@ -385,17 +259,6 @@ Because in the expression's type:
     Differs from the expected type:  K1 | K2
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{K1 | V2 => V1 | K2} is not compatible with kv(K1 | K2, V1 | V2)
-  because
-  #{K1 | V2 => V1 | K2} is not compatible with #{K1 | K2 => V1 | V2}
-  the default associations are not compatible
-  because
-  K1 | V2 is not compatible with K1 | K2
-  because
-  V2 is not compatible with K1 | K2
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:283:19
     │
@@ -411,10 +274,6 @@ Because in the expression's type:
   Here the type is:     #{b := ...}
   Context expects type: #{...}
   The expected map has no corresponding key for: b.
-
------------------------------- Detailed message ------------------------------
-
-key `b` is declared in the former but not in the latter and the latter map has no default association
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:307:22
@@ -433,17 +292,6 @@ Because in the expression's type:
     Context expects type: number()
   , n()}
 
------------------------------- Detailed message ------------------------------
-
-  at tuple index 1:
-  {a(), n()} is not compatible with {n(), a()}
-  because
-  a() is not compatible with n()
-  because
-  atom() is not compatible with n()
-  because
-  atom() is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:321:5
     │
@@ -461,17 +309,6 @@ Because in the expression's type:
     Context expects type: number()
   , n()}
 
------------------------------- Detailed message ------------------------------
-
-  at tuple index 1:
-  {a(), n()} is not compatible with {n(), a()}
-  because
-  a() is not compatible with n()
-  because
-  atom() is not compatible with n()
-  because
-  atom() is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:334:25
     │
@@ -488,13 +325,6 @@ Because in the expression's type:
     Here the type is:     V
     Context expects type: K
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  #{V => K} is not compatible with #{K => V}
-  the default associations are not compatible
-  because
-  V is not compatible with K
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:351:25
@@ -514,17 +344,6 @@ Because in the expression's type:
     Here the type is:     number()
     Context expects type: atom()
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  #{a() => n()} | #{n() => a()} | #{id => 'id' | 'no_id'} is not compatible with #{a() | n() => a()}
-  because
-  #{a() => n()} is not compatible with #{a() | n() => a()}
-  the default associations are not compatible
-  because
-  n() is not compatible with a()
-  because
-  number() is not compatible with a()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/t_maps.erl:356:1
@@ -555,15 +374,6 @@ Because in the expression's type:
     Context expects type: number()
     No candidate of the expression's type matches the expected type.
   , a()}
-
------------------------------- Detailed message ------------------------------
-
-  at tuple index 1:
-  {'a' | 'b', a()} is not compatible with {n(), a()}
-  because
-  'a' | 'b' is not compatible with n()
-  because
-  'a' | 'b' is not compatible with number()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/t_maps.erl:429:1
@@ -611,10 +421,6 @@ Because in the expression's type:
   Context expects type: #{n := ..., ...}
   The type of the expression is missing the following required keys: n.
 
------------------------------- Detailed message ------------------------------
-
-key `n` is declared as required in the latter but not in the former
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:536:5
     │
@@ -633,17 +439,6 @@ Because in the expression's type:
     Differs from the expected type:  'b' | 'c'
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{a => 'b' | 'c' | 'a'} is not compatible with #{a => 'b' | 'c'}
-  because
-  at key `a`:
-  #{a => 'b' | 'c' | 'a'} is not compatible with #{a => 'b' | 'c'}
-  because
-  'b' | 'c' | 'a' is not compatible with 'b' | 'c'
-  because
-  'a' is not compatible with 'b' | 'c'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:571:5
     │
@@ -659,15 +454,6 @@ Because in the expression's type:
   Here the type is:     #{...}
   Context expects type: #{item_v2 := ..., ...}
   The type of the expression is missing the following required keys: item_v2.
-
------------------------------- Detailed message ------------------------------
-
-  rec_shape() is not compatible with rec_shape_v2()
-  because
-  #{item := rec_shape() | 'undefined'} is not compatible with rec_shape_v2()
-  because
-  #{item := rec_shape() | 'undefined'} is not compatible with #{item_v2 := rec_shape_v2() | 'undefined'}
-  key `item_v2` is declared as required in the latter but not in the former
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:629:5
@@ -687,14 +473,6 @@ Because in the expression's type:
     Differs from the expected type:  'a' | #{item := 'a' | gen_shape('a')}
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  gen_shape('a' | 'b') is not compatible with 'a' | #{item := 'a' | #{item := 'a' | gen_shape('a')}}
-  because
-  #{item := 'a' | 'b' | gen_shape('a' | 'b')} is not compatible with 'a' | #{item := 'a' | #{item := 'a' | gen_shape('a')}}
-  because
-  #{item := 'a' | 'b' | gen_shape('a' | 'b')} is not compatible with 'a'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:641:5
     │
@@ -711,15 +489,6 @@ Because in the expression's type:
   Context expects type: #{item := ..., ...}
   The type of the expression is missing the following required keys: item.
 
------------------------------- Detailed message ------------------------------
-
-  gen_shape_v2('a') is not compatible with gen_shape('a')
-  because
-  #{item_v2 := 'a' | gen_shape_v2('a')} is not compatible with gen_shape('a')
-  because
-  #{item_v2 := 'a' | gen_shape_v2('a')} is not compatible with #{item := 'a' | gen_shape('a')}
-  key `item` is declared as required in the latter but not in the former
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:648:5
     │
@@ -735,10 +504,6 @@ Because in the expression's type:
   Here the type is:     #{d => ...}
   Context expects type: #{...}
   The expected map has no corresponding key for: d.
-
------------------------------- Detailed message ------------------------------
-
-key `d` is declared in the former but not in the latter and the latter map has no default association
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:661:5
@@ -757,15 +522,6 @@ Because in the expression's type:
     Context expects type: 'ka'
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{a => 'va', b => 'vb', c => 'vc', d => 'vd', e => 've'} is not compatible with #{a => 'ka', b => 'kb', c => 'kc'}
-  because
-  at key `a`:
-  #{a => 'va', b => 'vb', c => 'vc', d => 'vd', e => 've'} is not compatible with #{a => 'ka', b => 'kb', c => 'kc'}
-  because
-  'va' is not compatible with 'ka'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:675:5
     │
@@ -781,10 +537,6 @@ Because in the expression's type:
   Here the type is:     #{...}
   Context expects type: #{c := ..., ...}
   The type of the expression is missing the following required keys: c.
-
------------------------------- Detailed message ------------------------------
-
-key `c` is declared as required in the latter but not in the former
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:682:5
@@ -802,10 +554,6 @@ Because in the expression's type:
   Context expects type: #{b := ..., ...}
   The type of the expression is missing the following required keys: b.
 
------------------------------- Detailed message ------------------------------
-
-key `b` is declared as required in the latter but not in the former
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:689:5
     │
@@ -821,10 +569,6 @@ Because in the expression's type:
   Here the type is:     #{b => ..., ...}
   Context expects type: #{b := ..., ...}
   The type of the expression is missing the following required keys: b.
-
------------------------------- Detailed message ------------------------------
-
-key `b` is declared as required in the latter but not in the former
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:710:5
@@ -842,10 +586,6 @@ Because in the expression's type:
   Context expects type: #{k_req3 := ..., k_req2 := ..., k_req1 := ..., ...}
   The type of the expression is missing the following required keys: k_req3, k_req2, k_req1.
 
------------------------------- Detailed message ------------------------------
-
-keys `k_req1`, `k_req2`, `k_req3` are declared as required in the latter but not in the former
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:732:27
     │
@@ -861,13 +601,6 @@ Because in the expression's type:
   Here the type is:     #{'a' | 'b' => boolean()}
   Context expects type: #{...} (no default association)
   The expected map has no default association while the type of the expression has one.
-
------------------------------- Detailed message ------------------------------
-
-  #{'a' | 'b' => boolean()} is not compatible with #{a => 'true', b => boolean()}
-  key a is not present in the former map but is incompatible with its default association
-  because
-  boolean() is not compatible with 'true'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:737:27
@@ -885,10 +618,6 @@ Because in the expression's type:
   Context expects type: #{b := ..., ...}
   The type of the expression is missing the following required keys: b.
 
------------------------------- Detailed message ------------------------------
-
-key `b` is declared as required in the latter but not in the former
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/t_maps.erl:742:27
     │
@@ -904,12 +633,5 @@ Because in the expression's type:
   Here the type is:     #{'a' | 'b' => boolean()}
   Context expects type: #{...} (no default association)
   The expected map has no default association while the type of the expression has one.
-
------------------------------- Detailed message ------------------------------
-
-  #{'a' | 'b' => boolean()} is not compatible with #{a => boolean()}
-  because
-  #{'a' | 'b' => boolean()} is not compatible with #{a => boolean()}
-  the latter map has no default association while the first map has one
 
 44 ERRORS

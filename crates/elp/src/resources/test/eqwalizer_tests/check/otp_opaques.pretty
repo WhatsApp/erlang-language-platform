@@ -17,17 +17,6 @@ Because in the expression's type:
     , term(), term()}
   }
 
------------------------------- Detailed message ------------------------------
-
-  gb_sets:set(atom()) is not compatible with gb_sets:set(number())
-  because
-  {number(), gb_sets:gb_set_node(atom())} is not compatible with gb_sets:set(number())
-  because
-  at tuple index 2:
-  {number(), gb_sets:gb_set_node(atom())} is not compatible with {number(), gb_sets:gb_set_node(number())}
-  because
-  gb_sets:gb_set_node(atom()) is not compatible with gb_sets:gb_set_node(number())
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/otp_opaques.erl:42:5
    │
@@ -45,12 +34,6 @@ Because in the expression's type:
     Context expects type: A
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [[A]] is not compatible with [A]
-  because
-  [A] is not compatible with A
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/otp_opaques.erl:99:17
    │
@@ -66,14 +49,6 @@ Because in the expression's type:
   Here the type is:     tuple()/3 | 'none' | [...] | [...]
   Context expects type: #set{} | #{a => []}
   No candidate of the expression's type matches the expected type.
-
------------------------------- Detailed message ------------------------------
-
-  maps:iterator('k', 'v') is not compatible with sets:set('a')
-  because
-  {'k', 'v', maps:iterator('k', 'v')} | 'none' | [number()] | [['k']] is not compatible with sets:set('a')
-  because
-  {'k', 'v', maps:iterator('k', 'v')} | 'none' | [number()] | [['k']] is not compatible with #set{} | #{a => []}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/otp_opaques.erl:102:13
@@ -98,14 +73,6 @@ Because in the expression's type:
   Here the type is:     tuple()/3 | 'none' | [...] | [...]
   Context expects type: #set{} | #{a => []}
   No candidate of the expression's type matches the expected type.
-
------------------------------- Detailed message ------------------------------
-
-  maps:iterator('k', 'v') is not compatible with sets:set('a')
-  because
-  {'k', 'v', maps:iterator('k', 'v')} | 'none' | [number()] | [['k']] is not compatible with sets:set('a')
-  because
-  {'k', 'v', maps:iterator('k', 'v')} | 'none' | [number()] | [['k']] is not compatible with #set{} | #{a => []}
 
 error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
     ┌─ check/src/otp_opaques.erl:124:5

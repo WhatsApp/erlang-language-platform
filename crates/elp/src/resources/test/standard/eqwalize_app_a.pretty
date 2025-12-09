@@ -44,10 +44,6 @@ Because in the expression's type:
   Context expects type: #{k_req3 := ..., k_req2 := ..., k_req1 := ..., ...}
   The type of the expression is missing the following required keys: k_req3, k_req2, k_req1.
 
------------------------------- Detailed message ------------------------------
-
-keys `k_req1`, `k_req2`, `k_req3` are declared as required in the latter but not in the former
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ app_a/src/app_a.erl:102:5
     │
@@ -67,17 +63,6 @@ Because in the expression's type:
       The type of the expression is missing the following required keys: d, e.
     , ... }
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  id(#{a := 'va', b := #{c := #{d => atom()}}}) is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
-  because
-  #{a := 'va', b := #{c := #{d => atom()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
-  because
-  at key `b`:
-  #{a := 'va', b := #{c := #{d => atom()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
-  because
-  #{c := #{d => atom()}} is not compatible with #{c := id(#{d := atom(), e := atom()})}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ app_a/src/app_a.erl:125:5
@@ -99,16 +84,5 @@ Because in the expression's type:
       , ... }
     , ... }
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  id(#{a := 'va', b := #{c := #{d := pid(), e := pid()}}}) is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
-  because
-  #{a := 'va', b := #{c := #{d := pid(), e := pid()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
-  because
-  at key `b`:
-  #{a := 'va', b := #{c := #{d := pid(), e := pid()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
-  because
-  #{c := #{d := pid(), e := pid()}} is not compatible with #{c := id(#{d := atom(), e := atom()})}
 
 7 ERRORS

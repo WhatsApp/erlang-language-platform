@@ -15,17 +15,6 @@ Because in the expression's type:
     Context expects type: number()
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{bar := atom(), baz := atom()} is not compatible with foo_map() | #{foo => atom()}
-  because
-  #{bar := atom(), baz := atom()} is not compatible with foo_map()
-  because
-  #{bar := atom(), baz := atom()} is not compatible with #{bar => atom(), baz => number(), other => atom(), other2 => atom(), other3 => atom(), other4 => atom(), other5 => atom()}
-  because
-  at key `baz`:
-  #{bar := atom(), baz := atom()} is not compatible with #{bar => atom(), baz => number(), other => atom(), other2 => atom(), other3 => atom(), other4 => atom(), other5 => atom()}
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/error_messages.erl:19:24
    │
@@ -43,12 +32,6 @@ Because in the expression's type:
     Context expects type: #{...}
     The expected map has no corresponding key for: baz.
   ]
-
------------------------------- Detailed message ------------------------------
-
-  [#{bar => 'a' | 'b'} | #{baz => 'a' | 'b'}] is not compatible with [#{bar => 'a'}]
-  because
-  #{bar => 'a' | 'b'} | #{baz => 'a' | 'b'} is not compatible with #{bar => 'a'}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/error_messages.erl:22:22
@@ -68,15 +51,6 @@ Because in the expression's type:
     Differs from the expected type:  binary()
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{'undefined' | binary() => atom()} is not compatible with #{binary() => atom()}
-  the default associations are not compatible
-  because
-  'undefined' | binary() is not compatible with binary()
-  because
-  'undefined' is not compatible with binary()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/error_messages.erl:27:32
    │
@@ -89,17 +63,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ check/src/error_messages.erl:30:32
    │
 30 │ no_record_conversion_2(Foo) -> Foo.
-   │                                ^^^
-   │                                │
-   │                                Foo.
+   │                                ^^^ Foo.
 Expression has type:   #foo{}
 Context expected type: {binary(), atom(), atom()}
-   │                                
-
-  at tuple index 1:
-  {'foo', atom(), atom()} is not compatible with {binary(), atom(), atom()}
-  because
-  'foo' is not compatible with binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/error_messages.erl:33:27
@@ -117,13 +83,6 @@ Because in the expression's type:
     Here the type is:     atom()
     Context expects type: binary()
   , atom()}
-
------------------------------- Detailed message ------------------------------
-
-  at tuple index 2:
-  {'foo', atom(), atom()} is not compatible with {'foo', binary(), atom()}
-  because
-  atom() is not compatible with binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/error_messages.erl:37:31
@@ -143,18 +102,6 @@ Because in the expression's type:
     The expected map has no corresponding key for: large_map_key_a.
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{foo => #{large_map_key_a => 'large_map_val_a', large_map_key_b => 'large_map_val_b'}} is not compatible with #{foo => #{large_map_key_c => 'large_map_val_c'} | #{large_map_key_d => 'large_map_val_d'}}
-  because
-  at key `foo`:
-  #{foo => #{large_map_key_a => 'large_map_val_a', large_map_key_b => 'large_map_val_b'}} is not compatible with #{foo => #{large_map_key_c => 'large_map_val_c'} | #{large_map_key_d => 'large_map_val_d'}}
-  because
-  #{large_map_key_a => 'large_map_val_a', large_map_key_b => 'large_map_val_b'} is not compatible with #{large_map_key_c => 'large_map_val_c'} | #{large_map_key_d => 'large_map_val_d'}
-  because
-  #{large_map_key_a => 'large_map_val_a', large_map_key_b => 'large_map_val_b'} is not compatible with #{large_map_key_c => 'large_map_val_c'}
-  key `large_map_key_a` is declared in the former but not in the latter and the latter map has no default association
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/error_messages.erl:41:31
    │
@@ -172,17 +119,5 @@ Because in the expression's type:
     Context expects type: #{...}
     The expected map has no corresponding key for: large_map_key_a.
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  #{foo => #{large_map_key_a => 'large_map_val_a', large_map_key_b => 'large_map_val_b'}} is not compatible with #{foo => #{large_map_key_c => 'large_map_val_c', large_map_key_d => 'large_map_val_d'} | 'any'}
-  because
-  at key `foo`:
-  #{foo => #{large_map_key_a => 'large_map_val_a', large_map_key_b => 'large_map_val_b'}} is not compatible with #{foo => #{large_map_key_c => 'large_map_val_c', large_map_key_d => 'large_map_val_d'} | 'any'}
-  because
-  #{large_map_key_a => 'large_map_val_a', large_map_key_b => 'large_map_val_b'} is not compatible with #{large_map_key_c => 'large_map_val_c', large_map_key_d => 'large_map_val_d'} | 'any'
-  because
-  #{large_map_key_a => 'large_map_val_a', large_map_key_b => 'large_map_val_b'} is not compatible with #{large_map_key_c => 'large_map_val_c', large_map_key_d => 'large_map_val_d'}
-  key `large_map_key_a` is declared in the former but not in the latter and the latter map has no default association
 
 8 ERRORS

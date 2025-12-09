@@ -50,14 +50,6 @@ Because in the expression's type:
     No candidate matches in the expected union.
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [term()] is not compatible with [T | X]
-  because
-  term() is not compatible with T | X
-  because
-  term() is not compatible with T
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ app_a/src/app_a_lists.erl:1305:15
      │
@@ -74,11 +66,5 @@ Because in the expression's type:
     Here the type is:     term()
     Context expects type: T
   ) -> boolean() | {'true', X})
-
------------------------------- Detailed message ------------------------------
-
-  fun((T) -> boolean() | {'true', X}) is not compatible with fun((term()) -> boolean() | {'true', term()})
-  because
-  term() is not compatible with T
 
 7 ERRORS

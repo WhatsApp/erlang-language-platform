@@ -127,12 +127,6 @@ Because in the expression's type:
     Context expects type: atom()
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [number()] is not compatible with [atom()]
-  because
-  number() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:116:21
     │
@@ -149,12 +143,6 @@ Because in the expression's type:
     Here the type is:     number()
     Context expects type: atom()
   ]
-
------------------------------- Detailed message ------------------------------
-
-  [number()] is not compatible with [atom()]
-  because
-  number() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:120:18
@@ -206,12 +194,6 @@ Because in the expression's type:
     Here the type is:     atom()
     Context expects type: number()
   ]
-
------------------------------- Detailed message ------------------------------
-
-  [atom()] is not compatible with [number()]
-  because
-  atom() is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:143:29
@@ -323,31 +305,17 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ check/src/misc.erl:352:22
     │
 352 │     catch test69_pos(atom).
-    │                      ^^^^
-    │                      │
-    │                      'atom'.
+    │                      ^^^^ 'atom'.
 Expression has type:   'atom'
 Context expected type: [atom()] | [number()]
-    │                      
-
-  'atom' is not compatible with [atom()] | [number()]
-  because
-  'atom' is not compatible with [atom()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:357:22
     │
 357 │     catch test69_pos(atom).
-    │                      ^^^^
-    │                      │
-    │                      'atom'.
+    │                      ^^^^ 'atom'.
 Expression has type:   'atom'
 Context expected type: [atom()] | [number()]
-    │                      
-
-  'atom' is not compatible with [atom()] | [number()]
-  because
-  'atom' is not compatible with [atom()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:404:11
@@ -393,17 +361,6 @@ Because in the expression's type:
     ]
   , [atom() | number()]}
 
------------------------------- Detailed message ------------------------------
-
-  at tuple index 1:
-  {[number() | atom()], [atom() | number()]} is not compatible with {[atom()], [number()]}
-  because
-  [number() | atom()] is not compatible with [atom()]
-  because
-  number() | atom() is not compatible with atom()
-  because
-  number() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:461:5
     │
@@ -423,17 +380,6 @@ Because in the expression's type:
       Differs from the expected type:  atom()
     ]
   , [atom() | number()]}
-
------------------------------- Detailed message ------------------------------
-
-  at tuple index 1:
-  {[atom() | number()], [atom() | number()]} is not compatible with {[atom()] | [number()], [atom()] | [number()]}
-  because
-  [atom() | number()] is not compatible with [atom()] | [number()]
-  because
-  [atom() | number()] is not compatible with [atom()]
-  because
-  atom() | number() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:465:12
@@ -509,16 +455,6 @@ Because in the expression's type:
     Differs from the expected type:  atom() | number()
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [atom() | binary()] is not compatible with [atom() | number()]
-  because
-  atom() | binary() is not compatible with atom() | number()
-  because
-  binary() is not compatible with atom() | number()
-  because
-  binary() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:575:14
     │
@@ -551,12 +487,6 @@ Because in the expression's type:
     Here the type is:     A
     Context expects type: [A]
   ]
-
------------------------------- Detailed message ------------------------------
-
-  [A] is not compatible with [[A]]
-  because
-  A is not compatible with [A]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:611:21
@@ -752,13 +682,6 @@ Because in the expression's type:
     Context expects type: 'ok'
   }
 
------------------------------- Detailed message ------------------------------
-
-  at tuple index 2:
-  {none(), 'err'} is not compatible with {'ok', 'ok'}
-  because
-  'err' is not compatible with 'ok'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:741:5
     │
@@ -774,16 +697,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: 'stuff1' | 'v0_op2' | 'stuff2' | 'v0_op1' | 'v1_op2' | ...
   However the following candidate: 'v2_op'
   Differs from the expected type:  'stuff1' | 'v0_op2' | 'stuff2' | 'v0_op1' | 'v1_op2' | ...
-
------------------------------- Detailed message ------------------------------
-
-  v2_op() is not compatible with v1_op()
-  because
-  'v2_op' | v1_op() is not compatible with v1_op()
-  because
-  'v2_op' | v1_op() is not compatible with 'v1_op1' | 'v1_op2' | stuff() | v0_op()
-  because
-  'v2_op' is not compatible with 'v1_op1' | 'v1_op2' | stuff() | v0_op()
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/misc.erl:760:1
@@ -834,16 +747,6 @@ Because in the expression's type:
   Context expects type: #set{} | #{term() => []}
   No candidate matches in the expected union.
 
------------------------------- Detailed message ------------------------------
-
-  misc:set() is not compatible with sets:set()
-  because
-  [] is not compatible with sets:set()
-  because
-  [] is not compatible with sets:set(term())
-  because
-  [] is not compatible with #set{} | #{term() => []}
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:850:5
     │
@@ -860,13 +763,6 @@ Because in the expression's type:
     Here the type is:     number()
     Context expects type: pid()
   }
-
------------------------------- Detailed message ------------------------------
-
-  at tuple index 3:
-  {'ok', 'lists', number()} is not compatible with {'ok', atom(), pid()}
-  because
-  number() is not compatible with pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:860:5
@@ -907,12 +803,6 @@ Because in the expression's type:
   Here the type is:     {binary()}
   Context expects type: [binary()]
 
------------------------------- Detailed message ------------------------------
-
-  {binary()} is not compatible with erlang:iovec()
-  because
-  {binary()} is not compatible with [binary()]
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:949:15
     │
@@ -939,14 +829,6 @@ Because in the expression's type:
     No candidate of the expression's type matches the expected type.
   ]
 
------------------------------- Detailed message ------------------------------
-
-  ['MM' | 'MS' | 'EE' | 'MA' | 'GE'] is not compatible with [erlang:priority_level()]
-  because
-  'MM' | 'MS' | 'EE' | 'MA' | 'GE' is not compatible with erlang:priority_level()
-  because
-  'MM' | 'MS' | 'EE' | 'MA' | 'GE' is not compatible with 'low' | 'normal' | 'high' | 'max'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:971:5
     │
@@ -961,12 +843,6 @@ Context expected type: atom()
 Because in the expression's type:
   Here the type is:     {number(), number(), number()}
   Context expects type: atom()
-
------------------------------- Detailed message ------------------------------
-
-  erlang:timestamp() is not compatible with atom()
-  because
-  {number(), number(), number()} is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:987:12

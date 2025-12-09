@@ -22,10 +22,4 @@ Because in the expression's type:
   However the following candidate: 'false'
   Differs from the expected type:  'true'
 
------------------------------- Detailed message ------------------------------
-
-  'false' | 'true' is not compatible with 'true'
-  because
-  'false' is not compatible with 'true'
-
 2 ERRORS

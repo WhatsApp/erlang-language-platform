@@ -38,12 +38,6 @@ Because in the expression's type:
   However the following candidate: number()
   Differs from the expected type:  none()
 
------------------------------- Detailed message ------------------------------
-
-  number() | dynamic() is not compatible with none()
-  because
-  number() is not compatible with none()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_generics.erl:72:3
    │
@@ -67,12 +61,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: dynamic()
   However the following candidate: string()
   Differs from the expected type:  'ok'
-
------------------------------- Detailed message ------------------------------
-
-  dynamic() | string() is not compatible with 'ok'
-  because
-  string() is not compatible with 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dynamic_generics.erl:87:3
@@ -112,14 +100,6 @@ Because in the expression's type:
     Differs from the expected type:  number()
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [number() | 'three'] is not compatible with [number()]
-  because
-  number() | 'three' is not compatible with number()
-  because
-  'three' is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_generics.erl:115:9
     │
@@ -136,12 +116,6 @@ Because in the expression's type:
   However the following candidate: 'three'
   Differs from the expected type:  number()
 
------------------------------- Detailed message ------------------------------
-
-  number() | 'three' is not compatible with number()
-  because
-  'three' is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_generics.erl:115:22
     │
@@ -157,12 +131,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
   However the following candidate: 'three'
   Differs from the expected type:  number()
-
------------------------------- Detailed message ------------------------------
-
-  number() | 'three' is not compatible with number()
-  because
-  'three' is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_generics.erl:127:13

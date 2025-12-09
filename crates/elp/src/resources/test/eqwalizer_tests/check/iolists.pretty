@@ -23,14 +23,6 @@ Because in the expression's type:
     Differs from the expected type:  binary()
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [atom() | binary()] is not compatible with [binary()]
-  because
-  atom() | binary() is not compatible with binary()
-  because
-  atom() is not compatible with binary()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/iolists.erl:55:22
    │
@@ -48,14 +40,6 @@ Because in the expression's type:
     However the following candidate: binary()
     Differs from the expected type:  atom()
   ]
-
------------------------------- Detailed message ------------------------------
-
-  [atom() | binary()] is not compatible with [atom()]
-  because
-  atom() | binary() is not compatible with atom()
-  because
-  binary() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/iolists.erl:60:27

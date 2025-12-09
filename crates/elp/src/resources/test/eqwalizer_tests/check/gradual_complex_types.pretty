@@ -13,12 +13,6 @@ Because in the expression's type:
   Here the type is:     'undefined'
   Context expects type: #{...}
 
------------------------------- Detailed message ------------------------------
-
-  'undefined' is not compatible with complex_map()
-  because
-  'undefined' is not compatible with #{id := number(), {secret, id} => number(), atom() => term()}
-
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_complex_types.erl:29:25
    │
@@ -46,12 +40,6 @@ Because in the expression's type:
   Here the type is:     #{...}
   Context expects type: [T]
 
------------------------------- Detailed message ------------------------------
-
-  complex_map() is not compatible with [T]
-  because
-  #{id := number(), {secret, id} => number(), atom() => term()} is not compatible with [T]
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_complex_types.erl:48:16
    │
@@ -66,12 +54,6 @@ Context expected type: [dynamic()]
 Because in the expression's type:
   Here the type is:     #{...}
   Context expects type: [dynamic()]
-
------------------------------- Detailed message ------------------------------
-
-  complex_map() is not compatible with [dynamic()]
-  because
-  #{id := number(), {secret, id} => number(), atom() => term()} is not compatible with [dynamic()]
 
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_complex_types.erl:55:25
@@ -109,12 +91,5 @@ Because in the expression's type:
     Here the type is:     'ok'
     Context expects type: number()
   }
-
------------------------------- Detailed message ------------------------------
-
-  at tuple index 2:
-  {dyn_map(), 'ok'} is not compatible with {#{a => 'atom'}, number()}
-  because
-  'ok' is not compatible with number()
 
 9 ERRORS

@@ -22,12 +22,6 @@ Because in the expression's type:
   However the following candidate: string()
   Differs from the expected type:  binary()
 
------------------------------- Detailed message ------------------------------
-
-  string() | binary() is not compatible with binary()
-  because
-  string() is not compatible with binary()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/type_asserts.erl:63:26
    │
@@ -63,17 +57,6 @@ Because in the expression's type:
     Context expects type: atom()
   , atom()}
 
------------------------------- Detailed message ------------------------------
-
-  'false' | {number(), atom()} is not compatible with 'false' | {atom(), number()}
-  because
-  {number(), atom()} is not compatible with 'false' | {atom(), number()}
-  because
-  at tuple index 1:
-  {number(), atom()} is not compatible with {atom(), number()}
-  because
-  number() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/type_asserts.erl:92:3
    │
@@ -90,13 +73,6 @@ Because in the expression's type:
     Here the type is:     term()
     Context expects type: number()
   }
-
------------------------------- Detailed message ------------------------------
-
-  at tuple index 2:
-  {'false' | number(), term()} is not compatible with {'false' | number(), number()}
-  because
-  term() is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/type_asserts.erl:105:39
@@ -150,17 +126,6 @@ Because in the expression's type:
     The expected map has no corresponding key for: kb.
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} is not compatible with #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}}
-  because
-  #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} is not compatible with #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}}
-  the default associations are not compatible
-  because
-  #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'} is not compatible with #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}
-  because
-  #{ka := 'va', kb := 'vb', kc := 'vc'} is not compatible with #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/type_asserts.erl:129:9
     │
@@ -179,17 +144,6 @@ Because in the expression's type:
     The expected map has no corresponding key for: kb.
   , ... }
 
------------------------------- Detailed message ------------------------------
-
-  #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} is not compatible with #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}}
-  because
-  #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} is not compatible with #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}}
-  the default associations are not compatible
-  because
-  #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'} is not compatible with #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}
-  because
-  #{ka := 'va', kb := 'vb', kc := 'vc'} is not compatible with #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/type_asserts.erl:132:9
     │
@@ -207,17 +161,6 @@ Because in the expression's type:
     Context expects type: #{...}
     The expected map has no corresponding key for: kb.
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} is not compatible with #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}}
-  because
-  #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} is not compatible with #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}}
-  the default associations are not compatible
-  because
-  #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'} is not compatible with #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}
-  because
-  #{ka := 'va', kb := 'vb', kc := 'vc'} is not compatible with #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/type_asserts.erl:156:24

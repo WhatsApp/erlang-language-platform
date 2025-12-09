@@ -14,12 +14,6 @@ Because in the expression's type:
   However the following candidate: number()
   Differs from the expected type:  binary()
 
------------------------------- Detailed message ------------------------------
-
-  number() | binary() is not compatible with binary()
-  because
-  number() is not compatible with binary()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:172:22
     │
@@ -36,12 +30,6 @@ Because in the expression's type:
   However the following candidate: number()
   Differs from the expected type:  binary()
 
------------------------------- Detailed message ------------------------------
-
-  number() | binary() is not compatible with binary()
-  because
-  number() is not compatible with binary()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:183:7
     │
@@ -57,12 +45,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: binary()
   However the following candidate: number()
   Differs from the expected type:  binary()
-
------------------------------- Detailed message ------------------------------
-
-  number() | binary() is not compatible with binary()
-  because
-  number() is not compatible with binary()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ eqwater/src/eqwater.erl:228:1
@@ -86,12 +68,6 @@ Because in the expression's type:
   However the following candidate: #ab_rec{}
   Differs from the expected type:  atom()
 
------------------------------- Detailed message ------------------------------
-
-  #ab_rec{} | atom() is not compatible with atom()
-  because
-  #ab_rec{} is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:356:16
     │
@@ -107,12 +83,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: atom()
   However the following candidate: #ab_rec{}
   Differs from the expected type:  atom()
-
------------------------------- Detailed message ------------------------------
-
-  #ab_rec{} | atom() is not compatible with atom()
-  because
-  #ab_rec{} is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:404:25
@@ -152,12 +122,6 @@ Because in the expression's type:
   However the following candidate: atom()
   Differs from the expected type:  number()
 
------------------------------- Detailed message ------------------------------
-
-  number() | atom() is not compatible with number()
-  because
-  atom() is not compatible with number()
-
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ eqwater/src/eqwater.erl:419:1
     │  
@@ -182,12 +146,6 @@ Because in the expression's type:
   However the following candidate: atom()
   Differs from the expected type:  number()
 
------------------------------- Detailed message ------------------------------
-
-  number() | atom() is not compatible with number()
-  because
-  atom() is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:429:25
     │
@@ -203,12 +161,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
   However the following candidate: atom()
   Differs from the expected type:  number()
-
------------------------------- Detailed message ------------------------------
-
-  number() | atom() is not compatible with number()
-  because
-  atom() is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:496:3
@@ -235,13 +187,6 @@ Because in the expression's type:
     Context expects type: atom()
   }
 
------------------------------- Detailed message ------------------------------
-
-  at tuple index 2:
-  {'union_field', binary()} is not compatible with {'union_field', atom()}
-  because
-  binary() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:559:50
     │
@@ -257,12 +202,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
   However the following candidate: 'ok'
   Differs from the expected type:  number()
-
------------------------------- Detailed message ------------------------------
-
-  number() | 'ok' is not compatible with number()
-  because
-  'ok' is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:590:8
@@ -280,12 +219,6 @@ Because in the expression's type:
   However the following candidate: #c{}
   Differs from the expected type:  #b{}
 
------------------------------- Detailed message ------------------------------
-
-  #b{} | #c{} is not compatible with #b{}
-  because
-  #c{} is not compatible with #b{}
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:631:27
     │
@@ -301,12 +234,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: B
   However the following candidate: A
   Differs from the expected type:  B
-
------------------------------- Detailed message ------------------------------
-
-  A | B is not compatible with B
-  because
-  A is not compatible with B
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:649:17
@@ -324,12 +251,6 @@ Because in the expression's type:
   However the following candidate: fun()
   Differs from the expected type:  {term()}
 
------------------------------- Detailed message ------------------------------
-
-  fun() | {term()} is not compatible with {term()}
-  because
-  fun() is not compatible with {term()}
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:660:17
     │
@@ -346,12 +267,6 @@ Because in the expression's type:
   However the following candidate: tuple()
   Differs from the expected type:  atom()
 
------------------------------- Detailed message ------------------------------
-
-  tuple() | atom() is not compatible with atom()
-  because
-  tuple() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:839:27
     │
@@ -367,12 +282,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
   However the following candidate: atom()
   Differs from the expected type:  number()
-
------------------------------- Detailed message ------------------------------
-
-  number() | atom() is not compatible with number()
-  because
-  atom() is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:997:31
@@ -412,12 +321,6 @@ Because in the expression's type:
   However the following candidate: 'undefined'
   Differs from the expected type:  number()
 
------------------------------- Detailed message ------------------------------
-
-  number() | 'undefined' is not compatible with number()
-  because
-  'undefined' is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1122:14
      │
@@ -436,14 +339,6 @@ Because in the expression's type:
     Here the type is:     [atom()]
     Context expects type: atom()
   ]
-
------------------------------- Detailed message ------------------------------
-
-  [[atom()]] | [atom()] is not compatible with [atom()]
-  because
-  [[atom()]] is not compatible with [atom()]
-  because
-  [atom()] is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1131:15
@@ -464,14 +359,6 @@ Because in the expression's type:
     Context expects type: atom()
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [[atom()]] | [atom()] is not compatible with [atom()]
-  because
-  [[atom()]] is not compatible with [atom()]
-  because
-  [atom()] is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1155:7
      │
@@ -487,12 +374,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: binary()
   However the following candidate: string()
   Differs from the expected type:  binary()
-
------------------------------- Detailed message ------------------------------
-
-  binary() | string() is not compatible with binary()
-  because
-  string() is not compatible with binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1181:7
@@ -510,12 +391,6 @@ Because in the expression's type:
   However the following candidate: atom()
   Differs from the expected type:  binary()
 
------------------------------- Detailed message ------------------------------
-
-  binary() | atom() is not compatible with binary()
-  because
-  atom() is not compatible with binary()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1189:60
      │
@@ -531,12 +406,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: binary()
   However the following candidate: 'ok'
   Differs from the expected type:  binary()
-
------------------------------- Detailed message ------------------------------
-
-  'ok' | binary() is not compatible with binary()
-  because
-  'ok' is not compatible with binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1194:30
@@ -554,12 +423,6 @@ Because in the expression's type:
   However the following candidate: binary()
   Differs from the expected type:  'ok'
 
------------------------------- Detailed message ------------------------------
-
-  binary() | 'ok' is not compatible with 'ok'
-  because
-  binary() is not compatible with 'ok'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1225:14
      │
@@ -575,12 +438,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
   However the following candidate: {term(), my_list()}
   Differs from the expected type:  number()
-
------------------------------- Detailed message ------------------------------
-
-  {term(), my_list()} | number() is not compatible with number()
-  because
-  {term(), my_list()} is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1231:31
@@ -606,12 +463,6 @@ Because in the expression's type:
   However the following candidate: 'a'
   Differs from the expected type:  'b'
 
------------------------------- Detailed message ------------------------------
-
-  'a' | 'b' is not compatible with 'b'
-  because
-  'a' is not compatible with 'b'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1269:5
      │
@@ -624,16 +475,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      ┌─ eqwater/src/eqwater.erl:1286:60
      │
 1286 │ negate_atoms_neg(A) when not ((A == a) orelse (A == b)) -> A;
-     │                                                            ^
-     │                                                            │
-     │                                                            A.
+     │                                                            ^ A.
 Expression has type:   'c'
 Context expected type: 'a' | 'b'
-     │                                                            
-
-  'c' is not compatible with 'a' | 'b'
-  because
-  'c' is not compatible with 'a'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1291:43

@@ -14,14 +14,6 @@ Because in the expression's type:
   However the following candidate: #rec1{}
   Differs from the expected type:  number()
 
------------------------------- Detailed message ------------------------------
-
-  user() is not compatible with number()
-  because
-  #rec1{} | number() is not compatible with number()
-  because
-  #rec1{} is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_records.erl:40:16
    │
@@ -38,14 +30,6 @@ Because in the expression's type:
   However the following candidate: #rec1{}
   Differs from the expected type:  number()
 
------------------------------- Detailed message ------------------------------
-
-  user() is not compatible with number()
-  because
-  #rec1{} | number() is not compatible with number()
-  because
-  #rec1{} is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_records.erl:47:11
    │
@@ -61,14 +45,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
   However the following candidate: #rec1{}
   Differs from the expected type:  number()
-
------------------------------- Detailed message ------------------------------
-
-  user() is not compatible with number()
-  because
-  #rec1{} | number() is not compatible with number()
-  because
-  #rec1{} is not compatible with number()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ eqwater/src/eqwater_records.erl:104:1
@@ -96,15 +72,6 @@ Because in the expression's type:
     Context expects type: #rec1{}
   , #rec1{}}
 
------------------------------- Detailed message ------------------------------
-
-  {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}} is not compatible with {#rec1{}, #rec2{}}
-  because
-  at tuple index 1:
-  {#rec2{}, #rec1{}} is not compatible with {#rec1{}, #rec2{}}
-  because
-  #rec2{} is not compatible with #rec1{}
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater_records.erl:115:25
     │
@@ -123,14 +90,5 @@ Because in the expression's type:
     Here the type is:     #rec2{}
     Context expects type: #rec1{}
   , #rec1{}}
-
------------------------------- Detailed message ------------------------------
-
-  {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}} is not compatible with {#rec1{}, #rec2{}}
-  because
-  at tuple index 1:
-  {#rec2{}, #rec1{}} is not compatible with {#rec1{}, #rec2{}}
-  because
-  #rec2{} is not compatible with #rec1{}
 
 6 ERRORS

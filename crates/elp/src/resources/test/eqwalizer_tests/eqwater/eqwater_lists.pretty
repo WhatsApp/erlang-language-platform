@@ -16,14 +16,6 @@ Because in the expression's type:
     Differs from the expected type:  binary()
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [binary() | atom()] is not compatible with [binary()]
-  because
-  binary() | atom() is not compatible with binary()
-  because
-  atom() is not compatible with binary()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:48:23
    │
@@ -57,12 +49,6 @@ Because in the expression's type:
   However the following candidate: []
   Differs from the expected type:  atom()
 
------------------------------- Detailed message ------------------------------
-
-  atom() | [] is not compatible with atom()
-  because
-  [] is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:61:19
    │
@@ -78,12 +64,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: atom()
   However the following candidate: []
   Differs from the expected type:  atom()
-
------------------------------- Detailed message ------------------------------
-
-  atom() | [] is not compatible with atom()
-  because
-  [] is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:69:19
@@ -121,14 +101,6 @@ Because in the expression's type:
     Context expects type: binary()
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [atom()] | [binary()] is not compatible with [binary()]
-  because
-  [atom()] is not compatible with [binary()]
-  because
-  atom() is not compatible with binary()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:97:23
    │
@@ -154,15 +126,5 @@ Because in the expression's type:
     However the following candidate: binary()
     Differs from the expected type:  atom()
   ]
-
------------------------------- Detailed message ------------------------------
-
-  [atom() | binary()] is not compatible with [atom()] | [binary()]
-  because
-  [atom() | binary()] is not compatible with [atom()]
-  because
-  atom() | binary() is not compatible with atom()
-  because
-  binary() is not compatible with atom()
 
 8 ERRORS

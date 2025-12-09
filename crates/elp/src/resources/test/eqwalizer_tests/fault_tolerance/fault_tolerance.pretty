@@ -416,12 +416,6 @@ Because in the expression's type:
     Context expects type: atom()
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [term()] is not compatible with [atom()]
-  because
-  term() is not compatible with atom()
-
 error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
     ┌─ fault_tolerance/src/fault_tolerance.erl:169:8
     │
@@ -671,12 +665,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: dynamic()
   However the following candidate: []
   Differs from the expected type:  atom()
-
------------------------------- Detailed message ------------------------------
-
-  dynamic() | [] is not compatible with atom()
-  because
-  [] is not compatible with atom()
 
 error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
     ┌─ fault_tolerance/src/fault_tolerance.erl:254:11

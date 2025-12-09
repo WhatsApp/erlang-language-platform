@@ -150,12 +150,6 @@ Because in the expression's type:
   However the following candidate: 'a'
   Differs from the expected type:  number()
 
------------------------------- Detailed message ------------------------------
-
-  'a' | number() is not compatible with number()
-  because
-  'a' is not compatible with number()
-
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/numbers.erl:538:1
     │  
@@ -299,13 +293,6 @@ Because in the expression's type:
     Here the type is:     'error'
     Context expects type: 'ok'
   }
-
------------------------------- Detailed message ------------------------------
-
-  at tuple index 5:
-  {number(), number(), number(), number(), 'error'} is not compatible with {number(), number(), number(), number(), 'ok'}
-  because
-  'error' is not compatible with 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/numbers.erl:658:3

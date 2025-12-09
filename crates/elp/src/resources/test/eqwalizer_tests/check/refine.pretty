@@ -23,13 +23,6 @@ Because in the expression's type:
     Context expects type: none()
   , A}
 
------------------------------- Detailed message ------------------------------
-
-  at tuple index 1:
-  {B, A} is not compatible with {none(), none()}
-  because
-  B is not compatible with none()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/refine.erl:22:15
    │
@@ -55,12 +48,6 @@ Because in the expression's type:
     Context expects type: none()
   )
 
------------------------------- Detailed message ------------------------------
-
-  fun((B | A) -> A) is not compatible with fun((A | B) -> none())
-  because
-  A is not compatible with none()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/refine.erl:34:16
    │
@@ -77,12 +64,6 @@ Because in the expression's type:
     Here the type is:     A
     Context expects type: none()
   )
-
------------------------------- Detailed message ------------------------------
-
-  fun((atom() | A) -> A) is not compatible with fun((A | atom()) -> none())
-  because
-  A is not compatible with none()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/refine.erl:84:27
@@ -133,13 +114,6 @@ Because in the expression's type:
     Context expects type: none()
   , binary()}
 
------------------------------- Detailed message ------------------------------
-
-  at tuple index 1:
-  {number(), binary()} is not compatible with {none(), none()}
-  because
-  number() is not compatible with none()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:126:32
     │
@@ -156,13 +130,6 @@ Because in the expression's type:
     Here the type is:     number()
     Context expects type: none()
   , atom()}
-
------------------------------- Detailed message ------------------------------
-
-  at tuple index 1:
-  {number(), atom()} is not compatible with {none(), none()}
-  because
-  number() is not compatible with none()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:139:28
@@ -190,14 +157,6 @@ Because in the expression's type:
     Differs from the expected type:  'a'
   ]
 
------------------------------- Detailed message ------------------------------
-
-  ['a' | 'b'] is not compatible with ['a']
-  because
-  'a' | 'b' is not compatible with 'a'
-  because
-  'b' is not compatible with 'a'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:151:28
     │
@@ -223,14 +182,6 @@ Because in the expression's type:
     However the following candidate: 'b'
     Differs from the expected type:  'a'
   ]
-
------------------------------- Detailed message ------------------------------
-
-  ['a' | 'b'] is not compatible with ['a']
-  because
-  'a' | 'b' is not compatible with 'a'
-  because
-  'b' is not compatible with 'a'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:166:5
@@ -273,13 +224,6 @@ Because in the expression's type:
     Context expects type: 'not_my_rec'
   , number(), atom()}
 
------------------------------- Detailed message ------------------------------
-
-  at tuple index 1:
-  {'my_rec', number(), atom()} is not compatible with {'not_my_rec', term(), term()}
-  because
-  'my_rec' is not compatible with 'not_my_rec'
-
 error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
     ┌─ check/src/refine.erl:199:10
     │
@@ -309,13 +253,6 @@ Because in the expression's type:
     Here the type is:     atom()
     Context expects type: number()
   , number()}
-
------------------------------- Detailed message ------------------------------
-
-  at tuple index 2:
-  {'my_rec', atom(), number()} is not compatible with {'my_rec', number(), atom()}
-  because
-  atom() is not compatible with number()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/refine.erl:218:1
@@ -374,13 +311,6 @@ Because in the expression's type:
     Context expects type: number()
   , number()}
 
------------------------------- Detailed message ------------------------------
-
-  at tuple index 2:
-  {'my_rec', atom(), number()} is not compatible with {'my_rec', number(), atom()}
-  because
-  atom() is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:250:26
     │
@@ -397,15 +327,6 @@ Because in the expression's type:
     Here the type is:     atom()
     Context expects type: number()
   , number()}
-
------------------------------- Detailed message ------------------------------
-
-  {'my_rec', atom(), number()} is not compatible with dynamic(#my_rec{})
-  because
-  at tuple index 2:
-  {'my_rec', atom(), number()} is not compatible with {'my_rec', number(), atom()}
-  because
-  atom() is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:262:26
@@ -424,13 +345,6 @@ Because in the expression's type:
     Context expects type: atom()
   , atom()}
 
------------------------------- Detailed message ------------------------------
-
-  at tuple index 2:
-  {'my_rec', number(), atom()} is not compatible with {'my_rec', atom(), number()}
-  because
-  number() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:262:26
     │
@@ -447,15 +361,6 @@ Because in the expression's type:
     Here the type is:     number()
     Context expects type: atom()
   , atom()}
-
------------------------------- Detailed message ------------------------------
-
-  #my_rec{} is not compatible with dynamic({'my_rec', atom(), number()})
-  because
-  at tuple index 2:
-  {'my_rec', number(), atom()} is not compatible with {'my_rec', atom(), number()}
-  because
-  number() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:278:21
@@ -474,13 +379,6 @@ Because in the expression's type:
     Context expects type: atom()
   , atom()}
 
------------------------------- Detailed message ------------------------------
-
-  at tuple index 2:
-  {'my_rec', number(), atom()} is not compatible with {'my_rec', atom(), atom()}
-  because
-  number() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:282:16
     │
@@ -496,12 +394,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
   However the following candidate: atom()
   Differs from the expected type:  number()
-
------------------------------- Detailed message ------------------------------
-
-  atom() | number() is not compatible with number()
-  because
-  atom() is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:286:13
@@ -519,12 +411,6 @@ Because in the expression's type:
   However the following candidate: 'a'
   Differs from the expected type:  {'my_rec', term(), term()}
 
------------------------------- Detailed message ------------------------------
-
-  #my_rec{} | 'a' is not compatible with {'my_rec', term(), term()}
-  because
-  'a' is not compatible with {'my_rec', term(), term()}
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:296:5
     │
@@ -540,12 +426,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: binary()
   However the following candidate: 'undefined'
   Differs from the expected type:  binary()
-
------------------------------- Detailed message ------------------------------
-
-  'undefined' | binary() is not compatible with binary()
-  because
-  'undefined' is not compatible with binary()
 
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/refine.erl:378:27

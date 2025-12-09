@@ -18,16 +18,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ check/src/records.erl:50:21
    │
 50 │ mk_rec_neg(rec2) -> #rec2{}.
-   │                     ^^^^^^^
-   │                     │
-   │                     #rec2{...}.
+   │                     ^^^^^^^ #rec2{...}.
 Expression has type:   #rec2{}
 Context expected type: #rec1{} | #rec3{}
-   │                     
-
-  #rec2{} is not compatible with #rec1{} | #rec3{}
-  because
-  #rec2{} is not compatible with #rec1{}
 
 error: undefined_field (See https://fb.me/eqwalizer_errors#undefined_field)
    ┌─ check/src/records.erl:59:11
@@ -108,13 +101,6 @@ Because in the expression's type:
     Context expects type: number()
   , number()}
 
------------------------------- Detailed message ------------------------------
-
-  at tuple index 1:
-  {atom(), number()} is not compatible with {number(), atom()}
-  because
-  atom() is not compatible with number()
-
 error: undefined_field (See https://fb.me/eqwalizer_errors#undefined_field)
     ┌─ check/src/records.erl:144:17
     │
@@ -181,14 +167,6 @@ Because in the expression's type:
     Context expects type: number()
   }
 
------------------------------- Detailed message ------------------------------
-
-  #any_box{inner :: 'ok'} is not compatible with int_box()
-  because
-  #any_box{inner :: 'ok'} is not compatible with #any_box{inner :: number()}
-  because
-  'ok' is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:222:5
     │
@@ -206,12 +184,6 @@ Because in the expression's type:
     Context expects type: number()
   }
 
------------------------------- Detailed message ------------------------------
-
-  #any_box{inner :: 'ok'} is not compatible with #any_box{inner :: number()}
-  because
-  'ok' is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:282:27
     │
@@ -228,12 +200,6 @@ Because in the expression's type:
   Context expects type: number() | 'false' | 'true'
   No candidate matches in the expected union.
 
------------------------------- Detailed message ------------------------------
-
-  'a' is not compatible with number() | boolean()
-  because
-  'a' is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:287:23
     │
@@ -249,12 +215,6 @@ Because in the expression's type:
   Here the type is:     'a'
   Context expects type: number() | 'false' | 'true'
   No candidate matches in the expected union.
-
------------------------------- Detailed message ------------------------------
-
-  'a' is not compatible with number() | boolean()
-  because
-  'a' is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:292:5
@@ -273,14 +233,6 @@ Because in the expression's type:
     Context expects type: number()
   }
 
------------------------------- Detailed message ------------------------------
-
-  #int_bool_box{inner :: 'true'} is not compatible with only_int_box()
-  because
-  #int_bool_box{inner :: 'true'} is not compatible with #int_bool_box{inner :: number()}
-  because
-  'true' is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:308:28
     │
@@ -296,12 +248,6 @@ Because in the expression's type:
   Here the type is:     'a'
   Context expects type: number() | 'false' | 'true'
   No candidate matches in the expected union.
-
------------------------------- Detailed message ------------------------------
-
-  'a' is not compatible with number() | boolean()
-  because
-  'a' is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:314:5
@@ -320,14 +266,6 @@ Because in the expression's type:
     Context expects type: boolean()
   }
 
------------------------------- Detailed message ------------------------------
-
-  #int_bool_box{inner :: number()} is not compatible with only_bool_box()
-  because
-  #int_bool_box{inner :: number()} is not compatible with #int_bool_box{inner :: boolean()}
-  because
-  number() is not compatible with boolean()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:319:5
     │
@@ -342,12 +280,6 @@ Context expected type: #any_box{}
 Because in the expression's type:
   Here the type is:     #int_bool_box{inner :: number()}
   Context expects type: #any_box{}
-
------------------------------- Detailed message ------------------------------
-
-  only_int_box() is not compatible with #any_box{}
-  because
-  #int_bool_box{inner :: number()} is not compatible with #any_box{}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:319:5
@@ -383,15 +315,6 @@ Because in the expression's type:
     No candidate matches in the expected union.
   }
 
------------------------------- Detailed message ------------------------------
-
-  at tuple index 2:
-  {'int_bool_box', 'a'} is not compatible with {'int_bool_box', number() | boolean()}
-  because
-  'a' is not compatible with number() | boolean()
-  because
-  'a' is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:334:5
     │
@@ -409,15 +332,6 @@ Because in the expression's type:
     Context expects type: number()
   }
 
------------------------------- Detailed message ------------------------------
-
-  {'int_bool_box', 'a'} is not compatible with only_int_box()
-  because
-  at tuple index 2:
-  {'int_bool_box', 'a'} is not compatible with {'int_bool_box', number()}
-  because
-  'a' is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:352:5
     │
@@ -433,12 +347,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: 'true'
   However the following candidate: 'false'
   Differs from the expected type:  'true'
-
------------------------------- Detailed message ------------------------------
-
-  boolean() | 'true' is not compatible with 'true'
-  because
-  'false' is not compatible with 'true'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:355:13
@@ -463,12 +371,6 @@ Because in the expression's type:
   Here the type is:     #bad_default{}
   Context expects type: #int_bool_box{inner :: number()}
 
------------------------------- Detailed message ------------------------------
-
-  #bad_default{} is not compatible with only_int_box()
-  because
-  #bad_default{} is not compatible with #int_bool_box{inner :: number()}
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:372:5
     │
@@ -486,13 +388,6 @@ Because in the expression's type:
     Context expects type: 'bad_default'
   , number()}
 
------------------------------- Detailed message ------------------------------
-
-  at tuple index 1:
-  {'int_bool_box', number()} is not compatible with {'bad_default', number()}
-  because
-  'int_bool_box' is not compatible with 'bad_default'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:388:31
     │
@@ -509,12 +404,6 @@ Because in the expression's type:
     Here the type is:     term()
     Context expects type: number()
   }
-
------------------------------- Detailed message ------------------------------
-
-  #refined_two_fields{} is not compatible with #refined_two_fields{inner :: number()}
-  because
-  term() is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:402:5
@@ -593,12 +482,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: binary()
   However the following candidate: 'my_record'
   Differs from the expected type:  binary()
-
------------------------------- Detailed message ------------------------------
-
-  'my_record' | binary() is not compatible with binary()
-  because
-  'my_record' is not compatible with binary()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/records.erl:517:1

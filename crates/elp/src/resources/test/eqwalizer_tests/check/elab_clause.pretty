@@ -38,12 +38,6 @@ Because in the expression's type:
   However the following candidate: 'error'
   Differs from the expected type:  number()
 
------------------------------- Detailed message ------------------------------
-
-  'error' | 'exit' | 'throw' | number() is not compatible with number()
-  because
-  'error' is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/elab_clause.erl:86:5
    │
@@ -59,12 +53,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
   However the following candidate: [dynamic()]
   Differs from the expected type:  number()
-
------------------------------- Detailed message ------------------------------
-
-  number() | [dynamic()] is not compatible with number()
-  because
-  [dynamic()] is not compatible with number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/elab_clause.erl:93:17

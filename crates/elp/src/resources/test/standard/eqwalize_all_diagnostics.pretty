@@ -44,10 +44,6 @@ Because in the expression's type:
   Context expects type: #{k_req3 := ..., k_req2 := ..., k_req1 := ..., ...}
   The type of the expression is missing the following required keys: k_req3, k_req2, k_req1.
 
------------------------------- Detailed message ------------------------------
-
-keys `k_req1`, `k_req2`, `k_req3` are declared as required in the latter but not in the former
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ app_a/src/app_a.erl:102:5
     │
@@ -67,17 +63,6 @@ Because in the expression's type:
       The type of the expression is missing the following required keys: d, e.
     , ... }
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  id(#{a := 'va', b := #{c := #{d => atom()}}}) is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
-  because
-  #{a := 'va', b := #{c := #{d => atom()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
-  because
-  at key `b`:
-  #{a := 'va', b := #{c := #{d => atom()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
-  because
-  #{c := #{d => atom()}} is not compatible with #{c := id(#{d := atom(), e := atom()})}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ app_a/src/app_a.erl:125:5
@@ -99,17 +84,6 @@ Because in the expression's type:
       , ... }
     , ... }
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  id(#{a := 'va', b := #{c := #{d := pid(), e := pid()}}}) is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
-  because
-  #{a := 'va', b := #{c := #{d := pid(), e := pid()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
-  because
-  at key `b`:
-  #{a := 'va', b := #{c := #{d := pid(), e := pid()}}} is not compatible with #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
-  because
-  #{c := #{d := pid(), e := pid()}} is not compatible with #{c := id(#{d := atom(), e := atom()})}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ app_a/test/app_a_SUITE.erl:18:5
@@ -179,14 +153,6 @@ Because in the expression's type:
     No candidate matches in the expected union.
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [term()] is not compatible with [T | X]
-  because
-  term() is not compatible with T | X
-  because
-  term() is not compatible with T
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ app_a/src/app_a_lists.erl:1305:15
      │
@@ -203,12 +169,6 @@ Because in the expression's type:
     Here the type is:     term()
     Context expects type: T
   ) -> boolean() | {'true', X})
-
------------------------------- Detailed message ------------------------------
-
-  fun((T) -> boolean() | {'true', X}) is not compatible with fun((term()) -> boolean() | {'true', term()})
-  because
-  term() is not compatible with T
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
    ┌─ app_a/src/app_a_mod2.erl:22:1

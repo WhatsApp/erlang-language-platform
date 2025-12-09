@@ -16,15 +16,6 @@ Because in the expression's type:
     Differs from the expected type:  T
   , T | U}
 
------------------------------- Detailed message ------------------------------
-
-  at tuple index 1:
-  {T | U, T | U} is not compatible with {T, U}
-  because
-  T | U is not compatible with T
-  because
-  U is not compatible with T
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/generics_with_unions.erl:70:19
    │
@@ -62,12 +53,6 @@ Because in the expression's type:
   Here the type is:     [prop('a', number())]
   Context expects type: 'wrong_ret'
 
------------------------------- Detailed message ------------------------------
-
-  props('a', number()) is not compatible with 'wrong_ret'
-  because
-  [prop('a', number())] is not compatible with 'wrong_ret'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generics_with_unions.erl:217:19
     │
@@ -92,12 +77,6 @@ Because in the expression's type:
   However the following candidate: [T]
   Differs from the expected type:  T
 
------------------------------- Detailed message ------------------------------
-
-  [T] | T is not compatible with T
-  because
-  [T] is not compatible with T
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generics_with_unions.erl:221:17
     │
@@ -113,12 +92,6 @@ Because in the expression's type:
   Here the type is a union type with some valid candidates: T
   However the following candidate: [T]
   Differs from the expected type:  T
-
------------------------------- Detailed message ------------------------------
-
-  T | [T] is not compatible with T
-  because
-  [T] is not compatible with T
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generics_with_unions.erl:222:19
@@ -171,14 +144,6 @@ Because in the expression's type:
     Context expects type: K
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [K] | [[K]] is not compatible with [K]
-  because
-  [[K]] is not compatible with [K]
-  because
-  [K] is not compatible with K
-
 error: ambiguous_union (See https://fb.me/eqwalizer_errors#ambiguous_union)
     ┌─ check/src/generics_with_unions.erl:332:31
     │
@@ -205,17 +170,6 @@ Because in the expression's type:
     }
   ) -> 'ok')
 
------------------------------- Detailed message ------------------------------
-
-  query() is not compatible with fun(({'i', 'atom'}) -> 'ok')
-  because
-  fun(({'a', atom()} | {'b', binary()} | {'i', number()}) -> 'ok') is not compatible with fun(({'i', 'atom'}) -> 'ok')
-  because
-  {'i', 'atom'} is not compatible with {'a', atom()} | {'b', binary()} | {'i', number()}
-  because
-  at tuple index 2:
-  {'i', 'atom'} is not compatible with {'i', number()}
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generics_with_unions.erl:392:17
     │
@@ -234,16 +188,5 @@ Because in the expression's type:
       Context expects type: atom()
     }
   ) -> 'ok')
-
------------------------------- Detailed message ------------------------------
-
-  query() is not compatible with fun(({'a', number()}) -> 'ok')
-  because
-  fun(({'a', atom()} | {'b', binary()} | {'i', number()}) -> 'ok') is not compatible with fun(({'a', number()}) -> 'ok')
-  because
-  {'a', number()} is not compatible with {'a', atom()} | {'b', binary()} | {'i', number()}
-  because
-  at tuple index 2:
-  {'a', number()} is not compatible with {'a', atom()}
 
 16 ERRORS

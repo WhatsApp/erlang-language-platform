@@ -14,14 +14,6 @@ Because in the expression's type:
   Context expects type: 'ok' | 'error'
   No candidate matches in the expected union.
 
------------------------------- Detailed message ------------------------------
-
-  'warning' is not compatible with foo()
-  because
-  'warning' is not compatible with 'ok' | 'error'
-  because
-  'warning' is not compatible with 'ok'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/otp28.erl:28:5
    │
@@ -39,12 +31,6 @@ Because in the expression's type:
     Context expects type: atom()
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [number()] is not compatible with [atom()]
-  because
-  number() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/otp28.erl:40:5
    │
@@ -61,12 +47,6 @@ Because in the expression's type:
     Here the type is:     binary()
     Context expects type: pid()
   ]
-
------------------------------- Detailed message ------------------------------
-
-  [binary()] is not compatible with [pid()]
-  because
-  binary() is not compatible with pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/otp28.erl:52:5
@@ -95,15 +75,6 @@ Because in the expression's type:
     }
   ]
 
------------------------------- Detailed message ------------------------------
-
-  [{atom(), binary()}] is not compatible with [{atom(), atom()}]
-  because
-  at tuple index 2:
-  {atom(), binary()} is not compatible with {atom(), atom()}
-  because
-  binary() is not compatible with atom()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/otp28.erl:68:5
    │
@@ -120,13 +91,6 @@ Because in the expression's type:
     Here the type is:     binary()
     Context expects type: atom()
   , ... }
-
------------------------------- Detailed message ------------------------------
-
-  #{atom() => binary()} is not compatible with #{atom() => atom()}
-  the default associations are not compatible
-  because
-  binary() is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/otp28.erl:76:5
@@ -146,14 +110,5 @@ Because in the expression's type:
       Context expects type: atom()
     , atom()}
   ]
-
------------------------------- Detailed message ------------------------------
-
-  [{atom(), binary(), binary(), atom()}] is not compatible with [{atom(), binary(), atom(), binary()}]
-  because
-  at tuple index 3:
-  {atom(), binary(), binary(), atom()} is not compatible with {atom(), binary(), atom(), binary()}
-  because
-  binary() is not compatible with atom()
 
 7 ERRORS

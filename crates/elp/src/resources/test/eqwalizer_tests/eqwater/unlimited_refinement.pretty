@@ -14,12 +14,6 @@ Because in the expression's type:
   However the following candidate: binary()
   Differs from the expected type:  number()
 
------------------------------- Detailed message ------------------------------
-
-  binary() | number() is not compatible with number()
-  because
-  binary() is not compatible with number()
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/unlimited_refinement.erl:94:14
    │

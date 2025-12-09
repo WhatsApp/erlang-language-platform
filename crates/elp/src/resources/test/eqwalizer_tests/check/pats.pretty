@@ -14,10 +14,4 @@ Because in the expression's type:
   However the following candidate: 'error'
   Differs from the expected type:  #{term() => term()}
 
------------------------------- Detailed message ------------------------------
-
-  #{a => 'ok'} | 'error' is not compatible with #{term() => term()}
-  because
-  'error' is not compatible with #{term() => term()}
-
 1 ERROR

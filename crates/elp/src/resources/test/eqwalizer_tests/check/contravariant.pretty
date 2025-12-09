@@ -16,14 +16,4 @@ Because in the expression's type:
     Differs from the expected type:  'a'
   ) -> 'ok')
 
------------------------------- Detailed message ------------------------------
-
-  ref_contravariant('a') is not compatible with ref_contravariant_ab()
-  because
-  contravariant('a') is not compatible with ref_contravariant_ab()
-  because
-  fun(('a') -> 'ok') is not compatible with ref_contravariant_ab()
-  because
-  fun(('a') -> 'ok') is not compatible with ref_contravariant('a' | 'b')
-
 1 ERROR

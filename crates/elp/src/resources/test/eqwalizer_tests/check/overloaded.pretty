@@ -30,26 +30,13 @@ Because in the expression's type:
     Context expects type: 'b'
   )
 
------------------------------- Detailed message ------------------------------
-
-  fun(('a') -> 'z') is not compatible with fun(('a') -> 'b') | fun(('a') -> 'c')
-  because
-  fun(('a') -> 'z') is not compatible with fun(('a') -> 'b')
-  because
-  'z' is not compatible with 'b'
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:126:15
     │
 126 │     Res = bar({fun(a) -> a end}),
-    │               ^^^^^^^^^^^^^^^^^
-    │               │
-    │               {fun}.
+    │               ^^^^^^^^^^^^^^^^^ {fun}.
 Expression has type:   {fun((dynamic()) -> dynamic())}
 Context expected type: fun(('a') -> 'b') | fun(('a') -> 'c')
-    │               
-
-expected union does not contain any tuple type of size 1
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:198:37
@@ -107,12 +94,6 @@ Because in the expression's type:
   However the following candidate: {}
   Differs from the expected type:  number()
 
------------------------------- Detailed message ------------------------------
-
-  number() | {} is not compatible with number()
-  because
-  {} is not compatible with number()
-
 error: unbound_type_var (See https://fb.me/eqwalizer_errors#unbound_type_var)
     ┌─ check/src/overloaded.erl:261:1
     │
@@ -130,16 +111,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ check/src/overloaded.erl:269:14
     │
 269 │     _ = swap(""),
-    │              ^^
-    │              │
-    │              string_lit.
+    │              ^^ string_lit.
 Expression has type:   []
 Context expected type: atom() | binary()
-    │              
-
-  [] is not compatible with atom() | binary()
-  because
-  [] is not compatible with atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:290:5
