@@ -9,7 +9,6 @@
  */
 
 use std::fs;
-use std::io::IsTerminal;
 use std::path::Path;
 use std::str;
 use std::thread;
@@ -66,7 +65,7 @@ pub fn run_ssr_command(
     args: &Ssr,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    global_color: &Option<String>,
+    use_color: bool,
 ) -> Result<()> {
     let start_time = SystemTime::now();
     let memory_start = MemoryUsage::now();
@@ -130,7 +129,7 @@ pub fn run_ssr_command(
     let mut loaded = load_project(args, cli, query_config)?;
     telemetry::report_elapsed_time("ssr operational", start_time);
 
-    let r = run_ssr(cli, &mut loaded, &diagnostics_config, args, global_color);
+    let r = run_ssr(cli, &mut loaded, &diagnostics_config, args, use_color);
 
     telemetry::report_elapsed_time("ssr done", start_time);
 
@@ -150,7 +149,7 @@ pub fn run_ssr(
     loaded: &mut LoadResult,
     diagnostics_config: &DiagnosticsConfig,
     args: &Ssr,
-    global_color: &Option<String>,
+    use_color: bool,
 ) -> Result<()> {
     let analysis = loaded.analysis();
     let (file_id, name) = match &args.module {
@@ -196,7 +195,7 @@ pub fn run_ssr(
                 &project_id,
                 diagnostics_config,
                 args,
-                global_color,
+                use_color,
                 loaded,
                 &mut match_count,
             )?;
@@ -210,7 +209,7 @@ pub fn run_ssr(
             }
             if let Some(diag) = do_parse_one(&analysis, diagnostics_config, file_id, &name, args)? {
                 match_count = 1;
-                print_single_result(cli, loaded, &diag, args, global_color)?;
+                print_single_result(cli, loaded, &diag, args, use_color)?;
             }
         }
         (Some(file_id), _) => {
@@ -236,7 +235,7 @@ fn do_parse_all_streaming(
     project_id: &ProjectId,
     config: &DiagnosticsConfig,
     args: &Ssr,
-    global_color: &Option<String>,
+    use_color: bool,
     loaded: &mut LoadResult,
     match_count: &mut usize,
 ) -> Result<()> {
@@ -283,7 +282,7 @@ fn do_parse_all_streaming(
     // Process and print results as they arrive from the channel
     for result in rx {
         *match_count += 1;
-        print_single_result(cli, loaded, &result, args, global_color)?;
+        print_single_result(cli, loaded, &result, args, use_color)?;
     }
 
     Ok(())
@@ -294,7 +293,7 @@ fn print_single_result(
     loaded: &mut LoadResult,
     result: &(String, FileId, Vec<diagnostics::Diagnostic>),
     args: &Ssr,
-    global_color: &Option<String>,
+    use_color: bool,
 ) -> Result<()> {
     let (name, file_id, diags) = result;
 
@@ -352,9 +351,7 @@ fn print_single_result(
 
             // Only show source context if --show-source or --show-source-markers is set
             if show_source {
-                let should_show_color = should_use_color(global_color);
-
-                if should_show_color {
+                if use_color {
                     print_source_with_context(
                         diag,
                         &loaded.analysis(),
@@ -552,20 +549,6 @@ fn should_show_group_separator(args: &Ssr, has_context: bool) -> Option<String> 
             .clone()
             .unwrap_or_else(|| "--".to_string()),
     )
-}
-
-/// Determine if color should be used based on the global --color argument
-fn should_use_color(color: &Option<String>) -> bool {
-    match color.as_deref() {
-        Some("always") => true,
-        Some("never") => false,
-        Some("auto") | None => {
-            // Check NO_COLOR environment variable - if set (regardless of value), disable color
-            // Also check if stdout is connected to a TTY
-            std::env::var("NO_COLOR").is_err() && std::io::stdout().is_terminal()
-        }
-        _ => false, // Should be caught by the guard, but handle anyway
-    }
 }
 
 /// Print source code context with the specified before/after context lines

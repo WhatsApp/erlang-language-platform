@@ -10,7 +10,6 @@
 
 use std::env;
 use std::fs;
-use std::io::IsTerminal;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process;
@@ -67,16 +66,7 @@ const THREAD_STACK_SIZE: usize = 10_000_000;
 fn main() {
     let _timer = timeit!("main");
     let args = args::args().run();
-    let use_color = match args.color.as_deref() {
-        Some("always") => true,
-        Some("never") => false,
-        Some("auto") | None => {
-            // Check NO_COLOR environment variable - if set (regardless of value), disable color
-            // Also check if stdout is connected to a TTY
-            env::var("NO_COLOR").is_err() && std::io::stdout().is_terminal()
-        }
-        _ => false, // Should be caught by the guard, but handle anyway
-    };
+    let use_color = args.should_use_color();
     let mut cli: Box<dyn cli::Cli> = if use_color {
         Box::new(cli::Real::default())
     } else {
@@ -134,6 +124,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
         setup_thread_pool();
     });
     let query_config = args.query_config();
+    let use_color = args.should_use_color();
     match args.command {
         args::Command::RunServer(_) => run_server(logger)?,
         args::Command::ParseAll(args) => erlang_service_cli::parse_all(&args, cli, &query_config)?,
@@ -152,7 +143,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
         args::Command::ProjectInfo(args) => build_info_cli::save_project_info(args, &query_config)?,
         args::Command::Lint(args) => lint_cli::run_lint_command(&args, cli, &query_config)?,
         args::Command::Ssr(ssr_args) => {
-            ssr_cli::run_ssr_command(&ssr_args, cli, &query_config, &args.color)?
+            ssr_cli::run_ssr_command(&ssr_args, cli, &query_config, use_color)?
         }
         args::Command::GenerateCompletions(args) => {
             let instructions = args::gen_completions(&args.shell);

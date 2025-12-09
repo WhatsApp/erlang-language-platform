@@ -11,6 +11,7 @@
 use std::cmp::Ordering;
 use std::env;
 use std::fs;
+use std::io::IsTerminal;
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -538,6 +539,20 @@ impl Args {
             BuckQueryConfig::NoBuildGeneratedCode
         } else {
             BuckQueryConfig::BuildGeneratedCode
+        }
+    }
+
+    /// Determine if color should be used based on the --color argument
+    pub fn should_use_color(&self) -> bool {
+        match self.color.as_deref() {
+            Some("always") => true,
+            Some("never") => false,
+            Some("auto") | None => {
+                // Check NO_COLOR environment variable - if set (regardless of value), disable color
+                // Also check if stdout is connected to a TTY
+                env::var("NO_COLOR").is_err() && std::io::stdout().is_terminal()
+            }
+            _ => false, // Should be caught by the guard, but handle anyway
         }
     }
 }
