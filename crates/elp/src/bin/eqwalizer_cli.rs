@@ -482,8 +482,6 @@ fn eqwalize(
         bail!("No files to eqWAlize detected")
     }
 
-    pre_parse_for_speed(reporter, analysis.clone(), &file_ids);
-
     let files_count = file_ids.len();
     let pb = reporter.progress(files_count as u64, "EqWAlizing");
     let output = loaded.with_eqwalizer_progress_bar(pb.clone(), move |analysis| {
@@ -600,17 +598,6 @@ fn eqwalize(
             bail!("Could not eqwalize: {}", error)
         }
     }
-}
-
-fn pre_parse_for_speed(reporter: &dyn Reporter, analysis: Analysis, file_ids: &[FileId]) {
-    let pb = reporter.progress(file_ids.len() as u64, "Parsing modules");
-    file_ids
-        .par_iter()
-        .progress_with(pb.clone())
-        .for_each_with(analysis, |analysis, &file_id| {
-            let _ = analysis.module_ast(file_id);
-        });
-    pb.finish();
 }
 
 fn set_eqwalizer_config(loaded: &mut LoadResult) {
