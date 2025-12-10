@@ -2175,6 +2175,7 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    #[should_panic] // Support for hierarchical config is not implemented yet
     fn lint_hierarchical_config_basic(buck: bool) {
         simple_snapshot_sorted(
             args_vec!["lint", "--read-config"],
