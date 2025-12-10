@@ -152,6 +152,7 @@ fn replace_include_path(
 #[cfg(test)]
 mod tests {
     use elp_ide_db::DiagnosticCode;
+    // @fb-only
     use expect_test::Expect;
     use expect_test::expect;
 
@@ -168,9 +169,12 @@ mod tests {
         tests::check_filtered_diagnostics(fixture, &filter)
     }
 
+    #[rustfmt::skip]
     #[track_caller]
     fn check_fix(fixture_before: &str, fixture_after: Expect) {
-        let config = DiagnosticsConfig::default().disable(DiagnosticCode::UnusedInclude);
+        let config = DiagnosticsConfig::default()
+            // @fb-only
+            .disable(DiagnosticCode::UnusedInclude);
         tests::check_fix_with_config(config, fixture_before, fixture_after)
     }
 
