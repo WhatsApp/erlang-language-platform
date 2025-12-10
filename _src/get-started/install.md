@@ -4,8 +4,25 @@ sidebar_position: 2
 
 # Install ELP
 
-The easiest way to install to ELP is [from binary](#from-binary). It is also
+The easiest way to install ELP on Mac is [using Homebrew](#using-homebrew-mac).
+For other platforms, you can install [from binary](#from-binary). It is also
 possible to compile it [from source](#from-source).
+
+## Using Homebrew (Mac)
+
+Mac users can install ELP using the dedicated Homebrew formula:
+
+```
+brew install erlang-language-platform
+```
+
+This will install the latest version of ELP and make it available in your PATH.
+
+For more information about the Homebrew formula, visit:
+https://formulae.brew.sh/formula/erlang-language-platform
+
+Follow [these steps](cli.md#verify-elp-is-correctly-installed) to verify ELP is
+correctly installed.
 
 ## From Binary
 
