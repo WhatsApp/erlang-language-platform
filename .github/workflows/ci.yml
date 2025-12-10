@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform-arch: [ubuntu-22.04-x64, ubuntu-22.04-arm, macos-13-x64, macos-latest-arm, windows-2022-x64]
+        platform-arch: [ubuntu-22.04-x64, ubuntu-22.04-arm, macos-15-x64, macos-latest-arm, windows-2022-x64]
         otp-version: [26.2, 27.3, 28.0]
         include:
           - otp-version: 26.2
@@ -55,8 +55,8 @@ jobs:
             os: linux
             target: aarch64-unknown-linux-gnu
             vscode-target: linux-arm64
-          - platform-arch: macos-13-x64
-            platform: macos-13
+          - platform-arch: macos-15-x64
+            platform: macos-15-intel
             os: macos
             target: x86_64-apple-darwin
             vscode-target: darwin-x64
