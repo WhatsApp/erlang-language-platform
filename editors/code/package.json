@@ -1,6 +1,7 @@
 {
   "name": "erlang-language-platform",
-  "description": "Erlang language server",
+  "displayName": "Erlang Language Platform",
+  "description": "Erlang Language Support for VS Code, by WhatsApp.",
   "author": "Meta Platforms, Inc",
   "license": "Apache2",
   "version": "0.46.0",
@@ -20,7 +21,8 @@
     "Testing"
   ],
   "keywords": [
-    "elp"
+    "elp",
+    "erlang"
   ],
   "engines": {
     "vscode": "^1.75.0"
