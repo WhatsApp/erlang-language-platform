@@ -448,4 +448,17 @@ mod tests {
         let position = fixture.position();
         debug_assert_eq!(db.clamp_offset(position.file_id, 2000.into()), 15.into())
     }
+
+    #[test]
+    #[should_panic(expected = "Fixture validation failed: syntax errors found in test fixture")]
+    fn validate_fixture_with_parse_error() {
+        let fixture = r#"
+//- /src/test.erl
+-module(test).
+foo( -> ok.
+"#;
+
+        let (db, fixture) = RootDatabase::with_fixture(fixture);
+        fixture.validate(&db);
+    }
 }

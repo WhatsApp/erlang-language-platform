@@ -405,6 +405,59 @@ impl ChangeFixture {
             .get(&VfsPath::from(path.clone()))
             .cloned()
     }
+
+    /// Validate all files in the fixture for syntax errors.
+    /// Panics with context if any syntax errors are found.
+    #[track_caller]
+    pub fn validate<DB: SourceDatabaseExt>(&self, db: &DB) {
+        let mut errors_found = Vec::new();
+
+        for file_id in &self.files {
+            let parse = db.parse(*file_id);
+            let errors = parse.errors();
+
+            if !errors.is_empty() {
+                let path = self
+                    .files_by_path
+                    .iter()
+                    .find_map(|(vfs_path, id)| {
+                        if id == file_id {
+                            Some(
+                                vfs_path
+                                    .as_path()
+                                    .map(|p| p.to_string())
+                                    .unwrap_or_else(|| format!("{:?}", vfs_path)),
+                            )
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(|| format!("FileId({:?})", file_id));
+
+                let file_text = SourceDatabaseExt::file_text(db, *file_id);
+                let tree = parse.tree();
+                errors_found.push((path, file_text.to_string(), errors.to_vec(), tree));
+            }
+        }
+
+        if !errors_found.is_empty() {
+            let mut message =
+                String::from("Fixture validation failed: syntax errors found in test fixture\n\n");
+
+            for (path, text, errors, tree) in errors_found {
+                message.push_str(&format!("File: {}\n", path));
+                message.push_str(&format!("Errors: {:?}\n", errors));
+                message.push_str(&format!("Content:\n{}\n", text));
+                message.push_str(&format!("Parse Tree:\n{:#?}\n", tree));
+                message.push_str("---\n");
+            }
+            message.push_str(
+                "If this is expected, add `//- expect_parse_errors` to the start of the fixture\n",
+            );
+
+            panic!("{}", message);
+        }
+    }
 }
 
 fn inc_file_id(file_id: &mut FileId) {
