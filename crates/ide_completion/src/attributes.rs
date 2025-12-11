@@ -166,6 +166,7 @@ mod test {
     fn test_error_recovery() {
         check(
             r#"
+            //- expect_parse_errors
             //- /src/sample.erl
             -module(sample1).
             % U.S. English
@@ -180,6 +181,7 @@ mod test {
 
         check(
             r#"
+            //- expect_parse_errors
             //- /src/sample.erl
             -module(sample1).
             % U.K. English
@@ -197,6 +199,7 @@ mod test {
     fn test_typing_attribute() {
         check(
             r#"
+        //- expect_parse_errors
         -module(sample).
         -typ~
         "#,
@@ -211,6 +214,7 @@ mod test {
     fn test_module_attribute() {
         check(
             r#"
+        //- expect_parse_errors
         -mod~
         "#,
             None,
@@ -224,6 +228,7 @@ mod test {
     fn test_module_attribute_hyphen() {
         check(
             r#"
+        //- expect_parse_errors
         //- /src/my-module.erl
         -mod~
         "#,
@@ -238,6 +243,7 @@ mod test {
     fn test_module_attribute_at() {
         check(
             r#"
+        //- expect_parse_errors
         //- /src/my@module.erl
         -mod~
         "#,
@@ -252,6 +258,7 @@ mod test {
     fn test_module_attribute_underscore() {
         check(
             r#"
+        //- expect_parse_errors
         //- /src/my_module.erl
         -mod~
         "#,
@@ -266,6 +273,7 @@ mod test {
     fn test_module_attribute_uppercase() {
         check(
             r#"
+        //- expect_parse_errors
         //- /src/Module.erl
         -mod~
         "#,
@@ -280,6 +288,7 @@ mod test {
     fn test_module_attribute_uppercase_middle() {
         check(
             r#"
+        //- expect_parse_errors
         //- /src/moDule.erl
         -mod~
         "#,

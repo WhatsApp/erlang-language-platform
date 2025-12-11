@@ -3189,6 +3189,7 @@ mod tests {
     fn syntax_error() {
         check_diagnostics(
             r#"
+//- expect_parse_errors
 -module(main).
 foo() -> XX 3.0.
     %%   ^^ error: P1711: Syntax Error
@@ -3366,6 +3367,7 @@ main(X) ->
     #[test]
     fn label_syntax_error_not_function() {
         let fixture_str = r#"
+  //- expect_parse_errors
     -module(main).
     -record(person, {(name + XXX)}).
   %%                 ^^^^^^^ error: P1711: Syntax Error
@@ -3381,7 +3383,7 @@ main(X) ->
         expect![[r#"
             Some(
                 Range(
-                    24..56,
+                    5..45,
                 ),
             )
         "#]]
@@ -3540,6 +3542,7 @@ main(X) ->
             config,
             &extra_diags,
             r#"
+             //- expect_parse_errors
              -module(main).
 
              -export([foo/0,bar/0]).
@@ -3577,6 +3580,7 @@ main(X) ->
         check_diagnostics(
             r#"
              //- erlang_service
+             //- expect_parse_errors
              //- /src/a_mod.erl app:app_a
              -module(a_mod).
              -export([foo/0]).
@@ -3595,6 +3599,7 @@ main(X) ->
         check_diagnostics(
             r#"
              //- erlang_service
+             //- expect_parse_errors
              //- native
              //- /src/a_mod.erl app:app_a
              -module(a_mod).
@@ -3673,6 +3678,7 @@ main(X) ->
     fn test_nested_syntax_errors() {
         check_diagnostics(
             r#"
+            //- expect_parse_errors
             -module(main).
             run() ->
                 ExitCode =

@@ -100,6 +100,7 @@ mod test {
     fn test_local_variables_1() {
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     test(AnArg1,Blah) ->
@@ -117,6 +118,7 @@ mod test {
     fn test_local_variables_limit_to_current_function() {
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     another(AnArgNotMatched) ->
@@ -142,6 +144,7 @@ mod test {
     fn test_local_variables_none_if_space() {
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     test(AnArg1,Blah) ->
@@ -157,6 +160,7 @@ mod test {
     fn test_local_variables_no_duplicates() {
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     handle_update(Config, Contents) ->

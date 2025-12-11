@@ -132,6 +132,7 @@ foo() ->
 
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     -export([

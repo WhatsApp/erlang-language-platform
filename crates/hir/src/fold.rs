@@ -2212,7 +2212,9 @@ bar() ->
 
     #[test]
     fn traverse_attribute() {
+        // TODO: fix wild attribute parsing, T246546041, to remove expect_parse_errors
         let fixture_str = r#"
+               //- expect_parse_errors
                -module(foo).
                -wild(r1, {f1, f~oo}).
                "#;

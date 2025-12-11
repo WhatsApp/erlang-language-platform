@@ -695,6 +695,7 @@ mod test {
     fn filtered_diagnostics_passes_syntax_errors() {
         check_filtered_diagnostics(
             r#"
+            //- expect_parse_errors
             %%<^^^^^^^^^^^^ 💡 error: L1201: no module definition
             foo() ->
                bug bug.

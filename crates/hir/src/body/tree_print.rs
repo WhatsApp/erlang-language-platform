@@ -2340,7 +2340,7 @@ mod tests {
             r#"
              foo() ->
                  case 1 + 2 of
-                     X when X andalso true; X <= 100, X >= 5 -> ok;
+                     X when X andalso true; X =< 100, X >= 5 -> ok;
                      _ -> error
                  end.
             "#,
@@ -2381,7 +2381,7 @@ mod tests {
                                                 rhs
                                                     Expr<8>:Literal(Integer(100))
                                                 op
-                                                    CompOp(Ord { ordering: Less, strict: true }),
+                                                    CompOp(Ord { ordering: Less, strict: false }),
                                             },
                                             Expr<12>:Expr::BinaryOp {
                                                 lhs
@@ -3114,6 +3114,7 @@ mod tests {
     fn type_record() {
         check(
             r#"
+            //- expect_parse_errors
             -type foo1() :: #record{}.
             -type foo2(B) :: #record{a :: integer(), b :: B}.
             -type foo3() :: #record{a ::}.
@@ -3498,6 +3499,7 @@ mod tests {
     fn top_level_forms() {
         check(
             r#"
+            //- expect_parse_errors
              -module(main).
              bug
              -compile([export_all]).

@@ -2335,10 +2335,10 @@ mod tests {
     fn xref_types_test() {
         let spec = r#"
         //- /glean/app_glean/src/glean_module81.erl
-        -type small() :: #{non_neg_integer() | infinity}.
+        -type small() ::  {non_neg_integer() | infinity}.
 
         //- /glean/app_glean/src/glean_module8.erl
-        -type huuuge() :: #{non_neg_integer() | infinity}.
+        -type huuuge() ::  {non_neg_integer() | infinity}.
         -spec baz(
             A :: huuuge(),
         %%       ^^^^^^ glean_module8/huuuge/0
@@ -2393,10 +2393,10 @@ mod tests {
     fn xref_types_v2_test() {
         let spec = r#"
         //- /glean/app_glean/src/glean_module81.erl
-        -type small() :: #{non_neg_integer() | infinity}.
+        -type small() ::  {non_neg_integer() | infinity}.
 
         //- /glean/app_glean/src/glean_module8.erl
-        -type huuuge() :: #{non_neg_integer() | infinity}.
+        -type huuuge() ::  {non_neg_integer() | infinity}.
         -spec baz(
             A :: huuuge(),
         %%       ^^^^^^ glean_module8.erl/type/huuuge/0

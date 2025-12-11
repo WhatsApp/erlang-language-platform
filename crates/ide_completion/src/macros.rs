@@ -253,6 +253,7 @@ mod test {
 
         check(
             r#"
+    //- expect_parse_errors
     -module(sample1).
     -define(FOO, 1).
     -define(FOO(), 1).
@@ -271,6 +272,7 @@ mod test {
 
         check(
             r#"
+    //- expect_parse_errors
     -module(sample1).
     -define(FOO, 1).
     -define(BAR, 1).
@@ -282,6 +284,7 @@ mod test {
 
         check(
             r#"
+    //- expect_parse_errors
     -module(sample1).
     -define(FOO, ok).
     -define(BAR, 1).

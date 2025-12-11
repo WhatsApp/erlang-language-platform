@@ -169,6 +169,7 @@ mod test {
 
         check(
             r#"
+        //- expect_parse_errors
         //- /src/sample.erl
         -module(sample).
         -type alias() :: ok.
@@ -197,6 +198,7 @@ mod test {
 
         check(
             r#"
+        //- expect_parse_errors
         //- /src/sample.erl
         -module(sample).
         -type alias() :: ok.
@@ -225,6 +227,7 @@ mod test {
 
         check(
             r#"
+        //- expect_parse_errors
         //- /src/sample.erl
         -module(sample).
         -spec foo() -> sample2:~.
@@ -248,6 +251,7 @@ mod test {
         // something reasonable (show nothing)
         check(
             r#"
+        //- expect_parse_errors
         //- /src/sample.erl
         -module(sample).
         -spec foo() -> sample~:.
@@ -263,6 +267,7 @@ mod test {
 
         check(
             r#"
+        //- expect_parse_errors
         //- /src/sample.erl
         -module(sample).
         -spec foo() -> sample~:.

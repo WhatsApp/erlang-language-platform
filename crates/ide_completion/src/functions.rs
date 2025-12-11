@@ -243,6 +243,7 @@ mod test {
 
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     local() ->
@@ -265,6 +266,7 @@ mod test {
 
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     local() ->
@@ -338,6 +340,7 @@ mod test {
 
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     local() ->
@@ -360,6 +363,7 @@ mod test {
 
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     local() ->
@@ -379,12 +383,14 @@ mod test {
                 {label:foon/2, kind:Function, contents:Snippet("foon(${1:A}, ${2:B})"), position:Some(FilePosition { file_id: FileId(1), offset: 86 })}"#]],
         );
     }
+
     #[test]
     fn test_remote_calls_deprecated() {
         assert!(serde_json::to_string(&lsp_types::CompletionItemKind::MODULE).unwrap() == "9");
 
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     local() ->
@@ -413,6 +419,7 @@ mod test {
 
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     local() ->
@@ -441,6 +448,7 @@ mod test {
 
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     local() ->
@@ -466,6 +474,7 @@ mod test {
 
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     local() ->
@@ -584,6 +593,7 @@ mod test {
     fn test_remote_fun_exprs_with_trigger() {
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     main(_) ->
@@ -607,6 +617,7 @@ mod test {
     fn test_local_fun_exprs_with_trigger() {
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     foo() -> ok.
@@ -622,6 +633,7 @@ mod test {
     fn test_local_fun_exprs_no_trigger() {
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     foo() -> ok.
@@ -637,6 +649,7 @@ mod test {
     fn function_error_recovery() {
         check(
             r#"
+    //- expect_parse_errors
     -module(sample1).
     foo() ->
         b~
@@ -650,6 +663,7 @@ mod test {
         );
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     local() ->
@@ -668,6 +682,7 @@ mod test {
     fn test_local_and_remote() {
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     samba() -> ok.
@@ -688,6 +703,7 @@ mod test {
     fn test_remote_call_broken_case() {
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     test() ->
@@ -709,6 +725,7 @@ mod test {
     fn test_local_call_broken_case() {
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     foo() -> ok.
@@ -802,6 +819,7 @@ mod test {
 
         check(
             r#"
+    //- expect_parse_errors
     //- /src/sample1.erl
     -module(sample1).
     local() ->
@@ -820,6 +838,7 @@ mod test {
         );
         check(
             r#"
+//- expect_parse_errors
 //- /src/sample1.erl
 -module(sample1).
 local() ->
@@ -839,6 +858,7 @@ foo(X, Y) -> ok.
         );
         check(
             r#"
+//- expect_parse_errors
 //- /src/sample1.erl
 -module(sample1).
 local() ->
@@ -902,6 +922,7 @@ foo(X, Y) -> ok.
     fn test_remote_call_same_module_macro_prefix() {
         check(
             r#"
+    //- expect_parse_errors
     -module(main).
     -export([main/0, do_not_use_me/0]).
     -deprecated({do_not_use_me, 0, "Because I said so"}).
@@ -922,6 +943,7 @@ foo(X, Y) -> ok.
     fn test_in_dialyzer_attribute() {
         check(
             r#"
+    //- expect_parse_errors
     -module(main).
     -export([
         foo/1,
@@ -942,6 +964,7 @@ foo(X, Y) -> ok.
     fn test_quoted_local_call() {
         check(
             r#"
+    //- expect_parse_errors
     -module(sample).
     test() ->
         fo~(something).

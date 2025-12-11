@@ -109,6 +109,7 @@ mod test {
 
         check(
             r#"
+        //- expect_parse_errors
         -module(sample).
 
         frog() -> ok.
@@ -129,6 +130,7 @@ mod test {
 
         check(
             r#"
+        //- expect_parse_errors
         -module(sample).
 
         frog(A, B) -> {A, B}.

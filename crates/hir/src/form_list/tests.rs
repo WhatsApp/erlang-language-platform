@@ -318,6 +318,7 @@ fn export() {
 fn import() {
     check(
         r#"
+//- expect_parse_errors
 -import(, []).
 -import(foo, []).
 -import(foo, [foo/1]).

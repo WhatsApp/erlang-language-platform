@@ -83,7 +83,7 @@ mod tests {
         check(
             r#"
 -module(foo).
--bar() -> ?L~INE.
+bar() -> ?L~INE.
 "#,
             expect![[r#"
                 LINE
@@ -97,7 +97,7 @@ mod tests {
         check(
             r#"
 -module(foo).
--bar() -> ?F~ILE.
+bar() -> ?F~ILE.
 "#,
             expect![[r#"
                 FILE
@@ -420,7 +420,7 @@ baz() ->
                             maps:get(type, ExpectedQr, missing_expected_type);
                         _ ->
                             Type
-                    end,
+                    end
 ).
 baz() ->
     ?asser~tQrs(AliceWID, ?WA_QR_TYPE_MESSAGE, []),

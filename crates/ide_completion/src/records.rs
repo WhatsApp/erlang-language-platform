@@ -320,6 +320,7 @@ mod test {
     fn test_record_name() {
         check(
             r#"
+        //- expect_parse_errors
         -module(sample).
         -record(this_record, {field1=1, field2=2}).
         -record(that_record, {}).
@@ -334,6 +335,7 @@ mod test {
 
         check(
             r#"
+        //- expect_parse_errors
         -module(sample).
         -record(this_record, {field1=1, field2=2}).
         -record(that_record, {}).
@@ -353,6 +355,7 @@ mod test {
         // Irregular names are quoted.
         check(
             r#"
+        //- expect_parse_errors
         -module(sample).
         -record('this.record', {field1=1, field2=2}).
         -record('that$record', {}).
@@ -369,6 +372,7 @@ mod test {
     fn test_record_error_recovery() {
         check(
             r#"
+        //- expect_parse_errors
         -module(sample).
         -record(rec, {field1=1, field2=2}).
         foo(X) -> #rec{field1 = 1, field2~.
@@ -381,6 +385,7 @@ mod test {
 
         check(
             r#"
+        //- expect_parse_errors
         -module(sample).
         -record(rec, {field1=1, field2=2}).
         foo(X) -> X#rec{field1 = 1, field2~.
@@ -393,6 +398,7 @@ mod test {
 
         check(
             r#"
+        //- expect_parse_errors
         -module(sample).
         -record(rec, {field1=1, field2=2}).
         foo(X) -> case ok of
@@ -404,6 +410,7 @@ mod test {
 
         check(
             r#"
+        //- expect_parse_errors
         -module(sample).
         -record(rec, {field1=1, field2=2}).
         foo(X) -> case ok of
@@ -417,6 +424,7 @@ mod test {
 
         check(
             r#"
+        //- expect_parse_errors
         -module(sample).
         -record(rec, {field1=1, field2=2}).
         foo(X) -> case ok of
@@ -433,6 +441,7 @@ mod test {
     fn test_record_name_in_function_signature() {
         check(
             r#"
+        //- expect_parse_errors
         -module(sample).
         -record(this_record, {field1=1, field2=2}).
         -record(that_record, {}).
@@ -450,6 +459,7 @@ mod test {
     fn test_record_field_in_function_signature() {
         check(
             r#"
+        //- expect_parse_errors
         -module(sample).
         -record(rec, {field1, field2, other}).
         foo(#rec{fie~

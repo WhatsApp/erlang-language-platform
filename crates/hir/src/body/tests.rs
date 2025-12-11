@@ -448,6 +448,7 @@ foo(#record.field) -> #record.field.
 fn record() {
     check(
         r#"
+//- expect_parse_errors
 foo1(#record{field = 1}) -> #record{field = A + B}.
 foo2(#record{field}) -> #record{field = }.
 "#,
@@ -473,6 +474,7 @@ foo2(#record{field}) -> #record{field = }.
 fn record_update() {
     check(
         r#"
+//- expect_parse_errors
 foo1() -> Expr#record{field = undefined}.
 foo2() -> Expr#record{field = ok, missing = }.
 "#,
@@ -557,7 +559,7 @@ fn case() {
         r#"
 foo() ->
     case 1 + 2 of
-        X when X andalso true; X <= 100, X >= 5 -> ok;
+        X when X andalso true; X =< 100, X >= 5 -> ok;
         _ -> error
     end.
 "#,
@@ -566,7 +568,7 @@ foo() ->
                 case (1 + 2) of
                     X when
                         (X andalso true);
-                        (X < 100),
+                        (X =< 100),
                         (X >= 5)
                     ->
                         ok;
@@ -836,6 +838,7 @@ foo() ->
 fn parens() {
     check(
         r#"
+//- expect_parse_errors
 foo((ok), ()) ->
     (ok),
     ().
@@ -995,6 +998,7 @@ foo(fun() -> ok end) -> ok.
 fn invalid_comprehension() {
     check(
         r#"
+//- expect_parse_errors
 foo(<<Byte || Byte <- List>>, [Byte || Byte <- List]]) -> ok.
 "#,
         expect![[r#"
@@ -1392,6 +1396,7 @@ fn call_type_erlang_bif() {
 fn record_type() {
     check(
         r#"
+//- expect_parse_errors
 -type foo1() :: #record{}.
 -type foo2(B) :: #record{a :: integer(), b :: B}.
 -type foo3() :: #record{a ::}.
@@ -1529,6 +1534,7 @@ fn record_definition() {
 fn simple_term() {
     check(
         r#"
+//- expect_parse_errors
 -foo(ok).
 -missing_value().
 "#,
@@ -2693,6 +2699,7 @@ fn verbatim_binary_sigil_in_type() {
     // Note: \~ gets replaced by ~ in the fixture parsing
     check(
         r#"
+        //- expect_parse_errors
         -type foo() :: \~B"ab\"c\"\d").
         -type bar() :: "hello").
         "#,
@@ -2723,6 +2730,7 @@ fn verbatim_binary_sigil_in_term() {
 fn lowering_with_error_nodes() {
     check(
         r#"
+         //- expect_parse_errors
             f(1a) -> ok begin 1 end.
         "#,
         expect![[r#"
@@ -2989,8 +2997,10 @@ fn tree_print_record() {
 
 #[test]
 fn tree_print_attribute() {
+    // TODO: fix wild attribute parsing, T246546041, to remove expect_parse_errors
     check_ast(
         r#"
+        //- expect_parse_errors
          -wild(foo, []).
          -compile({inline, [foo/1]}).
          -compile({a/a, 1/1}).

@@ -79,6 +79,7 @@ mod test {
 
         check(
             r#"
+        //- expect_parse_errors
         -module(sample).
         -export_type([
             foo~

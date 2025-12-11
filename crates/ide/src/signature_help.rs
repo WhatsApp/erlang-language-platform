@@ -311,6 +311,7 @@ mod tests {
     fn test_fn_signature_local_two_args() {
         check(
             r#"
+//- expect_parse_errors
 -module(main).
 
 -spec add(integer(), integer()) -> integer().
@@ -343,6 +344,7 @@ main() ->
         );
         check(
             r#"
+//- expect_parse_errors
 -module(main).
 
 -spec add(integer(), integer()) -> integer().
@@ -375,6 +377,7 @@ main() ->
         );
         check(
             r#"
+//- expect_parse_errors
 -module(main).
 
 -spec add(integer(), integer()) -> integer().
@@ -411,6 +414,7 @@ main() ->
     fn test_fn_signature_remote_two_args() {
         check(
             r#"
+//- expect_parse_errors
 //- /one.erl
 -module(one).
 
@@ -449,6 +453,7 @@ main() ->
         );
         check(
             r#"
+//- expect_parse_errors
 //- /one.erl
 -module(one).
 
@@ -487,6 +492,7 @@ main() ->
         );
         check(
             r#"
+//- expect_parse_errors
 //- /one.erl
 -module(one).
 
@@ -529,6 +535,7 @@ main() ->
     fn test_fn_signature_quoted_remote_two_args() {
         check(
             r#"
+//- expect_parse_errors
 //- /Elixir.One.erl
 -module('Elixir.One').
 
@@ -576,6 +583,7 @@ main() ->
     fn test_fn_signature_unclosed_call() {
         check(
             r#"
+//- expect_parse_errors
 -module(main).
 
 -compile(export_all).
@@ -626,6 +634,7 @@ main() ->
     fn test_fn_signature_doc() {
         check(
             r#"
+//- expect_parse_errors
 -module(main).
 
 -compile(export_all).
@@ -685,6 +694,7 @@ main() ->
         if supports_eep59_doc_attributes() {
             check(
                 r#"
+//- expect_parse_errors
 -module(main).
 
 -compile(export_all).
@@ -753,6 +763,7 @@ main() ->
     fn test_fn_signature_local_imported() {
         check(
             r#"
+//- expect_parse_errors
 //- /one.erl
 -module(one).
 -compile(export_all).
@@ -794,6 +805,7 @@ main() ->
     fn test_fn_signature_spec_arg_names() {
         check(
             r#"
+//- expect_parse_errors
 //- /one.erl
 -module(one).
 -compile(export_all).

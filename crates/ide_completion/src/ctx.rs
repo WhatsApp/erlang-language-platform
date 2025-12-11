@@ -281,6 +281,7 @@ mod ctx_tests {
     fn expr_ctx() {
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test() ->
             ~X.
@@ -290,6 +291,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test() ->
             case 1 of.
@@ -301,6 +303,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test() ->
             fun(_) -> ~X end.
@@ -310,6 +313,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test() ->
             try 1
@@ -353,6 +357,7 @@ mod ctx_tests {
     fn ctx_pattern() {
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test(Y, X) ->
             ~Y = X.
@@ -362,6 +367,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test(X) ->
             case rand:uniform(1) of
@@ -373,6 +379,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test(X) ->
             fun(X~) -> 1 end.
@@ -382,6 +389,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test() ->
             receive
@@ -393,6 +401,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test() ->
             try [1]
@@ -407,6 +416,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test(X) ->
             if
@@ -429,6 +439,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test(Y, X) ->
             try ok of
@@ -440,6 +451,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test(Y, X) ->
             try ok of
@@ -457,6 +469,7 @@ mod ctx_tests {
     fn ctx_pattern_error_recovery_wip() {
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test(Y, X) ->
             try ok of
@@ -469,6 +482,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test(Y, X) ->
             try ok of
@@ -485,6 +499,7 @@ mod ctx_tests {
     fn test_type_param_ctx() {
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         -type ty(s~) :: ok.
         "#),
@@ -496,6 +511,7 @@ mod ctx_tests {
     fn test_export_ctx() {
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         -export([
             f~
@@ -509,6 +525,7 @@ mod ctx_tests {
     fn test_export_type_ctx() {
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         -export_type([
             t~
@@ -522,6 +539,7 @@ mod ctx_tests {
     fn test_spec_ctx() {
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         -spec t~
         table() -> ok.
@@ -535,6 +553,7 @@ mod ctx_tests {
     fn test_type_ctx() {
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         -spec test() -> ~
         test() -> ok.
@@ -544,6 +563,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         -spec test() -> o~k
         test() -> ok.
@@ -553,6 +573,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         -spec test(o~) -> ok.
         test() -> ok.
@@ -562,6 +583,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         -record(foo, {field1, field2 :: X~}).
         "#),
@@ -570,6 +592,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         -opaque test() :: ~.
         "#),
@@ -578,6 +601,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         -nominal test() :: ~.
         "#),
@@ -586,6 +610,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         -type test() :: m~
         "#),
@@ -594,6 +619,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         -spec test() -> ~ok.
         "#),
@@ -605,6 +631,7 @@ mod ctx_tests {
     fn test_ctx_error_recovery() {
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test() ->
             ~
@@ -614,6 +641,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test() ->
             X + ~
@@ -623,6 +651,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test() ->
             X + ~.
@@ -632,6 +661,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test() ->
             case rand:uniform(1) of
@@ -643,6 +673,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test() ->
             (erlang:term_to_binary(~
@@ -653,6 +684,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         test() ->
             (erlang:term_to_binary(~.
@@ -663,6 +695,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         -type ty() :: ~
         "#),
@@ -671,6 +704,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         -type ty() :: l~.
         "#),
@@ -679,6 +713,7 @@ mod ctx_tests {
 
         assert_eq!(
             ctx(r#"
+        //- expect_parse_errors
         -module(sample).
         -record(rec, {field = lists:map(fun(X) -> X + 1 end, [1, ~])}).
         "#),

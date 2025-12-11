@@ -259,6 +259,7 @@ main() ->
     fn param_hints_variables_missing_param() {
         check_params(
             r#"
+//- expect_parse_errors
 -module(main).~
 -compile(export_all).
 sum(A, B) -> A + B.

@@ -1288,7 +1288,7 @@ fn ssr_do_not_match_pattern_missing() {
         r#"
          g() ->
              <<$",$\\,194,181,$A,$">> =
-                 ~b"""
+                   """
                    "\\µA"
                    """.
          "#,
@@ -1327,7 +1327,7 @@ fn ssr_comments_in_match() {
                     <<{ % preceding comment
                         3},
                         { 3 % following comment
-                        >>.
+                        }>>.
                 "#;
     let strategy = Strategy {
         macros: MacroStrategy::Expand,
@@ -1536,7 +1536,7 @@ fn ssr_predicates_on_match_expr_pat() {
                 %-compile({"str", var, atom}).
                 %-type foo(V) :: {"str", V, atom}.
                 foo({"hello", Var, atom}) -> {"str", Var, aa}.
-                
+
                 "#;
     let strategy = Strategy {
         macros: MacroStrategy::Expand,
@@ -1636,7 +1636,7 @@ fn ssr_predicates_on_match_type() {
     let pattern = "ssr: {_@V, _@A}.";
     let code = r#"
                 -type foo(V) :: {V, atom}.
-                
+
                 "#;
     let strategy = Strategy {
         macros: MacroStrategy::Expand,

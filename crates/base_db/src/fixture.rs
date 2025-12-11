@@ -87,6 +87,7 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         let (fixture, change) = ChangeFixture::parse(fixture_str);
         let mut db = Self::default();
         change.apply(&mut db, &|path| fixture.resolve_file_id(path));
+        fixture.validate(&db);
         (db, fixture)
     }
 }
@@ -101,6 +102,7 @@ pub struct ChangeFixture {
     pub diagnostics_enabled: DiagnosticsEnabled,
     pub tags: FxHashMap<FileId, Vec<(TextRange, Option<String>)>>,
     pub annotations: FxHashMap<FileId, Vec<(TextRange, String)>>,
+    pub expect_parse_errors: bool,
 }
 
 struct Builder {
@@ -172,6 +174,7 @@ impl ChangeFixture {
         let FixtureWithProjectMeta {
             fixture,
             mut diagnostics_enabled,
+            expect_parse_errors,
         } = fixture_with_meta.clone();
 
         let builder = Builder::new(diagnostics_enabled.clone());
@@ -344,6 +347,7 @@ impl ChangeFixture {
                 diagnostics_enabled,
                 tags,
                 annotations,
+                expect_parse_errors,
             },
             change,
             project,
@@ -408,8 +412,13 @@ impl ChangeFixture {
 
     /// Validate all files in the fixture for syntax errors.
     /// Panics with context if any syntax errors are found.
+    /// Skips validation if `expect_parse_errors` is set to true.
     #[track_caller]
     pub fn validate<DB: SourceDatabaseExt>(&self, db: &DB) {
+        if self.expect_parse_errors {
+            return;
+        }
+
         let mut errors_found = Vec::new();
 
         for file_id in &self.files {

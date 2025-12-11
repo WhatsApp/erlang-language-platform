@@ -243,7 +243,7 @@ mod tests {
  //- /my_app/src/runnables.erl
     ~
     -module(runnables).
-    -export([all/]).
+    -export([all/0]).
     main() ->
       ok.
     "#,

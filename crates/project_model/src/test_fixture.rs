@@ -187,6 +187,7 @@ impl DiagnosticsEnabled {
 pub struct FixtureWithProjectMeta {
     pub fixture: Vec<Fixture>,
     pub diagnostics_enabled: DiagnosticsEnabled,
+    pub expect_parse_errors: bool,
 }
 
 impl FixtureWithProjectMeta {
@@ -204,6 +205,7 @@ impl FixtureWithProjectMeta {
         let mut fixture = fixture.as_str();
         let mut res: Vec<Fixture> = Vec::new();
         let mut diagnostics_enabled = DiagnosticsEnabled::default();
+        let mut expect_parse_errors = false;
 
         // ---------------------------------------
         // Each of the following is optional, but they must always
@@ -229,6 +231,12 @@ impl FixtureWithProjectMeta {
         if let Some(meta) = fixture.strip_prefix("//- erlang_service") {
             let (_meta, remain) = meta.split_once('\n').unwrap();
             diagnostics_enabled.use_erlang_service = true;
+            fixture = remain;
+        }
+
+        if let Some(meta) = fixture.strip_prefix("//- expect_parse_errors") {
+            let (_meta, remain) = meta.split_once('\n').unwrap();
+            expect_parse_errors = true;
             fixture = remain;
         }
 
@@ -304,6 +312,7 @@ impl FixtureWithProjectMeta {
         FixtureWithProjectMeta {
             fixture: res,
             diagnostics_enabled,
+            expect_parse_errors,
         }
     }
 

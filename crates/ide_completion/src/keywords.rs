@@ -141,6 +141,7 @@ mod test {
     fn test_no_keywords() {
         check(
             r#"
+    //- expect_parse_errors
     -module(sample).
     test(X) ->
         a~
@@ -150,6 +151,7 @@ mod test {
         );
         check(
             r#"
+    //- expect_parse_errors
     -module(sample).
     test(~X) ->
         X.
@@ -160,6 +162,7 @@ mod test {
 
         check(
             r#"
+    //- expect_parse_errors
     -module(m~).
     "#,
             None,
@@ -168,6 +171,7 @@ mod test {
 
         check(
             r#"
+    //- expect_parse_errors
     -module(m).
     -~
     "#,
@@ -177,6 +181,7 @@ mod test {
 
         check(
             r#"
+    //- expect_parse_errors
     -module(m).
     -type foo() :: ~.
     "#,
@@ -191,6 +196,7 @@ mod test {
     fn test_keywords_error_recovery() {
         check(
             r#"
+    //- expect_parse_errors
     -module(sample).
     test(X) ->
         X ~
@@ -234,6 +240,7 @@ mod test {
 
         check(
             r#"
+    //- expect_parse_errors
     -module(sample).
     test(X) ->
         ~

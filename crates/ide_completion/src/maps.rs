@@ -214,6 +214,7 @@ mod test {
     fn test_local_type() {
         check(
             r#"
+         //- expect_parse_errors
          -module(test_local_type).
          -type my_map() :: #{field1 := integer(), field2 => boolean()}.
          foo(X) -> #~
@@ -229,6 +230,7 @@ mod test {
     fn test_included_type() {
         check(
             r#"
+         //- expect_parse_errors
          //- /include/test_included_type.hrl include_path:/include
          -type my_included_map() :: #{field1 := integer(), field2 => integer()}.
          //- /src/test_included_type.erl
@@ -250,6 +252,7 @@ mod test {
     fn test_empty_map_type() {
         check(
             r#"
+         //- expect_parse_errors
          -module(test_empty_map_type).
          -type my_map() :: #{}.
          foo(X) -> #~
@@ -265,6 +268,7 @@ mod test {
     fn test_arity_1_map_type() {
         check(
             r#"
+         //- expect_parse_errors
          -module(test_arity_1_map_type).
          -type my_map() :: #{field1 := true }.
          foo(X) -> #~
@@ -280,6 +284,7 @@ mod test {
     fn test_mixed_map_and_record_types() {
         check(
             r#"
+         //- expect_parse_errors
          -module(test_mixed_map_and_record_types).
          -type my_map() :: #{field1 := true }.
          -record(my_record, {field1}).
@@ -297,6 +302,7 @@ mod test {
     fn test_nested_map_type() {
         check(
             r#"
+         //- expect_parse_errors
          -module(test_nested_map_type).
          -type my_map() :: #{field1 := true, field2 => false}.
          -type my_nested_map() :: #{field1 := #{field1 => my_map()}}.
@@ -315,11 +321,12 @@ mod test {
     fn test_type_from_spec() {
         check(
             r#"
+         //- expect_parse_errors
          //- /src/one.erl
          -module(one).
          -type my_map(X) :: #{field1 := X}.
          -export_type([my_map/0]).
-         
+
          //- /src/two.erl
          -module(two).
          -spec foo(one:my_map(integer())) -> one:my_map(integer()).
@@ -338,11 +345,12 @@ mod test {
     fn test_type_from_unowned_spec() {
         check(
             r#"
+         //- expect_parse_errors
          //- /src/one.erl
          -module(one).
          -type my_map(X) :: #{field1 := X}.
          -export_type([my_map/0]).
-         
+
          //- /src/two.erl
          -module(two).
          -spec foo(one:my_map(integer())) -> one:my_map(integer()).
@@ -359,6 +367,7 @@ mod test {
     fn test_local_type_in_function_argument() {
         check(
             r#"
+         //- expect_parse_errors
          -module(test_local_type).
          -type my_map() :: #{field1 := integer(), field2 => boolean()}.
          foo(#~

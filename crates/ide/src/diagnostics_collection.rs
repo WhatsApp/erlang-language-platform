@@ -415,6 +415,7 @@ mod tests {
             config,
             &extra_diags,
             r#"
+             //- expect_parse_errors
              -module(main).
 
              -export([foo/0,bar/0]).
