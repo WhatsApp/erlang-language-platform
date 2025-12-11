@@ -2175,7 +2175,11 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
-    #[should_panic] // Support for hierarchical config is not implemented yet
+    // We cannot use `should_panic` for this test, since the OSS CI runs with the `buck` feature disabled.
+    // When this happens the test is translated into a no-op, which does not panic.
+    // TODO(T248259687): Switch to should_panic once Buck2 is available on GitHub.
+    //                   Or remove the ignore once hierarchical support is implemented.
+    #[ignore] // Support for hierarchical config is not implemented yet
     fn lint_hierarchical_config_basic(buck: bool) {
         simple_snapshot_sorted(
             args_vec!["lint", "--read-config"],
