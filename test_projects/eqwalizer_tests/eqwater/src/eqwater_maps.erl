@@ -59,3 +59,13 @@ map_occ_08_neg(_) -> err.
 map_occ_09(#{a := undefined}) -> 1;
 map_occ_09(#{a := Map}) -> Map#{2 => 2};
 map_occ_09(_) -> 3.
+
+-spec is_ok(ok) -> ok.
+is_ok(ok) -> ok.
+
+-spec map_occ_foreach_neg(#{term() => #{a => ok | err}}) -> ok.
+map_occ_foreach_neg(M) ->
+  maps:foreach(fun
+    (_, #{a := err}) -> ok;
+    (_, #{a := V}) -> is_ok(V)
+  end, M).

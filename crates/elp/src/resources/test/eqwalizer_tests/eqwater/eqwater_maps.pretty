@@ -70,4 +70,20 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #{a := dynamic(), dynamic() => dynamic()}
 Context expected type: 'err'
 
-5 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ eqwater/src/eqwater_maps.erl:70:29
+   │
+70 │     (_, #{a := V}) -> is_ok(V)
+   │                             ^
+   │                             │
+   │                             V.
+Expression has type:   'ok' | 'err'
+Context expected type: 'ok'
+   │                             
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: 'ok'
+  However the following candidate: 'err'
+  Differs from the expected type:  'ok'
+
+6 ERRORS
