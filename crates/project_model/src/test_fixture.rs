@@ -277,6 +277,12 @@ impl FixtureWithProjectMeta {
 
                 if let Some(entry) = res.last_mut() {
                     entry.text.push_str(line);
+                } else if line.chars().any(|c| !c.is_whitespace()) {
+                    panic!(
+                        "Fixture has content before the first file marker (`//- /path/to/file.erl`). \
+                         Did you forget to add a file marker at the beginning?\n\
+                         The offending line: {line:?}"
+                    );
                 }
             }
         }
@@ -837,6 +843,19 @@ mod tests {
     use crate::test_fixture::extract_annotations;
     use crate::test_fixture::extract_tags;
     use crate::test_fixture::remove_annotations;
+
+    #[test]
+    #[should_panic(expected = "Fixture has content before the first file marker")]
+    fn parse_fixture_panics_on_content_before_first_file_marker() {
+        FixtureWithProjectMeta::parse(
+            r#"
+        -module(main).
+        foo() -> ok.
+        //- /src/erl_eval.erl
+        -module(erl_eval).
+        "#,
+        );
+    }
 
     #[test]
     #[should_panic]
