@@ -1,0 +1,26 @@
+load(
+    "@prelude//erlang:erlang_toolchain.bzl",
+    "erlang_toolchain",
+)
+
+toolchain_alias(
+    name = "erlang-default",
+    actual = ":erlang-local",
+    visibility = ["PUBLIC"],
+)
+
+erlang_toolchain(
+    name = "erlang-local",
+    emu_flags = "+sbwt very_short +sbwtdcpu very_short +sbwtdio very_short",
+    otp_binaries = ":local",
+    parse_transforms = [],
+    parse_transforms_filters = {},
+    visibility = ["PUBLIC"],
+)
+
+erlang_otp_binaries(
+    name = "local",
+    erl = "erl",
+    erlc = "erlc",
+    escript = "escript",
+)
