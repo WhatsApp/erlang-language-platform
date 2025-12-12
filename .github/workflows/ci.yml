@@ -97,6 +97,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y crossbuild-essential-arm64
+      - name: Install Buck2
+        uses: dtolnay/install-buck2@latest
       - id: setup-erlang
         uses: ./.github/actions/setup-erlang
         with:
