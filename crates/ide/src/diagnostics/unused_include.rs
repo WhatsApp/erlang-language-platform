@@ -137,6 +137,7 @@ impl GenericLinter for UnusedIncludeLinter {
     fn fixes(
         &self,
         context: &Self::Context,
+        _range: TextRange,
         _sema: &Semantic,
         file_id: FileId,
     ) -> Option<Vec<Assist>> {

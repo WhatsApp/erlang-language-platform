@@ -35,9 +35,7 @@ use crate::diagnostics::Linter;
 use crate::fix;
 
 #[derive(Debug, Default, Clone, PartialEq)]
-pub(crate) struct MacroPrecedenceContext {
-    range: TextRange,
-}
+pub(crate) struct MacroPrecedenceContext;
 
 pub(crate) struct MacroPrecedenceSupriseLinter;
 
@@ -96,10 +94,9 @@ impl GenericLinter for MacroPrecedenceSupriseLinter {
                             {
                                 let range = ast.range();
                                 if range.file_id == file_id {
-                                    let context = MacroPrecedenceContext { range: range.range };
                                     res.push(GenericLinterMatchContext {
                                         range: range.range,
-                                        context,
+                                        context: MacroPrecedenceContext,
                                     });
                                 }
                             }
@@ -113,16 +110,17 @@ impl GenericLinter for MacroPrecedenceSupriseLinter {
 
     fn fixes(
         &self,
-        context: &Self::Context,
+        _context: &Self::Context,
+        range: TextRange,
         _sema: &Semantic,
         file_id: FileId,
     ) -> Option<Vec<Assist>> {
-        let edit = add_parens_edit(&context.range);
+        let edit = add_parens_edit(&range);
         let fix = fix(
             "macro_precedence_add_parens",
             "Add parens to macro call",
             SourceChange::from_text_edit(file_id, edit),
-            context.range,
+            range,
         );
         Some(vec![fix])
     }

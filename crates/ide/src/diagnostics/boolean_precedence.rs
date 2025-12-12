@@ -66,7 +66,6 @@ impl Linter for BooleanPrecedenceLinter {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Context {
-    range: TextRange,
     preceding_ws_range: TextRange,
     op: Op,
     lhs_complex: bool,
@@ -101,6 +100,7 @@ impl GenericLinter for BooleanPrecedenceLinter {
     fn fixes(
         &self,
         context: &Self::Context,
+        range: TextRange,
         _sema: &Semantic,
         file_id: FileId,
     ) -> Option<Vec<Assist>> {
@@ -109,36 +109,36 @@ impl GenericLinter for BooleanPrecedenceLinter {
         // Add "replace with preferred operator" fix
         let assist_message = format!("Replace '{}' with '{}'", context.op, context.op.preferred());
         let edit = TextEdit::replace(
-            context.op.range(context.range, context.preceding_ws_range),
+            context.op.range(range, context.preceding_ws_range),
             context.op.preferred().to_string(),
         );
         fixes.push(fix(
             "replace_boolean_operator",
             &assist_message,
             SourceChange::from_text_edit(file_id, edit),
-            context.range,
+            range,
         ));
 
         // Add "add parens" fixes if applicable
         if context.lhs_complex {
-            fixes.push(parens_fix("LHS", file_id, context));
+            fixes.push(parens_fix("LHS", file_id, context, range));
         }
         if context.rhs_complex {
-            fixes.push(parens_fix("RHS", file_id, context));
+            fixes.push(parens_fix("RHS", file_id, context, range));
         }
 
         Some(fixes)
     }
 }
 
-fn parens_fix(side: &str, file_id: FileId, context: &Context) -> Assist {
+fn parens_fix(side: &str, file_id: FileId, context: &Context, range: TextRange) -> Assist {
     let assist_message = format!("Add parens to {side}");
     let edit = add_parens_edit(&context.add_parens_range);
     fix(
         "replace_boolean_operator_add_parens",
         &assist_message,
         SourceChange::from_text_edit(file_id, edit),
-        context.range,
+        range,
     )
 }
 
@@ -231,7 +231,6 @@ fn collect_match(
             matches.push(GenericLinterMatchContext {
                 range,
                 context: Context {
-                    range,
                     preceding_ws_range,
                     op: binop,
                     lhs_complex,

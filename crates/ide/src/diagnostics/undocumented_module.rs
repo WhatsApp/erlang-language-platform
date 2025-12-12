@@ -48,9 +48,7 @@ impl Linter for UndocumentedModuleLinter {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct Context {
-    module_name_range: TextRange,
-}
+pub struct Context;
 
 impl GenericLinter for UndocumentedModuleLinter {
     type Context = Context;
@@ -71,16 +69,21 @@ impl GenericLinter for UndocumentedModuleLinter {
         if module_has_no_docs {
             let module_name = module_attribute.name()?;
             let module_name_range = module_name.syntax().text_range();
-            let context = Context { module_name_range };
             res.push(GenericLinterMatchContext {
                 range: module_name_range,
-                context,
+                context: Context,
             });
         }
         Some(res)
     }
 
-    fn fixes(&self, context: &Context, sema: &Semantic, file_id: FileId) -> Option<Vec<Assist>> {
+    fn fixes(
+        &self,
+        _context: &Context,
+        range: TextRange,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
         let insert_offset = helpers::moduledoc_insert_offset(sema, file_id)?;
         let mut builder = SourceChangeBuilder::new(file_id);
         builder.insert(insert_offset, "-moduledoc false.\n");
@@ -89,7 +92,7 @@ impl GenericLinter for UndocumentedModuleLinter {
             "add_moduledoc_false",
             "Add `-moduledoc false.` attribute",
             source_change,
-            context.module_name_range,
+            range,
         );
         Some(vec![fix])
     }

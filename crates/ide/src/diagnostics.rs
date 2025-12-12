@@ -865,6 +865,7 @@ pub(crate) trait GenericLinter: Linter {
     fn fixes(
         &self,
         _context: &Self::Context,
+        _range: TextRange,
         _sema: &Semantic,
         _file_id: FileId,
     ) -> Option<Vec<Assist>> {
@@ -898,7 +899,7 @@ impl<T: GenericLinter> GenericDiagnostics for T {
         if let Some(matches) = self.matches(sema, file_id) {
             for matched in matches {
                 let message = self.match_description(&matched.context);
-                let fixes = self.fixes(&matched.context, sema, file_id);
+                let fixes = self.fixes(&matched.context, matched.range, sema, file_id);
                 let tag = self.tag(&matched.context);
                 let mut d = Diagnostic::new(self.id(), message, matched.range)
                     .with_fixes(fixes)

@@ -88,7 +88,13 @@ impl GenericLinter for UnusedMacroLinter {
         Some(DiagnosticTag::Unused)
     }
 
-    fn fixes(&self, context: &Context, _sema: &Semantic, file_id: FileId) -> Option<Vec<Assist>> {
+    fn fixes(
+        &self,
+        context: &Context,
+        _range: TextRange,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
         Some(vec![delete_unused_macro(
             file_id,
             context.delete_range,

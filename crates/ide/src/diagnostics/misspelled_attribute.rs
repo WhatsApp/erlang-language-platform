@@ -55,7 +55,6 @@ impl Linter for MisspelledAttributeLinter {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Context {
-    range: TextRange,
     attr_name: String,
     suggested_rename: String,
 }
@@ -88,7 +87,6 @@ impl GenericLinter for MisspelledAttributeLinter {
                     res.push(GenericLinterMatchContext {
                         range: attr_name_range,
                         context: Context {
-                            range: attr_name_range,
                             attr_name: attr.name.to_string(),
                             suggested_rename: suggested_rename.to_string(),
                         },
@@ -110,16 +108,17 @@ impl GenericLinter for MisspelledAttributeLinter {
     fn fixes(
         &self,
         context: &Self::Context,
+        range: TextRange,
         _sema: &Semantic,
         file_id: FileId,
     ) -> Option<Vec<Assist>> {
-        let edit = TextEdit::replace(context.range, context.suggested_rename.clone());
+        let edit = TextEdit::replace(range, context.suggested_rename.clone());
         let msg = format!("Change to '{}'", context.suggested_rename);
         Some(vec![fix(
             "fix_misspelled_attribute",
             &msg,
             SourceChange::from_text_edit(file_id, edit),
-            context.range,
+            range,
         )])
     }
 }

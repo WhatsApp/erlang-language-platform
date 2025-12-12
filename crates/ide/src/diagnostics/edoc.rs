@@ -56,7 +56,6 @@ impl Linter for EdocLinter {
 pub struct Context {
     header_ptr: Option<InFileAstPtr<ast::Form>>,
     doc_start: TextSize,
-    range: TextRange,
 }
 
 impl GenericLinter for EdocLinter {
@@ -77,7 +76,6 @@ impl GenericLinter for EdocLinter {
                             context: Context {
                                 header_ptr: Some(*header_ptr),
                                 doc_start,
-                                range: doc.range,
                             },
                         });
                     }
@@ -88,7 +86,6 @@ impl GenericLinter for EdocLinter {
                             context: Context {
                                 header_ptr: Some(*header_ptr),
                                 doc_start,
-                                range: equiv.range,
                             },
                         });
                     }
@@ -99,7 +96,6 @@ impl GenericLinter for EdocLinter {
                             context: Context {
                                 header_ptr: Some(*header_ptr),
                                 doc_start,
-                                range: deprecated.range,
                             },
                         });
                     }
@@ -111,7 +107,6 @@ impl GenericLinter for EdocLinter {
                         context: Context {
                             header_ptr: Some(*header_ptr),
                             doc_start,
-                            range: hidden.range,
                         },
                     });
                 }
@@ -123,6 +118,7 @@ impl GenericLinter for EdocLinter {
     fn fixes(
         &self,
         context: &Self::Context,
+        range: TextRange,
         sema: &Semantic,
         file_id: FileId,
     ) -> Option<Vec<Assist>> {
@@ -134,7 +130,7 @@ impl GenericLinter for EdocLinter {
             file_id,
             header,
             context.doc_start,
-            context.range,
+            range,
         )])
     }
 }

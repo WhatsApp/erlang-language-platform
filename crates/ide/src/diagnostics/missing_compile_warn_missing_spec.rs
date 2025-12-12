@@ -75,7 +75,6 @@ impl Linter for MissingCompileWarnMissingSpec {
 pub struct Context {
     found: Found,
     compile_option_id: Option<CompileOptionId>,
-    target_range: TextRange,
 }
 
 impl GenericLinter for MissingCompileWarnMissingSpec {
@@ -94,7 +93,6 @@ impl GenericLinter for MissingCompileWarnMissingSpec {
                 context: Context {
                     found: Found::No,
                     compile_option_id: None,
-                    target_range: DIAGNOSTIC_WHOLE_FILE_RANGE,
                 },
             });
         }
@@ -149,7 +147,6 @@ impl GenericLinter for MissingCompileWarnMissingSpec {
                     context: Context {
                         found: what.0,
                         compile_option_id: what.1,
-                        target_range: range,
                     },
                 });
             }
@@ -160,6 +157,7 @@ impl GenericLinter for MissingCompileWarnMissingSpec {
     fn fixes(
         &self,
         context: &Self::Context,
+        range: TextRange,
         sema: &Semantic,
         file_id: FileId,
     ) -> Option<Vec<elp_ide_assists::Assist>> {
@@ -184,7 +182,7 @@ impl GenericLinter for MissingCompileWarnMissingSpec {
             "add_warn_missing_spec_all",
             "Add compile option 'warn_missing_spec_all'",
             edit,
-            context.target_range,
+            range,
         )])
     }
 }
