@@ -1,14 +1,26 @@
 error: incorrect_return_type_in_cb_implementation (See https://fb.me/eqwalizer_errors#incorrect_return_type_in_cb_implementation)
-   ┌─ check/src/callbacks3_neg.erl:12:1
+   ┌─ check/src/callbacks3_neg.erl:13:1
    │
-12 │ -behavior(gen_server).
+13 │ -behavior(gen_server).
+   │ ^^^^^^^^^^^^^^^^^^^^^ Incorrect return type for implementation of gen_server:handle_cast/2.
+Expected: {'noreply', term()} | {'noreply', term(), gen_server:action()} | {'stop', term(), term()}
+Got:      'wrong_ret'
+
+error: incorrect_return_type_in_cb_implementation (See https://fb.me/eqwalizer_errors#incorrect_return_type_in_cb_implementation)
+   ┌─ check/src/callbacks3_neg.erl:13:1
+   │
+13 │ -behavior(gen_server).
    │ ^^^^^^^^^^^^^^^^^^^^^
    │ │
-   │ Incorrect return type for implementation of gen_server:handle_cast/2. Expected: {'noreply', term()} | {'noreply', term(), gen_server:action()} | {'stop', term(), term()}, Got: 'wrong_ret'.
+   │ Incorrect return type for implementation of gen_server:handle_info/2.
+Expected: {'noreply', term()} | {'noreply', term(), gen_server:action()} | {'stop', term(), term()}
+Got:      {'noreply', 'ok', 'wrong_atom'}
    │ 
 
-  'wrong_ret' is not compatible with {'noreply', term()} | {'noreply', term(), gen_server:action()} | {'stop', term(), term()}
-  because
-  'wrong_ret' is not compatible with {'noreply', term()}
+Because in the expression's type:
+  { 'noreply', 'ok', 
+    Here the type is:     'wrong_atom'
+    Context expects type: gen_server:action()
+  }
 
-1 ERROR
+2 ERRORS

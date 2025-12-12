@@ -7,7 +7,8 @@
 -export([
     init/1,
     handle_call/3,
-    handle_cast/2
+    handle_cast/2,
+    handle_info/2
 ]).
 -behavior(gen_server).
 
@@ -19,3 +20,7 @@ handle_call(_, _From, State) ->
 -spec handle_cast(ok, ok) -> wrong_ret.
 handle_cast(_, _) ->
     wrong_ret.
+
+-spec handle_info(ok, ok) -> {noreply, ok, wrong_atom}.
+handle_info(_, _) ->
+    {noreply, ok, wrong_atom}.
