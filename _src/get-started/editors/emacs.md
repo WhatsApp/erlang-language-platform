@@ -37,9 +37,8 @@ additional configuration options.
 
 ### Semantic tokens
 
-Semantic token support has been added to eglot, but is not yet in the
-released version. But it is possible to install the updated version
-of eglot.
+Semantic token support has been added to eglot, but is not yet in the released
+version. But it is possible to install the updated version of eglot.
 
 To do so, add
 
@@ -52,8 +51,14 @@ to your `init.el`, then run `M-x eglot-upgrade-eglot`
 Once upgraded, add the following to the `(use-package` entry for `eglot`
 
 ```elisp
-  (setq eglot-semantic-token-modifiers '
-    ("bound" "exported_function" "exported_type" "deprecated_function" "type_dynamic"))
+(setq-default eglot-workspace-configuration
+                ;; Run `elp config` to see that options can be used here
+                ;; Use `eglot-show-workspace-configuration` to see what is sent
+                '(:elp (:highlightDynamic (:enable t)
+                        :typesOnHover (:enable t) ))
+
+                eglot-semantic-token-modifiers
+                '("bound" "exported_function" "exported_type" "deprecated_function" "type_dynamic"))
 
   ;; Each face name arises as a template from the modifiers as
   ;; "eglot-semantic-%s-face"
@@ -91,7 +96,6 @@ Once upgraded, add the following to the `(use-package` entry for `eglot`
       (eglot--when-live-buffer buffer
         (eglot--widening (font-lock-flush)))))
 ```
-
 
 ## lsp-mode
 
