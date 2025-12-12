@@ -1,0 +1,5 @@
+module specified: diagnostics
+Diagnostics reported in 1 modules:
+  diagnostics: 6
+      3:0-3:35::[Error] [L0000] Issue in included file
+      5:30-5:44::[Error] [L1295] type undefined_type/0 undefined

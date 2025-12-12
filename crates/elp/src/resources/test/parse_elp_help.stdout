@@ -1,4 +1,4 @@
-Usage: [--project PROJECT] [--module MODULE] [--file ARG] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [--dump-includes] [--rebar] [--include-generated] [--serial] [--use-cli-severity] [[--format FORMAT]] [--report-system-stats]
+Usage: [--project PROJECT] [--module MODULE] [--file ARG] [--to TO] [--no-diags] [--experimental] [--as PROFILE] [--dump-includes] [--rebar] [--include-generated] [--serial] [--use-cli-severity] [[--format FORMAT]] [--report-system-stats] [[--severity SEVERITY]]
 
 Available options:
         --project <PROJECT>    Path to directory with project, or to a JSON file (defaults to `.`)
@@ -15,4 +15,5 @@ Available options:
         --use-cli-severity     If specified, use the provided CLI severity mapping instead of the default one
         --format <FORMAT>      Show diagnostics in JSON format
         --report-system-stats  Report system memory usage and other statistics
+        --severity <SEVERITY>  Minimum severity level to report. Valid values: error, warning, weak_warning, information
     -h, --help                 Prints help information

@@ -72,6 +72,17 @@ pub struct ParseAllElp {
     /// Report system memory usage and other statistics
     #[bpaf(long("report-system-stats"))]
     pub report_system_stats: bool,
+    /// Minimum severity level to report. Valid values: error, warning, weak_warning, information
+    #[bpaf(
+        argument("SEVERITY"),
+        complete(severity_completer),
+        fallback(None),
+        guard(
+            severity_guard,
+            "Please use error, warning, weak_warning, or information"
+        )
+    )]
+    pub severity: Option<String>,
 }
 
 #[derive(Clone, Debug, Bpaf)]
@@ -779,6 +790,25 @@ fn format_guard(format: &Option<String>) -> bool {
     match format {
         None => true,
         Some(f) if f == "json" => true,
+        _ => false,
+    }
+}
+
+fn severity_completer(_: &Option<String>) -> Vec<(String, Option<String>)> {
+    vec![
+        ("error".to_string(), None),
+        ("warning".to_string(), None),
+        ("weak_warning".to_string(), None),
+        ("information".to_string(), None),
+    ]
+}
+
+fn severity_guard(severity: &Option<String>) -> bool {
+    match severity {
+        None => true,
+        Some(s) if s == "error" || s == "warning" || s == "weak_warning" || s == "information" => {
+            true
+        }
         _ => false,
     }
 }

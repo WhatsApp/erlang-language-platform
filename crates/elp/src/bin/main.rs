@@ -673,6 +673,24 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn parse_all_diagnostics_severity(buck: bool) {
+        simple_snapshot_expect_error(
+            args_vec![
+                "parse-elp",
+                "--module",
+                "diagnostics",
+                "--severity",
+                "error"
+            ],
+            "diagnostics",
+            expect_file!("../resources/test/diagnostics/parse_all_diagnostics_error.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn parse_elp_file_attribute(buck: bool) {
         simple_snapshot(
             args_vec!["parse-elp", "--module", "file_attribute",],

@@ -57,6 +57,35 @@ use crate::args::ParseAllElp;
 use crate::reporting;
 use crate::reporting::print_memory_usage;
 
+fn parse_severity(severity: &str) -> Option<diagnostics::Severity> {
+    match severity {
+        "error" => Some(diagnostics::Severity::Error),
+        "warning" => Some(diagnostics::Severity::Warning),
+        "weak_warning" => Some(diagnostics::Severity::WeakWarning),
+        "information" => Some(diagnostics::Severity::Information),
+        _ => None,
+    }
+}
+
+fn severity_rank(severity: diagnostics::Severity) -> u8 {
+    match severity {
+        diagnostics::Severity::Error => 1,
+        diagnostics::Severity::Warning => 2,
+        diagnostics::Severity::WeakWarning => 3,
+        diagnostics::Severity::Information => 4,
+    }
+}
+
+fn meets_severity_threshold(
+    diag_severity: diagnostics::Severity,
+    min_severity: Option<diagnostics::Severity>,
+) -> bool {
+    match min_severity {
+        None => true,
+        Some(min) => severity_rank(diag_severity) <= severity_rank(min),
+    }
+}
+
 #[derive(Debug)]
 struct ParseResult {
     name: String,
@@ -162,6 +191,10 @@ pub fn parse_all(
         }
         res.sort_by(|a, b| a.name.cmp(&b.name));
         let mut err_in_diag = false;
+        let min_severity = args
+            .severity
+            .as_ref()
+            .and_then(|s| parse_severity(s.as_str()));
         for diags in res {
             let mut combined: Vec<diagnostics::Diagnostic> =
                 diags.diagnostics.diagnostics_for(diags.file_id);
@@ -172,6 +205,9 @@ pub fn parse_all(
                 let line_index = db.file_line_index(diags.file_id);
                 combined.sort_by(|a, b| a.range.start().cmp(&b.range.start()));
                 for diag in combined {
+                    if !meets_severity_threshold(diag.severity, min_severity) {
+                        continue;
+                    }
                     if args.is_format_json() {
                         err_in_diag = true;
                         let vfs_path = loaded.vfs.file_path(diags.file_id);
