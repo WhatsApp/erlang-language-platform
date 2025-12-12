@@ -4,7 +4,7 @@
   "description": "Erlang Language Support for VS Code, by WhatsApp.",
   "author": "Meta Platforms, Inc",
   "license": "Apache2",
-  "version": "0.46.0",
+  "version": "0.47.0",
   "icon": "images/elp-logo-color.png",
   "homepage": "https://whatsapp.github.io/erlang-language-platform/",
   "repository": {
