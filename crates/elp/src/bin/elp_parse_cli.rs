@@ -176,6 +176,19 @@ pub fn parse_all(
     let memory_end = MemoryUsage::now();
     let memory_used = memory_end - memory_start;
 
+    let min_severity = args
+        .severity
+        .as_ref()
+        .and_then(|s| parse_severity(s.as_str()));
+
+    res.retain(|parse_result| {
+        parse_result
+            .diagnostics
+            .diagnostics_for(parse_result.file_id)
+            .iter()
+            .any(|diag| meets_severity_threshold(diag.severity, min_severity))
+    });
+
     if res.is_empty() {
         if args.is_format_normal() {
             writeln!(cli, "No errors reported")?;
@@ -191,13 +204,10 @@ pub fn parse_all(
         }
         res.sort_by(|a, b| a.name.cmp(&b.name));
         let mut err_in_diag = false;
-        let min_severity = args
-            .severity
-            .as_ref()
-            .and_then(|s| parse_severity(s.as_str()));
         for diags in res {
             let mut combined: Vec<diagnostics::Diagnostic> =
                 diags.diagnostics.diagnostics_for(diags.file_id);
+            combined.retain(|diag| meets_severity_threshold(diag.severity, min_severity));
             if args.is_format_normal() {
                 writeln!(cli, "  {}: {}", diags.name, combined.len())?;
             }
@@ -205,9 +215,6 @@ pub fn parse_all(
                 let line_index = db.file_line_index(diags.file_id);
                 combined.sort_by(|a, b| a.range.start().cmp(&b.range.start()));
                 for diag in combined {
-                    if !meets_severity_threshold(diag.severity, min_severity) {
-                        continue;
-                    }
                     if args.is_format_json() {
                         err_in_diag = true;
                         let vfs_path = loaded.vfs.file_path(diags.file_id);
