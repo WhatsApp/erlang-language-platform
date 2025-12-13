@@ -101,7 +101,14 @@ impl ProjectLoader {
         let mut path_it = path;
         loop {
             if self.project_roots.contains_key(path_it) {
-                return None;
+                match self.project_roots.get(path_it) {
+                    Some(None) => {
+                        return Some(self.load_manifest(path_it));
+                    }
+                    _ => {
+                        return None;
+                    }
+                }
             }
             match path_it.parent() {
                 Some(parent) => path_it = parent,
