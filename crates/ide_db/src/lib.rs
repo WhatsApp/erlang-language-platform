@@ -385,7 +385,7 @@ impl TypedSemantic for RootDatabase {
 
         let project_id = app_data.project_id;
 
-        let eqwalizer_enabled = self.is_eqwalizer_enabled(file_id, false);
+        let eqwalizer_enabled = self.is_eqwalizer_enabled(file_id);
         if !eqwalizer_enabled {
             return Some(vec![]);
         }

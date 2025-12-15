@@ -2073,7 +2073,7 @@ impl Server {
             };
 
             for (_, _, file_id) in module_index.iter_own() {
-                match snapshot.analysis.should_eqwalize(file_id, false) {
+                match snapshot.analysis.should_eqwalize(file_id) {
                     Ok(true) => {
                         files.push(file_id);
                     }

@@ -12,7 +12,6 @@ use std::sync::Arc;
 
 use elp_base_db::FileId;
 use elp_base_db::FileRange;
-use elp_base_db::FileSource;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_base_db::SourceDatabase;
@@ -89,7 +88,7 @@ pub trait EqwalizerDatabase:
     fn types_for_file(&self, file_id: FileId) -> Option<Arc<Vec<(Pos, Type)>>>;
     fn has_eqwalizer_module_marker(&self, file_id: FileId) -> bool;
     fn has_eqwalizer_ignore_marker(&self, file_id: FileId) -> bool;
-    fn is_eqwalizer_enabled(&self, file_id: FileId, include_tests: bool) -> bool;
+    fn is_eqwalizer_enabled(&self, file_id: FileId) -> bool;
 }
 
 pub fn eqwalizer_diagnostics_by_project(
@@ -114,7 +113,7 @@ fn type_at_position(
     db: &dyn EqwalizerDatabase,
     range: FileRange,
 ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>> {
-    if !db.is_eqwalizer_enabled(range.file_id, false) {
+    if !db.is_eqwalizer_enabled(range.file_id) {
         return None;
     }
     let project_id = db.file_app_data(range.file_id)?.project_id;
@@ -149,7 +148,7 @@ fn type_at_position(
 }
 
 fn types_for_file(db: &dyn EqwalizerDatabase, file_id: FileId) -> Option<Arc<Vec<(Pos, Type)>>> {
-    if !db.is_eqwalizer_enabled(file_id, false) {
+    if !db.is_eqwalizer_enabled(file_id) {
         return None;
     }
     let project_id = db.file_app_data(file_id)?.project_id;
@@ -162,7 +161,7 @@ fn types_for_file(db: &dyn EqwalizerDatabase, file_id: FileId) -> Option<Arc<Vec
     None
 }
 
-fn is_eqwalizer_enabled(db: &dyn EqwalizerDatabase, file_id: FileId, include_tests: bool) -> bool {
+fn is_eqwalizer_enabled(db: &dyn EqwalizerDatabase, file_id: FileId) -> bool {
     if !otp_supported_by_eqwalizer() {
         return false;
     }
@@ -178,11 +177,8 @@ fn is_eqwalizer_enabled(db: &dyn EqwalizerDatabase, file_id: FileId, include_tes
     let project = db.project_data(project_id);
     let eqwalizer_config = &project.eqwalizer_config;
     let module_index = db.module_index(project_id);
-    let is_src = module_index.file_source_for_file(file_id) == Some(FileSource::Src);
-    let is_test_opted_in = db.is_test_suite_or_test_helper(file_id) == Some(true) && include_tests;
     let global_opt_in = eqwalizer_config.enable_all;
-    let opt_in =
-        (global_opt_in && (is_src || is_test_opted_in)) || db.has_eqwalizer_module_marker(file_id);
+    let opt_in = global_opt_in || db.has_eqwalizer_module_marker(file_id);
     let ignored_in_config = if let Some(module_name) = module_index.module_for_file(file_id) {
         eqwalizer_config
             .ignore_modules_compiled_patterns

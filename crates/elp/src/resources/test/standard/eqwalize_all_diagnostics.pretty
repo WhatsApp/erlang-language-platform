@@ -193,6 +193,14 @@ Expression has type:   'wrong_ret'
 Context expected type: 'error'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+  ┌─ app_a/test/app_a_test_helpers_not_opted_in.erl:5:11
+  │
+5 │ fail() -> error.
+  │           ^^^^^ 'error'.
+Expression has type:   'error'
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ app_b/src/app_b.erl:16:5
    │
 16 │     L.
@@ -200,4 +208,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   [T]
 Context expected type: T
 
-20 ERRORS
+21 ERRORS

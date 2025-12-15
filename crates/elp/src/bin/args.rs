@@ -155,8 +155,6 @@ pub struct EqwalizeAll {
     /// Also eqwalize opted-in generated modules from project (deprecated)
     #[bpaf(hide)]
     pub include_generated: bool,
-    /// Also eqwalize test modules from project
-    pub include_tests: bool,
     /// Exit with a non-zero status code if any errors are found
     pub bail_on_error: bool,
     /// Print statistics when done
@@ -173,8 +171,6 @@ pub struct EqwalizeTarget {
     /// Also eqwalize opted-in generated modules from application (deprecated)
     #[bpaf(hide)]
     pub include_generated: bool,
-    /// Also eqwalize test modules from project
-    pub include_tests: bool,
     /// Exit with a non-zero status code if any errors are found
     pub bail_on_error: bool,
     /// target, like //erl/chatd/...
@@ -193,8 +189,6 @@ pub struct EqwalizeApp {
     /// Also eqwalize opted-in generated modules from project (deprecated)
     #[bpaf(hide)]
     pub include_generated: bool,
-    /// Also eqwalize test modules from project
-    pub include_tests: bool,
     /// Run with rebar
     pub rebar: bool,
     /// Exit with a non-zero status code if any errors are found
@@ -217,8 +211,6 @@ pub struct EqwalizeStats {
     /// Also eqwalize opted-in generated modules from project (deprecated)
     #[bpaf(hide)]
     pub include_generated: bool,
-    /// Also eqwalize test modules from project
-    pub include_tests: bool,
     /// If specified, use the provided CLI severity mapping instead of the default one
     pub use_cli_severity: bool,
 }

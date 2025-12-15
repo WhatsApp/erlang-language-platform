@@ -251,9 +251,9 @@ impl Analysis {
         })
     }
 
-    pub fn should_eqwalize(&self, file_id: FileId, include_tests: bool) -> Cancellable<bool> {
+    pub fn should_eqwalize(&self, file_id: FileId) -> Cancellable<bool> {
         let is_in_app = self.file_app_type(file_id).ok() == Some(Some(AppType::App));
-        Ok(is_in_app && self.is_eqwalizer_enabled(file_id, include_tests)?)
+        Ok(is_in_app && self.is_eqwalizer_enabled(file_id)?)
     }
 
     /// Computes the set of eqwalizer diagnostics for the given files,
@@ -383,8 +383,8 @@ impl Analysis {
     /// - the app (the module belongs to) has `.eqwalizer` marker in the roof
     /// - or the module has `-typing([eqwalizer]).` pragma
     /// - or the whole project has `enable_all=true` in its `.elp.toml` file
-    pub fn is_eqwalizer_enabled(&self, file_id: FileId, include_tests: bool) -> Cancellable<bool> {
-        self.with_db(|db| db.is_eqwalizer_enabled(file_id, include_tests))
+    pub fn is_eqwalizer_enabled(&self, file_id: FileId) -> Cancellable<bool> {
+        self.with_db(|db| db.is_eqwalizer_enabled(file_id))
     }
 
     /// ETF for the module's abstract forms
