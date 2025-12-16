@@ -29,6 +29,9 @@ impl Linter for NoErrorLoggerLinter {
     fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
         Severity::Error
     }
+    fn should_process_test_files(&self) -> bool {
+        false
+    }
 }
 
 impl FunctionCallLinter for NoErrorLoggerLinter {
