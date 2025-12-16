@@ -102,7 +102,7 @@ use crate::resolver::Resolution;
 use crate::resolver::Resolver;
 
 mod find;
-// @fb-only
+// @fb-only: pub mod meta_only;
 pub mod to_def;
 
 pub struct ModuleIter(Arc<ModuleIndex>);

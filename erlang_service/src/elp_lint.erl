@@ -4372,14 +4372,14 @@ is_format_function(io, fwrite) -> true;
 is_format_function(io, format) -> true;
 is_format_function(io_lib, fwrite) -> true;
 is_format_function(io_lib, format) -> true;
-% @fb-only
-% @fb-only
+% @fb-only: is_format_function(wa_log, send_if) -> true;
+% @fb-only: is_format_function(wa_string, format) -> true;
 is_format_function(M, F) when is_atom(M), is_atom(F) -> false.
 
 %% check_format_1([Arg]) -> ok | {warn,Level,Format,[Arg]}.
 
-% @fb-only
-% @fb-only
+% @fb-only[end= ]: format_args(wa_log, send_if, [_Level, _Meta, _Opts, Format, Args]) -> [Format, Args];
+% @fb-only[end= ]: format_args(wa_string, format, [Format, Args, _Options]) -> [Format, Args];
 format_args(_M, _F, As) ->
     As.
 

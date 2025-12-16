@@ -13,7 +13,7 @@ use hir::Semantic;
 
 use crate::FunctionMatch;
 use crate::codemod_helpers::CheckCallCtx;
-// @fb-only
+// @fb-only: use crate::diagnostics;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::FunctionCallLinter;
 use crate::diagnostics::Linter;
@@ -35,9 +35,9 @@ impl Linter for AtomsExhaustionLinter {
         false
     }
     #[rustfmt::skip]
-    // @fb-only
+    // @fb-only: fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
     fn should_process_file_id(&self, _sema: &Semantic, _file_id: FileId) -> bool { // @oss-only
-        // @fb-only
+        // @fb-only: diagnostics::meta_only::is_relevant_file(sema.db.upcast(), file_id)
         true // @oss-only
     }
 }
@@ -56,16 +56,16 @@ impl FunctionCallLinter for AtomsExhaustionLinter {
                 // FunctionMatch::mfa("erlang", "binary_to_term", 2),
             ]
             .into_iter()
-            // @fb-only
+            // @fb-only: .chain(diagnostics::meta_only::atoms_exhaustion_matches().into_iter())
             .collect::<Vec<_>>()
         ]
     }
 
     fn check_match(&self, context: &CheckCallCtx<'_, ()>) -> Option<Self::Context> {
         #[rustfmt::skip]
-        // @fb-only
-        // @fb-only
-            // @fb-only
+        // @fb-only: let sema = context.in_clause.sema;
+        // @fb-only: let is_safe =
+            // @fb-only: diagnostics::meta_only::atoms_exhaustion_is_safe(sema, context.in_clause, context.parents);
         let is_safe = false; // @oss-only
         if !is_safe {
             match context.args.as_slice() {

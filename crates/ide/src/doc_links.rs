@@ -15,9 +15,9 @@ use elp_syntax::AstNode;
 use hir::InFile;
 use hir::Semantic;
 
-// @fb-only
+// @fb-only: use crate::meta_only::exdoc_links;
 
-// @fb-only
+// @fb-only: mod meta_only;
 mod otp_links;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,10 +40,10 @@ pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Optio
     if let Some(class) = SymbolClass::classify(&sema, in_file_token.clone()) {
         class.iter().for_each(|def| {
             otp_links::links(&mut doc_links, &sema, &def);
-            // @fb-only
+            // @fb-only: exdoc_links::links(&mut doc_links, &sema, &def);
         });
     }
-    // @fb-only
+    // @fb-only: meta_only::links(&mut doc_links, node, position);
     Some(doc_links)
 }
 

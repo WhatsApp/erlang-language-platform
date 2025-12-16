@@ -1623,7 +1623,7 @@ mod tests {
     }
 
     // TODO: enable when buck is properly set up on github project
-    // @fb-only
+    // @fb-only: const BUCK_TESTS_ENABLED: bool = true;
     const BUCK_TESTS_ENABLED: bool = false; // @oss-only
 
     #[track_caller]

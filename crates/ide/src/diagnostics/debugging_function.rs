@@ -22,7 +22,7 @@ use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::FunctionCallLinter;
 use crate::diagnostics::Linter;
 use crate::diagnostics::Severity;
-// @fb-only
+// @fb-only: use crate::diagnostics::meta_only;
 use crate::lazy_function_matches;
 
 pub(crate) struct NoDebuggingFunctionLinter;
@@ -52,7 +52,7 @@ impl FunctionCallLinter for NoDebuggingFunctionLinter {
         lazy_function_matches![
             vec![FunctionMatch::m("redbug")]
                 .into_iter()
-                // @fb-only
+                // @fb-only: .chain(meta_only::debugging_function_matches().into_iter())
                 .collect::<Vec<_>>()
         ]
     }

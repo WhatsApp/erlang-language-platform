@@ -40,7 +40,7 @@ mod erlang_service_cli;
 mod explain_cli;
 mod glean;
 mod lint_cli;
-// @fb-only
+// @fb-only: mod meta_only;
 mod reporting;
 mod shell;
 mod ssr_cli;
@@ -110,7 +110,7 @@ fn setup_cli_telemetry(args: &Args) {
         }
         _ => {
             // Initialize CLI telemetry, if used
-            // @fb-only
+            // @fb-only: meta_only::initialize_telemetry();
         }
     }
 }

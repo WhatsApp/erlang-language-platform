@@ -42,7 +42,7 @@ use crate::macro_exp;
 use crate::macro_exp::BuiltInMacro;
 use crate::macro_exp::MacroExpCtx;
 use crate::resolver::Resolver;
-// @fb-only
+// @fb-only: use crate::sema::meta_only;
 
 pub trait ToDef: Clone {
     type Def;
@@ -567,7 +567,7 @@ pub fn resolve_call_target(
             let fn_name: Name = sema.db.lookup_atom(body[*name].as_atom()?);
             let mo =
                 None; // @oss-only
-                // @fb-only
+                // @fb-only: meta_only::resolve_handle_call_target(sema, arity, file_id, &module_name, &fn_name);
             if let Some(r) = mo {
                 r
             } else {
@@ -890,7 +890,7 @@ lazy_static! {
     static ref DYNAMIC_CALL_PATTERNS: FxHashMap<PatternKey, DynamicCallPattern> = {
         let mut patterns = FxHashMap::default();
         add_dynamic_call_patterns(&mut patterns);
-        // @fb-only
+        // @fb-only: meta_only::add_dynamic_call_patterns(&mut patterns);
         patterns
     };
 }

@@ -30,7 +30,7 @@ use serde::de::DeserializeOwned;
 use serde_json::json;
 
 use crate::from_json;
-// @fb-only
+// @fb-only: use crate::meta_only;
 
 // Defines the server-side configuration of ELP. We generate *parts*
 // of VS Code's `package.json` config from this.
@@ -180,7 +180,7 @@ impl Config {
             return;
         }
         self.data = ConfigData::from_json(json);
-        // @fb-only
+        // @fb-only: meta_only::harmonise_gks(self);
     }
 
     pub fn update_gks(&mut self, json: serde_json::Value) {
