@@ -1,0 +1,14 @@
+{application, codegen_test,
+ [{description, "Test application demonstrating code generation"},
+  {vsn, "1.0.0"},
+  {registered, []},
+  {applications,
+   [kernel,
+    stdlib,
+    example_service_generated
+   ]},
+  {env,[]},
+  {modules, []},
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.
