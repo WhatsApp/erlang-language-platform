@@ -401,6 +401,9 @@ fn do_parse_one(
     name: &str,
     args: &Ssr,
 ) -> Result<Option<(String, FileId, Vec<diagnostics::Diagnostic>)>> {
+    if !args.include_generated && db.is_generated(file_id)? {
+        return Ok(None);
+    }
     if !args.include_tests && db.is_test_suite_or_test_helper(file_id)?.unwrap_or(false) {
         return Ok(None);
     }

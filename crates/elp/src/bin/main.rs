@@ -2193,6 +2193,36 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn ssr_exclude_generated_by_default(buck: bool) {
+        simple_snapshot(
+            args_vec!["ssr", "--module", "erlang_diagnostics_errors_gen", "ok"],
+            "diagnostics",
+            expect_file!("../resources/test/diagnostics/ssr_exclude_generated.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn ssr_include_generated_when_requested(buck: bool) {
+        simple_snapshot(
+            args_vec![
+                "ssr",
+                "--module",
+                "erlang_diagnostics_errors_gen",
+                "--include-generated",
+                "ok"
+            ],
+            "diagnostics",
+            expect_file!("../resources/test/diagnostics/ssr_include_generated.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     // We cannot use `should_panic` for this test, since the OSS CI runs with the `buck` feature disabled.
     // When this happens the test is translated into a no-op, which does not panic.
     // TODO(T248259687): Switch to should_panic once Buck2 is available on GitHub.
