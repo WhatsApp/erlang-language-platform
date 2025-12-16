@@ -10,7 +10,7 @@
 
 //! See [`Name`].
 
-// @fb-only
+// @fb-only: pub mod meta_only;
 
 use std::borrow::Cow;
 use std::collections::HashSet;

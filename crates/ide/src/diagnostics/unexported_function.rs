@@ -27,7 +27,7 @@ use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::MatchCtx;
 use crate::diagnostics::FunctionCallLinter;
 use crate::diagnostics::Linter;
-// @fb-only
+// @fb-only: use crate::diagnostics::meta_only;
 use crate::fix;
 use crate::lazy_function_matches;
 
@@ -45,9 +45,9 @@ impl Linter for UnexportedFunctionLinter {
     }
     #[rustfmt::skip]
     fn should_process_file_id(&self, _sema: &Semantic, _file_id: FileId) -> bool { // @oss-only
-    // @fb-only
+    // @fb-only: fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
         true // @oss-only
-        // @fb-only
+        // @fb-only: meta_only::should_check_for_unexported(sema, file_id)
     }
 }
 

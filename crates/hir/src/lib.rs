@@ -155,7 +155,7 @@ pub use name::MacroName;
 pub use name::Name;
 pub use name::NameArity;
 pub use name::known;
-// @fb-only
+// @fb-only: pub use name::meta_only;
 pub use sema::AtomDef;
 pub use sema::CallDef;
 pub use sema::DefinitionOrReference;

@@ -17,7 +17,7 @@ use elp_syntax::TextRange;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 
-// @fb-only
+// @fb-only: use crate::meta_only;
 use crate::runnables::Runnable;
 use crate::runnables::runnables;
 
@@ -57,11 +57,11 @@ pub struct Link {
 }
 
 #[rustfmt::skip]
-// @fb-only
+// @fb-only: pub(crate) fn annotations(db: &RootDatabase, file_id: FileId) -> Vec<Annotation> {
 pub(crate) fn annotations(_db: &RootDatabase, _file_id: FileId) -> Vec<Annotation> { // @oss-only
-    // @fb-only
+    // @fb-only: let mut annotations = Vec::default();
     let annotations = Vec::default(); // @oss-only
-    // @fb-only
+    // @fb-only: meta_only::annotations(db, file_id, &mut annotations);
     annotations
 }
 

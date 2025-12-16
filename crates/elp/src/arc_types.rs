@@ -8,8 +8,8 @@
  * above-listed licenses.
  */
 
-// @fb-only
-// @fb-only
+// @fb-only: /// Types as defined in https://www.internalfb.com/intern/wiki/Linting/adding-linters/#flow-type
+// @fb-only: /// and https://www.internalfb.com/code/fbsource/[1238f73dac0efd4009443fee6a345a680dc9401b]/whatsapp/server/erl/tools/lint/arcanist.py?lines=17
 use std::path::Path;
 
 use serde::Serialize;

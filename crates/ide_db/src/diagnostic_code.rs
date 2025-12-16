@@ -20,9 +20,9 @@ use serde::de;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-// @fb-only
+// @fb-only: use crate::meta_only::MetaOnlyDiagnosticCode;
 
-// @fb-only
+// @fb-only: pub const BASE_URL: &str = crate::meta_only::BASE_URL;
 pub const BASE_URL: &str = "https://whatsapp.github.io/erlang-language-platform/docs"; // @oss-only
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, EnumIter)]
@@ -100,7 +100,7 @@ pub enum DiagnosticCode {
     Eqwalizer(String),
     // Used for ad-hoc diagnostics via lints/codemods
     AdHoc(String),
-    // @fb-only
+    // @fb-only: MetaOnly(MetaOnlyDiagnosticCode),
 }
 
 // These namespaces map the error codes returned by the Erlang Service.
@@ -116,7 +116,7 @@ pub enum Namespace {
     Parser,
     EDoc,
     WhatsApp,
-    // @fb-only
+    // @fb-only: MetaOnly,
 }
 
 impl fmt::Display for Namespace {
@@ -131,7 +131,7 @@ impl fmt::Display for Namespace {
             Namespace::Parser => "p",
             Namespace::EDoc => "o",
             Namespace::WhatsApp => "w",
-            // @fb-only
+            // @fb-only: Namespace::MetaOnly => "meta_only",
         };
         write!(f, "{namespace}")
     }
@@ -164,7 +164,7 @@ impl Namespace {
     pub fn supports_doc_path(&self) -> bool {
         match self {
             Namespace::WhatsApp => true,
-            // @fb-only
+            // @fb-only: Namespace::MetaOnly => true,
             _ => false,
         }
     }
@@ -259,7 +259,7 @@ impl DiagnosticCode {
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
-            // @fb-only
+            // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_code(),
         }
     }
 
@@ -360,7 +360,7 @@ impl DiagnosticCode {
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
-            // @fb-only
+            // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_label(),
         }
     }
 
@@ -371,7 +371,7 @@ impl DiagnosticCode {
     pub fn maybe_from_string(s: &str) -> Option<DiagnosticCode> {
         DIAGNOSTIC_CODE_LOOKUPS
             .get(s).cloned()
-            // @fb-only
+            // @fb-only: .or_else(|| MetaOnlyDiagnosticCode::from_str(s).ok().map(DiagnosticCode::MetaOnly))
             .or_else( ||
                 // Look for ErlangService and AdHoc
                 if let Some(code) = Self::is_adhoc(s) {
@@ -388,7 +388,7 @@ impl DiagnosticCode {
         match self {
             DiagnosticCode::DefaultCodeForEnumIter => None,
             DiagnosticCode::AdHoc(_) => None,
-            // @fb-only
+            // @fb-only: DiagnosticCode::MetaOnly(_) => Some(Namespace::MetaOnly),
             DiagnosticCode::ErlangService(code) => Namespace::from_str(code).ok(),
             _ => Namespace::from_str(&self.as_code()).ok(),
         }
@@ -397,7 +397,7 @@ impl DiagnosticCode {
     pub fn supports_doc_path(&self) -> bool {
         match self {
             DiagnosticCode::DefaultCodeForEnumIter => false,
-            // @fb-only
+            // @fb-only: DiagnosticCode::MetaOnly(MetaOnlyDiagnosticCode::DefaultCodeForEnumIter) => false,
             _ => true,
         }
     }
@@ -541,7 +541,7 @@ impl DiagnosticCode {
             DiagnosticCode::ErlangService(_) => false,
             DiagnosticCode::Eqwalizer(_) => false,
             DiagnosticCode::AdHoc(_) => false,
-            // @fb-only
+            // @fb-only: DiagnosticCode::MetaOnly(code) => code.allows_fixme_comment(),
         }
     }
 

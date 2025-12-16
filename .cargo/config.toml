@@ -1,8 +1,8 @@
 [alias]
 xtask = "run --package xtask --"
 
-# @fb-only
-# @fb-only
+# @fb-only: [build]
+# @fb-only: target-dir = "../../../buck-out/elp"
 
 [profile.release]
 codegen-units = 1

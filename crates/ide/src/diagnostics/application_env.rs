@@ -28,7 +28,7 @@ use crate::codemod_helpers::CheckCallCtx;
 use crate::codemod_helpers::FunctionMatch;
 use crate::codemod_helpers::MatchCtx;
 use crate::codemod_helpers::find_call_in_function;
-// @fb-only
+// @fb-only: use crate::diagnostics;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::Severity;
 
@@ -108,7 +108,7 @@ fn check_function(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDe
                 vec![2, 3],
                 BadEnvCallAction::AppArg(0),
             ),
-            // @fb-only
+            // @fb-only: diagnostics::meta_only::application_env_bad_matches(),
         ]
         .into_iter()
         .flatten()

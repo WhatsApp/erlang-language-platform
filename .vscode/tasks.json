@@ -4,7 +4,7 @@
         {
             "label": "ELP: build (debug)",
             "type": "shell",
-            // @fb-only
+            // @fb-only: "command": "./meta/cargo.sh build",
             "command": "cargo build", // @oss-only
             "group": {
                 "kind": "build",
@@ -19,7 +19,7 @@
         {
             "label": "ELP: build (release)",
             "type": "shell",
-            // @fb-only
+            // @fb-only: "command": "./meta/cargo.sh build --release",
             "command": "cargo build --release", // @oss-only
             "group": {
                 "kind": "build",
@@ -34,7 +34,7 @@
         {
             "label": "ELP: build (release-thin)",
             "type": "shell",
-            // @fb-only
+            // @fb-only: "command": "./meta/cargo.sh build --profile release-thin --bins",
             "command": "cargo build --profile release-thin --bins", // @oss-only
             "group": {
                 "kind": "build",
@@ -49,7 +49,7 @@
         {
             "label": "ELP: run clippy on workspace",
             "type": "shell",
-            // @fb-only
+            // @fb-only: "command": "./meta/clippy.sh --workspace --tests",
             "command": "cargo clippy --workspace --tests", // @oss-only
             "group": {
                 "kind": "build",
@@ -64,7 +64,7 @@
         {
             "label": "ELP: run clippy on workspace, apply fixes",
             "type": "shell",
-            // @fb-only
+            // @fb-only: "command": "./meta/clippy.sh --workspace --tests --fix",
             "command": "cargo clippy --workspace --tests --fix", // @oss-only
             "group": {
                 "kind": "build",
@@ -79,7 +79,7 @@
         {
             "label": "ELP: run tests on workspace",
             "type": "shell",
-            // @fb-only
+            // @fb-only: "command": "./meta/cargo.sh test --workspace",
             "command": "cargo test --workspace", // @oss-only
             "group": {
                 "kind": "build",

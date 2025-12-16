@@ -84,7 +84,7 @@ const REC_ARITY: u32 = 99;
 const HEADER_ARITY: u32 = 100;
 const FACTS_FILE: &str = "facts.json";
 
-// @fb-only
+// @fb-only: mod meta_only;
 
 #[derive(Serialize, Debug, Eq, Hash, PartialEq, Clone)]
 struct GleanFileId(u32);
@@ -994,7 +994,7 @@ impl GleanIndexer {
                 .filter(|text| !text.is_empty())
         });
 
-        // @fb-only
+        // @fb-only: let exdoc_link = elp_ide::meta_only::exdoc_links::module_exdoc_link(&module, &sema);
         let exdoc_link: Option<String> = None; // @oss-only
 
         ModuleFact::new(
@@ -1532,7 +1532,7 @@ impl GleanIndexer {
             }) => {
                 let def = macro_def.as_ref()?;
                 let mut resolved = Self::resolve_macro_v2(sema, def, source_file, ctx)?;
-                // @fb-only
+                // @fb-only: meta_only::resolve_macro_expansion(sema, *expansion, ctx, &mut resolved);
                 Some(resolved)
             }
             hir::AnyExpr::Pat(Pat::MacroCall { macro_def, .. })
@@ -1875,9 +1875,9 @@ impl GleanIndexer {
         let source_file = sema.parse(file_id);
         let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
 
-        // @fb-only
-        // @fb-only
-        // @fb-only
+        // @fb-only: use elp_ide::meta_only::wam_links;
+        // @fb-only: let wam_ctx = wam_links::WamEventCtx::new(sema.db.upcast());
+        // @fb-only: let wam_url = wam_ctx.build_wam_link(name).map(|link| link.url());
         let wam_url = None; // @oss-only
 
         Some(XRef {

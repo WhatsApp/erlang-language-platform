@@ -152,7 +152,7 @@ fn replace_include_path(
 #[cfg(test)]
 mod tests {
     use elp_ide_db::DiagnosticCode;
-    // @fb-only
+    // @fb-only: use elp_ide_db::meta_only::MetaOnlyDiagnosticCode;
     use expect_test::Expect;
     use expect_test::expect;
 
@@ -173,7 +173,7 @@ mod tests {
     #[track_caller]
     fn check_fix(fixture_before: &str, fixture_after: Expect) {
         let config = DiagnosticsConfig::default()
-            // @fb-only
+            // @fb-only: .disable(DiagnosticCode::MetaOnly(MetaOnlyDiagnosticCode::MalformedInclude))
             .disable(DiagnosticCode::UnusedInclude);
         tests::check_fix_with_config(config, fixture_before, fixture_after)
     }

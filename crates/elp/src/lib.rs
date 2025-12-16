@@ -37,7 +37,7 @@ pub mod line_endings;
 pub mod lsp_ext;
 mod mem_docs;
 pub mod memory_usage;
-// @fb-only
+// @fb-only: mod meta_only;
 mod op_queue;
 mod project_loader;
 pub mod reload;
@@ -108,7 +108,7 @@ pub fn otp_file_to_ignore(db: &Analysis, file_id: FileId) -> bool {
                  "redbug_dtop",
                  ]
                 .iter()
-                // @fb-only
+                // @fb-only: .chain(meta_only::FILES_TO_IGNORE.iter())
                 .map(SmolStr::new)
                 .collect();
     }

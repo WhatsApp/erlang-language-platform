@@ -32,7 +32,7 @@ mod module_index;
 // Public API
 
 pub mod fixture;
-// @fb-only
+// @fb-only: mod meta_only;
 pub mod test_utils;
 pub use change::Change;
 pub use elp_project_model::AppType;
@@ -476,7 +476,7 @@ static ref IGNORED_SOURCES: Vec<Regex> = {
     let regexes: Vec<Vec<Regex>> = vec![
         vec![Regex::new(r"^.*_SUITE_data/.+$").unwrap()],
         //ignore sources goes here
-        // @fb-only
+        // @fb-only: meta_only::ignored_sources_regexes()
     ];
     regexes.into_iter().flatten().collect::<Vec<Regex>>()
    };
