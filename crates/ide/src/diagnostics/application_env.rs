@@ -36,7 +36,7 @@ pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
     conditions: DiagnosticConditions {
         experimental: false,
         include_generated: true,
-        include_tests: true,
+        include_tests: false,
         default_disabled: false,
     },
     checker: &|diags, sema, file_id, _ext| {
