@@ -134,8 +134,8 @@ fn check_function(
                     );
                     let details = match_result.map(|(_match, details)| details.clone());
                     if target_def.deprecated || match_result.is_some() {
-                        let expr_id = if let Some(expr_id) = ctx.in_macro {
-                            expr_id.idx
+                        let expr_id = if let Some((hir_idx, _macro_def)) = ctx.in_macro {
+                            hir_idx.idx
                         } else {
                             ctx.item_id
                         };

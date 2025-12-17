@@ -339,7 +339,7 @@ pub enum ParentId {
 
 #[derive(Debug)]
 pub struct AnyCallBackCtx<'a> {
-    pub in_macro: Option<HirIdx>,
+    pub in_macro: Option<(HirIdx, Option<InFile<DefineId>>)>,
     pub parents: &'a Vec<ParentId>,
     pub item_id: AnyExprId,
     pub item: AnyExpr,
@@ -426,7 +426,7 @@ pub struct FoldCtx<'a, T> {
     body_origin: BodyOrigin,
     body: &'a FoldBody<'a>,
     strategy: Strategy,
-    macro_stack: Vec<HirIdx>,
+    macro_stack: Vec<(HirIdx, Option<InFile<DefineId>>)>,
     parents: Vec<ParentId>,
     callback: AnyCallBack<'a, T>,
 }
@@ -594,7 +594,7 @@ impl<'a, T> FoldCtx<'a, T> {
             .do_fold_pat(pat_id, initial)
     }
 
-    fn in_macro(&self) -> Option<HirIdx> {
+    fn in_macro(&self) -> Option<(HirIdx, Option<InFile<DefineId>>)> {
         self.macro_stack.first().copied()
     }
 
@@ -752,16 +752,19 @@ impl<'a, T> FoldCtx<'a, T> {
             crate::Expr::MacroCall {
                 expansion,
                 args,
-                macro_def: _,
+                macro_def,
                 macro_name: _,
             } => {
                 if self.strategy.macros == MacroStrategy::DoNotExpand {
                     self.do_fold_exprs(args, acc)
                 } else {
-                    self.macro_stack.push(HirIdx {
-                        body_origin: self.body_origin,
-                        idx: AnyExprId::Expr(expr_id),
-                    });
+                    self.macro_stack.push((
+                        HirIdx {
+                            body_origin: self.body_origin,
+                            idx: AnyExprId::Expr(expr_id),
+                        },
+                        *macro_def,
+                    ));
                     let e = self.do_fold_expr(*expansion, acc);
                     self.macro_stack.pop();
                     e
@@ -950,16 +953,19 @@ impl<'a, T> FoldCtx<'a, T> {
             crate::Pat::MacroCall {
                 expansion,
                 args,
-                macro_def: _,
+                macro_def,
                 macro_name: _,
             } => {
                 if self.strategy.macros == MacroStrategy::DoNotExpand {
                     self.do_fold_exprs(args, acc)
                 } else {
-                    self.macro_stack.push(HirIdx {
-                        body_origin: self.body_origin,
-                        idx: AnyExprId::Pat(pat_id),
-                    });
+                    self.macro_stack.push((
+                        HirIdx {
+                            body_origin: self.body_origin,
+                            idx: AnyExprId::Pat(pat_id),
+                        },
+                        *macro_def,
+                    ));
                     let e = self.do_fold_pat(*expansion, acc);
                     self.macro_stack.pop();
                     e
@@ -1165,16 +1171,19 @@ impl<'a, T> FoldCtx<'a, T> {
             TypeExpr::MacroCall {
                 expansion,
                 args,
-                macro_def: _,
+                macro_def,
                 macro_name: _,
             } => {
                 if self.strategy.macros == MacroStrategy::DoNotExpand {
                     self.do_fold_exprs(args, acc)
                 } else {
-                    self.macro_stack.push(HirIdx {
-                        body_origin: self.body_origin,
-                        idx: AnyExprId::TypeExpr(type_expr_id),
-                    });
+                    self.macro_stack.push((
+                        HirIdx {
+                            body_origin: self.body_origin,
+                            idx: AnyExprId::TypeExpr(type_expr_id),
+                        },
+                        *macro_def,
+                    ));
                     let e = self.do_fold_type_expr(*expansion, acc);
                     self.macro_stack.pop();
                     e
