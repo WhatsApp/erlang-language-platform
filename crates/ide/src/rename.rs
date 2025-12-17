@@ -194,6 +194,7 @@ pub fn rename_var(
 
 #[cfg(test)]
 pub(crate) mod tests {
+
     use elp_ide_db::RootDatabase;
     use elp_ide_db::elp_base_db::AnchoredPathBuf;
     use elp_ide_db::elp_base_db::FileId;
@@ -207,6 +208,7 @@ pub(crate) mod tests {
     use elp_syntax::AstNode;
     use elp_syntax::algo;
     use elp_syntax::ast;
+    use fxhash::FxHashSet;
     use hir::AnyExprId;
     use hir::InFile;
     use hir::Semantic;
@@ -219,19 +221,26 @@ pub(crate) mod tests {
     pub(crate) fn check_rename(new_name: &str, fixture_before: &str, fixture_after_str: &str) {
         let fixture_after_str = &trim_indent(fixture_after_str);
 
+        let (db_before, fixture) = RootDatabase::with_fixture(fixture_before);
+        let host_before = AnalysisHost { db: db_before };
+        let analysis = host_before.analysis();
+        let position = fixture.position();
+
         let (db_after, fixture_after) = RootDatabase::with_fixture(fixture_after_str);
         let host_after = AnalysisHost { db: db_after };
         let analysis_after = host_after.analysis();
 
-        let (analysis, position, _) = fixture::position(fixture_before);
         let rename_result = analysis
             .rename(position, new_name)
             .unwrap_or_else(|err| panic!("Rename to '{new_name}' was cancelled: {err}"));
         match rename_result {
             Ok(source_change) => {
+                let mut file_ids: FxHashSet<FileId> = FxHashSet::default();
                 for edit in source_change.source_file_edits {
                     let mut text_edit_builder = TextEdit::builder();
                     let file_id = edit.0;
+                    // New and old file_id are the same
+                    file_ids.insert(file_id);
                     for indel in edit.1.into_iter() {
                         text_edit_builder.replace(indel.delete, indel.insert);
                     }
@@ -242,6 +251,8 @@ pub(crate) mod tests {
                     assert_eq_text!(&*expected, &*result);
                 }
                 for op in source_change.file_system_edits {
+                    let expected;
+                    let new_file_id;
                     match op {
                         FileSystemEdit::CreateFile {
                             dst,
@@ -254,9 +265,8 @@ pub(crate) mod tests {
                                         &dst.path
                                     )
                                 });
-                            let actual = analysis_after.file_text(*new_file.1).unwrap().to_string();
-                            let expected = initial_contents;
-                            assert_eq_text!(&*expected, &*actual);
+                            new_file_id = *new_file.1;
+                            expected = initial_contents;
                         }
                         FileSystemEdit::MoveFile { src, dst } => {
                             let new_file =
@@ -266,10 +276,20 @@ pub(crate) mod tests {
                                         &dst.path
                                     )
                                 });
-                            let actual = analysis_after.file_text(*new_file.1).unwrap().to_string();
-                            let expected = analysis.file_text(src).unwrap().to_string();
-                            assert_eq_text!(&*expected, &*actual);
+                            new_file_id = *new_file.1;
+                            expected = analysis.file_text(src).unwrap().to_string();
                         }
+                    }
+                    file_ids.insert(new_file_id);
+                    let actual = analysis_after.file_text(new_file_id).unwrap().to_string();
+                    assert_eq_text!(&*expected, &*actual);
+                }
+                // Check the balance of the expectations in the new fixture.
+                for file_id in &fixture_after.files {
+                    if !file_ids.contains(file_id) {
+                        let actual = analysis_after.file_text(*file_id).unwrap().to_string();
+                        let expected = analysis.file_text(*file_id).unwrap().to_string();
+                        assert_eq_text!(&*expected, &*actual);
                     }
                 }
             }

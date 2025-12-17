@@ -31,6 +31,7 @@ use crate::search::NameLike;
 use crate::source_change::FileSystemEdit;
 use crate::source_change::SourceChange;
 use crate::text_edit::TextEdit;
+use crate::text_edit::TextEditBuilder;
 
 pub type RenameResult<T> = Result<T, RenameError>;
 
@@ -421,8 +422,25 @@ impl SymbolDefinition {
                 }
             }
 
-            let mut renamed_module_edits: Vec<TextEdit> = Vec::new();
+            let mut source_change = SourceChange::default();
+            // Step 1, rename all references
+            let def_map = sema.def_map(file_id);
+            // process anything that could be used. functions, types, ??
+            def_map.get_functions().for_each(|(_name, f)| {
+                if f.exported {
+                    let usages = SymbolDefinition::Function(f.clone()).usages(sema).all();
+                    usages.iter().for_each(|(usage_file_id, refs)| {
+                        if usage_file_id != file_id
+                            && let Some(edit) = rename_call_module_in_refs(refs, new_name)
+                        {
+                            source_change.insert_source_edit(usage_file_id, edit);
+                        };
+                    });
+                }
+            });
 
+            // Make changes in the module being renamed
+            let mut renamed_module_edit: TextEdit = TextEdit::default();
             let form_list = sema.form_list(file_id);
             if let Some(module_attribute) = form_list.module_attribute() {
                 let ast = module_attribute.form_id.get_ast(sema.db, file_id);
@@ -430,20 +448,29 @@ impl SymbolDefinition {
                     let range = name.syntax().text_range();
                     let mut builder = TextEdit::builder();
                     builder.replace(range, new_name.to_string());
-                    renamed_module_edits.push(builder.finish());
+                    renamed_module_edit
+                        .union(builder.finish())
+                        .expect("Could not combine TextEdits");
                 }
+                def_map.get_functions().for_each(|(_name, f)| {
+                    let usages = SymbolDefinition::Function(f.clone()).usages(sema).all();
+                    usages.iter().for_each(|(usage_file_id, refs)| {
+                        if usage_file_id == file_id
+                            && let Some(edit) = rename_call_module_in_refs(refs, new_name)
+                        {
+                            renamed_module_edit
+                                .union(edit)
+                                .expect("Could not combine TextEdits");
+                        }
+                    });
+                });
             }
 
-            // RA based version
-            let mut source_change = SourceChange::default();
             let anchor = file_id;
-
             let path = format!("{new_name}.erl");
             let dst = AnchoredPathBuf { anchor, path };
             let mut initial_contents = sema.db.file_text(anchor).to_string();
-            for edit in renamed_module_edits {
-                edit.apply(&mut initial_contents);
-            }
+            renamed_module_edit.apply(&mut initial_contents);
             source_change.push_file_system_edit(FileSystemEdit::CreateFile {
                 dst,
                 initial_contents,
@@ -457,6 +484,27 @@ impl SymbolDefinition {
             )
         }
     }
+}
+
+fn rename_call_module_in_refs(refs: &[NameLike], new_name: &str) -> Option<TextEdit> {
+    let mut builder = TextEdit::builder();
+    for usage in refs {
+        let _ = rename_call_module_in_ref(usage, &mut builder, new_name);
+    }
+    Some(builder.finish())
+}
+
+fn rename_call_module_in_ref(
+    usage: &NameLike,
+    builder: &mut TextEditBuilder,
+    new_name: &str,
+) -> Option<()> {
+    let call = get_call(usage.syntax())?;
+    let _: () = if let Some(ast::Expr::Remote(remote)) = call.expr() {
+        let module = remote.module()?.module()?;
+        builder.replace(module.syntax().text_range(), new_name.to_string());
+    };
+    Some(())
 }
 
 fn source_edit_from_usages(
