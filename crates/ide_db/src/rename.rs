@@ -427,10 +427,16 @@ impl SymbolDefinition {
             let mut source_change = SourceChange::default();
             // Step 1, rename all references
             let usages = self.clone().usages(sema).all();
-            rename_remote_module_call_refs(usages, file_id, new_name, &mut source_change);
-
-            // Step 2: Make changes in the module being renamed
             let mut renamed_module_edit: TextEdit = TextEdit::default();
+            rename_remote_module_call_refs(
+                usages,
+                file_id,
+                new_name,
+                &mut source_change,
+                &mut renamed_module_edit,
+            );
+
+            // Step 2: Rename the module attribute in the module being renamed
             let form_list = sema.form_list(file_id);
             if let Some(module_attribute) = form_list.module_attribute() {
                 let ast = module_attribute.form_id.get_ast(sema.db, file_id);
@@ -442,25 +448,6 @@ impl SymbolDefinition {
                         .union(builder.finish())
                         .expect("Could not combine TextEdits");
                 }
-                let def_map = sema.def_map(file_id);
-                def_map.get_functions().for_each(|(_name, f)| {
-                    let usages = SymbolDefinition::Function(f.clone()).usages(sema).all();
-                    rename_own_module_call_refs(
-                        usages,
-                        file_id,
-                        new_name,
-                        &mut renamed_module_edit,
-                    );
-                });
-                def_map.get_types().iter().for_each(|(_name, t)| {
-                    let usages = SymbolDefinition::Type(t.clone()).usages(sema).all();
-                    rename_own_module_call_refs(
-                        usages,
-                        file_id,
-                        new_name,
-                        &mut renamed_module_edit,
-                    );
-                });
             }
 
             let anchor = file_id;
@@ -483,30 +470,18 @@ fn rename_remote_module_call_refs(
     file_id: FileId,
     new_name: &str,
     source_change: &mut SourceChange,
-) {
-    usages.iter().for_each(|(usage_file_id, refs)| {
-        if usage_file_id != file_id
-            && let Some(edit) = rename_module_in_refs(refs, new_name)
-        {
-            source_change.insert_source_edit(usage_file_id, edit);
-        };
-    });
-}
-
-fn rename_own_module_call_refs(
-    usages: crate::UsageSearchResult,
-    file_id: FileId,
-    new_name: &str,
     renamed_module_edit: &mut TextEdit,
 ) {
     usages.iter().for_each(|(usage_file_id, refs)| {
-        if usage_file_id == file_id
-            && let Some(edit) = rename_module_in_refs(refs, new_name)
-        {
-            renamed_module_edit
-                .union(edit)
-                .expect("Could not combine TextEdits");
-        }
+        if let Some(edit) = rename_module_in_refs(refs, new_name) {
+            if usage_file_id == file_id {
+                renamed_module_edit
+                    .union(edit)
+                    .expect("Could not combine TextEdits");
+            } else {
+                source_change.insert_source_edit(usage_file_id, edit);
+            }
+        };
     });
 }
 

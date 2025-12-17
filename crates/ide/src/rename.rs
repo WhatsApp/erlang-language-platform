@@ -1286,7 +1286,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn rename_module_with_usage() {
+    fn rename_module_fails_dup_name() {
         check_rename(
             "main_2",
             r#"
@@ -1310,6 +1310,39 @@ pub(crate) mod tests {
         );
     }
 
+    #[test]
+    fn rename_module_with_usage_internal() {
+        check_rename(
+            "main_2",
+            r#"
+            //- /app_a/src/main.erl
+              -module(ma~in).
+              -export([foo/0]).
+              foo() -> ok.
+              bar() -> main:foo().
+              baz() -> main:bar().
+
+            //- /app_a/src/other.erl
+            -module(other).
+            -export([bar/0]).
+            bar() -> main:foo().
+            "#,
+            //------------------
+            r#"
+            //- /app_a/src/main_2.erl
+              -module(main_2).
+              -export([foo/0]).
+              foo() -> ok.
+              bar() -> main_2:foo().
+              baz() -> main_2:bar().
+
+            //- /app_a/src/other.erl
+            -module(other).
+            -export([bar/0]).
+            bar() -> main_2:foo().
+            "#,
+        );
+    }
     #[test]
     fn rename_module_with_usage_type() {
         // TODO: check for compile errors in the fixture
