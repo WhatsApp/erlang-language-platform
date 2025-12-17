@@ -1513,6 +1513,52 @@ pub(crate) mod tests {
         );
     }
 
+    #[test]
+    fn rename_module_with_usage_define() {
+        check_rename(
+            "main_3",
+            r#"
+            //- /app_a/src/main.erl
+              -module(ma~in).
+              -export([foo/1]).
+              foo(X) -> {X}.
+
+            //- /app_a/src/definer.hrl
+              -define(FOO(X), main:foo(X)).
+
+            //- /app_a/src/other.erl
+              -module(other).
+              -include("definer.hrl").
+              -export([bar/0]).
+              -spec bar(term()) -> ok.
+              bar(U) ->
+                main:foo(U),
+                ?FOO(U),
+                ok.
+             "#,
+            //------------------
+            r#"
+            //- /app_a/src/main_3.erl
+              -module(main_3).
+              -export([foo/1]).
+              foo(X) -> {X}.
+
+            //- /app_a/src/definer.hrl
+              -define(FOO(X), main_3:foo(X)).
+
+            //- /app_a/src/other.erl
+              -module(other).
+              -include("definer.hrl").
+              -export([bar/0]).
+              -spec bar(term()) -> ok.
+              bar(U) ->
+                main_3:foo(U),
+                ?FOO(U),
+                ok.
+             "#,
+        );
+    }
+
     // ---------------------------------
 
     #[track_caller]
