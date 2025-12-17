@@ -429,13 +429,13 @@ impl SymbolDefinition {
             def_map.get_functions().for_each(|(_name, f)| {
                 if f.exported {
                     let usages = SymbolDefinition::Function(f.clone()).usages(sema).all();
-                    usages.iter().for_each(|(usage_file_id, refs)| {
-                        if usage_file_id != file_id
-                            && let Some(edit) = rename_call_module_in_refs(refs, new_name)
-                        {
-                            source_change.insert_source_edit(usage_file_id, edit);
-                        };
-                    });
+                    rename_remote_module_call_refs(usages, file_id, new_name, &mut source_change);
+                }
+            });
+            def_map.get_types().iter().for_each(|(_name, t)| {
+                if t.exported {
+                    let usages = SymbolDefinition::Type(t.clone()).usages(sema).all();
+                    rename_remote_module_call_refs(usages, file_id, new_name, &mut source_change);
                 }
             });
 
@@ -454,15 +454,21 @@ impl SymbolDefinition {
                 }
                 def_map.get_functions().for_each(|(_name, f)| {
                     let usages = SymbolDefinition::Function(f.clone()).usages(sema).all();
-                    usages.iter().for_each(|(usage_file_id, refs)| {
-                        if usage_file_id == file_id
-                            && let Some(edit) = rename_call_module_in_refs(refs, new_name)
-                        {
-                            renamed_module_edit
-                                .union(edit)
-                                .expect("Could not combine TextEdits");
-                        }
-                    });
+                    rename_own_module_call_refs(
+                        usages,
+                        file_id,
+                        new_name,
+                        &mut renamed_module_edit,
+                    );
+                });
+                def_map.get_types().iter().for_each(|(_name, t)| {
+                    let usages = SymbolDefinition::Type(t.clone()).usages(sema).all();
+                    rename_own_module_call_refs(
+                        usages,
+                        file_id,
+                        new_name,
+                        &mut renamed_module_edit,
+                    );
                 });
             }
 
@@ -486,6 +492,38 @@ impl SymbolDefinition {
     }
 }
 
+fn rename_remote_module_call_refs(
+    usages: crate::UsageSearchResult,
+    file_id: FileId,
+    new_name: &str,
+    source_change: &mut SourceChange,
+) {
+    usages.iter().for_each(|(usage_file_id, refs)| {
+        if usage_file_id != file_id
+            && let Some(edit) = rename_call_module_in_refs(refs, new_name)
+        {
+            source_change.insert_source_edit(usage_file_id, edit);
+        };
+    });
+}
+
+fn rename_own_module_call_refs(
+    usages: crate::UsageSearchResult,
+    file_id: FileId,
+    new_name: &str,
+    renamed_module_edit: &mut TextEdit,
+) {
+    usages.iter().for_each(|(usage_file_id, refs)| {
+        if usage_file_id == file_id
+            && let Some(edit) = rename_call_module_in_refs(refs, new_name)
+        {
+            renamed_module_edit
+                .union(edit)
+                .expect("Could not combine TextEdits");
+        }
+    });
+}
+
 fn rename_call_module_in_refs(refs: &[NameLike], new_name: &str) -> Option<TextEdit> {
     let mut builder = TextEdit::builder();
     for usage in refs {
@@ -500,6 +538,7 @@ fn rename_call_module_in_ref(
     new_name: &str,
 ) -> Option<()> {
     let call = get_call(usage.syntax())?;
+    // Note: `ast` uses the same syntax for a function call and a type
     let _: () = if let Some(ast::Expr::Remote(remote)) = call.expr() {
         let module = remote.module()?.module()?;
         builder.replace(module.syntax().text_range(), new_name.to_string());

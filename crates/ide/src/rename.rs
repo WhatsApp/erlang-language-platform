@@ -288,7 +288,11 @@ pub(crate) mod tests {
                 for file_id in &fixture_after.files {
                     if !file_ids.contains(file_id) {
                         let actual = analysis_after.file_text(*file_id).unwrap().to_string();
-                        let expected = analysis.file_text(*file_id).unwrap().to_string();
+                        let expected = if fixture.files.contains(file_id) {
+                            analysis.file_text(*file_id).unwrap().to_string()
+                        } else {
+                            format!("File {:?} not present in original fixture", file_id)
+                        };
                         assert_eq_text!(&*expected, &*actual);
                     }
                 }
@@ -1261,15 +1265,48 @@ pub(crate) mod tests {
             -export([foo/0]).
             foo() -> ok.
             //- /app_a/src/main.erl
-            -module(ma~in).
-            -export([foo/0]).
-            foo() -> ok.
+              -module(ma~in).
+              -export([foo/0]).
+              foo() -> ok.
+              bar() -> main:foo().
+              baz() -> main:bar().
+
             //- /app_a/src/other.erl
             -module(other).
             -export([bar/0]).
             bar() -> main:foo().
-             "#,
+            "#,
             r#"error: module 'main_2' already exists"#,
+        );
+    }
+
+    #[test]
+    fn rename_module_with_usage_type() {
+        // TODO: check for compile errors in the fixture
+        check_rename(
+            "main_3",
+            r#"
+            //- /app_a/src/main.erl
+              -module(ma~in).
+              -export_type([foo/0]).
+              -type foo() :: ok.
+            //- /app_a/src/other.erl
+              -module(other).
+              -export([bar/0]).
+              -spec bar() -> main:foo().
+              bar() -> ok.
+             "#,
+            r#"
+            //- /app_a/src/main_3.erl
+              -module(main_3).
+              -export_type([foo/0]).
+              -type foo() :: ok.
+            //- /app_a/src/other.erl
+              -module(other).
+              -export([bar/0]).
+              -spec bar() -> main_3:foo().
+              bar() -> ok.
+             "#,
         );
     }
 
