@@ -885,7 +885,155 @@ fn add_dynamic_call_patterns(patterns: &mut FxHashMap<PatternKey, DynamicCallPat
     );
 }
 
-// Lazy static initialization for the patterns map
+/// Specifies what forms a module argument can take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModuleArgType {
+    /// The argument must be a single module atom (e.g., `apply(Mod, Fun, Args)`)
+    Atom,
+    /// The argument must be a list of module atoms (e.g., some batch operations)
+    List,
+    /// The argument can be either a single module atom or a list of modules
+    /// (e.g., `meck:new(Mod | [Mod], Opts)`)
+    AtomOrList,
+}
+
+/// Pattern for matching module argument positions in function calls.
+/// Used by rename operations to identify which argument contains a module name.
+#[derive(Debug, Clone, Copy)]
+pub struct ModuleArgPattern {
+    /// Index of the argument containing the module name (0-based)
+    pub index: usize,
+    /// The type of the module argument (atom, list, or either)
+    pub arg_type: ModuleArgType,
+}
+
+impl ModuleArgPattern {
+    /// Creates a pattern where the argument is a single module atom.
+    pub const fn atom(index: usize) -> Self {
+        Self {
+            index,
+            arg_type: ModuleArgType::Atom,
+        }
+    }
+
+    /// Creates a pattern where the argument is a list of module atoms.
+    pub const fn list(index: usize) -> Self {
+        Self {
+            index,
+            arg_type: ModuleArgType::List,
+        }
+    }
+
+    /// Creates a pattern where the argument can be either a single atom or a list.
+    pub const fn atom_or_list(index: usize) -> Self {
+        Self {
+            index,
+            arg_type: ModuleArgType::AtomOrList,
+        }
+    }
+
+    /// Returns true if this pattern accepts a single atom.
+    pub const fn accepts_atom(&self) -> bool {
+        matches!(
+            self.arg_type,
+            ModuleArgType::Atom | ModuleArgType::AtomOrList
+        )
+    }
+
+    /// Returns true if this pattern accepts a list of atoms.
+    pub const fn accepts_list(&self) -> bool {
+        matches!(
+            self.arg_type,
+            ModuleArgType::List | ModuleArgType::AtomOrList
+        )
+    }
+}
+
+fn add_module_argument_patterns(patterns: &mut FxHashMap<PatternKey, ModuleArgPattern>) {
+    // Each entry follows the format:
+    // (module, function, arity) -> ModuleArgPattern
+    //
+    // Where:
+    // module:           Module name (Some("meck"), Some("application"), etc.)
+    // function:         Function name as string literal (e.g., "new", "get_env")
+    // arity:            Number of arguments this function pattern expects
+    // ModuleArgPattern: Contains the argument index and the expected type
+    //
+    // All indexes are 0-based.
+
+    // meck - mocking library
+    // meck:new/2 accepts either a single module atom or a list of modules
+    patterns.insert((Some("meck"), "called", 3), ModuleArgPattern::atom(0));
+    patterns.insert((Some("meck"), "called", 4), ModuleArgPattern::atom(0));
+    patterns.insert((Some("meck"), "capture", 5), ModuleArgPattern::atom(1));
+    patterns.insert((Some("meck"), "capture", 6), ModuleArgPattern::atom(1));
+    patterns.insert(
+        (Some("meck"), "delete", 3),
+        ModuleArgPattern::atom_or_list(0),
+    );
+    patterns.insert(
+        (Some("meck"), "delete", 4),
+        ModuleArgPattern::atom_or_list(0),
+    );
+    patterns.insert(
+        (Some("meck"), "expect", 3),
+        ModuleArgPattern::atom_or_list(0),
+    );
+    patterns.insert(
+        (Some("meck"), "expect", 4),
+        ModuleArgPattern::atom_or_list(0),
+    );
+    patterns.insert(
+        (Some("meck"), "expects", 2),
+        ModuleArgPattern::atom_or_list(0),
+    );
+    patterns.insert((Some("meck"), "history", 1), ModuleArgPattern::atom(0));
+    patterns.insert((Some("meck"), "history", 2), ModuleArgPattern::atom(0));
+    patterns.insert((Some("meck"), "loop", 4), ModuleArgPattern::atom_or_list(0));
+    patterns.insert((Some("meck"), "new", 1), ModuleArgPattern::atom_or_list(0));
+    patterns.insert((Some("meck"), "new", 2), ModuleArgPattern::atom_or_list(0));
+    patterns.insert((Some("meck"), "num_calls", 3), ModuleArgPattern::atom(0));
+    patterns.insert((Some("meck"), "num_calls", 4), ModuleArgPattern::atom(0));
+    patterns.insert(
+        (Some("meck"), "reset", 1),
+        ModuleArgPattern::atom_or_list(0),
+    );
+    patterns.insert(
+        (Some("meck"), "sequence", 4),
+        ModuleArgPattern::atom_or_list(0),
+    );
+    patterns.insert(
+        (Some("meck"), "unload", 1),
+        ModuleArgPattern::atom_or_list(0),
+    );
+    patterns.insert(
+        (Some("meck"), "validate", 1),
+        ModuleArgPattern::atom_or_list(0),
+    );
+    patterns.insert((Some("meck"), "wait", 4), ModuleArgPattern::atom(0));
+    patterns.insert((Some("meck"), "wait", 5), ModuleArgPattern::atom(1));
+    patterns.insert((Some("meck"), "wait", 6), ModuleArgPattern::atom(1));
+
+    // code module - module loading and management
+    // These functions from the Erlang stdlib take module() as their argument
+    patterns.insert((Some("code"), "load_file", 1), ModuleArgPattern::atom(0));
+    patterns.insert(
+        (Some("code"), "ensure_loaded", 1),
+        ModuleArgPattern::atom(0),
+    );
+    patterns.insert((Some("code"), "delete", 1), ModuleArgPattern::atom(0));
+    patterns.insert((Some("code"), "purge", 1), ModuleArgPattern::atom(0));
+    patterns.insert((Some("code"), "soft_purge", 1), ModuleArgPattern::atom(0));
+    patterns.insert((Some("code"), "is_loaded", 1), ModuleArgPattern::atom(0));
+    patterns.insert(
+        (Some("code"), "get_object_code", 1),
+        ModuleArgPattern::atom(0),
+    );
+    patterns.insert((Some("code"), "module_md5", 1), ModuleArgPattern::atom(0));
+    patterns.insert((Some("code"), "is_sticky", 1), ModuleArgPattern::atom(0));
+}
+
+// Lazy static initialization for the patterns maps
 lazy_static! {
     static ref DYNAMIC_CALL_PATTERNS: FxHashMap<PatternKey, DynamicCallPattern> = {
         let mut patterns = FxHashMap::default();
@@ -893,10 +1041,37 @@ lazy_static! {
         // @fb-only: meta_only::add_dynamic_call_patterns(&mut patterns);
         patterns
     };
+    static ref MODULE_ARGUMENT_PATTERNS: FxHashMap<PatternKey, ModuleArgPattern> = {
+        let mut patterns = FxHashMap::default();
+        add_module_argument_patterns(&mut patterns);
+        // @fb-only: meta_only::add_module_argument_patterns(&mut patterns);
+        patterns
+    };
+    /// Combined patterns for module argument positions.
+    /// Merges dynamic call patterns (that have module_arg_index) with simple module argument patterns.
+    /// Used by rename operations where we only care about the module argument position.
+    static ref COMBINED_MODULE_ARG_PATTERNS: FxHashMap<PatternKey, ModuleArgPattern> = {
+        let mut patterns: FxHashMap<PatternKey, ModuleArgPattern> = FxHashMap::default();
+        // Add module_arg_index from dynamic call patterns (where present)
+        for (key, pattern) in DYNAMIC_CALL_PATTERNS.iter() {
+            if let Some(module_idx) = pattern.module_arg_index {
+                patterns.insert(*key, ModuleArgPattern::atom(module_idx));
+            }
+        }
+        // Add from simple module argument patterns
+        for (key, module_arg_pattern) in MODULE_ARGUMENT_PATTERNS.iter() {
+            patterns.insert(*key, *module_arg_pattern);
+        }
+        patterns
+    };
 }
 
 fn get_dynamic_call_patterns() -> &'static FxHashMap<PatternKey, DynamicCallPattern> {
     &DYNAMIC_CALL_PATTERNS
+}
+
+pub fn get_module_arg_patterns() -> &'static FxHashMap<PatternKey, ModuleArgPattern> {
+    &COMBINED_MODULE_ARG_PATTERNS
 }
 
 fn look_for_dynamic_call(

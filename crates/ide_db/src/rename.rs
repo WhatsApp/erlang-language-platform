@@ -528,16 +528,72 @@ fn rename_call_module_in_ref(
     new_name: &str,
 ) -> Option<()> {
     let call = get_call(usage.syntax())?;
-    // Note: `ast` uses the same syntax for a function call and a type
-    if let Some(ast::Expr::Remote(remote)) = call.expr() {
-        let module = remote.module()?;
-        if let Some(ast::ExprMax::Atom(atom)) = module.module()
-            && let NameLike::Name(ast::Name::Atom(name_atom)) = usage
-            && atom.syntax() == name_atom.syntax()
-        {
-            builder.replace(atom.syntax().text_range(), new_name.to_string());
+    // We can only rename an atom usage
+    let usage_atom = match usage {
+        NameLike::Name(ast::Name::Atom(atom)) => atom,
+        _ => return Some(()),
+    };
+
+    // First check if this is the module part of a remote call (e.g., module:function())
+    if let Some(ast::Expr::Remote(remote)) = call.expr()
+        && let Some(module) = remote.module()
+        && let Some(ast::ExprMax::Atom(mod_atom)) = module.module()
+        && mod_atom.syntax() == usage_atom.syntax()
+    {
+        builder.replace(usage_atom.syntax().text_range(), new_name.to_string());
+        return Some(());
+    }
+
+    // Check if this is a known function call that takes a module as an argument
+    // Extract function name and optional module name based on call type
+    let (module_name, function_name) = match call.expr()? {
+        ast::Expr::Remote(remote) => {
+            let module = remote.module()?;
+            let mod_atom = match module.module()? {
+                ast::ExprMax::Atom(atom) => atom,
+                _ => return Some(()),
+            };
+            let fun_atom = match remote.fun()? {
+                ast::ExprMax::Atom(atom) => atom,
+                _ => return Some(()),
+            };
+            (Some(mod_atom.text()?), fun_atom.text()?)
+        }
+        ast::Expr::ExprMax(ast::ExprMax::Atom(fun_atom)) => (None, fun_atom.text()?),
+        _ => return Some(()),
+    };
+
+    let args = call.args()?;
+    let args_vec: Vec<_> = args.args().collect();
+    let arity = args_vec.len();
+    let pattern_key = (module_name.as_deref(), function_name.as_str(), arity);
+
+    // Use combined patterns that merge dynamic call patterns and module argument patterns
+    let combined_patterns = hir::sema::to_def::get_module_arg_patterns();
+    if let Some(pattern) = combined_patterns.get(&pattern_key)
+        && let Some(arg) = args_vec.get(pattern.index)
+    {
+        match arg {
+            ast::Expr::ExprMax(ast::ExprMax::Atom(arg_atom))
+                if pattern.accepts_atom() && arg_atom.syntax() == usage_atom.syntax() =>
+            {
+                builder.replace(usage_atom.syntax().text_range(), new_name.to_string());
+            }
+            ast::Expr::ExprMax(ast::ExprMax::List(list)) if pattern.accepts_list() => {
+                // Handle list of modules (e.g., meck:new([mod1, mod2], Options))
+                for expr in list.exprs() {
+                    if let ast::Expr::ExprMax(ast::ExprMax::Atom(list_atom)) = expr
+                        && list_atom.syntax() == usage_atom.syntax()
+                    {
+                        builder.replace(usage_atom.syntax().text_range(), new_name.to_string());
+                        break;
+                    }
+                }
+            }
+            _ => {}
         }
     }
+
     Some(())
 }
 

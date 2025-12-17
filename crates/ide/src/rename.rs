@@ -1387,6 +1387,9 @@ pub(crate) mod tests {
               -spec bar() -> main:foo().
               bar() ->
                meck:new(main, [passthrough]),
+               meck:new([other, main] , [passthrough]),
+               meck:unload(main),
+               apply(main, foo, []),
                ok.
               -record(main, {field :: main:foo()}).
              "#,
@@ -1401,7 +1404,10 @@ pub(crate) mod tests {
               -export([bar/0]).
               -spec bar() -> main_3:foo().
               bar() ->
-               meck:new(main, [passthrough]),
+               meck:new(main_3, [passthrough]),
+               meck:new([other, main_3] , [passthrough]),
+               meck:unload(main_3),
+               apply(main_3, foo, []),
                ok.
               -record(main, {field :: main_3:foo()}).
              "#,
