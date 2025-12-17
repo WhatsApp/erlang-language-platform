@@ -443,33 +443,34 @@ mod tests {
                             })
                             .unwrap();
 
+                        let exp_path = expect_file!(format!(
+                            "../resources/test/{}/{}/{}.pretty",
+                            project,
+                            app,
+                            module.as_str(),
+                        ));
+                        let (stdout, _) = cli.to_strings();
+
                         let otp_version = OTP_VERSION.as_ref().expect("MISSING OTP VERSION");
                         let otp_version_regex =
-                            regex::bytes::Regex::new(&format!("{}OTPVersionDependent", "@"))
-                                .unwrap();
+                            regex::bytes::Regex::new(&format!("{}OTP([0-9]+)Only", "@")).unwrap();
                         let contents = analysis.file_text(file_id).unwrap();
-                        let otp_version_dependent = otp_version_regex
-                            .is_match(&contents.as_bytes()[0..(2001.min(contents.len()))]);
-                        let exp_path = {
-                            if otp_version_dependent {
-                                expect_file!(format!(
-                                    "../resources/test/{}/{}/{}-OTP-{}.pretty",
-                                    project,
-                                    app,
-                                    module.as_str(),
-                                    otp_version,
-                                ))
-                            } else {
-                                expect_file!(format!(
-                                    "../resources/test/{}/{}/{}.pretty",
-                                    project,
-                                    app,
-                                    module.as_str(),
-                                ))
+                        let otp_version_capture = otp_version_regex
+                            .captures(&contents.as_bytes()[0..(2001.min(contents.len()))]);
+                        if let Some((_, [otp_version_only])) =
+                            otp_version_capture.map(|cap| cap.extract())
+                        {
+                            if otp_version_only == otp_version.as_bytes() {
+                                assert_normalised_file(
+                                    exp_path,
+                                    &stdout,
+                                    project_path.into(),
+                                    false,
+                                );
                             }
-                        };
-                        let (stdout, _) = cli.to_strings();
-                        assert_normalised_file(exp_path, &stdout, project_path.into(), false);
+                        } else {
+                            assert_normalised_file(exp_path, &stdout, project_path.into(), false);
+                        }
                     }
                 }
                 EqwalizerDiagnostics::NoAst { module } => {
