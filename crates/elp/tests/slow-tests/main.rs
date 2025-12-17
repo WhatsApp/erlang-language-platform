@@ -36,7 +36,7 @@ use crate::support::diagnostic_project;
 fn test_run_mock_lsp() {
     if cfg!(feature = "buck") {
         let workspace_root = AbsPathBuf::assert(
-            Utf8Path::new(env!("CARGO_WORKSPACE_DIR")).join("test_projects/end_to_end"),
+            Utf8Path::new(env!("CARGO_WORKSPACE_DIR")).join("test/test_projects/end_to_end"),
         );
 
         // Sanity check
@@ -70,7 +70,7 @@ fn test_run_mock_lsp() {
                             }
                           ],
                           "textDocument": {
-                            "uri": "file:///[..]/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
+                            "uri": "file:///[..]/test/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
                             "version": 0
                           }
                         }
@@ -99,7 +99,7 @@ fn test_run_mock_lsp() {
                             }
                           ],
                           "textDocument": {
-                            "uri": "file:///[..]/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
+                            "uri": "file:///[..]/test/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
                             "version": 0
                           }
                         }
@@ -128,7 +128,7 @@ fn test_run_mock_lsp() {
                             }
                           ],
                           "textDocument": {
-                            "uri": "file:///[..]/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
+                            "uri": "file:///[..]/test/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
                             "version": 0
                           }
                         }
@@ -157,7 +157,7 @@ fn test_run_mock_lsp() {
                             }
                           ],
                           "textDocument": {
-                            "uri": "file:///[..]/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
+                            "uri": "file:///[..]/test/test_projects/end_to_end/assist_examples/src/head_mismatch.erl",
                             "version": 0
                           }
                         }
@@ -175,7 +175,7 @@ fn test_run_mock_lsp() {
 fn test_e2e_eqwalizer_module() {
     if cfg!(feature = "buck") {
         let workspace_root = AbsPathBuf::assert(
-            Utf8Path::new(env!("CARGO_WORKSPACE_DIR")).join("test_projects/standard"),
+            Utf8Path::new(env!("CARGO_WORKSPACE_DIR")).join("test/test_projects/standard"),
         );
 
         // Sanity check
@@ -321,7 +321,7 @@ fn test_e2e_eqwalizer_module() {
                       "source": "eqWAlizer"
                     }
                   ],
-                  "uri": "file:///[..]/test_projects/standard/app_a/src/app_a.erl",
+                  "uri": "file:///[..]/test/test_projects/standard/app_a/src/app_a.erl",
                   "version": 0
                 }"#]],
         );
@@ -334,7 +334,7 @@ fn test_e2e_eqwalizer_module() {
 // #[test]
 // fn test_e2e_eqwalizer_header() {
 //     let workspace_root =
-//         AbsPathBuf::assert(Path::new(env!("CARGO_WORKSPACE_DIR")).join("test_projects/standard"));
+//         AbsPathBuf::assert(Path::new(env!("CARGO_WORKSPACE_DIR")).join("test/test_projects/standard"));
 
 //     // Sanity check
 //     assert!(std::fs::metadata(&workspace_root).is_ok());

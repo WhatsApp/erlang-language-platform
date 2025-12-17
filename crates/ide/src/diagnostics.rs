@@ -3564,7 +3564,7 @@ main(X) ->
     #[test]
     fn group_related_diagnostics_elp_only() {
         // Demonstrate that ELP does not pick up a syntax error in the
-        // spec, same code as in test_projects/diagnostics/app_a/src/syntax.erl
+        // spec, same code as in test/test_projects/diagnostics/app_a/src/syntax.erl
         check_diagnostics(
             r#"
              -module(main).

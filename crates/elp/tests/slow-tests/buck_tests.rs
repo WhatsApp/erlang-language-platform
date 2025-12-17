@@ -31,7 +31,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_success_case() {
-        let path_str = "../../test_projects/buck_tests";
+        let path_str = "../../test/test_projects/buck_tests";
         let path: PathBuf = path_str.into();
         let cli = Fake::default();
 
@@ -76,7 +76,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_load_buck_targets() {
-        let path_str = "../../test_projects/buck_tests";
+        let path_str = "../../test/test_projects/buck_tests";
         let path: PathBuf = path_str.into();
 
         let (elp_config, buck_config) =

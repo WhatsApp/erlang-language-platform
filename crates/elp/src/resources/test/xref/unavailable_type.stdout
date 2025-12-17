@@ -1,5 +1,5 @@
 Reporting all diagnostics codes
 module specified: unavailable_type
 Diagnostics reported:
-app_a/src/unavailable_type.erl:10:43-10:58::[Warning] [W0059] The type 'app_c:my_type_c/0' is defined in application 'app_c', but the application is not a dependency of 'app_a' (defined in 'fbcode//whatsapp/elp/test_projects/xref:app_a').
-app_a/src/unavailable_type.erl:6:16-6:31::[Warning] [W0059] The type 'app_c:my_type_c/0' is defined in application 'app_c', but the application is not a dependency of 'app_a' (defined in 'fbcode//whatsapp/elp/test_projects/xref:app_a').
+app_a/src/unavailable_type.erl:10:43-10:58::[Warning] [W0059] The type 'app_c:my_type_c/0' is defined in application 'app_c', but the application is not a dependency of 'app_a' (defined in 'fbcode//whatsapp/elp/test/test_projects/xref:app_a').
+app_a/src/unavailable_type.erl:6:16-6:31::[Warning] [W0059] The type 'app_c:my_type_c/0' is defined in application 'app_c', but the application is not a dependency of 'app_a' (defined in 'fbcode//whatsapp/elp/test/test_projects/xref:app_a').

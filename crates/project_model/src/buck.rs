@@ -1655,7 +1655,7 @@ mod tests {
                 .arg("--")
                 .args(generated_args)
                 .arg("--included_targets")
-                .arg("fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/...")
+                .arg("fbcode//whatsapp/elp/test/test_projects/buck_tests_2/auto_gen/...")
                 .output()
                 .unwrap();
             if !output.status.success() {
@@ -1679,15 +1679,15 @@ mod tests {
                 false,
                 expect![[r#"
                 {
-                  "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:auto_gen_a": {
+                  "fbcode//whatsapp/elp/test/test_projects/buck_tests_2/auto_gen/auto_gen_a:auto_gen_a": {
                     "name": "auto_gen_a",
                     "app_name": null,
                     "suite": null,
                     "srcs": [
-                      "/[..]/test_projects/buck_tests_2/auto_gen/auto_gen_a/src/auto_gen_a.erl"
+                      "/[..]/test/test_projects/buck_tests_2/auto_gen/auto_gen_a/src/auto_gen_a.erl"
                     ],
                     "includes": [
-                      "/[..]/test_projects/buck_tests_2/auto_gen/auto_gen_a/include"
+                      "/[..]/test/test_projects/buck_tests_2/auto_gen/auto_gen_a/include"
                     ],
                     "labels": [
                       "user_application"
@@ -1697,7 +1697,7 @@ mod tests {
                     "included_apps": [],
                     "origin": "app"
                   },
-                  "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:generated_srcs": {
+                  "fbcode//whatsapp/elp/test/test_projects/buck_tests_2/auto_gen/auto_gen_a:generated_srcs": {
                     "name": "generated_srcs",
                     "app_name": null,
                     "suite": null,
@@ -1842,21 +1842,21 @@ mod tests {
     fn build_info_buck_bxl_generated_query() {
         if BUCK_TESTS_ENABLED {
             // Note that there is now a value for `srcs` in the
-            // "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:generated_srcs"
+            // "fbcode//whatsapp/elp/test/test_projects/buck_tests_2/auto_gen/auto_gen_a:generated_srcs"
             // target
             check_buck_bxl_query(
                 true,
                 expect![[r#"
                     {
-                      "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:auto_gen_a": {
+                      "fbcode//whatsapp/elp/test/test_projects/buck_tests_2/auto_gen/auto_gen_a:auto_gen_a": {
                         "name": "auto_gen_a",
                         "app_name": null,
                         "suite": null,
                         "srcs": [
-                          "/[..]/test_projects/buck_tests_2/auto_gen/auto_gen_a/src/auto_gen_a.erl"
+                          "/[..]/test/test_projects/buck_tests_2/auto_gen/auto_gen_a/src/auto_gen_a.erl"
                         ],
                         "includes": [
-                          "/[..]/test_projects/buck_tests_2/auto_gen/auto_gen_a/include"
+                          "/[..]/test/test_projects/buck_tests_2/auto_gen/auto_gen_a/include"
                         ],
                         "labels": [
                           "user_application"
@@ -1866,12 +1866,12 @@ mod tests {
                         "included_apps": [],
                         "origin": "app"
                       },
-                      "fbcode//whatsapp/elp/test_projects/buck_tests_2/auto_gen/auto_gen_a:generated_srcs": {
+                      "fbcode//whatsapp/elp/test/test_projects/buck_tests_2/auto_gen/auto_gen_a:generated_srcs": {
                         "name": "generated_srcs",
                         "app_name": null,
                         "suite": null,
                         "srcs": [
-                          "/[..]/test_projects/buck_tests_2/auto_gen/auto_gen_a/out/pretend_generated.erl"
+                          "/[..]/test/test_projects/buck_tests_2/auto_gen/auto_gen_a/out/pretend_generated.erl"
                         ],
                         "includes": [],
                         "labels": [

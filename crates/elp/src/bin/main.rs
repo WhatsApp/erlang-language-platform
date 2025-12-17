@@ -288,7 +288,7 @@ mod tests {
         let (_stdout, stderr, code) = elp(args_vec![
             "parse-all",
             "--project",
-            "../../test_projects/standard",
+            "../../test/test_projects/standard",
             "--to",
             tmp.path(),
         ]);
@@ -306,7 +306,7 @@ mod tests {
 
     fn parse_all_complete(project: &str) -> Result<i32> {
         // Just check the command returns.
-        let project_path = format!("../../test_projects/{project}");
+        let project_path = format!("../../test/test_projects/{project}");
         let tmp = Builder::new().prefix("elp_parse_all_").tempdir().unwrap();
         let (_stdout, _stderr, code) = elp(args_vec![
             "parse-all",
@@ -606,7 +606,7 @@ mod tests {
             simple_snapshot(
                 args_vec![
                     "eqwalize-target",
-                    "//whatsapp/elp/test_projects/standard:app_a",
+                    "//whatsapp/elp/test/test_projects/standard:app_a",
                 ],
                 "standard",
                 expect_file!("../resources/test/standard/eqwalize_target_diagnostics.pretty"),
@@ -1444,7 +1444,7 @@ mod tests {
                 "lint",
                 "--experimental",
                 "--config-file",
-                "../../test_projects/linter/does_not_exist.toml"
+                "../../test/test_projects/linter/does_not_exist.toml"
             ],
             "linter",
             expect_file!("../resources/test/linter/parse_elp_lint_custom_config_invalid_output.stdout"),
@@ -1456,7 +1456,7 @@ mod tests {
             &[],
             false,
             Some(expect![[r#"
-                unable to read "../../test_projects/linter/does_not_exist.toml": No such file or directory (os error 2)
+                unable to read "../../test/test_projects/linter/does_not_exist.toml": No such file or directory (os error 2)
             "#]]),
         )
         .expect("bad test");
@@ -1472,7 +1472,7 @@ mod tests {
                 "lint",
                 "--experimental",
                 "--config-file",
-                "../../test_projects/linter/elp_lint_test1.toml"
+                "../../test/test_projects/linter/elp_lint_test1.toml"
             ],
             "linter",
             expect_file!("../resources/test/linter/parse_elp_lint_custom_config_output.stdout"),
@@ -1498,7 +1498,7 @@ mod tests {
                 "lint",
                 "--experimental",
                 "--config-file",
-                "../../test_projects/linter/elp_lint_adhoc.toml",
+                "../../test/test_projects/linter/elp_lint_adhoc.toml",
                 "--module",
                 "app_b",
                 "--apply-fix",
@@ -1529,7 +1529,7 @@ mod tests {
                 "--diagnostic-ignore",
                 "W0011",
                 "--config-file",
-                "../../test_projects/linter/elp_lint_test_ignore.toml"
+                "../../test/test_projects/linter/elp_lint_test_ignore.toml"
             ],
             "linter",
             expect_file!("../resources/test/linter/parse_elp_lint_ignore.stdout"),
@@ -1573,7 +1573,7 @@ mod tests {
             &[],
             false,
             Some(expect![[r#"
-                failed to read "../../test_projects/linter_bad_config/.elp_lint.toml":expected a right bracket, found an identifier at line 6 column 4
+                failed to read "../../test/test_projects/linter_bad_config/.elp_lint.toml":expected a right bracket, found an identifier at line 6 column 4
             "#]]),
         )
         .expect("bad test");
@@ -1625,7 +1625,7 @@ mod tests {
             args_vec![
                 "lint",
                 "--config-file",
-                "../../test_projects/linter/elp_lint_test2.toml"
+                "../../test/test_projects/linter/elp_lint_test2.toml"
             ],
             "linter",
             expect_file!("../resources/test/linter/parse_elp_lint_explicit_enable_output.stdout"),
@@ -1943,7 +1943,7 @@ mod tests {
                 "lint",
                 "--no-stream"
                 "--config-file",
-                "../../test_projects/linter/elp_lint_warnings_as_errors.toml"
+                "../../test/test_projects/linter/elp_lint_warnings_as_errors.toml"
             ],
             "linter",
             expect_file!("../resources/test/linter/warnings_as_errors.stdout"),
@@ -1958,7 +1958,7 @@ mod tests {
             args_vec![
                 "lint",
                 "--config-file",
-                "../../test_projects/linter/elp_lint_custom_function_matches.toml",
+                "../../test/test_projects/linter/elp_lint_custom_function_matches.toml",
                 "--module",
                 "custom_function_matches"
             ],
@@ -1975,7 +1975,7 @@ mod tests {
             args_vec![
                 "lint",
                 "--config-file",
-                "../../test_projects/xref/elp_lint_unavailable_type.toml",
+                "../../test/test_projects/xref/elp_lint_unavailable_type.toml",
                 "--module",
                 "unavailable_type"
             ],
@@ -1992,7 +1992,7 @@ mod tests {
             args_vec![
                 "lint",
                 "--config-file",
-                "../../test_projects/linter/elp_lint_ssr_adhoc.toml",
+                "../../test/test_projects/linter/elp_lint_ssr_adhoc.toml",
             ],
             "linter",
             expect_file!("../resources/test/linter/ssr_ad_hoc.stdout"),
@@ -2007,7 +2007,7 @@ mod tests {
             args_vec![
                 "lint",
                 "--config-file",
-                "../../test_projects/linter/elp_lint_ssr_adhoc_parse_fail.toml",
+                "../../test/test_projects/linter/elp_lint_ssr_adhoc_parse_fail.toml",
             ],
             "linter",
             expect_file!("../resources/test/linter/ssr_ad_hoc_parse_fail.stdout"),
@@ -3099,7 +3099,7 @@ mod tests {
     }
 
     fn project_path(project: &str) -> String {
-        format!("../../test_projects/{project}")
+        format!("../../test/test_projects/{project}")
     }
 
     fn strip_ansi_codes(s: &str) -> String {

@@ -1,0 +1,8 @@
+[buck]
+enabled = true
+build_deps = true
+included_targets = [ "fbcode//whatsapp/elp/test/test_projects/codegen_test:codegen_test_app" ]
+source_root = "whatsapp/elp/test/test_projects/codegen_test"
+
+[eqwalizer]
+enable_all = true
