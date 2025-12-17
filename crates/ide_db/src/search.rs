@@ -325,7 +325,7 @@ impl<'a> FindUsages<'a> {
 
 /// Represents possible ast reference points -
 /// a string for header, or ast::Name for everything else
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NameLike {
     Name(ast::Name),
     String(ast::String),

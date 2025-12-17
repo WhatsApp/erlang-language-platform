@@ -529,10 +529,15 @@ fn rename_call_module_in_ref(
 ) -> Option<()> {
     let call = get_call(usage.syntax())?;
     // Note: `ast` uses the same syntax for a function call and a type
-    let _: () = if let Some(ast::Expr::Remote(remote)) = call.expr() {
-        let module = remote.module()?.module()?;
-        builder.replace(module.syntax().text_range(), new_name.to_string());
-    };
+    if let Some(ast::Expr::Remote(remote)) = call.expr() {
+        let module = remote.module()?;
+        if let Some(ast::ExprMax::Atom(atom)) = module.module()
+            && let NameLike::Name(ast::Name::Atom(name_atom)) = usage
+            && atom.syntax() == name_atom.syntax()
+        {
+            builder.replace(atom.syntax().text_range(), new_name.to_string());
+        }
+    }
     Some(())
 }
 

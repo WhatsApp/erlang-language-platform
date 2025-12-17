@@ -1373,6 +1373,42 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn rename_module_with_usage_fun_arg() {
+        check_rename(
+            "main_3",
+            r#"
+            //- /app_a/src/main.erl
+              -module(ma~in).
+              -export_type([foo/0]).
+              -type foo() :: ok.
+            //- /app_a/src/other.erl
+              -module(other).
+              -export([bar/0]).
+              -spec bar() -> main:foo().
+              bar() ->
+               meck:new(main, [passthrough]),
+               ok.
+              -record(main, {field :: main:foo()}).
+             "#,
+            //------------------
+            r#"
+            //- /app_a/src/main_3.erl
+              -module(main_3).
+              -export_type([foo/0]).
+              -type foo() :: ok.
+            //- /app_a/src/other.erl
+              -module(other).
+              -export([bar/0]).
+              -spec bar() -> main_3:foo().
+              bar() ->
+               meck:new(main, [passthrough]),
+               ok.
+              -record(main, {field :: main_3:foo()}).
+             "#,
+        );
+    }
+
+    #[test]
     fn rename_module_with_usage_fun() {
         check_rename(
             "main_3",
@@ -1400,6 +1436,39 @@ pub(crate) mod tests {
               -spec bar(term()) -> ok.
               bar(UStrings) ->
                 Jobs = [{fun main_3:foo/1, [U], []} || U <- UStrings],
+                ok.
+             "#,
+        );
+    }
+
+    #[test]
+    fn rename_module_with_usage_fun_as_module() {
+        check_rename(
+            "main_3",
+            r#"
+            //- /app_a/src/main.erl
+              -module(ma~in).
+              -export([main/1]).
+              main(X) -> {X}.
+            //- /app_a/src/other.erl
+              -module(other).
+              -export([bar/1]).
+              -spec bar(term()) -> ok.
+              bar(UStrings) ->
+                Jobs = [{fun main:main/1, [U], []} || U <- UStrings],
+                ok.
+             "#,
+            r#"
+            //- /app_a/src/main_3.erl
+              -module(main_3).
+              -export([main/1]).
+              main(X) -> {X}.
+            //- /app_a/src/other.erl
+              -module(other).
+              -export([bar/1]).
+              -spec bar(term()) -> ok.
+              bar(UStrings) ->
+                Jobs = [{fun main_3:main/1, [U], []} || U <- UStrings],
                 ok.
              "#,
         );
