@@ -421,13 +421,33 @@ impl SymbolDefinition {
                 }
             }
 
+            let mut renamed_module_edits: Vec<TextEdit> = Vec::new();
+
+            let form_list = sema.form_list(file_id);
+            if let Some(module_attribute) = form_list.module_attribute() {
+                let ast = module_attribute.form_id.get_ast(sema.db, file_id);
+                if let Some(name) = ast.name() {
+                    let range = name.syntax().text_range();
+                    let mut builder = TextEdit::builder();
+                    builder.replace(range, new_name.to_string());
+                    renamed_module_edits.push(builder.finish());
+                }
+            }
+
             // RA based version
             let mut source_change = SourceChange::default();
             let anchor = file_id;
 
             let path = format!("{new_name}.erl");
             let dst = AnchoredPathBuf { anchor, path };
-            source_change.push_file_system_edit(FileSystemEdit::MoveFile { src: anchor, dst });
+            let mut initial_contents = sema.db.file_text(anchor).to_string();
+            for edit in renamed_module_edits {
+                edit.apply(&mut initial_contents);
+            }
+            source_change.push_file_system_edit(FileSystemEdit::CreateFile {
+                dst,
+                initial_contents,
+            });
 
             Ok(source_change)
         } else {

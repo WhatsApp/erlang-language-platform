@@ -288,10 +288,10 @@ pub(crate) mod tests {
     }
 
     fn find_new_file_id<'a>(
-        fixture_after: &'a ChangeFixture,
+        fixture: &'a ChangeFixture,
         dst: &'a AnchoredPathBuf,
     ) -> Option<(&'a VfsPath, &'a FileId)> {
-        fixture_after
+        fixture
             .files_by_path
             .iter()
             .find(|(name, _)| name.as_path().unwrap().to_string().ends_with(&dst.path))
@@ -1226,7 +1226,7 @@ pub(crate) mod tests {
              "#,
             r#"
             //- /app_a/src/main_2.erl
-            -module(main).
+            -module(main_2).
              "#,
         );
     }
