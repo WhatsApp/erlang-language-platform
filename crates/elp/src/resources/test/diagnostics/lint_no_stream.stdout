@@ -1,0 +1,135 @@
+Reporting all diagnostics codes
+Diagnostics reported:
+app_a/src/app_a.erl:52:3-52:23::[Warning] [W0006] this statement has no effect
+app_a/src/app_a.erl:3:10-3:21::[WeakWarning] [W0037] Unspecific include.
+app_a/src/app_a.erl:27:3-27:9::[Warning] [W0017] Function 'foo:ok/0' is undefined.
+app_a/src/app_a.erl:28:4-28:11::[Warning] [W0017] Function 'mod:foo/0' is undefined.
+app_a/src/app_a.erl:72:4-72:11::[Warning] [W0017] Function 'foo:bar/2' is undefined.
+app_a/src/app_a.erl:37:11-37:28::[Warning] [W0017] Function 'mod_name:fun_name/2' is undefined.
+app_a/src/app_a.erl:58:11-58:24::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
+app_a/src/app_a.erl:4:1-4:41::[Warning] [W0020] Unused file: inets/include/httpd.hrl
+app_a/src/app_a.erl:39:7-39:28::[Error] [L1267] variable 'A' shadowed in 'named fun'
+app_a/src/app_a.erl:55:32-55:35::[Error] [L1295] type uri/0 undefined
+app_a/src/app_a.erl:56:20-56:26::[Error] [L1295] type binary/1 undefined
+app_a/src/app_a.erl:72:3-72:34::[Error] [L1252] record record undefined
+app_a/src/app_a.erl:75:5-75:16::[Error] [L1252] record record undefined
+app_a/src/app_a.erl:35:1-35:2::[Warning] [L1230] function g/1 is unused
+app_a/src/app_a.erl:35:3-35:4::[Warning] [L1268] variable 'A' is unused
+app_a/src/app_a.erl:36:3-36:4::[Warning] [L1268] variable 'F' is unused
+app_a/src/app_a.erl:37:3-37:4::[Warning] [L1268] variable 'G' is unused
+app_a/src/app_a.erl:38:3-38:4::[Warning] [L1268] variable 'H' is unused
+app_a/src/app_a.erl:39:3-39:4::[Warning] [L1268] variable 'I' is unused
+app_a/src/app_a.erl:39:7-39:28::[Warning] [L1268] variable 'A' is unused
+app_a/src/app_a.erl:41:1-41:2::[Warning] [L1230] function h/0 is unused
+app_a/src/app_a.erl:45:1-45:2::[Warning] [L1230] function i/0 is unused
+app_a/src/app_a.erl:50:1-50:2::[Warning] [L1230] function j/2 is unused
+app_a/src/app_a.erl:50:15-50:16::[Warning] [L1268] variable 'A' is unused
+app_a/src/app_a.erl:50:23-50:24::[Warning] [L1268] variable 'B' is unused
+app_a/src/app_a.erl:55:1-55:46::[Warning] [L1296] type session(_) is unused
+app_a/src/app_a.erl:55:1-55:46::[Warning] [L1313] opaque type session(_) is not exported
+app_a/src/app_a.erl:56:7-56:13::[Warning] [L1296] type source(_) is unused
+app_a/src/app_a.erl:58:1-58:4::[Warning] [L1230] function map/2 is unused
+app_a/src/app_a.erl:60:1-60:9::[Warning] [L1230] function with_dot/0 is unused
+app_a/src/app_a.erl:62:1-62:9::[Warning] [L1230] function lang_dir/1 is unused
+app_a/src/app_a.erl:66:1-66:7::[Warning] [L1230] function escape/1 is unused
+app_a/src/app_a.erl:66:13-66:17::[Warning] [L1268] variable 'T' is unused
+app_a/src/app_a.erl:67:9-67:25::[Warning] [L1260] record all_configs_file is unused
+app_a/src/app_a.erl:71:1-71:2::[Warning] [L1230] function k/0 is unused
+app_a/src/app_a.erl:74:1-74:2::[Warning] [L1230] function l/1 is unused
+app_a/src/app_a.erl:77:1-77:2::[Warning] [L1230] function m/0 is unused
+app_a/src/broken_parse_trans.erl:10:21-10:22::[Error] [L1256] field b undefined in record a
+app_a/src/broken_parse_trans.erl:10:32-10:33::[Error] [L1262] variable 'B' is unbound
+app_a/src/cascading.erl:9:5-9:6::[Error] [W0004] Missing ')'
+        3:10-3:15: function foo/0 undefined
+        6:10-6:15: function foo/0 undefined
+        8:7-8:10: spec for undefined function foo/0
+app_a/src/diagnostics.erl:3:10-3:27::[WeakWarning] [W0037] Unspecific include.
+app_a/src/diagnostics.erl:4:10-4:34::[WeakWarning] [W0037] Unspecific include.
+app_a/src/diagnostics.erl:4:1-4:36::[Error] [L0000] Issue in included file
+        [app_a/include/broken_diagnostics.hrl] 1:8-1:15: P1702: bad attribute
+        [app_a/include/broken_diagnostics.hrl] 3:6-3:15: P1702: bad attribute
+app_a/src/diagnostics.erl:6:31-6:45::[Error] [L1295] type undefined_type/0 undefined
+app_a/src/diagnostics.erl:7:1-7:5::[Warning] [L1230] function main/1 is unused
+app_a/src/diagnostics.erl:10:1-10:4::[Warning] [L1230] function foo/0 is unused
+app_a/src/lint_recursive.erl:23:5-23:14::[Warning] [W0006] this statement has no effect
+app_a/src/lint_recursive.erl:6:5-6:7::[Warning] [W0006] this statement has no effect
+app_a/src/lint_recursive.erl:14:5-14:12::[Warning] [L1268] variable 'Config1' is unused
+app_a/src/lint_recursive.erl:19:5-19:12::[Warning] [L1268] variable 'Config1' is unused
+app_a/src/lints.erl:5:1-5:14::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+        4:1-4:14: Mismatched clause name
+app_a/src/lints.erl:4:22-4:23::[Warning] [W0018] Unexpected ';'
+app_a/src/lints.erl:2:10-2:25::[Error] [L1227] function head_mismatch/1 undefined
+app_a/src/otp27_docstrings.erl:34:9-34:24::[Warning] [W0002] Unused macro (THIS_IS_THE_END)
+app_a/src/otp27_sigils.erl:11:6-11:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:12:5-12:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:13:5-13:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:14:5-14:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:15:5-15:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:17:6-17:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:18:5-18:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:19:5-19:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:20:5-20:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:21:5-21:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:23:6-23:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:24:5-24:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:25:5-25:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:26:5-26:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:27:5-27:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:29:6-29:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:30:5-30:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:31:5-31:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:32:5-32:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:33:5-33:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:35:6-35:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:36:5-36:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:37:5-37:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:38:5-38:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:39:5-39:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:41:6-41:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:42:5-42:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:43:5-43:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:44:5-44:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:45:5-45:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:47:6-47:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:48:5-48:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:49:5-49:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:50:5-50:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:51:5-51:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:53:6-53:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:53:6-53:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:54:5-54:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:54:5-54:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:55:5-55:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:55:5-55:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:56:5-56:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:57:5-57:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:59:6-59:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:60:5-60:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:61:5-61:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:62:5-62:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:63:5-63:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:65:6-65:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:66:5-66:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:67:5-67:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:68:5-68:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:69:5-69:24::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:76:5-79:8::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:76:5-79:8::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:80:5-84:9::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:80:5-84:9::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:85:5-89:10::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:85:5-89:10::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:90:5-94:11::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:95:5-99:12::[Warning] [W0006] this statement has no effect
+app_a/src/otp27_sigils.erl:102:5-102:24::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
+app_a/src/otp27_sigils.erl:128:9-128:24::[Warning] [W0002] Unused macro (THIS_IS_THE_END)
+app_a/src/otp27_sigils.erl:112:4-112:5::[Error] [P1711] syntax error before: X
+        4:15-4:18: function g/0 undefined
+        74:7-74:8: spec for undefined function g/0
+app_a/src/otp27_sigils.erl:71:5-71:6::[Warning] [L1268] variable 'X' is unused
+app_a/src/otp_7655.erl:5:1-5:28::[Error] [L1201] no module definition
+app_a/src/parse_error_a_cascade.erl:10:20-11:1::[Error] [W0004] Missing 'atom'
+        6:6-6:11: function bar/0 undefined
+app_a/src/suppressed.erl:8:5-8:9::[Warning] [L1268] variable 'Life' is unused
+app_a/src/syntax.erl:5:46-5:47::[Error] [P1711] syntax error before: ')'
+app_a/src/syntax.erl:11:9-11:10::[Error] [W0004] Missing ')'

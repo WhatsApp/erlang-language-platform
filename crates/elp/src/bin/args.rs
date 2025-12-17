@@ -911,7 +911,7 @@ impl Lint {
 
     /// To prevent flaky test results we allow disabling streaming when applying fixes
     pub fn skip_stream_print(&self) -> bool {
-        self.apply_fix && self.no_stream
+        self.apply_fix || self.no_stream
     }
 }
 

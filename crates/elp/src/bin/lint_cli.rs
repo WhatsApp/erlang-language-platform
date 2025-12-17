@@ -295,7 +295,7 @@ pub fn do_codemod(
     let res;
     let streamed_err_in_diag;
     let mut any_diagnostics_printed = false;
-    let initial_diags = {
+    let mut initial_diags = {
         // We put this in its own block so that analysis is
         // freed before we apply lints. To apply lints
         // recursively, we need to update the underlying
@@ -394,30 +394,54 @@ pub fn do_codemod(
     let mut err_in_diag = streamed_err_in_diag;
     // At this point, the analysis variable from above is dropped
 
-    // Print "No diagnostics reported" if no diagnostics were found after filtering
-    if !any_diagnostics_printed {
-        if args.is_format_normal() {
-            writeln!(cli, "No diagnostics reported")?;
+    // When streaming is disabled (--no-stream) and we're not applying fixes,
+    // we need to print diagnostics now since they weren't printed during streaming
+    if args.no_stream && !args.apply_fix && !initial_diags.is_empty() {
+        let analysis = loaded.analysis();
+        let mut module_count = 0;
+        initial_diags.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
+        for result in &initial_diags {
+            let printed = print_diagnostic_result(
+                cli,
+                &analysis,
+                diagnostics_config,
+                args,
+                loaded,
+                &args.module,
+                &mut err_in_diag,
+                &mut module_count,
+                result,
+            )?;
+            any_diagnostics_printed = any_diagnostics_printed || printed;
         }
-    } else {
-        if args.apply_fix && diagnostics_config.enabled.all_enabled() {
+    }
+
+    // Handle apply_fix case separately since it needs to filter diagnostics anyway
+    if args.apply_fix {
+        if diagnostics_config.enabled.all_enabled() {
             bail!(
                 "We cannot apply fixes if all diagnostics enabled. Perhaps provide --diagnostic-filter"
             );
         }
-        if args.apply_fix && !diagnostics_config.enabled.all_enabled() {
-            let mut initial_diags = {
-                let analysis = loaded.analysis();
-                filter_diagnostics(
-                    &analysis,
-                    &args.module,
-                    Some(&diagnostics_config.enabled),
-                    &initial_diags,
-                    &FxHashSet::default(),
-                )?
-            };
+
+        let mut filtered_diags = {
+            let analysis = loaded.analysis();
+            filter_diagnostics(
+                &analysis,
+                &args.module,
+                Some(&diagnostics_config.enabled),
+                &initial_diags,
+                &FxHashSet::default(),
+            )?
+        };
+
+        if filtered_diags.is_empty() {
+            if args.is_format_normal() {
+                writeln!(cli, "No diagnostics reported")?;
+            }
+        } else {
             if args.skip_stream_print() {
-                initial_diags.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
+                filtered_diags.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
                 let module_count: &mut i32 = &mut 0;
                 let has_diagnostics: &mut bool = &mut false;
                 if args.is_format_json() {
@@ -428,7 +452,7 @@ pub fn do_codemod(
                         &mut err_in_diag,
                         module_count,
                         has_diagnostics,
-                        &initial_diags,
+                        &filtered_diags,
                     )?;
                 } else {
                     {
@@ -442,7 +466,7 @@ pub fn do_codemod(
                             &mut err_in_diag,
                             module_count,
                             has_diagnostics,
-                            &initial_diags,
+                            &filtered_diags,
                         )?;
                         // Analysis is dropped here
                     }
@@ -456,7 +480,7 @@ pub fn do_codemod(
                 &mut loaded.vfs,
                 args,
                 &mut changed_files,
-                initial_diags,
+                filtered_diags,
             );
             // We handle the fix application result here, so
             // the overall status of whether error-severity
@@ -468,8 +492,19 @@ pub fn do_codemod(
                     writeln!(cli, "Apply fix failed: {err:#}").ok();
                 }
             };
+
+            if err_in_diag {
+                bail!("Errors found")
+            }
         }
-        if err_in_diag {
+    } else {
+        // Non-apply-fix case: rely on any_diagnostics_printed which is set
+        // correctly based on filtered diagnostics during streaming/batch printing
+        if !any_diagnostics_printed {
+            if args.is_format_normal() {
+                writeln!(cli, "No diagnostics reported")?;
+            }
+        } else if err_in_diag {
             bail!("Errors found")
         }
     }
