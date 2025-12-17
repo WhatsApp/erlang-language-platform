@@ -27,6 +27,7 @@ use hir::Semantic;
 
 use crate::SymbolDefinition;
 use crate::helpers::get_call;
+use crate::helpers::get_external_fun;
 use crate::search::NameLike;
 use crate::source_change::FileSystemEdit;
 use crate::source_change::SourceChange;
@@ -516,6 +517,7 @@ fn rename_module_in_refs(refs: &[NameLike], new_name: &str) -> Option<TextEdit> 
         // atom that happens to be a module name
         // We will flesh out other usages as we need them
         let _ = rename_call_module_in_ref(usage, &mut builder, new_name);
+        let _ = rename_external_fun_module_in_ref(usage, &mut builder, new_name);
     }
     Some(builder.finish())
 }
@@ -531,6 +533,17 @@ fn rename_call_module_in_ref(
         let module = remote.module()?.module()?;
         builder.replace(module.syntax().text_range(), new_name.to_string());
     };
+    Some(())
+}
+
+fn rename_external_fun_module_in_ref(
+    usage: &NameLike,
+    builder: &mut TextEditBuilder,
+    new_name: &str,
+) -> Option<()> {
+    let external_fun = get_external_fun(usage.syntax())?;
+    let module = external_fun.module()?;
+    builder.replace(module.name()?.syntax().text_range(), new_name.to_string());
     Some(())
 }
 

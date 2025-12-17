@@ -54,6 +54,14 @@ pub fn get_call(syntax: &SyntaxNode) -> Option<ast::Call> {
         .or_else(|| ast::Call::cast(syntax.parent()?.parent()?.parent()?))
 }
 
+pub fn get_external_fun(syntax: &SyntaxNode) -> Option<ast::ExternalFun> {
+    if let Some(external_fun) = ast::ExternalFun::cast(syntax.parent()?) {
+        Some(external_fun)
+    } else {
+        ast::ExternalFun::cast(syntax.parent()?.parent()?)
+    }
+}
+
 /// Find the first position at the top of the file to add a new
 /// form. It will be just after the module attribute, if there is one.
 pub fn top_insert_position(form_list: &FormList, source: &SourceFile) -> TextSize {
