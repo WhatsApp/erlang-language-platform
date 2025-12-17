@@ -195,8 +195,13 @@ pub fn rename_var(
 #[cfg(test)]
 pub(crate) mod tests {
     use elp_ide_db::RootDatabase;
+    use elp_ide_db::elp_base_db::AnchoredPathBuf;
+    use elp_ide_db::elp_base_db::FileId;
+    use elp_ide_db::elp_base_db::VfsPath;
     use elp_ide_db::elp_base_db::assert_eq_text;
+    use elp_ide_db::elp_base_db::fixture::ChangeFixture;
     use elp_ide_db::elp_base_db::fixture::WithFixture as _;
+    use elp_ide_db::source_change::FileSystemEdit;
     use elp_ide_db::text_edit::TextEdit;
     use elp_project_model::test_fixture::trim_indent;
     use elp_syntax::AstNode;
@@ -207,12 +212,16 @@ pub(crate) mod tests {
     use hir::Semantic;
 
     use super::rename_var;
+    use crate::AnalysisHost;
     use crate::fixture;
 
     #[track_caller]
     pub(crate) fn check_rename(new_name: &str, fixture_before: &str, fixture_after_str: &str) {
         let fixture_after_str = &trim_indent(fixture_after_str);
-        let analysis_after = fixture::multi_file(fixture_after_str);
+
+        let (db_after, fixture_after) = RootDatabase::with_fixture(fixture_after_str);
+        let host_after = AnalysisHost { db: db_after };
+        let analysis_after = host_after.analysis();
 
         let (analysis, position, _) = fixture::position(fixture_before);
         let rename_result = analysis
@@ -232,6 +241,37 @@ pub(crate) mod tests {
                     let expected = analysis_after.file_text(file_id).unwrap().to_string();
                     assert_eq_text!(&*expected, &*result);
                 }
+                for op in source_change.file_system_edits {
+                    match op {
+                        FileSystemEdit::CreateFile {
+                            dst,
+                            initial_contents,
+                        } => {
+                            let new_file =
+                                find_new_file_id(&fixture_after, &dst).unwrap_or_else(|| {
+                                    panic!(
+                                        "Fixture after:could not find file created as '{}'",
+                                        &dst.path
+                                    )
+                                });
+                            let actual = analysis_after.file_text(*new_file.1).unwrap().to_string();
+                            let expected = initial_contents;
+                            assert_eq_text!(&*expected, &*actual);
+                        }
+                        FileSystemEdit::MoveFile { src, dst } => {
+                            let new_file =
+                                find_new_file_id(&fixture_after, &dst).unwrap_or_else(|| {
+                                    panic!(
+                                        "Fixture after:could not find file renamed to '{}'",
+                                        &dst.path
+                                    )
+                                });
+                            let actual = analysis_after.file_text(*new_file.1).unwrap().to_string();
+                            let expected = analysis.file_text(src).unwrap().to_string();
+                            assert_eq_text!(&*expected, &*actual);
+                        }
+                    }
+                }
             }
             Err(err) => {
                 if fixture_after_str.starts_with("error:") {
@@ -245,6 +285,16 @@ pub(crate) mod tests {
                 }
             }
         };
+    }
+
+    fn find_new_file_id<'a>(
+        fixture_after: &'a ChangeFixture,
+        dst: &'a AnchoredPathBuf,
+    ) -> Option<(&'a VfsPath, &'a FileId)> {
+        fixture_after
+            .files_by_path
+            .iter()
+            .find(|(name, _)| name.as_path().unwrap().to_string().ends_with(&dst.path))
     }
 
     #[test]
@@ -1132,6 +1182,74 @@ pub(crate) mod tests {
             x(_) -> newFoo().
             newFoo() -> ok.
              "#,
+        );
+    }
+
+    // ---------------------------------
+    // Renaming modules
+
+    #[test]
+    fn rename_module_fails_name_exists() {
+        check_rename(
+            "main_2",
+            r#"
+            //- /app_a/src/main.erl
+            -module(ma~in).
+            //- /app_a_/src/main_2.erl
+            -module(main_2).
+             "#,
+            r#"error: module 'main_2' already exists"#,
+        );
+    }
+
+    #[test]
+    fn rename_module_fails_bad_name_1() {
+        check_rename(
+            "Main",
+            r#"
+            //- /app_a/src/main.erl
+            -module(ma~in).
+            //- /app_a_/src/main_2.erl
+            -module(main_2).
+             "#,
+            r#"error: Invalid new module name: 'Main'"#,
+        );
+    }
+
+    #[test]
+    fn rename_module_simple() {
+        check_rename(
+            "main_2",
+            r#"
+            //- /app_a/src/main.erl
+            -module(ma~in).
+             "#,
+            r#"
+            //- /app_a/src/main_2.erl
+            -module(main).
+             "#,
+        );
+    }
+
+    #[test]
+    fn rename_module_with_usage() {
+        check_rename(
+            "main_2",
+            r#"
+            //- /app_a/src/main_2.erl
+            -module(main_2).
+            -export([foo/0]).
+            foo() -> ok.
+            //- /app_a/src/main.erl
+            -module(ma~in).
+            -export([foo/0]).
+            foo() -> ok.
+            //- /app_a/src/other.erl
+            -module(other).
+            -export([bar/0]).
+            bar() -> main:foo().
+             "#,
+            r#"error: module 'main_2' already exists"#,
         );
     }
 

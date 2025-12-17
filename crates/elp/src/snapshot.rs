@@ -36,9 +36,11 @@ use parking_lot::Mutex;
 use parking_lot::RwLock;
 use serde::Deserialize;
 use serde::Serialize;
+use vfs::AnchoredPathBuf;
 
 use crate::config::Config;
 use crate::convert;
+use crate::convert::url_from_abs_path;
 use crate::line_endings::LineEndings;
 use crate::mem_docs::MemDocs;
 use crate::server::EqwalizerTypes;
@@ -184,6 +186,14 @@ impl Snapshot {
 
     pub(crate) fn line_endings(&self, id: FileId) -> LineEndings {
         self.line_ending_map.read()[&id]
+    }
+
+    pub(crate) fn anchored_path(&self, path: &AnchoredPathBuf) -> Option<Url> {
+        let mut base = self.vfs.read().file_path(path.anchor).clone();
+        base.pop();
+        let path = base.join(&path.path)?;
+        let path = path.as_path()?;
+        Some(url_from_abs_path(path))
     }
 
     pub fn update_cache_for_file(

@@ -10,6 +10,7 @@
 
 //! Conversion of rust-analyzer specific types to lsp_types equivalents.
 
+use std::mem;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 
@@ -47,6 +48,7 @@ use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FilePosition;
 use elp_ide::elp_ide_db::elp_base_db::FileRange;
 use elp_ide::elp_ide_db::rename::RenameError;
+use elp_ide::elp_ide_db::source_change::FileSystemEdit;
 use elp_ide::elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::Indel;
 use elp_ide_db::text_edit::TextEdit;
@@ -142,23 +144,107 @@ pub(crate) fn text_document_edit(
     })
 }
 
+pub(crate) fn text_document_ops(
+    snap: &Snapshot,
+    file_system_edit: FileSystemEdit,
+) -> Cancellable<Vec<lsp_types::DocumentChangeOperation>> {
+    let mut ops = Vec::new();
+    match file_system_edit {
+        FileSystemEdit::CreateFile {
+            dst,
+            initial_contents,
+        } => {
+            if let Some(uri) = snap.anchored_path(&dst) {
+                let create_file = lsp_types::ResourceOp::Create(lsp_types::CreateFile {
+                    uri: uri.clone(),
+                    options: None,
+                    annotation_id: None,
+                });
+                ops.push(lsp_types::DocumentChangeOperation::Op(create_file));
+                if !initial_contents.is_empty() {
+                    let text_document =
+                        lsp_types::OptionalVersionedTextDocumentIdentifier { uri, version: None };
+                    let text_edit = lsp_types::TextEdit {
+                        range: lsp_types::Range::default(),
+                        new_text: initial_contents,
+                    };
+                    let edit_file = lsp_types::TextDocumentEdit {
+                        text_document,
+                        edits: vec![lsp_types::OneOf::Left(text_edit)],
+                    };
+                    ops.push(lsp_types::DocumentChangeOperation::Edit(edit_file));
+                }
+            } else {
+                log::warn!("create file failed: {:?}", dst);
+            }
+        }
+        FileSystemEdit::MoveFile { src, dst } => {
+            if let Some(new_uri) = snap.anchored_path(&dst) {
+                let old_uri = snap.file_id_to_url(src);
+                let rename_file = lsp_types::RenameFile {
+                    old_uri,
+                    new_uri,
+                    options: None,
+                    annotation_id: None,
+                };
+                ops.push(lsp_types::DocumentChangeOperation::Op(
+                    lsp_types::ResourceOp::Rename(rename_file),
+                ))
+            } else {
+                log::warn!("rename file failed: {:?} -> {:?}", src, dst);
+            }
+        }
+    }
+    Ok(ops)
+}
+
 pub(crate) fn workspace_edit(
     snap: &Snapshot,
-    source_change: SourceChange,
+    mut source_change: SourceChange,
 ) -> Result<lsp_types::WorkspaceEdit> {
-    let mut edits: Vec<_> = vec![];
-    for (file_id, edit) in source_change.source_file_edits {
-        // let edit = snippet_text_document_edit(snap, source_change.is_snippet, file_id, edit)?;
-        let edit = text_document_edit(snap, file_id, edit)?;
-        edits.push(lsp_types::TextDocumentEdit {
-            text_document: edit.text_document,
-            edits: edit.edits.into_iter().collect(),
-        });
+    let mut document_changes: Vec<lsp_types::DocumentChangeOperation> = Vec::new();
+
+    // This is copying RA's order of operations, first file creates,
+    // then edits, then file moves.
+
+    // This allows us to apply edits to the file once it has
+    // moved. Except we have no FileId at that point
+    for op in &mut source_change.file_system_edits {
+        if let FileSystemEdit::CreateFile {
+            dst,
+            initial_contents,
+        } = op
+        {
+            // replace with a placeholder to avoid cloning the edit
+            let op = FileSystemEdit::CreateFile {
+                dst: dst.clone(),
+                initial_contents: mem::take(initial_contents),
+            };
+            let ops = text_document_ops(snap, op)?;
+            document_changes.extend_from_slice(&ops);
+        }
     }
-    let document_changes = lsp_types::DocumentChanges::Edits(edits);
+
+    for (file_id, edit) in source_change.source_file_edits {
+        let edit = text_document_edit(snap, file_id, edit)?;
+        document_changes.push(lsp_types::DocumentChangeOperation::Edit(
+            lsp_types::TextDocumentEdit {
+                text_document: edit.text_document,
+                edits: edit.edits.into_iter().collect(),
+            },
+        ));
+    }
+
+    for op in source_change.file_system_edits {
+        if !matches!(op, FileSystemEdit::CreateFile { .. }) {
+            let ops = text_document_ops(snap, op)?;
+            document_changes.extend_from_slice(&ops);
+        }
+    }
+
     let workspace_edit = lsp_types::WorkspaceEdit {
         changes: None,
-        document_changes: Some(document_changes),
+        document_changes: Some(lsp_types::DocumentChanges::Operations(document_changes)),
         change_annotations: None,
     };
     Ok(workspace_edit)

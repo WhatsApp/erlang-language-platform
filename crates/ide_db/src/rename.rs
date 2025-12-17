@@ -15,8 +15,10 @@
 use std::fmt;
 use std::iter::once;
 
+use elp_base_db::AnchoredPathBuf;
 use elp_base_db::FileId;
 use elp_base_db::FileRange;
+use elp_base_db::ModuleName;
 use elp_syntax::AstNode;
 use elp_syntax::ast;
 use elp_syntax::ast::in_erlang_module;
@@ -26,6 +28,7 @@ use hir::Semantic;
 use crate::SymbolDefinition;
 use crate::helpers::get_call;
 use crate::search::NameLike;
+use crate::source_change::FileSystemEdit;
 use crate::source_change::SourceChange;
 use crate::text_edit::TextEdit;
 
@@ -106,6 +109,18 @@ pub fn is_valid_type_name(new_name: &String) -> bool {
     false
 }
 
+// Delegate checking module name validity to the parser
+pub fn is_valid_module_name(new_name: &String) -> bool {
+    let parse = ast::SourceFile::parse_text(format!("-module({}).", new_name).as_str());
+    match parse.tree().forms().next() {
+        Some(ast::Form::ModuleAttribute(ma)) => match ma.name() {
+            Some(ast::Name::Atom(atom)) => atom.syntax().text().to_string() == *new_name,
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SafetyChecks {
     Yes,
@@ -122,7 +137,10 @@ impl SymbolDefinition {
     ) -> RenameResult<SourceChange> {
         match self.clone() {
             SymbolDefinition::Module(_) => {
-                rename_error!("Cannot rename module")
+                if safety_check == SafetyChecks::Yes && !is_valid_module_name(new_name) {
+                    rename_error!("Invalid new module name: '{}'", new_name);
+                }
+                self.rename_module(sema, new_name, safety_check)
             }
             SymbolDefinition::Function(fun) => {
                 if safety_check == SafetyChecks::Yes && !is_valid_function_name(new_name) {
@@ -380,6 +398,43 @@ impl SymbolDefinition {
             _ => {
                 rename_error!("rename reference not supported for {:?}", self);
             }
+        }
+    }
+
+    fn rename_module(
+        &self,
+        sema: &Semantic,
+        new_name: &str,
+        safety_check: SafetyChecks,
+    ) -> RenameResult<SourceChange> {
+        let file_id = self.file().file_id;
+        if let Some(project_id) = sema.db.file_project_id(file_id) {
+            let module_index = sema.db.module_index(project_id);
+            if safety_check == SafetyChecks::Yes {
+                let new_name_module = ModuleName::new(new_name);
+                if module_index
+                    .all_modules()
+                    .iter()
+                    .any(|name| name == &new_name_module)
+                {
+                    rename_error!("module '{}' already exists", new_name);
+                }
+            }
+
+            // RA based version
+            let mut source_change = SourceChange::default();
+            let anchor = file_id;
+
+            let path = format!("{new_name}.erl");
+            let dst = AnchoredPathBuf { anchor, path };
+            source_change.push_file_system_edit(FileSystemEdit::MoveFile { src: anchor, dst });
+
+            Ok(source_change)
+        } else {
+            rename_error!(
+                "Could not find project for '{:?}'",
+                self.file().name(sema.db.upcast())
+            )
         }
     }
 }
