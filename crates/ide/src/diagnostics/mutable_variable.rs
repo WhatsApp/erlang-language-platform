@@ -27,12 +27,8 @@
 //
 
 use elp_ide_db::elp_base_db::FileId;
-use fxhash::FxHashMap;
-use fxhash::FxHashSet;
 use hir::AnyExpr;
 use hir::Expr;
-use hir::FunctionClauseId;
-use hir::PatId;
 use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
@@ -60,21 +56,7 @@ fn mutable_variable_bug(
     sema: &Semantic,
     file_id: FileId,
 ) -> Option<()> {
-    let mut bound_vars_by_function: FxHashMap<FunctionClauseId, FxHashSet<&PatId>> =
-        FxHashMap::default();
-    let bound_vars = sema.bound_vars_in_pattern_diagnostic(file_id);
-    bound_vars.iter().for_each(|(function_id, pat_id, _var)| {
-        bound_vars_by_function
-            .entry(function_id.value)
-            .and_modify(|vars| {
-                vars.insert(pat_id);
-            })
-            .or_insert_with(|| {
-                let mut vars = FxHashSet::default();
-                vars.insert(pat_id);
-                vars
-            });
-    });
+    let bound_vars_by_function = sema.bound_vars_by_function(file_id);
     sema.def_map(file_id)
         .get_function_clauses()
         .for_each(|(_, def)| {

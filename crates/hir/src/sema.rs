@@ -1006,6 +1006,28 @@ impl Semantic<'_> {
     // Folds end
     // -----------------------------------------------------------------
 
+    pub fn bound_vars_by_function(
+        &self,
+        file_id: FileId,
+    ) -> FxHashMap<FunctionClauseId, FxHashSet<PatId>> {
+        let bound_vars = self.bound_vars_in_pattern_diagnostic(file_id);
+        let mut bound_vars_by_function: FxHashMap<FunctionClauseId, FxHashSet<PatId>> =
+            FxHashMap::default();
+        bound_vars.iter().for_each(|(function_id, pat_id, _var)| {
+            bound_vars_by_function
+                .entry(function_id.value)
+                .and_modify(|vars| {
+                    vars.insert(*pat_id);
+                })
+                .or_insert_with(|| {
+                    let mut vars = FxHashSet::default();
+                    vars.insert(*pat_id);
+                    vars
+                });
+        });
+        bound_vars_by_function
+    }
+
     pub fn bound_vars_in_pattern_diagnostic(
         &self,
         file_id: FileId,
