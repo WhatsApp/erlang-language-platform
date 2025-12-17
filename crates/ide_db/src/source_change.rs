@@ -30,9 +30,36 @@ use crate::text_edit::TextEdit;
 use crate::text_edit::TextEditBuilder;
 use crate::tree_diff::diff;
 
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Debug)]
+pub struct HashableAnchoredPathBuf {
+    /// File that this path is relative to.
+    pub anchor: FileId,
+    /// Path relative to `anchor`'s containing directory.
+    pub path: String,
+}
+
+impl From<AnchoredPathBuf> for HashableAnchoredPathBuf {
+    fn from(value: AnchoredPathBuf) -> Self {
+        HashableAnchoredPathBuf {
+            anchor: value.anchor,
+            path: value.path,
+        }
+    }
+}
+
+impl From<HashableAnchoredPathBuf> for AnchoredPathBuf {
+    fn from(value: HashableAnchoredPathBuf) -> Self {
+        AnchoredPathBuf {
+            anchor: value.anchor,
+            path: value.path,
+        }
+    }
+}
+
 #[derive(Default, Debug, Clone)]
 pub struct SourceChange {
     pub source_file_edits: FxHashMap<FileId, TextEdit>,
+    pub new_file_edits: FxHashMap<HashableAnchoredPathBuf, TextEdit>,
     pub file_system_edits: Vec<FileSystemEdit>,
     pub is_snippet: bool,
 }
@@ -46,6 +73,7 @@ impl SourceChange {
     ) -> Self {
         SourceChange {
             source_file_edits,
+            new_file_edits: FxHashMap::default(),
             file_system_edits,
             is_snippet: false,
         }
@@ -74,6 +102,22 @@ impl SourceChange {
         }
     }
 
+    /// Inserts a [`TextEdit`] for the given [`AnchoredPathBuf`]. This properly handles merging existing
+    /// edits for a file if some already exist.
+    pub fn insert_new_source_edit(&mut self, file_id: HashableAnchoredPathBuf, edit: TextEdit) {
+        match self.new_file_edits.entry(file_id) {
+            Entry::Occupied(mut entry) => {
+                never!(
+                    entry.get_mut().union(edit).is_err(),
+                    "overlapping edits for same file"
+                );
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(edit);
+            }
+        }
+    }
+
     pub fn push_file_system_edit(&mut self, edit: FileSystemEdit) {
         self.file_system_edits.push(edit);
     }
@@ -85,12 +129,15 @@ impl SourceChange {
     pub fn merge(mut self, other: SourceChange) -> SourceChange {
         self.extend(other.source_file_edits);
         self.extend(other.file_system_edits);
+        self.extend(other.new_file_edits);
         self.is_snippet |= other.is_snippet;
         self
     }
 
     pub fn is_empty(&self) -> bool {
-        self.source_file_edits.is_empty() && self.file_system_edits.is_empty()
+        self.source_file_edits.is_empty()
+            && self.file_system_edits.is_empty()
+            && self.new_file_edits.is_empty()
     }
 
     pub fn text_range(&self, file_id: FileId) -> Option<TextRange> {
@@ -116,10 +163,18 @@ impl Extend<FileSystemEdit> for SourceChange {
     }
 }
 
+impl Extend<(HashableAnchoredPathBuf, TextEdit)> for SourceChange {
+    fn extend<T: IntoIterator<Item = (HashableAnchoredPathBuf, TextEdit)>>(&mut self, iter: T) {
+        iter.into_iter()
+            .for_each(|(file_id, edit)| self.insert_new_source_edit(file_id, edit));
+    }
+}
+
 impl From<FxHashMap<FileId, TextEdit>> for SourceChange {
     fn from(source_file_edits: FxHashMap<FileId, TextEdit>) -> SourceChange {
         SourceChange {
             source_file_edits,
+            new_file_edits: FxHashMap::default(),
             file_system_edits: Vec::new(),
             is_snippet: false,
         }
@@ -265,6 +320,7 @@ impl From<FileSystemEdit> for SourceChange {
     fn from(edit: FileSystemEdit) -> SourceChange {
         SourceChange {
             source_file_edits: Default::default(),
+            new_file_edits: Default::default(),
             file_system_edits: vec![edit],
             is_snippet: false,
         }

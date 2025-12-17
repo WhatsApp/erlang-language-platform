@@ -141,7 +141,7 @@ impl SymbolDefinition {
                 if safety_check == SafetyChecks::Yes && !is_valid_module_name(new_name) {
                     rename_error!("Invalid new module name: '{}'", new_name);
                 }
-                self.rename_module(sema, new_name, safety_check)
+                self.rename_reference(sema, new_name, parens_needed_in_context, safety_check)
             }
             SymbolDefinition::Function(fun) => {
                 if safety_check == SafetyChecks::Yes && !is_valid_function_name(new_name) {
@@ -394,6 +394,7 @@ impl SymbolDefinition {
                 );
                 Ok(source_change)
             }
+            SymbolDefinition::Module(_module) => self.rename_module(sema, new_name, safety_check),
             // Note: This is basically an internal error, this function is called from
             // SymbolDefinition::rename which already weeds them out
             _ => {
@@ -424,22 +425,10 @@ impl SymbolDefinition {
 
             let mut source_change = SourceChange::default();
             // Step 1, rename all references
-            let def_map = sema.def_map(file_id);
-            // process anything that could be used. functions, types, ??
-            def_map.get_functions().for_each(|(_name, f)| {
-                if f.exported {
-                    let usages = SymbolDefinition::Function(f.clone()).usages(sema).all();
-                    rename_remote_module_call_refs(usages, file_id, new_name, &mut source_change);
-                }
-            });
-            def_map.get_types().iter().for_each(|(_name, t)| {
-                if t.exported {
-                    let usages = SymbolDefinition::Type(t.clone()).usages(sema).all();
-                    rename_remote_module_call_refs(usages, file_id, new_name, &mut source_change);
-                }
-            });
+            let usages = self.clone().usages(sema).all();
+            rename_remote_module_call_refs(usages, file_id, new_name, &mut source_change);
 
-            // Make changes in the module being renamed
+            // Step 2: Make changes in the module being renamed
             let mut renamed_module_edit: TextEdit = TextEdit::default();
             let form_list = sema.form_list(file_id);
             if let Some(module_attribute) = form_list.module_attribute() {
@@ -452,6 +441,7 @@ impl SymbolDefinition {
                         .union(builder.finish())
                         .expect("Could not combine TextEdits");
                 }
+                let def_map = sema.def_map(file_id);
                 def_map.get_functions().for_each(|(_name, f)| {
                     let usages = SymbolDefinition::Function(f.clone()).usages(sema).all();
                     rename_own_module_call_refs(
@@ -475,13 +465,8 @@ impl SymbolDefinition {
             let anchor = file_id;
             let path = format!("{new_name}.erl");
             let dst = AnchoredPathBuf { anchor, path };
-            let mut initial_contents = sema.db.file_text(anchor).to_string();
-            renamed_module_edit.apply(&mut initial_contents);
-            source_change.push_file_system_edit(FileSystemEdit::CreateFile {
-                dst,
-                initial_contents,
-            });
-
+            source_change.insert_new_source_edit(dst.clone().into(), renamed_module_edit);
+            source_change.push_file_system_edit(FileSystemEdit::MoveFile { src: anchor, dst });
             Ok(source_change)
         } else {
             rename_error!(
@@ -500,7 +485,7 @@ fn rename_remote_module_call_refs(
 ) {
     usages.iter().for_each(|(usage_file_id, refs)| {
         if usage_file_id != file_id
-            && let Some(edit) = rename_call_module_in_refs(refs, new_name)
+            && let Some(edit) = rename_module_in_refs(refs, new_name)
         {
             source_change.insert_source_edit(usage_file_id, edit);
         };
@@ -515,7 +500,7 @@ fn rename_own_module_call_refs(
 ) {
     usages.iter().for_each(|(usage_file_id, refs)| {
         if usage_file_id == file_id
-            && let Some(edit) = rename_call_module_in_refs(refs, new_name)
+            && let Some(edit) = rename_module_in_refs(refs, new_name)
         {
             renamed_module_edit
                 .union(edit)
@@ -524,9 +509,12 @@ fn rename_own_module_call_refs(
     });
 }
 
-fn rename_call_module_in_refs(refs: &[NameLike], new_name: &str) -> Option<TextEdit> {
+fn rename_module_in_refs(refs: &[NameLike], new_name: &str) -> Option<TextEdit> {
     let mut builder = TextEdit::builder();
     for usage in refs {
+        // Note: we cannot blindly replace all occurrences of an
+        // atom that happens to be a module name
+        // We will flesh out other usages as we need them
         let _ = rename_call_module_in_ref(usage, &mut builder, new_name);
     }
     Some(builder.finish())

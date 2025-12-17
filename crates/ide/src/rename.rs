@@ -267,8 +267,10 @@ pub(crate) mod tests {
                                 });
                             new_file_id = *new_file.1;
                             expected = initial_contents;
+                            let actual = analysis_after.file_text(new_file_id).unwrap().to_string();
+                            assert_eq_text!(&*expected, &*actual);
                         }
-                        FileSystemEdit::MoveFile { src, dst } => {
+                        FileSystemEdit::MoveFile { src: _, dst } => {
                             let new_file =
                                 find_new_file_id(&fixture_after, &dst).unwrap_or_else(|| {
                                     panic!(
@@ -277,12 +279,40 @@ pub(crate) mod tests {
                                     )
                                 });
                             new_file_id = *new_file.1;
-                            expected = analysis.file_text(src).unwrap().to_string();
+                            // We simply record the new file id for checking in `fixture_after``.
+                            // The expected value will be updated by the new_file_edits below,
+                            // and the result asserted there
                         }
                     }
                     file_ids.insert(new_file_id);
-                    let actual = analysis_after.file_text(new_file_id).unwrap().to_string();
-                    assert_eq_text!(&*expected, &*actual);
+                }
+                for (dst, op) in source_change.new_file_edits {
+                    // When renaming a module, we move the original file, then apply fixup edits
+                    // to the new file
+                    let anchored_dst = AnchoredPathBuf {
+                        anchor: dst.anchor,
+                        path: dst.path,
+                    };
+                    let new_file =
+                        find_new_file_id(&fixture_after, &anchored_dst).unwrap_or_else(|| {
+                            panic!(
+                                "Fixture after:could not find file created as '{}'",
+                                &anchored_dst.path
+                            )
+                        });
+
+                    let mut text_edit_builder = TextEdit::builder();
+                    let file_id = *new_file.1;
+                    // New and old file_id are the same
+                    file_ids.insert(file_id);
+                    for indel in op.iter() {
+                        text_edit_builder.replace(indel.delete, indel.insert.to_string());
+                    }
+                    let mut result = analysis.file_text(file_id).unwrap().to_string();
+                    let edit = text_edit_builder.finish();
+                    edit.apply(&mut result);
+                    let expected = analysis_after.file_text(file_id).unwrap().to_string();
+                    assert_eq_text!(&*expected, &*result);
                 }
                 // Check the balance of the expectations in the new fixture.
                 for file_id in &fixture_after.files {
@@ -1306,6 +1336,38 @@ pub(crate) mod tests {
               -export([bar/0]).
               -spec bar() -> main_3:foo().
               bar() -> ok.
+             "#,
+        );
+    }
+
+    #[test]
+    fn rename_module_with_usage_record() {
+        check_rename(
+            "main_3",
+            r#"
+            //- /app_a/src/main.erl
+              -module(ma~in).
+              -export_type([foo/0]).
+              -type foo() :: ok.
+            //- /app_a/src/other.erl
+              -module(other).
+              -export([bar/0]).
+              -spec bar() -> main:foo().
+              bar() -> ok.
+              -record(main, {field :: main:foo()}).
+             "#,
+            //------------------
+            r#"
+            //- /app_a/src/main_3.erl
+              -module(main_3).
+              -export_type([foo/0]).
+              -type foo() :: ok.
+            //- /app_a/src/other.erl
+              -module(other).
+              -export([bar/0]).
+              -spec bar() -> main_3:foo().
+              bar() -> ok.
+              -record(main, {field :: main_3:foo()}).
              "#,
         );
     }

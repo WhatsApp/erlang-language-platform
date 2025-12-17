@@ -123,9 +123,9 @@ pub(crate) fn optional_versioned_text_document_identifier(
 pub(crate) fn text_document_edit(
     snap: &Snapshot,
     file_id: FileId,
+    text_document: lsp_types::OptionalVersionedTextDocumentIdentifier,
     edit: TextEdit,
 ) -> Result<lsp_types::TextDocumentEdit> {
-    let text_document = optional_versioned_text_document_identifier(snap, file_id);
     let line_index = snap.analysis.line_index(file_id)?;
     let line_endings = snap.line_endings(file_id);
     let edits: Vec<lsp_types::OneOf<lsp_types::TextEdit, lsp_types::AnnotatedTextEdit>> = edit
@@ -133,11 +133,6 @@ pub(crate) fn text_document_edit(
         .map(|it| lsp_types::OneOf::Left(text_edit(&line_index, line_endings, it)))
         .collect();
 
-    // if snap.analysis.is_library_file(file_id)? && snap.config.change_annotation_support() {
-    //     for edit in &mut edits {
-    //         edit.annotation_id = Some(outside_workspace_annotation_id())
-    //     }
-    // }
     Ok(lsp_types::TextDocumentEdit {
         text_document,
         edits,
@@ -225,8 +220,16 @@ pub(crate) fn workspace_edit(
         }
     }
 
+    for op in source_change.file_system_edits {
+        if !matches!(op, FileSystemEdit::CreateFile { .. }) {
+            let ops = text_document_ops(snap, op)?;
+            document_changes.extend_from_slice(&ops);
+        }
+    }
+
     for (file_id, edit) in source_change.source_file_edits {
-        let edit = text_document_edit(snap, file_id, edit)?;
+        let text_document = optional_versioned_text_document_identifier(snap, file_id);
+        let edit = text_document_edit(snap, file_id, text_document, edit)?;
         document_changes.push(lsp_types::DocumentChangeOperation::Edit(
             lsp_types::TextDocumentEdit {
                 text_document: edit.text_document,
@@ -235,10 +238,20 @@ pub(crate) fn workspace_edit(
         ));
     }
 
-    for op in source_change.file_system_edits {
-        if !matches!(op, FileSystemEdit::CreateFile { .. }) {
-            let ops = text_document_ops(snap, op)?;
-            document_changes.extend_from_slice(&ops);
+    // Edits on renamed files.  The LineIndex from the original can be used.
+    for (file_ref, edit) in source_change.new_file_edits {
+        if let Some(uri) = snap.anchored_path(&file_ref.clone().into()) {
+            let version = snap.url_file_version(&uri);
+            let text_document = lsp_types::OptionalVersionedTextDocumentIdentifier { uri, version };
+            let edit = text_document_edit(snap, file_ref.anchor, text_document, edit)?;
+            document_changes.push(lsp_types::DocumentChangeOperation::Edit(
+                lsp_types::TextDocumentEdit {
+                    text_document: edit.text_document,
+                    edits: edit.edits.into_iter().collect(),
+                },
+            ));
+        } else {
+            log::warn!("new file edit failed: {:?}", file_ref);
         }
     }
 
@@ -268,10 +281,6 @@ pub(crate) fn code_action(
 ) -> Result<lsp_types::CodeActionOrCommand> {
     let mut res = lsp_types::CodeAction {
         title: assist.label.to_string(),
-        // group: assist
-        //     .group
-        //     .filter(|_| snap.config.code_action_group())
-        //     .map(|gr| gr.0),
         kind: Some(code_action_kind(assist.id.1)),
         edit: None,
         is_preferred: None,

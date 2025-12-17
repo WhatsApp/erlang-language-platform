@@ -43,12 +43,15 @@ pub fn pick_best_token(
     tokens.max_by_key(move |t| f(t.kind()))
 }
 
+/// Given a syntax node, check it it is immediately enclosed in a call,
+/// which can represent a function call or a type.
+/// For a remote call, the node can be the module or the function name.
+/// In the former case, there is an extra level of nesting, so we need
+/// to check up to 3 steps up
 pub fn get_call(syntax: &SyntaxNode) -> Option<ast::Call> {
-    if let Some(call) = ast::Call::cast(syntax.parent()?) {
-        Some(call)
-    } else {
-        ast::Call::cast(syntax.parent()?.parent()?)
-    }
+    ast::Call::cast(syntax.parent()?)
+        .or_else(|| ast::Call::cast(syntax.parent()?.parent()?))
+        .or_else(|| ast::Call::cast(syntax.parent()?.parent()?.parent()?))
 }
 
 /// Find the first position at the top of the file to add a new
