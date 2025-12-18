@@ -2,11 +2,11 @@
 enabled = true
 build_deps = false
 included_targets = [
-    "fbcode//whatsapp/elp/test/test_projects/buck_tests_2/util/app_a/...",
-    "fbcode//whatsapp/elp/test/test_projects/buck_tests_2:check_include"
+    "root//buck_tests_2/util/app_a/...",
+    "root//buck_tests_2:check_include"
     ]
-excluded_targets = [ "fbcode//whatsapp/elp/test/test_projects/buck_tests_2:test_elp_ignored" ]
-source_root = "whatsapp/elp/test/test_projects/buck_tests_2"
+excluded_targets = [ "root//buck_tests_2:test_elp_ignored" ]
+source_root = "buck_tests_2"
 
 [eqwalizer]
 enable_all = false

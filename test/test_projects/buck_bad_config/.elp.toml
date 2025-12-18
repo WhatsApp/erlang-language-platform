@@ -1,8 +1,8 @@
 [buck]
 enabled = true
 build_deps = false
-included_targets = [ "fbcode//whatsapp/elp/test/test_projects/buck_bad_config/..." ]
-source_root = "whatsapp/elp/test/test_projects/buck_bad_config"
+included_targets = [ "root//buck_bad_config/..." ]
+source_root = "buck_bad_config"
 
 [eqwalizer]
 enable_all = false

@@ -1,5 +1,5 @@
 [buck]
 enabled = true
 build_deps = false
-included_targets = [ "fbcode//whatsapp/elp/test/test_projects/hierarchical_config/..." ]
-source_root = "whatsapp/elp/test/test_projects/hierarchical_config"
+included_targets = [ "root//hierarchical_config/..." ]
+source_root = "hierarchical_config"

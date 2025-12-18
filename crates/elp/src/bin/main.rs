@@ -605,10 +605,7 @@ mod tests {
     fn eqwalize_target_diagnostics_match_snapshot_pretty() {
         if cfg!(feature = "buck") {
             simple_snapshot(
-                args_vec![
-                    "eqwalize-target",
-                    "//whatsapp/elp/test/test_projects/standard:app_a",
-                ],
+                args_vec!["eqwalize-target", "//standard:app_a",],
                 "standard",
                 expect_file!("../resources/test/standard/eqwalize_target_diagnostics.pretty"),
                 true,
@@ -985,38 +982,13 @@ mod tests {
                 Some(AbsPathBuf::assert(Utf8PathBuf::from_path_buf(abs).unwrap()));
             let content = normalise_prelude_path(content, buck_config);
 
+            let content = sort_json(&content);
+
             expect![[r#"
                 {
                   "apps": [
                     {
-                      "name": "test_exec",
-                      "dir": "/[prelude]//erlang/common_test/test_exec/src",
-                      "src_dirs": [
-                        ""
-                      ],
-                      "extra_src_dirs": [],
-                      "include_dirs": [],
-                      "macros": {}
-                    },
-                    {
-                      "name": "diagnostics_app_a",
-                      "dir": "app_a",
-                      "src_dirs": [
-                        "src"
-                      ],
-                      "extra_src_dirs": [],
-                      "include_dirs": [
-                        "include"
-                      ],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      }
-                    },
-                    {
-                      "name": "app_a_SUITE",
                       "dir": "app_a/test",
-                      "src_dirs": [],
                       "extra_src_dirs": [
                         ""
                       ],
@@ -1024,61 +996,88 @@ mod tests {
                       "macros": {
                         "COMMON_TEST": "true",
                         "TEST": "true"
-                      }
+                      },
+                      "name": "app_a_SUITE",
+                      "src_dirs": []
                     },
                     {
-                      "name": "common",
-                      "dir": "/[prelude]//erlang/common_test/common",
+                      "dir": "/[prelude]//erlang/common_test/test_exec/src",
+                      "extra_src_dirs": [],
+                      "include_dirs": [],
+                      "macros": {},
+                      "name": "test_exec",
                       "src_dirs": [
-                        "src"
-                      ],
+                        ""
+                      ]
+                    },
+                    {
+                      "dir": "/[prelude]//erlang/common_test/common",
                       "extra_src_dirs": [],
                       "include_dirs": [
                         "include"
                       ],
-                      "macros": {}
+                      "macros": {},
+                      "name": "common",
+                      "src_dirs": [
+                        "src"
+                      ]
                     },
                     {
-                      "name": "cth_hooks",
                       "dir": "/[prelude]//erlang/common_test/cth_hooks/src",
-                      "src_dirs": [
-                        ""
-                      ],
                       "extra_src_dirs": [],
                       "include_dirs": [
                         ""
                       ],
-                      "macros": {}
+                      "macros": {},
+                      "name": "cth_hooks",
+                      "src_dirs": [
+                        ""
+                      ]
                     },
                     {
-                      "name": "buck2_shell_utils",
                       "dir": "/[prelude]//erlang/shell/src",
-                      "src_dirs": [
-                        ""
-                      ],
                       "extra_src_dirs": [],
                       "include_dirs": [],
-                      "macros": {}
+                      "macros": {},
+                      "name": "buck2_shell_utils",
+                      "src_dirs": [
+                        ""
+                      ]
                     },
                     {
-                      "name": "test_binary",
+                      "dir": "app_a",
+                      "extra_src_dirs": [],
+                      "include_dirs": [
+                        "include"
+                      ],
+                      "macros": {
+                        "COMMON_TEST": "true",
+                        "TEST": "true"
+                      },
+                      "name": "diagnostics_app_a",
+                      "src_dirs": [
+                        "src"
+                      ]
+                    },
+                    {
                       "dir": "/[prelude]//erlang/common_test/test_binary/src",
-                      "src_dirs": [
-                        ""
-                      ],
                       "extra_src_dirs": [],
                       "include_dirs": [],
-                      "macros": {}
+                      "macros": {},
+                      "name": "test_binary",
+                      "src_dirs": [
+                        ""
+                      ]
                     },
                     {
-                      "name": "test_cli_lib",
                       "dir": "/[prelude]//erlang/common_test/test_cli_lib/src",
-                      "src_dirs": [
-                        ""
-                      ],
                       "extra_src_dirs": [],
                       "include_dirs": [],
-                      "macros": {}
+                      "macros": {},
+                      "name": "test_cli_lib",
+                      "src_dirs": [
+                        ""
+                      ]
                     }
                   ],
                   "deps": []
@@ -1091,6 +1090,12 @@ mod tests {
         let prelude_cell = get_prelude_cell(&buck_config).expect("could not get prelude");
         let prelude_cell = prelude_cell.strip_prefix("/").unwrap();
         content.replace(prelude_cell, "/[prelude]/")
+    }
+
+    fn sort_json(content: &str) -> String {
+        let mut json: serde_json::Value = serde_json::from_str(content).unwrap();
+        json.sort_all_objects();
+        serde_json::to_string_pretty(&json).unwrap()
     }
 
     #[test]

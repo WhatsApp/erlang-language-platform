@@ -58,6 +58,7 @@ lazy_static! {
 }
 
 const ERL_EXT: &str = "erl";
+const BUCK_ISOLATION_DIR: &str = "lsp";
 
 #[derive(
     Debug,
@@ -108,7 +109,7 @@ impl BuckConfig {
         cmd.env_remove("RUST_BACKTRACE")
             .env_remove("RUST_LIB_BACKTRACE");
         cmd.arg("--isolation-dir");
-        cmd.arg("lsp");
+        cmd.arg(BUCK_ISOLATION_DIR);
         cmd.current_dir(self.buck_root());
         CommandProxy::new(guard, cmd)
     }
@@ -1362,36 +1363,56 @@ fn include_path_from_file(path: &AbsPath) -> AbsPathBuf {
     }
 }
 
+fn check_buck_output_success(mut command: CommandProxy<'_>) -> Result<String> {
+    let output = command.output()?;
+    if output.status.success() {
+        return String::from_utf8(output.stdout)
+            .map_err(|e| anyhow::anyhow!("Invalid UTF-8 in stdout for `{command}`: {e}"));
+    }
+    let reason = match output.status.code() {
+        Some(code) => format!("Exited with status code: {code}"),
+        None => "Process terminated by signal".to_string(),
+    };
+    let details = String::from_utf8(output.stderr).unwrap_or_default();
+    bail!("Command `{command}` failed. Reason: {reason}. Details: {details}");
+}
+
 /// This is used in tests
 pub fn get_prelude_cell(buck_config: &BuckConfig) -> Result<String> {
-    let output = buck_config
-        .buck_command()
+    let mut command = buck_config.buck_command();
+    command
         .arg("audit")
         .arg("cell")
         .arg("prelude")
-        .output()?;
-    if !output.status.success() {
-        let reason = match output.status.code() {
-            Some(code) => format!("Exited with status code: {code}"),
-            None => "Process terminated by signal".to_string(),
-        };
-        let details = match String::from_utf8(output.stderr) {
-            Ok(err) => err,
-            Err(_) => "".to_string(),
-        };
-        bail!("Error evaluating Buck2 query Reason: {reason}. Details: {details}",);
-    }
-    let raw_output = String::from_utf8(output.stdout)?;
+        .arg("--json");
+    let raw_output = check_buck_output_success(command)?;
 
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"^prelude: ([^\s]+)").unwrap();
+    let json: serde_json::Value = serde_json::from_str(&raw_output)?;
+    let prelude_path = json
+        .get("prelude")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("Could not find prelude path in Buck2 output"))?
+        .to_string();
+
+    if Path::new(&prelude_path).exists() {
+        Ok(prelude_path)
+    } else {
+        get_prelude_cell_bundled(buck_config)
     }
-    let string = RE
-        .captures_iter(&raw_output)
-        .next()
-        .map(|c| c[1].to_string())
-        .unwrap();
-    Ok(string)
+}
+
+fn get_prelude_cell_bundled(buck_config: &BuckConfig) -> Result<String> {
+    let mut command = buck_config.buck_command();
+    command.arg("root");
+    let root = check_buck_output_success(command)?;
+    let root = root.trim();
+    let bundled_prelude_path = Path::new(&root)
+        .join("buck-out")
+        .join(BUCK_ISOLATION_DIR)
+        .join("external_cells")
+        .join("bundled")
+        .join("prelude");
+    Ok(bundled_prelude_path.to_string_lossy().to_string())
 }
 
 #[cfg(test)]
@@ -1655,7 +1676,7 @@ mod tests {
                 .arg("--")
                 .args(generated_args)
                 .arg("--included_targets")
-                .arg("fbcode//whatsapp/elp/test/test_projects/buck_tests_2/auto_gen/...")
+                .arg("root//buck_tests_2/auto_gen/...")
                 .output()
                 .unwrap();
             if !output.status.success() {
@@ -1679,7 +1700,7 @@ mod tests {
                 false,
                 expect![[r#"
                 {
-                  "fbcode//whatsapp/elp/test/test_projects/buck_tests_2/auto_gen/auto_gen_a:auto_gen_a": {
+                  "root//buck_tests_2/auto_gen/auto_gen_a:auto_gen_a": {
                     "name": "auto_gen_a",
                     "app_name": null,
                     "suite": null,
@@ -1697,7 +1718,7 @@ mod tests {
                     "included_apps": [],
                     "origin": "app"
                   },
-                  "fbcode//whatsapp/elp/test/test_projects/buck_tests_2/auto_gen/auto_gen_a:generated_srcs": {
+                  "root//buck_tests_2/auto_gen/auto_gen_a:generated_srcs": {
                     "name": "generated_srcs",
                     "app_name": null,
                     "suite": null,
@@ -1842,13 +1863,13 @@ mod tests {
     fn build_info_buck_bxl_generated_query() {
         if BUCK_TESTS_ENABLED {
             // Note that there is now a value for `srcs` in the
-            // "fbcode//whatsapp/elp/test/test_projects/buck_tests_2/auto_gen/auto_gen_a:generated_srcs"
+            // "root//buck_tests_2/auto_gen/auto_gen_a:generated_srcs"
             // target
             check_buck_bxl_query(
                 true,
                 expect![[r#"
                     {
-                      "fbcode//whatsapp/elp/test/test_projects/buck_tests_2/auto_gen/auto_gen_a:auto_gen_a": {
+                      "root//buck_tests_2/auto_gen/auto_gen_a:auto_gen_a": {
                         "name": "auto_gen_a",
                         "app_name": null,
                         "suite": null,
@@ -1866,7 +1887,7 @@ mod tests {
                         "included_apps": [],
                         "origin": "app"
                       },
-                      "fbcode//whatsapp/elp/test/test_projects/buck_tests_2/auto_gen/auto_gen_a:generated_srcs": {
+                      "root//buck_tests_2/auto_gen/auto_gen_a:generated_srcs": {
                         "name": "generated_srcs",
                         "app_name": null,
                         "suite": null,
