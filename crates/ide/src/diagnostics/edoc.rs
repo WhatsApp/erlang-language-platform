@@ -31,7 +31,6 @@ use super::DiagnosticCode;
 use super::GenericLinter;
 use super::GenericLinterMatchContext;
 use super::Linter;
-use super::Severity;
 
 pub(crate) struct EdocLinter;
 
@@ -44,11 +43,8 @@ impl Linter for EdocLinter {
         "EDoc style comments are deprecated. Please use Markdown instead."
     }
 
-    fn severity(&self, sema: &Semantic, file_id: FileId) -> Severity {
-        match sema.db.is_test_suite_or_test_helper(file_id) {
-            Some(true) => Severity::WeakWarning,
-            _ => Severity::Warning,
-        }
+    fn should_process_test_files(&self) -> bool {
+        false
     }
 }
 
@@ -290,22 +286,6 @@ mod tests {
     -module(main).
     %% @doc This is the main function documentation.
     %% ^^^^ 💡 warning: W0038: EDoc style comments are deprecated. Please use Markdown instead.
-    main() ->
-      dep().
-
-    dep() -> ok.
-        "#,
-        )
-    }
-
-    #[test]
-    fn test_function_doc_in_test_file() {
-        check_diagnostics(
-            r#"
-    //- /test/main_SUITE.erl extra:test
-    -module(main_SUITE).
-    %% @doc This is the main function documentation.
-    %% ^^^^ 💡 weak: W0038: EDoc style comments are deprecated. Please use Markdown instead.
     main() ->
       dep().
 
