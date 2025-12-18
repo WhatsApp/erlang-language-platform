@@ -43,6 +43,13 @@ impl Linter for UndefinedFunctionLinter {
     fn should_process_generated_files(&self) -> bool {
         true
     }
+    // Ideally, we would like to report undefined functions in all files, but
+    // there are too many false positives in test files to do so.
+    // This is often due to mocked modules and test suite cleverness.
+    // We can revisit this decision in the future. See T249044930.
+    fn should_process_test_files(&self) -> bool {
+        false
+    }
 }
 
 impl FunctionCallLinter for UndefinedFunctionLinter {
