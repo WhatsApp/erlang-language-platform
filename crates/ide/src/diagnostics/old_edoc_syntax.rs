@@ -32,9 +32,9 @@ use super::GenericLinter;
 use super::GenericLinterMatchContext;
 use super::Linter;
 
-pub(crate) struct EdocLinter;
+pub(crate) struct OldEdocSyntaxLinter;
 
-impl Linter for EdocLinter {
+impl Linter for OldEdocSyntaxLinter {
     fn id(&self) -> DiagnosticCode {
         DiagnosticCode::OldEdocSyntax
     }
@@ -54,7 +54,7 @@ pub struct Context {
     doc_start: TextSize,
 }
 
-impl GenericLinter for EdocLinter {
+impl GenericLinter for OldEdocSyntaxLinter {
     type Context = Context;
 
     fn matches(
@@ -131,7 +131,7 @@ impl GenericLinter for EdocLinter {
     }
 }
 
-pub static LINTER: EdocLinter = EdocLinter;
+pub static LINTER: OldEdocSyntaxLinter = OldEdocSyntaxLinter;
 
 fn old_edoc_syntax_fix(
     sema: &Semantic,

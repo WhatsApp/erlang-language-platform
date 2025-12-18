@@ -102,7 +102,6 @@ mod debugging_function;
 mod dependent_header;
 mod deprecated_function;
 mod duplicate_module;
-mod edoc;
 mod effect_free_statement;
 mod equality_check_with_unnecessary_operator;
 mod eqwalizer_assists;
@@ -131,6 +130,7 @@ mod no_garbage_collect;
 mod no_nowarn_suppressions;
 mod no_size;
 mod nonstandard_integer_formatting;
+mod old_edoc_syntax;
 mod record_tuple_match;
 mod redundant_assignment;
 mod replace_call;
@@ -1682,7 +1682,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &duplicate_module::LINTER,
     &no_nowarn_suppressions::LINTER,
     &macro_precedence_suprise::LINTER,
-    &edoc::LINTER,
+    &old_edoc_syntax::LINTER,
     &missing_module::LINTER,
     &unused_include::LINTER,
     &misspelled_attribute::LINTER,
