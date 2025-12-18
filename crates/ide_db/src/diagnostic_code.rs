@@ -93,6 +93,7 @@ pub enum DiagnosticCode {
     ListsReverseAppend,
     HirUnresolvedMacro,
     HirUnresolvedInclude,
+    BoundVarInLhs,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -256,6 +257,7 @@ impl DiagnosticCode {
             DiagnosticCode::HirUnresolvedMacro => "W0057".to_string(),
             DiagnosticCode::HirUnresolvedInclude => "W0058".to_string(),
             DiagnosticCode::UnavailableType => "W0059".to_string(),
+            DiagnosticCode::BoundVarInLhs => "W0060".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -271,6 +273,7 @@ impl DiagnosticCode {
             DiagnosticCode::HeadMismatch => "head_mismatch".to_string(),
             DiagnosticCode::SyntaxError => "syntax_error".to_string(),
             DiagnosticCode::BoundVarInPattern => "bound_var_in_pattern".to_string(),
+            DiagnosticCode::BoundVarInLhs => "bound_var_in_lhs".to_string(),
             DiagnosticCode::ModuleMismatch => "module_mismatch".to_string(),
             DiagnosticCode::UnusedMacro => "unused_macro".to_string(),
             DiagnosticCode::UnusedRecordField => "unused_record_field".to_string(),
@@ -486,6 +489,7 @@ impl DiagnosticCode {
             DiagnosticCode::ModuleMismatch => false,
             DiagnosticCode::UnusedInclude => false,
             DiagnosticCode::BoundVarInPattern => false,
+            DiagnosticCode::BoundVarInLhs => false,
             DiagnosticCode::UnusedMacro => false,
             DiagnosticCode::UnusedRecordField => false,
             DiagnosticCode::MutableVarBug => false,

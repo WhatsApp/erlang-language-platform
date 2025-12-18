@@ -45,6 +45,7 @@ app_a/src/cascading.erl:9:5-9:6::[Error] [W0004] Missing ')'
         8:7-8:10: spec for undefined function foo/0
 app_a/src/diagnostics.erl:3:10-3:27::[WeakWarning] [W0037] Unspecific include.
 app_a/src/diagnostics.erl:4:10-4:34::[WeakWarning] [W0037] Unspecific include.
+app_a/src/diagnostics.erl:12:8-12:12::[Warning] [W0060] Match on a bound variable
 app_a/src/diagnostics.erl:4:1-4:36::[Error] [L0000] Issue in included file
         [app_a/include/broken_diagnostics.hrl] 1:8-1:15: P1702: bad attribute
         [app_a/include/broken_diagnostics.hrl] 3:6-3:15: P1702: bad attribute
@@ -60,6 +61,8 @@ app_a/src/lints.erl:5:1-5:14::[Error] [P1700] head mismatch 'head_mismatcX' vs '
 app_a/src/lints.erl:4:22-4:23::[Warning] [W0018] Unexpected ';'
 app_a/src/lints.erl:2:10-2:25::[Error] [L1227] function head_mismatch/1 undefined
 app_a/src/otp27_docstrings.erl:34:9-34:24::[Warning] [W0002] Unused macro (THIS_IS_THE_END)
+app_a/src/otp27_docstrings.erl:24:5-24:6::[Warning] [W0060] Match on a bound variable
+app_a/src/otp27_docstrings.erl:30:5-30:6::[Warning] [W0060] Match on a bound variable
 app_a/src/otp27_sigils.erl:11:6-11:24::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:12:5-12:24::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:13:5-13:24::[Warning] [W0006] this statement has no effect

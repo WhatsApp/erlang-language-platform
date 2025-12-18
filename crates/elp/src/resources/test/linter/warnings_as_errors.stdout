@@ -8,6 +8,8 @@ app_a/src/app_a.erl:20:1-20:4::[Error] [L1230] function bat/2 is unused
 app_a/src/app_a.erl:5:5-5:35::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
 app_a/src/app_a.erl:8:7-8:8::[Warning] [W0018] Unexpected ';'
 app_a/src/app_a.erl:9:1-9:5::[Error] [P1700] head mismatch 'fooX' vs 'food'
+app_a/src/app_a_ssr.erl:7:6-7:7::[Warning] [W0060] Match on a bound variable
+app_a/src/app_a_ssr.erl:8:6-8:7::[Warning] [W0060] Match on a bound variable
 app_a/src/app_a_unused_param.erl:5:5-5:6::[Error] [L1268] variable 'X' is unused
 app_a/src/custom_function_matches.erl:13:5-13:22::[Warning] [W0017] Function 'excluded:function/0' is undefined.
 app_a/src/custom_function_matches.erl:14:5-14:26::[Warning] [W0017] Function 'not_excluded:function/0' is undefined.

@@ -96,6 +96,7 @@ mod application_env;
 mod atoms_exhaustion;
 mod binary_string_to_sigil;
 mod boolean_precedence;
+mod bound_variable;
 mod could_be_a_string_literal;
 mod cross_node_eval;
 mod debugging_function;
@@ -1687,6 +1688,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &unused_include::LINTER,
     &misspelled_attribute::LINTER,
     &boolean_precedence::LINTER,
+    &bound_variable::LINTER,
 ];
 
 /// Unified registry for all types of linters

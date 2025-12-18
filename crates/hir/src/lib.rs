@@ -232,6 +232,10 @@ impl HirIdx {
         }
     }
 
+    pub fn file_id(&self) -> FileId {
+        self.body_origin.file_id()
+    }
+
     /// This function is used to print a representation of the HIR AST
     /// corresponding to the given `HirIdx`.  It is used for debugging
     /// and testing.
