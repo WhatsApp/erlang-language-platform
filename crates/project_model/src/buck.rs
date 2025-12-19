@@ -1643,57 +1643,53 @@ mod tests {
         assert_eq!(expected, actual)
     }
 
-    const BUCK_TESTS_ENABLED: bool = true;
-
     #[track_caller]
     fn check_buck_bxl_query(build_generated: bool, expect: Expect) {
-        if BUCK_TESTS_ENABLED {
-            let buck_root = to_abs_path_buf(&std::env::current_dir().unwrap()).unwrap();
-            // We only need buck_config to get the buck command, everything but the buck root is ignored.
-            let buck_config = BuckConfig {
-                config_path: None,
-                buck_root: Some(buck_root),
-                enabled: true,
-                deps_target: None,
-                deps_targets: vec![],
-                build_deps: false,
-                included_targets: vec![],
-                excluded_targets: vec![],
-                source_root: None,
-                test_application_labels: vec!["test_application".to_string()],
-            };
-            let generated_args = if build_generated {
-                vec!["--build_generated_code", "true"]
-            } else {
-                vec![]
-            };
-            let output = buck_config
-                .buck_command()
-                .arg("bxl")
-                .arg("prelude//erlang/elp.bxl:elp_config")
-                .arg("--")
-                .args(generated_args)
-                .arg("--included_targets")
-                .arg("root//buck_tests_2/auto_gen/...")
-                .output()
-                .unwrap();
-            if !output.status.success() {
-                panic!("{output:#?}");
-            }
-            let string = String::from_utf8(output.stdout).unwrap();
-            let prelude_cell = get_prelude_cell(&buck_config).expect("could not get prelude");
-            let string = string.replace(&prelude_cell, "/[prelude]/");
-
-            let to_replace = env!("CARGO_WORKSPACE_DIR");
-            let string = string.replace(to_replace, "/[..]/");
-            expect.assert_eq(&string);
+        let buck_root = to_abs_path_buf(&std::env::current_dir().unwrap()).unwrap();
+        // We only need buck_config to get the buck command, everything but the buck root is ignored.
+        let buck_config = BuckConfig {
+            config_path: None,
+            buck_root: Some(buck_root),
+            enabled: true,
+            deps_target: None,
+            deps_targets: vec![],
+            build_deps: false,
+            included_targets: vec![],
+            excluded_targets: vec![],
+            source_root: None,
+            test_application_labels: vec!["test_application".to_string()],
+        };
+        let generated_args = if build_generated {
+            vec!["--build_generated_code", "true"]
+        } else {
+            vec![]
+        };
+        let output = buck_config
+            .buck_command()
+            .arg("bxl")
+            .arg("prelude//erlang/elp.bxl:elp_config")
+            .arg("--")
+            .args(generated_args)
+            .arg("--included_targets")
+            .arg("root//buck_tests_2/auto_gen/...")
+            .output()
+            .unwrap();
+        if !output.status.success() {
+            panic!("{output:#?}");
         }
+        let string = String::from_utf8(output.stdout).unwrap();
+        let prelude_cell = get_prelude_cell(&buck_config).expect("could not get prelude");
+        let string = string.replace(&prelude_cell, "/[prelude]/");
+
+        let to_replace = env!("CARGO_WORKSPACE_DIR");
+        let string = string.replace(to_replace, "/[..]/");
+        expect.assert_eq(&string);
     }
 
     #[test]
     #[ignore]
     fn build_info_buck_bxl_query() {
-        if BUCK_TESTS_ENABLED {
+        if cfg!(feature = "buck") {
             check_buck_bxl_query(
                 false,
                 expect![[r#"
@@ -1859,7 +1855,7 @@ mod tests {
     #[test]
     #[ignore]
     fn build_info_buck_bxl_generated_query() {
-        if BUCK_TESTS_ENABLED {
+        if cfg!(feature = "buck") {
             // Note that there is now a value for `srcs` in the
             // "root//buck_tests_2/auto_gen/auto_gen_a:generated_srcs"
             // target
