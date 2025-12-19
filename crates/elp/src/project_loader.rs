@@ -100,11 +100,8 @@ impl ProjectLoader {
     ) -> Option<(ElpConfig, Result<ProjectManifest>, ProjectManifest)> {
         let mut path_it = path;
         loop {
-            if let Some(value) = self.project_roots.get(path_it) {
-                return match value {
-                    None => Some(self.load_manifest(path_it)),
-                    Some(_) => None,
-                };
+            if self.project_roots.contains_key(path_it) {
+                return None;
             }
             match path_it.parent() {
                 Some(parent) => path_it = parent,
