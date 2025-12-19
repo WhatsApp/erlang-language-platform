@@ -3,3 +3,4 @@
 *wa.build_info
 *_build/
 *rebar.lock
+buck-out/
