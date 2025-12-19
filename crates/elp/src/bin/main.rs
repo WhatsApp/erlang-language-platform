@@ -1952,7 +1952,7 @@ mod tests {
             simple_snapshot_expect_stderror(
                 args_vec!["lint",],
                 "buck_bad_config",
-                expect_file!("../resources/test/buck_bad_config/bxl_error_message.stdout"),
+                expect_file!("../resources/test/buck_bad_config/bxl_error_message_oss.stdout"),
                 true,
                 None,
                 true,
