@@ -1,0 +1,5 @@
+load("@prelude//toolchains:demo.bzl", "system_demo_toolchains")
+
+oncall("vscode_erlang")
+
+system_demo_toolchains()

@@ -1,0 +1,41 @@
+oncall("vscode_erlang")
+
+erlang_application(
+    name = "app_a",
+    srcs = glob(["app_a/src/*.erl"]),
+    app_src = "app_a/src/app_a.app.src",
+    applications = [
+    ],
+    includes = glob(["app_a/include/*.hrl"]),
+    labels = ["user_application"],
+    version = "1.0.0",
+)
+
+erlang_application(
+    name = "app_b",
+    srcs = glob(["app_b/src/*.erl"]),
+    app_src = "app_b/src/app_b.app.src",
+    labels = ["user_application"],
+    version = "1.0.0",
+)
+
+erlang_tests(
+    suites = [
+        "app_a/test/app_a_SUITE.erl",
+    ],
+    deps = [":app_a"],
+)
+
+erlang_application(
+    name = "app_a_test_utils",
+    srcs = [
+        "app_a/test/app_a_test_helpers.erl",
+        "app_a/test/app_a_test_helpers_not_opted_in.erl",
+        "app_a/test/app_test_helpers_no_errors.erl",
+    ],
+    applications = [":app_a"],
+    labels = [
+        "test_application",
+        "test_utils",
+    ],
+)
