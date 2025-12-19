@@ -1,0 +1,12 @@
+oncall("vscode_erlang")
+
+erlang_application(
+    name = "generated_headers",
+    includes = [
+        "out/generated_header.hrl",
+    ],
+    labels = ["generated"],
+    visibility = [
+        "PUBLIC",
+    ],
+)

@@ -1,0 +1,14 @@
+oncall("vscode_erlang")
+
+erlang_application(
+    name = "hover",
+    srcs = glob([
+        "src/*.erl",
+    ]),
+    app_src = "src/hover.app.src",
+    applications = [],
+    includes = [],
+    labels = ["user_application"],
+    version = "1.0.0",
+    visibility = ["PUBLIC"],
+)
