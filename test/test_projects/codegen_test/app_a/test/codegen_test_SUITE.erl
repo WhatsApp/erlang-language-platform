@@ -1,8 +1,4 @@
-%%%-------------------------------------------------------------------
-%%% @doc
 %%% Test suite for code generation functionality
-%%% @end
-%%%-------------------------------------------------------------------
 -module(codegen_test_SUITE).
 
 -include_lib("stdlib/include/assert.hrl").
