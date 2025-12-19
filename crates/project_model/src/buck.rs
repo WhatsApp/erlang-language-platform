@@ -1643,9 +1643,7 @@ mod tests {
         assert_eq!(expected, actual)
     }
 
-    // TODO: enable when buck is properly set up on github project
-    // @fb-only: const BUCK_TESTS_ENABLED: bool = true;
-    const BUCK_TESTS_ENABLED: bool = false; // @oss-only
+    const BUCK_TESTS_ENABLED: bool = true;
 
     #[track_caller]
     fn check_buck_bxl_query(build_generated: bool, expect: Expect) {
