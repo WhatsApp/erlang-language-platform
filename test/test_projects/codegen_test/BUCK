@@ -1,9 +1,7 @@
-load("@fbcode_macros//build_defs:native_rules.bzl", "buck_genrule")
-
 oncall("vscode_erlang")
 
 # Code generation rule - generates Erlang modules from template files
-buck_genrule(
+genrule(
     name = "example_service_types_erl",
     srcs = [
         "templates/example_service_types.erl",
@@ -11,11 +9,10 @@ buck_genrule(
     outs = {
         "example_service_types.erl": ["example_service_types.erl"],
     },
-    bash = "cp $SRCDIR/templates/example_service_types.erl $OUT/example_service_types.erl",
-    cmd_exe = "copy %SRCDIR%\\templates\\example_service_types.erl %OUT%\\example_service_types.erl",
+    cmd = "cp $SRCDIR/templates/example_service_types.erl $OUT/example_service_types.erl",
 )
 
-buck_genrule(
+genrule(
     name = "example_service_client_erl",
     srcs = [
         "templates/example_service_client.erl",
@@ -23,11 +20,10 @@ buck_genrule(
     outs = {
         "example_service_client.erl": ["example_service_client.erl"],
     },
-    bash = "cp $SRCDIR/templates/example_service_client.erl $OUT/example_service_client.erl",
-    cmd_exe = "copy %SRCDIR%\\templates\\example_service_client.erl %OUT%\\example_service_client.erl",
+    cmd = "cp $SRCDIR/templates/example_service_client.erl $OUT/example_service_client.erl",
 )
 
-buck_genrule(
+genrule(
     name = "example_service_types_hrl",
     srcs = [
         "templates/example_service_types.hrl",
@@ -35,8 +31,7 @@ buck_genrule(
     outs = {
         "example_service_types.hrl": ["example_service_types.hrl"],
     },
-    bash = "cp $SRCDIR/templates/example_service_types.hrl $OUT/example_service_types.hrl",
-    cmd_exe = "copy %SRCDIR%\\templates\\example_service_types.hrl %OUT%\\example_service_types.hrl",
+    cmd = "cp $SRCDIR/templates/example_service_types.hrl $OUT/example_service_types.hrl",
 )
 
 # Erlang library containing only the generated code

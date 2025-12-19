@@ -1,7 +1,7 @@
 # Code Generation Test Project
 
 This test project demonstrates Buck2-based code generation for Erlang
-applications using `buck_genrule`.
+applications using `genrule`.
 
 ## Project Structure
 
@@ -37,10 +37,10 @@ copied to the output directory during the build.
 ### 2. Code Generation
 
 The code is generated automatically during the build process using a
-`buck_genrule`:
+`genrule`:
 
 ```python
-buck_genrule(
+genrule(
     name = "example_service_types_erl",
     srcs = [
         "templates/example_service_types.erl",
@@ -48,8 +48,7 @@ buck_genrule(
     outs = {
         "example_service_types.erl": ["example_service_types.erl"],
     },
-    bash = "cp $SRCDIR/templates/example_service_types.erl $OUT/example_service_types.erl",
-    cmd_exe = "copy %SRCDIR%\\templates\\example_service_types.erl %OUT%\\example_service_types.erl",
+    cmd = "cp $SRCDIR/templates/example_service_types.erl $OUT/example_service_types.erl",
 )
 ```
 
@@ -58,7 +57,7 @@ The genrule:
 - Takes the template file as input (`srcs`)
 - Defines named outputs using `outs` parameter (creates subtargets for each
   file)
-- Uses `cp` (bash) or `copy` (cmd_exe) to copy template files to `$OUT`
+- Uses `cp` command to copy template files to `$OUT`
 - Outputs files to `$OUT` directory in `buck-out/`
 
 ### 3. Build Integration
