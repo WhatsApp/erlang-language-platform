@@ -970,7 +970,9 @@ mod tests {
             assert!(tmp_file.clone().exists());
             let content = fs::read_to_string(tmp_file).unwrap();
             let mut buck_config = BuckConfig::default();
-            buck_config.buck_root = Some(AbsPathBuf::assert_utf8(current_dir().unwrap()));
+            buck_config.buck_root = Some(AbsPathBuf::assert_utf8(
+                current_dir().unwrap().join(path_str.clone()),
+            ));
             let prelude_cell = get_prelude_cell(&buck_config).expect("could not get prelude");
             let prelude_cell = prelude_cell.strip_prefix("/").unwrap();
             let content = content.replace(prelude_cell, "/[prelude]/");
@@ -1111,7 +1113,7 @@ mod tests {
                 "--to",
                 tmp_file.clone(),
                 "--project",
-                path_str
+                path_str.clone()
             ];
             let (stdout, stderr, code) = elp(args);
             assert_eq!(
@@ -1126,7 +1128,9 @@ mod tests {
             assert!(tmp_file.clone().exists());
             let content = fs::read_to_string(tmp_file).unwrap();
             let mut buck_config = BuckConfig::default();
-            buck_config.buck_root = Some(AbsPathBuf::assert_utf8(current_dir().unwrap()));
+            buck_config.buck_root = Some(AbsPathBuf::assert_utf8(
+                current_dir().unwrap().join(path_str.clone()),
+            ));
             let prelude_cell = get_prelude_cell(&buck_config).expect("could not get prelude");
             let prelude_cell = prelude_cell.strip_prefix("/").unwrap();
             let content = content.replace(prelude_cell, "/[prelude]/");
@@ -1948,7 +1952,8 @@ mod tests {
             simple_snapshot_expect_stderror(
                 args_vec!["lint",],
                 "buck_bad_config",
-                expect_file!("../resources/test/buck_bad_config/bxl_error_message.stdout"),
+                // @fb-only: expect_file!("../resources/test/buck_bad_config/bxl_error_message.stdout"),
+                expect_file!("../resources/test/buck_bad_config/bxl_error_message_oss.stdout"), // @oss-only
                 true,
                 None,
                 true,
