@@ -8,7 +8,7 @@
  * above-listed licenses.
  */
 
-// Diagnostic: edoc
+// Diagnostic: old_edoc_syntax
 
 use elp_ide_assists::Assist;
 use elp_ide_assists::helpers;
