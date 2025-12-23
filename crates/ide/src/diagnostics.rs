@@ -860,8 +860,8 @@ impl<T: SsrPatternsLinter> SsrPatternsDiagnostics for T {
 }
 
 pub(crate) struct GenericLinterMatchContext<Context> {
-    range: TextRange,
-    context: Context,
+    pub range: TextRange,
+    pub context: Context,
 }
 
 // A trait that simplifies writing generic linters
@@ -1617,7 +1617,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &unused_function_args::DESCRIPTOR,
         &trivial_match::DESCRIPTOR,
         &redundant_assignment::DESCRIPTOR,
-        &unused_record_field::DESCRIPTOR,
         &mutable_variable::DESCRIPTOR,
         &effect_free_statement::DESCRIPTOR,
         &simplify_negation::DESCRIPTOR,
@@ -1729,6 +1728,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &misspelled_attribute::LINTER,
     &boolean_precedence::LINTER,
     &bound_variable::LINTER,
+    &unused_record_field::LINTER,
 ];
 
 /// Unified registry for all types of linters

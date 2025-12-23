@@ -12,37 +12,50 @@
 //
 // Return a warning if a record field defined in an .erl file has no references to it
 
+use std::borrow::Cow;
+
 use elp_ide_db::SymbolDefinition;
 use elp_ide_db::elp_base_db::FileId;
-use elp_ide_db::elp_base_db::FileKind;
 use elp_syntax::AstNode;
-use elp_syntax::TextRange;
 use hir::Semantic;
 
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use crate::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::DiagnosticTag;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: true,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, file_kind| {
-        unused_record_field(diags, sema, file_id, file_kind);
-    },
-};
+pub(crate) struct UnusedRecordFieldLinter;
 
-fn unused_record_field(
-    acc: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-    file_kind: FileKind,
-) -> Option<()> {
-    if file_kind.is_module() {
+impl Linter for UnusedRecordFieldLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::UnusedRecordField
+    }
+    fn description(&self) -> &'static str {
+        "Unused record field."
+    }
+    fn should_process_generated_files(&self) -> bool {
+        true
+    }
+    fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
+        sema.db.file_kind(file_id).is_module()
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Context {
+    name: String,
+}
+
+impl GenericLinter for UnusedRecordFieldLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Context>>> {
+        let mut res = Vec::new();
         let def_map = sema.def_map(file_id);
         for (name, def) in def_map.get_records() {
             // Only run the check for records defined in the local module,
@@ -65,25 +78,28 @@ fn unused_record_field(
                                 Some(name) => name.syntax().text_range(),
                                 None => source.syntax().text_range(),
                             };
-                            let d = make_diagnostic(range, &combined_name);
-                            acc.push(d);
+                            let context = Context {
+                                name: combined_name,
+                            };
+                            res.push(GenericLinterMatchContext { range, context });
                         }
                     }
                 }
             }
         }
+        Some(res)
     }
-    Some(())
+
+    fn match_description(&self, context: &Self::Context) -> Cow<'_, str> {
+        Cow::Owned(format!("Unused record field ({})", context.name))
+    }
+
+    fn tag(&self, _context: &Self::Context) -> Option<DiagnosticTag> {
+        Some(DiagnosticTag::Unused)
+    }
 }
 
-fn make_diagnostic(name_range: TextRange, name: &str) -> Diagnostic {
-    Diagnostic::warning(
-        DiagnosticCode::UnusedRecordField,
-        name_range,
-        format!("Unused record field ({name})"),
-    )
-    .unused()
-}
+pub static LINTER: UnusedRecordFieldLinter = UnusedRecordFieldLinter;
 
 #[cfg(test)]
 mod tests {
@@ -100,7 +116,7 @@ mod tests {
 
 -record(used_field, {field_a, field_b = 42}).
 -record(unused_field, {field_c, field_d}).
-                             %% ^^^^^^^ warning: W0003: Unused record field (unused_field.field_d)
+                             %% ^^^^^^^ 💡 warning: W0003: Unused record field (unused_field.field_d)
 
 main(#used_field{field_a = A, field_b = B}) ->
     {A, B};
@@ -120,7 +136,7 @@ main(R) ->
 
 -record(used_field, {field_a, field_b = 42}).
 -record(unused_field, {field_c :: atom(), field_d :: number()}).
-                                       %% ^^^^^^^ warning: W0003: Unused record field (unused_field.field_d)
+                                       %% ^^^^^^^ 💡 warning: W0003: Unused record field (unused_field.field_d)
 
 main(#used_field{field_a = A, field_b = B}) ->
     {A, B};
@@ -189,9 +205,9 @@ main(#used_field{field_a = A}) ->
             r#"
 -module(main).
 -record(a, {a1, a2}).
-             %% ^^ warning: W0003: Unused record field (a.a2)
+             %% ^^ 💡 warning: W0003: Unused record field (a.a2)
 -record(b, {b1, b2}).
-         %% ^^ warning: W0003: Unused record field (b.b1)
+         %% ^^ 💡 warning: W0003: Unused record field (b.b1)
 main(#a{a1 = #b{b2 = B2}} = A) ->
     {A, B2}.
         "#,
