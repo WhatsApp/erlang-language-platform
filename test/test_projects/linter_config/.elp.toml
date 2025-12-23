@@ -1,0 +1,5 @@
+[buck]
+enabled = true
+build_deps = false
+included_targets = [ "root//linter_config/..." ]
+source_root = "linter_config"

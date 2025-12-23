@@ -50,6 +50,7 @@ use elp_ide_db::text_edit::TextEdit;
 use elp_ide_ssr::Match;
 use elp_ide_ssr::SsrSearchScope;
 use elp_ide_ssr::match_pattern;
+use elp_project_model::AppName;
 use elp_syntax::NodeOrToken;
 use elp_syntax::Parse;
 use elp_syntax::SourceFile;
@@ -550,12 +551,37 @@ pub(crate) trait Linter {
     }
 }
 
+fn should_process_app(
+    app_name: &Option<AppName>,
+    config: &DiagnosticsConfig,
+    diagnostic_code: &DiagnosticCode,
+) -> bool {
+    let app = match app_name {
+        Some(app) => app.to_string(),
+        None => return true,
+    };
+
+    if let Some(lint_config) = config.lint_config.as_ref()
+        && let Some(linter_config) = lint_config.linters.get(diagnostic_code)
+        && let Some(ref excluded) = linter_config.exclude_apps
+        && excluded.contains(&app)
+    {
+        return false;
+    }
+
+    true
+}
+
 fn should_run(
     linter: &dyn Linter,
     config: &DiagnosticsConfig,
+    app_name: &Option<AppName>,
     is_generated: bool,
     is_test: bool,
 ) -> bool {
+    if !should_process_app(app_name, config, &linter.id()) {
+        return false;
+    }
     let is_enabled = if let Some(lint_config) = config.lint_config.as_ref() {
         lint_config
             .get_is_enabled_override(&linter.id())
@@ -1218,6 +1244,16 @@ impl LintConfig {
         self.linters.get(diagnostic_code)?.experimental
     }
 
+    /// Get the exclude_apps override for a linter based on its diagnostic code.
+    pub fn get_exclude_apps_override(
+        &self,
+        diagnostic_code: &DiagnosticCode,
+    ) -> Option<Vec<String>> {
+        self.linters
+            .get(diagnostic_code)
+            .and_then(|c| c.exclude_apps.clone())
+    }
+
     pub fn get_function_call_linter_config(
         &self,
         diagnostic_code: &DiagnosticCode,
@@ -1341,6 +1377,7 @@ pub struct LinterConfig {
     pub include_tests: Option<bool>,
     pub include_generated: Option<bool>,
     pub experimental: Option<bool>,
+    pub exclude_apps: Option<Vec<String>>,
     #[serde(flatten)]
     pub config: Option<LinterTraitConfig>,
 }
@@ -1361,6 +1398,7 @@ impl LinterConfig {
             include_tests: other.include_tests.or(self.include_tests),
             include_generated: other.include_generated.or(self.include_generated),
             experimental: other.experimental.or(self.experimental),
+            exclude_apps: other.exclude_apps.or(self.exclude_apps),
             config: merged_config,
         }
     }
@@ -1555,6 +1593,7 @@ pub fn native_diagnostics(
     } else {
         FxHashMap::default()
     };
+    let app_name = db.file_app_name(file_id);
     let metadata = db.elp_metadata(file_id);
     // TODO: can we  ever disable DiagnosticCode::SyntaxError?
     //       In which case we must check labeled_syntax_errors
@@ -1563,6 +1602,7 @@ pub fn native_diagnostics(
             && (config.experimental && d.has_category(Category::Experimental)
                 || !d.has_category(Category::Experimental))
             && !d.should_be_suppressed(&metadata, config)
+            && should_process_app(&app_name, config, &d.code)
     });
 
     LabeledDiagnostics {
@@ -1613,20 +1653,20 @@ pub fn diagnostics_from_descriptors(
         .db
         .is_test_suite_or_test_helper(file_id)
         .unwrap_or(false);
+    let app_name = sema.db.file_app_name(file_id);
     descriptors.iter().for_each(|descriptor| {
         if descriptor.conditions.enabled(config, is_generated, is_test) {
-            if descriptor.conditions.default_disabled {
-                // Filter the returned diagnostics to ensure they are
-                // enabled
-                let mut diags: Vec<Diagnostic> = Vec::default();
-                (descriptor.checker)(&mut diags, sema, file_id, file_kind);
-                for diag in diags {
-                    if config.enabled.contains(&diag.code) {
-                        res.push(diag);
-                    }
+            let mut diags: Vec<Diagnostic> = Vec::default();
+            (descriptor.checker)(&mut diags, sema, file_id, file_kind);
+            for diag in diags {
+                // Check if this diagnostic is enabled (for default_disabled descriptors)
+                // and if the app is not excluded for this diagnostic code
+                let is_enabled =
+                    !descriptor.conditions.default_disabled || config.enabled.contains(&diag.code);
+                let app_allowed = should_process_app(&app_name, config, &diag.code);
+                if is_enabled && app_allowed {
+                    res.push(diag);
                 }
-            } else {
-                (descriptor.checker)(res, sema, file_id, file_kind);
             }
         }
     });
@@ -1734,11 +1774,12 @@ fn diagnostics_from_linters(
         .db
         .is_test_suite_or_test_helper(file_id)
         .unwrap_or(false);
+    let app_name = sema.db.file_app_name(file_id);
 
     for l in linters {
         let linter = l.as_linter();
         if linter.should_process_file_id(sema, file_id)
-            && should_run(linter, config, is_generated, is_test)
+            && should_run(linter, config, &app_name, is_generated, is_test)
         {
             let severity = if let Some(lint_config) = config.lint_config.as_ref() {
                 lint_config
@@ -2300,11 +2341,14 @@ pub fn erlang_service_diagnostics(
             diags
         };
 
+        let app_name = db.file_app_name(file_id);
         let metadata = db.elp_metadata(file_id);
         let diags = diags
             .into_iter()
             .filter(|(_file_id, d)| {
-                !d.should_be_suppressed(&metadata, config) && !config.disabled.contains(&d.code)
+                !d.should_be_suppressed(&metadata, config)
+                    && !config.disabled.contains(&d.code)
+                    && should_process_app(&app_name, config, &d.code)
             })
             .map(|(file_id, d)| {
                 (
@@ -3995,6 +4039,7 @@ main(X) ->
                 include_tests: None,
                 include_generated: None,
                 experimental: None,
+                exclude_apps: None,
                 config: None,
             },
         );
@@ -4037,6 +4082,7 @@ main(X) ->
                 include_tests: Some(true),
                 include_generated: None,
                 experimental: None,
+                exclude_apps: None,
                 config: None,
             },
         );
@@ -4078,6 +4124,7 @@ main(X) ->
                 include_tests: None,
                 include_generated: Some(true),
                 experimental: None,
+                exclude_apps: None,
                 config: None,
             },
         );
@@ -4120,6 +4167,7 @@ main(X) ->
                 include_tests: None,
                 include_generated: None,
                 experimental: Some(true),
+                exclude_apps: None,
                 config: None,
             },
         );
@@ -4164,6 +4212,7 @@ main(X) ->
                 include_tests: None,
                 include_generated: None,
                 experimental: None,
+                exclude_apps: None,
                 config: None,
             },
         );
@@ -4186,6 +4235,47 @@ main(X) ->
             warning() ->
                 erlang:garbage_collect().
             %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
+            //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+            -module(erlang).
+            -export([garbage_collect/0]).
+            garbage_collect() -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_linter_exclude_apps_override() {
+        let mut lint_config = LintConfig::default();
+        lint_config.linters.insert(
+            DiagnosticCode::NoGarbageCollect,
+            LinterConfig {
+                is_enabled: Some(false),
+                severity: None,
+                include_tests: None,
+                include_generated: None,
+                experimental: None,
+                exclude_apps: Some(vec!["my_app".to_string()]),
+                config: None,
+            },
+        );
+
+        let config = DiagnosticsConfig::default()
+            .configure_diagnostics(
+                &lint_config,
+                &Some("no_garbage_collect".to_string()),
+                &None,
+                FallBackToAll::No,
+            )
+            .unwrap();
+        check_diagnostics_with_config(
+            config,
+            r#"
+            //- /src/main.erl app:my_app
+            -module(main).
+            -export([warning/0]).
+
+            warning() ->
+                erlang:garbage_collect().
             //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
             -module(erlang).
             -export([garbage_collect/0]).
@@ -4241,6 +4331,7 @@ main(X) ->
                 include_tests: None,
                 include_generated: None,
                 experimental: None,
+                exclude_apps: None,
                 config: Some(LinterTraitConfig::FunctionCallLinterConfig(
                     FunctionCallLinterConfig {
                         include: Some(vec![FunctionMatch::mf("mod_a", "func_a")]),
@@ -4273,6 +4364,7 @@ main(X) ->
                 include_tests: Some(true),
                 include_generated: None,
                 experimental: None,
+                exclude_apps: None,
                 config: Some(LinterTraitConfig::FunctionCallLinterConfig(
                     FunctionCallLinterConfig {
                         include: Some(vec![FunctionMatch::mf("mod_b", "func_b")]),
@@ -4290,6 +4382,7 @@ main(X) ->
                 include_tests: None,
                 include_generated: Some(true),
                 experimental: None,
+                exclude_apps: None,
                 config: None,
             },
         );

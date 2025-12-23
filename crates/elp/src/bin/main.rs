@@ -2265,6 +2265,18 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
+    fn lint_linter_config_basic(buck: bool) {
+        simple_snapshot_sorted(
+            args_vec!["lint", "--read-config", "--no-stream"],
+            "linter_config",
+            expect_file!("../resources/test/linter_config/basic.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
     fn eqwalizer_tests_check(buck: bool) {
         eqwalize_all_snapshots(
             "eqwalizer_tests",

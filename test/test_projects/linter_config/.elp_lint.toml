@@ -1,0 +1,5 @@
+[linters.L1260] # Unused record, produced by the Erlang Service
+exclude_apps = ["app_b", "app_c"]
+
+[linters.unused_macro]
+exclude_apps = ["app_c"]

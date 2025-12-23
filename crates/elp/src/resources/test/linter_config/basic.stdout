@@ -1,0 +1,5 @@
+Diagnostics reported:
+Reporting all diagnostics codes
+app_a/src/app_a.erl:3:9-3:16::[Warning] [W0002] Unused macro (MACRO_A)
+app_a/src/app_a.erl:4:9-4:14::[Warning] [L1260] record rec_a is unused
+app_b/src/app_b.erl:3:9-3:16::[Warning] [W0002] Unused macro (MACRO_B)
