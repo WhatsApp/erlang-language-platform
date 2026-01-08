@@ -11,3 +11,4 @@
 // Placeholder file to ensure third-party dependencies required
 // for ELP buckification are not removed as unused.
 pub use eetf::Term;
+pub use rowan::Language;
