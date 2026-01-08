@@ -12,3 +12,4 @@
 // for ELP buckification are not removed as unused.
 pub use eetf::Term;
 pub use rowan::Language;
+pub use triple_accel::levenshtein;
