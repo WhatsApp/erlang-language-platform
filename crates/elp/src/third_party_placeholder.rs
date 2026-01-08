@@ -13,4 +13,5 @@
 pub use bpaf::Parser;
 pub use eetf::Term;
 pub use rowan::Language;
+pub use salsa::Database;
 pub use triple_accel::levenshtein;
