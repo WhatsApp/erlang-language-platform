@@ -101,7 +101,7 @@ This can be overriden per module via the following attributes:
 
 | Key            | Type           | Description                                                                                                                                          |
 | -------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| enabled_all    | Boolean        | Enable eqwalizer for all modules by default, but still honours the module-specific overrides listed above and the ignore_modules list.               |
+| enable_all     | Boolean        | Enable eqwalizer for all modules by default, but still honours the module-specific overrides listed above and the ignore_modules list.               |
 | max_tasks      | Integer        | Max number of parallel eqWAlizer tasks, defaults to 4 (eqWAlizer instances are memory intensive). This only applies to using eqWAlizer from the CLI. |
 | ignore_modules | List of String | Disable eqwalizer for individual modules from the config.                                                                                            |
 
