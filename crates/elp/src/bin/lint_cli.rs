@@ -1267,17 +1267,17 @@ impl<'a> Lints<'a> {
 
     fn write_fix_result(&self, file_id: FileId, name: &String) -> Option<()> {
         let file_text = self.analysis_host.analysis().file_text(file_id).ok()?;
-        if self.args.in_place {
-            let file_path = self.vfs.file_path(file_id);
-            let to_path = file_path.as_path()?;
-            let mut output = File::create(to_path).ok()?;
-            write!(output, "{file_text}").ok()?;
-        } else if let Some(to) = &self.args.to {
+        if let Some(to) = &self.args.to {
+            // --to takes priority: write to specified directory
             let to_path = to.join(format!("{name}.erl"));
             let mut output = File::create(to_path).ok()?;
             write!(output, "{file_text}").ok()?;
         } else {
-            return None;
+            // Default: write in-place (previously required --in-place flag)
+            let file_path = self.vfs.file_path(file_id);
+            let to_path = file_path.as_path()?;
+            let mut output = File::create(to_path).ok()?;
+            write!(output, "{file_text}").ok()?;
         };
         Some(())
     }

@@ -1771,15 +1771,22 @@ mod tests {
         // test should access the same test project, to prevent race
         // conditions.
 
-        do_lint_applies_fix_in_place(false);
+        // Test with explicit --in-place flag
+        do_lint_applies_fix_in_place(false, true);
         if cfg!(feature = "buck") {
-            do_lint_applies_fix_in_place(true);
+            do_lint_applies_fix_in_place(true, true);
+        }
+
+        // Test without --in-place flag (default behavior should be the same)
+        do_lint_applies_fix_in_place(false, false);
+        if cfg!(feature = "buck") {
+            do_lint_applies_fix_in_place(true, false);
         }
     }
 
-    fn do_lint_applies_fix_in_place(buck: bool) {
+    fn do_lint_applies_fix_in_place(buck: bool, explicit_in_place: bool) {
         let project = "in_place_tests";
-        check_lint_fix_stderr(
+        let args = if explicit_in_place {
             args_vec![
                 "lint",
                 "--module",
@@ -1788,7 +1795,19 @@ mod tests {
                 "P1700",
                 "--apply-fix",
                 "--in-place"
-            ],
+            ]
+        } else {
+            args_vec![
+                "lint",
+                "--module",
+                "lints",
+                "--diagnostic-filter",
+                "P1700",
+                "--apply-fix"
+            ]
+        };
+        check_lint_fix_stderr(
+            args,
             project,
             expect_file!("../resources/test/diagnostics/parse_elp_lint_fix.stdout"),
             101,

@@ -307,12 +307,13 @@ pub struct Lint {
     #[bpaf(argument("CONFIG_FILE"))]
     pub config_file: Option<String>,
 
-    /// If the diagnostic has an associated fix, apply it. The modified file will be in the --to directory, or original file if --in-place is set.
+    /// If the diagnostic has an associated fix, apply it. By default, modifies the original file in-place. Use --to to write to a different directory.
     pub apply_fix: bool,
     /// Only apply elp:ignore fixes
     pub ignore_fix_only: bool,
 
-    /// When applying a fix, modify the original file.
+    /// When applying a fix, modify the original file. This is the default behavior; option retained for backwards compatibility.
+    #[allow(dead_code)]
     pub in_place: bool,
     /// When applying a fix, put the results in this directory path
     #[bpaf(argument("TO"))]
