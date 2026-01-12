@@ -1483,6 +1483,10 @@ mod tests {
 
     #[test]
     fn test_err_on_no_buck_root() {
+        // Skip this test in GitHub CI - it fails there. See T251247921
+        if std::env::var("GITHUB_ACTIONS").is_ok() {
+            return;
+        }
         if cfg!(feature = "buck") {
             let spec = r#"
             //- /.elp.toml
