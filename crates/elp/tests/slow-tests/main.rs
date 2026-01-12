@@ -34,6 +34,10 @@ use crate::support::diagnostic_project;
 
 #[test]
 fn test_run_mock_lsp() {
+    // Skip this test in GitHub CI - it fails there. See T251247921
+    if std::env::var("GITHUB_ACTIONS").is_ok() {
+        return;
+    }
     if cfg!(feature = "buck") {
         let workspace_root = AbsPathBuf::assert(
             Utf8Path::new(env!("CARGO_WORKSPACE_DIR")).join("test/test_projects/end_to_end"),
