@@ -229,10 +229,7 @@ impl RebarProject {
                     .map(into_string)
                     .collect::<Result<_>>()?,
                 include_dirs,
-                macros: into_vec(map_pop(&mut term, "macros")?)?
-                    .into_iter()
-                    .map(|term: eetf::Term| into_tuple(term))
-                    .collect::<Result<_>>()?,
+                macros: into_macros(map_pop(&mut term, "macros")?)?,
                 parse_transforms: into_vec(map_pop(&mut term, "parse_transforms")?)?,
                 app_type: is_dep,
                 include_path: vec![],
@@ -312,6 +309,52 @@ fn into_bin(term: eetf::Term) -> Result<Vec<u8>> {
 
 fn into_string(term: eetf::Term) -> Result<String> {
     Ok(String::from_utf8(into_bin(term)?)?)
+}
+
+/// Convert a macro value from rebar3 manifest format to proper eetf::Term.
+/// rebar3 stores macro values as binaries (e.g., <<"true">> for -D TEST=true).
+/// We need to parse these and convert to the appropriate term type.
+fn convert_macro_value(term: eetf::Term) -> eetf::Term {
+    match term {
+        eetf::Term::Binary(eetf::Binary { bytes }) => {
+            // Try to parse the binary as a string
+            if let Ok(s) = String::from_utf8(bytes.clone()) {
+                // Try to parse as integer first
+                if let Ok(n) = s.parse::<i32>() {
+                    return eetf::FixInteger::from(n).into();
+                }
+                // Otherwise treat as an atom (handles true, false, and other atoms)
+                return eetf::Atom::from(s).into();
+            }
+            // If not valid UTF-8, keep as binary
+            eetf::Term::Binary(eetf::Binary { bytes })
+        }
+        // Non-binary values pass through unchanged
+        other => other,
+    }
+}
+
+/// Parse macros from rebar3 manifest.
+/// Supports both old format (list of maps with key/value) and new format (direct map).
+/// Old format (rebar3 < 3.26.0): [#{key => 'TEST', value => <<"true">>}]
+/// New format (rebar3 >= 3.26.0): #{'TEST' => <<"true">>}
+fn into_macros(term: eetf::Term) -> Result<Vec<eetf::Term>> {
+    match term {
+        // New format: direct map #{'TEST' => <<"true">>}
+        eetf::Term::Map(eetf::Map { map }) => map
+            .into_iter()
+            .map(|(key, value)| {
+                let converted_value = convert_macro_value(value);
+                Ok(eetf::Term::Tuple(eetf::Tuple::from(vec![
+                    key,
+                    converted_value,
+                ])))
+            })
+            .collect(),
+        // Old format: list of maps [#{key => ..., value => ...}]
+        eetf::Term::List(eetf::List { elements }) => elements.into_iter().map(into_tuple).collect(),
+        _ => bail!("expected a map or list for macros, got: {:?}", term),
+    }
 }
 
 fn into_tuple(mut term: eetf::Term) -> Result<eetf::Term> {
