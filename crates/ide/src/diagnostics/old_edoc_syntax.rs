@@ -42,10 +42,6 @@ impl Linter for OldEdocSyntaxLinter {
     fn description(&self) -> &'static str {
         "EDoc style comments are deprecated. Please use Markdown instead."
     }
-
-    fn should_process_test_files(&self) -> bool {
-        false
-    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
