@@ -861,25 +861,33 @@ impl<'a, T> FoldCtx<'a, T> {
                 };
                 self.do_fold_expr(*arity, r)
             }
-            crate::Expr::Closure { clauses, name: _ } => clauses.iter().fold(
-                acc,
-                |acc,
-                 Clause {
-                     pats,
-                     guards,
-                     exprs,
-                 }| {
-                    let mut r = pats
-                        .iter()
-                        .fold(acc, |acc, pat_id| self.do_fold_pat(*pat_id, acc));
-                    self.parents.push(ParentId::Constructor(Constructor::Guard));
-                    r = guards
-                        .iter()
-                        .fold(r, |acc, exprs| self.do_fold_exprs(exprs, acc));
-                    self.parents.pop();
-                    self.do_fold_exprs(exprs, r)
-                },
-            ),
+            crate::Expr::Closure { clauses, name } => {
+                let mut r = if let Some(name_id) = name {
+                    self.do_fold_pat(*name_id, acc)
+                } else {
+                    acc
+                };
+                r = clauses.iter().fold(
+                    r,
+                    |acc,
+                     Clause {
+                         pats,
+                         guards,
+                         exprs,
+                     }| {
+                        let mut r = pats
+                            .iter()
+                            .fold(acc, |acc, pat_id| self.do_fold_pat(*pat_id, acc));
+                        self.parents.push(ParentId::Constructor(Constructor::Guard));
+                        r = guards
+                            .iter()
+                            .fold(r, |acc, exprs| self.do_fold_exprs(exprs, acc));
+                        self.parents.pop();
+                        self.do_fold_exprs(exprs, r)
+                    },
+                );
+                r
+            }
             Expr::Maybe {
                 exprs,
                 else_clauses,
@@ -2715,4 +2723,51 @@ bar() ->
 
     // End of testing paren visibility
     // -----------------------------------------------------------------
+
+    #[test]
+    fn traverse_named_closure() {
+        // Test that named closure names are visited during fold.
+        let fixture_str = r#"
+bar() ->
+    fun Foo(X) -> baz(X) end.
+"#;
+
+        let (db, fixture) = TestDB::with_fixture(fixture_str);
+        let file_id = fixture.files[0];
+        let sema = Semantic::new(&db);
+
+        let form_list = sema.form_list(file_id);
+        let (function_clause_idx, _) = form_list.function_clauses().next().unwrap();
+        let function_body = sema
+            .db
+            .function_clause_body(InFile::new(file_id, function_clause_idx));
+
+        // Count all Pat::Var with name "Foo" (the closure name)
+        let r: u32 = FoldCtx::fold_expr(
+            Strategy {
+                macros: MacroStrategy::Expand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            &function_body.body,
+            function_body.clause.exprs[0],
+            0,
+            &mut |acc, ctx| match ctx.item {
+                AnyExpr::Pat(Pat::Var(v)) => {
+                    if v.as_string(sema.db.upcast()) == "Foo" {
+                        acc + 1
+                    } else {
+                        acc
+                    }
+                }
+                _ => acc,
+            },
+        );
+
+        // The closure name "Foo" should be visited exactly once.
+        // Without the fix, this would be 0 because the closure name was ignored.
+        expect![[r#"
+            1
+        "#]]
+        .assert_debug_eq(&r);
+    }
 }
