@@ -1095,12 +1095,24 @@ impl<'a, T> FoldCtx<'a, T> {
             } => acc,
             crate::Term::MacroCall {
                 expansion,
-                args: _,
-                macro_def: _,
+                args,
+                macro_def,
                 macro_name: _,
             } => {
-                // We ignore the args for now
-                self.do_fold_term(*expansion, acc)
+                if self.strategy.macros == MacroStrategy::DoNotExpand {
+                    self.do_fold_exprs(args, acc)
+                } else {
+                    self.macro_stack.push((
+                        HirIdx {
+                            body_origin: self.body_origin,
+                            idx: AnyExprId::Term(term_id),
+                        },
+                        *macro_def,
+                    ));
+                    let e = self.do_fold_term(*expansion, acc);
+                    self.macro_stack.pop();
+                    e
+                }
             }
         };
         self.parents.pop();
@@ -2769,5 +2781,133 @@ bar() ->
             1
         "#]]
         .assert_debug_eq(&r);
+    }
+
+    #[test]
+    fn traverse_term_macro_args() {
+        // Test that Term::MacroCall.args are folded when using DoNotExpand strategy.
+        // This was previously broken - args were ignored entirely.
+        let fixture_str = r#"
+               -module(f~oo).
+               -define(FOO(X), X).
+               -wild(?FOO(foo)).
+               "#;
+
+        let (db, file_id, range_or_offset) = TestDB::with_range_or_offset(fixture_str);
+        let sema = Semantic::new(&db);
+        let offset = match range_or_offset {
+            RangeOrOffset::Range(_) => panic!(),
+            RangeOrOffset::Offset(o) => o,
+        };
+        let in_file = sema.parse(file_id);
+        let source_file = in_file.value;
+        let ast_atom =
+            algo::find_node_at_offset::<ast::Atom>(source_file.syntax(), offset).unwrap();
+        let hir_atom_str = ast_atom.raw_text();
+
+        // Count atom 'foo' occurrences with DoNotExpand strategy (should fold args)
+        let r_do_not_expand: u32 = fold_file(
+            &sema,
+            Strategy {
+                macros: MacroStrategy::DoNotExpand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            file_id,
+            0,
+            &mut |acc, ctx| match ctx.item {
+                AnyExpr::Expr(Expr::Literal(Literal::Atom(atom))) => {
+                    let atom_name = db.lookup_atom(atom);
+                    if atom_name.as_str() == hir_atom_str {
+                        acc + 1
+                    } else {
+                        acc
+                    }
+                }
+                AnyExpr::Term(Term::Literal(Literal::Atom(atom))) => {
+                    let atom_name = db.lookup_atom(atom);
+                    if atom_name.as_str() == hir_atom_str {
+                        acc + 1
+                    } else {
+                        acc
+                    }
+                }
+                _ => acc,
+            },
+            &mut |acc, on, form_id: FormIdx| {
+                if on == On::Entry {
+                    match sema.db.file_form_list(file_id).get(form_id) {
+                        Form::ModuleAttribute(ma) => {
+                            if ma.name.as_str() == hir_atom_str.as_str() {
+                                acc + 1
+                            } else {
+                                acc
+                            }
+                        }
+                        _ => acc,
+                    }
+                } else {
+                    acc
+                }
+            },
+        );
+
+        // Count atom 'foo' occurrences with Expand strategy (should fold expansion)
+        let r_expand: u32 = fold_file(
+            &sema,
+            Strategy {
+                macros: MacroStrategy::Expand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            file_id,
+            0,
+            &mut |acc, ctx| match ctx.item {
+                AnyExpr::Expr(Expr::Literal(Literal::Atom(atom))) => {
+                    let atom_name = db.lookup_atom(atom);
+                    if atom_name.as_str() == hir_atom_str {
+                        acc + 1
+                    } else {
+                        acc
+                    }
+                }
+                AnyExpr::Term(Term::Literal(Literal::Atom(atom))) => {
+                    let atom_name = db.lookup_atom(atom);
+                    if atom_name.as_str() == hir_atom_str {
+                        acc + 1
+                    } else {
+                        acc
+                    }
+                }
+                _ => acc,
+            },
+            &mut |acc, on, form_id: FormIdx| {
+                if on == On::Entry {
+                    match sema.db.file_form_list(file_id).get(form_id) {
+                        Form::ModuleAttribute(ma) => {
+                            if ma.name.as_str() == hir_atom_str.as_str() {
+                                acc + 1
+                            } else {
+                                acc
+                            }
+                        }
+                        _ => acc,
+                    }
+                } else {
+                    acc
+                }
+            },
+        );
+
+        // With DoNotExpand: module name (foo) + macro arg (foo) = 2
+        // The macro arg 'foo' is an ExprId that should now be folded
+        expect![[r#"
+            2
+        "#]]
+        .assert_debug_eq(&r_do_not_expand);
+
+        // With Expand: module name (foo) + expansion (foo as Term) = 2
+        expect![[r#"
+            2
+        "#]]
+        .assert_debug_eq(&r_expand);
     }
 }
