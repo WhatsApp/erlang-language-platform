@@ -1273,7 +1273,7 @@ impl<'a> Lints<'a> {
             let mut output = File::create(to_path).ok()?;
             write!(output, "{file_text}").ok()?;
         } else {
-            // Default: write in-place (previously required --in-place flag)
+            // Default: write in-place
             let file_path = self.vfs.file_path(file_id);
             let to_path = file_path.as_path()?;
             let mut output = File::create(to_path).ok()?;
