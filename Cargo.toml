@@ -76,7 +76,7 @@ num-derive = "0.4.2"
 num-traits = "0.2.19"
 once_cell = "1.19.0"
 parking_lot = "0.12.3"
-paths = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2025-03-04" }
+paths = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2026-01-12" }
 proc-macro2 = "1.0.86"
 profile = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2025-03-04" }
 quote = "1.0.36"
@@ -95,7 +95,7 @@ serde_path_to_error = "0.1.16"
 serde_with = "1.14.0"
 smallvec = { version = "1.13.2", features = ["const_new", "union", "const_generics"] }
 smol_str = "0.1.24"
-stdx = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2025-03-04" }
+stdx = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2026-01-12" }
 strsim = { version = "0.10.0" }
 strum = "0.25.0"
 strum_macros = "0.25.3"
@@ -113,7 +113,7 @@ tree-sitter = "0.23.2"
 tree-sitter-erlang = "0.15.0"
 url = "2.5.4"
 ustr = { version = "1.1.0", features = ["serde"] }
-vfs = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2025-03-04" }
-vfs-notify = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2025-03-04" }
+vfs = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2026-01-12" }
+vfs-notify = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2026-01-12" }
 walkdir = "2.5.0"
 xshell = "0.2.6"
