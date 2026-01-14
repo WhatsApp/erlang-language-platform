@@ -17,16 +17,7 @@ installed with the `eglot` package.
 ### Configuration
 
 ```elisp
-(use-package eglot
-  :ensure t
-  :hook ((erlang-mode . eglot-ensure))
-
-  :config
-  ;; Remove default LSP server
-  (setopt eglot-server-programs
-          (assq-delete-all 'erlang-mode eglot-server-programs))
-
-  ;; Enable ELP
+(with-eval-after-load 'eglot
   (add-to-list 'eglot-server-programs
                '(erlang-mode . ("elp" "server"))))
 ```
