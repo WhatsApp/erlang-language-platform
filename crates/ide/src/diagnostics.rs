@@ -1026,12 +1026,6 @@ impl EnabledDiagnostics {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum FallBackToAll {
-    Yes,
-    No,
-}
-
 #[derive(Default, Clone, Debug)]
 pub struct DiagnosticsConfig {
     pub experimental: bool,
@@ -1055,7 +1049,6 @@ impl DiagnosticsConfig {
         lint_config: &LintConfig,
         diagnostic_filter: &Option<String>,
         diagnostic_ignore: &Option<String>,
-        fall_back_to_all: FallBackToAll,
     ) -> Result<DiagnosticsConfig> {
         let mut allowed_diagnostics: FxHashSet<DiagnosticCode> = lint_config
             .enabled_lints
@@ -1087,12 +1080,8 @@ impl DiagnosticsConfig {
         // Make sure the enabled ones win out over disabled if a lint appears in both
         disabled_diagnostics.retain(|d| !allowed_diagnostics.contains(d));
 
-        if allowed_diagnostics.is_empty() && fall_back_to_all == FallBackToAll::No {
-            bail!("No diagnostics enabled. Use --diagnostic-filter to specify one.");
-        }
-
         self.disabled = disabled_diagnostics;
-        if allowed_diagnostics.is_empty() && fall_back_to_all == FallBackToAll::Yes {
+        if allowed_diagnostics.is_empty() {
             self.enabled = EnabledDiagnostics::enable_all();
         } else {
             self.enabled = EnabledDiagnostics::from_set(allowed_diagnostics);
@@ -4045,12 +4034,7 @@ main(X) ->
         );
 
         let config = DiagnosticsConfig::default()
-            .configure_diagnostics(
-                &lint_config,
-                &Some("no_garbage_collect".to_string()),
-                &None,
-                FallBackToAll::No,
-            )
+            .configure_diagnostics(&lint_config, &Some("no_garbage_collect".to_string()), &None)
             .unwrap();
         check_diagnostics_with_config(
             config,
@@ -4088,12 +4072,7 @@ main(X) ->
         );
 
         let config = DiagnosticsConfig::default()
-            .configure_diagnostics(
-                &lint_config,
-                &Some("no_garbage_collect".to_string()),
-                &None,
-                FallBackToAll::No,
-            )
+            .configure_diagnostics(&lint_config, &Some("no_garbage_collect".to_string()), &None)
             .unwrap();
         check_diagnostics_with_config(
             config,
@@ -4130,12 +4109,7 @@ main(X) ->
         );
 
         let config = DiagnosticsConfig::default()
-            .configure_diagnostics(
-                &lint_config,
-                &Some("no_garbage_collect".to_string()),
-                &None,
-                FallBackToAll::No,
-            )
+            .configure_diagnostics(&lint_config, &Some("no_garbage_collect".to_string()), &None)
             .unwrap()
             .set_include_generated(true);
         check_diagnostics_with_config(
@@ -4173,12 +4147,7 @@ main(X) ->
         );
 
         let config = DiagnosticsConfig::default()
-            .configure_diagnostics(
-                &lint_config,
-                &Some("no_garbage_collect".to_string()),
-                &None,
-                FallBackToAll::No,
-            )
+            .configure_diagnostics(&lint_config, &Some("no_garbage_collect".to_string()), &None)
             .unwrap();
         check_diagnostics_with_config(
             config,
@@ -4218,12 +4187,7 @@ main(X) ->
         );
 
         let config = DiagnosticsConfig::default()
-            .configure_diagnostics(
-                &lint_config,
-                &Some("no_garbage_collect".to_string()),
-                &None,
-                FallBackToAll::No,
-            )
+            .configure_diagnostics(&lint_config, &Some("no_garbage_collect".to_string()), &None)
             .unwrap();
         check_diagnostics_with_config(
             config,
@@ -4260,12 +4224,7 @@ main(X) ->
         );
 
         let config = DiagnosticsConfig::default()
-            .configure_diagnostics(
-                &lint_config,
-                &Some("no_garbage_collect".to_string()),
-                &None,
-                FallBackToAll::No,
-            )
+            .configure_diagnostics(&lint_config, &Some("no_garbage_collect".to_string()), &None)
             .unwrap();
         check_diagnostics_with_config(
             config,

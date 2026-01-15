@@ -34,7 +34,6 @@ use elp_ide::AnalysisHost;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::EnabledDiagnostics;
-use elp_ide::diagnostics::FallBackToAll;
 use elp_ide::diagnostics::LintConfig;
 use elp_ide::diagnostics::RemoveElpReported;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
@@ -723,7 +722,6 @@ fn get_diagnostics_config(args: &Lint) -> Result<DiagnosticsConfig> {
             &cfg_from_file,
             &args.diagnostic_filter,
             &args.diagnostic_ignore,
-            FallBackToAll::Yes,
         )?
         .set_include_generated(args.include_generated)
         .set_experimental(args.experimental_diags)

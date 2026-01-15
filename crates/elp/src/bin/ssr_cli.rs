@@ -28,7 +28,6 @@ use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
-use elp_ide::diagnostics::FallBackToAll;
 use elp_ide::diagnostics::LintConfig;
 use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::diagnostics::MatchSsr;
@@ -106,12 +105,7 @@ pub fn run_ssr_command(
 
     // Build the diagnostics config
     let diagnostics_config = DiagnosticsConfig::default()
-        .configure_diagnostics(
-            &lint_config,
-            &Some("ad-hoc: ssr-match".to_string()),
-            &None,
-            FallBackToAll::Yes,
-        )?
+        .configure_diagnostics(&lint_config, &Some("ad-hoc: ssr-match".to_string()), &None)?
         .set_include_generated(args.include_generated)
         .set_experimental(false)
         .set_use_cli_severity(false);
