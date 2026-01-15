@@ -440,6 +440,9 @@ pub struct Shell {
     /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
     pub project: PathBuf,
+    /// Initial command to run on shell startup
+    #[bpaf(positional("INITIAL_COMMAND"))]
+    pub command: Vec<String>,
 }
 
 #[derive(Clone, Debug, Bpaf)]

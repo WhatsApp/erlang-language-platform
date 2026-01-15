@@ -11,6 +11,7 @@
 use core::str;
 use std::fmt;
 use std::fs;
+use std::ops::ControlFlow;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
@@ -350,6 +351,13 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfi
     let mut rl = rustyline::DefaultEditor::new()?;
     let mut last_read = watchman.get_clock()?;
     write!(cli, "{WELCOME}")?;
+    if !shell.command.is_empty() {
+        let command = shell.command.join(" ");
+        writeln!(cli, "Executing initial command: {command}")?;
+        if execute_line(shell, command, &mut loaded, cli)?.is_break() {
+            return Ok(());
+        }
+    }
     loop {
         let readline = rl.readline("> ");
         match readline {
@@ -369,23 +377,8 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfi
                     last_read = watchman.get_clock()?;
                 }
                 last_read = update_changes(&mut loaded, &watchman, &last_read)?;
-                match ShellCommand::parse(shell, line) {
-                    Ok(None) => (),
-                    Ok(Some(ShellCommand::Help)) => write!(cli, "{HELP}")?,
-                    Ok(Some(ShellCommand::Quit)) => break,
-                    Ok(Some(ShellCommand::ShellEqwalize(eqwalize))) => {
-                        eqwalizer_cli::do_eqwalize_module(&eqwalize, &mut loaded, cli)
-                            .or_else(|e| writeln!(cli, "Error: {e}"))?;
-                    }
-                    Ok(Some(ShellCommand::ShellEqwalizeApp(eqwalize_app))) => {
-                        eqwalizer_cli::do_eqwalize_app(&eqwalize_app, &mut loaded, cli)
-                            .or_else(|e| writeln!(cli, "Error: {e}"))?;
-                    }
-                    Ok(Some(ShellCommand::ShellEqwalizeAll(eqwalize_all))) => {
-                        eqwalizer_cli::do_eqwalize_all(&eqwalize_all, &mut loaded, cli)
-                            .or_else(|e| writeln!(cli, "Error: {e}"))?;
-                    }
-                    Err(err) => write!(cli, "{err}\n{HELP}")?,
+                if execute_line(shell, line, &mut loaded, cli)?.is_break() {
+                    break;
                 }
             }
             Err(ReadlineError::Interrupted) => {
@@ -403,4 +396,39 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfi
     }
     telemetry::report_elapsed_time("shell done", start_time);
     Ok(())
+}
+
+fn execute_line(
+    shell: &Shell,
+    line: String,
+    loaded: &mut LoadResult,
+    cli: &mut dyn Cli,
+) -> Result<ControlFlow<()>> {
+    match ShellCommand::parse(shell, line) {
+        Ok(None) => Ok(ControlFlow::Continue(())),
+        Ok(Some(ShellCommand::Help)) => {
+            write!(cli, "{HELP}")?;
+            Ok(ControlFlow::Continue(()))
+        }
+        Ok(Some(ShellCommand::Quit)) => Ok(ControlFlow::Break(())),
+        Ok(Some(ShellCommand::ShellEqwalize(eqwalize))) => {
+            eqwalizer_cli::do_eqwalize_module(&eqwalize, loaded, cli)
+                .or_else(|e| writeln!(cli, "Error: {e}"))?;
+            Ok(ControlFlow::Continue(()))
+        }
+        Ok(Some(ShellCommand::ShellEqwalizeApp(eqwalize_app))) => {
+            eqwalizer_cli::do_eqwalize_app(&eqwalize_app, loaded, cli)
+                .or_else(|e| writeln!(cli, "Error: {e}"))?;
+            Ok(ControlFlow::Continue(()))
+        }
+        Ok(Some(ShellCommand::ShellEqwalizeAll(eqwalize_all))) => {
+            eqwalizer_cli::do_eqwalize_all(&eqwalize_all, loaded, cli)
+                .or_else(|e| writeln!(cli, "Error: {e}"))?;
+            Ok(ControlFlow::Continue(()))
+        }
+        Err(err) => {
+            write!(cli, "{err}\n{HELP}")?;
+            Ok(ControlFlow::Continue(()))
+        }
+    }
 }
