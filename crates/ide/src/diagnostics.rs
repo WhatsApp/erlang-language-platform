@@ -1057,11 +1057,8 @@ impl DiagnosticsConfig {
         diagnostic_ignore: &Option<String>,
         fall_back_to_all: FallBackToAll,
     ) -> Result<DiagnosticsConfig> {
-        let mut allowed_diagnostics: FxHashSet<DiagnosticCode> = lint_config
-            .enabled_lints
-            .iter()
-            .cloned()
-            .collect::<FxHashSet<_>>();
+        let mut allowed_diagnostics: FxHashSet<DiagnosticCode> =
+            lint_config.enabled_lints.iter().cloned().collect();
         let mut disabled_diagnostics: FxHashSet<DiagnosticCode> =
             lint_config.disabled_lints.iter().cloned().collect();
 
@@ -1087,12 +1084,11 @@ impl DiagnosticsConfig {
         // Make sure the enabled ones win out over disabled if a lint appears in both
         disabled_diagnostics.retain(|d| !allowed_diagnostics.contains(d));
 
-        if allowed_diagnostics.is_empty() && fall_back_to_all == FallBackToAll::No {
-            bail!("No diagnostics enabled. Use --diagnostic-filter to specify one.");
-        }
-
         self.disabled = disabled_diagnostics;
-        if allowed_diagnostics.is_empty() && fall_back_to_all == FallBackToAll::Yes {
+        if allowed_diagnostics.is_empty()
+            && self.disabled.is_empty()
+            && fall_back_to_all == FallBackToAll::Yes
+        {
             self.enabled = EnabledDiagnostics::enable_all();
         } else {
             self.enabled = EnabledDiagnostics::from_set(allowed_diagnostics);

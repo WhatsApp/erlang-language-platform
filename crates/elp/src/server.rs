@@ -112,7 +112,7 @@ use crate::mem_docs::DocumentData;
 use crate::mem_docs::MemDocs;
 use crate::project_loader::ProjectLoader;
 use crate::project_loader::ReloadManager;
-use crate::read_lint_config_file;
+use crate::{read_lint_config_file, LINT_CONFIG_FILE};
 use crate::reload::ProjectFolders;
 use crate::snapshot::SharedMap;
 use crate::snapshot::Snapshot;
@@ -1583,18 +1583,28 @@ impl Server {
         let loader = self.project_loader.clone();
         let loader = loader.lock();
         // The OTP root is added with a project root value of None, skip it
-        if let Some((path, _)) = loader.project_roots.iter().find(|(_k, v)| v.is_some()) {
-            let path_buf: PathBuf = path.clone().into();
-            if let Ok(lint_config) = read_lint_config_file(&path_buf, &None) {
-                log::warn!("update_configuration: read lint file: {lint_config:?}");
-                self.lint_config = Arc::new(lint_config);
-
-                // Diagnostic config may have changed, regen
-                self.native_diagnostics_requested = true;
-                self.eqwalizer_and_erlang_service_diagnostics_requested = true;
-                if self.config.edoc() {
-                    self.edoc_diagnostics_requested = true;
+        let project_path: Option<PathBuf> =
+            loader.project_roots.iter().find_map(|(path, manifest)| {
+                let abs_lint_path = path.join(LINT_CONFIG_FILE);
+                let lint_path: PathBuf = abs_lint_path.clone().into();
+                // Find the project root path that has a lint config file
+                if lint_path.is_file() && manifest.is_some() {
+                    Some(path.into())
+                } else {
+                    None
                 }
+            });
+        if let Some(path_buf) = project_path
+            && let Ok(lint_config) = read_lint_config_file(&path_buf, &None)
+        {
+            log::warn!("update_configuration: read lint file: {lint_config:?}");
+            self.lint_config = Arc::new(lint_config);
+
+            // Diagnostic config may have changed, regen
+            self.native_diagnostics_requested = true;
+            self.eqwalizer_and_erlang_service_diagnostics_requested = true;
+            if self.config.edoc() {
+                self.edoc_diagnostics_requested = true;
             }
         }
         self.diagnostics_config = Arc::new(self.make_diagnostics_config());
