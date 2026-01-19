@@ -134,7 +134,7 @@ when and how the diagnostic runs:
 
 ### Test Structure
 
-- Use `expect_test` for snapshot testing of complex outputs
+- Use `expect_test` and the `expect!` macro if possible
 - Group related tests in the same module
 - Use descriptive test names that explain the scenario
 
