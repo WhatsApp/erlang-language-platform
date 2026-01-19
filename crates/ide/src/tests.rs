@@ -305,7 +305,7 @@ pub(crate) fn check_specific_fix_with_config_and_adhoc(
 
     let expected = fixture.annotations_by_file_id(&file_id);
     let actual = convert_diagnostics_to_annotations(diagnostics.clone());
-    assert_eq!(expected, actual);
+    assert_diagnostics_eq(expected, actual);
 
     let fix: Assist = if let Some(label) = assist_label {
         let fixes: Vec<_> = diagnostics
@@ -383,6 +383,14 @@ pub(crate) fn check_diagnostics(fixture: &str) {
     check_diagnostics_with_config(config, fixture)
 }
 
+#[track_caller]
+fn assert_diagnostics_eq(expected: Vec<(TextRange, String)>, actual: Vec<(TextRange, String)>) {
+    assert!(
+        expected == actual,
+        "diagnostics assertion failed\n  expected: {expected:?}\n  actual  : {actual:?}"
+    );
+}
+
 fn convert_diagnostics_to_annotations(diagnostics: Vec<Diagnostic>) -> Vec<(TextRange, String)> {
     let mut actual = diagnostics
         .into_iter()
@@ -449,7 +457,7 @@ pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
     let diagnostics = diagnostics.diagnostics_for(file_id);
     let expected = fixture.annotations_by_file_id(&file_id);
     let actual = convert_diagnostics_to_annotations(diagnostics);
-    assert_eq!(expected, actual);
+    assert_diagnostics_eq(expected, actual);
 }
 
 #[track_caller]
@@ -479,7 +487,7 @@ pub(crate) fn check_diagnostics_with_config_and_ad_hoc(
 
         let expected = fixture.annotations_by_file_id(&file_id);
         let actual = convert_diagnostics_to_annotations(diagnostics);
-        assert_eq!(expected, actual);
+        assert_diagnostics_eq(expected, actual);
     }
 }
 
@@ -515,7 +523,7 @@ pub(crate) fn check_filtered_diagnostics_with_config(
             .collect();
         let expected = fixture.annotations_by_file_id(&file_id);
         let actual = convert_diagnostics_to_annotations(diagnostics);
-        assert_eq!(expected, actual);
+        assert_diagnostics_eq(expected, actual);
     }
 }
 
@@ -536,7 +544,7 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
 
         let expected = fixture.annotations_by_file_id(&file_id);
         let actual = convert_diagnostics_to_annotations(diagnostics);
-        assert_eq!(expected, actual);
+        assert_diagnostics_eq(expected, actual);
     }
 }
 
@@ -683,6 +691,7 @@ fn check_call_hierarchy_outgoing_calls(fixture: &str) {
 #[cfg(test)]
 mod test {
     use elp_ide_db::DiagnosticCode;
+    use expect_test::expect;
 
     use super::check_filtered_diagnostics;
     use crate::diagnostics::Diagnostic;
@@ -705,5 +714,46 @@ mod test {
             "#,
             &filter,
         )
+    }
+
+    #[test]
+    fn diagnostic_assertion_failure_message_format() {
+        // Test that uses a mismatched diagnostic annotation to verify
+        // the new error message format shows "expected:" and "actual:" labels
+
+        let result = std::panic::catch_unwind(|| {
+            // This fixture has a wrong diagnostic annotation - it expects W9999
+            // but the actual diagnostic will be MissingModule (L1201)
+            check_filtered_diagnostics(
+                r#"
+                //- expect_parse_errors
+                %%<^^^^^^^^^^^^ error: W9999: wrong diagnostic
+                foo() -> ok.
+                "#,
+                &filter,
+            )
+        });
+
+        // The test should panic due to mismatch
+        assert!(
+            result.is_err(),
+            "Expected a panic due to diagnostic mismatch"
+        );
+
+        // Extract the panic message
+        let panic_info = result.unwrap_err();
+        let message = if let Some(s) = panic_info.downcast_ref::<String>() {
+            s.clone()
+        } else if let Some(s) = panic_info.downcast_ref::<&str>() {
+            s.to_string()
+        } else {
+            panic!("Unable to extract panic message");
+        };
+
+        expect![[r#"
+            diagnostics assertion failed
+              expected: [(0..15, "error: W9999: wrong diagnostic")]
+              actual  : [(0..12, "💡 error: L1201: no module definition")]"#]]
+        .assert_eq(&message);
     }
 }
