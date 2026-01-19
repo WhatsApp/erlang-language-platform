@@ -1,7 +1,6 @@
 Reporting all diagnostics codes
 Diagnostics reported:
 app_a/src/app_a.erl:52:3-52:23::[Warning] [W0006] this statement has no effect
-app_a/src/app_a.erl:3:10-3:21::[WeakWarning] [W0037] Unspecific include.
 app_a/src/app_a.erl:27:3-27:9::[Warning] [W0017] Function 'foo:ok/0' is undefined.
 app_a/src/app_a.erl:28:4-28:11::[Warning] [W0017] Function 'mod:foo/0' is undefined.
 app_a/src/app_a.erl:72:4-72:11::[Warning] [W0017] Function 'foo:bar/2' is undefined.
@@ -43,8 +42,6 @@ app_a/src/cascading.erl:9:5-9:6::[Error] [W0004] Missing ')'
         3:10-3:15: function foo/0 undefined
         6:10-6:15: function foo/0 undefined
         8:7-8:10: spec for undefined function foo/0
-app_a/src/diagnostics.erl:3:10-3:27::[WeakWarning] [W0037] Unspecific include.
-app_a/src/diagnostics.erl:4:10-4:34::[WeakWarning] [W0037] Unspecific include.
 app_a/src/diagnostics.erl:12:8-12:12::[Warning] [W0060] Match on a bound variable
 app_a/src/diagnostics.erl:4:1-4:36::[Error] [L0000] Issue in included file
         [app_a/include/broken_diagnostics.hrl] 1:8-1:15: P1702: bad attribute

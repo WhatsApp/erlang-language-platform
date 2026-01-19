@@ -74,6 +74,14 @@ fn check_includes(acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
                 // We need to do the reverse here.
 
                 let include_path = path_for_file(sema.db.upcast(), included_file_id)?;
+
+                // Skip diagnostic if both files are in the same app
+                let source_app_name = sema.db.file_app_name(file_id);
+                let included_app_name = sema.db.file_app_name(included_file_id);
+                if source_app_name.is_some() && source_app_name == included_app_name {
+                    return Some(()); // Same app - no diagnostic needed
+                }
+
                 if !include_path.to_string().contains("/src/") {
                     let replacement = generated_file_include_lib(
                         sema.db.upcast(),
@@ -182,12 +190,12 @@ mod tests {
     fn detects_unspecific_include() {
         check_diagnostics(
             r#"
-         //- /app_a/src/unspecific_include.erl
+         //- /app_a/src/unspecific_include.erl app:app_a include_path:/app_b/include
            -module(unspecific_include).
            -include("some_header_from_app_a.hrl").
            %%       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0037: Unspecific include.
 
-         //- /app_a/include/some_header_from_app_a.hrl include_path:/app_a/include
+         //- /app_b/include/some_header_from_app_a.hrl include_path:/app_b/include app:app_b
            -define(A,3).
             "#,
         )
@@ -209,16 +217,16 @@ mod tests {
     fn fixes_unspecific_include() {
         check_fix(
             r#"
-           //- /app_a/src/unspecific_include.erl app:app_a
+           //- /app_a/src/unspecific_include.erl include_path:/app_b/include app:app_a
            -module(unspecific_include).
            -include("some~_header_from_app_a.hrl").
            %%       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unspecific include.
-           //- /app_a/include/some_header_from_app_a.hrl include_path:/app_a/include app:app_a
+           //- /app_b/include/some_header_from_app_a.hrl include_path:/app_b/include app:app_b
            -define(A,3)."#,
             // Note: the test fixture include path is not ideal for this, see lint_reports_bxl_project_error test in elp/main
             expect![[r#"
                 -module(unspecific_include).
-                -include_lib("app_a/include/some_header_from_app_a.hrl").
+                -include_lib("app_b/include/some_header_from_app_a.hrl").
             "#]],
         )
     }
@@ -227,16 +235,16 @@ mod tests {
     fn fixes_unspecific_include_lib() {
         check_fix(
             r#"
-           //- /app_a/src/unspecific_include.erl app:app_a
+           //- /app_a/src/unspecific_include.erl include_path:/app_b/include app:app_a
            -module(unspecific_include).
            -include_lib("some~_header_from_app_a.hrl").
            %%           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: Unspecific include.
-           //- /app_a/include/some_header_from_app_a.hrl include_path:/app_a/include app:app_a
+           //- /app_b/include/some_header_from_app_a.hrl include_path:/app_b/include app:app_b
            -define(A,3)."#,
             // Note: the test fixture include path is not ideal for this, see lint_reports_bxl_project_error test in elp/main
             expect![[r#"
                 -module(unspecific_include).
-                -include_lib("app_a/include/some_header_from_app_a.hrl").
+                -include_lib("app_b/include/some_header_from_app_a.hrl").
             "#]],
         )
     }
