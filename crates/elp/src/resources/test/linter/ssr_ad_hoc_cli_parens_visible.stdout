@@ -2,5 +2,10 @@
       7:10-7:15::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: (_@A).
       7:11-7:14::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: (_@A).
       8:10-8:13::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: (_@A).
+  app_a_SUITE: 4
+      20:1997-20:2682::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: (_@A).
+      20:1998-20:2679::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: (_@A).
+      20:2096-20:2106::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: (_@A).
+      20:2345-20:2357::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: (_@A).
 
-Matches found in 1 modules
+Matches found in 2 modules

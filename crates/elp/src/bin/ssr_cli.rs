@@ -398,9 +398,6 @@ fn do_parse_one(
     if !args.include_generated && db.is_generated(file_id)? {
         return Ok(None);
     }
-    if !args.include_tests && db.is_test_suite_or_test_helper(file_id)?.unwrap_or(false) {
-        return Ok(None);
-    }
 
     // Run only the SSR lint configured in lints_from_config
     let diagnostics = db.with_db(|database| {

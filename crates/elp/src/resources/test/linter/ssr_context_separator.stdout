@@ -16,5 +16,40 @@ app_a/src/app_a.erl:20:13-20:18::[WeakWarning] [ad-hoc: ssr-match] SSR pattern m
   21 | 
   22 | % And some more context, see if it renders
 
+  app_a_SUITE: 7
+app_a/test/app_a_SUITE.erl:20:2175-20:2647::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: {_@A, _@B}.
+  18 |     app_a_test_helpers:fail().
+  19 | 
 
-Matches found in 1 modules
+====
+app_a/test/app_a_SUITE.erl:20:2222-20:2239::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: {_@A, _@B}.
+  18 |     app_a_test_helpers:fail().
+  19 | 
+
+====
+app_a/test/app_a_SUITE.erl:20:2279-20:2292::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: {_@A, _@B}.
+  18 |     app_a_test_helpers:fail().
+  19 | 
+
+====
+app_a/test/app_a_SUITE.erl:20:2332-20:2358::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: {_@A, _@B}.
+  18 |     app_a_test_helpers:fail().
+  19 | 
+
+====
+app_a/test/app_a_SUITE.erl:20:2398-20:2414::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: {_@A, _@B}.
+  18 |     app_a_test_helpers:fail().
+  19 | 
+
+====
+app_a/test/app_a_SUITE.erl:20:2521-20:2535::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: {_@A, _@B}.
+  18 |     app_a_test_helpers:fail().
+  19 | 
+
+====
+app_a/test/app_a_SUITE.erl:20:2584-20:2603::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: {_@A, _@B}.
+  18 |     app_a_test_helpers:fail().
+  19 | 
+
+
+Matches found in 2 modules

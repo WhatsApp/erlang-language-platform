@@ -1,4 +1,4 @@
-Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--rebar] [--as PROFILE] [--include-generated] [--include-tests] [[--format FORMAT]] [[--macros STRATEGY]] [--parens] [--dump-config] [--show-source] [-B NUM] [-A NUM] [-C NUM] [--group-separator SEP] [--no-group-separator] [--report-system-stats] <SSR_SPECS>...
+Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--rebar] [--as PROFILE] [--include-generated] [[--format FORMAT]] [[--macros STRATEGY]] [--parens] [--dump-config] [--show-source] [-B NUM] [-A NUM] [-C NUM] [--group-separator SEP] [--no-group-separator] [--report-system-stats] <SSR_SPECS>...
 
 Available positional items:
     <SSR_SPECS>  SSR specs to use
@@ -11,7 +11,6 @@ Available options:
         --rebar                  Run with rebar
         --as <PROFILE>           Rebar3 profile to pickup (default is test)
         --include-generated      Also generate diagnostics for generated files
-        --include-tests          Also generate diagnostics for test files
         --format <FORMAT>        Show diagnostics in JSON format
         --macros <STRATEGY>      Macro expansion strategy: expand | no-expand | visible-expand (default expand)
         --parens                 Explicitly match parentheses. If omitted, they are ignored.
