@@ -70,6 +70,13 @@ pub fn supports_eep66_sigils() -> bool {
         .unwrap_or(true)
 }
 
+pub fn sets_v2_not_default() -> bool {
+    OTP_VERSION
+        .as_ref()
+        .map(|v| v.as_str() < "28")
+        .unwrap_or(true)
+}
+
 fn get_erts_dir() -> AbsPathBuf {
     let (_otp, apps) = Otp::discover(OTP_ROOT.to_path_buf(), &OtpConfig::default());
     for app in apps {

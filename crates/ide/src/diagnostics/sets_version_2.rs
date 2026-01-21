@@ -8,6 +8,8 @@
  * above-listed licenses.
  */
 
+use elp_project_model::otp;
+
 use crate::codemod_helpers::FunctionMatch;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::FunctionCallLinter;
@@ -25,6 +27,9 @@ impl Linter for SetsVersion2Linter {
     }
     fn should_process_test_files(&self) -> bool {
         false
+    }
+    fn is_enabled(&self) -> bool {
+        otp::sets_v2_not_default()
     }
 }
 
@@ -44,7 +49,22 @@ pub static LINTER: SetsVersion2Linter = SetsVersion2Linter;
 #[cfg(test)]
 mod tests {
 
-    use crate::tests::check_diagnostics;
+    use elp_project_model::otp;
+
+    use crate::diagnostics::Diagnostic;
+    use crate::diagnostics::DiagnosticCode;
+    use crate::tests;
+
+    fn filter(d: &Diagnostic) -> bool {
+        d.code == DiagnosticCode::SetsVersion2
+    }
+
+    #[track_caller]
+    fn check_diagnostics(fixture: &str) {
+        if otp::sets_v2_not_default() {
+            tests::check_filtered_diagnostics(fixture, &filter)
+        }
+    }
 
     #[test]
     fn slow_function_sets() {
