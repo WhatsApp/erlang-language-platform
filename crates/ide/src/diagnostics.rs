@@ -149,6 +149,8 @@ mod unexported_function;
 mod unnecessary_fold_to_build_map;
 mod unnecessary_map_from_list_around_comprehension;
 mod unnecessary_map_to_list_in_comprehension;
+mod unresolved_include;
+mod unresolved_macro;
 mod unspecific_include;
 mod unused_function_args;
 mod unused_include;
@@ -1545,7 +1547,6 @@ pub fn native_diagnostics(
         let sema = Semantic::new(db);
 
         res.append(&mut form_missing_separator_diagnostics(&parse));
-        res.extend(get_hir_diagnostics(db, file_id));
 
         adhoc_semantic_diagnostics
             .iter()
@@ -1718,6 +1719,8 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &boolean_precedence::LINTER,
     &bound_variable::LINTER,
     &unused_record_field::LINTER,
+    &unresolved_macro::LINTER,
+    &unresolved_include::LINTER,
 ];
 
 /// Unified registry for all types of linters
@@ -1903,8 +1906,7 @@ pub fn filter_diagnostics(diagnostics: Vec<Diagnostic>, code: DiagnosticCode) ->
 ///
 /// This function iterates through all forms in the file and collects diagnostics
 /// from the BodySourceMaps associated with each form's body.
-pub fn collect_body_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<hir::BodyDiagnostic> {
-    let sema = Semantic::new(db);
+pub fn collect_body_diagnostics(sema: &Semantic, file_id: FileId) -> Vec<hir::BodyDiagnostic> {
     let form_list = sema.form_list(file_id);
     let mut diagnostics = Vec::new();
 
@@ -1987,91 +1989,6 @@ pub fn collect_body_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<hir::
     }
 
     diagnostics
-}
-
-/// Convert HIR body diagnostics to IDE Diagnostics.
-/// This function takes the diagnostics collected during HIR lowering and converts
-/// them to the IDE Diagnostic format for display to users.
-pub fn get_hir_diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
-    let body_diagnostics = collect_body_diagnostics(db, file_id);
-
-    body_diagnostics
-        .into_iter()
-        .filter_map(|body_diag| {
-            // Only include diagnostics for the requested file
-            if body_diag.file_id() != file_id {
-                return None;
-            }
-
-            let (code, message, range) = match &body_diag {
-                hir::BodyDiagnostic::UnresolvedMacro(macro_source) => {
-                    // Determine range for UnresolvedMacro
-                    let full_range = macro_source.range();
-
-                    // Get the macro call AST node to extract name and arity
-                    let macro_call = macro_source.to_ast(db);
-                    let macro_name = macro_call
-                        .name()
-                        .map(|name| name.to_string())
-                        .unwrap_or_else(|| "?".to_string());
-
-                    let message = match macro_call.arity() {
-                        Some(arity) => format!("undefined macro '{}/{}'", macro_name, arity),
-                        None => format!("undefined macro '{}'", macro_name),
-                    };
-
-                    // For macros with arguments, only highlight the name part, not the full call
-                    let range = macro_call
-                        .name()
-                        .map(|name| {
-                            // Get the syntax range of just the macro name
-                            let name_range = name.syntax().text_range();
-                            // Include the '?' prefix by extending one character to the left
-                            if name_range.start() > 0.into() {
-                                TextRange::new(
-                                    name_range.start() - TextSize::from(1),
-                                    name_range.end(),
-                                )
-                            } else {
-                                name_range
-                            }
-                        })
-                        .unwrap_or(full_range.range);
-
-                    (DiagnosticCode::HirUnresolvedMacro, message, range)
-                }
-                hir::BodyDiagnostic::UnresolvedInclude(include) => {
-                    // Get the include attribute from the form_list
-                    let sema = Semantic::new(db);
-                    let form_list = sema.form_list(file_id);
-                    let include_attr = &form_list[include.value];
-
-                    // Extract path and range from IncludeAttribute
-                    let path = include_attr.path().to_string();
-                    let range = include_attr.file_range(db, file_id);
-
-                    // Use appropriate message based on include type
-                    let message = match include_attr {
-                        hir::IncludeAttribute::Include { .. } => {
-                            format!("can't find include file \"{}\"", path)
-                        }
-                        hir::IncludeAttribute::IncludeLib { .. } => {
-                            format!("can't find include lib \"{}\"", path)
-                        }
-                    };
-
-                    (DiagnosticCode::HirUnresolvedInclude, message, range)
-                }
-            };
-
-            Some(
-                Diagnostic::new(code, message, range)
-                    // We set the severity to Warning for now, until we have cleaned
-                    // up the code base from this diagnostic
-                    .with_severity(Severity::Warning),
-            )
-        })
-        .collect()
 }
 
 fn form_missing_separator_diagnostics(parse: &Parse<ast::SourceFile>) -> Vec<Diagnostic> {
@@ -4399,5 +4316,31 @@ main(X) ->
         let linter_config2 = merged.linters.get(&code2).unwrap();
         assert_eq!(linter_config2.is_enabled, Some(true));
         assert_eq!(linter_config2.include_generated, Some(true));
+    }
+
+    #[test]
+    fn test_hir_unresolved_macro_can_be_disabled() {
+        // Test that HIR diagnostics (W0057) can be disabled via LintConfig
+        let mut lint_config = LintConfig::default();
+        lint_config.linters.insert(
+            DiagnosticCode::HirUnresolvedMacro,
+            LinterConfig {
+                is_enabled: Some(false),
+                ..Default::default()
+            },
+        );
+        let config = DiagnosticsConfig {
+            lint_config: Some(lint_config),
+            ..Default::default()
+        };
+
+        // With W0057 disabled, the unresolved macro should not generate a diagnostic
+        check_diagnostics_with_config(
+            config,
+            r#"
+-module(main).
+foo() -> ?UNDEFINED_MACRO.
+"#,
+        );
     }
 }
