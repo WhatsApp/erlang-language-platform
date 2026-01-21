@@ -1673,6 +1673,7 @@ impl<T> Index<TermId> for InFunctionClauseBody<'_, T> {
 mod tests {
     use elp_base_db::ProjectId;
     use elp_base_db::SourceDatabase;
+    use elp_base_db::assert_eq_expected;
     use elp_base_db::fixture::WithFixture;
     use elp_syntax::AstNode;
     use elp_syntax::algo::find_node_at_offset;
@@ -1806,7 +1807,7 @@ mod tests {
             .map(|(_, _, v)| v.syntax().text_range())
             .sorted_by(|a, b| a.start().cmp(&b.start()))
             .collect();
-        assert_eq!(expected, ranges);
+        assert_eq_expected!(expected, ranges);
     }
 
     #[test]

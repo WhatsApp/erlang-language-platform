@@ -302,6 +302,7 @@ pub fn macro_name(macro_call: &ast::MacroCallExpr) -> Option<MacroName> {
 mod tests {
     use elp_base_db::FileRange;
     use elp_base_db::SourceDatabase;
+    use elp_base_db::assert_eq_expected;
     use elp_base_db::fixture::ChangeFixture;
     use elp_base_db::fixture::WithFixture;
     use elp_syntax::AstNode;
@@ -337,7 +338,8 @@ mod tests {
     fn check_built_in(fixture: &str, expected: BuiltInMacro) {
         let (resolved, _db, _fixture) = resolve_macro(fixture);
 
-        assert_eq!(resolved, Some(ResolvedMacro::BuiltIn(expected)));
+        let expected_resolved = Some(ResolvedMacro::BuiltIn(expected));
+        assert_eq_expected!(expected_resolved, resolved);
     }
 
     #[track_caller]
@@ -364,7 +366,7 @@ mod tests {
             range: def.source(&db).syntax().text_range(),
         };
 
-        assert_eq!(expected_range, found_range);
+        assert_eq_expected!(expected_range, found_range);
     }
 
     #[test]

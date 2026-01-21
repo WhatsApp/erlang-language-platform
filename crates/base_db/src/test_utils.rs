@@ -41,6 +41,41 @@ macro_rules! assert_eq_text {
     }};
 }
 
+/// Asserts that two values are equal, using "expected" and "actual" labels
+/// in the error message instead of the confusing "left" and "right".
+///
+/// # Example
+/// ```ignore
+/// assert_eq_expected!(vec![1, 2, 3], actual_values);
+/// ```
+///
+/// On failure, prints:
+/// ```text
+/// assertion failed
+///   expected: [1, 2, 3]
+///   actual  : [1, 2, 4]
+/// ```
+#[macro_export]
+macro_rules! assert_eq_expected {
+    ($expected:expr, $actual:expr) => {{
+        let expected = &$expected;
+        let actual = &$actual;
+        assert!(
+            *expected == *actual,
+            "assertion failed\n  expected: {expected:?}\n  actual  : {actual:?}"
+        );
+    }};
+    ($expected:expr, $actual:expr, $($arg:tt)+) => {{
+        let expected = &$expected;
+        let actual = &$actual;
+        assert!(
+            *expected == *actual,
+            "{}\n  expected: {expected:?}\n  actual  : {actual:?}",
+            format_args!($($arg)+)
+        );
+    }};
+}
+
 pub fn format_diff(chunks: Vec<dissimilar::Chunk>) -> String {
     let mut buf = String::new();
     for chunk in chunks {

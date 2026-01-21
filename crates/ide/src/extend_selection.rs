@@ -247,6 +247,8 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
 
 #[cfg(test)]
 mod tests {
+    use elp_ide_db::elp_base_db::assert_eq_expected;
+
     use super::*;
     use crate::fixture;
 
@@ -259,10 +261,10 @@ mod tests {
             range,
         };
 
-        for &after in afters {
+        for &expected in afters {
             frange.range = analysis.extend_selection(frange).unwrap();
             let actual = &before[frange.range];
-            assert_eq!(after, actual);
+            assert_eq_expected!(expected, actual);
         }
     }
 

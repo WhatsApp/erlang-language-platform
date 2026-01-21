@@ -905,7 +905,9 @@ mod tests {
                 }
             }
         }
-        assert_eq!(exprs_cast, exprs_visit);
+        // We use the original assertion API here, we are just demonstrating that
+        // the two approaches are equivalent.
+        assert_eq!(&exprs_cast, &exprs_visit);
     }
 
     #[test]

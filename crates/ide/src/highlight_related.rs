@@ -131,6 +131,8 @@ fn find_local_refs(sema: &Semantic<'_>, position: FilePosition) -> Option<Vec<Hi
 
 #[cfg(test)]
 mod tests {
+    use elp_ide_db::elp_base_db::assert_eq_expected;
+
     use super::*;
     use crate::fixture;
 
@@ -168,7 +170,7 @@ mod tests {
         actual.sort_by_key(|(range, _)| range.start());
         expected.sort_by_key(|(range, _)| range.start());
 
-        assert_eq!(expected, actual);
+        assert_eq_expected!(expected, actual);
     }
 
     #[test]

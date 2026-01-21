@@ -1247,6 +1247,7 @@ impl<'a, T> FoldCtx<'a, T> {
 mod tests {
     use elp_base_db::FileId;
     use elp_base_db::RangeOrOffset;
+    use elp_base_db::assert_eq_expected;
     use elp_base_db::fixture::WithFixture;
     use elp_syntax::AstNode;
     use elp_syntax::algo;
@@ -1757,7 +1758,7 @@ bar() ->
     // type expressions
 
     #[track_caller]
-    fn check_traverse_type(fixture_str: &str, n: u32) {
+    fn check_traverse_type(fixture_str: &str, expected: u32) {
         let (db, file_id, range_or_offset) = TestDB::with_range_or_offset(fixture_str);
         let sema = Semantic::new(&db);
         let offset = match range_or_offset {
@@ -1791,7 +1792,7 @@ bar() ->
             );
 
         // Number of occurrences of the atom 'foo' in the code example
-        assert_eq!(n, r);
+        assert_eq_expected!(expected, r);
         expect![[r#"foo"#]].assert_eq(&ast_atom.raw_text());
     }
 
@@ -2074,19 +2075,19 @@ bar() ->
     // -----------------------------------------------------------------
 
     #[track_caller]
-    fn count_atom_foo(fixture_str: &str, n: u32) {
+    fn count_atom_foo(fixture_str: &str, expected: u32) {
         count_atom_foo_with_strategy(
             Strategy {
                 macros: MacroStrategy::Expand,
                 parens: ParenStrategy::InvisibleParens,
             },
             fixture_str,
-            n,
+            expected,
         )
     }
 
     #[track_caller]
-    fn count_atom_foo_with_strategy(strategy: Strategy, fixture_str: &str, n: u32) {
+    fn count_atom_foo_with_strategy(strategy: Strategy, fixture_str: &str, expected: u32) {
         let (db, file_id, range_or_offset) = TestDB::with_range_or_offset(fixture_str);
         let sema = Semantic::new(&db);
         let offset = match range_or_offset {
@@ -2182,7 +2183,7 @@ bar() ->
         );
 
         // Count of the occurrences of the atom 'foo' in the code example
-        assert_eq!(r, n);
+        assert_eq_expected!(expected, r);
     }
 
     #[test]
@@ -2411,7 +2412,7 @@ bar() ->
             &mut |acc, _on, _form_id: FormIdx| acc,
         );
 
-        assert_eq!(r, expected);
+        assert_eq_expected!(expected, r);
     }
 
     #[test]
@@ -2489,7 +2490,7 @@ bar() ->
             &mut |acc, _on, _form_id| acc,
         );
 
-        assert_eq!(r, expected);
+        assert_eq_expected!(expected, r);
     }
 
     #[test]
@@ -2562,7 +2563,7 @@ bar() ->
             &mut |acc, _on, _form_id| acc,
         );
 
-        assert_eq!((in_arg, not_in_arg), expected);
+        assert_eq_expected!(expected, (in_arg, not_in_arg));
     }
 
     #[test]
@@ -2590,16 +2591,17 @@ bar() ->
     // Start of testing paren visibility
 
     #[track_caller]
-    fn count_parens(fixture_str: &str, n: u32) {
+    fn count_parens(fixture_str: &str, expected: u32) {
         let (db, fixture) = TestDB::with_fixture(fixture_str);
         let file_id = fixture.files[0];
         let sema = Semantic::new(&db);
 
         let r = do_count_parens(&sema, ParenStrategy::InvisibleParens, file_id);
-        assert_eq!(r, 0);
+        let expected_invisible = 0;
+        assert_eq_expected!(expected_invisible, r);
 
         let r = do_count_parens(&sema, ParenStrategy::VisibleParens, file_id);
-        assert_eq!(r, n);
+        assert_eq_expected!(expected, r);
     }
 
     fn do_count_parens(sema: &Semantic, parens: ParenStrategy, file_id: FileId) -> u32 {
@@ -2700,16 +2702,17 @@ bar() ->
     }
 
     #[track_caller]
-    fn count_parens_in_type_expr(fixture_str: &str, n: u32) {
+    fn count_parens_in_type_expr(fixture_str: &str, expected: u32) {
         let (db, fixture) = TestDB::with_fixture(fixture_str);
         let file_id = fixture.files[0];
         let sema = Semantic::new(&db);
 
         let r = do_count_parens_in_type_expr(&sema, ParenStrategy::InvisibleParens, file_id);
-        assert_eq!(r, 0);
+        let expected_invisible = 0;
+        assert_eq_expected!(expected_invisible, r);
 
         let r = do_count_parens_in_type_expr(&sema, ParenStrategy::VisibleParens, file_id);
-        assert_eq!(r, n);
+        assert_eq_expected!(expected, r);
     }
 
     fn do_count_parens_in_type_expr(

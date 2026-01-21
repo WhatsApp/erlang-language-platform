@@ -138,6 +138,47 @@ when and how the diagnostic runs:
 - Group related tests in the same module
 - Use descriptive test names that explain the scenario
 
+### Test Assertions
+
+Use `assert_eq_expected!` instead of `assert_eq!` for comparing expected vs actual
+values in tests. This macro provides clearer error messages by labeling values as
+"expected" and "actual" rather than the confusing "left" and "right".
+
+**Usage:**
+
+```rust
+use elp_base_db::assert_eq_expected;
+
+// First argument must be named `expected` or start with `expected`
+assert_eq_expected!(expected, actual);
+assert_eq_expected!(expected_range, found_range);
+assert_eq_expected!(expected_count, result);
+```
+
+**Naming Convention:**
+
+- The first argument (expected value) must be a variable named `expected` or a
+  variable whose name starts with `expected` (e.g., `expected_range`, `expected_count`)
+- The second argument (actual value) can be named anything descriptive
+
+**Examples:**
+
+```rust
+// Good - variable named `expected`
+let expected = fixture.annotations();
+let actual = compute_result();
+assert_eq_expected!(expected, actual);
+
+// Good - variable starts with `expected`
+let expected_range = FileRange { file_id, range };
+let actual_range = nav.file_range();
+assert_eq_expected!(expected_range, actual_range);
+
+// Bad - first argument doesn't start with `expected`
+let annotations = fixture.annotations();  // Should be `expected`
+assert_eq_expected!(annotations, actual); // Incorrect naming
+```
+
 ### Declarative Test Fixtures
 
 ELP uses a declarative test fixture system that allows you to write tests with

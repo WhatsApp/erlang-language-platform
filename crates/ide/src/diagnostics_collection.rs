@@ -281,6 +281,7 @@ mod tests {
     use crate::diagnostics_collection::DiagnosticCollection;
     use crate::diagnostics_collection::are_all_labeled_diagnostics_equal;
     use crate::elp_ide_db::RootDatabase;
+    use crate::elp_ide_db::elp_base_db::assert_eq_expected;
     use crate::elp_ide_db::elp_base_db::fixture::WithFixture;
 
     fn are_diagnostics_equal_vec(old: &[Diagnostic], new: &[Diagnostic]) -> bool {
@@ -366,7 +367,7 @@ mod tests {
                 })
                 .collect::<Vec<_>>();
             actual.sort_by_key(|(range, _)| range.start());
-            assert_eq!(expected, actual);
+            assert_eq_expected!(expected, actual);
         }
     }
 

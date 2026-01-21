@@ -49,6 +49,8 @@ pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Optio
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use elp_ide_db::elp_base_db::assert_eq_expected;
+
     use crate::fixture;
 
     pub(crate) fn check_links(fixture: &str, expected_links: Vec<&str>) {
@@ -61,6 +63,6 @@ pub(crate) mod tests {
             .iter()
             .map(|link| link.uri.clone())
             .collect();
-        assert_eq!(actual_links, expected_links);
+        assert_eq_expected!(expected_links, actual_links);
     }
 }

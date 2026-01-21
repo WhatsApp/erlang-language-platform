@@ -340,6 +340,7 @@ mod tests {
     use elp_ide_db::EqwalizerDatabase;
     use elp_ide_db::RootDatabase;
     use elp_ide_db::elp_base_db;
+    use elp_ide_db::elp_base_db::assert_eq_expected;
     use elp_project_model::otp::otp_supported_by_eqwalizer;
     use itertools::Itertools;
     use stdx::trim_indent;
@@ -392,7 +393,7 @@ mod tests {
             })
             .sorted_by(|a, b| a.0.start().cmp(&b.0.start()))
             .collect();
-        assert_eq!(expected, ranges);
+        assert_eq_expected!(expected, ranges);
     }
 
     #[test]

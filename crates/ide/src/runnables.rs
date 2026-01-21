@@ -205,6 +205,7 @@ pub(crate) fn runnables(
 mod tests {
 
     use elp_ide_db::elp_base_db::FileRange;
+    use elp_ide_db::elp_base_db::assert_eq_expected;
     use stdx::trim_indent;
 
     use crate::fixture;
@@ -213,7 +214,7 @@ mod tests {
     fn check_runnables(fixture: &str) {
         let trimmed_fixture = trim_indent(fixture);
         let (analysis, fixture) = fixture::with_fixture(trimmed_fixture.as_str());
-        let annotations = fixture.annotations();
+        let expected = fixture.annotations();
         let runnables = analysis.runnables(fixture.file_id()).unwrap();
         let mut actual = Vec::new();
         for runnable in runnables {
@@ -232,7 +233,7 @@ mod tests {
             (frange.file_id, frange.range.start(), text.clone())
         };
         actual.sort_by_key(cmp);
-        assert_eq!(actual, annotations);
+        assert_eq_expected!(expected, actual);
     }
 
     #[test]

@@ -14,6 +14,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::RangeOrOffset;
+use elp_ide_db::elp_base_db::assert_eq_expected;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use expect_test::Expect;
 use expect_test::expect;
@@ -216,7 +217,7 @@ fn assert_matches_with_strategy(strategy: Strategy, pattern: &str, code: &str, e
     if matched_strings != expected && !expected.is_empty() {
         print_match_debug_info(&match_finder, position.file_id, expected[0]);
     }
-    assert_eq!(matched_strings, expected);
+    assert_eq_expected!(expected, matched_strings);
 }
 
 #[track_caller]
@@ -255,7 +256,7 @@ fn assert_match_placeholder(
     if matched_strings != expected && !expected.is_empty() {
         print_match_debug_info(&match_finder, position.file_id, expected[0]);
     }
-    assert_eq!(matched_strings, expected);
+    assert_eq_expected!(expected, matched_strings);
     expected_val.assert_debug_eq(&placeholder_val);
 }
 

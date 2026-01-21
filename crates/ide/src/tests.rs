@@ -17,6 +17,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::SourceDatabaseExt;
+use elp_ide_db::elp_base_db::assert_eq_expected;
 use elp_ide_db::elp_base_db::assert_eq_text;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::remove_annotations;
@@ -305,7 +306,7 @@ pub(crate) fn check_specific_fix_with_config_and_adhoc(
 
     let expected = fixture.annotations_by_file_id(&file_id);
     let actual = convert_diagnostics_to_annotations(diagnostics.clone());
-    assert_diagnostics_eq(expected, actual);
+    assert_eq_expected!(expected, actual);
 
     let fix: Assist = if let Some(label) = assist_label {
         let fixes: Vec<_> = diagnostics
@@ -383,14 +384,6 @@ pub(crate) fn check_diagnostics(fixture: &str) {
     check_diagnostics_with_config(config, fixture)
 }
 
-#[track_caller]
-fn assert_diagnostics_eq(expected: Vec<(TextRange, String)>, actual: Vec<(TextRange, String)>) {
-    assert!(
-        expected == actual,
-        "diagnostics assertion failed\n  expected: {expected:?}\n  actual  : {actual:?}"
-    );
-}
-
 fn convert_diagnostics_to_annotations(diagnostics: Vec<Diagnostic>) -> Vec<(TextRange, String)> {
     let mut actual = diagnostics
         .into_iter()
@@ -457,7 +450,7 @@ pub(crate) fn check_ct_diagnostics(elp_fixture: &str) {
     let diagnostics = diagnostics.diagnostics_for(file_id);
     let expected = fixture.annotations_by_file_id(&file_id);
     let actual = convert_diagnostics_to_annotations(diagnostics);
-    assert_diagnostics_eq(expected, actual);
+    assert_eq_expected!(expected, actual);
 }
 
 #[track_caller]
@@ -487,7 +480,7 @@ pub(crate) fn check_diagnostics_with_config_and_ad_hoc(
 
         let expected = fixture.annotations_by_file_id(&file_id);
         let actual = convert_diagnostics_to_annotations(diagnostics);
-        assert_diagnostics_eq(expected, actual);
+        assert_eq_expected!(expected, actual);
     }
 }
 
@@ -523,7 +516,7 @@ pub(crate) fn check_filtered_diagnostics_with_config(
             .collect();
         let expected = fixture.annotations_by_file_id(&file_id);
         let actual = convert_diagnostics_to_annotations(diagnostics);
-        assert_diagnostics_eq(expected, actual);
+        assert_eq_expected!(expected, actual);
     }
 }
 
@@ -544,7 +537,7 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
 
         let expected = fixture.annotations_by_file_id(&file_id);
         let actual = convert_diagnostics_to_annotations(diagnostics);
-        assert_diagnostics_eq(expected, actual);
+        assert_eq_expected!(expected, actual);
     }
 }
 
@@ -591,7 +584,7 @@ pub fn check_file_ranges(mut ranges: Vec<FileRange>, expected: Vec<(FileRange, S
         .collect::<Vec<_>>();
     ranges.sort_by_key(cmp);
     expected.sort_by_key(cmp);
-    assert_eq!(expected, ranges);
+    assert_eq_expected!(expected, ranges);
 }
 
 #[track_caller]
@@ -618,7 +611,7 @@ fn check_call_hierarchy_prepare(fixture: &str) {
         file_id: nav.file_id,
         range: nav.focus_range.unwrap(),
     };
-    assert_eq!(expected_range, actual_range);
+    assert_eq_expected!(expected_range, actual_range);
 }
 
 fn check_call_hierarchy_incoming_calls(fixture: &str) {
@@ -651,7 +644,7 @@ fn check_call_hierarchy_incoming_calls(fixture: &str) {
     let cmp =
         |(frange, text): &(FileRange, String)| (frange.file_id, frange.range.start(), text.clone());
     actual.sort_by_key(cmp);
-    assert_eq!(actual, expected);
+    assert_eq_expected!(expected, actual);
 }
 
 #[track_caller]
@@ -685,7 +678,7 @@ fn check_call_hierarchy_outgoing_calls(fixture: &str) {
     let cmp =
         |(frange, text): &(FileRange, String)| (frange.file_id, frange.range.start(), text.clone());
     actual.sort_by_key(cmp);
-    assert_eq!(actual, expected);
+    assert_eq_expected!(expected, actual);
 }
 
 #[cfg(test)]
@@ -751,7 +744,7 @@ mod test {
         };
 
         expect![[r#"
-            diagnostics assertion failed
+            assertion failed
               expected: [(0..15, "error: W9999: wrong diagnostic")]
               actual  : [(0..12, "💡 error: L1201: no module definition")]"#]]
         .assert_eq(&message);
