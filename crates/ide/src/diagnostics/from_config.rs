@@ -337,14 +337,10 @@ mod tests {
         expect![[r#"
             Err(
                 Error {
-                    inner: ErrorInner {
-                        kind: Custom,
-                        line: None,
-                        col: 0,
-                        at: None,
-                        message: "invalid MFA 'mod:fun/x'",
-                        key: [],
-                    },
+                    message: "invalid MFA 'mod:fun/x'",
+                    input: None,
+                    keys: [],
+                    span: None,
                 },
             )
         "#]]
@@ -361,14 +357,10 @@ mod tests {
         expect![[r#"
             Err(
                 Error {
-                    inner: ErrorInner {
-                        kind: Custom,
-                        line: None,
-                        col: 0,
-                        at: None,
-                        message: "invalid MFA 'junk'",
-                        key: [],
-                    },
+                    message: "invalid MFA 'junk'",
+                    input: None,
+                    keys: [],
+                    span: None,
                 },
             )
         "#]]

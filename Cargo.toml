@@ -106,7 +106,7 @@ thiserror = "1.0"
 tracing = "0.1.40"
 threadpool = "1.8.1"
 timeout-readwrite = "0.3.3"
-toml = "0.5"
+toml = "0.9.11"
 tree-sitter = "0.23.2"
 # When developing the grammar, you may want to point to a local version
 # tree-sitter-erlang = { path = "./tree-sitter-erlang" }

@@ -691,30 +691,25 @@ mod tests {
         .assert_debug_eq(&codes);
     }
 
-    #[test]
-    fn serde_serialize_diagnostic_code() {
-        assert_eq!(
-            toml::to_string::<DiagnosticCode>(&DiagnosticCode::CrossNodeEval),
-            Ok("\"W0014\"".to_string())
-        );
-    }
+    use serde::Serialize;
 
-    #[derive(Deserialize, Debug)]
+    #[derive(Serialize, Deserialize, Debug, PartialEq)]
     struct Config {
-        #[allow(dead_code)]
         enabled: DiagnosticCode,
     }
 
     #[test]
-    fn serde_deserialize_diagnostic_code_1() {
-        let config: Config = toml::from_str(r#"enabled = 'W0014'"#).unwrap();
+    fn serde_roundtrip_diagnostic_code() {
+        // Serialize
+        let config = Config {
+            enabled: DiagnosticCode::CrossNodeEval,
+        };
+        let serialized = toml::to_string(&config).unwrap();
+        assert_eq!(serialized, "enabled = \"W0014\"\n");
 
-        expect![[r#"
-            Config {
-                enabled: CrossNodeEval,
-            }
-        "#]]
-        .assert_debug_eq(&config);
+        // Deserialize
+        let deserialized: Config = toml::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, config);
     }
 
     #[test]

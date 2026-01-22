@@ -1382,6 +1382,7 @@ mod tests {
 
             [erlang_service]
             warnings_as_errors = true
+            
             [[ad_hoc_lints.lints]]
             type = "ReplaceCall"
 

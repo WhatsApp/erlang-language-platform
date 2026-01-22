@@ -1583,7 +1583,12 @@ mod tests {
             &[],
             false,
             Some(expect![[r#"
-                failed to read "../../test/test_projects/linter_bad_config/.elp_lint.toml":expected a right bracket, found an identifier at line 6 column 4
+                failed to read "../../test/test_projects/linter_bad_config/.elp_lint.toml":TOML parse error at line 6, column 4
+                  |
+                6 |    syntax error
+                  |    ^
+                missing comma between array elements, expected `,`
+
             "#]]),
         )
         .expect("bad test");

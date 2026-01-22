@@ -1717,11 +1717,9 @@ mod tests {
 
         expect![[r#"
             Err(
-                "unable to read TMPDIR/.elp.toml: expected an equals, found an identifier at line 1 column 7",
+                "unable to read TMPDIR/.elp.toml: TOML parse error at line 1, column 7\n  |\n1 | buggy stuff, oops\n  |       ^\nkey with no value, expected `=`\n",
             )
         "#]]
-            // .assert_debug_eq(&res);
-
         .assert_eq(&debug_normalise_temp_dir(dir, &manifest));
     }
 
