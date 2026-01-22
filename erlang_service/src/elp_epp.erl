@@ -1376,53 +1376,6 @@ scan_include1(Toks, Inc, From, St) ->
 %%  normal search path, if not we assume that the first directory name
 %%  is a library name, find its true directory and try with that.
 
-expand_lib_dir(Name, EppPaths) ->
-    case expand_lib_dir(Name) of
-        error -> expand_lib_dir_for_paths(Name, EppPaths);
-        Ok -> Ok
-    end.
-
-expand_lib_dir_for_paths([], _Paths) ->
-    error;
-expand_lib_dir_for_paths(Name, [H | T]) ->
-    case expand_lib_dir_for_path(Name, H) of
-        error -> expand_lib_dir_for_paths(Name, T);
-        Ok -> Ok
-    end;
-expand_lib_dir_for_paths(_Name, []) ->
-    error.
-
-expand_lib_dir_for_path(Name, EppPath) ->
-    [App | Path] = filename:split(Name),
-    case file:list_dir(EppPath) of
-        {ok, Files} ->
-            Dirs = [F || F <- Files, filelib:is_dir(fname_join([EppPath, F]))],
-            Matched = [D || D <- Dirs, check_dir(D, App)],
-            case Matched of
-                [] -> error;
-                [H] -> {ok, fname_join([EppPath, H | Path])};
-                [_ | _] -> {ok, fname_join([EppPath, lists:last(lists:sort(Matched)) | Path])}
-            end;
-        _ ->
-            error
-    end.
-
-check_dir(Dir, Name) ->
-    case string:split(Dir, Name ++ "-") of
-        [[] | _] -> true;
-        _ -> false
-    end.
-
-expand_lib_dir(Name) ->
-    try
-        [App | Path] = filename:split(Name),
-        LibDir = code:lib_dir(list_to_atom(App)),
-        {ok, fname_join([LibDir | Path])}
-    catch
-        _:_ ->
-            error
-    end.
-
 scan_include_lib(Tokens0, Inc, From, St) ->
     Tokens = coalesce_strings(Tokens0),
     scan_include_lib1(Tokens, Inc, From, St).
