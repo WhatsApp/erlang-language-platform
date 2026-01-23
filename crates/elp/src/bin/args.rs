@@ -312,6 +312,9 @@ pub struct Lint {
     /// Only apply elp:ignore fixes
     pub ignore_fix_only: bool,
 
+    /// Deprecated: in-place is now the default behavior. This flag will be removed in a future release.
+    pub in_place: bool,
+
     /// When applying a fix, put the results in this directory path
     #[bpaf(argument("TO"))]
     pub to: Option<PathBuf>,

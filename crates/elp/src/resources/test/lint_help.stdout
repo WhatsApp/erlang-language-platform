@@ -1,4 +1,4 @@
-Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--rebar] [--as PROFILE] [--include-generated] [--include-tests] [--no-diags] [[--format FORMAT]] [--include-erlc-diagnostics] [--include-ct-diagnostics] [--include-edoc-diagnostics] [--include-eqwalizer-diagnostics] [--include-suppressed] [--use-cli-severity] [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--experimental] [--read-config] [--config-file CONFIG_FILE] [--apply-fix] [--ignore-fix-only] [--to TO] [--recursive] [--with-check] [--check-eqwalize-all] [--one-shot] [--report-system-stats] [--no-stream] <IGNORED_APPS>...
+Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--rebar] [--as PROFILE] [--include-generated] [--include-tests] [--no-diags] [[--format FORMAT]] [--include-erlc-diagnostics] [--include-ct-diagnostics] [--include-edoc-diagnostics] [--include-eqwalizer-diagnostics] [--include-suppressed] [--use-cli-severity] [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--experimental] [--read-config] [--config-file CONFIG_FILE] [--apply-fix] [--ignore-fix-only] [--in-place] [--to TO] [--recursive] [--with-check] [--check-eqwalize-all] [--one-shot] [--report-system-stats] [--no-stream] <IGNORED_APPS>...
 
 Available positional items:
     <IGNORED_APPS>  Rest of args are space separated list of apps to ignore
@@ -27,6 +27,7 @@ Available options:
         --config-file <CONFIG_FILE>      Override normal configuration file. When set, acts as if READ_CONFIG is true.
         --apply-fix                      If the diagnostic has an associated fix, apply it. Modifies the original file. Use --to to write to a different directory.
         --ignore-fix-only                Only apply elp:ignore fixes
+        --in-place                       Deprecated: in-place is now the default behavior. This flag will be removed in a future release.
         --to <TO>                        When applying a fix, put the results in this directory path
         --recursive                      If applying fixes, apply any new ones that arise from the
                                          prior fixes recursively. Limited in scope to the clause of the

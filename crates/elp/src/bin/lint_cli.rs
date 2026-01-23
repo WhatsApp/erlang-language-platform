@@ -79,6 +79,13 @@ pub fn run_lint_command(
     let start_time = SystemTime::now();
     let memory_start = MemoryUsage::now();
 
+    if args.in_place {
+        writeln!(
+            cli.err(),
+            "Warning: the --in-place flag is deprecated and will be removed in an upcoming release. Fixing in place is now the default behavior when using --apply-fix."
+        )?;
+    }
+
     if let Some(to) = &args.to {
         fs::create_dir_all(to)?
     };
@@ -1382,7 +1389,7 @@ mod tests {
 
             [erlang_service]
             warnings_as_errors = true
-            
+
             [[ad_hoc_lints.lints]]
             type = "ReplaceCall"
 
