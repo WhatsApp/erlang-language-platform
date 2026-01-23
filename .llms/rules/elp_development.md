@@ -323,6 +323,8 @@ cargo test --manifest-path crates/ide/Cargo.toml
 - Don't change existing diagnostic codes or their meanings
 - Deprecate old codes before removing them
 - Maintain serialization compatibility for configuration files
+- when removing a CLI argument, replace the behaviour with a message
+  that it is no longer required.
 
 ### Code Organization
 
