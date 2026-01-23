@@ -323,8 +323,9 @@ cargo test --manifest-path crates/ide/Cargo.toml
 - Don't change existing diagnostic codes or their meanings
 - Deprecate old codes before removing them
 - Maintain serialization compatibility for configuration files
-- when removing a CLI argument, replace the behaviour with a message
-  that it is no longer required.
+- Instead of removing a CLI argument, make it a no-op but emit a message
+  to stderr that it is no longer required. When it has been like that for at least
+  a month, remove it.
 
 ### Code Organization
 
