@@ -1,6 +1,4 @@
   app_a_ssr: 1
       11:11-11:18::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: {4}.
-  app_a_SUITE: 1
-      20:2345-20:2357::[WeakWarning] [ad-hoc: ssr-match] SSR pattern matched: ssr: ?BAR(_@AA).
 
-Matches found in 2 modules
+Matches found in 1 modules

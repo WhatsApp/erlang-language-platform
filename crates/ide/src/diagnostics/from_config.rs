@@ -258,6 +258,10 @@ impl MatchSsr {
         let matches = match_pattern(sema, strategy, &self.ssr_pattern, scope);
 
         for matched in matches.matches {
+            if matched.range.file_id != file_id {
+                continue;
+            }
+
             let message = self
                 .message
                 .clone()
