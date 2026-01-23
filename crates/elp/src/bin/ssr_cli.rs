@@ -66,6 +66,12 @@ pub fn run_ssr_command(
     query_config: &BuckQueryConfig,
     use_color: bool,
 ) -> Result<()> {
+    if args.include_tests {
+        writeln!(
+            cli.err(),
+            "Warning: --include-tests is deprecated, has no effect, and will be removed in a future release."
+        )?;
+    }
     let start_time = SystemTime::now();
     let memory_start = MemoryUsage::now();
 

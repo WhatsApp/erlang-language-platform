@@ -366,6 +366,8 @@ pub struct Ssr {
 
     /// Also generate diagnostics for generated files
     pub include_generated: bool,
+    /// Deprecated: has no effect, will be removed in future
+    pub include_tests: bool,
 
     /// Show diagnostics in JSON format
     #[bpaf(
