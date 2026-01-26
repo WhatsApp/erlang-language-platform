@@ -255,6 +255,12 @@ pub fn is_erlang_type(f: &str, a: usize) -> bool {
         ("timeout", 0) => true,
         ("no_return", 0) => true,
 
+        // Built-in integer types with special range definitions
+        // See https://www.erlang.org/doc/reference_manual/typespec.html
+        ("non_neg_integer", 0) => true, // 0..
+        ("pos_integer", 0) => true,     // 1..
+        ("neg_integer", 0) => true,     // ..-1
+
         ("dynamic", 0) => true,
         _ => false,
     }
