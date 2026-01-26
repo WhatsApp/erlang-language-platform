@@ -717,18 +717,13 @@ dependencies = [
 name = "elp_syntax"
 version = "1.1.0"
 dependencies = [
- "eetf",
  "elp_ide_db",
  "expect-test",
- "fxhash",
- "indexmap 2.13.0",
  "itertools 0.10.5",
  "lazy_static",
- "log",
  "num-derive",
  "num-traits",
  "once_cell",
- "profile",
  "regex",
  "rowan",
  "smol_str",
