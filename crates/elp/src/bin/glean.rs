@@ -333,6 +333,13 @@ pub(crate) struct FunctionTarget {
 }
 
 #[derive(Serialize, Debug)]
+pub(crate) struct TaggedUrl {
+    pub tag: String,
+    pub display_name: String,
+    pub url: String,
+}
+
+#[derive(Serialize, Debug)]
 pub(crate) struct MacroTarget {
     #[serde(rename = "file")]
     file_id: GleanFileId,
@@ -341,12 +348,8 @@ pub(crate) struct MacroTarget {
     arity: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     expansion: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    ods_url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    logview_url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    scuba_urls: Option<Vec<(String, String)>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    tagged_urls: Vec<TaggedUrl>,
 }
 
 #[derive(Serialize, Debug)]
@@ -361,8 +364,8 @@ pub(crate) struct RecordTarget {
     #[serde(rename = "file")]
     file_id: GleanFileId,
     name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    wam_url: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    tagged_urls: Vec<TaggedUrl>,
 }
 
 #[derive(Serialize, Debug)]
@@ -1030,37 +1033,26 @@ impl GleanIndexer {
                         let range = def.source(db).syntax().text_range();
                         let text = &db.file_text(id)[range];
                         let text = format!("```erlang\n{text}\n```");
-                        let scuba_links =
-                            x.key
-                                .scuba_urls
-                                .as_ref()
-                                .map_or(String::new(), |scuba_urls| {
-                                    scuba_urls
-                                        .iter()
-                                        .map(|(display_name, url)| {
-                                            format!("[{}]({})", display_name, url)
-                                        })
-                                        .collect::<Vec<_>>()
-                                        .join(" | ")
-                                });
 
-                        let scuba_section = if !scuba_links.is_empty() {
-                            format!("Scuba: {}\n", scuba_links)
-                        } else {
-                            String::new()
-                        };
+                        // Generate links section from tagged_urls
+                        // If URL is empty, output display_name only - this
+                        // signifies preformatted markdown
+                        let links_section: String = x
+                            .key
+                            .tagged_urls
+                            .iter()
+                            .map(|url| {
+                                if url.url.is_empty() {
+                                    format!("{}\n", url.display_name)
+                                } else {
+                                    format!("[{}]({})\n", url.display_name, url.url)
+                                }
+                            })
+                            .collect();
 
                         let doc = format!(
-                            "{}{}{}{}{}",
-                            x.key
-                                .ods_url
-                                .as_ref()
-                                .map_or(String::new(), |o| format!("[ODS]({})\n", o)),
-                            x.key
-                                .logview_url
-                                .as_ref()
-                                .map_or(String::new(), |l| format!("[LogView]({})\n", l)),
-                            scuba_section,
+                            "{}{}{}",
+                            links_section,
                             text,
                             x.key
                                 .expansion
@@ -1086,12 +1078,15 @@ impl GleanIndexer {
                         file_decl.declarations.push(decl);
                         file_decl.declarations.push(doc_decl);
                         x.key.file_id = file_id.into();
+                        // @fb-only: Using xref.source.start as arity is a
+                        // @fb-only: design choice - see D55916496. This should
+                        // @fb-only: be revisited during Glean schema redesign.
                         x.key.arity = Some(xref.source.start);
                     }
                 }
                 XRefTarget::Record(x) => {
-                    // Add WAM documentation for records that have wam_url
-                    if let Some(wam_url) = &x.key.wam_url {
+                    // Add documentation for records that have tagged_urls
+                    if !x.key.tagged_urls.is_empty() {
                         let id: FileId = x.key.file_id.clone().into();
                         let def_map = db.def_map(id);
                         let record_name = Name::from_erlang_service(&x.key.name);
@@ -1099,7 +1094,23 @@ impl GleanIndexer {
                             let range = def.source(db).syntax().text_range();
                             let text = &db.file_text(id)[range];
                             let text = format!("```erlang\n{text}\n```");
-                            let doc = format!("[WAM]({})\n{}", wam_url, text);
+
+                            // Generate links section from tagged_urls
+                            // If url is empty, display_name contains pre-formatted markdown
+                            let links_section: String = x
+                                .key
+                                .tagged_urls
+                                .iter()
+                                .map(|url| {
+                                    if url.url.is_empty() {
+                                        format!("{}\n", url.display_name)
+                                    } else {
+                                        format!("[{}]({})\n", url.display_name, url.url)
+                                    }
+                                })
+                                .collect();
+
+                            let doc = format!("{}{}", links_section, text);
                             let decl = Declaration::RecordDeclaration(
                                 RecordDecl {
                                     name: x.key.name.clone(),
@@ -1779,9 +1790,7 @@ impl GleanIndexer {
             name: name.to_string(),
             arity: define.name.arity(),
             expansion,
-            ods_url: None,
-            logview_url: None,
-            scuba_urls: None,
+            tagged_urls: Vec::new(),
         };
         Some(XRef {
             source: range.into(),
@@ -1875,10 +1884,8 @@ impl GleanIndexer {
         let source_file = sema.parse(file_id);
         let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
 
-        // @fb-only: use elp_ide::meta_only::wam_links;
-        // @fb-only: let wam_ctx = wam_links::WamEventCtx::new(sema.db.upcast());
-        // @fb-only: let wam_url = wam_ctx.build_wam_link(name).map(|link| link.url());
-        let wam_url = None; // @oss-only
+        // @fb-only: let tagged_urls = meta_only::build_record_tagged_urls(sema, name);
+        let tagged_urls: Vec<TaggedUrl> = Vec::new(); // @oss-only
 
         Some(XRef {
             source: range.into(),
@@ -1886,7 +1893,7 @@ impl GleanIndexer {
                 RecordTarget {
                     file_id: def.file.file_id.into(),
                     name: def.record.name.to_string(),
-                    wam_url,
+                    tagged_urls,
                 }
                 .into(),
             ),
@@ -2435,7 +2442,7 @@ mod tests {
         }).
         baz(A) ->
             #query{ size = A }.
-        %%  ^^^^^^ glean_module9.erl/rec/query/no_wam
+        %%  ^^^^^^ glean_module9.erl/rec/query/no_urls
         "#;
 
         xref_v2_check(spec);
@@ -2465,9 +2472,9 @@ mod tests {
         -record(stats, {count, time}).
         baz(Time) ->
             [{#stats.count, 1},
-        %%    ^^^^^^ glean_module10.erl/rec/stats/no_wam
+        %%    ^^^^^^ glean_module10.erl/rec/stats/no_urls
             {#stats.time, Time}].
-        %%   ^^^^^^ glean_module10.erl/rec/stats/no_wam
+        %%   ^^^^^^ glean_module10.erl/rec/stats/no_urls
 
         "#;
 
@@ -2496,7 +2503,7 @@ mod tests {
         -record(stats, {count, time}).
         baz(Stats) ->
             Stats#stats.count.
-        %%       ^^^^^^ glean_module11.erl/rec/stats/no_wam
+        %%       ^^^^^^ glean_module11.erl/rec/stats/no_urls
         "#;
 
         xref_v2_check(spec);
@@ -2524,7 +2531,7 @@ mod tests {
         -record(stats, {count, time}).
         baz(Stats, NewCnt) ->
             Stats#stats{count = NewCnt}.
-        %%       ^^^^^^ glean_module12.erl/rec/stats/no_wam
+        %%       ^^^^^^ glean_module12.erl/rec/stats/no_urls
         "#;
 
         xref_v2_check(spec);
@@ -2554,7 +2561,7 @@ mod tests {
         -record(stats, {count, time}).
         baz(Stats) ->
             #stats{count = Count, time = Time} = Stats.
-        %%  ^^^^^^ glean_module13.erl/rec/stats/no_wam
+        %%  ^^^^^^ glean_module13.erl/rec/stats/no_urls
         "#;
 
         xref_v2_check(spec);
@@ -2578,7 +2585,7 @@ mod tests {
         //- /glean/app_glean/src/glean_module14.erl
         -record(rec, {field}).
         foo(#rec.field) -> ok.
-        %%  ^^^^ glean_module14.erl/rec/rec/no_wam
+        %%  ^^^^ glean_module14.erl/rec/rec/no_urls
         "#;
 
         xref_v2_check(spec);
@@ -2604,10 +2611,10 @@ mod tests {
         //- /glean/app_glean/src/glean_module15.erl
         -record(stats, {count, time}).
         -spec baz() -> #stats{}.
-        %%             ^^^^^^ glean_module15.erl/rec/stats/no_wam
+        %%             ^^^^^^ glean_module15.erl/rec/stats/no_urls
         baz() ->
             #stats{count = 1, time = 2}.
-        %%  ^^^^^^ glean_module15.erl/rec/stats/no_wam
+        %%  ^^^^^^ glean_module15.erl/rec/stats/no_urls
         "#;
 
         xref_v2_check(spec);
@@ -2626,9 +2633,9 @@ mod tests {
             -define(MAX(X, Y), if X > Y -> X; true -> Y end).
 
             baz(1) -> ?TAU;
-        %%             ^^^ macro.erl/macro/TAU/117/no_ods/6.28
+        %%             ^^^ macro.erl/macro/TAU/117/no_urls/6.28
             baz(N) -> ?MAX(N, 200).
-        %%             ^^^ macro.erl/macro/MAX/137/no_ods/if (N > 200) -> N; true -> 200 end
+        %%             ^^^ macro.erl/macro/MAX/137/no_urls/if (N > 200) -> N; true -> 200 end
 
         "#;
         xref_v2_check(spec);
@@ -2642,7 +2649,7 @@ mod tests {
             -define(TAU, 6.28).
 
             baz(?TAU) -> 1.
-        %%       ^^^ macro.erl/macro/TAU/54/no_ods/6.28
+        %%       ^^^ macro.erl/macro/TAU/54/no_urls/6.28
 
         "#;
         xref_v2_check(spec);
@@ -2656,7 +2663,7 @@ mod tests {
             -define(TYPE, integer()).
 
             -spec baz(ok) -> ?TYPE.
-        %%                    ^^^^ macro.erl/macro/TYPE/73/no_ods/erlang:integer()
+        %%                    ^^^^ macro.erl/macro/TYPE/73/no_urls/erlang:integer()
             baz(ok) -> 1.
 
         "#;
@@ -2670,7 +2677,7 @@ mod tests {
             -module(macro).
            -define(FOO(X), X).
            -wild(?FOO(atom)).
-        %%        ^^^ macro.erl/macro/FOO/53/no_ods/atom
+        %%        ^^^ macro.erl/macro/FOO/53/no_urls/atom
 
         "#;
         xref_v2_check(spec);
@@ -2848,7 +2855,7 @@ mod tests {
             let file_id = &xref_fact.key.file_id;
             let mut annotations = expected_by_file
                 .remove(file_id)
-                .expect("Annotations shold be present");
+                .expect("Annotations should be present");
             for xref in &xref_fact.key.xrefs {
                 let range: TextRange = xref.source.clone().into();
                 let label = xref.target.to_string();
@@ -2877,7 +2884,7 @@ mod tests {
             let file_id = xref_fact.file_id;
             let mut annotations = expected_by_file
                 .remove(&file_id)
-                .expect("Annotations shold be present");
+                .expect("Annotations should be present");
             for xref in xref_fact.xrefs {
                 let range: TextRange = xref.source.clone().into();
                 let file_name = file_names
@@ -2919,7 +2926,7 @@ mod tests {
         let file_id = &func_decl[0].key.file_id;
         let mut annotations = expected_by_file
             .remove(file_id)
-            .expect("Annotations shold be present");
+            .expect("Annotations should be present");
         for decl in func_decl {
             let range: TextRange = decl.key.span.clone().into();
             let label = decl.key.fqn.to_string();
@@ -2947,7 +2954,7 @@ mod tests {
             if fixture_files.contains(&file_decl.file_id) {
                 let mut annotations = expected_by_file
                     .remove(&file_decl.file_id)
-                    .expect("Annotations shold be present");
+                    .expect("Annotations should be present");
                 for decl in file_decl.declarations {
                     let range: TextRange = decl.span().clone().into();
                     let label = decl.to_string();
@@ -3066,15 +3073,18 @@ mod tests {
                         Some(arity) => arity.to_string(),
                         None => "no_arity".to_string(),
                     };
-                    let ods_link = match (
-                        &xref.key.ods_url,
-                        &xref.key.logview_url,
-                        &xref.key.scuba_urls,
-                    ) {
-                        (Some(_), _, _) => "has_ods",
-                        (None, Some(_), _) => "has_logview",
-                        (None, None, Some(_)) => "has_scuba",
-                        (None, None, None) => "no_ods",
+                    // Generate a tag descriptor from tag names
+                    let url_tag = if xref.key.tagged_urls.is_empty() {
+                        "no_urls".to_string()
+                    } else {
+                        let mut tags: Vec<&str> = xref
+                            .key
+                            .tagged_urls
+                            .iter()
+                            .map(|u| u.tag.as_str())
+                            .collect();
+                        tags.sort_unstable();
+                        format!("has_{}", tags.join("_"))
                     };
                     let exp = match &xref.key.expansion {
                         Some(exp) => exp
@@ -3088,16 +3098,24 @@ mod tests {
                         None => "no_exp".to_string(),
                     };
                     f.write_str(
-                        format!("macro/{}/{}/{}/{}", xref.key.name, arity, ods_link, exp).as_str(),
+                        format!("macro/{}/{}/{}/{}", xref.key.name, arity, url_tag, exp).as_str(),
                     )
                 }
                 XRefTarget::Header(_) => f.write_str("header"),
                 XRefTarget::Record(xref) => {
-                    let wam_link = match &xref.key.wam_url {
-                        Some(_) => "has_wam",
-                        None => "no_wam",
+                    let url_tag = if xref.key.tagged_urls.is_empty() {
+                        "no_urls".to_string()
+                    } else {
+                        let mut tags: Vec<&str> = xref
+                            .key
+                            .tagged_urls
+                            .iter()
+                            .map(|u| u.tag.as_str())
+                            .collect();
+                        tags.sort_unstable();
+                        format!("has_{}", tags.join("_"))
                     };
-                    f.write_str(format!("rec/{}/{}", xref.key.name, wam_link).as_str())
+                    f.write_str(format!("rec/{}/{}", xref.key.name, url_tag).as_str())
                 }
                 XRefTarget::Type(xref) => {
                     f.write_str(format!("type/{}/{}", xref.key.name, xref.key.arity).as_str())
