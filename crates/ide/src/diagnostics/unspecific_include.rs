@@ -8,8 +8,10 @@
  * above-listed licenses.
  */
 
-use elp_ide_assists::Assist;
-use elp_ide_db::DiagnosticCode;
+// Diagnostic: unspecific-include
+//
+// Return a warning if an include path is not fully specified
+
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::generated_file_include_lib;
 use elp_ide_db::elp_base_db::path_for_file;
@@ -20,10 +22,12 @@ use elp_syntax::ast;
 use hir::InFile;
 use hir::Semantic;
 
-use super::Diagnostic;
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use super::Severity;
+use crate::Assist;
+use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
+use crate::diagnostics::Severity;
 use crate::fix;
 
 // Assist: rewrite_include
@@ -38,124 +42,135 @@ use crate::fix;
 // -include("app_a/include/some_header_from_app_a.hrl").
 // ```
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _file_kind| {
-        check_includes(diags, sema, file_id);
-    },
-};
+pub(crate) struct UnspecificIncludeLinter;
 
-fn check_includes(acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    let form_list = sema.form_list(file_id);
+impl Linter for UnspecificIncludeLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::UnspecificInclude
+    }
 
-    form_list
-        .includes()
-        .filter(|(_, inc)| !inc.path().contains("/"))
-        .filter_map(|(idx, inc)| {
-            let included_file_id = sema.db.resolve_include(InFile::new(file_id, idx))?;
-            Some((included_file_id, inc))
-        })
-        .filter(|(included_file_id, _)| *included_file_id != file_id)
-        .for_each(|(included_file_id, inc)| {
-            || -> Option<()> {
-                // In base_db::include::resolve_remote_query, the fallback processing does
-                // - split the path into app and rest
-                // - get the app_data based on the app
-                // - if the rest starts with "include/"
-                //   - strip it
-                //   - find a dir in the app include_path list such that the
-                //     concatenation gives a valid file
-                //
-                // We need to do the reverse here.
+    fn description(&self) -> &'static str {
+        "Unspecific include."
+    }
 
-                let include_path = path_for_file(sema.db.upcast(), included_file_id)?;
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
+        Severity::WeakWarning
+    }
+}
 
-                // Skip diagnostic if both files are in the same app
-                let source_app_name = sema.db.file_app_name(file_id);
-                let included_app_name = sema.db.file_app_name(included_file_id);
-                if source_app_name.is_some() && source_app_name == included_app_name {
-                    return Some(()); // Same app - no diagnostic needed
-                }
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Context {
+    replacement: String,
+    make_include_lib: Option<TextRange>,
+}
 
-                if !include_path.to_string().contains("/src/") {
-                    let replacement = generated_file_include_lib(
-                        sema.db.upcast(),
-                        file_id,
-                        included_file_id,
-                        include_path,
-                    )?;
-                    let source_file = sema.parse(file_id);
-                    let ast = inc.form_id().get(&source_file.value);
-                    let (range, make_include_lib) = match ast {
-                        ast::Form::PreprocessorDirective(preprocessor_directive) => {
-                            match preprocessor_directive {
-                                ast::PreprocessorDirective::PpInclude(pp_include) => pp_include
-                                    .include_range()
-                                    .map(|r| (r, Some(pp_include.text_range()))),
-                                ast::PreprocessorDirective::PpIncludeLib(pp_include_lib) => {
-                                    pp_include_lib.include_range().map(|r| (r, None))
-                                }
-                                _ => None,
-                            }
+impl GenericLinter for UnspecificIncludeLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
+        let form_list = sema.form_list(file_id);
+        let source_file = sema.parse(file_id);
+        let mut res = Vec::new();
+
+        for (idx, inc) in form_list.includes() {
+            if inc.path().contains("/") {
+                continue;
+            }
+
+            let included_file_id = match sema.db.resolve_include(InFile::new(file_id, idx)) {
+                Some(id) => id,
+                None => continue,
+            };
+
+            if included_file_id == file_id {
+                continue;
+            }
+
+            // Skip diagnostic if both files are in the same app
+            let source_app_name = sema.db.file_app_name(file_id);
+            let included_app_name = sema.db.file_app_name(included_file_id);
+            if source_app_name.is_some() && source_app_name == included_app_name {
+                continue;
+            }
+
+            let include_path = match path_for_file(sema.db.upcast(), included_file_id) {
+                Some(p) => p,
+                None => continue,
+            };
+
+            if include_path.to_string().contains("/src/") {
+                continue;
+            }
+
+            let replacement = match generated_file_include_lib(
+                sema.db.upcast(),
+                file_id,
+                included_file_id,
+                include_path,
+            ) {
+                Some(r) => r,
+                None => continue,
+            };
+
+            let ast = inc.form_id().get(&source_file.value);
+            let range_and_lib = match ast {
+                ast::Form::PreprocessorDirective(preprocessor_directive) => {
+                    match preprocessor_directive {
+                        ast::PreprocessorDirective::PpInclude(pp_include) => pp_include
+                            .include_range()
+                            .map(|r| (r, Some(pp_include.text_range()))),
+                        ast::PreprocessorDirective::PpIncludeLib(pp_include_lib) => {
+                            pp_include_lib.include_range().map(|r| (r, None))
                         }
                         _ => None,
-                    }?;
-                    acc.push(make_diagnostic(
-                        file_id,
-                        range,
-                        &replacement,
-                        make_include_lib,
-                    )?);
+                    }
                 }
-                Some(())
-            }();
-        });
-}
+                _ => None,
+            };
 
-fn make_diagnostic(
-    file_id: FileId,
-    range: TextRange,
-    new_include: &str,
-    make_include_lib: Option<TextRange>,
-) -> Option<Diagnostic> {
-    let message = "Unspecific include.".to_string();
-    Some(
-        Diagnostic::new(DiagnosticCode::UnspecificInclude, message, range)
-            .with_severity(Severity::WeakWarning)
-            .with_fixes(Some(vec![replace_include_path(
-                file_id,
-                range,
-                new_include,
-                make_include_lib,
-            )])),
-    )
-}
+            if let Some((range, make_include_lib)) = range_and_lib {
+                res.push(GenericLinterMatchContext {
+                    range,
+                    context: Context {
+                        replacement,
+                        make_include_lib,
+                    },
+                });
+            }
+        }
 
-fn replace_include_path(
-    file_id: FileId,
-    range: TextRange,
-    filename: &str,
-    make_include_lib: Option<TextRange>,
-) -> Assist {
-    let mut builder = TextEdit::builder();
-    if let Some(attr_range) = make_include_lib {
-        builder.replace(attr_range, format!("-include_lib(\"{filename}\")."));
-    } else {
-        builder.replace(range, format!("\"{filename}\""));
+        Some(res)
     }
-    let edit = builder.finish();
-    fix(
-        "replace_unspecific_include",
-        &format!("Replace include path with: {filename}"),
-        SourceChange::from_text_edit(file_id, edit),
-        range,
-    )
+
+    fn fixes(
+        &self,
+        context: &Self::Context,
+        range: TextRange,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        let mut builder = TextEdit::builder();
+        let filename = &context.replacement;
+        if let Some(attr_range) = context.make_include_lib {
+            builder.replace(attr_range, format!("-include_lib(\"{filename}\")."));
+        } else {
+            builder.replace(range, format!("\"{filename}\""));
+        }
+        let edit = builder.finish();
+        Some(vec![fix(
+            "replace_unspecific_include",
+            &format!("Replace include path with: {filename}"),
+            SourceChange::from_text_edit(file_id, edit),
+            range,
+        )])
+    }
 }
+
+pub static LINTER: UnspecificIncludeLinter = UnspecificIncludeLinter;
 
 #[cfg(test)]
 mod tests {

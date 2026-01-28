@@ -1626,7 +1626,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &head_mismatch::DESCRIPTOR_SEMANTIC,
         &missing_separator::DESCRIPTOR,
         &record_tuple_match::DESCRIPTOR,
-        &unspecific_include::DESCRIPTOR,
     ]
 }
 
@@ -1716,6 +1715,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &old_edoc_syntax::LINTER,
     &missing_module::LINTER,
     &unused_include::LINTER,
+    &unspecific_include::LINTER,
     &misspelled_attribute::LINTER,
     &boolean_precedence::LINTER,
     &bound_variable::LINTER,
