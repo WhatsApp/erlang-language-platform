@@ -123,6 +123,7 @@ mod missing_compile_warn_missing_spec;
 mod missing_module;
 mod missing_separator;
 mod misspelled_attribute;
+mod mixed_strict_relaxed_generators;
 mod module_mismatch;
 mod mutable_variable;
 mod no_catch;
@@ -1721,6 +1722,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &unused_record_field::LINTER,
     &unresolved_macro::LINTER,
     &unresolved_include::LINTER,
+    &mixed_strict_relaxed_generators::LINTER,
 ];
 
 /// Unified registry for all types of linters
