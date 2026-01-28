@@ -332,6 +332,9 @@ cargo test --manifest-path crates/ide/Cargo.toml
 - Keep related functionality together in modules
 - Use clear module boundaries and public APIs
 - Minimize dependencies between modules
+- Don't needlessly duplicate code. Use existing code and functions if possible.
+  If you need to add a new function as a copy of an existing one, check
+  if it can be merged with the original.
 
 ### Version Management
 
