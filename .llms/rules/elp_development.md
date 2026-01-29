@@ -71,38 +71,22 @@ When adding new diagnostic codes to `DiagnosticCode` enum:
      - Optional: Fix suggestions or alternatives
    - The `as_uri()` method automatically generates URLs pointing to these docs
 
-### Creating DiagnosticDescriptor
+### Creating Linters
 
-Every diagnostic must have a corresponding `DiagnosticDescriptor` that defines
-when and how the diagnostic runs:
+Linters are defined in `crates/ide/src/diagnostics/`. Each linter:
 
-1. **Static Descriptor Declaration**: Create a public static descriptor in your
-   diagnostic module
-   - Use `pub(crate) static DESCRIPTOR: DiagnosticDescriptor` pattern
-   - Define `DiagnosticConditions` with appropriate flags
-   - Provide a checker function that implements the diagnostic logic
+1. Implements the base `Linter` trait (defines `id()`, `description()`, and
+   optional config like `severity()`, `is_experimental()`, `should_process_test_files()`)
+2. Implements one of three specialized traits:
+   - `FunctionCallLinter`: For checking function calls (see `undefined_function.rs`)
+   - `SsrPatternsLinter`: For SSR pattern matching (see `binary_string_to_sigil.rs`)
+   - `GenericLinter`: For custom AST traversal (see `mixed_strict_relaxed_generators.rs`)
+3. Exports a `pub static LINTER` instance
+4. Is registered in `diagnostics.rs` in the appropriate constant:
+   `FUNCTION_CALL_LINTERS`, `SSR_PATTERN_LINTERS`, or `GENERIC_LINTERS`
 
-2. **Diagnostic Conditions**: Configure when the diagnostic should run
-   - `experimental`: Mark as true for experimental/unstable diagnostics
-   - `include_generated`: Set to false if diagnostic shouldn't run on generated
-     code
-   - `include_tests`: Set to false if diagnostic shouldn't run on test files
-   - `default_disabled`: Set to true if diagnostic requires explicit enabling
-
-3. **Checker Function**: Implement the diagnostic logic
-   - Must match signature: `&dyn AdhocSemanticDiagnostics`
-   - Push diagnostics to the `diags` vector using `Diagnostic::new()`
-   - Use helper functions to keep the checker clean and focused
-
-4. **Registration**: Add the descriptor to `diagnostics_descriptors()` function
-   in `diagnostics.rs`
-   - Include your module's `DESCRIPTOR` in the returned vector
-
-5. **Module Structure**: Follow the established pattern
-   - Create separate module files for each diagnostic type
-   - Export the `DESCRIPTOR` as `pub(crate) static`
-   - Include comprehensive tests with `#[cfg(test)]`
-   - Use SSR patterns when appropriate for complex matching
+See the `Linter` trait definition in `crates/ide/src/diagnostics.rs` for all
+available configuration options.
 
 ## Rust Code Style
 
