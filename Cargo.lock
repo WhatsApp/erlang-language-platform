@@ -476,10 +476,8 @@ dependencies = [
 name = "elp_base_db"
 version = "1.1.0"
 dependencies = [
- "anyhow",
  "dissimilar",
  "eetf",
- "either",
  "elp_project_model",
  "elp_syntax",
  "expect-test",
@@ -487,7 +485,6 @@ dependencies = [
  "lazy_static",
  "log",
  "paths",
- "profile",
  "regex",
  "salsa",
  "serde_json",
