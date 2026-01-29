@@ -2025,7 +2025,30 @@ mod tests {
 
     #[test]
     fn test_discover() {
-        let root = AbsPathBuf::assert(Utf8Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures"));
+        #[cfg(buck_build)]
+        fn get_fixtures_dir() -> AbsPathBuf {
+            // Use buck_resources for Buck builds (works with remote execution)
+            // The resource points to the filegroup output root, which contains
+            // the fixtures/ directory preserving the original path structure
+            let resource_path =
+                buck_resources::get("whatsapp/elp/crates/project_model/fixtures").unwrap();
+            let fixtures_path = resource_path.join("fixtures");
+            let canonical = fs::canonicalize(&fixtures_path).unwrap_or_else(|_| {
+                panic!(
+                    "Failed to canonicalize fixtures path: {}",
+                    fixtures_path.display()
+                )
+            });
+            AbsPathBuf::assert_utf8(canonical)
+        }
+
+        #[cfg(not(buck_build))]
+        fn get_fixtures_dir() -> AbsPathBuf {
+            // Compile-time for Cargo
+            AbsPathBuf::assert(Utf8PathBuf::from(env!("CARGO_MANIFEST_DIR"))).join("fixtures")
+        }
+
+        let root = get_fixtures_dir();
         let manifest =
             ProjectManifest::discover_rebar(&root.join("nested"), None, IncludeParentDirs::Yes);
         match manifest {

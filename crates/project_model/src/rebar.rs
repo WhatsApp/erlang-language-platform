@@ -68,31 +68,96 @@ impl RebarConfig {
     }
 
     pub fn rebar3_command_base() -> Command {
-        if cfg!(target_os = "windows") {
-            lazy_static! {
-                static ref REBAR3_PATH: PathBuf = {
-                    let rebar3_name = "rebar3";
-                    env::var("PATH")
-                        .ok()
-                        .and_then(|paths| {
-                            env::split_paths(&paths).find_map(|dir| {
-                                let candidate = dir.join(rebar3_name);
-                                if candidate.exists() {
-                                    Some(candidate)
-                                } else {
-                                    None
-                                }
-                            })
-                        })
-                        .expect("rebar3 not found in PATH - install and add to PATH")
-                };
-            }
+        #[cfg(buck_build)]
+        fn get_rebar3_path() -> Option<PathBuf> {
+            buck_resources::get("whatsapp/elp/crates/project_model/rebar3")
+                .ok()
+                .map(|p| p.to_path_buf())
+        }
 
-            let mut cmd = Command::new("escript");
-            cmd.arg(&*REBAR3_PATH);
+        #[cfg(not(buck_build))]
+        fn get_rebar3_path() -> Option<PathBuf> {
+            env::var_os("ELP_REBAR3_PATH").map(|p| {
+                let path = PathBuf::from(p);
+                if path.is_relative() {
+                    env::current_dir()
+                        .map(|cwd| cwd.join(&path))
+                        .unwrap_or(path)
+                } else {
+                    path
+                }
+            })
+        }
+
+        #[cfg(buck_build)]
+        fn get_escript_path() -> Option<PathBuf> {
+            buck_resources::get("whatsapp/elp/crates/project_model/escript")
+                .ok()
+                .map(|p| p.to_path_buf())
+        }
+
+        #[cfg(not(buck_build))]
+        fn get_escript_path() -> Option<PathBuf> {
+            env::var_os("ELP_ESCRIPT_PATH").map(|p| {
+                let path = PathBuf::from(p);
+                if path.is_relative() {
+                    env::current_dir()
+                        .map(|cwd| cwd.join(&path))
+                        .unwrap_or(path)
+                } else {
+                    path
+                }
+            })
+        }
+
+        let rebar3_path = get_rebar3_path();
+        let escript_path = get_escript_path();
+
+        if cfg!(target_os = "windows") {
+            // On Windows, we need to run rebar3 via escript
+            let rebar3 = rebar3_path.unwrap_or_else(|| {
+                lazy_static! {
+                    static ref REBAR3_PATH: PathBuf = {
+                        let rebar3_name = "rebar3";
+                        env::var("PATH")
+                            .ok()
+                            .and_then(|paths| {
+                                env::split_paths(&paths).find_map(|dir| {
+                                    let candidate = dir.join(rebar3_name);
+                                    if candidate.exists() {
+                                        Some(candidate)
+                                    } else {
+                                        None
+                                    }
+                                })
+                            })
+                            .expect("rebar3 not found in PATH - install and add to PATH")
+                    };
+                }
+                REBAR3_PATH.clone()
+            });
+
+            let escript = escript_path.as_deref().unwrap_or(Path::new("escript"));
+            let mut cmd = Command::new(escript);
+            cmd.arg(&rebar3);
             cmd
         } else {
-            Command::new("rebar3")
+            // On non-Windows, we can run rebar3 directly
+            let rebar3 = rebar3_path.as_deref().unwrap_or(Path::new("rebar3"));
+            let mut cmd = Command::new(rebar3);
+
+            // If ESCRIPT_PATH is set, add its directory to PATH
+            // This ensures escript is available when rebar3 runs
+            if let Some(escript_path) = &escript_path
+                && let Some(escript_dir) = escript_path.parent()
+            {
+                let path_env = match env::var("PATH") {
+                    Ok(existing_path) => format!("{}:{}", escript_dir.display(), existing_path),
+                    Err(_) => escript_dir.display().to_string(),
+                };
+                cmd.env("PATH", path_env);
+            }
+            cmd
         }
     }
 
