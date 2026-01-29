@@ -114,6 +114,26 @@ available configuration options.
 - Use `lazy_static!` for expensive static computations
 - Prefer iterators over manual loops where possible
 
+### HIR Name Matching
+
+When comparing `hir::Name` values, prefer using constants from the `known` module
+over string comparisons:
+
+```rust
+// Good - use known:: constants
+use crate::known;
+if db.lookup_atom(*atom) == known::erlang { ... }
+if name == known::module_info { ... }
+
+// Bad - avoid string comparisons
+if db.lookup_atom(*atom).as_str() == "erlang" { ... }
+if name.as_str() == "module_info" { ... }
+```
+
+The `known` module in `crates/hir/src/name.rs` defines constants for well-known
+atoms. If you need to match against an atom that isn't already defined, add it
+to the `known_names!` macro in alphabetical order within the appropriate category.
+
 ## Testing Guidelines
 
 ### Test Structure
