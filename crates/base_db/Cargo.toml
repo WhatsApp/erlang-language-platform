@@ -13,15 +13,12 @@ workspace = true
 elp_project_model.workspace = true
 elp_syntax.workspace = true
 
-anyhow.workspace = true
 dissimilar.workspace = true
 eetf.workspace = true
-either.workspace = true
 fxhash.workspace = true
 lazy_static.workspace = true
 log.workspace = true
 paths.workspace = true
-profile.workspace = true
 regex.workspace = true
 salsa.workspace = true
 serde_json.workspace = true
