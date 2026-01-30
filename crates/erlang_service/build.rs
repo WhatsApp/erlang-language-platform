@@ -19,58 +19,28 @@ fn main() {
     let dest_dir = Path::new(&out_dir).join("erlang_service");
     fs::create_dir_all(&dest_dir).unwrap();
 
-    if let Some(path) = env::var_os("ELP_PARSE_SERVER_ESCRIPT_PATH") {
-        fs::copy(path, dest_dir.join("erlang_service"))
-            .expect("Copying precompiled erlang service escript failed");
-    } else {
-        let profile = env::var("PROFILE").unwrap();
+    let dest_path = dest_dir.join("erlang_service");
 
-        let mut cmd = if cfg!(target_os = "windows") {
-            let rebar3_name = "rebar3";
-            let rebar3_path = env::var("PATH")
-                .ok()
-                .and_then(|paths| {
-                    env::split_paths(&paths).find_map(|dir| {
-                        let candidate = dir.join(rebar3_name);
-                        if candidate.exists() {
-                            Some(candidate)
-                        } else {
-                            None
-                        }
-                    })
-                })
-                .expect("rebar3 not found in PATH - install and add to PATH");
+    // CARGO_MANIFEST_DIR points to .../crates/erlang_service
+    // Go up 2 levels to reach ELP root for buck2 target resolution
+    let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
+    let elp_root = Path::new(&manifest_dir).join("../..");
 
-            let mut cmd = Command::new("escript");
+    let output = Command::new("buck2")
+        .arg("build")
+        .arg("--out")
+        .arg(&dest_path)
+        .arg("erlang_service:erlang_service_escript")
+        .current_dir(&elp_root)
+        .output()
+        .expect("failed to execute buck2 build");
 
-            cmd.arg(rebar3_path);
-            cmd
-        } else {
-            Command::new("rebar3")
-        };
-
-        let output = cmd
-            .arg("escriptize")
-            .env("REBAR_PROFILE", &profile)
-            .env("REBAR_BASE_DIR", &dest_dir)
-            .current_dir(source_directory)
-            .output()
-            .expect("failed to execute rebar3 escriptize");
-
-        if !output.status.success() {
-            let stdout =
-                String::from_utf8(output.stdout).expect("valid utf8 output from rebar3 escriptize");
-            let stderr =
-                String::from_utf8(output.stderr).expect("valid utf8 output from rebar3 escriptize");
-            panic!("rebar3 escriptize failed with stdout:\n{stdout}\n\nstderr:\n{stderr}");
-        }
-
-        let source = dest_dir.join(profile).join("bin").join("erlang_service");
-        fs::copy(source, dest_dir.join("erlang_service")).unwrap();
-
-        println!("cargo:rerun-if-changed={source_directory}/rebar.config");
-        println!("cargo:rerun-if-changed={source_directory}/src");
+    if !output.status.success() {
+        let stdout = String::from_utf8(output.stdout).expect("valid utf8 output from buck2 build");
+        let stderr = String::from_utf8(output.stderr).expect("valid utf8 output from buck2 build");
+        panic!("buck2 build failed with stdout:\n{stdout}\n\nstderr:\n{stderr}");
     }
 
-    println!("cargo:rerun-if-env-changed=ELP_PARSE_SERVER_ESCRIPT_PATH");
+    println!("cargo:rerun-if-changed={source_directory}/BUCK");
+    println!("cargo:rerun-if-changed={source_directory}/src");
 }
