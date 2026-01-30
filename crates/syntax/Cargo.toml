@@ -20,8 +20,4 @@ tracing.workspace = true
 tree-sitter.workspace = true
 tree-sitter-erlang.workspace = true
 
-[dev-dependencies]
-# For testing of abstract forms line number conversion
-elp_ide_db = { path = "../ide_db" }
-
 expect-test.workspace = true

@@ -714,7 +714,6 @@ dependencies = [
 name = "elp_syntax"
 version = "1.1.0"
 dependencies = [
- "elp_ide_db",
  "expect-test",
  "itertools 0.10.5",
  "lazy_static",
