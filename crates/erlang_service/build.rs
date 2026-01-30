@@ -19,6 +19,10 @@ fn main() {
     let dest_dir = Path::new(&out_dir).join("erlang_service");
     fs::create_dir_all(&dest_dir).unwrap();
 
+    build_with_rebar3(source_directory, &dest_dir);
+}
+
+fn build_with_rebar3(source_directory: &str, dest_dir: &Path) {
     if let Some(path) = env::var_os("ELP_PARSE_SERVER_ESCRIPT_PATH") {
         fs::copy(path, dest_dir.join("erlang_service"))
             .expect("Copying precompiled erlang service escript failed");
@@ -52,7 +56,7 @@ fn main() {
         let output = cmd
             .arg("escriptize")
             .env("REBAR_PROFILE", &profile)
-            .env("REBAR_BASE_DIR", &dest_dir)
+            .env("REBAR_BASE_DIR", dest_dir)
             .current_dir(source_directory)
             .output()
             .expect("failed to execute rebar3 escriptize");
