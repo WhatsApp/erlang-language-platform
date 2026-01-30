@@ -440,9 +440,9 @@
   "devDependencies": {
     "@types/mocha": "^9.1.0",
     "@types/node": "^16.11.7",
-    "@typescript-eslint/eslint-plugin": "^5.54.0",
-    "@typescript-eslint/parser": "^5.54.0",
-    "eslint": "^8.35.0",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
+    "eslint": "^9.39.2",
     "mocha": "^11.0.1",
     "typescript": "^5.0.2"
   }
