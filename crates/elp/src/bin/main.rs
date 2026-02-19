@@ -350,6 +350,8 @@ mod tests {
             let (args, path) = add_project(args, project, None, None);
             let fast_str = if fast { "_fast" } else { "" };
             let extension = if json { "jsonl" } else { "pretty" };
+            let res_dir = get_resources_dir();
+            dbg!(&res_dir);
             let exp_path = expect_file!(get_resources_dir().join(format!(
                 "{}/eqwalize_{}{}.{}",
                 project, module, fast_str, extension
@@ -3123,6 +3125,8 @@ mod tests {
         json: Option<&str>,
     ) -> (Vec<OsString>, PathBuf) {
         let path_str = project_path(project);
+        dbg!(&path_str);
+        dbg!(&json);
         let project_path: PathBuf = path_str.clone().into();
         args.push("--project".into());
         if let Some(json_file) = json {

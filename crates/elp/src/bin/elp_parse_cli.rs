@@ -99,7 +99,7 @@ pub fn parse_all(
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
     log::info!("Loading project at: {:?}", args.project);
-
+    dbg!(&args.project);
     let start_time = SystemTime::now();
     // Track memory usage at the start
     let memory_start = MemoryUsage::now();

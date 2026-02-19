@@ -50,7 +50,20 @@ pub fn project_path(project: &str) -> String {
 
     #[cfg(not(buck_build))]
     {
-        format!("../../test/test_projects/{project}")
+        let project_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("test")
+            .join("test_projects")
+            .join(project);
+        dbg!(&project_path);
+        let canonical = std::fs::canonicalize(&project_path).unwrap_or_else(|_| {
+            panic!(
+                "Failed to canonicalize project path: {}",
+                project_path.display()
+            )
+        });
+        canonical.to_string_lossy().to_string()
     }
 }
 
