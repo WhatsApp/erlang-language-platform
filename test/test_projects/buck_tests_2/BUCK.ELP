@@ -1,0 +1,41 @@
+oncall("vscode_erlang")
+
+erlang_application(
+    name = "check_include",
+    srcs = [
+        "check_include/src/top_includer.erl",
+    ],
+    applications = [
+        "common_test",
+        "stdlib",
+        "root//buck_tests_2:check_include_separate_1",
+        "root//buck_tests_2:check_include_separate_2",
+    ],
+    includes = [],
+    labels = [],
+    resources = [],
+)
+
+erlang_application(
+    name = "check_include_separate_1",
+    srcs = glob([
+        "src/*.erl",
+    ]),
+    applications = [
+    ],
+    includes = [
+        "check_include_separate_1/include/top_includer.hrl",
+    ],
+    resources = [],
+)
+
+erlang_application(
+    name = "check_include_separate_2",
+    srcs = glob([
+        "src/*.erl",
+    ]),
+    applications = [
+    ],
+    includes = glob(["check_include_separate_2/include/*.hrl"]),
+    resources = [],
+)

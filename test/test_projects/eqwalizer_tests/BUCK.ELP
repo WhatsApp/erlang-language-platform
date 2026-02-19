@@ -1,0 +1,77 @@
+oncall("vscode_erlang")
+
+erlang_application(
+    name = "check",
+    srcs = glob(["check/src/**/*.erl"]),
+    applications = [":eqwalizer"],
+    includes = glob([
+        "check/include/*.hrl",
+        "eqwalizer/include/*.hrl",
+    ]),
+    labels = ["user_application"],
+    version = "1.0.0",
+)
+
+erlang_application(
+    name = "check_gradual",
+    srcs = glob(["check_gradual/src/*.erl"]),
+    applications = [":eqwalizer"],
+    labels = ["user_application"],
+    version = "1.0.0",
+)
+
+erlang_tests(
+    suites = [
+        "check/test/check_SUITE.erl",
+    ],
+    deps = [":check"],
+)
+
+erlang_application(
+    name = "debug",
+    srcs = glob(["debug/src/*.erl"]),
+    applications = [":eqwalizer"],
+    includes = glob(["debug/include/*.hrl"]),
+    labels = ["user_application"],
+    version = "1.0.0",
+)
+
+erlang_application(
+    name = "elm_core",
+    srcs = glob(["elm_core/src/*.erl"]),
+    applications = [":eqwalizer"],
+    labels = ["user_application"],
+    version = "1.0.0",
+)
+
+erlang_application(
+    name = "eqwater",
+    srcs = glob(["eqwater/src/*.erl"]),
+    applications = [":eqwalizer"],
+    labels = ["user_application"],
+    version = "1.0.0",
+)
+
+erlang_application(
+    name = "fault_tolerance",
+    srcs = glob(["fault_tolerance/src/*.erl"]),
+    applications = [":eqwalizer"],
+    labels = ["user_application"],
+    version = "1.0.0",
+)
+
+erlang_application(
+    name = "options",
+    srcs = glob(["options/src/*.erl"]),
+    applications = [":eqwalizer"],
+    labels = ["user_application"],
+    version = "1.0.0",
+)
+
+erlang_application(
+    name = "eqwalizer",
+    srcs = glob(["eqwalizer/src/*.erl"]),
+    includes = glob(["eqwalizer/include/*.hrl"]),
+    labels = ["user_application"],
+    version = "1.0.0",
+)

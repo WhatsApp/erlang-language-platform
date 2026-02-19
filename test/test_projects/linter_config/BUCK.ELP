@@ -1,0 +1,25 @@
+oncall("vscode_erlang")
+
+erlang_application(
+    name = "app_a",
+    srcs = glob(["app_a/src/*.erl"]),
+    app_src = "app_a/src/app_a.app.src",
+    labels = ["user_application"],
+    version = "1.0.0",
+)
+
+erlang_application(
+    name = "app_b",
+    srcs = glob(["app_b/src/*.erl"]),
+    app_src = "app_b/src/app_b.app.src",
+    labels = ["user_application"],
+    version = "1.0.0",
+)
+
+erlang_application(
+    name = "app_c",
+    srcs = glob(["app_c/src/*.erl"]),
+    app_src = "app_c/src/app_c.app.src",
+    labels = ["user_application"],
+    version = "1.0.0",
+)

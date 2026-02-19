@@ -1,0 +1,9 @@
+oncall("vscode_erlang")
+
+erlang_application(
+    name = "elp_test_parse_a",
+    srcs = glob(["parse_error_a/src/*.erl"]),
+    app_src = "parse_error_a/src/parse_error_a.app.src",
+    labels = ["user_application"],
+    version = "1.0.0",
+)

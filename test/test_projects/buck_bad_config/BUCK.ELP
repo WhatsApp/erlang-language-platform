@@ -1,0 +1,14 @@
+oncall("vscode_erlang")
+
+erlang_application(
+    name = "bad_app",
+    srcs = glob(["src/*.erl"]),
+    applications = [
+        "root//buck_bad_config/non_existent:missing",
+    ],
+    includes = glob(
+        ["include/*.hrl"],
+        exclude = ["include/junk.hrl"],
+    ),
+    version = "1.0.0",
+)

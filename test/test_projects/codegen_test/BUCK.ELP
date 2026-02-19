@@ -1,0 +1,73 @@
+oncall("vscode_erlang")
+
+# Code generation rule - generates Erlang modules from template files
+genrule(
+    name = "example_service_types_erl",
+    srcs = [
+        "templates/example_service_types.erl",
+    ],
+    outs = {
+        "example_service_types.erl": ["example_service_types.erl"],
+    },
+    cmd = "cp $SRCDIR/templates/example_service_types.erl $OUT/example_service_types.erl",
+)
+
+genrule(
+    name = "example_service_client_erl",
+    srcs = [
+        "templates/example_service_client.erl",
+    ],
+    outs = {
+        "example_service_client.erl": ["example_service_client.erl"],
+    },
+    cmd = "cp $SRCDIR/templates/example_service_client.erl $OUT/example_service_client.erl",
+)
+
+genrule(
+    name = "example_service_types_hrl",
+    srcs = [
+        "templates/example_service_types.hrl",
+    ],
+    outs = {
+        "example_service_types.hrl": ["example_service_types.hrl"],
+    },
+    cmd = "cp $SRCDIR/templates/example_service_types.hrl $OUT/example_service_types.hrl",
+)
+
+# Erlang library containing only the generated code
+erlang_app(
+    name = "example_service_generated",
+    srcs = [
+        # Include generated Erlang modules from genrule output
+        ":example_service_types_erl[example_service_types.erl]",
+        ":example_service_client_erl[example_service_client.erl]",
+    ],
+    includes = [
+        # Include generated header files from genrule output
+        ":example_service_types_hrl[example_service_types.hrl]",
+    ],
+)
+
+# Erlang application that uses the generated code (non-generated files only)
+erlang_application(
+    name = "codegen_test_app",
+    srcs = glob(["app_a/src/*.erl"]),
+    app_name = "codegen_test",
+    app_src = "app_a/src/codegen_test.app.src",
+    applications = [
+        "kernel",
+        "stdlib",
+        ":example_service_generated",
+    ],
+    includes = glob(["app_a/include/*.hrl"]),
+    labels = ["user_application"],
+    version = "1.0.0",
+)
+
+# Test to verify the generated code works
+erlang_tests(
+    suites = [
+        "app_a/test/codegen_test_SUITE.erl",
+    ],
+    deps = [":codegen_test_app"],
+)

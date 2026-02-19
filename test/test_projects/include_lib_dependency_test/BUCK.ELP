@@ -1,0 +1,43 @@
+oncall("vscode_erlang")
+
+# Main application that will try to include_lib from an app it doesn't depend on
+erlang_application(
+    name = "main_app",
+    srcs = glob(["main_app/src/*.erl"]),
+    app_src = "main_app/src/main_app.app.src",
+    applications = [
+        # Note: deliberately NOT including :external_app as a dependency
+        "root//include_lib_dependency_test:normal_dep",
+    ],
+    extra_includes = ["root//include_lib_dependency_test:extra_app"],
+    labels = ["user_application"],
+    version = "1.0.0",
+)
+
+# External application that main_app will try to include_lib from
+erlang_application(
+    name = "external_app",
+    srcs = glob(["external_app/src/*.erl"]),
+    app_src = "external_app/src/external_app.app.src",
+    includes = glob(["external_app/include/*.hrl"]),
+    labels = ["user_application"],
+    version = "1.0.0",
+)
+
+erlang_application(
+    name = "extra_app",
+    srcs = glob(["extra_app/src/*.erl"]),
+    app_src = "extra_app/src/extra_app.app.src",
+    includes = glob(["extra_app/include/*.hrl"]),
+    labels = ["user_application"],
+    version = "1.0.0",
+)
+
+erlang_application(
+    name = "normal_dep",
+    srcs = glob(["normal_dep/src/*.erl"]),
+    app_src = "normal_dep/src/normal_dep.app.src",
+    includes = glob(["normal_dep/include/*.hrl"]),
+    labels = ["user_application"],
+    version = "1.0.0",
+)

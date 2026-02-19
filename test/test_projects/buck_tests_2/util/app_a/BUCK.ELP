@@ -1,0 +1,16 @@
+oncall("vscode_erlang")
+
+erlang_application(
+    name = "app_a_target",
+    srcs = glob(["src/*.erl"]),
+    app_name = "app_a",
+    applications = [
+        "root//buck_tests_2/auto_gen/auto_gen_a:auto_gen_a",
+        "root//buck_tests_2/generated:generated_headers",
+    ],
+    includes = glob(
+        ["include/*.hrl"],
+        exclude = ["include/junk.hrl"],
+    ),
+    version = "1.0.0",
+)

@@ -1,0 +1,25 @@
+oncall("vscode_erlang")
+
+erlang_application(
+    name = "auto_gen_a",
+    srcs = glob([
+        "src/*.erl",
+        "src/*.hrl",
+    ]),
+    includes = glob(["include/*.hrl"]),
+    visibility = ["//buck_tests_2/..."],
+)
+
+erlang_application(
+    name = "generated_srcs",
+    srcs = [
+        ":generated.erl",
+    ],
+    labels = ["generated"],
+    visibility = ["//buck_tests_2/..."],
+)
+
+export_file(
+    name = "generated.erl",
+    src = "out/pretend_generated.erl",
+)
