@@ -560,7 +560,8 @@ fn compute_expr_scopes(
             for expr in exprs {
                 compute_expr_scopes(*expr, body, scopes, scope, &mut expr_vt);
             }
-            let mut clause_scopes = compute_clause_scopes(of_clauses, body, scopes, scope, vt);
+            let mut clause_scopes =
+                compute_clause_scopes(of_clauses, body, scopes, scope, &mut expr_vt);
             for clause in catch_clauses {
                 let mut sub_vt = vt.clone();
                 let mut scope = scopes.new_scope(*scope);
@@ -879,6 +880,28 @@ mod tests {
               ~.
             ",
             &["Y", "X"],
+        );
+    }
+
+    #[test]
+    fn test_try_expr_vt_flows_to_of_clauses() {
+        // Bindings from the try body should be visible in the
+        // of-clauses. In elp_lint.erl, success clauses get
+        // vtupdate(Evt0, Vt), but the current code passes the
+        // original vt instead of expr_vt.
+        do_check(
+            r"
+            f() ->
+              try
+                X = 1,
+                X
+              of
+                Val -> ~
+              catch
+                _ -> 0
+              end.
+            ",
+            &["Val", "X"],
         );
     }
 
