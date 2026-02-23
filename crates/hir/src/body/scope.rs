@@ -748,7 +748,12 @@ fn compute_comprehension_expr_scopes(
             expr,
             strict: _,
         } => {
-            compute_expr_scopes(*expr, body, scopes, scope, sub_vt);
+            // Evaluate generator expression in a sub-scope so that
+            // expression-local bindings don't leak to subsequent
+            // qualifiers.  Matches elp_lint.erl's vtold(Evt, Vt).
+            let mut gen_vt = sub_vt.clone();
+            let mut gen_scope = scopes.new_scope(*scope);
+            compute_expr_scopes(*expr, body, scopes, &mut gen_scope, &mut gen_vt);
             *scope = scopes.new_scope(*scope);
             scopes.add_bindings(body, scope, *pat, sub_vt, AddBinding::Always);
         }
@@ -757,7 +762,9 @@ fn compute_comprehension_expr_scopes(
             expr,
             strict: _,
         } => {
-            compute_expr_scopes(*expr, body, scopes, scope, sub_vt);
+            let mut gen_vt = sub_vt.clone();
+            let mut gen_scope = scopes.new_scope(*scope);
+            compute_expr_scopes(*expr, body, scopes, &mut gen_scope, &mut gen_vt);
             *scope = scopes.new_scope(*scope);
             scopes.add_bindings(body, scope, *pat, sub_vt, AddBinding::Always);
         }
@@ -768,14 +775,43 @@ fn compute_comprehension_expr_scopes(
             expr,
             strict: _,
         } => {
-            compute_expr_scopes(*expr, body, scopes, scope, sub_vt);
+            let mut gen_vt = sub_vt.clone();
+            let mut gen_scope = scopes.new_scope(*scope);
+            compute_expr_scopes(*expr, body, scopes, &mut gen_scope, &mut gen_vt);
             *scope = scopes.new_scope(*scope);
             scopes.add_bindings(body, scope, *key, sub_vt, AddBinding::Always);
             scopes.add_bindings(body, scope, *value, sub_vt, AddBinding::Always);
         }
         ComprehensionExpr::Zip(exprs) => {
+            // In elp_lint.erl (handle_generators), all zip generator
+            // expressions are evaluated against the same pre-zip Vt
+            // before any patterns are bound.
             for expr in exprs {
-                compute_comprehension_expr_scopes(body, scopes, sub_vt, scope, expr);
+                match expr {
+                    ComprehensionExpr::ListGenerator { expr, .. }
+                    | ComprehensionExpr::BinGenerator { expr, .. }
+                    | ComprehensionExpr::MapGenerator { expr, .. } => {
+                        let mut gen_vt = sub_vt.clone();
+                        let mut gen_scope = scopes.new_scope(*scope);
+                        compute_expr_scopes(*expr, body, scopes, &mut gen_scope, &mut gen_vt);
+                    }
+                    _ => {}
+                }
+            }
+            for expr in exprs {
+                match expr {
+                    ComprehensionExpr::ListGenerator { pat, .. }
+                    | ComprehensionExpr::BinGenerator { pat, .. } => {
+                        *scope = scopes.new_scope(*scope);
+                        scopes.add_bindings(body, scope, *pat, sub_vt, AddBinding::Always);
+                    }
+                    ComprehensionExpr::MapGenerator { key, value, .. } => {
+                        *scope = scopes.new_scope(*scope);
+                        scopes.add_bindings(body, scope, *key, sub_vt, AddBinding::Always);
+                        scopes.add_bindings(body, scope, *value, sub_vt, AddBinding::Always);
+                    }
+                    _ => {}
+                }
             }
         }
     };
@@ -1051,6 +1087,37 @@ mod tests {
               F.
             ",
             &["X", "F"],
+        );
+    }
+
+    #[test]
+    fn test_generator_expr_locals_not_leaked() {
+        // Variables bound inside a generator expression (RHS of <-)
+        // should not be visible to subsequent qualifiers or the
+        // comprehension body. In elp_lint.erl, handle_generator
+        // discards expression-local variables via vtold(Evt, Vt).
+        do_check(
+            r"
+            f() ->
+              [~ || Y <- (X = [1,2,3])].
+            ",
+            &["Y"],
+        );
+    }
+
+    #[test]
+    fn test_zip_expr_does_not_see_sibling_pattern() {
+        // In a zip generator (&&), all generator expressions should
+        // be evaluated before any patterns are bound. In elp_lint.erl,
+        // handle_generators evaluates all expressions against the
+        // same pre-zip Vt. The second generator's expression should
+        // NOT see the first generator's pattern variable.
+        do_check(
+            r"
+            f() ->
+              [{X, Y} || X <- [1,2,3] && Y <- [~]].
+            ",
+            &[],
         );
     }
 
