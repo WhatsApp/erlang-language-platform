@@ -86,30 +86,63 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
             );
             let expr_range = to_extract.syntax().text_range();
 
-            let mut buf = String::new();
-            format_to!(buf, "{} = {}", var_name, to_extract.syntax());
+            match &anchor {
+                Anchor::ClauseBody(_) => {
+                    let mut buf = String::new();
+                    format_to!(buf, "{} = {}", var_name, to_extract.syntax());
 
-            buf.push(',');
+                    buf.push(',');
 
-            // We want to maintain the indent level,
-            // but we do not want to duplicate possible
-            // extra newlines in the indent block
-            let text = indent.text();
-            if text.starts_with('\n') {
-                buf.push('\n');
-                buf.push_str(text.trim_start_matches('\n'));
-            } else {
-                buf.push_str(text);
-            }
+                    // We want to maintain the indent level,
+                    // but we do not want to duplicate possible
+                    // extra newlines in the indent block
+                    let text = indent.text();
+                    if text.starts_with('\n') {
+                        buf.push('\n');
+                        buf.push_str(text.trim_start_matches('\n'));
+                    } else {
+                        buf.push_str(text);
+                    }
 
-            edit.replace(expr_range, var_name.clone());
-            let offset = anchor.syntax().text_range().start();
-            match ctx.config.snippet_cap {
-                Some(cap) => {
-                    let snip = buf.replace(&var_name.to_string(), &format!("$0{var_name}"));
-                    edit.insert_snippet(cap, offset, snip)
+                    edit.replace(expr_range, var_name.clone());
+                    let offset = anchor.syntax().text_range().start();
+                    match ctx.config.snippet_cap {
+                        Some(cap) => {
+                            let snip = buf.replace(&var_name.to_string(), &format!("$0{var_name}"));
+                            edit.insert_snippet(cap, offset, snip)
+                        }
+                        None => edit.insert(offset, buf),
+                    }
                 }
-                None => edit.insert(offset, buf),
+                Anchor::Comprehension(comp_expr) => {
+                    let comp_expr_range = comp_expr.text_range();
+                    let comp_text = comp_expr.to_string();
+                    let rel_start = usize::from(expr_range.start() - comp_expr_range.start());
+                    let rel_end = usize::from(expr_range.end() - comp_expr_range.start());
+                    let replaced_text = format!(
+                        "{}{}{}",
+                        &comp_text[..rel_start],
+                        &var_name,
+                        &comp_text[rel_end..]
+                    );
+
+                    let buf = format!(
+                        "begin {} = {}, {} end",
+                        var_name,
+                        to_extract.syntax(),
+                        replaced_text,
+                    );
+
+                    match ctx.config.snippet_cap {
+                        Some(cap) => {
+                            let snip =
+                                buf.replacen(&var_name.to_string(), &format!("$0{var_name}"), 1);
+                            edit.delete(comp_expr_range);
+                            edit.insert_snippet(cap, comp_expr_range.start(), snip)
+                        }
+                        None => edit.replace(comp_expr_range, buf),
+                    }
+                }
             }
         },
     )
@@ -130,7 +163,12 @@ fn valid_extraction(node: &SyntaxNode) -> bool {
 }
 
 #[derive(Debug)]
-struct Anchor(SyntaxNode);
+enum Anchor {
+    /// Normal case: insert binding before this node in a clause body
+    ClauseBody(SyntaxNode),
+    /// Comprehension case: wrap the comprehension expression in begin...end
+    Comprehension(SyntaxNode),
+}
 
 impl Anchor {
     fn from(to_extract: &ast::Expr) -> Option<Anchor> {
@@ -142,8 +180,34 @@ impl Anchor {
                 !ast::ClauseBody::can_cast(it.kind()) || ast::MacroCallExpr::can_cast(it.kind())
             })
             .find_map(|node| {
-                if let Some(_expr) = node.parent().and_then(ast::ClauseBody::cast) {
-                    return Some(Anchor(node));
+                let parent = node.parent()?;
+
+                // Check if we're inside a comprehension's expression
+                if let Some(lc) = ast::ListComprehension::cast(parent.clone())
+                    && lc.expr().map(|e| *e.syntax() == node).unwrap_or(false)
+                {
+                    return Some(Anchor::Comprehension(node));
+                }
+                if let Some(bc) = ast::BinaryComprehension::cast(parent.clone())
+                    && bc.expr().map(|e| *e.syntax() == node).unwrap_or(false)
+                {
+                    return Some(Anchor::Comprehension(node));
+                }
+                if let Some(mc) = ast::MapComprehension::cast(parent.clone())
+                    && mc.expr().map(|e| *e.syntax() == node).unwrap_or(false)
+                {
+                    return Some(Anchor::Comprehension(node));
+                }
+
+                // Treat BlockExpr (begin...end) like a clause body,
+                // so bindings are inserted inside the existing block
+                // rather than wrapping it in another begin...end.
+                if ast::BlockExpr::cast(parent.clone()).is_some() {
+                    return Some(Anchor::ClauseBody(node));
+                }
+
+                if ast::ClauseBody::cast(parent).is_some() {
+                    return Some(Anchor::ClauseBody(node));
                 }
 
                 None
@@ -151,7 +215,9 @@ impl Anchor {
     }
 
     fn syntax(&self) -> &SyntaxNode {
-        &self.0
+        match self {
+            Anchor::ClauseBody(node) | Anchor::Comprehension(node) => node,
+        }
     }
 }
 
@@ -329,6 +395,38 @@ foo(X) ->
                   NameClash = 3,
                   $0NameClash0 = (1 + 2),
                   NameClash0 * 4.
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_extract_var_in_comprehension_1() {
+        check_assist(
+            extract_variable,
+            "Extract into variable",
+            r#"
+foo(ListVar) ->
+    [amod:do_something(~frobble(W)~) || W <- ListVar].
+"#,
+            expect![[r#"
+                foo(ListVar) ->
+                    [begin $0VarNameEdited = frobble(W), amod:do_something(VarNameEdited) end || W <- ListVar].
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_extract_var_in_comprehension_2() {
+        check_assist(
+            extract_variable,
+            "Extract into variable",
+            r#"
+foo(ListVar) ->
+    [begin amod:do_something(~frobble(W)~) end || W <- ListVar].
+"#,
+            expect![[r#"
+                foo(ListVar) ->
+                    [begin $0VarNameEdited = frobble(W), amod:do_something(VarNameEdited) end || W <- ListVar].
             "#]],
         );
     }
