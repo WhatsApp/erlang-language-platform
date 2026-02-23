@@ -33,6 +33,7 @@ use std::ops::Index;
 use std::ops::IndexMut;
 use std::sync::Arc;
 
+use elp_syntax::ast::LogicOp;
 use fxhash::FxHashMap;
 use la_arena::Arena;
 use la_arena::ArenaMap;
@@ -52,6 +53,7 @@ use crate::PatId;
 use crate::Var;
 use crate::db::DefDatabase;
 use crate::def_map::FunctionDefId;
+use crate::expr::BinaryOp as SyntaxBinaryOp;
 use crate::expr::ClauseId;
 use crate::expr::MaybeExpr;
 use crate::fold::ParenStrategy;
@@ -411,44 +413,58 @@ fn compute_expr_scopes(
         crate::Expr::UnaryOp { expr, op: _ } => {
             compute_expr_scopes(*expr, body, scopes, scope, vt);
         }
-        crate::Expr::BinaryOp { lhs, rhs, op: _ } => {
-            // Parallel scoping: both sides see only pre-existing
-            // bindings. Matches erl_lint.erl line 2905: expr_list([L,R], Vt, St).
-            // https://github.com/erlang/otp/blob/OTP-28.3.2/lib/stdlib/src/erl_lint.erl#L2905
-            // Each side is evaluated in its own child scope so neither
-            // sees the other's bindings.
-            let mut lhs_vt = vt.clone();
-            let mut lhs_scope = scopes.new_scope(*scope);
-            compute_expr_scopes(*lhs, body, scopes, &mut lhs_scope, &mut lhs_vt);
-            let mut rhs_vt = vt.clone();
-            let mut rhs_scope = scopes.new_scope(*scope);
-            compute_expr_scopes(*rhs, body, scopes, &mut rhs_scope, &mut rhs_vt);
-            // Collect new bindings from both child scopes.
-            let mut new_entries: FxHashMap<Var, Vec<PatId>> = FxHashMap::default();
-            for child in [lhs_scope, rhs_scope] {
-                for (name, pats) in &scopes[child].entries.data {
-                    new_entries
-                        .entry(*name)
-                        .and_modify(|v| v.extend(pats.clone()))
-                        .or_insert_with(|| pats.clone());
+        crate::Expr::BinaryOp { lhs, rhs, op } => {
+            match op {
+                SyntaxBinaryOp::LogicOp(
+                    LogicOp::Or { lazy: true } | LogicOp::And { lazy: true },
+                ) => {
+                    // orelse/andalso: sequential — RHS sees LHS bindings.
+                    // In elp_lint.erl, new RHS bindings are marked unsafe,
+                    // but we don't track unsafe here.
+                    compute_expr_scopes(*lhs, body, scopes, scope, vt);
+                    compute_expr_scopes(*rhs, body, scopes, scope, vt);
+                }
+                _ => {
+                    // All other binary ops: parallel — both sides see only
+                    // pre-existing bindings.
+                    // Matches erl_lint.erl line 2905: expr_list([L,R], Vt, St).
+                    // https://github.com/erlang/otp/blob/OTP-28.3.2/lib/stdlib/src/erl_lint.erl#L2905
+                    // Each side is evaluated in its own child scope so
+                    // neither sees the other's bindings.
+                    let mut lhs_vt = vt.clone();
+                    let mut lhs_scope = scopes.new_scope(*scope);
+                    compute_expr_scopes(*lhs, body, scopes, &mut lhs_scope, &mut lhs_vt);
+                    let mut rhs_vt = vt.clone();
+                    let mut rhs_scope = scopes.new_scope(*scope);
+                    compute_expr_scopes(*rhs, body, scopes, &mut rhs_scope, &mut rhs_vt);
+                    // Collect new bindings from both child scopes.
+                    let mut new_entries: FxHashMap<Var, Vec<PatId>> = FxHashMap::default();
+                    for child in [lhs_scope, rhs_scope] {
+                        for (name, pats) in &scopes[child].entries.data {
+                            new_entries
+                                .entry(*name)
+                                .and_modify(|v| v.extend(pats.clone()))
+                                .or_insert_with(|| pats.clone());
+                        }
+                    }
+                    // Only create an export scope if there are new bindings.
+                    // Unlike add_exported_scopes (used for case/if/receive),
+                    // we carry forward the parent scope's entries so that an
+                    // enclosing case clause doesn't lose earlier bindings.
+                    if !new_entries.is_empty() {
+                        let parent_entries = scopes[*scope].entries.data.clone();
+                        *scope = scopes.new_scope(*scope);
+                        for (name, pats) in parent_entries {
+                            scopes[*scope].entries.insert(name, pats);
+                        }
+                        for (name, pats) in new_entries {
+                            scopes[*scope].entries.insert(name, pats);
+                        }
+                    }
+                    vt.merge(&lhs_vt);
+                    vt.merge(&rhs_vt);
                 }
             }
-            // Only create an export scope if there are new bindings.
-            // Unlike add_exported_scopes (used for case/if/receive), we
-            // carry forward the parent scope's entries so that an
-            // enclosing case clause doesn't lose earlier bindings.
-            if !new_entries.is_empty() {
-                let parent_entries = scopes[*scope].entries.data.clone();
-                *scope = scopes.new_scope(*scope);
-                for (name, pats) in parent_entries {
-                    scopes[*scope].entries.insert(name, pats);
-                }
-                for (name, pats) in new_entries {
-                    scopes[*scope].entries.insert(name, pats);
-                }
-            }
-            vt.merge(&lhs_vt);
-            vt.merge(&rhs_vt);
         }
         crate::Expr::Record { name: _, fields } => {
             for (_, expr) in fields {
@@ -1095,6 +1111,18 @@ mod tests {
                 ~.
             ",
             &["Z", "Y"],
+        );
+    }
+
+    #[test]
+    fn test_orelse_rhs_sees_lhs() {
+        // orelse/andalso use sequential scoping: the RHS sees LHS bindings.
+        do_check(
+            r"
+            f() ->
+                (X = 1) orelse (~ + X).
+            ",
+            &["X"],
         );
     }
 }
