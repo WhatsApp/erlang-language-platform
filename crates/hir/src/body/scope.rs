@@ -639,8 +639,14 @@ fn compute_expr_scopes(
             for expr in exprs {
                 match expr {
                     MaybeExpr::Cond { lhs, rhs } => {
-                        compute_expr_scopes(*rhs, body, scopes, &mut expr_scope, vt);
-                        scopes.add_bindings(body, scope, *lhs, vt, AddBinding::IfUnused);
+                        compute_expr_scopes(*rhs, body, scopes, &mut expr_scope, &mut expr_vt);
+                        scopes.add_bindings(
+                            body,
+                            &mut expr_scope,
+                            *lhs,
+                            &mut expr_vt,
+                            AddBinding::IfUnused,
+                        );
                     }
                     MaybeExpr::Expr(expr) => {
                         compute_expr_scopes(*expr, body, scopes, &mut expr_scope, &mut expr_vt);
@@ -648,8 +654,29 @@ fn compute_expr_scopes(
                 }
             }
 
-            let clause_scopes = compute_clause_scopes(else_clauses, body, scopes, scope, vt);
-            vt.merge(&add_exported_scopes(scopes, scope, &clause_scopes));
+            // In Erlang, maybe expressions export NO variables.
+            // Process else-clauses in a sub-scope that doesn't export.
+            let else_vt = vt.clone();
+            let else_scope = scopes.new_scope(*scope);
+            for clause in else_clauses {
+                let mut sub_vt = else_vt.clone();
+                let mut clause_scope = scopes.new_scope(else_scope);
+                scopes.add_bindings(
+                    body,
+                    &mut clause_scope,
+                    clause.pat,
+                    &mut sub_vt,
+                    AddBinding::IfUnused,
+                );
+                for guards in &clause.guards {
+                    for guard in guards {
+                        compute_expr_scopes(*guard, body, scopes, &mut clause_scope, &mut sub_vt);
+                    }
+                }
+                for expr in &clause.exprs {
+                    compute_expr_scopes(*expr, body, scopes, &mut clause_scope, &mut sub_vt);
+                }
+            }
         }
         crate::Expr::Paren { expr } => {
             compute_expr_scopes(*expr, body, scopes, scope, vt);
@@ -880,6 +907,39 @@ mod tests {
               ~.
             ",
             &["Y", "X"],
+        );
+    }
+
+    #[test]
+    fn test_maybe_cond_no_leak() {
+        // Condition bindings in a maybe expression should NOT be
+        // visible after the maybe. In Erlang, maybe expressions
+        // export NO variables.
+        do_check(
+            r"
+            f() ->
+              maybe
+                {ok, X} ?= foo()
+              end,
+              ~.
+            ",
+            &[],
+        );
+    }
+
+    #[test]
+    fn test_maybe_cond_visible_inside() {
+        // Condition bindings in a maybe expression should be visible
+        // within the maybe body for subsequent expressions.
+        do_check(
+            r"
+            f() ->
+              maybe
+                {ok, X} ?= foo(),
+                ~
+              end.
+            ",
+            &["X"],
         );
     }
 
