@@ -615,7 +615,6 @@ fn compute_expr_scopes(
 
                 for guards in &clause.guards {
                     for guard in guards {
-                        scope = scopes.new_scope(scope);
                         compute_expr_scopes(*guard, body, scopes, &mut scope, &mut sub_vt);
                     }
                 }
@@ -875,6 +874,21 @@ mod tests {
               ~.
             ",
             &["Y", "X"],
+        );
+    }
+
+    #[test]
+    fn test_closure_guard_no_new_scope() {
+        // Guard expressions in closures should NOT create new scopes,
+        // matching elp_lint.erl behavior. Parameters should remain
+        // visible in the closure body.
+        do_check(
+            r"
+            f() ->
+              F = fun(X) when is_integer(X) -> ~, X end,
+              F.
+            ",
+            &["X", "F"],
         );
     }
 
