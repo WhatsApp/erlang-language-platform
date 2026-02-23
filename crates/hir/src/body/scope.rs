@@ -412,9 +412,43 @@ fn compute_expr_scopes(
             compute_expr_scopes(*expr, body, scopes, scope, vt);
         }
         crate::Expr::BinaryOp { lhs, rhs, op: _ } => {
-            // TODO: deal with `(X = 1) + (Y = 2)` binding both sides, and exporting values
-            compute_expr_scopes(*lhs, body, scopes, scope, vt);
-            compute_expr_scopes(*rhs, body, scopes, scope, vt);
+            // Parallel scoping: both sides see only pre-existing
+            // bindings. Matches erl_lint.erl line 2905: expr_list([L,R], Vt, St).
+            // https://github.com/erlang/otp/blob/OTP-28.3.2/lib/stdlib/src/erl_lint.erl#L2905
+            // Each side is evaluated in its own child scope so neither
+            // sees the other's bindings.
+            let mut lhs_vt = vt.clone();
+            let mut lhs_scope = scopes.new_scope(*scope);
+            compute_expr_scopes(*lhs, body, scopes, &mut lhs_scope, &mut lhs_vt);
+            let mut rhs_vt = vt.clone();
+            let mut rhs_scope = scopes.new_scope(*scope);
+            compute_expr_scopes(*rhs, body, scopes, &mut rhs_scope, &mut rhs_vt);
+            // Collect new bindings from both child scopes.
+            let mut new_entries: FxHashMap<Var, Vec<PatId>> = FxHashMap::default();
+            for child in [lhs_scope, rhs_scope] {
+                for (name, pats) in &scopes[child].entries.data {
+                    new_entries
+                        .entry(*name)
+                        .and_modify(|v| v.extend(pats.clone()))
+                        .or_insert_with(|| pats.clone());
+                }
+            }
+            // Only create an export scope if there are new bindings.
+            // Unlike add_exported_scopes (used for case/if/receive), we
+            // carry forward the parent scope's entries so that an
+            // enclosing case clause doesn't lose earlier bindings.
+            if !new_entries.is_empty() {
+                let parent_entries = scopes[*scope].entries.data.clone();
+                *scope = scopes.new_scope(*scope);
+                for (name, pats) in parent_entries {
+                    scopes[*scope].entries.insert(name, pats);
+                }
+                for (name, pats) in new_entries {
+                    scopes[*scope].entries.insert(name, pats);
+                }
+            }
+            vt.merge(&lhs_vt);
+            vt.merge(&rhs_vt);
         }
         crate::Expr::Record { name: _, fields } => {
             for (_, expr) in fields {
@@ -1015,6 +1049,52 @@ mod tests {
               .
             ",
             &["Y", "X", "As", "Bs"],
+        );
+    }
+
+    #[test]
+    fn test_binop_parallel_scoping() {
+        // In a general binary op like `+`, both sides are evaluated
+        // against the same original scope (parallel). The RHS should
+        // NOT see bindings from the LHS.
+        do_check(
+            r"
+            f() ->
+                (X = 1) + (~ + X).
+            ",
+            &[],
+        );
+    }
+
+    #[test]
+    fn test_binop_exports_both_sides() {
+        // Both sides of a general binary op should export their
+        // bindings after the expression.
+        do_check(
+            r"
+            f() ->
+                (X = 1) + (Y = 2),
+                ~.
+            ",
+            &["X", "Y"],
+        );
+    }
+
+    #[test]
+    fn test_binop_preserves_earlier_bindings_in_case() {
+        // A BinaryOp must not create a new export scope that hides
+        // earlier bindings from the enclosing case clause. If it does,
+        // the case export only sees the BinaryOp's export scope entries
+        // and loses Z (which was bound before the BinaryOp).
+        do_check(
+            r"
+            f() ->
+                case 1 of
+                    _ -> Z = 3, Z + (Y = 2)
+                end,
+                ~.
+            ",
+            &["Z", "Y"],
         );
     }
 }
