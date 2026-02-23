@@ -532,15 +532,20 @@ fn compute_expr_scopes(
             let mut clause_scopes = compute_clause_scopes(clauses, body, scopes, scope, vt);
             if let Some(ra) = after {
                 let mut sub_vt = vt.clone();
-                let mut scope = scopes.new_scope(*scope);
-                compute_expr_scopes(ra.timeout, body, scopes, &mut scope, &mut sub_vt);
-                clause_scopes.push((scope, sub_vt));
+                let mut timeout_scope = scopes.new_scope(*scope);
+                compute_expr_scopes(ra.timeout, body, scopes, &mut timeout_scope, &mut sub_vt);
+                clause_scopes.push((timeout_scope, sub_vt));
                 let mut sub_vt2 = vt.clone();
-                let mut scope = scopes.new_scope(scope);
+                // After-body scope is a sibling of timeout scope (child of
+                // outer scope), not a child of timeout scope. In Erlang,
+                // ToEs is evaluated against Vt (the base).
+                // See erl_lint.erl `expr({'receive',Anno,Cs,To,ToEs}, Vt, St0)`:
+                // https://github.com/erlang/otp/blob/OTP-28.3.2/lib/stdlib/src/erl_lint.erl#L2766-L2774
+                let mut after_scope = scopes.new_scope(*scope);
                 for expr in &ra.exprs {
-                    compute_expr_scopes(*expr, body, scopes, &mut scope, &mut sub_vt2);
+                    compute_expr_scopes(*expr, body, scopes, &mut after_scope, &mut sub_vt2);
                 }
-                clause_scopes.push((scope, sub_vt2));
+                clause_scopes.push((after_scope, sub_vt2));
             };
             vt.merge(&add_exported_scopes(scopes, scope, &clause_scopes));
         }
@@ -874,6 +879,30 @@ mod tests {
               ~.
             ",
             &["Y", "X"],
+        );
+    }
+
+    #[test]
+    fn test_receive_after_exports() {
+        // Bindings in the after-body of a receive should be exported
+        // and visible after the receive expression. The after-body
+        // scope should be a sibling of the timeout scope (child of
+        // the outer scope), not a child of the timeout scope.
+        // The timeout expression should not be pushed as a separate
+        // clause entry — only the after-body should be.
+        do_check(
+            r"
+            f() ->
+              receive
+                {ok, X} -> X
+              after
+                1000 ->
+                  Y = 0,
+                  Y
+              end,
+              ~.
+            ",
+            &["X", "Y"],
         );
     }
 
