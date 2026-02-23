@@ -720,7 +720,6 @@ fn compute_clause_scopes(
             );
             for guards in &clause.guards {
                 for guard in guards {
-                    scope = scopes.new_scope(scope);
                     compute_expr_scopes(*guard, body, scopes, &mut scope, &mut sub_vt);
                 }
             }
@@ -858,6 +857,24 @@ mod tests {
               ~.
             ",
             &["X"],
+        );
+    }
+
+    #[test]
+    fn test_case_guard_exports_pattern_var() {
+        // Pattern variables in case clauses with guards should be
+        // exported and visible after the case expression.
+        // Guards should NOT create new scopes (matching elp_lint.erl).
+        do_check(
+            r"
+            f(X) ->
+              case X of
+                {ok, Y} when is_integer(Y) -> Y;
+                _ -> 0
+              end,
+              ~.
+            ",
+            &["Y", "X"],
         );
     }
 
