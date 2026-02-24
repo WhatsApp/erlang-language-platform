@@ -290,14 +290,27 @@ mod tests {
 
     use crate::diagnostics::DiagnosticsConfig;
     use crate::tests::check_diagnostics_with_config;
-    use crate::tests::check_specific_fix;
+    use crate::tests::check_specific_fix_with_config;
+
+    fn config() -> DiagnosticsConfig {
+        DiagnosticsConfig::default()
+            .set_experimental(true)
+            .disable(DiagnosticCode::MacroPrecedenceEscape)
+            .disable(DiagnosticCode::NoAndOr)
+    }
 
     #[track_caller]
     pub(crate) fn check_diagnostics(fixture: &str) {
-        let config = DiagnosticsConfig::default()
-            .set_experimental(true)
-            .disable(DiagnosticCode::MacroPrecedenceEscape);
-        check_diagnostics_with_config(config, fixture)
+        check_diagnostics_with_config(config(), fixture)
+    }
+
+    #[track_caller]
+    pub(crate) fn check_specific_fix(
+        assist_label: &str,
+        fixture_before: &str,
+        fixture_after: expect_test::Expect,
+    ) {
+        check_specific_fix_with_config(Some(assist_label), fixture_before, fixture_after, config())
     }
 
     #[test]

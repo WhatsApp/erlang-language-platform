@@ -161,6 +161,7 @@ mod unused_function_args;
 mod unused_include;
 mod unused_macro;
 mod unused_record_field;
+mod no_and_or;
 
 pub use elp_ide_db::DiagnosticCode;
 pub use from_config::Lint;
@@ -1740,6 +1741,7 @@ const SSR_PATTERN_LINTERS: &[&dyn SsrPatternsDiagnostics] = &[
     &map_insertion_to_syntax::MAP_PUT_LINTER,
     &map_insertion_to_syntax::MAP_UPDATE_LINTER,
     &lists_map_to_comprehension::LINTER,
+    &no_and_or::LINTER,
 ];
 
 /// Generic linters

@@ -99,6 +99,7 @@ pub enum DiagnosticCode {
     InefficientListEmptyCheck,
     ListsMapToComprehension,
     MissingMsTransformInclude,
+    NoAndOr,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -268,6 +269,7 @@ impl DiagnosticCode {
             DiagnosticCode::InefficientListEmptyCheck => "W0065".to_string(),
             DiagnosticCode::ListsMapToComprehension => "W0066".to_string(),
             DiagnosticCode::MissingMsTransformInclude => "W0067".to_string(),
+            DiagnosticCode::NoAndOr => "W0069".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -290,6 +292,7 @@ impl DiagnosticCode {
             DiagnosticCode::InefficientListEmptyCheck => "inefficient_list_empty_check".to_string(),
             DiagnosticCode::ListsMapToComprehension => "lists_map_to_comprehension".to_string(),
             DiagnosticCode::MissingMsTransformInclude => "missing_ms_transform_include".to_string(),
+            DiagnosticCode::NoAndOr => "no_and_or".to_string(),
             DiagnosticCode::ModuleMismatch => "module_mismatch".to_string(),
             DiagnosticCode::UnusedMacro => "unused_macro".to_string(),
             DiagnosticCode::UnusedRecordField => "unused_record_field".to_string(),
@@ -511,6 +514,7 @@ impl DiagnosticCode {
             DiagnosticCode::InefficientListEmptyCheck => false,
             DiagnosticCode::ListsMapToComprehension => false,
             DiagnosticCode::MissingMsTransformInclude => false,
+            DiagnosticCode::NoAndOr => false,
             DiagnosticCode::UnusedMacro => false,
             DiagnosticCode::UnusedRecordField => false,
             DiagnosticCode::MutableVarBug => false,
