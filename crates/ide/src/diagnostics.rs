@@ -752,7 +752,7 @@ pub(crate) trait SsrPatternsLinter: Linter {
     type Context: Clone + fmt::Debug + PartialEq + 'static;
 
     /// Specify the SSR patterns to match
-    /// Use the `Context`` to distinguish between each variant
+    /// Use the `Context` to distinguish between each variant
     fn patterns(&self) -> &'static [(String, Self::Context)];
 
     /// Customize the description based on each matched pattern.
@@ -4650,7 +4650,7 @@ foo() -> ?UNDEFINED_MACRO.
 
     #[test]
     fn test_generated_takes_precedence_over_partially_generated() {
-        // Test that when a file contains both @generated and @partially-generated,
+        // Test that when a file contains both `generated` and `partially-generated` tags,
         // it should be recognized as Generated (not PartiallyGenerated)
         use elp_ide_db::RootDatabase;
         use elp_ide_db::elp_base_db::GeneratedStatus;
