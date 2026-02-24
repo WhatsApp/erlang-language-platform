@@ -661,17 +661,6 @@ mod tests {
         );
     }
 
-    #[ignore]
-    #[test]
-    fn dialyzer_cli() {
-        simple_dialyzer_snapshot(
-            args_vec!["dialyze-all"],
-            "diagnostics",
-            resource_file!("standard/dialyze_all.stdout"),
-            0,
-        );
-    }
-
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn parse_all_diagnostics1(buck: bool) {
@@ -2644,28 +2633,6 @@ mod tests {
                     "expected stderr to be empty, got:\n{stderr}"
                 )
             }
-        }
-    }
-
-    #[track_caller]
-    fn simple_dialyzer_snapshot(
-        args: Vec<OsString>,
-        _project: &str,
-        expected: ExpectFile,
-        expected_code: i32,
-    ) {
-        let (stdout, stderr, code) = elp(args);
-        assert_eq!(
-            code, expected_code,
-            "failed with unexpected exit code: got {code} not {expected_code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
-        );
-        let path = PathBuf::from("");
-        assert_normalised_file(expected, &stdout, path, false);
-        if expected_code == 0 {
-            assert!(
-                stderr.is_empty(),
-                "expected stderr to be empty, got:\n{stderr}"
-            )
         }
     }
 
