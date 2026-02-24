@@ -256,11 +256,11 @@ fn test_e2e_eqwalizer_module() {
                       "range": {
                         "end": {
                           "character": 21,
-                          "line": 55
+                          "line": 56
                         },
                         "start": {
                           "character": 4,
-                          "line": 55
+                          "line": 56
                         }
                       },
                       "severity": 1,
@@ -275,11 +275,11 @@ fn test_e2e_eqwalizer_module() {
                       "range": {
                         "end": {
                           "character": 5,
-                          "line": 77
+                          "line": 78
                         },
                         "start": {
                           "character": 4,
-                          "line": 77
+                          "line": 78
                         }
                       },
                       "severity": 1,
@@ -294,11 +294,11 @@ fn test_e2e_eqwalizer_module() {
                       "range": {
                         "end": {
                           "character": 5,
-                          "line": 101
+                          "line": 102
                         },
                         "start": {
                           "character": 4,
-                          "line": 101
+                          "line": 102
                         }
                       },
                       "severity": 1,
@@ -313,11 +313,11 @@ fn test_e2e_eqwalizer_module() {
                       "range": {
                         "end": {
                           "character": 5,
-                          "line": 124
+                          "line": 125
                         },
                         "start": {
                           "character": 4,
-                          "line": 124
+                          "line": 125
                         }
                       },
                       "severity": 1,

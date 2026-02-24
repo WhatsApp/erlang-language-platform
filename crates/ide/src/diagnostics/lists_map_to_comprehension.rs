@@ -11,20 +11,37 @@
 //! Lint: lists_map_to_comprehension
 //!
 //! warn on code of the form `lists:map(fun (X) -> Body end, L)` and suggest `[Body || X <:- L]`
+//! Also handles `lists:map(fun action/1, L)`, `lists:map(fun mod:action/1, L)`,
+//! and `lists:map(F, L)` where F is a variable.
 
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
+use elp_ide_ssr::Match;
+use elp_ide_ssr::is_placeholder_a_var_from_sema_and_match;
 use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use lazy_static::lazy_static;
 
+use crate::Assist;
 use crate::diagnostics::Linter;
 use crate::diagnostics::Severity;
 use crate::diagnostics::SsrPatternsLinter;
 use crate::fix;
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum PatternKind {
+    /// `lists:map(fun (X) -> Body end, List)`
+    AnonymousFun,
+    /// `lists:map(fun action/1, List)`
+    LocalFunRef,
+    /// `lists:map(fun mod:action/1, List)`
+    RemoteFunRef,
+    /// `lists:map(F, List)` where F is a variable
+    FunVar,
+}
 
 pub(crate) struct ListsMapToComprehensionLinter;
 
@@ -43,7 +60,7 @@ impl Linter for ListsMapToComprehensionLinter {
 }
 
 impl SsrPatternsLinter for ListsMapToComprehensionLinter {
-    type Context = ();
+    type Context = PatternKind;
 
     fn strategy(&self) -> Strategy {
         Strategy {
@@ -54,18 +71,32 @@ impl SsrPatternsLinter for ListsMapToComprehensionLinter {
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
         lazy_static! {
-            static ref PATTERNS: Vec<(String, ())> = vec![(
-                format!("ssr: lists:map(fun ({ELEM_VAR}) -> {BODY_VAR} end, {LIST_VAR})."),
-                (),
-            ),];
+            static ref PATTERNS: Vec<(String, PatternKind)> = vec![
+                (
+                    format!("ssr: lists:map(fun ({ELEM_VAR}) -> {BODY_VAR} end, {LIST_VAR})."),
+                    PatternKind::AnonymousFun,
+                ),
+                (
+                    format!("ssr: lists:map(fun {FUN_VAR}/1, {LIST_VAR})."),
+                    PatternKind::LocalFunRef,
+                ),
+                (
+                    format!("ssr: lists:map(fun {MOD_VAR}:{FUN_VAR}/1, {LIST_VAR})."),
+                    PatternKind::RemoteFunRef,
+                ),
+                (
+                    format!("ssr: lists:map({FUN_VAR}, {LIST_VAR})."),
+                    PatternKind::FunVar,
+                ),
+            ];
         }
         &PATTERNS
     }
 
     fn is_match_valid(
         &self,
-        _context: &Self::Context,
-        matched: &elp_ide_ssr::Match,
+        context: &Self::Context,
+        matched: &Match,
         sema: &Semantic,
         file_id: FileId,
     ) -> Option<bool> {
@@ -77,22 +108,47 @@ impl SsrPatternsLinter for ListsMapToComprehensionLinter {
         if matched.range.file_id != file_id {
             return None;
         }
+
+        if *context == PatternKind::FunVar {
+            let fun_placeholder = matched.get_placeholder_match(sema, FUN_VAR)?;
+            if !is_placeholder_a_var_from_sema_and_match(sema, matched, &fun_placeholder) {
+                return None;
+            }
+        }
+
         Some(true)
     }
 
     fn fixes(
         &self,
-        _context: &Self::Context,
-        matched: &elp_ide_ssr::Match,
+        context: &Self::Context,
+        matched: &Match,
         sema: &Semantic,
         file_id: FileId,
-    ) -> Option<Vec<elp_ide_assists::Assist>> {
+    ) -> Option<Vec<Assist>> {
         let call_range = matched.range.range;
-        let var = matched.placeholder_text(sema, ELEM_VAR)?;
-        let body = matched.placeholder_text(sema, BODY_VAR)?;
         let list = matched.placeholder_text(sema, LIST_VAR)?;
 
-        let comprehension = format!("[{body} || {var} <:- {list}]");
+        let comprehension = match context {
+            PatternKind::AnonymousFun => {
+                let var = matched.placeholder_text(sema, ELEM_VAR)?;
+                let body = matched.placeholder_text(sema, BODY_VAR)?;
+                format!("[{body} || {var} <:- {list}]")
+            }
+            PatternKind::LocalFunRef => {
+                let fun = matched.placeholder_text(sema, FUN_VAR)?;
+                format!("[{fun}(Elem) || Elem <:- {list}]")
+            }
+            PatternKind::RemoteFunRef => {
+                let module = matched.placeholder_text(sema, MOD_VAR)?;
+                let fun = matched.placeholder_text(sema, FUN_VAR)?;
+                format!("[{module}:{fun}(Elem) || Elem <:- {list}]")
+            }
+            PatternKind::FunVar => {
+                let fun = matched.placeholder_text(sema, FUN_VAR)?;
+                format!("[{fun}(Elem) || Elem <:- {list}]")
+            }
+        };
 
         let mut builder = SourceChangeBuilder::new(file_id);
         builder.replace(call_range, comprehension);
@@ -111,6 +167,8 @@ pub(crate) static LINTER: ListsMapToComprehensionLinter = ListsMapToComprehensio
 static ELEM_VAR: &str = "_@Var";
 static BODY_VAR: &str = "_@Body";
 static LIST_VAR: &str = "_@List";
+static FUN_VAR: &str = "_@Fun";
+static MOD_VAR: &str = "_@Mod";
 
 #[cfg(test)]
 mod tests {
@@ -253,14 +311,126 @@ mod tests {
     }
 
     #[test]
-    fn ignores_parameterised_funs() {
+    fn detects_local_fun_ref() {
         check_diagnostics(
             r#"
          //- /src/lists_map_to_comprehension.erl
          -module(lists_map_to_comprehension).
 
          % elp:ignore W0017 (undefined_function)
-         fn(F, L) -> lists:map(F, L). % Unclear what name to give to the parameter to F, so ignore for now
+         fn(L) -> lists:map(fun action/1, L).
+         %%       ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0066: lists:map/2 call can be replaced with a list comprehension.
+            "#,
+        )
+    }
+
+    #[test]
+    fn fixes_local_fun_ref() {
+        check_fix(
+            r#"
+         //- /src/lists_map_to_comprehension.erl
+         -module(lists_map_to_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(L) -> lists:map(fun acti~on/1, L).
+            "#,
+            expect![[r#"
+         -module(lists_map_to_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(L) -> [action(Elem) || Elem <:- L].
+            "#]],
+        )
+    }
+
+    #[test]
+    fn detects_remote_fun_ref() {
+        check_diagnostics(
+            r#"
+         //- /src/lists_map_to_comprehension.erl
+         -module(lists_map_to_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(L) -> lists:map(fun mod:action/1, L).
+         %%       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0066: lists:map/2 call can be replaced with a list comprehension.
+            "#,
+        )
+    }
+
+    #[test]
+    fn fixes_remote_fun_ref() {
+        check_fix(
+            r#"
+         //- /src/lists_map_to_comprehension.erl
+         -module(lists_map_to_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(L) -> lists:map(fun mod:acti~on/1, L).
+            "#,
+            expect![[r#"
+         -module(lists_map_to_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(L) -> [mod:action(Elem) || Elem <:- L].
+            "#]],
+        )
+    }
+
+    #[test]
+    fn detects_fun_var() {
+        check_diagnostics(
+            r#"
+         //- /src/lists_map_to_comprehension.erl
+         -module(lists_map_to_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(F, L) -> lists:map(F, L).
+         %%          ^^^^^^^^^^^^^^^ 💡 weak: W0066: lists:map/2 call can be replaced with a list comprehension.
+            "#,
+        )
+    }
+
+    #[test]
+    fn fixes_fun_var() {
+        check_fix(
+            r#"
+         //- /src/lists_map_to_comprehension.erl
+         -module(lists_map_to_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(F, L) -> lists:map(~F, L).
+            "#,
+            expect![[r#"
+         -module(lists_map_to_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(F, L) -> [F(Elem) || Elem <:- L].
+            "#]],
+        )
+    }
+
+    #[test]
+    fn ignores_arity_not_one_local() {
+        check_diagnostics(
+            r#"
+         //- /src/lists_map_to_comprehension.erl
+         -module(lists_map_to_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(L) -> lists:map(fun action/2, L).
+            "#,
+        )
+    }
+
+    #[test]
+    fn ignores_arity_not_one_remote() {
+        check_diagnostics(
+            r#"
+         //- /src/lists_map_to_comprehension.erl
+         -module(lists_map_to_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(L) -> lists:map(fun mod:action/2, L).
             "#,
         )
     }

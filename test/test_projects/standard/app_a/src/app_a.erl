@@ -32,6 +32,7 @@ test3() ->
 
 -spec test4([a]) -> app_a_mod2:alias(a).
 test4(L) ->
+    % elp:ignore W0066 lists:map/2 rather than comprehension
     [H | _] = lists:map(
       fun app_a_mod2:id/1,
       L),
