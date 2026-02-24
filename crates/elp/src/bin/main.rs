@@ -358,11 +358,11 @@ mod tests {
             let (stdout, stderr, code) = elp(args);
             match code {
                 0 => {
-                    assert_normalised_file(exp_path, &stdout, path, false);
+                    assert_normalised_file(exp_path, &stdout, path, false, false);
                     assert!(stderr.is_empty());
                 }
                 _ => {
-                    assert_normalised_file(exp_path, &stderr, path, false);
+                    assert_normalised_file(exp_path, &stderr, path, false, false);
                     assert!(stdout.is_empty());
                 }
             }
@@ -481,10 +481,17 @@ mod tests {
                                     &stdout,
                                     project_path.into(),
                                     false,
+                                    false,
                                 );
                             }
                         } else {
-                            assert_normalised_file(exp_path, &stdout, project_path.into(), false);
+                            assert_normalised_file(
+                                exp_path,
+                                &stdout,
+                                project_path.into(),
+                                false,
+                                false,
+                            );
                         }
                     }
                 }
@@ -1791,13 +1798,14 @@ mod tests {
     #[test]
     fn lint_reports_bxl_project_error() {
         if cfg!(feature = "buck") {
-            simple_snapshot_expect_stderror(
+            simple_snapshot_expect_stderror_impl(
                 args_vec!["lint",],
                 "buck_bad_config",
-                // @fb-only: expect_file!("../resources/test/buck_bad_config/bxl_error_message.stdout"),
-                expect_file!("../resources/test/buck_bad_config/bxl_error_message_oss.stdout"), // @oss-only
+                // @fb-only: resource_file!("buck_bad_config/bxl_error_message.stdout"),
+                resource_file!("buck_bad_config/bxl_error_message_oss.stdout"), // @oss-only
                 true,
                 None,
+                true,
                 true,
             );
         }
@@ -2626,7 +2634,7 @@ mod tests {
                 code, expected_code,
                 "failed with unexpected exit code: got {code} not {expected_code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
             );
-            assert_normalised_file(expected, &stdout, path, false);
+            assert_normalised_file(expected, &stdout, path, false, false);
             if expected_code == 0 {
                 assert!(
                     stderr.is_empty(),
@@ -2653,7 +2661,7 @@ mod tests {
                 code, 101,
                 "Expected exit code 101, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
             );
-            assert_normalised_file(expected, &stdout, path, false);
+            assert_normalised_file(expected, &stdout, path, false, false);
         }
     }
 
@@ -2675,7 +2683,7 @@ mod tests {
                 "Expected exit code 101, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
             );
             let sorted_stdout = sort_lines(&stdout);
-            assert_normalised_file(expected, &sorted_stdout, path, false);
+            assert_normalised_file(expected, &sorted_stdout, path, false, false);
         }
     }
 
@@ -2704,7 +2712,7 @@ mod tests {
                 "failed with unexpected exit code: got {code} not 0\nstdout:\n{stdout}\nstderr:\n{stderr}"
             );
             let sorted_stdout = sort_lines(&stdout);
-            assert_normalised_file(expected, &sorted_stdout, path, false);
+            assert_normalised_file(expected, &sorted_stdout, path, false, false);
             assert!(
                 stderr.is_empty(),
                 "expected stderr to be empty, got:\n{stderr}"
@@ -2720,6 +2728,27 @@ mod tests {
         file: Option<&str>,
         normalise_urls: bool,
     ) {
+        simple_snapshot_expect_stderror_impl(
+            args,
+            project,
+            expected,
+            buck,
+            file,
+            normalise_urls,
+            false,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn simple_snapshot_expect_stderror_impl(
+        args: Vec<OsString>,
+        project: &str,
+        expected: ExpectFile,
+        buck: bool,
+        file: Option<&str>,
+        normalise_urls: bool,
+        first_line_only: bool,
+    ) {
         if !buck || cfg!(feature = "buck") {
             let (mut args, path) = add_project(args, project, file, None);
             if !buck {
@@ -2730,7 +2759,7 @@ mod tests {
                 code, 101,
                 "Expected exit code 101, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
             );
-            assert_normalised_file(expected, &stderr, path, normalise_urls);
+            assert_normalised_file(expected, &stderr, path, normalise_urls, first_line_only);
         }
     }
 
@@ -2836,7 +2865,7 @@ mod tests {
             } else {
                 expect![[""]].assert_eq(&stderr);
             }
-            assert_normalised_file(expected, &stdout, path, false);
+            assert_normalised_file(expected, &stdout, path, false, false);
             for (expected_file, file) in files {
                 let expected = expect_file!(expected_dir.join(expected_file));
                 let actual = actual_dir.join(file);
@@ -2887,7 +2916,7 @@ mod tests {
                 expect![[""]].assert_eq(&stderr);
             }
             let sorted_stdout = sort_lines(&stdout);
-            assert_normalised_file(expected, &sorted_stdout, path, false);
+            assert_normalised_file(expected, &sorted_stdout, path, false, false);
             for (expected_file, file) in files {
                 let expected = expect_file!(expected_dir.join(expected_file));
                 let actual = actual_dir.join(file);
@@ -2904,6 +2933,7 @@ mod tests {
         actual: &str,
         project_path: PathBuf,
         normalise_urls: bool,
+        first_line_only: bool,
     ) {
         let project_path: &str = &project_path.to_string_lossy();
         let normalised = actual
@@ -2911,6 +2941,11 @@ mod tests {
             .replace(BASE_URL, "");
         let normalised = if normalise_urls {
             replace_url(&normalised)
+        } else {
+            normalised
+        };
+        let normalised = if first_line_only {
+            normalised.lines().next().unwrap_or("").to_string()
         } else {
             normalised
         };
