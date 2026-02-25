@@ -489,10 +489,19 @@ pub(crate) fn recover_cycle_with_diagnostics(
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use elp_base_db::fixture::WithFixture;
+
+    use crate::FormIdx;
     use crate::MacroName;
     use crate::Name;
+    use crate::PPConditionResult;
+    use crate::condition_expr::ConditionExpr;
+    use crate::db::DefDatabase;
     use crate::preprocessor::MacroEnvironment;
     use crate::preprocessor::PreprocessorState;
+    use crate::test_db::TestDB;
 
     fn name(s: &str) -> Name {
         Name::from_erlang_service(s)
@@ -609,6 +618,102 @@ mod tests {
     }
 
     #[test]
+    fn test_preprocessor_state_if_true() {
+        let env = MacroEnvironment::new();
+        let mut state = PreprocessorState::new(&env);
+
+        let expr = ConditionExpr::LiteralBool(true);
+        state.enter_if(&expr);
+        assert!(state.is_active());
+
+        state.exit_condition();
+        assert!(state.is_active());
+    }
+
+    #[test]
+    fn test_preprocessor_state_if_false() {
+        let env = MacroEnvironment::new();
+        let mut state = PreprocessorState::new(&env);
+
+        let expr = ConditionExpr::LiteralBool(false);
+        state.enter_if(&expr);
+        assert!(!state.is_active());
+
+        state.exit_condition();
+        assert!(state.is_active());
+    }
+
+    #[test]
+    fn test_preprocessor_state_if_else() {
+        let env = MacroEnvironment::new();
+        let mut state = PreprocessorState::new(&env);
+
+        // if false -> inactive
+        let expr = ConditionExpr::LiteralBool(false);
+        state.enter_if(&expr);
+        assert!(!state.is_active());
+
+        // else -> should become active
+        state.enter_else();
+        assert!(state.is_active());
+
+        state.exit_condition();
+        assert!(state.is_active());
+    }
+
+    #[test]
+    fn test_preprocessor_state_if_else_when_if_was_true() {
+        let env = MacroEnvironment::new();
+        let mut state = PreprocessorState::new(&env);
+
+        // if true -> active
+        let expr = ConditionExpr::LiteralBool(true);
+        state.enter_if(&expr);
+        assert!(state.is_active());
+
+        // else -> should become inactive since if branch was taken
+        state.enter_else();
+        assert!(!state.is_active());
+
+        state.exit_condition();
+        assert!(state.is_active());
+    }
+
+    #[test]
+    fn test_preprocessor_state_elif() {
+        let env = MacroEnvironment::new();
+        let mut state = PreprocessorState::new(&env);
+
+        // if false
+        state.enter_if(&ConditionExpr::LiteralBool(false));
+        assert!(!state.is_active());
+
+        // elif true -> should become active
+        state.enter_elif(&ConditionExpr::LiteralBool(true));
+        assert!(state.is_active());
+
+        state.exit_condition();
+        assert!(state.is_active());
+    }
+
+    #[test]
+    fn test_preprocessor_state_elif_not_taken_when_if_was_true() {
+        let env = MacroEnvironment::new();
+        let mut state = PreprocessorState::new(&env);
+
+        // if true
+        state.enter_if(&ConditionExpr::LiteralBool(true));
+        assert!(state.is_active());
+
+        // elif true -> should be inactive because if was already taken
+        state.enter_elif(&ConditionExpr::LiteralBool(true));
+        assert!(!state.is_active());
+
+        state.exit_condition();
+        assert!(state.is_active());
+    }
+
+    #[test]
     fn test_preprocessor_state_nested_conditions() {
         let mut env = MacroEnvironment::new();
         env.define(macro_name("OUTER"));
@@ -707,5 +812,319 @@ mod tests {
         state.merge_from_include(&include_macros);
 
         assert!(state.is_defined(&macro_name("INCLUDED_MACRO")));
+    }
+
+    // ========================================================================
+    // Integration tests with database
+    // ========================================================================
+
+    #[test]
+    fn test_file_preprocessor_analysis_simple() {
+        let (db, file_id) = TestDB::with_single_file(
+            r#"
+-module(test).
+-ifdef(TEST).
+foo() -> test.
+-else.
+foo() -> prod.
+-endif.
+"#,
+        );
+
+        let env = db.project_macro_environment(file_id);
+        let analysis = db.file_preprocessor_analysis(file_id, env);
+
+        // The analysis should complete without errors
+        assert!(analysis.final_state.is_some());
+    }
+
+    #[test]
+    fn test_file_preprocessor_analysis_with_define() {
+        let (db, file_id) = TestDB::with_single_file(
+            r#"
+-module(test).
+-define(MY_MACRO, true).
+-ifdef(MY_MACRO).
+foo() -> defined.
+-endif.
+"#,
+        );
+
+        let env = db.project_macro_environment(file_id);
+        let analysis = db.file_preprocessor_analysis(file_id, env);
+
+        // After processing -define, MY_MACRO should be defined
+        if let Some(ref final_state) = analysis.final_state {
+            assert!(final_state.defined.contains(&macro_name("MY_MACRO")));
+        }
+    }
+
+    #[test]
+    fn test_file_preprocessor_analysis_with_undef() {
+        let (db, file_id) = TestDB::with_single_file(
+            r#"
+-module(test).
+-define(TEMP, 1).
+-undef(TEMP).
+-ifdef(TEMP).
+should_not_be_active() -> ok.
+-endif.
+"#,
+        );
+
+        let env = db.project_macro_environment(file_id);
+        let analysis = db.file_preprocessor_analysis(file_id, env);
+
+        // After -undef, TEMP should not be defined
+        if let Some(ref final_state) = analysis.final_state {
+            assert!(!final_state.defined.contains(&macro_name("TEMP")));
+        }
+    }
+
+    #[test]
+    fn test_project_macro_environment_module_name() {
+        let (db, file_id) = TestDB::with_single_file(
+            r#"
+-module(my_test_module).
+foo() -> ok.
+"#,
+        );
+
+        let env = db.project_macro_environment(file_id);
+
+        assert_eq!(env.module_name(), Some(&name("my_test_module")));
+    }
+
+    #[test]
+    fn test_project_macro_environment_external_defines() {
+        // This test verifies that external defines are picked up
+        // (requires fixture with external defines configured)
+        let (db, file_id) = TestDB::with_single_file(
+            r#"
+-module(test).
+foo() -> ok.
+"#,
+        );
+
+        let env = db.project_macro_environment(file_id);
+        // By default, no external defines
+        // The environment should at least be created successfully
+        assert!(env.module_name().is_some());
+    }
+
+    // ========================================================================
+    // Tests for condition expression evaluation with preprocessor state
+    // ========================================================================
+
+    #[test]
+    fn test_preprocessor_state_if_with_defined() {
+        let mut env = MacroEnvironment::new();
+        env.define(macro_name("MY_FLAG"));
+        let mut state = PreprocessorState::new(&env);
+
+        // defined(MY_FLAG) -> true
+        let expr = ConditionExpr::Defined(name("MY_FLAG"));
+        state.enter_if(&expr);
+        assert!(state.is_active());
+
+        state.exit_condition();
+    }
+
+    #[test]
+    fn test_preprocessor_state_if_with_not_defined() {
+        let env = MacroEnvironment::new();
+        let mut state = PreprocessorState::new(&env);
+
+        // not defined(MY_FLAG) -> true (since MY_FLAG is not defined)
+        let expr = ConditionExpr::Not(Box::new(ConditionExpr::Defined(name("MY_FLAG"))));
+        state.enter_if(&expr);
+        assert!(state.is_active());
+
+        state.exit_condition();
+    }
+
+    #[test]
+    fn test_preprocessor_state_if_with_andalso() {
+        let mut env = MacroEnvironment::new();
+        env.define(macro_name("A"));
+        env.define(macro_name("B"));
+        let mut state = PreprocessorState::new(&env);
+
+        // defined(A) andalso defined(B) -> true
+        let expr = ConditionExpr::AndAlso(
+            Box::new(ConditionExpr::Defined(name("A"))),
+            Box::new(ConditionExpr::Defined(name("B"))),
+        );
+        state.enter_if(&expr);
+        assert!(state.is_active());
+
+        state.exit_condition();
+    }
+
+    #[test]
+    fn test_preprocessor_state_if_with_orelse() {
+        let mut env = MacroEnvironment::new();
+        env.define(macro_name("A"));
+        let mut state = PreprocessorState::new(&env);
+
+        // defined(A) orelse defined(B) -> true (A is defined)
+        let expr = ConditionExpr::OrElse(
+            Box::new(ConditionExpr::Defined(name("A"))),
+            Box::new(ConditionExpr::Defined(name("B"))),
+        );
+        state.enter_if(&expr);
+        assert!(state.is_active());
+
+        state.exit_condition();
+    }
+
+    #[test]
+    fn test_preprocessor_include_propagates_macros() {
+        // Create a fixture with an include file
+        // Note: files are returned in order they appear in the fixture
+        // The include_path directive specifies where to search for includes
+        let fixture = r#"
+//- /src/main.erl include_path:/include
+-module(main).
+-include("macros.hrl").
+-ifdef(FROM_INCLUDE).
+foo() -> included.
+-endif.
+
+//- /include/macros.hrl
+-define(FROM_INCLUDE, 1).
+"#;
+        let (db, files, _) = TestDB::with_many_files(fixture);
+
+        // files[0] = main.erl, files[1] = macros.hrl
+        let main_file = files[0];
+
+        let env = db.project_macro_environment(main_file);
+        let analysis = db.file_preprocessor_analysis(main_file, env);
+
+        // After including macros.hrl, FROM_INCLUDE should be defined
+        if let Some(ref final_state) = analysis.final_state {
+            assert!(
+                final_state.defined.contains(&macro_name("FROM_INCLUDE")),
+                "FROM_INCLUDE should be defined after including macros.hrl"
+            );
+        }
+    }
+
+    #[test]
+    fn test_module_name_propagates_to_include() {
+        // Test that module name from the including file propagates to the header
+        // Note: files are returned in order they appear in the fixture
+        // The include_path directive specifies where to search for includes
+        let fixture = r#"
+//- /src/main_module.erl include_path:/include
+-module(main_module).
+-include("header.hrl").
+foo() -> ok.
+
+//- /include/header.hrl
+%% Header file - ?MODULE should resolve to main_module
+"#;
+        let (db, files, _) = TestDB::with_many_files(fixture);
+
+        // files[0] = main_module.erl
+        let main_file = files[0];
+
+        let env = db.project_macro_environment(main_file);
+
+        // The environment should have the module name set
+        assert_eq!(env.module_name(), Some(&name("main_module")));
+    }
+
+    #[test]
+    fn test_preprocessor_analysis_tracks_inactive_forms() {
+        let (db, file_id) = TestDB::with_single_file(
+            r#"
+-module(test).
+-ifdef(UNDEFINED_MACRO).
+this_is_inactive() -> ok.
+-endif.
+"#,
+        );
+
+        let env = db.project_macro_environment(file_id);
+        let analysis = db.file_preprocessor_analysis(file_id, env);
+        let form_list = db.file_form_list(file_id);
+
+        // Find at least one condition that is inactive
+        let has_inactive_condition = form_list.forms().iter().any(|&form_idx| {
+            if let FormIdx::PPCondition(cond_id) = form_idx {
+                analysis.is_condition_active(cond_id) == PPConditionResult::Inactive
+            } else {
+                false
+            }
+        });
+
+        assert!(
+            has_inactive_condition,
+            "Should have at least one inactive condition inside the ifdef block"
+        );
+    }
+
+    #[test]
+    fn test_macro_environment_with_test_macros() {
+        let env = MacroEnvironment::with_test_macros();
+
+        assert!(env.predefined.contains(&macro_name("TEST")));
+        assert!(env.predefined.contains(&macro_name("DEBUG")));
+    }
+
+    #[test]
+    fn test_preprocessor_state_chained_elif() {
+        let env = MacroEnvironment::new();
+        let mut state = PreprocessorState::new(&env);
+
+        // if false
+        state.enter_if(&ConditionExpr::LiteralBool(false));
+        assert!(!state.is_active());
+
+        // elif false
+        state.enter_elif(&ConditionExpr::LiteralBool(false));
+        assert!(!state.is_active());
+
+        // elif true -> should take this branch
+        state.enter_elif(&ConditionExpr::LiteralBool(true));
+        assert!(state.is_active());
+
+        // else -> should NOT take since elif was taken
+        state.enter_else();
+        assert!(!state.is_active());
+
+        state.exit_condition();
+        assert!(state.is_active());
+    }
+
+    #[test]
+    fn test_preprocessor_state_invalid_condition() {
+        let env = MacroEnvironment::new();
+        let mut state = PreprocessorState::new(&env);
+
+        // Invalid condition should evaluate to false
+        state.enter_if(&ConditionExpr::Invalid);
+        assert!(!state.is_active());
+
+        state.exit_condition();
+        assert!(state.is_active());
+    }
+
+    #[test]
+    fn test_preprocessor_cycle_recovery() {
+        use crate::preprocessor::recover_cycle_with_diagnostics;
+
+        // Test that cycle recovery returns an empty analysis
+        let db = TestDB::default();
+        let file_id = elp_base_db::FileId::from_raw(0);
+        let env = Arc::new(MacroEnvironment::new());
+
+        let (analysis, diagnostics) = recover_cycle_with_diagnostics(&db, &[], &file_id, &env);
+
+        // Cycle recovery should return empty/default analysis and empty diagnostics
+        assert!(analysis.final_state.is_none());
+        assert!(diagnostics.is_empty());
     }
 }

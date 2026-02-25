@@ -751,14 +751,30 @@ mod tests {
 
     use std::collections::BTreeSet;
 
+    use elp_base_db::FileId;
+    use elp_base_db::FileLoader;
+    use elp_base_db::fixture::ChangeFixture;
+    use elp_base_db::fixture::WithFixture;
+    use elp_syntax::TextSize;
     use elp_syntax::ast::ArithOp;
     use elp_syntax::ast::CompOp;
     use elp_syntax::ast::Ordering;
     use elp_syntax::ast::UnaryOp;
+    use expect_test::Expect;
+    use expect_test::expect;
 
+    use crate::InFile;
     use crate::MacroName;
     use crate::Name;
     use crate::condition_expr::ConditionExpr;
+    use crate::db::DefDatabase;
+    use crate::form_list::FormIdx;
+    use crate::form_list::FormList;
+    use crate::form_list::FormPPContext;
+    use crate::form_list::PPCondition;
+    use crate::form_list::PPConditionId;
+    use crate::form_list::PPConditionResult;
+    use crate::test_db::TestDB;
 
     fn name(s: &str) -> Name {
         Name::from_erlang_service(s)
@@ -1159,5 +1175,1542 @@ mod tests {
             right: Box::new(ConditionExpr::String("abd".to_string())),
         };
         assert_eq!(expr.evaluate(&defined), Some(true));
+    }
+
+    /// These tests use a declarative format to test preprocessor condition
+    /// evaluation. The output format shows:
+    /// - `+|` for active (included) lines
+    /// - `-|` for inactive (excluded) lines
+    /// - `?|` for unknown (cannot be determined) lines
+    /// - `>>> reason` when entering an inactive/unknown block
+    /// - `>>> defined: [...]` showing final macro definitions
+    ///
+    /// Line status for rendering: Active, Inactive, or Unknown
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum LineStatus {
+        Active,
+        Inactive,
+        Unknown,
+    }
+
+    /// Collect all active defined macros from define_attributes plus external defines.
+    /// This walks through all defines and checks if they are active, including
+    /// defines from included files.
+    ///
+    /// Note: For header files with conditions like `-if(?FILE == "mod1.erl")`, we pass
+    /// the including file's module name so that ?FILE and ?MODULE resolve correctly.
+    fn collect_all_defines(
+        db: &TestDB,
+        file_id: elp_base_db::FileId,
+        form_list: &FormList,
+    ) -> Vec<String> {
+        collect_all_defines_with_override(db, file_id, form_list, None)
+    }
+
+    /// Same as `collect_all_defines` but with an optional module name override.
+    fn collect_all_defines_with_override(
+        db: &TestDB,
+        file_id: elp_base_db::FileId,
+        form_list: &FormList,
+        module_name_override: Option<Name>,
+    ) -> Vec<String> {
+        let mut defines = Vec::new();
+        // Add external defines (from fixture macros:[])
+        for name in db.file_external_defines(file_id).iter() {
+            defines.push(name.to_string());
+        }
+        // Add internal defines from this file that are active or unknown
+        // (Unknown means we can't evaluate the condition, typically because
+        // of missing context like ?FILE or ?MODULE in headers)
+        for (_, define) in form_list.define_attributes() {
+            let result =
+                form_list.is_form_active(db, file_id, &define.pp_ctx, module_name_override.clone());
+            if result != PPConditionResult::Inactive {
+                defines.push(define.name.to_string());
+            }
+        }
+        // Determine the module name for included files
+        // If we don't have an override, try to get it from this file's module attribute
+        let module_name_for_includes = module_name_override.clone().or_else(|| {
+            form_list
+                .module_attribute()
+                .map(|mod_attr| mod_attr.name.clone())
+        });
+        // Collect defines from included files
+        for (idx, _include) in form_list.includes() {
+            if let Some(included_file_id) = db.resolve_include(InFile::new(file_id, idx))
+                && included_file_id != file_id
+            {
+                // Guard against cycles
+                let included_form_list = db.file_form_list(included_file_id);
+                let included_defines = collect_all_defines_with_override(
+                    db,
+                    included_file_id,
+                    &included_form_list,
+                    module_name_for_includes.clone(),
+                );
+                defines.extend(included_defines);
+            }
+        }
+        defines.sort();
+        defines.dedup();
+        defines
+    }
+
+    /// Compute line start offsets for the given source text.
+    fn line_starts(source: &str) -> Vec<TextSize> {
+        let mut starts = vec![TextSize::from(0)];
+        for (offset, ch) in source.char_indices() {
+            if ch == '\n' {
+                starts.push(TextSize::from((offset + 1) as u32));
+            }
+        }
+        starts
+    }
+
+    /// Convert a text offset to a 0-indexed line number.
+    fn offset_to_line(offset: TextSize, line_starts: &[TextSize]) -> usize {
+        match line_starts.binary_search(&offset) {
+            Ok(line) => line,
+            Err(line) => line.saturating_sub(1),
+        }
+    }
+
+    /// Get the pp_ctx for a form (extracting from each variant).
+    fn get_form_pp_ctx(form_list: &FormList, form_idx: FormIdx) -> Option<&FormPPContext> {
+        form_list.get(form_idx).pp_ctx(form_list)
+    }
+
+    /// Generate the reason string for why a condition is inactive or unknown.
+    fn get_condition_reason(
+        db: &TestDB,
+        file_id: FileId,
+        form_list: &FormList,
+        cond_id: PPConditionId,
+        result: PPConditionResult,
+    ) -> String {
+        match result {
+            PPConditionResult::Active => String::new(),
+            PPConditionResult::Inactive => match &form_list[cond_id] {
+                PPCondition::Ifdef { name, .. } => format!("{} is not defined", name),
+                PPCondition::Ifndef { name, .. } => format!("{} is defined", name),
+                PPCondition::If { .. } => "-if condition is false".to_string(),
+                PPCondition::Elif { prev, .. } => {
+                    // Check if previous branch was taken
+                    if was_previous_branch_taken(db, file_id, form_list, *prev) {
+                        "previous branch was taken".to_string()
+                    } else {
+                        "-elif condition is false".to_string()
+                    }
+                }
+                PPCondition::Else { .. } => "previous branch was taken".to_string(),
+                PPCondition::Endif { .. } => "endif".to_string(),
+            },
+            PPConditionResult::Unknown => match &form_list[cond_id] {
+                PPCondition::If { .. } => "-if condition is unknown".to_string(),
+                PPCondition::Elif { prev, .. } => {
+                    // Check if previous branch was taken
+                    if was_previous_branch_taken(db, file_id, form_list, *prev) {
+                        "previous branch was taken".to_string()
+                    } else {
+                        "-elif condition is unknown".to_string()
+                    }
+                }
+                _ => "condition is unknown".to_string(),
+            },
+        }
+    }
+
+    /// Check if any previous branch in the conditional chain was taken (active).
+    /// This checks if the CONTENT inside the branch would be active.
+    fn was_previous_branch_taken(
+        db: &TestDB,
+        file_id: FileId,
+        form_list: &FormList,
+        cond_id: PPConditionId,
+    ) -> bool {
+        match &form_list[cond_id] {
+            PPCondition::If { pp_ctx, .. }
+            | PPCondition::Ifdef { pp_ctx, .. }
+            | PPCondition::Ifndef { pp_ctx, .. } => {
+                // To check if the branch was taken, we need to check if content INSIDE
+                // this block would be active. That means creating a pp_ctx with this
+                // condition as the enclosing condition.
+                let content_pp_ctx = FormPPContext {
+                    condition: Some(cond_id),
+                    env: pp_ctx.env,
+                };
+                form_list.is_form_active(db, file_id, &content_pp_ctx, None)
+                    == PPConditionResult::Active
+            }
+            PPCondition::Elif { prev, .. } => {
+                // For elif, we need to check the whole chain before it
+                // Recursively check the previous condition
+                was_previous_branch_taken(db, file_id, form_list, *prev)
+            }
+            PPCondition::Else { .. } | PPCondition::Endif { .. } => false,
+        }
+    }
+
+    /// Get the text range for a form index.
+    fn get_form_range(
+        db: &TestDB,
+        file_id: FileId,
+        form_list: &FormList,
+        form_idx: FormIdx,
+    ) -> elp_syntax::TextRange {
+        form_list.form_range(form_idx, db, file_id)
+    }
+
+    /// Render the preprocessor state as annotated source.
+    ///
+    /// Format:
+    /// - Active lines:   `+| source line`
+    /// - Inactive lines: `-| source line`
+    /// - Unknown lines:  `?| source line`
+    /// - Reason annotation at start of inactive/unknown block: `>>> reason`
+    pub fn render_preprocessor_state(db: &TestDB, file_id: FileId) -> String {
+        let source = db.file_text(file_id);
+        let form_list = db.file_form_list(file_id);
+        let line_starts_vec = line_starts(&source);
+        let lines: Vec<&str> = source.lines().collect();
+
+        // Build a map: line_number -> (status, reason)
+        // Default: all lines are active
+        let mut line_status: Vec<(LineStatus, Option<String>)> =
+            vec![(LineStatus::Active, None); lines.len()];
+
+        // Process each form to mark lines as inactive or unknown
+        for &form_idx in form_list.forms() {
+            if let Some(pp_ctx) = get_form_pp_ctx(&form_list, form_idx) {
+                let result = form_list.is_form_active(db, file_id, pp_ctx, None);
+                if result != PPConditionResult::Active {
+                    let range = get_form_range(db, file_id, &form_list, form_idx);
+                    let start_line = offset_to_line(range.start(), &line_starts_vec);
+                    let end_line = offset_to_line(range.end(), &line_starts_vec);
+
+                    // Get the reason from the condition
+                    let reason = pp_ctx.condition.map(|cond_id| {
+                        get_condition_reason(db, file_id, &form_list, cond_id, result)
+                    });
+
+                    let status = match result {
+                        PPConditionResult::Inactive => LineStatus::Inactive,
+                        PPConditionResult::Unknown => LineStatus::Unknown,
+                        PPConditionResult::Active => LineStatus::Active,
+                    };
+
+                    // Mark all lines covered by this form
+                    for item in line_status
+                        .iter_mut()
+                        .take(end_line.min(lines.len().saturating_sub(1)) + 1)
+                        .skip(start_line)
+                    {
+                        *item = (status, reason.clone());
+                    }
+                }
+            }
+        }
+
+        // Render with prefixes
+        let mut result = String::new();
+        let mut prev_status = LineStatus::Active;
+
+        for (i, line) in lines.iter().enumerate() {
+            let (status, ref reason) = line_status[i];
+
+            // Insert reason annotation at the start of an inactive/unknown block
+            if status != LineStatus::Active
+                && prev_status == LineStatus::Active
+                && let Some(reason_text) = reason
+            {
+                result.push_str(&format!(">>> {}\n", reason_text));
+            }
+
+            // Render the line with appropriate prefix
+            let prefix = match status {
+                LineStatus::Active => "+|",
+                LineStatus::Inactive => "-|",
+                LineStatus::Unknown => "?|",
+            };
+            if line.is_empty() {
+                result.push_str(&format!("{}\n", prefix));
+            } else {
+                result.push_str(&format!("{} {}\n", prefix, line));
+            }
+
+            prev_status = status;
+        }
+
+        // Append defined macros annotation at the end
+        let defined_macros = collect_all_defines(db, file_id, &form_list);
+        result.push_str(&format!(">>> defined: [{}]\n", defined_macros.join(", ")));
+
+        result
+    }
+
+    /// Check preprocessor analysis with declarative expected output.
+    /// Macros are specified in the fixture metadata using `macros:[A,B]` syntax.
+    fn check_preprocessor(fixture: &str, expect: Expect) {
+        let (db, files, _) = TestDB::with_many_files(fixture);
+        let file_id = files[0];
+        let rendered = render_preprocessor_state(&db, file_id);
+        expect.assert_eq(&rendered);
+    }
+
+    /// Check preprocessor analysis with includes.
+    /// This is similar to `check_preprocessor` but uses `with_fixture` to get
+    /// access to annotations for future diagnostic verification.
+    fn check_preprocessor_with_diagnostics(fixture: &str, expect: Expect) {
+        let (db, fixture_data): (TestDB, ChangeFixture) = TestDB::with_fixture(fixture);
+        let file_id = fixture_data.files[0];
+        let rendered = render_preprocessor_state(&db, file_id);
+        expect.assert_eq(&rendered);
+    }
+
+    #[test]
+    fn test_pp_inactive_reason_ifdef() {
+        // The reason should mention DEBUG in the annotation
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-ifdef(DEBUG).
+debug_only() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -ifdef(DEBUG).
+                >>> DEBUG is not defined
+                -| debug_only() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_inactive_reason_ifndef() {
+        // With FEATURE defined, -ifndef(FEATURE) block is inactive
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[FEATURE]
+-module(test).
+-ifndef(FEATURE).
+no_feature() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -ifndef(FEATURE).
+                >>> FEATURE is defined
+                -| no_feature() -> ok.
+                +| -endif.
+                >>> defined: [FEATURE]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_define_affects_ifdef() {
+        // The -define makes FEATURE available for subsequent -ifdef
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-define(FEATURE, ok).
+-ifdef(FEATURE).
+feature_enabled() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -define(FEATURE, ok).
+                +| -ifdef(FEATURE).
+                +| feature_enabled() -> ok.
+                +| -endif.
+                >>> defined: [FEATURE]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_ifdef_else_release_path() {
+        // With DEBUG defined, the else branch is inactive
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[DEBUG]
+-module(test).
+-ifdef(DEBUG).
+debug_foo() -> ok.
+-else.
+release_foo() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -ifdef(DEBUG).
+                +| debug_foo() -> ok.
+                +| -else.
+                >>> previous branch was taken
+                -| release_foo() -> ok.
+                +| -endif.
+                >>> defined: [DEBUG]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_inactive_forms_collection() {
+        // Without DEBUG: debug_fn is inactive, release_fn and always_active are active
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-ifdef(DEBUG).
+debug_fn() -> ok.
+-else.
+release_fn() -> ok.
+-endif.
+always_active() -> ok.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -ifdef(DEBUG).
+                >>> DEBUG is not defined
+                -| debug_fn() -> ok.
+                +| -else.
+                +| release_fn() -> ok.
+                +| -endif.
+                +| always_active() -> ok.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    // =========================================================================
+    // Guard semantics tests - type errors
+    // =========================================================================
+    //
+    // In Erlang guards, operators like 'not', 'andalso', and 'orelse' require
+    // boolean operands. Using a non-boolean is a type error that causes the
+    // entire guard to fail (returning None).
+
+    #[test]
+    fn test_not_requires_boolean() {
+        let defined = BTreeSet::default();
+
+        // not("string") -> None (type error)
+        let expr = ConditionExpr::Not(Box::new(ConditionExpr::String("hello".to_string())));
+        assert_eq!(expr.evaluate(&defined), None);
+
+        // not(42) -> None (type error)
+        let expr = ConditionExpr::Not(Box::new(ConditionExpr::Integer(42)));
+        assert_eq!(expr.evaluate(&defined), None);
+
+        // not(some_atom) -> None (type error)
+        let expr = ConditionExpr::Not(Box::new(ConditionExpr::Atom(name("foo"))));
+        assert_eq!(expr.evaluate(&defined), None);
+
+        // not(true) -> Some(false) (valid)
+        let expr = ConditionExpr::Not(Box::new(ConditionExpr::LiteralBool(true)));
+        assert_eq!(expr.evaluate(&defined), Some(false));
+
+        // not(false) -> Some(true) (valid)
+        let expr = ConditionExpr::Not(Box::new(ConditionExpr::LiteralBool(false)));
+        assert_eq!(expr.evaluate(&defined), Some(true));
+    }
+
+    #[test]
+    fn test_type_error_propagates_through_comparison() {
+        let defined = BTreeSet::default();
+
+        // not("string") == false -> None (type error propagates)
+        let expr = ConditionExpr::Compare {
+            op: CompOp::Eq {
+                strict: false,
+                negated: false,
+            },
+            left: Box::new(ConditionExpr::Not(Box::new(ConditionExpr::String(
+                "hello".to_string(),
+            )))),
+            right: Box::new(ConditionExpr::LiteralBool(false)),
+        };
+        assert_eq!(expr.evaluate(&defined), None);
+
+        // not("string") == true -> None (type error propagates)
+        let expr = ConditionExpr::Compare {
+            op: CompOp::Eq {
+                strict: false,
+                negated: false,
+            },
+            left: Box::new(ConditionExpr::Not(Box::new(ConditionExpr::String(
+                "hello".to_string(),
+            )))),
+            right: Box::new(ConditionExpr::LiteralBool(true)),
+        };
+        assert_eq!(expr.evaluate(&defined), None);
+    }
+
+    #[test]
+    fn test_andalso_requires_boolean() {
+        let defined = BTreeSet::default();
+
+        // "string" andalso true -> None (type error on left)
+        let expr = ConditionExpr::AndAlso(
+            Box::new(ConditionExpr::String("hello".to_string())),
+            Box::new(ConditionExpr::LiteralBool(true)),
+        );
+        assert_eq!(expr.evaluate(&defined), None);
+
+        // true andalso "string" -> None (type error on right)
+        let expr = ConditionExpr::AndAlso(
+            Box::new(ConditionExpr::LiteralBool(true)),
+            Box::new(ConditionExpr::String("hello".to_string())),
+        );
+        assert_eq!(expr.evaluate(&defined), None);
+
+        // false andalso "string" -> Some(false) (short-circuit, right not evaluated)
+        let expr = ConditionExpr::AndAlso(
+            Box::new(ConditionExpr::LiteralBool(false)),
+            Box::new(ConditionExpr::String("hello".to_string())),
+        );
+        assert_eq!(expr.evaluate(&defined), Some(false));
+
+        // true andalso true -> Some(true) (valid)
+        let expr = ConditionExpr::AndAlso(
+            Box::new(ConditionExpr::LiteralBool(true)),
+            Box::new(ConditionExpr::LiteralBool(true)),
+        );
+        assert_eq!(expr.evaluate(&defined), Some(true));
+
+        // true andalso false -> Some(false) (valid)
+        let expr = ConditionExpr::AndAlso(
+            Box::new(ConditionExpr::LiteralBool(true)),
+            Box::new(ConditionExpr::LiteralBool(false)),
+        );
+        assert_eq!(expr.evaluate(&defined), Some(false));
+    }
+
+    #[test]
+    fn test_orelse_requires_boolean() {
+        let defined = BTreeSet::default();
+
+        // "string" orelse false -> None (type error on left)
+        let expr = ConditionExpr::OrElse(
+            Box::new(ConditionExpr::String("hello".to_string())),
+            Box::new(ConditionExpr::LiteralBool(false)),
+        );
+        assert_eq!(expr.evaluate(&defined), None);
+
+        // false orelse "string" -> None (type error on right)
+        let expr = ConditionExpr::OrElse(
+            Box::new(ConditionExpr::LiteralBool(false)),
+            Box::new(ConditionExpr::String("hello".to_string())),
+        );
+        assert_eq!(expr.evaluate(&defined), None);
+
+        // true orelse "string" -> Some(true) (short-circuit, right not evaluated)
+        let expr = ConditionExpr::OrElse(
+            Box::new(ConditionExpr::LiteralBool(true)),
+            Box::new(ConditionExpr::String("hello".to_string())),
+        );
+        assert_eq!(expr.evaluate(&defined), Some(true));
+
+        // false orelse true -> Some(true) (valid)
+        let expr = ConditionExpr::OrElse(
+            Box::new(ConditionExpr::LiteralBool(false)),
+            Box::new(ConditionExpr::LiteralBool(true)),
+        );
+        assert_eq!(expr.evaluate(&defined), Some(true));
+
+        // false orelse false -> Some(false) (valid)
+        let expr = ConditionExpr::OrElse(
+            Box::new(ConditionExpr::LiteralBool(false)),
+            Box::new(ConditionExpr::LiteralBool(false)),
+        );
+        assert_eq!(expr.evaluate(&defined), Some(false));
+    }
+
+    #[test]
+    fn test_and_requires_boolean() {
+        let defined = BTreeSet::default();
+
+        // "string" and true -> None (type error on left)
+        let expr = ConditionExpr::And(
+            Box::new(ConditionExpr::String("hello".to_string())),
+            Box::new(ConditionExpr::LiteralBool(true)),
+        );
+        assert_eq!(expr.evaluate(&defined), None);
+
+        // true and "string" -> None (type error on right)
+        let expr = ConditionExpr::And(
+            Box::new(ConditionExpr::LiteralBool(true)),
+            Box::new(ConditionExpr::String("hello".to_string())),
+        );
+        assert_eq!(expr.evaluate(&defined), None);
+
+        // false and "string" -> None (no short-circuit, both evaluated)
+        let expr = ConditionExpr::And(
+            Box::new(ConditionExpr::LiteralBool(false)),
+            Box::new(ConditionExpr::String("hello".to_string())),
+        );
+        assert_eq!(expr.evaluate(&defined), None);
+    }
+
+    #[test]
+    fn test_or_requires_boolean() {
+        let defined = BTreeSet::default();
+
+        // "string" or false -> None (type error on left)
+        let expr = ConditionExpr::Or(
+            Box::new(ConditionExpr::String("hello".to_string())),
+            Box::new(ConditionExpr::LiteralBool(false)),
+        );
+        assert_eq!(expr.evaluate(&defined), None);
+
+        // false or "string" -> None (type error on right)
+        let expr = ConditionExpr::Or(
+            Box::new(ConditionExpr::LiteralBool(false)),
+            Box::new(ConditionExpr::String("hello".to_string())),
+        );
+        assert_eq!(expr.evaluate(&defined), None);
+
+        // true or "string" -> None (no short-circuit, both evaluated)
+        let expr = ConditionExpr::Or(
+            Box::new(ConditionExpr::LiteralBool(true)),
+            Box::new(ConditionExpr::String("hello".to_string())),
+        );
+        assert_eq!(expr.evaluate(&defined), None);
+    }
+
+    // =========================================================================
+    // Tests for strict boolean lowering from hir::Expr to ConditionExpr
+    // =========================================================================
+
+    /// Helper to lower an expression from source and return the ConditionExpr.
+    fn lower_expr_from_source(source: &str) -> ConditionExpr {
+        let fixture = format!(
+            r#"
+//- /src/test.erl
+-module(test).
+-if({}).
+foo() -> ok.
+-endif.
+"#,
+            source
+        );
+        let (db, files, _) = TestDB::with_many_files(&fixture);
+        let file_id = files[0];
+        let form_list = db.file_form_list(file_id);
+
+        // Find the -if condition and get its expression
+        for &form_idx in form_list.forms() {
+            if let FormIdx::PPCondition(cond_id) = form_idx
+                && let PPCondition::If { form_id, .. } = &form_list[cond_id]
+            {
+                let pp_if = form_id.get_ast(&db, file_id);
+                if let Some(expr) = pp_if.cond() {
+                    let result = crate::condition_expr::lower_condition_expr(
+                        &db, file_id, cond_id, &expr, None,
+                    );
+                    return result.expr;
+                }
+            }
+        }
+        panic!("Could not find -if condition in source");
+    }
+
+    /// Helper to check if a ConditionExpr is And variant (not AndAlso)
+    fn is_and_variant(expr: &ConditionExpr) -> bool {
+        matches!(expr, ConditionExpr::And(_, _))
+    }
+
+    /// Helper to check if a ConditionExpr is Or variant (not OrElse)
+    fn is_or_variant(expr: &ConditionExpr) -> bool {
+        matches!(expr, ConditionExpr::Or(_, _))
+    }
+
+    /// Helper to check if a ConditionExpr is AndAlso variant
+    fn is_andalso_variant(expr: &ConditionExpr) -> bool {
+        matches!(expr, ConditionExpr::AndAlso(_, _))
+    }
+
+    /// Helper to check if a ConditionExpr is OrElse variant
+    fn is_orelse_variant(expr: &ConditionExpr) -> bool {
+        matches!(expr, ConditionExpr::OrElse(_, _))
+    }
+
+    #[test]
+    fn test_lower_strict_and() {
+        // `and` (strict) should lower to ConditionExpr::And
+        let expr = lower_expr_from_source("true and false");
+        assert!(
+            is_and_variant(&expr),
+            "Expected And variant, got {:?}",
+            expr
+        );
+    }
+
+    #[test]
+    fn test_lower_strict_or() {
+        // `or` (strict) should lower to ConditionExpr::Or
+        let expr = lower_expr_from_source("true or false");
+        assert!(is_or_variant(&expr), "Expected Or variant, got {:?}", expr);
+    }
+
+    #[test]
+    fn test_lower_lazy_andalso() {
+        // `andalso` (lazy) should lower to ConditionExpr::AndAlso
+        let expr = lower_expr_from_source("true andalso false");
+        assert!(
+            is_andalso_variant(&expr),
+            "Expected AndAlso variant, got {:?}",
+            expr
+        );
+    }
+
+    #[test]
+    fn test_lower_lazy_orelse() {
+        // `orelse` (lazy) should lower to ConditionExpr::OrElse
+        let expr = lower_expr_from_source("true orelse false");
+        assert!(
+            is_orelse_variant(&expr),
+            "Expected OrElse variant, got {:?}",
+            expr
+        );
+    }
+
+    #[test]
+    fn test_lower_strict_and_evaluates_both_sides() {
+        // Strict 'and' should evaluate both sides and fail if right side is invalid
+        let defined = make_defined_set(&["A"]);
+
+        // Lower `defined(A) and defined(B)` - should be And variant
+        let expr = lower_expr_from_source("defined(A) and defined(B)");
+        assert!(is_and_variant(&expr), "Expected And variant");
+
+        // Evaluate: true and false = false
+        assert_eq!(expr.evaluate(&defined), Some(false));
+    }
+
+    #[test]
+    fn test_lower_strict_or_evaluates_both_sides() {
+        // Strict 'or' should evaluate both sides
+        let defined = make_defined_set(&["A"]);
+
+        // Lower `defined(A) or defined(B)` - should be Or variant
+        let expr = lower_expr_from_source("defined(A) or defined(B)");
+        assert!(is_or_variant(&expr), "Expected Or variant");
+
+        // Evaluate: true or false = true
+        assert_eq!(expr.evaluate(&defined), Some(true));
+    }
+
+    #[test]
+    fn test_lower_lazy_andalso_short_circuits() {
+        // Lazy 'andalso' should short-circuit when left is false
+        let defined = BTreeSet::default();
+
+        // Lower `false andalso invalid_expr` - should be AndAlso variant
+        let expr = lower_expr_from_source("false andalso true");
+        assert!(is_andalso_variant(&expr), "Expected AndAlso variant");
+
+        // Evaluate: false andalso anything = false (short-circuit)
+        assert_eq!(expr.evaluate(&defined), Some(false));
+    }
+
+    #[test]
+    fn test_lower_lazy_orelse_short_circuits() {
+        // Lazy 'orelse' should short-circuit when left is true
+        let defined = BTreeSet::default();
+
+        // Lower `true orelse invalid_expr` - should be OrElse variant
+        let expr = lower_expr_from_source("true orelse false");
+        assert!(is_orelse_variant(&expr), "Expected OrElse variant");
+
+        // Evaluate: true orelse anything = true (short-circuit)
+        assert_eq!(expr.evaluate(&defined), Some(true));
+    }
+
+    // =========================================================================
+    // -if Expression Evaluation Tests (with db access)
+    // =========================================================================
+
+    #[test]
+    fn if_true_is_active() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-if(true).
+in_if_true() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(true).
+                +| in_if_true() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn if_false_is_inactive() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-if(false).
+in_if_false() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(false).
+                >>> -if condition is false
+                -| in_if_false() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn if_defined_macro_active() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl
+-define(FOO, 1).
+-if(defined(FOO)).
+in_if_defined() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -define(FOO, 1).
+                +| -if(defined(FOO)).
+                +| in_if_defined() -> ok.
+                +| -endif.
+                >>> defined: [FOO]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn if_defined_macro_inactive() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-if(defined(FOO)).
+in_if_defined() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(defined(FOO)).
+                >>> -if condition is false
+                -| in_if_defined() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn if_comparison_active() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl
+-if(25 >= 25).
+in_if_compare() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(25 >= 25).
+                +| in_if_compare() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn if_comparison_inactive() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl
+-if(24 >= 25).
+in_if_compare() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(24 >= 25).
+                >>> -if condition is false
+                -| in_if_compare() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn if_not_expression() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl
+-if(not false).
+in_if_not() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(not false).
+                +| in_if_not() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn if_andalso_expression() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl
+-if(true andalso true).
+in_if_andalso() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(true andalso true).
+                +| in_if_andalso() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn if_orelse_expression() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl
+-if(false orelse true).
+in_if_orelse() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(false orelse true).
+                +| in_if_orelse() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn if_else_with_true() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl
+-if(true).
+in_if() -> ok.
+-else.
+in_else() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(true).
+                +| in_if() -> ok.
+                +| -else.
+                >>> previous branch was taken
+                -| in_else() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn if_else_with_false() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl
+-if(false).
+in_if() -> ok.
+-else.
+in_else() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(false).
+                >>> -if condition is false
+                -| in_if() -> ok.
+                +| -else.
+                +| in_else() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn elif_first_branch_active() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl
+-if(true).
+in_if() -> ok.
+-elif(true).
+in_elif() -> ok.
+-else.
+in_else() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(true).
+                +| in_if() -> ok.
+                +| -elif(true).
+                >>> previous branch was taken
+                -| in_elif() -> ok.
+                +| -else.
+                >>> previous branch was taken
+                -| in_else() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn elif_second_branch_active() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl
+-if(false).
+in_if() -> ok.
+-elif(true).
+in_elif() -> ok.
+-else.
+in_else() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(false).
+                >>> -if condition is false
+                -| in_if() -> ok.
+                +| -elif(true).
+                +| in_elif() -> ok.
+                +| -else.
+                >>> previous branch was taken
+                -| in_else() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn elif_else_branch_active() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl
+-if(false).
+in_if() -> ok.
+-elif(false).
+in_elif() -> ok.
+-else.
+in_else() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(false).
+                >>> -if condition is false
+                -| in_if() -> ok.
+                +| -elif(false).
+                >>> -elif condition is false
+                -| in_elif() -> ok.
+                +| -else.
+                +| in_else() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn if_with_arithmetic() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl
+-if(10 + 5 > 12).
+in_if() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(10 + 5 > 12).
+                +| in_if() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn nested_if_conditions() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl
+-if(true).
+-if(false).
+nested_both() -> ok.
+-endif.
+nested_outer() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(true).
+                +| -if(false).
+                >>> -if condition is false
+                -| nested_both() -> ok.
+                +| -endif.
+                +| nested_outer() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn if_unknown_expression() {
+        check_preprocessor(
+            r#"
+//- /src/test.erl
+-if(?UNDEFINED_MACRO > 0).
+in_if() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -if(?UNDEFINED_MACRO > 0).
+                >>> -if condition is unknown
+                ?| in_if() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    // =========================================================================
+
+    #[test]
+    fn test_pp_if_defined_expression_with_feature() {
+        // Test -if(defined(FEATURE))
+        // With FEATURE: feature_code should be active
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[FEATURE]
+-module(test).
+-if(defined(FEATURE)).
+feature_code() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -if(defined(FEATURE)).
+                +| feature_code() -> ok.
+                +| -endif.
+                >>> defined: [FEATURE]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_if_macro_expansion_true() {
+        // Test -if(?FEATURE) where FEATURE is defined as true
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-define(FEATURE, true).
+-if(?FEATURE).
+feature_code() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -define(FEATURE, true).
+                +| -if(?FEATURE).
+                +| feature_code() -> ok.
+                +| -endif.
+                >>> defined: [FEATURE]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_if_macro_expansion_false() {
+        // Test -if(?FEATURE) where FEATURE is defined as false
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-define(FEATURE, false).
+-if(?FEATURE).
+feature_code() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -define(FEATURE, false).
+                +| -if(?FEATURE).
+                >>> -if condition is false
+                -| feature_code() -> ok.
+                +| -endif.
+                >>> defined: [FEATURE]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_include_macro_visible_after_include() {
+        // Include resolution now works: the macro defined in the header
+        // is visible after the include, so the ifdef is correctly active.
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-include("header.hrl").
+-ifdef(HEADER_MACRO).
+header_code() -> ok.
+-endif.
+//- /src/header.hrl
+-define(HEADER_MACRO, true).
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -include("header.hrl").
+                +| -ifdef(HEADER_MACRO).
+                +| header_code() -> ok.
+                +| -endif.
+                >>> defined: [HEADER_MACRO]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_if_elif_else_with_module_comparison_1() {
+        // Test -if/-elif with ?MODULE comparisons and -else with -error
+        // Note: In test context, ?MODULE evaluation may produce Unknown results
+        // since the module context isn't fully available during condition evaluation.
+        check_preprocessor(
+            r#"
+          //- /src/mod1.erl macros:[]
+          -module(mod1).
+          -if(?MODULE == mod1).
+          -define(MSG1, "mod1 message").
+          -elif((?MODULE == mod2) orelse (?MODULE == mod3)).
+          -define(MSG2, "mod2 or mod3 message").
+          -else.
+          -error("an error").
+          -endif.
+          "#,
+            expect![[r#"
+                +| -module(mod1).
+                +| -if(?MODULE == mod1).
+                +| -define(MSG1, "mod1 message").
+                +| -elif((?MODULE == mod2) orelse (?MODULE == mod3)).
+                >>> previous branch was taken
+                -| -define(MSG2, "mod2 or mod3 message").
+                +| -else.
+                >>> previous branch was taken
+                -| -error("an error").
+                +| -endif.
+                >>> defined: [MSG1]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_if_elif_else_with_module_comparison_2() {
+        // Test -if/-elif with ?MODULE comparisons and -else with -error
+        // Note: In test context, ?MODULE evaluation may produce Unknown results.
+        check_preprocessor(
+            r#"
+          //- /src/mod2.erl macros:[]
+          -module(mod2).
+          -if(?MODULE == mod1).
+          -define(MSG1, "mod1 message").
+          -elif((?MODULE == mod2) orelse (?MODULE == mod3)).
+          -define(MSG2, "mod2 or mod3 message").
+          -else.
+          -error("an error").
+          -endif.
+          "#,
+            expect![[r#"
+                +| -module(mod2).
+                +| -if(?MODULE == mod1).
+                >>> -if condition is false
+                -| -define(MSG1, "mod1 message").
+                +| -elif((?MODULE == mod2) orelse (?MODULE == mod3)).
+                +| -define(MSG2, "mod2 or mod3 message").
+                +| -else.
+                >>> previous branch was taken
+                -| -error("an error").
+                +| -endif.
+                >>> defined: [MSG2]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_if_elif_else_with_module_comparison_3() {
+        // Test -if/-elif with ?MODULE comparisons and -else with -error
+        // Note: In test context, ?MODULE evaluation may produce Unknown results.
+        check_preprocessor(
+            r#"
+          //- /src/mod4.erl macros:[]
+          -module(mod4).
+          -if(?MODULE == mod1).
+          -define(MSG1, "mod1 message").
+          -elif((?MODULE == mod2) orelse (?MODULE == mod3)).
+          -define(MSG2, "mod2 or mod3 message").
+          -else.
+          -error("an error").
+          -endif.
+          "#,
+            expect![[r#"
+                +| -module(mod4).
+                +| -if(?MODULE == mod1).
+                >>> -if condition is false
+                -| -define(MSG1, "mod1 message").
+                +| -elif((?MODULE == mod2) orelse (?MODULE == mod3)).
+                >>> -elif condition is false
+                -| -define(MSG2, "mod2 or mod3 message").
+                +| -else.
+                +| -error("an error").
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_module_comparison_in_header_mod1() {
+        // Test module-specific conditional code from header - mod1 case
+        // When the header is analyzed independently (for diagnostics), ?MODULE
+        // is not available so the macro expansion produces Missing expressions.
+        // The main file analysis uses the preprocessor result from the main file
+        // context where ?MODULE would be available during actual inclusion.
+        check_preprocessor_with_diagnostics(
+            r#"
+//- /src/mod1.erl macros:[]
+-module(mod1).
+-include("conditional.hrl").
+-ifdef(MSG1).
+foo() -> ?MSG1.
+-elif(defined(MSG2)).
+foo() -> ?MSG2.
+-else.
+foo() -> "default message".
+-endif.
+//- /src/conditional.hrl
+-if(?MODULE == mod1).
+%% ^^^^^^^^^^^^^^^^^ warning: W0061: undefined macro 'MODULE' in preprocessor condition
+-define(MSG1, "mod1 message").
+-elif((?MODULE == mod2) orelse (?MODULE == mod3)).
+%%   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0061: undefined macro 'MODULE' in preprocessor condition
+-define(MSG2, "mod2 or mod3 message").
+-else.
+-error("an error").
+-endif.
+"#,
+            expect![[r#"
+                +| -module(mod1).
+                +| -include("conditional.hrl").
+                +| -ifdef(MSG1).
+                +| foo() -> ?MSG1.
+                +| -elif(defined(MSG2)).
+                >>> previous branch was taken
+                -| foo() -> ?MSG2.
+                +| -else.
+                >>> previous branch was taken
+                -| foo() -> "default message".
+                +| -endif.
+                >>> defined: [MSG1]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_module_comparison_in_header_mod2() {
+        // Test module-specific conditional code from header - mod2 case
+        // When the header is included from mod2, ?MODULE resolves to mod2.
+        // The elif condition (?MODULE == mod2) orelse (?MODULE == mod3) is true.
+        // When the header is analyzed independently (for diagnostics), ?MODULE
+        // is not available so the macro expansion produces Missing expressions.
+        check_preprocessor_with_diagnostics(
+            r#"
+//- /src/mod2.erl macros:[]
+-module(mod2).
+-include("conditional.hrl").
+//- /src/conditional.hrl
+-if(?MODULE == mod1).
+%% ^^^^^^^^^^^^^^^^^ warning: W0061: undefined macro 'MODULE' in preprocessor condition
+-define(MSG, "mod1 message").
+-elif((?MODULE == mod2) orelse (?MODULE == mod3)).
+%%   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0061: undefined macro 'MODULE' in preprocessor condition
+-define(MSG, "mod2 or mod3 message").
+-else.
+-error("an error").
+-endif.
+"#,
+            expect![[r#"
+                +| -module(mod2).
+                +| -include("conditional.hrl").
+                >>> defined: [MSG]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_module_comparison_in_header_mod3() {
+        // Test module-specific conditional code from header - mod3 case
+        // When the header is included from mod3, ?MODULE resolves to mod3.
+        // The elif condition (?MODULE == mod2) orelse (?MODULE == mod3) is true.
+        // When the header is analyzed independently (for diagnostics), ?MODULE
+        // is not available so the macro expansion produces Missing expressions.
+        check_preprocessor_with_diagnostics(
+            r#"
+//- /src/mod3.erl macros:[]
+-module(mod3).
+-include("conditional.hrl").
+//- /src/conditional.hrl
+-if(?MODULE == mod1).
+%% ^^^^^^^^^^^^^^^^^ warning: W0061: undefined macro 'MODULE' in preprocessor condition
+-define(MSG1, "mod1 message").
+-elif((?MODULE == mod2) orelse (?MODULE == mod3)).
+%%   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0061: undefined macro 'MODULE' in preprocessor condition
+-define(MSG2, "mod2 or mod3 message").
+-else.
+-error("an error").
+-endif.
+"#,
+            expect![[r#"
+                +| -module(mod3).
+                +| -include("conditional.hrl").
+                >>> defined: [MSG2]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_module_string_comparison_in_header_mod1() {
+        // Test ?MODULE_STRING in header - mod1 case
+        // When the header is included from mod1, ?MODULE_STRING resolves to "mod1".
+        // Different macros are defined in each branch to verify the correct path is taken.
+        check_preprocessor_with_diagnostics(
+            r#"
+//- /src/mod1.erl macros:[]
+-module(mod1).
+-include("conditional.hrl").
+//- /src/conditional.hrl
+-if(?MODULE_STRING == "mod1").
+%% ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0061: undefined macro 'MODULE_STRING' in preprocessor condition
+-define(MOD1_STRING_MSG, "mod1 string").
+-else.
+-define(OTHER_STRING_MSG, "other string").
+-endif.
+"#,
+            expect![[r#"
+                +| -module(mod1).
+                +| -include("conditional.hrl").
+                >>> defined: [MOD1_STRING_MSG]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_module_string_comparison_in_header_mod2() {
+        // Test ?MODULE_STRING in header - mod2 case
+        // When the header is included from mod2, ?MODULE_STRING resolves to "mod2".
+        // Different macros are defined in each branch to verify the correct path is taken.
+        check_preprocessor_with_diagnostics(
+            r#"
+//- /src/mod2.erl macros:[]
+-module(mod2).
+-include("conditional.hrl").
+
+//- /src/conditional.hrl
+-if(?MODULE_STRING == "mod1").
+%% ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0061: undefined macro 'MODULE_STRING' in preprocessor condition
+-define(MOD1_STRING_MSG, "mod1 string").
+-elif(?MODULE_STRING == "mod2").
+%%   ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0061: undefined macro 'MODULE_STRING' in preprocessor condition
+-define(MOD2_STRING_MSG, "mod2 string").
+-else.
+-define(OTHER_STRING_MSG, "other string").
+-endif.
+"#,
+            expect![[r#"
+                +| -module(mod2).
+                +| -include("conditional.hrl").
+                +|
+                >>> defined: [MOD2_STRING_MSG]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_file_comparison_in_header_mod1() {
+        // Test ?FILE in header - mod1 case
+        // When the header is included from mod1, ?FILE resolves to "mod1.erl".
+        // Different macros are defined in each branch to verify the correct path is taken.
+        check_preprocessor_with_diagnostics(
+            r#"
+//- /src/mod1.erl macros:[]
+-module(mod1).
+-include("conditional.hrl").
+
+//- /src/conditional.hrl
+-if(?FILE == "mod1.erl").
+%% ^^^^^^^^^^^^^^^^^^^^^ warning: W0061: undefined macro 'FILE' in preprocessor condition
+-define(MOD1_FILE_MSG, "mod1 file").
+-else.
+-define(OTHER_FILE_MSG, "other file").
+-endif.
+"#,
+            expect![[r#"
+                +| -module(mod1).
+                +| -include("conditional.hrl").
+                +|
+                >>> defined: [MOD1_FILE_MSG]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_file_comparison_in_header_mod2() {
+        // Test ?FILE in header - mod2 case
+        // When the header is included from mod2, ?FILE resolves to "mod2.erl".
+        // Different macros are defined in each branch to verify the correct path is taken.
+        check_preprocessor_with_diagnostics(
+            r#"
+//- /src/mod2.erl macros:[]
+-module(mod2).
+-include("conditional.hrl").
+
+//- /src/conditional.hrl
+-if(?FILE == "mod1.erl").
+-define(MOD1_FILE_MSG, "mod1 file").
+-elif(?FILE == "mod2.erl").
+-define(MOD2_FILE_MSG, "mod2 file").
+-else.
+-define(OTHER_FILE_MSG, "other file").
+-endif.
+"#,
+            expect![[r#"
+                +| -module(mod2).
+                +| -include("conditional.hrl").
+                +|
+                >>> defined: [MOD2_FILE_MSG]
+            "#]],
+        );
     }
 }

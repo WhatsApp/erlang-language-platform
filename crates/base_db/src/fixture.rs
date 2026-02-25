@@ -19,6 +19,7 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 
+use eetf;
 use elp_project_model::AppName;
 use elp_project_model::AppType;
 use elp_project_model::Project;
@@ -86,10 +87,10 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
     fn with_fixture(fixture_str: &str) -> (Self, ChangeFixture) {
         let (fixture, change) = ChangeFixture::parse(fixture_str);
         let mut db = Self::default();
-        change.apply(&mut db, &|path| fixture.resolve_file_id(path));
-        fixture.validate(&db);
         // Enable new_ifdef for tests by default
         db.set_new_ifdef_enabled(true);
+        change.apply(&mut db, &|path| fixture.resolve_file_id(path));
+        fixture.validate(&db);
         (db, fixture)
     }
 }
@@ -194,7 +195,7 @@ impl ChangeFixture {
         let mut tags: FxHashMap<FileId, Vec<(TextRange, Option<String>)>> = FxHashMap::default();
         let mut annotations: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
 
-        for entry in fixture.clone() {
+        for mut entry in fixture.clone() {
             if let Some(range) = entry.marker_pos {
                 assert!(file_position.is_none());
                 file_position = Some((file_id, range));
@@ -209,6 +210,16 @@ impl ChangeFixture {
             {
                 otp = Some(otp_extra);
             }
+
+            // Convert macro names from fixture to eetf::Term atoms for app_data.macros
+            // These will be picked up by file_external_defines_query
+            for macro_name in &entry.macros {
+                entry
+                    .app_data
+                    .macros
+                    .push(eetf::Atom::from(macro_name.as_str()).into());
+            }
+
             app_map.combine(entry.app_data);
 
             change.change_file(file_id, Some(Arc::from(entry.text)));

@@ -112,6 +112,9 @@ pub struct Fixture {
     pub tags: Vec<(TextRange, Option<String>)>,
     pub annotations: Vec<(TextRange, String)>,
     pub marker_pos: Option<RangeOrOffset>,
+    /// Macro names defined for this file (e.g., from `macros:[A,B,C]` metadata).
+    /// These are passed to the preprocessor as external defines.
+    pub macros: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -354,6 +357,7 @@ impl FixtureWithProjectMeta {
         let mut extra_dirs = Vec::new();
         let mut otp = None;
         let mut tag = None;
+        let mut macros = Vec::new();
 
         for component in components[1..].iter() {
             let (key, value) = component
@@ -380,6 +384,16 @@ impl FixtureWithProjectMeta {
                 }
                 "tag" => {
                     tag = Some(value.to_string());
+                }
+                "macros" => {
+                    // Parse format like "[A,B,C]" or "[]"
+                    let value = value.trim_start_matches('[').trim_end_matches(']');
+                    for macro_name in value.split(',') {
+                        let name = macro_name.trim();
+                        if !name.is_empty() {
+                            macros.push(name.to_string());
+                        }
+                    }
                 }
                 _ => panic!("bad component: {component:?}"),
             }
@@ -416,6 +430,7 @@ impl FixtureWithProjectMeta {
             tags: Vec::new(),
             annotations: Vec::new(),
             marker_pos: None,
+            macros,
         }
     }
 }
@@ -1329,5 +1344,40 @@ meaning_of_life() ->
             .map(|(range, attr)| (&text[range], attr))
             .collect::<Vec<_>>();
         assert_eq!(actual, vec![("foo() -> ok.", Some("region".into()))]);
+    }
+
+    #[test]
+    fn parse_fixture_macros() {
+        let fixture = FixtureWithProjectMeta::parse(
+            r#"
+//- /src/foo.erl macros:[FOO,BAR,BAZ]
+-module(foo).
+foo() -> ok.
+"#,
+        );
+        let parsed = fixture.fixture;
+        assert_eq!(1, parsed.len());
+
+        let meta0 = &parsed[0];
+        assert_eq!(
+            vec!["FOO".to_string(), "BAR".to_string(), "BAZ".to_string()],
+            meta0.macros
+        );
+    }
+
+    #[test]
+    fn parse_fixture_macros_empty() {
+        let fixture = FixtureWithProjectMeta::parse(
+            r#"
+//- /src/foo.erl macros:[]
+-module(foo).
+foo() -> ok.
+"#,
+        );
+        let parsed = fixture.fixture;
+        assert_eq!(1, parsed.len());
+
+        let meta0 = &parsed[0];
+        assert!(meta0.macros.is_empty());
     }
 }

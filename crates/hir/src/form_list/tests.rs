@@ -13,6 +13,7 @@ use expect_test::Expect;
 use expect_test::expect;
 
 use crate::db::DefDatabase;
+use crate::form_list::PPConditionResult;
 use crate::test_db::TestDB;
 
 fn check(ra_fixture: &str, expect: Expect) {
@@ -596,4 +597,296 @@ fn deprecated() {
                             -deprecated([{foo, 1, "desc"},{foo, '_', "desc"},{foo, '_', atom},{foo, '_'},{foo, 1},{'_', '_'},{'_', '_', atom},{'_', '_', "desc"}]). %% cond: None
         "#]],
     )
+}
+
+// ============================================================================
+// Condition Evaluation Tests
+// ============================================================================
+
+#[test]
+fn ifdef_defined() {
+    // Define before ifdef should make the ifdef active
+    let (db, file_id) = TestDB::with_single_file(
+        r#"
+-define(FOO, 1).
+-ifdef(FOO).
+foo() -> ok.
+-endif.
+"#,
+    );
+    let form_list = db.file_form_list(file_id);
+
+    // Find the function clause and check it's active
+    for (_idx, clause) in form_list.function_clauses() {
+        assert_eq!(
+            form_list.is_form_active(&db, file_id, &clause.pp_ctx, None),
+            PPConditionResult::Active
+        );
+    }
+}
+
+#[test]
+fn ifdef_undefined() {
+    // No define before ifdef should make the ifdef inactive
+    let (db, file_id) = TestDB::with_single_file(
+        r#"
+-ifdef(FOO).
+foo() -> ok.
+-endif.
+"#,
+    );
+    let form_list = db.file_form_list(file_id);
+
+    // Find the function clause and check it's inactive
+    for (_idx, clause) in form_list.function_clauses() {
+        assert_eq!(
+            form_list.is_form_active(&db, file_id, &clause.pp_ctx, None),
+            PPConditionResult::Inactive
+        );
+    }
+}
+
+#[test]
+fn ifndef_undefined() {
+    // No define before ifndef should make the ifndef active
+    let (db, file_id) = TestDB::with_single_file(
+        r#"
+-ifndef(FOO).
+foo() -> ok.
+-endif.
+"#,
+    );
+    let form_list = db.file_form_list(file_id);
+
+    // Find the function clause and check it's active
+    for (_idx, clause) in form_list.function_clauses() {
+        assert_eq!(
+            form_list.is_form_active(&db, file_id, &clause.pp_ctx, None),
+            PPConditionResult::Active
+        );
+    }
+}
+
+#[test]
+fn ifndef_defined() {
+    // Define before ifndef should make the ifndef inactive
+    let (db, file_id) = TestDB::with_single_file(
+        r#"
+-define(FOO, 1).
+-ifndef(FOO).
+foo() -> ok.
+-endif.
+"#,
+    );
+    let form_list = db.file_form_list(file_id);
+
+    // Find the function clause and check it's inactive
+    for (_idx, clause) in form_list.function_clauses() {
+        assert_eq!(
+            form_list.is_form_active(&db, file_id, &clause.pp_ctx, None),
+            PPConditionResult::Inactive
+        );
+    }
+}
+
+#[test]
+fn ifdef_else() {
+    // Test that else branch is opposite of ifdef
+    let (db, file_id) = TestDB::with_single_file(
+        r#"
+-ifdef(FOO).
+in_ifdef() -> ok.
+-else.
+in_else() -> ok.
+-endif.
+"#,
+    );
+    let form_list = db.file_form_list(file_id);
+
+    for (_idx, clause) in form_list.function_clauses() {
+        let name = clause.name.name().as_str();
+        let result = form_list.is_form_active(&db, file_id, &clause.pp_ctx, None);
+        if name == "in_ifdef" {
+            // FOO is not defined, so ifdef branch is inactive
+            assert_eq!(result, PPConditionResult::Inactive);
+        } else if name == "in_else" {
+            // else branch should be active when ifdef is inactive
+            assert_eq!(result, PPConditionResult::Active);
+        }
+    }
+}
+
+#[test]
+fn ifdef_else_with_define() {
+    // Test that else branch is opposite of ifdef when macro is defined
+    let (db, file_id) = TestDB::with_single_file(
+        r#"
+-define(FOO, 1).
+-ifdef(FOO).
+in_ifdef() -> ok.
+-else.
+in_else() -> ok.
+-endif.
+"#,
+    );
+    let form_list = db.file_form_list(file_id);
+
+    for (_idx, clause) in form_list.function_clauses() {
+        let name = clause.name.name().as_str();
+        let result = form_list.is_form_active(&db, file_id, &clause.pp_ctx, None);
+        if name == "in_ifdef" {
+            // FOO is defined, so ifdef branch is active
+            assert_eq!(result, PPConditionResult::Active);
+        } else if name == "in_else" {
+            // else branch should be inactive when ifdef is active
+            assert_eq!(result, PPConditionResult::Inactive);
+        }
+    }
+}
+
+#[test]
+fn nested_conditions() {
+    // Test nested ifdef conditions
+    let (db, file_id) = TestDB::with_single_file(
+        r#"
+-define(FOO, 1).
+-ifdef(FOO).
+-ifdef(BAR).
+nested_both() -> ok.
+-endif.
+nested_foo() -> ok.
+-endif.
+"#,
+    );
+    let form_list = db.file_form_list(file_id);
+
+    for (_idx, clause) in form_list.function_clauses() {
+        let name = clause.name.name().as_str();
+        let result = form_list.is_form_active(&db, file_id, &clause.pp_ctx, None);
+        if name == "nested_both" {
+            // FOO is defined but BAR is not, so this is inactive
+            assert_eq!(result, PPConditionResult::Inactive);
+        } else if name == "nested_foo" {
+            // FOO is defined, so this is active
+            assert_eq!(result, PPConditionResult::Active);
+        }
+    }
+}
+
+#[test]
+fn undef_behavior() {
+    // Test that undef removes a previous define
+    let (db, file_id) = TestDB::with_single_file(
+        r#"
+-define(FOO, 1).
+before_undef() -> ok.
+-undef(FOO).
+-ifdef(FOO).
+after_undef() -> ok.
+-endif.
+"#,
+    );
+    let form_list = db.file_form_list(file_id);
+
+    for (_idx, clause) in form_list.function_clauses() {
+        let name = clause.name.name().as_str();
+        let result = form_list.is_form_active(&db, file_id, &clause.pp_ctx, None);
+        if name == "before_undef" {
+            // No condition, so active
+            assert_eq!(result, PPConditionResult::Active);
+        } else if name == "after_undef" {
+            // FOO was undefined before the ifdef, so inactive
+            assert_eq!(result, PPConditionResult::Inactive);
+        }
+    }
+}
+
+#[test]
+fn if_condition_unknown() {
+    // -if conditions with unknown expressions should return Unknown, which results in Inactive
+    let (db, file_id) = TestDB::with_single_file(
+        r#"
+-if(?FOO > 0).
+in_if() -> ok.
+-endif.
+"#,
+    );
+    let form_list = db.file_form_list(file_id);
+
+    for (_idx, clause) in form_list.function_clauses() {
+        let result = form_list.is_form_active(&db, file_id, &clause.pp_ctx, None);
+        assert_eq!(result, PPConditionResult::Unknown);
+    }
+}
+
+#[test]
+fn nested_else_in_inactive_region() {
+    // When an else is inside an inactive outer condition,
+    // the else branch should also be inactive
+    let (db, file_id) = TestDB::with_single_file(
+        r#"
+-ifdef(OUTER).
+-ifdef(INNER).
+in_inner_ifdef() -> ok.
+-else.
+in_inner_else() -> ok.
+-endif.
+-endif.
+"#,
+    );
+    let form_list = db.file_form_list(file_id);
+
+    // Neither OUTER nor INNER are defined, so:
+    // - outer ifdef is inactive
+    // - inner ifdef would be inactive (INNER not defined)
+    // - inner else would flip to active IF we only considered the inner condition
+    // - BUT since the outer condition is inactive, both should be inactive
+    for (_idx, clause) in form_list.function_clauses() {
+        let name = clause.name.name().as_str();
+        let result = form_list.is_form_active(&db, file_id, &clause.pp_ctx, None);
+        // Both functions should be inactive because OUTER is not defined
+        assert_eq!(
+            result,
+            PPConditionResult::Inactive,
+            "Expected {} to be Inactive, got {:?}",
+            name,
+            result
+        );
+    }
+}
+
+#[test]
+fn nested_ifdef_passes_in_inactive_region() {
+    // When an inner ifdef would pass (macro is defined), but the outer
+    // condition is inactive, the inner ifdef should still be inactive
+    let (db, file_id) = TestDB::with_single_file(
+        r#"
+-define(INNER, 1).
+-ifdef(OUTER).
+-ifdef(INNER).
+in_inner_ifdef() -> ok.
+-else.
+in_inner_else() -> ok.
+-endif.
+-endif.
+"#,
+    );
+    let form_list = db.file_form_list(file_id);
+
+    // INNER is defined, but OUTER is not, so:
+    // - outer ifdef is inactive
+    // - inner ifdef would be active (INNER is defined) BUT outer is inactive
+    // - inner else would flip to inactive, BUT outer is also inactive
+    // Both should be inactive because OUTER is not defined
+    for (_idx, clause) in form_list.function_clauses() {
+        let name = clause.name.name().as_str();
+        let result = form_list.is_form_active(&db, file_id, &clause.pp_ctx, None);
+        assert_eq!(
+            result,
+            PPConditionResult::Inactive,
+            "Expected {} to be Inactive, got {:?}",
+            name,
+            result
+        );
+    }
 }
