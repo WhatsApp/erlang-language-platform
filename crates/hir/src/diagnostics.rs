@@ -21,6 +21,7 @@ pub struct Diagnostic {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DiagnosticMessage {
     VarNameOutsideMacro,
+    InvalidPPCondition(String),
 }
 
 impl fmt::Display for DiagnosticMessage {
@@ -31,6 +32,9 @@ impl fmt::Display for DiagnosticMessage {
                     f,
                     "using variable instead of an atom name is allowed only inside -define"
                 )
+            }
+            DiagnosticMessage::InvalidPPCondition(msg) => {
+                write!(f, "{}", msg)
             }
         }
     }

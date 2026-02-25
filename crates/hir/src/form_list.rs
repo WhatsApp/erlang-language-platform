@@ -154,6 +154,11 @@ impl FormList {
         &self.data.pp_directives
     }
 
+    /// Returns the PP conditions in the file
+    pub fn pp_conditions(&self) -> impl Iterator<Item = (PPConditionId, &PPCondition)> {
+        self.data.pp_conditions.iter()
+    }
+
     /// Returns the first -module attribute in the file
     pub fn module_attribute(&self) -> Option<&ModuleAttribute> {
         self.data

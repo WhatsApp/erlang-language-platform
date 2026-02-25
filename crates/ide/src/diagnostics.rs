@@ -72,6 +72,8 @@ use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use hir::FormIdx;
 use hir::InFile;
+use hir::IncludeAttributeId;
+use hir::PPConditionId;
 use hir::PPDirective;
 use hir::Semantic;
 use hir::db::DefDatabase;
@@ -115,6 +117,8 @@ mod inefficient_enumerate;
 mod inefficient_flatlength;
 mod inefficient_last;
 mod inefficient_list_empty_check;
+mod invalid_pp_condition;
+mod issue_in_included_file;
 mod lists_map_to_comprehension;
 mod lists_reverse_append;
 mod macro_precedence_suprise;
@@ -875,7 +879,7 @@ pub(crate) struct GenericLinterMatchContext<Context> {
 // A trait that simplifies writing generic linters
 pub(crate) trait GenericLinter: Linter {
     /// Associated type - each linter defines its own
-    type Context: Clone + fmt::Debug + PartialEq + Default;
+    type Context: Clone + fmt::Debug + PartialEq;
 
     /// Return a list of matches for the linter
     fn matches(
@@ -904,6 +908,16 @@ pub(crate) trait GenericLinter: Linter {
         _sema: &Semantic,
         _file_id: FileId,
     ) -> Option<Vec<Assist>> {
+        None
+    }
+
+    /// Return optional related information for the diagnostic
+    fn related(
+        &self,
+        _context: &Self::Context,
+        _sema: &Semantic,
+        _file_id: FileId,
+    ) -> Option<Vec<RelatedInformation>> {
         None
     }
 }
@@ -936,9 +950,11 @@ impl<T: GenericLinter> GenericDiagnostics for T {
                 let message = self.match_description(&matched.context);
                 let fixes = self.fixes(&matched.context, matched.range, sema, file_id);
                 let tag = self.tag(&matched.context);
+                let related = self.related(&matched.context, sema, file_id);
                 let mut d = Diagnostic::new(self.id(), message, matched.range)
                     .with_fixes(fixes)
                     .with_tag(tag)
+                    .with_related(related)
                     .with_severity(severity)
                     .with_cli_severity(cli_severity);
                 if self.can_be_suppressed() {
@@ -1766,6 +1782,8 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &unused_record_field::LINTER,
     &unresolved_macro::LINTER,
     &unresolved_include::LINTER,
+    &invalid_pp_condition::LINTER,
+    &issue_in_included_file::LINTER,
     &mixed_strict_relaxed_generators::LINTER,
     &missing_ms_transform_include::LINTER,
 ];
@@ -2981,6 +2999,64 @@ pub fn included_file_file_id(
         }
     })?;
     Some(include)
+}
+
+/// Find the include directive in `file_id` that brought in `included_file_id`.
+/// Returns the IncludeAttributeId and a reference to the IncludeAttribute if found.
+pub(crate) fn find_include_directive_for_file(
+    db: &dyn DefDatabase,
+    file_id: FileId,
+    included_file_id: FileId,
+) -> Option<(IncludeAttributeId, TextRange)> {
+    let form_list = db.file_form_list(file_id);
+
+    for (idx, include) in form_list.includes() {
+        if let Some(resolved) = db.resolve_include(InFile::new(file_id, idx))
+            && resolved == included_file_id
+        {
+            // Use file_range to get just the include path, not the whole directive
+            let range = include.file_range(db, file_id);
+            return Some((idx, range));
+        }
+    }
+    None
+}
+
+/// Compute the text range for a preprocessor condition directive.
+/// For -if and -elif, this returns the range of the condition expression if available,
+/// otherwise the range of the whole directive.
+pub(crate) fn compute_pp_condition_range(
+    db: &dyn DefDatabase,
+    file_id: FileId,
+    cond_id: PPConditionId,
+) -> TextRange {
+    let form_list = db.file_form_list(file_id);
+    let condition = &form_list[cond_id];
+    let parsed = db.parse(file_id);
+    let tree = parsed.tree();
+
+    // Get the form and try to extract the condition expression range
+    match condition {
+        hir::PPCondition::If { form_id, .. } => {
+            let form = form_id.get(&tree);
+            // Try to get just the condition expression range
+            form.cond()
+                .map(|cond| cond.syntax().text_range())
+                .unwrap_or_else(|| form.syntax().text_range())
+        }
+        hir::PPCondition::Elif { form_id, .. } => {
+            let form = form_id.get(&tree);
+            // Try to get just the condition expression range
+            form.cond()
+                .map(|cond| cond.syntax().text_range())
+                .unwrap_or_else(|| form.syntax().text_range())
+        }
+        // For other conditions, return the whole directive range
+        _ => {
+            let form_id = condition.form_id();
+            form_id.get(&tree).syntax().text_range()
+        }
+    }
 }
 
 /// For an error in an included file, find the next form occurring after `file_attribute_location`
