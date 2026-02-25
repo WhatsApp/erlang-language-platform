@@ -35,6 +35,7 @@ use crate::InFileAstPtr;
 use crate::IncludeAttributeId;
 use crate::MacroName;
 use crate::Name;
+use crate::PPConditionId;
 use crate::RecordBody;
 use crate::RecordId;
 use crate::ResolvedMacro;
@@ -44,6 +45,7 @@ use crate::SsrBody;
 use crate::SsrSource;
 use crate::TypeAliasId;
 use crate::TypeBody;
+use crate::body::ConditionBody;
 use crate::body::DefineBody;
 use crate::body::scope::ExprScopes;
 use crate::body::scope::FunctionScopes;
@@ -118,6 +120,12 @@ pub trait DefDatabase:
         &self,
         define_id: InFile<DefineId>,
     ) -> (Arc<DefineBody>, Arc<BodySourceMap>);
+
+    #[salsa::invoke(ConditionBody::condition_body_with_source_query)]
+    fn condition_body_with_source(
+        &self,
+        cond_id: InFile<PPConditionId>,
+    ) -> Option<(Arc<ConditionBody>, Arc<BodySourceMap>)>;
 
     #[salsa::invoke(SsrBody::ssr_body_with_source_query)]
     fn ssr_body_with_source(

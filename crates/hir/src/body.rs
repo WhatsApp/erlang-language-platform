@@ -47,6 +47,8 @@ use crate::IncludeAttributeId;
 use crate::Literal;
 use crate::Name;
 use crate::NameArity;
+use crate::PPCondition;
+use crate::PPConditionId;
 use crate::Pat;
 use crate::PatId;
 use crate::Record;
@@ -66,6 +68,7 @@ use crate::TypeAliasId;
 use crate::TypeExpr;
 use crate::TypeExprId;
 use crate::Var;
+use crate::body::lower::lower_condition_body;
 use crate::db::DefDatabase;
 use crate::db::InternDatabase;
 use crate::def_map::FunctionDefId;
@@ -170,6 +173,12 @@ pub struct DefineBody {
     pub expr: ExprId,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct ConditionBody {
+    pub body: Arc<Body>,
+    pub expr: ExprId,
+}
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum BodyOrigin {
     Invalid(FileId),
@@ -180,6 +189,11 @@ pub enum BodyOrigin {
     Define {
         file_id: FileId,
         define_id: DefineId,
+    },
+    /// Origin for `-if`/`-elif` condition expressions
+    Condition {
+        file_id: FileId,
+        cond_id: PPConditionId,
     },
 }
 
@@ -208,6 +222,10 @@ impl BodyOrigin {
                 file_id,
                 define_id: _,
             } => *file_id,
+            BodyOrigin::Condition {
+                file_id,
+                cond_id: _,
+            } => *file_id,
         }
     }
 
@@ -215,6 +233,7 @@ impl BodyOrigin {
         match self {
             BodyOrigin::FormIdx { .. } => true,
             BodyOrigin::Define { .. } => true,
+            BodyOrigin::Condition { .. } => true,
             BodyOrigin::Invalid(file_id) => file_id == &SSR_SOURCE_FILE_ID,
         }
     }
@@ -222,6 +241,12 @@ impl BodyOrigin {
     pub fn get_body(&self, sema: &Semantic) -> Option<Arc<Body>> {
         match self {
             BodyOrigin::Invalid(_) => None,
+            BodyOrigin::Condition { file_id, cond_id } => {
+                let (body, _body_map) = sema
+                    .db
+                    .condition_body_with_source(InFile::new(*file_id, *cond_id))?;
+                Some(body.body.clone())
+            }
             BodyOrigin::FormIdx { file_id, form_id } => {
                 let (body, _body_map) = sema.get_body_and_map(*file_id, *form_id)?;
                 Some(body)
@@ -238,6 +263,12 @@ impl BodyOrigin {
     pub fn get_body_and_map(&self, sema: &Semantic) -> Option<(Arc<Body>, Arc<BodySourceMap>)> {
         match self {
             BodyOrigin::Invalid(_) => None,
+            BodyOrigin::Condition { file_id, cond_id } => {
+                let (body, body_map) = sema
+                    .db
+                    .condition_body_with_source(InFile::new(*file_id, *cond_id))?;
+                Some((body.body.clone(), body_map))
+            }
             BodyOrigin::FormIdx { file_id, form_id } => sema.get_body_and_map(*file_id, *form_id),
             BodyOrigin::Define { file_id, define_id } => {
                 let (body, body_map) = sema
@@ -302,6 +333,12 @@ impl Body {
     pub fn get_body_map(&self, sema: &Semantic) -> Option<Arc<BodySourceMap>> {
         match self.origin {
             BodyOrigin::Invalid(_) => None,
+            BodyOrigin::Condition { file_id, cond_id } => {
+                let (_, body_map) = sema
+                    .db
+                    .condition_body_with_source(InFile::new(file_id, cond_id))?;
+                Some(body_map)
+            }
             BodyOrigin::FormIdx { file_id, form_id } => {
                 let (_, body_map) = sema.get_body_and_map(file_id, form_id)?;
                 Some(body_map)
@@ -775,6 +812,39 @@ impl DefineBody {
     }
 }
 
+impl ConditionBody {
+    pub(crate) fn condition_body_with_source_query(
+        db: &dyn DefDatabase,
+        cond_id: InFile<PPConditionId>,
+    ) -> Option<(Arc<ConditionBody>, Arc<BodySourceMap>)> {
+        let form_list = db.file_form_list(cond_id.file_id);
+        let source = cond_id.file_syntax(db.upcast());
+        let condition = &form_list[cond_id.value];
+
+        // Only If and Elif have condition expressions
+        let expr = match condition {
+            PPCondition::If { form_id, .. } => form_id.get(&source).cond()?,
+            PPCondition::Elif { form_id, .. } => form_id.get(&source).cond()?,
+            _ => return None, // No expression for Ifdef/Ifndef/Else/Endif
+        };
+
+        let (body, source_map, root_expr) =
+            lower_condition_body(db, cond_id.file_id, cond_id.value, &expr, None);
+
+        Some((
+            Arc::new(ConditionBody {
+                body,
+                expr: root_expr,
+            }),
+            Arc::new(source_map),
+        ))
+    }
+
+    pub fn tree_print(&self, db: &dyn InternDatabase, condition: &PPCondition) -> String {
+        tree_print::print_condition(db, self, condition)
+    }
+}
+
 impl SsrBody {
     pub fn ssr_body_with_source_query(
         db: &dyn DefDatabase,
@@ -1163,6 +1233,11 @@ pub enum BodyDiagnostic {
     UnresolvedMacro(MacroSource),
     /// Include failed to resolve
     UnresolvedInclude(InFile<IncludeAttributeId>),
+    /// Invalid preprocessor condition (unsupported expression, undefined macro, etc.)
+    InvalidPPCondition {
+        cond_id: InFile<PPConditionId>,
+        message: String,
+    },
 }
 
 impl BodyDiagnostic {
@@ -1170,6 +1245,7 @@ impl BodyDiagnostic {
         match self {
             BodyDiagnostic::UnresolvedMacro(src) => src.file_id(),
             BodyDiagnostic::UnresolvedInclude(include) => include.file_id,
+            BodyDiagnostic::InvalidPPCondition { cond_id, .. } => cond_id.file_id,
         }
     }
 }

@@ -17,6 +17,7 @@ use std::str;
 
 use elp_base_db::FileId;
 
+use super::ConditionBody;
 use super::DefineBody;
 use super::FoldBody;
 use super::RecordBody;
@@ -43,6 +44,7 @@ use crate::FunctionDefId;
 use crate::InFile;
 use crate::ListType;
 use crate::Literal;
+use crate::PPCondition;
 use crate::PPDirective;
 use crate::Pat;
 use crate::PatId;
@@ -313,6 +315,41 @@ pub(crate) fn print_define(db: &dyn InternDatabase, body: &DefineBody, define: &
     printer.result()
 }
 
+pub(crate) fn print_condition(
+    db: &dyn InternDatabase,
+    body: &ConditionBody,
+    condition: &PPCondition,
+) -> String {
+    let fold_body = default_fold_body(&body.body);
+    let mut printer = Printer::new(db, &fold_body);
+
+    match condition {
+        PPCondition::If { .. } => writeln!(printer, "-if(").ok(),
+        PPCondition::Elif { .. } => writeln!(printer, "-elif(").ok(),
+        _ => return String::new(), // Ifdef/Ifndef/Else/Endif have no expression body
+    };
+
+    printer.indent();
+    printer.print_expr(&body.expr);
+    writeln!(printer).ok();
+    printer.dedent();
+    write!(printer, ").").ok();
+
+    printer.result()
+}
+
+/// Print PP conditions that don't have expression bodies (ifdef, ifndef, else, endif)
+pub(crate) fn print_condition_simple(_db: &dyn InternDatabase, condition: &PPCondition) -> String {
+    match condition {
+        PPCondition::Ifdef { name, .. } => format!("-ifdef({}).\n", name.to_quoted_string()),
+        PPCondition::Ifndef { name, .. } => format!("-ifndef({}).\n", name.to_quoted_string()),
+        PPCondition::Else { .. } => "-else.\n".to_string(),
+        PPCondition::Endif { .. } => "-endif.\n".to_string(),
+        // If and Elif are handled by print_condition with body
+        PPCondition::If { .. } | PPCondition::Elif { .. } => String::new(),
+    }
+}
+
 pub(crate) fn print_ssr(db: &dyn InternDatabase, body: &SsrBody) -> String {
     let fold_body = default_fold_body(&body.body);
     let mut printer = Printer::new(db, &fold_body);
@@ -389,6 +426,19 @@ pub fn print_form_list(db: &dyn DefDatabase, file_id: FileId, strategy: Strategy
                     }
                     _ => None,
                 },
+                FormIdx::PPCondition(cond_id) => {
+                    let condition = &form_list[cond_id];
+                    match condition {
+                        // If and Elif have condition expression bodies
+                        PPCondition::If { .. } | PPCondition::Elif { .. } => {
+                            let (body, _) =
+                                db.condition_body_with_source(InFile::new(file_id, cond_id))?;
+                            Some(body.tree_print(dbi, condition))
+                        }
+                        // Ifdef, Ifndef, Else, Endif are printed without bodies
+                        _ => Some(print_condition_simple(dbi, condition)),
+                    }
+                }
                 _ => None,
             }
         })
@@ -3541,6 +3591,103 @@ mod tests {
                 -record(rec, {
                     f
                 }).
+            "#]],
+        );
+    }
+
+    #[test]
+    fn condition_if_simple() {
+        check(
+            r#"
+            -if(true).
+            -endif.
+            "#,
+            expect![[r#"
+                -if(
+                    Expr<1>:Literal(Atom('true'))
+                ).
+                -endif.
+            "#]],
+        );
+    }
+
+    #[test]
+    fn condition_if_expression() {
+        check(
+            r#"
+            -if(1 + 2 > 3).
+            -endif.
+            "#,
+            expect![[r#"
+                -if(
+                    Expr<5>:Expr::BinaryOp {
+                        lhs
+                            Expr<2>:Expr::BinaryOp {
+                                lhs
+                                    Expr<0>:Literal(Integer(1))
+                                rhs
+                                    Expr<1>:Literal(Integer(2))
+                                op
+                                    ArithOp(Add),
+                            }
+                        rhs
+                            Expr<3>:Literal(Integer(3))
+                        op
+                            CompOp(Ord { ordering: Greater, strict: true }),
+                    }
+                ).
+                -endif.
+            "#]],
+        );
+    }
+
+    #[test]
+    fn condition_elif() {
+        check(
+            r#"
+            -if(false).
+            -elif(true).
+            -endif.
+            "#,
+            expect![[r#"
+                -if(
+                    Expr<1>:Literal(Atom('false'))
+                ).
+
+                -elif(
+                    Expr<1>:Literal(Atom('true'))
+                ).
+                -endif.
+            "#]],
+        );
+    }
+
+    #[test]
+    fn condition_ifdef_else() {
+        check(
+            r#"
+            -ifdef(FOO).
+            -else.
+            -endif.
+            "#,
+            expect![[r#"
+                -ifdef('FOO').
+                -else.
+                -endif.
+            "#]],
+        );
+    }
+
+    #[test]
+    fn condition_ifndef() {
+        check(
+            r#"
+            -ifndef(BAR).
+            -endif.
+            "#,
+            expect![[r#"
+                -ifndef('BAR').
+                -endif.
             "#]],
         );
     }

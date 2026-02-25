@@ -10,6 +10,8 @@
 
 use std::fmt::Write;
 
+use elp_base_db::OTP_VERSION;
+use elp_base_db::assert_eq_expected;
 use elp_base_db::fixture::WithFixture;
 use expect_test::Expect;
 use expect_test::expect;
@@ -2166,19 +2168,53 @@ foo(?MACHINE) -> ?MACHINE.
 
 #[test]
 fn expand_built_in_otp_release() {
-    check(
+    // OTP_RELEASE expands to the real OTP version if available, otherwise 2000
+    let version = OTP_VERSION
+        .as_ref()
+        .and_then(|v| v.parse::<u32>().ok())
+        .unwrap_or(2000);
+
+    let (db, file_ids, _) = TestDB::with_many_files(
         r#"
 -type foo() :: ?OTP_RELEASE.
 
 foo(?OTP_RELEASE) -> ?OTP_RELEASE.
 "#,
-        expect![[r#"
-            -type foo() :: 2000.
-
-            foo(2000) ->
-                2000.
-        "#]],
     );
+    let file_id = file_ids[0];
+    let form_list = db.file_form_list(file_id);
+    let pretty: String = form_list
+        .forms()
+        .iter()
+        .flat_map(|&form_idx| match form_idx {
+            FormIdx::FunctionClause(function_id) => {
+                let def_map = db.def_map(file_id);
+                let function_def_id = InFile::new(file_id, FunctionDefId::new(function_id));
+                if let Some(_fun_def) = def_map.get_by_function_id(&function_def_id) {
+                    let function = &form_list[function_id];
+                    let body = db.function_body(function_def_id);
+                    Some(body.print(&db, function))
+                } else {
+                    None
+                }
+            }
+            FormIdx::TypeAlias(type_alias_id) => {
+                let type_alias = &form_list[type_alias_id];
+                let body = db.type_body(InFile::new(file_id, type_alias_id));
+                Some(body.print(&db, type_alias))
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("");
+
+    let expected = format!(
+        "-type foo() :: {version}.
+
+foo({version}) ->
+    {version}."
+    );
+    assert_eq_expected!(expected.trim_end(), pretty.trim_start().trim_end());
 }
 
 #[test]

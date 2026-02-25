@@ -247,6 +247,16 @@ impl HirIdx {
     pub fn tree_print(&self, sema: &Semantic) -> String {
         match self.body_origin {
             BodyOrigin::Invalid(_) => "BodyOrigin::Invalid".to_string(),
+            BodyOrigin::Condition { file_id, cond_id } => {
+                if let Some((body, _)) = sema
+                    .db
+                    .condition_body_with_source(InFile::new(file_id, cond_id))
+                {
+                    body.body.tree_print_any_expr(sema.db.upcast(), self.idx)
+                } else {
+                    "BodyOrigin::Condition (no body)".to_string()
+                }
+            }
             BodyOrigin::FormIdx { file_id, form_id } => match form_id {
                 FormIdx::ModuleAttribute(_) => todo!(),
                 FormIdx::FunctionClause(fun_idx) => {
@@ -323,11 +333,14 @@ mod tests {
     use la_arena::RawIdx;
 
     use crate::AnyExprId;
+    use crate::BodyOrigin;
     use crate::FunctionBody;
     use crate::FunctionDefId;
     use crate::HirIdx;
     use crate::InFile;
+    use crate::PPConditionId;
     use crate::Semantic;
+    use crate::db::DefDatabase;
     use crate::expr::ClauseId;
     use crate::test_db::TestDB;
 
@@ -410,6 +423,41 @@ mod tests {
                     },
                 },
                 Expr<16>:Expr::Var(A),
+            }
+        "#]]
+        .assert_eq(&hir_idx.tree_print(&sema));
+    }
+
+    #[test]
+    fn print_condition_expr() {
+        let fixture_str = r#"
+            -if(1 + 2).
+            -endif.
+        "#;
+
+        let (db, file_id) = TestDB::with_single_file(fixture_str);
+        let sema = Semantic::new(&db);
+
+        // Get the condition body
+        let cond_id: PPConditionId = Idx::from_raw(RawIdx::from(0));
+        let (body, _body_map) = db
+            .condition_body_with_source(InFile::new(file_id, cond_id))
+            .expect("condition body should exist");
+
+        let hir_idx = HirIdx {
+            body_origin: BodyOrigin::Condition { file_id, cond_id },
+            idx: AnyExprId::Expr(body.expr),
+        };
+
+        expect![[r#"
+
+            Expr<3>:Expr::BinaryOp {
+                lhs
+                    Expr<0>:Literal(Integer(1))
+                rhs
+                    Expr<1>:Literal(Integer(2))
+                op
+                    ArithOp(Add),
             }
         "#]]
         .assert_eq(&hir_idx.tree_print(&sema));

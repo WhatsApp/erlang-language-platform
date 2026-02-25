@@ -62,6 +62,7 @@ use crate::MacroName;
 use crate::MacroSource;
 use crate::Name;
 use crate::NameArity;
+use crate::PPConditionId;
 use crate::Pat;
 use crate::PatId;
 use crate::ReceiveAfter;
@@ -121,6 +122,10 @@ pub struct Ctx<'a> {
     in_macro_rhs: bool,
     // Diagnostics collected during body lowering
     diagnostics: Vec<BodyDiagnostic>,
+    // Local macro definitions for context during condition lowering in included files
+    local_macro_defs: Option<FxHashMap<MacroName, InFile<DefineId>>>,
+    // Module name override for ?MODULE etc. when processing included files
+    module_name_override: Option<Name>,
 }
 
 #[derive(Debug)]
@@ -159,6 +164,8 @@ impl<'a> Ctx<'a> {
             in_ssr: false,
             in_macro_rhs: false,
             diagnostics: Vec::new(),
+            local_macro_defs: None,
+            module_name_override: None,
         }
     }
 
@@ -185,6 +192,34 @@ impl<'a> Ctx<'a> {
 
     pub fn function_name(&self) -> Option<NameArity> {
         self.function_name.clone()
+    }
+
+    #[allow(dead_code)] // Used in later commits
+    pub(crate) fn set_local_macro_defs(&mut self, defs: FxHashMap<MacroName, InFile<DefineId>>) {
+        self.local_macro_defs = Some(defs);
+    }
+
+    #[allow(dead_code)] // Used in later commits
+    pub(crate) fn set_module_name_override(&mut self, name: Option<Name>) {
+        self.module_name_override = name;
+    }
+
+    fn resolve_macro_name(&self, name: &MacroName) -> Option<ResolvedMacro> {
+        // Check local macro definitions first
+        if let Some(ref local_defs) = self.local_macro_defs {
+            if let Some(def_idx) = local_defs.get(name) {
+                return Some(ResolvedMacro::User(*def_idx));
+            }
+            // Check with arity=None if we have an arity
+            if name.arity().is_some() {
+                let name_no_arity = name.clone().with_arity(None);
+                if let Some(def_idx) = local_defs.get(&name_no_arity) {
+                    return Some(ResolvedMacro::User(*def_idx));
+                }
+            }
+        }
+        // Fall back to database query
+        self.db.resolve_macro(self.file_id(), name.clone())
     }
 
     fn get_macro_information(&self) -> MacroInformation {
@@ -2630,6 +2665,14 @@ impl<'a> Ctx<'a> {
             // This is a bit of a hack, but allows us not to depend on the file system
             // It somewhat replicates the behaviour of -deterministic option
             BuiltInMacro::FILE => {
+                // First check for override (from including file)
+                if let Some(ref name) = self.module_name_override {
+                    return Some(Literal::String(StringVariant::Normal(format!(
+                        "{}.erl",
+                        name
+                    ))));
+                }
+                // Fall back to current file
                 let form_list = self.db.file_form_list(self.file_id());
                 form_list.module_attribute().map(|attr| {
                     Literal::String(StringVariant::Normal(format!("{}.erl", attr.name)))
@@ -2642,20 +2685,34 @@ impl<'a> Ctx<'a> {
             // Dummy value, we don't want to depend on the exact position
             BuiltInMacro::LINE => Some(Literal::Integer(0.into())),
             BuiltInMacro::MODULE => {
+                // First check for override
+                if let Some(ref name) = self.module_name_override {
+                    return Some(Literal::Atom(self.db.atom(name.clone())));
+                }
                 let form_list = self.db.file_form_list(self.file_id());
                 form_list
                     .module_attribute()
                     .map(|attr| Literal::Atom(self.db.atom(attr.name.clone())))
             }
             BuiltInMacro::MODULE_STRING => {
+                // First check for override
+                if let Some(ref name) = self.module_name_override {
+                    return Some(Literal::String(StringVariant::Normal(name.to_string())));
+                }
                 let form_list = self.db.file_form_list(self.file_id());
                 form_list
                     .module_attribute()
                     .map(|attr| Literal::String(StringVariant::Normal(attr.name.to_string())))
             }
             BuiltInMacro::MACHINE => Some(Literal::Atom(self.db.atom(known::ELP))),
-            // Dummy value, must be an integer
-            BuiltInMacro::OTP_RELEASE => Some(Literal::Integer(2000.into())),
+            BuiltInMacro::OTP_RELEASE => {
+                // Use real OTP version if available, otherwise default to 2000
+                let version = elp_base_db::OTP_VERSION
+                    .as_ref()
+                    .and_then(|v| v.parse::<u32>().ok())
+                    .unwrap_or(2000);
+                Some(Literal::Integer(version.into()))
+            }
         }
     }
 
@@ -2835,7 +2892,7 @@ impl<'a> Ctx<'a> {
 
         let source = InFileAstPtr::new(self.curr_file_id(), AstPtr::new(call).cast().unwrap());
 
-        match self.db.resolve_macro(self.file_id(), name.clone()) {
+        match self.resolve_macro_name(&name) {
             Some(res @ ResolvedMacro::BuiltIn(built_in)) => {
                 self.record_macro_resolution(call, res, name.clone());
                 match built_in {
@@ -2862,7 +2919,7 @@ impl<'a> Ctx<'a> {
             None => {
                 let name = name.with_arity(None);
                 let args = call.args()?;
-                let res = self.db.resolve_macro(self.file_id(), name.clone())?;
+                let res = self.resolve_macro_name(&name)?;
                 self.record_macro_resolution(call, res, name.clone());
                 match res {
                     ResolvedMacro::BuiltIn(built_in) => Some(cb(
@@ -3100,6 +3157,33 @@ fn lower_raw_int(int: &ast::Integer) -> Option<BasedInteger> {
         }
         _ => None,
     }
+}
+
+/// Create a body for a condition expression with an optional module name override.
+///
+/// This variant allows specifying a module name to use for ?FILE, ?MODULE, etc.
+/// when evaluating conditions in included header files. The override ensures that
+/// built-in macros resolve to the including file's module name rather than failing
+/// to resolve in the header context.
+pub fn lower_condition_body(
+    db: &dyn DefDatabase,
+    file_id: FileId,
+    cond_id: PPConditionId,
+    expr: &ast::Expr,
+    module_name_override: Option<Name>,
+) -> (Arc<Body>, BodySourceMap, ExprId) {
+    let origin = BodyOrigin::Condition { file_id, cond_id };
+    let mut ctx = Ctx::new(db, origin);
+    // Set empty local macro defs to enable built-in macro resolution (e.g., ?FILE, ?MODULE).
+    // Without this, resolve_macro_name skips built-in macro checks and goes directly to the
+    // database query, which fails for built-in macros.
+    ctx.set_local_macro_defs(FxHashMap::default());
+    if module_name_override.is_some() {
+        ctx.set_module_name_override(module_name_override);
+    }
+    let root_expr = ctx.lower_expr(expr);
+    let (body, source_map) = ctx.finish();
+    (body, source_map, root_expr)
 }
 
 fn parse_based(base: u32, str: &str) -> Option<i128> {

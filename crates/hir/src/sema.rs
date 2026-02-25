@@ -447,6 +447,12 @@ impl Semantic<'_> {
                     _ => None,
                 }
             }
+            FormIdx::PPCondition(cond_id) => {
+                let (body, map) = self
+                    .db
+                    .condition_body_with_source(InFile::new(file_id, cond_id))?;
+                Some((body.body.clone(), map))
+            }
             _ => None,
         }
     }

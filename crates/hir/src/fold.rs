@@ -287,6 +287,17 @@ pub fn fold_file<'a, T>(
                     r
                 }
             }
+            FormIdx::PPCondition(pp_condition_id) => {
+                // Only -if and -elif have condition bodies
+                if let Some((cond_body, _)) = sema
+                    .db
+                    .condition_body_with_source(InFile::new(file_id, pp_condition_id))
+                {
+                    FoldCtx::fold_expr(strategy, &cond_body.body, cond_body.expr, r, callback)
+                } else {
+                    r
+                }
+            }
             _ => {
                 // Will have to do some time?
                 r
@@ -353,6 +364,12 @@ impl AnyCallBackCtx<'_> {
     ) -> Option<(Arc<Body>, Arc<BodySourceMap>, ExprSource)> {
         let (body, source) = match self.body_origin {
             BodyOrigin::Invalid(_) => None,
+            BodyOrigin::Condition { file_id, cond_id } => {
+                let (cond_body, body_map) = sema
+                    .db
+                    .condition_body_with_source(InFile::new(file_id, cond_id))?;
+                Some((cond_body.body.clone(), body_map))
+            }
             BodyOrigin::FormIdx { file_id, form_id } => sema.get_body_and_map(file_id, form_id),
             BodyOrigin::Define { file_id, define_id } => {
                 let (define_body, body_map) = sema
@@ -373,6 +390,7 @@ impl AnyCallBackCtx<'_> {
     pub fn form_id(&self) -> Option<FormIdx> {
         match self.body_origin {
             BodyOrigin::Invalid(_) => None,
+            BodyOrigin::Condition { cond_id, .. } => Some(FormIdx::PPCondition(cond_id)),
             BodyOrigin::FormIdx {
                 file_id: _,
                 form_id,
@@ -2267,6 +2285,26 @@ bar() ->
                -define(FOO(X), foo(X,fo~o)).
                "#;
         count_atom_foo(fixture_str, 3);
+    }
+
+    #[test]
+    fn traverse_condition_body() {
+        let fixture_str = r#"
+-if(f~oo =:= bar).
+-endif.
+"#;
+        count_atom_foo(fixture_str, 1);
+    }
+
+    #[test]
+    fn traverse_condition() {
+        let fixture_str = r#"
+               -module(foo).
+               -if(fo~o =:= bar).
+               -endif.
+               "#;
+        // Count: module name 'foo' + atom 'foo' in condition = 2
+        count_atom_foo(fixture_str, 2);
     }
 
     #[test]
