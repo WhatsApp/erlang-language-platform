@@ -8,6 +8,7 @@
  * above-listed licenses.
  */
 
+use elp_base_db::FileId;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::SmolStr;
@@ -21,11 +22,14 @@ use la_arena::Idx;
 use la_arena::IdxRange;
 use la_arena::RawIdx;
 
+use super::ConditionEnv;
+use super::ConditionEnvId;
 use super::DocAttribute;
 use super::DocMetadataAttribute;
 use super::FeatureAttribute;
 use super::FormIdx;
 use super::FormListData;
+use super::FormPPContext;
 use super::ModuleDocAttribute;
 use super::ModuleDocMetadataAttribute;
 use super::ParamName;
@@ -77,19 +81,34 @@ pub struct Ctx<'a> {
     data: Box<FormListData>,
     diagnostics: Vec<Diagnostic>,
     conditions: Vec<PPConditionId>,
+    env_stack: Vec<ConditionEnvId>,
+    root_env: ConditionEnvId,
 }
 
 impl<'a> Ctx<'a> {
-    pub fn new(db: &'a dyn DefDatabase, source_file: &'a ast::SourceFile) -> Self {
+    pub fn new(db: &'a dyn DefDatabase, file_id: FileId, source_file: &'a ast::SourceFile) -> Self {
+        let mut data = Box::<FormListData>::default();
+
+        // Get external defines from the application configuration
+        let external_defines = db.file_external_defines(file_id);
+
+        // Create root environment with external defines
+        let root_env = data.condition_envs.alloc(ConditionEnv {
+            defines_delta: (*external_defines).clone(),
+            ..ConditionEnv::default()
+        });
+
         Self {
             db,
             source_file,
             id_map: FormIdMap::from_source_file(source_file),
             map_back: FxHashMap::default(),
             define_id_map: FxHashMap::default(),
-            data: Box::default(),
+            data,
             diagnostics: Vec::new(),
             conditions: Vec::new(),
+            env_stack: Vec::new(),
+            root_env,
         }
     }
 
@@ -143,7 +162,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_ssr_definition(&mut self, ssr_definition: &ast::SsrDefinition) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let form_id = self.id_map.get_id(ssr_definition);
         let res = SsrDefinition { pp_ctx, form_id };
         Some(FormIdx::SsrDefinition(self.data.ssr_definitions.alloc(res)))
@@ -157,7 +176,7 @@ impl<'a> Ctx<'a> {
         &mut self,
         deprecated_attr: &ast::DeprecatedAttribute,
     ) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         match deprecated_attr.attr() {
             None => None,
             Some(ast::DeprecatedDetails::DeprecatedFa(fa)) => {
@@ -224,7 +243,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_module_attr(&mut self, module_attr: &ast::ModuleAttribute) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let name = self.resolve_name(&module_attr.name()?);
         let form_id = self.id_map.get_id(module_attr);
         let res = ModuleAttribute {
@@ -238,7 +257,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_function_clause(&mut self, function: &ast::FunDecl) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let (name, param_names, is_macro) = function.clauses().find_map(|clause| match clause {
             ast::FunctionOrMacroClause::FunctionClause(clause) => {
                 let name = clause.name()?;
@@ -300,7 +319,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_include(&mut self, include: &ast::PpInclude) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let path: String = include
             .file()
             .flat_map(|detail| match detail {
@@ -319,7 +338,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_include_lib(&mut self, include: &ast::PpIncludeLib) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let path: String = include
             .file()
             .flat_map(|detail| match detail {
@@ -343,20 +362,32 @@ impl<'a> Ctx<'a> {
             .data
             .pp_directives
             .alloc(PPDirective::Include(include_idx));
+
+        // Track include in environment
+        let new_env = ConditionEnv {
+            parent: Some(self.current_env()),
+            defines_delta: Vec::new(),
+            undefs_delta: Vec::new(),
+            directive: Some(idx),
+            resolved_include: None, // Will be resolved during evaluation
+        };
+        let env_id = self.data.condition_envs.alloc(new_env);
+        self.env_stack.push(env_id);
+
         Some(FormIdx::PPDirective(idx))
     }
 
     fn lower_define(&mut self, define: &ast::PpDefine) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let definition = define.lhs()?;
         let name = definition.name()?.as_name();
         let arity = definition
             .args()
             .and_then(|args| args.args().count().try_into().ok());
-        let name = MacroName::new(name, arity);
+        let macro_name = MacroName::new(name.clone(), arity);
         let form_id = self.id_map.get_id(define);
         let res = Define {
-            name,
+            name: macro_name,
             pp_ctx,
             form_id,
         };
@@ -365,25 +396,50 @@ impl<'a> Ctx<'a> {
             .data
             .pp_directives
             .alloc(PPDirective::Define(define_idx));
-        let form_id = FormIdx::PPDirective(idx);
-        self.define_id_map.insert(define_idx, form_id);
-        Some(form_id)
+        let form_idx = FormIdx::PPDirective(idx);
+        self.define_id_map.insert(define_idx, form_idx);
+
+        // Create new environment with this define added
+        let new_env = ConditionEnv {
+            parent: Some(self.current_env()),
+            defines_delta: vec![name],
+            undefs_delta: Vec::new(),
+            directive: Some(idx),
+            resolved_include: None,
+        };
+        let env_id = self.data.condition_envs.alloc(new_env);
+        self.env_stack.push(env_id);
+
+        Some(form_idx)
     }
 
     fn lower_undef(&mut self, undef: &ast::PpUndef) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let name = undef.name()?.as_name();
         let form_id = self.id_map.get_id(undef);
         let res = PPDirective::Undef {
-            name,
+            name: name.clone(),
             pp_ctx,
             form_id,
         };
-        Some(FormIdx::PPDirective(self.data.pp_directives.alloc(res)))
+        let pp_idx = self.data.pp_directives.alloc(res);
+
+        // Create new environment with this undef added
+        let new_env = ConditionEnv {
+            parent: Some(self.current_env()),
+            defines_delta: Vec::new(),
+            undefs_delta: vec![name],
+            directive: Some(pp_idx),
+            resolved_include: None,
+        };
+        let env_id = self.data.condition_envs.alloc(new_env);
+        self.env_stack.push(env_id);
+
+        Some(FormIdx::PPDirective(pp_idx))
     }
 
     fn lower_ifdef(&mut self, ifdef: &ast::PpIfdef) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let name = ifdef.name()?.as_name();
         let form_id = self.id_map.get_id(ifdef);
         let res = PPCondition::Ifdef {
@@ -397,7 +453,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_ifndef(&mut self, ifndef: &ast::PpIfndef) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let name = ifndef.name()?.as_name();
         let form_id = self.id_map.get_id(ifndef);
         let res = PPCondition::Ifndef {
@@ -418,7 +474,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_if(&mut self, pp_if: &ast::PpIf) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let form_id = self.id_map.get_id(pp_if);
         let res = PPCondition::If { pp_ctx, form_id };
         let id = self.data.pp_conditions.alloc(res);
@@ -445,7 +501,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_export(&mut self, export: &ast::ExportAttribute) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let entries = self.lower_fa_entries(export.funs());
         let form_id = self.id_map.get_id(export);
         let res = Export {
@@ -463,7 +519,7 @@ impl<'a> Ctx<'a> {
             .map(|name| self.resolve_name(&name))
             .unwrap_or(Name::MISSING);
         let entries = self.lower_fa_entries(import.funs());
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let form_id = self.id_map.get_id(import);
         let res = Import {
             from,
@@ -475,7 +531,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_type_export(&mut self, export: &ast::ExportTypeAttribute) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let entries = self.lower_fa_entries(export.types());
         let form_id = self.id_map.get_id(export);
         let res = TypeExport {
@@ -509,7 +565,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_behaviour(&mut self, behaviour: &ast::BehaviourAttribute) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let form_id = self.id_map.get_id(behaviour);
         let name = self.resolve_name(&behaviour.name()?);
         let res = Behaviour {
@@ -521,7 +577,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_type_alias(&mut self, alias: &ast::TypeAlias) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let type_name = alias.name()?;
         let name = self.resolve_name(&type_name.name()?);
         let arity = type_name.args()?.args().count().try_into().ok()?;
@@ -537,7 +593,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_nominal_type(&mut self, nominal: &ast::Nominal) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let type_name = nominal.name()?;
         let name = self.resolve_name(&type_name.name()?);
         let arity = type_name.args()?.args().count().try_into().ok()?;
@@ -553,7 +609,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_opaque(&mut self, opaque: &ast::Opaque) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let type_name = opaque.name()?;
         let name = self.resolve_name(&type_name.name()?);
         let arity = type_name.args()?.args().count().try_into().ok()?;
@@ -572,7 +628,7 @@ impl<'a> Ctx<'a> {
         &mut self,
         cbs: &ast::OptionalCallbacksAttribute,
     ) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let entries = self.lower_fa_entries(cbs.callbacks());
         let form_id = self.id_map.get_id(cbs);
         let res = OptionalCallbacks {
@@ -586,7 +642,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_spec(&mut self, spec: &ast::Spec) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         // We do not check the spec module name (if present), as any
         // issues are reported by the erlang service.
         let name = self.resolve_name(&spec.fun()?);
@@ -604,7 +660,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_callback(&mut self, callback: &ast::Callback) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         if callback.module().is_some() {
             return None;
         }
@@ -623,7 +679,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_record(&mut self, record: &ast::RecordDecl) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let name = self.resolve_name(&record.name()?);
 
         let mut fields = record
@@ -656,14 +712,14 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_compile(&mut self, copt: &ast::CompileOptionsAttribute) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let form_id = self.id_map.get_id(copt);
         let res = CompileOption { pp_ctx, form_id };
         Some(FormIdx::CompileOption(self.data.compile_options.alloc(res)))
     }
 
     fn lower_attribute(&mut self, attribute: &ast::WildAttribute) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let name = self.resolve_name(&attribute.name()?.name()?);
         // SmolStr does not impl PartialEq, can't match on `Name`
         if name == known::moduledoc {
@@ -684,7 +740,7 @@ impl<'a> Ctx<'a> {
     fn lower_moduledoc_attribute(
         &mut self,
         attribute: &ast::WildAttribute,
-        pp_ctx: Option<Idx<PPCondition>>,
+        pp_ctx: FormPPContext,
     ) -> Option<FormIdx> {
         let form_id = self.id_map.get_id(attribute);
         let res = if let Some(ast::Expr::MapExpr(_)) = attribute.value() {
@@ -706,7 +762,7 @@ impl<'a> Ctx<'a> {
     fn lower_doc_attribute(
         &mut self,
         attribute: &ast::WildAttribute,
-        pp_ctx: Option<Idx<PPCondition>>,
+        pp_ctx: FormPPContext,
     ) -> Option<FormIdx> {
         let form_id = self.id_map.get_id(attribute);
         let res = if let Some(ast::Expr::MapExpr(_)) = attribute.value() {
@@ -726,7 +782,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_feature_attribute(&mut self, attribute: &ast::FeatureAttribute) -> Option<FormIdx> {
-        let pp_ctx = self.conditions.last().copied();
+        let pp_ctx = self.current_pp_ctx();
         let form_id = self.id_map.get_id(attribute);
         let res = FeatureAttribute { pp_ctx, form_id };
         Some(FormIdx::FeatureAttribute(
@@ -772,6 +828,17 @@ impl<'a> Ctx<'a> {
             location: node.text_range(),
             message,
         });
+    }
+
+    fn current_env(&self) -> ConditionEnvId {
+        self.env_stack.last().copied().unwrap_or(self.root_env)
+    }
+
+    fn current_pp_ctx(&self) -> FormPPContext {
+        FormPPContext {
+            condition: self.conditions.last().copied(),
+            env: self.current_env(),
+        }
     }
 }
 

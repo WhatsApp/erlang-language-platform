@@ -95,7 +95,7 @@ pub(crate) fn resolve_query(
     }
 }
 
-fn resolve_built_in(name: &MacroName) -> Option<Option<BuiltInMacro>> {
+pub fn resolve_built_in(name: &MacroName) -> Option<Option<BuiltInMacro>> {
     let built_in = match name.name().as_str() {
         "FILE" => Some(BuiltInMacro::FILE),
         "FUNCTION_NAME" => Some(BuiltInMacro::FUNCTION_NAME),
@@ -178,13 +178,14 @@ pub(crate) fn recover_cycle(
 }
 
 pub struct MacroExpCtx<'a> {
-    _db: &'a dyn DefDatabase,
+    #[allow(unused)] // It is used further up the stack
+    db: &'a dyn DefDatabase,
     form_list: &'a FormListData,
 }
 
 impl<'a> MacroExpCtx<'a> {
     pub(crate) fn new(form_list: &'a FormListData, db: &'a dyn DefDatabase) -> Self {
-        MacroExpCtx { form_list, _db: db }
+        MacroExpCtx { form_list, db }
     }
 
     pub fn expand_atom(
@@ -243,7 +244,6 @@ impl<'a> MacroExpCtx<'a> {
                     pp_ctx: _,
                     form_id: _,
                 } if name == target.name() => {
-                    // TODO: diagnostic it was explicitly undefed
                     return None;
                 }
                 PPDirective::Undef { .. } => {}

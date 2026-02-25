@@ -92,7 +92,7 @@ impl FormList {
     pub(crate) fn file_form_list_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<FormList> {
         let _p = tracing::info_span!("form_list_query").entered();
         let syntax = db.parse(file_id).tree();
-        let ctx = lower::Ctx::new(db, &syntax);
+        let ctx = lower::Ctx::new(db, file_id, &syntax);
         Arc::new(ctx.lower_forms())
     }
 
@@ -230,6 +230,16 @@ impl FormList {
         }
     }
 
+    /// Get the text range for a form by its index.
+    pub fn form_range(
+        &self,
+        form_idx: FormIdx,
+        db: &dyn DefDatabase,
+        file_id: FileId,
+    ) -> TextRange {
+        self.get(form_idx).form_id(self).range(db, file_id)
+    }
+
     pub fn pretty_print(&self) -> String {
         pretty::print(self)
     }
@@ -265,6 +275,7 @@ pub(crate) struct FormListData {
     fa_entries: Arena<FaEntry>,
     deprecates: Arena<DeprecatedAttribute>,
     ssr_definitions: Arena<SsrDefinition>,
+    pub condition_envs: Arena<ConditionEnv>,
 }
 
 impl FormListData {
@@ -297,6 +308,7 @@ impl FormListData {
             fa_entries,
             deprecates,
             ssr_definitions,
+            condition_envs,
         } = self;
         module_attribute.shrink_to_fit();
         includes.shrink_to_fit();
@@ -324,6 +336,7 @@ impl FormListData {
         fa_entries.shrink_to_fit();
         deprecates.shrink_to_fit();
         ssr_definitions.shrink_to_fit();
+        condition_envs.shrink_to_fit();
     }
 }
 
@@ -379,6 +392,82 @@ pub enum Form<'a> {
     SsrDefinition(&'a SsrDefinition),
 }
 
+impl<'a> Form<'a> {
+    /// Get the form ID for this form, upcasted to `FormId<ast::Form>`.
+    pub fn form_id(&self, form_list: &FormList) -> FormId<ast::Form> {
+        match self {
+            Form::ModuleAttribute(f) => f.form_id.upcast(),
+            Form::FunctionClause(f) => f.form_id.upcast(),
+            Form::PPDirective(f) => f.form_id(form_list),
+            Form::PPCondition(f) => f.form_id(),
+            Form::Export(f) => f.form_id.upcast(),
+            Form::Import(f) => f.form_id.upcast(),
+            Form::TypeExport(f) => f.form_id.upcast(),
+            Form::Behaviour(f) => f.form_id.upcast(),
+            Form::TypeAlias(f) => f.form_id(),
+            Form::Spec(f) => f.form_id.upcast(),
+            Form::Callback(f) => f.form_id.upcast(),
+            Form::OptionalCallbacks(f) => f.form_id.upcast(),
+            Form::Record(f) => f.form_id.upcast(),
+            Form::Attribute(f) => f.form_id.upcast(),
+            Form::ModuleDocAttribute(f) => f.form_id.upcast(),
+            Form::ModuleDocMetadataAttribute(f) => f.form_id.upcast(),
+            Form::DocAttribute(f) => f.form_id.upcast(),
+            Form::DocMetadataAttribute(f) => f.form_id.upcast(),
+            Form::CompileOption(f) => f.form_id.upcast(),
+            Form::DeprecatedAttribute(f) => f.form_id().upcast(),
+            Form::FeatureAttribute(f) => f.form_id.upcast(),
+            Form::SsrDefinition(f) => f.form_id.upcast(),
+        }
+    }
+
+    /// Get the preprocessor context for this form.
+    ///
+    /// Returns `None` for PPCondition (which are delimiters that control
+    /// other forms' activity, not forms that can be active/inactive themselves).
+    pub fn pp_ctx(&self, form_list: &'a FormList) -> Option<&'a FormPPContext> {
+        match self {
+            Form::ModuleAttribute(f) => Some(&f.pp_ctx),
+            Form::FunctionClause(f) => Some(&f.pp_ctx),
+            Form::PPDirective(f) => match f {
+                PPDirective::Define(define_id) => Some(&form_list[*define_id].pp_ctx),
+                PPDirective::Undef { pp_ctx, .. } => Some(pp_ctx),
+                PPDirective::Include(include_id) => match &form_list[*include_id] {
+                    IncludeAttribute::Include { pp_ctx, .. } => Some(pp_ctx),
+                    IncludeAttribute::IncludeLib { pp_ctx, .. } => Some(pp_ctx),
+                },
+            },
+            Form::PPCondition(_) => None, // PP conditions are delimiters, always active
+            Form::Export(f) => Some(&f.pp_ctx),
+            Form::Import(f) => Some(&f.pp_ctx),
+            Form::TypeExport(f) => Some(&f.pp_ctx),
+            Form::Behaviour(f) => Some(&f.pp_ctx),
+            Form::TypeAlias(f) => match f {
+                TypeAlias::Regular { pp_ctx, .. } => Some(pp_ctx),
+                TypeAlias::Nominal { pp_ctx, .. } => Some(pp_ctx),
+                TypeAlias::Opaque { pp_ctx, .. } => Some(pp_ctx),
+            },
+            Form::Spec(f) => Some(&f.pp_ctx),
+            Form::Callback(f) => Some(&f.pp_ctx),
+            Form::OptionalCallbacks(f) => Some(&f.pp_ctx),
+            Form::Record(f) => Some(&f.pp_ctx),
+            Form::Attribute(f) => Some(&f.pp_ctx),
+            Form::ModuleDocAttribute(f) => Some(&f.pp_ctx),
+            Form::ModuleDocMetadataAttribute(f) => Some(&f.pp_ctx),
+            Form::DocAttribute(f) => Some(&f.pp_ctx),
+            Form::DocMetadataAttribute(f) => Some(&f.pp_ctx),
+            Form::CompileOption(f) => Some(&f.pp_ctx),
+            Form::DeprecatedAttribute(f) => match f {
+                DeprecatedAttribute::Module { pp_ctx, .. } => Some(pp_ctx),
+                DeprecatedAttribute::Fa { pp_ctx, .. } => Some(pp_ctx),
+                DeprecatedAttribute::Fas { pp_ctx, .. } => Some(pp_ctx),
+            },
+            Form::FeatureAttribute(f) => Some(&f.pp_ctx),
+            Form::SsrDefinition(f) => Some(&f.pp_ctx),
+        }
+    }
+}
+
 pub type ModuleAttributeId = Idx<ModuleAttribute>;
 pub type IncludeAttributeId = Idx<IncludeAttribute>;
 pub type FunctionClauseId = Idx<FunctionClause>;
@@ -405,6 +494,36 @@ pub type FaEntryId = Idx<FaEntry>;
 pub type DeprecatedAttributeId = Idx<DeprecatedAttribute>;
 pub type FeatureAttributeId = Idx<FeatureAttribute>;
 pub type SsrDefinitionId = Idx<SsrDefinition>;
+pub type ConditionEnvId = Idx<ConditionEnv>;
+
+/// Macro environment at a point in the file (delta-based)
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
+pub struct ConditionEnv {
+    pub parent: Option<ConditionEnvId>,
+    /// Macros defined since parent
+    pub defines_delta: Vec<Name>,
+    /// Macros undefined since parent
+    pub undefs_delta: Vec<Name>,
+    /// The preprocessor directive that caused this ConditionEnv to be created
+    pub directive: Option<PPDirectiveId>,
+    /// If the directive is `-include`, or `-include_lib` the resolved include.
+    /// This is filled in after the form list is created.
+    pub resolved_include: Option<FileId>,
+}
+
+/// Replaces Option<PPConditionId> in form structs
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct FormPPContext {
+    pub condition: Option<PPConditionId>,
+    pub env: ConditionEnvId,
+}
+
+impl FormPPContext {
+    /// Backward compatibility helper
+    pub fn cond(&self) -> Option<PPConditionId> {
+        self.condition
+    }
+}
 
 /// Result of evaluating a preprocessor condition
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -626,7 +745,7 @@ impl Index<SsrDefinitionId> for FormList {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ModuleAttribute {
     pub name: Name,
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::ModuleAttribute>,
 }
 
@@ -635,12 +754,12 @@ pub struct ModuleAttribute {
 pub enum IncludeAttribute {
     Include {
         path: SmolStr,
-        pp_ctx: Option<PPConditionId>,
+        pp_ctx: FormPPContext,
         form_id: FormId<ast::PpInclude>,
     },
     IncludeLib {
         path: SmolStr,
-        pp_ctx: Option<PPConditionId>,
+        pp_ctx: FormPPContext,
         form_id: FormId<ast::PpIncludeLib>,
     },
 }
@@ -657,6 +776,13 @@ impl IncludeAttribute {
         match self {
             IncludeAttribute::Include { path, .. } => path,
             IncludeAttribute::IncludeLib { path, .. } => path,
+        }
+    }
+
+    pub fn pp_ctx(&self) -> &FormPPContext {
+        match self {
+            IncludeAttribute::Include { pp_ctx, .. } => pp_ctx,
+            IncludeAttribute::IncludeLib { pp_ctx, .. } => pp_ctx,
         }
     }
 
@@ -686,17 +812,17 @@ impl IncludeAttribute {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum DeprecatedAttribute {
     Module {
-        pp_ctx: Option<PPConditionId>,
+        pp_ctx: FormPPContext,
         form_id: FormId<ast::DeprecatedAttribute>,
     },
     Fa {
         fa: DeprecatedFa,
-        pp_ctx: Option<PPConditionId>,
+        pp_ctx: FormPPContext,
         form_id: FormId<ast::DeprecatedAttribute>,
     },
     Fas {
         fas: Vec<DeprecatedFa>,
-        pp_ctx: Option<PPConditionId>,
+        pp_ctx: FormPPContext,
         form_id: FormId<ast::DeprecatedAttribute>,
     },
 }
@@ -755,7 +881,7 @@ pub struct FunctionClause {
     pub name: NameArity,
     pub param_names: Vec<ParamName>,
     pub is_macro: bool,
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::FunDecl>,
     pub separator: Option<(ast::ClauseSeparator, TextRange)>,
 }
@@ -768,7 +894,7 @@ pub enum PPDirective {
     Define(DefineId),
     Undef {
         name: Name,
-        pp_ctx: Option<PPConditionId>,
+        pp_ctx: FormPPContext,
         form_id: FormId<ast::PpUndef>,
     },
     Include(IncludeAttributeId),
@@ -803,7 +929,7 @@ impl PPDirective {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Define {
     pub name: MacroName,
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::PpDefine>,
 }
 
@@ -818,17 +944,17 @@ pub struct Define {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum PPCondition {
     Ifdef {
-        pp_ctx: Option<PPConditionId>,
+        pp_ctx: FormPPContext,
         name: Name,
         form_id: FormId<ast::PpIfdef>,
     },
     Ifndef {
-        pp_ctx: Option<PPConditionId>,
+        pp_ctx: FormPPContext,
         name: Name,
         form_id: FormId<ast::PpIfndef>,
     },
     If {
-        pp_ctx: Option<PPConditionId>,
+        pp_ctx: FormPPContext,
         form_id: FormId<ast::PpIf>,
     },
     Else {
@@ -861,7 +987,7 @@ impl PPCondition {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Export {
     pub entries: IdxRange<FaEntry>,
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::ExportAttribute>,
 }
 
@@ -869,21 +995,21 @@ pub struct Export {
 pub struct Import {
     pub from: Name,
     pub entries: IdxRange<FaEntry>,
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::ImportAttribute>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TypeExport {
     pub entries: IdxRange<FaEntry>,
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::ExportTypeAttribute>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Behaviour {
     pub name: Name,
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::BehaviourAttribute>,
 }
 
@@ -891,17 +1017,17 @@ pub struct Behaviour {
 pub enum TypeAlias {
     Regular {
         name: NameArity,
-        pp_ctx: Option<PPConditionId>,
+        pp_ctx: FormPPContext,
         form_id: FormId<ast::TypeAlias>,
     },
     Nominal {
         name: NameArity,
-        pp_ctx: Option<PPConditionId>,
+        pp_ctx: FormPPContext,
         form_id: FormId<ast::Nominal>,
     },
     Opaque {
         name: NameArity,
-        pp_ctx: Option<PPConditionId>,
+        pp_ctx: FormPPContext,
         form_id: FormId<ast::Opaque>,
     },
 }
@@ -927,21 +1053,21 @@ impl TypeAlias {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Spec {
     pub name: NameArity,
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::Spec>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Callback {
     pub name: NameArity,
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::Callback>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct OptionalCallbacks {
     pub entries: IdxRange<FaEntry>,
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::OptionalCallbacksAttribute>,
 }
 
@@ -949,19 +1075,19 @@ pub struct OptionalCallbacks {
 pub struct Record {
     pub name: Name,
     pub fields: IdxRange<RecordField>,
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::RecordDecl>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CompileOption {
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::CompileOptionsAttribute>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SsrDefinition {
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::SsrDefinition>,
 }
 
@@ -971,7 +1097,7 @@ pub struct SsrDefinition {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Attribute {
     pub name: Name,
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::WildAttribute>,
 }
 
@@ -989,25 +1115,25 @@ impl Attribute {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ModuleDocAttribute {
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::WildAttribute>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ModuleDocMetadataAttribute {
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::WildAttribute>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DocAttribute {
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::WildAttribute>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DocMetadataAttribute {
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::WildAttribute>,
 }
 
@@ -1015,7 +1141,7 @@ pub struct DocMetadataAttribute {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FeatureAttribute {
-    pub pp_ctx: Option<PPConditionId>,
+    pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::FeatureAttribute>,
 }
 

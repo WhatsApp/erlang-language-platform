@@ -13,6 +13,7 @@ use std::sync::Arc;
 use elp_base_db::FileId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
+use elp_base_db::eetf;
 use elp_base_db::salsa;
 use elp_syntax::ast;
 use elp_types_db::TypedSemantic;
@@ -33,6 +34,7 @@ use crate::InFile;
 use crate::InFileAstPtr;
 use crate::IncludeAttributeId;
 use crate::MacroName;
+use crate::Name;
 use crate::RecordBody;
 use crate::RecordId;
 use crate::ResolvedMacro;
@@ -169,6 +171,9 @@ pub trait DefDatabase:
     // if only local information changed
     #[salsa::invoke(DefMap::def_map_local_query)]
     fn def_map_local(&self, file_id: FileId) -> Arc<DefMap>;
+
+    #[salsa::invoke(file_external_defines_query)]
+    fn file_external_defines(&self, file_id: FileId) -> Arc<Vec<Name>>;
 }
 
 fn function_body(db: &dyn DefDatabase, function_id: InFile<FunctionDefId>) -> Arc<FunctionBody> {
@@ -213,4 +218,36 @@ fn define_body(db: &dyn DefDatabase, define_id: InFile<DefineId>) -> Arc<DefineB
 fn ssr_body(db: &dyn DefDatabase, ssr_source: SsrSource) -> Option<Arc<SsrBody>> {
     db.ssr_body_with_source(ssr_source)
         .map(|(body, _source)| body)
+}
+
+/// Extract macro names from application data for external defines.
+/// Macros in AppData.macros are stored as eetf::Term and can be:
+/// - An Atom (just the macro name, with implicit value true)
+/// - A Tuple of (Atom key, value) for {MacroName, Value}
+fn file_external_defines_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<Vec<Name>> {
+    let Some(app_data) = db.file_app_data(file_id) else {
+        return Arc::new(Vec::new());
+    };
+
+    let names: Vec<Name> = app_data
+        .macros
+        .iter()
+        .filter_map(|term| {
+            match term {
+                // Just an atom means -D<NAME>
+                eetf::Term::Atom(atom) => Some(Name::from_erlang_service(&atom.name)),
+                // A tuple {Name, Value} means -D<NAME>=<VALUE>
+                eetf::Term::Tuple(tuple) => {
+                    if let Some(eetf::Term::Atom(key)) = tuple.elements.first() {
+                        Some(Name::from_erlang_service(&key.name))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            }
+        })
+        .collect();
+
+    Arc::new(names)
 }

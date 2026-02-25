@@ -18,6 +18,7 @@ use la_arena::RawIdx;
 use super::DocAttribute;
 use super::DocMetadataAttribute;
 use super::FeatureAttribute;
+use super::FormPPContext;
 use super::ModuleDocAttribute;
 use super::ModuleDocMetadataAttribute;
 use super::SsrDefinition;
@@ -237,28 +238,28 @@ impl Printer<'_> {
 
     fn print_export(&mut self, export: &Export) -> fmt::Result {
         write!(self, "-export(")?;
-        self.print_entries(&export.entries, export.pp_ctx)
+        self.print_entries(&export.entries, &export.pp_ctx)
     }
 
     fn print_import(&mut self, import: &Import) -> fmt::Result {
         write!(self, "-import({}, ", import.from)?;
-        self.print_entries(&import.entries, import.pp_ctx)
+        self.print_entries(&import.entries, &import.pp_ctx)
     }
 
     fn print_type_export(&mut self, export: &TypeExport) -> fmt::Result {
         write!(self, "-export_type(")?;
-        self.print_entries(&export.entries, export.pp_ctx)
+        self.print_entries(&export.entries, &export.pp_ctx)
     }
 
     fn print_entries(
         &mut self,
         entries: &IdxRange<FaEntry>,
-        pp_ctx: Option<PPConditionId>,
+        pp_ctx: &FormPPContext,
     ) -> fmt::Result {
         if entries.is_empty() {
-            writeln!(self, "[]). %% cond: {:?}", raw_cond(&pp_ctx))
+            writeln!(self, "[]). %% cond: {:?}", raw_cond(pp_ctx))
         } else {
-            writeln!(self, "[ %% cond: {:?}", raw_cond(&pp_ctx))?;
+            writeln!(self, "[ %% cond: {:?}", raw_cond(pp_ctx))?;
             let mut sep = "";
             for entry_id in entries.clone() {
                 write!(self, "{}    {}", sep, self.forms[entry_id].name)?;
@@ -278,7 +279,7 @@ impl Printer<'_> {
     }
 
     fn print_type_alias(&mut self, alias: &TypeAlias) -> fmt::Result {
-        let (attr, name, cond) = match alias {
+        let (attr, name, pp_ctx) = match alias {
             TypeAlias::Regular {
                 name,
                 pp_ctx,
@@ -304,13 +305,13 @@ impl Printer<'_> {
             attr,
             name,
             args,
-            raw_cond(cond)
+            raw_cond(pp_ctx)
         )
     }
 
     fn print_optional_callbacks(&mut self, cbs: &OptionalCallbacks) -> fmt::Result {
         write!(self, "-optional_callbacks(")?;
-        self.print_entries(&cbs.entries, cbs.pp_ctx)
+        self.print_entries(&cbs.entries, &cbs.pp_ctx)
     }
 
     fn print_spec(&mut self, spec: &Spec) -> fmt::Result {
@@ -496,8 +497,8 @@ impl fmt::Display for BlankArgs {
     }
 }
 
-fn raw_cond(pp_ctx: &Option<PPConditionId>) -> Option<RawIdx> {
-    pp_ctx.map(|pp_ctx| pp_ctx.into_raw())
+fn raw_cond(pp_ctx: &FormPPContext) -> Option<RawIdx> {
+    pp_ctx.cond().map(|cond| cond.into_raw())
 }
 
 impl fmt::Write for Printer<'_> {

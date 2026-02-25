@@ -252,6 +252,7 @@ pub mod known {
         behaviour_info,
         behavior_info,
         client,
+        defined,
         dialyzer,
         erlang,
         error,
