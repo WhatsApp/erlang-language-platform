@@ -117,6 +117,7 @@ mod inefficient_enumerate;
 mod inefficient_flatlength;
 mod inefficient_last;
 mod inefficient_list_empty_check;
+mod inline_nested_list_comprehension;
 mod invalid_pp_condition;
 mod issue_in_included_file;
 mod lists_map_to_comprehension;
@@ -1758,6 +1759,7 @@ const SSR_PATTERN_LINTERS: &[&dyn SsrPatternsDiagnostics] = &[
     &map_insertion_to_syntax::MAP_UPDATE_LINTER,
     &lists_map_to_comprehension::LINTER,
     &no_and_or::LINTER,
+    &inline_nested_list_comprehension::LINTER,
 ];
 
 /// Generic linters
