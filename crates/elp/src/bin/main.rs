@@ -1798,16 +1798,16 @@ mod tests {
     #[test]
     fn lint_reports_bxl_project_error() {
         if cfg!(feature = "buck") {
-            simple_snapshot_expect_stderror_impl(
-                args_vec!["lint",],
-                "buck_bad_config",
-                // @fb-only: resource_file!("buck_bad_config/bxl_error_message.stdout"),
-                resource_file!("buck_bad_config/bxl_error_message_oss.stdout"), // @oss-only
-                true,
-                None,
-                true,
-                true,
-            );
+            SnapshotSettings::default()
+                .buck(true)
+                .normalise_urls()
+                .first_line_only()
+                .run(
+                    args_vec!["lint",],
+                    "buck_bad_config",
+                    // @fb-only: resource_file!("buck_bad_config/bxl_error_message.stdout"),
+                                                                                resource_file!("buck_bad_config/bxl_error_message_oss.stdout"), // @oss-only
+                );
         }
     }
 
@@ -2720,6 +2720,57 @@ mod tests {
         }
     }
 
+    #[derive(Default)]
+    struct SnapshotSettings<'a> {
+        buck: bool,
+        file: Option<&'a str>,
+        normalise_urls: bool,
+        first_line_only: bool,
+    }
+
+    impl<'a> SnapshotSettings<'a> {
+        fn buck(mut self, buck: bool) -> Self {
+            self.buck = buck;
+            self
+        }
+
+        fn file(mut self, file: &'a str) -> Self {
+            self.file = Some(file);
+            self
+        }
+
+        fn normalise_urls(mut self) -> Self {
+            self.normalise_urls = true;
+            self
+        }
+
+        fn first_line_only(mut self) -> Self {
+            self.first_line_only = true;
+            self
+        }
+
+        fn run(&self, args: Vec<OsString>, project: &str, expected: ExpectFile) {
+            if !self.buck || cfg!(feature = "buck") {
+                let (mut args, path) = add_project(args, project, self.file, None);
+                if !self.buck {
+                    args.push("--rebar".into());
+                }
+                let (stdout, stderr, code) = elp(args);
+                assert_eq!(
+                    code, 101,
+                    "Expected exit code 101, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
+                );
+                assert_normalised_file(
+                    expected,
+                    &stderr,
+                    path,
+                    self.normalise_urls,
+                    self.first_line_only,
+                );
+            }
+        }
+    }
+
     fn simple_snapshot_expect_stderror(
         args: Vec<OsString>,
         project: &str,
@@ -2728,39 +2779,14 @@ mod tests {
         file: Option<&str>,
         normalise_urls: bool,
     ) {
-        simple_snapshot_expect_stderror_impl(
-            args,
-            project,
-            expected,
-            buck,
-            file,
-            normalise_urls,
-            false,
-        )
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn simple_snapshot_expect_stderror_impl(
-        args: Vec<OsString>,
-        project: &str,
-        expected: ExpectFile,
-        buck: bool,
-        file: Option<&str>,
-        normalise_urls: bool,
-        first_line_only: bool,
-    ) {
-        if !buck || cfg!(feature = "buck") {
-            let (mut args, path) = add_project(args, project, file, None);
-            if !buck {
-                args.push("--rebar".into());
-            }
-            let (stdout, stderr, code) = elp(args);
-            assert_eq!(
-                code, 101,
-                "Expected exit code 101, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
-            );
-            assert_normalised_file(expected, &stderr, path, normalise_urls, first_line_only);
+        let mut settings = SnapshotSettings::default().buck(buck);
+        if let Some(f) = file {
+            settings = settings.file(f);
         }
+        if normalise_urls {
+            settings = settings.normalise_urls();
+        }
+        settings.run(args, project, expected);
     }
 
     #[track_caller]
