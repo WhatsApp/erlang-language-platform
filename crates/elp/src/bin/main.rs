@@ -1807,8 +1807,8 @@ mod tests {
                 .run(
                     args_vec!["lint",],
                     "buck_bad_config",
+                    resource_file!("buck_bad_config/bxl_error_message_oss.stdout"), // @oss-only
                     // @fb-only: resource_file!("buck_bad_config/bxl_error_message.stdout"),
-                                                                                resource_file!("buck_bad_config/bxl_error_message_oss.stdout"), // @oss-only
                 );
         }
     }
