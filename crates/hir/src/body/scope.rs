@@ -362,9 +362,14 @@ impl ExprScopes {
         params: &[PatId],
         vt: &mut VarTable,
     ) {
+        // Function parameters always create new bindings in the current scope,
+        // even if they shadow variables from outer scopes. Here, we ensure that variable
+        // references inside the fun resolve to the parameter binding in the head of the fun
+        // clause, not the binding from the outer scope.
+        // src: https://www.erlang.org/doc/system/funs.html#variable-bindings-within-a-fun
         params
             .iter()
-            .for_each(|pat| self.add_bindings(body, scope, *pat, vt, AddBinding::IfUnused));
+            .for_each(|pat| self.add_bindings(body, scope, *pat, vt, AddBinding::Always));
     }
 }
 
@@ -1190,6 +1195,24 @@ mod tests {
                 (X = 1) orelse (~ + X).
             ",
             &["X"],
+        );
+    }
+
+    #[test]
+    fn test_fun_param_shadows_used_outer_var() {
+        // When an outer variable X has been bound outside the fun, the
+        // fun parameter X should still properly shadow it. Previously,
+        // there was a bug where AddBinding::IfUnused would skip adding the
+        // fun parameter if the outer variable was already marked as "used"
+        // in the VarTable.
+        // The scope chain shows the fun's X first, then the comprehension's X,
+        // plus List from the function parameter.
+        do_check(
+            r"
+            f(List) ->
+                [foo(X, fun(X) -> ~ + X end) || X <- List].
+            ",
+            &["X", "X", "List"],
         );
     }
 }
