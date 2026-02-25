@@ -483,7 +483,12 @@ impl ToDef for ast::MacroName {
 
     fn to_def(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Def> {
         let form_list = sema.form_list(ast.file_id);
-        let ctx = MacroExpCtx::new(form_list.data(), sema.db);
+        // Use condition-aware resolution only when new_ifdef is enabled
+        let ctx = if sema.db.new_ifdef_enabled() {
+            MacroExpCtx::new_with_condition_eval(&form_list, sema.db, ast.file_id)
+        } else {
+            MacroExpCtx::new(form_list.data(), sema.db)
+        };
         let defines = ctx.find_defines_by_name(ast.value);
         let file = File {
             file_id: ast.file_id,

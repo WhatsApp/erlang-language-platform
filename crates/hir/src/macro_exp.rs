@@ -15,6 +15,7 @@ use elp_syntax::ast;
 
 use crate::Define;
 use crate::DefineId;
+use crate::FormList;
 use crate::InFile;
 use crate::MacroEnvironment;
 use crate::MacroName;
@@ -24,6 +25,7 @@ use crate::PPDirective;
 use crate::body::SSR_SOURCE_FILE_ID;
 use crate::db::DefDatabase;
 use crate::form_list::FormListData;
+use crate::form_list::PPConditionResult;
 use crate::known;
 use crate::name::AsName;
 
@@ -180,7 +182,6 @@ pub(crate) fn recover_cycle(
     MacroResolution::Unresolved
 }
 
-#[allow(unused)] // It is used further up the stack
 pub fn project_macro_environment_query(
     db: &dyn DefDatabase,
     file_id: FileId,
@@ -205,14 +206,36 @@ pub fn project_macro_environment_query(
 }
 
 pub struct MacroExpCtx<'a> {
-    #[allow(unused)] // It is used further up the stack
     db: &'a dyn DefDatabase,
     form_list: &'a FormListData,
+    /// Optional reference to the full FormList for condition evaluation.
+    /// Only available after form list construction is complete.
+    form_list_for_conditions: Option<&'a FormList>,
+    /// File ID for condition evaluation with database access.
+    file_id: Option<FileId>,
 }
 
 impl<'a> MacroExpCtx<'a> {
     pub(crate) fn new(form_list: &'a FormListData, db: &'a dyn DefDatabase) -> Self {
-        MacroExpCtx { form_list, db }
+        MacroExpCtx {
+            form_list,
+            db,
+            form_list_for_conditions: None,
+            file_id: None,
+        }
+    }
+
+    pub(crate) fn new_with_condition_eval(
+        form_list: &'a FormList,
+        db: &'a dyn DefDatabase,
+        file_id: FileId,
+    ) -> Self {
+        MacroExpCtx {
+            form_list: form_list.data(),
+            db,
+            form_list_for_conditions: Some(form_list),
+            file_id: Some(file_id),
+        }
     }
 
     pub fn expand_atom(
@@ -258,19 +281,34 @@ impl<'a> MacroExpCtx<'a> {
         let target = macro_name(macro_call)?;
 
         for (_idx, directive) in self.form_list.pp_directives.iter().rev() {
-            // TODO: evaluate conditions
             match directive {
                 PPDirective::Define(idx) => {
                     let define = &self.form_list.defines[*idx];
+                    // Skip inactive defines when condition evaluation is available
+                    if let (Some(form_list), Some(file_id)) =
+                        (self.form_list_for_conditions, self.file_id)
+                        && form_list.is_form_active(self.db, file_id, &define.pp_ctx, None)
+                            == PPConditionResult::Inactive
+                    {
+                        continue;
+                    }
                     if define.name == target {
                         return Some(define);
                     }
                 }
                 PPDirective::Undef {
                     name,
-                    pp_ctx: _,
+                    pp_ctx,
                     form_id: _,
                 } if name == target.name() => {
+                    // Skip inactive undefs when condition evaluation is available
+                    if let (Some(form_list), Some(file_id)) =
+                        (self.form_list_for_conditions, self.file_id)
+                        && form_list.is_form_active(self.db, file_id, pp_ctx, None)
+                            == PPConditionResult::Inactive
+                    {
+                        continue;
+                    }
                     return None;
                 }
                 PPDirective::Undef { .. } => {}
@@ -288,10 +326,17 @@ impl<'a> MacroExpCtx<'a> {
         let mut defines = vec![];
 
         for (_idx, directive) in self.form_list.pp_directives.iter().rev() {
-            // TODO: evaluate conditions
             match directive {
                 PPDirective::Define(idx) => {
                     let define = &self.form_list.defines[*idx];
+                    // Skip inactive defines when condition evaluation is available
+                    if let (Some(form_list), Some(file_id)) =
+                        (self.form_list_for_conditions, self.file_id)
+                        && form_list.is_form_active(self.db, file_id, &define.pp_ctx, None)
+                            == PPConditionResult::Inactive
+                    {
+                        continue;
+                    }
                     if define.name.name() == &target {
                         defines.push(define);
                     }
@@ -394,6 +439,73 @@ mod tests {
         };
 
         assert_eq_expected!(expected_range, found_range);
+    }
+
+    /// Like `check_user`, but uses condition-aware macro resolution via
+    /// `MacroExpCtx::new_with_condition_eval`. This tests that inactive
+    /// preprocessor branches are properly skipped during resolution.
+    #[track_caller]
+    fn check_user_condition_aware(fixture: &str) {
+        let (db, fixture) = TestDB::with_fixture(fixture);
+        let position = fixture.position();
+        let annos = fixture.annotations();
+        assert_eq!(annos.len(), 1);
+        let (expected_range, _) = annos[0];
+
+        let parsed = db.parse(position.file_id);
+        assert!(
+            parsed.errors().is_empty(),
+            "test must not contain parse errors, got: {:?}",
+            parsed.errors()
+        );
+
+        let macro_call =
+            algo::find_node_at_offset::<ast::MacroCallExpr>(&parsed.syntax_node(), position.offset)
+                .expect("macro call marked with ~ not found");
+
+        let form_list = db.file_form_list(position.file_id);
+        let ctx = MacroExpCtx::new_with_condition_eval(&form_list, &db, position.file_id);
+        let resolved = ctx
+            .find_define(&macro_call)
+            .expect("failed to resolve macro");
+
+        let source_file = ast::SourceFile::cast(parsed.syntax_node()).unwrap();
+        let found_range = FileRange {
+            file_id: position.file_id,
+            range: resolved.form_id.get(&source_file).syntax().text_range(),
+        };
+
+        assert_eq!(expected_range, found_range);
+    }
+
+    /// Check that condition-aware resolution returns the expected number of defines.
+    #[track_caller]
+    fn check_defines_count_condition_aware(fixture: &str, expected_count: usize) {
+        let (db, fixture) = TestDB::with_fixture(fixture);
+        let position = fixture.position();
+
+        let parsed = db.parse(position.file_id);
+        assert!(
+            parsed.errors().is_empty(),
+            "test must not contain parse errors, got: {:?}",
+            parsed.errors()
+        );
+
+        let macro_name =
+            algo::find_node_at_offset::<ast::MacroName>(&parsed.syntax_node(), position.offset)
+                .expect("macro name marked with ~ not found");
+
+        let form_list = db.file_form_list(position.file_id);
+        let ctx = MacroExpCtx::new_with_condition_eval(&form_list, &db, position.file_id);
+        let defines = ctx.find_defines_by_name(&macro_name);
+
+        assert_eq!(
+            defines.len(),
+            expected_count,
+            "expected {} active defines, got {}",
+            expected_count,
+            defines.len()
+        );
     }
 
     #[test]
@@ -558,6 +670,59 @@ foo(X) ->
      ?~MACRO -> ok
    end.
 "#,
+        );
+    }
+
+    // ============================================================================
+    // Tests for MacroExpCtx::new_with_condition_eval
+    // ============================================================================
+
+    #[test]
+    fn find_define_skips_inactive_define_in_ifdef() {
+        // When a define is inside an inactive ifdef branch,
+        // new_with_condition_eval should skip it
+        check_user_condition_aware(
+            r#"
+   -define(FOO, active).
+%% ^^^^^^^^^^^^^^^^^^^^^
+-ifdef(UNDEFINED).
+-define(FOO, inactive).
+-endif.
+bar() -> ?~FOO.
+"#,
+        );
+    }
+
+    #[test]
+    fn find_define_skips_inactive_undef_in_ifdef() {
+        // When an undef is inside an inactive ifdef branch,
+        // new_with_condition_eval should skip it and still find the define
+        check_user_condition_aware(
+            r#"
+   -define(FOO, still_defined).
+%% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-ifdef(UNDEFINED).
+-undef(FOO).
+-endif.
+bar() -> ?~FOO.
+"#,
+        );
+    }
+
+    #[test]
+    fn find_defines_by_name_skips_inactive_defines() {
+        // find_defines_by_name should only return active defines
+        // We should get 2 active defines (not the inactive one in ifdef)
+        check_defines_count_condition_aware(
+            r#"
+-define(FOO, active1).
+-ifdef(UNDEFINED).
+-define(FOO, inactive).
+-endif.
+-define(FOO(), active2).
+bar() -> ?~FOO.
+"#,
+            2,
         );
     }
 }

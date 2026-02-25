@@ -243,6 +243,34 @@ impl FormList {
     pub fn pretty_print(&self) -> String {
         pretty::print(self)
     }
+
+    /// Evaluates whether a form is active with database access and optional module name override.
+    ///
+    /// The module name override is used to resolve ?FILE, ?MODULE, etc. in included header files
+    /// to the including file's module name rather than failing to resolve.
+    pub fn is_form_active(
+        &self,
+        db: &dyn DefDatabase,
+        file_id: FileId,
+        pp_ctx: &FormPPContext,
+        module_name_override: Option<Name>,
+    ) -> PPConditionResult {
+        match pp_ctx.condition {
+            None => PPConditionResult::Active,
+            Some(cond_id) => {
+                let mut env = (*db.project_macro_environment(file_id)).clone();
+                // Short-circuit: if new_ifdef is disabled, all forms are active
+                if !env.new_ifdef {
+                    return PPConditionResult::Active;
+                }
+                if let Some(name) = module_name_override {
+                    env.set_module_name(name);
+                }
+                let analysis = db.file_preprocessor_analysis(file_id, Arc::new(env));
+                analysis.is_condition_active(cond_id)
+            }
+        }
+    }
 }
 
 #[derive(Debug, Default, Eq, PartialEq)]
