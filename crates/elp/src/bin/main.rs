@@ -2789,6 +2789,40 @@ mod tests {
                 }
             }
         }
+
+        #[track_caller]
+        fn run_expect_patterns(
+            &self,
+            args: Vec<OsString>,
+            project: &str,
+            expected_patterns: &[&str],
+        ) {
+            if !self.buck || cfg!(feature = "buck") {
+                let (mut args, _path) = add_project(args, project, self.file, self.json_config);
+                if !self.buck {
+                    args.push("--rebar".into());
+                }
+                let (stdout, stderr, code) = elp(args);
+                assert_eq!(
+                    code, self.expected_code,
+                    "Expected exit code {}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}",
+                    self.expected_code
+                );
+
+                if self.expected_code == 0 {
+                    assert!(stderr.is_empty(), "Expected empty stderr, got:\n{stderr}");
+                }
+
+                for pattern in expected_patterns {
+                    assert!(
+                        stdout.contains(pattern),
+                        "Expected stdout to contain '{}', but got:\n{}",
+                        pattern,
+                        stdout
+                    );
+                }
+            }
+        }
     }
 
     fn simple_snapshot_expect_stderror(
@@ -2821,30 +2855,13 @@ mod tests {
         file: Option<&str>,
         expected_code: i32,
     ) {
-        if !buck || cfg!(feature = "buck") {
-            let (mut args, _path) = add_project(args, project, file, None);
-            if !buck {
-                args.push("--rebar".into());
-            }
-            let (stdout, stderr, code) = elp(args);
-            assert_eq!(
-                code, expected_code,
-                "Expected exit code {expected_code}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
-            );
-
-            if expected_code == 0 {
-                assert!(stderr.is_empty(), "Expected empty stderr, got:\n{stderr}");
-            }
-
-            for pattern in expected_patterns {
-                assert!(
-                    stdout.contains(pattern),
-                    "Expected stdout to contain '{}', but got:\n{}",
-                    pattern,
-                    stdout
-                );
-            }
+        let mut settings = SnapshotSettings::default()
+            .buck(buck)
+            .expect_code(expected_code);
+        if let Some(f) = file {
+            settings = settings.file(f);
         }
+        settings.run_expect_patterns(args, project, expected_patterns);
     }
 
     #[allow(clippy::too_many_arguments)]
