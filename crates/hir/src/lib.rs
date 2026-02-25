@@ -14,6 +14,7 @@ use elp_syntax::ast;
 
 mod body;
 mod code_complexity;
+pub mod condition_expr;
 pub mod db;
 mod def_map;
 mod diagnostics;
