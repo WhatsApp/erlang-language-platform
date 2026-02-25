@@ -146,6 +146,7 @@ mod nonstandard_integer_formatting;
 mod old_edoc_syntax;
 mod record_tuple_match;
 mod redundant_assignment;
+mod redundant_fun_wrapper;
 mod replace_call;
 mod replace_in_spec;
 mod sets_version_2;
@@ -1788,6 +1789,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &issue_in_included_file::LINTER,
     &mixed_strict_relaxed_generators::LINTER,
     &missing_ms_transform_include::LINTER,
+    &redundant_fun_wrapper::LINTER,
 ];
 
 /// Unified registry for all types of linters

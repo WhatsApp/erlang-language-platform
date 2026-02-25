@@ -208,6 +208,7 @@ mod tests {
 
     use crate::diagnostics::Diagnostic;
     use crate::diagnostics::DiagnosticCode;
+    use crate::diagnostics::DiagnosticsConfig;
     use crate::tests;
 
     fn filter(d: &Diagnostic) -> bool {
@@ -222,7 +223,8 @@ mod tests {
 
     #[track_caller]
     fn check_fix(fixture_before: &str, fixture_after: Expect) {
-        tests::check_fix(fixture_before, fixture_after)
+        let config = DiagnosticsConfig::default().disable(DiagnosticCode::RedundantFunWrapper);
+        tests::check_fix_with_config(config, fixture_before, fixture_after)
     }
 
     #[test]

@@ -240,7 +240,8 @@ mod tests {
         let config = DiagnosticsConfig::default()
             .disable(DiagnosticCode::BinaryStringToSigil)
             .disable(DiagnosticCode::UnspecificInclude)
-            .disable(DiagnosticCode::NoCatch);
+            .disable(DiagnosticCode::NoCatch)
+            .disable(DiagnosticCode::RedundantFunWrapper);
         check_diagnostics_with_config(config, fixture)
     }
 
