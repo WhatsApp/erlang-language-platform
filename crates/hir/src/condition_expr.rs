@@ -16,13 +16,25 @@
 
 use std::collections::BTreeSet;
 
+use elp_base_db::FileId;
+use elp_syntax::ast;
 use elp_syntax::ast::ArithOp;
+use elp_syntax::ast::BinaryOp;
 use elp_syntax::ast::CompOp;
+use elp_syntax::ast::LogicOp;
 use elp_syntax::ast::Ordering;
 use elp_syntax::ast::UnaryOp;
 
+use crate::Body;
+use crate::CallTarget;
+use crate::Expr;
+use crate::ExprId;
+use crate::Literal;
 use crate::MacroName;
 use crate::Name;
+use crate::PPConditionId;
+use crate::body::lower_condition_body;
+use crate::db::DefDatabase;
 use crate::known;
 
 /// A simplified expression type for evaluating `-if`/`-elif` preprocessor conditions.
@@ -497,6 +509,242 @@ fn apply_unary_arithmetic(op: UnaryOp, operand: i128) -> Option<i128> {
 // ============================================================================
 // HIR to ConditionExpr lowering
 // ============================================================================
+
+/// Lower an AST expression to a ConditionExpr with diagnostic tracking and optional module name override.
+///
+/// This function creates a HIR body from the AST expression (with macro expansion),
+/// then converts the HIR to a `ConditionExpr` that can be evaluated. It also tracks
+/// diagnostics for unsupported constructs encountered during lowering.
+///
+/// The `module_name_override` allows specifying a module name to use for ?FILE, ?MODULE, etc.
+/// when evaluating conditions in included header files.
+pub fn lower_condition_expr(
+    db: &dyn DefDatabase,
+    file_id: FileId,
+    cond_id: PPConditionId,
+    ast_expr: &ast::Expr,
+    module_name_override: Option<Name>,
+) -> ConditionLowerResult {
+    // Create a body with macro expansion
+    let (body, _source_map, root_id) =
+        lower_condition_body(db, file_id, cond_id, ast_expr, module_name_override.clone());
+    let mut diagnostics = Vec::new();
+    let expr = hir_to_condition_expr(db, &body, root_id, &mut diagnostics);
+    ConditionLowerResult { expr, diagnostics }
+}
+
+/// Convert a HIR expression to a ConditionExpr, tracking diagnostics for unsupported constructs.
+fn hir_to_condition_expr(
+    db: &dyn DefDatabase,
+    body: &Body,
+    expr_id: ExprId,
+    diagnostics: &mut Vec<ConditionDiagnostic>,
+) -> ConditionExpr {
+    // Access the raw expression without looking through macros/parens
+    // so we can handle MacroCall and Paren explicitly
+    let expr = &body.exprs[expr_id];
+
+    match expr {
+        Expr::Literal(Literal::Atom(atom)) => {
+            let name_str = db.lookup_atom(*atom);
+            match name_str.as_str() {
+                "true" => ConditionExpr::LiteralBool(true),
+                "false" => ConditionExpr::LiteralBool(false),
+                _ => ConditionExpr::Atom(name_str),
+            }
+        }
+
+        Expr::Literal(Literal::Integer(i)) => ConditionExpr::Integer(i.value),
+
+        Expr::Literal(Literal::String(s)) => ConditionExpr::String(s.as_string()),
+
+        Expr::UnaryOp { expr, op } => match op {
+            UnaryOp::Not => ConditionExpr::Not(Box::new(hir_to_condition_expr(
+                db,
+                body,
+                *expr,
+                diagnostics,
+            ))),
+            UnaryOp::Minus | UnaryOp::Plus | UnaryOp::Bnot => ConditionExpr::UnaryArithmetic {
+                op: *op,
+                operand: Box::new(hir_to_condition_expr(db, body, *expr, diagnostics)),
+            },
+        },
+
+        Expr::BinaryOp { lhs, rhs, op } => match op {
+            BinaryOp::LogicOp(LogicOp::And { lazy: true }) => ConditionExpr::AndAlso(
+                Box::new(hir_to_condition_expr(db, body, *lhs, diagnostics)),
+                Box::new(hir_to_condition_expr(db, body, *rhs, diagnostics)),
+            ),
+            BinaryOp::LogicOp(LogicOp::Or { lazy: true }) => ConditionExpr::OrElse(
+                Box::new(hir_to_condition_expr(db, body, *lhs, diagnostics)),
+                Box::new(hir_to_condition_expr(db, body, *rhs, diagnostics)),
+            ),
+            BinaryOp::LogicOp(LogicOp::And { lazy: false }) => {
+                // Non-lazy 'and' - evaluate both sides and combine
+                ConditionExpr::And(
+                    Box::new(hir_to_condition_expr(db, body, *lhs, diagnostics)),
+                    Box::new(hir_to_condition_expr(db, body, *rhs, diagnostics)),
+                )
+            }
+            BinaryOp::LogicOp(LogicOp::Or { lazy: false }) => {
+                // Non-lazy 'or' - evaluate both sides and combine
+                ConditionExpr::Or(
+                    Box::new(hir_to_condition_expr(db, body, *lhs, diagnostics)),
+                    Box::new(hir_to_condition_expr(db, body, *rhs, diagnostics)),
+                )
+            }
+            BinaryOp::LogicOp(LogicOp::Xor) => {
+                // xor is not directly supported, emit a diagnostic
+                diagnostics.push(ConditionDiagnostic::new(
+                    "the 'xor' operator is not supported in preprocessor conditions",
+                ));
+                ConditionExpr::Invalid
+            }
+            BinaryOp::CompOp(comp_op) => ConditionExpr::Compare {
+                op: *comp_op,
+                left: Box::new(hir_to_condition_expr(db, body, *lhs, diagnostics)),
+                right: Box::new(hir_to_condition_expr(db, body, *rhs, diagnostics)),
+            },
+            BinaryOp::ArithOp(arith_op) => ConditionExpr::Arithmetic {
+                op: *arith_op,
+                left: Box::new(hir_to_condition_expr(db, body, *lhs, diagnostics)),
+                right: Box::new(hir_to_condition_expr(db, body, *rhs, diagnostics)),
+            },
+            BinaryOp::ListOp(_) | BinaryOp::Send => {
+                // List operations and send are not supported in conditions
+                diagnostics.push(ConditionDiagnostic::new(
+                    "list operations and send are not supported in preprocessor conditions",
+                ));
+                ConditionExpr::Invalid
+            }
+        },
+
+        Expr::Call { target, args } => {
+            if is_defined_call(db, target, body) {
+                extract_defined_macro_name(db, args, body, diagnostics)
+            } else {
+                // Unsupported function call
+                let call_name = get_call_name(db, target, body);
+                diagnostics.push(ConditionDiagnostic::new(format!(
+                    "function call '{}' is not supported in preprocessor conditions",
+                    call_name
+                )));
+                ConditionExpr::Invalid
+            }
+        }
+
+        Expr::MacroCall {
+            expansion,
+            macro_name,
+            ..
+        } => {
+            // Check if the macro was resolved - for undefined macros, the expansion is Missing.
+            // Note: built-in macros like ?FILE have macro_def=None but still have valid expansions.
+            // TODO: Consider a predefined macro for built-in macros like ?FILE.
+            if matches!(body.exprs[*expansion], Expr::Missing) {
+                // Undefined macro
+                let name = macro_name.as_name(db);
+                diagnostics.push(ConditionDiagnostic::new(format!(
+                    "undefined macro '{}' in preprocessor condition",
+                    name
+                )));
+                ConditionExpr::Invalid
+            } else {
+                // Follow macro expansion
+                hir_to_condition_expr(db, body, *expansion, diagnostics)
+            }
+        }
+
+        Expr::Paren { expr } => hir_to_condition_expr(db, body, *expr, diagnostics),
+
+        // All other expression types are not supported in conditions
+        _ => {
+            diagnostics.push(ConditionDiagnostic::new(
+                "unsupported expression in preprocessor condition",
+            ));
+            ConditionExpr::Invalid
+        }
+    }
+}
+
+/// Get the name of a call for diagnostic messages.
+fn get_call_name(db: &dyn DefDatabase, target: &CallTarget<ExprId>, body: &Body) -> String {
+    match target {
+        CallTarget::Local { name } => {
+            if let Expr::Literal(Literal::Atom(atom)) = &body.exprs[*name] {
+                return db.lookup_atom(*atom).to_string();
+            }
+            if let Expr::MacroCall { expansion, .. } = &body.exprs[*name]
+                && let Expr::Literal(Literal::Atom(atom)) = &body.exprs[*expansion]
+            {
+                return db.lookup_atom(*atom).to_string();
+            }
+            "<unknown>".to_string()
+        }
+        CallTarget::Remote { module, name, .. } => {
+            let module_name = if let Expr::Literal(Literal::Atom(atom)) = &body.exprs[*module] {
+                db.lookup_atom(*atom).to_string()
+            } else {
+                "<unknown>".to_string()
+            };
+            let func_name = if let Expr::Literal(Literal::Atom(atom)) = &body.exprs[*name] {
+                db.lookup_atom(*atom).to_string()
+            } else {
+                "<unknown>".to_string()
+            };
+            format!("{}:{}", module_name, func_name)
+        }
+    }
+}
+
+/// Check if a call target is a call to `defined/1`.
+fn is_defined_call(db: &dyn DefDatabase, target: &CallTarget<ExprId>, body: &Body) -> bool {
+    match target {
+        CallTarget::Local { name } => {
+            // Access the raw expression
+            if let Expr::Literal(Literal::Atom(atom)) = &body.exprs[*name] {
+                return db.lookup_atom(*atom) == known::defined;
+            }
+            // Check through macro expansion
+            if let Expr::MacroCall { expansion, .. } = &body.exprs[*name]
+                && let Expr::Literal(Literal::Atom(atom)) = &body.exprs[*expansion]
+            {
+                return db.lookup_atom(*atom) == known::defined;
+            }
+            false
+        }
+        CallTarget::Remote { .. } => false,
+    }
+}
+
+/// Extract the macro name from a `defined(MACRO)` call with diagnostic tracking.
+fn extract_defined_macro_name(
+    db: &dyn DefDatabase,
+    args: &[ExprId],
+    body: &Body,
+    diagnostics: &mut Vec<ConditionDiagnostic>,
+) -> ConditionExpr {
+    if args.len() != 1 {
+        diagnostics.push(ConditionDiagnostic::new(
+            "defined() requires exactly one argument",
+        ));
+        return ConditionExpr::Invalid;
+    }
+    // This corresponds to the code evaluate_builtins/2 in elp_epp.erl
+    let arg = &body[args[0]];
+    match arg {
+        Expr::Literal(Literal::Atom(atom)) => ConditionExpr::Defined(db.lookup_atom(*atom)),
+        // Handle uppercase identifiers (like FOO) which are parsed as variables
+        Expr::Var(var) => ConditionExpr::Defined(db.lookup_var(*var)),
+        _ => {
+            diagnostics.push(ConditionDiagnostic::new(
+                "defined() argument must be an atom or macro name",
+            ));
+            ConditionExpr::Invalid
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

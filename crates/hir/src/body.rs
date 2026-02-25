@@ -68,7 +68,7 @@ use crate::TypeAliasId;
 use crate::TypeExpr;
 use crate::TypeExprId;
 use crate::Var;
-use crate::body::lower::lower_condition_body;
+pub(crate) use crate::body::lower::lower_condition_body;
 use crate::db::DefDatabase;
 use crate::db::InternDatabase;
 use crate::def_map::FunctionDefId;
