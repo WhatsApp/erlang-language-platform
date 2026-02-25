@@ -130,6 +130,7 @@ mod misspelled_attribute;
 mod mixed_strict_relaxed_generators;
 mod module_mismatch;
 mod mutable_variable;
+mod no_and_or;
 mod no_catch;
 mod no_dialyzer_attribute;
 mod no_error_logger;
@@ -161,7 +162,6 @@ mod unused_function_args;
 mod unused_include;
 mod unused_macro;
 mod unused_record_field;
-mod no_and_or;
 
 pub use elp_ide_db::DiagnosticCode;
 pub use from_config::Lint;
