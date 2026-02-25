@@ -12,6 +12,7 @@ use elp_base_db::fixture::WithFixture;
 use expect_test::Expect;
 use expect_test::expect;
 
+use crate::PPDirective;
 use crate::db::DefDatabase;
 use crate::form_list::PPConditionResult;
 use crate::test_db::TestDB;
@@ -889,4 +890,42 @@ in_inner_else() -> ok.
             result
         );
     }
+}
+
+#[test]
+fn resolved_include_populated() {
+    // Test that ConditionEnv.resolved_include is populated for include directives
+    let (db, files, _) = TestDB::with_many_files(
+        r#"
+//- /src/main.erl
+-module(main).
+-include("header.hrl").
+foo() -> ok.
+//- /src/header.hrl
+-define(X, 1).
+"#,
+    );
+
+    let main_file_id = files[0];
+    let header_file_id = files[1];
+    let form_list = db.file_form_list(main_file_id);
+
+    // Find the condition env that has a directive pointing to an include
+    let mut found_resolved_include = false;
+    for (_env_id, env) in form_list.data().condition_envs.iter() {
+        if let Some(pp_id) = env.directive
+            && let PPDirective::Include(_) = &form_list[pp_id]
+        {
+            assert_eq!(
+                env.resolved_include,
+                Some(header_file_id),
+                "resolved_include should be populated with the header file id"
+            );
+            found_resolved_include = true;
+        }
+    }
+    assert!(
+        found_resolved_include,
+        "should have found a condition env with a resolved include"
+    );
 }

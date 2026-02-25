@@ -9,6 +9,7 @@
  */
 
 use elp_base_db::FileId;
+use elp_base_db::IncludeCtx;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::SmolStr;
@@ -74,6 +75,7 @@ use crate::name::AsName;
 
 pub struct Ctx<'a> {
     db: &'a dyn DefDatabase,
+    file_id: FileId,
     source_file: &'a ast::SourceFile,
     id_map: FormIdMap,
     map_back: FxHashMap<AstPtr<ast::Form>, FormIdx>,
@@ -102,6 +104,7 @@ impl<'a> Ctx<'a> {
 
         Self {
             db,
+            file_id,
             source_file,
             id_map: FormIdMap::from_source_file(source_file),
             map_back: FxHashMap::default(),
@@ -153,6 +156,28 @@ impl<'a> Ctx<'a> {
                 Some(idx)
             })
             .collect();
+
+        // Post-processing: resolve includes in condition_envs
+        if self.new_ifdef_enabled {
+            let include_ctx = IncludeCtx::new(self.db.upcast(), None, self.file_id);
+            let env_ids: Vec<_> = self.data.condition_envs.iter().map(|(id, _)| id).collect();
+            for env_id in env_ids {
+                let directive = self.data.condition_envs[env_id].directive;
+                if let Some(pp_id) = directive
+                    && let PPDirective::Include(include_id) = &self.data.pp_directives[pp_id]
+                {
+                    let resolved_file_id = match &self.data.includes[*include_id] {
+                        IncludeAttribute::Include { path, .. } => include_ctx.resolve_include(path),
+                        IncludeAttribute::IncludeLib { path, .. } => {
+                            include_ctx.resolve_include_lib(path)
+                        }
+                    };
+                    if let Some(resolved_file_id) = resolved_file_id {
+                        self.data.condition_envs[env_id].resolved_include = Some(resolved_file_id);
+                    }
+                }
+            }
+        }
 
         self.data.shrink_to_fit();
         FormList {
