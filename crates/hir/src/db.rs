@@ -57,6 +57,10 @@ pub use crate::intern::InternDatabase;
 pub use crate::intern::InternDatabaseStorage;
 use crate::macro_exp;
 use crate::macro_exp::MacroResolution;
+use crate::preprocessor;
+use crate::preprocessor::ConditionDiagnosticsMap;
+use crate::preprocessor::MacroEnvironment;
+use crate::preprocessor::PreprocessorAnalysis;
 
 #[salsa::query_group(DefDatabaseStorage)]
 pub trait DefDatabase:
@@ -166,6 +170,24 @@ pub trait DefDatabase:
         file_id: FileId,
     ) -> Option<Arc<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>>>;
 
+    #[salsa::invoke(macro_exp::project_macro_environment_query)]
+    fn project_macro_environment(&self, file_id: FileId) -> Arc<MacroEnvironment>;
+
+    #[salsa::cycle(preprocessor::recover_cycle_with_diagnostics)]
+    #[salsa::invoke(preprocessor::file_preprocessor_analysis_with_diagnostics_query)]
+    fn file_preprocessor_analysis_with_diagnostics(
+        &self,
+        file_id: FileId,
+        env: Arc<MacroEnvironment>,
+    ) -> (Arc<PreprocessorAnalysis>, Arc<ConditionDiagnosticsMap>);
+
+    // Projection query - just returns analysis without diagnostics
+    fn file_preprocessor_analysis(
+        &self,
+        file_id: FileId,
+        env: Arc<MacroEnvironment>,
+    ) -> Arc<PreprocessorAnalysis>;
+
     // Helper query to run the recursive resolution algorithm
     #[salsa::cycle(macro_exp::recover_cycle)]
     #[salsa::invoke(macro_exp::local_resolve_query)]
@@ -180,6 +202,8 @@ pub trait DefDatabase:
     #[salsa::invoke(DefMap::def_map_local_query)]
     fn def_map_local(&self, file_id: FileId) -> Arc<DefMap>;
 
+    /// Returns the macro names defined externally (e.g., via `-D` command line flags)
+    /// for a given file, based on its application's configuration.
     #[salsa::invoke(file_external_defines_query)]
     fn file_external_defines(&self, file_id: FileId) -> Arc<Vec<Name>>;
 }
@@ -226,6 +250,15 @@ fn define_body(db: &dyn DefDatabase, define_id: InFile<DefineId>) -> Arc<DefineB
 fn ssr_body(db: &dyn DefDatabase, ssr_source: SsrSource) -> Option<Arc<SsrBody>> {
     db.ssr_body_with_source(ssr_source)
         .map(|(body, _source)| body)
+}
+
+fn file_preprocessor_analysis(
+    db: &dyn DefDatabase,
+    file_id: FileId,
+    env: Arc<MacroEnvironment>,
+) -> Arc<PreprocessorAnalysis> {
+    db.file_preprocessor_analysis_with_diagnostics(file_id, env)
+        .0
 }
 
 /// Extract macro names from application data for external defines.

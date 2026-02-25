@@ -13,13 +13,18 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
+use elp_base_db::FileId;
 use fxhash::FxHashMap;
 
 use crate::DefineId;
+use crate::FormIdx;
 use crate::InFile;
 use crate::MacroName;
 use crate::Name;
 use crate::PPConditionId;
+use crate::condition_expr::ConditionDiagnostic;
+use crate::condition_expr::ConditionExpr;
+use crate::db::DefDatabase;
 use crate::form_list::PPConditionResult;
 
 // ============================================================================
@@ -78,6 +83,9 @@ impl MacroEnvironment {
         env
     }
 }
+
+/// Map from condition ID to its diagnostics
+pub type ConditionDiagnosticsMap = FxHashMap<PPConditionId, Vec<ConditionDiagnostic>>;
 
 /// State during sequential file processing.
 #[derive(Debug, Clone)]
@@ -144,6 +152,14 @@ impl PreprocessorState {
         self.push_condition(condition_met);
     }
 
+    pub fn enter_if(&mut self, expr: &ConditionExpr) {
+        match expr.evaluate(&self.defined_macros) {
+            Some(true) => self.push_condition(true),
+            Some(false) => self.push_condition(false),
+            None => self.push_unknown_condition(),
+        }
+    }
+
     pub fn enter_else(&mut self) {
         if let Some(frame) = self.condition_stack.last_mut() {
             if frame.is_unknown {
@@ -157,6 +173,49 @@ impl PreprocessorState {
                     frame.has_taken_branch = true;
                 }
             }
+        }
+    }
+
+    pub fn enter_elif(&mut self, expr: &ConditionExpr) {
+        // Check if the current frame is already unknown
+        let is_chain_unknown = self
+            .condition_stack
+            .last()
+            .map(|f| f.is_unknown)
+            .unwrap_or(false);
+
+        // Check if we should evaluate this branch based on current stack state
+        let should_evaluate = self
+            .condition_stack
+            .last()
+            .map(|f| f.parent_active && !f.has_taken_branch && !f.is_unknown)
+            .unwrap_or(false);
+
+        if is_chain_unknown {
+            // If the chain is already unknown, this elif is also unknown
+            self.is_active = false;
+            // Keep the frame marked as unknown
+        } else if should_evaluate {
+            match expr.evaluate(&self.defined_macros) {
+                Some(true) => {
+                    self.is_active = true;
+                    if let Some(frame) = self.condition_stack.last_mut() {
+                        frame.has_taken_branch = true;
+                    }
+                }
+                Some(false) => {
+                    self.is_active = false;
+                }
+                None => {
+                    // Condition couldn't be evaluated - mark as unknown
+                    self.is_active = false;
+                    if let Some(frame) = self.condition_stack.last_mut() {
+                        frame.is_unknown = true;
+                    }
+                }
+            }
+        } else {
+            self.is_active = false;
         }
     }
 
@@ -207,8 +266,7 @@ impl PreprocessorState {
         self.is_active = should_take;
     }
 
-    #[allow(dead_code)] // Used in later commits for condition evaluation
-    pub(crate) fn push_unknown_condition(&mut self) {
+    fn push_unknown_condition(&mut self) {
         let parent_active = self.is_active;
 
         self.condition_stack.push(ConditionFrame {
@@ -244,6 +302,189 @@ impl PreprocessorAnalysis {
             .copied()
             .unwrap_or(PPConditionResult::Active)
     }
+}
+
+pub fn file_preprocessor_analysis_with_diagnostics_query(
+    db: &dyn DefDatabase,
+    file_id: FileId,
+    env: Arc<MacroEnvironment>,
+) -> (Arc<PreprocessorAnalysis>, Arc<ConditionDiagnosticsMap>) {
+    let form_list = db.file_form_list(file_id);
+    let mut state = PreprocessorState::new(&env);
+    let mut analysis = PreprocessorAnalysis::new();
+    let mut diagnostics_map = ConditionDiagnosticsMap::default();
+
+    // Process each form in order, updating preprocessor state
+    for &form_idx in form_list.forms() {
+        // Process the form based on its type
+        match form_idx {
+            FormIdx::PPCondition(cond_id) => {
+                let diagnostics =
+                    process_pp_condition(db, file_id, &form_list, cond_id, &mut state);
+                // Record diagnostics if any
+                if !diagnostics.is_empty() {
+                    diagnostics_map.insert(cond_id, diagnostics);
+                }
+                // Record the condition result after processing
+                let result = if state.is_current_unknown() {
+                    PPConditionResult::Unknown
+                } else if state.is_active() {
+                    PPConditionResult::Active
+                } else {
+                    PPConditionResult::Inactive
+                };
+                analysis.condition_results.insert(cond_id, result);
+            }
+            FormIdx::PPDirective(directive_id) => {
+                process_pp_directive(db, file_id, &form_list, directive_id, &mut state, &env);
+            }
+            _ => {
+                // Other forms don't affect preprocessor state
+            }
+        }
+    }
+
+    analysis.final_state = Some(state.snapshot());
+    (Arc::new(analysis), Arc::new(diagnostics_map))
+}
+
+/// Process a preprocessor condition (-ifdef, -ifndef, -if, -elif, -else, -endif).
+/// Returns any diagnostics generated during condition lowering.
+fn process_pp_condition(
+    db: &dyn DefDatabase,
+    file_id: FileId,
+    form_list: &crate::form_list::FormList,
+    cond_id: crate::PPConditionId,
+    state: &mut PreprocessorState,
+) -> Vec<ConditionDiagnostic> {
+    use crate::form_list::PPCondition;
+
+    match &form_list[cond_id] {
+        PPCondition::Ifdef { name, .. } => {
+            let macro_name = MacroName::new(name.clone(), None);
+            state.enter_ifdef(&macro_name);
+            vec![]
+        }
+        PPCondition::Ifndef { name, .. } => {
+            let macro_name = MacroName::new(name.clone(), None);
+            state.enter_ifndef(&macro_name);
+            vec![]
+        }
+        PPCondition::If { form_id, .. } => {
+            // Lower the condition expression and evaluate it
+            let source = db.parse(file_id).tree();
+            let pp_if = form_id.get(&source);
+            if let Some(expr_ast) = pp_if.cond() {
+                let lower_result = crate::condition_expr::lower_condition_expr(
+                    db,
+                    file_id,
+                    cond_id,
+                    &expr_ast,
+                    state.module_name().cloned(),
+                );
+                state.enter_if(&lower_result.expr);
+                lower_result.diagnostics
+            } else {
+                // No condition expression, treat as invalid (push inactive frame)
+                state.enter_if(&crate::condition_expr::ConditionExpr::Invalid);
+                vec![]
+            }
+        }
+        PPCondition::Elif { form_id, .. } => {
+            let source = db.parse(file_id).tree();
+            let pp_elif = form_id.get(&source);
+            if let Some(expr_ast) = pp_elif.cond() {
+                let lower_result = crate::condition_expr::lower_condition_expr(
+                    db,
+                    file_id,
+                    cond_id,
+                    &expr_ast,
+                    state.module_name().cloned(),
+                );
+                state.enter_elif(&lower_result.expr);
+                lower_result.diagnostics
+            } else {
+                state.enter_elif(&crate::condition_expr::ConditionExpr::Invalid);
+                vec![]
+            }
+        }
+        PPCondition::Else { .. } => {
+            state.enter_else();
+            vec![]
+        }
+        PPCondition::Endif { .. } => {
+            state.exit_condition();
+            vec![]
+        }
+    }
+}
+
+/// Process a preprocessor directive (-define, -undef, -include, -include_lib).
+fn process_pp_directive(
+    db: &dyn DefDatabase,
+    file_id: FileId,
+    form_list: &crate::form_list::FormList,
+    directive_id: crate::PPDirectiveId,
+    state: &mut PreprocessorState,
+    env: &MacroEnvironment,
+) {
+    use crate::form_list::PPDirective;
+
+    // Only process directives when in active code
+    if !state.is_active() {
+        return;
+    }
+
+    match &form_list[directive_id] {
+        PPDirective::Define(define_id) => {
+            let define = &form_list[*define_id];
+            let definition = InFile::new(file_id, *define_id);
+            state.define_macro(define.name.clone(), Some(definition));
+        }
+        PPDirective::Undef { name, .. } => {
+            let macro_name = MacroName::new(name.clone(), None);
+            state.undefine_macro(&macro_name);
+        }
+        PPDirective::Include(include_id) => {
+            // Resolve the include and process it recursively
+            if let Some(included_file_id) = db.resolve_include(InFile::new(file_id, *include_id)) {
+                // Guard against cycles
+                if included_file_id != file_id {
+                    // Create an environment for the included file that inherits
+                    // the current module name context
+                    let mut include_env = MacroEnvironment::new();
+                    include_env.predefined = state.defined_macros().clone();
+                    if let Some(module_name) = env.module_name() {
+                        include_env.set_module_name(module_name.clone());
+                    } else if let Some(module_name) = state.module_name() {
+                        include_env.set_module_name(module_name.clone());
+                    }
+
+                    // Recursively analyze the included file
+                    let include_analysis =
+                        db.file_preprocessor_analysis(included_file_id, Arc::new(include_env));
+
+                    // Merge the final state from the included file
+                    if let Some(ref final_state) = include_analysis.final_state {
+                        state.merge_from_include(&final_state.defined);
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub(crate) fn recover_cycle_with_diagnostics(
+    _db: &dyn DefDatabase,
+    _cycle: &[String],
+    _file_id: &FileId,
+    _env: &Arc<MacroEnvironment>,
+) -> (Arc<PreprocessorAnalysis>, Arc<ConditionDiagnosticsMap>) {
+    // On cycle, return empty analysis and diagnostics
+    (
+        Arc::new(PreprocessorAnalysis::new()),
+        Arc::new(ConditionDiagnosticsMap::default()),
+    )
 }
 
 #[cfg(test)]
