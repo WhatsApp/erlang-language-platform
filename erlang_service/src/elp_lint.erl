@@ -282,14 +282,6 @@ format_error({call_to_redefined_bif,{F,A}}) ->
     io_lib:format("ambiguous call of overridden auto-imported BIF ~w/~w~n"
 		  " - use erlang:~w/~w or \"-compile({no_auto_import,[~w/~w]}).\" "
 		  "to resolve name clash", [F,A,F,A,F,A]);
-format_error({call_to_redefined_old_bif,{F,A}}) ->
-    io_lib:format("ambiguous call of overridden pre R14 auto-imported BIF ~w/~w~n"
-		  " - use erlang:~w/~w or \"-compile({no_auto_import,[~w/~w]}).\" "
-		  "to resolve name clash", [F,A,F,A,F,A]);
-format_error({redefine_old_bif_import,{F,A}}) ->
-    io_lib:format("import directive overrides pre R14 auto-imported BIF ~w/~w~n"
-		  " - use \"-compile({no_auto_import,[~w/~w]}).\" "
-		  "to resolve name clash", [F,A,F,A]);
 format_error({redefine_bif_import,{F,A}}) ->
     io_lib:format("import directive overrides auto-imported BIF ~w/~w~n"
 		  " - use \"-compile({no_auto_import,[~w/~w]}).\" to resolve name clash", [F,A,F,A]);
@@ -2496,7 +2488,7 @@ expr({call,Anno,{atom,Aa,F},As}, Vt, St0) ->
 				  %% Issue these warnings/errors even if it's a recursive call
 				  St3 = if
 					    (not AutoSuppressed) andalso IsAutoBif andalso Warn ->
-                        add_error(Anno, {call_to_redefined_old_bif, {F,A}}, St2);
+                        add_warning(Anno, {call_to_redefined_bif, {F,A}}, St2);
 					    true ->
 						St2
 					end,
