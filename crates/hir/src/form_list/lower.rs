@@ -83,11 +83,13 @@ pub struct Ctx<'a> {
     conditions: Vec<PPConditionId>,
     env_stack: Vec<ConditionEnvId>,
     root_env: ConditionEnvId,
+    new_ifdef_enabled: bool,
 }
 
 impl<'a> Ctx<'a> {
     pub fn new(db: &'a dyn DefDatabase, file_id: FileId, source_file: &'a ast::SourceFile) -> Self {
         let mut data = Box::<FormListData>::default();
+        let new_ifdef_enabled = db.new_ifdef_enabled();
 
         // Get external defines from the application configuration
         let external_defines = db.file_external_defines(file_id);
@@ -109,6 +111,7 @@ impl<'a> Ctx<'a> {
             conditions: Vec::new(),
             env_stack: Vec::new(),
             root_env,
+            new_ifdef_enabled,
         }
     }
 
@@ -363,16 +366,18 @@ impl<'a> Ctx<'a> {
             .pp_directives
             .alloc(PPDirective::Include(include_idx));
 
-        // Track include in environment
-        let new_env = ConditionEnv {
-            parent: Some(self.current_env()),
-            defines_delta: Vec::new(),
-            undefs_delta: Vec::new(),
-            directive: Some(idx),
-            resolved_include: None, // Will be resolved during evaluation
-        };
-        let env_id = self.data.condition_envs.alloc(new_env);
-        self.env_stack.push(env_id);
+        if self.new_ifdef_enabled {
+            // Track include in environment
+            let new_env = ConditionEnv {
+                parent: Some(self.current_env()),
+                defines_delta: Vec::new(),
+                undefs_delta: Vec::new(),
+                directive: Some(idx),
+                resolved_include: None, // Will be resolved during evaluation
+            };
+            let env_id = self.data.condition_envs.alloc(new_env);
+            self.env_stack.push(env_id);
+        }
 
         Some(FormIdx::PPDirective(idx))
     }
@@ -399,16 +404,18 @@ impl<'a> Ctx<'a> {
         let form_idx = FormIdx::PPDirective(idx);
         self.define_id_map.insert(define_idx, form_idx);
 
-        // Create new environment with this define added
-        let new_env = ConditionEnv {
-            parent: Some(self.current_env()),
-            defines_delta: vec![name],
-            undefs_delta: Vec::new(),
-            directive: Some(idx),
-            resolved_include: None,
-        };
-        let env_id = self.data.condition_envs.alloc(new_env);
-        self.env_stack.push(env_id);
+        if self.new_ifdef_enabled {
+            // Create new environment with this define added
+            let new_env = ConditionEnv {
+                parent: Some(self.current_env()),
+                defines_delta: vec![name],
+                undefs_delta: Vec::new(),
+                directive: Some(idx),
+                resolved_include: None,
+            };
+            let env_id = self.data.condition_envs.alloc(new_env);
+            self.env_stack.push(env_id);
+        }
 
         Some(form_idx)
     }
@@ -424,16 +431,18 @@ impl<'a> Ctx<'a> {
         };
         let pp_idx = self.data.pp_directives.alloc(res);
 
-        // Create new environment with this undef added
-        let new_env = ConditionEnv {
-            parent: Some(self.current_env()),
-            defines_delta: Vec::new(),
-            undefs_delta: vec![name],
-            directive: Some(pp_idx),
-            resolved_include: None,
-        };
-        let env_id = self.data.condition_envs.alloc(new_env);
-        self.env_stack.push(env_id);
+        if self.new_ifdef_enabled {
+            // Create new environment with this undef added
+            let new_env = ConditionEnv {
+                parent: Some(self.current_env()),
+                defines_delta: Vec::new(),
+                undefs_delta: vec![name],
+                directive: Some(pp_idx),
+                resolved_include: None,
+            };
+            let env_id = self.data.condition_envs.alloc(new_env);
+            self.env_stack.push(env_id);
+        }
 
         Some(FormIdx::PPDirective(pp_idx))
     }

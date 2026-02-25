@@ -8,12 +8,15 @@
  * above-listed licenses.
  */
 
+use std::sync::Arc;
+
 use elp_base_db::FileId;
 use elp_syntax::ast;
 
 use crate::Define;
 use crate::DefineId;
 use crate::InFile;
+use crate::MacroEnvironment;
 use crate::MacroName;
 use crate::ModuleAttribute;
 use crate::Name;
@@ -175,6 +178,30 @@ pub(crate) fn recover_cycle(
     _name: &MacroName,
 ) -> MacroResolution {
     MacroResolution::Unresolved
+}
+
+#[allow(unused)] // It is used further up the stack
+pub fn project_macro_environment_query(
+    db: &dyn DefDatabase,
+    file_id: FileId,
+) -> Arc<MacroEnvironment> {
+    let mut env = MacroEnvironment::new();
+
+    // Set new_ifdef from database configuration
+    env.set_new_ifdef(db.new_ifdef_enabled());
+
+    // Add externally defined macros
+    for name in db.file_external_defines(file_id).iter() {
+        env.define(MacroName::new(name.clone(), None));
+    }
+
+    // Set module name from file's module attribute
+    let form_list = db.file_form_list(file_id);
+    if let Some(module_attr) = form_list.module_attribute() {
+        env.set_module_name(module_attr.name.clone());
+    }
+
+    Arc::new(env)
 }
 
 pub struct MacroExpCtx<'a> {
