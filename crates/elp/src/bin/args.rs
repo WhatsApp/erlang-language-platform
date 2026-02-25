@@ -521,6 +521,9 @@ pub struct Args {
     /// Use buck2 targets for first stage project loading
     pub buck_quick_start: bool,
 
+    /// Enable new ifdef/ifndef condition evaluation (experimental)
+    pub new_ifdef: bool,
+
     /// Use color in output; WHEN is 'always', 'never', or 'auto'
     #[bpaf(
         long("color"),

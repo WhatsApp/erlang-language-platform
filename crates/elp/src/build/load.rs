@@ -55,6 +55,7 @@ pub fn load_project_at(
     include_otp: IncludeOtp,
     eqwalizer_mode: elp_eqwalizer::Mode,
     query_config: &BuckQueryConfig,
+    new_ifdef: bool,
 ) -> Result<LoadResult> {
     let root = fs::canonicalize(root)?;
     let root = AbsPathBuf::assert_utf8(root);
@@ -83,7 +84,7 @@ pub fn load_project_at(
     let project = Project::load(&manifest, &elp_config, query_config, &|_progress| {})?;
     pb.finish();
 
-    load_project(cli, project, include_otp, eqwalizer_mode)
+    load_project(cli, project, include_otp, eqwalizer_mode, new_ifdef)
 }
 
 fn load_project(
@@ -91,6 +92,7 @@ fn load_project(
     project: Project,
     include_otp: IncludeOtp,
     eqwalizer_mode: elp_eqwalizer::Mode,
+    new_ifdef: bool,
 ) -> Result<LoadResult> {
     let project_id = ProjectId(0);
     let (sender, receiver) = unbounded();
@@ -120,6 +122,7 @@ fn load_project(
         &mut line_ending_map,
         &receiver,
         eqwalizer_mode,
+        new_ifdef,
     )?;
     Ok(LoadResult::new(
         analysis_host,
@@ -131,6 +134,7 @@ fn load_project(
     ))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn load_database(
     cli: &dyn Cli,
     project_apps: &ProjectApps,
@@ -139,12 +143,14 @@ fn load_database(
     line_ending_map: &mut FxHashMap<FileId, LineEndings>,
     receiver: &Receiver<loader::Message>,
     eqwalizer_mode: elp_eqwalizer::Mode,
+    new_ifdef: bool,
 ) -> Result<AnalysisHost> {
     let mut analysis_host = AnalysisHost::default();
 
     let db = analysis_host.raw_database_mut();
 
     db.set_eqwalizer_mode(eqwalizer_mode);
+    db.set_new_ifdef_enabled(new_ifdef);
 
     let pb = cli.simple_progress(0, "Loading applications");
 

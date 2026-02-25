@@ -137,38 +137,51 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
     });
     let query_config = args.query_config();
     let use_color = args.should_use_color();
+    let new_ifdef = args.new_ifdef;
     match args.command {
         args::Command::RunServer(_) => run_server(logger)?,
-        args::Command::ParseAll(args) => erlang_service_cli::parse_all(&args, cli, &query_config)?,
-        args::Command::ParseAllElp(args) => elp_parse_cli::parse_all(&args, cli, &query_config)?,
-        args::Command::Eqwalize(args) => eqwalizer_cli::eqwalize_module(&args, cli, &query_config)?,
-        args::Command::EqwalizeAll(args) => eqwalizer_cli::eqwalize_all(&args, cli, &query_config)?,
+        args::Command::ParseAll(args) => {
+            erlang_service_cli::parse_all(&args, cli, &query_config, new_ifdef)?
+        }
+        args::Command::ParseAllElp(args) => {
+            elp_parse_cli::parse_all(&args, cli, &query_config, new_ifdef)?
+        }
+        args::Command::Eqwalize(args) => {
+            eqwalizer_cli::eqwalize_module(&args, cli, &query_config, new_ifdef)?
+        }
+        args::Command::EqwalizeAll(args) => {
+            eqwalizer_cli::eqwalize_all(&args, cli, &query_config, new_ifdef)?
+        }
         args::Command::DialyzeAll(args) => dialyzer_cli::dialyze_all(&args, cli)?,
-        args::Command::EqwalizeApp(args) => eqwalizer_cli::eqwalize_app(&args, cli, &query_config)?,
+        args::Command::EqwalizeApp(args) => {
+            eqwalizer_cli::eqwalize_app(&args, cli, &query_config, new_ifdef)?
+        }
         args::Command::EqwalizeStats(args) => {
-            eqwalizer_cli::eqwalize_stats(&args, cli, &query_config)?
+            eqwalizer_cli::eqwalize_stats(&args, cli, &query_config, new_ifdef)?
         }
         args::Command::EqwalizeTarget(args) => {
-            eqwalizer_cli::eqwalize_target(&args, cli, &query_config)?
+            eqwalizer_cli::eqwalize_target(&args, cli, &query_config, new_ifdef)?
         }
         args::Command::BuildInfo(args) => build_info_cli::save_build_info(args, &query_config)?,
         args::Command::ProjectInfo(args) => build_info_cli::save_project_info(args, &query_config)?,
-        args::Command::Lint(args) => lint_cli::run_lint_command(&args, cli, &query_config)?,
+        args::Command::Lint(args) => {
+            lint_cli::run_lint_command(&args, cli, &query_config, new_ifdef)?
+        }
         args::Command::Ssr(ssr_args) => {
-            ssr_cli::run_ssr_command(&ssr_args, cli, &query_config, use_color)?
+            ssr_cli::run_ssr_command(&ssr_args, cli, &query_config, use_color, new_ifdef)?
         }
         args::Command::GenerateCompletions(args) => {
             let instructions = args::gen_completions(&args.shell);
             writeln!(cli, "#Please run this:\n{instructions}")?
         }
         args::Command::Version(_) => writeln!(cli, "elp {}", elp::version())?,
-        args::Command::Shell(args) => shell::run_shell(&args, cli, &query_config)?,
+        args::Command::Shell(args) => shell::run_shell(&args, cli, &query_config, new_ifdef)?,
         args::Command::Help() => {
             let help = batteries::get_usage(args::args());
             writeln!(cli, "{help}")?
         }
         args::Command::Explain(args) => explain_cli::explain(&args, cli)?,
-        args::Command::Glean(args) => glean::index(&args, cli, &query_config)?,
+        args::Command::Glean(args) => glean::index(&args, cli, &query_config, new_ifdef)?,
         args::Command::ConfigStanza(args) => config_stanza::config_stanza(&args, cli)?,
     }
 
@@ -386,6 +399,7 @@ mod tests {
                 IncludeOtp::Yes,
                 Mode::Cli,
                 &BUCK_QUERY_CONFIG,
+                false,
             )
             .with_context(|| format!("Failed to load project at {str_path}"))
             .unwrap();

@@ -768,8 +768,13 @@ pub struct GleanIndexer {
     module: Option<String>,
 }
 
-pub fn index(args: &Glean, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
-    let (indexer, _loaded) = GleanIndexer::new(args, cli, query_config)?;
+pub fn index(
+    args: &Glean,
+    cli: &mut dyn Cli,
+    query_config: &BuckQueryConfig,
+    new_ifdef: bool,
+) -> Result<()> {
+    let (indexer, _loaded) = GleanIndexer::new(args, cli, query_config, new_ifdef)?;
     let config = IndexConfig { multi: args.multi };
     let (facts, module_index) = indexer.index(config)?;
     write_results(facts, module_index, cli, args)
@@ -815,6 +820,7 @@ impl GleanIndexer {
         args: &Glean,
         cli: &mut dyn Cli,
         query_config: &BuckQueryConfig,
+        new_ifdef: bool,
     ) -> Result<(Self, LoadResult)> {
         let config = DiscoverConfig::buck();
         let loaded = load::load_project_at(
@@ -824,6 +830,7 @@ impl GleanIndexer {
             IncludeOtp::Yes,
             elp_eqwalizer::Mode::Server,
             query_config,
+            new_ifdef,
         )?;
         let analysis = loaded.analysis();
         let indexer = Self {
