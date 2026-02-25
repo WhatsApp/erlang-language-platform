@@ -10,8 +10,21 @@
 
 import {themes as prismThemes} from 'prism-react-renderer';
 import stripMetaOnlyImport from './src/remark/strip-meta-only-import.js';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const {fbContent} = require('docusaurus-plugin-internaldocs-fb/internal');
+
+// Eqwalizer docs paths (relative to website directory)
+const EQWALIZER_DOCS_PATH_INTERNAL = '../../eqwalizer/docs';
+const EQWALIZER_DOCS_PATH_EXTERNAL = '../eqwalizer/docs';
+
+// Check if eqwalizer docs exist
+const eqwalizerDocsPath = fbContent({
+  internal: path.resolve(__dirname, EQWALIZER_DOCS_PATH_INTERNAL),
+  external: path.resolve(__dirname, EQWALIZER_DOCS_PATH_EXTERNAL),
+});
+const eqwalizerDocsExist = fs.existsSync(eqwalizerDocsPath);
 
 // With JSDoc @type annotations, IDEs can provide config autocompletion
 /** @type {import('@docusaurus/types').DocusaurusConfig} */
@@ -49,19 +62,24 @@ const {fbContent} = require('docusaurus-plugin-internaldocs-fb/internal');
   ],
 
   plugins: [
-    [
-      '@docusaurus/plugin-content-docs',
-      {
-        id: 'eqwalizer',
-        path: fbContent({
-          internal: '../../eqwalizer/docs',
-          external: '../eqwalizer/docs',
-        }),
-        routeBasePath: 'docs/eqwalizer',
-        sidebarPath: require.resolve('./sidebarsEqwalizer.js'),
-        editUrl: undefined,
-      },
-    ],
+    // Only include eqwalizer plugin if docs exist
+    ...(eqwalizerDocsExist
+      ? [
+          [
+            '@docusaurus/plugin-content-docs',
+            {
+              id: 'eqwalizer',
+              path: fbContent({
+                internal: EQWALIZER_DOCS_PATH_INTERNAL,
+                external: EQWALIZER_DOCS_PATH_EXTERNAL,
+              }),
+              routeBasePath: 'docs/eqwalizer',
+              sidebarPath: require.resolve('./sidebarsEqwalizer.js'),
+              editUrl: undefined,
+            },
+          ],
+        ]
+      : []),
   ],
 
   markdown: ({
@@ -102,13 +120,17 @@ const {fbContent} = require('docusaurus-plugin-internaldocs-fb/internal');
             position: 'left',
             label: 'Erlang Error Index',
           },
-          {
-            type: 'doc',
-            docsPluginId: 'eqwalizer',
-            docId: 'reference',
-            position: 'left',
-            label: 'eqWAlizer',
-          },
+          ...(eqwalizerDocsExist
+            ? [
+                {
+                  type: 'doc',
+                  docsPluginId: 'eqwalizer',
+                  docId: 'reference',
+                  position: 'left',
+                  label: 'eqWAlizer',
+                },
+              ]
+            : []),
           {
             href: 'https://github.com/whatsapp/erlang-language-platform',
             label: 'GitHub',
@@ -134,10 +156,14 @@ const {fbContent} = require('docusaurus-plugin-internaldocs-fb/internal');
                 label: 'Erlang Error Index',
                 to: '/docs/erlang-error-index',
               },
-              {
-                label: 'eqWAlizer',
-                to: '/docs/eqwalizer/reference',
-              },
+              ...(eqwalizerDocsExist
+                ? [
+                    {
+                      label: 'eqWAlizer',
+                      to: '/docs/eqwalizer/reference',
+                    },
+                  ]
+                : []),
             ],
           },
           {
