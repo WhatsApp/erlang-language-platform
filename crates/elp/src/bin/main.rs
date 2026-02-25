@@ -1800,6 +1800,8 @@ mod tests {
         if cfg!(feature = "buck") {
             SnapshotSettings::default()
                 .buck(true)
+                .expect_error()
+                .check_stderr()
                 .normalise_urls()
                 .first_line_only()
                 .run(
@@ -2611,7 +2613,11 @@ mod tests {
         buck: bool,
         file: Option<&str>,
     ) {
-        simple_snapshot_with_json_config(args, project, expected, buck, file, None, 0)
+        let mut settings = SnapshotSettings::default().buck(buck);
+        if let Some(f) = file {
+            settings = settings.file(f);
+        }
+        settings.run(args, project, expected);
     }
 
     #[track_caller]
@@ -2624,24 +2630,16 @@ mod tests {
         json: Option<&str>,
         expected_code: i32,
     ) {
-        if !buck || cfg!(feature = "buck") {
-            let (mut args, path) = add_project(args, project, file, json);
-            if !buck {
-                args.push("--rebar".into());
-            }
-            let (stdout, stderr, code) = elp(args);
-            assert_eq!(
-                code, expected_code,
-                "failed with unexpected exit code: got {code} not {expected_code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
-            );
-            assert_normalised_file(expected, &stdout, path, false, false);
-            if expected_code == 0 {
-                assert!(
-                    stderr.is_empty(),
-                    "expected stderr to be empty, got:\n{stderr}"
-                )
-            }
+        let mut settings = SnapshotSettings::default()
+            .buck(buck)
+            .expect_code(expected_code);
+        if let Some(f) = file {
+            settings = settings.file(f);
         }
+        if let Some(j) = json {
+            settings = settings.json_config(j);
+        }
+        settings.run(args, project, expected);
     }
 
     fn simple_snapshot_expect_error(
@@ -2651,18 +2649,11 @@ mod tests {
         buck: bool,
         file: Option<&str>,
     ) {
-        if !buck || cfg!(feature = "buck") {
-            let (mut args, path) = add_project(args, project, file, None);
-            if !buck {
-                args.push("--rebar".into());
-            }
-            let (stdout, stderr, code) = elp(args);
-            assert_eq!(
-                code, 101,
-                "Expected exit code 101, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
-            );
-            assert_normalised_file(expected, &stdout, path, false, false);
+        let mut settings = SnapshotSettings::default().buck(buck).expect_error();
+        if let Some(f) = file {
+            settings = settings.file(f);
         }
+        settings.run(args, project, expected);
     }
 
     fn simple_snapshot_expect_error_sorted(
@@ -2672,19 +2663,14 @@ mod tests {
         buck: bool,
         file: Option<&str>,
     ) {
-        if !buck || cfg!(feature = "buck") {
-            let (mut args, path) = add_project(args, project, file, None);
-            if !buck {
-                args.push("--rebar".into());
-            }
-            let (stdout, stderr, code) = elp(args);
-            assert_eq!(
-                code, 101,
-                "Expected exit code 101, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
-            );
-            let sorted_stdout = sort_lines(&stdout);
-            assert_normalised_file(expected, &sorted_stdout, path, false, false);
+        let mut settings = SnapshotSettings::default()
+            .buck(buck)
+            .expect_error()
+            .sorted();
+        if let Some(f) = file {
+            settings = settings.file(f);
         }
+        settings.run(args, project, expected);
     }
 
     fn sort_lines(s: &str) -> String {
@@ -2701,29 +2687,21 @@ mod tests {
         buck: bool,
         file: Option<&str>,
     ) {
-        if !buck || cfg!(feature = "buck") {
-            let (mut args, path) = add_project(args, project, file, None);
-            if !buck {
-                args.push("--rebar".into());
-            }
-            let (stdout, stderr, code) = elp(args);
-            assert_eq!(
-                code, 0,
-                "failed with unexpected exit code: got {code} not 0\nstdout:\n{stdout}\nstderr:\n{stderr}"
-            );
-            let sorted_stdout = sort_lines(&stdout);
-            assert_normalised_file(expected, &sorted_stdout, path, false, false);
-            assert!(
-                stderr.is_empty(),
-                "expected stderr to be empty, got:\n{stderr}"
-            )
+        let mut settings = SnapshotSettings::default().buck(buck).sorted();
+        if let Some(f) = file {
+            settings = settings.file(f);
         }
+        settings.run(args, project, expected);
     }
 
     #[derive(Default)]
     struct SnapshotSettings<'a> {
         buck: bool,
         file: Option<&'a str>,
+        json_config: Option<&'a str>,
+        expected_code: i32,
+        sorted: bool,
+        check_stderr: bool,
         normalise_urls: bool,
         first_line_only: bool,
     }
@@ -2739,6 +2717,31 @@ mod tests {
             self
         }
 
+        fn json_config(mut self, json: &'a str) -> Self {
+            self.json_config = Some(json);
+            self
+        }
+
+        fn expect_code(mut self, code: i32) -> Self {
+            self.expected_code = code;
+            self
+        }
+
+        fn expect_error(mut self) -> Self {
+            self.expected_code = 101;
+            self
+        }
+
+        fn sorted(mut self) -> Self {
+            self.sorted = true;
+            self
+        }
+
+        fn check_stderr(mut self) -> Self {
+            self.check_stderr = true;
+            self
+        }
+
         fn normalise_urls(mut self) -> Self {
             self.normalise_urls = true;
             self
@@ -2749,24 +2752,41 @@ mod tests {
             self
         }
 
+        #[track_caller]
         fn run(&self, args: Vec<OsString>, project: &str, expected: ExpectFile) {
             if !self.buck || cfg!(feature = "buck") {
-                let (mut args, path) = add_project(args, project, self.file, None);
+                let (mut args, path) = add_project(args, project, self.file, self.json_config);
                 if !self.buck {
                     args.push("--rebar".into());
                 }
                 let (stdout, stderr, code) = elp(args);
                 assert_eq!(
-                    code, 101,
-                    "Expected exit code 101, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
+                    code, self.expected_code,
+                    "Expected exit code {}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}",
+                    self.expected_code
                 );
+
+                let output = if self.check_stderr { &stderr } else { &stdout };
+                let output = if self.sorted {
+                    sort_lines(output)
+                } else {
+                    output.to_string()
+                };
+
                 assert_normalised_file(
                     expected,
-                    &stderr,
+                    &output,
                     path,
                     self.normalise_urls,
                     self.first_line_only,
                 );
+
+                if self.expected_code == 0 && !self.check_stderr {
+                    assert!(
+                        stderr.is_empty(),
+                        "expected stderr to be empty, got:\n{stderr}"
+                    );
+                }
             }
         }
     }
@@ -2779,7 +2799,10 @@ mod tests {
         file: Option<&str>,
         normalise_urls: bool,
     ) {
-        let mut settings = SnapshotSettings::default().buck(buck);
+        let mut settings = SnapshotSettings::default()
+            .buck(buck)
+            .expect_error()
+            .check_stderr();
         if let Some(f) = file {
             settings = settings.file(f);
         }
