@@ -182,6 +182,7 @@ pub trait DefDatabase:
     ) -> (Arc<PreprocessorAnalysis>, Arc<ConditionDiagnosticsMap>);
 
     // Projection query - just returns analysis without diagnostics
+    #[salsa::cycle(preprocessor::recover_cycle)]
     fn file_preprocessor_analysis(
         &self,
         file_id: FileId,

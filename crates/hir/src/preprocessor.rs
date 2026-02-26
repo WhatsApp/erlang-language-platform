@@ -350,7 +350,7 @@ pub fn file_preprocessor_analysis_with_diagnostics_query(
 
 /// Process a preprocessor condition (-ifdef, -ifndef, -if, -elif, -else, -endif).
 /// Returns any diagnostics generated during condition lowering.
-fn process_pp_condition(
+pub(crate) fn process_pp_condition(
     db: &dyn DefDatabase,
     file_id: FileId,
     form_list: &crate::form_list::FormList,
@@ -485,6 +485,16 @@ pub(crate) fn recover_cycle_with_diagnostics(
         Arc::new(PreprocessorAnalysis::new()),
         Arc::new(ConditionDiagnosticsMap::default()),
     )
+}
+
+pub(crate) fn recover_cycle(
+    _db: &dyn DefDatabase,
+    _cycle: &[String],
+    _file_id: &FileId,
+    _env: &Arc<MacroEnvironment>,
+) -> Arc<PreprocessorAnalysis> {
+    // On cycle, return empty analysis
+    Arc::new(PreprocessorAnalysis::new())
 }
 
 #[cfg(test)]

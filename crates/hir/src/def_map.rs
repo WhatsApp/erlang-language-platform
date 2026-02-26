@@ -50,6 +50,7 @@ use crate::form_list::DeprecatedDesc;
 use crate::form_list::DeprecatedFa;
 use crate::form_list::ModuleDocAttributeId;
 use crate::form_list::ModuleDocMetadataAttributeId;
+use crate::form_list::PPConditionResult;
 use crate::known;
 use crate::module_data::SpecDef;
 use crate::name::AsName;
@@ -161,6 +162,16 @@ impl DefMap {
 
         let form_list = db.file_form_list(file_id);
         for &form in form_list.forms() {
+            // Skip PPCondition forms — they are delimiters, not content forms
+            if matches!(form, FormIdx::PPCondition(_)) {
+                continue;
+            }
+            if let Some(pp_ctx) = form_list.get(form).pp_ctx(&form_list)
+                && form_list.is_form_active(db, file_id, pp_ctx, None)
+                    == PPConditionResult::Inactive
+            {
+                continue;
+            }
             match form {
                 FormIdx::FunctionClause(idx) => {
                     let function_clause = form_list[idx].clone();
@@ -231,14 +242,20 @@ impl DefMap {
                         .records
                         .insert(record.name.clone(), RecordDef { file, record });
                 }
-                FormIdx::PPDirective(idx) => {
-                    if let PPDirective::Define(define) = &form_list[idx] {
-                        let define = form_list[*define].clone();
+                FormIdx::PPDirective(idx) => match &form_list[idx] {
+                    PPDirective::Define(define_id) => {
+                        let define = form_list[*define_id].clone();
                         def_map
                             .macros
                             .insert(define.name.clone(), DefineDef { file, define });
                     }
-                }
+                    // Undef: the def_map is a flat last-define-wins map;
+                    // undef semantics are handled by file_preprocessor_analysis
+                    // which filters inactive branches before we reach here.
+                    PPDirective::Undef { .. } => {}
+                    // Includes are resolved in def_map_query, not the local query.
+                    PPDirective::Include(_) => {}
+                },
                 FormIdx::CompileOption(idx) => {
                     let option = &form_list[idx];
                     let source = db.parse(file_id);
@@ -347,11 +364,22 @@ impl DefMap {
         let local = db.def_map_local(file_id);
         let form_list = db.file_form_list(file_id);
 
+        // Collect only includes in active preprocessor branches.
+        // Cycle-safe: see skip_import_resolution in lower.rs.
+        let active_includes: Vec<_> = form_list
+            .includes()
+            .filter(|(_id, include)| {
+                form_list.is_form_active(db, file_id, include.pp_ctx(), None)
+                    != PPConditionResult::Inactive
+            })
+            .map(|(id, _include)| id)
+            .collect();
+
         let mut remote = Self::default();
 
-        form_list
-            .includes()
-            .filter_map(|(idx, _)| db.resolve_include(InFile::new(file_id, idx)))
+        active_includes
+            .into_iter()
+            .filter_map(|idx| db.resolve_include(InFile::new(file_id, idx)))
             // guard against naive cycles of headers including themselves
             .filter(|&included_file_id| included_file_id != file_id)
             .map(|included_file_id| (included_file_id, db.def_map(included_file_id)))
@@ -1142,5 +1170,60 @@ foo(X,Y, Z) -> ok.
         let def_map = DefMap::default();
         let mut functions = def_map.get_functions_in_scope();
         assert!(functions.any(|(f, _)| f.name() == "is_atom"))
+    }
+
+    // ============================================================================
+    // Condition Evaluation / Ifdef Filtering Tests
+    // ============================================================================
+
+    #[test]
+    fn ifdef_undefined_function_excluded() {
+        // Function inside ifdef(UNDEFINED) should NOT appear in def_map
+        check_functions(
+            r#"
+-ifdef(UNDEFINED).
+foo() -> ok.
+-endif.
+bar() -> ok.
+"#,
+            expect![[r#"
+                fun bar/0 exported: false
+            "#]],
+        )
+    }
+
+    #[test]
+    fn ifdef_undefined_include_excluded() {
+        // Include inside ifdef(UNDEFINED) should NOT merge header's defs
+        check_functions(
+            r#"
+//- /module.erl
+-ifdef(UNDEFINED).
+-include("header.hrl").
+-endif.
+bar() -> ok.
+//- /header.hrl
+foo() -> ok.
+"#,
+            expect![[r#"
+                fun bar/0 exported: false
+            "#]],
+        )
+    }
+
+    #[test]
+    fn ifdef_defined_function_included() {
+        // Function inside ifdef(X) where X is defined should appear in def_map
+        check_functions(
+            r#"
+-define(X, 1).
+-ifdef(X).
+bar() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                fun bar/0 exported: false
+            "#]],
+        )
     }
 }

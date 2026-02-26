@@ -126,6 +126,13 @@ pub struct Ctx<'a> {
     local_macro_defs: Option<FxHashMap<MacroName, InFile<DefineId>>>,
     // Module name override for ?MODULE etc. when processing included files
     module_name_override: Option<Name>,
+    // When true, skip import resolution (imported_module returns None).
+    // Used in condition expression lowering to break the salsa cycle:
+    // file_preprocessor_analysis -> lower_condition_expr -> lower_condition_body
+    //   -> imported_module -> def_map -> file_preprocessor_analysis
+    // Condition expressions only contain guard expressions, whose BIFs are
+    // resolved via is_erlang_fun, not through the import table.
+    skip_import_resolution: bool,
 }
 
 #[derive(Debug)]
@@ -166,6 +173,7 @@ impl<'a> Ctx<'a> {
             diagnostics: Vec::new(),
             local_macro_defs: None,
             module_name_override: None,
+            skip_import_resolution: false,
         }
     }
 
@@ -1268,6 +1276,9 @@ impl<'a> Ctx<'a> {
     }
 
     fn imported_module(&self, name: Name, arity: ast::Arity) -> Option<Name> {
+        if self.skip_import_resolution {
+            return None;
+        }
         if self.file_id() != SSR_SOURCE_FILE_ID {
             let name_arity = NameArity::new(name, arity? as u32);
             self.db
@@ -3174,6 +3185,8 @@ pub fn lower_condition_body(
 ) -> (Arc<Body>, BodySourceMap, ExprId) {
     let origin = BodyOrigin::Condition { file_id, cond_id };
     let mut ctx = Ctx::new(db, origin);
+    // Break the preprocessor–def_map salsa cycle (see skip_import_resolution field).
+    ctx.skip_import_resolution = true;
     // Set empty local macro defs to enable built-in macro resolution (e.g., ?FILE, ?MODULE).
     // Without this, resolve_macro_name skips built-in macro checks and goes directly to the
     // database query, which fails for built-in macros.
