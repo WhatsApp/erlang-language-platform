@@ -8,109 +8,146 @@
  * above-listed licenses.
  */
 
-use elp_ide_db::elp_base_db::FileId;
-use elp_syntax::ast::AstNode;
-use elp_syntax::ast::ClauseSeparator;
-use hir::Semantic;
-
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use super::make_unexpected_diagnostic;
-use crate::Diagnostic;
-use crate::diagnostics::make_missing_diagnostic;
-
 // Diagnostic: missing separator (W0004)
 //
 // Diagnostic for separators missing in function clauses.
 
 // TODO: combine with head_mismatch?
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: true,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        missing_separator_semantic(diags, sema, file_id);
-    },
-};
+use elp_ide_db::DiagnosticCode;
+use elp_ide_db::elp_base_db::FileId;
+use elp_syntax::ast::AstNode;
+use elp_syntax::ast::ClauseSeparator;
+use hir::Semantic;
 
-fn missing_separator_semantic(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    let def_map = sema.def_map(file_id);
+use crate::Diagnostic;
+use crate::diagnostics::GenericDiagnostics;
+use crate::diagnostics::Linter;
+use crate::diagnostics::Severity;
 
-    def_map.get_functions().for_each(|(_, fun_def)| {
-        let n = fun_def.function_clauses.len();
-        fun_def
-            .function_clauses
-            .iter()
-            .enumerate()
-            .for_each(|(i, fun)| {
-                if i + 1 != n {
-                    match fun.separator {
-                        Some((ClauseSeparator::Missing, range)) => {
-                            diagnostics.push(make_missing_diagnostic(
-                                range,
-                                ";",
-                                "missing_semi".to_string(),
-                            ));
-                        }
+pub(crate) struct MissingSeparatorLinter;
 
-                        Some((ClauseSeparator::Semi, _range)) => {}
-                        Some((ClauseSeparator::Dot, range)) => {
-                            diagnostics.push(make_unexpected_diagnostic(
-                                range,
-                                ".",
-                                "unexpected_dot".to_string(),
-                            ));
-                        }
-                        None => {
-                            let ast_fun = fun.form_id.get_ast(sema.db, file_id);
-                            if let Some(last_tok) = ast_fun.syntax().last_token() {
-                                let range = last_tok.text_range();
-                                diagnostics.push(make_missing_diagnostic(
+impl Linter for MissingSeparatorLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::Missing("missing_separator".to_string())
+    }
+
+    fn description(&self) -> &'static str {
+        "Missing or unexpected separator in function clauses."
+    }
+
+    fn can_be_suppressed(&self) -> bool {
+        false
+    }
+
+    fn should_process_generated_files(&self) -> bool {
+        true
+    }
+}
+
+impl GenericDiagnostics for MissingSeparatorLinter {
+    fn diagnostics(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+        severity: Severity,
+        cli_severity: Severity,
+    ) -> Vec<Diagnostic> {
+        let mut diagnostics = Vec::new();
+        let def_map = sema.def_map(file_id);
+
+        def_map.get_functions().for_each(|(_, fun_def)| {
+            let n = fun_def.function_clauses.len();
+            fun_def
+                .function_clauses
+                .iter()
+                .enumerate()
+                .for_each(|(i, fun)| {
+                    if i + 1 != n {
+                        match fun.separator {
+                            Some((ClauseSeparator::Missing, range)) => {
+                                let d = Diagnostic::new(
+                                    DiagnosticCode::Missing("missing_semi".to_string()),
+                                    "Missing ';'",
                                     range,
-                                    ";",
-                                    "missing_semi".to_string(),
-                                ))
-                            };
+                                )
+                                .with_severity(severity)
+                                .with_cli_severity(cli_severity);
+                                diagnostics.push(d);
+                            }
+                            Some((ClauseSeparator::Semi, _range)) => {}
+                            Some((ClauseSeparator::Dot, range)) => {
+                                let d = Diagnostic::new(
+                                    DiagnosticCode::Unexpected("unexpected_dot".to_string()),
+                                    "Unexpected '.'",
+                                    range,
+                                )
+                                .with_severity(severity)
+                                .with_cli_severity(cli_severity);
+                                diagnostics.push(d);
+                            }
+                            None => {
+                                let ast_fun = fun.form_id.get_ast(sema.db, file_id);
+                                if let Some(last_tok) = ast_fun.syntax().last_token() {
+                                    let range = last_tok.text_range();
+                                    let d = Diagnostic::new(
+                                        DiagnosticCode::Missing("missing_semi".to_string()),
+                                        "Missing ';'",
+                                        range,
+                                    )
+                                    .with_severity(severity)
+                                    .with_cli_severity(cli_severity);
+                                    diagnostics.push(d);
+                                }
+                            }
+                        }
+                    } else {
+                        match fun.separator {
+                            Some((ClauseSeparator::Missing, range)) => {
+                                let d = Diagnostic::new(
+                                    DiagnosticCode::Missing("missing_dot".to_string()),
+                                    "Missing '.'",
+                                    range,
+                                )
+                                .with_severity(severity)
+                                .with_cli_severity(cli_severity);
+                                diagnostics.push(d);
+                            }
+                            Some((ClauseSeparator::Semi, range)) => {
+                                let d = Diagnostic::new(
+                                    DiagnosticCode::Unexpected("unexpected_semi".to_string()),
+                                    "Unexpected ';'",
+                                    range,
+                                )
+                                .with_severity(severity)
+                                .with_cli_severity(cli_severity);
+                                diagnostics.push(d);
+                            }
+                            Some((ClauseSeparator::Dot, _range)) => {}
+                            None => {
+                                let ast_fun = fun.form_id.get_ast(sema.db, file_id);
+                                if let Some(last_tok) = ast_fun.syntax().last_token() {
+                                    let range = last_tok.text_range();
+                                    let d = Diagnostic::new(
+                                        DiagnosticCode::Missing("missing_dot".to_string()),
+                                        "Missing '.'",
+                                        range,
+                                    )
+                                    .with_severity(severity)
+                                    .with_cli_severity(cli_severity);
+                                    diagnostics.push(d);
+                                }
+                            }
                         }
                     }
-                } else {
-                    match fun.separator {
-                        Some((ClauseSeparator::Missing, range)) => {
-                            diagnostics.push(make_missing_diagnostic(
-                                range,
-                                ".",
-                                "missing_dot".to_string(),
-                            ));
-                        }
+                })
+        });
 
-                        Some((ClauseSeparator::Semi, range)) => {
-                            diagnostics.push(make_unexpected_diagnostic(
-                                range,
-                                ";",
-                                "unexpected_semi".to_string(),
-                            ));
-                        }
-                        Some((ClauseSeparator::Dot, _range)) => {}
-                        None => {
-                            let ast_fun = fun.form_id.get_ast(sema.db, file_id);
-                            if let Some(last_tok) = ast_fun.syntax().last_token() {
-                                let range = last_tok.text_range();
-                                diagnostics.push(make_missing_diagnostic(
-                                    range,
-                                    ".",
-                                    "missing_dot".to_string(),
-                                ))
-                            };
-                        }
-                    };
-                }
-            })
-    });
+        diagnostics
+    }
 }
+
+pub(crate) static LINTER: MissingSeparatorLinter = MissingSeparatorLinter;
 
 // To run the tests via cargo
 // cargo test --package elp_ide --lib

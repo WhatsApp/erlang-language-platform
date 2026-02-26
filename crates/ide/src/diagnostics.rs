@@ -1640,7 +1640,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &dependent_header::DESCRIPTOR,
         &deprecated_function::DESCRIPTOR,
         &head_mismatch::DESCRIPTOR_SEMANTIC,
-        &missing_separator::DESCRIPTOR,
         &record_tuple_match::DESCRIPTOR,
     ]
 }
@@ -1790,6 +1789,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &mixed_strict_relaxed_generators::LINTER,
     &missing_ms_transform_include::LINTER,
     &redundant_fun_wrapper::LINTER,
+    &missing_separator::LINTER,
 ];
 
 /// Unified registry for all types of linters
@@ -2209,16 +2209,6 @@ pub(crate) fn make_missing_diagnostic(
 ) -> Diagnostic {
     let message = format!("Missing '{item}'");
     Diagnostic::new(DiagnosticCode::Missing(code), message, range).with_severity(Severity::Warning)
-}
-
-pub(crate) fn make_unexpected_diagnostic(
-    range: TextRange,
-    item: &'static str,
-    code: String,
-) -> Diagnostic {
-    let message = format!("Unexpected '{item}'");
-    Diagnostic::new(DiagnosticCode::Unexpected(code), message, range)
-        .with_severity(Severity::Warning)
 }
 
 /// Deduplicate diagnostics by line start and add ignore fix only to the first diagnostic on each line.
