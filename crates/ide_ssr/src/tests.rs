@@ -1113,8 +1113,6 @@ fn ssr_expr_receive() {
 
 #[test]
 fn ssr_expr_try() {
-    // TODO: CHECK - Expected _@Stack to match ["Stack", "Stack"] (twice) but actual shows ["Stack"] (once)
-    // _@AA matches "1", _@XX matches "2", _@YY matches "YY", _@Stack matches "Stack" twice
     assert_matches(
         r#"ssr:
              try _@AA of
@@ -1145,7 +1143,7 @@ fn ssr_expr_try() {
              end"#,
             &[
                 ("_@AA", &["1"]),
-                ("_@Stack", &["Stack"]),
+                ("_@Stack", &["Stack", "Stack"]),
                 ("_@XX", &["2"]),
                 ("_@YY", &["YY"]),
             ],

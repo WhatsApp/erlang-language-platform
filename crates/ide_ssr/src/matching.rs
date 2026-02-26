@@ -1301,6 +1301,7 @@ impl PatternIterator {
                         cc.guards
                             .iter()
                             .for_each(|g| g.iter().for_each(|e| res.push((*e).into())));
+                        cc.exprs.iter().for_each(|e| res.push((*e).into()));
                     });
                     res.push("after".into());
                     after.iter().for_each(|e| res.push((*e).into()));
