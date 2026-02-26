@@ -312,8 +312,7 @@ impl<'a> MacroExpCtx<'a> {
                     return None;
                 }
                 PPDirective::Undef { .. } => {}
-                // TODO: recurse into includes
-                PPDirective::Include { .. } => return None,
+                PPDirective::Include { .. } => continue,
             }
         }
 
@@ -342,8 +341,7 @@ impl<'a> MacroExpCtx<'a> {
                     }
                 }
                 PPDirective::Undef { .. } => {}
-                // TODO: recurse into includes
-                PPDirective::Include { .. } => break,
+                PPDirective::Include { .. } => continue,
             }
         }
 
@@ -721,6 +719,37 @@ bar() -> ?~FOO.
 -endif.
 -define(FOO(), active2).
 bar() -> ?~FOO.
+"#,
+            2,
+        );
+    }
+
+    #[test]
+    fn find_define_searches_past_include() {
+        // A define before an include should be found by find_define
+        check_user_condition_aware(
+            r#"
+//- /src/main.erl
+   -define(X, 1).
+%% ^^^^^^^^^^^^^^
+-include("h.hrl").
+f() -> ?~X.
+//- /src/h.hrl
+"#,
+        );
+    }
+
+    #[test]
+    fn find_defines_by_name_searches_past_include() {
+        // find_defines_by_name should find defines on both sides of an include
+        check_defines_count_condition_aware(
+            r#"
+//- /src/main.erl
+-define(X, 1).
+-include("h.hrl").
+-define(X, 2).
+bar() -> ?~X.
+//- /src/h.hrl
 "#,
             2,
         );
