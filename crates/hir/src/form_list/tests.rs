@@ -8,10 +8,15 @@
  * above-listed licenses.
  */
 
+use std::sync::Arc;
+
 use elp_base_db::fixture::WithFixture;
 use expect_test::Expect;
 use expect_test::expect;
 
+use crate::MacroEnvironment;
+use crate::MacroName;
+use crate::Name;
 use crate::PPDirective;
 use crate::db::DefDatabase;
 use crate::form_list::PPConditionResult;
@@ -889,6 +894,45 @@ in_inner_else() -> ok.
             name,
             result
         );
+    }
+}
+
+#[test]
+fn include_guard_with_env() {
+    // Header with an include guard pattern.
+    // is_form_active (no GUARD in project env) → Active (first inclusion)
+    // is_form_active_with_env (GUARD predefined) → Inactive (second inclusion)
+    let (db, files, _) = TestDB::with_many_files(
+        r#"
+//- /src/main.erl
+-module(main).
+//- /src/guard.hrl
+-ifndef(GUARD).
+-define(GUARD, 1).
+foo() -> ok.
+-endif.
+"#,
+    );
+
+    let header_file_id = files[1];
+    let form_list = db.file_form_list(header_file_id);
+
+    // First inclusion: GUARD not defined, ifndef is active
+    for (_idx, clause) in form_list.function_clauses() {
+        let result = form_list.is_form_active(&db, header_file_id, &clause.pp_ctx, None);
+        assert_eq!(result, PPConditionResult::Active);
+    }
+
+    // Second inclusion: GUARD predefined in env, ifndef is inactive
+    let mut env = MacroEnvironment::new();
+    env.set_new_ifdef(true);
+    env.define(MacroName::new(Name::from_erlang_service("GUARD"), None));
+    let env = Arc::new(env);
+
+    for (_idx, clause) in form_list.function_clauses() {
+        let result =
+            form_list.is_form_active_with_env(&db, header_file_id, &clause.pp_ctx, env.clone());
+        assert_eq!(result, PPConditionResult::Inactive);
     }
 }
 

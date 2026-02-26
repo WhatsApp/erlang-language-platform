@@ -65,6 +65,7 @@ use la_arena::Idx;
 use la_arena::IdxRange;
 
 use crate::Diagnostic;
+use crate::MacroEnvironment;
 use crate::MacroName;
 use crate::Name;
 use crate::NameArity;
@@ -272,6 +273,30 @@ impl FormList {
                     env.set_module_name(name);
                 }
                 let analysis = db.file_preprocessor_analysis(file_id, Arc::new(env));
+                analysis.is_condition_active(cond_id)
+            }
+        }
+    }
+
+    /// Evaluates whether a form is active using a caller-provided macro environment.
+    ///
+    /// Unlike `is_form_active`, this does not use `project_macro_environment` to build
+    /// the environment. This is needed for included files where the caller has accumulated
+    /// macro state (e.g., include guards defined by a previous inclusion).
+    pub fn is_form_active_with_env(
+        &self,
+        db: &dyn DefDatabase,
+        file_id: FileId,
+        pp_ctx: &FormPPContext,
+        env: Arc<MacroEnvironment>,
+    ) -> PPConditionResult {
+        match pp_ctx.condition {
+            None => PPConditionResult::Active,
+            Some(cond_id) => {
+                if !env.new_ifdef {
+                    return PPConditionResult::Active;
+                }
+                let analysis = db.file_preprocessor_analysis(file_id, env);
                 analysis.is_condition_active(cond_id)
             }
         }
