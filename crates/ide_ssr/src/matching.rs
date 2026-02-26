@@ -1269,11 +1269,9 @@ impl PatternIterator {
                         .iter()
                         .flat_map(cr_clause_iter)
                         .chain(iter::once("after".into()))
-                        .chain(
-                            after
-                                .iter()
-                                .flat_map(|a| a.exprs.iter().map(|e| (*e).into())),
-                        )
+                        .chain(after.iter().flat_map(|a| {
+                            iter::once(a.timeout.into()).chain(a.exprs.iter().map(|e| (*e).into()))
+                        }))
                         .collect(),
                 ),
                 Expr::Try {

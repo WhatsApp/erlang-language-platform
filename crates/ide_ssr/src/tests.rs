@@ -1089,12 +1089,14 @@ fn ssr_expr_receive() {
         "bar(F) -> XX = 1, receive F -> 3 end.",
         &[],
     );
-    // TODO: CHECK - Expected _@MS to match "1000" but actual result shows only _@XX is captured
     // _@XX matches "F", _@MS matches "1000"
     assert_matches(
         "ssr: receive _@XX -> 3 after _@MS -> ok end.",
         "bar(F) -> XX = 1, receive F -> 3 after 1000 -> ok end.",
-        &[("receive F -> 3 after 1000 -> ok end", &[("_@XX", &["F"])])],
+        &[(
+            "receive F -> 3 after 1000 -> ok end",
+            &[("_@MS", &["1000"]), ("_@XX", &["F"])],
+        )],
     );
     // _@XX matches "all_good", _@AA matches "X", _@BB matches "false", _@MS matches "1000"
     assert_matches(
@@ -1105,6 +1107,7 @@ fn ssr_expr_receive() {
             &[
                 ("_@AA", &["X"]),
                 ("_@BB", &["false"]),
+                ("_@MS", &["1000"]),
                 ("_@XX", &["all_good"]),
             ],
         )],
