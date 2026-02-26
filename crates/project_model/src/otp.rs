@@ -89,6 +89,13 @@ pub fn sets_v2_not_default() -> bool {
         .unwrap_or(true)
 }
 
+pub fn supports_binary_encode_hex_with_case() -> bool {
+    OTP_VERSION
+        .as_ref()
+        .map(|v| v.as_str() >= "26")
+        .unwrap_or(true)
+}
+
 fn get_erts_dir() -> AbsPathBuf {
     let (_otp, apps) = Otp::discover(OTP_ROOT.to_path_buf(), &OtpConfig::default());
     for app in apps {

@@ -107,6 +107,7 @@ mod dependent_header;
 mod deprecated_function;
 mod duplicate_module;
 mod effect_free_statement;
+mod encode_hex_with_case;
 mod equality_check_with_unnecessary_operator;
 mod eqwalizer_assists;
 mod ets_lookup_to_lookup_element;
@@ -1760,6 +1761,7 @@ const SSR_PATTERN_LINTERS: &[&dyn SsrPatternsDiagnostics] = &[
     &lists_map_to_comprehension::LINTER,
     &no_and_or::LINTER,
     &inline_nested_list_comprehension::LINTER,
+    &encode_hex_with_case::LINTER,
 ];
 
 /// Generic linters

@@ -104,6 +104,7 @@ pub enum DiagnosticCode {
     NoAndOr,
     InlineNestedListComprehension,
     RedundantFunWrapper,
+    EncodeHexWithCase,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -278,6 +279,7 @@ impl DiagnosticCode {
             DiagnosticCode::NoAndOr => "W0069".to_string(),
             DiagnosticCode::InlineNestedListComprehension => "W0070".to_string(),
             DiagnosticCode::RedundantFunWrapper => "W0071".to_string(),
+            DiagnosticCode::EncodeHexWithCase => "W0072".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -305,6 +307,7 @@ impl DiagnosticCode {
                 "inline_nested_list_comprehension".to_string()
             }
             DiagnosticCode::RedundantFunWrapper => "redundant_fun_wrapper".to_string(),
+            DiagnosticCode::EncodeHexWithCase => "encode_hex_with_case".to_string(),
             DiagnosticCode::ModuleMismatch => "module_mismatch".to_string(),
             DiagnosticCode::UnusedMacro => "unused_macro".to_string(),
             DiagnosticCode::UnusedRecordField => "unused_record_field".to_string(),
@@ -531,6 +534,7 @@ impl DiagnosticCode {
             DiagnosticCode::MissingMsTransformInclude => false,
             DiagnosticCode::NoAndOr => false,
             DiagnosticCode::InlineNestedListComprehension => false,
+            DiagnosticCode::EncodeHexWithCase => false,
             DiagnosticCode::UnusedMacro => false,
             DiagnosticCode::UnusedRecordField => false,
             DiagnosticCode::MutableVarBug => false,
