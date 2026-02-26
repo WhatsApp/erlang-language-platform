@@ -1810,6 +1810,7 @@ mod tests {
     }
 
     #[test]
+    #[rustfmt::skip]
     fn lint_reports_bxl_project_error() {
         if cfg!(feature = "buck") {
             SnapshotSettings::default()
