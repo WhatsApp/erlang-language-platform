@@ -3000,21 +3000,19 @@ mod tests {
         first_line_only: bool,
     ) {
         let project_path: &str = &project_path.to_string_lossy();
-        let normalised = actual
+        let mut normalised = actual
             .replace(project_path, "{project_path}")
             .replace(BASE_URL, "");
-        let normalised = if normalise_urls {
-            replace_url(&normalised)
+        if normalise_urls {
+            normalised = replace_url(&normalised);
+        }
+        if first_line_only {
+            normalised = normalised.lines().next().unwrap_or("").to_string();
+            let expected_first_line = expected.data().lines().next().unwrap_or("").to_string();
+            assert_eq!(expected_first_line, normalised);
         } else {
-            normalised
-        };
-        let normalised = if first_line_only {
-            normalised.lines().next().unwrap_or("").to_string()
-        } else {
-            normalised
-        };
-
-        expected.assert_eq(&normalised);
+            expected.assert_eq(&normalised);
+        }
     }
 
     fn replace_url(s: &str) -> String {
