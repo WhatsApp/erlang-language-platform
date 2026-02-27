@@ -311,9 +311,6 @@ fn assert_match_placeholder(
 
 #[test]
 fn ssr_let_stmt_in_fn_match_1() {
-    // Pattern: _@A = 10 (match assignment where RHS is 10)
-    // Code: X = 10
-    // _@A matches the pattern "X"
     assert_matches(
         "ssr: _@A = 10.",
         "foo() -> X = 10, X.",
@@ -323,9 +320,6 @@ fn ssr_let_stmt_in_fn_match_1() {
 
 #[test]
 fn ssr_let_stmt_in_fn_match_2() {
-    // Pattern: _@A = _@B (match any assignment)
-    // Code: X = 10
-    // _@A matches "X", _@B matches "10"
     assert_matches(
         "ssr: _@A = _@B.",
         "foo() -> X = 10, X.",
@@ -335,9 +329,6 @@ fn ssr_let_stmt_in_fn_match_2() {
 
 #[test]
 fn ssr_block_expr_match_1() {
-    // Pattern: begin _@A = _@B end
-    // Code: begin X = 10 end
-    // _@A matches "X", _@B matches "10"
     assert_matches(
         "ssr: begin _@A = _@B end.",
         "fon() -> begin X = 10 end.",
@@ -347,9 +338,6 @@ fn ssr_block_expr_match_1() {
 
 #[test]
 fn ssr_block_expr_match_2() {
-    // Pattern: begin _@A = _@B, _@C end
-    // Code: begin X = 10, X end
-    // _@A matches "X", _@B matches "10", _@C matches "X"
     assert_matches(
         "ssr: begin _@A = _@B, _@C end.",
         "foo() -> begin X = 10, X end.",
@@ -362,9 +350,6 @@ fn ssr_block_expr_match_2() {
 
 #[test]
 fn ssr_block_expr_match_multiple_statements() {
-    // Pattern: begin _@A = _@B, _@C, _@D end
-    // Code: begin X = 10, Y = 20, Z = X + Y end
-    // _@A matches "X", _@B matches "10", _@C matches "Y = 20", _@D matches "Z = X + Y"
     assert_matches(
         "ssr: begin _@A = _@B, _@C, _@D end.",
         "foo() -> begin X = 10, Y = 20, Z = X + Y end.",
@@ -382,9 +367,6 @@ fn ssr_block_expr_match_multiple_statements() {
 
 #[test]
 fn ssr_expr_match_tuple() {
-    // Pattern: {foo, _@A, _@B, _@C, _@D}
-    // Code: {foo, a, b, c, d}
-    // _@A matches "a", _@B matches "b", _@C matches "c", _@D matches "d"
     assert_matches(
         "ssr: {foo, _@A, _@B, _@C, _@D}.",
         "fn() -> X = {foo, a, b, c, d}, X.",
@@ -402,15 +384,11 @@ fn ssr_expr_match_tuple() {
 
 #[test]
 fn ssr_expr_match_tuple_nested() {
-    // Pattern: {foo, {foo, 1}} - no placeholders
     assert_matches(
         "ssr: {foo, {foo, 1}}.",
         "fn() -> X = {foo, {foo, 1}}.",
         &[("{foo, {foo, 1}}", &[])],
     );
-    // Pattern: {foo, _@A} - matches nested tuples
-    // First match: {foo, {foo, 1}} where _@A = {foo, 1}
-    // Second match: {foo, 1} where _@A = 1
     assert_matches(
         "ssr: {foo, _@A}.",
         "fn() -> X = {foo, {foo, 1}}.",
@@ -423,8 +401,6 @@ fn ssr_expr_match_tuple_nested() {
 
 #[test]
 fn ssr_record_expr_match() {
-    // Pattern: #foo{k1 = _@A, k2 = _@B, k3 = _@C}
-    // _@A matches "a", _@B matches <<\"blah\">>, _@C matches "{c, d}"
     assert_matches(
         "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
         "fn() -> X = #foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}, X.",
@@ -441,8 +417,6 @@ fn ssr_record_expr_match() {
 
 #[test]
 fn ssr_record_expr_match_5() {
-    // Same pattern but fields in different order in source
-    // _@A matches "{c, d}" (k1), _@B matches "a" (k2), _@C matches <<\"blah\">> (k3)
     assert_matches(
         "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
         "fn() -> X = #foo{k2 = a, k3 = <<\"blah\">>, k1 = {c, d}}, X.",
@@ -459,7 +433,6 @@ fn ssr_record_expr_match_5() {
 
 #[test]
 fn ssr_record_expr_match_6() {
-    // Pattern with placeholder for key name - doesn't match
     assert_matches(
         "ssr: #foo{_@K = _@A, k2 = _@B, k3 = _@C}.",
         "fn() -> X = #foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}, X.",
@@ -469,19 +442,16 @@ fn ssr_record_expr_match_6() {
 
 #[test]
 fn ssr_record_expr_match_record() {
-    // Wrong record name - no match
     assert_matches(
         "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
         "fn() -> X = #boo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}, X.",
         &[],
     );
-    // Wrong field names - no match
     assert_matches(
         "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
         "fn() -> X = #foo{ka1 = a, ka2 = <<\"blah\">>, ka3 = {c, d}}, X.",
         &[],
     );
-    // Correct match
     assert_matches(
         "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
         "fn() -> X = #foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}, X.",
@@ -515,7 +485,6 @@ fn ssr_record_expr_match_record_subset() {
 
 #[test]
 fn ssr_record_expr_match_unordered() {
-    // Fields in different order still match
     assert_matches(
         "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
         "fn() -> X = #foo{k2 = a, k3 = <<\"blah\">>, k1 = {c, d}}, X.",
@@ -532,13 +501,11 @@ fn ssr_record_expr_match_unordered() {
 
 #[test]
 fn ssr_record_expr_match_rhs() {
-    // k1 value mismatch - no match
     assert_matches(
         "ssr: #foo{k1 = 3, k2 = {_@A, _@B}, k3 = _@C}.",
         "fn() -> X = #foo{k1 = a, k3 = <<\"blah\">>, k2 = {c, d}}, X.",
         &[],
     );
-    // k1 matches 3, k2 = {_@A, _@B} matches {c, d}, k3 = _@C matches <<\"blah\">>
     assert_matches(
         "ssr: #foo{k1 = 3, k2 = {_@A, _@B}, k3 = _@C}.",
         "fn() -> X = #foo{k1 = 3, k3 = <<\"blah\">>, k2 = {c, d}}, X.",
@@ -551,9 +518,6 @@ fn ssr_record_expr_match_rhs() {
 
 #[test]
 fn ssr_expr_match_list() {
-    // Pattern: [_@A, _@B | _@C]
-    // Code: [1, 2 | [Y]]
-    // _@A matches "1", _@B matches "2", _@C matches "[Y]"
     assert_matches(
         "ssr: [ _@A, _@B | _@C].",
         "fn(Y) -> X = [1, 2 | [Y]].",
@@ -566,15 +530,11 @@ fn ssr_expr_match_list() {
 
 #[test]
 fn ssr_expr_match_list_match_pipe() {
-    // No pipe in source, pattern requires pipe - no match
     assert_matches("ssr: [ _@A, _@B | _@C].", "fn(Y) -> X = [1, 2, [Y]].", &[]);
 }
 
 #[test]
 fn ssr_expr_match_binary() {
-    // Pattern: <<_@A, _@B>>
-    // Code: <<X,Y>>
-    // _@A matches "X", _@B matches "Y"
     assert_matches(
         "ssr: << _@A, _@B>>.",
         "fn(Y) -> X=1, <<X,Y>>.",
@@ -602,7 +562,6 @@ fn ssr_expr_match_unary_op() {
 
 #[test]
 fn ssr_expr_binary_op() {
-    // All binary ops: _@A matches left operand, _@B matches right operand
     assert_matches(
         "ssr: _@A + _@B.",
         "fn(X) -> Y = {X + 1}, Y.",
@@ -634,7 +593,6 @@ fn ssr_expr_binary_op() {
         "fn(X,Y) -> X ! Y .",
         &[("X ! Y", &[("_@A", &["X"]), ("_@B", &["Y"])])],
     );
-    // Comparison operators
     assert_matches(
         "ssr: _@A == _@B.",
         "fn(X,Y) -> X == Y .",
@@ -675,7 +633,6 @@ fn ssr_expr_binary_op() {
         "fn(X,Y) -> X =/= Y .",
         &[("X =/= Y", &[("_@A", &["X"]), ("_@B", &["Y"])])],
     );
-    // List operators
     assert_matches(
         "ssr: _@A ++ _@B.",
         "fn(X,Y) -> X ++ Y .",
@@ -686,7 +643,6 @@ fn ssr_expr_binary_op() {
         "fn(X,Y) -> X -- Y .",
         &[("X -- Y", &[("_@A", &["X"]), ("_@B", &["Y"])])],
     );
-    // Add operators
     assert_matches(
         "ssr: _@A + _@B.",
         "fn(X,Y) -> X + Y .",
@@ -722,7 +678,6 @@ fn ssr_expr_binary_op() {
         "fn(X,Y) -> X or Y .",
         &[("X or Y", &[("_@A", &["X"]), ("_@B", &["Y"])])],
     );
-    // Mult operators
     assert_matches(
         "ssr: _@A / _@B.",
         "fn(X,Y) -> X / Y .",
@@ -757,13 +712,11 @@ fn ssr_expr_binary_op() {
 
 #[test]
 fn ssr_expr_match_record_update() {
-    // Wrong record/field name - no match
     assert_matches(
         "ssr: _@A#a_record{a_field = _@B}.",
         "bar(List) -> XX = 1, List#record{field = XX}.",
         &[],
     );
-    // Correct match: _@A matches "List", _@B matches "XX"
     assert_matches(
         "ssr: _@A#a_record{field = _@B}.",
         "bar(List) -> XX = 1, List#a_record{field = XX}.",
@@ -776,13 +729,11 @@ fn ssr_expr_match_record_update() {
 
 #[test]
 fn ssr_expr_match_record_index() {
-    // No placeholders - wrong record/field
     assert_matches(
         "ssr: #a_record.a_field.",
         "bar(List) -> XX = #record.field, XX.",
         &[],
     );
-    // No placeholders - correct match
     assert_matches(
         "ssr: #a_record.a_field.",
         "bar(List) -> XX = #a_record.a_field, XX.",
@@ -792,13 +743,11 @@ fn ssr_expr_match_record_index() {
 
 #[test]
 fn ssr_expr_match_record_field() {
-    // Wrong record/field name - no match
     assert_matches(
         "ssr: _@A#a_record.a_field.",
         "bar(List) -> XX = List#record.field, XX.",
         &[],
     );
-    // Correct match: _@A matches "List"
     assert_matches(
         "ssr: _@A#record.field.",
         "bar(List) -> XX = List#record.field, XX.",
@@ -810,19 +759,16 @@ fn ssr_expr_match_record_field() {
 fn ssr_expr_match_map() {
     // Note that the map operation is always Assoc (`=>`), as per the
     // HIR lowering
-    // Wrong field name - no match
     assert_matches(
         "ssr: #{ field => _@A }.",
         "bar() -> XX = 1, #{foo => XX}.",
         &[],
     );
-    // Correct match: _@A matches "XX"
     assert_matches(
         "ssr: #{ field => _@A }.",
         "bar() -> XX = 1, #{field => XX}.",
         &[("#{field => XX}", &[("_@A", &["XX"])])],
     );
-    // Multiple fields: _@A matches "XX", _@B matches "3"
     assert_matches(
         "ssr: #{ field => _@A, another => _@B }.",
         "bar() -> XX = 1, #{another => 3, field => XX}.",
@@ -831,25 +777,21 @@ fn ssr_expr_match_map() {
             &[("_@A", &["XX"]), ("_@B", &["3"])],
         )],
     );
-    // Empty map - no placeholders
     assert_matches("ssr: #{ }.", "bar() -> #{}.", &[("#{}", &[])]);
 }
 
 #[test]
 fn ssr_expr_match_map_update() {
-    // Wrong op (:= vs =>) - no match
     assert_matches(
         "ssr: _@A#{ foo => _@B }.",
         "bar(List) -> XX = 1, List#{foo := XX}.",
         &[],
     );
-    // Correct match: _@A matches "List", _@B matches "XX"
     assert_matches(
         "ssr: _@A#{ foo => _@B }.",
         "bar(List) -> XX = 1, List#{foo => XX}.",
         &[("List#{foo => XX}", &[("_@A", &["List"]), ("_@B", &["XX"])])],
     );
-    // Multiple fields
     assert_matches(
         "ssr: _@A#{ foo => _@B, zz => _@C }.",
         "bar(List) -> XX = 1, List#{zz => 1, foo => XX}.",
@@ -858,7 +800,6 @@ fn ssr_expr_match_map_update() {
             &[("_@A", &["List"]), ("_@B", &["XX"]), ("_@C", &["1"])],
         )],
     );
-    // Value pattern mismatch - no match
     assert_matches(
         "ssr: _@A#{ foo => _@B, zz => {_@C} }.",
         "bar(List) -> XX = 1, List#{zz => 1, foo => XX}.",
@@ -868,7 +809,6 @@ fn ssr_expr_match_map_update() {
 
 #[test]
 fn ssr_expr_match_catch() {
-    // _@A matches "XX"
     assert_matches(
         "ssr: catch _@A.",
         "bar() -> XX = 1, catch XX.",
@@ -893,7 +833,6 @@ fn ssr_expr_match_macro_call() {
          bar() -> ?BAR(4).",
         &[],
     );
-    // _@AA matches "4"
     assert_matches_with_strategy(
         Strategy {
             macros: MacroStrategy::ExpandButIncludeMacroCall,
@@ -912,7 +851,6 @@ fn ssr_expr_match_macro_call() {
         "bar() -> ?NOT_BAR(4).",
         &[],
     );
-    // _@AA matches "4"
     assert_matches_with_strategy(
         Strategy {
             macros: MacroStrategy::DoNotExpand,
@@ -923,7 +861,6 @@ fn ssr_expr_match_macro_call() {
          bar() -> ?BAR(4).",
         &[("?BAR(4)", &[("_@AA", &["4"])])],
     );
-    // Two matches: {X} and ?BAR(4), both with _@AA matching different things
     assert_matches_with_strategy(
         Strategy {
             macros: MacroStrategy::Expand,
@@ -941,8 +878,6 @@ fn ssr_expr_match_macro_call() {
 
 #[test]
 fn ssr_expr_list_comprehension() {
-    // Pattern: [XX || XX <- _@List, _@Cond]
-    // _@List matches "List", _@Cond matches "XX >= 5"
     assert_matches(
         "ssr: [XX || XX <- _@List, _@Cond].",
         "bar() -> XX = 1, [XX || XX <- List, XX >= 5].",
@@ -963,7 +898,6 @@ fn ssr_expr_list_comprehension() {
 
 #[test]
 fn ssr_expr_list_comprehension_binary_generator_pattern() {
-    // Binary comprehension pattern doesn't match list comprehension - no match
     assert_matches(
         "ssr: <<XX || XX <= _@List, _@Cond>>.",
         "bar() -> XX = 1, [XX || XX <- List, XX >= 5].",
@@ -978,7 +912,6 @@ fn ssr_expr_list_comprehension_binary_generator_pattern() {
 
 #[test]
 fn ssr_expr_list_comprehension_binary() {
-    // _@List matches "List"
     assert_matches(
         "ssr: <<XX || XX <= _@List>>.",
         "bar(List) -> XX = 1, <<XX || XX <= List>>.",
@@ -993,7 +926,6 @@ fn ssr_expr_list_comprehension_binary() {
 
 #[test]
 fn ssr_expr_map_comprehension() {
-    // _@K matches "K" twice, _@V matches "V" twice, _@Map matches "Map"
     assert_matches(
         "ssr: #{_@K => _@V || _@K := _@V <- _@Map}.",
         "bar(Map) -> #{ K => V || K := V <- Map}.",
@@ -1022,7 +954,6 @@ fn ssr_expr_map_comprehension() {
 
 #[test]
 fn ssr_expr_zip_comprehension() {
-    // _@A matches "{XX,YY}", _@List matches "List", _@B matches "ZZ", _@Cond matches "XX >= 5"
     assert_matches(
         "ssr: [_@A || XX <- _@List && YY <- _@B, _@Cond].",
         "bar() -> [{XX,YY} || XX <- List && YY <- ZZ, XX >= 5].",
@@ -1040,7 +971,6 @@ fn ssr_expr_zip_comprehension() {
 
 #[test]
 fn ssr_expr_if() {
-    // _@Cond matches "is_atom(F)", _@B matches "22"
     assert_matches(
         "ssr: if _@Cond -> _@B end .",
         "bar(F) -> if is_atom(F) -> 22 end.",
@@ -1053,7 +983,6 @@ fn ssr_expr_if() {
 
 #[test]
 fn ssr_expr_case() {
-    // _@XX matches "F", _@A matches "undefined", _@B matches "XX"
     assert_matches(
         "ssr: case _@XX of _@A -> _@B end .",
         "bar(F) -> XX = 1, case F of undefined -> XX end.",
@@ -1067,7 +996,6 @@ fn ssr_expr_case() {
 #[test]
 fn ssr_underscore_pattern_in_code_and_placeholder_in_ssr_do_not_match_if_atom_literal_pattens_do_no_match()
  {
-    // Pattern expects 'false' but code has 'true' - no match
     assert_matches(
         "ssr: case X of false -> _@BranchA; _@PatA -> _@BranchB end.",
         "foo(X) -> case X of true -> a; _ -> b end.",
@@ -1077,19 +1005,16 @@ fn ssr_underscore_pattern_in_code_and_placeholder_in_ssr_do_not_match_if_atom_li
 
 #[test]
 fn ssr_expr_receive() {
-    // _@XX matches "F"
     assert_matches(
         "ssr: receive _@XX -> 3 end.",
         "bar(F) -> XX = 1, receive F -> 3 end.",
         &[("receive F -> 3 end", &[("_@XX", &["F"])])],
     );
-    // Pattern has 'after' but code doesn't - no match
     assert_matches(
         "ssr: receive _@XX -> 3 after _@MS -> ok end.",
         "bar(F) -> XX = 1, receive F -> 3 end.",
         &[],
     );
-    // _@XX matches "F", _@MS matches "1000"
     assert_matches(
         "ssr: receive _@XX -> 3 after _@MS -> ok end.",
         "bar(F) -> XX = 1, receive F -> 3 after 1000 -> ok end.",
@@ -1098,7 +1023,6 @@ fn ssr_expr_receive() {
             &[("_@MS", &["1000"]), ("_@XX", &["F"])],
         )],
     );
-    // _@XX matches "all_good", _@AA matches "X", _@BB matches "false", _@MS matches "1000"
     assert_matches(
         "ssr: receive _@XX -> true; _@AA -> _@BB after _@MS -> timeout end.",
         "bar() -> receive all_good -> true; X -> false after 1000 -> timeout end.",
@@ -1156,7 +1080,6 @@ fn ssr_expr_try() {
 
 #[test]
 fn ssr_expr_capture_fun() {
-    // _@MODU matches "modu", _@FUN matches "fun", _@XX matches "XX"
     assert_matches(
         "ssr: fun _@MODU:_@FUN/_@XX.",
         "bar(XX) -> YY = fun modu:fun/XX, YY.",
@@ -1173,13 +1096,11 @@ fn ssr_expr_capture_fun() {
 
 #[test]
 fn ssr_expr_closure() {
-    // _@XX matches "3", _@YY matches "7"
     assert_matches(
         "ssr: fun (_@XX) -> _@YY end.",
         "bar(XX) -> F = fun (3) -> 7 end, F.",
         &[("fun (3) -> 7 end", &[("_@XX", &["3"]), ("_@YY", &["7"])])],
     );
-    // _@Name matches "Bar", _@XX matches "3", _@YY matches "7"
     assert_matches(
         "ssr: fun _@Name(_@XX) -> _@YY end.",
         "bar(XX) -> F = fun Bar(3) -> 7 end, F.",
@@ -1192,7 +1113,6 @@ fn ssr_expr_closure() {
 
 #[test]
 fn ssr_expr_maybe() {
-    // _@AA matches "{ok, A}", _@BB matches "ok_a()"
     assert_matches(
         "ssr: maybe _@AA ?= _@BB end.",
         "bar() -> maybe {ok, A} ?= ok_a() end.",
@@ -1208,7 +1128,6 @@ fn ssr_expr_maybe_bare() {
     // Note: we make a full maybe expression, need some way of saying
     // it can have anything before or after.
     // TODO: T151843175, list item
-    // _@AA matches "{ok, A}", _@BB matches "ok_a()"
     assert_matches(
         "ssr: _@AA ?= _@BB.",
         "bar() -> maybe {ok, A} ?= ok_a() end.",
@@ -1229,21 +1148,18 @@ fn ssr_expr_parens() {
         macros: MacroStrategy::Expand,
         parens: ParenStrategy::VisibleParens,
     };
-    // Visible parens: _@AA matches "3"
     assert_matches_with_strategy(
         visible_parens,
         "ssr: ((_@AA)).",
         "bar(X) -> X = ((3)),X = (4).",
         &[("((3))", &[("_@AA", &["3"])])],
     );
-    // Visible parens in pattern: _@AA matches "X"
     assert_matches_with_strategy(
         visible_parens,
         "ssr: ((_@AA)).",
         "bar(((X))) -> X = 3,X = (4).",
         &[("((X))", &[("_@AA", &["X"])])],
     );
-    // Invisible parens: matches many things, each with _@AA matching different values
     assert_matches_with_strategy(
         invisible_parens,
         "ssr: ((_@AA)).",
@@ -1278,7 +1194,6 @@ fn ssr_expr_parens() {
 
 #[test]
 fn ssr_pat_match() {
-    // _@AA matches "{ok, A}", _@BB matches "B"
     assert_matches(
         "ssr: _@AA = _@BB.",
         "bar({ok, A} = B) -> A.",
@@ -1288,7 +1203,6 @@ fn ssr_pat_match() {
 
 #[test]
 fn ssr_pat_list() {
-    // _@A matches "1", _@B matches "2", _@C matches "[Y]"
     assert_matches(
         "ssr: [ _@A, _@B | _@C].",
         "fn(X) -> [1, 2 | [Y]] = X.",
@@ -1301,7 +1215,6 @@ fn ssr_pat_list() {
 
 #[test]
 fn ssr_pat_binary() {
-    // _@A matches "X", _@B matches "Z"
     assert_matches(
         "ssr: << _@A, _@B>>.",
         "fn(Y) -> <<X,Z>> = Y.",
@@ -1311,7 +1224,6 @@ fn ssr_pat_binary() {
 
 #[test]
 fn ssr_pat_unary_op() {
-    // _@A matches "{X}"
     assert_matches(
         "ssr: not _@A.",
         "fn(Y) -> {not {X}} = Y.",
@@ -1332,7 +1244,6 @@ fn ssr_pat_unary_op() {
 
 #[test]
 fn ssr_pat_binary_op() {
-    // All pattern binary ops: _@A matches left operand, _@B matches right operand
     assert_matches(
         "ssr: _@A + _@B.",
         "fn(Y) -> {X + 1} = Y.",
@@ -1371,7 +1282,6 @@ fn ssr_pat_binary_op() {
         "fn(X,Y,Z) -> X ! Y = Z .",
         &[("X ! Y", &[("_@A", &["X"]), ("_@B", &["Y"])])],
     );
-    // Comparison operators
     assert_matches(
         "ssr: _@A == _@B.",
         "fn(X,Y) -> X == Y = true.",
@@ -1412,7 +1322,6 @@ fn ssr_pat_binary_op() {
         "fn(X,Y) -> X =/= Y = true.",
         &[("X =/= Y", &[("_@A", &["X"]), ("_@B", &["Y"])])],
     );
-    // List operators
     assert_matches(
         "ssr: _@A ++ _@B.",
         "fn(X,Y) -> X ++ Y = [].",
@@ -1423,7 +1332,6 @@ fn ssr_pat_binary_op() {
         "fn(X,Y) -> X -- Y = [].",
         &[("X -- Y", &[("_@A", &["X"]), ("_@B", &["Y"])])],
     );
-    // Add operators
     assert_matches(
         "ssr: _@A + _@B.",
         "fn(X,Y) -> X + Y = 5.",
@@ -1459,7 +1367,6 @@ fn ssr_pat_binary_op() {
         "fn(X,Y) -> X or Y = true.",
         &[("X or Y", &[("_@A", &["X"]), ("_@B", &["Y"])])],
     );
-    // Mult operators
     assert_matches(
         "ssr: _@A / _@B.",
         "fn(X,Y,Z) -> X / Y = Z.",
@@ -1492,7 +1399,7 @@ fn ssr_pat_binary_op() {
     );
 
     // ---------------------------------
-    // Nested operations: both X + 1 + 2 and X + 1 match
+
     assert_matches(
         "ssr: _@A + _@B.",
         "fn(Y) -> {X + 1 + 2} = Y.",
@@ -1505,19 +1412,16 @@ fn ssr_pat_binary_op() {
 
 #[test]
 fn ssr_pat_match_record() {
-    // Wrong field names - no match
     assert_matches(
         "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
         "fn(X) -> #foo{ka1 = a, ka2 = <<\"blah\">>, ka3 = {c, d}} = X.",
         &[],
     );
-    // Wrong record name - no match
     assert_matches(
         "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
         "fn(X) -> #boo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}} = X.",
         &[],
     );
-    // Correct match
     assert_matches(
         "ssr: #foo{k1 = _@A, k2 = _@B, k3 = _@C}.",
         "fn(X) -> #foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}} = X.",
@@ -1530,7 +1434,6 @@ fn ssr_pat_match_record() {
             ],
         )],
     );
-    // Nested pattern matching
     assert_matches(
         "ssr: #foo{k1 = _@A, k2 = _@B, k3 = {_@C, _@D}}.",
         "fn(X) -> #foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}} = X.",
@@ -1544,7 +1447,6 @@ fn ssr_pat_match_record() {
             ],
         )],
     );
-    // Order independent
     assert_matches(
         "ssr: #foo{k1 = _@A, k2 = _@B, k3 = {_@C, _@D}}.",
         "fn(X) -> #foo{k3 = {c, d}, k2 = a, k1 = <<\"blah\">>} = X.",
@@ -1562,13 +1464,11 @@ fn ssr_pat_match_record() {
 
 #[test]
 fn ssr_pat_record_index() {
-    // Wrong record/field name - no match
     assert_matches(
         "ssr: #a_record.a_field.",
         "bar(XX) -> #record.field = XX.",
         &[],
     );
-    // Correct match - no placeholders
     assert_matches(
         "ssr: #record.field.",
         "bar(XX) -> #record.field = XX.",
@@ -1578,25 +1478,21 @@ fn ssr_pat_record_index() {
 
 #[test]
 fn ssr_pat_match_map() {
-    // Wrong op (=> vs :=) - no match
     assert_matches(
         "ssr: #{ foo => _@A }.",
         "bar(YY) -> #{foo := XX} = YY.",
         &[],
     );
-    // Wrong field name - no match
     assert_matches(
         "ssr: #{ field := _@A }.",
         "bar(YY) -> #{foo := XX} = YY.",
         &[],
     );
-    // Correct match
     assert_matches(
         "ssr: #{ foo := _@A }.",
         "bar(YY) -> #{foo := XX} = YY.",
         &[("#{foo := XX}", &[("_@A", &["XX"])])],
     );
-    // Order independent
     assert_matches(
         "ssr: #{ a := _@A, b := _@B }.",
         "bar(YY) -> #{b := 1, a := XX} = YY.",
@@ -1685,8 +1581,6 @@ fn ssr_term_no_blowup() {
 
 #[test]
 fn ssr_match_constant_atom_placeholder() {
-    // Pattern: {_@X = _@Y} where _@X must equal foo
-    // Match: {foo = 3} - _@X matches "foo", _@Y matches "3"
     assert_matches(
         "ssr: {_@X = _@Y} when _@X == foo.",
         "foo() -> {foo = 3},{bar = 2}.",
@@ -1696,8 +1590,6 @@ fn ssr_match_constant_atom_placeholder() {
 
 #[test]
 fn ssr_match_constant_negated_atom_placeholder() {
-    // Pattern: {_@X = _@Y} where _@X must not equal foo
-    // Match: {bar = 2} - _@X matches "bar", _@Y matches "2"
     assert_matches(
         "ssr: {_@X = _@Y} when _@X =/= foo.",
         "foo() -> {foo = 3},{bar = 2}.",
@@ -1723,15 +1615,11 @@ fn ssr_invalid_when_condition_not_compop() {
 
 #[test]
 fn ssr_match_constant_var_placeholder() {
-    // Pattern: _@X where _@X must equal A (variable)
-    // Match: A - _@X matches "A"
     assert_matches(
         "ssr: _@X when _@X == A.",
         "foo(A) -> 3.",
         &[("A", &[("_@X", &["A"])])],
     );
-    // Pattern: _@X where _@X must equal _ (underscore)
-    // Match: _ - _@X matches "_"
     assert_matches(
         "ssr: _@X when _@X == _.",
         "foo(_) -> 3.",
@@ -1823,21 +1711,16 @@ fn ssr_retrieve_match_placeholder_multiple_matches() {
 
 #[test]
 fn ssr_repeated_placeholder() {
-    // Pattern: << _@A, _@A>> - same placeholder used twice (must match same value)
-    // Match: <<X,X>> - _@A matches both instances of X
     assert_matches(
         "ssr: << _@A, _@A>>.",
         "fn(Y) -> X=1, <<X,X>>.",
         &[("<<X,X>>", &[("_@A", &["X", "X"])])],
     );
-    // Pattern: { _@A, _@A} - same placeholder for both tuple elements
-    // Match: {[a,b,Y],[a,b,Y]} - _@A matches both [a,b,Y]
     assert_matches(
         "ssr: { _@A, _@A}.",
         "fn(Y) -> {[a,b,Y],[a,b,Y]}.",
         &[("{[a,b,Y],[a,b,Y]}", &[("_@A", &["[a,b,Y]", "[a,b,Y]"])])],
     );
-    // No match because X != Y
     assert_matches("ssr: <<_@A, _@A>>.", "fn(Y) -> X=1, <<X,Y>>.", &[]);
 }
 
@@ -1858,10 +1741,6 @@ fn ssr_do_not_match_pattern_missing() {
 
 #[test]
 fn ssr_complex_match() {
-    // Pattern: lists:foldl(fun({_@Key,_@Value}, _@Acc) -> _@Acc#{_@Key => _@Value} end, #{}, _@List)
-    // Match: lists:foldl(fun({K,V}, Acc) -> Acc#{K => V} end, #{}, List)
-    // Placeholders: _@Acc=Acc, _@Key=K, _@List=List, _@Value=V (alphabetically sorted)
-    // Note: _@Acc, _@Key, _@Value appear twice each in the pattern
     assert_matches(
         "ssr: lists:foldl(fun({_@Key,_@Value}, _@Acc) -> _@Acc#{_@Key => _@Value} end, #{}, _@List).",
         r#"
@@ -1881,8 +1760,6 @@ fn ssr_complex_match() {
 
 #[test]
 fn ssr_matches_in_multiple_forms() {
-    // Pattern: {_@A, 3}
-    // Two matches: {a, 3} with _@A=a, and {b, 3} with _@A=b
     assert_matches(
         "ssr: {_@A, 3}.",
         r#"
@@ -2014,7 +1891,7 @@ fn ssr_patterns_and_branches_correspond() {
                     },
                 ],
             )
-        "#]], // Range from col 25
+        "#]],
     );
     assert_match_placeholder(
         "ssr: case X of a -> _@BranchA; _@PatB -> _@BranchB end.",
@@ -2042,7 +1919,7 @@ fn ssr_patterns_and_branches_correspond() {
                     },
                 ],
             )
-        "#]], // Range from col 35
+        "#]],
     );
     assert_match_placeholder(
         "ssr: case X of a -> _@BranchA; _@PatB -> _@BranchB end.",
@@ -2070,7 +1947,7 @@ fn ssr_patterns_and_branches_correspond() {
                     },
                 ],
             )
-        "#]], // Range from col 40
+        "#]],
     );
 }
 
