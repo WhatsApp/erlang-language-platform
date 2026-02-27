@@ -143,7 +143,7 @@ jobs:
         run: 'cargo build --release  --target ${{ matrix.target }} --config target.aarch64-unknown-linux-gnu.linker=\"aarch64-linux-gnu-gcc\"'
       - name: Build elp (Windows Only)
         if: matrix.os == 'windows'
-        run: 'cargo build --release  --target ${{ matrix.target }}'
+        run: 'cargo build --release --target ${{ matrix.target }} --no-default-features --features buck'
       - name: Add elp to path (No Windows)
         if: matrix.os != 'windows'
         run: 'echo "$GITHUB_WORKSPACE/target/${{ matrix.target}}/release" >> $GITHUB_PATH'
