@@ -89,7 +89,7 @@ impl<T> Parse<T> {
 
 impl<T: AstNode> Parse<T> {
     pub fn tree(&self) -> T {
-        T::cast(self.syntax_node()).unwrap()
+        T::cast(self.syntax_node()).expect("root node should cast to T")
     }
 
     pub fn ok(self) -> Result<T, Arc<Vec<SyntaxError>>> {
@@ -154,7 +154,8 @@ impl<'tree, 'text> Converter<'tree, 'text> {
     // it or not.
     fn enter_node(&mut self, is_root: bool) -> bool {
         let node = self.cursor.node();
-        let kind = SyntaxKind::from_u16(node.kind_id()).unwrap();
+        let kind =
+            SyntaxKind::from_u16(node.kind_id()).expect("kind id should be valid syntax kind");
         let range = node.byte_range();
         if node.is_error() {
             self.pending_syntax_error = Some(node);
@@ -307,8 +308,14 @@ impl<'tree, 'text> Converter<'tree, 'text> {
 
 fn convert_range(range: Range<usize>) -> TextRange {
     TextRange::new(
-        range.start.try_into().unwrap(),
-        range.end.try_into().unwrap(),
+        range
+            .start
+            .try_into()
+            .expect("range start should fit in TextSize"),
+        range
+            .end
+            .try_into()
+            .expect("range end should fit in TextSize"),
     )
 }
 

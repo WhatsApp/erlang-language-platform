@@ -113,7 +113,11 @@ fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId) -> Arc<ParseResult> {
     let _ = stdx::panic_context::enter(format!("\nmodule_ast: {file_id:?}"));
     let root_id = db.file_source_root(file_id);
     let root = db.source_root(root_id);
-    let path = root.path_for_file(&file_id).unwrap().as_path().unwrap();
+    let path = root
+        .path_for_file(&file_id)
+        .expect("file should have path in source root")
+        .as_path()
+        .expect("path should be absolute");
     let metadata = db.elp_metadata(file_id);
     let app_data = if let Some(app_data) = db.file_app_data(file_id) {
         app_data

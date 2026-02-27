@@ -68,7 +68,10 @@ pub(crate) fn add_fixme(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                                     "\n{}% elp:fixme {}: [{}] {}",
                                     indent,
                                     ctx_diag.code.as_labeled_code(),
-                                    input.task_id.as_ref().unwrap(), // Safe because of guard
+                                    input
+                                        .task_id
+                                        .as_ref()
+                                        .expect("task_id should be Some due to guard"),
                                     input.value
                                 )
                             }

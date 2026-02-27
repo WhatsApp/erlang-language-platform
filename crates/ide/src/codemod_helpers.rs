@@ -425,7 +425,7 @@ impl TryFrom<&str> for MFA {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"^([^:]+):([^:]+)\/(\d+)$").unwrap();
+            static ref RE: Regex = Regex::new(r"^([^:]+):([^:]+)\/(\d+)$").expect("valid regex");
         }
         if let Some(captures) = RE.captures(value)
             && captures.len() > 3

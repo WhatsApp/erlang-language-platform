@@ -582,7 +582,7 @@ impl StubExpander<'_> {
                 ExternalForm::File(f) => Some(f.file),
                 _ => None,
             })
-            .unwrap();
+            .expect("AST should contain a File form");
         StubExpander {
             from_beam: ast.from_beam,
             expander,
@@ -661,7 +661,8 @@ impl StubExpander<'_> {
                 }
             };
             Type::builtin_type_aliases("erlang").for_each(|name| {
-                let body = Type::builtin_type_alias_body(&name).unwrap();
+                let body =
+                    Type::builtin_type_alias_body(&name).expect("builtin type alias has a body");
                 let id = ast::Id { name, arity: 0 };
                 let decl = TypeDecl {
                     pos: pos.clone(),

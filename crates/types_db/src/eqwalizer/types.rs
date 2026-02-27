@@ -174,13 +174,17 @@ impl Type {
                     tys: vec![
                         Type::BYTE_TYPE,
                         Type::BinaryType,
-                        Type::RemoteType(Type::builtin_type_alias("iolist").unwrap()),
+                        Type::RemoteType(
+                            Type::builtin_type_alias("iolist").expect("iolist should be a builtin"),
+                        ),
                     ],
                 })),
             })),
             "iodata" => Some(Type::UnionType(UnionType {
                 tys: vec![
-                    Type::RemoteType(Type::builtin_type_alias("iolist").unwrap()),
+                    Type::RemoteType(
+                        Type::builtin_type_alias("iolist").expect("iolist should be a builtin"),
+                    ),
                     Type::BinaryType,
                 ],
             })),
@@ -189,11 +193,11 @@ impl Type {
     }
 
     pub fn string_type() -> Type {
-        Type::RemoteType(Type::builtin_type_alias("string").unwrap())
+        Type::RemoteType(Type::builtin_type_alias("string").expect("string should be a builtin"))
     }
 
     pub fn boolean_type() -> Type {
-        Type::RemoteType(Type::builtin_type_alias("boolean").unwrap())
+        Type::RemoteType(Type::builtin_type_alias("boolean").expect("boolean should be a builtin"))
     }
 
     pub fn builtin_type(name: &str) -> Option<Type> {

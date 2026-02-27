@@ -54,7 +54,7 @@ pub fn print(forms: &FormList) -> String {
     };
 
     for &form in forms.forms() {
-        printer.print_form(form).unwrap();
+        printer.print_form(form).expect("write should succeed");
     }
 
     printer.buf.truncate(printer.buf.trim_end().len());

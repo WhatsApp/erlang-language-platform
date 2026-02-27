@@ -17,8 +17,9 @@ use crate::ast;
 
 pub const FAKE_MODULE: LazyLock<StringId> = LazyLock::new(|| StringId::from("$compiler_macro"));
 
-const FUNS: LazyLock<BTreeSet<ast::Id>> =
-    LazyLock::new(|| BTreeSet::from_iter(["record_info/2"].map(|s| s.parse().unwrap())));
+const FUNS: LazyLock<BTreeSet<ast::Id>> = LazyLock::new(|| {
+    BTreeSet::from_iter(["record_info/2"].map(|s| s.parse().expect("valid Id literal")))
+});
 
 pub fn is_compiler_macro(id: &ast::Id) -> bool {
     FUNS.contains(id)

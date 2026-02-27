@@ -21,11 +21,11 @@ impl Language for ELPLanguage {
     type Kind = SyntaxKind;
 
     fn kind_from_raw(raw: rowan::SyntaxKind) -> Self::Kind {
-        Self::Kind::from_u16(raw.0).unwrap()
+        Self::Kind::from_u16(raw.0).expect("raw kind should be valid syntax kind")
     }
 
     fn kind_to_raw(kind: Self::Kind) -> rowan::SyntaxKind {
-        rowan::SyntaxKind(kind.to_u16().unwrap())
+        rowan::SyntaxKind(kind.to_u16().expect("syntax kind should fit in u16"))
     }
 }
 

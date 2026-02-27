@@ -192,7 +192,7 @@ impl EqwalizerExe {
                 .extension()
                 .unwrap_or_default()
                 .to_str()
-                .unwrap()
+                .expect("valid UTF-8 path")
                 .to_string();
             (path, ext, None)
         } else {
@@ -201,15 +201,15 @@ impl EqwalizerExe {
             let mut temp_file = Builder::new()
                 .prefix("eqwalizer")
                 .tempfile()
-                .expect("can't create eqwalizer temp executable");
+                .expect("eqwalizer temp executable should be writable");
             temp_file
                 .write_all(eqwalizer_src)
-                .expect("can't create eqwalizer temp executable");
+                .expect("eqwalizer temp executable should be writable");
 
             let temp_file = temp_file.into_temp_path();
 
             let mut perm = fs::metadata(&temp_file)
-                .expect("can't create eqwalizer temp executable")
+                .expect("eqwalizer temp executable should be writable")
                 .permissions();
 
             #[cfg(windows)]
@@ -221,7 +221,8 @@ impl EqwalizerExe {
                 perm.set_mode(0o755);
             }
 
-            fs::set_permissions(&temp_file, perm).expect("can't create eqwalizer temp executable");
+            fs::set_permissions(&temp_file, perm)
+                .expect("eqwalizer temp executable should be writable");
 
             (temp_file.to_path_buf(), extension, Some(temp_file))
         }
@@ -413,7 +414,8 @@ fn get_module_diagnostics(
                 };
                 match validated_ty {
                     Ok(valid_ty) => {
-                        let type_bytes = serde_json::to_vec(&valid_ty).unwrap();
+                        let type_bytes = serde_json::to_vec(&valid_ty)
+                            .expect("validated type should be JSON serializable");
                         let len = type_bytes.len().try_into()?;
                         let reply = &MsgToEqWAlizer::ValidatedType { len };
                         handle.send(reply)?;
@@ -423,7 +425,8 @@ fn get_module_diagnostics(
                             .with_context(|| "sending to eqwalizer: ValidatedType".to_string())?
                     }
                     Err(invalid) => {
-                        let invalid_bytes = serde_json::to_vec(&invalid).unwrap();
+                        let invalid_bytes = serde_json::to_vec(&invalid)
+                            .expect("validated type should be JSON serializable");
                         let len = invalid_bytes.len().try_into()?;
                         let reply = &&MsgToEqWAlizer::InvalidType { len };
                         handle.send(reply)?;

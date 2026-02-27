@@ -80,7 +80,7 @@ impl GenericLinter for MisspelledAttributeLinter {
                         attr_name_range_with_hyphen
                             .start()
                             .checked_add(TextSize::of('-'))
-                            .unwrap(),
+                            .expect("text position overflow"),
                         attr_name_range_with_hyphen.end(),
                     );
 
@@ -159,11 +159,14 @@ fn looks_like_misspelling(attr: &hir::Attribute) -> Option<&str> {
         .filter(|&known| {
             let close_enough: usize = (attr.name.len() / 3).clamp(1, 3);
             triple_accel::levenshtein::rdamerau(attr.name.as_str().as_bytes(), known.as_bytes())
-                <= u32::try_from(close_enough).unwrap()
+                <= u32::try_from(close_enough).expect("valid u32 conversion")
         })
         .map(|&known| (known, strsim::jaro_winkler(&attr.name, known)))
         .collect::<Vec<(&str, f64)>>();
-    suggestions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    suggestions.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .expect("similarity scores should be comparable")
+    });
     suggestions
         .first()
         .map(|(suggestion, _similarity)| suggestion)

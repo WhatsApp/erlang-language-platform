@@ -303,7 +303,8 @@ fn decode_html_entities(text: &str) -> Cow<'_, str> {
 }
 
 fn is_divider(text: &str) -> bool {
-    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^%*\s*-+$").unwrap());
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^%*\s*-+$").expect("regex should be valid"));
     RE.is_match(text)
 }
 
@@ -338,7 +339,8 @@ fn is_empty_line(element: &SyntaxElement) -> bool {
 }
 
 fn wrap_reference_in_backquotes(text: &str) -> Option<String> {
-    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([^\s.]+)").unwrap());
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^([^\s.]+)").expect("regex should be valid"));
     let captures = RE.captures(text)?;
     let reference = captures.get(1)?;
     let rest = &text[reference.end()..];
@@ -698,7 +700,7 @@ fn parse_edoc(
     };
 
     static COPYRIGHT_RE: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"^%+\s+Copyright ?(.*)$").unwrap());
+        LazyLock::new(|| Regex::new(r"^%+\s+Copyright ?(.*)$").expect("regex should be valid"));
 
     for comment in comments {
         let text = comment.syntax().text().to_string();
@@ -871,7 +873,8 @@ fn edoc_header_kind(node: &SyntaxNode) -> Option<EdocHeaderKind> {
 ///    A tag must be the first thing on a comment line, except for leading
 ///    '%' characters and whitespace.
 fn extract_edoc_tag_and_content(comment: &str) -> Option<(TextRange, &str, &str, &str)> {
-    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(%+)\s+@([^\s]+) ?(.*)$").unwrap());
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^(%+)\s+@([^\s]+) ?(.*)$").expect("regex should be valid"));
     let captures = RE.captures(comment)?;
     let prefix = captures.get(1)?;
     let tag = captures.get(2)?;
@@ -887,17 +890,20 @@ fn extract_edoc_tag_and_content(comment: &str) -> Option<(TextRange, &str, &str,
 }
 
 fn convert_single_quotes(comment: &str) -> Cow<'_, str> {
-    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"`([^']*)'").unwrap());
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"`([^']*)'").expect("regex should be valid"));
     RE.replace_all(comment, "`$1`")
 }
 
 fn convert_triple_quotes(comment: &str) -> Cow<'_, str> {
-    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"'''[']*").unwrap());
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"'''[']*").expect("regex should be valid"));
     RE.replace_all(comment, "```")
 }
 
 fn convert_link_macros(comment: &str) -> Cow<'_, str> {
-    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\{@link\s+([^\s]+)\}").unwrap());
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"\{@link\s+([^\s]+)\}").expect("regex should be valid"));
     RE.replace_all(comment, |captures: &regex::Captures<'_>| {
         if let Some(m) = captures.get(1) {
             format!("`{}`", reference_to_exdoc(m.as_str()))

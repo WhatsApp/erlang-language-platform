@@ -105,6 +105,6 @@ impl VStub {
 
 impl ModuleStub {
     pub fn to_bytes(&self) -> Vec<u8> {
-        serde_json::to_vec(self).unwrap()
+        serde_json::to_vec(self).expect("ModuleStub should be JSON serializable")
     }
 }

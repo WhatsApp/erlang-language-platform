@@ -337,7 +337,10 @@ fn custom_types(
         Ok(stub) => {
             let mut result: BTreeMap<ModuleName, BTreeMap<Id, Arc<TypeDecl>>> = BTreeMap::new();
             for (id, type_decl) in stub.types.iter() {
-                let (module_name, ty_name) = id.name.split_once(':').unwrap();
+                let (module_name, ty_name) = id
+                    .name
+                    .split_once(':')
+                    .expect("eqwalizer_types id should contain ':' separator");
                 let module = ModuleName::new(module_name);
                 let id = Id {
                     name: StringId::from(ty_name),
@@ -478,7 +481,10 @@ fn custom_fun_specs(
         Ok(stub) => {
             let mut result: BTreeMap<ModuleName, BTreeMap<Id, Arc<FunSpec>>> = BTreeMap::new();
             for (id, fun_spec) in stub.specs.iter() {
-                let (module_name, ty_name) = id.name.split_once(':').unwrap();
+                let (module_name, ty_name) = id
+                    .name
+                    .split_once(':')
+                    .expect("eqwalizer_specs id should contain ':' separator");
                 let module = ModuleName::new(module_name);
                 let id = Id {
                     name: StringId::from(ty_name),
@@ -540,6 +546,9 @@ fn callbacks_bytes(
     project_id: ProjectId,
     module: ModuleName,
 ) -> Result<Option<Arc<Vec<u8>>>, Error> {
-    db.callbacks(project_id, module)
-        .map(|op| Some(Arc::new(serde_json::to_vec(&op).unwrap())))
+    db.callbacks(project_id, module).map(|op| {
+        Some(Arc::new(
+            serde_json::to_vec(&op).expect("op should be JSON serializable"),
+        ))
+    })
 }

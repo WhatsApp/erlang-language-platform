@@ -86,7 +86,7 @@ pub fn macro_undefined_from_message(
     s: &str,
 ) -> Option<(String, Option<String>)> {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"^undefined macro '(.*)'$").unwrap();
+        static ref RE: Regex = Regex::new(r"^undefined macro '(.*)'$").expect("valid regex");
     }
     let captures = RE.captures(s)?;
     if RE.captures_len() == 2 {

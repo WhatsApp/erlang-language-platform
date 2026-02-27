@@ -176,7 +176,7 @@ pub trait AstNodeEdit: AstNode + Clone + Sized {
             res.clone_subtree()
         }
 
-        Self::cast(indent_inner(self.syntax(), level)).unwrap()
+        Self::cast(indent_inner(self.syntax(), level)).expect("indent should preserve node type")
     }
     #[must_use]
     fn dedent(&self, level: IndentLevel) -> Self {
@@ -186,7 +186,7 @@ pub trait AstNodeEdit: AstNode + Clone + Sized {
             res.clone_subtree()
         }
 
-        Self::cast(dedent_inner(self.syntax(), level)).unwrap()
+        Self::cast(dedent_inner(self.syntax(), level)).expect("dedent should preserve node type")
     }
     #[must_use]
     fn reset_indent(&self) -> Self {

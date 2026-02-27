@@ -152,7 +152,7 @@ fn text_of_token(node: &SyntaxNode) -> TokenText<'_> {
             .children()
             .next()
             .and_then(NodeOrToken::into_token)
-            .unwrap()
+            .expect("node should have first token")
     }
 
     match node.green() {
@@ -393,17 +393,26 @@ impl nodes::Integer {
 
 impl From<nodes::Integer> for usize {
     fn from(i: nodes::Integer) -> Self {
-        i.clean_text().trim().parse().unwrap()
+        i.clean_text()
+            .trim()
+            .parse()
+            .expect("text should be parsable as integer")
     }
 }
 impl From<nodes::Integer> for u32 {
     fn from(i: nodes::Integer) -> Self {
-        i.clean_text().trim().parse().unwrap()
+        i.clean_text()
+            .trim()
+            .parse()
+            .expect("text should be parsable as integer")
     }
 }
 impl From<nodes::Integer> for i32 {
     fn from(i: nodes::Integer) -> Self {
-        i.clean_text().trim().parse().unwrap()
+        i.clean_text()
+            .trim()
+            .parse()
+            .expect("text should be parsable as integer")
     }
 }
 impl From<nodes::String> for std::string::String {
@@ -431,7 +440,7 @@ fn trim_quotes_and_sigils(s: &str) -> String {
               ("+)         # followed by quotes, as a match group to count them (cap 2)
               (.*)         # The actual string contents we care about           (cap 3)
               $            # End of string. Do not match quotes, we trim separately
-            "#).unwrap();
+            "#).expect("regex should be valid");
     }
     let mut quoted = true;
     let trimmed = if let Some(captures) = RE.captures(s) {

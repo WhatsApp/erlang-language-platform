@@ -36,7 +36,9 @@ pub(crate) fn module_mismatch(
     let _ = stdx::panic_context::enter(format!("\nmodule_mismatch: {file_id:?}"));
     let root_id = sema.db.file_source_root(file_id);
     let root = sema.db.source_root(root_id);
-    let path = root.path_for_file(&file_id).unwrap();
+    let path = root
+        .path_for_file(&file_id)
+        .expect("file should have a path in source root");
     let filename = path.name_and_extension().unwrap_or_default().0;
     let loc = module_name.syntax().text_range();
     if module_name.text()? != filename {

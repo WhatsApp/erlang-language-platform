@@ -359,7 +359,11 @@ impl DocLoader for crate::RootDatabase {
 
         let project_id = app_data.project_id;
         let erlang_service = self.erlang_service_for(project_id);
-        let path = root.path_for_file(&file_id).unwrap().as_path().unwrap();
+        let path = root
+            .path_for_file(&file_id)
+            .expect("file should have path in source root")
+            .as_path()
+            .expect("path should be absolute");
         let src_path = path.to_path_buf().into();
         let doc_request = match doc_origin {
             DocOrigin::Edoc => {

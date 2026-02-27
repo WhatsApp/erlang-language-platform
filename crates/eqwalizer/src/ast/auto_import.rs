@@ -187,7 +187,10 @@ const FUNS: LazyLock<BTreeSet<ast::Id>> = LazyLock::new(|| {
             "unregister/1",
             "whereis/1",
         ]
-        .map(|s| s.parse().unwrap()),
+        .map(|s| {
+            s.parse()
+                .expect("auto-import fun should be valid Id literal")
+        }),
     )
 });
 

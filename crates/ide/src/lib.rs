@@ -584,7 +584,9 @@ impl Analysis {
     ) -> Cancellable<Vec<NavigationTarget>> {
         const LIMIT: i32 = 128;
         self.with_db(|db| {
-            let module_index = self.module_index(project_id).unwrap();
+            let module_index = self
+                .module_index(project_id)
+                .expect("project should have a module index");
             let mut total = 0;
             module_index
                 .all_modules()

@@ -71,7 +71,7 @@ impl Position {
         let elem = elem.syntax_element();
         let repr = match elem.prev_sibling_or_token() {
             Some(it) => PositionRepr::After(it),
-            None => PositionRepr::FirstChild(elem.parent().unwrap()),
+            None => PositionRepr::FirstChild(elem.parent().expect("element should have parent")),
         };
         Position { repr }
     }
@@ -111,7 +111,10 @@ pub fn insert_all(position: Position, mut elements: Vec<SyntaxElement>) {
 pub fn insert_all_raw(position: Position, elements: Vec<SyntaxElement>) {
     let (parent, index) = match position.repr {
         PositionRepr::FirstChild(parent) => (parent, 0),
-        PositionRepr::After(child) => (child.parent().unwrap(), child.index() + 1),
+        PositionRepr::After(child) => (
+            child.parent().expect("child should have parent"),
+            child.index() + 1,
+        ),
     };
     parent.splice_children(index..index, elements);
 }
@@ -147,7 +150,7 @@ pub fn replace_with_many(old: impl Element, new: Vec<SyntaxElement>) {
 pub fn replace_all(range: RangeInclusive<SyntaxElement>, new: Vec<SyntaxElement>) {
     let start = range.start().index();
     let end = range.end().index();
-    let parent = range.start().parent().unwrap();
+    let parent = range.start().parent().expect("element should have parent");
     parent.splice_children(start..end + 1, new);
 }
 

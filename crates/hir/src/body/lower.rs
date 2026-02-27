@@ -2879,7 +2879,12 @@ impl<'a> Ctx<'a> {
             return None;
         }
 
-        let source = InFileAstPtr::new(self.curr_file_id(), AstPtr::new(call).cast().unwrap());
+        let source = InFileAstPtr::new(
+            self.curr_file_id(),
+            AstPtr::new(call)
+                .cast()
+                .expect("MacroCallExpr should cast to Expr"),
+        );
 
         match self.resolve_macro_name(&name) {
             Some(res @ ResolvedMacro::BuiltIn(built_in)) => {
@@ -3084,7 +3089,12 @@ impl<'a> Ctx<'a> {
             }
         }
 
-        let source = InFileAstPtr::new(self.curr_file_id(), AstPtr::new(call).cast().unwrap());
+        let source = InFileAstPtr::new(
+            self.curr_file_id(),
+            AstPtr::new(call)
+                .cast()
+                .expect("MacroCallExpr should cast to Expr"),
+        );
         self.diagnostics
             .push(BodyDiagnostic::UnresolvedMacro(source));
     }

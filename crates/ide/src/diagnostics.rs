@@ -3263,21 +3263,22 @@ fn erlang_service_label(diagnostic: &Diagnostic) -> Option<DiagnosticLabel> {
 
 pub fn function_undefined_from_message(s: &str) -> Option<String> {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"^function ([^\s]+) undefined$").unwrap();
+        static ref RE: Regex = Regex::new(r"^function ([^\s]+) undefined$").expect("valid regex");
     }
     RE.captures_iter(s).next().map(|c| c[1].to_string())
 }
 
 pub fn type_undefined_from_message(s: &str) -> Option<String> {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"^type ([^\s]+) undefined$").unwrap();
+        static ref RE: Regex = Regex::new(r"^type ([^\s]+) undefined$").expect("valid regex");
     }
     RE.captures_iter(s).next().map(|c| c[1].to_string())
 }
 
 pub fn spec_for_undefined_function_from_message(s: &str) -> Option<String> {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"^spec for undefined function ([^\s]+)$").unwrap();
+        static ref RE: Regex =
+            Regex::new(r"^spec for undefined function ([^\s]+)$").expect("valid regex");
     }
     RE.captures_iter(s).next().map(|c| c[1].to_string())
 }

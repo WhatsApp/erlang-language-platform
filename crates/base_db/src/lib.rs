@@ -458,8 +458,8 @@ fn generated_status(db: &dyn SourceDatabase, file_id: FileId) -> GeneratedStatus
         // to avoid issues with UTF8 character boundaries.
         // See https://github.com/WhatsApp/erlang-language-platform/issues/24
         // The format macro is used to avoid marking the whole file as generated.
-        static ref RE_GENERATED: regex::bytes::Regex = regex::bytes::Regex::new(&format!("{}generated", "@")).unwrap();
-        static ref RE_PARTIALLY_GENERATED: regex::bytes::Regex = regex::bytes::Regex::new(&format!("{}partially-generated", "@")).unwrap();
+        static ref RE_GENERATED: regex::bytes::Regex = regex::bytes::Regex::new(&format!("{}generated", "@")).expect("regex should be valid");
+        static ref RE_PARTIALLY_GENERATED: regex::bytes::Regex = regex::bytes::Regex::new(&format!("{}partially-generated", "@")).expect("regex should be valid");
     }
     let contents = db.file_text(file_id);
     let header = &contents.as_bytes()[0..(2001.min(contents.len()))];
@@ -477,9 +477,9 @@ fn generated_status(db: &dyn SourceDatabase, file_id: FileId) -> GeneratedStatus
 fn manual_section_ranges(db: &dyn SourceDatabase, file_id: FileId) -> Arc<Vec<TextRange>> {
     lazy_static! {
         static ref RE_BEGIN_MANUAL: regex::bytes::Regex =
-            regex::bytes::Regex::new(r"% BEGIN MANUAL SECTION").unwrap();
+            regex::bytes::Regex::new(r"% BEGIN MANUAL SECTION").expect("regex should be valid");
         static ref RE_END_MANUAL: regex::bytes::Regex =
-            regex::bytes::Regex::new(r"% END MANUAL SECTION").unwrap();
+            regex::bytes::Regex::new(r"% END MANUAL SECTION").expect("regex should be valid");
     }
 
     let contents = db.file_text(file_id);
@@ -586,7 +586,7 @@ pub fn module_name(db: &dyn SourceDatabase, file_id: FileId) -> Option<ModuleNam
 lazy_static! {
 static ref IGNORED_SOURCES: Vec<Regex> = {
     let regexes: Vec<Vec<Regex>> = vec![
-        vec![Regex::new(r"^.*_SUITE_data/.+$").unwrap()],
+        vec![Regex::new(r"^.*_SUITE_data/.+$").expect("regex should be valid")],
         //ignore sources goes here
         // @fb-only: meta_only::ignored_sources_regexes()
     ];
@@ -603,7 +603,10 @@ fn file_kind(db: &dyn SourceDatabase, file_id: FileId) -> FileKind {
         .path_for_file(&file_id)
         .and_then(|path| path.as_path())
         .map(|path| {
-            let path = path.as_os_str().to_str().unwrap();
+            let path = path
+                .as_os_str()
+                .to_str()
+                .expect("path should be valid UTF-8");
             IGNORED_SOURCES.iter().any(|r| r.is_match(path))
         })
         .unwrap_or(false);

@@ -68,7 +68,7 @@ pub(crate) fn add_spec(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                     }
                     _ => None,
                 })
-                .unwrap()
+                .expect("cursor should be within a function clause")
                 .args()
                 .into_iter()
                 .flat_map(|args| args.args())

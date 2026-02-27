@@ -223,7 +223,9 @@ fn fix_xref_ignore(
         TextSize::from(0)
     };
 
-    let module = sema.module_name(def.file.file_id).unwrap();
+    let module = sema
+        .module_name(def.file.file_id)
+        .expect("module should have a name");
 
     let text = format!(
         "-ignore_xref([{{{}, {}, {}}}]).\n",

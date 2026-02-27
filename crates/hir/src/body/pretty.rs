@@ -59,7 +59,7 @@ pub fn print_function_clause(
 
     let mut sep = "";
     for (_idx, clause) in body.clauses.iter() {
-        write!(out, "{sep}").unwrap();
+        write!(out, "{sep}").expect("write should succeed");
         sep = ";";
         let mut printer = Printer::new(db, &clause.body);
         printer
@@ -67,10 +67,10 @@ pub fn print_function_clause(
                 &clause.clause,
                 clause.name.clone().unwrap_or(form.name.clone()).name(),
             )
-            .unwrap();
-        write!(out, "{}", printer.result_raw()).unwrap();
+            .expect("write should succeed");
+        write!(out, "{}", printer.result_raw()).expect("write should succeed");
     }
-    writeln!(out, ".").unwrap();
+    writeln!(out, ".").expect("write should succeed");
 
     out
 }
@@ -79,19 +79,21 @@ pub fn print_type_alias(db: &dyn InternDatabase, body: &TypeBody, form: &TypeAli
     let mut printer = Printer::new(db, &body.body);
 
     match form {
-        TypeAlias::Regular { .. } => write!(printer, "-type ").unwrap(),
-        TypeAlias::Nominal { .. } => write!(printer, "-nominal ").unwrap(),
-        TypeAlias::Opaque { .. } => write!(printer, "-opaque ").unwrap(),
+        TypeAlias::Regular { .. } => write!(printer, "-type ").expect("write should succeed"),
+        TypeAlias::Nominal { .. } => write!(printer, "-nominal ").expect("write should succeed"),
+        TypeAlias::Opaque { .. } => write!(printer, "-opaque ").expect("write should succeed"),
     }
 
     printer
         .print_args(form.name().name(), &body.vars, |this, &var| {
             write!(this, "{}", db.lookup_var(var))
         })
-        .unwrap();
-    write!(printer, " :: ").unwrap();
-    printer.print_type(&printer.body[body.ty]).unwrap();
-    write!(printer, ".").unwrap();
+        .expect("write should succeed");
+    write!(printer, " :: ").expect("write should succeed");
+    printer
+        .print_type(&printer.body[body.ty])
+        .expect("write should succeed");
+    write!(printer, ".").expect("write should succeed");
 
     printer.result()
 }
@@ -100,19 +102,23 @@ pub fn print_spec(db: &dyn InternDatabase, body: &SpecBody, form: SpecOrCallback
     let mut printer = Printer::new(db, &body.body);
 
     match form {
-        SpecOrCallback::Spec(spec) => writeln!(printer, "-spec {}", spec.name.name()).unwrap(),
-        SpecOrCallback::Callback(cb) => writeln!(printer, "-callback {}", cb.name.name()).unwrap(),
+        SpecOrCallback::Spec(spec) => {
+            writeln!(printer, "-spec {}", spec.name.name()).expect("write should succeed")
+        }
+        SpecOrCallback::Callback(cb) => {
+            writeln!(printer, "-callback {}", cb.name.name()).expect("write should succeed")
+        }
     }
     printer.indent_level += 1;
 
     let mut sep = "";
     for sig in &body.sigs {
-        write!(printer, "{sep}").unwrap();
+        write!(printer, "{sep}").expect("write should succeed");
         sep = ";\n";
-        printer.print_sig(sig).unwrap();
+        printer.print_sig(sig).expect("write should succeed");
     }
 
-    write!(printer, ".").unwrap();
+    write!(printer, ".").expect("write should succeed");
 
     printer.result()
 }
@@ -125,18 +131,20 @@ pub fn print_record(
 ) -> String {
     let mut printer = Printer::new(db, &body.body);
 
-    write!(printer, "-record({}, {{", form.name).unwrap();
+    write!(printer, "-record({}, {{", form.name).expect("write should succeed");
     printer.indent_level += 1;
 
     let mut sep = "\n";
     for field in &body.fields {
-        write!(printer, "{sep}").unwrap();
+        write!(printer, "{sep}").expect("write should succeed");
         sep = ",\n";
-        printer.print_field(field, form_list).unwrap();
+        printer
+            .print_field(field, form_list)
+            .expect("write should succeed");
     }
 
     printer.indent_level -= 1;
-    write!(printer, "\n}}).").unwrap();
+    write!(printer, "\n}}).").expect("write should succeed");
 
     printer.result()
 }
@@ -149,36 +157,46 @@ pub fn print_attribute(
     let mut printer = Printer::new(db, &body.body);
 
     match form {
-        AnyAttribute::CompileOption(_) => write!(printer, "-compile(").unwrap(),
-        AnyAttribute::Attribute(attr) => write!(printer, "-{}(", attr.name).unwrap(),
+        AnyAttribute::CompileOption(_) => {
+            write!(printer, "-compile(").expect("write should succeed")
+        }
+        AnyAttribute::Attribute(attr) => {
+            write!(printer, "-{}(", attr.name).expect("write should succeed")
+        }
     }
-    printer.print_term(&printer.body[body.value]).unwrap();
-    write!(printer, ").").unwrap();
+    printer
+        .print_term(&printer.body[body.value])
+        .expect("write should succeed");
+    write!(printer, ").").expect("write should succeed");
 
     printer.result()
 }
 
 pub fn print_expr(db: &dyn InternDatabase, body: &Body, expr: ExprId) -> String {
     let mut printer = Printer::new(db, body);
-    printer.print_expr(&body[expr]).unwrap();
+    printer
+        .print_expr(&body[expr])
+        .expect("write should succeed");
     printer.result()
 }
 
 pub fn print_pat(db: &dyn InternDatabase, body: &Body, pat: PatId) -> String {
     let mut printer = Printer::new(db, body);
-    printer.print_pat(&body[pat]).unwrap();
+    printer.print_pat(&body[pat]).expect("write should succeed");
     printer.result()
 }
 
 pub fn print_type(db: &dyn InternDatabase, body: &Body, ty: TypeExprId) -> String {
     let mut printer = Printer::new(db, body);
-    printer.print_type(&body[ty]).unwrap();
+    printer.print_type(&body[ty]).expect("write should succeed");
     printer.result()
 }
 
 pub fn print_term(db: &dyn InternDatabase, body: &Body, term: TermId) -> String {
     let mut printer = Printer::new(db, body);
-    printer.print_term(&body[term]).unwrap();
+    printer
+        .print_term(&body[term])
+        .expect("write should succeed");
     printer.result()
 }
 
@@ -187,7 +205,7 @@ pub(crate) fn print_ssr(db: &dyn InternDatabase, ssr: &super::SsrBody) -> String
     let template = &ssr.template.as_ref().map(|idx| &ssr.body[idx.expr]);
     printer
         .print_ssr(&ssr.body[ssr.pattern.expr], *template, &ssr.when)
-        .unwrap();
+        .expect("write should succeed");
     printer.result()
 }
 

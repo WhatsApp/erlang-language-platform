@@ -134,7 +134,7 @@ fn format_value_part(number: String, underscores_every: usize) -> String {
         .rev() // Reverse again so the chunks are in the correct order
         .map(std::str::from_utf8)
         .collect::<Result<Vec<&str>, _>>()
-        .unwrap()
+        .expect("ASCII digits should be valid UTF-8")
         .join("_") // Join the chunks with our numeric separator
 }
 

@@ -58,7 +58,7 @@ const PREDICATES: LazyLock<BTreeSet<ast::Id>> = LazyLock::new(|| {
             "is_record/2",
             "is_record/3",
         ]
-        .map(|s| s.parse().unwrap()),
+        .map(|s| s.parse().expect("predicate should be a valid Id literal")),
     )
 });
 
@@ -229,7 +229,9 @@ impl Transformer<()> for Preprocessor {
                     },
                 args,
             }) if module == "lists" && name == "partition" => {
-                let [arg_fun, arg_list] = args.try_into().unwrap();
+                let [arg_fun, arg_list] = args
+                    .try_into()
+                    .expect("lists:partition/2 has exactly 2 args");
                 let arg_trans = self.preprocess_lists_partition_arg_fun(&location, arg_fun);
                 Ok(Expr::RemoteCall(RemoteCall {
                     pos: location,
@@ -248,5 +250,7 @@ impl Transformer<()> for Preprocessor {
 
 pub(crate) fn preprocess(ast: AST) -> AST {
     let mut preprocessor = Preprocessor { var: 0 };
-    preprocessor.transform_ast(ast).unwrap()
+    preprocessor
+        .transform_ast(ast)
+        .expect("preprocessing is infallible")
 }

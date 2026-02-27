@@ -134,7 +134,7 @@ fn shallowest_node(node: &SyntaxNode) -> SyntaxNode {
     node.ancestors()
         .take_while(|n| n.text_range() == node.text_range())
         .last()
-        .unwrap()
+        .expect("ancestors iterator should be non-empty")
 }
 
 fn extend_single_word_in_comment_or_string(

@@ -69,7 +69,7 @@ impl<N: AstNode> FormId<N> {
             .forms()
             .nth(self.raw.0 as usize)
             .and_then(|form| N::cast(form.syntax().clone()))
-            .unwrap()
+            .expect("form at index should exist and cast successfully")
     }
 
     pub fn get_ast(&self, db: &dyn DefDatabase, file_id: FileId) -> N {
@@ -103,14 +103,17 @@ impl FormIdMap {
         let mut map = Self::default();
         for (id, form) in source_file.forms().enumerate() {
             let ptr = SyntaxNodePtr::new(form.syntax());
-            let raw_id = RawId(id.try_into().unwrap());
+            let raw_id = RawId(id.try_into().expect("form count fits in u32"));
             map.arena.insert(ptr, raw_id);
         }
         map
     }
 
     pub fn get_id<N: AstNode>(&self, node: &N) -> FormId<N> {
-        let raw_id = self.arena.get(&SyntaxNodePtr::new(node.syntax())).unwrap();
+        let raw_id = self
+            .arena
+            .get(&SyntaxNodePtr::new(node.syntax()))
+            .expect("node should be in FormIdMap");
         FormId {
             raw: *raw_id,
             _ty: PhantomData,

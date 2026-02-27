@@ -61,9 +61,18 @@ fn escape_and_quote(kind: StringLike, raw: &str) -> String {
             _ if (' '..='~').contains(&char) => result.push(char),
             _ if (char < '\u{00A0}') => {
                 result.push('\\');
-                result.push(char::from_u32((Into::<u32>::into(char) >> 6) + 48).unwrap());
-                result.push(char::from_u32(((Into::<u32>::into(char) >> 3) & 7) + 48).unwrap());
-                result.push(char::from_u32((Into::<u32>::into(char) & 7) + 48).unwrap());
+                result.push(
+                    char::from_u32((Into::<u32>::into(char) >> 6) + 48)
+                        .expect("octal digit should be a valid char"),
+                );
+                result.push(
+                    char::from_u32(((Into::<u32>::into(char) >> 3) & 7) + 48)
+                        .expect("octal digit should be a valid char"),
+                );
+                result.push(
+                    char::from_u32((Into::<u32>::into(char) & 7) + 48)
+                        .expect("octal digit should be a valid char"),
+                );
             }
             _ => result.push(char),
         }
@@ -118,7 +127,7 @@ pub fn atom_needs_escape(raw: &str) -> bool {
         true
     } else {
         // We already checked that the atom is not empty, so it's safe to unwrap the first char
-        let first_char = raw.chars().next().unwrap();
+        let first_char = raw.chars().next().expect("atom should be non-empty");
         // First char is checked differently to subsequent chars:
         // https://github.com/erlang/otp/blob/ae81b2f6ff2d541c01242f12cdbd5238aa4b26bd/lib/stdlib/src/io_lib.erl#L934
         if first_char.is_ascii_lowercase()

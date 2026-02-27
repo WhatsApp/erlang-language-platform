@@ -231,24 +231,24 @@ pub struct ExternalRecField {
 
 impl TypeDecl {
     pub fn to_bytes(&self) -> Vec<u8> {
-        serde_json::to_vec(self).unwrap()
+        serde_json::to_vec(self).expect("type should be serializable to JSON")
     }
 }
 
 impl RecDecl {
     pub fn to_bytes(&self) -> Vec<u8> {
-        serde_json::to_vec(self).unwrap()
+        serde_json::to_vec(self).expect("type should be serializable to JSON")
     }
 }
 
 impl FunSpec {
     pub fn to_bytes(&self) -> Vec<u8> {
-        serde_json::to_vec(self).unwrap()
+        serde_json::to_vec(self).expect("type should be serializable to JSON")
     }
 }
 
 impl OverloadedFunSpec {
     pub fn to_bytes(&self) -> Vec<u8> {
-        serde_json::to_vec(self).unwrap()
+        serde_json::to_vec(self).expect("type should be serializable to JSON")
     }
 }

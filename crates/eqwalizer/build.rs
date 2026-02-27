@@ -17,7 +17,7 @@ use std::process::Command;
 fn main() {
     let source_directory = Path::new("../../../eqwalizer/eqwalizer");
     let tools_dir = source_directory.join("tools");
-    let out_dir = env::var_os("OUT_DIR").unwrap();
+    let out_dir = env::var_os("OUT_DIR").expect("OUT_DIR env var set by Cargo");
     let eqwalizer_out_dir = Path::new("../../../../../buck-out/eqwalizer/scala-3.6.4");
     let dest_path = Path::new(&out_dir).join("eqwalizer");
     let extension;
@@ -30,7 +30,7 @@ fn main() {
             .extension()
             .unwrap_or_default()
             .to_str()
-            .unwrap()
+            .expect("valid UTF-8 path")
             .to_string();
         fs::copy(from, dest_path).expect("Copying precompiled eqwalizer failed");
     } else {
@@ -38,8 +38,11 @@ fn main() {
 
         if env::var("OPT_LEVEL").unwrap_or_default() == "0" {
             extension = "jar".to_string();
-            java = if env::var("CARGO_CFG_TARGET_OS").unwrap() == "linux" {
-                fs::canonicalize(tools_dir.join("graalvm/bin/java")).unwrap()
+            java = if env::var("CARGO_CFG_TARGET_OS").expect("CARGO_CFG_TARGET_OS set by Cargo")
+                == "linux"
+            {
+                fs::canonicalize(tools_dir.join("graalvm/bin/java"))
+                    .expect("graalvm java path exists")
             } else {
                 "java".into()
             };
@@ -61,9 +64,10 @@ fn main() {
 }
 
 fn build_native_image(source_directory: &Path, eqwalizer_out_dir: &Path, jar: PathBuf) -> PathBuf {
-    let native_image = fs::canonicalize(source_directory.join("./meta/native-image.sh")).unwrap();
+    let native_image = fs::canonicalize(source_directory.join("./meta/native-image.sh"))
+        .expect("native-image.sh path exists");
     let image_path = fs::canonicalize(eqwalizer_out_dir)
-        .unwrap()
+        .expect("eqwalizer output dir exists")
         .join("eqwalizer");
     let output = Command::new(native_image)
         .current_dir(source_directory)
@@ -86,7 +90,7 @@ fn build_native_image(source_directory: &Path, eqwalizer_out_dir: &Path, jar: Pa
 
 fn build_jar(source_directory: &Path, eqwalizer_out_dir: &Path) -> PathBuf {
     // Use the sbt wrapper on linux or otherwise require sbt to be installed
-    let sbt = fs::canonicalize(source_directory.join("./meta/sbt.sh")).unwrap();
+    let sbt = fs::canonicalize(source_directory.join("./meta/sbt.sh")).expect("sbt.sh path exists");
     let output = Command::new(sbt)
         .arg("assembly")
         .current_dir(source_directory)
@@ -100,7 +104,8 @@ fn build_jar(source_directory: &Path, eqwalizer_out_dir: &Path) -> PathBuf {
         panic!("sbt assembly failed with stdout:\n{stdout}\n\nstderr:\n{stderr}");
     }
 
-    fs::canonicalize(eqwalizer_out_dir.join("eqwalizer.jar")).unwrap()
+    fs::canonicalize(eqwalizer_out_dir.join("eqwalizer.jar"))
+        .expect("eqwalizer.jar exists after sbt assembly")
 }
 
 fn rerun_if_changed(path: impl AsRef<Path>) {

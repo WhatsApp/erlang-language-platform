@@ -68,7 +68,12 @@ impl TypeConverter {
     }
 
     pub fn convert_spec(&self, spec: ExternalFunSpec) -> Result<FunSpec, TypeConversionError> {
-        let ty = self.convert_cft(spec.types.into_iter().next().unwrap())?;
+        let ty = self.convert_cft(
+            spec.types
+                .into_iter()
+                .next()
+                .expect("spec should have at least one type"),
+        )?;
         Ok(FunSpec {
             pos: spec.pos,
             id: spec.id,
@@ -263,7 +268,10 @@ impl TypeConverter {
                 tys.retain(|ty| *ty != Type::NoneType);
                 match tys.len() {
                     0 => Type::NoneType,
-                    1 => tys.into_iter().next().unwrap(),
+                    1 => tys
+                        .into_iter()
+                        .next()
+                        .expect("union type should be a non-empty collection of types"),
                     _ => Type::UnionType(UnionType { tys }),
                 }
             })),
@@ -273,7 +281,13 @@ impl TypeConverter {
                     && ty.id.arity == 1
                     && ty.args.len() == 1 =>
             {
-                self.convert_type(sub, ty.args.into_iter().next().unwrap())
+                self.convert_type(
+                    sub,
+                    ty.args
+                        .into_iter()
+                        .next()
+                        .expect("refinable type should have exactly one arg"),
+                )
             }
             ExtType::RemoteExtType(ty) => Ok(self
                 .convert_types(sub, ty.args)?

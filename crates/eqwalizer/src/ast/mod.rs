@@ -223,5 +223,5 @@ pub fn type_ids(ast: &AST) -> BTreeMap<Id, Visibility> {
 }
 
 pub fn to_bytes(ast: &Vec<&ExternalForm>) -> Vec<u8> {
-    serde_json::to_vec(ast).unwrap()
+    serde_json::to_vec(ast).expect("ExternamForms should be JSON serializable")
 }

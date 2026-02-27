@@ -212,11 +212,12 @@ impl AsName for ast::MacroName {
 pub fn erlang_funs() -> &'static HashSet<NameArity> {
     static ERLANG_FUNS: OnceLock<HashSet<NameArity>> = OnceLock::new();
     ERLANG_FUNS.get_or_init(|| {
-        HashSet::from_iter(
-            ast::erlang_funs()
-                .iter()
-                .map(|&f| NameArity::new(Name::new_inline(f.0), f.1.try_into().unwrap())),
-        )
+        HashSet::from_iter(ast::erlang_funs().iter().map(|&f| {
+            NameArity::new(
+                Name::new_inline(f.0),
+                f.1.try_into().expect("arity should fit in u32"),
+            )
+        }))
     })
 }
 

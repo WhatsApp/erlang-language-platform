@@ -120,7 +120,7 @@ impl<N: AstNode> AstPtr<N> {
 
     pub fn to_node(&self, root: &SyntaxNode) -> N {
         let syntax_node = self.raw.to_node(root);
-        N::cast(syntax_node).unwrap()
+        N::cast(syntax_node).expect("AstPtr should point to valid node")
     }
 
     pub fn syntax_node_ptr(&self) -> SyntaxNodePtr {

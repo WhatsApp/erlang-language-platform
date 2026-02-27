@@ -1136,7 +1136,10 @@ impl Semantic<'_> {
     }
 
     pub fn tree_print_ssr(&self, ssr_source: SsrSource) -> String {
-        let (body, _) = self.db.ssr_body_with_source(ssr_source).unwrap();
+        let (body, _) = self
+            .db
+            .ssr_body_with_source(ssr_source)
+            .expect("SSR body should exist");
         body.tree_print(self.db.upcast())
     }
 }

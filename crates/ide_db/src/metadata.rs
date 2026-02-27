@@ -110,7 +110,7 @@ impl From<&Annotation> for eetf::Term {
             // eetf::FixInteger holds an i32, which means
             // we can support files with about 2 million LOC
             // otherwise we blow up (calculation based on 1000 chars() per line)
-            let n: i32 = n.try_into().unwrap();
+            let n: i32 = n.try_into().expect("file size should fit in i32");
             eetf::FixInteger::from(n).into()
         };
         let is_ignore = val.kind == Kind::Ignore;

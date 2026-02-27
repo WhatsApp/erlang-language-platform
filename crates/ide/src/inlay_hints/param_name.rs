@@ -58,7 +58,9 @@ pub(super) fn hints(
                                     && let Some(arg_range) =
                                         function_body.range_for_expr(clause_id, arg)
                                     && (range_limit.is_none()
-                                        || range_limit.unwrap().contains_range(arg_range.range))
+                                        || range_limit
+                                            .expect("guarded by is_none check above")
+                                            .contains_range(arg_range.range))
                                     && let ParamName::Name(param_name) = param_name
                                     && arg_range.file_id == file_id
                                 {

@@ -42,7 +42,7 @@ impl GenericLinter for NoNoWarnSuppressionsLinter {
         file_id: FileId,
     ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
         lazy_static! {
-            static ref NOWARN_REGEX: Regex = Regex::new(r"^nowarn_").unwrap();
+            static ref NOWARN_REGEX: Regex = Regex::new(r"^nowarn_").expect("valid regex");
         }
 
         let mut res = Vec::new();

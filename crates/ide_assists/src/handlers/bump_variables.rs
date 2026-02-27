@@ -157,7 +157,7 @@ struct NumberedVar {
 impl NumberedVar {
     fn from_var(var_str: &str) -> Option<NumberedVar> {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"[0-9]+$").unwrap();
+            static ref RE: Regex = Regex::new(r"[0-9]+$").expect("regex should be valid");
         }
         let res = RE.find(var_str)?;
         let number = &var_str[res.start()..res.end()];

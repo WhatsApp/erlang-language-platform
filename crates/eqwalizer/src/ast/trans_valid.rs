@@ -82,7 +82,7 @@ impl TransitiveChecker<'_> {
     fn show_invalids(&mut self, rref: &Ref) -> Vec<SmolStr> {
         self.invalid_refs
             .get(rref)
-            .unwrap()
+            .expect("rref should already be inserted into invalid_refs")
             .iter()
             .map(|inv| self.show(inv))
             .collect()

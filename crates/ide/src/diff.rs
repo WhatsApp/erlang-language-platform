@@ -102,7 +102,8 @@ where
 
     fn print_tokens(&mut self, tokens: &[Token], prefix: char) {
         for &token in tokens {
-            writeln!(&mut self.buffer, "{prefix}{}", self.interner[token]).unwrap();
+            writeln!(&mut self.buffer, "{prefix}{}", self.interner[token])
+                .expect("write to string");
         }
     }
 
@@ -122,8 +123,8 @@ where
             self.after_hunk_start + 1,
             self.after_hunk_len,
         )
-        .unwrap();
-        write!(&mut self.dst, "{}", &self.buffer).unwrap();
+        .expect("write to string");
+        write!(&mut self.dst, "{}", &self.buffer).expect("write to string");
         self.buffer.clear();
         self.before_hunk_len = 0;
         self.after_hunk_len = 0
@@ -215,7 +216,7 @@ mod tests {
         .assert_debug_eq(&diff);
         expect![[r#"
             @@ -1,8 +1,8 @@
- 
+
                        line 1
             -          line 2
                        line 3
@@ -224,7 +225,7 @@ mod tests {
             +          line 5a
             +          line 5b
                        line 6
-           
+
         "#]]
         .assert_eq(
             &unified

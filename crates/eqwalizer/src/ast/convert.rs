@@ -2062,7 +2062,9 @@ impl Converter {
                     if args.is_nil() {
                         return Ok(ExtType::AnyListExtType(AnyListExtType { pos }));
                     } else if args.elements.len() == 1 {
-                        let t = self.convert_type(args.elements.first().unwrap())?;
+                        let t = self.convert_type(
+                            args.elements.first().expect("args should be non-empty"),
+                        )?;
                         return Ok(ExtType::ListExtType(ListExtType {
                             pos,
                             t: Box::new(t),
@@ -2075,7 +2077,8 @@ impl Converter {
                         || kind.name == "nonempty_maybe_improper_list")
                         && args.elements.len() == 2 =>
                 {
-                    let t = self.convert_type(args.elements.first().unwrap())?;
+                    let t = self
+                        .convert_type(args.elements.first().expect("args should be non-empty"))?;
                     return Ok(ExtType::ListExtType(ListExtType {
                         pos,
                         t: Box::new(t),

@@ -570,7 +570,10 @@ pub struct RecordFieldDef {
 impl RecordFieldDef {
     pub fn source(&self, db: &dyn SourceDatabase) -> ast::RecordField {
         let record = self.record.source(db);
-        record.fields().nth(self.field.idx as usize).unwrap()
+        record
+            .fields()
+            .nth(self.field.idx as usize)
+            .expect("record field at index should exist")
     }
 }
 

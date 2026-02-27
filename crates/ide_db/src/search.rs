@@ -270,7 +270,7 @@ impl<'a> FindUsages<'a> {
             search_range: TextRange,
         ) -> impl Iterator<Item = TextSize> + 'a {
             finder.find_iter(text.as_bytes()).filter_map(move |idx| {
-                let offset: TextSize = idx.try_into().unwrap();
+                let offset: TextSize = idx.try_into().expect("file offset should fit in TextSize");
                 if !search_range.contains_inclusive(offset) {
                     return None;
                 }
