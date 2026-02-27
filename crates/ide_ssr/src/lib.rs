@@ -85,7 +85,6 @@ use hir::Pat;
 use hir::Semantic;
 use hir::SsrBody;
 use hir::SsrPatternIds;
-use hir::SsrPlaceholder;
 use hir::SsrSource;
 use hir::db::DefDatabase;
 use hir::db::InternDatabase;
@@ -112,6 +111,7 @@ use hir::Var;
 pub use matching::Match;
 pub use matching::MatchFailureReason;
 pub use matching::PlaceholderMatch;
+use matching::SsrPlaceholder;
 pub use matching::SubId;
 
 // ---------------------------------------------------------------------
@@ -245,7 +245,7 @@ impl SsrRule {
                 },
                 &ssr_body.body,
             );
-            let conditions = SsrRule::make_conditions(&ssr_body, &body)?;
+            let conditions = SsrRule::make_conditions(&ssr_body, &body, db.upcast())?;
             Ok(SsrRule {
                 parsed_rule: ssr_body.clone(),
                 conditions,
@@ -272,13 +272,14 @@ impl SsrRule {
     fn make_conditions(
         ssr_body: &SsrBody,
         body: &FoldBody,
+        db: &dyn InternDatabase,
     ) -> Result<FxHashMap<SsrPlaceholder, Condition>, SsrError> {
         let mut conditions: FxHashMap<SsrPlaceholder, Condition> = FxHashMap::default();
         let mut error = None;
         if let Some(w) = ssr_body.when.as_ref() {
             w.iter().for_each(|conds| {
                 conds.iter().for_each(|cond| {
-                    extract_condition(body, cond, &mut conditions, &mut error);
+                    extract_condition(body, cond, &mut conditions, &mut error, db);
                 });
             })
         }
@@ -295,10 +296,13 @@ fn extract_condition(
     cond: &ExprId,
     conditions: &mut FxHashMap<SsrPlaceholder, Condition>,
     error: &mut Option<SsrError>,
+    db: &dyn InternDatabase,
 ) {
     match body[*cond] {
         Expr::BinaryOp { lhs, rhs, op } => {
-            if let Expr::SsrPlaceholder(ssr_placeholder) = &body[lhs] {
+            if let Expr::Var(var) = &body[lhs]
+                && let Some(ssr_placeholder) = SsrPlaceholder::from_var(*var, db)
+            {
                 // We have a condition on the current placeholder, store it if valid
                 match op {
                     ast::BinaryOp::CompOp(CompOp::Eq { strict: _, negated }) => {

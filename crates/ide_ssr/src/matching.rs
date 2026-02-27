@@ -12,6 +12,7 @@
 //! node in the HIR AST. In the process of matching, placeholder
 //! values are recorded.
 
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::iter;
 
@@ -50,16 +51,34 @@ use hir::MaybeExpr;
 use hir::Pat;
 use hir::PatId;
 use hir::Semantic;
-use hir::SsrPlaceholder;
 use hir::StringVariant;
 use hir::Term;
 use hir::TypeExpr;
 use hir::Var;
+use hir::db::InternDatabase;
 
 use crate::Condition;
 use crate::SsrMatches;
 use crate::SsrPattern;
 use crate::get_literal_subid;
+
+/// An SSR placeholder detected from a Var with the `_@` prefix.
+/// This type is local to the SSR crate since it's only meaningful in SSR context.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
+pub struct SsrPlaceholder {
+    pub var: Var,
+}
+
+impl SsrPlaceholder {
+    /// Create from a Var, if it's an SSR placeholder
+    pub fn from_var(var: Var, db: &dyn InternDatabase) -> Option<Self> {
+        if var.is_ssr_placeholder(db) {
+            Some(SsrPlaceholder { var })
+        } else {
+            None
+        }
+    }
+}
 
 // Creates a match error.
 macro_rules! match_error {
@@ -491,7 +510,7 @@ impl<'a> Matcher<'a> {
         {
             if let Phase::Second(matches_out) = phase {
                 // check constraints
-                if let Some(condition) = self.rule.conditions.get(placeholder) {
+                if let Some(condition) = self.rule.conditions.get(&placeholder) {
                     self.check_condition(code, condition)?;
                 }
                 if let Some(original_range) = self.get_code_range(code) {
@@ -704,9 +723,9 @@ impl<'a> Matcher<'a> {
         code: &SubId,
     ) -> Result<(), MatchFailed> {
         let code_expr = &code.sub_id_ref(self.code_body);
-        let code_node_type = code.variant_str(self.code_body);
+        let code_node_type = code.variant_str(self.code_body, self.sema.db.upcast());
         let pattern_expr = pattern.sub_id_ref(self.pattern_body);
-        let pattern_node_type = pattern.variant_str(self.pattern_body);
+        let pattern_node_type = pattern.variant_str(self.pattern_body, self.sema.db.upcast());
 
         if self.attempt_match_placeholder(pattern, code, phase)? {
             return Ok(());
@@ -797,28 +816,20 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    fn get_placeholder_for_node(&self, id: &SubId) -> Option<&SsrPlaceholder> {
+    fn get_placeholder_for_node(&self, id: &SubId) -> Option<SsrPlaceholder> {
         match id {
             SubId::AnyExprId(any_expr) => self.get_placeholder(any_expr),
             _ => None,
         }
     }
 
-    fn get_placeholder(&self, pattern_expr: &AnyExprId) -> Option<&SsrPlaceholder> {
+    fn get_placeholder(&self, pattern_expr: &AnyExprId) -> Option<SsrPlaceholder> {
+        let db = self.sema.db.upcast();
         match self.pattern_body.get_any(*pattern_expr) {
-            AnyExprRef::Expr(expr) => match expr {
-                Expr::SsrPlaceholder(placeholder) => Some(placeholder),
-                _ => None,
-            },
-            AnyExprRef::Pat(pat) => match pat {
-                Pat::SsrPlaceholder(placeholder) => Some(placeholder),
-                _ => None,
-            },
-            AnyExprRef::TypeExpr(type_expr) => match type_expr {
-                TypeExpr::SsrPlaceholder(placeholder) => Some(placeholder),
-                _ => None,
-            },
-            AnyExprRef::Term(_) => None,
+            AnyExprRef::Expr(Expr::Var(var)) => SsrPlaceholder::from_var(*var, db),
+            AnyExprRef::Pat(Pat::Var(var)) => SsrPlaceholder::from_var(*var, db),
+            AnyExprRef::TypeExpr(TypeExpr::Var(var)) => SsrPlaceholder::from_var(*var, db),
+            _ => None,
         }
     }
 
@@ -856,11 +867,13 @@ impl<'a> Matcher<'a> {
     }
 
     fn get_code_str(&self, id: &SubId) -> String {
-        id.variant_str(self.code_body).to_string()
+        id.variant_str(self.code_body, self.sema.db.upcast())
+            .to_string()
     }
 
     fn get_pattern_str(&self, id: &SubId) -> String {
-        id.variant_str(self.pattern_body).to_string()
+        id.variant_str(self.pattern_body, self.sema.db.upcast())
+            .to_string()
     }
 
     /// Check if the pattern_body SubId is a placeholder
@@ -874,10 +887,11 @@ impl<'a> Matcher<'a> {
     }
 
     fn is_placeholder_expr(&self, id: &SubId) -> bool {
+        let db = self.sema.db.upcast();
         match id {
             SubId::AnyExprId(any_expr_id) => match self.pattern_body.get_any(*any_expr_id) {
-                AnyExprRef::Expr(Expr::SsrPlaceholder(_)) => true,
-                AnyExprRef::Pat(Pat::SsrPlaceholder(_)) => true,
+                AnyExprRef::Expr(Expr::Var(var)) if var.is_ssr_placeholder(db) => true,
+                AnyExprRef::Pat(Pat::Var(var)) if var.is_ssr_placeholder(db) => true,
                 _ => false,
             },
             _ => false,
@@ -923,18 +937,18 @@ impl SubId {
         }
     }
 
-    pub fn variant_str<'a>(&'a self, body: &'a FoldBody) -> &'a str {
+    pub fn variant_str(&self, body: &FoldBody, db: &dyn InternDatabase) -> Cow<'static, str> {
         match self {
-            SubId::AnyExprId(e) => body.get_any(*e).variant_str(),
-            SubId::Atom(_) => "Atom",
-            SubId::Var(_) => "Var",
-            SubId::UnaryOp(op) => match op {
+            SubId::AnyExprId(e) => Cow::Borrowed(body.get_any(*e).variant_str(db)),
+            SubId::Atom(_) => Cow::Borrowed("Atom"),
+            SubId::Var(_) => Cow::Borrowed("Var"),
+            SubId::UnaryOp(op) => Cow::Borrowed(match op {
                 UnaryOp::Plus => "UnaryOp::Plus",
                 UnaryOp::Minus => "UnaryOp::Minus",
                 UnaryOp::Bnot => "UnaryOp::Bnot",
                 UnaryOp::Not => "UnaryOp::Not",
-            },
-            SubId::BinaryOp(op) => match op {
+            }),
+            SubId::BinaryOp(op) => Cow::Borrowed(match op {
                 BinaryOp::LogicOp(op) => match op {
                     LogicOp::And { lazy } => {
                         if *lazy {
@@ -1004,12 +1018,12 @@ impl SubId {
                     } => "CompOp::Ord{<,false}",
                 },
                 BinaryOp::Send => "BinaryOp::Send",
-            },
-            SubId::MapOp(op) => match op {
+            }),
+            SubId::MapOp(op) => Cow::Borrowed(match op {
                 MapOp::Assoc => "MapOp::Assoc",
                 MapOp::Exact => "MapOp::Exact",
-            },
-            SubId::Constant(v) => v,
+            }),
+            SubId::Constant(v) => Cow::Owned(v.clone()),
         }
     }
 
@@ -1354,7 +1368,6 @@ impl PatternIterator {
                         .collect(),
                 ),
                 Expr::Paren { expr } => PatternIterator::as_pattern_list(vec![(*expr).into()]),
-                Expr::SsrPlaceholder(_) => PatternIterator::Leaf,
             },
             AnyExprRef::Pat(it) => match it {
                 Pat::Missing => PatternIterator::Leaf,
@@ -1411,7 +1424,6 @@ impl PatternIterator {
                         .collect(),
                 ),
                 Pat::Paren { pat } => PatternIterator::as_pattern_list(vec![(*pat).into()]),
-                Pat::SsrPlaceholder(_) => PatternIterator::Leaf,
             },
             AnyExprRef::TypeExpr(_) => todo!(),
             AnyExprRef::Term(_) => todo!(),

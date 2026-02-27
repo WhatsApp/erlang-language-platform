@@ -60,11 +60,11 @@ pub enum AnyExprRef<'a> {
 }
 
 impl AnyExprRef<'_> {
-    pub fn variant_str(&self) -> &'static str {
+    pub fn variant_str(&self, db: &dyn InternDatabase) -> &'static str {
         match self {
-            AnyExprRef::Expr(it) => it.variant_str(),
-            AnyExprRef::Pat(it) => it.variant_str(),
-            AnyExprRef::TypeExpr(it) => it.variant_str(),
+            AnyExprRef::Expr(it) => it.variant_str(db),
+            AnyExprRef::Pat(it) => it.variant_str(db),
+            AnyExprRef::TypeExpr(it) => it.variant_str(db),
             AnyExprRef::Term(it) => it.variant_str(),
         }
     }
@@ -358,12 +358,6 @@ pub enum Expr {
         // `fold`, but can be made visible if needed.
         expr: ExprId,
     },
-    SsrPlaceholder(SsrPlaceholder),
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct SsrPlaceholder {
-    pub var: Var,
 }
 
 // We need to treat Var specially for SSR matching, as we want to be
@@ -448,11 +442,17 @@ impl Expr {
         }
     }
 
-    pub fn variant_str(&self) -> &'static str {
+    pub fn variant_str(&self, db: &dyn InternDatabase) -> &'static str {
         match &self {
             Expr::Missing => "Expr::Missing",
             Expr::Literal(_) => "Expr::Literal",
-            Expr::Var(_) => COMMON_VAR_VARIANT_STR,
+            Expr::Var(var) => {
+                if var.is_ssr_placeholder(db) {
+                    "Expr::SsrPlaceholder"
+                } else {
+                    COMMON_VAR_VARIANT_STR
+                }
+            }
             Expr::Match { .. } => "Expr::Match",
             Expr::Tuple { .. } => "Expr::Tuple",
             Expr::List { .. } => "Expr::List",
@@ -478,7 +478,6 @@ impl Expr {
             Expr::Closure { .. } => "Expr::Closure",
             Expr::Maybe { .. } => "Expr::Maybe",
             Expr::Paren { .. } => "Expr::Paren",
-            Expr::SsrPlaceholder(_) => "Expr::SsrPlaceholder",
         }
     }
 }
@@ -778,7 +777,6 @@ pub enum Pat {
         // `fold`, but can be made visible if needed.
         pat: PatId,
     },
-    SsrPlaceholder(SsrPlaceholder),
 }
 
 impl Pat {
@@ -789,11 +787,17 @@ impl Pat {
         }
     }
 
-    pub fn variant_str(&self) -> &'static str {
+    pub fn variant_str(&self, db: &dyn InternDatabase) -> &'static str {
         match &self {
             Pat::Missing => "Pat::Missing",
             Pat::Literal(_) => "Pat::Literal",
-            Pat::Var(_) => COMMON_VAR_VARIANT_STR,
+            Pat::Var(var) => {
+                if var.is_ssr_placeholder(db) {
+                    "Pat::SsrPlaceholder"
+                } else {
+                    COMMON_VAR_VARIANT_STR
+                }
+            }
             Pat::Match { .. } => "Pat::Match",
             Pat::Tuple { .. } => "Pat::Tuple",
             Pat::List { .. } => "Pat::List",
@@ -805,7 +809,6 @@ impl Pat {
             Pat::Map { .. } => "Pat::Map",
             Pat::MacroCall { .. } => "Pat::MacroCall",
             Pat::Paren { .. } => "Pat::Paren",
-            Pat::SsrPlaceholder(_) => "Pat::SsrPlaceholder",
         }
     }
 }
@@ -935,7 +938,6 @@ pub enum TypeExpr {
         // `fold`, but can be made visible if needed.
         ty: TypeExprId,
     },
-    SsrPlaceholder(SsrPlaceholder),
 }
 
 impl TypeExpr {
@@ -946,7 +948,7 @@ impl TypeExpr {
         }
     }
 
-    pub fn variant_str(&self) -> &'static str {
+    pub fn variant_str(&self, db: &dyn InternDatabase) -> &'static str {
         match &self {
             TypeExpr::AnnType { .. } => "TypeExpr::AnnType",
             TypeExpr::BinaryOp { .. } => "TypeExpr::BinaryOp",
@@ -961,10 +963,15 @@ impl TypeExpr {
             TypeExpr::Record { .. } => "TypeExpr::Record",
             TypeExpr::Tuple { .. } => "TypeExpr::Tuple",
             TypeExpr::UnaryOp { .. } => "TypeExpr::UnaryOp",
-            TypeExpr::Var(_) => "TypeExpr::Var",
+            TypeExpr::Var(var) => {
+                if var.is_ssr_placeholder(db) {
+                    "TypeExpr::SsrPlaceholder"
+                } else {
+                    "TypeExpr::Var"
+                }
+            }
             TypeExpr::MacroCall { .. } => "TypeExpr::MacroCall",
             TypeExpr::Paren { .. } => "TypeExpr::Paren",
-            TypeExpr::SsrPlaceholder(_) => "TypeExpr::SsrPlaceholder",
         }
     }
 }

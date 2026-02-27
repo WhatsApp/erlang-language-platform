@@ -920,7 +920,6 @@ impl<'a, T> FoldCtx<'a, T> {
                 self.fold_cr_clause(else_clauses, r)
             }
             crate::Expr::Paren { expr } => self.do_fold_expr(*expr, acc),
-            crate::Expr::SsrPlaceholder(_) => acc,
         };
         self.parents.pop();
         r
@@ -998,7 +997,6 @@ impl<'a, T> FoldCtx<'a, T> {
                 }
             }
             crate::Pat::Paren { pat } => self.do_fold_pat(*pat, acc),
-            crate::Pat::SsrPlaceholder(_) => acc,
         };
         self.parents.pop();
         r
@@ -1228,7 +1226,6 @@ impl<'a, T> FoldCtx<'a, T> {
                 }
             }
             TypeExpr::Paren { ty } => self.do_fold_type_expr(*ty, acc),
-            TypeExpr::SsrPlaceholder(_) => acc,
         };
         self.parents.pop();
         r

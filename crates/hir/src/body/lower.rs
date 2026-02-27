@@ -72,7 +72,6 @@ use crate::RecordFieldBody;
 use crate::ResolvedMacro;
 use crate::SpecBody;
 use crate::SpecSig;
-use crate::SsrPlaceholder;
 use crate::SsrSource;
 use crate::Term;
 use crate::TermId;
@@ -966,15 +965,9 @@ impl<'a> Ctx<'a> {
                 let pats = tup.expr().map(|expr| self.lower_pat(&expr)).collect();
                 self.alloc_pat(Pat::Tuple { pats }, Some(expr))
             }
-            ast::ExprMax::Var(var) => {
-                if self.in_ssr && var.is_ssr_placeholder() {
-                    let var = self.db.var(var.as_name());
-                    self.alloc_pat(Pat::SsrPlaceholder(SsrPlaceholder { var }), Some(expr))
-                } else {
-                    self.resolve_var(var, |this, expr| this.lower_optional_pat(expr.expr()))
-                        .unwrap_or_else(|var| self.alloc_pat(Pat::Var(var), Some(expr)))
-                }
-            }
+            ast::ExprMax::Var(var) => self
+                .resolve_var(var, |this, expr| this.lower_optional_pat(expr.expr()))
+                .unwrap_or_else(|var| self.alloc_pat(Pat::Var(var), Some(expr))),
         }
     }
 
@@ -1631,15 +1624,9 @@ impl<'a> Ctx<'a> {
                 let exprs = tup.expr().map(|expr| self.lower_expr(&expr)).collect();
                 self.alloc_expr(Expr::Tuple { exprs }, Some(expr))
             }
-            ast::ExprMax::Var(var) => {
-                if self.in_ssr && var.is_ssr_placeholder() {
-                    let var = self.db.var(var.as_name());
-                    self.alloc_expr(Expr::SsrPlaceholder(SsrPlaceholder { var }), Some(expr))
-                } else {
-                    self.resolve_var(var, |this, expr| this.lower_optional_expr(expr.expr()))
-                        .unwrap_or_else(|var| self.alloc_expr(Expr::Var(var), Some(expr)))
-                }
-            }
+            ast::ExprMax::Var(var) => self
+                .resolve_var(var, |this, expr| this.lower_optional_expr(expr.expr()))
+                .unwrap_or_else(|var| self.alloc_expr(Expr::Var(var), Some(expr))),
             ast::ExprMax::MaybeExpr(maybe) => {
                 let exprs = maybe
                     .exprs()
@@ -2287,18 +2274,9 @@ impl<'a> Ctx<'a> {
                 let args = tup.expr().map(|expr| self.lower_type_expr(&expr)).collect();
                 self.alloc_type_expr(TypeExpr::Tuple { args }, Some(expr))
             }
-            ast::ExprMax::Var(var) => {
-                if self.in_ssr && var.is_ssr_placeholder() {
-                    let var = self.db.var(var.as_name());
-                    self.alloc_type_expr(
-                        TypeExpr::SsrPlaceholder(SsrPlaceholder { var }),
-                        Some(expr),
-                    )
-                } else {
-                    self.resolve_var(var, |this, expr| this.lower_optional_type_expr(expr.expr()))
-                        .unwrap_or_else(|var| self.alloc_type_expr(TypeExpr::Var(var), Some(expr)))
-                }
-            }
+            ast::ExprMax::Var(var) => self
+                .resolve_var(var, |this, expr| this.lower_optional_type_expr(expr.expr()))
+                .unwrap_or_else(|var| self.alloc_type_expr(TypeExpr::Var(var), Some(expr))),
             ast::ExprMax::MaybeExpr(maybe) => {
                 maybe.exprs().for_each(|expr| {
                     self.lower_expr(&expr);

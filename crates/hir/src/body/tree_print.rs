@@ -62,7 +62,6 @@ use crate::db::DefDatabase;
 use crate::db::InternDatabase;
 use crate::expr::Guards;
 use crate::expr::MaybeExpr;
-use crate::expr::SsrPlaceholder;
 use crate::fold::MacroStrategy;
 use crate::fold::ParenStrategy;
 use crate::fold::default_fold_body;
@@ -893,7 +892,6 @@ impl<'a> Printer<'a> {
                     writeln!(this).ok();
                 });
             }
-            Expr::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }
 
@@ -1026,7 +1024,6 @@ impl<'a> Printer<'a> {
                     this.print_pat(pat);
                 });
             }
-            Pat::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }
 
@@ -1307,7 +1304,6 @@ impl<'a> Printer<'a> {
                     this.print_type(ty);
                 });
             }
-            TypeExpr::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }
 
@@ -1517,12 +1513,6 @@ impl<'a> Printer<'a> {
             print(self, expr);
         }
         write!(self, ")").ok();
-    }
-
-    fn print_ssr_placeholder(&mut self, ssr: &SsrPlaceholder) {
-        write!(self, "SsrPlaceholder {{").ok();
-        write!(self, "var: {}, ", self.db.lookup_var(ssr.var)).ok();
-        write!(self, "}}").ok();
     }
 
     fn print_record_fields(&mut self, fields: &[RecordFieldBody]) {

@@ -47,7 +47,6 @@ use crate::Var;
 use crate::db::InternDatabase;
 use crate::expr::Guards;
 use crate::expr::MaybeExpr;
-use crate::expr::SsrPlaceholder;
 use crate::expr::StringVariant;
 use crate::quote;
 
@@ -318,7 +317,6 @@ impl<'a> Printer<'a> {
                 macro_name: _,
             } => self.print_pat(&self.body[*expansion]),
             Pat::Paren { pat } => self.print_pat(&self.body[*pat]),
-            Pat::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }
 
@@ -627,7 +625,6 @@ impl<'a> Printer<'a> {
                 write!(self, "end")
             }
             Expr::Paren { expr } => self.print_expr(&self.body[*expr]),
-            Expr::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }
 
@@ -777,7 +774,6 @@ impl<'a> Printer<'a> {
                 macro_name: _,
             } => self.print_type(&self.body[*expansion]),
             TypeExpr::Paren { ty } => self.print_type(&self.body[*ty]),
-            TypeExpr::SsrPlaceholder(ssr) => self.print_ssr_placeholder(ssr),
         }
     }
 
@@ -938,10 +934,6 @@ impl<'a> Printer<'a> {
             }
         }
         Ok(())
-    }
-
-    fn print_ssr_placeholder(&mut self, ssr: &SsrPlaceholder) -> fmt::Result {
-        write!(self, "{}", self.db.lookup_var(ssr.var))
     }
 
     fn print_ssr(

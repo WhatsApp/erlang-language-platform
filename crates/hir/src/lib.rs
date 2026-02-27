@@ -84,7 +84,6 @@ pub use expr::PatId;
 pub use expr::ReceiveAfter;
 pub use expr::RecordFieldBody;
 pub use expr::SpecSig;
-pub use expr::SsrPlaceholder;
 pub use expr::StringVariant;
 pub use expr::Term;
 pub use expr::TermId;

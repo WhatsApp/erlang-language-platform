@@ -250,7 +250,6 @@ fn matches_trivially(
             macro_name: _,
         } => matches_trivially(sema, in_clause, expansion, expr_id),
         Pat::Paren { pat } => matches_trivially(sema, in_clause, pat, expr_id),
-        Pat::SsrPlaceholder(_) => false,
     }
 }
 

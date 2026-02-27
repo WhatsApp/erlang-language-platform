@@ -39,7 +39,7 @@ impl salsa::InternKey for Atom {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Var(salsa::InternId);
 
 impl salsa::InternKey for Var {
@@ -82,5 +82,13 @@ impl Var {
 
     pub fn as_name(&self, db: &dyn InternDatabase) -> Name {
         db.lookup_var(*self)
+    }
+
+    /// Returns true if this variable is an SSR placeholder.
+    /// SSR placeholders are variables with names starting with `_@`.
+    pub fn is_ssr_placeholder(&self, db: &dyn InternDatabase) -> bool {
+        db.lookup_var(*self)
+            .as_str()
+            .starts_with(elp_syntax::ast::SSR_PLACEHOLDER_PREFIX)
     }
 }
