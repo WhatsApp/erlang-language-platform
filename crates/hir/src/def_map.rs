@@ -383,44 +383,8 @@ impl DefMap {
     }
 
     pub(crate) fn def_map_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<DefMap> {
-        let local = db.def_map_local(file_id);
-        let form_list = db.file_form_list(file_id);
-
-        // Collect only includes in active preprocessor branches.
-        // Cycle-safe: see skip_import_resolution in lower.rs.
-        let active_includes: Vec<_> = form_list
-            .includes()
-            .filter(|(_id, include)| {
-                form_list.is_form_active(db, file_id, include.pp_ctx(), None)
-                    != PPConditionResult::Inactive
-            })
-            .map(|(id, _include)| id)
-            .collect();
-
-        let mut remote = Self::default();
-
-        let orig_app = db.app_data_id_by_file(file_id);
-        active_includes
-            .into_iter()
-            .filter_map(|idx| db.resolve_include(orig_app, InFile::new(file_id, idx)))
-            // guard against naive cycles of headers including themselves
-            .filter(|&included_file_id| included_file_id != file_id)
-            .map(|included_file_id| (included_file_id, db.def_map(included_file_id)))
-            .for_each(|(file_id, def_map)| {
-                remote.included.insert(file_id);
-                remote.merge(&def_map)
-            });
-
-        // Small optimisation for a case where we have no headers or headers don't contain defintitions
-        // we're inrested in - should be hit frequently in headers themselves
-        if remote.is_empty() {
-            local
-        } else {
-            remote.merge(&local);
-            remote.fixup_exports();
-            remote.fixup_deprecated();
-            Arc::new(remote)
-        }
+        let env = db.project_macro_environment(file_id);
+        db.def_map_with_env(file_id, env)
     }
 
     // This handles the case of headers accidentally forming other cycles.
