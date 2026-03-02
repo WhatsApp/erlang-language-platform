@@ -300,4 +300,86 @@ select_all_specs() ->
             "#]],
         );
     }
+
+    #[test]
+    fn fix_inserts_in_alphabetical_order() {
+        check_fix(
+            r#"
+//- /aaa/include/aaa.hrl app:aaa include_path:/aaa/include
+  -define(AAA, 1).
+//- /zzz/include/zzz.hrl app:zzz include_path:/zzz/include
+  -define(ZZZ, 1).
+//- /src/foo.erl app:my_app
+-module(foo).
+-include_lib("aaa/include/aaa.hrl").
+-include_lib("zzz/include/zzz.hrl").
+
+select_all() ->
+    ets:fun~2ms(fun({K, V}) -> {K, V} end).
+"#,
+            expect![[r#"
+                -module(foo).
+                -include_lib("aaa/include/aaa.hrl").
+                -include_lib("zzz/include/zzz.hrl").
+                -include_lib("stdlib/include/ms_transform.hrl").
+
+                select_all() ->
+                    ets:fun2ms(fun({K, V}) -> {K, V} end).
+            "#]],
+        );
+    }
+
+    #[test]
+    fn fix_inserts_before_all_includes() {
+        check_fix(
+            r#"
+//- /zzz/include/zzz.hrl app:zzz include_path:/zzz/include
+  -define(ZZZ, 1).
+//- /src/foo.erl app:my_app
+-module(foo).
+-include_lib("zzz/include/zzz.hrl").
+
+select_all() ->
+    ets:fun~2ms(fun({K, V}) -> {K, V} end).
+"#,
+            expect![[r#"
+                -module(foo).
+                -include_lib("zzz/include/zzz.hrl").
+                -include_lib("stdlib/include/ms_transform.hrl").
+
+                select_all() ->
+                    ets:fun2ms(fun({K, V}) -> {K, V} end).
+            "#]],
+        );
+    }
+
+    #[test]
+    fn fix_inserts_honours_include_groups() {
+        check_fix(
+            r#"
+//- /aaa/include/aaa.hrl app:aaa include_path:/aaa/include
+  -define(AAA, 1).
+//- /xxx/include/xxx.hrl app:xxx include_path:/xxx/include
+  -define(XXX, 1).
+//- /src/foo.erl app:my_app
+-module(foo).
+-include_lib("aaa/include/aaa.hrl").
+
+-include_lib("xxx/include/xxx.hrl").
+
+select_all() ->
+    ets:fun~2ms(fun({K, V}) -> {K, V} end).
+"#,
+            expect![[r#"
+                -module(foo).
+                -include_lib("aaa/include/aaa.hrl").
+
+                -include_lib("xxx/include/xxx.hrl").
+                -include_lib("stdlib/include/ms_transform.hrl").
+
+                select_all() ->
+                    ets:fun2ms(fun({K, V}) -> {K, V} end).
+            "#]],
+        );
+    }
 }
