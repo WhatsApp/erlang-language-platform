@@ -57,7 +57,7 @@ mod tests {
             .includes()
             .map(|(idx, include)| {
                 let resolved = db
-                    .resolve_include(None, InFile::new(file_id, idx))
+                    .resolve_include(db.app_data_id_by_file(file_id), InFile::new(file_id, idx))
                     .unwrap_or_else(|| panic!("unresolved include: {include:?}"));
                 let resolved_path = db
                     .source_root(db.file_source_root(resolved))

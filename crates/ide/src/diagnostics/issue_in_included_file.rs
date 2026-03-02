@@ -66,10 +66,10 @@ impl GenericLinter for IssueInIncludedFileLinter {
 
         // Scan included files for PP condition issues
         for (include_id, _include) in form_list.includes() {
-            if let Some(included_file_id) = sema
-                .db
-                .resolve_include(None, InFile::new(file_id, include_id))
-            {
+            if let Some(included_file_id) = sema.db.resolve_include(
+                sema.db.app_data_id_by_file(file_id),
+                InFile::new(file_id, include_id),
+            ) {
                 // Get all condition diagnostics from the preprocessor analysis for the included file
                 let env = sema.db.project_macro_environment(included_file_id);
                 let (_, diagnostics_map) = sema

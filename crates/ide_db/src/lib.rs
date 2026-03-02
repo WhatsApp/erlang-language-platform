@@ -256,7 +256,10 @@ impl RootDatabase {
         let includes: Vec<_> = form_list
             .includes()
             .filter_map(|(idx, include)| {
-                let resolved = self.resolve_include(None, InFile::new(file_id, idx))?;
+                let resolved = self.resolve_include(
+                    self.app_data_id_by_file(file_id),
+                    InFile::new(file_id, idx),
+                )?;
                 let range = include.form_id().get(&source_file).syntax().text_range();
                 let line_col = line_index.line_col(range.start());
                 if let Some(p) = Includes::app_file_path(self, resolved, root_abs) {

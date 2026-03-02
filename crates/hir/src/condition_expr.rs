@@ -753,6 +753,7 @@ mod tests {
 
     use elp_base_db::FileId;
     use elp_base_db::FileLoader;
+    use elp_base_db::SourceDatabase;
     use elp_base_db::fixture::ChangeFixture;
     use elp_base_db::fixture::WithFixture;
     use elp_syntax::TextSize;
@@ -1238,7 +1239,8 @@ mod tests {
         });
         // Collect defines from included files
         for (idx, _include) in form_list.includes() {
-            if let Some(included_file_id) = db.resolve_include(None, InFile::new(file_id, idx))
+            if let Some(included_file_id) =
+                db.resolve_include(db.app_data_id_by_file(file_id), InFile::new(file_id, idx))
                 && included_file_id != file_id
             {
                 // Guard against cycles

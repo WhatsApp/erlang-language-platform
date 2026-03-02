@@ -101,7 +101,9 @@ impl GenericLinter for UnusedIncludeLinter {
         for (include_idx, attr) in form_list.includes() {
             if !EXCLUDES.contains(attr.path()) {
                 let in_file = InFile::new(file_id, include_idx);
-                if let Some(include_file_id) = db.resolve_include(None, in_file) {
+                if let Some(include_file_id) =
+                    db.resolve_include(db.app_data_id_by_file(file_id), in_file)
+                {
                     if is_file_used(sema, db, include_file_id, file_id, &mut cache) {
                         continue;
                     }
@@ -176,7 +178,9 @@ fn is_file_used(
         let form_list = db.file_form_list(file_id);
         for (include_idx, _) in form_list.includes() {
             let in_file = InFile::new(file_id, include_idx);
-            if let Some(include_file_id) = db.resolve_include(None, in_file) {
+            if let Some(include_file_id) =
+                db.resolve_include(db.app_data_id_by_file(file_id), in_file)
+            {
                 match cache.get(&include_file_id) {
                     None => todo.insert(include_file_id),
                     Some(true) => return true,

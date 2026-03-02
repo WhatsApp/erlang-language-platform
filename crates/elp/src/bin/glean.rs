@@ -1635,8 +1635,10 @@ impl GleanIndexer {
                         let include = &form_list[*idx];
                         let ast = include.form_id().get_ast(db, file_id);
                         let range = ast.syntax().text_range().into();
-                        if let Some(file) = db.resolve_include(None, InFile::new(file_id, *idx))
-                            && let Some(path) = path_for_file(db, file)
+                        if let Some(file) = db.resolve_include(
+                            db.app_data_id_by_file(file_id),
+                            InFile::new(file_id, *idx),
+                        ) && let Some(path) = path_for_file(db, file)
                             && let Some((name, Some("hrl"))) = path.name_and_extension()
                         {
                             let target = HeaderTarget {
