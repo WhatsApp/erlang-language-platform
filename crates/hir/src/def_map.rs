@@ -441,16 +441,14 @@ impl DefMap {
         file_id: FileId,
         env: Arc<MacroEnvironment>,
     ) -> Arc<DefMap> {
-        // TODO: Steps 3-5 will implement the full logic.
-        // For now, delegate to the existing def_map_query logic.
-        let _ = env;
-        let local = db.def_map_local(file_id);
+        let local = Self::build_local_impl(db, file_id, Some(&env));
         let form_list = db.file_form_list(file_id);
+        let analysis = db.file_preprocessor_analysis(file_id, Arc::clone(&env));
 
         let active_includes: Vec<_> = form_list
             .includes()
             .filter(|(_id, include)| {
-                form_list.is_form_active(db, file_id, include.pp_ctx(), None)
+                form_list.is_form_active_with_env(db, file_id, include.pp_ctx(), Arc::clone(&env))
                     != PPConditionResult::Inactive
             })
             .map(|(id, _include)| id)
@@ -458,19 +456,26 @@ impl DefMap {
 
         let mut remote = Self::default();
 
-        let orig_app = db.app_data_id_by_file(file_id);
         active_includes
             .into_iter()
-            .filter_map(|idx| db.resolve_include(orig_app, InFile::new(file_id, idx)))
-            .filter(|&included_file_id| included_file_id != file_id)
-            .map(|included_file_id| (included_file_id, db.def_map(included_file_id)))
+            .filter_map(|idx| {
+                let included_file_id =
+                    db.resolve_include(env.orig_app_data_id, InFile::new(file_id, idx))?;
+                // Guard against naive cycles of headers including themselves
+                if included_file_id == file_id {
+                    return None;
+                }
+                let include_env = analysis.include_env(idx)?;
+                Some((included_file_id, Arc::clone(include_env)))
+            })
+            .map(|(id, ie)| (id, db.def_map_with_env(id, ie)))
             .for_each(|(file_id, def_map)| {
                 remote.included.insert(file_id);
-                remote.merge(&def_map)
+                remote.merge(&def_map);
             });
 
         if remote.is_empty() {
-            local
+            Arc::new(local)
         } else {
             remote.merge(&local);
             remote.fixup_exports();
@@ -483,9 +488,9 @@ impl DefMap {
         db: &dyn DefDatabase,
         _cycle: &[String],
         file_id: &FileId,
-        _env: &Arc<MacroEnvironment>,
+        env: &Arc<MacroEnvironment>,
     ) -> Arc<DefMap> {
-        db.def_map_local(*file_id)
+        Arc::new(Self::build_local_impl(db, *file_id, Some(env)))
     }
 
     pub fn get_by_function_id(&self, function_id: &InFile<FunctionDefId>) -> Option<&FunctionDef> {
