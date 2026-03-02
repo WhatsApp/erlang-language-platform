@@ -377,9 +377,10 @@ impl DefMap {
 
         let mut remote = Self::default();
 
+        let orig_app = db.app_data_id_by_file(file_id);
         active_includes
             .into_iter()
-            .filter_map(|idx| db.resolve_include(None, InFile::new(file_id, idx)))
+            .filter_map(|idx| db.resolve_include(orig_app, InFile::new(file_id, idx)))
             // guard against naive cycles of headers including themselves
             .filter(|&included_file_id| included_file_id != file_id)
             .map(|included_file_id| (included_file_id, db.def_map(included_file_id)))
@@ -1223,6 +1224,66 @@ bar() -> ok.
 "#,
             expect![[r#"
                 fun bar/0 exported: false
+            "#]],
+        )
+    }
+
+    #[test]
+    fn cross_app_include_lib_in_def_map_buck() {
+        // In a buck project with include_mapping and applicable_files,
+        // def_map_query must pass the originating file's AppDataId to
+        // resolve_include so that the buck dependency check in
+        // resolve_remote_query uses the correct app's buck_target_name.
+        // Without the AppDataId, the include resolution takes the
+        // file_app_data fallback which may return wrong app data
+        // when source roots don't uniquely identify the app.
+        check_functions(
+            r#"
+//- /app_a/src/module.erl app:app_a buck_target:cell//app_a:lib deps:app_b
+-module(module).
+-include_lib("app_b/include/utils.hrl").
+-export([foo/0]).
+
+foo() -> ok.
+//- /app_b/include/utils.hrl app:app_b buck_target:cell//app_b:lib
+-export([bar/0]).
+bar() -> ok.
+"#,
+            expect![[r#"
+                fun foo/0 exported: true
+                fun bar/0 exported: true
+            "#]],
+        )
+    }
+
+    #[test]
+    fn cross_app_include_lib_shared_source_root() {
+        // Tests include_lib resolution with shared source roots,
+        // modelling the buck scenario where lib + test targets share
+        // the same directory.
+        //
+        // test_mod.erl uses src_app:app_lib to place it into app_lib's
+        // SourceRoot, while app:app_test controls its AppDataId via
+        // applicable_files. The test target has a dep on app_dep
+        // that the lib target does not.
+        check_functions(
+            r#"
+//- /app/src/test_mod.erl app:app_test buck_target:cell//app:test deps:app_dep src_app:app_lib
+-module(test_mod).
+-include_lib("app_dep/include/dep.hrl").
+-export([test_fn/0]).
+test_fn() -> ok.
+//- /app/src/lib_mod.erl app:app_lib buck_target:cell//app:lib
+-module(lib_mod).
+-export([lib_fn/0]).
+lib_fn() -> ok.
+//- /app_dep/include/dep.hrl app:app_dep buck_target:cell//app_dep:lib
+-export([dep_fn/0]).
+dep_fn() -> ok.
+"#,
+            expect![[r#"
+                fun dep_fn/0 exported: true
+                fun test_fn/0 exported: true
             "#]],
         )
     }

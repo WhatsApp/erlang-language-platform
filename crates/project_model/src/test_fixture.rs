@@ -115,6 +115,14 @@ pub struct Fixture {
     /// Macro names defined for this file (e.g., from `macros:[A,B,C]` metadata).
     /// These are passed to the preprocessor as external defines.
     pub macros: Vec<String>,
+    /// App names that this file's app depends on (for buck-style dependency checking).
+    pub deps: Vec<String>,
+    /// When set, places this file into the named app's SourceRoot/FileSet
+    /// instead of its own app's. This models the buck scenario where
+    /// lib + test targets share the same directory (== source root).
+    /// The file's `app:` annotation still controls its AppDataId via
+    /// `applicable_files`.
+    pub src_app: Option<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -358,6 +366,9 @@ impl FixtureWithProjectMeta {
         let mut otp = None;
         let mut tag = None;
         let mut macros = Vec::new();
+        let mut buck_target = None;
+        let mut deps = Vec::new();
+        let mut src_app = None;
 
         for component in components[1..].iter() {
             let (key, value) = component
@@ -395,11 +406,25 @@ impl FixtureWithProjectMeta {
                         }
                     }
                 }
+                "buck_target" => {
+                    buck_target = Some(value.to_string());
+                }
+                "deps" => {
+                    for dep in value.split(',') {
+                        let dep = dep.trim();
+                        if !dep.is_empty() {
+                            deps.push(dep.to_string());
+                        }
+                    }
+                }
+                "src_app" => {
+                    src_app = Some(value.to_string());
+                }
                 _ => panic!("bad component: {component:?}"),
             }
         }
 
-        let (otp, app_data) = if let Some((otp, app)) = otp {
+        let (otp, mut app_data) = if let Some((otp, app)) = otp {
             (Some(otp), app)
         } else {
             // Try inferring dir - parent once to get to ./src, parent twice to get to app root
@@ -421,6 +446,10 @@ impl FixtureWithProjectMeta {
             )
         };
 
+        if let Some(target) = buck_target {
+            app_data.buck_target_name = Some(target);
+        }
+
         Fixture {
             path,
             text: String::new(),
@@ -431,6 +460,8 @@ impl FixtureWithProjectMeta {
             annotations: Vec::new(),
             marker_pos: None,
             macros,
+            deps,
+            src_app,
         }
     }
 }

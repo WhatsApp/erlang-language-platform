@@ -18,6 +18,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::Arc as StdArc;
 
 use eetf;
 use elp_project_model::AppName;
@@ -27,6 +28,7 @@ use elp_project_model::ProjectAppData;
 use elp_project_model::ProjectBuildData;
 use elp_project_model::ProjectManifest;
 use elp_project_model::buck::BuckQueryConfig;
+use elp_project_model::buck::IncludeMapping;
 use elp_project_model::json::JsonConfig;
 use elp_project_model::otp::OTP_ERLANG_APP;
 use elp_project_model::otp::OTP_ERLANG_MODULE;
@@ -38,6 +40,7 @@ use elp_project_model::test_fixture::FixtureWithProjectMeta;
 use elp_project_model::test_fixture::RangeOrOffset;
 use elp_syntax::TextRange;
 use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 use paths::AbsPathBuf;
 use paths::Utf8Path;
 use vfs::FileId;
@@ -195,6 +198,11 @@ impl ChangeFixture {
         let mut tags: FxHashMap<FileId, Vec<(TextRange, Option<String>)>> = FxHashMap::default();
         let mut annotations: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
 
+        // Collect per-app deps and file paths for building buck-style metadata
+        let mut app_deps: FxHashMap<AppName, Vec<String>> = FxHashMap::default();
+        let mut app_file_paths: FxHashMap<AppName, Vec<AbsPathBuf>> = FxHashMap::default();
+        let mut has_buck_metadata = false;
+
         for mut entry in fixture.clone() {
             if let Some(range) = entry.marker_pos {
                 assert!(file_position.is_none());
@@ -220,6 +228,21 @@ impl ChangeFixture {
                     .push(eetf::Atom::from(macro_name.as_str()).into());
             }
 
+            // Track buck metadata
+            if entry.app_data.buck_target_name.is_some() {
+                has_buck_metadata = true;
+            }
+            if !entry.deps.is_empty() {
+                app_deps
+                    .entry(app_name.clone())
+                    .or_default()
+                    .extend(entry.deps.iter().cloned());
+            }
+            app_file_paths
+                .entry(app_name.clone())
+                .or_default()
+                .push(AbsPathBuf::assert(entry.path.clone().into()));
+
             app_map.combine(entry.app_data);
 
             change.change_file(file_id, Some(Arc::from(entry.text)));
@@ -234,7 +257,15 @@ impl ChangeFixture {
             } else {
                 VfsPath::new_real_path(entry.path)
             };
-            app_files.insert(app_name, file_id, path.clone());
+            // When src_app is specified, place the file into that app's
+            // SourceRoot/FileSet instead. This models buck's shared source
+            // root scenario (e.g., lib + test targets in the same directory).
+            let source_root_app = if let Some(ref override_app) = entry.src_app {
+                AppName(override_app.clone())
+            } else {
+                app_name.clone()
+            };
+            app_files.insert(source_root_app, file_id, path.clone());
             files_by_path.insert(path, file_id);
             files.push(file_id);
             tags.insert(file_id, entry.tags);
@@ -264,12 +295,75 @@ impl ChangeFixture {
         });
 
         let root = AbsPathBuf::assert("/".into());
-        let apps = app_map.all_apps().cloned().collect();
+        let mut apps: Vec<ProjectAppData> = app_map.all_apps().cloned().collect();
+        let mut project_include_mapping = None;
+
+        // If any app has buck metadata, build an IncludeMapping and set
+        // applicable_files so the buck code path in resolve_remote_query
+        // is exercised.
+        if has_buck_metadata {
+            let mut include_mapping = IncludeMapping::default();
+
+            for app in &mut apps {
+                if let Some(ref target_name) = app.buck_target_name {
+                    // Register app ↔ target mapping
+                    include_mapping.register_app_target(app.name.clone(), target_name.clone());
+
+                    // Set applicable_files from the collected file paths
+                    if let Some(paths) = app_file_paths.get(&app.name) {
+                        let file_set: FxHashSet<AbsPathBuf> = paths.iter().cloned().collect();
+                        app.applicable_files = Some(file_set);
+                    }
+                }
+
+                // Add remote include entries for .hrl files in include_dirs
+                for hrl_path in app_file_paths
+                    .get(&app.name)
+                    .into_iter()
+                    .flatten()
+                    .filter(|p| p.extension() == Some("hrl"))
+                {
+                    // Build a remote include key like "R:app_name/include/header.hrl"
+                    if let Some(file_name) = hrl_path.file_name() {
+                        let remote_path = elp_syntax::SmolStr::new(format!(
+                            "R:{}/include/{}",
+                            app.name, file_name
+                        ));
+                        include_mapping.insert(remote_path, hrl_path.clone());
+                    }
+                }
+            }
+
+            // Wire up deps
+            for (app_name, dep_names) in &app_deps {
+                if let Some(app) = apps.iter().find(|a| &a.name == app_name)
+                    && let Some(ref source_target) = app.buck_target_name
+                {
+                    for dep_name in dep_names {
+                        let dep_app_name = AppName(dep_name.clone());
+                        if let Some(dep_app) = apps.iter().find(|a| a.name == dep_app_name)
+                            && let Some(ref dep_target) = dep_app.buck_target_name
+                        {
+                            include_mapping.add_dep(source_target.clone(), dep_target.clone());
+                        }
+                    }
+                }
+            }
+
+            // Update the app_map with modified apps (applicable_files set)
+            for app in &apps {
+                app_map.update(app.clone());
+            }
+
+            project_include_mapping = Some(StdArc::new(include_mapping));
+        }
+
         let apps_with_includes = RebarProject::add_app_includes(apps, &[], &otp.lib_dir);
         let rebar_project = RebarProject::new(root, Default::default());
         let mut project = Project::otp(otp, app_map.otp_apps().cloned().collect());
         project.add_apps(apps_with_includes);
         project.project_build_data = ProjectBuildData::Rebar(rebar_project);
+        project.include_mapping = project_include_mapping;
 
         if let Some(project_dir) = builder.project_dir() {
             // Dump a copy of the fixture into a temp dir
@@ -501,6 +595,10 @@ impl AppMap {
                 vacant.insert(other);
             }
         }
+    }
+
+    fn update(&mut self, app: ProjectAppData) {
+        self.app_map.insert(app.name.clone(), app);
     }
 
     fn otp_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {

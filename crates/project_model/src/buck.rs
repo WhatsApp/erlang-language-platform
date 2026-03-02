@@ -292,6 +292,18 @@ impl IncludeMapping {
         None
     }
 
+    /// Register an app name ↔ buck target name mapping.
+    pub fn register_app_target(&mut self, app_name: AppName, target_name: TargetFullName) {
+        self.app_names_rev
+            .insert(target_name.clone(), app_name.clone());
+        self.app_names.insert(app_name, target_name);
+    }
+
+    /// Add a direct dependency: `source` depends on `dep`.
+    pub fn add_dep(&mut self, source: TargetFullName, dep: TargetFullName) {
+        self.deps.entry(source).or_default().insert(dep);
+    }
+
     /// For each buck TargetFullName we have a set of immediate dependencies.
     /// Check for the `source` one if the target is in the graph rooted at it.
     /// If the target is an OTP app then it is always a dependency.
