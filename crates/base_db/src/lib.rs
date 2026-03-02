@@ -279,7 +279,7 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     #[salsa::invoke(IncludeCtx::resolve_remote_query)]
     fn resolve_remote(
         &self,
-        orig_file_id: Option<FileId>,
+        orig_app_data_id: Option<AppDataId>,
         current_file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId>;

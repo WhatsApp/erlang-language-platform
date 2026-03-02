@@ -355,7 +355,7 @@ impl ToDef for ast::PpInclude {
         let idx = sema.find_form(ast)?;
         let def = sema
             .db
-            .resolve_include(ast.with_value(idx))
+            .resolve_include(None, ast.with_value(idx))
             .map(|file_id| File { file_id })?;
         Some(def)
     }
@@ -370,7 +370,7 @@ impl ToDef for ast::PpIncludeLib {
         let idx = sema.find_form(ast)?;
         let def = sema
             .db
-            .resolve_include(ast.with_value(idx))
+            .resolve_include(None, ast.with_value(idx))
             .map(|file_id| File { file_id })?;
         Some(def)
     }

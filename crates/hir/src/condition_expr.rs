@@ -1238,7 +1238,7 @@ mod tests {
         });
         // Collect defines from included files
         for (idx, _include) in form_list.includes() {
-            if let Some(included_file_id) = db.resolve_include(InFile::new(file_id, idx))
+            if let Some(included_file_id) = db.resolve_include(None, InFile::new(file_id, idx))
                 && included_file_id != file_id
             {
                 // Guard against cycles

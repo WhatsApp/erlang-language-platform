@@ -156,7 +156,7 @@ pub(crate) fn local_resolve_query(
             }
             PPDirective::Undef { .. } => {}
             PPDirective::Include(idx) => {
-                if let Some(resolved) = db.resolve_include(InFile::new(file_id, *idx)) {
+                if let Some(resolved) = db.resolve_include(None, InFile::new(file_id, *idx)) {
                     match db.local_resolve_macro(resolved, name.clone()) {
                         MacroResolution::Resolved(resolved) => {
                             return MacroResolution::Resolved(resolved);

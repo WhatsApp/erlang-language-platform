@@ -81,7 +81,7 @@ impl GenericLinter for UnspecificIncludeLinter {
                 continue;
             }
 
-            let included_file_id = match sema.db.resolve_include(InFile::new(file_id, idx)) {
+            let included_file_id = match sema.db.resolve_include(None, InFile::new(file_id, idx)) {
                 Some(id) => id,
                 None => continue,
             };

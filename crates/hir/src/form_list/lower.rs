@@ -159,7 +159,11 @@ impl<'a> Ctx<'a> {
 
         // Post-processing: resolve includes in condition_envs
         if self.new_ifdef_enabled {
-            let include_ctx = IncludeCtx::new(self.db.upcast(), None, self.file_id);
+            let include_ctx = IncludeCtx::new(
+                self.db.upcast(),
+                self.db.app_data_id_by_file(self.file_id),
+                self.file_id,
+            );
             let env_ids: Vec<_> = self.data.condition_envs.iter().map(|(id, _)| id).collect();
             for env_id in env_ids {
                 let directive = self.data.condition_envs[env_id].directive;

@@ -2080,7 +2080,7 @@ pub fn collect_body_diagnostics(sema: &Semantic, file_id: FileId) -> Vec<hir::Bo
                         // Try to resolve the include
                         if sema
                             .db
-                            .resolve_include(InFile::new(file_id, *include_id))
+                            .resolve_include(None, InFile::new(file_id, *include_id))
                             .is_none()
                         {
                             // Include resolution failed, create a diagnostic
@@ -2989,7 +2989,7 @@ pub fn included_file_file_id(
     let include = form_list.includes().find_map(|(idx, include)| {
         let form = include.form_id().get(&parsed.tree());
         if form.syntax().text_range().start() >= file_attribute_location.start() {
-            db.resolve_include(InFile::new(file_id, idx))
+            db.resolve_include(None, InFile::new(file_id, idx))
         } else {
             None
         }
@@ -3007,7 +3007,7 @@ pub(crate) fn find_include_directive_for_file(
     let form_list = db.file_form_list(file_id);
 
     for (idx, include) in form_list.includes() {
-        if let Some(resolved) = db.resolve_include(InFile::new(file_id, idx))
+        if let Some(resolved) = db.resolve_include(None, InFile::new(file_id, idx))
             && resolved == included_file_id
         {
             // Use file_range to get just the include path, not the whole directive

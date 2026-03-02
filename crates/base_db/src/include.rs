@@ -17,6 +17,7 @@ use vfs::FileId;
 use vfs::VfsPath;
 
 use crate::AppData;
+use crate::AppDataId;
 use crate::ProjectId;
 use crate::SourceDatabase;
 use crate::SourceRoot;
@@ -24,30 +25,31 @@ use crate::SourceRoot;
 pub struct IncludeCtx<'a> {
     db: &'a dyn SourceDatabase,
     source_root: Arc<SourceRoot>,
-    /// The starting .erl file when resolving includes
-    pub orig_file_id: Option<FileId>,
-    /// The current `FileId`. This starts out the same as
-    /// `orig_file_id`, but will change if a nested include file is
-    /// processed.  The dependency graph for includes is calculated
-    /// based on the `orig_file_id`, if set.
+    /// The `AppDataId` of the originating `.erl` file when resolving includes.
+    /// The dependency graph for includes is calculated based on the
+    /// originating app's data, if set.
+    pub orig_app_data_id: Option<AppDataId>,
+    /// The current `FileId`. This starts out the same as the
+    /// originating file, but will change if a nested include file is
+    /// processed.
     pub current_file_id: FileId,
 }
 
 impl<'a> IncludeCtx<'a> {
     pub fn new(
         db: &'a dyn SourceDatabase,
-        orig_file_id: Option<FileId>,
+        orig_app_data_id: Option<AppDataId>,
         current_file_id: FileId,
     ) -> Self {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!(
-            "\nIncludeCtx::new: {orig_file_id:?} {current_file_id:?}"
+            "\nIncludeCtx::new: {orig_app_data_id:?} {current_file_id:?}"
         ));
         let source_root_id = db.file_source_root(current_file_id);
         let source_root = db.source_root(source_root_id);
         Self {
             db,
-            orig_file_id,
+            orig_app_data_id,
             current_file_id,
             source_root,
         }
@@ -69,7 +71,7 @@ impl<'a> IncludeCtx<'a> {
     pub fn resolve_include_lib(&self, path: &str) -> Option<FileId> {
         self.resolve_include(path).or_else(|| {
             self.db
-                .resolve_remote(self.orig_file_id, self.current_file_id, path.into())
+                .resolve_remote(self.orig_app_data_id, self.current_file_id, path.into())
         })
     }
 
@@ -121,23 +123,25 @@ impl<'a> IncludeCtx<'a> {
 
     /// Called via salsa for inserting in the graph
     /// When processing a .erl file, it can include other files, and so on recursively.
-    /// In this case, the starting file is the `orig_file_id`, and the current file is
+    /// In this case, the originating app is identified by `orig_app_data_id`, and the current file is
     /// the one being processed.
     pub(crate) fn resolve_remote_query(
         db: &dyn SourceDatabase,
-        orig_file_id: Option<FileId>,
+        orig_app_data_id: Option<AppDataId>,
         current_file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId> {
         let project_id = db.file_project_id(current_file_id)?;
         let project_data = db.project_data(project_id);
         // `app_data` represents the app that is doing the including.
-        // If `orig_file_id` is set, we are possibly processing a
+        // If `orig_app_data_id` is set, we are possibly processing a
         // nested include file.  In this case we must do our checking
         // based on its app data.
-        let app_data = orig_file_id
-            .map(|file_id| db.file_app_data(file_id))
-            .unwrap_or_else(|| db.file_app_data(current_file_id))?;
+        let app_data = if let Some(id) = orig_app_data_id {
+            db.app_data_by_id(id)?
+        } else {
+            db.file_app_data(current_file_id)?
+        };
         let (app_name, include_path) = path.split_once('/')?;
         let source_root_id = project_data.app_roots.get(app_name)?;
         let target_app_data = db.app_data(source_root_id)?;
@@ -253,8 +257,8 @@ pub fn generated_file_include_lib(
         .iter()
         .find_map(|dir| include_path.as_path()?.strip_prefix(dir))?;
     let candidate = format!("{}/include/{}", inc_app_data.name, candidate_path.as_str());
-    let resolved_file_id =
-        IncludeCtx::new(db, Some(file_id), file_id).resolve_include_lib(&candidate)?;
+    let resolved_file_id = IncludeCtx::new(db, db.app_data_id_by_file(file_id), file_id)
+        .resolve_include_lib(&candidate)?;
     if resolved_file_id == included_file_id {
         // We have an equivalent include
         Some(candidate)

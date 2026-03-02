@@ -10,6 +10,7 @@
 
 use std::sync::Arc;
 
+use elp_base_db::AppDataId;
 use elp_base_db::FileId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
@@ -159,7 +160,11 @@ pub trait DefDatabase:
     fn function_clause_scopes(&self, clause: InFile<FunctionClauseId>) -> Arc<ExprScopes>;
 
     #[salsa::invoke(include::resolve)]
-    fn resolve_include(&self, include_id: InFile<IncludeAttributeId>) -> Option<FileId>;
+    fn resolve_include(
+        &self,
+        orig_app: Option<AppDataId>,
+        include_id: InFile<IncludeAttributeId>,
+    ) -> Option<FileId>;
 
     #[salsa::invoke(macro_exp::resolve_query)]
     fn resolve_macro(&self, file_id: FileId, name: MacroName) -> Option<ResolvedMacro>;

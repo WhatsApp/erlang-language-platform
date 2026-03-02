@@ -8,6 +8,7 @@
  * above-listed licenses.
  */
 
+use elp_base_db::AppDataId;
 use elp_base_db::FileId;
 use elp_base_db::IncludeCtx;
 
@@ -18,9 +19,10 @@ use crate::db::DefDatabase;
 
 pub(crate) fn resolve(
     db: &dyn DefDatabase,
+    orig_app: Option<AppDataId>,
     include_id: InFile<IncludeAttributeId>,
 ) -> Option<FileId> {
-    let ctx = &IncludeCtx::new(db.upcast(), None, include_id.file_id);
+    let ctx = &IncludeCtx::new(db.upcast(), orig_app, include_id.file_id);
     let form_list = db.file_form_list(ctx.current_file_id);
     let (path, file_id) = match &form_list[include_id.value] {
         IncludeAttribute::Include { path, .. } => (path, ctx.resolve_include(path)),
@@ -55,7 +57,7 @@ mod tests {
             .includes()
             .map(|(idx, include)| {
                 let resolved = db
-                    .resolve_include(InFile::new(file_id, idx))
+                    .resolve_include(None, InFile::new(file_id, idx))
                     .unwrap_or_else(|| panic!("unresolved include: {include:?}"));
                 let resolved_path = db
                     .source_root(db.file_source_root(resolved))

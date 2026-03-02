@@ -379,7 +379,7 @@ impl DefMap {
 
         active_includes
             .into_iter()
-            .filter_map(|idx| db.resolve_include(InFile::new(file_id, idx)))
+            .filter_map(|idx| db.resolve_include(None, InFile::new(file_id, idx)))
             // guard against naive cycles of headers including themselves
             .filter(|&included_file_id| included_file_id != file_id)
             .map(|included_file_id| (included_file_id, db.def_map(included_file_id)))

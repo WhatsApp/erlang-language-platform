@@ -447,7 +447,9 @@ fn process_pp_directive(
         }
         PPDirective::Include(include_id) => {
             // Resolve the include and process it recursively
-            if let Some(included_file_id) = db.resolve_include(InFile::new(file_id, *include_id)) {
+            if let Some(included_file_id) =
+                db.resolve_include(None, InFile::new(file_id, *include_id))
+            {
                 // Guard against cycles
                 if included_file_id != file_id {
                     // Create an environment for the included file that inherits
