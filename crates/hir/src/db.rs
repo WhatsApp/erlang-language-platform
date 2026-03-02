@@ -203,6 +203,10 @@ pub trait DefDatabase:
     #[salsa::invoke(DefMap::def_map_query)]
     fn def_map(&self, file_id: FileId) -> Arc<DefMap>;
 
+    #[salsa::cycle(DefMap::recover_cycle_with_env)]
+    #[salsa::invoke(DefMap::def_map_with_env_query)]
+    fn def_map_with_env(&self, file_id: FileId, env: Arc<MacroEnvironment>) -> Arc<DefMap>;
+
     // Helper query to compute only local data, avoids recomputation of header data,
     // if only local information changed
     #[salsa::invoke(DefMap::def_map_local_query)]

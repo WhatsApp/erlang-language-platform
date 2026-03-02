@@ -55,6 +55,7 @@ use crate::known;
 use crate::module_data::SpecDef;
 use crate::name::AsName;
 use crate::name::erlang_funs;
+use crate::preprocessor::MacroEnvironment;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DefMap {
@@ -407,6 +408,61 @@ impl DefMap {
         db: &dyn DefDatabase,
         _cycle: &[String],
         file_id: &FileId,
+    ) -> Arc<DefMap> {
+        db.def_map_local(*file_id)
+    }
+
+    /// Env-aware def_map query — computes the full def_map using the provided
+    /// macro environment for condition evaluation. Used by `def_map_query` to
+    /// pass accumulated macro state to included header def_maps.
+    pub(crate) fn def_map_with_env_query(
+        db: &dyn DefDatabase,
+        file_id: FileId,
+        env: Arc<MacroEnvironment>,
+    ) -> Arc<DefMap> {
+        // TODO: Steps 3-5 will implement the full logic.
+        // For now, delegate to the existing def_map_query logic.
+        let _ = env;
+        let local = db.def_map_local(file_id);
+        let form_list = db.file_form_list(file_id);
+
+        let active_includes: Vec<_> = form_list
+            .includes()
+            .filter(|(_id, include)| {
+                form_list.is_form_active(db, file_id, include.pp_ctx(), None)
+                    != PPConditionResult::Inactive
+            })
+            .map(|(id, _include)| id)
+            .collect();
+
+        let mut remote = Self::default();
+
+        let orig_app = db.app_data_id_by_file(file_id);
+        active_includes
+            .into_iter()
+            .filter_map(|idx| db.resolve_include(orig_app, InFile::new(file_id, idx)))
+            .filter(|&included_file_id| included_file_id != file_id)
+            .map(|included_file_id| (included_file_id, db.def_map(included_file_id)))
+            .for_each(|(file_id, def_map)| {
+                remote.included.insert(file_id);
+                remote.merge(&def_map)
+            });
+
+        if remote.is_empty() {
+            local
+        } else {
+            remote.merge(&local);
+            remote.fixup_exports();
+            remote.fixup_deprecated();
+            Arc::new(remote)
+        }
+    }
+
+    pub(crate) fn recover_cycle_with_env(
+        db: &dyn DefDatabase,
+        _cycle: &[String],
+        file_id: &FileId,
+        _env: &Arc<MacroEnvironment>,
     ) -> Arc<DefMap> {
         db.def_map_local(*file_id)
     }
