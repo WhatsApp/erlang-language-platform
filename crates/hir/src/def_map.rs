@@ -1333,4 +1333,91 @@ dep_fn() -> ok.
             "#]],
         )
     }
+
+    // ============================================================================
+    // Env-Aware Include Tests (def_map_with_env)
+    // ============================================================================
+
+    #[test]
+    fn ifdef_from_includer_defines() {
+        // Includer defines FEATURE_X, header has ifdef(FEATURE_X) -> function should be visible
+        check_functions(
+            r#"
+//- /module.erl
+-define(FEATURE_X, true).
+-include("header.hrl").
+//- /header.hrl
+-ifdef(FEATURE_X).
+foo() -> ok.
+-endif.
+bar() -> ok.
+"#,
+            expect![[r#"
+                fun foo/0 exported: false
+                fun bar/0 exported: false
+            "#]],
+        )
+    }
+
+    #[test]
+    fn ifdef_undefined_in_header() {
+        // Header has ifdef(FEATURE_X) but FEATURE_X is never defined -> function NOT visible
+        check_functions(
+            r#"
+//- /module.erl
+-include("header.hrl").
+//- /header.hrl
+-ifdef(FEATURE_X).
+foo() -> ok.
+-endif.
+bar() -> ok.
+"#,
+            expect![[r#"
+                fun bar/0 exported: false
+            "#]],
+        )
+    }
+
+    #[test]
+    fn ifdef_chained_includes() {
+        // Module defines macro, includes a.hrl which includes b.hrl with ifdef
+        check_functions(
+            r#"
+//- /module.erl
+-define(FEATURE_X, true).
+-include("a.hrl").
+//- /a.hrl
+-include("b.hrl").
+//- /b.hrl
+-ifdef(FEATURE_X).
+foo() -> ok.
+-endif.
+bar() -> ok.
+"#,
+            expect![[r#"
+                fun foo/0 exported: false
+                fun bar/0 exported: false
+            "#]],
+        )
+    }
+
+    #[test]
+    fn include_guard_pattern() {
+        // Double include with -ifndef guard: function should appear only once
+        check_functions(
+            r#"
+//- /module.erl
+-include("header.hrl").
+-include("header.hrl").
+//- /header.hrl
+-ifndef(HEADER_HRL).
+-define(HEADER_HRL, true).
+foo() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                fun foo/0 exported: false
+            "#]],
+        )
+    }
 }
