@@ -251,12 +251,50 @@ impl IncludeFile {
         if existing_import {
             None
         } else {
-            let offset = if let Some((_, include)) = form_list.includes().last() {
-                let range = include.form_id().range(sema.db, file_id);
-                range.end() + TextSize::new(1)
-            } else {
+            let includes: Vec<_> = form_list.includes().collect();
+            let offset = if includes.is_empty() {
                 let source = sema.parse(file_id);
                 top_insert_position(&form_list, &source.value)
+            } else {
+                let is_sorted = includes
+                    .windows(2)
+                    .all(|pair| pair[0].1.path().as_str() <= pair[1].1.path().as_str());
+                if is_sorted {
+                    // Includes are alphabetically sorted — insert at the right position.
+                    let self_path = self.path.as_str();
+                    let between_idx = includes.windows(2).position(|pair| {
+                        pair[0].1.path().as_str() <= self_path
+                            && pair[1].1.path().as_str() >= self_path
+                    });
+                    if let Some(idx) = between_idx {
+                        let prev_end = includes[idx].1.form_id().range(sema.db, file_id).end();
+                        let next_start = includes[idx + 1]
+                            .1
+                            .form_id()
+                            .range(sema.db, file_id)
+                            .start();
+                        if next_start - prev_end > TextSize::new(1) {
+                            // Blank line between includes (group boundary) —
+                            // append to last group to avoid splitting groups.
+                            let (_, last) = includes.last().unwrap();
+                            last.form_id().range(sema.db, file_id).end() + TextSize::new(1)
+                        } else {
+                            next_start
+                        }
+                    } else if includes[0].1.path().as_str() >= self_path {
+                        // Alphabetically before all existing includes.
+                        includes[0].1.form_id().range(sema.db, file_id).start()
+                    } else {
+                        // Alphabetically after all existing includes.
+                        let (_, last) = includes.last().unwrap();
+                        last.form_id().range(sema.db, file_id).end() + TextSize::new(1)
+                    }
+                } else {
+                    // Includes are not sorted — append after last to avoid
+                    // breaking dependency order.
+                    let (_, last) = includes.last().unwrap();
+                    last.form_id().range(sema.db, file_id).end() + TextSize::new(1)
+                }
             };
             Some(FilePosition { file_id, offset })
         }
