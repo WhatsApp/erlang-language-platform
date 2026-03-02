@@ -887,6 +887,10 @@ fn diagnostic_is_allowed(
     d: &diagnostics::Diagnostic,
     allowed_diagnostics: Option<&EnabledDiagnostics>,
 ) -> bool {
+    // Syntax errors should always be reported, even when filtering for specific diagnostics
+    if d.code.is_syntax_error() {
+        return true;
+    }
     if let Some(allowed_codes) = allowed_diagnostics {
         allowed_codes.contains(&d.code)
     } else {
@@ -1500,6 +1504,27 @@ mod tests {
                 module specified: lints
                 Diagnostics reported:
                 app_a/src/lints.erl:3:3-3:6::[Warning] [L1230] function foo/0 is unused
+            "#]],
+            expect![""],
+        );
+    }
+
+    #[test]
+    fn syntax_errors_always_reported_with_diagnostic_filter() {
+        // Syntax errors should always be reported,
+        // even when a different diagnostic filter is specified.
+        run_lint_command(
+            args_vec!["lint", "--module", "lints", "--diagnostic-filter", "W0020",],
+            r#"
+            //- /app_a/src/lints.erl app:app_a
+              -module(lints).
+
+              foo( -> ok.
+        "#,
+            expect![[r#"
+                module specified: lints
+                Diagnostics reported:
+                app_a/src/lints.erl:3:7-3:8::[Error] [W0004] Missing ')'
             "#]],
             expect![""],
         );
