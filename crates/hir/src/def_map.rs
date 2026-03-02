@@ -149,6 +149,18 @@ impl Deprecated {
 
 impl DefMap {
     pub(crate) fn def_map_local_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<DefMap> {
+        Arc::new(Self::build_local_impl(db, file_id, None))
+    }
+
+    /// Build the local def_map for a single file.
+    /// When `env` is `Some`, uses the provided macro environment for condition
+    /// evaluation (via `is_form_active_with_env`). When `None`, uses the
+    /// default project macro environment (via `is_form_active`).
+    fn build_local_impl(
+        db: &dyn DefDatabase,
+        file_id: FileId,
+        env: Option<&Arc<MacroEnvironment>>,
+    ) -> DefMap {
         let mut def_map = Self::default();
         let mut last_doc_attribute = None;
         let mut last_doc_metadata_attribute = None;
@@ -167,11 +179,20 @@ impl DefMap {
             if matches!(form, FormIdx::PPCondition(_)) {
                 continue;
             }
-            if let Some(pp_ctx) = form_list.get(form).pp_ctx(&form_list)
-                && form_list.is_form_active(db, file_id, pp_ctx, None)
-                    == PPConditionResult::Inactive
-            {
-                continue;
+            if let Some(pp_ctx) = form_list.get(form).pp_ctx(&form_list) {
+                let is_inactive = match env {
+                    Some(e) => {
+                        form_list.is_form_active_with_env(db, file_id, pp_ctx, Arc::clone(e))
+                            == PPConditionResult::Inactive
+                    }
+                    None => {
+                        form_list.is_form_active(db, file_id, pp_ctx, None)
+                            == PPConditionResult::Inactive
+                    }
+                };
+                if is_inactive {
+                    continue;
+                }
             }
             match form {
                 FormIdx::FunctionClause(idx) => {
@@ -344,7 +365,7 @@ impl DefMap {
         def_map.fixup_callbacks();
         def_map.shrink_to_fit();
 
-        Arc::new(def_map)
+        def_map
     }
 
     fn def_map_deprecated_attr(def_map: &mut DefMap, fa: &DeprecatedFa) {
