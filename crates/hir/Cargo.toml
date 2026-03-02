@@ -11,7 +11,6 @@ elp_base_db.workspace = true
 elp_syntax.workspace = true
 elp_types_db.workspace = true
 
-triple_accel.workspace = true
 either.workspace = true
 fxhash.workspace = true
 htmlentity.workspace = true
@@ -19,7 +18,6 @@ itertools.workspace = true
 la-arena.workspace = true
 lazy_static.workspace = true
 log.workspace = true
-profile.workspace = true
 regex.workspace = true
 stdx.workspace = true
 tracing.workspace = true

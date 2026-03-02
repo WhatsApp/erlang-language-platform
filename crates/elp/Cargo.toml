@@ -7,7 +7,7 @@ version.workspace = true
 [features]
 default = ["buck", "jemalloc"]
 buck = ["elp_project_model/buck"]
-jemalloc = ["dep:jemalloc-ctl", "dep:jemallocator", "profile/jemalloc"]
+jemalloc = ["dep:jemalloc-ctl", "dep:jemallocator"]
 
 [[bin]]
 name = "elp"
@@ -23,21 +23,18 @@ elp_ide_db.workspace = true
 elp_log.workspace = true
 elp_project_model.workspace = true
 elp_syntax.workspace = true
-hir.workspace = true
 
 always-assert.workspace = true
 anyhow.workspace = true
 bpaf.workspace = true
 codespan-reporting.workspace = true
 crossbeam-channel.workspace = true
-env_logger.workspace = true
-fs_extra.workspace = true
 fxhash.workspace = true
+hir.workspace = true
 include_dir.workspace = true
 indexmap.workspace = true
 indicatif.workspace = true
 itertools.workspace = true
-jod-thread.workspace = true
 lazy_static.workspace = true
 log.workspace = true
 lsp-server.workspace = true
@@ -45,18 +42,14 @@ lsp-types.workspace = true
 parking_lot.workspace = true
 paths.workspace = true
 profile.workspace = true
-range-set.workspace = true
 rayon.workspace = true
-regex.workspace = true
 rustyline.workspace = true
 serde_json.workspace = true
 serde_path_to_error.workspace = true
 serde.workspace = true
 stdx.workspace = true
 strsim.workspace = true
-tempfile.workspace = true
 threadpool.workspace = true
-timeout-readwrite.workspace = true
 toml.workspace = true
 tracing.workspace = true
 vfs-notify.workspace = true
@@ -67,7 +60,10 @@ jemalloc-ctl = { workspace = true, optional = true }
 jemallocator = { workspace = true, optional = true }
 
 [dev-dependencies]
+env_logger.workspace = true
 expect-test.workspace = true
+regex.workspace = true
+tempfile.workspace = true
 test-case.workspace = true
 
 [build-dependencies]
