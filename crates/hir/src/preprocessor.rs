@@ -20,6 +20,7 @@ use fxhash::FxHashMap;
 use crate::DefineId;
 use crate::FormIdx;
 use crate::InFile;
+use crate::IncludeAttributeId;
 use crate::MacroName;
 use crate::Name;
 use crate::PPConditionId;
@@ -122,6 +123,10 @@ pub struct PreprocessorSnapshot {
 pub struct PreprocessorAnalysis {
     condition_results: FxHashMap<PPConditionId, PPConditionResult>,
     pub final_state: Option<PreprocessorSnapshot>,
+    /// The macro environment used for each include directive during
+    /// sequential processing. Allows callers to determine the exact
+    /// macro state at each include point.
+    include_envs: FxHashMap<IncludeAttributeId, Arc<MacroEnvironment>>,
 }
 
 impl PreprocessorState {
@@ -307,6 +312,12 @@ impl PreprocessorAnalysis {
             .copied()
             .unwrap_or(PPConditionResult::Active)
     }
+
+    /// Get the macro environment that was used for a specific include.
+    /// Returns `None` if the include was not active or not found.
+    pub fn include_env(&self, include_id: IncludeAttributeId) -> Option<&Arc<MacroEnvironment>> {
+        self.include_envs.get(&include_id)
+    }
 }
 
 pub fn file_preprocessor_analysis_with_diagnostics_query(
@@ -341,7 +352,15 @@ pub fn file_preprocessor_analysis_with_diagnostics_query(
                 analysis.condition_results.insert(cond_id, result);
             }
             FormIdx::PPDirective(directive_id) => {
-                process_pp_directive(db, file_id, &form_list, directive_id, &mut state, &env);
+                process_pp_directive(
+                    db,
+                    file_id,
+                    &form_list,
+                    directive_id,
+                    &mut state,
+                    &env,
+                    &mut analysis.include_envs,
+                );
             }
             _ => {
                 // Other forms don't affect preprocessor state
@@ -432,6 +451,7 @@ fn process_pp_directive(
     directive_id: crate::PPDirectiveId,
     state: &mut PreprocessorState,
     env: &MacroEnvironment,
+    include_envs: &mut FxHashMap<IncludeAttributeId, Arc<MacroEnvironment>>,
 ) {
     use crate::form_list::PPDirective;
 
@@ -469,9 +489,13 @@ fn process_pp_directive(
                         include_env.set_module_name(module_name.clone());
                     }
 
+                    let include_env = Arc::new(include_env);
+                    // Record the environment used for this include
+                    include_envs.insert(*include_id, Arc::clone(&include_env));
+
                     // Recursively analyze the included file
                     let include_analysis =
-                        db.file_preprocessor_analysis(included_file_id, Arc::new(include_env));
+                        db.file_preprocessor_analysis(included_file_id, include_env);
 
                     // Merge the final state from the included file
                     if let Some(ref final_state) = include_analysis.final_state {
