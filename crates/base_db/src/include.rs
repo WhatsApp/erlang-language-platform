@@ -133,15 +133,18 @@ impl<'a> IncludeCtx<'a> {
     ) -> Option<FileId> {
         let project_id = db.file_project_id(current_file_id)?;
         let project_data = db.project_data(project_id);
-        // `app_data` represents the app that is doing the including.
-        // If `orig_app_data_id` is set, we are possibly processing a
-        // nested include file.  In this case we must do our checking
-        // based on its app data.
-        let app_data = if let Some(id) = orig_app_data_id {
-            db.app_data_by_id(id)?
-        } else {
-            db.file_app_data(current_file_id)?
-        };
+
+        // Gather app data from both the originating app and the current
+        // file's app.  For the dep check we accept the include if
+        // *either* app has the target as a dependency.  This handles:
+        //   - A→B→C where A deps C but B doesn't (orig check passes)
+        //   - A→B→C where B deps C but A doesn't (current check passes)
+        let orig_app_data = orig_app_data_id.and_then(|id| db.app_data_by_id(id));
+        let current_app_data = db.file_app_data(current_file_id);
+
+        // Need at least one valid app_data to proceed.
+        let _app_data = orig_app_data.as_ref().or(current_app_data.as_ref())?;
+
         let (app_name, include_path) = path.split_once('/')?;
         let source_root_id = project_data.app_roots.get(app_name)?;
         let target_app_data = db.app_data(source_root_id)?;
@@ -151,37 +154,38 @@ impl<'a> IncludeCtx<'a> {
                 .map(|path| db.include_file_id(project_id, VfsPath::from(path.clone())))
             {
                 if p.is_some() {
-                    // We have an entry in the include mapping, and it maps to a FileId
-                    if let Some(target_full_name) = &app_data.buck_target_name {
-                        // We have an entry for the lookup, only return it
-                        // if it is in the dependencies
-                        if include_mapping.is_dep(target_full_name, &AppName(app_name.to_string()))
-                        {
-                            p
-                        } else {
-                            // We have a lookup value, but it is not a
-                            // dependency, do not do fallback processing
-                            None
-                        }
+                    // We have an entry in the include mapping, and it maps to a FileId.
+                    // Accept if the target is a dep of either the originating app
+                    // or the current file's app.
+                    let target = AppName(app_name.to_string());
+                    let is_dep = [&orig_app_data, &current_app_data]
+                        .iter()
+                        .filter_map(|d| d.as_ref())
+                        .any(|d| {
+                            d.buck_target_name
+                                .as_ref()
+                                .is_some_and(|t| include_mapping.is_dep(t, &target))
+                        });
+
+                    if is_dep {
+                        p
                     } else {
-                        // This should not be possible. We only have
-                        // an include mapping for a buck project, and
-                        // so the `buck_target_name` should be
-                        // populated.
-                        log::warn!(
-                            "include mapping without buck_target_name: app:{:?}, path:{}",
-                            &app_data.name,
-                            &path
-                        );
+                        // We have a lookup value, but neither the
+                        // originating app nor the current file's app
+                        // has it as a dependency.
                         None
                     }
                 } else {
                     // We do have an entry in the include mapping, but
                     // it does not resolve to a valid FileId.
                     // This should also not happen.
+                    let name = orig_app_data
+                        .as_ref()
+                        .or(current_app_data.as_ref())
+                        .map(|d| d.name.clone());
                     log::warn!(
                         "include mapping does not resolve to FileId: app:{:?}, path:{}, p:{:?}",
-                        &app_data.name,
+                        &name,
                         &path,
                         &p
                     );

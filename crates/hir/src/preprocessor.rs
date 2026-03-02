@@ -1204,4 +1204,56 @@ guarded() -> from_app_c.
              but app_b (the intermediate header's app) does not depend on app_c."
         );
     }
+
+    #[test]
+    fn test_preprocessor_chained_cross_app_include_lib_buck_transitive_dep() {
+        // Tests the reverse scenario: the intermediate app (app_b) has
+        // the dep on app_c, but the originating app (app_a) does NOT
+        // directly depend on app_c.
+        //
+        // Scenario:
+        // - app_a depends on app_b only
+        // - app_b depends on app_c
+        // - app_a includes app_b's header, which includes app_c's header
+        // - app_c's header defines a macro used in app_a via ifdef
+        //
+        // The dep check in resolve_remote_query must accept the include
+        // if *either* the originating app or the current file's app has
+        // the target as a dependency.
+        let fixture = r#"
+//- /a_real/src/main.erl app:app_a buck_target:cell//app_a:lib deps:app_b
+-module(main).
+-include_lib("app_b/include/bridge.hrl").
+-ifdef(FROM_APP_C).
+guarded() -> from_app_c.
+-endif.
+
+//- /b_real/include/bridge.hrl app:app_b buck_target:cell//app_b:lib deps:app_c
+-include_lib("app_c/include/defs.hrl").
+
+//- /c_real/include/defs.hrl app:app_c buck_target:cell//app_c:lib
+-define(FROM_APP_C, true).
+"#;
+        let (db, files, _) = TestDB::with_many_files(fixture);
+
+        let main_file = files[0];
+        let env = db.project_macro_environment(main_file);
+        let analysis = db.file_preprocessor_analysis(main_file, env);
+
+        // After the chained include (app_a → app_b → app_c),
+        // FROM_APP_C should be defined in the preprocessor state.
+        // app_b deps on app_c, so the nested include_lib from app_b's
+        // header should resolve using app_b's deps even though
+        // app_a (the originating app) does not dep on app_c.
+        let final_state = analysis
+            .final_state
+            .as_ref()
+            .expect("preprocessor analysis should have final state");
+        assert!(
+            final_state.defined.contains(&macro_name("FROM_APP_C")),
+            "FROM_APP_C should be defined after chained cross-app include_lib.\n\
+             app_b deps on app_c, so the nested include from app_b's header should\n\
+             resolve even though app_a (the originating app) does not dep on app_c."
+        );
+    }
 }
