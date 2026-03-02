@@ -13,6 +13,7 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
+use elp_base_db::AppDataId;
 use elp_base_db::FileId;
 use fxhash::FxHashMap;
 
@@ -43,6 +44,10 @@ pub struct MacroEnvironment {
     /// When false, all forms are treated as active (legacy behavior).
     /// Default: false (disabled - matches legacy behavior)
     pub new_ifdef: bool,
+    /// The originating app's `AppDataId` for include resolution.
+    /// Used to resolve cross-app `include_lib` directives using the
+    /// originating app's dependency graph instead of the current file's.
+    pub orig_app_data_id: Option<AppDataId>,
 }
 
 impl MacroEnvironment {
@@ -448,14 +453,16 @@ fn process_pp_directive(
         PPDirective::Include(include_id) => {
             // Resolve the include and process it recursively
             if let Some(included_file_id) =
-                db.resolve_include(None, InFile::new(file_id, *include_id))
+                db.resolve_include(env.orig_app_data_id, InFile::new(file_id, *include_id))
             {
                 // Guard against cycles
                 if included_file_id != file_id {
                     // Create an environment for the included file that inherits
-                    // the current module name context
+                    // the current module name context and originating app identity
                     let mut include_env = MacroEnvironment::new();
                     include_env.predefined = state.defined_macros().clone();
+                    include_env.orig_app_data_id = env.orig_app_data_id;
+                    include_env.new_ifdef = env.new_ifdef;
                     if let Some(module_name) = env.module_name() {
                         include_env.set_module_name(module_name.clone());
                     } else if let Some(module_name) = state.module_name() {
@@ -1138,5 +1145,63 @@ this_is_inactive() -> ok.
         // Cycle recovery should return empty/default analysis and empty diagnostics
         assert!(analysis.final_state.is_none());
         assert!(diagnostics.is_empty());
+    }
+
+    #[test]
+    fn test_preprocessor_chained_cross_app_include_lib_buck() {
+        // Tests that orig_app_data_id propagation in the preprocessor
+        // enables chained cross-app includes through the buck
+        // IncludeMapping resolution path.
+        //
+        // Scenario:
+        // - app_a depends on app_b and app_c
+        // - app_b does NOT depend on app_c
+        // - app_a includes app_b's header, which includes app_c's header
+        // - app_c's header defines a macro used in app_a via ifdef
+        //
+        // App directory names intentionally differ from app names
+        // (e.g., app_b lives under /b_real/) so the rebar local
+        // include_path fallback cannot resolve the include_lib.
+        // Only the buck IncludeMapping remote path works, which
+        // requires the dep check to pass.
+        //
+        // Without orig_app_data_id propagation, the nested include_lib
+        // from app_b's header uses file_app_data(bridge.hrl) → app_b's
+        // deps (no app_c) → dep check fails → include unresolved.
+        // With the fix, orig_app_data_id carries app_a's identity
+        // through the recursive include → app_a's deps (includes
+        // app_c) → dep check passes → include resolved.
+        let fixture = r#"
+//- /a_real/src/main.erl app:app_a buck_target:cell//app_a:lib deps:app_b,app_c
+-module(main).
+-include_lib("app_b/include/bridge.hrl").
+-ifdef(FROM_APP_C).
+guarded() -> from_app_c.
+-endif.
+
+//- /b_real/include/bridge.hrl app:app_b buck_target:cell//app_b:lib
+-include_lib("app_c/include/defs.hrl").
+
+//- /c_real/include/defs.hrl app:app_c buck_target:cell//app_c:lib
+-define(FROM_APP_C, true).
+"#;
+        let (db, files, _) = TestDB::with_many_files(fixture);
+
+        let main_file = files[0];
+        let env = db.project_macro_environment(main_file);
+        let analysis = db.file_preprocessor_analysis(main_file, env);
+
+        // After the chained include (app_a → app_b → app_c),
+        // FROM_APP_C should be defined in the preprocessor state
+        let final_state = analysis
+            .final_state
+            .as_ref()
+            .expect("preprocessor analysis should have final state");
+        assert!(
+            final_state.defined.contains(&macro_name("FROM_APP_C")),
+            "FROM_APP_C should be defined after chained cross-app include_lib.\n\
+             This requires orig_app_data_id propagation: app_a deps include app_c,\n\
+             but app_b (the intermediate header's app) does not depend on app_c."
+        );
     }
 }

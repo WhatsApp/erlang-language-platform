@@ -202,6 +202,9 @@ pub fn project_macro_environment_query(
         env.set_module_name(module_attr.name.clone());
     }
 
+    // Set originating app identity for include resolution
+    env.orig_app_data_id = db.app_data_id_by_file(file_id);
+
     Arc::new(env)
 }
 
