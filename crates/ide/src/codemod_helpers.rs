@@ -645,6 +645,130 @@ pub fn make_module_rename_fix<T>(
     ))
 }
 
+/// Compute the range to delete for a node in a comma-separated list.
+/// Handles first, middle, last, and only-element cases correctly.
+pub(crate) fn compute_comma_separated_delete_range(node: &elp_syntax::SyntaxNode) -> TextRange {
+    let node_range = node.text_range();
+
+    // Check if there is a trailing comma (node is not last)
+    let has_trailing_comma = has_sibling_token_after(node, SyntaxKind::ANON_COMMA);
+    // Check if there is a preceding comma (node is not first)
+    let has_preceding_comma = has_sibling_token_before(node, SyntaxKind::ANON_COMMA);
+
+    if has_trailing_comma {
+        // First or middle element: delete node + trailing whitespace + comma
+        let end = find_token_end_after(node, SyntaxKind::ANON_COMMA).unwrap_or(node_range.end());
+        // Also consume any whitespace after the comma
+        TextRange::new(node_range.start(), end)
+    } else if has_preceding_comma {
+        // Last element: delete preceding comma + whitespace + node
+        let start =
+            find_token_start_before(node, SyntaxKind::ANON_COMMA).unwrap_or(node_range.start());
+        TextRange::new(start, node_range.end())
+    } else {
+        // Only element — just delete the node itself
+        node_range
+    }
+}
+
+/// Check if there is a token of the given kind among the following siblings,
+/// skipping whitespace.
+pub(crate) fn has_sibling_token_after(node: &elp_syntax::SyntaxNode, kind: SyntaxKind) -> bool {
+    let mut sibling = node.next_sibling_or_token();
+    while let Some(s) = sibling {
+        match &s {
+            elp_syntax::NodeOrToken::Token(t) => {
+                if t.kind() == kind {
+                    return true;
+                }
+                if t.kind() != SyntaxKind::WHITESPACE {
+                    return false;
+                }
+            }
+            elp_syntax::NodeOrToken::Node(_) => return false,
+        }
+        sibling = s.next_sibling_or_token();
+    }
+    false
+}
+
+/// Check if there is a token of the given kind among the preceding siblings,
+/// skipping whitespace.
+pub(crate) fn has_sibling_token_before(node: &elp_syntax::SyntaxNode, kind: SyntaxKind) -> bool {
+    let mut sibling = node.prev_sibling_or_token();
+    while let Some(s) = sibling {
+        match &s {
+            elp_syntax::NodeOrToken::Token(t) => {
+                if t.kind() == kind {
+                    return true;
+                }
+                if t.kind() != SyntaxKind::WHITESPACE {
+                    return false;
+                }
+            }
+            elp_syntax::NodeOrToken::Node(_) => return false,
+        }
+        sibling = s.prev_sibling_or_token();
+    }
+    false
+}
+
+/// Find the end position of the first token of the given kind after the node,
+/// including any whitespace between the node and the token.
+pub(crate) fn find_token_end_after(
+    node: &elp_syntax::SyntaxNode,
+    kind: SyntaxKind,
+) -> Option<elp_syntax::TextSize> {
+    let mut sibling = node.next_sibling_or_token();
+    while let Some(s) = sibling {
+        match &s {
+            elp_syntax::NodeOrToken::Token(t) => {
+                if t.kind() == kind {
+                    // Also consume any whitespace after the token
+                    let mut end = t.text_range().end();
+                    if let Some(next) = s.next_sibling_or_token()
+                        && let elp_syntax::NodeOrToken::Token(ws) = &next
+                        && ws.kind() == SyntaxKind::WHITESPACE
+                    {
+                        end = ws.text_range().end();
+                    }
+                    return Some(end);
+                }
+                if t.kind() != SyntaxKind::WHITESPACE {
+                    return None;
+                }
+            }
+            elp_syntax::NodeOrToken::Node(_) => return None,
+        }
+        sibling = s.next_sibling_or_token();
+    }
+    None
+}
+
+/// Find the start position of the last token of the given kind before the node,
+/// including any whitespace between the token and the node.
+pub(crate) fn find_token_start_before(
+    node: &elp_syntax::SyntaxNode,
+    kind: SyntaxKind,
+) -> Option<elp_syntax::TextSize> {
+    let mut sibling = node.prev_sibling_or_token();
+    while let Some(s) = &sibling {
+        match s {
+            elp_syntax::NodeOrToken::Token(t) => {
+                if t.kind() == kind {
+                    return Some(t.text_range().start());
+                }
+                if t.kind() != SyntaxKind::WHITESPACE {
+                    return None;
+                }
+            }
+            elp_syntax::NodeOrToken::Node(_) => return None,
+        }
+        sibling = sibling.unwrap().prev_sibling_or_token();
+    }
+    None
+}
+
 // ---------------------------------------------------------------------
 
 #[cfg(test)]
@@ -1018,6 +1142,191 @@ mod tests {
                baz(rpc:call(Node, M, F, A)).
              "#]],
         );
+    }
+
+    // -------------------------------------------------------------------
+    // Tests for sibling token helpers and comma-separated delete range
+    // -------------------------------------------------------------------
+
+    use elp_syntax::AstNode;
+    use elp_syntax::SyntaxKind;
+
+    /// Parse a record declaration and return the RecordField syntax nodes.
+    fn parse_record_fields(record_text: &str) -> Vec<elp_syntax::SyntaxNode> {
+        let source = format!("-module(test).\n{record_text}");
+        let parse = ast::SourceFile::parse_text(&source);
+        assert!(
+            parse.errors().is_empty(),
+            "parse errors: {:?}",
+            parse.errors()
+        );
+        parse
+            .tree()
+            .syntax()
+            .descendants()
+            .filter(|n| n.kind() == SyntaxKind::RECORD_FIELD)
+            .collect()
+    }
+
+    #[test]
+    fn has_sibling_token_after_trailing_comma() {
+        // In `-record(r, {a, b}).`, field `a` has a trailing comma
+        let fields = parse_record_fields("-record(r, {a, b}).");
+        assert_eq!(fields.len(), 2);
+        assert!(super::has_sibling_token_after(
+            &fields[0],
+            SyntaxKind::ANON_COMMA
+        ));
+    }
+
+    #[test]
+    fn has_sibling_token_after_no_trailing_comma() {
+        // In `-record(r, {a, b}).`, field `b` has no trailing comma
+        let fields = parse_record_fields("-record(r, {a, b}).");
+        assert_eq!(fields.len(), 2);
+        assert!(!super::has_sibling_token_after(
+            &fields[1],
+            SyntaxKind::ANON_COMMA
+        ));
+    }
+
+    #[test]
+    fn has_sibling_token_after_single_field() {
+        let fields = parse_record_fields("-record(r, {a}).");
+        assert_eq!(fields.len(), 1);
+        assert!(!super::has_sibling_token_after(
+            &fields[0],
+            SyntaxKind::ANON_COMMA
+        ));
+    }
+
+    #[test]
+    fn has_sibling_token_before_preceding_comma() {
+        // In `-record(r, {a, b}).`, field `b` has a preceding comma
+        let fields = parse_record_fields("-record(r, {a, b}).");
+        assert_eq!(fields.len(), 2);
+        assert!(super::has_sibling_token_before(
+            &fields[1],
+            SyntaxKind::ANON_COMMA
+        ));
+    }
+
+    #[test]
+    fn has_sibling_token_before_no_preceding_comma() {
+        // In `-record(r, {a, b}).`, field `a` has no preceding comma
+        let fields = parse_record_fields("-record(r, {a, b}).");
+        assert_eq!(fields.len(), 2);
+        assert!(!super::has_sibling_token_before(
+            &fields[0],
+            SyntaxKind::ANON_COMMA
+        ));
+    }
+
+    #[test]
+    fn has_sibling_token_before_single_field() {
+        let fields = parse_record_fields("-record(r, {a}).");
+        assert_eq!(fields.len(), 1);
+        assert!(!super::has_sibling_token_before(
+            &fields[0],
+            SyntaxKind::ANON_COMMA
+        ));
+    }
+
+    #[test]
+    fn find_token_end_after_finds_comma_end() {
+        // In `-record(r, {a, b}).`, the comma after field `a` ends at some position
+        let fields = parse_record_fields("-record(r, {a, b}).");
+        let end = super::find_token_end_after(&fields[0], SyntaxKind::ANON_COMMA);
+        assert!(end.is_some());
+    }
+
+    #[test]
+    fn find_token_end_after_none_for_last_field() {
+        let fields = parse_record_fields("-record(r, {a, b}).");
+        let end = super::find_token_end_after(&fields[1], SyntaxKind::ANON_COMMA);
+        assert!(end.is_none());
+    }
+
+    #[test]
+    fn find_token_start_before_finds_comma_start() {
+        let fields = parse_record_fields("-record(r, {a, b}).");
+        let start = super::find_token_start_before(&fields[1], SyntaxKind::ANON_COMMA);
+        assert!(start.is_some());
+    }
+
+    #[test]
+    fn find_token_start_before_none_for_first_field() {
+        let fields = parse_record_fields("-record(r, {a, b}).");
+        let start = super::find_token_start_before(&fields[0], SyntaxKind::ANON_COMMA);
+        assert!(start.is_none());
+    }
+
+    #[test]
+    fn compute_delete_range_first_field() {
+        // `-record(r, {a, b}).` — deleting first field `a` should include the trailing comma+space
+        let source = "-record(r, {a, b}).";
+        let fields = parse_record_fields(source);
+        let full_source = format!("-module(test).\n{source}");
+        let range = super::compute_comma_separated_delete_range(&fields[0]);
+        let deleted = &full_source[range];
+        // Should delete "a, " (field + comma + space)
+        assert_eq!(deleted, "a, ");
+    }
+
+    #[test]
+    fn compute_delete_range_last_field() {
+        // `-record(r, {a, b}).` — deleting last field `b` should include the preceding comma+space
+        let source = "-record(r, {a, b}).";
+        let fields = parse_record_fields(source);
+        let full_source = format!("-module(test).\n{source}");
+        let range = super::compute_comma_separated_delete_range(&fields[1]);
+        let deleted = &full_source[range];
+        // Should delete ", b" (comma + space + field)
+        assert_eq!(deleted, ", b");
+    }
+
+    #[test]
+    fn compute_delete_range_middle_field() {
+        // `-record(r, {a, b, c}).` — deleting middle field `b` should include trailing comma+space
+        let source = "-record(r, {a, b, c}).";
+        let fields = parse_record_fields(source);
+        let full_source = format!("-module(test).\n{source}");
+        let range = super::compute_comma_separated_delete_range(&fields[1]);
+        let deleted = &full_source[range];
+        assert_eq!(deleted, "b, ");
+    }
+
+    #[test]
+    fn compute_delete_range_only_field() {
+        // `-record(r, {a}).` — deleting the only field should delete just the field
+        let source = "-record(r, {a}).";
+        let fields = parse_record_fields(source);
+        let full_source = format!("-module(test).\n{source}");
+        let range = super::compute_comma_separated_delete_range(&fields[0]);
+        let deleted = &full_source[range];
+        assert_eq!(deleted, "a");
+    }
+
+    #[test]
+    fn compute_delete_range_field_with_type() {
+        // `-record(r, {a :: atom(), b :: number()}).` — delete last typed field
+        let source = "-record(r, {a :: atom(), b :: number()}).";
+        let fields = parse_record_fields(source);
+        let full_source = format!("-module(test).\n{source}");
+        let range = super::compute_comma_separated_delete_range(&fields[1]);
+        let deleted = &full_source[range];
+        assert_eq!(deleted, ", b :: number()");
+    }
+
+    #[test]
+    fn compute_delete_range_field_with_default_and_type() {
+        // `-record(r, {a = foo :: atom(), b = 42 :: number()}).` — delete first field
+        let source = "-record(r, {a = foo :: atom(), b = 42 :: number()}).";
+        let fields = parse_record_fields(source);
+        let full_source = format!("-module(test).\n{source}");
+        let range = super::compute_comma_separated_delete_range(&fields[0]);
+        let deleted = &full_source[range];
+        assert_eq!(deleted, "a = foo :: atom(), ");
     }
 
     // -------------------------------------------------------------------

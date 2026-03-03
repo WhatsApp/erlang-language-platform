@@ -14,16 +14,22 @@
 
 use std::borrow::Cow;
 
+use elp_ide_assists::Assist;
 use elp_ide_db::SymbolDefinition;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::source_change::SourceChange;
+use elp_ide_db::text_edit::TextEdit;
 use elp_syntax::AstNode;
+use elp_syntax::TextRange;
 use hir::Semantic;
 
+use crate::codemod_helpers::compute_comma_separated_delete_range;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::DiagnosticTag;
 use crate::diagnostics::GenericLinter;
 use crate::diagnostics::GenericLinterMatchContext;
 use crate::diagnostics::Linter;
+use crate::fix;
 
 pub(crate) struct UnusedRecordFieldLinter;
 
@@ -45,6 +51,7 @@ impl Linter for UnusedRecordFieldLinter {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Context {
     name: String,
+    delete_range: TextRange,
 }
 
 impl GenericLinter for UnusedRecordFieldLinter {
@@ -78,8 +85,11 @@ impl GenericLinter for UnusedRecordFieldLinter {
                                 Some(name) => name.syntax().text_range(),
                                 None => source.syntax().text_range(),
                             };
+                            let delete_range =
+                                compute_comma_separated_delete_range(source.syntax());
                             let context = Context {
                                 name: combined_name,
+                                delete_range,
                             };
                             res.push(GenericLinterMatchContext { range, context });
                         }
@@ -97,6 +107,22 @@ impl GenericLinter for UnusedRecordFieldLinter {
     fn tag(&self, _context: &Self::Context) -> Option<DiagnosticTag> {
         Some(DiagnosticTag::Unused)
     }
+
+    fn fixes(
+        &self,
+        context: &Context,
+        _range: TextRange,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        let edit = TextEdit::delete(context.delete_range);
+        Some(vec![fix(
+            "delete_unused_record_field",
+            &format!("Remove unused record field ({})", context.name),
+            SourceChange::from_text_edit(file_id, edit),
+            context.delete_range,
+        )])
+    }
 }
 
 pub static LINTER: UnusedRecordFieldLinter = UnusedRecordFieldLinter;
@@ -104,7 +130,10 @@ pub static LINTER: UnusedRecordFieldLinter = UnusedRecordFieldLinter;
 #[cfg(test)]
 mod tests {
 
+    use expect_test::expect;
+
     use crate::tests::check_diagnostics;
+    use crate::tests::check_fix;
 
     #[test]
     fn test_unused_record_field() {
@@ -224,6 +253,106 @@ main(#a{a1 = #b{b2 = B2}} = A) ->
 -record(?MODULE, {queue :: term()}).
 test() -> #?MODULE{queue = ok}.
             "#,
+        );
+    }
+
+    #[test]
+    fn fix_remove_last_field() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/1]).
+-record(my_rec, {field_a, fiel~d_b}).
+main(R) ->
+    R#my_rec.field_a.
+            "#,
+            expect![[r#"
+-module(main).
+-export([main/1]).
+-record(my_rec, {field_a}).
+main(R) ->
+    R#my_rec.field_a.
+            "#]],
+        );
+    }
+
+    #[test]
+    fn fix_remove_first_field() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/1]).
+-record(my_rec, {fiel~d_a, field_b}).
+main(R) ->
+    R#my_rec.field_b.
+            "#,
+            expect![[r#"
+-module(main).
+-export([main/1]).
+-record(my_rec, {field_b}).
+main(R) ->
+    R#my_rec.field_b.
+            "#]],
+        );
+    }
+
+    #[test]
+    fn fix_remove_middle_field() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/1]).
+-record(my_rec, {field_a, fiel~d_b, field_c}).
+main(R) ->
+    {R#my_rec.field_a, R#my_rec.field_c}.
+            "#,
+            expect![[r#"
+-module(main).
+-export([main/1]).
+-record(my_rec, {field_a, field_c}).
+main(R) ->
+    {R#my_rec.field_a, R#my_rec.field_c}.
+            "#]],
+        );
+    }
+
+    #[test]
+    fn fix_remove_last_field_with_type() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/1]).
+-record(my_rec, {field_a :: atom(), fiel~d_b :: number()}).
+main(R) ->
+    R#my_rec.field_a.
+            "#,
+            expect![[r#"
+-module(main).
+-export([main/1]).
+-record(my_rec, {field_a :: atom()}).
+main(R) ->
+    R#my_rec.field_a.
+            "#]],
+        );
+    }
+
+    #[test]
+    fn fix_remove_last_field_with_and_value() {
+        check_fix(
+            r#"
+-module(main).
+-export([main/1]).
+-record(my_rec, {field_a = some_atom :: atom(), fiel~d_b = 42 :: number()}).
+main(R) ->
+    R#my_rec.field_a.
+            "#,
+            expect![[r#"
+-module(main).
+-export([main/1]).
+-record(my_rec, {field_a = some_atom :: atom()}).
+main(R) ->
+    R#my_rec.field_a.
+            "#]],
         );
     }
 }
