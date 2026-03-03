@@ -2954,4 +2954,73 @@ elp_path() -> ok.
             "#]],
         );
     }
+
+    #[test]
+    fn test_pp_cross_app_transitive_include_macro() {
+        // A macro defined in a transitively-included header from another
+        // app should be visible for ifdef evaluation.  app_a depends on
+        // app_b and app_c; app_b does NOT depend on app_c.  app_a's
+        // source includes app_b's header, which includes app_c's header
+        // that defines the macro.  Without orig_app propagation the
+        // nested include_lib would fail because app_b lacks the dep on
+        // app_c.
+        check_preprocessor(
+            r#"
+//- /a_real/src/main.erl app:app_a buck_target:cell//app_a:lib deps:app_b,app_c
+-module(main).
+-include_lib("app_b/include/bridge.hrl").
+-ifdef(FROM_APP_C).
+guarded() -> from_app_c.
+-endif.
+
+//- /b_real/include/bridge.hrl app:app_b buck_target:cell//app_b:lib
+-include_lib("app_c/include/defs.hrl").
+
+//- /c_real/include/defs.hrl app:app_c buck_target:cell//app_c:lib
+-define(FROM_APP_C, true).
+"#,
+            expect![[r#"
+                +| -module(main).
+                +| -include_lib("app_b/include/bridge.hrl").
+                +| -ifdef(FROM_APP_C).
+                +| guarded() -> from_app_c.
+                +| -endif.
+                +|
+                >>> defined: [ELP_ERLANG_SERVICE]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_cross_app_transitive_include_macro_reverse_dep() {
+        // Reverse scenario: app_b has the dep on app_c, but app_a only
+        // depends on app_b.  The nested include from app_b's header
+        // should still resolve because the intermediate app's deps are
+        // also consulted.
+        check_preprocessor(
+            r#"
+//- /a_real/src/main.erl app:app_a buck_target:cell//app_a:lib deps:app_b
+-module(main).
+-include_lib("app_b/include/bridge.hrl").
+-ifdef(FROM_APP_C).
+guarded() -> from_app_c.
+-endif.
+
+//- /b_real/include/bridge.hrl app:app_b buck_target:cell//app_b:lib deps:app_c
+-include_lib("app_c/include/defs.hrl").
+
+//- /c_real/include/defs.hrl app:app_c buck_target:cell//app_c:lib
+-define(FROM_APP_C, true).
+"#,
+            expect![[r#"
+                +| -module(main).
+                +| -include_lib("app_b/include/bridge.hrl").
+                +| -ifdef(FROM_APP_C).
+                +| guarded() -> from_app_c.
+                +| -endif.
+                +|
+                >>> defined: [ELP_ERLANG_SERVICE, FROM_APP_C]
+            "#]],
+        );
+    }
 }

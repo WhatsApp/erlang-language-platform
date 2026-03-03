@@ -10,6 +10,7 @@
 
 use std::sync::Arc;
 
+use elp_base_db::AppDataId;
 use elp_base_db::FileId;
 use elp_syntax::ast;
 
@@ -123,7 +124,15 @@ pub(crate) fn resolve_query(
         return value.map(ResolvedMacro::BuiltIn);
     }
 
-    match db.local_resolve_macro(file_id, name) {
+    // Compute the original app once so it propagates through transitive
+    // include resolution (header files may belong to different apps).
+    // Guard against SSR and other contexts where AppIndex is not populated.
+    let orig_app = if file_id == SSR_SOURCE_FILE_ID {
+        None
+    } else {
+        db.app_data_id_by_file(file_id)
+    };
+    match db.local_resolve_macro(file_id, name, orig_app) {
         MacroResolution::Resolved(resolved) => Some(ResolvedMacro::User(resolved)),
         MacroResolution::Undef => None,
         MacroResolution::Unresolved => None,
@@ -163,6 +172,7 @@ pub(crate) fn local_resolve_query(
     db: &dyn DefDatabase,
     file_id: FileId,
     name: MacroName,
+    orig_app: Option<AppDataId>,
 ) -> MacroResolution {
     if file_id == SSR_SOURCE_FILE_ID {
         return MacroResolution::Unresolved;
@@ -186,10 +196,12 @@ pub(crate) fn local_resolve_query(
             }
             PPDirective::Undef { .. } => {}
             PPDirective::Include(idx) => {
-                if let Some(resolved) =
-                    db.resolve_include(db.app_data_id_by_file(file_id), InFile::new(file_id, *idx))
-                {
-                    match db.local_resolve_macro(resolved, name.clone()) {
+                // Use orig_app for include resolution so that transitive
+                // includes through header files in other apps can resolve
+                // correctly (the header's own app may not declare all the
+                // same dependencies as the original source file's app).
+                if let Some(resolved) = db.resolve_include(orig_app, InFile::new(file_id, *idx)) {
+                    match db.local_resolve_macro(resolved, name.clone(), orig_app) {
                         MacroResolution::Resolved(resolved) => {
                             return MacroResolution::Resolved(resolved);
                         }
@@ -210,6 +222,7 @@ pub(crate) fn recover_cycle(
     _cycle: &[String],
     _file_id: &FileId,
     _name: &MacroName,
+    _orig_app: &Option<AppDataId>,
 ) -> MacroResolution {
     MacroResolution::Unresolved
 }
