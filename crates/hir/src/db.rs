@@ -276,14 +276,13 @@ fn file_preprocessor_analysis(
 /// - An Atom (just the macro name, with implicit value true)
 /// - A Tuple of (Atom key, value) for {MacroName, Value}
 fn file_external_defines_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<Vec<Name>> {
-    let Some(app_data) = db.file_app_data(file_id) else {
-        return Arc::new(Vec::new());
-    };
+    // Define ELP_ERLANG_SERVICE to match the Erlang service behavior.
+    // Headers like assert.hrl use -ifdef(ELP_ERLANG_SERVICE) to select
+    // simplified macro expansions that work without parse transforms.
+    let mut names: Vec<Name> = vec![Name::from_erlang_service("ELP_ERLANG_SERVICE")];
 
-    let names: Vec<Name> = app_data
-        .macros
-        .iter()
-        .filter_map(|term| {
+    if let Some(app_data) = db.file_app_data(file_id) {
+        names.extend(app_data.macros.iter().filter_map(|term| {
             match term {
                 // Just an atom means -D<NAME>
                 eetf::Term::Atom(atom) => Some(Name::from_erlang_service(&atom.name)),
@@ -297,8 +296,8 @@ fn file_external_defines_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<Vec
                 }
                 _ => None,
             }
-        })
-        .collect();
+        }));
+    }
 
     Arc::new(names)
 }

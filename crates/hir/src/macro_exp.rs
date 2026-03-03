@@ -223,7 +223,7 @@ pub fn project_macro_environment_query(
     // Set new_ifdef from database configuration
     env.set_new_ifdef(db.new_ifdef_enabled());
 
-    // Add externally defined macros
+    // Add externally defined macros (includes ELP_ERLANG_SERVICE)
     for name in db.file_external_defines(file_id).iter() {
         env.define(MacroName::new(name.clone(), None));
     }

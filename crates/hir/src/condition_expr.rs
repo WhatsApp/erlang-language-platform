@@ -1490,7 +1490,7 @@ debug_only() -> ok.
                 >>> DEBUG is not defined
                 -| debug_only() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -1512,7 +1512,7 @@ no_feature() -> ok.
                 >>> FEATURE is defined
                 -| no_feature() -> ok.
                 +| -endif.
-                >>> defined: [FEATURE]
+                >>> defined: [ELP_ERLANG_SERVICE, FEATURE]
             "#]],
         );
     }
@@ -1535,7 +1535,7 @@ feature_enabled() -> ok.
                 +| -ifdef(FEATURE).
                 +| feature_enabled() -> ok.
                 +| -endif.
-                >>> defined: [FEATURE]
+                >>> defined: [ELP_ERLANG_SERVICE, FEATURE]
             "#]],
         );
     }
@@ -1561,7 +1561,7 @@ release_foo() -> ok.
                 >>> previous branch was taken
                 -| release_foo() -> ok.
                 +| -endif.
-                >>> defined: [DEBUG]
+                >>> defined: [DEBUG, ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -1589,7 +1589,7 @@ always_active() -> ok.
                 +| release_fn() -> ok.
                 +| -endif.
                 +| always_active() -> ok.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -1956,7 +1956,7 @@ in_if_true() -> ok.
                 +| -if(true).
                 +| in_if_true() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -1975,7 +1975,7 @@ in_if_false() -> ok.
                 >>> -if condition is false
                 -| in_if_false() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -1995,7 +1995,7 @@ in_if_defined() -> ok.
                 +| -if(defined(FOO)).
                 +| in_if_defined() -> ok.
                 +| -endif.
-                >>> defined: [FOO]
+                >>> defined: [ELP_ERLANG_SERVICE, FOO]
             "#]],
         );
     }
@@ -2014,7 +2014,7 @@ in_if_defined() -> ok.
                 >>> -if condition is false
                 -| in_if_defined() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2032,7 +2032,7 @@ in_if_compare() -> ok.
                 +| -if(25 >= 25).
                 +| in_if_compare() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2051,7 +2051,7 @@ in_if_compare() -> ok.
                 >>> -if condition is false
                 -| in_if_compare() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2069,7 +2069,7 @@ in_if_not() -> ok.
                 +| -if(not false).
                 +| in_if_not() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2087,7 +2087,7 @@ in_if_andalso() -> ok.
                 +| -if(true andalso true).
                 +| in_if_andalso() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2105,7 +2105,7 @@ in_if_orelse() -> ok.
                 +| -if(false orelse true).
                 +| in_if_orelse() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2128,7 +2128,7 @@ in_else() -> ok.
                 >>> previous branch was taken
                 -| in_else() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2151,7 +2151,7 @@ in_else() -> ok.
                 +| -else.
                 +| in_else() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2179,7 +2179,7 @@ in_else() -> ok.
                 >>> previous branch was taken
                 -| in_else() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2207,7 +2207,7 @@ in_else() -> ok.
                 >>> previous branch was taken
                 -| in_else() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2235,7 +2235,7 @@ in_else() -> ok.
                 +| -else.
                 +| in_else() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2253,7 +2253,7 @@ in_if() -> ok.
                 +| -if(10 + 5 > 12).
                 +| in_if() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2278,7 +2278,7 @@ nested_outer() -> ok.
                 +| -endif.
                 +| nested_outer() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2297,7 +2297,7 @@ in_if() -> ok.
                 >>> -if condition is unknown
                 ?| in_if() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2321,7 +2321,7 @@ feature_code() -> ok.
                 +| -if(defined(FEATURE)).
                 +| feature_code() -> ok.
                 +| -endif.
-                >>> defined: [FEATURE]
+                >>> defined: [ELP_ERLANG_SERVICE, FEATURE]
             "#]],
         );
     }
@@ -2344,7 +2344,7 @@ feature_code() -> ok.
                 +| -if(?FEATURE).
                 +| feature_code() -> ok.
                 +| -endif.
-                >>> defined: [FEATURE]
+                >>> defined: [ELP_ERLANG_SERVICE, FEATURE]
             "#]],
         );
     }
@@ -2368,7 +2368,7 @@ feature_code() -> ok.
                 >>> -if condition is false
                 -| feature_code() -> ok.
                 +| -endif.
-                >>> defined: [FEATURE]
+                >>> defined: [ELP_ERLANG_SERVICE, FEATURE]
             "#]],
         );
     }
@@ -2394,7 +2394,7 @@ header_code() -> ok.
                 +| -ifdef(HEADER_MACRO).
                 +| header_code() -> ok.
                 +| -endif.
-                >>> defined: [HEADER_MACRO]
+                >>> defined: [ELP_ERLANG_SERVICE, HEADER_MACRO]
             "#]],
         );
     }
@@ -2427,7 +2427,7 @@ header_code() -> ok.
                 >>> previous branch was taken
                 -| -error("an error").
                 +| -endif.
-                >>> defined: [MSG1]
+                >>> defined: [ELP_ERLANG_SERVICE, MSG1]
             "#]],
         );
     }
@@ -2459,7 +2459,7 @@ header_code() -> ok.
                 >>> previous branch was taken
                 -| -error("an error").
                 +| -endif.
-                >>> defined: [MSG2]
+                >>> defined: [ELP_ERLANG_SERVICE, MSG2]
             "#]],
         );
     }
@@ -2491,7 +2491,7 @@ header_code() -> ok.
                 +| -else.
                 +| -error("an error").
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2538,7 +2538,7 @@ foo() -> "default message".
                 >>> previous branch was taken
                 -| foo() -> "default message".
                 +| -endif.
-                >>> defined: [MSG1]
+                >>> defined: [ELP_ERLANG_SERVICE, MSG1]
             "#]],
         );
     }
@@ -2569,7 +2569,7 @@ foo() -> "default message".
             expect![[r#"
                 +| -module(mod2).
                 +| -include("conditional.hrl").
-                >>> defined: [MSG]
+                >>> defined: [ELP_ERLANG_SERVICE, MSG]
             "#]],
         );
     }
@@ -2600,7 +2600,7 @@ foo() -> "default message".
             expect![[r#"
                 +| -module(mod3).
                 +| -include("conditional.hrl").
-                >>> defined: [MSG2]
+                >>> defined: [ELP_ERLANG_SERVICE, MSG2]
             "#]],
         );
     }
@@ -2626,7 +2626,7 @@ foo() -> "default message".
             expect![[r#"
                 +| -module(mod1).
                 +| -include("conditional.hrl").
-                >>> defined: [MOD1_STRING_MSG]
+                >>> defined: [ELP_ERLANG_SERVICE, MOD1_STRING_MSG]
             "#]],
         );
     }
@@ -2657,7 +2657,7 @@ foo() -> "default message".
                 +| -module(mod2).
                 +| -include("conditional.hrl").
                 +|
-                >>> defined: [MOD2_STRING_MSG]
+                >>> defined: [ELP_ERLANG_SERVICE, MOD2_STRING_MSG]
             "#]],
         );
     }
@@ -2685,7 +2685,7 @@ foo() -> "default message".
                 +| -module(mod1).
                 +| -include("conditional.hrl").
                 +|
-                >>> defined: [MOD1_FILE_MSG]
+                >>> defined: [ELP_ERLANG_SERVICE, MOD1_FILE_MSG]
             "#]],
         );
     }
@@ -2714,7 +2714,7 @@ foo() -> "default message".
                 +| -module(mod2).
                 +| -include("conditional.hrl").
                 +|
-                >>> defined: [MOD2_FILE_MSG]
+                >>> defined: [ELP_ERLANG_SERVICE, MOD2_FILE_MSG]
             "#]],
         );
     }
@@ -2741,7 +2741,7 @@ old_otp_code() -> ok.
                 >>> previous branch was taken
                 -| old_otp_code() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2768,7 +2768,7 @@ new_otp_code() -> ok.
                 +| -else.
                 +| new_otp_code() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2789,7 +2789,7 @@ otp_code() -> ok.
                 +| -if(defined(OTP_RELEASE)).
                 +| otp_code() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2810,7 +2810,7 @@ has_file() -> ok.
                 +| -ifdef(FILE).
                 +| has_file() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2831,7 +2831,7 @@ has_module() -> ok.
                 +| -ifdef(MODULE).
                 +| has_module() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2852,7 +2852,7 @@ has_line() -> ok.
                 +| -ifdef(LINE).
                 +| has_line() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
@@ -2878,7 +2878,79 @@ has_module() -> ok.
                 +| -else.
                 +| has_module() -> ok.
                 +| -endif.
-                >>> defined: []
+                >>> defined: [ELP_ERLANG_SERVICE]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_ifdef_elp_erlang_service() {
+        // ELP_ERLANG_SERVICE is always injected into external defines,
+        // so -ifdef(ELP_ERLANG_SERVICE) should take the ifdef branch.
+        // This matches the Erlang service, which defines the macro when
+        // compiling files.
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-ifdef(ELP_ERLANG_SERVICE).
+simplified_expansion() -> ok.
+-else.
+complex_expansion() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -ifdef(ELP_ERLANG_SERVICE).
+                +| simplified_expansion() -> ok.
+                +| -else.
+                >>> previous branch was taken
+                -| complex_expansion() -> ok.
+                +| -endif.
+                >>> defined: [ELP_ERLANG_SERVICE]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_ifndef_elp_erlang_service() {
+        // ELP_ERLANG_SERVICE is always defined, so -ifndef should be inactive.
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-ifndef(ELP_ERLANG_SERVICE).
+unsupported_path() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -ifndef(ELP_ERLANG_SERVICE).
+                >>> ELP_ERLANG_SERVICE is defined
+                -| unsupported_path() -> ok.
+                +| -endif.
+                >>> defined: [ELP_ERLANG_SERVICE]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_if_defined_elp_erlang_service() {
+        // -if(defined(ELP_ERLANG_SERVICE)) should evaluate to true.
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-if(defined(ELP_ERLANG_SERVICE)).
+elp_path() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -if(defined(ELP_ERLANG_SERVICE)).
+                +| elp_path() -> ok.
+                +| -endif.
+                >>> defined: [ELP_ERLANG_SERVICE]
             "#]],
         );
     }
