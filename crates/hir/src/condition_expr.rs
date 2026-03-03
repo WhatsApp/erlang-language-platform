@@ -250,7 +250,10 @@ fn evaluate_to_value(
 
         ConditionExpr::Defined(name) => {
             let macro_name = MacroName::new(name.clone(), None);
-            Some(ConditionValue::Bool(defined_macros.contains(&macro_name)))
+            Some(ConditionValue::Bool(
+                defined_macros.contains(&macro_name)
+                    || crate::macro_exp::BuiltInMacro::is_built_in_name(name),
+            ))
         }
 
         ConditionExpr::Not(inner) => {
@@ -2712,6 +2715,170 @@ foo() -> "default message".
                 +| -include("conditional.hrl").
                 +|
                 >>> defined: [MOD2_FILE_MSG]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_ifdef_builtin_otp_release() {
+        // OTP_RELEASE is a built-in macro, so -ifdef(?OTP_RELEASE) should
+        // always take the ifdef branch even without an explicit define.
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-ifdef(OTP_RELEASE).
+new_otp_code() -> ok.
+-else.
+old_otp_code() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -ifdef(OTP_RELEASE).
+                +| new_otp_code() -> ok.
+                +| -else.
+                >>> previous branch was taken
+                -| old_otp_code() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_ifndef_builtin_otp_release() {
+        // OTP_RELEASE is always defined, so -ifndef(?OTP_RELEASE) should
+        // take the else branch.
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-ifndef(OTP_RELEASE).
+old_otp_code() -> ok.
+-else.
+new_otp_code() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -ifndef(OTP_RELEASE).
+                >>> OTP_RELEASE is defined
+                -| old_otp_code() -> ok.
+                +| -else.
+                +| new_otp_code() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_if_defined_builtin_otp_release() {
+        // -if(defined(OTP_RELEASE)) should evaluate to true for a built-in.
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-if(defined(OTP_RELEASE)).
+otp_code() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -if(defined(OTP_RELEASE)).
+                +| otp_code() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_ifdef_builtin_file() {
+        // FILE is a built-in macro, so -ifdef(?FILE) should be active.
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-ifdef(FILE).
+has_file() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -ifdef(FILE).
+                +| has_file() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_ifdef_builtin_module() {
+        // MODULE is a built-in macro, so -ifdef(?MODULE) should be active.
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-ifdef(MODULE).
+has_module() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -ifdef(MODULE).
+                +| has_module() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_ifdef_builtin_line() {
+        // LINE is a built-in macro, so -ifdef(?LINE) should be active.
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-ifdef(LINE).
+has_line() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -ifdef(LINE).
+                +| has_line() -> ok.
+                +| -endif.
+                >>> defined: []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_ifndef_builtin_module_takes_else() {
+        // MODULE is always defined, so -ifndef(?MODULE) should skip to -else.
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-ifndef(MODULE).
+no_module() -> ok.
+-else.
+has_module() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -ifndef(MODULE).
+                >>> MODULE is defined
+                -| no_module() -> ok.
+                +| -else.
+                +| has_module() -> ok.
+                +| -endif.
+                >>> defined: []
             "#]],
         );
     }

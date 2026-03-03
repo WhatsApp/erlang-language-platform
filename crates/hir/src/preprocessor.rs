@@ -146,6 +146,7 @@ impl PreprocessorState {
 
     pub fn is_defined(&self, name: &MacroName) -> bool {
         self.defined_macros.contains(name)
+            || crate::macro_exp::BuiltInMacro::is_built_in_name(name.name())
     }
 
     pub fn defined_macros(&self) -> &BTreeSet<MacroName> {

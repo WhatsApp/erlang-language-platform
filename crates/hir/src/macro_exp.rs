@@ -44,6 +44,36 @@ pub enum BuiltInMacro {
 }
 
 impl BuiltInMacro {
+    /// All built-in macros that are always defined by the Erlang preprocessor.
+    pub const ALL: &[BuiltInMacro] = &[
+        BuiltInMacro::FILE,
+        BuiltInMacro::FUNCTION_NAME,
+        BuiltInMacro::FUNCTION_ARITY,
+        BuiltInMacro::LINE,
+        BuiltInMacro::MODULE,
+        BuiltInMacro::MODULE_STRING,
+        BuiltInMacro::MACHINE,
+        BuiltInMacro::OTP_RELEASE,
+    ];
+
+    /// Check if a name is a built-in macro name.
+    ///
+    /// Built-in macros are always considered "defined" by the Erlang
+    /// preprocessor, so `-ifdef(?OTP_RELEASE)` etc. should evaluate to true.
+    pub fn is_built_in_name(name: &Name) -> bool {
+        matches!(
+            name.as_str(),
+            "FILE"
+                | "FUNCTION_NAME"
+                | "FUNCTION_ARITY"
+                | "LINE"
+                | "MODULE"
+                | "MODULE_STRING"
+                | "MACHINE"
+                | "OTP_RELEASE"
+        )
+    }
+
     pub fn name(&self) -> MacroName {
         let name = match self {
             BuiltInMacro::FILE => known::FILE,
