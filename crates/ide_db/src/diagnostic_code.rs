@@ -101,6 +101,7 @@ pub enum DiagnosticCode {
     InefficientListEmptyCheck,
     ListsMapToComprehension,
     MissingMsTransformInclude,
+    MeckRestricted,
     NoAndOr,
     InlineNestedListComprehension,
     RedundantFunWrapper,
@@ -276,6 +277,7 @@ impl DiagnosticCode {
             DiagnosticCode::InefficientListEmptyCheck => "W0065".to_string(),
             DiagnosticCode::ListsMapToComprehension => "W0066".to_string(),
             DiagnosticCode::MissingMsTransformInclude => "W0067".to_string(),
+            DiagnosticCode::MeckRestricted => "W0068".to_string(),
             DiagnosticCode::NoAndOr => "W0069".to_string(),
             DiagnosticCode::InlineNestedListComprehension => "W0070".to_string(),
             DiagnosticCode::RedundantFunWrapper => "W0071".to_string(),
@@ -302,6 +304,7 @@ impl DiagnosticCode {
             DiagnosticCode::InefficientListEmptyCheck => "inefficient_list_empty_check".to_string(),
             DiagnosticCode::ListsMapToComprehension => "lists_map_to_comprehension".to_string(),
             DiagnosticCode::MissingMsTransformInclude => "missing_ms_transform_include".to_string(),
+            DiagnosticCode::MeckRestricted => "meck_restricted".to_string(),
             DiagnosticCode::NoAndOr => "no_and_or".to_string(),
             DiagnosticCode::InlineNestedListComprehension => {
                 "inline_nested_list_comprehension".to_string()
@@ -535,6 +538,7 @@ impl DiagnosticCode {
             DiagnosticCode::InefficientListEmptyCheck => false,
             DiagnosticCode::ListsMapToComprehension => false,
             DiagnosticCode::MissingMsTransformInclude => false,
+            DiagnosticCode::MeckRestricted => false,
             DiagnosticCode::NoAndOr => false,
             DiagnosticCode::InlineNestedListComprehension => false,
             DiagnosticCode::EncodeHexWithCase => false,

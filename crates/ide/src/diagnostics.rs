@@ -127,6 +127,7 @@ mod macro_precedence_suprise;
 mod map_find_to_syntax;
 mod map_insertion_to_syntax;
 mod meck;
+mod meck_restricted;
 // @fb-only: mod meta_only;
 mod missing_compile_warn_missing_spec;
 mod missing_module;
@@ -1739,6 +1740,7 @@ const FUNCTION_CALL_LINTERS: &[&dyn FunctionCallDiagnostics] = &[
     &undefined_function::LINTER,
     &unexported_function::LINTER,
     &cross_node_eval::LINTER,
+    &meck_restricted::LINTER,
 ];
 
 /// SSR pattern linters that use structural search and replace patterns
