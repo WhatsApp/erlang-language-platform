@@ -19,6 +19,7 @@ use fxhash::FxHashSet;
 use hir::ScopeAnalysis;
 use hir::Var;
 use hir::resolver::Resolution;
+use itertools::Itertools;
 use stdx::format_to;
 
 use crate::assist_context::AssistContext;
@@ -123,14 +124,27 @@ pub(crate) fn case_to_function_clauses(acc: &mut Assists, ctx: &AssistContext<'_
             let body_free_vars: FxHashSet<Var> =
                 body_analyzer.free.iter().map(|(var, _)| *var).collect();
 
+            // Determine if the scrutinee is a simple variable that is used in clause bodies.
+            // If so, we'll bind it in the pattern instead of passing as an extra argument.
+            let scrutinee_var_to_bind: Option<Var> = match &scrutinee {
+                ast::Expr::ExprMax(ast::ExprMax::Var(var_expr)) => {
+                    let var_name = var_expr.syntax().text().to_string();
+                    scrutinee_vars
+                        .iter()
+                        .find(|v| ctx.db().lookup_var(**v).to_string() == var_name)
+                        .filter(|v| body_free_vars.contains(v))
+                        .copied()
+                }
+                _ => None,
+            };
+
             // Free variables become additional parameters (beyond the scrutinee).
-            // Exclude scrutinee variables ONLY if they are not also used in
-            // clause bodies. If a variable appears in both the scrutinee and
-            // a clause body, it must be passed as an extra parameter.
+            // Exclude scrutinee variables. If the scrutinee variable is used in
+            // clause bodies, it will be bound in the pattern instead.
             let free_vars: Vec<Var> = analyzer
                 .free
                 .into_iter()
-                .filter(|(var, _)| !scrutinee_vars.contains(var) || body_free_vars.contains(var))
+                .filter(|(var, _)| !scrutinee_vars.contains(var))
                 .map(|(var, _)| var)
                 .collect();
 
@@ -155,6 +169,7 @@ pub(crate) fn case_to_function_clauses(acc: &mut Assists, ctx: &AssistContext<'_
                 &clauses,
                 &free_vars,
                 &outliving_locals,
+                scrutinee_var_to_bind,
                 new_indent,
             );
 
@@ -178,9 +193,11 @@ fn make_call_text(
     outliving_locals: &[Var],
 ) -> String {
     let mut args = vec![scrutinee.syntax().text().to_string()];
-    for var in free_vars {
-        args.push(ctx.db().lookup_var(*var).to_string());
-    }
+    args.extend(
+        free_vars
+            .iter()
+            .map(|var| ctx.db().lookup_var(*var).to_string()),
+    );
 
     let args_str = args.join(", ");
 
@@ -192,11 +209,12 @@ fn make_call_text(
         }
         vars => {
             buf.push('{');
-            let bindings: Vec<_> = vars
-                .iter()
-                .map(|v| v.as_string(ctx.db().upcast()))
-                .collect();
-            buf.push_str(&bindings.join(", "));
+            buf.push_str(
+                &vars
+                    .iter()
+                    .map(|v| v.as_string(ctx.db().upcast()))
+                    .join(", "),
+            );
             buf.push_str("} = ");
         }
     }
@@ -212,6 +230,7 @@ fn make_function_def(
     clauses: &[ast::CrClause],
     free_vars: &[Var],
     outliving_locals: &[Var],
+    scrutinee_var_to_bind: Option<Var>,
     new_indent: IndentLevel,
 ) -> String {
     let mut fn_def = String::new();
@@ -221,6 +240,7 @@ fn make_function_def(
         .collect();
 
     let use_snippet = ctx.config.snippet_cap.is_some();
+    let scrutinee_var_name = scrutinee_var_to_bind.map(|v| ctx.db().lookup_var(v).to_string());
 
     for (i, clause) in clauses.iter().enumerate() {
         let is_first = i == 0;
@@ -231,8 +251,23 @@ fn make_function_def(
             .map(|p| p.syntax().text().to_string())
             .unwrap_or_default();
 
+        // Modify pattern if we need to bind the scrutinee variable
+        let modified_pat = match &scrutinee_var_name {
+            Some(var_name) => {
+                let trimmed = pat_text.trim();
+                if trimmed == "_" {
+                    // Replace wildcard with the variable name
+                    var_name.clone()
+                } else {
+                    // Add `= VarName` to bind the scrutinee in the pattern
+                    format!("{} = {}", pat_text, var_name)
+                }
+            }
+            None => pat_text,
+        };
+
         // Build argument list: pattern + free vars
-        let mut args = vec![pat_text];
+        let mut args = vec![modified_pat];
         args.extend(free_var_names.clone());
         let args_str = args.join(", ");
 
@@ -322,18 +357,24 @@ fn compute_outliving_locals(
         analyzer.walk_ast_expr(&ctx.sema, ctx.file_id(), expr);
     }
 
-    locals_bound_in_body
-        .iter()
-        .filter_map(|local| {
+    // Collect just the Var identifiers from trailing expressions' free and bound sets.
+    // We compare by Var (name identity) only, ignoring binding locations (PatId),
+    // because the same variable name bound in the case and used after has different PatIds.
+    let trailing_free_vars: FxHashSet<Var> = analyzer.free.iter().map(|(var, _)| *var).collect();
+    let trailing_bound_vars: FxHashSet<Var> = analyzer.bound.iter().map(|(var, _)| *var).collect();
+
+    // Collect unique Vars from locals_bound_in_body first to avoid duplicates
+    // (the same variable may be bound in multiple case legs, each as a separate Resolution)
+    let bound_vars: FxHashSet<Var> = locals_bound_in_body.iter().map(|(var, _)| *var).collect();
+
+    bound_vars
+        .into_iter()
+        .filter(|var| {
             // Check if the variable is used (free) or pattern-matched (bound)
             // in trailing expressions. In Erlang, a "bound" variable in trailing
             // code means it's being asserted/matched against, not rebound —
             // so both cases indicate the variable is "used" after the case.
-            if analyzer.free.contains(local) || analyzer.bound.contains(local) {
-                Some(local.0)
-            } else {
-                None
-            }
+            trailing_free_vars.contains(var) || trailing_bound_vars.contains(var)
         })
         .collect()
 }
@@ -562,6 +603,86 @@ mod tests {
     }
 
     #[test]
+    fn case_with_outliving_locals_all_legs() {
+        check_assist(
+            case_to_function_clauses,
+            "Extract case to function clauses",
+            r#"
+ -module(main).
+ foo(X) ->
+     ca~se X of
+         ok ->
+           Y = 3,
+           Z = 4;
+         _  ->
+           Y = 4,
+           Z = 5
+     end,
+     Y + Z + 6.
+"#,
+            expect![[r#"
+                -module(main).
+                foo(X) ->
+                    {Y, Z} = fun_name_edited(X),
+                    Y + Z + 6.
+
+                $0fun_name_edited(ok) ->
+                    Y = 3,
+                    Z = 4,
+                    {Y, Z};
+                fun_name_edited(_) ->
+                    Y = 4,
+                    Z = 5,
+                    {Y, Z}.
+            "#]],
+        )
+    }
+
+    #[test]
+    fn case_with_outliving_locals_all_legs_and_discriminee_used_in_body() {
+        check_assist(
+            case_to_function_clauses,
+            "Extract case to function clauses",
+            r#"
+ -module(main).
+ foo(X) ->
+     ca~se X of
+         ok ->
+           Y = 3,
+           Y = X,
+           X = Y,
+           Z = 4;
+         _  ->
+           Y = 4,
+           Y = X,
+           X = Y,
+           Z = 5
+     end,
+     Y + Z + 6.
+"#,
+            expect![[r#"
+                -module(main).
+                foo(X) ->
+                    {Y, Z} = fun_name_edited(X),
+                    Y + Z + 6.
+
+                $0fun_name_edited(ok = X) ->
+                    Y = 3,
+                    Y = X,
+                    X = Y,
+                    Z = 4,
+                    {Y, Z};
+                fun_name_edited(X) ->
+                    Y = 4,
+                    Y = X,
+                    X = Y,
+                    Z = 5,
+                    {Y, Z}.
+            "#]],
+        )
+    }
+
+    #[test]
     fn name_collision_avoidance() {
         check_assist(
             case_to_function_clauses,
@@ -782,8 +903,8 @@ mod tests {
 
     // Regression test: when the scrutinee variable X is also used
     // in a clause body, X must still be available in the extracted
-    // function. Since X is the scrutinee (first argument) but clause
-    // patterns may not bind it, X must also be passed as a free var.
+    // function. We bind X in the pattern (e.g., `1 = X`) rather than
+    // passing it as an extra argument.
     #[test]
     fn scrutinee_var_used_in_body() {
         check_assist(
@@ -800,11 +921,11 @@ mod tests {
             expect![[r#"
                 -module(main).
                 foo(X) ->
-                    fun_name_edited(X, X).
+                    fun_name_edited(X).
 
-                $0fun_name_edited(1, X) ->
+                $0fun_name_edited(1 = X) ->
                     X + 10;
-                fun_name_edited(_, X) ->
+                fun_name_edited(X) ->
                     X.
             "#]],
         )
