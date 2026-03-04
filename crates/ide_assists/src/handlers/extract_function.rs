@@ -34,6 +34,8 @@ use crate::assist_context::Assists;
 use crate::helpers::DEFAULT_INDENT_STEP;
 use crate::helpers::change_indent;
 use crate::helpers::freshen_function_name;
+use crate::helpers::make_function_name;
+use crate::helpers::node_to_insert_after;
 
 // Assist: extract_function
 //
@@ -79,7 +81,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     };
 
     let body = extraction_target(ctx, &node, range)?;
-    let insert_after = node_to_insert_after(&body)?;
+    let insert_after = node_to_insert_after(body.node())?;
     let target_range = body.text_range();
 
     acc.add(
@@ -122,26 +124,6 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             };
         },
     )
-}
-
-fn make_function_name(ctx: &AssistContext<'_>) -> String {
-    let def_map = ctx.sema.def_map(ctx.file_id());
-    let names_in_scope: FxHashSet<_> = def_map
-        .get_functions()
-        .map(|(na, _)| na)
-        .chain(def_map.get_imports().keys())
-        .map(|n| n.name().as_str().to_string())
-        .collect();
-    let default_name = "fun_name";
-
-    let mut name = default_name.to_string();
-    let mut counter = 0;
-    while names_in_scope.contains(&name) {
-        counter += 1;
-        name = format!("{}{}", &default_name, counter)
-    }
-
-    name
 }
 
 /// Try to guess what user wants to extract
@@ -466,21 +448,6 @@ fn overlaps(range_a: &TextRange, range_b: &TextRange) -> bool {
         .intersect(*range_b)
         .filter(|it| !it.is_empty())
         .is_some()
-}
-
-/// find where to put extracted function definition
-///
-/// Function should be put right after returned node
-fn node_to_insert_after(body: &FunctionBodyToExtract) -> Option<SyntaxNode> {
-    let node = body.node();
-    let mut last_ancestor = None;
-    for next_ancestor in node.ancestors().peekable() {
-        if next_ancestor.kind() == SyntaxKind::SOURCE_FILE {
-            break;
-        }
-        last_ancestor = Some(next_ancestor);
-    }
-    last_ancestor
 }
 
 fn make_call(ctx: &AssistContext<'_>, fun: &Function) -> String {

@@ -126,6 +126,43 @@ pub(crate) fn freshen_function_name(ctx: &AssistContext, name: String, arity: u3
     }
 }
 
+/// Generate a unique default function name (`fun_name`) that doesn't
+/// clash with existing functions or imports in the current file.
+pub(crate) fn make_function_name(ctx: &AssistContext<'_>) -> String {
+    let def_map = ctx.sema.def_map(ctx.file_id());
+    let names_in_scope: FxHashSet<_> = def_map
+        .get_functions()
+        .map(|(na, _)| na)
+        .chain(def_map.get_imports().keys())
+        .map(|n| n.name().as_str().to_string())
+        .collect();
+    let default_name = "fun_name";
+
+    let mut name = default_name.to_string();
+    let mut counter = 0;
+    while names_in_scope.contains(&name) {
+        counter += 1;
+        name = format!("{}{}", &default_name, counter)
+    }
+
+    name
+}
+
+/// Find the top-level form node that encloses the given syntax node.
+/// Returns the last ancestor before `SOURCE_FILE`, which is typically
+/// the enclosing `FunDecl`. Useful for determining where to insert a
+/// new function definition.
+pub(crate) fn node_to_insert_after(node: &SyntaxNode) -> Option<SyntaxNode> {
+    let mut last_ancestor = None;
+    for next_ancestor in node.ancestors().peekable() {
+        if next_ancestor.kind() == SyntaxKind::SOURCE_FILE {
+            break;
+        }
+        last_ancestor = Some(next_ancestor);
+    }
+    last_ancestor
+}
+
 pub(crate) fn skip_ws(node: Option<NodeOrToken>) -> Option<TextRange> {
     node.and_then(SyntaxElement::into_token).and_then(|t| {
         if t.kind() == SyntaxKind::WHITESPACE {

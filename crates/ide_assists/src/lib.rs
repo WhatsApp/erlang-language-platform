@@ -72,6 +72,7 @@ mod handlers {
     mod add_impl;
     mod add_spec;
     mod bump_variables;
+    mod case_to_function_clauses;
     mod create_function;
     mod delete_function;
     mod export_function;
@@ -93,6 +94,7 @@ mod handlers {
             add_impl::add_impl,
             add_spec::add_spec,
             bump_variables::bump_variables,
+            case_to_function_clauses::case_to_function_clauses,
             create_function::create_function,
             delete_function::delete_function,
             export_function::export_function,
