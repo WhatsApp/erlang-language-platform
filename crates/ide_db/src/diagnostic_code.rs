@@ -525,6 +525,7 @@ impl DiagnosticCode {
             DiagnosticCode::NonStandardIntegerFormatting => true,
             DiagnosticCode::CouldBeAStringLiteral => true,
             DiagnosticCode::RedundantFunWrapper => true,
+            DiagnosticCode::UnusedRecordField => true, // Sometimes redundant fields are kept for over-the-wire compatibility, so allow explicit exceptions for that
 
             // False
             DiagnosticCode::DefaultCodeForEnumIter => false,
@@ -543,7 +544,6 @@ impl DiagnosticCode {
             DiagnosticCode::InlineNestedListComprehension => false,
             DiagnosticCode::EncodeHexWithCase => false,
             DiagnosticCode::UnusedMacro => false,
-            DiagnosticCode::UnusedRecordField => false,
             DiagnosticCode::MutableVarBug => false,
             DiagnosticCode::SyntaxError => false,
             DiagnosticCode::Missing(_) => false,
