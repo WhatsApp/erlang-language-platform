@@ -84,6 +84,12 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     let insert_after = node_to_insert_after(body.node())?;
     let target_range = body.text_range();
 
+    // Check if the selected expression is a case expression before body is moved
+    let is_case_expr = matches!(
+        &body,
+        FunctionBodyToExtract::Expr(ast::Expr::ExprMax(ast::ExprMax::CaseExpr(_)))
+    );
+
     acc.add(
         AssistId("extract_function", crate::AssistKind::RefactorExtract),
         "Extract into function",
@@ -123,7 +129,14 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 None => builder.insert(insert_offset, fn_def),
             };
         },
-    )
+    );
+
+    // Also offer case-to-function-clauses when the selection is an entire case expression
+    if is_case_expr {
+        super::case_to_function_clauses::case_to_function_clauses(acc, ctx);
+    }
+
+    Some(())
 }
 
 /// Try to guess what user wants to extract
@@ -1291,6 +1304,32 @@ foo() ->
 
                 $0fun_name_edited() ->
                     {y,2}."#]],
+        );
+    }
+
+    #[test]
+    fn extract_case_offers_case_to_clauses() {
+        check_assist(
+            extract_function,
+            "Extract case to function clauses",
+            r#"
+-module(main).
+foo(X) ->
+    ~case X of
+        {ok, V} -> V;
+        error -> default
+    end~.
+"#,
+            expect![[r#"
+                -module(main).
+                foo(X) ->
+                    fun_name_edited(X).
+
+                $0fun_name_edited({ok, V}) ->
+                    V;
+                fun_name_edited(error) ->
+                    default.
+            "#]],
         );
     }
 }
