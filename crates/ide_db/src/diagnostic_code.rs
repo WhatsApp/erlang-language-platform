@@ -106,6 +106,9 @@ pub enum DiagnosticCode {
     InlineNestedListComprehension,
     RedundantFunWrapper,
     EncodeHexWithCase,
+    EqwalizerFixme,
+    EqwalizerIgnore,
+    UncheckedCast,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -282,6 +285,9 @@ impl DiagnosticCode {
             DiagnosticCode::InlineNestedListComprehension => "W0070".to_string(),
             DiagnosticCode::RedundantFunWrapper => "W0071".to_string(),
             DiagnosticCode::EncodeHexWithCase => "W0072".to_string(),
+            DiagnosticCode::EqwalizerFixme => "W0073".to_string(),
+            DiagnosticCode::EqwalizerIgnore => "W0074".to_string(),
+            DiagnosticCode::UncheckedCast => "W0075".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
@@ -311,6 +317,9 @@ impl DiagnosticCode {
             }
             DiagnosticCode::RedundantFunWrapper => "redundant_fun_wrapper".to_string(),
             DiagnosticCode::EncodeHexWithCase => "encode_hex_with_case".to_string(),
+            DiagnosticCode::EqwalizerFixme => "eqwalizer_fixme".to_string(),
+            DiagnosticCode::EqwalizerIgnore => "eqwalizer_ignore".to_string(),
+            DiagnosticCode::UncheckedCast => "unchecked_cast".to_string(),
             DiagnosticCode::ModuleMismatch => "module_mismatch".to_string(),
             DiagnosticCode::UnusedMacro => "unused_macro".to_string(),
             DiagnosticCode::UnusedRecordField => "unused_record_field".to_string(),
@@ -597,6 +606,9 @@ impl DiagnosticCode {
             DiagnosticCode::HirIssueInIncludedFile => false,
 
             DiagnosticCode::BinaryStringToSigil => false,
+            DiagnosticCode::EqwalizerFixme => false,
+            DiagnosticCode::EqwalizerIgnore => false,
+            DiagnosticCode::UncheckedCast => false,
             DiagnosticCode::ErlangService(_) => false,
             DiagnosticCode::Eqwalizer(_) => false,
             DiagnosticCode::AdHoc(_) => false,

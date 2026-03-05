@@ -191,68 +191,30 @@ fn test_e2e_eqwalizer_module() {
                 {
                   "diagnostics": [
                     {
-                      "code": "incompatible_types",
+                      "code": "W0073",
                       "codeDescription": {
-                        "href": "https://fb.me/eqwalizer_errors#incompatible_types"
+                        "href": "https://www.internalfb.com/intern/staticdocs/elp/docs/erlang-error-index/w/W0073"
                       },
-                      "message": "`'error'`.\nExpression has type:   'error'\nContext expected type: 'ok'\n        See https://fb.me/eqwalizer_errors#incompatible_types",
+                      "message": "The `eqwalizer:fixme` comment suppresses eqwalizer type errors on the following line. Consider fixing the underlying type issue instead of suppressing it.",
                       "range": {
                         "end": {
-                          "character": 7,
-                          "line": 9
+                          "character": 21,
+                          "line": 51
                         },
                         "start": {
                           "character": 4,
-                          "line": 9
+                          "line": 51
                         }
                       },
-                      "severity": 1,
-                      "source": "eqWAlizer"
+                      "severity": 4,
+                      "source": "elp"
                     },
                     {
-                      "code": "incompatible_types",
+                      "code": "W0073",
                       "codeDescription": {
-                        "href": "https://fb.me/eqwalizer_errors#incompatible_types"
+                        "href": "https://www.internalfb.com/intern/staticdocs/elp/docs/erlang-error-index/w/W0073"
                       },
-                      "message": "`'error'`.\nExpression has type:   'error'\nContext expected type: 'ok'\n        See https://fb.me/eqwalizer_errors#incompatible_types",
-                      "range": {
-                        "end": {
-                          "character": 9,
-                          "line": 13
-                        },
-                        "start": {
-                          "character": 4,
-                          "line": 13
-                        }
-                      },
-                      "severity": 1,
-                      "source": "eqWAlizer"
-                    },
-                    {
-                      "code": "incompatible_types",
-                      "codeDescription": {
-                        "href": "https://fb.me/eqwalizer_errors#incompatible_types"
-                      },
-                      "message": "`'an_atom'`.\nExpression has type:   'an_atom'\nContext expected type: number()\n        See https://fb.me/eqwalizer_errors#incompatible_types",
-                      "range": {
-                        "end": {
-                          "character": 19,
-                          "line": 17
-                        },
-                        "start": {
-                          "character": 12,
-                          "line": 17
-                        }
-                      },
-                      "severity": 1,
-                      "source": "eqWAlizer"
-                    },
-                    {
-                      "code": "redundant_fixme",
-                      "codeDescription": {
-                        "href": "https://fb.me/eqwalizer_errors#redundant_fixme"
-                      },
-                      "message": "redundant fixme\n        See https://fb.me/eqwalizer_errors#redundant_fixme",
+                      "message": "The `eqwalizer:fixme` comment suppresses eqwalizer type errors on the following line. Consider fixing the underlying type issue instead of suppressing it.",
                       "range": {
                         "end": {
                           "character": 21,
@@ -263,65 +225,8 @@ fn test_e2e_eqwalizer_module() {
                           "line": 56
                         }
                       },
-                      "severity": 1,
-                      "source": "eqWAlizer"
-                    },
-                    {
-                      "code": "incompatible_types",
-                      "codeDescription": {
-                        "href": "https://fb.me/eqwalizer_errors#incompatible_types"
-                      },
-                      "message": "`X`.\nExpression has type:   #{k_extra => term(), k_ok => term(), k_req1 => term(), k_req2 => term(), k_wrong1 => pid(), k_wrong2 => pid()}\nContext expected type: #{k_ok => term(), k_req1 := atom(), k_req2 := atom(), k_req3 := atom(), k_wrong1 => atom(), k_wrong2 => atom()}\n\nBecause in the expression's type:\n  Here the type is:     #{k_req2 => ..., k_req1 => ..., ...}\n  Context expects type: #{k_req3 := ..., k_req2 := ..., k_req1 := ..., ...}\n  The type of the expression is missing the following required keys: k_req3, k_req2, k_req1.\n        See https://fb.me/eqwalizer_errors#incompatible_types",
-                      "range": {
-                        "end": {
-                          "character": 5,
-                          "line": 78
-                        },
-                        "start": {
-                          "character": 4,
-                          "line": 78
-                        }
-                      },
-                      "severity": 1,
-                      "source": "eqWAlizer"
-                    },
-                    {
-                      "code": "incompatible_types",
-                      "codeDescription": {
-                        "href": "https://fb.me/eqwalizer_errors#incompatible_types"
-                      },
-                      "message": "`X`.\nExpression has type:   id(#{a := 'va', b := #{c := #{d => atom()}}})\nContext expected type: #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}\n\nBecause in the expression's type:\n  #{ b =>\n    #{ c =>\n      Here the type is:     #{d => ..., ...}\n      Context expects type: #{d := ..., e := ..., ...}\n      The type of the expression is missing the following required keys: d, e.\n    , ... }\n  , ... }\n        See https://fb.me/eqwalizer_errors#incompatible_types",
-                      "range": {
-                        "end": {
-                          "character": 5,
-                          "line": 102
-                        },
-                        "start": {
-                          "character": 4,
-                          "line": 102
-                        }
-                      },
-                      "severity": 1,
-                      "source": "eqWAlizer"
-                    },
-                    {
-                      "code": "incompatible_types",
-                      "codeDescription": {
-                        "href": "https://fb.me/eqwalizer_errors#incompatible_types"
-                      },
-                      "message": "`X`.\nExpression has type:   id(#{a := 'va', b := #{c := #{d := pid(), e := pid()}}})\nContext expected type: #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}\n\nBecause in the expression's type:\n  #{ b =>\n    #{ c =>\n      #{ d =>\n        Here the type is:     pid()\n        Context expects type: atom()\n      , ... }\n    , ... }\n  , ... }\n        See https://fb.me/eqwalizer_errors#incompatible_types",
-                      "range": {
-                        "end": {
-                          "character": 5,
-                          "line": 125
-                        },
-                        "start": {
-                          "character": 4,
-                          "line": 125
-                        }
-                      },
-                      "severity": 1,
-                      "source": "eqWAlizer"
+                      "severity": 4,
+                      "source": "elp"
                     }
                   ],
                   "uri": "file:///[..]/test/test_projects/standard/app_a/src/app_a.erl",

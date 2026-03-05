@@ -110,6 +110,7 @@ mod effect_free_statement;
 mod encode_hex_with_case;
 mod equality_check_with_unnecessary_operator;
 mod eqwalizer_assists;
+mod eqwalizer_escape_hatches;
 mod ets_lookup_to_lookup_element;
 mod expression_can_be_simplified;
 mod from_config;
@@ -1764,6 +1765,7 @@ const SSR_PATTERN_LINTERS: &[&dyn SsrPatternsDiagnostics] = &[
     &no_and_or::LINTER,
     &inline_nested_list_comprehension::LINTER,
     &encode_hex_with_case::LINTER,
+    &eqwalizer_escape_hatches::UNCHECKED_CAST_LINTER,
 ];
 
 /// Generic linters
@@ -1794,6 +1796,8 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &missing_ms_transform_include::LINTER,
     &redundant_fun_wrapper::LINTER,
     &missing_separator::LINTER,
+    &eqwalizer_escape_hatches::EQWALIZER_FIXME_LINTER,
+    &eqwalizer_escape_hatches::EQWALIZER_IGNORE_LINTER,
 ];
 
 /// Unified registry for all types of linters
