@@ -3190,5 +3190,43 @@ fn tree_print_type_macro_redefine_point_in_file() {
     );
 }
 
+/// Demonstrates that define bodies resolve macros using point-in-file
+/// state rather than end-of-file state. `-define(A, ?VAL)` sees the
+/// first definition of `?VAL` (→ `old`) while `-define(B, ?VAL)` sees
+/// the second (→ `new`).
+///
+/// Without the `set_macro_defs_from_preprocessor` call in
+/// `define_body_with_source_query`, both define bodies would resolve
+/// `?VAL` to the final (second) definition, producing `new` in both.
+#[test]
+fn tree_print_define_macro_redefine_point_in_file() {
+    check_ast(
+        r#"
+-define(VAL, old).
+-define(A, ?VAL).
+-undef(VAL).
+-define(VAL, new).
+-define(B, ?VAL).
+"#,
+        expect![[r#"
+            -define(VAL,
+                Expr<0>:Literal(Atom('old'))
+            ).
+
+            -define(A,
+                Expr<1>:Literal(Atom('old'))
+            ).
+
+            -define(VAL,
+                Expr<0>:Literal(Atom('new'))
+            ).
+
+            -define(B,
+                Expr<1>:Literal(Atom('new'))
+            ).
+        "#]],
+    );
+}
+
 // Tree printing ends
 // ---------------------------------------------------------------------

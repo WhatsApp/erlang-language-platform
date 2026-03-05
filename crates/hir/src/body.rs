@@ -814,14 +814,15 @@ impl DefineBody {
         let source = define_id.file_syntax(db.upcast());
         let define = &form_list[define_id.value];
         let define_ast = define.form_id.get(&source);
-        let (body, source_map) = lower::Ctx::new(
+        let mut ctx = lower::Ctx::new(
             db,
             BodyOrigin::Define {
                 file_id: define_id.file_id,
                 define_id: define_id.value,
             },
-        )
-        .lower_define(&define_ast);
+        );
+        ctx.set_macro_defs_from_preprocessor(define_id.file_id, define.pp_ctx.env);
+        let (body, source_map) = ctx.lower_define(&define_ast);
         (Arc::new(body), Arc::new(source_map))
     }
 
