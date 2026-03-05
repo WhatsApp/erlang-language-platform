@@ -16,6 +16,7 @@ use std::sync::Arc;
 use elp_base_db::AppDataId;
 use elp_base_db::FileId;
 use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 
 use crate::DefineId;
 use crate::FormIdx;
@@ -27,6 +28,7 @@ use crate::PPConditionId;
 use crate::condition_expr::ConditionDiagnostic;
 use crate::condition_expr::ConditionExpr;
 use crate::db::DefDatabase;
+use crate::form_list::ConditionEnvId;
 use crate::form_list::PPConditionResult;
 
 // ============================================================================
@@ -133,6 +135,10 @@ pub struct PreprocessorAnalysis {
     /// Salsa queries can resolve user-defined macros with the correct
     /// point-in-time state instead of falling back to `db.resolve_macro()`.
     condition_macro_defs: FxHashMap<PPConditionId, Arc<FxHashMap<MacroName, InFile<DefineId>>>>,
+    /// Snapshot of macro definitions at each ConditionEnvId point.
+    /// Body lowering uses this to resolve macros with the correct
+    /// point-in-file state instead of the end-of-file final_state.
+    env_macro_defs: FxHashMap<ConditionEnvId, Arc<FxHashMap<MacroName, InFile<DefineId>>>>,
 }
 
 impl PreprocessorState {
@@ -349,6 +355,16 @@ impl PreprocessorAnalysis {
     ) -> Option<&Arc<FxHashMap<MacroName, InFile<DefineId>>>> {
         self.condition_macro_defs.get(&cond_id)
     }
+
+    /// Get the macro definitions snapshot for a specific `ConditionEnvId`.
+    /// Body lowering uses this to resolve macros with the correct point-in-file
+    /// state instead of the end-of-file final_state.
+    pub fn macro_defs_for_env(
+        &self,
+        env_id: ConditionEnvId,
+    ) -> Option<&Arc<FxHashMap<MacroName, InFile<DefineId>>>> {
+        self.env_macro_defs.get(&env_id)
+    }
 }
 
 pub fn file_preprocessor_analysis_with_diagnostics_query(
@@ -361,8 +377,22 @@ pub fn file_preprocessor_analysis_with_diagnostics_query(
     let mut analysis = PreprocessorAnalysis::new();
     let mut diagnostics_map = ConditionDiagnosticsMap::default();
 
+    // Track which ConditionEnvIds we've already snapshotted macro state for.
+    let mut recorded_envs: FxHashSet<ConditionEnvId> = FxHashSet::default();
+
     // Process each form in order, updating preprocessor state
     for &form_idx in form_list.forms() {
+        // Snapshot macro state for each unique ConditionEnvId.
+        // This must happen BEFORE processing the form, so directive forms
+        // get the state from before their own effect.
+        if let Some(pp_ctx) = form_list.get(form_idx).pp_ctx(&form_list)
+            && recorded_envs.insert(pp_ctx.env)
+        {
+            analysis
+                .env_macro_defs
+                .insert(pp_ctx.env, Arc::new(state.define_attr_macros.clone()));
+        }
+
         // Process the form based on its type
         match form_idx {
             FormIdx::PPCondition(cond_id) => {

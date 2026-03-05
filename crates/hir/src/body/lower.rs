@@ -85,6 +85,7 @@ use crate::expr::Guards;
 use crate::expr::MacroCallName;
 use crate::expr::MaybeExpr;
 use crate::expr::StringVariant;
+use crate::form_list::ConditionEnvId;
 use crate::known;
 use crate::macro_exp;
 use crate::macro_exp::BuiltInMacro;
@@ -121,8 +122,9 @@ pub struct Ctx<'a> {
     in_macro_rhs: bool,
     // Diagnostics collected during body lowering
     diagnostics: Vec<BodyDiagnostic>,
-    // Local macro definitions for context during condition lowering in included files
-    local_macro_defs: Option<FxHashMap<MacroName, InFile<DefineId>>>,
+    // Local macro definitions for context during body lowering.
+    // Uses Arc to share snapshots from the preprocessor without cloning.
+    local_macro_defs: Option<Arc<FxHashMap<MacroName, InFile<DefineId>>>>,
     // Module name override for ?MODULE etc. when processing included files
     module_name_override: Option<Name>,
     // When true, skip import resolution (imported_module returns None).
@@ -201,8 +203,36 @@ impl<'a> Ctx<'a> {
         self.function_name.clone()
     }
 
-    pub(crate) fn set_local_macro_defs(&mut self, defs: FxHashMap<MacroName, InFile<DefineId>>) {
+    pub(crate) fn set_local_macro_defs(
+        &mut self,
+        defs: Arc<FxHashMap<MacroName, InFile<DefineId>>>,
+    ) {
         self.local_macro_defs = Some(defs);
+    }
+
+    /// Set local macro defs from the preprocessor analysis for a given form's
+    /// ConditionEnvId. This gives body lowering the correct point-in-file macro
+    /// state, matching the behavior of lower_condition_body.
+    ///
+    /// Only effective when `new_ifdef` is enabled, since that is when
+    /// ConditionEnvIds properly differentiate points in the file (a new
+    /// ID is allocated at each -define/-undef/-include). When disabled,
+    /// all forms share the root env and we fall back to db.resolve_macro().
+    // Groundwork: used in the next commit (2/n macro-state).
+    #[allow(dead_code)]
+    pub(crate) fn set_macro_defs_from_preprocessor(
+        &mut self,
+        file_id: FileId,
+        env_id: ConditionEnvId,
+    ) {
+        let env = self.db.project_macro_environment(file_id);
+        if !env.new_ifdef {
+            return;
+        }
+        let analysis = self.db.file_preprocessor_analysis(file_id, env);
+        if let Some(macro_defs) = analysis.macro_defs_for_env(env_id) {
+            self.local_macro_defs = Some(Arc::clone(macro_defs));
+        }
     }
 
     pub(crate) fn set_module_name_override(&mut self, name: Option<Name>) {
@@ -210,21 +240,18 @@ impl<'a> Ctx<'a> {
     }
 
     fn resolve_macro_name(&self, name: &MacroName) -> Option<ResolvedMacro> {
-        // Check local macro definitions first (set during condition body lowering)
+        // Check local macro definitions first (set during body lowering)
         if let Some(ref local_defs) = self.local_macro_defs {
             if let Some(def_idx) = local_defs.get(name) {
                 return Some(ResolvedMacro::User(*def_idx));
             }
-            // Check with arity=None if we have an arity
-            if name.arity().is_some() {
-                let name_no_arity = name.clone().with_arity(None);
-                if let Some(def_idx) = local_defs.get(&name_no_arity) {
-                    return Some(ResolvedMacro::User(*def_idx));
-                }
-            }
             // When local defs are set, only check built-in macros as fallback.
             // Do not call db.resolve_macro() — local defs already provide the
             // complete point-in-time macro state.
+            // Note: do NOT fall back to arity=None here. The caller
+            // (resolve_macro) handles arity fallback and needs to
+            // distinguish exact-arity matches from no-arity matches to
+            // correctly create MacroReplacement::Ast vs AstArgs.
             return macro_exp::resolve_built_in(name)
                 .and_then(|opt| opt.map(ResolvedMacro::BuiltIn));
         }
@@ -3186,7 +3213,11 @@ pub fn lower_condition_body(
     // macros resolve correctly. When None, empty defs still enable built-in
     // macro resolution (e.g., ?FILE, ?MODULE) without falling back to
     // db.resolve_macro().
-    ctx.set_local_macro_defs(macro_defs.cloned().unwrap_or_default());
+    ctx.set_local_macro_defs(
+        macro_defs
+            .map(|defs| Arc::new(defs.clone()))
+            .unwrap_or_else(|| Arc::new(FxHashMap::default())),
+    );
 
     if module_name_override.is_some() {
         ctx.set_module_name_override(module_name_override);
