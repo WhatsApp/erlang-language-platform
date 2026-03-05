@@ -925,11 +925,12 @@ impl SpecBody {
             .form_id
             .get(&spec_id.file_syntax(db.upcast()));
 
-        let (body, source_map) = lower::Ctx::new(
+        let mut ctx = lower::Ctx::new(
             db,
             BodyOrigin::new(spec_id.file_id, FormIdx::Spec(spec_id.value)),
-        )
-        .lower_spec(&spec_ast);
+        );
+        ctx.set_macro_defs_from_preprocessor(spec_id.file_id, form_list[spec_id.value].pp_ctx.env);
+        let (body, source_map) = ctx.lower_spec(&spec_ast);
         (Arc::new(body), Arc::new(source_map))
     }
 

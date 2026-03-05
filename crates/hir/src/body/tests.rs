@@ -3228,5 +3228,59 @@ fn tree_print_define_macro_redefine_point_in_file() {
     );
 }
 
+/// Demonstrates that spec bodies resolve macros using point-in-file
+/// state rather than end-of-file state. `-spec foo()` sees the first
+/// definition of `?RET` (→ `old`) while `-spec bar()` sees the second
+/// (→ `new`).
+///
+/// Without the `set_macro_defs_from_preprocessor` call in
+/// `spec_body_with_source_query`, both specs would resolve `?RET` to
+/// the final (second) definition, producing `new` in both.
+#[test]
+fn tree_print_spec_macro_redefine_point_in_file() {
+    check_ast(
+        r#"
+-define(RET, old).
+-spec foo() -> ?RET.
+foo() -> ok.
+-undef(RET).
+-define(RET, new).
+-spec bar() -> ?RET.
+bar() -> ok.
+"#,
+        expect![[r#"
+            -define(RET,
+                Expr<0>:Literal(Atom('old'))
+            ).
+
+            -spec foo
+                () ->
+                    Literal(Atom('old')).
+            function: foo/0
+            Clause {
+                pats
+                guards
+                exprs
+                    Expr<1>:Literal(Atom('ok')),
+            }.
+
+            -define(RET,
+                Expr<0>:Literal(Atom('new'))
+            ).
+
+            -spec bar
+                () ->
+                    Literal(Atom('new')).
+            function: bar/0
+            Clause {
+                pats
+                guards
+                exprs
+                    Expr<1>:Literal(Atom('ok')),
+            }.
+        "#]],
+    );
+}
+
 // Tree printing ends
 // ---------------------------------------------------------------------
