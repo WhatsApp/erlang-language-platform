@@ -765,13 +765,19 @@ impl TypeBody {
         type_alias_id: InFile<TypeAliasId>,
     ) -> (Arc<TypeBody>, Arc<BodySourceMap>) {
         let form_list = db.file_form_list(type_alias_id.file_id);
-        let ctx = lower::Ctx::new(
+        let pp_ctx_env = match &form_list[type_alias_id.value] {
+            TypeAlias::Regular { pp_ctx, .. } => pp_ctx.env,
+            TypeAlias::Nominal { pp_ctx, .. } => pp_ctx.env,
+            TypeAlias::Opaque { pp_ctx, .. } => pp_ctx.env,
+        };
+        let mut ctx = lower::Ctx::new(
             db,
             BodyOrigin::new(
                 type_alias_id.file_id,
                 FormIdx::TypeAlias(type_alias_id.value),
             ),
         );
+        ctx.set_macro_defs_from_preprocessor(type_alias_id.file_id, pp_ctx_env);
         let source = type_alias_id.file_syntax(db.upcast());
         let (body, source_map) = match form_list[type_alias_id.value] {
             TypeAlias::Regular { form_id, .. } => ctx.lower_type_alias(&form_id.get(&source)),

@@ -3156,5 +3156,39 @@ bar() -> ?VAL.
     );
 }
 
+/// Demonstrates that type bodies resolve macros using point-in-file
+/// state rather than end-of-file state. `-type foo()` sees the first
+/// definition of `?T` (→ `old`) while `-type bar()` sees the second
+/// (→ `new`).
+///
+/// Without the `set_macro_defs_from_preprocessor` call in
+/// `type_body_with_source_query`, both type aliases would resolve `?T`
+/// to the final (second) definition, producing `new` in both bodies.
+#[test]
+fn tree_print_type_macro_redefine_point_in_file() {
+    check_ast(
+        r#"
+-define(T, old).
+-type foo() :: ?T.
+-undef(T).
+-define(T, new).
+-type bar() :: ?T.
+"#,
+        expect![[r#"
+            -define(T,
+                Expr<0>:Literal(Atom('old'))
+            ).
+
+            -type foo() :: Literal(Atom('old')).
+
+            -define(T,
+                Expr<0>:Literal(Atom('new'))
+            ).
+
+            -type bar() :: Literal(Atom('new')).
+        "#]],
+    );
+}
+
 // Tree printing ends
 // ---------------------------------------------------------------------
