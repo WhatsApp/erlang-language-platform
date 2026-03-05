@@ -828,8 +828,23 @@ impl ConditionBody {
             _ => return None, // No expression for Ifdef/Ifndef/Else/Endif
         };
 
-        let (body, source_map, root_expr) =
-            lower_condition_body(db, cond_id.file_id, cond_id.value, &expr, None, None);
+        // Fetch the preprocessor analysis to get the point-in-time macro
+        // definitions that were active when this condition was encountered.
+        // This gives us the same macro state the preprocessor used, so we
+        // resolve user-defined macros correctly instead of falling back to
+        // db.resolve_macro() which has no branch awareness.
+        let env = db.project_macro_environment(cond_id.file_id);
+        let analysis = db.file_preprocessor_analysis(cond_id.file_id, env);
+        let macro_defs = analysis.condition_macro_defs(cond_id.value);
+
+        let (body, source_map, root_expr) = lower_condition_body(
+            db,
+            cond_id.file_id,
+            cond_id.value,
+            &expr,
+            None,
+            macro_defs.map(|defs| defs.as_ref()),
+        );
 
         Some((
             Arc::new(ConditionBody {

@@ -128,6 +128,11 @@ pub struct PreprocessorAnalysis {
     /// sequential processing. Allows callers to determine the exact
     /// macro state at each include point.
     include_envs: FxHashMap<IncludeAttributeId, Arc<MacroEnvironment>>,
+    /// Snapshot of `-define` macro definitions at the point each `-if`/`-elif`
+    /// condition was encountered. Keyed by condition ID so that downstream
+    /// Salsa queries can resolve user-defined macros with the correct
+    /// point-in-time state instead of falling back to `db.resolve_macro()`.
+    condition_macro_defs: FxHashMap<PPConditionId, Arc<FxHashMap<MacroName, InFile<DefineId>>>>,
 }
 
 impl PreprocessorState {
@@ -335,6 +340,15 @@ impl PreprocessorAnalysis {
     pub fn include_env(&self, include_id: IncludeAttributeId) -> Option<&Arc<MacroEnvironment>> {
         self.include_envs.get(&include_id)
     }
+
+    /// Get the macro definitions snapshot for a specific `-if`/`-elif` condition.
+    /// Returns `None` if the condition was not found (e.g. ifdef/ifndef/else/endif).
+    pub fn condition_macro_defs(
+        &self,
+        cond_id: PPConditionId,
+    ) -> Option<&Arc<FxHashMap<MacroName, InFile<DefineId>>>> {
+        self.condition_macro_defs.get(&cond_id)
+    }
 }
 
 pub fn file_preprocessor_analysis_with_diagnostics_query(
@@ -352,6 +366,19 @@ pub fn file_preprocessor_analysis_with_diagnostics_query(
         // Process the form based on its type
         match form_idx {
             FormIdx::PPCondition(cond_id) => {
+                // Snapshot macro defs for -if/-elif conditions so that
+                // downstream Salsa queries can resolve user macros with
+                // the correct point-in-time state.
+                if matches!(
+                    &form_list[cond_id],
+                    crate::form_list::PPCondition::If { .. }
+                        | crate::form_list::PPCondition::Elif { .. }
+                ) {
+                    analysis
+                        .condition_macro_defs
+                        .insert(cond_id, Arc::new(state.define_attr_macros.clone()));
+                }
+
                 let diagnostics =
                     process_pp_condition(db, file_id, &form_list, cond_id, &mut state);
                 // Record diagnostics if any
