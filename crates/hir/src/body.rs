@@ -575,6 +575,12 @@ impl FunctionBody {
             let fun_asts = fun_def.source(db.upcast());
 
             let mut ctx = lower::Ctx::new(db, BodyOrigin::Invalid(function_id.file_id));
+            let form_list = db.file_form_list(function_id.file_id);
+            let first_clause_id = fun_def.function_clause_ids[0];
+            ctx.set_macro_defs_from_preprocessor(
+                function_id.file_id,
+                form_list[first_clause_id].pp_ctx.env,
+            );
             let name = &fun_def.function_clauses[0].name;
             ctx.set_function_info(name);
             let (mut body, source_maps) =
@@ -652,6 +658,7 @@ impl FunctionClauseBody {
         );
         if let Some(clause_ast) = function_ast.clause() {
             let mut ctx = lower::Ctx::new(db, body_origin);
+            ctx.set_macro_defs_from_preprocessor(function_clause_id.file_id, function.pp_ctx.env);
             ctx.set_function_info(&function.name);
             if let Some((body, source_map)) = ctx
                 .lower_clause_or_macro_body(clause_ast, &function_clause_id, None)
@@ -673,9 +680,14 @@ impl FunctionClauseBody {
         macrostack: MacroInformation,
         macro_def: Option<(InFile<DefineId>, Vec<ast::MacroExpr>)>,
     ) -> (FunctionClauseBody, BodySourceMap) {
+        let form_list = db.file_form_list(clause_id.file_id);
         let mut ctx = lower::Ctx::new(
             db,
             BodyOrigin::new(clause_id.file_id, FormIdx::FunctionClause(clause_id.value)),
+        );
+        ctx.set_macro_defs_from_preprocessor(
+            clause_id.file_id,
+            form_list[clause_id.value].pp_ctx.env,
         );
         ctx.set_function_info_from_ast(clause_ast);
         ctx.set_macro_information(macrostack);

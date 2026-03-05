@@ -3101,5 +3101,60 @@ fn tree_print_define_missing() {
     );
 }
 
+/// Demonstrates that function bodies resolve macros using point-in-file
+/// state rather than end-of-file state. `foo/0` sees the first definition
+/// of `?VAL` (→ `old`) while `bar/0` sees the second (→ `new`).
+///
+/// Without the `set_macro_defs_from_preprocessor` calls in body lowering,
+/// both functions would resolve `?VAL` to the final (second) definition,
+/// producing `new` in both bodies.
+#[test]
+fn tree_print_macro_redefine_point_in_file() {
+    check_ast(
+        r#"
+-define(VAL, old).
+foo() -> ?VAL.
+-undef(VAL).
+-define(VAL, new).
+bar() -> ?VAL.
+"#,
+        expect![[r#"
+            -define(VAL,
+                Expr<0>:Literal(Atom('old'))
+            ).
+            function: foo/0
+            Clause {
+                pats
+                guards
+                exprs
+                    Expr<2>:Expr::MacroCall {
+                        args
+                        macro_def
+                            Some(InFile { file_id: FileId(0), value: Idx::<Define>(0) })
+                        expansion
+                            Expr<1>:Literal(Atom('old'))
+                    },
+            }.
+
+            -define(VAL,
+                Expr<0>:Literal(Atom('new'))
+            ).
+            function: bar/0
+            Clause {
+                pats
+                guards
+                exprs
+                    Expr<2>:Expr::MacroCall {
+                        args
+                        macro_def
+                            Some(InFile { file_id: FileId(0), value: Idx::<Define>(1) })
+                        expansion
+                            Expr<1>:Literal(Atom('new'))
+                    },
+            }.
+        "#]],
+    );
+}
+
 // Tree printing ends
 // ---------------------------------------------------------------------
