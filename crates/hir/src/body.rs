@@ -985,11 +985,12 @@ impl RecordBody {
         let record = &form_list[record_id.value];
         let record_ast = record.form_id.get(&record_id.file_syntax(db.upcast()));
 
-        let (body, source_map) = lower::Ctx::new(
+        let mut ctx = lower::Ctx::new(
             db,
             BodyOrigin::new(record_id.file_id, FormIdx::Record(record_id.value)),
-        )
-        .lower_record(record, &record_ast);
+        );
+        ctx.set_macro_defs_from_preprocessor(record_id.file_id, record.pp_ctx.env);
+        let (body, source_map) = ctx.lower_record(record, &record_ast);
         (Arc::new(body), Arc::new(source_map))
     }
 

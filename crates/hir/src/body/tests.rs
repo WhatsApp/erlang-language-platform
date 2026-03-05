@@ -3320,5 +3320,58 @@ fn tree_print_callback_macro_redefine_point_in_file() {
     );
 }
 
+/// Demonstrates that record bodies resolve macros using point-in-file
+/// state rather than end-of-file state. `-record(r1, ...)` sees the
+/// first definition of `?DEFAULT` (→ `old`) while `-record(r2, ...)`
+/// sees the second (→ `new`).
+///
+/// Without the `set_macro_defs_from_preprocessor` call in
+/// `record_body_with_source_query`, both records would resolve
+/// `?DEFAULT` to the final (second) definition, producing `new` in
+/// both.
+#[test]
+fn tree_print_record_macro_redefine_point_in_file() {
+    check_ast(
+        r#"
+-define(DEFAULT, old).
+-record(r1, {field = ?DEFAULT}).
+-undef(DEFAULT).
+-define(DEFAULT, new).
+-record(r2, {field = ?DEFAULT}).
+"#,
+        expect![[r#"
+            -define(DEFAULT,
+                Expr<0>:Literal(Atom('old'))
+            ).
+
+            -record(r1,
+                fields
+                    RecordFieldBody {
+                        field_id
+                            Idx::<RecordField>(0)
+                        expr
+                            Expr<1>:Literal(Atom('old')),
+                        ty
+                    },
+            ).
+
+            -define(DEFAULT,
+                Expr<0>:Literal(Atom('new'))
+            ).
+
+            -record(r2,
+                fields
+                    RecordFieldBody {
+                        field_id
+                            Idx::<RecordField>(1)
+                        expr
+                            Expr<1>:Literal(Atom('new')),
+                        ty
+                    },
+            ).
+        "#]],
+    );
+}
+
 // Tree printing ends
 // ---------------------------------------------------------------------
