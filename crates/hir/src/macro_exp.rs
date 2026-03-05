@@ -10,7 +10,6 @@
 
 use std::sync::Arc;
 
-use elp_base_db::AppDataId;
 use elp_base_db::FileId;
 use elp_syntax::ast;
 
@@ -124,15 +123,7 @@ pub(crate) fn resolve_query(
         return value.map(ResolvedMacro::BuiltIn);
     }
 
-    // Compute the original app once so it propagates through transitive
-    // include resolution (header files may belong to different apps).
-    // Guard against SSR and other contexts where AppIndex is not populated.
-    let orig_app = if file_id == SSR_SOURCE_FILE_ID {
-        None
-    } else {
-        db.app_data_id_by_file(file_id)
-    };
-    match db.local_resolve_macro(file_id, name, orig_app) {
+    match db.local_resolve_macro(file_id, name) {
         MacroResolution::Resolved(resolved) => Some(ResolvedMacro::User(resolved)),
         MacroResolution::Undef => None,
         MacroResolution::Unresolved => None,
@@ -172,45 +163,28 @@ pub(crate) fn local_resolve_query(
     db: &dyn DefDatabase,
     file_id: FileId,
     name: MacroName,
-    orig_app: Option<AppDataId>,
 ) -> MacroResolution {
     if file_id == SSR_SOURCE_FILE_ID {
         return MacroResolution::Unresolved;
     }
-    let form_list = db.file_form_list(file_id);
 
-    for (_idx, directive) in form_list.pp_stack().iter().rev() {
-        match directive {
-            PPDirective::Define(idx) => {
-                let define = &form_list[*idx];
-                if define.name == name {
-                    return MacroResolution::Resolved(InFile::new(file_id, *idx));
-                }
-            }
-            PPDirective::Undef {
-                name: undefed,
-                pp_ctx: _,
-                form_id: _,
-            } if undefed == name.name() => {
-                return MacroResolution::Undef;
-            }
-            PPDirective::Undef { .. } => {}
-            PPDirective::Include(idx) => {
-                // Use orig_app for include resolution so that transitive
-                // includes through header files in other apps can resolve
-                // correctly (the header's own app may not declare all the
-                // same dependencies as the original source file's app).
-                if let Some(resolved) = db.resolve_include(orig_app, InFile::new(file_id, *idx)) {
-                    match db.local_resolve_macro(resolved, name.clone(), orig_app) {
-                        MacroResolution::Resolved(resolved) => {
-                            return MacroResolution::Resolved(resolved);
-                        }
-                        MacroResolution::Undef => return MacroResolution::Undef,
-                        MacroResolution::Unresolved => {}
-                    }
-                }
-            }
-        }
+    // Use file_preprocessor_analysis to get the final preprocessor state.
+    // This is now safe because the preprocessor resolves macros locally
+    // (via macro_defs passed to lower_condition_body) and will not call
+    // back into db.resolve_macro(), breaking the former Salsa cycle.
+    let env = db.project_macro_environment(file_id);
+    let analysis = db.file_preprocessor_analysis(file_id, env);
+
+    let Some(ref final_state) = analysis.final_state else {
+        return MacroResolution::Unresolved;
+    };
+
+    // Look up the macro name in the preprocessor's accumulated definitions.
+    // Do NOT fall back to arity=None here: the body lowering code has its
+    // own arity fallback that correctly handles the "define without args
+    // used with args" pattern (MacroReplacement::AstArgs).
+    if let Some(define_id) = final_state.define_attr_macros.get(&name) {
+        return MacroResolution::Resolved(*define_id);
     }
 
     MacroResolution::Unresolved
@@ -222,7 +196,6 @@ pub(crate) fn recover_cycle(
     _cycle: &[String],
     _file_id: &FileId,
     _name: &MacroName,
-    _orig_app: &Option<AppDataId>,
 ) -> MacroResolution {
     MacroResolution::Unresolved
 }
@@ -684,6 +657,30 @@ foo() -> ?~MACRO().
 
 foo() -> ?~MACRO.
 "#,
+        );
+    }
+
+    #[test]
+    fn test_recursive_resolves_cleanly() {
+        // A self-including header with a define should still resolve the
+        // macro.  The visited-file set in local_resolve_forward prevents
+        // infinite recursion while still finding the define that IS
+        // present in the file.
+        let (resolved, _db, _fixture) = resolve_macro(
+            r#"
+//- /src/include.hrl
+-define(FOO, _).
+-include("include.hrl").
+
+//- /src/main.erl
+-module(main).
+-include("include.hrl").
+foo() -> ?~FOO.
+"#,
+        );
+        assert!(
+            resolved.is_some(),
+            "FOO is defined in include.hrl and should be resolvable"
         );
     }
 

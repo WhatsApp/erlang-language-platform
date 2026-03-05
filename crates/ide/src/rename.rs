@@ -1797,9 +1797,9 @@ pub(crate) mod tests {
             r#"
             //- /src/common.hrl
             -ifndef(TEST).
-                -define(OLD_MACRO, value1).
+                -define(NEW_MACRO, value1).
             -else.
-                -define(NEW_MACRO, value2).
+                -define(OLD_MACRO, value2).
             -endif.
 
             //- /src/module_a.erl

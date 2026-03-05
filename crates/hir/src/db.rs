@@ -197,12 +197,7 @@ pub trait DefDatabase:
     // Helper query to run the recursive resolution algorithm
     #[salsa::cycle(macro_exp::recover_cycle)]
     #[salsa::invoke(macro_exp::local_resolve_query)]
-    fn local_resolve_macro(
-        &self,
-        file_id: FileId,
-        name: MacroName,
-        orig_app: Option<AppDataId>,
-    ) -> MacroResolution;
+    fn local_resolve_macro(&self, file_id: FileId, name: MacroName) -> MacroResolution;
 
     #[salsa::cycle(DefMap::recover_cycle)]
     #[salsa::invoke(DefMap::def_map_query)]
