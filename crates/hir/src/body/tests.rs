@@ -3282,5 +3282,43 @@ bar() -> ok.
     );
 }
 
+/// Demonstrates that callback bodies resolve macros using point-in-file
+/// state rather than end-of-file state. The first `-callback` sees the
+/// first definition of `?RET` (→ `old`) while the second sees the
+/// redefined version (→ `new`).
+///
+/// Without the `set_macro_defs_from_preprocessor` call in
+/// `callback_body_with_source_query`, both callbacks would resolve
+/// `?RET` to the final (second) definition, producing `new` in both.
+#[test]
+fn tree_print_callback_macro_redefine_point_in_file() {
+    check_ast(
+        r#"
+-define(RET, old).
+-callback foo() -> ?RET.
+-undef(RET).
+-define(RET, new).
+-callback bar() -> ?RET.
+"#,
+        expect![[r#"
+            -define(RET,
+                Expr<0>:Literal(Atom('old'))
+            ).
+
+            -callback foo
+                () ->
+                    Literal(Atom('old')).
+
+            -define(RET,
+                Expr<0>:Literal(Atom('new'))
+            ).
+
+            -callback bar
+                () ->
+                    Literal(Atom('new')).
+        "#]],
+    );
+}
+
 // Tree printing ends
 // ---------------------------------------------------------------------

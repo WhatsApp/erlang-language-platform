@@ -943,11 +943,15 @@ impl SpecBody {
             .form_id
             .get(&callback_id.file_syntax(db.upcast()));
 
-        let (body, source_map) = lower::Ctx::new(
+        let mut ctx = lower::Ctx::new(
             db,
             BodyOrigin::new(callback_id.file_id, FormIdx::Callback(callback_id.value)),
-        )
-        .lower_callback(&callback_ast);
+        );
+        ctx.set_macro_defs_from_preprocessor(
+            callback_id.file_id,
+            form_list[callback_id.value].pp_ctx.env,
+        );
+        let (body, source_map) = ctx.lower_callback(&callback_ast);
         (Arc::new(body), Arc::new(source_map))
     }
 
