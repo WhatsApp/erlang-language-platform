@@ -412,7 +412,10 @@ pub(crate) fn process_pp_condition(
             vec![]
         }
         PPCondition::If { form_id, .. } => {
-            // Lower the condition expression and evaluate it
+            // Lower the condition expression and evaluate it.
+            // Pass the preprocessor's accumulated macro definitions so that
+            // macro resolution during lowering uses local state instead of
+            // calling db.resolve_macro(), breaking the Salsa cycle.
             let source = db.parse(file_id).tree();
             let pp_if = form_id.get(&source);
             if let Some(expr_ast) = pp_if.cond() {
@@ -422,6 +425,7 @@ pub(crate) fn process_pp_condition(
                     cond_id,
                     &expr_ast,
                     state.module_name().cloned(),
+                    Some(&state.define_attr_macros),
                 );
                 state.enter_if(&lower_result.expr);
                 lower_result.diagnostics
@@ -441,6 +445,7 @@ pub(crate) fn process_pp_condition(
                     cond_id,
                     &expr_ast,
                     state.module_name().cloned(),
+                    Some(&state.define_attr_macros),
                 );
                 state.enter_elif(&lower_result.expr);
                 lower_result.diagnostics

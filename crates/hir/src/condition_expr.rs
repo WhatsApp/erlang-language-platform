@@ -24,11 +24,14 @@ use elp_syntax::ast::CompOp;
 use elp_syntax::ast::LogicOp;
 use elp_syntax::ast::Ordering;
 use elp_syntax::ast::UnaryOp;
+use fxhash::FxHashMap;
 
 use crate::Body;
 use crate::CallTarget;
+use crate::DefineId;
 use crate::Expr;
 use crate::ExprId;
+use crate::InFile;
 use crate::Literal;
 use crate::MacroName;
 use crate::Name;
@@ -527,10 +530,17 @@ pub fn lower_condition_expr(
     cond_id: PPConditionId,
     ast_expr: &ast::Expr,
     module_name_override: Option<Name>,
+    macro_defs: Option<&FxHashMap<MacroName, InFile<DefineId>>>,
 ) -> ConditionLowerResult {
     // Create a body with macro expansion
-    let (body, _source_map, root_id) =
-        lower_condition_body(db, file_id, cond_id, ast_expr, module_name_override.clone());
+    let (body, _source_map, root_id) = lower_condition_body(
+        db,
+        file_id,
+        cond_id,
+        ast_expr,
+        module_name_override.clone(),
+        macro_defs,
+    );
     let mut diagnostics = Vec::new();
     let expr = hir_to_condition_expr(db, &body, root_id, &mut diagnostics);
     ConditionLowerResult { expr, diagnostics }
@@ -1818,7 +1828,7 @@ foo() -> ok.
                 let pp_if = form_id.get_ast(&db, file_id);
                 if let Some(expr) = pp_if.cond() {
                     let result = crate::condition_expr::lower_condition_expr(
-                        &db, file_id, cond_id, &expr, None,
+                        &db, file_id, cond_id, &expr, None, None,
                     );
                     return result.expr;
                 }

@@ -829,7 +829,7 @@ impl ConditionBody {
         };
 
         let (body, source_map, root_expr) =
-            lower_condition_body(db, cond_id.file_id, cond_id.value, &expr, None);
+            lower_condition_body(db, cond_id.file_id, cond_id.value, &expr, None, None);
 
         Some((
             Arc::new(ConditionBody {

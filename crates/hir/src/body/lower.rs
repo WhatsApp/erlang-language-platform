@@ -201,18 +201,16 @@ impl<'a> Ctx<'a> {
         self.function_name.clone()
     }
 
-    #[allow(dead_code)] // Used in later commits
     pub(crate) fn set_local_macro_defs(&mut self, defs: FxHashMap<MacroName, InFile<DefineId>>) {
         self.local_macro_defs = Some(defs);
     }
 
-    #[allow(dead_code)] // Used in later commits
     pub(crate) fn set_module_name_override(&mut self, name: Option<Name>) {
         self.module_name_override = name;
     }
 
     fn resolve_macro_name(&self, name: &MacroName) -> Option<ResolvedMacro> {
-        // Check local macro definitions first
+        // Check local macro definitions first (set during condition body lowering)
         if let Some(ref local_defs) = self.local_macro_defs {
             if let Some(def_idx) = local_defs.get(name) {
                 return Some(ResolvedMacro::User(*def_idx));
@@ -224,8 +222,14 @@ impl<'a> Ctx<'a> {
                     return Some(ResolvedMacro::User(*def_idx));
                 }
             }
+            // When local defs are set, only check built-in macros as fallback.
+            // Do not call db.resolve_macro() — local defs already provide the
+            // complete point-in-time macro state.
+            return macro_exp::resolve_built_in(name)
+                .and_then(|opt| opt.map(ResolvedMacro::BuiltIn));
         }
-        // Fall back to database query
+
+        // Fall back to database query (normal non-condition path)
         self.db.resolve_macro(self.file_id(), name.clone())
     }
 
@@ -3170,15 +3174,20 @@ pub fn lower_condition_body(
     cond_id: PPConditionId,
     expr: &ast::Expr,
     module_name_override: Option<Name>,
+    macro_defs: Option<&FxHashMap<MacroName, InFile<DefineId>>>,
 ) -> (Arc<Body>, BodySourceMap, ExprId) {
     let origin = BodyOrigin::Condition { file_id, cond_id };
     let mut ctx = Ctx::new(db, origin);
     // Break the preprocessor–def_map salsa cycle (see skip_import_resolution field).
     ctx.skip_import_resolution = true;
-    // Set empty local macro defs to enable built-in macro resolution (e.g., ?FILE, ?MODULE).
-    // Without this, resolve_macro_name skips built-in macro checks and goes directly to the
-    // database query, which fails for built-in macros.
-    ctx.set_local_macro_defs(FxHashMap::default());
+
+    // Set local macro defs for condition body resolution. When defs are
+    // provided (from the preprocessor or PreprocessorAnalysis), user-defined
+    // macros resolve correctly. When None, empty defs still enable built-in
+    // macro resolution (e.g., ?FILE, ?MODULE) without falling back to
+    // db.resolve_macro().
+    ctx.set_local_macro_defs(macro_defs.cloned().unwrap_or_default());
+
     if module_name_override.is_some() {
         ctx.set_module_name_override(module_name_override);
     }
