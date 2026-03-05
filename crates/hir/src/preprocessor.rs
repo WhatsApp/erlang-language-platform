@@ -98,7 +98,7 @@ pub type ConditionDiagnosticsMap = FxHashMap<PPConditionId, Vec<ConditionDiagnos
 pub struct PreprocessorState {
     condition_stack: Vec<ConditionFrame>,
     defined_macros: BTreeSet<MacroName>,
-    macro_definitions: FxHashMap<MacroName, InFile<DefineId>>,
+    define_attr_macros: FxHashMap<MacroName, InFile<DefineId>>,
     is_active: bool,
     module_name: Option<Name>,
 }
@@ -114,6 +114,7 @@ struct ConditionFrame {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreprocessorSnapshot {
     pub defined: Arc<BTreeSet<MacroName>>,
+    pub define_attr_macros: Arc<FxHashMap<MacroName, InFile<DefineId>>>,
     pub is_active: bool,
     pub is_unknown: bool,
 }
@@ -134,7 +135,7 @@ impl PreprocessorState {
         Self {
             condition_stack: Vec::new(),
             defined_macros: env.predefined.clone(),
-            macro_definitions: FxHashMap::default(),
+            define_attr_macros: FxHashMap::default(),
             is_active: true,
             module_name: env.module_name.clone(),
         }
@@ -151,6 +152,10 @@ impl PreprocessorState {
 
     pub fn defined_macros(&self) -> &BTreeSet<MacroName> {
         &self.defined_macros
+    }
+
+    pub fn define_attr_macros(&self) -> &FxHashMap<MacroName, InFile<DefineId>> {
+        &self.define_attr_macros
     }
 
     pub fn enter_ifdef(&mut self, name: &MacroName) {
@@ -239,13 +244,17 @@ impl PreprocessorState {
     pub fn define_macro(&mut self, name: MacroName, definition: Option<InFile<DefineId>>) {
         self.defined_macros.insert(name.clone());
         if let Some(def) = definition {
-            self.macro_definitions.insert(name, def);
+            self.define_attr_macros.insert(name, def);
         }
     }
 
     pub fn undefine_macro(&mut self, name: &MacroName) {
-        self.defined_macros.remove(name);
-        self.macro_definitions.remove(name);
+        // Erlang's -undef(NAME) removes ALL arity variants, not just the
+        // exact MacroName. Remove all entries whose name matches.
+        let undef_name = name.name();
+        self.defined_macros.retain(|k| k.name() != undef_name);
+        self.define_attr_macros
+            .retain(|k, _| k.name() != undef_name);
     }
 
     pub fn module_name(&self) -> Option<&Name> {
@@ -255,13 +264,20 @@ impl PreprocessorState {
     pub fn snapshot(&self) -> PreprocessorSnapshot {
         PreprocessorSnapshot {
             defined: Arc::new(self.defined_macros.clone()),
+            define_attr_macros: Arc::new(self.define_attr_macros.clone()),
             is_active: self.is_active,
             is_unknown: self.is_current_unknown(),
         }
     }
 
-    pub fn merge_from_include(&mut self, other_macros: &BTreeSet<MacroName>) {
+    pub fn merge_from_include(
+        &mut self,
+        other_macros: &BTreeSet<MacroName>,
+        other_definitions: &FxHashMap<MacroName, InFile<DefineId>>,
+    ) {
         self.defined_macros.extend(other_macros.iter().cloned());
+        self.define_attr_macros
+            .extend(other_definitions.iter().map(|(k, v)| (k.clone(), *v)));
     }
 
     fn push_condition(&mut self, condition_met: bool) {
@@ -500,7 +516,10 @@ fn process_pp_directive(
 
                     // Merge the final state from the included file
                     if let Some(ref final_state) = include_analysis.final_state {
-                        state.merge_from_include(&final_state.defined);
+                        state.merge_from_include(
+                            &final_state.defined,
+                            &final_state.define_attr_macros,
+                        );
                     }
                 }
             }
@@ -829,6 +848,31 @@ mod tests {
     }
 
     #[test]
+    fn test_preprocessor_state_undefine_macro_all_arities() {
+        let env = MacroEnvironment::new();
+        let mut state = PreprocessorState::new(&env);
+
+        // Define the same macro name with different arities
+        let foo_none = MacroName::new(name("FOO"), None);
+        let foo_0 = MacroName::new(name("FOO"), Some(0));
+        let foo_2 = MacroName::new(name("FOO"), Some(2));
+        state.define_macro(foo_none.clone(), None);
+        state.define_macro(foo_0.clone(), None);
+        state.define_macro(foo_2.clone(), None);
+
+        assert!(state.is_defined(&foo_none));
+        assert!(state.is_defined(&foo_0));
+        assert!(state.is_defined(&foo_2));
+
+        // Erlang's -undef(FOO) should remove ALL arity variants
+        state.undefine_macro(&MacroName::new(name("FOO"), None));
+
+        assert!(!state.is_defined(&foo_none));
+        assert!(!state.is_defined(&foo_0));
+        assert!(!state.is_defined(&foo_2));
+    }
+
+    #[test]
     fn test_preprocessor_state_snapshot() {
         let mut env = MacroEnvironment::new();
         env.define(macro_name("FOO"));
@@ -853,7 +897,7 @@ mod tests {
         let mut include_macros = std::collections::BTreeSet::new();
         include_macros.insert(macro_name("INCLUDED_MACRO"));
 
-        state.merge_from_include(&include_macros);
+        state.merge_from_include(&include_macros, &fxhash::FxHashMap::default());
 
         assert!(state.is_defined(&macro_name("INCLUDED_MACRO")));
     }

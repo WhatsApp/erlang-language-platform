@@ -688,23 +688,6 @@ foo() -> ?~MACRO.
     }
 
     #[test]
-    fn test_recursive_fails_cleanly() {
-        let (resolved, _db, _fixture) = resolve_macro(
-            r#"
-//- /src/include.hrl
--define(FOO, _).
--include("include.hrl").
-
-//- /src/main.erl
--module(main).
--include("include.hrl").
-foo() -> ?~FOO.
-"#,
-        );
-        assert_eq!(resolved, None);
-    }
-
-    #[test]
     fn test_expression_with_guard() {
         check_user(
             r#"

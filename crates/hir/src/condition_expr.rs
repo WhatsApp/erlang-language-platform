@@ -2956,6 +2956,121 @@ elp_path() -> ok.
     }
 
     #[test]
+    fn test_pp_include_guard_transitive() {
+        // Transitive include guard: wrapper.hrl includes guard.hrl first
+        // (before TOP_LEVEL is defined), then test.erl defines TOP_LEVEL,
+        // then includes guard.hrl directly a second time.
+        //
+        // Inside the ifndef guard, guard.hrl checks -ifdef(TOP_LEVEL) and
+        // would define SHOULD_NOT_EXIST if the body were re-processed.
+        // Since TOP_LEVEL is defined by the time of the second include,
+        // re-processing would create SHOULD_NOT_EXIST — but the include
+        // guard prevents re-entry, so SHOULD_NOT_EXIST must NOT appear
+        // in the defined list.
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-include("wrapper.hrl").
+-define(TOP_LEVEL, true).
+-include("guard.hrl").
+-ifdef(PAYLOAD).
+guarded() -> ok.
+-endif.
+
+//- /src/wrapper.hrl
+-include("guard.hrl").
+
+//- /src/guard.hrl
+-ifndef(GUARD_HRL).
+-define(GUARD_HRL, true).
+-define(PAYLOAD, true).
+-ifdef(TOP_LEVEL).
+-define(SHOULD_NOT_EXIST, true).
+-endif.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -include("wrapper.hrl").
+                +| -define(TOP_LEVEL, true).
+                +| -include("guard.hrl").
+                +| -ifdef(PAYLOAD).
+                +| guarded() -> ok.
+                +| -endif.
+                +|
+                >>> defined: [ELP_ERLANG_SERVICE, GUARD_HRL, PAYLOAD, TOP_LEVEL]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_define_in_inactive_ifdef_not_accumulated() {
+        // A -define inside an inactive ifdef branch should NOT be
+        // accumulated, so a subsequent ifdef on that name stays inactive.
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-ifdef(NEVER_DEFINED).
+-define(HIDDEN, true).
+-endif.
+-ifdef(HIDDEN).
+should_be_inactive() -> ok.
+-endif.
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -ifdef(NEVER_DEFINED).
+                >>> NEVER_DEFINED is not defined
+                -| -define(HIDDEN, true).
+                +| -endif.
+                +| -ifdef(HIDDEN).
+                >>> HIDDEN is not defined
+                -| should_be_inactive() -> ok.
+                +| -endif.
+                >>> defined: [ELP_ERLANG_SERVICE]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_pp_macro_from_include_visible_to_later_ifdef() {
+        // A macro defined inside an included header should be visible
+        // to ifdef checks that appear after the include directive in
+        // the including file.
+        check_preprocessor(
+            r#"
+//- /src/test.erl macros:[]
+-module(test).
+-include("defs.hrl").
+-ifdef(FROM_HEADER).
+header_code() -> ok.
+-endif.
+-ifndef(FROM_HEADER).
+fallback() -> ok.
+-endif.
+
+//- /src/defs.hrl
+-define(FROM_HEADER, true).
+"#,
+            expect![[r#"
+                +| -module(test).
+                +| -include("defs.hrl").
+                +| -ifdef(FROM_HEADER).
+                +| header_code() -> ok.
+                +| -endif.
+                +| -ifndef(FROM_HEADER).
+                >>> FROM_HEADER is defined
+                -| fallback() -> ok.
+                +| -endif.
+                +|
+                >>> defined: [ELP_ERLANG_SERVICE, FROM_HEADER]
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_pp_cross_app_transitive_include_macro() {
         // A macro defined in a transitively-included header from another
         // app should be visible for ifdef evaluation.  app_a depends on
