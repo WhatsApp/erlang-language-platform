@@ -75,7 +75,7 @@ pub fn run_lint_command(
     args: &Lint,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    new_ifdef: bool,
+    ifdef: bool,
 ) -> Result<()> {
     let start_time = SystemTime::now();
     let memory_start = MemoryUsage::now();
@@ -95,7 +95,7 @@ pub fn run_lint_command(
 
     // We load the project after loading config, in case it bails with
     // errors. No point wasting time if the config is wrong.
-    let mut loaded = load_project(args, cli, query_config, new_ifdef)?;
+    let mut loaded = load_project(args, cli, query_config, ifdef)?;
     telemetry::report_elapsed_time("lint operational", start_time);
 
     let result = do_codemod(cli, &mut loaded, &diagnostics_config, args);
@@ -126,7 +126,7 @@ pub fn load_project(
     args: &Lint,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    new_ifdef: bool,
+    ifdef: bool,
 ) -> Result<LoadResult> {
     log::info!("Loading project at: {:?}", args.project);
     let config = DiscoverConfig::new(args.rebar, &args.profile);
@@ -137,7 +137,7 @@ pub fn load_project(
         IncludeOtp::Yes,
         Mode::Server,
         query_config,
-        new_ifdef,
+        ifdef,
     )
 }
 

@@ -331,7 +331,7 @@ pub fn run_shell(
     shell: &Shell,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    new_ifdef: bool,
+    ifdef: bool,
 ) -> Result<()> {
     let start_time = SystemTime::now();
     let mut cmd = Command::new("watchman");
@@ -351,7 +351,7 @@ pub fn run_shell(
         IncludeOtp::Yes,
         Mode::Shell,
         query_config,
-        new_ifdef,
+        ifdef,
     )?;
     telemetry::report_elapsed_time("shell operational", start_time);
     let mut rl = rustyline::DefaultEditor::new()?;
@@ -379,7 +379,7 @@ pub fn run_shell(
                         IncludeOtp::Yes,
                         Mode::Shell,
                         query_config,
-                        new_ifdef,
+                        ifdef,
                     )?;
                     last_read = watchman.get_clock()?;
                 }

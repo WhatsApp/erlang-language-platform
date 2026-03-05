@@ -265,8 +265,8 @@ impl FormList {
             None => PPConditionResult::Active,
             Some(cond_id) => {
                 let mut env = (*db.project_macro_environment(file_id)).clone();
-                // Short-circuit: if new_ifdef is disabled, all forms are active
-                if !env.new_ifdef {
+                // Short-circuit: if ifdef is disabled, all forms are active
+                if !env.ifdef {
                     return PPConditionResult::Active;
                 }
                 if let Some(name) = module_name_override {
@@ -293,7 +293,7 @@ impl FormList {
         match pp_ctx.condition {
             None => PPConditionResult::Active,
             Some(cond_id) => {
-                if !env.new_ifdef {
+                if !env.ifdef {
                     return PPConditionResult::Active;
                 }
                 let analysis = db.file_preprocessor_analysis(file_id, env);

@@ -214,7 +214,7 @@ impl<'a> Ctx<'a> {
     /// ConditionEnvId. This gives body lowering the correct point-in-file macro
     /// state, matching the behavior of lower_condition_body.
     ///
-    /// Only effective when `new_ifdef` is enabled, since that is when
+    /// Only effective when `ifdef` is enabled, since that is when
     /// ConditionEnvIds properly differentiate points in the file (a new
     /// ID is allocated at each -define/-undef/-include). When disabled,
     /// all forms share the root env and we fall back to db.resolve_macro().
@@ -226,7 +226,7 @@ impl<'a> Ctx<'a> {
         env_id: ConditionEnvId,
     ) {
         let env = self.db.project_macro_environment(file_id);
-        if !env.new_ifdef {
+        if !env.ifdef {
             return;
         }
         let analysis = self.db.file_preprocessor_analysis(file_id, env);

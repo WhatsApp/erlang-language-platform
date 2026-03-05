@@ -43,10 +43,10 @@ use crate::form_list::PPConditionResult;
 pub struct MacroEnvironment {
     pub predefined: BTreeSet<MacroName>,
     pub module_name: Option<Name>,
-    /// When true, enables new ifdef/ifndef condition evaluation (experimental).
+    /// When true, enables ifdef/ifndef condition evaluation (experimental).
     /// When false, all forms are treated as active (legacy behavior).
     /// Default: false (disabled - matches legacy behavior)
-    pub new_ifdef: bool,
+    pub ifdef: bool,
     /// The originating app's `AppDataId` for include resolution.
     /// Used to resolve cross-app `include_lib` directives using the
     /// originating app's dependency graph instead of the current file's.
@@ -74,9 +74,9 @@ impl MacroEnvironment {
         self.module_name.as_ref()
     }
 
-    /// Set whether new ifdef/ifndef condition evaluation is enabled.
-    pub fn set_new_ifdef(&mut self, value: bool) {
-        self.new_ifdef = value;
+    /// Set whether ifdef/ifndef condition evaluation is enabled.
+    pub fn set_ifdef(&mut self, value: bool) {
+        self.ifdef = value;
     }
 
     /// Create an environment with common test macros defined.
@@ -561,7 +561,7 @@ fn process_pp_directive(
                     let mut include_env = MacroEnvironment::new();
                     include_env.predefined = state.defined_macros().clone();
                     include_env.orig_app_data_id = env.orig_app_data_id;
-                    include_env.new_ifdef = env.new_ifdef;
+                    include_env.ifdef = env.ifdef;
                     if let Some(module_name) = env.module_name() {
                         include_env.set_module_name(module_name.clone());
                     } else if let Some(module_name) = state.module_name() {

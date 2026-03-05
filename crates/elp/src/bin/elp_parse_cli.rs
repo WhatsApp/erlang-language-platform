@@ -97,7 +97,7 @@ pub fn parse_all(
     args: &ParseAllElp,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    new_ifdef: bool,
+    ifdef: bool,
 ) -> Result<()> {
     log::info!("Loading project at: {:?}", args.project);
 
@@ -113,7 +113,7 @@ pub fn parse_all(
         IncludeOtp::Yes,
         Mode::Cli,
         query_config,
-        new_ifdef,
+        ifdef,
     )?;
 
     if let Some(to) = &args.to {

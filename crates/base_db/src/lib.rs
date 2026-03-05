@@ -220,11 +220,11 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     #[salsa::input]
     fn project_data(&self, id: ProjectId) -> Arc<ProjectData>;
 
-    /// Whether new ifdef/ifndef condition evaluation is enabled (experimental).
+    /// Whether ifdef/ifndef condition evaluation is enabled (experimental).
     /// When true, preprocessor conditions are evaluated and inactive forms are skipped.
     /// When false (default), all forms are treated as active (legacy behavior).
     #[salsa::input]
-    fn new_ifdef_enabled(&self) -> bool;
+    fn ifdef_enabled(&self) -> bool;
 
     fn file_app_data(&self, file_id: FileId) -> Option<Arc<AppData>>;
 

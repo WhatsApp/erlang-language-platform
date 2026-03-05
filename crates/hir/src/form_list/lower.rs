@@ -85,13 +85,13 @@ pub struct Ctx<'a> {
     conditions: Vec<PPConditionId>,
     env_stack: Vec<ConditionEnvId>,
     root_env: ConditionEnvId,
-    new_ifdef_enabled: bool,
+    ifdef_enabled: bool,
 }
 
 impl<'a> Ctx<'a> {
     pub fn new(db: &'a dyn DefDatabase, file_id: FileId, source_file: &'a ast::SourceFile) -> Self {
         let mut data = Box::<FormListData>::default();
-        let new_ifdef_enabled = db.new_ifdef_enabled();
+        let ifdef_enabled = db.ifdef_enabled();
 
         // Get external defines from the application configuration
         let external_defines = db.file_external_defines(file_id);
@@ -114,7 +114,7 @@ impl<'a> Ctx<'a> {
             conditions: Vec::new(),
             env_stack: Vec::new(),
             root_env,
-            new_ifdef_enabled,
+            ifdef_enabled,
         }
     }
 
@@ -158,7 +158,7 @@ impl<'a> Ctx<'a> {
             .collect();
 
         // Post-processing: resolve includes in condition_envs
-        if self.new_ifdef_enabled {
+        if self.ifdef_enabled {
             let include_ctx = IncludeCtx::new(
                 self.db.upcast(),
                 self.db.app_data_id_by_file(self.file_id),
@@ -395,7 +395,7 @@ impl<'a> Ctx<'a> {
             .pp_directives
             .alloc(PPDirective::Include(include_idx));
 
-        if self.new_ifdef_enabled {
+        if self.ifdef_enabled {
             // Track include in environment
             let new_env = ConditionEnv {
                 parent: Some(self.current_env()),
@@ -433,7 +433,7 @@ impl<'a> Ctx<'a> {
         let form_idx = FormIdx::PPDirective(idx);
         self.define_id_map.insert(define_idx, form_idx);
 
-        if self.new_ifdef_enabled {
+        if self.ifdef_enabled {
             // Create new environment with this define added
             let new_env = ConditionEnv {
                 parent: Some(self.current_env()),
@@ -460,7 +460,7 @@ impl<'a> Ctx<'a> {
         };
         let pp_idx = self.data.pp_directives.alloc(res);
 
-        if self.new_ifdef_enabled {
+        if self.ifdef_enabled {
             // Create new environment with this undef added
             let new_env = ConditionEnv {
                 parent: Some(self.current_env()),

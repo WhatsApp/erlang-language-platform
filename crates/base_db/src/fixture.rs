@@ -90,8 +90,8 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
     fn with_fixture(fixture_str: &str) -> (Self, ChangeFixture) {
         let (fixture, change) = ChangeFixture::parse(fixture_str);
         let mut db = Self::default();
-        // Enable new_ifdef for tests by default
-        db.set_new_ifdef_enabled(true);
+        // Enable ifdef for tests by default
+        db.set_ifdef_enabled(true);
         change.apply(&mut db, &|path| fixture.resolve_file_id(path));
         fixture.validate(&db);
         (db, fixture)

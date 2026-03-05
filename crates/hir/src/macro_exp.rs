@@ -206,8 +206,8 @@ pub fn project_macro_environment_query(
 ) -> Arc<MacroEnvironment> {
     let mut env = MacroEnvironment::new();
 
-    // Set new_ifdef from database configuration
-    env.set_new_ifdef(db.new_ifdef_enabled());
+    // Set ifdef from database configuration
+    env.set_ifdef(db.ifdef_enabled());
 
     // Add externally defined macros (includes ELP_ERLANG_SERVICE)
     for name in db.file_external_defines(file_id).iter() {

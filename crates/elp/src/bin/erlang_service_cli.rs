@@ -45,7 +45,7 @@ pub fn parse_all(
     args: &ParseAll,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    new_ifdef: bool,
+    ifdef: bool,
 ) -> Result<()> {
     let start_time = SystemTime::now();
     let config = DiscoverConfig::new(!args.buck, &args.profile);
@@ -56,7 +56,7 @@ pub fn parse_all(
         IncludeOtp::Yes,
         Mode::Cli,
         query_config,
-        new_ifdef,
+        ifdef,
     )?;
     build::compile_deps(&loaded, cli)?;
     fs::create_dir_all(&args.to)?;

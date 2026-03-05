@@ -1453,7 +1453,7 @@ impl Server {
 
         let raw_db = self.analysis_host.raw_database_mut();
         raw_db.clear_erlang_services();
-        raw_db.set_new_ifdef_enabled(self.config.new_ifdef());
+        raw_db.set_ifdef_enabled(self.config.ifdef());
 
         let project_apps = ProjectApps::new(&projects, IncludeOtp::Yes);
         spinner.report("Gathering file paths".to_string());
@@ -1581,10 +1581,10 @@ impl Server {
                 .set_buck_quickstart(self.config.buck_quick_start());
         }
 
-        // Update new_ifdef setting in the database
+        // Update ifdef setting in the database
         {
             let raw_db = self.analysis_host.raw_database_mut();
-            raw_db.set_new_ifdef_enabled(self.config.new_ifdef());
+            raw_db.set_ifdef_enabled(self.config.ifdef());
         }
 
         // Read the lint config file

@@ -65,7 +65,7 @@ pub fn run_ssr_command(
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
     use_color: bool,
-    new_ifdef: bool,
+    ifdef: bool,
 ) -> Result<()> {
     if args.include_tests {
         writeln!(
@@ -127,7 +127,7 @@ pub fn run_ssr_command(
     }
 
     // Load the project
-    let mut loaded = load_project(args, cli, query_config, new_ifdef)?;
+    let mut loaded = load_project(args, cli, query_config, ifdef)?;
     telemetry::report_elapsed_time("ssr operational", start_time);
 
     let r = run_ssr(cli, &mut loaded, &diagnostics_config, args, use_color);
@@ -383,7 +383,7 @@ fn load_project(
     args: &Ssr,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    new_ifdef: bool,
+    ifdef: bool,
 ) -> Result<LoadResult> {
     log::info!("Loading project at: {:?}", args.project);
     let config = DiscoverConfig::new(args.rebar, &args.profile);
@@ -394,7 +394,7 @@ fn load_project(
         IncludeOtp::Yes,
         Mode::Server,
         query_config,
-        new_ifdef,
+        ifdef,
     )
 }
 fn do_parse_one(
