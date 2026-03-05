@@ -1024,11 +1024,15 @@ impl AttributeBody {
             .form_id
             .get(&attribute_id.file_syntax(db.upcast()));
 
-        let (body, source_map) = lower::Ctx::new(
+        let mut ctx = lower::Ctx::new(
             db,
             BodyOrigin::new(attribute_id.file_id, FormIdx::Attribute(attribute_id.value)),
-        )
-        .lower_attribute(&attribute_ast);
+        );
+        ctx.set_macro_defs_from_preprocessor(
+            attribute_id.file_id,
+            form_list[attribute_id.value].pp_ctx.env,
+        );
+        let (body, source_map) = ctx.lower_attribute(&attribute_ast);
         (Arc::new(body), Arc::new(source_map))
     }
 
@@ -1041,14 +1045,18 @@ impl AttributeBody {
             .form_id
             .get(&attribute_id.file_syntax(db.upcast()));
 
-        let (body, source_map) = lower::Ctx::new(
+        let mut ctx = lower::Ctx::new(
             db,
             BodyOrigin::new(
                 attribute_id.file_id,
                 FormIdx::CompileOption(attribute_id.value),
             ),
-        )
-        .lower_compile(&attribute_ast);
+        );
+        ctx.set_macro_defs_from_preprocessor(
+            attribute_id.file_id,
+            form_list[attribute_id.value].pp_ctx.env,
+        );
+        let (body, source_map) = ctx.lower_compile(&attribute_ast);
         (Arc::new(body), Arc::new(source_map))
     }
 

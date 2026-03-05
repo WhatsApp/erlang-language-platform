@@ -3373,5 +3373,60 @@ fn tree_print_record_macro_redefine_point_in_file() {
     );
 }
 
+/// Demonstrates that attribute bodies resolve macros using point-in-file
+/// state rather than end-of-file state. The first `-compile(...)` sees
+/// the first definition of `?OPTS` (→ `[old]`) while the second sees
+/// the redefined version (→ `[new]`).
+///
+/// Without the `set_macro_defs_from_preprocessor` call in
+/// `compile_body_with_source_query`, both compile attributes would
+/// resolve `?OPTS` to the final (second) definition, producing `[new]`
+/// in both.
+#[test]
+fn tree_print_attribute_macro_redefine_point_in_file() {
+    check_ast(
+        r#"
+-define(OPTS, [old]).
+-compile(?OPTS).
+-undef(OPTS).
+-define(OPTS, [new]).
+-compile(?OPTS).
+"#,
+        expect![[r#"
+            -define(OPTS,
+                Expr<1>:Expr::List {
+                    exprs
+                        Expr<0>:Literal(Atom('old')),
+                    tail
+                }
+            ).
+
+            -compile(
+                Term::List {
+                    exprs
+                        Literal(Atom('old')),
+                    tail
+                }
+            ).
+
+            -define(OPTS,
+                Expr<1>:Expr::List {
+                    exprs
+                        Expr<0>:Literal(Atom('new')),
+                    tail
+                }
+            ).
+
+            -compile(
+                Term::List {
+                    exprs
+                        Literal(Atom('new')),
+                    tail
+                }
+            ).
+        "#]],
+    );
+}
+
 // Tree printing ends
 // ---------------------------------------------------------------------
