@@ -41,7 +41,9 @@ use crate::form_list::PPConditionResult;
 /// that are used when evaluating preprocessor conditions.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct MacroEnvironment {
-    pub predefined: BTreeSet<MacroName>,
+    /// Macros that are defined outside of the current file,
+    /// typically via project configuration.
+    pub externally_defined: BTreeSet<MacroName>,
     pub module_name: Option<Name>,
     /// When true, enables ifdef/ifndef condition evaluation (experimental).
     /// When false, all forms are treated as active (legacy behavior).
@@ -61,7 +63,7 @@ impl MacroEnvironment {
 
     /// Define a macro in this environment.
     pub fn define(&mut self, name: MacroName) {
-        self.predefined.insert(name);
+        self.externally_defined.insert(name);
     }
 
     /// Set the module name for this environment.
@@ -145,7 +147,7 @@ impl PreprocessorState {
     pub fn new(env: &MacroEnvironment) -> Self {
         Self {
             condition_stack: Vec::new(),
-            defined_macros: env.predefined.clone(),
+            defined_macros: env.externally_defined.clone(),
             define_attr_macros: FxHashMap::default(),
             is_active: true,
             module_name: env.module_name.clone(),
@@ -559,7 +561,7 @@ fn process_pp_directive(
                     // Create an environment for the included file that inherits
                     // the current module name context and originating app identity
                     let mut include_env = MacroEnvironment::new();
-                    include_env.predefined = state.defined_macros().clone();
+                    include_env.externally_defined = state.defined_macros().clone();
                     include_env.orig_app_data_id = env.orig_app_data_id;
                     include_env.ifdef = env.ifdef;
                     if let Some(module_name) = env.module_name() {
@@ -643,7 +645,7 @@ mod tests {
     #[test]
     fn test_macro_environment_new() {
         let env = MacroEnvironment::new();
-        assert!(env.predefined.is_empty());
+        assert!(env.externally_defined.is_empty());
         assert!(env.module_name.is_none());
     }
 
@@ -654,12 +656,12 @@ mod tests {
         let bar = macro_name("BAR");
 
         env.define(foo.clone());
-        assert!(env.predefined.contains(&foo));
-        assert!(!env.predefined.contains(&bar));
+        assert!(env.externally_defined.contains(&foo));
+        assert!(!env.externally_defined.contains(&bar));
 
         env.define(bar.clone());
-        assert!(env.predefined.contains(&foo));
-        assert!(env.predefined.contains(&bar));
+        assert!(env.externally_defined.contains(&foo));
+        assert!(env.externally_defined.contains(&bar));
     }
 
     #[test]
@@ -1220,8 +1222,8 @@ this_is_inactive() -> ok.
     fn test_macro_environment_with_test_macros() {
         let env = MacroEnvironment::with_test_macros();
 
-        assert!(env.predefined.contains(&macro_name("TEST")));
-        assert!(env.predefined.contains(&macro_name("DEBUG")));
+        assert!(env.externally_defined.contains(&macro_name("TEST")));
+        assert!(env.externally_defined.contains(&macro_name("DEBUG")));
     }
 
     #[test]
