@@ -117,14 +117,18 @@ fn type_at_position(
         return None;
     }
     let project_id = db.file_app_data(range.file_id)?.project_id;
+    let module_index = db.module_index(project_id);
+    // Check if this file is actually a module (not an .hrl header file).
+    // When analyzing code that originated from an included header file,
+    // the FileRange may point to the .hrl file, which is not a module
+    // and cannot be typechecked by eqwalizer.
+    let module = module_index.module_for_file(range.file_id)?;
     if let EqwalizerDiagnostics::Diagnostics { type_info, .. } =
         &(*eqwalizer_diagnostics_by_project(db, project_id, vec![range.file_id]))
     {
         let start: u32 = range.range.start().into();
         let end: u32 = range.range.end().into();
-        let module_index = db.module_index(project_id);
-        let module = module_index.module_for_file(range.file_id)?;
-        let file_types = type_info.get(&module.to_string())?;
+        let file_types = type_info.get(module.as_str())?;
         let (text_range, ty) = file_types
             .iter()
             .filter_map(|(pos, ty)| match pos {
