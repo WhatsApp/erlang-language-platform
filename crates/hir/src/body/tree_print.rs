@@ -117,6 +117,10 @@ pub(crate) fn print_attribute(
     match form {
         AnyAttribute::CompileOption(_) => writeln!(printer, "-compile(").unwrap(),
         AnyAttribute::Attribute(attr) => writeln!(printer, "-{}(", attr.name).unwrap(),
+        AnyAttribute::ModuleDocAttribute => writeln!(printer, "-moduledoc(").unwrap(),
+        AnyAttribute::ModuleDocMetadataAttribute => writeln!(printer, "-moduledoc(").unwrap(),
+        AnyAttribute::DocAttribute => writeln!(printer, "-doc(").unwrap(),
+        AnyAttribute::DocMetadataAttribute => writeln!(printer, "-doc(").unwrap(),
     }
 
     printer.indent();

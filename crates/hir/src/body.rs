@@ -1012,6 +1012,10 @@ impl RecordBody {
 pub enum AnyAttribute {
     CompileOption(CompileOption),
     Attribute(Attribute),
+    ModuleDocAttribute,
+    ModuleDocMetadataAttribute,
+    DocAttribute,
+    DocMetadataAttribute,
 }
 
 impl AttributeBody {

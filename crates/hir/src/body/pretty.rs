@@ -163,6 +163,12 @@ pub fn print_attribute(
         AnyAttribute::Attribute(attr) => {
             write!(printer, "-{}(", attr.name).expect("write should succeed")
         }
+        AnyAttribute::ModuleDocAttribute | AnyAttribute::ModuleDocMetadataAttribute => {
+            write!(printer, "-moduledoc(").expect("write should succeed")
+        }
+        AnyAttribute::DocAttribute | AnyAttribute::DocMetadataAttribute => {
+            write!(printer, "-doc(").expect("write should succeed")
+        }
     }
     printer
         .print_term(&printer.body[body.value])

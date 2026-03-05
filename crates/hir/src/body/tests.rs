@@ -3428,5 +3428,51 @@ fn tree_print_attribute_macro_redefine_point_in_file() {
     );
 }
 
+/// Demonstrates that doc attribute bodies resolve macros using point-in-file
+/// state rather than end-of-file state. The first `-doc ?DOC` sees the
+/// first definition of `?DOC` (→ `"old doc"`) while the second sees the
+/// redefined version (→ `"new doc"`).
+///
+/// Without the `set_macro_defs_from_preprocessor` call in
+/// `doc_body_with_source_query`, both doc attributes would resolve `?DOC`
+/// to the final (second) definition, producing `"new doc"` in both.
+#[test]
+fn tree_print_doc_macro_redefine_point_in_file() {
+    check_ast(
+        r#"
+-define(DOC, "old doc").
+-doc ?DOC.
+foo() -> ok.
+-undef(DOC).
+-define(DOC, "new doc").
+-doc ?DOC.
+bar() -> ok.
+"#,
+        expect![[r#"
+            -define(DOC,
+                Expr<0>:Literal(String(Normal("old doc")))
+            ).
+            function: foo/0
+            Clause {
+                pats
+                guards
+                exprs
+                    Expr<1>:Literal(Atom('ok')),
+            }.
+
+            -define(DOC,
+                Expr<0>:Literal(String(Normal("new doc")))
+            ).
+            function: bar/0
+            Clause {
+                pats
+                guards
+                exprs
+                    Expr<1>:Literal(Atom('ok')),
+            }.
+        "#]],
+    );
+}
+
 // Tree printing ends
 // ---------------------------------------------------------------------
