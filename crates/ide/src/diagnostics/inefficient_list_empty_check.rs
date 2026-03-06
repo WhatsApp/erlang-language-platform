@@ -55,6 +55,19 @@ impl Linter for InefficientListEmptyCheckLinter {
 impl SsrPatternsLinter for InefficientListEmptyCheckLinter {
     type Context = ();
 
+    fn is_match_valid(
+        &self,
+        _context: &Self::Context,
+        matched: &elp_ide_ssr::Match,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<bool> {
+        if matched.range.file_id != file_id {
+            return None;
+        }
+        Some(true)
+    }
+
     fn patterns(&self) -> &'static [(String, Self::Context)] {
         lazy_static! {
             static ref PATTERNS: Vec<(String, ())> = vec![
@@ -533,6 +546,31 @@ mod tests {
         check_list(List) ->
             case List of [] -> empty; [_ | _] -> non_empty end.
            "#]],
+        )
+    }
+
+    // T256431185: SSR can return matches with file_id from header files
+    // when the pattern is used in a macro argument. Only process matches
+    // that belong to the current file being analyzed.
+    #[test]
+    fn ignores_match_in_macro_arg_from_header_file() {
+        check_diagnostics(
+            r#"
+        //- /assert/include/assert.hrl app:assert include_path:/assert/include
+        %% Padding to ensure header file range exceeds source file length
+        %% This triggers file_id mismatch when SSR matches in macro arg
+        -define(assert_result(Expr),
+            case (Expr) of
+                ok -> ok;
+                _ -> erlang:error(assertion_failed)
+            end).
+
+        //- /src/test.erl app:test
+        -module(test).
+        -include_lib("assert/include/assert.hrl").
+        f(List) ->
+            ?assert_result(case length(List) > 0 of true -> ok; false -> err end).
+           "#,
         )
     }
 
