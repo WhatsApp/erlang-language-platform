@@ -53,19 +53,6 @@ impl SsrPatternsLinter for EncodeHexWithCaseLinter {
         &PATTERNS
     }
 
-    fn is_match_valid(
-        &self,
-        _context: &Self::Context,
-        matched: &elp_ide_ssr::Match,
-        _sema: &Semantic,
-        file_id: FileId,
-    ) -> Option<bool> {
-        if matched.range.file_id != file_id {
-            return None;
-        }
-        Some(true)
-    }
-
     fn fixes(
         &self,
         _context: &Self::Context,

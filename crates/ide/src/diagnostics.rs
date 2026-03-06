@@ -765,6 +765,14 @@ pub(crate) trait SsrPatternsLinter: Linter {
     /// Use the `Context` to distinguish between each variant
     fn patterns(&self) -> &'static [(String, Self::Context)];
 
+    /// Filter a match before validation. The default implementation rejects
+    /// matches from a different file than the one being analyzed:
+    /// SSR can return matches with file_id from header files due to macro
+    /// expansion). Override to allow cross-file matches if needed.
+    fn filter_match(&self, matched: &elp_ide_ssr::Match, file_id: FileId) -> bool {
+        matched.range.file_id == file_id
+    }
+
     /// Customize the description based on each matched pattern.
     /// If implemented, it overrides the value of the `description()`.
     fn pattern_description(&self, _context: &Self::Context) -> &'static str {
@@ -852,6 +860,9 @@ impl<T: SsrPatternsLinter> SsrPatternsDiagnostics for T {
             let scope = self.scope(file_id);
             let matches = match_pattern(sema, strategy, pattern, scope);
             for matched in &matches.matches {
+                if !self.filter_match(matched, file_id) {
+                    continue;
+                }
                 if Some(true) == self.is_match_valid(context, matched, sema, file_id) {
                     let message = self.pattern_description(context);
                     let fixes = self.fixes(context, matched, sema, file_id);

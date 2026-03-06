@@ -208,11 +208,8 @@ impl SsrPatternsLinter for EqualityCheckWithUnnecessaryOperatorLinter {
         context: &Self::Context,
         matched: &Match,
         sema: &Semantic,
-        file_id: FileId,
+        _file_id: FileId,
     ) -> Option<bool> {
-        if matched.range.file_id != file_id {
-            return None;
-        }
         if let Some(comments) = matched.comments(sema)
             && !comments.is_empty()
         {

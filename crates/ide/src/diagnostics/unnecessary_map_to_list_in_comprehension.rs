@@ -119,19 +119,13 @@ impl SsrPatternsLinter for UnnecessaryMapToListInComprehensionLinter {
         _context: &Self::Context,
         matched: &elp_ide_ssr::Match,
         sema: &Semantic,
-        file_id: FileId,
+        _file_id: FileId,
     ) -> Option<bool> {
         if let Some(comments) = matched.comments(sema) {
             // Avoid clobbering comments in the original source code
             if !comments.is_empty() {
                 return None;
             }
-        }
-        if matched.range.file_id != file_id {
-            // We've somehow ended up with a match in a different file - this means we've
-            // accidentally expanded a macro from a different file, or some other complex case that
-            // gets hairy, so bail out.
-            return None;
         }
         Some(true)
     }

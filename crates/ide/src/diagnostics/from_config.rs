@@ -255,13 +255,9 @@ impl MatchSsr {
         });
 
         let scope = SsrSearchScope::WholeFile(file_id);
-        let matches = match_pattern(sema, strategy, &self.ssr_pattern, scope);
+        let matches = match_pattern(sema, strategy, &self.ssr_pattern, scope).in_file(file_id);
 
         for matched in matches.matches {
-            if matched.range.file_id != file_id {
-                continue;
-            }
-
             let message = self
                 .message
                 .clone()

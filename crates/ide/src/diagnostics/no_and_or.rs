@@ -67,19 +67,6 @@ impl SsrPatternsLinter for NoAndOrLinter {
         }
     }
 
-    fn is_match_valid(
-        &self,
-        _context: &Self::Context,
-        matched: &Match,
-        _sema: &Semantic,
-        file_id: FileId,
-    ) -> Option<bool> {
-        // T256431185: SSR can return matches with file_id from header files
-        // when the operator is used in a macro argument. Only process matches
-        // that belong to the current file being analyzed.
-        Some(matched.range.file_id == file_id)
-    }
-
     fn range(&self, sema: &Semantic, matched: &Match) -> Option<TextRange> {
         let source_file = sema.parse(matched.range.file_id);
         let syntax = source_file.value.syntax();

@@ -207,14 +207,11 @@ impl SsrPatternsLinter for MapFindToSyntaxLinter {
         _context: &Self::Context,
         matched: &Match,
         sema: &Semantic,
-        file_id: FileId,
+        _file_id: FileId,
     ) -> Option<bool> {
         if let Some(comments) = matched.comments(sema)
             && !comments.is_empty()
         {
-            return None;
-        }
-        if matched.range.file_id != file_id {
             return None;
         }
         let key = matched.get_placeholder_match(sema, KEY_VAR)?;

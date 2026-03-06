@@ -55,19 +55,6 @@ impl Linter for InefficientListEmptyCheckLinter {
 impl SsrPatternsLinter for InefficientListEmptyCheckLinter {
     type Context = ();
 
-    fn is_match_valid(
-        &self,
-        _context: &Self::Context,
-        matched: &elp_ide_ssr::Match,
-        _sema: &Semantic,
-        file_id: FileId,
-    ) -> Option<bool> {
-        if matched.range.file_id != file_id {
-            return None;
-        }
-        Some(true)
-    }
-
     fn patterns(&self) -> &'static [(String, Self::Context)] {
         lazy_static! {
             static ref PATTERNS: Vec<(String, ())> = vec![

@@ -79,11 +79,8 @@ impl SsrPatternsLinter for MapPutToSyntaxLinter {
         _context: &Self::Context,
         matched: &Match,
         sema: &Semantic,
-        file_id: FileId,
+        _file_id: FileId,
     ) -> Option<bool> {
-        if matched.range.file_id != file_id {
-            return None;
-        }
         let map_match = matched.get_placeholder_match(sema, MAP_VAR)?;
         Some(is_placeholder_a_var_from_sema_and_match(
             sema, matched, &map_match,
@@ -161,11 +158,8 @@ impl SsrPatternsLinter for MapUpdateToSyntaxLinter {
         _context: &Self::Context,
         matched: &Match,
         sema: &Semantic,
-        file_id: FileId,
+        _file_id: FileId,
     ) -> Option<bool> {
-        if matched.range.file_id != file_id {
-            return None;
-        }
         let map_match = matched.get_placeholder_match(sema, MAP_VAR)?;
         Some(is_placeholder_a_var_from_sema_and_match(
             sema, matched, &map_match,

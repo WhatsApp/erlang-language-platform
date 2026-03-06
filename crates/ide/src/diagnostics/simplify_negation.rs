@@ -147,7 +147,8 @@ fn from_ssr(
         },
         file_id,
         ssr_pattern,
-    );
+    )
+    .in_file(file_id);
     matches.matches.iter().for_each(|m| {
         if let Some(diagnostic) = make_diagnostic(sema, m, branch_order) {
             diags.push(diagnostic)
@@ -183,7 +184,7 @@ fn make_diagnostic(
 
 fn get_replacement(
     sema: &Semantic,
-    original_file_id: FileId,
+    _original_file_id: FileId,
     m: &Match,
     branch_order: BranchOrder,
 ) -> Option<String> {
@@ -192,12 +193,6 @@ fn get_replacement(
         if !comments.is_empty() {
             return None;
         }
-    }
-    if m.range.file_id != original_file_id {
-        // We've somehow ended up with a match in a different file - this means we've
-        // accidentally expanded a macro from a different file, or some other complex case that
-        // gets hairy, so bail out.
-        return None;
     }
     let new_discriminee_expr_text = m.placeholder_text(sema, NEGATED_EXPR_VAR)?;
     let affirmative_branch_text = m.placeholder_text(sema, AFFIRMATIVE_BRANCH_VAR)?;

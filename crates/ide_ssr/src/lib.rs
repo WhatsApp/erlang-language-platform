@@ -384,6 +384,20 @@ pub struct SsrMatches {
     pub matches: Vec<Match>,
 }
 
+impl SsrMatches {
+    /// Filter matches to only include those from the given file.
+    /// Useful for discarding cross-file matches caused by macro expansion
+    pub fn in_file(self, file_id: FileId) -> SsrMatches {
+        SsrMatches {
+            matches: self
+                .matches
+                .into_iter()
+                .filter(|m| m.range.file_id == file_id)
+                .collect(),
+        }
+    }
+}
+
 /// Searches a file for pattern matches and possibly replaces them
 /// with something else.
 pub struct MatchFinder<'a> {

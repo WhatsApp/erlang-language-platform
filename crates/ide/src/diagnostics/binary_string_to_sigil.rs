@@ -64,14 +64,8 @@ impl SsrPatternsLinter for BinaryStringToSigilLinter {
         _context: &Self::Context,
         matched: &elp_ide_ssr::Match,
         sema: &Semantic,
-        file_id: FileId,
+        _file_id: FileId,
     ) -> Option<bool> {
-        // Defensive check - SSR can return matches with file_id
-        // from header files. While DoNotExpand strategy makes this unlikely,
-        // guard against it to prevent diagnostics with incorrect ranges.
-        if matched.range.file_id != file_id {
-            return None;
-        }
         let string_content_match_src = matched.placeholder_text(sema, STRING_CONTENT_VAR)?;
         // Only process if the content is a string literal (starts and ends with quotes)
         if !string_content_match_src.starts_with('"') || !string_content_match_src.ends_with('"') {
