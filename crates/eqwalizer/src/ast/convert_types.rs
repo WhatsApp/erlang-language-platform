@@ -43,6 +43,7 @@ use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::types::UnionType;
 use elp_types_db::eqwalizer::types::VarType;
 use fxhash::FxHashMap;
+use indexmap::IndexSet;
 
 use super::TypeConversionError;
 
@@ -118,7 +119,11 @@ impl TypeConverter {
             .convert_fun_type(&subst, cft.ty)?
             .map_err(TypeConversionError::ErrorInFunType)?;
         Ok(FunType {
-            forall: subst.into_values().collect(),
+            forall: {
+                let mut v: Vec<u32> = subst.into_values().collect();
+                v.sort();
+                v
+            },
             ..ft
         })
     }
@@ -390,11 +395,14 @@ impl TypeConverter {
     }
 
     fn collect_var_names_in_fun_type(&self, ty: &FunExtType) -> Vec<StringId> {
-        [
-            self.collect_var_names(&ty.res_ty),
+        let names: IndexSet<StringId> = [
             self.collect_all_var_names(&ty.arg_tys),
+            self.collect_var_names(&ty.res_ty),
         ]
         .concat()
+        .into_iter()
+        .collect();
+        names.into_iter().collect()
     }
 
     fn collect_var_names(&self, ty: &ExtType) -> Vec<StringId> {

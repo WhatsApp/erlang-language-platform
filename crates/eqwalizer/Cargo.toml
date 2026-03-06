@@ -22,3 +22,4 @@ serde.workspace = true
 stdx.workspace = true
 tempfile.workspace = true
 timeout-readwrite.workspace = true
+indexmap.workspace = true

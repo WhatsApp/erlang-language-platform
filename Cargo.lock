@@ -464,6 +464,7 @@ dependencies = [
  "elp_syntax",
  "elp_types_db",
  "fxhash",
+ "indexmap 2.13.0",
  "log",
  "parking_lot 0.12.4",
  "salsa",
