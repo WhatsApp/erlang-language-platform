@@ -168,6 +168,22 @@ impl SsrPatternsLinter for UncheckedCastLinter {
         &PATTERNS
     }
 
+    fn is_match_valid(
+        &self,
+        _context: &Self::Context,
+        matched: &elp_ide_ssr::Match,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<bool> {
+        // Defensive check - SSR can return matches with file_id
+        // from header files. While DoNotExpand strategy makes this unlikely,
+        // guard against it to prevent diagnostics with incorrect ranges.
+        if matched.range.file_id != file_id {
+            return None;
+        }
+        Some(true)
+    }
+
     fn strategy(&self) -> Strategy {
         Strategy {
             macros: MacroStrategy::DoNotExpand,
