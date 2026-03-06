@@ -65,13 +65,9 @@ impl GenericLinter for BoundVariableLinter {
                             if let AnyExpr::Expr(Expr::Match { lhs, rhs: _ }) = ctx.item
                                 && bound_vars.contains(&lhs)
                                 && let Some(range) = in_clause.range_for_pat(lhs)
-                                && range.file_id == def.file.file_id
                                 && ctx.in_macro.is_none()
                             {
-                                res.push(GenericLinterMatchContext {
-                                    range: range.range,
-                                    context: (),
-                                });
+                                res.push(GenericLinterMatchContext { range, context: () });
                             };
                             acc
                         },

@@ -17,6 +17,7 @@ use std::borrow::Cow;
 
 use elp_ide_completion::IncludeFile;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use elp_ide_db::text_edit::TextRange;
@@ -78,7 +79,7 @@ impl GenericLinter for MissingMsTransformIncludeLinter {
             let mfa = FunctionMatch::mfa("ets", "fun2ms", 1);
             let mfas: Vec<(&FunctionMatch, ())> = vec![(&mfa, ())];
             let empty: Vec<(&FunctionMatch, ())> = vec![];
-            let mut call_ranges: Vec<TextRange> = Vec::new();
+            let mut call_ranges: Vec<FileRange> = Vec::new();
 
             let insert_offset = insert_position.offset;
 
@@ -92,7 +93,7 @@ impl GenericLinter for MissingMsTransformIncludeLinter {
                         &mfas,
                         &empty,
                         &move |_ctx| Some(()),
-                        &move |ctx| Some(ctx.range.range),
+                        &move |ctx| Some(ctx.range),
                     );
                 });
 

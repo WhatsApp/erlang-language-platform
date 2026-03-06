@@ -10,6 +10,7 @@
 
 // Diagnostic: no-dialyzer-attribute
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use hir::Semantic;
 use hir::known;
 
@@ -48,7 +49,10 @@ impl GenericLinter for NoDialyzerAttributeLinter {
             if attr.name == known::dialyzer
                 && let Some(range) = attr.name_range(sema.db, file_id)
             {
-                res.push(GenericLinterMatchContext { range, context: () })
+                res.push(GenericLinterMatchContext {
+                    range: FileRange { file_id, range },
+                    context: (),
+                })
             }
         });
         Some(res)

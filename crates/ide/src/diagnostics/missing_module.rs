@@ -13,6 +13,7 @@
 // Return a diagnostic if a module does not have a module definition
 
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_syntax::AstNode;
 use elp_syntax::ast;
 use hir::Semantic;
@@ -68,7 +69,10 @@ impl GenericLinter for MissingModuleLinter {
                 }
                 other_form => {
                     let range = other_form.syntax().text_range();
-                    res.push(GenericLinterMatchContext { range, context: () });
+                    res.push(GenericLinterMatchContext {
+                        range: FileRange { file_id, range },
+                        context: (),
+                    });
                     break;
                 }
             }

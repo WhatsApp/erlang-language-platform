@@ -102,13 +102,9 @@ impl GenericLinter for MixedStrictRelaxedGeneratorsLinter {
                                         && zip_has_mixed_strictness(zip_exprs.as_slice())
                                         && let hir::AnyExprId::Expr(expr_id) = ctx.item_id
                                         && let Some(range) = in_clause.range_for_expr(expr_id)
-                                        && range.file_id == def.file.file_id
                                         && ctx.in_macro.is_none()
                                     {
-                                        res.push(GenericLinterMatchContext {
-                                            range: range.range,
-                                            context: (),
-                                        });
+                                        res.push(GenericLinterMatchContext { range, context: () });
                                     }
                                 }
                             };

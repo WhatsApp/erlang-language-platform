@@ -11,6 +11,7 @@
 // Diagnostic: undocumented-function
 use elp_ide_assists::helpers::unwrap_parens;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::text_edit::TextRange;
 use elp_syntax::ast;
 use elp_syntax::ast::Atom;
@@ -71,7 +72,7 @@ impl GenericLinter for UndocumentedFunctionLinter {
             sema.def_map_local(file_id)
                 .get_functions()
                 .for_each(|(_arity, def)| {
-                    if let Some(match_context) = check_function(sema, def, &callbacks) {
+                    if let Some(match_context) = check_function(sema, file_id, def, &callbacks) {
                         res.push(match_context);
                     }
                 });
@@ -118,6 +119,7 @@ fn function_should_be_checked(
 
 fn check_function(
     sema: &Semantic,
+    file_id: FileId,
     def: &FunctionDef,
     callbacks: &FxHashSet<NameArity>,
 ) -> Option<GenericLinterMatchContext<Context>> {
@@ -128,7 +130,10 @@ fn check_function(
         && let Some(name_range) = def.name_range(sema.db)
     {
         Some(GenericLinterMatchContext {
-            range: name_range,
+            range: FileRange {
+                file_id,
+                range: name_range,
+            },
             context: Context { range: name_range },
         })
     } else {

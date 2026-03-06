@@ -14,6 +14,7 @@ use elp_ide_assists::Assist;
 use elp_ide_assists::helpers;
 use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::text_edit::TextRange;
 use elp_ide_db::text_edit::TextSize;
@@ -64,7 +65,10 @@ impl GenericLinter for OldEdocSyntaxLinter {
                 if let Some(doc) = &header.doc {
                     if let Some(doc_start) = header.start() {
                         res.push(GenericLinterMatchContext {
-                            range: doc.range,
+                            range: FileRange {
+                                file_id,
+                                range: doc.range,
+                            },
                             context: Context {
                                 header_ptr: Some(*header_ptr),
                                 doc_start,
@@ -74,7 +78,10 @@ impl GenericLinter for OldEdocSyntaxLinter {
                 } else if let Some(equiv) = &header.equiv {
                     if let Some(doc_start) = header.start() {
                         res.push(GenericLinterMatchContext {
-                            range: equiv.range,
+                            range: FileRange {
+                                file_id,
+                                range: equiv.range,
+                            },
                             context: Context {
                                 header_ptr: Some(*header_ptr),
                                 doc_start,
@@ -84,7 +91,10 @@ impl GenericLinter for OldEdocSyntaxLinter {
                 } else if let Some(deprecated) = &header.deprecated {
                     if let Some(doc_start) = header.start() {
                         res.push(GenericLinterMatchContext {
-                            range: deprecated.range,
+                            range: FileRange {
+                                file_id,
+                                range: deprecated.range,
+                            },
                             context: Context {
                                 header_ptr: Some(*header_ptr),
                                 doc_start,
@@ -95,7 +105,10 @@ impl GenericLinter for OldEdocSyntaxLinter {
                     && let Some(doc_start) = header.start()
                 {
                     res.push(GenericLinterMatchContext {
-                        range: hidden.range,
+                        range: FileRange {
+                            file_id,
+                            range: hidden.range,
+                        },
                         context: Context {
                             header_ptr: Some(*header_ptr),
                             doc_start,

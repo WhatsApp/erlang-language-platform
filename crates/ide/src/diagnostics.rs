@@ -888,7 +888,7 @@ impl<T: SsrPatternsLinter> SsrPatternsDiagnostics for T {
 }
 
 pub(crate) struct GenericLinterMatchContext<Context> {
-    pub range: TextRange,
+    pub range: FileRange,
     pub context: Context,
 }
 
@@ -904,6 +904,18 @@ pub(crate) trait GenericLinter: Linter {
         _file_id: FileId,
     ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
         None
+    }
+
+    /// Filter a match before processing. The default implementation rejects
+    /// matches from a different file than the one being analyzed (which can
+    /// happen due to macro expansion across files). Override to allow
+    /// cross-file matches if needed.
+    fn filter_match(
+        &self,
+        matched: &GenericLinterMatchContext<Self::Context>,
+        file_id: FileId,
+    ) -> bool {
+        matched.range.file_id == file_id
     }
 
     /// Customize the description based on each match.
@@ -963,11 +975,15 @@ impl<T: GenericLinter> GenericDiagnostics for T {
         let mut res = Vec::new();
         if let Some(matches) = self.matches(sema, file_id) {
             for matched in matches {
+                if !self.filter_match(&matched, file_id) {
+                    continue;
+                }
+                let range = matched.range.range;
                 let message = self.match_description(&matched.context);
-                let fixes = self.fixes(&matched.context, matched.range, sema, file_id);
+                let fixes = self.fixes(&matched.context, range, sema, file_id);
                 let tag = self.tag(&matched.context);
                 let related = self.related(&matched.context, sema, file_id);
-                let mut d = Diagnostic::new(self.id(), message, matched.range)
+                let mut d = Diagnostic::new(self.id(), message, range)
                     .with_fixes(fixes)
                     .with_tag(tag)
                     .with_related(related)

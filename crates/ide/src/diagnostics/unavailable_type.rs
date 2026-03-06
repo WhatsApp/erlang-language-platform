@@ -326,7 +326,7 @@ fn check_type_call(
             defining_app_name,
         ) {
             matches.push(GenericLinterMatchContext {
-                range: target_range.range,
+                range: target_range,
                 context: Context {
                     type_label: target_label.to_string(),
                     defining_app: defining_app_name.to_string(),

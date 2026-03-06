@@ -93,12 +93,10 @@ impl GenericLinter for MacroPrecedenceSupriseLinter {
                                 &visible_parens_body.get_any(hir_idx.idx)
                             {
                                 let range = ast.range();
-                                if range.file_id == file_id {
-                                    res.push(GenericLinterMatchContext {
-                                        range: range.range,
-                                        context: MacroPrecedenceContext,
-                                    });
-                                }
+                                res.push(GenericLinterMatchContext {
+                                    range,
+                                    context: MacroPrecedenceContext,
+                                });
                             }
                         }
                     };

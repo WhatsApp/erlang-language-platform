@@ -13,6 +13,7 @@
 // Return a warning if more than one module has the same name
 
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::ModuleName;
 use elp_syntax::AstNode;
 use hir::Semantic;
@@ -56,7 +57,10 @@ impl GenericLinter for DuplicateModuleLinter {
         let module_index = sema.db.module_index(app_data.project_id);
         if let Some(_dups) = module_index.duplicates(&module_name) {
             let range = module_name_ast.syntax().text_range();
-            res.push(GenericLinterMatchContext { range, context: () });
+            res.push(GenericLinterMatchContext {
+                range: FileRange { file_id, range },
+                context: (),
+            });
         }
         Some(res)
     }

@@ -13,6 +13,7 @@
 // Return a warning if an include path is not fully specified
 
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::generated_file_include_lib;
 use elp_ide_db::elp_base_db::path_for_file;
 use elp_ide_db::source_change::SourceChange;
@@ -137,7 +138,7 @@ impl GenericLinter for UnspecificIncludeLinter {
 
             if let Some((range, make_include_lib)) = range_and_lib {
                 res.push(GenericLinterMatchContext {
-                    range,
+                    range: FileRange { file_id, range },
                     context: Context {
                         replacement,
                         make_include_lib,

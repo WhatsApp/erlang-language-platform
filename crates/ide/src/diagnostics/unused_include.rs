@@ -18,6 +18,7 @@ use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::SearchScope;
 use elp_ide_db::SymbolDefinition;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use elp_syntax::SmolStr;
@@ -120,7 +121,10 @@ impl GenericLinter for UnusedIncludeLinter {
                     log::debug!("Found unused include {path:?}");
 
                     res.push(GenericLinterMatchContext {
-                        range: attribute_range,
+                        range: FileRange {
+                            file_id,
+                            range: attribute_range,
+                        },
                         context: Context {
                             path: path.clone(),
                             extended_range: extended_attribute_range,

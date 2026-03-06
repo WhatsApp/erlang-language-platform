@@ -122,7 +122,6 @@ impl GenericLinter for RedundantFunWrapperLinter {
                             && ctx.in_macro.is_none() // Skip closures inside macros
                             && let hir::AnyExprId::Expr(expr_id) = ctx.item_id
                             && let Some(range) = in_clause.range_for_expr(expr_id)
-                            && range.file_id == file_id
                             && let Some(kind) = check_redundant_wrapper(
                                 sema,
                                 &in_clause,
@@ -132,7 +131,7 @@ impl GenericLinter for RedundantFunWrapperLinter {
                             )
                         {
                             res.push(GenericLinterMatchContext {
-                                range: range.range,
+                                range,
                                 context: kind,
                             });
                         }

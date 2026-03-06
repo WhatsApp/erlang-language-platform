@@ -10,6 +10,7 @@
 
 // Diagnostic: no-catch
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_syntax::AstNode;
 use hir::AnyExpr;
 use hir::AnyExprId;
@@ -50,7 +51,7 @@ impl GenericLinter for NoCatchLinter {
         sema.def_map_local(file_id)
             .get_functions()
             .for_each(|(_, def)| {
-                check_function(&mut res, sema, def);
+                check_function(&mut res, sema, file_id, def);
             });
         Some(res)
     }
@@ -61,6 +62,7 @@ pub static LINTER: NoCatchLinter = NoCatchLinter;
 fn check_function(
     matches: &mut Vec<GenericLinterMatchContext<()>>,
     sema: &Semantic,
+    file_id: FileId,
     def: &FunctionDef,
 ) {
     let def_fb = def.in_function_body(sema, def);
@@ -73,7 +75,7 @@ fn check_function(
         &mut |_acc, clause_id, ctx| {
             if let AnyExpr::Expr(Expr::Catch { expr: _ }) = ctx.item {
                 let map = def_fb.get_body_map(clause_id);
-                if let Some(match_context) = make_match_context(sema, &map, ctx.item_id) {
+                if let Some(match_context) = make_match_context(sema, file_id, &map, ctx.item_id) {
                     matches.push(match_context);
                 }
             };
@@ -83,6 +85,7 @@ fn check_function(
 
 fn make_match_context(
     sema: &Semantic,
+    file_id: FileId,
     map: &BodySourceMap,
     item_id: AnyExprId,
 ) -> Option<GenericLinterMatchContext<()>> {
@@ -93,7 +96,10 @@ fn make_match_context(
                 elp_syntax::ast::Expr::CatchExpr(catch_expr) => {
                     let catch_keyword = catch_expr.syntax().first_token()?;
                     let range = catch_keyword.text_range();
-                    Some(GenericLinterMatchContext { range, context: () })
+                    Some(GenericLinterMatchContext {
+                        range: FileRange { file_id, range },
+                        context: (),
+                    })
                 }
                 _ => None,
             }

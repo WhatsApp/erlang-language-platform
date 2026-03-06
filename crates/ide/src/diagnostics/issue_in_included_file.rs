@@ -16,6 +16,7 @@
 use std::borrow::Cow;
 
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_syntax::TextRange;
 use hir::InFile;
 use hir::PPCondition;
@@ -103,7 +104,10 @@ impl GenericLinter for IssueInIncludedFileLinter {
                                     );
 
                                     matches.push(GenericLinterMatchContext {
-                                        range: include_range,
+                                        range: FileRange {
+                                            file_id,
+                                            range: include_range,
+                                        },
                                         context: IssueInIncludedFileContext {
                                             message: cond_diag.message.clone(),
                                             included_file_id,

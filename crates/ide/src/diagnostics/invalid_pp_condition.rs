@@ -17,6 +17,7 @@ use std::borrow::Cow;
 
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
+use elp_ide_db::elp_base_db::FileRange;
 use hir::PPCondition;
 use hir::Semantic;
 
@@ -83,7 +84,7 @@ impl GenericLinter for InvalidPPConditionLinter {
                     for cond_diag in cond_diagnostics {
                         let range = compute_pp_condition_range(sema.db, file_id, cond_id);
                         matches.push(GenericLinterMatchContext {
-                            range,
+                            range: FileRange { file_id, range },
                             context: InvalidPPConditionContext {
                                 message: cond_diag.message.clone(),
                             },

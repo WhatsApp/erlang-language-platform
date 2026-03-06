@@ -15,6 +15,7 @@
 use std::borrow::Cow;
 
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
@@ -87,16 +88,17 @@ impl GenericLinter for UnresolvedMacroLinter {
                             // Get the syntax range of just the macro name
                             let name_range = name.syntax().text_range();
                             // Include the '?' prefix by extending one character to the left
-                            if name_range.start() > 0.into() {
+                            let range = if name_range.start() > 0.into() {
                                 TextRange::new(
                                     name_range.start() - TextSize::from(1),
                                     name_range.end(),
                                 )
                             } else {
                                 name_range
-                            }
+                            };
+                            FileRange { file_id, range }
                         })
-                        .unwrap_or(full_range.range);
+                        .unwrap_or(full_range);
 
                     Some(GenericLinterMatchContext {
                         range,

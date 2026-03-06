@@ -11,6 +11,7 @@
 use elp_ide_assists::Assist;
 use elp_ide_assists::helpers;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::text_edit::TextRange;
 use elp_syntax::AstNode;
@@ -70,7 +71,10 @@ impl GenericLinter for UndocumentedModuleLinter {
             let module_name = module_attribute.name()?;
             let module_name_range = module_name.syntax().text_range();
             res.push(GenericLinterMatchContext {
-                range: module_name_range,
+                range: FileRange {
+                    file_id,
+                    range: module_name_range,
+                },
                 context: Context,
             });
         }

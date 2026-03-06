@@ -9,6 +9,7 @@
  */
 
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_syntax::AstNode;
 use elp_syntax::ast;
 use elp_syntax::match_ast;
@@ -58,7 +59,7 @@ impl GenericLinter for NoNoWarnSuppressionsLinter {
                                 if let Some(atom_text) = atom.text()
                                     && NOWARN_REGEX.is_match(&atom_text) {
                                         let range = atom.syntax().text_range();
-                                        res.push(GenericLinterMatchContext { range, context: () });
+                                        res.push(GenericLinterMatchContext { range: FileRange { file_id, range }, context: () });
                                     }
                             },
                             _ => {}

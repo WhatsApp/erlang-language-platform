@@ -19,6 +19,7 @@ use elp_ide_assists::helpers::rename_atom_in_compile_attribute;
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::text_edit::TextRange;
 use elp_syntax::AstNode;
@@ -89,7 +90,10 @@ impl GenericLinter for MissingCompileWarnMissingSpec {
         let form_list = sema.form_list(file_id);
         if form_list.compile_attributes().next().is_none() {
             res.push(GenericLinterMatchContext {
-                range: DIAGNOSTIC_WHOLE_FILE_RANGE,
+                range: FileRange {
+                    file_id,
+                    range: DIAGNOSTIC_WHOLE_FILE_RANGE,
+                },
                 context: Context {
                     found: Found::No,
                     compile_option_id: None,
@@ -143,7 +147,7 @@ impl GenericLinter for MissingCompileWarnMissingSpec {
                     .syntax()
                     .text_range();
                 res.push(GenericLinterMatchContext {
-                    range,
+                    range: FileRange { file_id, range },
                     context: Context {
                         found: what.0,
                         compile_option_id: what.1,

@@ -9,6 +9,7 @@
  */
 
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use elp_syntax::ast::AstNode;
@@ -85,7 +86,10 @@ impl GenericLinter for MisspelledAttributeLinter {
                     );
 
                     res.push(GenericLinterMatchContext {
-                        range: attr_name_range,
+                        range: FileRange {
+                            file_id,
+                            range: attr_name_range,
+                        },
                         context: Context {
                             attr_name: attr.name.to_string(),
                             suggested_rename: suggested_rename.to_string(),

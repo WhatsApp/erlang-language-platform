@@ -24,6 +24,7 @@ use elp_ide_assists::helpers::include_preceding_whitespace;
 use elp_ide_assists::helpers::unwrap_parens;
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use elp_ide_db::text_edit::TextRange;
@@ -229,7 +230,7 @@ fn collect_match(
             let preceding_ws_range = include_preceding_whitespace(&token);
 
             matches.push(GenericLinterMatchContext {
-                range,
+                range: FileRange { file_id, range },
                 context: Context {
                     preceding_ws_range,
                     op: binop,

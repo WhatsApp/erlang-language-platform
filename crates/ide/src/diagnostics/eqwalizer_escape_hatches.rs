@@ -16,6 +16,7 @@
 
 use elp_ide_db::LineIndex;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::metadata;
 use elp_ide_db::metadata::Kind;
 use elp_ide_db::metadata::Source;
@@ -47,7 +48,10 @@ fn find_eqwalizer_comments(
         .by_source(Source::Eqwalizer)
         .filter(|ann| ann.kind == kind)
         .map(|ann| GenericLinterMatchContext {
-            range: ann.comment_range,
+            range: FileRange {
+                file_id,
+                range: ann.comment_range,
+            },
             context: (),
         })
         .collect();

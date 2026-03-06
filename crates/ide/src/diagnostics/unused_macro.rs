@@ -18,6 +18,7 @@ use elp_ide_assists::Assist;
 use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::SymbolDefinition;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use elp_syntax::AstNode;
@@ -74,7 +75,10 @@ impl GenericLinter for UnusedMacroLinter {
                     delete_range: extend_range(def.source(sema.db).syntax()),
                     name: name.to_string(),
                 };
-                res.push(GenericLinterMatchContext { range, context });
+                res.push(GenericLinterMatchContext {
+                    range: FileRange { file_id, range },
+                    context,
+                });
             }
         }
         Some(res)

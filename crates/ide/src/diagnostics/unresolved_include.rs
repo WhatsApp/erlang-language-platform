@@ -15,7 +15,7 @@
 use std::borrow::Cow;
 
 use elp_ide_db::elp_base_db::FileId;
-use elp_syntax::TextRange;
+use elp_ide_db::elp_base_db::FileRange;
 use hir::BodyDiagnostic;
 use hir::IncludeAttribute;
 use hir::Semantic;
@@ -72,7 +72,7 @@ impl GenericLinter for UnresolvedIncludeLinter {
 
                     // Extract path and range from IncludeAttribute
                     let path = include_attr.path().to_string();
-                    let range: TextRange = include_attr.file_range(sema.db, file_id);
+                    let range = include_attr.file_range(sema.db, file_id);
 
                     // Use appropriate message based on include type
                     let message = match include_attr {
@@ -85,7 +85,7 @@ impl GenericLinter for UnresolvedIncludeLinter {
                     };
 
                     Some(GenericLinterMatchContext {
-                        range,
+                        range: FileRange { file_id, range },
                         context: UnresolvedIncludeContext { message },
                     })
                 } else {
