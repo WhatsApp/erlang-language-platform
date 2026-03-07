@@ -45,13 +45,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │     ^^^
    │     │
    │     Res.
-Expression has type:   number() | [dynamic()]
+Expression has type:   number() | erlang:stacktrace()
 Context expected type: number()
    │     
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: number()
-  However the following candidate: [dynamic()]
+  However the following candidate: [...]
   Differs from the expected type:  number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -67,7 +67,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 101 │         Class:_:Stack  -> {Class, Stack}
     │                           ^^^^^^^^^^^^^^ {Class, Stack}.
-Expression has type:   {'error' | 'exit' | 'throw', [dynamic()]}
+Expression has type:   {'error' | 'exit' | 'throw', erlang:stacktrace()}
 Context expected type: number()
 
 6 ERRORS
