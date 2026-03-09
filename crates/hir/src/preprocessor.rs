@@ -387,7 +387,10 @@ pub fn file_preprocessor_analysis_with_diagnostics_query(
         // Snapshot macro state for each unique ConditionEnvId.
         // This must happen BEFORE processing the form, so directive forms
         // get the state from before their own effect.
-        if let Some(pp_ctx) = form_list.get(form_idx).pp_ctx(&form_list)
+        // Only snapshot when ifdef is enabled — these snapshots are only
+        // consumed by ifdef-aware code paths.
+        if env.ifdef
+            && let Some(pp_ctx) = form_list.get(form_idx).pp_ctx(&form_list)
             && recorded_envs.insert(pp_ctx.env)
         {
             analysis
@@ -401,11 +404,16 @@ pub fn file_preprocessor_analysis_with_diagnostics_query(
                 // Snapshot macro defs for -if/-elif conditions so that
                 // downstream Salsa queries can resolve user macros with
                 // the correct point-in-time state.
-                if matches!(
-                    &form_list[cond_id],
-                    crate::form_list::PPCondition::If { .. }
-                        | crate::form_list::PPCondition::Elif { .. }
-                ) {
+                // Only snapshot when ifdef is enabled — these are only
+                // consumed by condition_body_with_source_query when
+                // ifdef is active.
+                if env.ifdef
+                    && matches!(
+                        &form_list[cond_id],
+                        crate::form_list::PPCondition::If { .. }
+                            | crate::form_list::PPCondition::Elif { .. }
+                    )
+                {
                     analysis
                         .condition_macro_defs
                         .insert(cond_id, Arc::new(state.define_attr_macros.clone()));
