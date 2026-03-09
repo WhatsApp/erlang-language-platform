@@ -30,6 +30,8 @@ use crate::condition_expr::ConditionExpr;
 use crate::db::DefDatabase;
 use crate::form_list::ConditionEnvId;
 use crate::form_list::PPConditionResult;
+#[cfg(test)]
+use crate::known;
 
 // ============================================================================
 // Macro environment for preprocessing
@@ -88,8 +90,8 @@ impl MacroEnvironment {
     #[cfg(test)]
     pub fn with_test_macros() -> Self {
         let mut env = Self::new();
-        env.define(MacroName::new(Name::from_erlang_service("TEST"), None));
-        env.define(MacroName::new(Name::from_erlang_service("DEBUG"), None));
+        env.define(MacroName::new(known::TEST, None));
+        env.define(MacroName::new(known::DEBUG, None));
         env
     }
 }

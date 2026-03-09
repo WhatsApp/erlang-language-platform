@@ -248,6 +248,9 @@ pub mod known {
         assertMatch,
         // predefined values
         ELP,
+        // test macros
+        TEST,
+        DEBUG,
         // known atoms
         apply,
         behaviour_info,
