@@ -138,81 +138,8 @@ impl ConditionExpr {
     /// cannot be determined (e.g., due to an invalid expression or
     /// undefined variables).
     pub fn evaluate(&self, defined_macros: &BTreeSet<MacroName>) -> Option<bool> {
-        match self {
-            // Short-circuit logical operations need special handling
-            ConditionExpr::Not(expr) => {
-                let value = evaluate_to_value(expr, defined_macros)?;
-                match value {
-                    ConditionValue::Bool(b) => Some(!b),
-                    // Type error: 'not' requires boolean operand
-                    _ => None,
-                }
-            }
-
-            ConditionExpr::AndAlso(left, right) => {
-                // Short-circuit: if left is false, result is false
-                let left_value = evaluate_to_value(left, defined_macros)?;
-                match left_value {
-                    ConditionValue::Bool(false) => Some(false),
-                    ConditionValue::Bool(true) => {
-                        let right_value = evaluate_to_value(right, defined_macros)?;
-                        match right_value {
-                            ConditionValue::Bool(b) => Some(b),
-                            // Type error: 'andalso' requires boolean operand
-                            _ => None,
-                        }
-                    }
-                    // Type error: 'andalso' requires boolean operand
-                    _ => None,
-                }
-            }
-
-            ConditionExpr::And(left, right) => {
-                // Strict 'and': always evaluate both sides
-                let left_value = evaluate_to_value(left, defined_macros)?;
-                let right_value = evaluate_to_value(right, defined_macros)?;
-                match (left_value, right_value) {
-                    (ConditionValue::Bool(l), ConditionValue::Bool(r)) => Some(l && r),
-                    // Type error: 'and' requires boolean operands
-                    _ => None,
-                }
-            }
-
-            ConditionExpr::OrElse(left, right) => {
-                // Short-circuit: if left is true, result is true
-                let left_value = evaluate_to_value(left, defined_macros)?;
-                match left_value {
-                    ConditionValue::Bool(true) => Some(true),
-                    ConditionValue::Bool(false) => {
-                        let right_value = evaluate_to_value(right, defined_macros)?;
-                        match right_value {
-                            ConditionValue::Bool(b) => Some(b),
-                            // Type error: 'orelse' requires boolean operand
-                            _ => None,
-                        }
-                    }
-                    // Type error: 'orelse' requires boolean operand
-                    _ => None,
-                }
-            }
-
-            ConditionExpr::Or(left, right) => {
-                // Strict 'or': always evaluate both sides
-                let left_value = evaluate_to_value(left, defined_macros)?;
-                let right_value = evaluate_to_value(right, defined_macros)?;
-                match (left_value, right_value) {
-                    (ConditionValue::Bool(l), ConditionValue::Bool(r)) => Some(l || r),
-                    // Type error: 'or' requires boolean operands
-                    _ => None,
-                }
-            }
-
-            // All other cases: evaluate to value and convert to bool
-            _ => {
-                let value = evaluate_to_value(self, defined_macros)?;
-                value_to_bool(&value)
-            }
-        }
+        let value = evaluate(self, defined_macros)?;
+        coerce_value_to_bool(&value)
     }
 }
 
@@ -220,7 +147,7 @@ impl ConditionExpr {
 ///
 /// In Erlang, only `true` and `false` atoms are valid boolean values.
 /// Integers, strings, and other atoms are not valid condition results.
-fn value_to_bool(value: &ConditionValue) -> Option<bool> {
+fn coerce_value_to_bool(value: &ConditionValue) -> Option<bool> {
     match value {
         ConditionValue::Bool(b) => Some(*b),
         // Integers are type errors so falsy in Erlang conditions
@@ -233,10 +160,7 @@ fn value_to_bool(value: &ConditionValue) -> Option<bool> {
 }
 
 /// Evaluate a sub-expression to a value (for use in comparisons and arithmetic).
-fn evaluate_to_value(
-    expr: &ConditionExpr,
-    defined_macros: &BTreeSet<MacroName>,
-) -> Option<ConditionValue> {
+fn evaluate(expr: &ConditionExpr, defined_macros: &BTreeSet<MacroName>) -> Option<ConditionValue> {
     match expr {
         ConditionExpr::LiteralBool(b) => Some(ConditionValue::Bool(*b)),
         ConditionExpr::Integer(i) => Some(ConditionValue::Integer(*i)),
@@ -260,7 +184,7 @@ fn evaluate_to_value(
         }
 
         ConditionExpr::Not(inner) => {
-            let value = evaluate_to_value(inner, defined_macros)?;
+            let value = evaluate(inner, defined_macros)?;
             match value {
                 ConditionValue::Bool(b) => Some(ConditionValue::Bool(!b)),
                 // Type error: 'not' requires boolean operand
@@ -269,11 +193,11 @@ fn evaluate_to_value(
         }
 
         ConditionExpr::AndAlso(left, right) => {
-            let left_value = evaluate_to_value(left, defined_macros)?;
+            let left_value = evaluate(left, defined_macros)?;
             match left_value {
                 ConditionValue::Bool(false) => Some(ConditionValue::Bool(false)),
                 ConditionValue::Bool(true) => {
-                    let right_value = evaluate_to_value(right, defined_macros)?;
+                    let right_value = evaluate(right, defined_macros)?;
                     match right_value {
                         ConditionValue::Bool(b) => Some(ConditionValue::Bool(b)),
                         // Type error: 'andalso' requires boolean operand
@@ -286,8 +210,8 @@ fn evaluate_to_value(
         }
 
         ConditionExpr::And(left, right) => {
-            let left_value = evaluate_to_value(left, defined_macros)?;
-            let right_value = evaluate_to_value(right, defined_macros)?;
+            let left_value = evaluate(left, defined_macros)?;
+            let right_value = evaluate(right, defined_macros)?;
             match (left_value, right_value) {
                 (ConditionValue::Bool(l), ConditionValue::Bool(r)) => {
                     Some(ConditionValue::Bool(l && r))
@@ -298,11 +222,11 @@ fn evaluate_to_value(
         }
 
         ConditionExpr::OrElse(left, right) => {
-            let left_value = evaluate_to_value(left, defined_macros)?;
+            let left_value = evaluate(left, defined_macros)?;
             match left_value {
                 ConditionValue::Bool(true) => Some(ConditionValue::Bool(true)),
                 ConditionValue::Bool(false) => {
-                    let right_value = evaluate_to_value(right, defined_macros)?;
+                    let right_value = evaluate(right, defined_macros)?;
                     match right_value {
                         ConditionValue::Bool(b) => Some(ConditionValue::Bool(b)),
                         // Type error: 'orelse' requires boolean operand
@@ -315,8 +239,8 @@ fn evaluate_to_value(
         }
 
         ConditionExpr::Or(left, right) => {
-            let left_value = evaluate_to_value(left, defined_macros)?;
-            let right_value = evaluate_to_value(right, defined_macros)?;
+            let left_value = evaluate(left, defined_macros)?;
+            let right_value = evaluate(right, defined_macros)?;
             match (left_value, right_value) {
                 (ConditionValue::Bool(l), ConditionValue::Bool(r)) => {
                     Some(ConditionValue::Bool(l || r))
@@ -327,15 +251,15 @@ fn evaluate_to_value(
         }
 
         ConditionExpr::Compare { op, left, right } => {
-            let left_val = evaluate_to_value(left, defined_macros)?;
-            let right_val = evaluate_to_value(right, defined_macros)?;
+            let left_val = evaluate(left, defined_macros)?;
+            let right_val = evaluate(right, defined_macros)?;
             let result = compare_values(*op, &left_val, &right_val)?;
             Some(ConditionValue::Bool(result))
         }
 
         ConditionExpr::Arithmetic { op, left, right } => {
-            let left_val = evaluate_to_value(left, defined_macros)?;
-            let right_val = evaluate_to_value(right, defined_macros)?;
+            let left_val = evaluate(left, defined_macros)?;
+            let right_val = evaluate(right, defined_macros)?;
 
             let left_int = match left_val {
                 ConditionValue::Integer(i) => i,
@@ -351,7 +275,7 @@ fn evaluate_to_value(
         }
 
         ConditionExpr::UnaryArithmetic { op, operand } => {
-            let val = evaluate_to_value(operand, defined_macros)?;
+            let val = evaluate(operand, defined_macros)?;
             let int_val = match val {
                 ConditionValue::Integer(i) => i,
                 _ => return None,
