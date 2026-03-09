@@ -368,27 +368,7 @@ impl Converter {
                     name: StringId::from(&name.name),
                 })));
             }
-            ("type" | "nominal", Term::Tuple(decl)) => {
-                if let [Term::Atom(n), body, Term::List(vs)] = &decl.elements[..] {
-                    let id = ast::Id {
-                        name: StringId::from(&n.name),
-                        arity: vs.elements.len() as u32,
-                    };
-                    let body = self.convert_type(body)?;
-                    let params = vs
-                        .elements
-                        .iter()
-                        .map(|v| self.convert_varname(v))
-                        .collect::<Result<Vec<_>, _>>()?;
-                    return Ok(Some(ExternalForm::ExternalTypeDecl(ExternalTypeDecl {
-                        pos,
-                        id,
-                        params,
-                        body,
-                    })));
-                }
-            }
-            ("opaque", Term::Tuple(decl)) => {
+            ("type" | "nominal" | "opaque", Term::Tuple(decl)) => {
                 if let [Term::Atom(n), body, Term::List(vs)] = &decl.elements[..] {
                     let id = ast::Id {
                         name: StringId::from(&n.name),
