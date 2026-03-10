@@ -1,10 +1,10 @@
-Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--rebar] [--as PROFILE]
-[--include-generated] [--include-tests] [--no-diags] [[--format FORMAT]] [--include-erlc-diagnostics]
-[--include-ct-diagnostics] [--include-edoc-diagnostics] [--include-eqwalizer-diagnostics]
-[--include-suppressed] [--use-cli-severity] [--diagnostic-ignore CODE] [--diagnostic-filter CODE]
-[--experimental] [--read-config] [--config-file CONFIG_FILE] [--apply-fix] [--ignore-fix-only] [--to
-TO] [--recursive] [--with-check] [--check-eqwalize-all] [--one-shot] [--report-system-stats]
-[--no-stream] <IGNORED_APPS>...
+Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--path PATH] [--rebar] [--as
+PROFILE] [--include-generated] [--include-tests] [--no-diags] [[--format FORMAT]]
+[--include-erlc-diagnostics] [--include-ct-diagnostics] [--include-edoc-diagnostics]
+[--include-eqwalizer-diagnostics] [--include-suppressed] [--use-cli-severity] [--diagnostic-ignore
+CODE] [--diagnostic-filter CODE] [--experimental] [--read-config] [--config-file CONFIG_FILE]
+[--apply-fix] [--ignore-fix-only] [--to TO] [--recursive] [--with-check] [--check-eqwalize-all]
+[--one-shot] [--report-system-stats] [--no-stream] <IGNORED_APPS>...
 
 Available positional items:
     <IGNORED_APPS>  Rest of args are space separated list of apps to ignore
@@ -15,6 +15,7 @@ Available options:
         --app <APP>      Parse a single application from the project, not the entire project.
         --file <FILE>    Parse a single file from the project, not the entire project. This can be an
                          include file or escript, etc.
+        --path <PATH>    Only process files under this path (can be a file or directory).
         --rebar          Run with rebar
         --as <PROFILE>   Rebar3 profile to pickup (default is test)
         --include-generated  Also generate diagnostics for generated files

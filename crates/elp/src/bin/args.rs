@@ -255,6 +255,9 @@ pub struct Lint {
     /// Parse a single file from the project, not the entire project. This can be an include file or escript, etc.
     #[bpaf(argument("FILE"))]
     pub file: Option<String>,
+    /// Only process files under this path (can be a file or directory).
+    #[bpaf(argument("PATH"))]
+    pub path: Option<PathBuf>,
 
     /// Run with rebar
     pub rebar: bool,

@@ -13,6 +13,7 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use std::path::PathBuf;
 use std::str;
 use std::sync::Arc;
 use std::thread;
@@ -141,6 +142,12 @@ pub fn load_project(
     )
 }
 
+fn canonicalize_or_keep(path: &Path) -> PathBuf {
+    fs::canonicalize(path)
+        .ok()
+        .unwrap_or_else(|| path.to_path_buf())
+}
+
 fn do_diagnostics_all(
     cli: &mut dyn Cli,
     analysis: &Analysis,
@@ -159,13 +166,25 @@ fn do_diagnostics_all(
         .collect();
     let app_name = args.app.as_ref().map(|name| AppName(name.to_string()));
 
+    // Canonicalize the path filter if provided
+    let path_filter: Option<std::path::PathBuf> =
+        args.path.as_ref().map(|p| canonicalize_or_keep(p));
+
     // Create a channel for streaming results
     let (tx, rx) = unbounded();
 
-    // Collect modules into an owned vector
+    // Collect modules into an owned vector, pre-filtering by path if specified
     let modules: Vec<_> = module_index
         .iter_own()
-        .map(|(name, source, file_id)| (name.as_str().to_string(), source, file_id))
+        .filter_map(|(name, source, file_id)| {
+            if let Some(ref filter_path) = path_filter {
+                let vfs_path = loaded.vfs.file_path(file_id);
+                if !canonicalize_or_keep(vfs_path.as_path()?.as_ref()).starts_with(filter_path) {
+                    return None;
+                }
+            }
+            Some((name.as_str().to_string(), source, file_id))
+        })
         .collect();
 
     let analysis_clone = analysis.clone();
@@ -1525,6 +1544,37 @@ mod tests {
                 module specified: lints
                 Diagnostics reported:
                 app_a/src/lints.erl:3:7-3:8::[Error] [W0004] Missing ')'
+            "#]],
+            expect![""],
+        );
+    }
+
+    #[test]
+    fn lint_path_filter() {
+        // When --path is specified, only files under that path should be processed.
+        // Here we have two apps with similar diagnostics, but we only want to lint app_a.
+        // Note: The fixture creates absolute paths (e.g., /app_a/src/...), so we use
+        // a full path that matches the fixture structure.
+        run_lint_command(
+            args_vec!["lint", "--path", "/app_a", "--diagnostic-filter", "P1700",],
+            r#"
+            //- /app_a/src/lints.erl app:app_a
+              -module(lints).
+              -export([head_mismatch/1]).
+
+              head_mismatch(X) -> X;
+              head_mismatcX(0) -> 0.
+            //- /app_b/src/other.erl app:app_b
+              -module(other).
+              -export([head_mismatch/1]).
+
+              head_mismatch(X) -> X;
+              head_mismatcY(0) -> 0.
+        "#,
+            expect![[r#"
+                Diagnostics reported:
+                app_a/src/lints.erl:5:3-5:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+                        4:3-4:16: Mismatched clause name
             "#]],
             expect![""],
         );
