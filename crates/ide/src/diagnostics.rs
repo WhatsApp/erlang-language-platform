@@ -1600,7 +1600,8 @@ pub fn native_diagnostics(
     let labeled_syntax_errors = if report_diagnostics {
         let sema = Semantic::new(db);
 
-        res.append(&mut form_missing_separator_diagnostics(&parse));
+        // TODO(T258950369): These diagnostics are currently unreliable in presence of conditional macros.
+        // res.append(&mut form_missing_separator_diagnostics(&parse));
 
         adhoc_semantic_diagnostics
             .iter()
@@ -2141,6 +2142,7 @@ pub fn collect_body_diagnostics(sema: &Semantic, file_id: FileId) -> Vec<hir::Bo
     diagnostics
 }
 
+#[allow(dead_code)]
 fn form_missing_separator_diagnostics(parse: &Parse<ast::SourceFile>) -> Vec<Diagnostic> {
     parse
         .tree()
@@ -3353,6 +3355,7 @@ foo() -> XX 3.0.
     }
 
     #[test]
+    #[should_panic] // T258950369: Remove once ifdef support is completed
     fn export_attribute_missing_comma() {
         check_diagnostics(
             r#"
@@ -3364,6 +3367,7 @@ foo() -> XX 3.0.
     }
 
     #[test]
+    #[should_panic] // T258950369: Remove once ifdef support is completed
     fn export_type_attribute_missing_comma() {
         check_diagnostics(
             r#"
@@ -3375,6 +3379,7 @@ foo() -> XX 3.0.
     }
 
     #[test]
+    #[should_panic] // T258950369: Remove once ifdef support is completed
     fn import_attribute_missing_comma() {
         check_diagnostics(
             r#"
@@ -3386,6 +3391,7 @@ foo() -> XX 3.0.
     }
 
     #[test]
+    #[should_panic] // T258950369: Remove once ifdef support is completed
     fn type_decl_missing_comma() {
         check_diagnostics(
             r#"
@@ -3397,6 +3403,7 @@ foo() -> XX 3.0.
     }
 
     #[test]
+    #[should_panic] // T258950369: Remove once ifdef support is completed
     fn record_decl_missing_comma() {
         check_diagnostics(
             r#"
