@@ -64,10 +64,6 @@ impl Linter for UnusedIncludeLinter {
         let file_kind = sema.db.file_kind(file_id);
         file_kind.is_module()
     }
-
-    fn should_process_generated_files(&self) -> bool {
-        true
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
