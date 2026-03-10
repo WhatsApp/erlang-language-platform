@@ -113,7 +113,7 @@ impl TypeConverter {
 
     fn convert_cft(&self, cft: ConstrainedFunType) -> Result<FunType, TypeConversionError> {
         let var_names = self.collect_var_names_in_fun_type(&cft.ty);
-        let subst = self.collect_substitution(&var_names);
+        let subst = self.collect_substitution(var_names.iter());
         // Invalid declarations should only appear when converting record declarations
         let ft = self
             .convert_fun_type(&subst, cft.ty)?
@@ -187,7 +187,7 @@ impl TypeConverter {
         &self,
         decl: ExternalTypeDecl,
     ) -> Result<TypeDecl, TypeConversionError> {
-        let sub = self.collect_substitution(&decl.params);
+        let sub = self.collect_substitution(decl.params.iter());
         let params = self.collect_vars(&decl.params);
         let result = self.convert_type(&sub, decl.body)?;
         // Invalid declarations should only appear when converting record declarations
@@ -200,9 +200,11 @@ impl TypeConverter {
         })
     }
 
-    fn collect_substitution(&self, vars: &[StringId]) -> FxHashMap<StringId, u32> {
-        vars.iter()
-            .enumerate()
+    fn collect_substitution<'a>(
+        &self,
+        iter: impl Iterator<Item = &'a StringId>,
+    ) -> FxHashMap<StringId, u32> {
+        iter.enumerate()
             .map(|(n, name)| (*name, n as u32))
             .collect()
     }
@@ -394,20 +396,15 @@ impl TypeConverter {
         )))
     }
 
-    fn collect_var_names_in_fun_type(&self, ty: &FunExtType) -> Vec<StringId> {
-        let names: IndexSet<StringId> = [
-            self.collect_all_var_names(&ty.arg_tys),
-            self.collect_var_names(&ty.res_ty),
-        ]
-        .concat()
-        .into_iter()
-        .collect();
-        names.into_iter().collect()
+    fn collect_var_names_in_fun_type(&self, ty: &FunExtType) -> IndexSet<StringId> {
+        let mut names = self.collect_all_var_names(&ty.arg_tys);
+        names.extend(self.collect_var_names(&ty.res_ty));
+        names
     }
 
-    fn collect_var_names(&self, ty: &ExtType) -> Vec<StringId> {
+    fn collect_var_names(&self, ty: &ExtType) -> IndexSet<StringId> {
         match ty {
-            ExtType::VarExtType(var) => vec![var.name],
+            ExtType::VarExtType(var) => IndexSet::from_iter([var.name]),
             ExtType::FunExtType(ft) => self.collect_var_names_in_fun_type(ft),
             ExtType::AnyArityFunExtType(ft) => self.collect_var_names(&ft.res_ty),
             ExtType::TupleExtType(ty) => self.collect_all_var_names(ty.arg_tys.as_ref()),
@@ -423,11 +420,9 @@ impl TypeConverter {
                 .props
                 .iter()
                 .flat_map(|prop| {
-                    [
-                        self.collect_var_names(prop.key()),
-                        self.collect_var_names(prop.tp()),
-                    ]
-                    .concat()
+                    let mut names = self.collect_var_names(prop.key());
+                    names.extend(self.collect_var_names(prop.tp()));
+                    names
                 })
                 .collect(),
             ExtType::ListExtType(ty) => self.collect_var_names(&ty.t),
@@ -438,11 +433,11 @@ impl TypeConverter {
             | ExtType::AnyMapExtType(_)
             | ExtType::UnOpType(_)
             | ExtType::BinOpType(_)
-            | ExtType::AnyListExtType(_) => vec![],
+            | ExtType::AnyListExtType(_) => IndexSet::new(),
         }
     }
 
-    fn collect_all_var_names(&self, tys: &[ExtType]) -> Vec<StringId> {
+    fn collect_all_var_names(&self, tys: &[ExtType]) -> IndexSet<StringId> {
         tys.iter()
             .flat_map(|ty| self.collect_var_names(ty))
             .collect()
