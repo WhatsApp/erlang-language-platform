@@ -12,6 +12,7 @@ use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::text_edit::TextRange;
+use elp_syntax::AstNode;
 use hir::Semantic;
 
 use crate::FunctionMatch;
@@ -74,7 +75,7 @@ impl FunctionCallLinter for NoDebuggingFunctionLinter {
             let body_map = match_context.def_fb.get_body_map();
             let in_file_ast_ptr = body_map.expr(expr_id)?;
             let expr_ast = in_file_ast_ptr.to_node(&source_file)?;
-            let range = statement_range(&expr_ast);
+            let range = statement_range(expr_ast.syntax());
             Some(vec![remove_fix(file_id, range)])
         } else {
             None

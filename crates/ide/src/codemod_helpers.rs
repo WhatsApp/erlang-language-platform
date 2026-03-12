@@ -9,9 +9,9 @@
  */
 
 use elp_ide_db::elp_base_db::FileRange;
-use elp_syntax::AstNode;
 use elp_syntax::SmolStr;
 use elp_syntax::SyntaxKind;
+use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use elp_syntax::ast;
 use elp_syntax::ast::in_erlang_module;
@@ -40,19 +40,18 @@ use serde::Serialize;
 
 use crate::FileId;
 
-// Given an expression that represents a statement, return a text range that covers
-// the statement in full. This means:
+// Given a syntax node that is a comma-separated element (e.g. a statement, list item,
+// or map field), return a text range that covers the element in full. This means:
 //
-// - If the expression is followed by a comma, include the comma in the range, and all
+// - If the node is followed by a comma, include the comma in the range, and all
 //   whitespace following the comma
-// - If the expression is not followed by a comma, but is preceded by a comma, include
+// - If the node is not followed by a comma, but is preceded by a comma, include
 //   the preceding comma in the range, and all whitespace before the comma
-// - Otherwise, we just use the range of the expression
+// - Otherwise, we just use the range of the node
 //
-// We typically want to have the statement range in order to be able to delete the statement,
-// remove an element from a list, etc.
-pub(crate) fn statement_range(expr: &ast::Expr) -> TextRange {
-    let node = expr.syntax();
+// We typically want to have this range in order to be able to delete the element,
+// remove an item from a list, etc.
+pub(crate) fn statement_range(node: &SyntaxNode) -> TextRange {
     let node_range = node.text_range();
 
     let mut right = node.last_token().and_then(|tok| tok.next_token());

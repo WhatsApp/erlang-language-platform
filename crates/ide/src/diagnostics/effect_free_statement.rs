@@ -195,7 +195,7 @@ fn is_followed_by(expected_kind: SyntaxKind, expr: &ast::Expr) -> bool {
 }
 
 fn remove_statement(expr: &ast::Expr) -> Option<TextEdit> {
-    let range = statement_range(expr);
+    let range = statement_range(expr.syntax());
 
     let mut edit_builder = TextEdit::builder();
     edit_builder.delete(range);

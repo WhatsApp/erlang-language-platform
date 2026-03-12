@@ -16,6 +16,7 @@
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
+use elp_syntax::AstNode;
 use elp_syntax::TextRange;
 use elp_syntax::ast;
 use hir::AnyExprId;
@@ -349,7 +350,7 @@ fn match_fun_ref_in_list_in_call_arg<T>(
 }
 
 fn remove_statement(expr: &ast::Expr) -> Option<TextEdit> {
-    let range = statement_range(expr);
+    let range = statement_range(expr.syntax());
 
     let mut edit_builder = TextEdit::builder();
     edit_builder.delete(range);
