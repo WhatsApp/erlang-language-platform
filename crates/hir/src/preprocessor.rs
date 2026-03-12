@@ -403,39 +403,43 @@ pub fn file_preprocessor_analysis_with_diagnostics_query(
         // Process the form based on its type
         match form_idx {
             FormIdx::PPCondition(cond_id) => {
-                // Snapshot macro defs for -if/-elif conditions so that
-                // downstream Salsa queries can resolve user macros with
-                // the correct point-in-time state.
-                // Only snapshot when ifdef is enabled — these are only
-                // consumed by condition_body_with_source_query when
-                // ifdef is active.
-                if env.ifdef
-                    && matches!(
+                // When ifdef is disabled, skip all condition processing.
+                // state.is_active() stays true, so all directives
+                // (defines, undefs, includes) are processed unconditionally.
+                // condition_results remains empty — is_condition_active()
+                // defaults to Active for missing entries.
+                if env.ifdef {
+                    // Snapshot macro defs for -if/-elif conditions so that
+                    // downstream Salsa queries can resolve user macros with
+                    // the correct point-in-time state.
+                    // Only consumed by condition_body_with_source_query when
+                    // ifdef is active.
+                    if matches!(
                         &form_list[cond_id],
                         crate::form_list::PPCondition::If { .. }
                             | crate::form_list::PPCondition::Elif { .. }
-                    )
-                {
-                    analysis
-                        .condition_macro_defs
-                        .insert(cond_id, Arc::new(state.define_attr_macros.clone()));
-                }
+                    ) {
+                        analysis
+                            .condition_macro_defs
+                            .insert(cond_id, Arc::new(state.define_attr_macros.clone()));
+                    }
 
-                let diagnostics =
-                    process_pp_condition(db, file_id, &form_list, cond_id, &mut state);
-                // Record diagnostics if any
-                if !diagnostics.is_empty() {
-                    diagnostics_map.insert(cond_id, diagnostics);
+                    let diagnostics =
+                        process_pp_condition(db, file_id, &form_list, cond_id, &mut state);
+                    // Record diagnostics if any
+                    if !diagnostics.is_empty() {
+                        diagnostics_map.insert(cond_id, diagnostics);
+                    }
+                    // Record the condition result after processing
+                    let result = if state.is_current_unknown() {
+                        PPConditionResult::Unknown
+                    } else if state.is_active() {
+                        PPConditionResult::Active
+                    } else {
+                        PPConditionResult::Inactive
+                    };
+                    analysis.condition_results.insert(cond_id, result);
                 }
-                // Record the condition result after processing
-                let result = if state.is_current_unknown() {
-                    PPConditionResult::Unknown
-                } else if state.is_active() {
-                    PPConditionResult::Active
-                } else {
-                    PPConditionResult::Inactive
-                };
-                analysis.condition_results.insert(cond_id, result);
             }
             FormIdx::PPDirective(directive_id) => {
                 process_pp_directive(
@@ -628,6 +632,7 @@ pub(crate) fn recover_cycle(
 mod tests {
     use std::sync::Arc;
 
+    use elp_base_db::SourceDatabase;
     use elp_base_db::fixture::WithFixture;
 
     use crate::FormIdx;
@@ -1397,6 +1402,157 @@ guarded() -> from_app_c.
             "FROM_APP_C should be defined after chained cross-app include_lib.\n\
              app_b deps on app_c, so the nested include from app_b's header should\n\
              resolve even though app_a (the originating app) does not dep on app_c."
+        );
+    }
+
+    // ========================================================================
+    // Tests for skipping condition processing when ifdef=false
+    // ========================================================================
+
+    #[test]
+    fn test_ifdef_false_skips_condition_processing() {
+        // When ifdef=false, condition_results should be empty
+        // (no condition processing happens) and all defines should
+        // be visible regardless of ifdef guards.
+        let (mut db, file_id) = TestDB::with_single_file(
+            r#"
+-module(test).
+-ifdef(UNDEFINED_MACRO).
+-define(GUARDED_DEFINE, 1).
+-endif.
+-define(NORMAL_DEFINE, 2).
+"#,
+        );
+
+        // Run with ifdef=false
+        db.set_ifdef_enabled(false);
+        let env = db.project_macro_environment(file_id);
+        assert!(!env.ifdef);
+
+        let analysis = db.file_preprocessor_analysis(file_id, env);
+
+        // condition_results should be empty — no condition processing
+        let final_state = analysis
+            .final_state
+            .as_ref()
+            .expect("should have final state");
+
+        // Both defines should be visible: the ifdef guard was not evaluated
+        assert!(
+            final_state
+                .define_attr_macros
+                .contains_key(&macro_name("GUARDED_DEFINE")),
+            "GUARDED_DEFINE should be visible when ifdef=false (guard not evaluated)"
+        );
+        assert!(
+            final_state
+                .define_attr_macros
+                .contains_key(&macro_name("NORMAL_DEFINE")),
+            "NORMAL_DEFINE should always be visible"
+        );
+    }
+
+    #[test]
+    fn test_ifdef_false_no_condition_results() {
+        // Verify that condition_results map is empty when ifdef=false
+        let (mut db, file_id) = TestDB::with_single_file(
+            r#"
+-module(test).
+-ifdef(TEST).
+foo() -> test.
+-else.
+foo() -> prod.
+-endif.
+"#,
+        );
+
+        db.set_ifdef_enabled(false);
+        let env = db.project_macro_environment(file_id);
+        let (analysis, diagnostics) = db.file_preprocessor_analysis_with_diagnostics(file_id, env);
+
+        // No condition results should be recorded
+        let form_list = db.file_form_list(file_id);
+        for &form_idx in form_list.forms() {
+            if let FormIdx::PPCondition(cond_id) = form_idx {
+                // is_condition_active defaults to Active for missing entries
+                assert_eq!(
+                    analysis.is_condition_active(cond_id),
+                    PPConditionResult::Active,
+                    "All conditions should default to Active when ifdef=false"
+                );
+            }
+        }
+
+        // No diagnostics should be generated
+        assert!(
+            diagnostics.is_empty(),
+            "No condition diagnostics when ifdef=false"
+        );
+    }
+
+    #[test]
+    fn test_ifdef_false_undef_still_works() {
+        // Verify that -undef still removes macros when ifdef=false
+        // (directives are still processed, only conditions are skipped)
+        let (mut db, file_id) = TestDB::with_single_file(
+            r#"
+-module(test).
+-define(TEMP, 1).
+-undef(TEMP).
+"#,
+        );
+
+        db.set_ifdef_enabled(false);
+        let env = db.project_macro_environment(file_id);
+        let analysis = db.file_preprocessor_analysis(file_id, env);
+
+        let final_state = analysis
+            .final_state
+            .as_ref()
+            .expect("should have final state");
+
+        assert!(
+            !final_state.defined.contains(&macro_name("TEMP")),
+            "TEMP should be undefined after -undef even when ifdef=false"
+        );
+    }
+
+    #[test]
+    fn test_ifdef_true_still_evaluates_conditions() {
+        // Sanity check: ifdef=true should still evaluate conditions normally
+        let (db, file_id) = TestDB::with_single_file(
+            r#"
+-module(test).
+-ifdef(UNDEFINED_MACRO).
+-define(GUARDED_DEFINE, 1).
+-endif.
+-define(NORMAL_DEFINE, 2).
+"#,
+        );
+
+        // ifdef=true is the default for test fixtures
+        let env = db.project_macro_environment(file_id);
+        assert!(env.ifdef);
+
+        let analysis = db.file_preprocessor_analysis(file_id, env);
+
+        let final_state = analysis
+            .final_state
+            .as_ref()
+            .expect("should have final state");
+
+        // GUARDED_DEFINE should NOT be visible because UNDEFINED_MACRO is not defined
+        assert!(
+            !final_state
+                .define_attr_macros
+                .contains_key(&macro_name("GUARDED_DEFINE")),
+            "GUARDED_DEFINE should be hidden when ifdef=true and guard is false"
+        );
+        assert!(
+            final_state
+                .define_attr_macros
+                .contains_key(&macro_name("NORMAL_DEFINE")),
+            "NORMAL_DEFINE should always be visible"
         );
     }
 }
