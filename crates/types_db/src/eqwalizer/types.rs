@@ -33,6 +33,7 @@ pub enum Type {
     ListType(ListType),
     UnionType(UnionType),
     RemoteType(RemoteType),
+    BoundVarType(BoundVarType),
     FreeVarType(FreeVarType),
     RecordType(RecordType),
     RefinedRecordType(RefinedRecordType),
@@ -251,6 +252,7 @@ impl Type {
             | Type::AtomType
             | Type::NilType
             | Type::RecordType(_)
+            | Type::BoundVarType(_)
             | Type::FreeVarType(_)
             | Type::BinaryType
             | Type::NoneType
@@ -282,6 +284,7 @@ impl fmt::Display for Type {
             Type::AtomType => write!(f, "atom()"),
             Type::NilType => write!(f, "[]"),
             Type::RecordType(rec) => write!(f, "#{}{{}}", rec.name.as_str()),
+            Type::BoundVarType(v) => write!(f, "{}", v.name.as_str()),
             Type::FreeVarType(v) => write!(f, "{}", v.name.as_str()),
             Type::BinaryType => write!(f, "binary()"),
             Type::NoneType => write!(f, "none()"),
@@ -403,6 +406,12 @@ pub struct RemoteType {
     pub id: RemoteId,
     #[serde(default)]
     pub arg_tys: Vec<Type>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct BoundVarType {
+    pub lvl: u32,
+    pub name: StringId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
