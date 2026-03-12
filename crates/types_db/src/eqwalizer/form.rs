@@ -16,9 +16,9 @@ use crate::eqwalizer;
 use crate::eqwalizer::TextRange;
 use crate::eqwalizer::expr;
 use crate::eqwalizer::ext_types;
+use crate::eqwalizer::types::FreeVarType;
 use crate::eqwalizer::types::FunType;
 use crate::eqwalizer::types::Type;
-use crate::eqwalizer::types::VarType;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ExternalForm {
@@ -166,7 +166,7 @@ pub struct TypeDecl {
     pub pos: eqwalizer::Pos,
     pub id: eqwalizer::Id,
     #[serde(default)]
-    pub params: Vec<VarType>,
+    pub params: Vec<FreeVarType>,
     pub body: Type,
 }
 

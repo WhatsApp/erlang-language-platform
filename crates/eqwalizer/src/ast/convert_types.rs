@@ -30,6 +30,7 @@ use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::TypeVarInRecordField;
 use elp_types_db::eqwalizer::types::AnyArityFunType;
 use elp_types_db::eqwalizer::types::AtomLitType;
+use elp_types_db::eqwalizer::types::FreeVarType;
 use elp_types_db::eqwalizer::types::FunType;
 use elp_types_db::eqwalizer::types::Key;
 use elp_types_db::eqwalizer::types::ListType;
@@ -41,7 +42,6 @@ use elp_types_db::eqwalizer::types::RemoteType;
 use elp_types_db::eqwalizer::types::TupleType;
 use elp_types_db::eqwalizer::types::Type;
 use elp_types_db::eqwalizer::types::UnionType;
-use elp_types_db::eqwalizer::types::VarType;
 use fxhash::FxHashMap;
 use indexmap::IndexSet;
 
@@ -209,10 +209,10 @@ impl TypeConverter {
             .collect()
     }
 
-    fn collect_vars(&self, vars: &[StringId]) -> Vec<VarType> {
+    fn collect_vars(&self, vars: &[StringId]) -> Vec<FreeVarType> {
         vars.iter()
             .enumerate()
-            .map(|(n, name)| VarType {
+            .map(|(n, name)| FreeVarType {
                 n: n as u32,
                 name: *name,
             })
@@ -300,7 +300,7 @@ impl TypeConverter {
                 .convert_types(sub, ty.args)?
                 .map(|arg_tys| Type::RemoteType(RemoteType { id: ty.id, arg_tys }))),
             ExtType::VarExtType(var) => match sub.get(&var.name) {
-                Some(id) => Ok(Ok(Type::VarType(VarType {
+                Some(id) => Ok(Ok(Type::FreeVarType(FreeVarType {
                     n: *id,
                     name: var.name,
                 }))),

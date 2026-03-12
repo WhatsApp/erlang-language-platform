@@ -141,8 +141,8 @@ fn he_by_coupling(s: &Type, t: &Type) -> bool {
             true
         }
         (Type::RefinedRecordType(_), _) => false,
-        (Type::VarType(vt1), Type::VarType(vt2)) if vt1 == vt2 => true,
-        (Type::VarType(_), _) => false,
+        (Type::FreeVarType(vt1), Type::FreeVarType(vt2)) if vt1 == vt2 => true,
+        (Type::FreeVarType(_), _) => false,
         (s, t) => s == t,
     }
 }
@@ -189,7 +189,7 @@ impl StubContractivityChecker<'_> {
         let id = t.id.clone().into_remote(self.module);
         let rty = RemoteType {
             id: id.clone(),
-            arg_tys: t.params.iter().cloned().map(Type::VarType).collect(),
+            arg_tys: t.params.iter().cloned().map(Type::FreeVarType).collect(),
         };
         assert!(self.history.is_empty());
         assert!(self.productive.is_empty());

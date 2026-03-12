@@ -52,11 +52,11 @@ impl Subst<'_> {
                 id: rt.id,
                 arg_tys: self.apply_all(rt.arg_tys),
             }),
-            Type::VarType(n) => {
+            Type::FreeVarType(n) => {
                 if let Some(&typ) = self.sub.get(&n.n) {
                     typ.to_owned()
                 } else {
-                    Type::VarType(n)
+                    Type::FreeVarType(n)
                 }
             }
             Type::MapType(m) => Type::MapType(MapType {
