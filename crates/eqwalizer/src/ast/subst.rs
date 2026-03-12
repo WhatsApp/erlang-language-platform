@@ -28,14 +28,11 @@ pub struct Subst<'a> {
 impl Subst<'_> {
     pub fn apply(&self, t: Type) -> Type {
         match t {
-            Type::FunType(ft) => {
-                let subst = self.subtract(&ft.forall);
-                Type::FunType(FunType {
-                    forall: ft.forall,
-                    arg_tys: subst.apply_all(ft.arg_tys),
-                    res_ty: Box::new(subst.apply(*ft.res_ty)),
-                })
-            }
+            Type::FunType(ft) => Type::FunType(FunType {
+                forall: ft.forall,
+                arg_tys: self.apply_all(ft.arg_tys),
+                res_ty: Box::new(self.apply(*ft.res_ty)),
+            }),
             Type::AnyArityFunType(ft) => Type::AnyArityFunType(AnyArityFunType {
                 res_ty: Box::new(self.apply(*ft.res_ty)),
             }),
@@ -93,13 +90,5 @@ impl Subst<'_> {
 
     fn apply_all(&self, ts: Vec<Type>) -> Vec<Type> {
         ts.into_iter().map(|t| self.apply(t)).collect()
-    }
-
-    fn subtract(&self, vars: &[u32]) -> Subst<'_> {
-        let mut sub = self.sub.to_owned();
-        vars.iter().for_each(|v| {
-            sub.remove(v);
-        });
-        Subst { sub }
     }
 }

@@ -30,6 +30,7 @@ use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::TypeVarInRecordField;
 use elp_types_db::eqwalizer::types::AnyArityFunType;
 use elp_types_db::eqwalizer::types::AtomLitType;
+use elp_types_db::eqwalizer::types::BoundVarType;
 use elp_types_db::eqwalizer::types::FreeVarType;
 use elp_types_db::eqwalizer::types::FunType;
 use elp_types_db::eqwalizer::types::Key;
@@ -51,6 +52,11 @@ use super::TypeConversionError;
 pub struct TypeConverter {
     module: StringId,
     in_rec_decl: bool,
+}
+
+pub enum BIndex {
+    Bound(u32),
+    Free(u32),
 }
 
 impl TypeConverter {
@@ -113,17 +119,14 @@ impl TypeConverter {
 
     fn convert_cft(&self, cft: ConstrainedFunType) -> Result<FunType, TypeConversionError> {
         let var_names = self.collect_var_names_in_fun_type(&cft.ty);
-        let subst = self.collect_substitution(var_names.iter());
+        let b_sub = self.collect_substitution(var_names.iter(), BIndex::Bound);
+
         // Invalid declarations should only appear when converting record declarations
         let ft = self
-            .convert_fun_type(&subst, cft.ty)?
+            .convert_fun_type(&b_sub, cft.ty)?
             .map_err(TypeConversionError::ErrorInFunType)?;
         Ok(FunType {
-            forall: {
-                let mut v: Vec<u32> = subst.into_values().collect();
-                v.sort();
-                v
-            },
+            forall: var_names.len() as u32,
             ..ft
         })
     }
@@ -187,9 +190,9 @@ impl TypeConverter {
         &self,
         decl: ExternalTypeDecl,
     ) -> Result<TypeDecl, TypeConversionError> {
-        let sub = self.collect_substitution(decl.params.iter());
+        let f_sub = self.collect_substitution(decl.params.iter(), BIndex::Free);
         let params = self.collect_vars(&decl.params);
-        let result = self.convert_type(&sub, decl.body)?;
+        let result = self.convert_type(&f_sub, decl.body)?;
         // Invalid declarations should only appear when converting record declarations
         let body = result.map_err(TypeConversionError::ErrorInTypeDecl)?;
         Ok(TypeDecl {
@@ -203,9 +206,10 @@ impl TypeConverter {
     fn collect_substitution<'a>(
         &self,
         iter: impl Iterator<Item = &'a StringId>,
-    ) -> FxHashMap<StringId, u32> {
+        wrap: fn(u32) -> BIndex,
+    ) -> FxHashMap<StringId, BIndex> {
         iter.enumerate()
-            .map(|(n, name)| (*name, n as u32))
+            .map(|(n, name)| (*name, wrap(n as u32)))
             .collect()
     }
 
@@ -221,14 +225,14 @@ impl TypeConverter {
 
     fn convert_fun_type(
         &self,
-        sub: &FxHashMap<StringId, u32>,
+        sub: &FxHashMap<StringId, BIndex>,
         ty: FunExtType,
     ) -> Result<Result<FunType, Invalid>, TypeConversionError> {
         let args_conv = self.convert_types(sub, ty.arg_tys)?;
         let res_conv = self.convert_type(sub, *ty.res_ty)?;
         Ok(args_conv.and_then(|arg_tys| {
             res_conv.map(|res_ty| FunType {
-                forall: vec![],
+                forall: 0,
                 arg_tys,
                 res_ty: Box::new(res_ty),
             })
@@ -237,7 +241,7 @@ impl TypeConverter {
 
     fn convert_types(
         &self,
-        sub: &FxHashMap<StringId, u32>,
+        sub: &FxHashMap<StringId, BIndex>,
         tys: Vec<ExtType>,
     ) -> Result<Result<Vec<Type>, Invalid>, TypeConversionError> {
         tys.into_iter()
@@ -247,7 +251,7 @@ impl TypeConverter {
 
     pub fn convert_type(
         &self,
-        sub: &FxHashMap<StringId, u32>,
+        sub: &FxHashMap<StringId, BIndex>,
         ty: ExtType,
     ) -> Result<Result<Type, Invalid>, TypeConversionError> {
         match ty {
@@ -300,8 +304,12 @@ impl TypeConverter {
                 .convert_types(sub, ty.args)?
                 .map(|arg_tys| Type::RemoteType(RemoteType { id: ty.id, arg_tys }))),
             ExtType::VarExtType(var) => match sub.get(&var.name) {
-                Some(id) => Ok(Ok(Type::FreeVarType(FreeVarType {
+                Some(BIndex::Free(id)) => Ok(Ok(Type::FreeVarType(FreeVarType {
                     n: *id,
+                    name: var.name,
+                }))),
+                Some(BIndex::Bound(id)) => Ok(Ok(Type::BoundVarType(BoundVarType {
+                    lvl: *id,
                     name: var.name,
                 }))),
                 None if self.in_rec_decl => {
@@ -373,7 +381,7 @@ impl TypeConverter {
 
     fn to_shape_prop(
         &self,
-        sub: &FxHashMap<StringId, u32>,
+        sub: &FxHashMap<StringId, BIndex>,
         prop: ExtProp,
     ) -> Result<Result<(Key, Prop), Invalid>, TypeConversionError> {
         let req = prop.required();

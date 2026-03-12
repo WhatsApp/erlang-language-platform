@@ -373,7 +373,7 @@ pub struct AtomLitType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FunType {
     #[serde(default)]
-    pub forall: Vec<u32>,
+    pub forall: u32,
     #[serde(default)]
     pub arg_tys: Vec<Type>,
     pub res_ty: Box<Type>,
