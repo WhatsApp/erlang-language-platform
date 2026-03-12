@@ -383,8 +383,43 @@ impl DefMap {
     }
 
     pub(crate) fn def_map_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<DefMap> {
+        if !db.ifdef_enabled() {
+            return Self::def_map_simple(db, file_id);
+        }
         let env = db.project_macro_environment(file_id);
         db.def_map_with_env(file_id, env)
+    }
+
+    /// Simple include path when ifdef is disabled.
+    ///
+    /// Builds the local def_map (all forms active, no env needed) and
+    /// resolves includes directly from the form_list without
+    /// preprocessor analysis or per-include `MacroEnvironment`
+    /// propagation. Recursive calls go through `db.def_map(id)` which
+    /// is keyed on just `FileId`, so each header is computed once.
+    fn def_map_simple(db: &dyn DefDatabase, file_id: FileId) -> Arc<DefMap> {
+        let local = Self::build_local_impl(db, file_id, None);
+        let form_list = db.file_form_list(file_id);
+        let orig_app = db.app_data_id_by_file(file_id);
+
+        let mut remote = Self::default();
+        for (idx, _include) in form_list.includes() {
+            if let Some(id) = db.resolve_include(orig_app, InFile::new(file_id, idx))
+                && id != file_id
+            {
+                remote.included.insert(id);
+                remote.merge(&db.def_map(id));
+            }
+        }
+
+        if remote.is_empty() {
+            Arc::new(local)
+        } else {
+            remote.merge(&local);
+            remote.fixup_exports();
+            remote.fixup_deprecated();
+            Arc::new(remote)
+        }
     }
 
     // This handles the case of headers accidentally forming other cycles.
@@ -919,6 +954,7 @@ impl DefMap {
 
 #[cfg(test)]
 mod tests {
+    use elp_base_db::SourceDatabase;
     use elp_base_db::fixture::WithFixture;
     use expect_test::Expect;
     use expect_test::expect;
@@ -1417,6 +1453,145 @@ foo() -> ok.
 "#,
             expect![[r#"
                 fun foo/0 exported: false
+            "#]],
+        )
+    }
+
+    // ============================================================================
+    // def_map_simple tests (ifdef=false path)
+    // ============================================================================
+
+    /// Helper that sets ifdef_enabled(false) before building the def_map
+    fn check_functions_ifdef_false(fixture: &str, expect: Expect) {
+        let (mut db, files, _) = TestDB::with_many_files(fixture);
+        db.set_ifdef_enabled(false);
+        let file_id = files[0];
+        let def_map = db.def_map(file_id);
+        let mut resolved = def_map
+            .functions
+            .values()
+            .map(|def| {
+                format!(
+                    "fun {} exported: {}",
+                    def.name,
+                    def.exported && def_map.exported_functions.contains(&def.name),
+                )
+            })
+            .chain(def_map.types.values().map(|def| match &def.type_alias {
+                TypeAlias::Regular { name, .. } => {
+                    format!("-type {} exported: {}", name, def.exported)
+                }
+                TypeAlias::Nominal { name, .. } => {
+                    format!("-nominal {} exported: {}", name, def.exported)
+                }
+                TypeAlias::Opaque { name, .. } => {
+                    format!("-opaque {} exported: {}", name, def.exported)
+                }
+            }))
+            .collect::<Vec<_>>()
+            .join("\n");
+        resolved.push('\n');
+        expect.assert_eq(&resolved);
+    }
+
+    #[test]
+    fn def_map_simple_basic_include() {
+        // When ifdef=false, def_map_simple should resolve includes
+        // and merge header definitions
+        check_functions_ifdef_false(
+            r#"
+//- /module.erl
+-include("header.hrl").
+-export([foo/0]).
+foo() -> ok.
+//- /header.hrl
+-export([bar/0]).
+bar() -> ok.
+"#,
+            expect![[r#"
+                fun foo/0 exported: true
+                fun bar/0 exported: true
+            "#]],
+        )
+    }
+
+    #[test]
+    fn def_map_simple_transitive_includes() {
+        // A includes B, B includes C — all defs should be merged
+        check_functions_ifdef_false(
+            r#"
+//- /module.erl
+-include("a.hrl").
+foo() -> ok.
+//- /a.hrl
+-include("b.hrl").
+bar() -> ok.
+//- /b.hrl
+baz() -> ok.
+"#,
+            expect![[r#"
+                fun baz/0 exported: false
+                fun foo/0 exported: false
+                fun bar/0 exported: false
+            "#]],
+        )
+    }
+
+    #[test]
+    fn def_map_simple_types_and_records() {
+        // Header types and records should be visible in the module
+        check_functions_ifdef_false(
+            r#"
+//- /module.erl
+-include("header.hrl").
+-export_type([my_type/0]).
+//- /header.hrl
+-type my_type() :: ok.
+"#,
+            expect![[r#"
+                -type my_type/0 exported: true
+            "#]],
+        )
+    }
+
+    #[test]
+    fn def_map_simple_ifdef_guarded_include_visible() {
+        // When ifdef=false, includes inside ifdef blocks are still resolved
+        // (all forms are active in legacy mode)
+        check_functions_ifdef_false(
+            r#"
+//- /module.erl
+-ifdef(UNDEFINED).
+-include("header.hrl").
+-endif.
+bar() -> ok.
+//- /header.hrl
+foo() -> ok.
+"#,
+            expect![[r#"
+                fun bar/0 exported: false
+                fun foo/0 exported: false
+            "#]],
+        )
+    }
+
+    #[test]
+    fn def_map_simple_cross_app_include_lib() {
+        // Cross-app include_lib should work in the simple path
+        check_functions_ifdef_false(
+            r#"
+//- /app_a/src/module.erl app:app_a buck_target:cell//app_a:lib deps:app_b
+-module(module).
+-include_lib("app_b/include/utils.hrl").
+-export([foo/0]).
+foo() -> ok.
+//- /app_b/include/utils.hrl app:app_b buck_target:cell//app_b:lib
+-export([bar/0]).
+bar() -> ok.
+"#,
+            expect![[r#"
+                fun foo/0 exported: true
+                fun bar/0 exported: true
             "#]],
         )
     }
