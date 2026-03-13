@@ -61,7 +61,7 @@ fn diagnostic(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
             def_fb.fold_function(
                 Strategy {
                     macros: MacroStrategy::DoNotExpand,
-                    parens: ParenStrategy::InvisibleParens,
+                    parens: ParenStrategy::VisibleParens,
                 },
                 Some(()),
                 &mut |acc, clause_id, ctx| {
@@ -344,6 +344,14 @@ mod tests {
         check_fix("f(X) -> false~ orelse X.", expect![["f(X) -> X."]]);
         check_fix("f(X) -> not false~.", expect![["f(X) -> true."]]);
         check_fix("f(X) -> not true~.", expect![["f(X) -> false."]]);
+    }
+
+    #[test]
+    fn test_parentheses_preserved() {
+        check_fix(
+            "f() -> trunc((1 + 2 + ~0) / 3).",
+            expect![["f() -> trunc((1 + 2) / 3)."]],
+        );
     }
 
     #[test]
