@@ -25,7 +25,7 @@
     "clsx": "^2.0.0",
     "cookie": ">=0.7.0",
     "docusaurus-plugin-internaldocs-fb": "^1.18.4",
-    "dompurify": ">=3.2.4",
+    "dompurify": ">=3.3.2",
     "estree-util-value-to-estree": ">=3.3.3",
     "glob": ">=10.5.0",
     "katex": ">=0.16.21",
