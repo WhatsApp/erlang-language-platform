@@ -267,7 +267,7 @@ pub struct Lint {
 
     /// Also generate diagnostics for generated files
     pub include_generated: bool,
-    /// Also generate diagnostics for test files
+    /// Deprecated (no-op): Diagnostics for test files are now always included
     pub include_tests: bool,
 
     /// Do not print the full diagnostics for a file, just the count

@@ -87,6 +87,12 @@ pub fn run_lint_command(
             "Warning: the --include-ct-diagnostics flag is deprecated and will be removed in an upcoming release. Common Test diagnostics are now always included."
         )?;
     }
+    if args.include_tests && args.is_format_normal() {
+        writeln!(
+            cli.err(),
+            "Warning: the --include-tests flag is deprecated and will be removed in an upcoming release. Diagnostics for test files are now always included."
+        )?;
+    }
 
     if let Some(to) = &args.to {
         fs::create_dir_all(to)?
@@ -261,10 +267,6 @@ fn do_diagnostics_one(
     name: &str,
     args: &Lint,
 ) -> Result<Option<(String, FileId, DiagnosticCollection)>> {
-    if !args.include_tests && db.is_test_suite_or_test_helper(file_id)?.unwrap_or(false) {
-        return Ok(None);
-    }
-
     let mut diagnostics = DiagnosticCollection::default();
     let native = db.native_diagnostics(config, &vec![], file_id)?;
     diagnostics.set_native(file_id, native);

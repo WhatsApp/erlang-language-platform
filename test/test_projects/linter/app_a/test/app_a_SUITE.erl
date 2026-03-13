@@ -3,7 +3,7 @@
 -typing([eqwalizer]).
 
 -include_lib("stdlib/include/assert.hrl").
--include("app_a.hrl").
+-include_lib("app_a/include/app_a.hrl").
 
 -spec ok() -> ok.
 ok() ->

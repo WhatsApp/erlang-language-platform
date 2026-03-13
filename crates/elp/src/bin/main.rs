@@ -1060,21 +1060,6 @@ mod tests {
                       ]
                     },
                     {
-                      "dir": "app_a",
-                      "extra_src_dirs": [],
-                      "include_dirs": [
-                        "include"
-                      ],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      },
-                      "name": "diagnostics_app_a",
-                      "src_dirs": [
-                        "src"
-                      ]
-                    },
-                    {
                       "dir": "/[prelude]//erlang/common_test/test_binary/src",
                       "extra_src_dirs": [],
                       "include_dirs": [],
@@ -1092,6 +1077,21 @@ mod tests {
                       "name": "test_cli_lib",
                       "src_dirs": [
                         ""
+                      ]
+                    },
+                    {
+                      "dir": "app_a",
+                      "extra_src_dirs": [],
+                      "include_dirs": [
+                        "include"
+                      ],
+                      "macros": {
+                        "COMMON_TEST": "true",
+                        "TEST": "true"
+                      },
+                      "name": "app_a",
+                      "src_dirs": [
+                        "src"
                       ]
                     }
                   ],
@@ -1763,27 +1763,10 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
-    fn lint_ct_default_no_tests(buck: bool) {
-        simple_snapshot(
-            args_vec![
-                "lint",
-                "--diagnostic-filter"
-                "W0008"
-            ],
-            "linter",
-            resource_file!("linter/elp_lint_ct_no_tests_flag.stdout"),
-            buck,
-            None,
-        );
-    }
-
-    #[test_case(false ; "rebar")]
-    #[test_case(true  ; "buck")]
-    fn lint_ct_include_tests(buck: bool) {
+    fn lint_ct_default(buck: bool) {
         simple_snapshot_expect_error_sorted(
             args_vec![
                 "lint",
-                "--include-tests",
                 "--diagnostic-filter"
                 "W0008"
             ],

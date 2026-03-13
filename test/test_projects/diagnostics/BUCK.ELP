@@ -1,9 +1,8 @@
 oncall("vscode_erlang")
 
 erlang_application(
-    name = "diagnostics_app_a_target",
+    name = "app_a",
     srcs = glob(["app_a/src/*.erl"]),
-    app_name = "diagnostics_app_a",
     app_src = "app_a/src/app_a.app.src",
     applications = [
     ],
@@ -16,5 +15,5 @@ erlang_tests(
     suites = [
         "app_a/test/app_a_SUITE.erl",
     ],
-    deps = [":diagnostics_app_a_target"],
+    deps = [":app_a"],
 )

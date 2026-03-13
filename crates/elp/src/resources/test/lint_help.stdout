@@ -19,7 +19,7 @@ Available options:
         --rebar          Run with rebar
         --as <PROFILE>   Rebar3 profile to pickup (default is test)
         --include-generated  Also generate diagnostics for generated files
-        --include-tests  Also generate diagnostics for test files
+        --include-tests  Deprecated (no-op): Diagnostics for test files are now always included
         --no-diags       Do not print the full diagnostics for a file, just the count
         --format <FORMAT>  Show diagnostics in JSON format
         --include-erlc-diagnostics  Include diagnostics produced by erlc
