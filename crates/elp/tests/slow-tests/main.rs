@@ -193,7 +193,7 @@ fn test_e2e_eqwalizer_module() {
                     {
                       "code": "W0073",
                       "codeDescription": {
-                        "href": "https://www.internalfb.com/intern/staticdocs/elp/docs/erlang-error-index/w/W0073"
+                        "href": "<BASE_URL>/erlang-error-index/w/W0073"
                       },
                       "message": "The `eqwalizer:fixme` comment suppresses eqwalizer type errors on the following line. Consider fixing the underlying type issue instead of suppressing it.",
                       "range": {
@@ -212,7 +212,7 @@ fn test_e2e_eqwalizer_module() {
                     {
                       "code": "W0073",
                       "codeDescription": {
-                        "href": "https://www.internalfb.com/intern/staticdocs/elp/docs/erlang-error-index/w/W0073"
+                        "href": "<BASE_URL>/erlang-error-index/w/W0073"
                       },
                       "message": "The `eqwalizer:fixme` comment suppresses eqwalizer type errors on the following line. Consider fixing the underlying type issue instead of suppressing it.",
                       "range": {
