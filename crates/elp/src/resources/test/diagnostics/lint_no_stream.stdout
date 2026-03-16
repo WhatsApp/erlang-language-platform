@@ -37,7 +37,6 @@ app_a/src/app_a.erl:71:1-71:2::[Warning] [L1230] function k/0 is unused
 app_a/src/app_a.erl:74:1-74:2::[Warning] [L1230] function l/1 is unused
 app_a/src/app_a.erl:77:1-77:2::[Warning] [L1230] function m/0 is unused
 app_a/test/app_a_SUITE.erl:2:23-2:40::[Warning] [W0054] Do not suppress compiler warnings at module level.
-app_a/test/app_a_SUITE.erl:5:1-5:43::[Warning] [WA003] Prefer to include assert.hrl from the `assert` application.
 app_a/src/broken_parse_trans.erl:10:21-10:22::[Error] [L1256] field b undefined in record a
 app_a/src/broken_parse_trans.erl:10:32-10:33::[Error] [L1262] variable 'B' is unbound
 app_a/src/cascading.erl:9:5-9:6::[Error] [W0004] Missing ')'
