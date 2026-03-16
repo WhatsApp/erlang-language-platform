@@ -18,7 +18,6 @@ app_a/src/expression_updates_literal.erl:7:1-7:6::[Error] [L1309] missing specif
 app_a/src/expression_updates_literal.erl:9:9-11:10::[Error] [L1318] expression updates a literal
 app_a/src/spelling.erl:2:2-2:10::[Error] [W0013] misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
 app_a/test/app_a_SUITE.erl:2:23-2:40::[Warning] [W0054] Do not suppress compiler warnings at module level.
-app_a/test/app_a_SUITE.erl:5:1-5:43::[Warning] [WA003] Prefer to include assert.hrl from the `assert` application.
 app_a/test/app_a_test_helpers.erl:3:23-3:40::[Warning] [W0054] Do not suppress compiler warnings at module level.
 app_a/test/app_a_test_helpers_not_opted_in.erl:2:23-2:40::[Warning] [W0054] Do not suppress compiler warnings at module level.
 app_a/test/app_a_unreachable_test_SUITE.erl:8:1-8:2::[Error] [W0008] Unreachable test (b/1)
