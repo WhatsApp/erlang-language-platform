@@ -22,6 +22,7 @@ use crossbeam_channel::select;
 use elp::config::Config;
 use elp::server::setup;
 use elp_ide::diagnostics::DiagnosticCode;
+use elp_ide::elp_ide_db::diagnostic_code::BASE_URL;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_log::Logger;
 use expect_test::Expect;
@@ -201,7 +202,9 @@ impl Project {
 
 fn replace_paths(actual_string: String) -> String {
     let to_replace = env!("CARGO_WORKSPACE_DIR");
-    actual_string.replace(to_replace, "/[..]/")
+    actual_string
+        .replace(to_replace, "/[..]/")
+        .replace(BASE_URL, "<BASE_URL>")
 }
 
 pub(crate) fn code_action_project(
