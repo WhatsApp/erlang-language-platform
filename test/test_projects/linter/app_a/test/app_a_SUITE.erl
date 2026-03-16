@@ -2,6 +2,7 @@
 -compile([export_all, nowarn_export_all]).
 -typing([eqwalizer]).
 
+% elp:ignore better_assertions
 -include_lib("stdlib/include/assert.hrl").
 -include_lib("app_a/include/app_a.hrl").
 
