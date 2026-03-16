@@ -17,7 +17,9 @@ use regex::Regex;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::de;
+use strum::AsRefStr;
 use strum::EnumIter;
+use strum::EnumProperty;
 use strum::IntoEnumIterator;
 
 // @fb-only: use crate::meta_only::MetaOnlyDiagnosticCode;
@@ -25,89 +27,175 @@ use strum::IntoEnumIterator;
 // @fb-only: pub const BASE_URL: &str = crate::meta_only::BASE_URL;
 pub const BASE_URL: &str = "https://whatsapp.github.io/erlang-language-platform/docs"; // @oss-only
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, EnumIter)]
+const CODE_PROP: &str = "code";
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, EnumIter, EnumProperty, AsRefStr)]
 #[derive(Default)]
+#[strum(serialize_all = "snake_case")]
 pub enum DiagnosticCode {
     #[default]
+    #[strum(
+        props(code = "DEFAULT-UNUSED-CONSTRUCTOR"),
+        serialize = "DEFAULT-UNUSED-CONSTRUCTOR"
+    )]
     DefaultCodeForEnumIter,
-    HeadMismatch,
+    #[strum(props(code = "L1201"))]
     MissingModule,
-    ModuleMismatch,
-    UnusedInclude,
-    BoundVarInPattern,
-    UnusedMacro,
-    UnusedRecordField,
-    MutableVarBug,
+    #[strum(props(code = "P1700"))]
+    HeadMismatch,
+    #[strum(props(code = "P1711"))]
     SyntaxError,
+    #[strum(props(code = "W0000"))]
+    BoundVarInPattern,
+    #[strum(props(code = "W0001"))]
+    ModuleMismatch,
+    #[strum(props(code = "W0002"))]
+    UnusedMacro,
+    #[strum(props(code = "W0003"))]
+    UnusedRecordField,
+    #[strum(props(code = "W0004"))]
     Missing(String),
+    #[strum(props(code = "W0005"), serialize = "mutable_variable_bug")]
+    MutableVarBug,
+    #[strum(props(code = "W0006"))]
     StatementHasNoEffect,
+    #[strum(props(code = "W0007"))]
     TrivialMatch,
-    UnusedFunctionArg,
-    RedundantAssignment,
+    #[strum(props(code = "W0008"))]
     UnreachableTest,
+    #[strum(props(code = "W0009"))]
+    RedundantAssignment,
+    #[strum(props(code = "W0010"))]
+    UnusedFunctionArg,
+    #[strum(props(code = "W0011"))]
     ApplicationGetEnv,
+    #[strum(props(code = "W0012"), serialize = "compile-warn-missing-spec")]
     MissingCompileWarnMissingSpec,
+    #[strum(props(code = "W0013"))]
     MisspelledAttribute,
+    #[strum(props(code = "W0014"))]
     CrossNodeEval,
+    #[strum(props(code = "W0015"))]
     DependentHeader,
+    #[strum(props(code = "W0016"))]
     DeprecatedFunction,
+    #[strum(props(code = "W0017"))]
     UndefinedFunction,
-    UnavailableType,
+    #[strum(props(code = "W0018"))]
     Unexpected(String),
+    #[strum(props(code = "W0019"))]
     ExpressionCanBeSimplified,
+    #[strum(props(code = "W0020"))]
+    UnusedInclude,
+    #[strum(props(code = "W0021"))]
     CannotEvaluateCTCallbacks,
+    #[strum(props(code = "W0022"))]
     MeckMissingNoLinkInInitPerSuite,
+    #[strum(props(code = "W0023"))]
     AtomsExhaustion,
+    #[strum(props(code = "W0024"))]
     SlowFunction,
+    #[strum(props(code = "W0025"))]
     BooleanPrecedence,
+    #[strum(props(code = "W0026"))]
     UnexportedFunction,
+    #[strum(props(code = "W0027"))]
     RecordTupleMatch,
+    #[strum(props(code = "W0028"))]
     UnnecessaryFlatteningToFindFlatLength,
+    #[strum(props(code = "W0029"))]
     UnnecessaryReversalToFindLastElementOfList,
-    UnnecessaryMapToListInComprehension,
+    #[strum(props(code = "W0030"))]
     MapsPutFunctionRatherThanSyntax,
+    #[strum(props(code = "W0031"))]
     MapsUpdateFunctionRatherThanSyntax,
+    #[strum(props(code = "W0032"), serialize = "maps_find_rather_than_syntax")]
     MapsFindFunctionRatherThanSyntax,
+    #[strum(props(code = "W0033"))]
     ListsZipWithSeqRatherThanEnumerate,
+    #[strum(props(code = "W0034"))]
+    UnnecessaryMapToListInComprehension,
+    #[strum(props(code = "W0035"))]
     UnnecessaryFoldToBuildMapFromList,
+    #[strum(props(code = "W0036"))]
     UnnecessaryMapFromListAroundComprehension,
+    #[strum(props(code = "W0037"))]
     UnspecificInclude,
+    #[strum(props(code = "W0038"))]
     OldEdocSyntax,
+    #[strum(props(code = "W0039"))]
     MacroPrecedenceEscape,
+    #[strum(props(code = "W0040"))]
     UndocumentedFunction,
+    #[strum(props(code = "W0041"))]
     DebuggingFunction,
+    #[strum(props(code = "W0042"))]
     EqualityCheckWithUnnecessaryOperator,
+    #[strum(props(code = "W0043"), serialize = "nonstandard_integer_formatting")]
     NonStandardIntegerFormatting,
+    #[strum(props(code = "W0044"))]
     SimplifyNegation,
+    #[strum(props(code = "W0045"))]
     DuplicateModule,
+    #[strum(props(code = "W0046"))]
     UndocumentedModule,
+    #[strum(props(code = "W0047"))]
     NoGarbageCollect,
+    #[strum(props(code = "W0048"))]
     NoDialyzerAttribute,
+    #[strum(props(code = "W0049"))]
     SetsVersion2,
+    #[strum(props(code = "W0050"))]
     NoSize,
+    #[strum(props(code = "W0051"))]
     BinaryStringToSigil,
+    #[strum(props(code = "W0052"))]
     NoCatch,
+    #[strum(props(code = "W0053"))]
     NoErrorLogger,
+    #[strum(props(code = "W0054"), serialize = "no_nowarn_suppressions")]
     NoNoWarnSuppressions,
+    #[strum(props(code = "W0055"), serialize = "could_be_a_binary_string_literal")]
     CouldBeAStringLiteral,
+    #[strum(props(code = "W0056"))]
     ListsReverseAppend,
-    EtsLookupToLookupElement,
+    #[strum(props(code = "W0057"))]
     HirUnresolvedMacro,
+    #[strum(props(code = "W0058"))]
     HirUnresolvedInclude,
+    #[strum(props(code = "W0059"))]
+    UnavailableType,
+    #[strum(props(code = "W0060"))]
     BoundVarInLhs,
+    #[strum(props(code = "W0061"))]
     HirInvalidPPCondition,
+    #[strum(props(code = "W0062"))]
     HirIssueInIncludedFile,
+    #[strum(props(code = "W0063"))]
     MixedStrictRelaxedGenerators,
+    #[strum(props(code = "W0064"))]
+    EtsLookupToLookupElement,
+    #[strum(props(code = "W0065"))]
     InefficientListEmptyCheck,
+    #[strum(props(code = "W0066"))]
     ListsMapToComprehension,
+    #[strum(props(code = "W0067"))]
     MissingMsTransformInclude,
+    #[strum(props(code = "W0068"))]
     MeckRestricted,
+    #[strum(props(code = "W0069"))]
     NoAndOr,
+    #[strum(props(code = "W0070"))]
     InlineNestedListComprehension,
+    #[strum(props(code = "W0071"))]
     RedundantFunWrapper,
+    #[strum(props(code = "W0072"))]
     EncodeHexWithCase,
+    #[strum(props(code = "W0073"))]
     EqwalizerFixme,
+    #[strum(props(code = "W0074"))]
     EqwalizerIgnore,
+    #[strum(props(code = "W0075"))]
     UncheckedCast,
 
     // Wrapper for erlang service diagnostic codes
@@ -208,211 +296,28 @@ impl serde::Serialize for DiagnosticCode {
 impl DiagnosticCode {
     pub fn as_code(&self) -> String {
         match self {
-            DiagnosticCode::DefaultCodeForEnumIter => "DEFAULT-UNUSED-CONSTRUCTOR".to_string(),
-            DiagnosticCode::MissingModule => "L1201".to_string(),
-            DiagnosticCode::HeadMismatch => "P1700".to_string(), // "head-mismatch"
-            DiagnosticCode::SyntaxError => "P1711".to_string(),
-            DiagnosticCode::BoundVarInPattern => "W0000".to_string(),
-            DiagnosticCode::ModuleMismatch => "W0001".to_string(), // "module-mismatch"
-            DiagnosticCode::UnusedMacro => "W0002".to_string(),    // "unused-macro"
-            DiagnosticCode::UnusedRecordField => "W0003".to_string(), // unused-record-field
-            DiagnosticCode::Missing(_) => "W0004".to_string(), // epp had missing_comma and missing_parenthesis
-            DiagnosticCode::MutableVarBug => "W0005".to_string(), // mutable-variable
-            DiagnosticCode::StatementHasNoEffect => "W0006".to_string(), // statement-has-no-effect
-            DiagnosticCode::TrivialMatch => "W0007".to_string(), // trivial-match
-            DiagnosticCode::UnreachableTest => "W0008".to_string(),
-            DiagnosticCode::RedundantAssignment => "W0009".to_string(), // redundant-assignment
-            DiagnosticCode::UnusedFunctionArg => "W0010".to_string(),   // unused-function-arg
-            DiagnosticCode::ApplicationGetEnv => "W0011".to_string(),   // application_get_env
-            DiagnosticCode::MissingCompileWarnMissingSpec => "W0012".to_string(),
-            DiagnosticCode::MisspelledAttribute => "W0013".to_string(), // misspelled-attribute
-            DiagnosticCode::CrossNodeEval => "W0014".to_string(),       // cross-node-eval
-            DiagnosticCode::DependentHeader => "W0015".to_string(),     // dependent-header
-            DiagnosticCode::DeprecatedFunction => "W0016".to_string(),  // deprecated-function
-            DiagnosticCode::UndefinedFunction => "W0017".to_string(),   // undefined-function
-            DiagnosticCode::Unexpected(_) => "W0018".to_string(), // unexpected_semi, unexpected_dot
-            DiagnosticCode::ExpressionCanBeSimplified => "W0019".to_string(), // expression-can-be-simplified
-            DiagnosticCode::UnusedInclude => "W0020".to_string(), // Unused include (previously known as L1500 due to a bug)
-            DiagnosticCode::CannotEvaluateCTCallbacks => "W0021".to_string(),
-            DiagnosticCode::MeckMissingNoLinkInInitPerSuite => "W0022".to_string(),
-            DiagnosticCode::AtomsExhaustion => "W0023".to_string(),
-            DiagnosticCode::SlowFunction => "W0024".to_string(),
-            DiagnosticCode::BooleanPrecedence => "W0025".to_string(),
-            DiagnosticCode::UnexportedFunction => "W0026".to_string(),
-            DiagnosticCode::RecordTupleMatch => "W0027".to_string(),
-            DiagnosticCode::UnnecessaryFlatteningToFindFlatLength => "W0028".to_string(),
-            DiagnosticCode::UnnecessaryReversalToFindLastElementOfList => "W0029".to_string(),
-            DiagnosticCode::MapsPutFunctionRatherThanSyntax => "W0030".to_string(),
-            DiagnosticCode::MapsUpdateFunctionRatherThanSyntax => "W0031".to_string(),
-            DiagnosticCode::MapsFindFunctionRatherThanSyntax => "W0032".to_string(),
-            DiagnosticCode::ListsZipWithSeqRatherThanEnumerate => "W0033".to_string(),
-            DiagnosticCode::UnnecessaryMapToListInComprehension => "W0034".to_string(),
-            DiagnosticCode::UnnecessaryFoldToBuildMapFromList => "W0035".to_string(),
-            DiagnosticCode::UnnecessaryMapFromListAroundComprehension => "W0036".to_string(),
-            DiagnosticCode::UnspecificInclude => "W0037".to_string(),
-            DiagnosticCode::OldEdocSyntax => "W0038".to_string(),
-            DiagnosticCode::MacroPrecedenceEscape => "W0039".to_string(),
-            DiagnosticCode::UndocumentedFunction => "W0040".to_string(),
-            DiagnosticCode::DebuggingFunction => "W0041".to_string(),
-            DiagnosticCode::EqualityCheckWithUnnecessaryOperator => "W0042".to_string(),
-            DiagnosticCode::NonStandardIntegerFormatting => "W0043".to_string(),
-            DiagnosticCode::SimplifyNegation => "W0044".to_string(),
-            DiagnosticCode::DuplicateModule => "W0045".to_string(),
-            DiagnosticCode::UndocumentedModule => "W0046".to_string(),
-            DiagnosticCode::NoGarbageCollect => "W0047".to_string(),
-            DiagnosticCode::NoDialyzerAttribute => "W0048".to_string(),
-            DiagnosticCode::SetsVersion2 => "W0049".to_string(),
-            DiagnosticCode::NoSize => "W0050".to_string(),
-            DiagnosticCode::BinaryStringToSigil => "W0051".to_string(),
-            DiagnosticCode::NoCatch => "W0052".to_string(),
-            DiagnosticCode::NoErrorLogger => "W0053".to_string(),
-            DiagnosticCode::NoNoWarnSuppressions => "W0054".to_string(),
-            DiagnosticCode::CouldBeAStringLiteral => "W0055".to_string(),
-            DiagnosticCode::ListsReverseAppend => "W0056".to_string(),
-            DiagnosticCode::HirUnresolvedMacro => "W0057".to_string(),
-            DiagnosticCode::HirUnresolvedInclude => "W0058".to_string(),
-            DiagnosticCode::UnavailableType => "W0059".to_string(),
-            DiagnosticCode::BoundVarInLhs => "W0060".to_string(),
-            DiagnosticCode::HirInvalidPPCondition => "W0061".to_string(),
-            DiagnosticCode::HirIssueInIncludedFile => "W0062".to_string(),
-            DiagnosticCode::MixedStrictRelaxedGenerators => "W0063".to_string(),
-            DiagnosticCode::EtsLookupToLookupElement => "W0064".to_string(),
-            DiagnosticCode::InefficientListEmptyCheck => "W0065".to_string(),
-            DiagnosticCode::ListsMapToComprehension => "W0066".to_string(),
-            DiagnosticCode::MissingMsTransformInclude => "W0067".to_string(),
-            DiagnosticCode::MeckRestricted => "W0068".to_string(),
-            DiagnosticCode::NoAndOr => "W0069".to_string(),
-            DiagnosticCode::InlineNestedListComprehension => "W0070".to_string(),
-            DiagnosticCode::RedundantFunWrapper => "W0071".to_string(),
-            DiagnosticCode::EncodeHexWithCase => "W0072".to_string(),
-            DiagnosticCode::EqwalizerFixme => "W0073".to_string(),
-            DiagnosticCode::EqwalizerIgnore => "W0074".to_string(),
-            DiagnosticCode::UncheckedCast => "W0075".to_string(),
+            DiagnosticCode::Missing(_) => "W0004".to_string(),
+            DiagnosticCode::Unexpected(_) => "W0018".to_string(),
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_code(),
+            _ => self
+                .get_str(CODE_PROP)
+                .expect("all DiagnosticCode variants must have a 'code' strum property")
+                .to_string(),
         }
     }
 
     pub fn as_label(&self) -> String {
         match self {
-            DiagnosticCode::DefaultCodeForEnumIter => "DEFAULT-UNUSED-CONSTRUCTOR".to_string(),
-            DiagnosticCode::MissingModule => "missing_module".to_string(),
-            DiagnosticCode::UnusedInclude => "unused_include".to_string(),
-            DiagnosticCode::HeadMismatch => "head_mismatch".to_string(),
-            DiagnosticCode::SyntaxError => "syntax_error".to_string(),
-            DiagnosticCode::BoundVarInPattern => "bound_var_in_pattern".to_string(),
-            DiagnosticCode::BoundVarInLhs => "bound_var_in_lhs".to_string(),
-            DiagnosticCode::MixedStrictRelaxedGenerators => {
-                "mixed_strict_relaxed_generators".to_string()
-            }
-            DiagnosticCode::InefficientListEmptyCheck => "inefficient_list_empty_check".to_string(),
-            DiagnosticCode::ListsMapToComprehension => "lists_map_to_comprehension".to_string(),
-            DiagnosticCode::MissingMsTransformInclude => "missing_ms_transform_include".to_string(),
-            DiagnosticCode::MeckRestricted => "meck_restricted".to_string(),
-            DiagnosticCode::NoAndOr => "no_and_or".to_string(),
-            DiagnosticCode::InlineNestedListComprehension => {
-                "inline_nested_list_comprehension".to_string()
-            }
-            DiagnosticCode::RedundantFunWrapper => "redundant_fun_wrapper".to_string(),
-            DiagnosticCode::EncodeHexWithCase => "encode_hex_with_case".to_string(),
-            DiagnosticCode::EqwalizerFixme => "eqwalizer_fixme".to_string(),
-            DiagnosticCode::EqwalizerIgnore => "eqwalizer_ignore".to_string(),
-            DiagnosticCode::UncheckedCast => "unchecked_cast".to_string(),
-            DiagnosticCode::ModuleMismatch => "module_mismatch".to_string(),
-            DiagnosticCode::UnusedMacro => "unused_macro".to_string(),
-            DiagnosticCode::UnusedRecordField => "unused_record_field".to_string(),
             DiagnosticCode::Missing(_) => "missing_comma_or_parenthesis".to_string(),
-            DiagnosticCode::MutableVarBug => "mutable_variable_bug".to_string(),
-            DiagnosticCode::StatementHasNoEffect => "statement_has_no_effect".to_string(),
-            DiagnosticCode::TrivialMatch => "trivial_match".to_string(),
-            DiagnosticCode::UnusedFunctionArg => "unused_function_arg".to_string(),
-            DiagnosticCode::RedundantAssignment => "redundant_assignment".to_string(),
-            DiagnosticCode::UnreachableTest => "unreachable_test".to_string(),
-            DiagnosticCode::CannotEvaluateCTCallbacks => "cannot_evaluate_ct_callbacks".to_string(),
-            DiagnosticCode::MeckMissingNoLinkInInitPerSuite => {
-                "meck_missing_no_link_in_init_per_suite".to_string()
-            }
-            DiagnosticCode::AtomsExhaustion => "atoms_exhaustion".to_string(),
-            DiagnosticCode::SlowFunction => "slow_function".to_string(),
-            DiagnosticCode::BooleanPrecedence => "boolean_precedence".to_string(),
-            DiagnosticCode::MissingCompileWarnMissingSpec => {
-                // Match the name in the original
-                "compile-warn-missing-spec".to_string()
-            }
-            DiagnosticCode::ApplicationGetEnv => "application_get_env".to_string(),
-            DiagnosticCode::MisspelledAttribute => "misspelled_attribute".to_string(),
-            DiagnosticCode::CrossNodeEval => "cross_node_eval".to_string(),
-            DiagnosticCode::DependentHeader => "dependent_header".to_string(),
-            DiagnosticCode::DeprecatedFunction => "deprecated_function".to_string(),
-            DiagnosticCode::UndefinedFunction => "undefined_function".to_string(),
-            DiagnosticCode::UnexportedFunction => "unexported_function".to_string(),
             DiagnosticCode::Unexpected(_) => "unexpected_semi_or_dot".to_string(),
-            DiagnosticCode::ExpressionCanBeSimplified => "expression_can_be_simplified".to_string(),
-            DiagnosticCode::UnnecessaryFlatteningToFindFlatLength => {
-                "unnecessary_flattening_to_find_flat_length".to_string()
-            }
-            DiagnosticCode::UnnecessaryReversalToFindLastElementOfList => {
-                "unnecessary_reversal_to_find_last_element_of_list".to_string()
-            }
-            DiagnosticCode::MapsPutFunctionRatherThanSyntax => {
-                "maps_put_function_rather_than_syntax".to_string()
-            }
-            DiagnosticCode::MapsUpdateFunctionRatherThanSyntax => {
-                "maps_update_function_rather_than_syntax".to_string()
-            }
-            DiagnosticCode::MapsFindFunctionRatherThanSyntax => {
-                "maps_find_rather_than_syntax".to_string()
-            }
-            DiagnosticCode::ListsZipWithSeqRatherThanEnumerate => {
-                "lists_zip_with_seq_rather_than_enumerate".to_string()
-            }
-            DiagnosticCode::UnnecessaryMapToListInComprehension => {
-                "unnecessary_map_to_list_in_comprehension".to_string()
-            }
-            DiagnosticCode::UnnecessaryFoldToBuildMapFromList => {
-                "unnecessary_fold_to_build_map_from_list".to_string()
-            }
-            DiagnosticCode::UnnecessaryMapFromListAroundComprehension => {
-                "unnecessary_map_from_list_around_comprehension".to_string()
-            }
-            DiagnosticCode::UnspecificInclude => "unspecific_include".to_string(),
-            DiagnosticCode::EqualityCheckWithUnnecessaryOperator => {
-                "equality_check_with_unnecessary_operator".to_string()
-            }
-            DiagnosticCode::NonStandardIntegerFormatting => {
-                "nonstandard_integer_formatting".to_string()
-            }
-            DiagnosticCode::SimplifyNegation => "simplify_negation".to_string(),
-            DiagnosticCode::RecordTupleMatch => "record_tuple_match".to_string(),
-            DiagnosticCode::OldEdocSyntax => "old_edoc_syntax".to_string(),
-            DiagnosticCode::MacroPrecedenceEscape => "macro_precedence_escape".to_string(),
-            DiagnosticCode::UndocumentedFunction => "undocumented_function".to_string(),
-            DiagnosticCode::UndocumentedModule => "undocumented_module".to_string(),
-            DiagnosticCode::DebuggingFunction => "debugging_function".to_string(),
-            DiagnosticCode::DuplicateModule => "duplicate_module".to_string(),
-            DiagnosticCode::NoGarbageCollect => "no_garbage_collect".to_string(),
-            DiagnosticCode::NoDialyzerAttribute => "no_dialyzer_attribute".to_string(),
-            DiagnosticCode::SetsVersion2 => "sets_version_2".to_string(),
-            DiagnosticCode::NoSize => "no_size".to_string(),
-            DiagnosticCode::BinaryStringToSigil => "binary_string_to_sigil".to_string(),
-            DiagnosticCode::NoCatch => "no_catch".to_string(),
-            DiagnosticCode::NoErrorLogger => "no_error_logger".to_string(),
-            DiagnosticCode::NoNoWarnSuppressions => "no_nowarn_suppressions".to_string(),
-            DiagnosticCode::CouldBeAStringLiteral => "could_be_a_binary_string_literal".to_string(),
-            DiagnosticCode::ListsReverseAppend => "lists_reverse_append".to_string(),
-            DiagnosticCode::HirUnresolvedMacro => "hir_unresolved_macro".to_string(),
-            DiagnosticCode::HirUnresolvedInclude => "hir_unresolved_include".to_string(),
-            DiagnosticCode::UnavailableType => "unavailable_type".to_string(),
-            DiagnosticCode::HirInvalidPPCondition => "hir_invalid_pp_condition".to_string(),
-            DiagnosticCode::HirIssueInIncludedFile => "hir_issue_in_included_file".to_string(),
-            DiagnosticCode::EtsLookupToLookupElement => "ets_lookup_to_lookup_element".to_string(),
-
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_label(),
+            _ => self.as_ref().to_string(),
         }
     }
 
@@ -806,6 +711,33 @@ mod tests {
             }
         "#]]
         .assert_debug_eq(&config);
+    }
+
+    #[test]
+    fn all_diagnostic_codes_have_code_property() {
+        use strum::EnumProperty;
+
+        let mut missing = Vec::new();
+        for variant in DiagnosticCode::iter() {
+            match &variant {
+                DiagnosticCode::Missing(_)
+                | DiagnosticCode::Unexpected(_)
+                | DiagnosticCode::ErlangService(_)
+                | DiagnosticCode::Eqwalizer(_)
+                | DiagnosticCode::AdHoc(_)
+                // @fb-only: | DiagnosticCode::MetaOnly(_) => continue,
+                _ => {}
+            }
+            if variant.get_str(super::CODE_PROP).is_none() {
+                missing.push(format!("{:?}", variant));
+            }
+        }
+        assert!(
+            missing.is_empty(),
+            "The following DiagnosticCode variants are missing the '{}' strum property: {:?}",
+            super::CODE_PROP,
+            missing
+        );
     }
 
     #[test]

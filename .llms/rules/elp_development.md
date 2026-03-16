@@ -50,15 +50,9 @@ When adding new diagnostic codes to `DiagnosticCode` enum:
    - Never change the label of an existing diagnostic code
    - Always add the new diagnostic constructor to the end of the list
 
-3. **Required Methods**: When adding a new variant, update ALL match statements:
-   - `as_code()`: Return the diagnostic code (e.g., "W0053")
-   - `as_label()`: Return snake_case label (e.g., "unused_function_arg")
-   - `allows_fixme_comment()`: Determine if FIXME comments are allowed
-   - `is_syntax_error()`: Mark if this is a syntax error
+3. **Documentation**: Add comments explaining complex diagnostic codes
 
-4. **Documentation**: Add comments explaining complex diagnostic codes
-
-5. **Documentation File**: Create a corresponding documentation file in the
+4. **Documentation File**: Create a corresponding documentation file in the
    website
    - Location: `website/docs/erlang-error-index/{namespace}/{code}.md`
    - Example: `W0051` → `website/docs/erlang-error-index/w/W0051.md`
