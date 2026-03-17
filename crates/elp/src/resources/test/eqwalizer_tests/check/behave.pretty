@@ -10,4 +10,16 @@ error: unbound_type_var (See https://fb.me/eqwalizer_errors#unbound_type_var)
 10 │ -type invalid() :: _T.
    │ ^^^^^^^^^^^^^^^^^^^^^ _T: Type variable is unbound.
 
-2 ERRORS
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+   ┌─ check/src/behave.erl:12:1
+   │
+12 │ -callback use_invalid() -> invalid().
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use_invalid/0 references type with invalid definition: invalid/0
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+   ┌─ check/src/behave.erl:14:1
+   │
+14 │ -callback use_invalid2() -> invalid().
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use_invalid2/0 references type with invalid definition: invalid/0
+
+4 ERRORS

@@ -170,25 +170,36 @@ impl TransitiveChecker<'_> {
         }
     }
 
-    fn normalize_callback(&mut self, cb: Callback) -> Callback {
-        let mut filtered_tys = vec![];
-        for ty in cb.tys.into_iter() {
-            let mut invalids = Default::default();
+    fn check_callback(
+        &mut self,
+        stub: &mut ModuleStub,
+        cb: &Callback,
+        callbacks: &mut Vec<Callback>,
+    ) {
+        let mut invalids = Default::default();
+        for ty in cb.tys.iter() {
             self.collect_invalid_references(
                 &mut invalids,
                 self.module,
-                &Type::FunType(ty.clone()),
+                &Type::FunType(ty.to_owned()),
                 None,
             );
-            if invalids.is_empty() {
-                filtered_tys.push(ty)
-            }
         }
-
-        Callback {
-            pos: cb.pos,
-            id: cb.id,
-            tys: filtered_tys,
+        if !invalids.is_empty() {
+            let references = invalids.iter().map(|rref| self.show(rref)).collect();
+            let diag = Invalid::TransitiveInvalid(TransitiveInvalid::new(
+                cb.pos.clone(),
+                cb.id.to_string().into(),
+                references,
+            ));
+            stub.invalids.push(diag);
+            callbacks.push(Callback {
+                pos: cb.pos.clone(),
+                id: cb.id.clone(),
+                tys: Vec::new(),
+            });
+        } else {
+            callbacks.push(cb.clone());
         }
     }
 
@@ -342,14 +353,12 @@ impl TransitiveChecker<'_> {
         for spec in v_stub.overloaded_specs() {
             self.check_overloaded_spec(&mut stub_result, spec)
         }
-
-        let callbacks = (*stub_result.callbacks)
-            .clone()
-            .into_iter()
-            .map(|cb| self.normalize_callback(cb))
-            .collect();
-
+        let mut callbacks = Vec::new();
+        for cb in v_stub.callbacks() {
+            self.check_callback(&mut stub_result, cb, &mut callbacks)
+        }
         stub_result.callbacks = Arc::new(callbacks);
+
         stub_result
     }
 

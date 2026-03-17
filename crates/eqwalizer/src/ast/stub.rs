@@ -95,6 +95,10 @@ impl VStub {
         self.stub.overloaded_specs.values().map(|s| s.as_ref())
     }
 
+    pub fn callbacks(&self) -> impl Iterator<Item = &Callback> {
+        self.stub.callbacks.iter()
+    }
+
     pub fn into_normalized_stub(&self) -> ModuleStub {
         let mut stub = (*self.stub).clone();
         stub.invalids.extend_from_slice(&self.invalids);
