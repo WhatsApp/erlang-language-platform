@@ -35,7 +35,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
    │  
 50 │ ╭ -spec uses_trans_unbound_var(_A, _B) ->
 51 │ │     trans_unbound_var().
-   │ ╰─────────────────────^ uses_trans_unbound_var/2 (transitively) references type with invalid definition: trans_unbound_var/0
+   │ ╰─────────────────────^ uses_trans_unbound_var/2 (transitively) references type with invalid definition: w_unbound_var/0
 
 error: unbound_type_var (See https://fb.me/eqwalizer_errors#unbound_type_var)
    ┌─ debug/src/expand.erl:54:1

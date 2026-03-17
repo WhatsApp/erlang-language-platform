@@ -41,6 +41,6 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
    ┌─ debug/src/records_wip.erl:76:1
    │
 76 │ -type ty_var_in_field3() :: #ty_var_in_field3{}.
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ty_var_in_field3/0 (transitively) references type with invalid definition: #ty_var_in_field3{}
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ty_var_in_field3/0 (transitively) references type with invalid definition: var_from_nowhere/0
 
 7 ERRORS

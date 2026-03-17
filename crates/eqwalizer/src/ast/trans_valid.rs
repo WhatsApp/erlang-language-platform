@@ -13,6 +13,11 @@
 //! It ensures that declarations are transitively valid by propagating
 //! all invalid declarations. I.e., if a type t1 depends on a type t2
 //! and t2 is invalid, then t1 will be tagged as invalid.
+//!
+//! The algorithm works in three phases:
+//! 1. Build a dependency graph where edges mean "A depends on B"
+//! 2. Propagate invalidity using SCC computation (via petgraph)
+//! 3. Apply results to the module stub
 
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
@@ -32,6 +37,10 @@ use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::InvalidRefInTypeCast;
 use elp_types_db::eqwalizer::invalid_diagnostics::TransitiveInvalid;
 use elp_types_db::eqwalizer::types::Type;
+use fxhash::FxHashMap;
+use petgraph::algo::tarjan_scc;
+use petgraph::graph::DiGraph;
+use petgraph::graph::NodeIndex;
 
 use super::Id;
 use super::RemoteId;
@@ -58,9 +67,14 @@ pub struct TransitiveChecker<'d> {
     db: &'d dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
     module: StringId,
-    in_progress: BTreeSet<Ref>,
-    invalid_refs: BTreeMap<Ref, BTreeSet<Ref>>,
-    maybe_invalid_refs: BTreeMap<Ref, BTreeSet<Ref>>,
+    // Dependency graph: edge A -> B means "A depends on B"
+    graph: DiGraph<Ref, ()>,
+    ref_to_node: BTreeMap<Ref, NodeIndex>,
+    explored: BTreeSet<Ref>,
+    // Invalidity tracking
+    directly_invalid: BTreeSet<NodeIndex>,
+    // For each invalid ref, the set of root-cause invalid refs
+    invalid_reasons: BTreeMap<Ref, BTreeSet<Ref>>,
 }
 
 impl TransitiveChecker<'_> {
@@ -73,256 +87,175 @@ impl TransitiveChecker<'_> {
             db,
             project_id,
             module,
-            in_progress: Default::default(),
-            invalid_refs: Default::default(),
-            maybe_invalid_refs: Default::default(),
+            graph: DiGraph::new(),
+            ref_to_node: BTreeMap::new(),
+            explored: BTreeSet::new(),
+            directly_invalid: BTreeSet::new(),
+            invalid_reasons: BTreeMap::new(),
         }
     }
 
-    fn show_invalids(&mut self, rref: &Ref) -> Vec<SmolStr> {
-        self.invalid_refs
-            .get(rref)
-            .expect("rref should already be inserted into invalid_refs")
-            .iter()
-            .map(|inv| self.show(inv))
-            .collect()
-    }
-
-    fn check_type_decl(&mut self, stub: &mut ModuleStub, t: &TypeDecl) {
-        let rref = Ref::RidRef(RemoteId {
-            module: self.module,
-            name: t.id.name,
-            arity: t.id.arity,
-        });
-        if !self.is_valid(&rref) {
-            let invalids = self.show_invalids(&rref);
-            let diag = Invalid::TransitiveInvalid(TransitiveInvalid::new(
-                t.pos.clone(),
-                t.id.to_string().into(),
-                invalids,
-            ));
-            stub.types.remove(&t.id);
-            stub.invalids.push(diag);
-        }
-    }
-
-    fn check_spec(&mut self, stub: &mut ModuleStub, spec: &FunSpec) {
-        let mut invalids = Default::default();
-        self.collect_invalid_references(
-            &mut invalids,
-            self.module,
-            &Type::FunType(spec.ty.to_owned()),
-            None,
-        );
-        if !invalids.is_empty() {
-            let references = invalids.iter().map(|rref| self.show(rref)).collect();
-            let diag = Invalid::TransitiveInvalid(TransitiveInvalid::new(
-                spec.pos.clone(),
-                spec.id.to_string().into(),
-                references,
-            ));
-            stub.specs.remove(&spec.id);
-            stub.invalids.push(diag);
-        }
-    }
-
-    fn check_record_decl(&mut self, stub: &mut ModuleStub, t: &RecDecl) {
-        let rref = Ref::RecRef(self.module, t.name);
-        if !self.is_valid(&rref) {
-            let invalids = self.show_invalids(&rref);
-            let diag = Invalid::TransitiveInvalid(TransitiveInvalid::new(
-                t.pos.clone(),
-                t.name.into(),
-                invalids,
-            ));
-            // we don't know at this point which fields are invalid,
-            // so replacing all the fields with dynamic type
-            if let Some(rec_decl) = stub.records.get_mut(&t.name) {
-                let rec_decl_mut = Arc::make_mut(rec_decl);
-                rec_decl_mut
-                    .fields
-                    .iter_mut()
-                    .for_each(|field| field.tp = Type::DynamicType)
-            };
-            stub.invalids.push(diag);
-        }
-    }
-
-    fn check_overloaded_spec(&mut self, stub: &mut ModuleStub, spec: &OverloadedFunSpec) {
-        let mut invalids = Default::default();
-        for ty in spec.tys.iter() {
-            self.collect_invalid_references(
-                &mut invalids,
-                self.module,
-                &Type::FunType(ty.to_owned()),
-                None,
-            );
-        }
-        if !invalids.is_empty() {
-            let references = invalids.iter().map(|rref| self.show(rref)).collect();
-            let diag = Invalid::TransitiveInvalid(TransitiveInvalid::new(
-                spec.pos.clone(),
-                spec.id.to_string().into(),
-                references,
-            ));
-            stub.overloaded_specs.remove(&spec.id);
-            stub.invalids.push(diag);
-        }
-    }
-
-    fn check_callback(
-        &mut self,
-        stub: &mut ModuleStub,
-        cb: &Callback,
-        callbacks: &mut Vec<Callback>,
-    ) {
-        let mut invalids = Default::default();
-        for ty in cb.tys.iter() {
-            self.collect_invalid_references(
-                &mut invalids,
-                self.module,
-                &Type::FunType(ty.to_owned()),
-                None,
-            );
-        }
-        if !invalids.is_empty() {
-            let references = invalids.iter().map(|rref| self.show(rref)).collect();
-            let diag = Invalid::TransitiveInvalid(TransitiveInvalid::new(
-                cb.pos.clone(),
-                cb.id.to_string().into(),
-                references,
-            ));
-            stub.invalids.push(diag);
-            callbacks.push(Callback {
-                pos: cb.pos.clone(),
-                id: cb.id.clone(),
-                tys: Vec::new(),
-            });
-        } else {
-            callbacks.push(cb.clone());
-        }
-    }
-
-    fn is_valid(&mut self, rref: &Ref) -> bool {
-        let maybe_valid = self.is_maybe_valid(rref, None);
-        let mut resolved_invalids = BTreeSet::default();
-        if let Some(maybe_invalids) = self.maybe_invalid_refs.remove(rref) {
-            for maybe_invalid in maybe_invalids.iter() {
-                if !self.is_valid(maybe_invalid) {
-                    resolved_invalids.insert(maybe_invalid.clone());
-                }
-            }
-        }
-        let has_no_resolved_invalids = resolved_invalids.is_empty();
-        self.invalid_refs
+    fn get_or_create_node(&mut self, rref: Ref) -> NodeIndex {
+        let graph = &mut self.graph;
+        *self
+            .ref_to_node
             .entry(rref.clone())
-            .or_default()
-            .extend(resolved_invalids);
-        maybe_valid && has_no_resolved_invalids
+            .or_insert_with(|| graph.add_node(rref))
     }
 
-    fn is_maybe_valid(&mut self, rref: &Ref, parent_ref: Option<&Ref>) -> bool {
-        if self.in_progress.contains(rref) {
-            if let Some(pref) = parent_ref {
-                self.maybe_invalid_refs
-                    .entry(pref.clone())
-                    .or_default()
-                    .insert(rref.clone());
+    /// Collect all type/record references from a type tree.
+    fn collect_refs_from_type(module: StringId, ty: &Type) -> Vec<Ref> {
+        let mut refs = Vec::new();
+        let _ = ty.traverse::<()>(&mut |sub_ty| {
+            match sub_ty {
+                Type::RemoteType(rt) => refs.push(Ref::RidRef(rt.id.clone())),
+                Type::RecordType(rt) => refs.push(Ref::RecRef(module, rt.name)),
+                Type::RefinedRecordType(rt) => refs.push(Ref::RecRef(module, rt.rec_type.name)),
+                _ => {}
             }
-            return true;
-        }
-        if let Some(invs) = self.invalid_refs.get(rref) {
-            return invs.is_empty();
-        }
-        self.in_progress.insert(rref.clone());
-        let mut invalids = Default::default();
-        match self
+            Ok(())
+        });
+        refs
+    }
+
+    /// Resolve the dependencies of a single ref by looking up its definition.
+    /// Returns `Some(deps)` if the ref resolves, `None` if it should be marked invalid.
+    fn resolve_deps(&self, rref: &Ref) -> Option<Vec<Ref>> {
+        let v_stub = self
             .db
             .contractive_stub(self.project_id, ModuleName::new(rref.module().as_str()))
-        {
-            Ok(v_stub) => match rref {
-                Ref::RidRef(rid) => {
-                    let id = Id {
-                        name: rid.name,
-                        arity: rid.arity,
-                    };
-                    match v_stub.get_type(&id) {
-                        Some(tdecl) => self.collect_invalid_references(
-                            &mut invalids,
-                            rid.module,
-                            &tdecl.body,
-                            Some(rref),
-                        ),
-                        None => {
-                            let _ = invalids.insert(rref.clone());
-                        }
-                    }
-                }
-                Ref::RecRef(module, rec_name) => match v_stub.get_record(*rec_name) {
-                    Some(rdecl) => {
-                        for field in rdecl.fields.iter() {
-                            self.collect_invalid_references(
-                                &mut invalids,
-                                *module,
-                                &field.tp,
-                                Some(rref),
-                            );
-                        }
-                    }
-                    None => {
-                        invalids.insert(rref.clone());
-                    }
-                },
-            },
-            _ => {
-                invalids.insert(rref.clone());
+            .ok()?;
+        match rref {
+            Ref::RidRef(rid) => {
+                let id = Id {
+                    name: rid.name,
+                    arity: rid.arity,
+                };
+                let tdecl = v_stub.get_type(&id)?;
+                Some(Self::collect_refs_from_type(rid.module, &tdecl.body))
             }
-        };
-        let no_invalids = invalids.is_empty();
-        self.in_progress.remove(rref);
-        self.invalid_refs.insert(rref.clone(), invalids);
-        no_invalids
-    }
-
-    fn collect_invalid_references(
-        &mut self,
-        invalids: &mut BTreeSet<Ref>,
-        module: StringId,
-        ty: &Type,
-        parent_ref: Option<&Ref>,
-    ) {
-        match ty {
-            Type::RemoteType(rt) => {
-                for arg in rt.arg_tys.iter() {
-                    self.collect_invalid_references(invalids, module, arg, parent_ref);
-                }
-                let rref = Ref::RidRef(rt.id.clone());
-                if !self.is_maybe_valid(&rref, parent_ref) {
-                    invalids.insert(rref);
-                }
-            }
-            Type::RecordType(rt) => {
-                let rref = Ref::RecRef(module, rt.name);
-                if !self.is_maybe_valid(&rref, parent_ref) {
-                    invalids.insert(rref);
-                }
-            }
-            Type::RefinedRecordType(rt) => {
-                let rref = Ref::RecRef(module, rt.rec_type.name);
-                for (_, ty) in rt.fields.iter() {
-                    self.collect_invalid_references(invalids, module, ty, parent_ref);
-                }
-                if !self.is_maybe_valid(&rref, parent_ref) {
-                    invalids.insert(rref);
-                }
-            }
-            ty => {
-                let _ = ty.walk::<()>(&mut |ty| {
-                    self.collect_invalid_references(invalids, module, ty, parent_ref);
-                    Ok(())
-                });
+            Ref::RecRef(module, rec_name) => {
+                let rdecl = v_stub.get_record(*rec_name)?;
+                Some(
+                    rdecl
+                        .fields
+                        .iter()
+                        .flat_map(|field| Self::collect_refs_from_type(*module, &field.tp))
+                        .collect(),
+                )
             }
         }
+    }
+
+    /// Explore a ref and all its transitive dependencies, building the
+    /// dependency graph. Uses an iterative worklist to avoid stack overflow.
+    fn explore_ref(&mut self, initial: Ref) {
+        let mut worklist = vec![initial];
+        while let Some(rref) = worklist.pop() {
+            if !self.explored.insert(rref.clone()) {
+                continue;
+            }
+            let source_node = self.get_or_create_node(rref.clone());
+            match self.resolve_deps(&rref) {
+                Some(deps) => {
+                    for dep in deps {
+                        let dep_node = self.get_or_create_node(dep.clone());
+                        self.graph.add_edge(source_node, dep_node, ());
+                        worklist.push(dep);
+                    }
+                }
+                None => {
+                    self.directly_invalid.insert(source_node);
+                }
+            }
+        }
+    }
+
+    /// Explore all refs collected from the given fun types.
+    fn explore_fun_types<'a>(
+        &mut self,
+        tys: impl Iterator<Item = &'a elp_types_db::eqwalizer::types::FunType>,
+    ) {
+        for ty in tys {
+            for rref in Self::collect_refs_from_type(self.module, &Type::FunType(ty.clone())) {
+                self.explore_ref(rref);
+            }
+        }
+    }
+
+    /// Build the dependency graph starting from all entities in the module.
+    fn build_graph(&mut self, v_stub: &VStub) {
+        for decl in v_stub.types() {
+            let rref = Ref::RidRef(RemoteId {
+                module: self.module,
+                name: decl.id.name,
+                arity: decl.id.arity,
+            });
+            self.explore_ref(rref);
+        }
+
+        for decl in v_stub.records() {
+            self.explore_ref(Ref::RecRef(self.module, decl.name));
+        }
+
+        self.explore_fun_types(v_stub.specs().map(|s| &s.ty));
+        self.explore_fun_types(v_stub.overloaded_specs().flat_map(|s| s.tys.iter()));
+        self.explore_fun_types(v_stub.callbacks().flat_map(|cb| cb.tys.iter()));
+    }
+
+    /// Propagate invalidity through the dependency graph using SCCs.
+    /// After this method, `invalid_reasons` maps each transitively-invalid
+    /// ref to the set of root-cause (directly) invalid refs it depends on.
+    fn propagate_invalidity(&mut self) {
+        // tarjan_scc returns SCCs in postorder (reverse topological order):
+        // dependencies come before dependents.
+        let sccs = tarjan_scc(&self.graph);
+
+        let node_to_scc: FxHashMap<NodeIndex, usize> = sccs
+            .iter()
+            .enumerate()
+            .flat_map(|(i, scc)| scc.iter().map(move |&node| (node, i)))
+            .collect();
+
+        let mut scc_root_causes: Vec<BTreeSet<Ref>> = vec![BTreeSet::new(); sccs.len()];
+
+        for (scc_idx, scc) in sccs.iter().enumerate() {
+            // Collect root causes from directly invalid nodes in this SCC
+            scc_root_causes[scc_idx].extend(
+                scc.iter()
+                    .filter(|node| self.directly_invalid.contains(node))
+                    .map(|&node| self.graph[node].clone()),
+            );
+
+            // Collect root causes from dependency SCCs (outgoing edges)
+            let dep_causes: BTreeSet<Ref> = scc
+                .iter()
+                .flat_map(|&node| self.graph.neighbors(node))
+                .map(|n| node_to_scc[&n])
+                .filter(|&dep_scc| dep_scc != scc_idx)
+                .collect::<BTreeSet<_>>()
+                .into_iter()
+                .flat_map(|dep_scc| scc_root_causes[dep_scc].iter().cloned())
+                .collect();
+            scc_root_causes[scc_idx].extend(dep_causes);
+        }
+
+        for (scc_idx, scc) in sccs.iter().enumerate() {
+            if !scc_root_causes[scc_idx].is_empty() {
+                for &node in scc {
+                    self.invalid_reasons
+                        .insert(self.graph[node].clone(), scc_root_causes[scc_idx].clone());
+                }
+            }
+        }
+    }
+
+    fn collect_root_causes_from_type(&self, ty: &Type) -> BTreeSet<Ref> {
+        Self::collect_refs_from_type(self.module, ty)
+            .iter()
+            .filter_map(|rref| self.invalid_reasons.get(rref))
+            .flat_map(|reasons| reasons.iter().cloned())
+            .collect()
     }
 
     fn show(&self, rref: &Ref) -> SmolStr {
@@ -338,8 +271,99 @@ impl TransitiveChecker<'_> {
         }
     }
 
+    fn push_transitive_invalid(
+        &self,
+        stub: &mut ModuleStub,
+        root_causes: &BTreeSet<Ref>,
+        pos: Pos,
+        name: SmolStr,
+    ) {
+        let references = root_causes.iter().map(|r| self.show(r)).collect();
+        stub.invalids
+            .push(Invalid::TransitiveInvalid(TransitiveInvalid::new(
+                pos, name, references,
+            )));
+    }
+
+    fn check_type_decl(&self, stub: &mut ModuleStub, t: &TypeDecl) {
+        let rref = Ref::RidRef(RemoteId {
+            module: self.module,
+            name: t.id.name,
+            arity: t.id.arity,
+        });
+        if let Some(causes) = self.invalid_reasons.get(&rref) {
+            stub.types.remove(&t.id);
+            self.push_transitive_invalid(stub, causes, t.pos.clone(), t.id.to_string().into());
+        }
+    }
+
+    fn check_record_decl(&self, stub: &mut ModuleStub, t: &RecDecl) {
+        let rref = Ref::RecRef(self.module, t.name);
+        if let Some(causes) = self.invalid_reasons.get(&rref) {
+            // Replacing all the fields with dynamic type
+            if let Some(rec_decl) = stub.records.get_mut(&t.name) {
+                Arc::make_mut(rec_decl)
+                    .fields
+                    .iter_mut()
+                    .for_each(|field| field.tp = Type::DynamicType);
+            }
+            self.push_transitive_invalid(stub, causes, t.pos.clone(), t.name.into());
+        }
+    }
+
+    fn check_spec(&self, stub: &mut ModuleStub, spec: &FunSpec) {
+        let causes = self.collect_root_causes_from_type(&Type::FunType(spec.ty.to_owned()));
+        if !causes.is_empty() {
+            stub.specs.remove(&spec.id);
+            self.push_transitive_invalid(
+                stub,
+                &causes,
+                spec.pos.clone(),
+                spec.id.to_string().into(),
+            );
+        }
+    }
+
+    fn check_overloaded_spec(&self, stub: &mut ModuleStub, spec: &OverloadedFunSpec) {
+        let causes: BTreeSet<Ref> = spec
+            .tys
+            .iter()
+            .flat_map(|ty| self.collect_root_causes_from_type(&Type::FunType(ty.to_owned())))
+            .collect();
+        if !causes.is_empty() {
+            stub.overloaded_specs.remove(&spec.id);
+            self.push_transitive_invalid(
+                stub,
+                &causes,
+                spec.pos.clone(),
+                spec.id.to_string().into(),
+            );
+        }
+    }
+
+    fn check_callback(&self, stub: &mut ModuleStub, cb: &Callback, callbacks: &mut Vec<Callback>) {
+        let causes: BTreeSet<Ref> = cb
+            .tys
+            .iter()
+            .flat_map(|ty| self.collect_root_causes_from_type(&Type::FunType(ty.to_owned())))
+            .collect();
+        if !causes.is_empty() {
+            self.push_transitive_invalid(stub, &causes, cb.pos.clone(), cb.id.to_string().into());
+            callbacks.push(Callback {
+                pos: cb.pos.clone(),
+                id: cb.id.clone(),
+                tys: Vec::new(),
+            });
+        } else {
+            callbacks.push(cb.clone());
+        }
+    }
+
     pub fn check(&mut self, v_stub: &VStub) -> ModuleStub {
         let mut stub_result = v_stub.into_normalized_stub();
+
+        self.build_graph(v_stub);
+        self.propagate_invalidity();
 
         for decl in v_stub.types() {
             self.check_type_decl(&mut stub_result, decl)
@@ -363,12 +387,17 @@ impl TransitiveChecker<'_> {
     }
 
     pub fn check_type(&mut self, pos: Pos, ty: Type) -> Result<Type, Invalid> {
-        let mut invalids = Default::default();
-        self.collect_invalid_references(&mut invalids, self.module, &ty, None);
-        if !invalids.is_empty() {
-            let references = invalids.iter().map(|rref| self.show(rref)).collect();
-            let diag = Invalid::InvalidRefInTypeCast(InvalidRefInTypeCast::new(pos, references));
-            return Err(diag);
+        for rref in Self::collect_refs_from_type(self.module, &ty) {
+            self.explore_ref(rref);
+        }
+        self.propagate_invalidity();
+
+        let root_causes = self.collect_root_causes_from_type(&ty);
+        if !root_causes.is_empty() {
+            let references = root_causes.iter().map(|r| self.show(r)).collect();
+            return Err(Invalid::InvalidRefInTypeCast(InvalidRefInTypeCast::new(
+                pos, references,
+            )));
         }
         Ok(ty)
     }

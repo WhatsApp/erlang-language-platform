@@ -79,6 +79,7 @@ num-derive = "0.4.2"
 num-traits = "0.2.19"
 once_cell = "1.19.0"
 parking_lot = "0.12.3"
+petgraph = "0.8.3"
 paths = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2026-01-12" }
 proc-macro2 = "1.0.86"
 profile = { git = "https://github.com/rust-lang/rust-analyzer", rev = "2026-01-12" }

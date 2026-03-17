@@ -1,0 +1,13 @@
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+  ┌─ check/src/recursive_aliases_use.erl:4:1
+  │
+4 │ -spec test1(recursive_aliases:invalid_rec()) -> ok.
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ test1/1 (transitively) references type with invalid definition: recursive_aliases:invalid_ty/0
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+  ┌─ check/src/recursive_aliases_use.erl:7:1
+  │
+7 │ -spec test2(recursive_aliases:invalid_transitive()) -> ok.
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ test2/1 (transitively) references type with invalid definition: recursive_aliases:invalid_ty/0
+
+2 ERRORS
