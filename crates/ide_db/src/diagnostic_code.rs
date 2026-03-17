@@ -143,7 +143,7 @@ pub enum DiagnosticCode {
     NoGarbageCollect,
     #[strum(props(code = "W0048"))]
     NoDialyzerAttribute,
-    #[strum(props(code = "W0049"))]
+    #[strum(props(code = "W0049"), serialize = "sets_version_2")]
     SetsVersion2,
     #[strum(props(code = "W0050"))]
     NoSize,
