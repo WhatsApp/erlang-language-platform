@@ -632,7 +632,8 @@ mod tests {
                 | DiagnosticCode::ErlangService(_)
                 | DiagnosticCode::Eqwalizer(_)
                 | DiagnosticCode::AdHoc(_)
-                // @fb-only: | DiagnosticCode::MetaOnly(_) => continue,
+                // @fb-only: | DiagnosticCode::MetaOnly(_)
+                => continue,
                 _ => {}
             }
             if variant.get_str(super::CODE_PROP).is_none() {
