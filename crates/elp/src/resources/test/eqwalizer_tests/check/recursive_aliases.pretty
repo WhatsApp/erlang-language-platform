@@ -85,7 +85,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
    │  
 72 │ ╭ -spec non_prod_id(non_prod()) ->
 73 │ │     non_prod() | number().
-   │ ╰───────────────────────^ non_prod_id/1 references type with invalid definition: non_prod/0
+   │ ╰───────────────────────^ non_prod_id/1 (transitively) references type with invalid definition: non_prod/0
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/recursive_aliases.erl:81:22
@@ -160,14 +160,14 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     │  
 204 │ ╭ -spec to_mu_bad_neg() ->
 205 │ │   mu_bad().
-    │ ╰────────^ to_mu_bad_neg/0 references type with invalid definition: mu_bad/0
+    │ ╰────────^ to_mu_bad_neg/0 (transitively) references type with invalid definition: mu_bad/0
 
 error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
     ┌─ check/src/recursive_aliases.erl:208:1
     │  
 208 │ ╭ -spec test_mu_bad_neg(mu_bad()) ->
 209 │ │   pid().
-    │ ╰─────^ test_mu_bad_neg/1 references type with invalid definition: mu_bad/0
+    │ ╰─────^ test_mu_bad_neg/1 (transitively) references type with invalid definition: mu_bad/0
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/recursive_aliases.erl:212:1
@@ -179,7 +179,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     ┌─ check/src/recursive_aliases.erl:214:1
     │
 214 │ -spec test2_neg(mu(A)) -> mu(mu(A)).
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ test2_neg/1 references type with invalid definition: mu/1
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ test2_neg/1 (transitively) references type with invalid definition: mu/1
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/recursive_aliases.erl:223:23
@@ -212,14 +212,14 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     │  
 301 │ ╭ -spec to_mu_bad3_neg(mu_bad2()) ->
 302 │ │     mu_bad3().
-    │ ╰───────────^ to_mu_bad3_neg/1 references types with invalid definitions: mu_bad2/0, mu_bad3/0
+    │ ╰───────────^ to_mu_bad3_neg/1 (transitively) references types with invalid definitions: mu_bad2/0, mu_bad3/0
 
 error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
     ┌─ check/src/recursive_aliases.erl:305:1
     │  
 305 │ ╭ -spec to_mu_bad2b_neg(mu_bad2()) ->
 306 │ │   mu_bad2b().
-    │ ╰──────────^ to_mu_bad2b_neg/1 references types with invalid definitions: mu_bad2/0, mu_bad2b/0
+    │ ╰──────────^ to_mu_bad2b_neg/1 (transitively) references types with invalid definitions: mu_bad2/0, mu_bad2b/0
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/recursive_aliases.erl:309:1
@@ -252,7 +252,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     │  
 317 │ ╭ -spec test_mutual_neg(mutual1()) ->
 318 │ │     mutual2().
-    │ ╰───────────^ test_mutual_neg/1 references types with invalid definitions: mutual1/0, mutual2/0
+    │ ╰───────────^ test_mutual_neg/1 (transitively) references types with invalid definitions: mutual1/0, mutual2/0
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/recursive_aliases.erl:342:1
@@ -272,7 +272,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
 345 │ ╭ -spec test_mu_bad5(
 346 │ │     mu_bad5()
 347 │ │ ) -> mu_bad5b().
-    │ ╰─────────────^ test_mu_bad5/1 references types with invalid definitions: mu_bad5/0, mu_bad5b/0
+    │ ╰─────────────^ test_mu_bad5/1 (transitively) references types with invalid definitions: mu_bad5/0, mu_bad5b/0
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/recursive_aliases.erl:392:1
@@ -284,14 +284,14 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     ┌─ check/src/recursive_aliases.erl:395:1
     │
 395 │ -spec un_recur_neg(recur()) -> ok.
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ un_recur_neg/1 references type with invalid definition: recur/0
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ un_recur_neg/1 (transitively) references type with invalid definition: recur/0
 
 error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
     ┌─ check/src/recursive_aliases.erl:399:1
     │  
 399 │ ╭ -spec term_to_recur_neg(term()) ->
 400 │ │   recur().
-    │ ╰───────^ term_to_recur_neg/1 references type with invalid definition: recur/0
+    │ ╰───────^ term_to_recur_neg/1 (transitively) references type with invalid definition: recur/0
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/recursive_aliases.erl:409:1
@@ -353,20 +353,20 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     │  
 510 │ ╭ -type invalid_rec() ::
 511 │ │   invalid_ty() | invalid_transitive().
-    │ ╰───────────────────────────────────^ invalid_rec/0 references type with invalid definition: invalid_ty/0
+    │ ╰───────────────────────────────────^ invalid_rec/0 (transitively) references type with invalid definition: invalid_ty/0
 
 error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
     ┌─ check/src/recursive_aliases.erl:513:1
     │  
 513 │ ╭ -type invalid_transitive() ::
 514 │ │   {a, invalid_rec()}.
-    │ ╰────────────────────^ invalid_transitive/0 references type with invalid definition: invalid_rec/0
+    │ ╰────────────────────^ invalid_transitive/0 (transitively) references type with invalid definition: invalid_rec/0
 
 error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
     ┌─ check/src/recursive_aliases.erl:516:1
     │  
 516 │ ╭ -spec use_invalid
 517 │ │   (invalid_transitive()) -> a.
-    │ ╰─────────────────────────────^ use_invalid/1 references type with invalid definition: invalid_transitive/0
+    │ ╰─────────────────────────────^ use_invalid/1 (transitively) references type with invalid definition: invalid_transitive/0
 
 43 ERRORS

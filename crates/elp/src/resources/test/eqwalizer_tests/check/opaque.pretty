@@ -104,14 +104,14 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     │  
 152 │ ╭ -spec use_o_cycle1(misc:o_cycle()) ->
 153 │ │   opaque:o_cycle().
-    │ ╰──────────────────^ use_o_cycle1/1 references types with invalid definitions: misc:o_cycle/0, o_cycle/0
+    │ ╰──────────────────^ use_o_cycle1/1 (transitively) references types with invalid definitions: misc:o_cycle/0, o_cycle/0
 
 error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
     ┌─ check/src/opaque.erl:156:1
     │  
 156 │ ╭ -spec use_o_cycle2(opaque:o_cycle()) ->
 157 │ │   misc:o_cycle().
-    │ ╰────────────────^ use_o_cycle2/1 references types with invalid definitions: misc:o_cycle/0, o_cycle/0
+    │ ╰────────────────^ use_o_cycle2/1 (transitively) references types with invalid definitions: misc:o_cycle/0, o_cycle/0
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/opaque.erl:236:1
@@ -144,6 +144,6 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     ┌─ check/src/opaque.erl:290:1
     │
 290 │ -opaque o_trans_invalid() :: invalid().
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ o_trans_invalid/0 references type with invalid definition: invalid/0
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ o_trans_invalid/0 (transitively) references type with invalid definition: invalid/0
 
 16 ERRORS

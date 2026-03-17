@@ -2,6 +2,6 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
    ┌─ debug/src/debug_header.erl:14:1
    │
 14 │ -type t() :: has_unbound().
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^ t/0 references type with invalid definition: has_unbound/0
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^ t/0 (transitively) references type with invalid definition: has_unbound/0
 
 1 ERROR

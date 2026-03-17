@@ -235,7 +235,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     │  
 201 │ ╭ -spec record_as_tuple7_neg
 202 │ │ (#bad_rec{}) -> {bad_rec, atom()}.
-    │ ╰─────────────────────────────────^ record_as_tuple7_neg/1 references type with invalid definition: #bad_rec{}
+    │ ╰─────────────────────────────────^ record_as_tuple7_neg/1 (transitively) references type with invalid definition: #bad_rec{}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:213:28

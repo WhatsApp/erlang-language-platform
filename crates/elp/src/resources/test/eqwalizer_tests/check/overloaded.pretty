@@ -105,7 +105,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     │  
 263 │ ╭ -spec use_invalid_neg(a) -> a;
 264 │ │                  (err) -> invalid().
-    │ ╰─────────────────────────────────^ use_invalid_neg/1 references type with invalid definition: invalid/0
+    │ ╰─────────────────────────────────^ use_invalid_neg/1 (transitively) references type with invalid definition: invalid/0
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:269:14

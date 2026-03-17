@@ -890,7 +890,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     ┌─ fault_tolerance/src/fault_tolerance.erl:331:1
     │
 331 │ -spec use_invalid(loop()) -> none().
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use_invalid/1 references type with invalid definition: loop/0
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use_invalid/1 (transitively) references type with invalid definition: loop/0
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ fault_tolerance/src/fault_tolerance.erl:348:3

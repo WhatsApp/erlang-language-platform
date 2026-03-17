@@ -18,7 +18,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
 41 │ ╭ -spec test_trans_invalid1_neg(
 42 │ │     trans_invalid()
 43 │ │ ) -> nok.
-   │ ╰────────^ test_trans_invalid1_neg/1 references type with invalid definition: trans_invalid/0
+   │ ╰────────^ test_trans_invalid1_neg/1 (transitively) references type with invalid definition: trans_invalid/0
 
 error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
    ┌─ check/src/approx.erl:47:1
@@ -26,7 +26,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
 47 │ ╭ -spec test_trans_invalid2_neg(
 48 │ │     trans_invalid()
 49 │ │ ) -> nok.
-   │ ╰────────^ test_trans_invalid2_neg/1 references type with invalid definition: trans_invalid/0
+   │ ╰────────^ test_trans_invalid2_neg/1 (transitively) references type with invalid definition: trans_invalid/0
 
 error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
    ┌─ check/src/approx.erl:53:1
@@ -34,7 +34,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
 53 │ ╭ -spec test_trans_invalid3_neg(
 54 │ │     trans_invalid()
 55 │ │ ) -> nok.
-   │ ╰────────^ test_trans_invalid3_neg/1 references type with invalid definition: trans_invalid/0
+   │ ╰────────^ test_trans_invalid3_neg/1 (transitively) references type with invalid definition: trans_invalid/0
 
 error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
    ┌─ check/src/approx.erl:62:30

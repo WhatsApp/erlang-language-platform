@@ -424,7 +424,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     │  
 415 │ ╭ -spec test_recurd2_neg(#recurd2{}) ->
 416 │ │     #recurd2{}.
-    │ ╰──────────────^ test_recurd2_neg/1 references type with invalid definition: #recurd2{}
+    │ ╰──────────────^ test_recurd2_neg/1 (transitively) references type with invalid definition: #recurd2{}
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/records.erl:420:1
@@ -436,7 +436,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     ┌─ check/src/records.erl:421:1
     │
 421 │ -record(invalid, {field :: loop()}).
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid references type with invalid definition: loop/0
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid (transitively) references type with invalid definition: loop/0
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:425:5

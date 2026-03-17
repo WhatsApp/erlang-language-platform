@@ -709,14 +709,14 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
     │  
 762 │ ╭ -spec use_o_cycle1(misc:o_cycle()) ->
 763 │ │     opaque:o_cycle().
-    │ ╰────────────────────^ use_o_cycle1/1 references types with invalid definitions: o_cycle/0, opaque:o_cycle/0
+    │ ╰────────────────────^ use_o_cycle1/1 (transitively) references types with invalid definitions: o_cycle/0, opaque:o_cycle/0
 
 error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
     ┌─ check/src/misc.erl:766:1
     │  
 766 │ ╭ -spec use_o_cycle2(opaque:o_cycle()) ->
 767 │ │     misc:o_cycle().
-    │ ╰──────────────────^ use_o_cycle2/1 references types with invalid definitions: o_cycle/0, opaque:o_cycle/0
+    │ ╰──────────────────^ use_o_cycle2/1 (transitively) references types with invalid definitions: o_cycle/0, opaque:o_cycle/0
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/misc.erl:783:1

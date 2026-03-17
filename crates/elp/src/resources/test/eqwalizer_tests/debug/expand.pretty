@@ -21,21 +21,21 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
    │  
 43 │ ╭ -type trans_unbound_var()
 44 │ │     :: w_unbound_var().
-   │ ╰────────────────────^ trans_unbound_var/0 references type with invalid definition: w_unbound_var/0
+   │ ╰────────────────────^ trans_unbound_var/0 (transitively) references type with invalid definition: w_unbound_var/0
 
 error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
    ┌─ debug/src/expand.erl:46:1
    │  
 46 │ ╭ -spec uses_ty_w_unbound_var(_A, _B) ->
 47 │ │     w_unbound_var().
-   │ ╰─────────────────^ uses_ty_w_unbound_var/2 references type with invalid definition: w_unbound_var/0
+   │ ╰─────────────────^ uses_ty_w_unbound_var/2 (transitively) references type with invalid definition: w_unbound_var/0
 
 error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
    ┌─ debug/src/expand.erl:50:1
    │  
 50 │ ╭ -spec uses_trans_unbound_var(_A, _B) ->
 51 │ │     trans_unbound_var().
-   │ ╰─────────────────────^ uses_trans_unbound_var/2 references type with invalid definition: trans_unbound_var/0
+   │ ╰─────────────────────^ uses_trans_unbound_var/2 (transitively) references type with invalid definition: trans_unbound_var/0
 
 error: unbound_type_var (See https://fb.me/eqwalizer_errors#unbound_type_var)
    ┌─ debug/src/expand.erl:54:1
@@ -49,7 +49,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
    │  
 57 │ ╭ -spec uses_ty_w_unbound_var2() ->
 58 │ │     w_unbound_var2().
-   │ ╰──────────────────^ uses_ty_w_unbound_var2/0 references type with invalid definition: w_unbound_var2/0
+   │ ╰──────────────────^ uses_ty_w_unbound_var2/0 (transitively) references type with invalid definition: w_unbound_var2/0
 
 error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
    ┌─ debug/src/expand.erl:62:12
@@ -61,7 +61,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
    ┌─ debug/src/expand.erl:64:1
    │
 64 │ -type bad_ref() :: #bad_ref{}.
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bad_ref/0 references type with invalid definition: #bad_ref{}
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bad_ref/0 (transitively) references type with invalid definition: #bad_ref{}
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
    ┌─ debug/src/expand.erl:66:1
@@ -79,7 +79,7 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
    ┌─ debug/src/expand.erl:69:1
    │
 69 │ -spec mk_bad_rec() -> #bad_rec{}.
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mk_bad_rec/0 references type with invalid definition: #bad_rec{}
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mk_bad_rec/0 (transitively) references type with invalid definition: #bad_rec{}
 
 error: unbound_record (See https://fb.me/eqwalizer_errors#unbound_record)
    ┌─ debug/src/expand.erl:70:17
