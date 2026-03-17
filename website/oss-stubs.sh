@@ -15,6 +15,7 @@ STUB_DIR="fb/components"
 # List of files to touch for OSS build
 FILES_TO_TOUCH=(
     "_W0014.md"
+    "_W0052.md"
 )
 
 # Function to display usage
