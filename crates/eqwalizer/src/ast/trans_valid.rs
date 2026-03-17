@@ -358,7 +358,8 @@ impl TransitiveChecker<'_> {
 
     /// Compute param variances for all valid, parameterized types in the
     /// dependency graph, processing SCCs in topological order (postorder).
-    /// Within each SCC, uses fixed-point iteration starting from all-Constant.
+    /// For acyclic SCCs, variances are computed in a single pass. For cyclic
+    /// SCCs, uses fixed-point iteration starting from all-Constant.
     fn compute_variances(&self, sccs: &[Vec<NodeIndex>]) -> BTreeMap<RemoteId, Vec<Variance>> {
         let mut computed: BTreeMap<RemoteId, Vec<Variance>> = BTreeMap::new();
 
@@ -395,15 +396,20 @@ impl TransitiveChecker<'_> {
                 continue;
             }
 
-            // Initialize to Constant
-            for (rid, id, v_stub) in &type_refs {
-                let tdecl = v_stub
-                    .get_type(id)
-                    .expect("types were validated, so it should exist");
-                computed.insert(rid.clone(), vec![Variance::Constant; tdecl.params.len()]);
+            // An SCC is cyclic if it has more than one node, or a single node
+            // with a self-loop.
+            let needs_fixpoint = scc.len() > 1 || self.graph.neighbors(scc[0]).any(|n| n == scc[0]);
+
+            if needs_fixpoint {
+                // Initialize to Constant for cyclic SCCs
+                for (rid, id, v_stub) in &type_refs {
+                    let tdecl = v_stub
+                        .get_type(id)
+                        .expect("types were validated, so it should exist");
+                    computed.insert(rid.clone(), vec![Variance::Constant; tdecl.params.len()]);
+                }
             }
 
-            // Fixed-point iteration within SCC
             loop {
                 let mut changed = false;
                 for (rid, id, v_stub) in &type_refs {
@@ -417,12 +423,19 @@ impl TransitiveChecker<'_> {
                             super::variance::variance_of(&tdecl.body, param.n, true, &computed)
                         })
                         .collect();
-                    if computed[rid] != new_variances {
+                    if needs_fixpoint {
+                        let old_variances = computed
+                            .get_mut(rid)
+                            .expect("key was inserted during initialization above");
+                        if *old_variances != new_variances {
+                            *old_variances = new_variances;
+                            changed = true;
+                        }
+                    } else {
                         computed.insert(rid.clone(), new_variances);
-                        changed = true;
                     }
                 }
-                if !changed {
+                if !needs_fixpoint || !changed {
                     break;
                 }
             }
