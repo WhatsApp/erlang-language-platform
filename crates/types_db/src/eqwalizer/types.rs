@@ -21,6 +21,25 @@ use serde_with::SerializeDisplay;
 use crate::StringId;
 use crate::eqwalizer::RemoteId;
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Variance {
+    Covariant,
+    Contravariant,
+    Invariant,
+    Constant,
+}
+
+impl Variance {
+    pub fn combine(self, other: Variance) -> Variance {
+        match (self, other) {
+            (v, Variance::Constant) => v,
+            (Variance::Constant, v) => v,
+            (v1, v2) if v1 == v2 => v1,
+            _ => Variance::Invariant,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     AtomLitType(AtomLitType),

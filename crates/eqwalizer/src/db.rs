@@ -380,8 +380,17 @@ fn type_decl_bytes(
     module: ModuleName,
     id: Id,
 ) -> Result<Option<Arc<Vec<u8>>>, Error> {
-    db.type_decl(project_id, module, id)
-        .map(|t| t.map(|t| Arc::new(t.to_bytes())))
+    let type_decl = db.type_decl(project_id, module.clone(), id.clone())?;
+    match type_decl {
+        Some(t) => {
+            let stub = db.transitive_stub(project_id, module)?;
+            let variances = stub.variances.get(&id).cloned().unwrap_or_default();
+            let bytes = serde_json::to_vec(&(&*t, &variances))
+                .expect("type decl with variances should be serializable to JSON");
+            Ok(Some(Arc::new(bytes)))
+        }
+        None => Ok(None),
+    }
 }
 
 fn rec_decl(

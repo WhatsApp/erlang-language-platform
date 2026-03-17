@@ -19,6 +19,7 @@ use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
+use elp_types_db::eqwalizer::types::Variance;
 use serde::Serialize;
 
 use super::Id;
@@ -42,6 +43,8 @@ pub struct ModuleStub {
     pub callbacks: Arc<Vec<Callback>>,
     #[serde(skip_serializing)]
     pub optional_callbacks: Arc<BTreeSet<Id>>,
+    #[serde(skip_serializing)]
+    pub variances: BTreeMap<Id, Vec<Variance>>,
     pub invalids: Vec<Invalid>,
 }
 

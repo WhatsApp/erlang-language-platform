@@ -35,6 +35,7 @@ pub mod preprocess;
 pub mod stub;
 pub mod subst;
 pub mod trans_valid;
+pub mod variance;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {

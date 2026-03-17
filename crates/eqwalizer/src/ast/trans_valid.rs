@@ -37,6 +37,7 @@ use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::InvalidRefInTypeCast;
 use elp_types_db::eqwalizer::invalid_diagnostics::TransitiveInvalid;
 use elp_types_db::eqwalizer::types::Type;
+use elp_types_db::eqwalizer::types::Variance;
 use fxhash::FxHashMap;
 use petgraph::algo::tarjan_scc;
 use petgraph::graph::DiGraph;
@@ -206,11 +207,7 @@ impl TransitiveChecker<'_> {
     /// Propagate invalidity through the dependency graph using SCCs.
     /// After this method, `invalid_reasons` maps each transitively-invalid
     /// ref to the set of root-cause (directly) invalid refs it depends on.
-    fn propagate_invalidity(&mut self) {
-        // tarjan_scc returns SCCs in postorder (reverse topological order):
-        // dependencies come before dependents.
-        let sccs = tarjan_scc(&self.graph);
-
+    fn propagate_invalidity(&mut self, sccs: &[Vec<NodeIndex>]) {
         let node_to_scc: FxHashMap<NodeIndex, usize> = sccs
             .iter()
             .enumerate()
@@ -359,11 +356,89 @@ impl TransitiveChecker<'_> {
         }
     }
 
+    /// Compute param variances for all valid, parameterized types in the
+    /// dependency graph, processing SCCs in topological order (postorder).
+    /// Within each SCC, uses fixed-point iteration starting from all-Constant.
+    fn compute_variances(&self, sccs: &[Vec<NodeIndex>]) -> BTreeMap<RemoteId, Vec<Variance>> {
+        let mut computed: BTreeMap<RemoteId, Vec<Variance>> = BTreeMap::new();
+
+        for scc in sccs {
+            // Collect valid, parameterized type refs in this SCC.
+            // We keep the Arc<VStub> alive so we can borrow params/body
+            // without cloning.
+            let type_refs: Vec<_> = scc
+                .iter()
+                .filter_map(|&node| {
+                    let rref = &self.graph[node];
+                    if self.invalid_reasons.contains_key(rref) {
+                        return None;
+                    }
+                    if let Ref::RidRef(rid) = rref
+                        && rid.arity > 0
+                    {
+                        let v_stub = self
+                            .db
+                            .contractive_stub(self.project_id, ModuleName::new(rid.module.as_str()))
+                            .ok()?;
+                        let id = Id {
+                            name: rid.name,
+                            arity: rid.arity,
+                        };
+                        Some((rid.clone(), id, v_stub))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            if type_refs.is_empty() {
+                continue;
+            }
+
+            // Initialize to Constant
+            for (rid, id, v_stub) in &type_refs {
+                let tdecl = v_stub
+                    .get_type(id)
+                    .expect("types were validated, so it should exist");
+                computed.insert(rid.clone(), vec![Variance::Constant; tdecl.params.len()]);
+            }
+
+            // Fixed-point iteration within SCC
+            loop {
+                let mut changed = false;
+                for (rid, id, v_stub) in &type_refs {
+                    let tdecl = v_stub
+                        .get_type(id)
+                        .expect("types were validated, so it should exist");
+                    let new_variances: Vec<Variance> = tdecl
+                        .params
+                        .iter()
+                        .map(|param| {
+                            super::variance::variance_of(&tdecl.body, param.n, true, &computed)
+                        })
+                        .collect();
+                    if computed[rid] != new_variances {
+                        computed.insert(rid.clone(), new_variances);
+                        changed = true;
+                    }
+                }
+                if !changed {
+                    break;
+                }
+            }
+        }
+
+        computed
+    }
+
     pub fn check(&mut self, v_stub: &VStub) -> ModuleStub {
         let mut stub_result = v_stub.into_normalized_stub();
 
         self.build_graph(v_stub);
-        self.propagate_invalidity();
+        // tarjan_scc returns SCCs in postorder (reverse topological order):
+        // dependencies come before dependents.
+        let sccs = tarjan_scc(&self.graph);
+        self.propagate_invalidity(&sccs);
 
         for decl in v_stub.types() {
             self.check_type_decl(&mut stub_result, decl)
@@ -383,6 +458,22 @@ impl TransitiveChecker<'_> {
         }
         stub_result.callbacks = Arc::new(callbacks);
 
+        // Compute param variances using the dependency graph's SCCs.
+        // The graph covers all reachable types (including cross-module),
+        // so cross-module recursive types are handled correctly.
+        let variances = self.compute_variances(&sccs);
+        for (rid, vars) in variances {
+            if rid.module == self.module {
+                let id = Id {
+                    name: rid.name,
+                    arity: rid.arity,
+                };
+                if stub_result.types.contains_key(&id) {
+                    stub_result.variances.insert(id, vars);
+                }
+            }
+        }
+
         stub_result
     }
 
@@ -390,7 +481,8 @@ impl TransitiveChecker<'_> {
         for rref in Self::collect_refs_from_type(self.module, &ty) {
             self.explore_ref(rref);
         }
-        self.propagate_invalidity();
+        let sccs = tarjan_scc(&self.graph);
+        self.propagate_invalidity(&sccs);
 
         let root_causes = self.collect_root_causes_from_type(&ty);
         if !root_causes.is_empty() {
