@@ -362,6 +362,7 @@ impl DiagnosticCode {
     pub fn as_doc_path_extension(&self) -> &str {
         match self {
             DiagnosticCode::CrossNodeEval => "mdx",
+            DiagnosticCode::NoCatch => "mdx",
             _ => "md",
         }
     }
