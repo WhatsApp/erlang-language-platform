@@ -20,7 +20,9 @@
     test1/0,
     test2/2,
     test3/2,
-    test4/0
+    test4/0,
+    invalid_rec/0,
+    invalid_transitive/0
 ]).
 
 -type chainA()
