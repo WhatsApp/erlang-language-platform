@@ -651,6 +651,17 @@ pub(crate) trait FunctionCallLinter: Linter {
         Cow::Borrowed(self.description())
     }
 
+    /// Customize the severity based on each match.
+    /// If implemented, it overrides the value of the `severity()`.
+    fn match_severity(
+        &self,
+        _context: &Self::Context,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Severity {
+        self.severity(sema, file_id)
+    }
+
     // Specify the list of functions the linter should emit issues for
     fn matches_functions(&self) -> Vec<FunctionMatch> {
         vec![]
@@ -718,6 +729,10 @@ impl<T: FunctionCallLinter> FunctionCallDiagnostics for T {
             .chain(excluded_matches_from_config)
             .map(|m| (m, ()))
             .collect();
+        // Check if there's a config-level severity override
+        let base_severity = self.severity(sema, file_id);
+        let has_severity_override = severity != base_severity;
+        let has_cli_severity_override = cli_severity != self.cli_severity(sema, file_id);
         sema.def_map_local(file_id)
             .get_functions()
             .for_each(|(_, def)| {
@@ -738,10 +753,21 @@ impl<T: FunctionCallLinter> FunctionCallDiagnostics for T {
                         if range.file_id == def.file.file_id {
                             let fixes = self.fixes(&ctx, sema, file_id);
                             let description = self.match_description(extra);
+                            // Use config override if present, otherwise use match_severity
+                            let effective_severity = if has_severity_override {
+                                severity
+                            } else {
+                                self.match_severity(extra, sema, file_id)
+                            };
+                            let effective_cli_severity = if has_cli_severity_override {
+                                cli_severity
+                            } else {
+                                self.match_severity(extra, sema, file_id)
+                            };
                             let mut diag = Diagnostic::new(self.id(), description, range.range)
                                 .with_fixes(fixes)
-                                .with_severity(severity)
-                                .with_cli_severity(cli_severity);
+                                .with_severity(effective_severity)
+                                .with_cli_severity(effective_cli_severity);
                             if self.can_be_suppressed() {
                                 diag = diag.with_ignore_fix(sema, def_fb.file_id());
                             };
