@@ -67,7 +67,6 @@ mod handlers {
     pub(crate) type Handler = fn(&mut Assists, &AssistContext) -> Option<()>;
 
     mod add_doc;
-    mod add_fixme;
     mod add_format;
     mod add_impl;
     mod add_spec;
@@ -89,7 +88,6 @@ mod handlers {
         &[
             // These affect the order of display in the UI
             add_doc::add_doc,
-            add_fixme::add_fixme,
             add_format::add_format,
             add_impl::add_impl,
             add_spec::add_spec,

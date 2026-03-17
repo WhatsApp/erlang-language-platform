@@ -3,8 +3,8 @@ PROFILE] [--include-generated] [--include-tests] [--no-diags] [[--format FORMAT]
 [--include-erlc-diagnostics] [--include-ct-diagnostics] [--include-edoc-diagnostics]
 [--include-eqwalizer-diagnostics] [--include-suppressed] [--use-cli-severity] [--diagnostic-ignore
 CODE] [--diagnostic-filter CODE] [--experimental] [--read-config] [--config-file CONFIG_FILE]
-[--apply-fix] [--ignore-fix-only] [--to TO] [--recursive] [--with-check] [--check-eqwalize-all]
-[--one-shot] [--report-system-stats] [--no-stream] <IGNORED_APPS>...
+[--apply-fix] [--ignore-fix-only] [--fixme-fix-only] [--to TO] [--recursive] [--with-check]
+[--check-eqwalize-all] [--one-shot] [--report-system-stats] [--no-stream] <IGNORED_APPS>...
 
 Available positional items:
     <IGNORED_APPS>  Rest of args are space separated list of apps to ignore
@@ -12,15 +12,15 @@ Available positional items:
 Available options:
         --project <PROJECT>  Path to directory with project, or to a JSON file (defaults to `.`)
         --module <MODULE>  Parse a single module from the project, not the entire project.
-        --app <APP>      Parse a single application from the project, not the entire project.
-        --file <FILE>    Parse a single file from the project, not the entire project. This can be an
-                         include file or escript, etc.
-        --path <PATH>    Only process files under this path (can be a file or directory).
-        --rebar          Run with rebar
-        --as <PROFILE>   Rebar3 profile to pickup (default is test)
+        --app <APP>       Parse a single application from the project, not the entire project.
+        --file <FILE>     Parse a single file from the project, not the entire project. This can be
+                          an include file or escript, etc.
+        --path <PATH>     Only process files under this path (can be a file or directory).
+        --rebar           Run with rebar
+        --as <PROFILE>    Rebar3 profile to pickup (default is test)
         --include-generated  Also generate diagnostics for generated files
-        --include-tests  Deprecated (no-op): Diagnostics for test files are now always included
-        --no-diags       Do not print the full diagnostics for a file, just the count
+        --include-tests   Deprecated (no-op): Diagnostics for test files are now always included
+        --no-diags        Do not print the full diagnostics for a file, just the count
         --format <FORMAT>  Show diagnostics in JSON format
         --include-erlc-diagnostics  Include diagnostics produced by erlc
         --include-ct-diagnostics  Deprecated (no-op): Common Test diagnostics are now always included
@@ -28,28 +28,29 @@ Available options:
         --include-eqwalizer-diagnostics  Include Eqwalizer diagnostics
         --include-suppressed  Include Suppressed diagnostics (e.g. elp:fixme)
         --use-cli-severity  If specified, use the provided CLI severity mapping instead of the
-                         default one
+                          default one
         --diagnostic-ignore <CODE>  Ignore the specified diagnostic, by code or label
         --diagnostic-filter <CODE>  Filter out all reported diagnostics except this one, by code or
-                         label
-        --experimental   Report experimental diagnostics too, if diagnostics are enabled
-        --read-config    Get some configuration from a .elp_lint.toml file instead in the project
-                         root
+                          label
+        --experimental    Report experimental diagnostics too, if diagnostics are enabled
+        --read-config     Get some configuration from a .elp_lint.toml file instead in the project
+                          root
         --config-file <CONFIG_FILE>  Override normal configuration file. When set, acts as if
-                         READ_CONFIG is true.
-        --apply-fix      If the diagnostic has an associated fix, apply it. Modifies the original
-                         file. Use --to to write to a different directory.
+                          READ_CONFIG is true.
+        --apply-fix       If the diagnostic has an associated fix, apply it. Modifies the original
+                          file. Use --to to write to a different directory.
         --ignore-fix-only  Only apply elp:ignore fixes
-        --to <TO>        When applying a fix, put the results in this directory path
-        --recursive      If applying fixes, apply any new ones that arise from the prior fixes
-                         recursively. Limited in scope to the clause of the prior change.
-        --with-check     After applying a fix step, check that the diagnostics are clear, else roll
-                         back
+        --fixme-fix-only  Only apply elp:fixme fixes
+        --to <TO>         When applying a fix, put the results in this directory path
+        --recursive       If applying fixes, apply any new ones that arise from the prior fixes
+                          recursively. Limited in scope to the clause of the prior change.
+        --with-check      After applying a fix step, check that the diagnostics are clear, else roll
+                          back
         --check-eqwalize-all  After applying a fix step, check that all eqwalizer project diagnostics
-                         are clear, else roll back
-        --one-shot       Apply to all matching diagnostic occurrences at once, rather than one at a
-                         time.
+                          are clear, else roll back
+        --one-shot        Apply to all matching diagnostic occurrences at once, rather than one at a
+                          time.
         --report-system-stats  Report system memory usage and other statistics
-        --no-stream      Disable streaming of diagnostics when applying fixes (collect all before
-                         printing)
-    -h, --help           Prints help information
+        --no-stream       Disable streaming of diagnostics when applying fixes (collect all before
+                          printing)
+    -h, --help            Prints help information

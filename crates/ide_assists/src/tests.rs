@@ -85,26 +85,6 @@ pub(crate) fn check_assist_with_user_input(
 }
 
 #[track_caller]
-pub(crate) fn check_assist_with_user_input_and_task_id(
-    assist: Handler,
-    assist_label: &str,
-    user_input: &str,
-    task_id: &str,
-    fixture_before: &str,
-    fixture_after: Expect,
-) {
-    check(
-        assist,
-        fixture_before,
-        ExpectedResult::After(fixture_after),
-        Some(assist_label),
-        true,
-        Some(user_input),
-        Some(task_id),
-    );
-}
-
-#[track_caller]
 // We allow dead code because this function is used while debugging tests
 #[allow(dead_code)]
 pub(crate) fn check_assist_expect_parse_error(

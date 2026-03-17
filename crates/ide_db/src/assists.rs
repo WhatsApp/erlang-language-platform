@@ -261,6 +261,10 @@ impl GroupLabel {
     pub fn ignore() -> GroupLabel {
         GroupLabel("ignore".into())
     }
+
+    pub fn fixme() -> GroupLabel {
+        GroupLabel("fixme".into())
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -280,16 +284,6 @@ impl AssistContextDiagnostic {
             code,
             message,
             range,
-        }
-    }
-
-    pub fn allows_fixme_comment(&self) -> bool {
-        match &self.code {
-            AssistContextDiagnosticCode::DefaultCodeForEnumIter => false,
-            AssistContextDiagnosticCode::UndefinedFunction => false,
-            AssistContextDiagnosticCode::UnusedFunction => false,
-            AssistContextDiagnosticCode::UnusedVariable => false,
-            AssistContextDiagnosticCode::ElpDiagnostic(code) => code.allows_fixme_comment(),
         }
     }
 }

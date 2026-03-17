@@ -314,6 +314,8 @@ pub struct Lint {
     pub apply_fix: bool,
     /// Only apply elp:ignore fixes
     pub ignore_fix_only: bool,
+    /// Only apply elp:fixme fixes
+    pub fixme_fix_only: bool,
 
     /// When applying a fix, put the results in this directory path
     #[bpaf(argument("TO"))]

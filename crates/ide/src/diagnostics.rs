@@ -31,6 +31,8 @@ use elp_ide_db::LineIndexDatabase;
 use elp_ide_db::assists::Assist;
 use elp_ide_db::assists::AssistContextDiagnostic;
 use elp_ide_db::assists::AssistContextDiagnosticCode;
+use elp_ide_db::assists::AssistUserInput;
+use elp_ide_db::assists::AssistUserInputType;
 use elp_ide_db::common_test::CommonTestDatabase;
 use elp_ide_db::common_test::CommonTestInfo;
 use elp_ide_db::diagnostic_code::Namespace;
@@ -340,7 +342,46 @@ impl Diagnostic {
         })
     }
 
-    pub(crate) fn with_ignore_fix(mut self, sema: &Semantic, file_id: FileId) -> Diagnostic {
+    pub(crate) fn with_ignore_fix(self, sema: &Semantic, file_id: FileId) -> Diagnostic {
+        self.with_suppression_fix(
+            sema,
+            file_id,
+            "ignore_problem",
+            "Ignore problem",
+            "ignore",
+            GroupLabel::ignore(),
+            None,
+        )
+    }
+
+    pub(crate) fn with_fixme_fix(self, sema: &Semantic, file_id: FileId) -> Diagnostic {
+        self.with_suppression_fix(
+            sema,
+            file_id,
+            "fixme_problem",
+            "Add fixme comment",
+            "fixme",
+            GroupLabel::fixme(),
+            Some(AssistUserInput {
+                input_type: AssistUserInputType::StringAndTaskId,
+                prompt: Some("Enter reason for fixme, including task number".to_string()),
+                value: "".to_string(),
+                task_id: None,
+            }),
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn with_suppression_fix(
+        mut self,
+        sema: &Semantic,
+        file_id: FileId,
+        assist_id: &'static str,
+        label: &'static str,
+        keyword: &str,
+        group: GroupLabel,
+        user_input: Option<AssistUserInput>,
+    ) -> Diagnostic {
         let mut builder = TextEdit::builder();
         let parsed = sema.parse(file_id);
         if let Some(token) = parsed
@@ -371,8 +412,9 @@ impl Diagnostic {
                 }
             }
             let text = format!(
-                "\n{}% elp:ignore {}{}",
+                "\n{}% elp:{} {}{}",
                 indent,
+                keyword,
                 self.code.as_labeled_code(),
                 suffix
             );
@@ -380,18 +422,18 @@ impl Diagnostic {
             builder.insert(offset, text);
             let edit = builder.finish();
             let source_change = SourceChange::from_text_edit(file_id, edit);
-            let ignore_fix = Assist {
-                id: AssistId("ignore_problem", AssistKind::QuickFix),
-                label: Label::new("Ignore problem"),
-                group: Some(GroupLabel::ignore()),
+            let fix = Assist {
+                id: AssistId(assist_id, AssistKind::QuickFix),
+                label: Label::new(label),
+                group: Some(group),
                 target: self.range,
                 source_change: Some(source_change),
-                user_input: None,
+                user_input,
                 original_diagnostic: None,
             };
             match &mut self.fixes {
-                Some(fixes) => fixes.push(ignore_fix),
-                None => self.fixes = Some(vec![ignore_fix]),
+                Some(fixes) => fixes.push(fix),
+                None => self.fixes = Some(vec![fix]),
             };
         }
         self
@@ -769,7 +811,9 @@ impl<T: FunctionCallLinter> FunctionCallDiagnostics for T {
                                 .with_severity(effective_severity)
                                 .with_cli_severity(effective_cli_severity);
                             if self.can_be_suppressed() {
-                                diag = diag.with_ignore_fix(sema, def_fb.file_id());
+                                diag = diag
+                                    .with_ignore_fix(sema, def_fb.file_id())
+                                    .with_fixme_fix(sema, def_fb.file_id());
                             };
                             Some(diag)
                         } else {
@@ -903,7 +947,9 @@ impl<T: SsrPatternsLinter> SsrPatternsDiagnostics for T {
                         .with_severity(severity)
                         .with_cli_severity(cli_severity);
                     if self.can_be_suppressed() {
-                        d = d.with_ignore_fix(sema, file_id);
+                        d = d
+                            .with_ignore_fix(sema, file_id)
+                            .with_fixme_fix(sema, file_id);
                     }
                     res.push(d);
                 }
@@ -1016,7 +1062,9 @@ impl<T: GenericLinter> GenericDiagnostics for T {
                     .with_severity(severity)
                     .with_cli_severity(cli_severity);
                 if self.can_be_suppressed() {
-                    d = d.with_ignore_fix(sema, file_id);
+                    d = d
+                        .with_ignore_fix(sema, file_id)
+                        .with_fixme_fix(sema, file_id);
                 }
                 res.push(d);
             }

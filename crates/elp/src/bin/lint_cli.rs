@@ -1126,6 +1126,18 @@ impl<'a> Lints<'a> {
         Ok(changes)
     }
 
+    /// Filter fixes based on --ignore-fix-only and --fixme-fix-only flags
+    fn filter_fix_by_group(&self, fix: &Assist) -> bool {
+        if self.args.ignore_fix_only {
+            fix.group == Some(GroupLabel::ignore())
+        } else if self.args.fixme_fix_only {
+            fix.group == Some(GroupLabel::fixme())
+        } else {
+            // Default: exclude both ignore and fixme groups
+            fix.group != Some(GroupLabel::ignore()) && fix.group != Some(GroupLabel::fixme())
+        }
+    }
+
     /// Apply any assists included in the diagnostic
     fn apply_fixes(
         &self,
@@ -1140,13 +1152,7 @@ impl<'a> Lints<'a> {
         if !fixes.is_empty() {
             let fixes: Vec<_> = fixes
                 .iter()
-                .filter(|f| {
-                    if self.args.ignore_fix_only {
-                        f.group == Some(GroupLabel::ignore())
-                    } else {
-                        f.group != Some(GroupLabel::ignore())
-                    }
-                })
+                .filter(|f| self.filter_fix_by_group(f))
                 .collect();
             if !fixes.is_empty() {
                 if format_normal {
@@ -1176,7 +1182,7 @@ impl<'a> Lints<'a> {
                 }
                 Ok(changed)
             } else {
-                bail!("Only 'ignore' fixes in {:?}", diagnostic);
+                bail!("Only 'ignore' or 'fixme' fixes in {:?}", diagnostic);
             }
         } else {
             bail!("No fixes in {:?}", diagnostic);
@@ -1198,13 +1204,7 @@ impl<'a> Lints<'a> {
                 let fs = d
                     .get_diagnostic_fixes(self.analysis_host.raw_database(), file_id)
                     .iter()
-                    .filter(|f| {
-                        if self.args.ignore_fix_only {
-                            f.group == Some(GroupLabel::ignore())
-                        } else {
-                            f.group != Some(GroupLabel::ignore())
-                        }
-                    })
+                    .filter(|f| self.filter_fix_by_group(f))
                     .cloned()
                     .collect_vec();
                 if fs.is_empty() {

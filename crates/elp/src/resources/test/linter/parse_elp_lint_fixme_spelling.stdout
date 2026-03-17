@@ -7,13 +7,6 @@ Applying fix in module 'spelling' for
       2:2-2:10::[Error] [W0013] misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
 @@ -1,4 +1,5 @@
  -module(spelling).
-+% elp:fixme W0013 (misspelled_attribute)
- -dyalizer({nowarn_function, [{nowarn_function, spelling_test, 0}]}).
- -export([spelling_test/0]).
- 
-
-@@ -1,4 +1,5 @@
- -module(spelling).
 +% elp:ignore W0013 (misspelled_attribute)
  -dyalizer({nowarn_function, [{nowarn_function, spelling_test, 0}]}).
  -export([spelling_test/0]).

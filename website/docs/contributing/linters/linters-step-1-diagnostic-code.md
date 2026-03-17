@@ -26,7 +26,7 @@ pub enum DiagnosticCode {
 Ensure the code name is unique and descriptive. We will call it the _"No Unsafe
 Operation"_ linter. Then add a clause for each of the required methods:
 
-```rust {10,24,37} showLineNumbers
+```rust {10,24} showLineNumbers
 impl DiagnosticCode {
     // The `as_code` method returns a string representation of the code.
     // This is used to identify the diagnostic in the UI and in the CLI.
@@ -55,19 +55,6 @@ impl DiagnosticCode {
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
             DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
-        }
-    }
-
-    // The `allows_fixme_comment` method determines if it should be possible to temporarily
-    // suppress the diagnostic by a `% elp:fixme` annotation.
-    pub fn allows_fixme_comment(&self) -> bool {
-        match self {
-            // ... existing cases ...
-            DiagnosticCode::NoUnsafeOperationLinter => false,
-
-            DiagnosticCode::ErlangService(_) => false,
-            DiagnosticCode::Eqwalizer(_) => false,
-            DiagnosticCode::AdHoc(_) => false,
         }
     }
 

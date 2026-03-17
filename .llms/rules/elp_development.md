@@ -50,9 +50,7 @@ When adding new diagnostic codes to `DiagnosticCode` enum:
    - Never change the label of an existing diagnostic code
    - Always add the new diagnostic constructor to the end of the list
 
-3. **Documentation**: Add comments explaining complex diagnostic codes
-
-4. **Documentation File**: Create a corresponding documentation file in the
+3. **Documentation File**: Create a corresponding documentation file in the
    website
    - Location: `website/docs/erlang-error-index/{namespace}/{code}.md`
    - Example: `W0051` → `website/docs/erlang-error-index/w/W0051.md`
