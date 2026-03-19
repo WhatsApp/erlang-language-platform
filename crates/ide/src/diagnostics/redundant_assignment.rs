@@ -13,8 +13,11 @@
 //! Return a diagnostic whenever we have A = B, with A unbound, and offer to inline
 //! A as a fix.
 
+use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
+use elp_ide_db::text_edit::TextRange;
 use elp_syntax::ast;
 use hir::AnyExpr;
 use hir::AnyExprId;
@@ -31,38 +34,85 @@ use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 
-use super::Diagnostic;
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use super::Severity;
 use crate::codemod_helpers::check_is_only_place_where_var_is_defined_ast;
 use crate::codemod_helpers::check_var_has_references;
 use crate::diagnostics::Category;
 use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
+use crate::diagnostics::Severity;
 use crate::fix;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        // TODO: disable this check when T151727890 and T151605845 are resolved
-        experimental: true,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        redundant_assignment(diags, sema, file_id);
-    },
-};
+pub(crate) struct RedundantAssignmentLinter;
 
-fn redundant_assignment(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    if sema.db.generated_status(file_id).is_generated() {
-        // No point asking for changes to generated files
-        return;
+impl Linter for RedundantAssignmentLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::RedundantAssignment
     }
-    sema.for_each_function(file_id, |def| process_matches(diags, sema, def));
+
+    fn description(&self) -> &'static str {
+        "assignment is redundant"
+    }
+
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
+        Severity::WeakWarning
+    }
+
+    fn is_experimental(&self) -> bool {
+        // TODO: disable this check when T151727890 and T151605845 are resolved
+        true
+    }
 }
 
-fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionDef) {
+#[derive(Debug, Clone)]
+pub(crate) struct Context {
+    renamings: SourceChange,
+}
+
+impl GenericLinter for RedundantAssignmentLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Context>>> {
+        if sema.db.generated_status(file_id).is_generated() {
+            return Some(vec![]);
+        }
+        let mut res = Vec::new();
+        sema.for_each_function(file_id, |def| process_matches(&mut res, sema, def));
+        Some(res)
+    }
+
+    fn fixes(
+        &self,
+        context: &Context,
+        range: TextRange,
+        _sema: &Semantic,
+        _file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        Some(vec![fix(
+            "remove_redundant_assignment",
+            "Use right-hand of assignment everywhere",
+            context.renamings.clone(),
+            range,
+        )])
+    }
+
+    fn add_categories(&self, _context: &Context) -> Vec<Category> {
+        vec![Category::SimplificationRule]
+    }
+}
+
+pub(crate) static LINTER: RedundantAssignmentLinter = RedundantAssignmentLinter;
+
+fn process_matches(
+    res: &mut Vec<GenericLinterMatchContext<Context>>,
+    sema: &Semantic,
+    def: &FunctionDef,
+) {
     let def_fb = def.in_function_body(sema, def);
     def_fb.clone().fold_function(
         Strategy {
@@ -76,7 +126,7 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionD
                 && let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item
                 && let Pat::Var(_) = &in_clause[lhs]
                 && let Expr::Var(_) = &in_clause[rhs]
-                && let Some(diag) = is_var_assignment_to_unused_var(
+                && let Some(match_ctx) = is_var_assignment_to_unused_var(
                     sema,
                     in_clause,
                     def.file.file_id,
@@ -85,7 +135,7 @@ fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionD
                     rhs,
                 )
             {
-                diags.push(diag);
+                res.push(match_ctx);
             }
         },
     );
@@ -98,7 +148,7 @@ fn is_var_assignment_to_unused_var(
     expr_id: ExprId,
     lhs: PatId,
     rhs: ExprId,
-) -> Option<Diagnostic> {
+) -> Option<GenericLinterMatchContext<Context>> {
     let source_file = sema.parse(file_id);
     let body_map = in_clause.get_body_map();
 
@@ -108,21 +158,13 @@ fn is_var_assignment_to_unused_var(
 
     let range = in_clause.range_for_expr(expr_id)?;
     if range.file_id == file_id {
-        let diag = Diagnostic::new(
-            DiagnosticCode::RedundantAssignment,
-            "assignment is redundant",
-            range.range,
-        )
-        .with_severity(Severity::WeakWarning)
-        .add_categories([Category::SimplificationRule])
-        .with_fixes(Some(vec![fix(
-            "remove_redundant_assignment",
-            "Use right-hand of assignment everywhere",
-            renamings,
-            range.range,
-        )]));
-
-        Some(diag)
+        Some(GenericLinterMatchContext {
+            range: FileRange {
+                file_id: range.file_id,
+                range: range.range,
+            },
+            context: Context { renamings },
+        })
     } else {
         None
     }

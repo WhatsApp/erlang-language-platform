@@ -967,7 +967,7 @@ pub(crate) struct GenericLinterMatchContext<Context> {
 // A trait that simplifies writing generic linters
 pub(crate) trait GenericLinter: Linter {
     /// Associated type - each linter defines its own
-    type Context: Clone + fmt::Debug + PartialEq;
+    type Context: Clone + fmt::Debug;
 
     /// Return a list of matches for the linter
     fn matches(
@@ -1741,7 +1741,6 @@ pub fn native_diagnostics(
 pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
     vec![
         &unused_function_args::DESCRIPTOR,
-        &redundant_assignment::DESCRIPTOR,
         &effect_free_statement::DESCRIPTOR,
         &simplify_negation::DESCRIPTOR,
         &nonstandard_integer_formatting::DESCRIPTOR,
@@ -1907,6 +1906,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &mutable_variable::LINTER,
     &record_tuple_match::LINTER,
     &trivial_match::LINTER,
+    &redundant_assignment::LINTER,
 ];
 
 /// Unified registry for all types of linters
