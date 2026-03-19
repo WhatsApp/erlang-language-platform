@@ -264,10 +264,6 @@ impl Diagnostic {
         Self::new(code, message, range).with_severity(Severity::Error)
     }
 
-    fn warning(code: DiagnosticCode, range: TextRange, message: String) -> Self {
-        Self::new(code, message, range).with_severity(Severity::Warning)
-    }
-
     pub(crate) fn with_severity(mut self, severity: Severity) -> Diagnostic {
         self.severity = severity;
         self
@@ -1744,7 +1740,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &nonstandard_integer_formatting::DESCRIPTOR,
         &expression_can_be_simplified::DESCRIPTOR,
         &application_env::DESCRIPTOR,
-        &dependent_header::DESCRIPTOR,
         &deprecated_function::DESCRIPTOR,
     ]
 }
@@ -1907,6 +1902,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &unused_function_args::LINTER,
     &effect_free_statement::LINTER,
     &head_mismatch::LINTER,
+    &dependent_header::LINTER,
 ];
 
 /// Unified registry for all types of linters

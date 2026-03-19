@@ -12,47 +12,63 @@
 //
 // Return a warning if a header file is not self-contained.
 
+use std::borrow::Cow;
+
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
-use elp_ide_db::text_edit::TextRange;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_syntax::AstNode;
 use elp_syntax::ast;
 use elp_syntax::ast::RecordName;
 use hir::AnyExpr;
 use hir::InFile;
-use hir::Name;
 use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 
-use super::Diagnostic;
 use super::DiagnosticCode;
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: true,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, file_kind| {
-        dependent_header(diags, sema, file_id, file_kind);
-    },
-};
+pub(crate) struct DependentHeaderLinter;
 
-fn dependent_header(
-    diagnostics: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-    file_kind: FileKind,
-) -> Option<()> {
-    if FileKind::Header == file_kind {
+impl Linter for DependentHeaderLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::DependentHeader
+    }
+
+    fn description(&self) -> &'static str {
+        "Record not defined in this context"
+    }
+
+    fn should_process_generated_files(&self) -> bool {
+        true
+    }
+
+    fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
+        sema.db.file_kind(file_id) == FileKind::Header
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Context {
+    record_name: String,
+}
+
+impl GenericLinter for DependentHeaderLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Context>>> {
         let def_map = sema.def_map(file_id);
         let source_file = sema.parse(file_id);
         let form_list = sema.form_list(file_id);
+        let mut res = Vec::new();
         for (define_id, _define) in form_list.define_attributes() {
             let (body, body_map) = sema
                 .db
@@ -74,21 +90,34 @@ fn dependent_header(
                             && let Some(in_file_ast_ptr) = body_map.any(ctx.item_id)
                             && let Some(expr_ast) = in_file_ast_ptr.to_node(&source_file)
                         {
-                            let diagnostic_range = match extract_record_name(&expr_ast) {
+                            let range = match extract_record_name(&expr_ast) {
                                 Some(name) => name.syntax().text_range(),
                                 None => expr_ast.syntax().text_range(),
                             };
-                            let d = make_diagnostic(diagnostic_range, record_name);
-                            diagnostics.push(d);
+                            res.push(GenericLinterMatchContext {
+                                range: FileRange { file_id, range },
+                                context: Context {
+                                    record_name: record_name.to_string(),
+                                },
+                            });
                         }
                     };
                     acc
                 },
             );
         }
+        Some(res)
     }
-    Some(())
+
+    fn match_description(&self, context: &Context) -> Cow<'_, str> {
+        Cow::Owned(format!(
+            "Record '{}' not defined in this context",
+            context.record_name
+        ))
+    }
 }
+
+pub(crate) static LINTER: DependentHeaderLinter = DependentHeaderLinter;
 
 fn extract_record_name(expr_ast: &ast::Expr) -> Option<RecordName> {
     match expr_ast {
@@ -98,14 +127,6 @@ fn extract_record_name(expr_ast: &ast::Expr) -> Option<RecordName> {
         elp_syntax::ast::Expr::RecordUpdateExpr(expr) => expr.name(),
         _ => None,
     }
-}
-
-fn make_diagnostic(range: TextRange, record_name: Name) -> Diagnostic {
-    Diagnostic::warning(
-        DiagnosticCode::DependentHeader,
-        range,
-        format!("Record '{record_name}' not defined in this context"),
-    )
 }
 
 #[cfg(test)]
@@ -119,7 +140,7 @@ mod tests {
             r#"
 //- /include/main.hrl
 -define(MY_MACRO, #my_record{}).
-%%                ^^^^^^^^^^ warning: W0015: Record 'my_record' not defined in this context
+%%                ^^^^^^^^^^ 💡 warning: W0015: Record 'my_record' not defined in this context
             "#,
         )
     }
@@ -154,7 +175,7 @@ mod tests {
             r#"
 //- /include/main.hrl
 -define(MY_MACRO(Record), Record#my_record.my_field).
-%%                              ^^^^^^^^^^ warning: W0015: Record 'my_record' not defined in this context
+%%                              ^^^^^^^^^^ 💡 warning: W0015: Record 'my_record' not defined in this context
             "#,
         )
     }
@@ -165,7 +186,7 @@ mod tests {
             r#"
 //- /include/main.hrl
 -define(MY_MACRO, #my_record.my_field).
-%%                ^^^^^^^^^^ warning: W0015: Record 'my_record' not defined in this context
+%%                ^^^^^^^^^^ 💡 warning: W0015: Record 'my_record' not defined in this context
             "#,
         )
     }
@@ -176,7 +197,7 @@ mod tests {
             r#"
 //- /include/main.hrl
 -define(MY_MACRO(Record), Record#my_record{my_field = 42}).
-%%                              ^^^^^^^^^^ warning: W0015: Record 'my_record' not defined in this context
+%%                              ^^^^^^^^^^ 💡 warning: W0015: Record 'my_record' not defined in this context
             "#,
         )
     }
