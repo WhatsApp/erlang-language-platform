@@ -118,6 +118,10 @@ sum(X, Y) ->
   X + Y.
 ```
 
+**Note on `_ = catch Expr`**: If the original code assigns the result to `_`,
+drop the `_ =` when converting. The `_ =` was there to signal intent and
+suppress Dialyzer warnings — it is not needed with `try...catch...end`.
+
 ### Case 2: Result is used only for control flow
 
 Only proceed if you've determined the `catch` is actually needed, the code has simple
