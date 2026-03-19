@@ -70,12 +70,12 @@ impl Linter for EqwalizerFixmeLinter {
     }
 
     fn description(&self) -> &'static str {
-        "The `eqwalizer:fixme` comment suppresses eqwalizer type errors on the following line. \
-         Consider fixing the underlying type issue instead of suppressing it."
+        "Avoid `eqwalizer:fixme`: this comment suppresses eqwalizer type errors on the following line. \
+         Fix the underlying type issue instead of suppressing it."
     }
 
     fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
-        Severity::WeakWarning
+        Severity::Warning
     }
 
     fn should_process_test_files(&self) -> bool {
@@ -109,12 +109,12 @@ impl Linter for EqwalizerIgnoreLinter {
     }
 
     fn description(&self) -> &'static str {
-        "The `eqwalizer:ignore` comment suppresses eqwalizer type errors on the following line. \
-         Consider fixing the underlying type issue instead of suppressing it."
+        "Avoid `eqwalizer:ignore`: this comment suppresses eqwalizer type errors on the following line. \
+         Fix the underlying type issue instead of suppressing it."
     }
 
     fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
-        Severity::WeakWarning
+        Severity::Warning
     }
 
     fn should_process_test_files(&self) -> bool {
@@ -148,12 +148,12 @@ impl Linter for UncheckedCastLinter {
     }
 
     fn description(&self) -> &'static str {
-        "The `?UNCHECKED_CAST` macro bypasses eqwalizer type checking by asserting a value \
-         has a specific type without verification. Consider using ?CHECKED_CAST as a proper type-safe alternative if possible."
+        "Avoid `?UNCHECKED_CAST`: this macro bypasses eqwalizer type checking by asserting a value \
+         has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative."
     }
 
     fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
-        Severity::WeakWarning
+        Severity::Warning
     }
 
     fn should_process_test_files(&self) -> bool {
@@ -201,7 +201,7 @@ mod tests {
 -spec test(atom()) -> ok.
 test(A) ->
   % eqwalizer:fixme
-%%^^^^^^^^^^^^^^^^^ 💡 weak: W0073: The `eqwalizer:fixme` comment suppresses eqwalizer type errors on the following line. Consider fixing the underlying type issue instead of suppressing it.
+%%^^^^^^^^^^^^^^^^^ 💡 warning: W0073: Avoid `eqwalizer:fixme`: this comment suppresses eqwalizer type errors on the following line. Fix the underlying type issue instead of suppressing it.
   _ = A + 1,
   ok.
 "#,
@@ -217,7 +217,7 @@ test(A) ->
 -export([test/0]).
 
 % eqwalizer:ignore
-%%<^^^^^^^^^^^^^^^ 💡 weak: W0074: The `eqwalizer:ignore` comment suppresses eqwalizer type errors on the following line. Consider fixing the underlying type issue instead of suppressing it.
+%%<^^^^^^^^^^^^^^^ 💡 warning: W0074: Avoid `eqwalizer:ignore`: this comment suppresses eqwalizer type errors on the following line. Fix the underlying type issue instead of suppressing it.
 -type loop() :: loop().
 
 -spec test() -> ok.
@@ -241,7 +241,7 @@ test() -> ok.
 -spec test(atom()) -> ok.
 test(A) ->
   ?UNCHECKED_CAST(A, ok).
-%%^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0075: The `?UNCHECKED_CAST` macro bypasses eqwalizer type checking by asserting a value has a specific type without verification. Consider using ?CHECKED_CAST as a proper type-safe alternative if possible.
+%%^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0075: Avoid `?UNCHECKED_CAST`: this macro bypasses eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
 "#,
         )
     }

@@ -195,7 +195,7 @@ fn test_e2e_eqwalizer_module() {
                       "codeDescription": {
                         "href": "<BASE_URL>/erlang-error-index/w/W0073"
                       },
-                      "message": "The `eqwalizer:fixme` comment suppresses eqwalizer type errors on the following line. Consider fixing the underlying type issue instead of suppressing it.",
+                      "message": "Avoid `eqwalizer:fixme`: this comment suppresses eqwalizer type errors on the following line. Fix the underlying type issue instead of suppressing it.",
                       "range": {
                         "end": {
                           "character": 21,
@@ -206,7 +206,7 @@ fn test_e2e_eqwalizer_module() {
                           "line": 51
                         }
                       },
-                      "severity": 4,
+                      "severity": 2,
                       "source": "elp"
                     },
                     {
@@ -214,7 +214,7 @@ fn test_e2e_eqwalizer_module() {
                       "codeDescription": {
                         "href": "<BASE_URL>/erlang-error-index/w/W0073"
                       },
-                      "message": "The `eqwalizer:fixme` comment suppresses eqwalizer type errors on the following line. Consider fixing the underlying type issue instead of suppressing it.",
+                      "message": "Avoid `eqwalizer:fixme`: this comment suppresses eqwalizer type errors on the following line. Fix the underlying type issue instead of suppressing it.",
                       "range": {
                         "end": {
                           "character": 21,
@@ -225,7 +225,7 @@ fn test_e2e_eqwalizer_module() {
                           "line": 56
                         }
                       },
-                      "severity": 4,
+                      "severity": 2,
                       "source": "elp"
                     }
                   ],
