@@ -39,27 +39,8 @@ Applying fix in module 'lint_recursive' for
 
 New filtered diagnostics
   lint_recursive: 2
-      17:11-17:17::[Warning] [W0010] this variable is unused
       14:5-14:12::[Warning] [W0007] match is redundant
----------------------------------------------
-
-Applying fix in module 'lint_recursive' for
       17:11-17:17::[Warning] [W0010] this variable is unused
-@@ -14,7 +14,7 @@
-     Config1 = Config,
-     clean_mocks().
- 
--test_foo2(Config) ->
-+test_foo2(_Config) ->
-     do_something(),
-     clean_mocks().
- 
-
----------------------------------------------
-
-New filtered diagnostics
-  lint_recursive: 1
-      14:5-14:12::[Warning] [W0007] match is redundant
 ---------------------------------------------
 
 Applying fix in module 'lint_recursive' for
@@ -72,13 +53,14 @@ Applying fix in module 'lint_recursive' for
 +    Config,
      clean_mocks().
  
- test_foo2(_Config) ->
+ test_foo2(Config) ->
 
 ---------------------------------------------
 
 New filtered diagnostics
-  lint_recursive: 1
+  lint_recursive: 2
       14:5-14:11::[Warning] [W0006] this statement has no effect
+      17:11-17:17::[Warning] [W0010] this variable is unused
 ---------------------------------------------
 
 Applying fix in module 'lint_recursive' for
@@ -90,7 +72,27 @@ Applying fix in module 'lint_recursive' for
 -    Config,
      clean_mocks().
  
- test_foo2(_Config) ->
+ test_foo2(Config) ->
+
+---------------------------------------------
+
+New filtered diagnostics
+  lint_recursive: 2
+      16:11-16:17::[Warning] [W0010] this variable is unused
+      12:10-12:16::[Warning] [W0010] this variable is unused
+---------------------------------------------
+
+Applying fix in module 'lint_recursive' for
+      16:11-16:17::[Warning] [W0010] this variable is unused
+@@ -13,7 +13,7 @@
+     do_something(),
+     clean_mocks().
+ 
+-test_foo2(Config) ->
++test_foo2(_Config) ->
+     do_something(),
+     clean_mocks().
+ 
 
 ---------------------------------------------
 

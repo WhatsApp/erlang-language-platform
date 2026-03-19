@@ -16,7 +16,9 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use elp_ide_db::text_edit::TextRange;
@@ -33,80 +35,142 @@ use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 
 use super::Category;
-use super::Diagnostic;
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use super::Severity;
 use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
 use crate::fix;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
+pub(crate) struct UnusedFunctionArgsLinter;
+
+impl Linter for UnusedFunctionArgsLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::UnusedFunctionArg
+    }
+
+    fn description(&self) -> &'static str {
+        "this variable is unused"
+    }
+
+    fn is_experimental(&self) -> bool {
         // TODO: Remove experimental once T151727890 is resolved
-        experimental: true,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        unused_function_args(diags, sema, file_id);
-    },
-};
+        true
+    }
+}
 
-fn unused_function_args(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    sema.def_map(file_id)
-        .get_function_clauses()
-        .for_each(|(_, def)| {
-            if def.file.file_id != file_id {
-                return;
-            }
-            let source_file = sema.parse(file_id);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Context {
+    new_name: String,
+}
 
-            let in_clause = def.in_clause(sema, def);
-            let body_map = in_clause.get_body_map();
-            let clause = in_clause.clone().body;
+impl GenericLinter for UnusedFunctionArgsLinter {
+    type Context = Context;
 
-            let pats = &clause.clause.pats;
-            let mut unused_vars_with_wrong_name = HashMap::new();
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Context>>> {
+        let mut res = Vec::new();
+        sema.def_map(file_id)
+            .get_function_clauses()
+            .for_each(|(_, def)| {
+                if def.file.file_id != file_id {
+                    return;
+                }
+                process_clause(&mut res, sema, def);
+            });
+        Some(res)
+    }
 
-            for clause_arg_pat_id in pats.iter() {
-                in_clause.fold_pat(
-                    Strategy {
-                        macros: MacroStrategy::Expand,
-                        parens: ParenStrategy::InvisibleParens,
-                    },
-                    *clause_arg_pat_id,
-                    (),
-                    &mut |(), ctx| {
-                        if let AnyExprId::Pat(pat_id) = ctx.item_id
-                            && let Some(var) = match ctx.item {
-                                AnyExpr::Pat(pat) => pat.as_var(),
-                                _ => None,
-                            }
-                            && is_unused_var(sema, &in_clause, &body_map, &source_file, &pat_id)
-                        {
-                            let var_name = var.as_string(sema.db.upcast());
-                            if !var_name.starts_with('_') {
-                                unused_vars_with_wrong_name.insert(pat_id, var_name);
-                            }
-                        }
-                    },
-                );
-            }
+    fn tag(&self, _context: &Context) -> Option<super::DiagnosticTag> {
+        Some(super::DiagnosticTag::Unused)
+    }
 
-            if !unused_vars_with_wrong_name.is_empty()
-                && let Some(replacements) =
-                    pick_new_unused_var_names(sema, &in_clause, &unused_vars_with_wrong_name)
-            {
-                for (pat_id, new_name) in replacements.iter() {
-                    if let Some(range) = in_clause.range_for_pat(*pat_id)
-                        && range.file_id == file_id
-                    {
-                        diags.push(make_diagnostic(file_id, range.range, new_name.clone()));
+    fn fixes(
+        &self,
+        context: &Context,
+        range: TextRange,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        let mut edit_builder = TextEdit::builder();
+        edit_builder.replace(range, context.new_name.clone());
+        let edit = edit_builder.finish();
+        Some(vec![fix(
+            "prefix_with_underscore",
+            "Prefix variable with an underscore",
+            SourceChange::from_text_edit(file_id, edit),
+            range,
+        )])
+    }
+
+    fn add_categories(&self, _context: &Context) -> Vec<Category> {
+        vec![Category::Experimental, Category::SimplificationRule]
+    }
+}
+
+pub(crate) static LINTER: UnusedFunctionArgsLinter = UnusedFunctionArgsLinter;
+
+fn process_clause(
+    res: &mut Vec<GenericLinterMatchContext<Context>>,
+    sema: &Semantic,
+    def: &FunctionClauseDef,
+) {
+    let source_file = sema.parse(def.file.file_id);
+
+    let in_clause = def.in_clause(sema, def);
+    let body_map = in_clause.get_body_map();
+    let clause = in_clause.clone().body;
+
+    let pats = &clause.clause.pats;
+    let mut unused_vars_with_wrong_name = HashMap::new();
+
+    for clause_arg_pat_id in pats.iter() {
+        in_clause.fold_pat(
+            Strategy {
+                macros: MacroStrategy::Expand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            *clause_arg_pat_id,
+            (),
+            &mut |(), ctx| {
+                if let AnyExprId::Pat(pat_id) = ctx.item_id
+                    && let Some(var) = match ctx.item {
+                        AnyExpr::Pat(pat) => pat.as_var(),
+                        _ => None,
+                    }
+                    && is_unused_var(sema, &in_clause, &body_map, &source_file, &pat_id)
+                {
+                    let var_name = var.as_string(sema.db.upcast());
+                    if !var_name.starts_with('_') {
+                        unused_vars_with_wrong_name.insert(pat_id, var_name);
                     }
                 }
+            },
+        );
+    }
+
+    if !unused_vars_with_wrong_name.is_empty()
+        && let Some(replacements) =
+            pick_new_unused_var_names(sema, &in_clause, &unused_vars_with_wrong_name)
+    {
+        for (pat_id, new_name) in replacements.iter() {
+            if let Some(range) = in_clause.range_for_pat(*pat_id)
+                && range.file_id == def.file.file_id
+            {
+                res.push(GenericLinterMatchContext {
+                    range: FileRange {
+                        file_id: range.file_id,
+                        range: range.range,
+                    },
+                    context: Context {
+                        new_name: new_name.clone(),
+                    },
+                });
             }
-        });
+        }
+    }
 }
 
 fn is_unused_var(
@@ -133,7 +197,6 @@ fn is_unused_var(
     }
 }
 
-// Pick a new name for the unused vars, that start with an underscore. Ensure no clash with existing names.
 fn pick_new_unused_var_names(
     sema: &Semantic,
     in_clause: &InFunctionClauseBody<&FunctionClauseDef>,
@@ -169,31 +232,6 @@ fn pick_new_unused_var_names(
         })
         .collect();
     Some(result)
-}
-
-fn make_diagnostic(file_id: FileId, range: TextRange, new_name: String) -> Diagnostic {
-    let mut edit_builder = TextEdit::builder();
-    edit_builder.replace(range, new_name);
-    let edit = edit_builder.finish();
-
-    Diagnostic::new(
-        DiagnosticCode::UnusedFunctionArg,
-        "this variable is unused",
-        range,
-    )
-    .with_severity(Severity::Warning)
-    .unused()
-    .add_categories([
-        // Marking as EXPERIMENTAL since it currently conflicts with handlers::ignore_variable https://fburl.com/code/rkm52yfj
-        Category::Experimental,
-        Category::SimplificationRule,
-    ])
-    .with_fixes(Some(vec![fix(
-        "prefix_with_underscore",
-        "Prefix variable with an underscore",
-        SourceChange::from_text_edit(file_id, edit),
-        range,
-    )]))
 }
 
 #[cfg(test)]
