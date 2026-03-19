@@ -1744,7 +1744,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &dependent_header::DESCRIPTOR,
         &deprecated_function::DESCRIPTOR,
         &head_mismatch::DESCRIPTOR_SEMANTIC,
-        &record_tuple_match::DESCRIPTOR,
     ]
 }
 
@@ -1900,6 +1899,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &eqwalizer_escape_hatches::EQWALIZER_FIXME_LINTER,
     &eqwalizer_escape_hatches::EQWALIZER_IGNORE_LINTER,
     &mutable_variable::LINTER,
+    &record_tuple_match::LINTER,
 ];
 
 /// Unified registry for all types of linters
