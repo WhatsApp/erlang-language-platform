@@ -1746,7 +1746,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &application_env::DESCRIPTOR,
         &dependent_header::DESCRIPTOR,
         &deprecated_function::DESCRIPTOR,
-        &head_mismatch::DESCRIPTOR_SEMANTIC,
     ]
 }
 
@@ -1907,6 +1906,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &redundant_assignment::LINTER,
     &unused_function_args::LINTER,
     &effect_free_statement::LINTER,
+    &head_mismatch::LINTER,
 ];
 
 /// Unified registry for all types of linters
@@ -2121,7 +2121,6 @@ fn syntax_diagnostics(
     file_id: FileId,
 ) {
     for node in parse.tree().syntax().descendants() {
-        head_mismatch::head_mismatch(res, file_id, &node);
         module_mismatch::module_mismatch(sema, res, file_id, &node);
     }
 }

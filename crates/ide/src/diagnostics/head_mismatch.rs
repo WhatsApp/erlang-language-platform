@@ -8,10 +8,13 @@
  * above-listed licenses.
  */
 
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::hash::Hash;
 
+use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use elp_syntax::SyntaxToken;
@@ -19,15 +22,15 @@ use elp_syntax::TextRange;
 use elp_syntax::ast;
 use elp_syntax::ast::AstNode;
 use elp_syntax::ast::ClauseSeparator;
-use elp_syntax::syntax_node::SyntaxNode;
 use fxhash::FxHashMap;
 use hir::Semantic;
 
 use super::DiagnosticCode;
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use crate::Diagnostic;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
 use crate::diagnostics::RelatedInformation;
+use crate::diagnostics::Severity;
 use crate::fix;
 
 // Diagnostic: head-mismatch (P1700)
@@ -36,19 +39,91 @@ use crate::fix;
 
 // TODO use lowered versions, they have the separator in them. T170135788
 
-pub(crate) static DESCRIPTOR_SEMANTIC: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: true,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        head_mismatch_semantic(diags, sema, file_id);
-    },
-};
+#[derive(Debug, Clone)]
+pub(crate) struct Context {
+    message: String,
+    fix_edit: Option<TextEdit>,
+    related_range: TextRange,
+    related_message: String,
+}
 
-fn head_mismatch_semantic(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
+pub(crate) struct HeadMismatchLinter;
+
+impl Linter for HeadMismatchLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::HeadMismatch
+    }
+
+    fn description(&self) -> &'static str {
+        "head mismatch"
+    }
+
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
+        Severity::Error
+    }
+
+    fn can_be_suppressed(&self) -> bool {
+        false
+    }
+
+    fn should_process_generated_files(&self) -> bool {
+        true
+    }
+}
+
+impl GenericLinter for HeadMismatchLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Context>>> {
+        let mut match_contexts = head_mismatch_semantic(sema, file_id);
+        head_mismatch_anonymous_funs(sema, file_id, &mut match_contexts);
+        Some(match_contexts)
+    }
+
+    fn match_description(&self, context: &Context) -> Cow<'_, str> {
+        Cow::Owned(context.message.clone())
+    }
+
+    fn fixes(
+        &self,
+        context: &Context,
+        range: TextRange,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        let edit = context.fix_edit.as_ref()?;
+        Some(vec![fix(
+            "fix_head_mismatch",
+            "Fix head mismatch",
+            SourceChange::from_text_edit(file_id, edit.clone()),
+            range,
+        )])
+    }
+
+    fn related(
+        &self,
+        context: &Context,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<RelatedInformation>> {
+        Some(vec![RelatedInformation {
+            file_id,
+            range: context.related_range,
+            message: context.related_message.clone(),
+        }])
+    }
+}
+
+pub(crate) static LINTER: HeadMismatchLinter = HeadMismatchLinter;
+
+fn head_mismatch_semantic(
+    sema: &Semantic,
+    file_id: FileId,
+) -> Vec<GenericLinterMatchContext<Context>> {
     let def_map = sema.def_map(file_id);
     let head_info = def_map
         .get_function_clauses_ordered()
@@ -66,10 +141,12 @@ fn head_mismatch_semantic(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, fi
         })
         .collect::<Vec<_>>();
     let heads = partition_to_funs(&head_info);
+    let mut match_contexts = Vec::new();
     for head in heads {
-        Name {}.validate_fundecl_attr(file_id, &head, diagnostics);
-        Arity {}.validate_fundecl_attr(file_id, &head, diagnostics);
+        Name {}.validate_fundecl_attr(file_id, &head, &mut match_contexts);
+        Arity {}.validate_fundecl_attr(file_id, &head, &mut match_contexts);
     }
+    match_contexts
 }
 
 // We have the function clauses, in order, including their separators.
@@ -115,25 +192,19 @@ fn partition_to_funs(
     res
 }
 
-pub(crate) fn head_mismatch(
-    acc: &mut Vec<Diagnostic>,
+fn head_mismatch_anonymous_funs(
+    sema: &Semantic,
     file_id: FileId,
-    node: &SyntaxNode,
-) -> Option<()> {
-    head_mismatch_anonymous_fun(acc, file_id, node);
-    Some(())
-}
-
-pub(crate) fn head_mismatch_anonymous_fun(
-    acc: &mut Vec<Diagnostic>,
-    file_id: FileId,
-    node: &SyntaxNode,
-) -> Option<()> {
-    let f = ast::AnonymousFun::cast(node.clone())?;
-    let heads: Vec<HeadInfo> = anonymous_fun_heads(f);
-    Name {}.validate_fundecl_attr(file_id, &heads, acc);
-    Arity {}.validate_fundecl_attr(file_id, &heads, acc);
-    Some(())
+    match_contexts: &mut Vec<GenericLinterMatchContext<Context>>,
+) {
+    let source_file = sema.parse(file_id);
+    for node in source_file.value.syntax().descendants() {
+        if let Some(f) = ast::AnonymousFun::cast(node) {
+            let heads: Vec<HeadInfo> = anonymous_fun_heads(f);
+            Name {}.validate_fundecl_attr(file_id, &heads, match_contexts);
+            Arity {}.validate_fundecl_attr(file_id, &heads, match_contexts);
+        }
+    }
 }
 
 type HeadInfo = (String, TextRange, usize, TextRange);
@@ -147,21 +218,21 @@ where
 {
     fn get_attr(self, head: &HeadInfo) -> A;
     fn get_loc(self, head: &HeadInfo) -> TextRange;
-    fn make_diagnostic(
+    fn make_match_context(
         self,
         file_id: FileId,
         attr: &A,
         hattr: &A,
         attr_loc: TextRange,
         ref_loc: TextRange,
-    ) -> Diagnostic;
+    ) -> GenericLinterMatchContext<Context>;
 
     // Actually does the work
     fn validate_fundecl_attr(
         self,
         file_id: FileId,
         heads: &[HeadInfo],
-        errors: &mut Vec<Diagnostic>,
+        errors: &mut Vec<GenericLinterMatchContext<Context>>,
     ) -> Option<()>
     where
         Self: Sized,
@@ -229,7 +300,7 @@ where
             let attr = self.get_attr(head);
             let attr_loc = self.get_loc(head);
             if hattr != attr {
-                errors.push(self.make_diagnostic(file_id, &attr, &hattr, attr_loc, ref_loc));
+                errors.push(self.make_match_context(file_id, &attr, &hattr, attr_loc, ref_loc));
             }
         }
 
@@ -251,35 +322,31 @@ impl Validate<String> for Name {
         head.1
     }
 
-    fn make_diagnostic(
+    fn make_match_context(
         self,
         file_id: FileId,
         attr: &String,
         hattr: &String,
         attr_loc: TextRange,
         ref_loc: TextRange,
-    ) -> Diagnostic {
+    ) -> GenericLinterMatchContext<Context> {
         let mut edit_builder = TextEdit::builder();
         edit_builder.delete(attr_loc);
         edit_builder.insert(attr_loc.start(), hattr.clone());
         let edit = edit_builder.finish();
 
-        Diagnostic::new(
-            super::DiagnosticCode::HeadMismatch,
-            format!("head mismatch '{attr}' vs '{hattr}'"),
-            attr_loc,
-        )
-        .with_related(Some(vec![RelatedInformation {
-            file_id,
-            range: ref_loc,
-            message: "Mismatched clause name".to_string(),
-        }]))
-        .with_fixes(Some(vec![fix(
-            "fix_head_mismatch",
-            "Fix head mismatch",
-            SourceChange::from_text_edit(file_id, edit),
-            attr_loc,
-        )]))
+        GenericLinterMatchContext {
+            range: FileRange {
+                file_id,
+                range: attr_loc,
+            },
+            context: Context {
+                message: format!("head mismatch '{attr}' vs '{hattr}'"),
+                fix_edit: Some(edit),
+                related_range: ref_loc,
+                related_message: "Mismatched clause name".to_string(),
+            },
+        }
     }
 }
 
@@ -292,24 +359,26 @@ impl Validate<usize> for Arity {
         head.3
     }
 
-    fn make_diagnostic(
+    fn make_match_context(
         self,
         file_id: FileId,
         attr: &usize,
         hattr: &usize,
         attr_loc: TextRange,
         ref_loc: TextRange,
-    ) -> Diagnostic {
-        Diagnostic::new(
-            DiagnosticCode::HeadMismatch,
-            format!("head arity mismatch {attr} vs {hattr}"),
-            attr_loc,
-        )
-        .with_related(Some(vec![RelatedInformation {
-            file_id,
-            range: ref_loc,
-            message: "Mismatched clause".to_string(),
-        }]))
+    ) -> GenericLinterMatchContext<Context> {
+        GenericLinterMatchContext {
+            range: FileRange {
+                file_id,
+                range: attr_loc,
+            },
+            context: Context {
+                message: format!("head arity mismatch {attr} vs {hattr}"),
+                fix_edit: None,
+                related_range: ref_loc,
+                related_message: "Mismatched clause".to_string(),
+            },
+        }
     }
 }
 
