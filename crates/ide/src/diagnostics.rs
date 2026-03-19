@@ -1736,7 +1736,6 @@ pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
         &unused_function_args::DESCRIPTOR,
         &trivial_match::DESCRIPTOR,
         &redundant_assignment::DESCRIPTOR,
-        &mutable_variable::DESCRIPTOR,
         &effect_free_statement::DESCRIPTOR,
         &simplify_negation::DESCRIPTOR,
         &nonstandard_integer_formatting::DESCRIPTOR,
@@ -1900,6 +1899,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &missing_separator::LINTER,
     &eqwalizer_escape_hatches::EQWALIZER_FIXME_LINTER,
     &eqwalizer_escape_hatches::EQWALIZER_IGNORE_LINTER,
+    &mutable_variable::LINTER,
 ];
 
 /// Unified registry for all types of linters

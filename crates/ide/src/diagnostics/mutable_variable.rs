@@ -27,6 +27,7 @@
 //
 
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use hir::AnyExpr;
 use hir::Expr;
 use hir::Semantic;
@@ -34,63 +35,80 @@ use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use crate::Diagnostic;
 use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
+use crate::diagnostics::Severity;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: true,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        mutable_variable_bug(diags, sema, file_id);
-    },
-};
+pub(crate) struct MutableVariableLinter;
 
-fn mutable_variable_bug(
-    diags: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-) -> Option<()> {
-    let bound_vars_by_function = sema.bound_vars_by_function(file_id);
-    sema.def_map(file_id)
-        .get_function_clauses()
-        .for_each(|(_, def)| {
-            if def.file.file_id == file_id
-                && let Some(bound_vars) = bound_vars_by_function.get(&def.function_clause_id)
-            {
-                let in_clause = def.in_clause(sema, def);
-                in_clause.fold_clause(
-                    Strategy {
-                        macros: MacroStrategy::Expand,
-                        parens: ParenStrategy::InvisibleParens,
-                    },
-                    (),
-                    &mut |acc, ctx| {
-                        if let AnyExpr::Expr(Expr::Match { lhs: _, rhs }) = ctx.item
-                            && let Expr::Match { lhs, rhs: _ } = &in_clause[rhs]
-                            && bound_vars.contains(lhs)
-                            && let Some(range) = in_clause.range_for_any(ctx.item_id)
-                            && range.file_id == def.file.file_id
-                        {
-                            diags.push(Diagnostic::new(
-                                DiagnosticCode::MutableVarBug,
-                                "Possible mutable variable bug",
-                                range.range,
-                            ));
-                        };
-                        acc
-                    },
-                );
-            }
-        });
+impl Linter for MutableVariableLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::MutableVarBug
+    }
 
-    Some(())
+    fn description(&self) -> &'static str {
+        "Possible mutable variable bug"
+    }
+
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
+        Severity::Error
+    }
+
+    fn should_process_generated_files(&self) -> bool {
+        true
+    }
 }
+
+impl GenericLinter for MutableVariableLinter {
+    type Context = ();
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<()>>> {
+        let mut res = Vec::new();
+        let bound_vars_by_function = sema.bound_vars_by_function(file_id);
+        sema.def_map(file_id)
+            .get_function_clauses()
+            .for_each(|(_, def)| {
+                if def.file.file_id == file_id
+                    && let Some(bound_vars) = bound_vars_by_function.get(&def.function_clause_id)
+                {
+                    let in_clause = def.in_clause(sema, def);
+                    in_clause.fold_clause(
+                        Strategy {
+                            macros: MacroStrategy::Expand,
+                            parens: ParenStrategy::InvisibleParens,
+                        },
+                        (),
+                        &mut |acc, ctx| {
+                            if let AnyExpr::Expr(Expr::Match { lhs: _, rhs }) = ctx.item
+                                && let Expr::Match { lhs, rhs: _ } = &in_clause[rhs]
+                                && bound_vars.contains(lhs)
+                                && let Some(range) = in_clause.range_for_any(ctx.item_id)
+                                && range.file_id == def.file.file_id
+                            {
+                                res.push(GenericLinterMatchContext {
+                                    range: FileRange {
+                                        file_id: range.file_id,
+                                        range: range.range,
+                                    },
+                                    context: (),
+                                });
+                            };
+                            acc
+                        },
+                    );
+                }
+            });
+        Some(res)
+    }
+}
+
+pub(crate) static LINTER: MutableVariableLinter = MutableVariableLinter;
 
 #[cfg(test)]
 mod tests {
@@ -111,7 +129,7 @@ test() ->
     One = 1,
 
     Result = One = Zero,
-%%  ^^^^^^^^^^^^^^^^^^^ error: W0005: Possible mutable variable bug
+%%  ^^^^^^^^^^^^^^^^^^^ 💡 error: W0005: Possible mutable variable bug
 
     Result.
 "#,
