@@ -15,11 +15,12 @@
 
 use std::collections::HashMap;
 
+use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
-use elp_syntax::TextRange;
-use elp_syntax::ast;
+use elp_ide_db::text_edit::TextRange;
 use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::BinarySeg;
@@ -35,77 +36,129 @@ use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 
-use super::Category;
-use super::Diagnostic;
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use super::Severity;
 use crate::codemod_helpers::is_only_place_where_var_is_defined;
 use crate::codemod_helpers::var_has_no_references;
 use crate::codemod_helpers::var_name_starts_with_underscore;
+use crate::diagnostics::Category;
 use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
 use crate::fix;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
+pub(crate) struct TrivialMatchLinter;
+
+impl Linter for TrivialMatchLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::TrivialMatch
+    }
+
+    fn description(&self) -> &'static str {
+        "match is redundant"
+    }
+
+    fn is_experimental(&self) -> bool {
         // TODO: disable this check when T151727890 and T151605845 are resolved
-        experimental: true,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        trivial_match(diags, sema, file_id);
-    },
-};
-
-fn trivial_match(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    sema.def_map(file_id)
-        .get_function_clauses()
-        .for_each(|(_, def)| {
-            if def.file.file_id == file_id {
-                process_matches(diags, sema, def)
-            }
-        });
+        true
+    }
 }
 
-fn process_matches(diags: &mut Vec<Diagnostic>, sema: &Semantic, def: &FunctionClauseDef) {
-    let in_clause = def.in_clause(sema, def);
-    let body_map = in_clause.get_body_map();
-    let source_file = sema.parse(def.file.file_id);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Context {
+    full_range: TextRange,
+    replacement: Option<String>,
+}
 
-    in_clause.fold_clause(
-        Strategy {
-            macros: MacroStrategy::Expand,
-            parens: ParenStrategy::InvisibleParens,
-        },
-        (),
-        &mut |_acc, ctx| {
-            if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {
-                let rhs = &rhs.clone();
-                if matches_trivially(sema, &in_clause, &lhs, rhs) {
-                    let maybe_lhs_range = &in_clause.range_for_any(AnyExprId::Pat(lhs));
-                    let maybe_full_range = &in_clause.range_for_any(ctx.item_id);
-                    if let (Some(lhs_range), Some(full_range)) = (maybe_lhs_range, maybe_full_range)
-                    {
-                        let rhs_ast = body_map
-                            .expr(*rhs)
-                            .and_then(|infile_ast_ptr| infile_ast_ptr.to_node(&source_file));
-                        let file_id = def.file.file_id;
-                        if lhs_range.file_id == file_id && full_range.file_id == file_id {
-                            diags.push(make_diagnostic(
-                                file_id,
-                                &lhs_range.range,
-                                &full_range.range,
-                                rhs_ast,
-                            ));
-                        }
-                    }
+impl GenericLinter for TrivialMatchLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Context>>> {
+        let mut res = Vec::new();
+        sema.def_map(file_id)
+            .get_function_clauses()
+            .for_each(|(_, def)| {
+                if def.file.file_id == file_id {
+                    let in_clause = def.in_clause(sema, def);
+                    let body_map = in_clause.get_body_map();
+                    let source_file = sema.parse(def.file.file_id);
+
+                    in_clause.fold_clause(
+                        Strategy {
+                            macros: MacroStrategy::Expand,
+                            parens: ParenStrategy::InvisibleParens,
+                        },
+                        (),
+                        &mut |_acc, ctx| {
+                            if let AnyExpr::Expr(Expr::Match { lhs, rhs }) = ctx.item {
+                                let rhs = &rhs.clone();
+                                if matches_trivially(sema, &in_clause, &lhs, rhs) {
+                                    let maybe_lhs_range =
+                                        &in_clause.range_for_any(AnyExprId::Pat(lhs));
+                                    let maybe_full_range = &in_clause.range_for_any(ctx.item_id);
+                                    if let (Some(lhs_range), Some(full_range)) =
+                                        (maybe_lhs_range, maybe_full_range)
+                                    {
+                                        let rhs_ast =
+                                            body_map.expr(*rhs).and_then(|infile_ast_ptr| {
+                                                infile_ast_ptr.to_node(&source_file)
+                                            });
+                                        let file_id = def.file.file_id;
+                                        if lhs_range.file_id == file_id
+                                            && full_range.file_id == file_id
+                                        {
+                                            let replacement = rhs_ast
+                                                .map(|replacement_ast| replacement_ast.to_string());
+                                            res.push(GenericLinterMatchContext {
+                                                range: FileRange {
+                                                    file_id: lhs_range.file_id,
+                                                    range: lhs_range.range,
+                                                },
+                                                context: Context {
+                                                    full_range: full_range.range,
+                                                    replacement,
+                                                },
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    );
                 }
-            }
-        },
-    );
+            });
+        Some(res)
+    }
+
+    fn fixes(
+        &self,
+        context: &Context,
+        _range: TextRange,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        let replacement_str = context.replacement.as_ref()?;
+        let mut edit_builder = TextEdit::builder();
+        edit_builder.replace(context.full_range, replacement_str.clone());
+        let edit = edit_builder.finish();
+
+        Some(vec![fix(
+            "remove_redundant_match",
+            "Remove match",
+            SourceChange::from_text_edit(file_id, edit),
+            context.full_range,
+        )])
+    }
+
+    fn add_categories(&self, _context: &Context) -> Vec<Category> {
+        vec![Category::SimplificationRule]
+    }
 }
+
+pub(crate) static LINTER: TrivialMatchLinter = TrivialMatchLinter;
 
 fn matches_trivially(
     sema: &Semantic,
@@ -261,37 +314,6 @@ fn as_literal(
     match expr {
         Expr::Literal(lit) => Some(lit.clone()),
         _ => None,
-    }
-}
-
-fn make_diagnostic(
-    file_id: FileId,
-    lhs_range: &TextRange,
-    full_range: &TextRange,
-    maybe_replacement: Option<ast::Expr>,
-) -> Diagnostic {
-    let diag = Diagnostic::new(
-        DiagnosticCode::TrivialMatch,
-        "match is redundant",
-        *lhs_range,
-    )
-    .with_severity(Severity::Warning)
-    .add_categories([Category::SimplificationRule]);
-
-    if let Some(replacement_ast) = maybe_replacement {
-        let replacement_str = replacement_ast.to_string();
-        let mut edit_builder = TextEdit::builder();
-        edit_builder.replace(*full_range, replacement_str);
-        let edit = edit_builder.finish();
-
-        diag.with_fixes(Some(vec![fix(
-            "remove_redundant_match",
-            "Remove match",
-            SourceChange::from_text_edit(file_id, edit),
-            *full_range,
-        )]))
-    } else {
-        diag
     }
 }
 

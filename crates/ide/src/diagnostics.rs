@@ -1020,6 +1020,12 @@ pub(crate) trait GenericLinter: Linter {
     ) -> Option<Vec<RelatedInformation>> {
         None
     }
+
+    /// Additional categories for each diagnostic produced.
+    /// See the `Category` type for details.
+    fn add_categories(&self, _context: &Self::Context) -> Vec<Category> {
+        vec![]
+    }
 }
 
 // Instances of the GenericLinter trait can specify a custom `Context` type,
@@ -1059,6 +1065,7 @@ impl<T: GenericLinter> GenericDiagnostics for T {
                     .with_fixes(fixes)
                     .with_tag(tag)
                     .with_related(related)
+                    .add_categories(self.add_categories(&matched.context))
                     .with_severity(severity)
                     .with_cli_severity(cli_severity);
                 if self.can_be_suppressed() {
@@ -1734,7 +1741,6 @@ pub fn native_diagnostics(
 pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
     vec![
         &unused_function_args::DESCRIPTOR,
-        &trivial_match::DESCRIPTOR,
         &redundant_assignment::DESCRIPTOR,
         &effect_free_statement::DESCRIPTOR,
         &simplify_negation::DESCRIPTOR,
@@ -1900,6 +1906,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &eqwalizer_escape_hatches::EQWALIZER_IGNORE_LINTER,
     &mutable_variable::LINTER,
     &record_tuple_match::LINTER,
+    &trivial_match::LINTER,
 ];
 
 /// Unified registry for all types of linters
