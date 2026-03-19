@@ -1,12 +1,12 @@
 Reporting all diagnostics codes
 Diagnostics reported:
-app_a/src/app_a.erl:52:3-52:23::[Warning] [W0006] this statement has no effect
 app_a/src/app_a.erl:27:3-27:9::[Warning] [W0017] Function 'foo:ok/0' is undefined.
 app_a/src/app_a.erl:28:4-28:11::[Warning] [W0017] Function 'mod:foo/0' is undefined.
 app_a/src/app_a.erl:72:4-72:11::[Warning] [W0017] Function 'foo:bar/2' is undefined.
 app_a/src/app_a.erl:37:11-37:28::[Warning] [W0017] Function 'mod_name:fun_name/2' is undefined.
 app_a/src/app_a.erl:58:11-58:24::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
 app_a/src/app_a.erl:4:1-4:41::[Warning] [W0020] Unused file: inets/include/httpd.hrl
+app_a/src/app_a.erl:52:3-52:23::[Warning] [W0006] this statement has no effect
 app_a/src/app_a.erl:39:7-39:28::[Error] [L1267] variable 'A' shadowed in 'named fun'
 app_a/src/app_a.erl:55:32-55:35::[Error] [L1295] type uri/0 undefined
 app_a/src/app_a.erl:56:20-56:26::[Error] [L1295] type binary/1 undefined
@@ -61,6 +61,8 @@ app_a/src/lints.erl:2:10-2:25::[Error] [L1227] function head_mismatch/1 undefine
 app_a/src/otp27_docstrings.erl:34:9-34:24::[Warning] [W0002] Unused macro (THIS_IS_THE_END)
 app_a/src/otp27_docstrings.erl:24:5-24:6::[Warning] [W0060] Match on a bound variable
 app_a/src/otp27_docstrings.erl:30:5-30:6::[Warning] [W0060] Match on a bound variable
+app_a/src/otp27_sigils.erl:102:5-102:24::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
+app_a/src/otp27_sigils.erl:128:9-128:24::[Warning] [W0002] Unused macro (THIS_IS_THE_END)
 app_a/src/otp27_sigils.erl:11:6-11:24::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:12:5-12:24::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:13:5-13:24::[Warning] [W0006] this statement has no effect
@@ -122,8 +124,6 @@ app_a/src/otp27_sigils.erl:85:5-89:10::[Warning] [W0006] this statement has no e
 app_a/src/otp27_sigils.erl:85:5-89:10::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:90:5-94:11::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:95:5-99:12::[Warning] [W0006] this statement has no effect
-app_a/src/otp27_sigils.erl:102:5-102:24::[WeakWarning] [W0051] Binary string can be written using sigil syntax.
-app_a/src/otp27_sigils.erl:128:9-128:24::[Warning] [W0002] Unused macro (THIS_IS_THE_END)
 app_a/src/otp27_sigils.erl:112:4-112:5::[Error] [P1711] syntax error before: X
         4:15-4:18: function g/0 undefined
         74:7-74:8: spec for undefined function g/0

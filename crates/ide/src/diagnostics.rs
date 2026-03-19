@@ -1740,7 +1740,6 @@ pub fn native_diagnostics(
 
 pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
     vec![
-        &effect_free_statement::DESCRIPTOR,
         &simplify_negation::DESCRIPTOR,
         &nonstandard_integer_formatting::DESCRIPTOR,
         &expression_can_be_simplified::DESCRIPTOR,
@@ -1907,6 +1906,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &trivial_match::LINTER,
     &redundant_assignment::LINTER,
     &unused_function_args::LINTER,
+    &effect_free_statement::LINTER,
 ];
 
 /// Unified registry for all types of linters

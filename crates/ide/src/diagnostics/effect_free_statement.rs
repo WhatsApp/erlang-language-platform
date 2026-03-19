@@ -15,9 +15,12 @@
 
 use std::iter;
 
+use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
+use elp_ide_db::text_edit::TextRange;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxElement;
 use elp_syntax::SyntaxKind;
@@ -33,55 +36,98 @@ use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 
 use super::Category;
-use super::Diagnostic;
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use super::Severity;
 use crate::codemod_helpers::statement_range;
 use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
 use crate::fix;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        effect_free_statement(diags, sema, file_id);
-    },
-};
+pub(crate) struct EffectFreeStatementLinter;
 
-fn effect_free_statement(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    sema.for_each_function(file_id, |def| {
-        let source_file = sema.parse(file_id);
+impl Linter for EffectFreeStatementLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::StatementHasNoEffect
+    }
 
-        let def_fb = def.in_function_body(sema, def);
-        def_fb.fold_function(
-            Strategy {
-                macros: MacroStrategy::Expand,
-                parens: ParenStrategy::InvisibleParens,
-            },
-            (),
-            &mut |_acc, clause_id, ctx| {
-                if let AnyExprId::Expr(expr_id) = ctx.item_id {
-                    let body_map = def_fb.get_body_map(clause_id);
-                    let in_clause = def_fb.in_clause(clause_id);
-                    if let Some(in_file_ast_ptr) = body_map.expr(expr_id)
-                        && let Some(expr_ast) = in_file_ast_ptr.to_node(&source_file)
-                        && is_statement(&expr_ast)
-                        && !is_macro_usage(&expr_ast)
-                        && has_no_effect(in_clause, &expr_id)
-                        && is_followed_by(SyntaxKind::ANON_COMMA, &expr_ast)
-                    {
-                        diags.push(make_diagnostic(file_id, &expr_ast));
-                    }
-                }
-            },
-        );
-    });
+    fn description(&self) -> &'static str {
+        "this statement has no effect"
+    }
 }
+
+#[derive(Debug, Clone)]
+pub(crate) struct Context {
+    statement_removal: Option<TextEdit>,
+}
+
+impl GenericLinter for EffectFreeStatementLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Context>>> {
+        let mut res = Vec::new();
+        sema.for_each_function(file_id, |def| {
+            let source_file = sema.parse(file_id);
+
+            let def_fb = def.in_function_body(sema, def);
+            def_fb.fold_function(
+                Strategy {
+                    macros: MacroStrategy::Expand,
+                    parens: ParenStrategy::InvisibleParens,
+                },
+                (),
+                &mut |_acc, clause_id, ctx| {
+                    if let AnyExprId::Expr(expr_id) = ctx.item_id {
+                        let body_map = def_fb.get_body_map(clause_id);
+                        let in_clause = def_fb.in_clause(clause_id);
+                        if let Some(in_file_ast_ptr) = body_map.expr(expr_id)
+                            && let Some(expr_ast) = in_file_ast_ptr.to_node(&source_file)
+                            && is_statement(&expr_ast)
+                            && !is_macro_usage(&expr_ast)
+                            && has_no_effect(in_clause, &expr_id)
+                            && is_followed_by(SyntaxKind::ANON_COMMA, &expr_ast)
+                        {
+                            let node = expr_ast.syntax();
+                            let range = node.text_range();
+                            res.push(GenericLinterMatchContext {
+                                range: FileRange { file_id, range },
+                                context: Context {
+                                    statement_removal: remove_statement(&expr_ast),
+                                },
+                            });
+                        }
+                    }
+                },
+            );
+        });
+        Some(res)
+    }
+
+    fn fixes(
+        &self,
+        context: &Context,
+        range: TextRange,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        let statement_removal = context.statement_removal.as_ref()?;
+        Some(vec![fix(
+            "remove_statement",
+            "Remove redundant statement",
+            SourceChange::from_text_edit(file_id, statement_removal.clone()),
+            range,
+        )])
+    }
+
+    fn add_categories(&self, _context: &Context) -> Vec<Category> {
+        vec![Category::SimplificationRule]
+    }
+}
+
+pub(crate) static LINTER: EffectFreeStatementLinter = EffectFreeStatementLinter;
 
 fn has_no_effect(def_fb: &InFunctionClauseBody<&FunctionDef>, expr_id: &ExprId) -> bool {
     let expr = &def_fb[*expr_id];
@@ -200,29 +246,6 @@ fn remove_statement(expr: &ast::Expr) -> Option<TextEdit> {
     let mut edit_builder = TextEdit::builder();
     edit_builder.delete(range);
     Some(edit_builder.finish())
-}
-
-fn make_diagnostic(file_id: FileId, expr: &ast::Expr) -> Diagnostic {
-    let node = expr.syntax();
-    let range = node.text_range();
-    let diag = Diagnostic::new(
-        DiagnosticCode::StatementHasNoEffect,
-        "this statement has no effect",
-        range,
-    )
-    .with_severity(Severity::Warning)
-    .add_categories([Category::SimplificationRule]);
-
-    if let Some(statement_removal) = remove_statement(expr) {
-        diag.with_fixes(Some(vec![fix(
-            "remove_statement",
-            "Remove redundant statement",
-            SourceChange::from_text_edit(file_id, statement_removal),
-            range,
-        )]))
-    } else {
-        diag
-    }
 }
 
 #[cfg(test)]
