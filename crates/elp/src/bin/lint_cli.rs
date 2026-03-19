@@ -72,6 +72,35 @@ use crate::args::Lint;
 use crate::reporting;
 use crate::reporting::print_memory_usage;
 
+fn parse_severity(severity: &str) -> Option<diagnostics::Severity> {
+    match severity {
+        "error" => Some(diagnostics::Severity::Error),
+        "warning" => Some(diagnostics::Severity::Warning),
+        "weak_warning" => Some(diagnostics::Severity::WeakWarning),
+        "information" => Some(diagnostics::Severity::Information),
+        _ => None,
+    }
+}
+
+fn severity_rank(severity: diagnostics::Severity) -> u8 {
+    match severity {
+        diagnostics::Severity::Error => 1,
+        diagnostics::Severity::Warning => 2,
+        diagnostics::Severity::WeakWarning => 3,
+        diagnostics::Severity::Information => 4,
+    }
+}
+
+fn meets_severity_threshold(
+    diag_severity: diagnostics::Severity,
+    min_severity: Option<diagnostics::Severity>,
+) -> bool {
+    match min_severity {
+        None => true,
+        Some(min) => severity_rank(diag_severity) <= severity_rank(min),
+    }
+}
+
 pub fn run_lint_command(
     args: &Lint,
     cli: &mut dyn Cli,
@@ -453,6 +482,10 @@ pub fn do_codemod(
             );
         }
 
+        let min_severity = args
+            .min_severity
+            .as_ref()
+            .and_then(|s| parse_severity(s.as_str()));
         let mut filtered_diags = {
             let analysis = loaded.analysis();
             filter_diagnostics(
@@ -461,6 +494,7 @@ pub fn do_codemod(
                 Some(&diagnostics_config.enabled),
                 &initial_diags,
                 &FxHashSet::default(),
+                min_severity,
             )?
         };
 
@@ -593,12 +627,17 @@ fn do_print_diagnostic_collection(
 ) -> Result<bool> {
     let single_result = vec![result.clone()];
     let mut has_diagnostics = false;
+    let min_severity = args
+        .min_severity
+        .as_ref()
+        .and_then(|s| parse_severity(s.as_str()));
     if let Ok(filtered) = filter_diagnostics(
         analysis,
         module,
         Some(&config.enabled),
         &single_result,
         &FxHashSet::default(),
+        min_severity,
     ) {
         do_print_diagnostics_filtered(
             cli,
@@ -677,12 +716,17 @@ fn do_print_diagnostic_collection_json(
 ) -> Result<bool> {
     let single_result = vec![result.clone()];
     let mut has_diagnostics = false;
+    let min_severity = args
+        .min_severity
+        .as_ref()
+        .and_then(|s| parse_severity(s.as_str()));
     if let Ok(filtered) = filter_diagnostics(
         analysis,
         module,
         Some(&config.enabled),
         &single_result,
         &FxHashSet::default(),
+        min_severity,
     ) {
         do_print_diagnostics_json_filtered(
             cli,
@@ -870,6 +914,7 @@ fn filter_diagnostics<'a>(
     allowed_diagnostics: Option<&EnabledDiagnostics>,
     diags: &'a [(String, FileId, DiagnosticCollection)],
     changed_forms: &FxHashSet<InFile<FormIdx>>,
+    min_severity: Option<diagnostics::Severity>,
 ) -> Result<Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>> {
     // The initial set of diagnostics is filtered with a `Some` value
     // for allowed_diagnostics. Thereafter, during the simplification
@@ -889,6 +934,7 @@ fn filter_diagnostics<'a>(
                             .map(|form_id| InFile::new(file_id, form_id));
                         diagnostic_is_allowed(d, allowed_diagnostics)
                             && check_changes(changed_forms, form_id)
+                            && meets_severity_threshold(d.severity, min_severity)
                     })
                     .cloned()
                     .collect::<Vec<diagnostics::Diagnostic>>();
@@ -1065,7 +1111,7 @@ impl<'a> Lints<'a> {
 
             let new_diagnostics = {
                 let analysis = self.analysis_host.analysis();
-                filter_diagnostics(&analysis, &None, None, &new_diags, &self.changed_forms)?
+                filter_diagnostics(&analysis, &None, None, &new_diags, &self.changed_forms, None)?
             };
             self.diags = diagnostics_by_file_id(&new_diagnostics);
             if !self.diags.is_empty() {

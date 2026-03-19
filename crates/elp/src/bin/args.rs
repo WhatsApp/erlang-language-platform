@@ -295,6 +295,17 @@ pub struct Lint {
 
     /// If specified, use the provided CLI severity mapping instead of the default one
     pub use_cli_severity: bool,
+    /// Minimum severity level to report. Valid values: error, warning, weak_warning, information
+    #[bpaf(
+        argument("SEVERITY"),
+        complete(severity_completer),
+        fallback(None),
+        guard(
+            severity_guard,
+            "Please use error, warning, weak_warning, or information"
+        )
+    )]
+    pub min_severity: Option<String>,
     /// Ignore the specified diagnostic, by code or label
     #[bpaf(argument("CODE"))]
     pub diagnostic_ignore: Option<String>,
