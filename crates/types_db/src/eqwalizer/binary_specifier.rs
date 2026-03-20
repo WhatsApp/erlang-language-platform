@@ -13,14 +13,14 @@ use serde::Serialize;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Specifier {
-    SignedIntegerSpecifier,
-    UnsignedIntegerSpecifier,
-    FloatSpecifier,
-    BinarySpecifier,
-    BytesSpecifier,
-    BitstringSpecifier,
-    BitsSpecifier,
-    Utf8Specifier,
-    Utf16Specifier,
-    Utf32Specifier,
+    SignedInteger,
+    UnsignedInteger,
+    Float,
+    Binary,
+    Bytes,
+    Bitstring,
+    Bits,
+    Utf8,
+    Utf16,
+    Utf32,
 }

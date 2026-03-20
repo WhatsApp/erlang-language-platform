@@ -183,16 +183,16 @@ struct Converter {
 
 fn get_specifier(name: &str) -> Option<Specifier> {
     match name {
-        "default" => Some(Specifier::UnsignedIntegerSpecifier),
-        "integer" => Some(Specifier::UnsignedIntegerSpecifier),
-        "float" => Some(Specifier::FloatSpecifier),
-        "binary" => Some(Specifier::BinarySpecifier),
-        "bytes" => Some(Specifier::BytesSpecifier),
-        "bitstring" => Some(Specifier::BitstringSpecifier),
-        "bits" => Some(Specifier::BitsSpecifier),
-        "utf8" => Some(Specifier::Utf8Specifier),
-        "utf16" => Some(Specifier::Utf16Specifier),
-        "utf32" => Some(Specifier::Utf32Specifier),
+        "default" => Some(Specifier::UnsignedInteger),
+        "integer" => Some(Specifier::UnsignedInteger),
+        "float" => Some(Specifier::Float),
+        "binary" => Some(Specifier::Binary),
+        "bytes" => Some(Specifier::Bytes),
+        "bitstring" => Some(Specifier::Bitstring),
+        "bits" => Some(Specifier::Bits),
+        "utf8" => Some(Specifier::Utf8),
+        "utf16" => Some(Specifier::Utf16),
+        "utf32" => Some(Specifier::Utf32),
         _ => None,
     }
 }
@@ -1690,8 +1690,8 @@ impl Converter {
                         _ => None,
                     })
                     .next()
-                    .unwrap_or(Specifier::UnsignedIntegerSpecifier),
-                _ => Specifier::UnsignedIntegerSpecifier,
+                    .unwrap_or(Specifier::UnsignedInteger),
+                _ => Specifier::UnsignedInteger,
             }
         };
         let signed = {
@@ -1703,8 +1703,8 @@ impl Converter {
                 _ => false,
             }
         };
-        if signed && unsigned_spec == Specifier::UnsignedIntegerSpecifier {
-            Specifier::SignedIntegerSpecifier
+        if signed && unsigned_spec == Specifier::UnsignedInteger {
+            Specifier::SignedInteger
         } else {
             unsigned_spec
         }
