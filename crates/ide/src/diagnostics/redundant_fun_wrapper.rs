@@ -445,6 +445,21 @@ mod tests {
     }
 
     #[test]
+    fn detects_fun_var_with_parens() {
+        check_diagnostics(
+            r#"
+            //- /src/test.erl
+            -module(test).
+            -export([use_fun/2]).
+
+            use_fun(F, L) ->
+                lists:map(fun(X) -> (F(X)) end, L).
+            %%            ^^^^^^^^^^^^^^^^^^^^ 💡 information: W0071: Redundant wrapper around `F` can be removed.
+            "#,
+        )
+    }
+
+    #[test]
     fn detects_fun_var_arity_2() {
         check_diagnostics(
             r#"
