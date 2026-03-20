@@ -162,7 +162,6 @@ pub enum Task {
         Spinner,
         Vec<(ProjectId, Vec<(FileId, Vec<diagnostics::Diagnostic>)>)>,
     ),
-    EdocDiagnostics(Spinner, Vec<(FileId, Vec<diagnostics::Diagnostic>)>),
     CommonTestDiagnostics(Spinner, Vec<(FileId, Vec<diagnostics::Diagnostic>)>),
     ErlangServiceDiagnostics(Vec<(FileId, LabeledDiagnostics)>),
     CompileDeps(Spinner),
@@ -292,7 +291,6 @@ pub struct Server {
     native_diagnostics_requested: bool,
     eqwalizer_and_erlang_service_diagnostics_requested: bool,
     eqwalizer_project_diagnostics_requested: bool,
-    edoc_diagnostics_requested: bool,
     ct_diagnostics_requested: bool,
     cache_scheduled: bool,
     eqwalize_all_scheduled: FxHashSet<ProjectId>,
@@ -361,7 +359,6 @@ impl Server {
             native_diagnostics_requested: false,
             eqwalizer_and_erlang_service_diagnostics_requested: false,
             eqwalizer_project_diagnostics_requested: false,
-            edoc_diagnostics_requested: false,
             ct_diagnostics_requested: false,
             cache_scheduled: false,
             eqwalize_all_scheduled: FxHashSet::default(),
@@ -533,10 +530,6 @@ impl Server {
                     spinner.end();
                     self.eqwalizer_project_diagnostics_completed(diags)
                 }
-                Task::EdocDiagnostics(spinner, diags) => {
-                    spinner.end();
-                    self.edoc_diagnostics_completed(diags)
-                }
                 Task::CommonTestDiagnostics(spinner, diags) => {
                     spinner.end();
                     self.ct_diagnostics_completed(diags)
@@ -595,10 +588,6 @@ impl Server {
 
             if mem::take(&mut self.eqwalizer_project_diagnostics_requested) {
                 self.update_eqwalizer_project_diagnostics();
-            }
-
-            if mem::take(&mut self.edoc_diagnostics_requested) {
-                self.update_edoc_diagnostics();
             }
 
             if mem::take(&mut self.ct_diagnostics_requested) {
@@ -749,9 +738,6 @@ impl Server {
                 if this.config.eqwalizer().all {
                     this.eqwalizer_project_diagnostics_requested = true;
                 }
-                if this.config.edoc() {
-                    this.edoc_diagnostics_requested = true;
-                }
                 this.ct_diagnostics_requested = true;
                 this.native_diagnostics_requested = true;
                 if let Ok(path) = convert::abs_path(&params.text_document.uri) {
@@ -895,9 +881,6 @@ impl Server {
                         this.eqwalizer_and_erlang_service_diagnostics_requested = true;
                         if this.config.eqwalizer().all {
                             this.eqwalizer_project_diagnostics_requested = true;
-                        }
-                        if this.config.edoc() {
-                            this.edoc_diagnostics_requested = true;
                         }
                         this.ct_diagnostics_requested = true;
                         this.native_diagnostics_requested = true;
@@ -1152,7 +1135,6 @@ impl Server {
                 Arc::make_mut(&mut self.eqwalizer_types).insert(file.file_id, Arc::new(vec![]));
                 Arc::make_mut(&mut self.diagnostics)
                     .set_erlang_service(file.file_id, LabeledDiagnostics::default());
-                Arc::make_mut(&mut self.diagnostics).set_edoc(file.file_id, vec![]);
                 Arc::make_mut(&mut self.diagnostics).set_ct(file.file_id, vec![]);
             } else {
                 // We can't actually delete things from salsa, just set it to empty
@@ -1307,31 +1289,6 @@ impl Server {
         });
     }
 
-    fn update_edoc_diagnostics(&mut self) {
-        if self.status != Status::Running {
-            return;
-        }
-
-        log::info!("Recomputing EDoc diagnostics");
-
-        let opened_documents = self.opened_documents();
-        let snapshot = self.snapshot();
-
-        let spinner = self.progress.begin_spinner("EDoc".to_string());
-
-        let config = self.diagnostics_config.clone();
-        let include_otp = self.config.enable_otp_diagnostics();
-        self.task_pool.handle.spawn(move || {
-            let diagnostics = opened_documents
-                .into_iter()
-                .filter_map(|file_id| snapshot.edoc_diagnostics(file_id, include_otp, &config))
-                .flatten()
-                .collect();
-
-            Task::EdocDiagnostics(spinner, diagnostics)
-        });
-    }
-
     fn update_ct_diagnostics(&mut self) {
         if self.status != Status::Running {
             return;
@@ -1379,12 +1336,6 @@ impl Server {
     ) {
         for (_project_id, diagnostics) in diags {
             Arc::make_mut(&mut self.diagnostics).set_eqwalizer_project(diagnostics);
-        }
-    }
-
-    fn edoc_diagnostics_completed(&mut self, diags: Vec<(FileId, Vec<diagnostics::Diagnostic>)>) {
-        for (file_id, diagnostics) in diags {
-            Arc::make_mut(&mut self.diagnostics).set_edoc(file_id, diagnostics);
         }
     }
 
@@ -1600,9 +1551,6 @@ impl Server {
                 // Diagnostic config may have changed, regen
                 self.native_diagnostics_requested = true;
                 self.eqwalizer_and_erlang_service_diagnostics_requested = true;
-                if self.config.edoc() {
-                    self.edoc_diagnostics_requested = true;
-                }
             }
         }
         self.diagnostics_config = Arc::new(self.make_diagnostics_config());

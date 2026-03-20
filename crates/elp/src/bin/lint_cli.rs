@@ -87,6 +87,12 @@ pub fn run_lint_command(
             "Warning: the --include-ct-diagnostics flag is deprecated and will be removed in an upcoming release. Common Test diagnostics are now always included."
         )?;
     }
+    if args.include_edoc_diagnostics && args.is_format_normal() {
+        writeln!(
+            cli.err(),
+            "Warning: the --include-edoc-diagnostics flag is deprecated and will be removed in an upcoming release. EDoc diagnostics have been removed."
+        )?;
+    }
     if args.include_tests && args.is_format_normal() {
         writeln!(
             cli.err(),
@@ -279,15 +285,6 @@ fn do_diagnostics_one(
     }
     // CT diagnostics are always included (--include-ct-diagnostics is now a no-op)
     diagnostics.set_ct(file_id, db.ct_diagnostics(file_id, config)?);
-    if args.include_edoc_diagnostics {
-        let edoc_diagnostics = db
-            .edoc_diagnostics(file_id, config)?
-            .into_iter()
-            .filter(|(f, _)| *f == file_id)
-            .flat_map(|(_, ds)| ds.into_iter())
-            .collect_vec();
-        diagnostics.set_edoc(file_id, edoc_diagnostics);
-    }
     if args.include_eqwalizer_diagnostics {
         if args.check_eqwalize_all {
             let project_id = db.project_id(file_id).unwrap().unwrap();
@@ -756,8 +753,7 @@ fn get_diagnostics_config(args: &Lint) -> Result<DiagnosticsConfig> {
         .set_include_generated(args.include_generated)
         .set_experimental(args.experimental_diags)
         .set_include_suppressed(args.include_suppressed)
-        .set_use_cli_severity(args.use_cli_severity)
-        .set_include_edoc(args.include_edoc_diagnostics);
+        .set_use_cli_severity(args.use_cli_severity);
     Ok(cfg)
 }
 

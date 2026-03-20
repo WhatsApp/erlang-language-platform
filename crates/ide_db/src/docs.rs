@@ -12,14 +12,12 @@
 
 use std::fmt;
 use std::sync::Arc;
-use std::vec;
 
 use elp_base_db::FileId;
 use elp_base_db::SourceDatabase;
 use elp_base_db::SourceDatabaseExt;
 use elp_base_db::Upcast;
 use elp_base_db::salsa;
-use elp_erlang_service::DocDiagnostic;
 use elp_erlang_service::DocOrigin;
 use elp_erlang_service::DocRequest;
 use elp_syntax::AstNode;
@@ -183,7 +181,6 @@ pub struct FileDoc {
     module_doc: Option<Doc>,
     function_docs: FxHashMap<NameArity, Doc>,
     type_docs: FxHashMap<NameArity, Doc>,
-    pub diagnostics: Vec<DocDiagnostic>,
 }
 
 // TODO Add an input so we know when to invalidate?
@@ -263,7 +260,6 @@ fn get_file_docs(db: &dyn DocDatabase, file_id: FileId) -> Arc<FileDoc> {
         module_doc: descriptions.module_doc,
         function_docs: merge_descriptions_and_specs(descriptions.function_docs, specs),
         type_docs: merge_type_definitions_and_descriptions(db, file_id, descriptions.type_docs),
-        diagnostics: descriptions.diagnostics,
     })
 }
 
@@ -353,7 +349,6 @@ impl DocLoader for crate::RootDatabase {
                 module_doc: None,
                 function_docs: FxHashMap::default(),
                 type_docs: FxHashMap::default(),
-                diagnostics: vec![],
             };
         };
 
@@ -407,13 +402,11 @@ impl DocLoader for crate::RootDatabase {
                         )
                     })
                     .collect(),
-                diagnostics: d.diagnostics,
             },
             Err(_) => FileDoc {
                 module_doc: None,
                 function_docs: FxHashMap::default(),
                 type_docs: FxHashMap::default(),
-                diagnostics: vec![],
             },
         }
     }

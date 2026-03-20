@@ -25,9 +25,7 @@ use elp_ide_assists::GroupLabel;
 use elp_ide_db::EqwalizerDatabase;
 use elp_ide_db::EqwalizerDiagnostics;
 use elp_ide_db::ErlAstDatabase;
-use elp_ide_db::LineCol;
 use elp_ide_db::LineIndex;
-use elp_ide_db::LineIndexDatabase;
 use elp_ide_db::assists::Assist;
 use elp_ide_db::assists::AssistContextDiagnostic;
 use elp_ide_db::assists::AssistContextDiagnosticCode;
@@ -35,8 +33,6 @@ use elp_ide_db::assists::AssistUserInput;
 use elp_ide_db::assists::AssistUserInputType;
 use elp_ide_db::common_test::CommonTestDatabase;
 use elp_ide_db::common_test::CommonTestInfo;
-use elp_ide_db::diagnostic_code::Namespace;
-use elp_ide_db::docs::DocDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::elp_base_db::FileRange;
@@ -1108,7 +1104,6 @@ pub struct DiagnosticDescriptor<'a> {
 pub struct EnabledDiagnostics {
     enable_all: bool,
     enabled: FxHashSet<DiagnosticCode>,
-    edoc: bool,
 }
 
 impl EnabledDiagnostics {
@@ -1116,27 +1111,19 @@ impl EnabledDiagnostics {
         EnabledDiagnostics {
             enable_all: false,
             enabled: FxHashSet::default(),
-            edoc: false,
         }
     }
     pub fn from_set(enabled: FxHashSet<DiagnosticCode>) -> EnabledDiagnostics {
         EnabledDiagnostics {
             enable_all: false,
             enabled,
-            edoc: false,
         }
     }
     pub fn enable_all() -> EnabledDiagnostics {
         EnabledDiagnostics {
             enable_all: true,
             enabled: FxHashSet::default(),
-            edoc: false,
         }
-    }
-
-    pub fn set_edoc(&mut self, value: bool) -> &EnabledDiagnostics {
-        self.edoc = value;
-        self
     }
 
     pub fn enable(&mut self, code: DiagnosticCode) -> &EnabledDiagnostics {
@@ -1147,8 +1134,6 @@ impl EnabledDiagnostics {
     pub fn contains(&self, code: &DiagnosticCode) -> bool {
         if self.enable_all {
             true
-        } else if code.as_namespace() == Some(Namespace::EDoc) {
-            self.edoc
         } else {
             self.enabled.contains(code)
         }
@@ -1169,7 +1154,6 @@ pub struct DiagnosticsConfig {
     pub include_generated: bool,
     pub include_suppressed: bool,
     pub include_otp: bool,
-    pub include_edoc: bool,
     pub use_cli_severity: bool,
     /// Used in `elp lint` to request erlang service diagnostics if
     /// needed.
@@ -1249,12 +1233,6 @@ impl DiagnosticsConfig {
 
     pub fn set_include_suppressed(mut self, value: bool) -> DiagnosticsConfig {
         self.include_suppressed = value;
-        self
-    }
-
-    pub fn set_include_edoc(mut self, value: bool) -> DiagnosticsConfig {
-        self.include_edoc = value;
-        self.enabled.set_edoc(value);
         self
     }
 
@@ -2634,114 +2612,6 @@ pub fn eqwalizer_stats(
     )
 }
 
-pub fn edoc_diagnostics(
-    db: &RootDatabase,
-    file_id: FileId,
-    config: &DiagnosticsConfig,
-) -> Vec<(FileId, Vec<Diagnostic>)> {
-    if !config.include_generated && db.generated_status(file_id).is_generated() {
-        return vec![];
-    }
-
-    // We use a BTreeSet of a tuple because neither ParseError nor
-    // Diagnostic nor TextRange has an Ord instance
-    let mut error_info: BTreeSet<(FileId, TextSize, TextSize, String, String)> =
-        BTreeSet::default();
-    let mut warning_info: BTreeSet<(FileId, TextSize, TextSize, String, String)> =
-        BTreeSet::default();
-
-    // If the file cannot be parsed, it does not really make sense to run EDoc,
-    // so let's return early.
-    let ast = db.module_ast(file_id);
-    if !ast.is_ok() {
-        return vec![];
-    };
-
-    let res = db.file_doc(file_id);
-    let line_index = db.file_line_index(file_id);
-
-    res.diagnostics.iter().for_each(|d| {
-        // While line number in EDoc diagnostics are 1 based,
-        // EDoc can return some error messages for the entire module with
-        // a default location of 0.
-        // We normalize it to 1, so it can be correctly displayed on the first line of the module.
-        // See: https://github.com/erlang/otp/blob/f9e367c1992735164b0e6c96881c35a30890aed2/lib/edoc/src/edoc.erl#L778-L782
-        let line = if d.line == 0 { 1 } else { d.line };
-        let start = line_index
-            .safe_offset(LineCol {
-                line: line - 1,
-                col_utf16: 0,
-            })
-            .unwrap_or(TextSize::from(0));
-        let end = line_index
-            .safe_offset(LineCol { line, col_utf16: 0 })
-            .unwrap_or(TextSize::from(0));
-        let message = &d.message;
-        let val = (file_id, start, end, d.code.clone(), message.clone());
-        match d.severity.as_str() {
-            "error" => {
-                error_info.insert(val);
-            }
-            "warning" => {
-                warning_info.insert(val);
-            }
-            _ => (),
-        }
-    });
-
-    let metadata = db.elp_metadata(file_id);
-    let diags: Vec<(FileId, Diagnostic)> = error_info
-        .into_iter()
-        .map(|(file_id, start, end, code, msg)| {
-            (
-                file_id,
-                Diagnostic::new(
-                    DiagnosticCode::ErlangService(code),
-                    msg,
-                    TextRange::new(start, end),
-                )
-                .with_severity(Severity::Warning),
-            )
-        })
-        .chain(
-            warning_info
-                .into_iter()
-                .map(|(file_id, start, end, code, msg)| {
-                    (
-                        file_id,
-                        Diagnostic::new(
-                            DiagnosticCode::ErlangService(code),
-                            msg,
-                            TextRange::new(start, end),
-                        )
-                        .with_severity(Severity::Warning),
-                    )
-                }),
-        )
-        .collect();
-
-    if diags.is_empty() {
-        // If there are no diagnostics reported, return an empty list
-        // against the `file_id` to clear the list of diagnostics for
-        // the file.
-        vec![(file_id, vec![])]
-    } else {
-        let mut diags_map: FxHashMap<FileId, Vec<Diagnostic>> = FxHashMap::default();
-        diags
-            .into_iter()
-            .filter(|(_file_id, d)| {
-                !d.should_be_suppressed(&metadata, config) && !config.disabled.contains(&d.code)
-            })
-            .for_each(|(file_id, diag)| {
-                diags_map
-                    .entry(file_id)
-                    .and_modify(|existing| existing.push(diag.clone()))
-                    .or_insert(vec![diag.clone()]);
-            });
-        diags_map.into_iter().collect()
-    }
-}
-
 pub fn ct_info(db: &RootDatabase, file_id: FileId) -> Arc<CommonTestInfo> {
     if db.file_kind(file_id) != FileKind::TestModule {
         return Arc::new(CommonTestInfo::Skipped);
@@ -3405,7 +3275,6 @@ pub fn spec_for_undefined_function_from_message(s: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use elp_project_model::otp::otp_supported_by_eqwalizer;
-    use elp_project_model::otp::supports_eep59_doc_attributes;
     use expect_test::expect;
 
     use super::*;
@@ -3698,20 +3567,6 @@ main(X) ->
     }
 
     #[test]
-    fn edoc_diagnostics() {
-        check_diagnostics(
-            r#"
-             //- edoc
-             //- /main/src/main_edoc.erl app:main
-             % @unknown
-             %%<^^^^^^^^  warning: O0039: tag @unknown not recognized.
-             -module(main_edoc).
-
-             "#,
-        );
-    }
-
-    #[test]
     fn group_related_diagnostics_1() {
         let labeled_undefined_errors = FxHashMap::from_iter([(
             Some(DiagnosticLabel::MFA(Label::new_raw("foo/0"))),
@@ -3997,23 +3852,6 @@ main(X) ->
         );
     }
 
-    #[test]
-    fn edoc_with_maybe_operator() {
-        check_diagnostics(
-            r#"
-//- edoc
-  -module(main).
-  -export([listen_port/2]).
-  listen_port(Port, Options) ->
-    maybe
-        {ok, ListenSocket} ?= inet_tcp:listen(Port, Options),
-        {ok, Address} ?= inet:sockname(ListenSocket),
-        {ok, {ListenSocket, Address}}
-    end.
-"#,
-        );
-    }
-
     // https://github.com/WhatsApp/erlang-language-platform/issues/24
     #[test]
     fn byte_index_2001_not_a_char_boundary() {
@@ -4182,41 +4020,6 @@ main(X) ->
                        #{KK => VV || KK := VV <:- Map}.
             "#,
         );
-    }
-
-    #[test]
-    fn edoc_generic_diagnostics_suppressed() {
-        let config = DiagnosticsConfig::default()
-            .disable(DiagnosticCode::ErlangService("O0000".to_string()));
-        if supports_eep59_doc_attributes() {
-            check_diagnostics_with_config(
-                config,
-                r#"
-                //- edoc
-                //- /src/a_mod.erl app:app_a
-                -module(a_mod).
-                -export([foo/0]).
-
-                % @docc
-                %%<^^^^^ warning: O0039: tag @docc not recognized.
-                foo() -> \~"foo".
-                "#,
-            );
-        } else {
-            // In previous versions of OTP, the EDoc stops at the first error, so no other diagnostics are reported
-            check_diagnostics_with_config(
-                config,
-                r#"
-                //- edoc
-                //- /src/a_mod.erl app:app_a
-                -module(a_mod).
-                -export([foo/0]).
-
-                % @docc
-                foo() -> \~"foo".
-                "#,
-            );
-        }
     }
 
     #[test]

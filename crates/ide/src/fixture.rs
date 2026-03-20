@@ -91,7 +91,6 @@ pub fn diagnostics_for(
         use_erlang_service,
         use_eqwalizer,
         use_ct,
-        use_edoc,
         tmp_dir: _,
     } = diagnostics_enabled;
     if *use_native {
@@ -116,12 +115,6 @@ pub fn diagnostics_for(
     }
     if *use_ct {
         diagnostics.set_ct(file_id, analysis.ct_diagnostics(file_id, config).unwrap());
-    }
-    if *use_edoc {
-        let edoc_diagnostics = analysis.edoc_diagnostics(file_id, config).unwrap();
-        for (file_id, diags) in edoc_diagnostics {
-            diagnostics.set_edoc(file_id, diags);
-        }
     }
     diagnostics
 }

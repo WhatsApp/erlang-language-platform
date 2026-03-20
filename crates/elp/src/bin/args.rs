@@ -286,7 +286,7 @@ pub struct Lint {
     pub include_erlc_diagnostics: bool,
     /// Deprecated (no-op): Common Test diagnostics are now always included
     pub include_ct_diagnostics: bool,
-    /// Include EDoc diagnostics
+    /// Deprecated (no-op): EDoc diagnostics have been removed
     pub include_edoc_diagnostics: bool,
     /// Include Eqwalizer diagnostics
     pub include_eqwalizer_diagnostics: bool,

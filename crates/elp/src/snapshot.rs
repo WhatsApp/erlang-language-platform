@@ -61,9 +61,6 @@ pub enum TelemetryData {
     ParseServerDiagnostics {
         file_url: Url,
     },
-    EdocDiagnostics {
-        file_url: Url,
-    },
     MetaDiagnostics {
         file_url: Url,
     },
@@ -94,9 +91,6 @@ impl fmt::Display for TelemetryData {
             }
             TelemetryData::ParseServerDiagnostics { file_url } => {
                 write!(f, "Parse Server Diagnostics file_url: {file_url}")
-            }
-            TelemetryData::EdocDiagnostics { file_url } => {
-                write!(f, "EDoc Diagnostics file_url: {file_url}")
             }
             TelemetryData::MetaDiagnostics { file_url } => {
                 write!(f, "Meta Diagnostics file_url: {file_url}")
@@ -290,36 +284,6 @@ impl Snapshot {
         let file_url = self.file_id_to_url(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_url });
         self.analysis.types_for_file(file_id).ok()?
-    }
-
-    pub fn edoc_diagnostics(
-        &self,
-        file_id: FileId,
-        include_otp: bool,
-        config: &DiagnosticsConfig,
-    ) -> Option<Vec<(FileId, Vec<diagnostics::Diagnostic>)>> {
-        let file_kind = self.analysis.file_kind(file_id).ok()?;
-        if file_kind != FileKind::SrcModule && file_kind != FileKind::TestModule {
-            return None;
-        }
-
-        if !include_otp && self.is_otp(file_id) {
-            return None;
-        }
-
-        let file_url = self.file_id_to_url(file_id);
-        let _timer = timeit_with_telemetry!(TelemetryData::EdocDiagnostics {
-            file_url: file_url.clone()
-        });
-
-        let diags = &*self.analysis.edoc_diagnostics(file_id, config).ok()?;
-
-        Some(
-            diags
-                .iter()
-                .map(|(file_id, ds)| (*file_id, ds.clone()))
-                .collect(),
-        )
     }
 
     pub fn ct_diagnostics(

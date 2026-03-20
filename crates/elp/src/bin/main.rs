@@ -1746,23 +1746,6 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
-    fn lint_edoc(buck: bool) {
-        simple_snapshot_sorted(
-            args_vec![
-                "lint",
-                "--include-edoc-diagnostics",
-                "--diagnostic-filter"
-                "O0039"
-            ],
-            "linter",
-            resource_file!("linter/elp_lint_edoc.stdout"),
-            buck,
-            None,
-        );
-    }
-
-    #[test_case(false ; "rebar")]
-    #[test_case(true  ; "buck")]
     fn lint_ct_default(buck: bool) {
         simple_snapshot_expect_error_sorted(
             args_vec![

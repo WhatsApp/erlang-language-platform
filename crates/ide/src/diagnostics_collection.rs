@@ -25,7 +25,6 @@ pub struct DiagnosticCollection {
     pub(crate) erlang_service: FxHashMap<FileId, LabeledDiagnostics>,
     pub(crate) eqwalizer: FxHashMap<FileId, Vec<Diagnostic>>,
     pub(crate) eqwalizer_project: FxHashMap<FileId, Vec<Diagnostic>>,
-    pub(crate) edoc: FxHashMap<FileId, Vec<Diagnostic>>,
     pub(crate) ct: FxHashMap<FileId, Vec<Diagnostic>>,
     changes: FxHashSet<FileId>,
 }
@@ -64,13 +63,6 @@ impl DiagnosticCollection {
         }
     }
 
-    pub fn set_edoc(&mut self, file_id: FileId, diagnostics: Vec<Diagnostic>) {
-        if !are_all_diagnostics_equal(&self.edoc, file_id, &diagnostics) {
-            set_diagnostics(&mut self.edoc, file_id, diagnostics);
-            self.changes.insert(file_id);
-        }
-    }
-
     pub fn set_ct(&mut self, file_id: FileId, diagnostics: Vec<Diagnostic>) {
         if !are_all_diagnostics_equal(&self.ct, file_id, &diagnostics) {
             set_diagnostics(&mut self.ct, file_id, diagnostics);
@@ -94,7 +86,6 @@ impl DiagnosticCollection {
     pub fn clear(&mut self, file_id: FileId) {
         self.set_native(file_id, LabeledDiagnostics::default());
         self.set_eqwalizer(file_id, vec![]);
-        self.set_edoc(file_id, vec![]);
         self.set_ct(file_id, vec![]);
         self.set_erlang_service(file_id, LabeledDiagnostics::default());
     }
@@ -117,10 +108,8 @@ impl DiagnosticCollection {
             .into_iter()
             .chain(eqwalizer_project)
             .dedup_by(are_diagnostics_equal);
-        let edoc = self.edoc.get(&file_id).into_iter().flatten().cloned();
         let ct = self.ct.get(&file_id).into_iter().flatten().cloned();
         combined.extend(eqwalizer_combined);
-        combined.extend(edoc);
         combined.extend(ct);
         combined
     }
@@ -171,7 +160,6 @@ impl DiagnosticCollection {
             erlang_service,
             eqwalizer,
             eqwalizer_project,
-            edoc,
             ct,
             changes,
         } = self;
@@ -179,7 +167,6 @@ impl DiagnosticCollection {
             && erlang_service.is_empty()
             && eqwalizer.is_empty()
             && eqwalizer_project.is_empty()
-            && edoc.is_empty()
             && ct.is_empty()
             && changes.is_empty()
     }

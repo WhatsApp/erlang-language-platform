@@ -131,7 +131,6 @@ pub struct DiagnosticsEnabled {
     pub use_erlang_service: bool,
     pub use_eqwalizer: bool,
     pub use_ct: bool,
-    pub use_edoc: bool,
     /// Keep a copy of the project we loaded the fixture from, as it
     /// has a reference to the temporary directory holding build_info
     /// for Eqwalizer. Ditto for the TempDir we dump the test fixture
@@ -149,10 +148,9 @@ impl DiagnosticsEnabled {
             use_erlang_service: _,
             use_eqwalizer: _,
             use_ct,
-            use_edoc,
             tmp_dir: _,
         } = self;
-        *use_ct || *use_edoc
+        *use_ct
     }
 
     #[track_caller]
@@ -169,13 +167,6 @@ impl DiagnosticsEnabled {
         }
     }
 
-    #[track_caller]
-    pub fn assert_edoc_enabled(&self) {
-        if !self.use_edoc {
-            panic!("Expecting `//- edoc` at top of fixture");
-        }
-    }
-
     /// If no other diagnostics are enabled, enable native.
     /// If any are explicitly enabled, then native must also be
     /// explicitly enabled.
@@ -185,10 +176,9 @@ impl DiagnosticsEnabled {
             use_erlang_service,
             use_eqwalizer,
             use_ct,
-            use_edoc,
             tmp_dir: _,
         } = &self;
-        if !(*use_erlang_service || *use_ct || *use_eqwalizer || *use_edoc) {
+        if !(*use_erlang_service || *use_ct || *use_eqwalizer) {
             self.use_native = true;
         }
     }
@@ -224,12 +214,6 @@ impl FixtureWithProjectMeta {
         if let Some(meta) = fixture.strip_prefix("//- common_test") {
             let (_meta, remain) = meta.split_once('\n').unwrap();
             diagnostics_enabled.use_ct = true;
-            fixture = remain;
-        }
-
-        if let Some(meta) = fixture.strip_prefix("//- edoc") {
-            let (_meta, remain) = meta.split_once('\n').unwrap();
-            diagnostics_enabled.use_edoc = true;
             fixture = remain;
         }
 

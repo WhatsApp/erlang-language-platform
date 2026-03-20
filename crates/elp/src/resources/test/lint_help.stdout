@@ -24,7 +24,7 @@ Available options:
         --format <FORMAT>  Show diagnostics in JSON format
         --include-erlc-diagnostics  Include diagnostics produced by erlc
         --include-ct-diagnostics  Deprecated (no-op): Common Test diagnostics are now always included
-        --include-edoc-diagnostics  Include EDoc diagnostics
+        --include-edoc-diagnostics  Deprecated (no-op): EDoc diagnostics have been removed
         --include-eqwalizer-diagnostics  Include Eqwalizer diagnostics
         --include-suppressed  Include Suppressed diagnostics (e.g. elp:fixme)
         --use-cli-severity  If specified, use the provided CLI severity mapping instead of the

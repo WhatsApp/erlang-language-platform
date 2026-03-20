@@ -11,9 +11,7 @@
     {registered, []},
     {applications, [
         kernel,
-        stdlib,
-        edoc,
-        xmerl
+        stdlib
     ]},
     {env, []},
     {modules, []},

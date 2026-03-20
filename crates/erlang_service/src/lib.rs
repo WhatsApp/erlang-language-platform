@@ -171,14 +171,6 @@ pub struct ParseError {
     pub code: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DocDiagnostic {
-    pub code: String,
-    pub severity: String,
-    pub line: u32,
-    pub message: String,
-}
-
 type RawNameArity = (String, u32);
 type RawMarkdown = String;
 
@@ -202,7 +194,6 @@ pub struct DocResult {
     pub module_doc: RawMarkdown,
     pub function_docs: FxHashMap<RawNameArity, RawMarkdown>,
     pub type_docs: FxHashMap<RawNameArity, RawMarkdown>,
-    pub diagnostics: Vec<DocDiagnostic>,
 }
 
 type Request = (Tag, Vec<u8>, RequestType);
@@ -525,9 +516,6 @@ impl Connection {
                 Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap();
             static ref TYPE_DOC_REGEX: Regex =
                 Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap();
-            static ref DOC_DIAGNOSTIC_REGEX: Regex =
-                Regex::new(r"^(?P<code>\S+) (?P<severity>\S+) (?P<line>\d+) (?P<message>(.|\n)*)$")
-                    .unwrap();
         }
 
         let tag = request.tag();
@@ -537,7 +525,6 @@ impl Connection {
         let mut function_docs = FxHashMap::default();
         let mut type_docs = FxHashMap::default();
         let mut module_doc = String::new();
-        let mut diagnostics = Vec::new();
 
         reply
             .decode_segments(|segment, data| {
@@ -565,23 +552,6 @@ impl Connection {
                             log::error!("Could not capture in TYPE_DOC: {text}");
                         }
                     }
-                    b"EDC" => {
-                        let text = decode_utf8_or_latin1(data);
-                        if let Some(caps) = DOC_DIAGNOSTIC_REGEX.captures(&text) {
-                            let code = caps.name("code").unwrap().as_str().to_string();
-                            let severity = caps.name("severity").unwrap().as_str().to_string();
-                            let line = caps.name("line").unwrap().as_str().parse::<u32>()?;
-                            let message = caps.name("message").unwrap().as_str().to_string();
-                            diagnostics.push(DocDiagnostic {
-                                code,
-                                severity,
-                                line,
-                                message,
-                            });
-                        } else {
-                            log::error!("Could not capture in EDOC_DIAGNOSTICS: {text}");
-                        }
-                    }
                     _ => log::error!("Unrecognised segment: {segment:?}"),
                 };
                 Ok(())
@@ -590,7 +560,6 @@ impl Connection {
                 module_doc,
                 function_docs,
                 type_docs,
-                diagnostics,
             })
             .map_err(|error| {
                 log::error!("Erlang service crashed for: {request:?}, error: {error:?}");
@@ -1199,8 +1168,8 @@ mod tests {
         };
         let response = CONN.request_doc(request, || ()).unwrap();
         let actual = format!(
-            "MODULE_DOC\n{}\n\nFUNCTION_DOCS\n{:#?}\n\nEDOC_DIAGNOSTICS\n{:#?}\n\n\n",
-            &response.module_doc, &response.function_docs, &response.diagnostics
+            "MODULE_DOC\n{}\n\nFUNCTION_DOCS\n{:#?}\n\n\n",
+            &response.module_doc, &response.function_docs
         );
         expected.assert_eq(&actual);
     }

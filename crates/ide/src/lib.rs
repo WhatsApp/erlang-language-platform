@@ -339,15 +339,6 @@ impl Analysis {
         self.with_db(|db| type_references(db, file_id, ty))
     }
 
-    /// Computes the set of EDoc diagnostics for the given file.
-    pub fn edoc_diagnostics(
-        &self,
-        file_id: FileId,
-        config: &DiagnosticsConfig,
-    ) -> Cancellable<Vec<(FileId, Vec<Diagnostic>)>> {
-        self.with_db(|db| diagnostics::edoc_diagnostics(db, file_id, config))
-    }
-
     /// Computes Common Test info for the given file.
     pub fn ct_info(&self, file_id: FileId) -> Cancellable<Arc<CommonTestInfo>> {
         self.with_db(|db| diagnostics::ct_info(db, file_id))
