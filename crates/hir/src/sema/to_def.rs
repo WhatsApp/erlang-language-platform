@@ -892,6 +892,10 @@ fn add_dynamic_call_patterns(patterns: &mut FxHashMap<PatternKey, DynamicCallPat
             (Some("erpc"), "multicall", 5, Some(1), 2, 3, false),
             (Some("erpc"), "multicast", 4, Some(1), 2, 3, false),
             (Some("erpc"), "send_request", 6, Some(1), 2, 3, false),
+            // peer
+            (Some("peer"), "call", 4, Some(1), 2, 3, false),
+            (Some("peer"), "call", 5, Some(1), 2, 3, false),
+            (Some("peer"), "cast", 4, Some(1), 2, 3, false),
         ]
     );
 }
