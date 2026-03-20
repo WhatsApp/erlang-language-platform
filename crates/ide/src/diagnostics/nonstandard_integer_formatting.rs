@@ -12,15 +12,14 @@
 //!
 //! 1000000 becomes 1_000_000
 
-use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::text_edit::TextRange;
 use elp_syntax::AstNode;
 use hir::AnyExpr;
 use hir::BasedInteger;
 use hir::Expr;
-use hir::FunctionDef;
 use hir::Literal;
 use hir::Pat;
 use hir::Semantic;
@@ -28,81 +27,123 @@ use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 
-use crate::diagnostics::Diagnostic;
-use crate::diagnostics::DiagnosticConditions;
-use crate::diagnostics::DiagnosticDescriptor;
+use crate::Assist;
+use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
 use crate::diagnostics::Severity;
 use crate::fix;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: true,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        integer_literal_format(diags, sema, file_id);
-    },
-};
+pub(crate) struct NonstandardIntegerFormattingLinter;
 
-fn integer_literal_format(diagnostics: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    sema.for_each_function(file_id, |def| {
-        check_function(diagnostics, sema, file_id, def)
-    });
+impl Linter for NonstandardIntegerFormattingLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::NonStandardIntegerFormatting
+    }
+
+    fn description(&self) -> &'static str {
+        "Non-standard integer formatting."
+    }
+
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
+        Severity::Information
+    }
+
+    fn is_experimental(&self) -> bool {
+        true
+    }
 }
 
-fn check_function(
-    diagnostics: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-    def: &FunctionDef,
-) {
-    let def_fb = def.in_function_body(sema, def);
-    def_fb.clone().fold_function(
-        Strategy {
-            // Don't overwrite a macro with an inline literal
-            macros: MacroStrategy::DoNotExpand,
-            // Don't capture the text of any parens as part of the integer literal
-            parens: ParenStrategy::VisibleParens,
-        },
-        (),
-        &mut |_acc, clause_id, ctx: hir::fold::AnyCallBackCtx| {
-            // N.B. negation is handled as a unary operator, so we don't need to handle that here
-            let to_format = match &ctx.item {
-                AnyExpr::Expr(Expr::Literal(Literal::Integer(i))) => Some(i),
-                AnyExpr::Pat(Pat::Literal(Literal::Integer(i))) => Some(i),
-                _ => None,
-            };
-            if let Some(integer_to_format) = to_format {
-                let map = def_fb.get_body_map(clause_id);
-                if let Some(src_ptr) = map.any(ctx.item_id) {
-                    if src_ptr.file_id() != file_id {
-                        // We've somehow ended up with a match in a different file - this means we've
-                        // somehow expanded a macro from a different file, or some other complex case that
-                        // gets hairy, so bail out.
-                        return;
-                    }
-                    let db = sema.db.upcast();
-                    let src_ast = src_ptr.to_ast(db);
-                    let src_syntax = src_ast.syntax();
-                    let src_text = src_syntax.text().to_string();
-                    if let Some(formatted_src_text) = format_integer(integer_to_format)
-                        && formatted_src_text != src_text
-                        && let Some(diagnostic) = make_diagnostic(
-                            sema,
-                            file_id,
-                            src_syntax.text_range(),
-                            &formatted_src_text,
-                        )
-                    {
-                        diagnostics.push(diagnostic);
-                    }
-                }
-            }
-        },
-    )
+#[derive(Debug, Clone)]
+pub(crate) struct Context {
+    formatted_integer: String,
 }
+
+impl GenericLinter for NonstandardIntegerFormattingLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
+        let mut res = Vec::new();
+        sema.for_each_function(file_id, |def| {
+            let def_fb = def.in_function_body(sema, def);
+            def_fb.clone().fold_function(
+                Strategy {
+                    // Don't overwrite a macro with an inline literal
+                    macros: MacroStrategy::DoNotExpand,
+                    // Don't capture the text of any parens as part of the integer literal
+                    parens: ParenStrategy::VisibleParens,
+                },
+                (),
+                &mut |_acc, clause_id, ctx: hir::fold::AnyCallBackCtx| {
+                    // N.B. negation is handled as a unary operator, so we don't need to handle that here
+                    let to_format = match &ctx.item {
+                        AnyExpr::Expr(Expr::Literal(Literal::Integer(i))) => Some(i),
+                        AnyExpr::Pat(Pat::Literal(Literal::Integer(i))) => Some(i),
+                        _ => None,
+                    };
+                    if let Some(integer_to_format) = to_format {
+                        let map = def_fb.get_body_map(clause_id);
+                        if let Some(src_ptr) = map.any(ctx.item_id) {
+                            if src_ptr.file_id() != file_id {
+                                // We've somehow ended up with a match in a different file - this means we've
+                                // somehow expanded a macro from a different file, or some other complex case that
+                                // gets hairy, so bail out.
+                                return;
+                            }
+                            let db = sema.db.upcast();
+                            let src_ast = src_ptr.to_ast(db);
+                            let src_syntax = src_ast.syntax();
+                            let src_text = src_syntax.text().to_string();
+                            if let Some(formatted_src_text) = format_integer(integer_to_format)
+                                && formatted_src_text != src_text
+                            {
+                                res.push(GenericLinterMatchContext {
+                                    range: FileRange {
+                                        file_id,
+                                        range: src_syntax.text_range(),
+                                    },
+                                    context: Context {
+                                        formatted_integer: formatted_src_text,
+                                    },
+                                });
+                            }
+                        }
+                    }
+                },
+            );
+        });
+        Some(res)
+    }
+
+    fn fixes(
+        &self,
+        context: &Self::Context,
+        range: TextRange,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        let mut builder = SourceChangeBuilder::new(file_id);
+        builder.replace(range, &context.formatted_integer);
+        let fix_msg: &str = if context.formatted_integer.len() < 16 {
+            &format!("Reformat integer to {}", context.formatted_integer)
+        } else {
+            "Reformat integer"
+        };
+        Some(vec![fix(
+            "fix_integer_formatting",
+            fix_msg,
+            builder.finish(),
+            range,
+        )])
+    }
+}
+
+pub(crate) static LINTER: NonstandardIntegerFormattingLinter = NonstandardIntegerFormattingLinter;
 
 fn format_integer(integer: &BasedInteger) -> Option<String> {
     match integer.base {
@@ -136,39 +177,6 @@ fn format_value_part(number: String, underscores_every: usize) -> String {
         .collect::<Result<Vec<&str>, _>>()
         .expect("ASCII digits should be valid UTF-8")
         .join("_") // Join the chunks with our numeric separator
-}
-
-fn make_diagnostic(
-    sema: &Semantic,
-    file_id: FileId,
-    integer_src_range: TextRange,
-    formatted_integer: &str,
-) -> Option<Diagnostic> {
-    let message = "Non-standard integer formatting.".to_string();
-    let mut builder = SourceChangeBuilder::new(file_id);
-    builder.replace(integer_src_range, formatted_integer);
-    let fix_msg: &str = if formatted_integer.len() < 16 {
-        &format!("Reformat integer to {formatted_integer}")
-    } else {
-        "Reformat integer"
-    };
-    let fixes = vec![fix(
-        "fix_integer_formatting",
-        fix_msg,
-        builder.finish(),
-        integer_src_range,
-    )];
-    Some(
-        Diagnostic::new(
-            DiagnosticCode::NonStandardIntegerFormatting,
-            message,
-            integer_src_range,
-        )
-        .experimental()
-        .with_severity(Severity::Information)
-        .with_ignore_fix(sema, file_id)
-        .with_fixes(Some(fixes)),
-    )
 }
 
 #[cfg(test)]
