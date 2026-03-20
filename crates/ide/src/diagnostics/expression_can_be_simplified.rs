@@ -13,7 +13,12 @@
 //! Return a diagnostic if an expression can be trivially simplified. Covers things like
 //! `[] ++ Xs`, `0 + X`, etc. This is typically useful as a simplification rule in codemods.
 
+use std::borrow::Cow;
+
+use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChangeBuilder;
+use elp_ide_db::text_edit::TextRange;
 use elp_syntax::ast::LogicOp;
 use elp_syntax::ast::UnaryOp;
 use hir::AnyExprId;
@@ -22,92 +27,123 @@ use hir::FunctionDef;
 use hir::InFunctionBody;
 use hir::Literal;
 use hir::Name;
+use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::known;
 
-use super::DiagnosticConditions;
-use super::DiagnosticDescriptor;
-use crate::Diagnostic;
-use crate::FileId;
-use crate::Semantic;
+use super::DiagnosticCode;
+use crate::Assist;
 use crate::ast::ArithOp;
 use crate::ast::BinaryOp;
 use crate::ast::ListOp;
 use crate::diagnostics::Category;
-use crate::diagnostics::DiagnosticCode;
-use crate::diagnostics::Severity;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
 use crate::fix;
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|diags, sema, file_id, _ext| {
-        diagnostic(diags, sema, file_id);
-    },
-};
+pub(crate) struct ExpressionCanBeSimplifiedLinter;
 
-fn diagnostic(diags: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
-    sema.def_map_local(file_id)
-        .get_functions()
-        .for_each(|(_, fun_def)| {
-            let def_fb = fun_def.in_function_body(sema, fun_def);
+impl Linter for ExpressionCanBeSimplifiedLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::ExpressionCanBeSimplified
+    }
 
-            def_fb.fold_function(
-                Strategy {
-                    macros: MacroStrategy::DoNotExpand,
-                    parens: ParenStrategy::VisibleParens,
-                },
-                Some(()),
-                &mut |acc, clause_id, ctx| {
-                    let simplification = match ctx.item {
-                        hir::AnyExpr::Expr(hir::Expr::BinaryOp { lhs, rhs, op }) => {
-                            simplify_binary_op(op, lhs, rhs, clause_id, sema, &def_fb)
-                        }
-                        hir::AnyExpr::Expr(hir::Expr::UnaryOp { expr, op }) => {
-                            simplify_unary_op(op, expr, clause_id, sema, &def_fb)
-                        }
-                        _ => None,
-                    };
-                    match simplification {
-                        None => {}
-                        Some(replacement_str) => {
-                            let expr_id = as_expr_id(ctx.item_id)?;
-                            let range = def_fb.range_for_expr(clause_id, expr_id)?;
-                            if range.file_id == file_id {
-                                let range = range.range;
-                                let mut changes = SourceChangeBuilder::new(file_id);
-                                changes.replace(range, &replacement_str);
-                                let replacement = changes.finish();
+    fn description(&self) -> &'static str {
+        "Expression can be simplified"
+    }
+}
 
-                                let diag = Diagnostic::new(
-                                    DiagnosticCode::ExpressionCanBeSimplified,
-                                    format!("Can be simplified to `{}`.", &replacement_str)
-                                        .to_string(),
-                                    range,
-                                )
-                                .with_severity(Severity::Warning)
-                                .add_categories([Category::SimplificationRule])
-                                .with_fixes(Some(vec![fix(
-                                    "simplify_expression",
-                                    format!("Replace by `{}`", &replacement_str).as_str(),
-                                    replacement,
-                                    range,
-                                )]));
-                                diags.push(diag);
+#[derive(Debug, Clone)]
+pub(crate) struct Context {
+    replacement_str: String,
+}
+
+impl GenericLinter for ExpressionCanBeSimplifiedLinter {
+    type Context = Context;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
+        let mut res = Vec::new();
+        sema.def_map_local(file_id)
+            .get_functions()
+            .for_each(|(_, fun_def)| {
+                let def_fb = fun_def.in_function_body(sema, fun_def);
+                def_fb.fold_function(
+                    Strategy {
+                        macros: MacroStrategy::DoNotExpand,
+                        parens: ParenStrategy::VisibleParens,
+                    },
+                    Some(()),
+                    &mut |acc, clause_id, ctx| {
+                        let simplification = match ctx.item {
+                            hir::AnyExpr::Expr(hir::Expr::BinaryOp { lhs, rhs, op }) => {
+                                simplify_binary_op(op, lhs, rhs, clause_id, sema, &def_fb)
+                            }
+                            hir::AnyExpr::Expr(hir::Expr::UnaryOp { expr, op }) => {
+                                simplify_unary_op(op, expr, clause_id, sema, &def_fb)
+                            }
+                            _ => None,
+                        };
+                        match simplification {
+                            None => {}
+                            Some(replacement_str) => {
+                                let expr_id = as_expr_id(ctx.item_id)?;
+                                let range = def_fb.range_for_expr(clause_id, expr_id)?;
+                                if range.file_id == file_id {
+                                    res.push(GenericLinterMatchContext {
+                                        range: FileRange {
+                                            file_id,
+                                            range: range.range,
+                                        },
+                                        context: Context { replacement_str },
+                                    });
+                                }
                             }
                         }
-                    }
-                    acc
-                },
-            );
-        });
+                        acc
+                    },
+                );
+            });
+        Some(res)
+    }
+
+    fn match_description(&self, context: &Self::Context) -> Cow<'_, str> {
+        Cow::Owned(format!(
+            "Can be simplified to `{}`.",
+            &context.replacement_str
+        ))
+    }
+
+    fn fixes(
+        &self,
+        context: &Self::Context,
+        range: TextRange,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        let mut changes = SourceChangeBuilder::new(file_id);
+        changes.replace(range, &context.replacement_str);
+        let replacement = changes.finish();
+        Some(vec![fix(
+            "simplify_expression",
+            format!("Replace by `{}`", &context.replacement_str).as_str(),
+            replacement,
+            range,
+        )])
+    }
+
+    fn add_categories(&self, _context: &Self::Context) -> Vec<Category> {
+        vec![Category::SimplificationRule]
+    }
 }
+
+pub(crate) static LINTER: ExpressionCanBeSimplifiedLinter = ExpressionCanBeSimplifiedLinter;
 
 fn simplify_binary_op(
     op: BinaryOp,
