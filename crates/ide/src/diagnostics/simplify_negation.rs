@@ -31,20 +31,21 @@
 //! end
 //! ```
 
-use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
+use elp_ide_db::text_edit::TextRange;
 use elp_ide_ssr::Match;
-use elp_ide_ssr::match_pattern_in_file_functions;
 use hir::Semantic;
+use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use hir::fold::Strategy;
+use lazy_static::lazy_static;
 
-use crate::diagnostics::Diagnostic;
-use crate::diagnostics::DiagnosticConditions;
-use crate::diagnostics::DiagnosticDescriptor;
+use crate::Assist;
+use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::Linter;
 use crate::diagnostics::Severity;
+use crate::diagnostics::SsrPatternsLinter;
 use crate::fix;
 
 static NEGATED_EXPR_VAR: &str = "_@NegatedExpr";
@@ -52,148 +53,121 @@ static AFFIRMATIVE_BRANCH_VAR: &str = "_@AffirmativeBranch";
 static NEGATIVE_BRANCH_VAR: &str = "_@NegativeBranch";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum BranchOrder {
+pub(crate) enum BranchOrder {
     AffirmativeBranchFirst,
     NegativeBranchFirst,
 }
 
-pub(crate) static DESCRIPTOR: DiagnosticDescriptor = DiagnosticDescriptor {
-    conditions: DiagnosticConditions {
-        experimental: false,
-        include_generated: false,
-        include_tests: true,
-        default_disabled: false,
-    },
-    checker: &|acc, sema, file_id, _ext| {
-        from_ssr(
-            acc,
-            sema,
-            file_id,
-            format!(
-                "ssr: case not {NEGATED_EXPR_VAR} of
-                    true -> {NEGATIVE_BRANCH_VAR};
-                    false -> {AFFIRMATIVE_BRANCH_VAR}
-                  end."
-            )
-            .as_str(),
-            BranchOrder::NegativeBranchFirst,
-        );
-        from_ssr(
-            acc,
-            sema,
-            file_id,
-            format!(
-                "ssr: case not {NEGATED_EXPR_VAR} of
-                    false -> {AFFIRMATIVE_BRANCH_VAR};
-                    true -> {NEGATIVE_BRANCH_VAR}
-                  end."
-            )
-            .as_str(),
-            BranchOrder::AffirmativeBranchFirst,
-        );
-        from_ssr(
-            acc,
-            sema,
-            file_id,
-            format!(
-                "ssr: case not {NEGATED_EXPR_VAR} of
-                    true -> {NEGATIVE_BRANCH_VAR};
-                    _ -> {AFFIRMATIVE_BRANCH_VAR}
-                  end."
-            )
-            .as_str(),
-            BranchOrder::NegativeBranchFirst,
-        );
-        from_ssr(
-            acc,
-            sema,
-            file_id,
-            format!(
-                "ssr: case not {NEGATED_EXPR_VAR} of
-                    false -> {AFFIRMATIVE_BRANCH_VAR};
-                    _ -> {NEGATIVE_BRANCH_VAR}
-                  end."
-            )
-            .as_str(),
-            BranchOrder::AffirmativeBranchFirst,
-        );
-        from_ssr(
-            acc,
-            sema,
-            file_id,
-            format!(
-                "ssr: if not {NEGATED_EXPR_VAR} -> {NEGATIVE_BRANCH_VAR};
-                    true -> {AFFIRMATIVE_BRANCH_VAR}
-                  end."
-            )
-            .as_str(),
-            BranchOrder::NegativeBranchFirst,
-        );
-    },
-};
+pub(crate) struct SimplifyNegationLinter;
 
-fn from_ssr(
-    diags: &mut Vec<Diagnostic>,
-    sema: &Semantic,
-    file_id: FileId,
-    ssr_pattern: &str,
-    branch_order: BranchOrder,
-) {
-    let matches = match_pattern_in_file_functions(
-        sema,
+impl Linter for SimplifyNegationLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::SimplifyNegation
+    }
+
+    fn description(&self) -> &'static str {
+        "Consider rewriting to match directly on the negated expression."
+    }
+
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
+        Severity::Information
+    }
+}
+
+impl SsrPatternsLinter for SimplifyNegationLinter {
+    type Context = BranchOrder;
+
+    fn patterns(&self) -> &'static [(String, Self::Context)] {
+        lazy_static! {
+            static ref PATTERNS: Vec<(String, BranchOrder)> = vec![
+                (
+                    format!(
+                        "ssr: case not {NEGATED_EXPR_VAR} of
+                            true -> {NEGATIVE_BRANCH_VAR};
+                            false -> {AFFIRMATIVE_BRANCH_VAR}
+                          end."
+                    ),
+                    BranchOrder::NegativeBranchFirst,
+                ),
+                (
+                    format!(
+                        "ssr: case not {NEGATED_EXPR_VAR} of
+                            false -> {AFFIRMATIVE_BRANCH_VAR};
+                            true -> {NEGATIVE_BRANCH_VAR}
+                          end."
+                    ),
+                    BranchOrder::AffirmativeBranchFirst,
+                ),
+                (
+                    format!(
+                        "ssr: case not {NEGATED_EXPR_VAR} of
+                            true -> {NEGATIVE_BRANCH_VAR};
+                            _ -> {AFFIRMATIVE_BRANCH_VAR}
+                          end."
+                    ),
+                    BranchOrder::NegativeBranchFirst,
+                ),
+                (
+                    format!(
+                        "ssr: case not {NEGATED_EXPR_VAR} of
+                            false -> {AFFIRMATIVE_BRANCH_VAR};
+                            _ -> {NEGATIVE_BRANCH_VAR}
+                          end."
+                    ),
+                    BranchOrder::AffirmativeBranchFirst,
+                ),
+                (
+                    format!(
+                        "ssr: if not {NEGATED_EXPR_VAR} -> {NEGATIVE_BRANCH_VAR};
+                            true -> {AFFIRMATIVE_BRANCH_VAR}
+                          end."
+                    ),
+                    BranchOrder::NegativeBranchFirst,
+                ),
+            ];
+        }
+        &PATTERNS
+    }
+
+    fn strategy(&self) -> Strategy {
         Strategy {
             macros: MacroStrategy::DoNotExpand,
             parens: ParenStrategy::InvisibleParens,
-        },
-        file_id,
-        ssr_pattern,
-    )
-    .in_file(file_id);
-    matches.matches.iter().for_each(|m| {
-        if let Some(diagnostic) = make_diagnostic(sema, m, branch_order) {
-            diags.push(diagnostic)
-        }
-    });
-}
-
-fn make_diagnostic(
-    sema: &Semantic,
-    matched: &Match,
-    branch_order: BranchOrder,
-) -> Option<Diagnostic> {
-    let file_id = matched.range.file_id;
-    let old_conditional_range = matched.range.range;
-    let squiggly_range = matched.placeholder_range(sema, NEGATED_EXPR_VAR)?;
-    let message = "Consider rewriting to match directly on the negated expression.".to_string();
-    let mut builder = SourceChangeBuilder::new(file_id);
-    let equality_pattern_replacement = get_replacement(sema, file_id, matched, branch_order)?;
-    builder.replace(old_conditional_range, equality_pattern_replacement);
-    let fixes = vec![fix(
-        "simplify_negation",
-        "Rewrite to match directly on the negated expression",
-        builder.finish(),
-        old_conditional_range,
-    )];
-    Some(
-        Diagnostic::new(DiagnosticCode::SimplifyNegation, message, squiggly_range)
-            .with_severity(Severity::Information)
-            .with_ignore_fix(sema, file_id)
-            .with_fixes(Some(fixes)),
-    )
-}
-
-fn get_replacement(
-    sema: &Semantic,
-    _original_file_id: FileId,
-    m: &Match,
-    branch_order: BranchOrder,
-) -> Option<String> {
-    if let Some(comments) = m.comments(sema) {
-        // Avoid clobbering comments in the original source code
-        if !comments.is_empty() {
-            return None;
         }
     }
+
+    fn range(&self, sema: &Semantic, matched: &Match) -> Option<TextRange> {
+        matched.placeholder_range(sema, NEGATED_EXPR_VAR)
+    }
+
+    fn fixes(
+        &self,
+        context: &Self::Context,
+        matched: &Match,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        if let Some(comments) = matched.comments(sema)
+            && !comments.is_empty()
+        {
+            return None;
+        }
+        let old_conditional_range = matched.range.range;
+        let replacement_text = get_replacement(sema, matched, *context)?;
+        let mut builder = SourceChangeBuilder::new(file_id);
+        builder.replace(old_conditional_range, replacement_text);
+        Some(vec![fix(
+            "simplify_negation",
+            "Rewrite to match directly on the negated expression",
+            builder.finish(),
+            old_conditional_range,
+        )])
+    }
+}
+
+pub(crate) static LINTER: SimplifyNegationLinter = SimplifyNegationLinter;
+
+fn get_replacement(sema: &Semantic, m: &Match, branch_order: BranchOrder) -> Option<String> {
     let new_discriminee_expr_text = m.placeholder_text(sema, NEGATED_EXPR_VAR)?;
     let affirmative_branch_text = m.placeholder_text(sema, AFFIRMATIVE_BRANCH_VAR)?;
     let negative_branch_text = m.placeholder_text(sema, NEGATIVE_BRANCH_VAR)?;

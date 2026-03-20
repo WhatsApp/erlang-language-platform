@@ -1736,7 +1736,6 @@ pub fn native_diagnostics(
 
 pub fn diagnostics_descriptors<'a>() -> Vec<&'a DiagnosticDescriptor<'a>> {
     vec![
-        &simplify_negation::DESCRIPTOR,
         &application_env::DESCRIPTOR,
         &deprecated_function::DESCRIPTOR,
     ]
@@ -1861,6 +1860,7 @@ const SSR_PATTERN_LINTERS: &[&dyn SsrPatternsDiagnostics] = &[
     &inline_nested_list_comprehension::LINTER,
     &encode_hex_with_case::LINTER,
     &eqwalizer_escape_hatches::UNCHECKED_CAST_LINTER,
+    &simplify_negation::LINTER,
 ];
 
 /// Generic linters
