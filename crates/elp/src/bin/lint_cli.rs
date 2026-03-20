@@ -483,7 +483,7 @@ pub fn do_codemod(
         }
 
         let min_severity = args
-            .min_severity
+            .severity
             .as_ref()
             .and_then(|s| parse_severity(s.as_str()));
         let mut filtered_diags = {
@@ -628,7 +628,7 @@ fn do_print_diagnostic_collection(
     let single_result = vec![result.clone()];
     let mut has_diagnostics = false;
     let min_severity = args
-        .min_severity
+        .severity
         .as_ref()
         .and_then(|s| parse_severity(s.as_str()));
     if let Ok(filtered) = filter_diagnostics(
@@ -717,7 +717,7 @@ fn do_print_diagnostic_collection_json(
     let single_result = vec![result.clone()];
     let mut has_diagnostics = false;
     let min_severity = args
-        .min_severity
+        .severity
         .as_ref()
         .and_then(|s| parse_severity(s.as_str()));
     if let Ok(filtered) = filter_diagnostics(
@@ -1111,7 +1111,14 @@ impl<'a> Lints<'a> {
 
             let new_diagnostics = {
                 let analysis = self.analysis_host.analysis();
-                filter_diagnostics(&analysis, &None, None, &new_diags, &self.changed_forms, None)?
+                filter_diagnostics(
+                    &analysis,
+                    &None,
+                    None,
+                    &new_diags,
+                    &self.changed_forms,
+                    None,
+                )?
             };
             self.diags = diagnostics_by_file_id(&new_diagnostics);
             if !self.diags.is_empty() {

@@ -305,7 +305,7 @@ pub struct Lint {
             "Please use error, warning, weak_warning, or information"
         )
     )]
-    pub min_severity: Option<String>,
+    pub severity: Option<String>,
     /// Ignore the specified diagnostic, by code or label
     #[bpaf(argument("CODE"))]
     pub diagnostic_ignore: Option<String>,
