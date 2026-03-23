@@ -289,6 +289,8 @@ mod tests {
         }
     }
 
+    // @fb-only: mod meta_only;
+
     use crate::test_utils::get_resources_dir;
     use crate::test_utils::project_path;
     use crate::test_utils::resource_file;

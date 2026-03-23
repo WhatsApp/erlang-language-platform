@@ -273,6 +273,7 @@ pub mod known {
         ok,
         parse_transform,
         server,
+        stacktrace,
         string,
         thrift_parser,
         thrift_scanner,
