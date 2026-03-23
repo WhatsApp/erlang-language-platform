@@ -345,6 +345,10 @@ fn goto_definition_telemetry(snap: &Snapshot, targets: &[NavigationTarget], star
         .collect();
     let target_names: Vec<_> = targets.iter().map(|tgt| tgt.name.clone()).collect();
     let target_kinds: Vec<_> = targets.iter().map(|tgt| tgt.kind).collect();
+    let target_has_focus_range: Vec<_> = targets
+        .iter()
+        .map(|tgt| tgt.focus_range.is_some())
+        .collect();
 
     #[derive(serde::Serialize)]
     struct Data {
@@ -352,6 +356,7 @@ fn goto_definition_telemetry(snap: &Snapshot, targets: &[NavigationTarget], star
         target_urls: Vec<Url>,
         target_names: Vec<SmolStr>,
         target_kinds: Vec<SymbolKind>,
+        target_has_focus_range: Vec<bool>,
     }
 
     let detail = Data {
@@ -359,6 +364,7 @@ fn goto_definition_telemetry(snap: &Snapshot, targets: &[NavigationTarget], star
         target_urls,
         target_names,
         target_kinds,
+        target_has_focus_range,
     };
     let duration = start.elapsed().map(|e| e.as_millis()).unwrap_or(0) as u32;
     let data = serde_json::to_value(detail).unwrap_or_else(|err| {
