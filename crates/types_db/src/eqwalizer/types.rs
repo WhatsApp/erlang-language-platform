@@ -15,8 +15,7 @@ use std::vec;
 
 use serde::Deserialize;
 use serde::Serialize;
-use serde_with::DeserializeFromStr;
-use serde_with::SerializeDisplay;
+use serde_with::serde_as;
 
 use crate::StringId;
 use crate::eqwalizer::RemoteId;
@@ -445,15 +444,19 @@ pub struct RecordType {
     pub module: StringId,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RefinedRecordType {
     pub rec_type: RecordType,
+    #[serde_as(as = "Vec<(_, _)>")]
     #[serde(default)]
     pub fields: BTreeMap<StringId, Type>,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MapType {
+    #[serde_as(as = "Vec<(_, _)>")]
     #[serde(default)]
     pub props: BTreeMap<Key, Prop>,
     pub k_type: Box<Type>,
@@ -461,8 +464,8 @@ pub struct MapType {
 }
 
 #[derive(
-    SerializeDisplay,
-    DeserializeFromStr,
+    Serialize,
+    Deserialize,
     Debug,
     Clone,
     PartialEq,
@@ -476,55 +479,34 @@ pub enum Key {
     AtomKey(AtomKey),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Ord,
+    PartialOrd
+)]
 pub struct TupleKey {
     pub keys: Vec<Key>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Ord,
+    PartialOrd
+)]
 pub struct AtomKey {
     pub name: StringId,
-}
-
-impl std::str::FromStr for Key {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        fn split(s: &str) -> Vec<&str> {
-            if s.is_empty() {
-                return vec![];
-            }
-            let mut res = vec![];
-            let mut start = 0;
-            let mut in_parens = 0;
-            for (i, c) in s.chars().enumerate() {
-                match c {
-                    '{' => in_parens += 1,
-                    '}' => in_parens -= 1,
-                    _ => (),
-                }
-                if in_parens == 0 && c == ',' {
-                    // TODO: fix this T231065083
-                    #[allow(clippy::char_indices_as_byte_indices)]
-                    res.push(s[start..i].trim());
-                    start = i + 1;
-                }
-            }
-            res.push(s[start..].trim());
-            res
-        }
-        if s.starts_with('{') && s.ends_with('}') {
-            let keys = split(&s[1..s.len() - 1])
-                .iter()
-                .map(|s| Self::from_str(s))
-                .collect::<Result<Vec<_>, _>>()?;
-            Ok(Key::TupleKey(TupleKey { keys }))
-        } else {
-            Ok(Key::AtomKey(AtomKey {
-                name: s.trim().into(),
-            }))
-        }
-    }
 }
 
 impl fmt::Display for Key {
