@@ -245,6 +245,25 @@ mod test {
     }
 
     #[test]
+    fn local_types_and_modules() {
+        check(
+            r#"
+        //- /src/sample.erl
+        -module(sample).
+        -type my_integer() :: integer().
+        -spec foo(my_~) -> ok.
+        foo(_) -> ok.
+        //- /src/my_alias_module.erl
+        -module(my_alias_module).
+        "#,
+            None,
+            expect![[r#"
+                {label:my_alias_module, kind:Module, contents:SameAsLabel, position:None}
+                {label:my_integer/0, kind:Type, contents:Snippet("my_integer()"), position:None}"#]],
+        );
+    }
+
+    #[test]
     fn in_module_part() {
         // really unlikely the user will try to
         // complete in there, but ensure we do
