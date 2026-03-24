@@ -511,8 +511,8 @@ mod test {
     "#,
             None,
             expect![[r#"
-                {label:sample1, kind:Module, contents:SameAsLabel, position:None}
-                {label:sample2, kind:Module, contents:SameAsLabel, position:None}"#]],
+                {label:sample1, kind:Module, contents:SameAsLabel, position:None, sort_text:2_sample1}
+                {label:sample2, kind:Module, contents:SameAsLabel, position:None, sort_text:2_sample2}"#]],
         );
     }
 

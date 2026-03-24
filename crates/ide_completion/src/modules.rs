@@ -32,12 +32,14 @@ pub(crate) fn add_completions(
     if let Some(modules) = sema.resolve_module_names(file_position.file_id) {
         let completions = modules.into_iter().filter_map(|m| {
             if m.starts_with(prefix) {
+                let label = m.to_string();
                 Some(Completion {
-                    label: m.to_string(),
+                    // Sort modules after types in type completion context
+                    sort_text: Some(format!("2_{}", label)),
+                    label,
                     kind: Kind::Module,
                     contents: Contents::SameAsLabel,
                     position: None,
-                    sort_text: None,
                     deprecated: false,
                     additional_edit: None,
                 })
@@ -85,8 +87,8 @@ mod test {
     -module(sample2).
     "#,
             expect![[r#"
-                {label:sample1, kind:Module, contents:SameAsLabel, position:None}
-                {label:sample2, kind:Module, contents:SameAsLabel, position:None}"#]],
+                {label:sample1, kind:Module, contents:SameAsLabel, position:None, sort_text:2_sample1}
+                {label:sample2, kind:Module, contents:SameAsLabel, position:None, sort_text:2_sample2}"#]],
         );
 
         check(
@@ -99,8 +101,8 @@ mod test {
     -module(sample2).
     "#,
             expect![[r#"
-                {label:sample1, kind:Module, contents:SameAsLabel, position:None}
-                {label:sample2, kind:Module, contents:SameAsLabel, position:None}"#]],
+                {label:sample1, kind:Module, contents:SameAsLabel, position:None, sort_text:2_sample1}
+                {label:sample2, kind:Module, contents:SameAsLabel, position:None, sort_text:2_sample2}"#]],
         );
     }
 
@@ -120,9 +122,9 @@ foo() ->
 -module(sets).
     "#,
             expect![[r#"
-                {label:sample1, kind:Module, contents:SameAsLabel, position:None}
-                {label:sample2, kind:Module, contents:SameAsLabel, position:None}
-                {label:sets, kind:Module, contents:SameAsLabel, position:None}"#]],
+                {label:sample1, kind:Module, contents:SameAsLabel, position:None, sort_text:2_sample1}
+                {label:sample2, kind:Module, contents:SameAsLabel, position:None, sort_text:2_sample2}
+                {label:sets, kind:Module, contents:SameAsLabel, position:None, sort_text:2_sets}"#]],
         );
     }
 
@@ -161,8 +163,8 @@ foo() ->
     -module(no_prefix_match).
     "#,
             expect![[r#"
-                {label:match1, kind:Module, contents:SameAsLabel, position:None}
-                {label:match2, kind:Module, contents:SameAsLabel, position:None}"#]],
+                {label:match1, kind:Module, contents:SameAsLabel, position:None, sort_text:2_match1}
+                {label:match2, kind:Module, contents:SameAsLabel, position:None, sort_text:2_match2}"#]],
         );
     }
 }

@@ -187,8 +187,8 @@ mod test {
     "#,
             None,
             expect![[r#"
-                {label:foo/0, kind:Type, contents:Snippet("foo()"), position:None}
-                {label:main, kind:Module, contents:SameAsLabel, position:None}"#]],
+                {label:foo/0, kind:Type, contents:Snippet("foo()"), position:None, sort_text:1_foo/0}
+                {label:main, kind:Module, contents:SameAsLabel, position:None, sort_text:2_main}"#]],
         );
     }
 
@@ -223,7 +223,6 @@ mod test {
                 {label:fun, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:if, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:let, kind:Keyword, contents:SameAsLabel, position:None}
-                {label:main, kind:Module, contents:SameAsLabel, position:None}
                 {label:not, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:of, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:ok, kind:Keyword, contents:SameAsLabel, position:None}
@@ -235,7 +234,8 @@ mod test {
                 {label:try, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:undefined, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:when, kind:Keyword, contents:SameAsLabel, position:None}
-                {label:xor, kind:Keyword, contents:SameAsLabel, position:None}"#]],
+                {label:xor, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:main, kind:Module, contents:SameAsLabel, position:None, sort_text:2_main}"#]],
         );
 
         check(
@@ -267,7 +267,6 @@ mod test {
                 {label:fun, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:if, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:let, kind:Keyword, contents:SameAsLabel, position:None}
-                {label:main, kind:Module, contents:SameAsLabel, position:None}
                 {label:not, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:of, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:ok, kind:Keyword, contents:SameAsLabel, position:None}
@@ -279,7 +278,8 @@ mod test {
                 {label:try, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:undefined, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:when, kind:Keyword, contents:SameAsLabel, position:None}
-                {label:xor, kind:Keyword, contents:SameAsLabel, position:None}"#]],
+                {label:xor, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:main, kind:Module, contents:SameAsLabel, position:None, sort_text:2_main}"#]],
         );
     }
 }

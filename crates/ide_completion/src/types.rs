@@ -105,13 +105,15 @@ pub(crate) fn add_local(
 }
 
 fn create_call_completion(name_arity: &NameArity) -> Completion {
+    let label = name_arity.to_string();
     let contents = helpers::format_call(name_arity.name(), name_arity.arity());
     Completion {
-        label: name_arity.to_string(),
+        // Prioritize types over modules in type completion context
+        sort_text: Some(format!("1_{}", label)),
+        label,
         kind: Kind::Type,
         contents,
         position: None,
-        sort_text: None,
         deprecated: false,
         additional_edit: None,
     }
@@ -153,13 +155,13 @@ mod test {
         "#,
             None,
             expect![[r#"
-                {label:alias/0, kind:Type, contents:Snippet("alias()"), position:None}
-                {label:alias/1, kind:Type, contents:Snippet("alias(${1:Arg1})"), position:None}
-                {label:alias_nominal/0, kind:Type, contents:Snippet("alias_nominal()"), position:None}
-                {label:alias_nominal/1, kind:Type, contents:Snippet("alias_nominal(${1:Arg1})"), position:None}
-                {label:alias_opaque/0, kind:Type, contents:Snippet("alias_opaque()"), position:None}
-                {label:alias_opaque/1, kind:Type, contents:Snippet("alias_opaque(${1:Arg1})"), position:None}
-                {label:another_module, kind:Module, contents:SameAsLabel, position:None}"#]],
+                {label:alias/0, kind:Type, contents:Snippet("alias()"), position:None, sort_text:1_alias/0}
+                {label:alias/1, kind:Type, contents:Snippet("alias(${1:Arg1})"), position:None, sort_text:1_alias/1}
+                {label:alias_nominal/0, kind:Type, contents:Snippet("alias_nominal()"), position:None, sort_text:1_alias_nominal/0}
+                {label:alias_nominal/1, kind:Type, contents:Snippet("alias_nominal(${1:Arg1})"), position:None, sort_text:1_alias_nominal/1}
+                {label:alias_opaque/0, kind:Type, contents:Snippet("alias_opaque()"), position:None, sort_text:1_alias_opaque/0}
+                {label:alias_opaque/1, kind:Type, contents:Snippet("alias_opaque(${1:Arg1})"), position:None, sort_text:1_alias_opaque/1}
+                {label:another_module, kind:Module, contents:SameAsLabel, position:None, sort_text:2_another_module}"#]],
         );
     }
 
@@ -189,11 +191,11 @@ mod test {
         "#,
             Some(':'),
             expect![[r#"
-                {label:alias2/0, kind:Type, contents:Snippet("alias2()"), position:None}
-                {label:alias_nominal2/0, kind:Type, contents:Snippet("alias_nominal2()"), position:None}
-                {label:alias_nominal2/1, kind:Type, contents:Snippet("alias_nominal2(${1:Arg1})"), position:None}
-                {label:alias_opaque2/0, kind:Type, contents:Snippet("alias_opaque2()"), position:None}
-                {label:alias_opaque2/1, kind:Type, contents:Snippet("alias_opaque2(${1:Arg1})"), position:None}"#]],
+                {label:alias2/0, kind:Type, contents:Snippet("alias2()"), position:None, sort_text:1_alias2/0}
+                {label:alias_nominal2/0, kind:Type, contents:Snippet("alias_nominal2()"), position:None, sort_text:1_alias_nominal2/0}
+                {label:alias_nominal2/1, kind:Type, contents:Snippet("alias_nominal2(${1:Arg1})"), position:None, sort_text:1_alias_nominal2/1}
+                {label:alias_opaque2/0, kind:Type, contents:Snippet("alias_opaque2()"), position:None, sort_text:1_alias_opaque2/0}
+                {label:alias_opaque2/1, kind:Type, contents:Snippet("alias_opaque2(${1:Arg1})"), position:None, sort_text:1_alias_opaque2/1}"#]],
         );
 
         check(
@@ -218,11 +220,11 @@ mod test {
         "#,
             None,
             expect![[r#"
-                {label:alias2/0, kind:Type, contents:Snippet("alias2()"), position:None}
-                {label:alias_nominal2/0, kind:Type, contents:Snippet("alias_nominal2()"), position:None}
-                {label:alias_nominal2/1, kind:Type, contents:Snippet("alias_nominal2(${1:Arg1})"), position:None}
-                {label:alias_opaque2/0, kind:Type, contents:Snippet("alias_opaque2()"), position:None}
-                {label:alias_opaque2/1, kind:Type, contents:Snippet("alias_opaque2(${1:Arg1})"), position:None}"#]],
+                {label:alias2/0, kind:Type, contents:Snippet("alias2()"), position:None, sort_text:1_alias2/0}
+                {label:alias_nominal2/0, kind:Type, contents:Snippet("alias_nominal2()"), position:None, sort_text:1_alias_nominal2/0}
+                {label:alias_nominal2/1, kind:Type, contents:Snippet("alias_nominal2(${1:Arg1})"), position:None, sort_text:1_alias_nominal2/1}
+                {label:alias_opaque2/0, kind:Type, contents:Snippet("alias_opaque2()"), position:None, sort_text:1_alias_opaque2/0}
+                {label:alias_opaque2/1, kind:Type, contents:Snippet("alias_opaque2(${1:Arg1})"), position:None, sort_text:1_alias_opaque2/1}"#]],
         );
 
         check(
@@ -239,7 +241,7 @@ mod test {
         "#,
             None,
             expect![[
-                r#"{label:alias2/0, kind:Type, contents:Snippet("alias2()"), position:None}"#
+                r#"{label:alias2/0, kind:Type, contents:Snippet("alias2()"), position:None, sort_text:1_alias2/0}"#
             ]],
         );
     }
@@ -258,8 +260,8 @@ mod test {
         "#,
             None,
             expect![[r#"
-                {label:my_alias_module, kind:Module, contents:SameAsLabel, position:None}
-                {label:my_integer/0, kind:Type, contents:Snippet("my_integer()"), position:None}"#]],
+                {label:my_integer/0, kind:Type, contents:Snippet("my_integer()"), position:None, sort_text:1_my_integer/0}
+                {label:my_alias_module, kind:Module, contents:SameAsLabel, position:None, sort_text:2_my_alias_module}"#]],
         );
     }
 

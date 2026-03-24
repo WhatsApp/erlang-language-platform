@@ -78,10 +78,14 @@ impl fmt::Display for Completion {
             ),
             None => "".to_string(),
         };
+        let sort = match &self.sort_text {
+            Some(st) => format!(", sort_text:{}", st),
+            None => "".to_string(),
+        };
         write!(
             f,
-            "{{label:{}, kind:{:?}, contents:{:?}, position:{:?}{}{}}}",
-            self.label, self.kind, self.contents, self.position, deprecated, include,
+            "{{label:{}, kind:{:?}, contents:{:?}, position:{:?}{}{}{}}}",
+            self.label, self.kind, self.contents, self.position, deprecated, include, sort,
         )
     }
 }
