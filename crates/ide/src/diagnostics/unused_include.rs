@@ -215,7 +215,12 @@ fn is_file_used(
             return true;
         }
 
-        for (_, fun_def) in def_map.get_functions() {
+        let target_def_map = db.def_map(target);
+        for (name_arity, fun_def) in def_map.get_functions() {
+            if target_def_map.is_function_exported(name_arity) {
+                cache.insert(file_id, true);
+                return true;
+            }
             if SymbolDefinition::Function(fun_def.clone())
                 .usages(sema)
                 .set_scope(&scope)
@@ -375,6 +380,23 @@ mod tests {
   -module(foo).
   -include("foo.hrl").
   baz() -> foo().
+        "#,
+        );
+    }
+
+    #[test]
+    fn used_include_function_exported_by_module() {
+        // Header defines functions that are exported by the including
+        // module (not by the header itself).  This pattern is common
+        // for behaviour-callback delegation headers.
+        check_diagnostics(
+            r#"
+//- /include/foo.hrl include_path:/include
+  foo() -> bar.
+//- /src/foo.erl
+  -module(foo).
+  -export([foo/0]).
+  -include("foo.hrl").
         "#,
         );
     }
