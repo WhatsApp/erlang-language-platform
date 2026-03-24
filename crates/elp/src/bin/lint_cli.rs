@@ -199,6 +199,9 @@ fn do_diagnostics_all(
         })
         .collect();
 
+    let pb = cli.progress(modules.len() as u64, "Linting");
+    let pb_clone = pb.clone();
+
     let analysis_clone = analysis.clone();
     let config_clone = config.clone();
     let args_clone = args.clone();
@@ -208,8 +211,8 @@ fn do_diagnostics_all(
             .into_iter()
             .par_bridge()
             .map_with(
-                (analysis_clone, tx),
-                |(db, tx), (module_name, _file_source, file_id)| {
+                (analysis_clone, tx, pb_clone),
+                |(db, tx, pb), (module_name, _file_source, file_id)| {
                     if !otp_file_to_ignore(db, file_id)
                         && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
                         && !ignored_apps.contains(&db.file_app_name(file_id).ok())
@@ -226,6 +229,7 @@ fn do_diagnostics_all(
                         // Send result through channel
                         let _ = tx.send(result);
                     }
+                    pb.inc(1);
                 },
             )
             .for_each(|_| {}); // Consume the iterator
@@ -262,6 +266,7 @@ fn do_diagnostics_all(
     join_handle
         .join()
         .expect("Failed to join diagnostics thread");
+    pb.finish();
 
     Ok((results, err_in_diag, any_diagnostics_printed))
 }
