@@ -182,9 +182,13 @@ pub fn completions(
                 || records::add_completions(&mut acc, ctx);
         }
     }
-    // Sort for maintainable snapshot tests:
-    // sorting isn't necessary for prod because LSP client sorts
-    acc.sort_by(|c1, c2| c1.label.cmp(&c2.label));
+    // Sort for maintainable snapshot tests (mirrors LSP client sort):
+    // sort_text takes priority (matching LSP behavior), then label
+    acc.sort_by(|c1, c2| {
+        let st1 = c1.sort_text.as_deref().unwrap_or("");
+        let st2 = c2.sort_text.as_deref().unwrap_or("");
+        st1.cmp(st2).then_with(|| c1.label.cmp(&c2.label))
+    });
     acc
 }
 
