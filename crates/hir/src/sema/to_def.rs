@@ -1089,7 +1089,7 @@ pub fn get_module_arg_patterns() -> &'static FxHashMap<PatternKey, ModuleArgPatt
     &COMBINED_MODULE_ARG_PATTERNS
 }
 
-fn look_for_dynamic_call(
+pub(crate) fn look_for_dynamic_call(
     sema: &Semantic,
     file_id: FileId,
     module: Option<ExprId>,

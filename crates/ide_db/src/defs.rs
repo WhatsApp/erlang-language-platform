@@ -249,6 +249,10 @@ impl SymbolClass {
                         from_wrapper(sema, &token, wrapper)
                     }
                 },
+                ast::MacroExpr(_) => {
+                    from_macro_dynamic_call(sema, &token, &parent)
+                        .or_else(|| from_wrapper(sema, &token, wrapper))
+                },
                 _ => from_wrapper(sema, &token, wrapper),
             }
         }
@@ -516,6 +520,34 @@ pub fn from_is_record(
         }
         _ => None,
     }
+}
+
+fn from_macro_dynamic_call(
+    sema: &Semantic,
+    token: &InFile<SyntaxToken>,
+    macro_expr_node: &SyntaxNode,
+) -> Option<SymbolClass> {
+    // Walk up: MacroExpr → MacroCallArgs → MacroCallExpr
+    let macro_call_args = macro_expr_node.parent()?;
+    let macro_call_expr_node = macro_call_args.parent()?;
+    let macro_call_expr = ast::MacroCallExpr::cast(macro_call_expr_node)?;
+
+    let (body, body_map) = sema.find_body_and_map(token.file_id, macro_call_expr.syntax())?;
+
+    let ast_expr = ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(macro_call_expr));
+    let expr_id = body_map.expr_id(InFile::new(token.file_id, &ast_expr))?;
+
+    let (target, args) = match &body[expr_id] {
+        Expr::MacroCall { expansion, .. } => match &body[*expansion] {
+            Expr::Call { target, args } => Some((target, args.as_slice())),
+            _ => None,
+        },
+        Expr::Call { target, args } => Some((target, args.as_slice())),
+        _ => None,
+    }?;
+
+    let def = sema.resolve_dynamic_call(token.file_id, target, args, &body)?;
+    reference_direct(Some(def))
 }
 
 fn named_is_record(

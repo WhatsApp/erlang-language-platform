@@ -51,6 +51,7 @@ use crate::AttributeBody;
 use crate::Body;
 use crate::BodySourceMap;
 use crate::CRClause;
+use crate::CallTarget;
 use crate::CallbackDef;
 use crate::DefMap;
 use crate::DefineId;
@@ -311,6 +312,22 @@ impl Semantic<'_> {
         let module_atom: Atom = module_expr.as_atom()?;
         let module_name: Name = self.db.lookup_atom(module_atom);
         self.resolve_module_name(file_id, module_name.as_str())
+    }
+
+    /// Resolve a dynamic call target (apply, rpc:call, spawn, etc.)
+    /// given the call's target and arguments from the HIR body.
+    pub fn resolve_dynamic_call(
+        &self,
+        file_id: FileId,
+        target: &CallTarget<ExprId>,
+        args: &[ExprId],
+        body: &Body,
+    ) -> Option<CallDef> {
+        let (module, fun) = match target {
+            CallTarget::Local { name } => (None, *name),
+            CallTarget::Remote { module, name, .. } => (Some(*module), *name),
+        };
+        to_def::look_for_dynamic_call(self, file_id, module, fun, args, body)
     }
 
     pub fn file_edoc_comments(

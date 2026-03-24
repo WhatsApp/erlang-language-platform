@@ -506,9 +506,7 @@ should_not_match() -> #foo{a = 1}.
         );
     }
 
-    // T135584204: Dynamic call from macro not recognized
     #[test]
-    #[should_panic]
     fn test_functions_dynamic_call_from_macro() {
         check(
             r#"
@@ -519,13 +517,33 @@ should_not_match() -> #foo{a = 1}.
         %%^^^def
 
         -define(APPLY, apply).
+        -define(CALL(M, F, A), apply(M, F, A)).
 
         bar() ->
           ?APPLY(main, foo, []),
         %%             ^^^
+          ?CALL(main, foo, []),
+        %%            ^^^
           apply(main, foo, []).
         %%            ^^^
         baz() -> foo(1).
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_no_false_ref_from_macro() {
+        check(
+            r#"
+        //- /src/main.erl
+        -export([foo/0]).
+          foo~() -> ok.
+        %%^^^def
+        -define(APPLY, apply).
+        -define(WRAP(X), {ok, X}).
+        bar(X) ->
+          ?WRAP(foo),
+          ?APPLY(main, X, []).
         "#,
         );
     }
