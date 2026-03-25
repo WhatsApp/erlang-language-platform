@@ -1794,6 +1794,24 @@ mod tests {
         }
     }
 
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_select_files(buck: bool) {
+        simple_snapshot_expect_error(
+            args_vec![
+                "lint",
+                "--file",
+                project_path("linter/app_a/src/app_a.erl"),
+                "--file",
+                project_path("linter/app_b/src/app_b.erl")
+            ],
+            "linter",
+            resource_file!("linter/select_files.stdout"),
+            buck,
+            None,
+        );
+    }
+
     #[test]
     fn lint_warnings_as_errors() {
         simple_snapshot_expect_error_sorted(

@@ -252,9 +252,9 @@ pub struct Lint {
     /// Parse a single application from the project, not the entire project.
     #[bpaf(long("app"), long("application"), argument("APP"))]
     pub app: Option<String>,
-    /// Parse a single file from the project, not the entire project. This can be an include file or escript, etc.
+    /// Parse one or more files from the project, not the entire project. This can be an include file or escript, etc.
     #[bpaf(argument("FILE"))]
-    pub file: Option<String>,
+    pub file: Vec<String>,
     /// Only process files under this path (can be a file or directory).
     #[bpaf(argument("PATH"))]
     pub path: Option<PathBuf>,

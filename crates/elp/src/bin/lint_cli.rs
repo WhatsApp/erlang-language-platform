@@ -345,83 +345,98 @@ fn do_diagnostics_one(
 
 // ---------------------------------------------------------------------
 
+fn resolve_target_files(
+    analysis: &Analysis,
+    loaded: &LoadResult,
+    args: &Lint,
+    cli: &mut dyn Cli,
+) -> Result<Vec<(FileId, ModuleName)>> {
+    let mut file_ids: Vec<FileId> = vec![];
+    if let Some(module) = &args.module {
+        file_ids.push(
+            analysis
+                .module_file_id(loaded.project_id, module)?
+                .unwrap_or_else(|| panic!("Module not found: {module}")),
+        );
+        if args.is_format_normal() {
+            writeln!(cli, "module specified: {module}")?;
+        }
+    } else if !args.file.is_empty() {
+        for file_name in &args.file {
+            if args.is_format_normal() {
+                writeln!(cli, "file specified: {file_name}")?;
+            }
+            let path_buf = Utf8PathBuf::from_path_buf(fs::canonicalize(file_name).unwrap())
+                .expect("UTF8 conversion failed");
+            let path = AbsPath::assert(&path_buf);
+            let path = path.as_os_str().to_str().unwrap();
+            file_ids.push(
+                loaded
+                    .vfs
+                    .file_id(&VfsPath::new_real_path(path.to_string()))
+                    .map(|(id, _)| id)
+                    .unwrap_or_else(|| panic!("File not found in VFS: {file_name}")),
+            );
+        }
+    }
+
+    file_ids
+        .into_iter()
+        .map(|file_id| {
+            let name = analysis
+                .module_name(file_id)?
+                .unwrap_or_else(|| panic!("Could not get name from file_id for {file_id:?}"));
+            Ok((file_id, name))
+        })
+        .collect()
+}
+
 pub fn do_codemod(
     cli: &mut dyn Cli,
     loaded: &mut LoadResult,
     diagnostics_config: &DiagnosticsConfig,
     args: &Lint,
 ) -> Result<()> {
-    // Declare outside the block so it has the right lifetime for filter_diagnostics
-    let res;
     let streamed_err_in_diag;
     let mut any_diagnostics_printed = false;
     let mut initial_diags = {
         // We put this in its own block so that analysis is
         // freed before we apply lints. To apply lints
         // recursively, we need to update the underlying
-        // ananalysis_host, which will deadlock if there is
+        // analysis_host, which will deadlock if there is
         // still an active analysis().
         let analysis = loaded.analysis();
-        let (file_id, name) = match &args.module {
-            Some(module) => match analysis.module_file_id(loaded.project_id, module)? {
-                Some(file_id) => {
-                    if args.is_format_normal() {
-                        writeln!(cli, "module specified: {module}")?;
-                    }
-                    (Some(file_id), analysis.module_name(file_id)?)
-                }
-                None => panic!("Module not found: {module}"),
-            },
-            None => match &args.file {
-                Some(file_name) => {
-                    if args.is_format_normal() {
-                        writeln!(cli, "file specified: {file_name}")?;
-                    }
-                    let path_buf = Utf8PathBuf::from_path_buf(fs::canonicalize(file_name).unwrap())
-                        .expect("UTF8 conversion failed");
-                    let path = AbsPath::assert(&path_buf);
-                    let path = path.as_os_str().to_str().unwrap();
-                    (
-                        loaded
-                            .vfs
-                            .file_id(&VfsPath::new_real_path(path.to_string()))
-                            .map(|(id, _)| id),
-                        path_buf.as_path().file_name().map(ModuleName::new),
-                    )
-                }
-                None => (None, None),
-            },
-        };
+        let files = resolve_target_files(&analysis, loaded, args, cli)?;
 
-        res = match (file_id, name) {
-            (None, _) => {
-                let (results, err_in_diag, any_printed) = do_diagnostics_all(
-                    cli,
-                    &analysis,
-                    &loaded.project_id,
-                    diagnostics_config,
-                    args,
-                    loaded,
-                    &args.module,
-                )?;
-                streamed_err_in_diag = err_in_diag;
-                any_diagnostics_printed = any_printed;
-                results
-            }
-            (Some(file_id), Some(name)) => {
+        if files.is_empty() {
+            let (results, err_in_diag, any_printed) = do_diagnostics_all(
+                cli,
+                &analysis,
+                &loaded.project_id,
+                diagnostics_config,
+                args,
+                loaded,
+                &args.module,
+            )?;
+            streamed_err_in_diag = err_in_diag;
+            any_diagnostics_printed = any_printed;
+            results
+        } else {
+            // Print diagnostics for modules / files specified on the command line
+            let mut all_results = Vec::new();
+            let mut err_in_diag = false;
+            let mut module_count = 0;
+            for (file_id, name) in &files {
                 if let Some(app) = &args.app
-                    && let Ok(Some(file_app)) = analysis.file_app_name(file_id)
+                    && let Ok(Some(file_app)) = analysis.file_app_name(*file_id)
                     && file_app != AppName(app.to_string())
                 {
                     panic!("Module {} does not belong to app {}", name.as_str(), app)
                 }
                 let result =
-                    do_diagnostics_one(&analysis, diagnostics_config, file_id, &name, args)?
+                    do_diagnostics_one(&analysis, diagnostics_config, *file_id, name, args)?
                         .map_or(vec![], |x| vec![x]);
 
-                // Print diagnostics for the single file
-                let mut err_in_diag = false;
-                let mut module_count = 0;
                 if args.skip_stream_print() {
                     any_diagnostics_printed = false;
                 } else {
@@ -440,16 +455,11 @@ pub fn do_codemod(
                         any_diagnostics_printed = any_diagnostics_printed || printed;
                     }
                 }
-
-                streamed_err_in_diag = err_in_diag;
-                result
+                all_results.extend(result);
             }
-            (Some(file_id), _) => {
-                panic!("Could not get name from file_id for {file_id:?}")
-            }
-        };
-
-        res
+            streamed_err_in_diag = err_in_diag;
+            all_results
+        }
     };
     let mut err_in_diag = streamed_err_in_diag;
     // At this point, the analysis variable from above is dropped

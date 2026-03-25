@@ -1,4 +1,4 @@
-Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--path PATH] [--rebar] [--as
+Usage: [--project PROJECT] [--module MODULE] [--app APP] --file FILE... [--path PATH] [--rebar] [--as
 PROFILE] [--include-generated] [--include-tests] [--no-diags] [[--format FORMAT]]
 [--include-erlc-diagnostics] [--include-ct-diagnostics] [--include-edoc-diagnostics]
 [--include-eqwalizer-diagnostics] [--include-suppressed] [--use-cli-severity] [[--severity SEVERITY]]
@@ -14,8 +14,8 @@ Available options:
         --project <PROJECT>  Path to directory with project, or to a JSON file (defaults to `.`)
         --module <MODULE>  Parse a single module from the project, not the entire project.
         --app <APP>       Parse a single application from the project, not the entire project.
-        --file <FILE>     Parse a single file from the project, not the entire project. This can be
-                          an include file or escript, etc.
+        --file <FILE>     Parse one or more files from the project, not the entire project. This can
+                          be an include file or escript, etc.
         --path <PATH>     Only process files under this path (can be a file or directory).
         --rebar           Run with rebar
         --as <PROFILE>    Rebar3 profile to pickup (default is test)
