@@ -1116,7 +1116,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 macro_name: _,
             } => {
                 if self.strategy.macros == MacroStrategy::DoNotExpand {
-                    self.do_fold_exprs(args, acc)
+                    self.do_fold_terms(args, acc)
                 } else {
                     self.macro_stack.push((
                         HirIdx {

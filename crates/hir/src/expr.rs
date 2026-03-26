@@ -872,7 +872,7 @@ pub enum Term {
         // arguments, for things like highlight related, or unused
         // function arguments.
         expansion: TermId,
-        args: Vec<ExprId>,
+        args: Vec<TermId>,
         macro_def: Option<InFile<DefineId>>,
         macro_name: MacroCallName,
     },

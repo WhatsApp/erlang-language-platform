@@ -2604,7 +2604,7 @@ impl<'a> Ctx<'a> {
                         .args()
                         .iter()
                         .flat_map(|args| args.args())
-                        .map(|expr| self.lower_optional_expr(expr.expr()))
+                        .map(|expr| self.lower_optional_term(expr.expr()))
                         .collect();
                     self.alloc_term(
                         Term::MacroCall {
@@ -2625,7 +2625,7 @@ impl<'a> Ctx<'a> {
                         .args()
                         .iter()
                         .flat_map(|args| args.args())
-                        .map(|expr| self.lower_optional_expr(expr.expr()))
+                        .map(|expr| self.lower_optional_term(expr.expr()))
                         .collect();
                     self.alloc_term(
                         Term::MacroCall {
