@@ -91,6 +91,7 @@ use lsp_types::request::Request as _;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
 use parking_lot::RwLockWriteGuard;
+use rayon::prelude::*;
 use serde::Serialize;
 use telemetry_manager::TelemetryManager;
 use vfs::Change;
@@ -1207,10 +1208,11 @@ impl Server {
         let include_otp = self.config.enable_otp_diagnostics();
         self.task_pool.handle.spawn(move || {
             let diagnostics = opened_documents
-                .into_iter()
-                .filter_map(|file_id| {
-                    Some((file_id, snapshot.native_diagnostics(file_id, include_otp)?))
+                .into_par_iter()
+                .map_with(snapshot, |snapshot, file_id| {
+                    (file_id, snapshot.native_diagnostics(file_id, include_otp))
                 })
+                .filter_map(|(file_id, diags)| Some((file_id, diags?)))
                 .collect();
 
             Task::NativeDiagnostics(diagnostics)
@@ -1238,8 +1240,8 @@ impl Server {
         let include_otp = self.config.enable_otp_diagnostics();
         self.task_pool.handle.spawn(move || {
             let diagnostics_types = opened_documents
-                .into_iter()
-                .filter_map(|file_id| {
+                .into_par_iter()
+                .map_with(snapshot, |snapshot, file_id| {
                     let diags = snapshot
                         .eqwalizer_diagnostics(file_id, include_otp)
                         .unwrap_or_default();
@@ -1252,6 +1254,7 @@ impl Server {
                         Some((file_id, diags, types))
                     }
                 })
+                .flatten()
                 .collect();
 
             Task::EqwalizerDiagnostics(spinner, diagnostics_types)
@@ -1304,8 +1307,13 @@ impl Server {
         let config = self.diagnostics_config.clone();
         self.task_pool.handle.spawn(move || {
             let diagnostics = opened_documents
-                .into_iter()
-                .filter_map(|file_id| Some((file_id, snapshot.ct_diagnostics(file_id, &config)?)))
+                .into_par_iter()
+                .map_with(snapshot, |snapshot, file_id| {
+                    snapshot
+                        .ct_diagnostics(file_id, &config)
+                        .map(|diags| (file_id, diags))
+                })
+                .flatten()
                 .collect();
 
             Task::CommonTestDiagnostics(spinner, diagnostics)
@@ -1361,10 +1369,11 @@ impl Server {
         let diagnostics_config = self.diagnostics_config.clone();
         self.task_pool.handle.spawn(move || {
             let diagnostics = supported_opened_documents
-                .into_iter()
-                .filter_map(|file_id| {
+                .into_par_iter()
+                .map_with(snapshot, |snapshot, file_id| {
                     snapshot.erlang_service_diagnostics(file_id, &diagnostics_config)
                 })
+                .flatten()
                 .flatten()
                 .collect();
 

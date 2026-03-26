@@ -114,6 +114,7 @@ impl fmt::Display for TelemetryData {
 pub type SharedMap<Key, Value> = Arc<RwLock<FxHashMap<Key, Value>>>;
 
 /// An immutable snapshot of the world's state at a point in time.
+#[derive(Clone)]
 pub struct Snapshot {
     pub(crate) config: Arc<Config>,
     pub(crate) diagnostics_config: Arc<DiagnosticsConfig>,
