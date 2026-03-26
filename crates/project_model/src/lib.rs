@@ -22,6 +22,9 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
+use std::sync::LazyLock;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 use std::vec;
 
 use anyhow::Context;
@@ -39,6 +42,7 @@ use glob::glob;
 use itertools::Either;
 use itertools::Itertools;
 use json::JsonProjectAppData;
+use parking_lot::Mutex;
 use parking_lot::MutexGuard;
 use paths::AbsPath;
 use paths::AbsPathBuf;
@@ -69,6 +73,34 @@ pub mod test_fixture;
 
 pub const ELP_CONFIG_FILE: &str = ".elp.toml";
 pub const BUILD_INFO_FILE: &str = "build_info.json";
+
+/// When enabled, `Project::load` and `Otp::discover` cache their results
+/// so that repeated loads of the same manifest/OTP path within a single
+/// process reuse a previous result instead of spawning subprocesses.
+///
+/// This is **off by default** — the LSP calls `Project::load` again when
+/// `rebar.config` changes, and a process-global cache would return stale
+/// data.  Enable it in test binaries where the underlying config files
+/// never change and the subprocess cost dominates wall-clock time.
+static ENABLE_PROJECT_CACHE: AtomicBool = AtomicBool::new(false);
+
+/// Enable process-global caching of rebar manifests and OTP app discovery.
+///
+/// Intended for test suites where the same project is loaded many times
+/// with identical config files.  **Not safe for the LSP**, where config
+/// files may change between loads.
+pub fn enable_project_cache() {
+    ENABLE_PROJECT_CACHE.store(true, Ordering::Relaxed);
+}
+
+fn project_cache_enabled() -> bool {
+    ENABLE_PROJECT_CACHE.load(Ordering::Relaxed)
+}
+
+type RebarCacheValue = Arc<(RebarProject, Utf8PathBuf, Vec<ProjectAppData>)>;
+
+static REBAR_MANIFEST_CACHE: LazyLock<Mutex<FxHashMap<String, RebarCacheValue>>> =
+    LazyLock::new(|| Mutex::new(FxHashMap::default()));
 
 pub struct CommandProxy<'a> {
     _guard: MutexGuard<'a, ()>,
@@ -1034,30 +1066,58 @@ impl Project {
     ) -> Result<Project> {
         let (project_build_info, mut project_apps, otp_root, include_mapping) = match manifest {
             ProjectManifest::Rebar(rebar_setting) => {
-                let _timer = timeit!(
-                    "load project from rebar config {}",
-                    rebar_setting.config_file
+                let cache_key = format!(
+                    "{}:{}",
+                    rebar_setting.config_file.as_str(),
+                    rebar_setting.profile.0
                 );
-                let rebar_version = {
-                    let mut cmd = RebarConfig::rebar3_command_base();
-                    cmd.arg("version");
-                    utf8_stdout(&mut cmd)?
+
+                // Check cache (test-only optimisation).
+                let cached = if project_cache_enabled() {
+                    REBAR_MANIFEST_CACHE.lock().get(&cache_key).cloned()
+                } else {
+                    None
                 };
 
-                let loaded = Project::load_rebar_build_info(rebar_setting).with_context(|| {
-                    format!(
-                        "Failed to read rebar build info for config file {}, {}",
-                        rebar_setting.config_file, rebar_version
-                    )
-                })?;
-                let (rebar_project, otp_root, apps) =
-                    RebarProject::from_rebar_build_info(&loaded, rebar_setting.clone())
-                        .with_context(|| {
+                if let Some(cached) = cached {
+                    log::info!("Using cached rebar manifest for {}", cache_key);
+                    let (rebar_project, otp_root, apps) = cached.as_ref().clone();
+                    (ProjectBuildData::Rebar(rebar_project), apps, otp_root, None)
+                } else {
+                    let _timer = timeit!(
+                        "load project from rebar config {}",
+                        rebar_setting.config_file
+                    );
+                    let rebar_version = {
+                        let mut cmd = RebarConfig::rebar3_command_base();
+                        cmd.arg("version");
+                        utf8_stdout(&mut cmd)?
+                    };
+
+                    let loaded =
+                        Project::load_rebar_build_info(rebar_setting).with_context(|| {
                             format!(
-                                "Failed to decode rebar build info for config file {manifest:?}"
+                                "Failed to read rebar build info for config file {}, {}",
+                                rebar_setting.config_file, rebar_version
                             )
                         })?;
-                (ProjectBuildData::Rebar(rebar_project), apps, otp_root, None)
+                    let (rebar_project, otp_root, apps) =
+                        RebarProject::from_rebar_build_info(&loaded, rebar_setting.clone())
+                            .with_context(|| {
+                                format!(
+                                    "Failed to decode rebar build info for config file {manifest:?}"
+                                )
+                            })?;
+
+                    if project_cache_enabled() {
+                        REBAR_MANIFEST_CACHE.lock().insert(
+                            cache_key,
+                            Arc::new((rebar_project.clone(), otp_root.clone(), apps.clone())),
+                        );
+                    }
+
+                    (ProjectBuildData::Rebar(rebar_project), apps, otp_root, None)
+                }
             }
             ProjectManifest::TomlBuck(buck) => {
                 // We only select this manifest if buck is actually enabled

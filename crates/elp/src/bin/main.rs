@@ -295,6 +295,11 @@ mod tests {
     use crate::test_utils::resource_file;
 
     fn elp(args: Vec<OsString>) -> (String, String, i32) {
+        // Enable manifest caching for tests — the config files in test
+        // fixtures never change, and this avoids re-spawning rebar3/erl
+        // subprocesses for every test case (~25× faster for ::rebar tests).
+        elp_project_model::enable_project_cache();
+
         let mut cli = Fake::default();
         let args = Args::from(args.as_slice());
         let args = args::args().run_inner(args).unwrap();

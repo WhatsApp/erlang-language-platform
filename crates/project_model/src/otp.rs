@@ -12,12 +12,12 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::LazyLock;
 use std::sync::RwLock;
 
 use anyhow::Result;
 use anyhow::bail;
 use elp_log::timeit;
-use lazy_static::lazy_static;
 use paths::AbsPathBuf;
 use paths::Utf8Path;
 use paths::Utf8PathBuf;
@@ -25,6 +25,11 @@ use paths::Utf8PathBuf;
 use crate::AppName;
 use crate::OtpConfig;
 use crate::ProjectAppData;
+use crate::project_cache_enabled;
+
+static OTP_DISCOVER_CACHE: LazyLock<
+    parking_lot::Mutex<fxhash::FxHashMap<String, Vec<ProjectAppData>>>,
+> = LazyLock::new(|| parking_lot::Mutex::new(fxhash::FxHashMap::default()));
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Otp {
@@ -43,30 +48,30 @@ fn get_default_erl_path() -> String {
     "erl".to_string()
 }
 
-lazy_static! {
-    pub static ref ERL: RwLock<String> = RwLock::new(get_default_erl_path());
-}
+pub static ERL: LazyLock<RwLock<String>> = LazyLock::new(|| RwLock::new(get_default_erl_path()));
 
-lazy_static! {
-    pub static ref OTP_ROOT: Utf8PathBuf =
-        Otp::find_otp().expect("tests should always be able to find OTP");
-    /// All OTP apps discovered from the local OTP installation, cached for
-    /// the lifetime of the process so that `Otp::discover()` is only called once.
-    pub static ref OTP_APPS: Vec<ProjectAppData> = {
-        let (_otp, apps) = Otp::discover(OTP_ROOT.to_path_buf(), &OtpConfig::default());
-        apps
-    };
-    pub static ref OTP_ERTS_DIR: AbsPathBuf = get_erts_dir();
-    pub static ref OTP_ERLANG_MODULE: (PathBuf, String) = get_erlang_module();
-    pub static ref OTP_ERLANG_APP: ProjectAppData = ProjectAppData::fixture_app_data(
+pub static OTP_ROOT: LazyLock<Utf8PathBuf> =
+    LazyLock::new(|| Otp::find_otp().expect("tests should always be able to find OTP"));
+
+/// All OTP apps discovered from the local OTP installation, cached for
+/// the lifetime of the process so that `Otp::discover()` is only called once.
+pub static OTP_APPS: LazyLock<Vec<ProjectAppData>> = LazyLock::new(|| {
+    let (_otp, apps) = Otp::discover(OTP_ROOT.to_path_buf(), &OtpConfig::default());
+    apps
+});
+
+pub static OTP_ERTS_DIR: LazyLock<AbsPathBuf> = LazyLock::new(get_erts_dir);
+pub static OTP_ERLANG_MODULE: LazyLock<(PathBuf, String)> = LazyLock::new(get_erlang_module);
+pub static OTP_ERLANG_APP: LazyLock<ProjectAppData> = LazyLock::new(|| {
+    ProjectAppData::fixture_app_data(
         AppName("erts".to_string()),
         OTP_ERTS_DIR.clone(),
         Vec::default(),
         vec![OTP_ERTS_DIR.join("src")],
         Vec::default(),
-    );
-    pub static ref OTP_VERSION: Option<String> = Otp::otp_release().ok();
-}
+    )
+});
+pub static OTP_VERSION: LazyLock<Option<String>> = LazyLock::new(|| Otp::otp_release().ok());
 
 pub fn otp_supported_by_eqwalizer() -> bool {
     OTP_VERSION
@@ -220,7 +225,22 @@ impl Otp {
     }
 
     pub fn discover(path: Utf8PathBuf, otp_config: &OtpConfig) -> (Otp, Vec<ProjectAppData>) {
-        let apps = Self::discover_otp_apps(&path, otp_config);
+        let cache_key = format!("{}:{:?}", path, otp_config.exclude_apps);
+
+        // Check cache (test-only optimisation).
+        let cached = if project_cache_enabled() {
+            OTP_DISCOVER_CACHE.lock().get(&cache_key).cloned()
+        } else {
+            None
+        };
+
+        let apps = cached.unwrap_or_else(|| {
+            let apps = Self::discover_otp_apps(&path, otp_config);
+            if project_cache_enabled() {
+                OTP_DISCOVER_CACHE.lock().insert(cache_key, apps.clone());
+            }
+            apps
+        });
         (
             Otp {
                 lib_dir: AbsPathBuf::assert(path),

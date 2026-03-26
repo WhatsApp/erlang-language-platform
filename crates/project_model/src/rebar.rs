@@ -13,6 +13,7 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::OnceLock;
 
 use anyhow::Result;
 use anyhow::anyhow;
@@ -211,6 +212,21 @@ fn rebar3_version(config: &RebarConfig) -> Result<String> {
 }
 
 fn check_version(config: &RebarConfig) -> Result<bool> {
+    // The rebar3 binary is the same for all configs (resolved by
+    // rebar3_command_base()), so the version check result is process-global.
+    // Cache it to avoid spawning a subprocess for every RebarConfig construction.
+    static VERSION_CHECKED: OnceLock<Result<bool, String>> = OnceLock::new();
+
+    let result =
+        VERSION_CHECKED.get_or_init(|| check_version_impl(config).map_err(|e| e.to_string()));
+
+    match result {
+        Ok(v) => Ok(*v),
+        Err(e) => bail!("{}", e),
+    }
+}
+
+fn check_version_impl(config: &RebarConfig) -> Result<bool> {
     let version = rebar3_version(config)?;
     let required = VersionReq::parse(REQUIRED_REBAR3_VERSION)?;
     let version = Version::parse(version.split(' ').nth(1).ok_or(
