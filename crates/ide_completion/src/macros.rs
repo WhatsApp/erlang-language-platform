@@ -12,6 +12,7 @@ use elp_base_db::FileId;
 use elp_base_db::IncludeCtx;
 use elp_base_db::SourceDatabase;
 use elp_base_db::VfsPath;
+use elp_base_db::generated_file_include_lib;
 use elp_base_db::path_for_file;
 use elp_syntax::AstNode;
 use elp_syntax::algo;
@@ -204,6 +205,29 @@ pub fn get_include_file(
 ) -> Option<IncludeFile> {
     // This function is the inverse of `base_db::include::resolve_remote_query`.
     // If the result is passed to that function, it should return `included_file_id`.
+    let inc_app_data = db.file_app_data(included_file_id)?;
+
+    // Try the standard path first: strip the app dir prefix to get the relative path.
+    if let Some(result) = try_include_from_app_dir(db, file_id, included_file_id, &include_path) {
+        return Some(result);
+    }
+
+    // Fallback for generated files (e.g. thrift-generated .hrl files in buck-out):
+    // use include_dirs-based stripping with the "include/" prefix convention.
+    let candidate = generated_file_include_lib(db, file_id, included_file_id, include_path)?;
+    Some(IncludeFile {
+        include_lib: true,
+        path: candidate,
+        app_name: inc_app_data.name.to_string(),
+    })
+}
+
+fn try_include_from_app_dir(
+    db: &dyn SourceDatabase,
+    file_id: FileId,
+    included_file_id: FileId,
+    include_path: &VfsPath,
+) -> Option<IncludeFile> {
     let include_path = include_path.as_path()?;
 
     let inc_app_data = db.file_app_data(included_file_id)?;
