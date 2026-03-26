@@ -40,6 +40,11 @@ impl Linter for RecordTupleMatchLinter {
     fn description(&self) -> &'static str {
         "Matching record as a tuple."
     }
+
+    fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
+        // Skip files with no records in scope — the diagnostic can never match.
+        !sema.def_map(file_id).get_records().is_empty()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
