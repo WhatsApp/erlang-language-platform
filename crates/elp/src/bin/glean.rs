@@ -11,6 +11,7 @@
 use core::option::Option::None;
 use std::io::Write;
 use std::mem;
+use std::time::Instant;
 
 use anyhow::Result;
 use elp::build::load;
@@ -762,6 +763,70 @@ impl IndexedFacts {
     }
 }
 
+/// Metrics collected during a Glean indexing run.
+#[derive(Debug, serde::Serialize)]
+pub struct IndexerMetrics {
+    pub duration_ms: u64,
+    pub file_count: usize,
+    pub module_count: usize,
+    pub entity_count: usize,
+    pub xref_count: usize,
+    pub output_bytes: u64,
+    pub files_errored: usize,
+    pub success: bool,
+    pub error_message: Option<String>,
+}
+
+impl IndexerMetrics {
+    fn from_facts(facts: &FxHashMap<String, IndexedFacts>, files_errored: usize) -> Self {
+        let mut file_count = 0;
+        let mut module_count = 0;
+        let mut entity_count = 0;
+        let mut xref_count = 0;
+
+        for indexed in facts.values() {
+            file_count += indexed.file_facts.len();
+            module_count += indexed.module_facts.len();
+            entity_count += indexed
+                .file_declarations
+                .iter()
+                .map(|fd| fd.declarations.len())
+                .sum::<usize>();
+            xref_count += indexed
+                .xref_facts
+                .iter()
+                .map(|f| f.xrefs.len())
+                .sum::<usize>();
+        }
+
+        Self {
+            duration_ms: 0,
+            file_count,
+            module_count,
+            entity_count,
+            xref_count,
+            output_bytes: 0,
+            files_errored,
+            success: true,
+            error_message: None,
+        }
+    }
+
+    fn failed(duration_ms: u64, error: &anyhow::Error) -> Self {
+        Self {
+            duration_ms,
+            file_count: 0,
+            module_count: 0,
+            entity_count: 0,
+            xref_count: 0,
+            output_bytes: 0,
+            files_errored: 0,
+            success: false,
+            error_message: Some(format!("{error:#}")),
+        }
+    }
+}
+
 pub struct GleanIndexer {
     project_id: ProjectId,
     analysis: Analysis,
@@ -774,18 +839,69 @@ pub fn index(
     query_config: &BuckQueryConfig,
     ifdef: bool,
 ) -> Result<()> {
-    let (indexer, _loaded) = GleanIndexer::new(args, cli, query_config, ifdef)?;
-    let config = IndexConfig { multi: args.multi };
-    let (facts, module_index) = indexer.index(config)?;
-    write_results(facts, module_index, cli, args)
+    let start = Instant::now();
+    let result = index_inner(args, cli, query_config, ifdef);
+    let duration_ms = start.elapsed().as_millis() as u64;
+
+    match result {
+        Ok((mut metrics, errored_paths)) => {
+            metrics.duration_ms = duration_ms;
+            if !errored_paths.is_empty() {
+                for path in errored_paths.iter().take(20) {
+                    eprintln!("elp-glean: errored: {path}");
+                }
+                if errored_paths.len() > 20 {
+                    eprintln!(
+                        "elp-glean: ... and {} more ({} total)",
+                        errored_paths.len() - 20,
+                        errored_paths.len()
+                    );
+                }
+            }
+            if args.print_metrics {
+                // @fb-only: println!("{}", meta_only::metrics_to_json(&metrics));
+            println!("{}", serde_json::to_string_pretty(&metrics)?); // @oss-only
+            } else {
+                // @fb-only: meta_only::report_indexer_metrics(&metrics);
+            }
+            Ok(())
+        }
+        Err(err) => {
+            let metrics = IndexerMetrics::failed(duration_ms, &err);
+            if args.print_metrics {
+                // @fb-only: println!("{}", meta_only::metrics_to_json(&metrics));
+            println!("{}", serde_json::to_string_pretty(&metrics)?); // @oss-only
+            } else {
+                // @fb-only: meta_only::report_indexer_metrics(&metrics);
+            }
+            Err(err)
+        }
+    }
 }
 
+/// Runs indexing and writes results. Duration filled in by caller.
+fn index_inner(
+    args: &Glean,
+    cli: &mut dyn Cli,
+    query_config: &BuckQueryConfig,
+    ifdef: bool,
+) -> Result<(IndexerMetrics, Vec<String>)> {
+    let (indexer, _loaded) = GleanIndexer::new(args, cli, query_config, ifdef)?;
+    let config = IndexConfig { multi: args.multi };
+    let (facts, module_index, errored_paths) = indexer.index(config)?;
+    let mut metrics = IndexerMetrics::from_facts(&facts, errored_paths.len());
+    metrics.output_bytes = write_results(facts, module_index, cli, args)?;
+    Ok((metrics, errored_paths))
+}
+
+/// Serializes and writes facts. Returns total bytes written.
 fn write_results(
     facts: FxHashMap<String, IndexedFacts>,
     module_index: FxHashMap<GleanFileId, String>,
     cli: &mut dyn Cli,
     args: &Glean,
-) -> Result<()> {
+) -> Result<u64> {
+    let mut total_bytes: u64 = 0;
     for (name, fact) in facts {
         let fact = if args.v2 {
             fact.into_v2_facts(&module_index)
@@ -797,6 +913,7 @@ fn write_results(
         } else {
             serde_json::to_string(&fact)?
         };
+        total_bytes += content.len() as u64;
         let to = match (&args.to, args.multi) {
             (None, _) => None,
             (Some(to), true) => Some(to.join(name)),
@@ -812,7 +929,7 @@ fn write_results(
             None => cli.write_all(content.as_bytes()),
         }?;
     }
-    Ok(())
+    Ok(total_bytes)
 }
 
 impl GleanIndexer {
@@ -841,12 +958,14 @@ impl GleanIndexer {
         Ok((indexer, loaded))
     }
 
+    /// Returns (facts, module_index, errored_file_paths).
     fn index(
         &self,
         config: IndexConfig,
     ) -> Result<(
         FxHashMap<String, IndexedFacts>,
         FxHashMap<GleanFileId, String>,
+        Vec<String>,
     )> {
         let ctx = self.analysis.with_db(|db| {
             let project_id = self.project_id;
@@ -858,7 +977,7 @@ impl GleanIndexer {
                     path_to_module_name(path).map(|name| ((*file_id).into(), name))
                 })
                 .collect();
-            let facts = if let Some(module) = &self.module {
+            let (facts, errored) = if let Some(module) = &self.module {
                 let index = db.module_index(self.project_id);
                 let file_id = index
                     .file_for_module(&ModuleName::new(module))
@@ -873,21 +992,36 @@ impl GleanIndexer {
                             FACTS_FILE.to_string(),
                             IndexedFacts::new(file, line, decl, xref, facts, module_fact),
                         );
-                        result
+                        (result, vec![])
                     }
                     None => panic!("Can't find module {module}"),
                 }
             } else {
-                let iter = files
+                let errored = std::sync::Mutex::new(Vec::new());
+                let results: Vec<_> = files
                     .into_par_iter()
                     .map_with(self.analysis.clone(), |analysis, (file_id, path)| {
-                        analysis.with_db(|db| {
-                            Self::index_file(db, file_id, &path, project_id, &module_index)
-                        })
+                        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                            analysis.with_db(|db| {
+                                Self::index_file(db, file_id, &path, project_id, &module_index)
+                            })
+                        }));
+                        match result {
+                            Ok(Ok(inner)) => inner,
+                            Ok(Err(_)) | Err(_) => {
+                                errored
+                                    .lock()
+                                    .expect("errored mutex poisoned")
+                                    .push(path.to_string());
+                                None
+                            }
+                        }
                     })
-                    .flatten()
-                    .flatten();
-                if config.multi {
+                    .filter_map(|x| x)
+                    .collect();
+
+                let iter = results.into_iter();
+                let facts = if config.multi {
                     iter.map(|(file, line, decl, xref, facts, module_fact)| {
                         IndexedFacts::new(file, line, decl, xref, facts, module_fact)
                     })
@@ -898,7 +1032,7 @@ impl GleanIndexer {
                     .collect()
                 } else {
                     let mut result = FxHashMap::default();
-                    let facts = iter.collect::<Vec<_>>().into_iter().fold(
+                    let facts = iter.fold(
                         IndexedFacts::default(),
                         |mut acc, (file_fact, line_fact, decl, xref, facts, module_fact)| {
                             acc.add(file_fact, line_fact, decl, xref, facts, module_fact);
@@ -907,9 +1041,10 @@ impl GleanIndexer {
                     );
                     result.insert(FACTS_FILE.to_string(), facts);
                     result
-                }
+                };
+                (facts, errored.into_inner().expect("errored mutex poisoned"))
             };
-            (facts, module_index)
+            (facts, module_index, errored)
         })?;
         Ok(ctx)
     }
@@ -2056,6 +2191,7 @@ mod tests {
             v2: true,
             pretty: false,
             multi: false,
+            print_metrics: false,
         };
         let mut module_index = FxHashMap::default();
         module_index.insert(file_id.into(), module_name.to_string());
@@ -2826,7 +2962,7 @@ mod tests {
             analysis: host.analysis(),
             module: None,
         };
-        let (facts, module_index) = glean.index(config).expect("success");
+        let (facts, module_index, _errored_paths) = glean.index(config).expect("success");
         let facts = facts.into_values().next().unwrap();
         let mut expected_by_file: HashMap<GleanFileId, _> = HashMap::new();
         let mut file_names = HashMap::new();

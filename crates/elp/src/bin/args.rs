@@ -491,6 +491,8 @@ pub struct Glean {
     pub pretty: bool,
     /// Output each fact separately
     pub multi: bool,
+    /// Print indexer metrics as JSON
+    pub print_metrics: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]
