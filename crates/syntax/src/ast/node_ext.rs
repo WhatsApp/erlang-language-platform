@@ -319,7 +319,7 @@ impl super::ExprMax {
     pub fn name(&self) -> Option<SmolStr> {
         match self {
             super::ExprMax::Atom(it) => Some(it.text()?.into()),
-            super::ExprMax::Var(it) => Some(it.text().into()),
+            super::ExprMax::Var(it) => Some(it.text().as_str().into()),
             super::ExprMax::ParenExpr(it) => match it.expr()? {
                 super::Expr::ExprMax(e) => e.name(),
                 _ => None,

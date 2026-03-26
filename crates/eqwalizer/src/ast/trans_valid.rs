@@ -304,7 +304,7 @@ impl TransitiveChecker<'_> {
                     .iter_mut()
                     .for_each(|field| field.tp = Type::DynamicType);
             }
-            self.push_transitive_invalid(stub, causes, t.pos.clone(), t.name.into());
+            self.push_transitive_invalid(stub, causes, t.pos.clone(), t.name.as_str().into());
         }
     }
 

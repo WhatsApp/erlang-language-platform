@@ -196,7 +196,7 @@ impl AsName for ast::Atom {
 
 impl AsName for ast::Var {
     fn as_name(&self) -> Name {
-        Name::new(self.text().into())
+        Name::new(self.text().as_str().into())
     }
 }
 

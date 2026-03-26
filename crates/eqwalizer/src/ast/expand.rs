@@ -166,7 +166,7 @@ impl Expander<'_> {
             if names.contains(name) {
                 return Err(Invalid::RepeatedTyVarInTyDecl(RepeatedTyVarInTyDecl {
                     pos: pos.clone(),
-                    name: name.into(),
+                    name: name.as_str().into(),
                 }));
             }
             names.insert(name);
@@ -185,7 +185,7 @@ impl Expander<'_> {
                 return Err(Invalid::TyVarWithMultipleConstraints(
                     TyVarWithMultipleConstraints {
                         pos: cft.pos.clone(),
-                        n: name.into(),
+                        n: name.as_str().into(),
                     },
                 ));
             }
@@ -203,7 +203,7 @@ impl Expander<'_> {
         if !params.contains(&ty_var.name) {
             Err(Invalid::UnboundTyVarInTyDecl(UnboundTyVarInTyDecl {
                 pos: pos.clone(),
-                name: ty_var.name.into(),
+                name: ty_var.name.as_str().into(),
             }))
         } else {
             Ok(())
@@ -479,7 +479,7 @@ impl Expander<'_> {
                 if stack.contains(&ty.name) {
                     Err(Invalid::RecursiveConstraint(RecursiveConstraint {
                         pos: ty.pos,
-                        n: ty.name.into(),
+                        n: ty.name.as_str().into(),
                     }))
                 } else if let Some(tp) = sub.get(&ty.name) {
                     let mut stack2 = stack.clone();
@@ -775,7 +775,7 @@ impl CastExpander<'_> {
             Ok(expanded_ty) => {
                 let type_vars = expanded_ty.vars();
                 if !type_vars.is_empty() {
-                    let variables = type_vars.iter().map(|v| v.into()).collect();
+                    let variables = type_vars.iter().map(|v| v.as_str().into()).collect();
                     let diag = Invalid::VariablesInTypeCast(VariablesInTypeCast::new(
                         expanded_ty.pos().to_owned(),
                         variables,
@@ -786,7 +786,7 @@ impl CastExpander<'_> {
                 if let Some(name) = refined_records.first() {
                     let diag = Invalid::RefinedRecordInTypeCast(RefinedRecordInTypeCast {
                         pos: expanded_ty.pos().to_owned(),
-                        name: name.into(),
+                        name: name.as_str().into(),
                     });
                     return Ok(Err(diag));
                 }

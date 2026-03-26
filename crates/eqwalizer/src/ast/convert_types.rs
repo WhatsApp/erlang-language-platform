@@ -315,10 +315,12 @@ impl TypeConverter {
                 None if self.in_rec_decl => {
                     Ok(Err(Invalid::TypeVarInRecordField(TypeVarInRecordField {
                         pos: var.pos,
-                        name: var.name.into(),
+                        name: var.name.as_str().into(),
                     })))
                 }
-                None => Err(TypeConversionError::UnexpectedVariable(var.name.into())),
+                None => Err(TypeConversionError::UnexpectedVariable(
+                    var.name.as_str().into(),
+                )),
             },
             ExtType::RecordExtType(ty) => Ok(Ok(Type::RecordType(RecordType {
                 name: ty.name,
