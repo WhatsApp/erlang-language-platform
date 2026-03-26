@@ -166,6 +166,7 @@ mod unnecessary_map_to_list_in_comprehension;
 mod unresolved_include;
 mod unresolved_macro;
 mod unspecific_include;
+mod unused_exported_function;
 mod unused_function_args;
 mod unused_include;
 mod unused_macro;
@@ -1862,6 +1863,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &boolean_precedence::LINTER,
     &bound_variable::LINTER,
     &unused_record_field::LINTER,
+    &unused_exported_function::LINTER,
     &unresolved_macro::LINTER,
     &unresolved_include::LINTER,
     &invalid_pp_condition::LINTER,

@@ -548,6 +548,10 @@ impl DefMap {
         &self.behaviours
     }
 
+    pub fn export_all(&self) -> bool {
+        self.export_all
+    }
+
     pub fn get_function_clauses(
         &self,
     ) -> impl Iterator<Item = (&FunctionClauseId, &FunctionClauseDef)> {

@@ -126,6 +126,11 @@ impl SearchScope {
         }
         SearchScope { entries }
     }
+
+    pub fn exclude_file(mut self, file_id: FileId) -> SearchScope {
+        self.entries.remove(&file_id);
+        self
+    }
 }
 
 impl IntoIterator for SearchScope {
@@ -235,12 +240,20 @@ impl<'a> FindUsages<'a> {
     }
 
     pub fn at_least_one(&self) -> bool {
-        let mut found = false;
+        self.at_least_n(1)
+    }
+
+    pub fn at_least_n(&self, n: usize) -> bool {
+        let mut count = 0;
         self.search(&mut |_, _| {
-            found = true;
-            ControlFlow::Break(())
+            count += 1;
+            if count >= n {
+                ControlFlow::Break(())
+            } else {
+                ControlFlow::Continue(())
+            }
         });
-        found
+        count >= n
     }
 
     pub fn all(&self) -> UsageSearchResult {

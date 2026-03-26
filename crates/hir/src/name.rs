@@ -274,6 +274,7 @@ pub mod known {
         parse_transform,
         server,
         stacktrace,
+        start_link,
         string,
         thrift_parser,
         thrift_scanner,
