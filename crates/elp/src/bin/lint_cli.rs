@@ -29,6 +29,7 @@ use elp::convert;
 use elp::memory_usage::MemoryUsage;
 use elp::otp_file_to_ignore;
 use elp::read_lint_config_file;
+use elp::sort_by_file_size_descending;
 use elp_eqwalizer::Mode;
 use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
@@ -215,7 +216,7 @@ fn do_diagnostics_all(
     let (tx, rx) = unbounded();
 
     // Collect modules into an owned vector, pre-filtering by path if specified
-    let modules: Vec<_> = module_index
+    let mut modules: Vec<_> = module_index
         .iter_own()
         .filter_map(|(name, source, file_id)| {
             if let Some(ref filter_path) = path_filter {
@@ -227,6 +228,9 @@ fn do_diagnostics_all(
             Some((name.as_str().to_string(), source, file_id))
         })
         .collect();
+
+    // Sort biggest modules first to reduce long-tail in parallel processing
+    sort_by_file_size_descending(analysis, &mut modules, |m| m.2);
 
     let pb = cli.progress(modules.len() as u64, "Linting");
     let pb_clone = pb.clone();

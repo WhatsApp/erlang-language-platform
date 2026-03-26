@@ -91,6 +91,22 @@ pub fn version() -> String {
     format!("{}+{}", env!("CARGO_PKG_VERSION"), env!("BUILD_ID"))
 }
 
+/// Sort items by file text length in descending order (biggest first).
+/// Convenience wrapper around `elp_ide::sort_by_size_descending` for
+/// callers that have an `&Analysis` and a `FileId` accessor.
+pub fn sort_by_file_size_descending<T>(
+    analysis: &Analysis,
+    items: &mut [T],
+    get_file_id: impl Fn(&T) -> FileId,
+) {
+    elp_ide::sort_by_size_descending(items, |item| {
+        analysis
+            .file_text(get_file_id(item))
+            .map(|t| t.len())
+            .unwrap_or(0)
+    });
+}
+
 /// Some modules use a macro such as `-define(CATCH, catch).`.
 /// Our grammar cannot handle it at the moment, so we keep a list of
 /// these modules to skip when doing elp parsing for CI.

@@ -23,6 +23,7 @@ use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
 use elp::otp_file_to_ignore;
+use elp::sort_by_file_size_descending;
 use elp_eqwalizer::EqwalizerConfig;
 use elp_eqwalizer::Mode;
 use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
@@ -418,8 +419,11 @@ pub fn eqwalize_stats(
     }
     let project_id = loaded.project_id;
     let pb = cli.progress(module_index.len_own() as u64, "Computing stats");
-    let stats: FxHashMap<FileId, (ModuleName, Vec<Diagnostic>)> = module_index
-        .iter_own()
+    // Sort biggest modules first to reduce long-tail in parallel processing
+    let mut modules: Vec<_> = module_index.iter_own().collect();
+    sort_by_file_size_descending(analysis, &mut modules, |m| m.2);
+    let stats: FxHashMap<FileId, (ModuleName, Vec<Diagnostic>)> = modules
+        .into_iter()
         .par_bridge()
         .progress_with(pb.clone())
         .map_with(analysis.clone(), |analysis, (name, _source, file_id)| {
@@ -486,7 +490,7 @@ fn eqwalize(
     EqwalizerInternalArgs {
         analysis,
         loaded,
-        file_ids,
+        mut file_ids,
         reporter,
         bail_on_error,
     }: EqwalizerInternalArgs,
@@ -495,18 +499,22 @@ fn eqwalize(
         bail!("No files to eqWAlize detected")
     }
 
+    // Sort biggest modules first to reduce long-tail in parallel processing
+    sort_by_file_size_descending(analysis, &mut file_ids, |id| *id);
+
     let files_count = file_ids.len();
     let pb = reporter.progress(files_count as u64, "EqWAlizing");
     let output = loaded.with_eqwalizer_progress_bar(pb.clone(), move |analysis| {
         let project_id = loaded.project_id;
         let max_tasks = loaded.project.eqwalizer_config.max_tasks;
-        let chunk_size = files_count.div_ceil(max_tasks);
-        file_ids
-            .chunks(chunk_size)
+        // Round-robin distribute sorted files across chunks for balanced workload
+        let chunks = elp_ide::distribute_round_robin(file_ids, max_tasks.min(files_count));
+        chunks
+            .into_iter()
             .par_bridge()
-            .map_with(analysis, move |analysis, file_ids| {
+            .map_with(analysis, move |analysis, chunk| {
                 analysis
-                    .eqwalizer_diagnostics(project_id, file_ids.to_vec())
+                    .eqwalizer_diagnostics(project_id, chunk)
                     .expect("cancelled")
             })
             .fold(EqwalizerDiagnostics::default, |acc, output| {

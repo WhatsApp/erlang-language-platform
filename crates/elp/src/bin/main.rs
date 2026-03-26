@@ -250,6 +250,7 @@ mod tests {
     use elp::build;
     use elp::build::load;
     use elp::cli::Fake;
+    use elp::sort_by_file_size_descending;
     use elp_eqwalizer::EqwalizerConfig;
     use elp_eqwalizer::EqwalizerDiagnostics;
     use elp_eqwalizer::Mode;
@@ -425,17 +426,20 @@ mod tests {
                 })
                 .collect();
 
+            let mut file_ids = file_ids;
+            // Sort biggest modules first to reduce long-tail in parallel processing
+            sort_by_file_size_descending(&analysis, &mut file_ids, |id| *id);
+
             let files_count = file_ids.len();
             let project_id = loaded.project_id;
-            // Use 4 instances for tests
-            let chunk_size = files_count.div_ceil(4).max(1);
-            let output = file_ids
-                .clone()
-                .chunks(chunk_size)
+            // Use 4 instances for tests, round-robin to balance chunk sizes
+            let chunks = elp_ide::distribute_round_robin(file_ids.clone(), 4.min(files_count));
+            let output = chunks
+                .into_iter()
                 .par_bridge()
-                .map_with(analysis.clone(), move |analysis, file_ids| {
+                .map_with(analysis.clone(), move |analysis, chunk| {
                     analysis
-                        .eqwalizer_diagnostics(project_id, file_ids.to_vec())
+                        .eqwalizer_diagnostics(project_id, chunk)
                         .expect("cancelled")
                 })
                 .fold(EqwalizerDiagnostics::default, |acc, output| {

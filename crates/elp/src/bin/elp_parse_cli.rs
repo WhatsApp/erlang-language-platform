@@ -24,6 +24,7 @@ use elp::cli::Cli;
 use elp::convert;
 use elp::memory_usage::MemoryUsage;
 use elp::otp_file_to_ignore;
+use elp::sort_by_file_size_descending;
 use elp_eqwalizer::Mode;
 use elp_ide::Analysis;
 use elp_ide::diagnostics;
@@ -322,27 +323,29 @@ fn do_parse_all_par(
     config: &DiagnosticsConfig,
     to: &Option<PathBuf>,
 ) -> Result<Vec<ParseResult>> {
-    let module_index = loaded.analysis().module_index(loaded.project_id).unwrap();
-    let module_iter = module_index.iter_own();
+    let analysis = loaded.analysis();
+    let module_index = analysis.module_index(loaded.project_id).unwrap();
 
-    let pb = cli.progress(module_iter.len() as u64, "Parsing modules");
+    // Sort biggest modules first to reduce long-tail in parallel processing
+    let mut modules: Vec<_> = module_index.iter_own().collect();
+    sort_by_file_size_descending(&analysis, &mut modules, |m| m.2);
 
-    Ok(module_iter
+    let pb = cli.progress(modules.len() as u64, "Parsing modules");
+
+    Ok(modules
+        .into_iter()
         .par_bridge()
         .progress_with(pb)
-        .map_with(
-            loaded.analysis(),
-            |db, (module_name, file_source, file_id)| {
-                if !otp_file_to_ignore(db, file_id)
-                    && file_source == FileSource::Src
-                    && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
-                {
-                    do_parse_one(db, config, to, file_id, module_name.as_str()).unwrap()
-                } else {
-                    None
-                }
-            },
-        )
+        .map_with(analysis, |db, (module_name, file_source, file_id)| {
+            if !otp_file_to_ignore(db, file_id)
+                && file_source == FileSource::Src
+                && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
+            {
+                do_parse_one(db, config, to, file_id, module_name.as_str()).unwrap()
+            } else {
+                None
+            }
+        })
         .flatten()
         .collect())
 }
@@ -430,32 +433,34 @@ fn dump_includes_resolutions(
     loaded: &LoadResult,
     to: &Option<PathBuf>,
 ) -> Result<()> {
-    let module_index = loaded.analysis().module_index(loaded.project_id).unwrap();
-    let module_iter = module_index.iter_own();
+    let analysis = loaded.analysis();
+    let module_index = analysis.module_index(loaded.project_id).unwrap();
 
-    let pb = cli.progress(module_iter.len() as u64, "Analyzing include resolutions");
+    // Sort biggest modules first to reduce long-tail in parallel processing
+    let mut modules: Vec<_> = module_index.iter_own().collect();
+    sort_by_file_size_descending(&analysis, &mut modules, |m| m.2);
+
+    let pb = cli.progress(modules.len() as u64, "Analyzing include resolutions");
 
     let vfs = &loaded.vfs;
-    let mut all_includes: Vec<_> = module_iter
+    let mut all_includes: Vec<_> = modules
+        .into_iter()
         .par_bridge()
         .progress_with(pb)
-        .map_with(
-            loaded.analysis(),
-            |db, (_module_name, file_source, file_id)| {
-                if !otp_file_to_ignore(db, file_id)
-                    && file_source == FileSource::Src
-                    && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
-                {
-                    if is_project_file(vfs, db, file_id) {
-                        db.resolved_includes(file_id).ok()
-                    } else {
-                        None
-                    }
+        .map_with(analysis, |db, (_module_name, file_source, file_id)| {
+            if !otp_file_to_ignore(db, file_id)
+                && file_source == FileSource::Src
+                && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
+            {
+                if is_project_file(vfs, db, file_id) {
+                    db.resolved_includes(file_id).ok()
                 } else {
                     None
                 }
-            },
-        )
+            } else {
+                None
+            }
+        })
         .filter_map(|it| {
             it.unwrap_or_default()
                 .map(|include| {

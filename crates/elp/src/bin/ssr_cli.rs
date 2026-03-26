@@ -23,6 +23,7 @@ use elp::cli::Cli;
 use elp::convert;
 use elp::memory_usage::MemoryUsage;
 use elp::otp_file_to_ignore;
+use elp::sort_by_file_size_descending;
 use elp_eqwalizer::Mode;
 use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
@@ -252,10 +253,13 @@ fn do_parse_all_streaming(
     let args_clone = args.clone();
 
     // Collect modules into an owned vector
-    let modules: Vec<_> = module_index
+    let mut modules: Vec<_> = module_index
         .iter_own()
         .map(|(name, source, file_id)| (name.as_str().to_string(), source, file_id))
         .collect();
+
+    // Sort biggest modules first to reduce long-tail in parallel processing
+    sort_by_file_size_descending(analysis, &mut modules, |m| m.2);
 
     thread::spawn(move || {
         modules

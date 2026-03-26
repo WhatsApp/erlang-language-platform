@@ -998,6 +998,9 @@ impl GleanIndexer {
                 }
             } else {
                 let errored = std::sync::Mutex::new(Vec::new());
+                // Sort biggest files first to reduce long-tail in parallel processing
+                let mut files = files;
+                elp_ide::sort_by_size_descending(&mut files, |f| db.file_text(f.0).len());
                 let results: Vec<_> = files
                     .into_par_iter()
                     .map_with(self.analysis.clone(), |analysis, (file_id, path)| {

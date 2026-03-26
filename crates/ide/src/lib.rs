@@ -152,6 +152,26 @@ pub use syntax_highlighting::tags::HlTag;
 
 pub type Cancellable<T> = Result<T, salsa::Cancelled>;
 
+/// Sort items by size in descending order (biggest first).
+/// This reduces the long-tail effect when processing items in parallel,
+/// by ensuring the largest (and typically slowest) items start processing first
+/// (LPT scheduling).
+pub fn sort_by_size_descending<T>(items: &mut [T], get_size: impl Fn(&T) -> usize) {
+    items.sort_by_key(|item| std::cmp::Reverse(get_size(item)));
+}
+
+/// Distribute items across chunks using round-robin for balanced parallel processing.
+/// After sorting by size descending, this ensures large items are spread evenly
+/// across chunks rather than concentrated in one.
+pub fn distribute_round_robin<T>(items: Vec<T>, num_chunks: usize) -> Vec<Vec<T>> {
+    let num_chunks = num_chunks.max(1);
+    let mut chunks: Vec<Vec<T>> = (0..num_chunks).map(|_| Vec::new()).collect();
+    for (i, item) in items.into_iter().enumerate() {
+        chunks[i % num_chunks].push(item);
+    }
+    chunks
+}
+
 /// Info associated with a text range.
 #[derive(Debug)]
 pub struct RangeInfo<T> {
@@ -277,17 +297,20 @@ impl Analysis {
     ) -> Cancellable<Option<Vec<(FileId, Vec<Diagnostic>)>>> {
         self.with_db(|db| {
             let files_count = file_ids.len();
-            let chunk_size = files_count.div_ceil(max_tasks);
-            if chunk_size == 0 {
-                // The chunks function panics if the chunk size is 0, so we return an empty array
+            if files_count == 0 {
                 return Some(Vec::new());
             }
-            let diagnostics = file_ids
-                .chunks(chunk_size)
+            // Sort biggest modules first to reduce long-tail in parallel processing
+            let mut file_ids = file_ids;
+            sort_by_size_descending(&mut file_ids, |id| db.file_text(*id).len());
+            // Round-robin distribute sorted files across chunks for balanced workload
+            let chunks = distribute_round_robin(file_ids, max_tasks.min(files_count));
+            let diagnostics = chunks
+                .into_iter()
                 .par_bridge()
-                .map_with(self.clone(), move |analysis, file_ids| {
+                .map_with(self.clone(), move |analysis, chunk| {
                     analysis
-                        .eqwalizer_diagnostics(project_id, file_ids.to_vec())
+                        .eqwalizer_diagnostics(project_id, chunk)
                         .unwrap_or(Arc::new(EqwalizerDiagnostics::default()))
                 })
                 .fold(EqwalizerDiagnostics::default, |acc, output| {

@@ -22,6 +22,7 @@ use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
 use elp::otp_file_to_ignore;
+use elp::sort_by_file_size_descending;
 use elp_eqwalizer::Mode;
 use elp_ide::Analysis;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
@@ -89,13 +90,18 @@ pub fn do_parse_all(
     module: &Option<String>,
     buck: bool,
 ) -> Result<Vec<ParseDiagnostic>> {
-    let module_index = loaded.analysis().module_index(loaded.project_id)?;
+    let analysis = loaded.analysis();
+    let module_index = analysis.module_index(loaded.project_id)?;
     let file_cnt = module_index.len_own();
     let _timer = timeit!("parse {} files", file_cnt);
 
+    // Sort biggest modules first to reduce long-tail in parallel processing
+    let mut modules: Vec<_> = module_index.iter_own().collect();
+    sort_by_file_size_descending(&analysis, &mut modules, |m| m.2);
+
     let pb = cli.progress(file_cnt as u64, "Parsing modules");
-    let mut result = module_index
-        .iter_own()
+    let mut result = modules
+        .into_iter()
         .par_bridge()
         .progress_with(pb)
         .map_with(
