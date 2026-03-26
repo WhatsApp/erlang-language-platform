@@ -33,6 +33,8 @@ use elp_project_model::json::JsonConfig;
 use elp_project_model::otp::OTP_ERLANG_APP;
 use elp_project_model::otp::OTP_ERLANG_MODULE;
 use elp_project_model::otp::Otp;
+use elp_project_model::otp::find_otp_app;
+use elp_project_model::otp::read_otp_app_sources;
 use elp_project_model::rebar::RebarProject;
 use elp_project_model::temp_dir::TempDir;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
@@ -181,6 +183,7 @@ impl ChangeFixture {
             fixture,
             mut diagnostics_enabled,
             expect_parse_errors,
+            otp_apps: requested_otp_apps,
         } = fixture_with_meta.clone();
 
         let builder = Builder::new(diagnostics_enabled.clone());
@@ -287,6 +290,26 @@ impl ChangeFixture {
             // file later, but do not push the current one to files,
             // as it is not part of the as-written test fixture.
             inc_file_id(&mut file_id);
+        }
+
+        // Load real OTP apps requested via `//- otp_apps:` directive
+        for otp_app_name in &requested_otp_apps {
+            let app_data = find_otp_app(otp_app_name).unwrap_or_else(|| {
+                panic!(
+                    "OTP app '{}' requested via //- otp_apps: directive not found in OTP installation",
+                    otp_app_name
+                )
+            });
+            for (path, contents) in read_otp_app_sources(&app_data) {
+                change.change_file(file_id, Some(Arc::from(contents)));
+                app_files.insert(
+                    app_data.name.clone(),
+                    file_id,
+                    VfsPath::new_real_path(path.to_string_lossy().to_string()),
+                );
+                inc_file_id(&mut file_id);
+            }
+            app_map.combine(app_data);
         }
 
         let otp = otp.unwrap_or_else(|| Otp {
@@ -1048,5 +1071,17 @@ foo() -> ?BAR.
                 },
             )"#]]
         .assert_eq(format!("{:#?}", change.app_structure).as_str());
+    }
+
+    #[test]
+    #[should_panic(expected = "OTP app 'stdlb' requested via //- otp_apps: directive not found")]
+    fn otp_apps_misspelled_app_panics() {
+        let _ = ChangeFixture::parse(
+            r#"
+//- otp_apps:stdlb
+//- /src/foo.erl
+-module(foo).
+"#,
+        );
     }
 }

@@ -189,6 +189,8 @@ pub struct FixtureWithProjectMeta {
     pub fixture: Vec<Fixture>,
     pub diagnostics_enabled: DiagnosticsEnabled,
     pub expect_parse_errors: bool,
+    /// OTP app names to load from the real OTP installation (e.g., "stdlib").
+    pub otp_apps: Vec<String>,
 }
 
 impl FixtureWithProjectMeta {
@@ -238,6 +240,18 @@ impl FixtureWithProjectMeta {
         if let Some(meta) = fixture.strip_prefix("//- native") {
             let (_meta, remain) = meta.split_once('\n').unwrap();
             diagnostics_enabled.use_native = true;
+            fixture = remain;
+        }
+
+        let mut otp_apps = Vec::new();
+        if let Some(meta) = fixture.strip_prefix("//- otp_apps:") {
+            let (apps_str, remain) = meta.split_once('\n').unwrap();
+            for app in apps_str.split(',') {
+                let app = app.trim();
+                if !app.is_empty() {
+                    otp_apps.push(app.to_string());
+                }
+            }
             fixture = remain;
         }
 
@@ -308,6 +322,7 @@ impl FixtureWithProjectMeta {
             fixture: res,
             diagnostics_enabled,
             expect_parse_errors,
+            otp_apps,
         }
     }
 
@@ -1394,5 +1409,78 @@ foo() -> ok.
 
         let meta0 = &parsed[0];
         assert!(meta0.macros.is_empty());
+    }
+
+    #[test]
+    fn parse_fixture_otp_apps_single() {
+        let fixture = FixtureWithProjectMeta::parse(
+            r#"
+//- otp_apps:stdlib
+//- /src/foo.erl
+-module(foo).
+"#,
+        );
+        assert_eq!(fixture.otp_apps, vec!["stdlib".to_string()]);
+    }
+
+    #[test]
+    fn parse_fixture_otp_apps_multiple() {
+        let fixture = FixtureWithProjectMeta::parse(
+            r#"
+//- otp_apps:stdlib,kernel,crypto
+//- /src/foo.erl
+-module(foo).
+"#,
+        );
+        assert_eq!(
+            fixture.otp_apps,
+            vec![
+                "stdlib".to_string(),
+                "kernel".to_string(),
+                "crypto".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn parse_fixture_otp_apps_with_spaces() {
+        let fixture = FixtureWithProjectMeta::parse(
+            r#"
+//- otp_apps:stdlib, kernel
+//- /src/foo.erl
+-module(foo).
+"#,
+        );
+        assert_eq!(
+            fixture.otp_apps,
+            vec!["stdlib".to_string(), "kernel".to_string()]
+        );
+    }
+
+    #[test]
+    fn parse_fixture_otp_apps_empty_when_absent() {
+        let fixture = FixtureWithProjectMeta::parse(
+            r#"
+//- /src/foo.erl
+-module(foo).
+"#,
+        );
+        assert!(fixture.otp_apps.is_empty());
+    }
+
+    #[test]
+    fn parse_fixture_otp_apps_with_other_directives() {
+        let fixture = FixtureWithProjectMeta::parse(
+            r#"
+//- eqwalizer
+//- native
+//- otp_apps:stdlib
+//- /src/foo.erl
+-module(foo).
+"#,
+        );
+        assert_eq!(fixture.otp_apps, vec!["stdlib".to_string()]);
+        assert!(fixture.diagnostics_enabled.use_eqwalizer);
+        assert!(fixture.diagnostics_enabled.use_native);
     }
 }

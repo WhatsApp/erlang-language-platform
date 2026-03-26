@@ -9,6 +9,7 @@
  */
 
 use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::RwLock;
@@ -49,6 +50,12 @@ lazy_static! {
 lazy_static! {
     pub static ref OTP_ROOT: Utf8PathBuf =
         Otp::find_otp().expect("tests should always be able to find OTP");
+    /// All OTP apps discovered from the local OTP installation, cached for
+    /// the lifetime of the process so that `Otp::discover()` is only called once.
+    pub static ref OTP_APPS: Vec<ProjectAppData> = {
+        let (_otp, apps) = Otp::discover(OTP_ROOT.to_path_buf(), &OtpConfig::default());
+        apps
+    };
     pub static ref OTP_ERTS_DIR: AbsPathBuf = get_erts_dir();
     pub static ref OTP_ERLANG_MODULE: (PathBuf, String) = get_erlang_module();
     pub static ref OTP_ERLANG_APP: ProjectAppData = ProjectAppData::fixture_app_data(
@@ -97,19 +104,47 @@ pub fn supports_binary_encode_hex_with_case() -> bool {
 }
 
 fn get_erts_dir() -> AbsPathBuf {
-    let (_otp, apps) = Otp::discover(OTP_ROOT.to_path_buf(), &OtpConfig::default());
-    for app in apps {
-        if app.name == AppName("erts".to_string()) {
-            return app.dir;
-        }
-    }
-    panic!()
+    OTP_APPS
+        .iter()
+        .find(|app| app.name == AppName("erts".to_string()))
+        .expect("erts app must exist in OTP installation")
+        .dir
+        .clone()
 }
 
 fn get_erlang_module() -> (PathBuf, String) {
     let erlang_path = OTP_ERTS_DIR.join("src/erlang.erl");
     let contents = std::fs::read_to_string(&erlang_path).unwrap();
     (erlang_path.into(), contents)
+}
+
+/// Find an OTP app's ProjectAppData by app name (e.g., "stdlib").
+/// Returns None if the app is not found in the OTP installation.
+/// Uses the cached `OTP_APPS` list to avoid repeated filesystem discovery.
+pub fn find_otp_app(app_name: &str) -> Option<ProjectAppData> {
+    OTP_APPS
+        .iter()
+        .find(|app| app.name.as_str() == app_name)
+        .cloned()
+}
+
+/// Read all .erl source files from an OTP app's src directories.
+/// Returns Vec<(PathBuf, String)> of (path, contents) pairs.
+pub fn read_otp_app_sources(app_data: &ProjectAppData) -> Vec<(PathBuf, String)> {
+    let mut sources = Vec::new();
+    for src_dir in &app_data.abs_src_dirs {
+        if let Ok(entries) = fs::read_dir(Path::new(src_dir.as_os_str())) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().is_some_and(|ext| ext == "erl")
+                    && let Ok(contents) = fs::read_to_string(&path)
+                {
+                    sources.push((path, contents));
+                }
+            }
+        }
+    }
+    sources
 }
 
 impl Otp {
@@ -282,5 +317,47 @@ mod tests {
         // Verify the filtered list is smaller
         assert!(filtered_apps.len() < all_apps.len());
         assert_eq!(filtered_apps.len(), all_apps.len() - 2);
+    }
+
+    #[test]
+    fn find_otp_app_stdlib() {
+        // stdlib should always be available in any OTP installation
+        let app = find_otp_app("stdlib");
+        assert!(app.is_some(), "stdlib should be found in OTP installation");
+        let app = app.unwrap();
+        assert_eq!(app.name.as_str(), "stdlib");
+        assert!(!app.abs_src_dirs.is_empty(), "stdlib should have src dirs");
+        assert!(app.ebin.is_some(), "stdlib should have an ebin directory");
+    }
+
+    #[test]
+    fn find_otp_app_nonexistent() {
+        let app = find_otp_app("this_app_does_not_exist_xyz");
+        assert!(app.is_none());
+    }
+
+    #[test]
+    fn read_otp_app_sources_stdlib() {
+        let app = find_otp_app("stdlib").expect("stdlib must be present");
+        let sources = read_otp_app_sources(&app);
+        assert!(!sources.is_empty(), "stdlib should have source files");
+
+        // All returned files should be .erl files
+        for (path, _contents) in &sources {
+            assert_eq!(
+                path.extension().and_then(|e| e.to_str()),
+                Some("erl"),
+                "Expected .erl file, got: {:?}",
+                path
+            );
+        }
+
+        // stdlib should contain well-known modules like lists.erl
+        let has_lists = sources.iter().any(|(path, _)| {
+            path.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n == "lists.erl")
+        });
+        assert!(has_lists, "stdlib sources should include lists.erl");
     }
 }
