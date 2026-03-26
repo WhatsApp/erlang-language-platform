@@ -281,14 +281,26 @@ pub fn do_eqwalize_app(
             }
         })
         .collect();
-    let mut reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
+    let mut json_reporter;
+    let mut pretty_reporter;
+
+    let reporter: &mut dyn Reporter = match args.format {
+        None => {
+            pretty_reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
+            &mut pretty_reporter
+        }
+        Some(_) => {
+            json_reporter = reporting::JsonReporter::new(analysis, loaded, cli);
+            &mut json_reporter
+        }
+    };
     let bail_on_error = args.bail_on_error;
 
     eqwalize(EqwalizerInternalArgs {
         analysis,
         loaded,
         file_ids,
-        reporter: &mut reporter,
+        reporter,
         bail_on_error,
     })
 }

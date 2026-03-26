@@ -174,6 +174,7 @@ impl ShellCommand {
                         return Ok(Some(ShellCommand::ShellEqwalizeApp(EqwalizeApp {
                             project,
                             profile,
+                            format: None,
                             rebar,
                             app: app.into(),
                             include_generated,

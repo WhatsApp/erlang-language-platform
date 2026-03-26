@@ -186,6 +186,14 @@ pub struct EqwalizeApp {
     /// Rebar3 profile to pickup (default is test)
     #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
     pub profile: String,
+    /// Show diagnostics in JSON format
+    #[bpaf(
+        argument("FORMAT"),
+        complete(format_completer),
+        fallback(None),
+        guard(format_guard, "Please use json")
+    )]
+    pub format: Option<String>,
     /// Also eqwalize opted-in generated modules from project (deprecated)
     #[bpaf(hide)]
     pub include_generated: bool,
