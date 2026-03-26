@@ -18,7 +18,12 @@ use elp_ide_db::find_best_token;
 use elp_syntax::AstNode;
 use elp_syntax::NodeOrToken;
 use elp_syntax::TextRange;
+use elp_syntax::algo;
 use elp_syntax::ast;
+use hir::CallTarget;
+use hir::Expr;
+use hir::InFile;
+use hir::Literal;
 use hir::Semantic;
 
 use crate::navigation_target::ToNav;
@@ -38,6 +43,9 @@ pub(crate) fn highlight_related(
     position: FilePosition,
 ) -> Option<Vec<HighlightedRange>> {
     let _p = tracing::info_span!("highlight_related").entered();
+    if let Some(highlights) = find_format_string_highlights(sema, position) {
+        return Some(highlights);
+    }
     find_local_refs(sema, position)
 }
 
@@ -129,9 +137,213 @@ fn find_local_refs(sema: &Semantic<'_>, position: FilePosition) -> Option<Vec<Hi
     }
 }
 
+/// Find format string ↔ argument highlight pairs.
+///
+/// When the cursor is on a format specifier (e.g., `~p`) inside a format string,
+/// highlight the specifier and the corresponding argument in the args list.
+/// When the cursor is on an argument in the args list, highlight the argument
+/// and the corresponding format specifier. Arguments can be any expression
+/// (variables, function calls, etc.) — the cursor just needs to be anywhere
+/// inside the expression's source range.
+fn find_format_string_highlights(
+    sema: &Semantic,
+    position: FilePosition,
+) -> Option<Vec<HighlightedRange>> {
+    let source_file = sema.parse(position.file_id);
+    let syntax = source_file.value.syntax();
+
+    // The cursor might be inside a nested expression (e.g., a function call)
+    // that is an argument to a format function. Walk up ancestor Call nodes
+    // until we find a format function call.
+    let mut call = algo::find_node_at_offset::<ast::Call>(syntax, position.offset)?;
+    loop {
+        if let result @ Some(_) = try_format_call_highlights(sema, position, &call) {
+            return result;
+        }
+        call = call
+            .syntax()
+            .ancestors()
+            .skip(1)
+            .find_map(ast::Call::cast)?;
+    }
+}
+
+/// Try to produce format string highlights for a specific Call node.
+/// Returns `Some(highlights)` if this call is a format function and
+/// highlights are found, or `None` if it isn't a format function
+/// (or if no highlights are applicable at this cursor position).
+fn try_format_call_highlights(
+    sema: &Semantic,
+    position: FilePosition,
+    call: &ast::Call,
+) -> Option<Vec<HighlightedRange>> {
+    use crate::format_string;
+
+    // Convert AST Call to HIR to analyze it semantically
+    let call_expr = sema.to_expr(InFile::new(
+        position.file_id,
+        &ast::Expr::Call(call.clone()),
+    ))?;
+
+    // Check if this is a remote call to a format function
+    let hir_expr = &call_expr[call_expr.value];
+    let (module_id, name_id, args) = match hir_expr {
+        Expr::Call {
+            target: CallTarget::Remote { module, name, .. },
+            args,
+        } => (*module, *name, args.as_slice()),
+        _ => return None,
+    };
+
+    let module_atom = call_expr[module_id].as_atom()?;
+    let name_atom = call_expr[name_id].as_atom()?;
+    let module_name = sema.db.lookup_atom(module_atom);
+    let function_name = sema.db.lookup_atom(name_atom);
+
+    let info = format_string::match_format_function(&module_name, &function_name, args.len())?;
+
+    let fmt_expr_id = args[info.format_arg_index];
+    let args_list_id = args[info.args_list_index];
+
+    // Only handle literal format strings
+    match &call_expr[fmt_expr_id] {
+        Expr::Literal(Literal::String(_)) => {}
+        _ => return None,
+    }
+
+    // Get format string source range and raw text
+    let body_map = call_expr.get_body_map();
+    let fmt_source = body_map.expr(fmt_expr_id)?;
+    let fmt_file_range = fmt_source.range();
+    if fmt_file_range.file_id != position.file_id {
+        return None;
+    }
+    let string_range = fmt_file_range.range;
+    let file_text = sema.db.file_text(position.file_id);
+    let fmt_src = format_string::parse_format_source(&file_text, string_range)?;
+    let parsed = &fmt_src.parsed;
+
+    if parsed.specifiers.is_empty() {
+        return None;
+    }
+
+    // Determine which argument expressions are in the args list
+    let arg_expr_ids: Option<Vec<_>> = match &call_expr[args_list_id] {
+        Expr::List { exprs, tail: None } => Some(exprs.clone()),
+        _ => None,
+    };
+
+    // Determine if cursor is on a specifier or on an argument
+    let cursor_in_format_string = string_range.contains(position.offset);
+
+    let content_offset = fmt_src.content_offset;
+
+    if cursor_in_format_string {
+        // Cursor is inside the format string - find which specifier
+        let cursor_byte_offset = usize::from(position.offset - string_range.start());
+        if cursor_byte_offset < content_offset {
+            return None;
+        }
+        let cursor_content_offset = cursor_byte_offset - content_offset;
+
+        let spec_idx = parsed
+            .specifiers
+            .iter()
+            .position(|s| s.range.contains(&cursor_content_offset))?;
+
+        let spec = &parsed.specifiers[spec_idx];
+        let spec_range = format_string::specifier_source_range(string_range, content_offset, spec);
+
+        let mut highlights = vec![HighlightedRange {
+            range: spec_range,
+            category: None,
+        }];
+
+        // Find the corresponding argument(s)
+        if let Some(ref arg_ids) = arg_expr_ids {
+            // Find which argument indices map to this specifier
+            for (arg_idx, &si) in parsed.arg_to_specifier.iter().enumerate() {
+                if si == spec_idx
+                    && let Some(&arg_id) = arg_ids.get(arg_idx)
+                    && let Some(arg_source) = body_map.expr(arg_id)
+                {
+                    let arg_range = arg_source.range();
+                    if arg_range.file_id == position.file_id {
+                        highlights.push(HighlightedRange {
+                            range: arg_range.range,
+                            category: Some(ReferenceCategory::Read),
+                        });
+                    }
+                }
+            }
+        }
+
+        Some(highlights)
+    } else {
+        // Cursor might be on an argument in the args list.
+        // The cursor can be anywhere inside an expression (e.g., inside
+        // a function call like `foo(X)`) — we match if the cursor falls
+        // within the top-level arg expression's source range.
+        let arg_ids = arg_expr_ids?;
+
+        // Find which argument the cursor is on
+        let arg_idx = arg_ids.iter().position(|&arg_id| {
+            body_map
+                .expr(arg_id)
+                .map(|s| {
+                    s.range().file_id == position.file_id
+                        && s.range().range.contains(position.offset)
+                })
+                .unwrap_or(false)
+        })?;
+
+        // Find which specifier corresponds to this argument index
+        let &spec_idx = parsed.arg_to_specifier.get(arg_idx)?;
+        let spec = &parsed.specifiers[spec_idx];
+        let spec_range = format_string::specifier_source_range(string_range, content_offset, spec);
+
+        let arg_source = body_map.expr(arg_ids[arg_idx])?;
+        let arg_range = arg_source.range();
+        if arg_range.file_id != position.file_id {
+            return None;
+        }
+
+        let mut highlights = vec![
+            HighlightedRange {
+                range: spec_range,
+                category: None,
+            },
+            HighlightedRange {
+                range: arg_range.range,
+                category: Some(ReferenceCategory::Read),
+            },
+        ];
+
+        // If the specifier consumes multiple args (e.g., ~W, ~P), highlight all of them
+        for (other_arg_idx, &si) in parsed.arg_to_specifier.iter().enumerate() {
+            if si == spec_idx
+                && other_arg_idx != arg_idx
+                && let Some(&other_arg_id) = arg_ids.get(other_arg_idx)
+                && let Some(other_source) = body_map.expr(other_arg_id)
+            {
+                let other_range = other_source.range();
+                if other_range.file_id == position.file_id {
+                    highlights.push(HighlightedRange {
+                        range: other_range.range,
+                        category: Some(ReferenceCategory::Read),
+                    });
+                }
+            }
+        }
+
+        Some(highlights)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use elp_ide_db::elp_base_db::assert_eq_expected;
+    use elp_syntax::TextSize;
 
     use super::*;
     use crate::fixture;
@@ -1102,6 +1314,345 @@ mod tests {
             %%           ^^^^read
 
 "#,
+        );
+    }
+
+    // Helper for format string highlight tests. Uses \~ in fixture text
+    // for tilde characters (the fixture parser converts \~ back to ~).
+    // `cursor_on` is searched in the processed file text to find cursor position.
+    // `expected` contains (text, category) pairs for comparison.
+    #[track_caller]
+    fn check_format(fixture_str: &str, cursor_on: &str, expected: &[(&str, Option<&str>)]) {
+        let (analysis, fixture) = fixture::with_fixture(fixture_str);
+        let file_id = fixture.file_id();
+        fixture::check_no_parse_errors(&analysis, file_id);
+        let file_text = analysis.file_text(file_id).unwrap();
+        let cursor_offset = file_text
+            .find(cursor_on)
+            .unwrap_or_else(|| panic!("cursor_on text '{cursor_on}' not found in file"));
+        let position = FilePosition {
+            file_id,
+            offset: TextSize::from(cursor_offset as u32),
+        };
+        let hls = analysis
+            .highlight_related(position)
+            .unwrap()
+            .unwrap_or_default();
+        let mut actual_with_pos: Vec<(TextSize, String, Option<&str>)> = hls
+            .iter()
+            .map(|hl| {
+                let text = file_text[usize::from(hl.range.start())..usize::from(hl.range.end())]
+                    .to_string();
+                let cat = hl.category.map(|c| match c {
+                    ReferenceCategory::Read => "read",
+                    ReferenceCategory::Write => "write",
+                });
+                (hl.range.start(), text, cat)
+            })
+            .collect();
+        actual_with_pos.sort_by_key(|(start, _, _)| *start);
+        let actual: Vec<(String, Option<&str>)> = actual_with_pos
+            .into_iter()
+            .map(|(_, text, cat)| (text, cat))
+            .collect();
+        let expected_vec: Vec<(String, Option<&str>)> =
+            expected.iter().map(|(t, c)| (t.to_string(), *c)).collect();
+        assert_eq!(actual, expected_vec, "Format string highlights mismatch");
+    }
+
+    #[test]
+    fn format_string_cursor_on_arg() {
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("\~p \~s", [This, That]).
+            "#,
+            "This",
+            &[("~p", None), ("This", Some("read"))],
+        );
+    }
+
+    #[test]
+    fn format_string_cursor_on_specifier() {
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("\~p \~s", [This, That]).
+            "#,
+            "~p",
+            &[("~p", None), ("This", Some("read"))],
+        );
+    }
+
+    #[test]
+    fn format_string_cursor_on_second_specifier() {
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("\~p \~s", [This, That]).
+            "#,
+            "~s",
+            &[("~s", None), ("That", Some("read"))],
+        );
+    }
+
+    #[test]
+    fn format_string_cursor_on_second_arg() {
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("\~p \~s", [This, That]).
+            "#,
+            "That",
+            &[("~s", None), ("That", Some("read"))],
+        );
+    }
+
+    #[test]
+    fn format_string_io_format_3() {
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format(user, "\~w \~n \~s", [Arg1, Arg2]).
+            "#,
+            "Arg1",
+            &[("~w", None), ("Arg1", Some("read"))],
+        );
+    }
+
+    #[test]
+    fn format_string_non_consuming_specifier() {
+        // Cursor on ~n (which doesn't consume an arg) should highlight only the specifier
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("\~p\~n\~\~", [A]).
+            "#,
+            "~n",
+            &[("~n", None)],
+        );
+    }
+
+    #[test]
+    fn format_string_io_lib_format() {
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io_lib:format("\~p", [Arg]).
+            "#,
+            "Arg",
+            &[("~p", None), ("Arg", Some("read"))],
+        );
+    }
+
+    #[test]
+    fn format_string_io_fwrite() {
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:fwrite("\~p \~s", [This, That]).
+            "#,
+            "This",
+            &[("~p", None), ("This", Some("read"))],
+        );
+    }
+
+    #[test]
+    fn format_string_io_lib_fwrite() {
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io_lib:fwrite("\~w", [Val]).
+            "#,
+            "Val",
+            &[("~w", None), ("Val", Some("read"))],
+        );
+    }
+
+    #[test]
+    fn format_string_multi_arg_specifier_cursor_on_first_arg() {
+        // ~W consumes 2 args; cursor on first arg should highlight specifier + both args
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("\~W", [Data, Depth]).
+            "#,
+            "Data",
+            &[
+                ("~W", None),
+                ("Data", Some("read")),
+                ("Depth", Some("read")),
+            ],
+        );
+    }
+
+    #[test]
+    fn format_string_multi_arg_specifier_cursor_on_second_arg() {
+        // ~W consumes 2 args; cursor on second arg should also highlight all
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("\~W", [Data, Depth]).
+            "#,
+            "Depth",
+            &[
+                ("~W", None),
+                ("Data", Some("read")),
+                ("Depth", Some("read")),
+            ],
+        );
+    }
+
+    #[test]
+    fn format_string_multi_arg_specifier_cursor_on_specifier() {
+        // Cursor on ~W should highlight specifier + both consumed args
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("\~W", [Data, Depth]).
+            "#,
+            "~W",
+            &[
+                ("~W", None),
+                ("Data", Some("read")),
+                ("Depth", Some("read")),
+            ],
+        );
+    }
+
+    #[test]
+    fn format_string_cursor_outside_specifier() {
+        // Cursor on plain text in format string (not on any specifier) should not highlight
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("hello \~p world", [A]).
+            "#,
+            "hello",
+            &[],
+        );
+    }
+
+    #[test]
+    fn format_string_cursor_on_call_arg() {
+        // Cursor on a function call arg: should highlight the whole call expression
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            bar(X) -> X.
+            foo() ->
+                io:format("\~p \~s", [bar(ok), That]).
+            "#,
+            "bar(ok)",
+            &[("~p", None), ("bar(ok)", Some("read"))],
+        );
+    }
+
+    #[test]
+    fn format_string_cursor_inside_call_arg() {
+        // Cursor on `ok` inside `bar(ok)`: should still highlight ~p and bar(ok)
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            bar(X) -> X.
+            foo() ->
+                io:format("\~p \~s", [bar(ok), That]).
+            "#,
+            "ok)",
+            &[("~p", None), ("bar(ok)", Some("read"))],
+        );
+    }
+
+    #[test]
+    fn format_string_cursor_on_arithmetic_arg() {
+        // Cursor on an arithmetic expression arg
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("\~p", [1 + 2]).
+            "#,
+            "+ 2",
+            &[("~p", None), ("1 + 2", Some("read"))],
+        );
+    }
+
+    #[test]
+    fn format_string_specifier_highlights_call_arg() {
+        // Cursor on specifier ~p should highlight the call expression arg
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            bar(X) -> X.
+            foo() ->
+                io:format("\~p", [bar(ok)]).
+            "#,
+            "~p",
+            &[("~p", None), ("bar(ok)", Some("read"))],
+        );
+    }
+
+    #[test]
+    fn format_string_nested_format_call_cursor_on_inner_arg() {
+        // Arg is itself a format function call. Cursor inside the inner
+        // io_lib:format should match the INNER format call, not the outer.
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("\~p", [io_lib:format("\~s", [Name])]).
+            "#,
+            "Name",
+            &[("~s", None), ("Name", Some("read"))],
+        );
+    }
+
+    #[test]
+    fn format_string_nested_format_call_cursor_on_outer_specifier() {
+        // Cursor on the outer ~p should highlight the inner io_lib:format call as the arg
+        check_format(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("\~p", [io_lib:format("\~s", [Name])]).
+            "#,
+            "~p",
+            &[
+                ("~p", None),
+                ("io_lib:format(\"~s\", [Name])", Some("read")),
+            ],
         );
     }
 }

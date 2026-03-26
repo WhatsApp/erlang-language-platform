@@ -397,6 +397,10 @@
       {
         "id": "type_dynamic",
         "description": "Style for Eqwalizer dynamic() type variables"
+      },
+      {
+        "id": "format_specifier",
+        "description": "Style for format specifiers (e.g., ~p, ~s) in io:format strings"
       }
     ],
     "semanticTokenScopes": [
@@ -423,6 +427,9 @@
           ],
           "*.type_dynamic": [
             "markup.bold"
+          ],
+          "*.format_specifier": [
+            "constant.other.placeholder"
           ]
         }
       }

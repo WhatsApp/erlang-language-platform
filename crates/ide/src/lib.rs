@@ -92,6 +92,7 @@ mod document_symbols;
 mod expand_macro;
 mod extend_selection;
 mod folding_ranges;
+mod format_string;
 mod handlers;
 mod hover;
 mod inlay_hints;

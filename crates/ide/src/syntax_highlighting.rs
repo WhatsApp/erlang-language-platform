@@ -29,6 +29,7 @@ use hir::Expr;
 use hir::ExprId;
 use hir::InFile;
 use hir::InFunctionClauseBody;
+use hir::Literal;
 use hir::NameArity;
 use hir::Semantic;
 use hir::Strategy;
@@ -39,6 +40,7 @@ use self::highlights::Highlights;
 use self::tags::Highlight;
 use crate::HlMod;
 use crate::HlTag;
+use crate::format_string;
 
 #[derive(Debug, Clone, Copy)]
 pub struct HlRange {
@@ -87,6 +89,7 @@ pub(crate) fn highlight(
     types_highlight(&sema, file_id, range_to_highlight, &mut hl);
     deprecated_func_highlight(&sema, file_id, range_to_highlight, &mut hl);
     dynamic_usages_highlight(types, range_to_highlight, &mut hl);
+    format_specifier_highlight(&sema, file_id, range_to_highlight, &mut hl);
     hl.to_vec()
 }
 
@@ -334,17 +337,152 @@ fn is_dynamic(t: &Type) -> bool {
     }
 }
 
+/// Highlight format specifiers (`~p`, `~w`, etc.) inside calls to
+/// `io:format`, `io_lib:format` and friends.
+///
+/// ## Architecture: HIR fold for discovery, syntax for ranges
+///
+/// We use `sema.fold_function` with `MacroStrategy::Expand` to find
+/// format calls.  This handles macro expansions correctly: when a
+/// format string is passed as a **macro argument** (e.g.
+/// `?LOG("~p", [X])`), the HIR lowerer's `resolve_var` restores the
+/// call-site `FileId`, so `range_for_expr` returns a range in the
+/// file the user is editing and highlighting works normally.
+///
+/// We deliberately stay at the **source-text** level for computing
+/// per-specifier `TextRange`s.  A pure-HIR approach (parsing
+/// specifiers from `Literal::String` content) would not help here
+/// because escape sequences, sigils and triple-quoting mean that
+/// content byte offsets do not map 1:1 to source byte offsets — and
+/// visual highlighting needs exact source positions.
+///
+/// Format strings embedded in a **macro body** (not passed as an
+/// argument) will have a `FileId` pointing to the macro definition
+/// file, so the `file_id` guard in `find_format_highlight_info`
+/// correctly skips them — there is no visible source location to
+/// highlight in the file using the macro.
+fn format_specifier_highlight(
+    sema: &Semantic,
+    file_id: FileId,
+    range_to_highlight: TextRange,
+    hl: &mut Highlights,
+) {
+    let highlight_spec = HlTag::Symbol(SymbolKind::Variable) | HlMod::FormatSpecifier;
+    let def_map = sema.def_map_local(file_id);
+    let file_text = sema.db.file_text(file_id);
+
+    for (_, def) in def_map.get_functions() {
+        // Skip functions entirely outside the visible range.
+        if let Some(fun_range) = def.range(sema.db.upcast())
+            && fun_range.intersect(range_to_highlight).is_none()
+        {
+            continue;
+        }
+        let function_id = InFile::new(file_id, def.function_id);
+        let function_body = sema.to_function_body(function_id);
+        sema.fold_function(
+            Strategy {
+                macros: MacroStrategy::Expand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            function_id,
+            (),
+            &mut |acc, clause_id, ctx| {
+                let clause_body = function_body.in_clause(clause_id);
+                if let AnyExpr::Expr(Expr::Call {
+                    target: CallTarget::Remote { module, name, .. },
+                    args,
+                }) = ctx.item
+                    && let Some(module_atom) = clause_body[module].as_atom()
+                    && let Some(name_atom) = clause_body[name].as_atom()
+                    && let Some(info) = format_string::match_format_function(
+                        &sema.db.lookup_atom(module_atom),
+                        &sema.db.lookup_atom(name_atom),
+                        args.len(),
+                    )
+                    && let Some(fmt_info) = find_format_highlight_info(
+                        file_id,
+                        &file_text,
+                        info,
+                        &args,
+                        range_to_highlight,
+                        clause_body,
+                    )
+                {
+                    for range in fmt_info.specifier_ranges {
+                        hl.add(HlRange {
+                            range,
+                            highlight: highlight_spec,
+                            binding_hash: None,
+                        });
+                    }
+                }
+                acc
+            },
+        )
+    }
+}
+
+struct FormatHighlightInfo {
+    specifier_ranges: Vec<TextRange>,
+}
+
+fn find_format_highlight_info(
+    file_id: FileId,
+    file_text: &str,
+    info: format_string::FormatFunctionInfo,
+    args: &[ExprId],
+    range_to_highlight: TextRange,
+    clause_body: &InFunctionClauseBody<()>,
+) -> Option<FormatHighlightInfo> {
+    let fmt_expr_id = args[info.format_arg_index];
+
+    // Only handle literal strings (not variables or concatenated strings)
+    match &clause_body[fmt_expr_id] {
+        Expr::Literal(Literal::String(_)) => {}
+        _ => return None,
+    }
+
+    let fmt_range = clause_body.range_for_expr(fmt_expr_id)?;
+    if fmt_range.file_id != file_id {
+        return None;
+    }
+
+    let fmt_src = format_string::parse_format_source(file_text, fmt_range.range)?;
+
+    let mut specifier_ranges = Vec::new();
+
+    for spec in &fmt_src.parsed.specifiers {
+        let range = format_string::specifier_source_range(
+            fmt_src.string_range,
+            fmt_src.content_offset,
+            spec,
+        );
+        if range_to_highlight.intersect(range).is_some() {
+            specifier_ranges.push(range);
+        }
+    }
+
+    if specifier_ranges.is_empty() {
+        None
+    } else {
+        Some(FormatHighlightInfo { specifier_ranges })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use elp_base_db::fixture::WithFixture;
     use elp_ide_db::EqwalizerDatabase;
     use elp_ide_db::RootDatabase;
     use elp_ide_db::elp_base_db;
+    use elp_ide_db::elp_base_db::FileLoader;
     use elp_ide_db::elp_base_db::assert_eq_expected;
     use elp_project_model::otp::otp_supported_by_eqwalizer;
     use itertools::Itertools;
     use stdx::trim_indent;
 
+    use crate::HlMod;
     use crate::HlTag;
     use crate::syntax_highlighting::highlight;
 
@@ -473,7 +611,7 @@ mod tests {
                 r#"
             //- eqwalizer
             //- /app_a/src/a_file.erl
-              -module(a_file).  
+              -module(a_file).
               -spec f(dynamic()) -> ok.
               f(AAA) -> ok.
             %%  ^^^type_dynamic
@@ -492,5 +630,255 @@ mod tests {
               -type bar() :: integer().
               "#,
         )
+    }
+
+    // Helper for format specifier tests. Uses \~ in fixture text so the
+    // fixture parser converts them back to ~ without consuming them as
+    // cursor markers. Verifies that the highlighted specifier texts match.
+    #[track_caller]
+    fn check_format_specifiers(fixture: &str, expected_specifiers: &[&str]) {
+        let fixture_str = trim_indent(fixture);
+        let (db, fixture) = RootDatabase::with_fixture(&fixture_str);
+        let file_id = fixture.files[0];
+        let highlights = highlight(&db, file_id, None, None);
+        let file_text = db.file_text(file_id);
+        let mut format_highlights: Vec<_> = highlights
+            .iter()
+            .filter(|h| h.highlight.mods.contains(HlMod::FormatSpecifier))
+            .collect();
+        format_highlights.sort_by_key(|h| h.range.start());
+        let actual_texts: Vec<&str> = format_highlights
+            .iter()
+            .map(|h| &file_text[usize::from(h.range.start())..usize::from(h.range.end())])
+            .collect();
+        assert_eq!(
+            actual_texts, expected_specifiers,
+            "Format specifier mismatch"
+        );
+    }
+
+    #[test]
+    fn format_specifier_simple() {
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("hello \~p world \~s done", [A, B]).
+            "#,
+            &["~p", "~s"],
+        );
+    }
+
+    #[test]
+    fn format_specifier_non_consuming() {
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("\~p\~n\~\~", [A]).
+            "#,
+            &["~p", "~n", "~~"],
+        );
+    }
+
+    #[test]
+    fn format_specifier_with_width() {
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("\~10.5f", [A]).
+            "#,
+            &["~10.5f"],
+        );
+    }
+
+    #[test]
+    fn format_specifier_io_format_3() {
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format(user, "\~w \~s", [A, B]).
+            "#,
+            &["~w", "~s"],
+        );
+    }
+
+    #[test]
+    fn format_specifier_io_lib_format() {
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io_lib:format("\~p", [A]).
+            "#,
+            &["~p"],
+        );
+    }
+
+    #[test]
+    fn format_specifier_multi_arg() {
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("\~W \~P", [A, 10, B, 20]).
+            "#,
+            &["~W", "~P"],
+        );
+    }
+
+    #[test]
+    fn format_specifier_fwrite() {
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:fwrite("\~p\~n", [A]),
+                io_lib:fwrite("\~s", [B]).
+            "#,
+            &["~p", "~n", "~s"],
+        );
+    }
+
+    #[test]
+    fn format_specifier_not_literal() {
+        // Format string is a variable, not a literal - should produce no highlights
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo(Fmt) ->
+                io:format(Fmt, [A]).
+            "#,
+            &[],
+        );
+    }
+
+    #[test]
+    fn format_specifier_not_format_call() {
+        // Not a format function - should produce no highlights
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                lists:map("\~p", [A]).
+            "#,
+            &[],
+        );
+    }
+
+    #[test]
+    fn format_specifier_exact_match() {
+        // Exact match: ~p→A, ~s→B
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo() ->
+                io:format("\~p \~s", [A, B]).
+            "#,
+            &["~p", "~s"],
+        );
+    }
+
+    #[test]
+    fn format_specifier_variable_args_list() {
+        // Args list is a variable - specifiers still highlighted
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            foo(Args) ->
+                io:format("\~p \~s", Args).
+            "#,
+            &["~p", "~s"],
+        );
+    }
+
+    #[test]
+    fn format_specifier_macro_wrapping_format() {
+        // Macro wraps io:format - format string passed as argument
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            -define(LOG(Fmt, Args), io:format(Fmt, Args)).
+            foo() ->
+                ?LOG("\~p \~s", [A, B]).
+            "#,
+            &["~p", "~s"],
+        );
+    }
+
+    #[test]
+    fn format_specifier_macro_from_header() {
+        // Macro defined in a header file, format string passed as argument at call site
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            -include("log.hrl").
+            foo() ->
+                ?LOG("\~p \~w", [A, B]).
+            //- /include/log.hrl include_path:/include
+            -define(LOG(Fmt, Args), io:format(Fmt, Args)).
+            "#,
+            &["~p", "~w"],
+        );
+    }
+
+    #[test]
+    fn format_specifier_macro_io_format_3() {
+        // Macro wraps io:format/3 with a device argument
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            -define(LOG(Fmt, Args), io:format(user, Fmt, Args)).
+            foo() ->
+                ?LOG("\~s \~p", [A, B]).
+            "#,
+            &["~s", "~p"],
+        );
+    }
+
+    #[test]
+    fn format_specifier_macro_io_lib_format() {
+        // Macro wraps io_lib:format
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            -define(FMT(Fmt, Args), io_lib:format(Fmt, Args)).
+            foo() ->
+                ?FMT("\~p", [A]).
+            "#,
+            &["~p"],
+        );
+    }
+
+    #[test]
+    fn non_trivial_format_specifier_macro_io_lib_format() {
+        // Macro wraps io_lib:format
+        check_format_specifiers(
+            r#"
+            //- /src/main.erl
+            -module(main).
+            -define(FMT(Fmt, Args), begin io_lib:format(Fmt, Args) ++ "~n" end).
+            foo() ->
+                ?FMT("\~p", [A]).
+            "#,
+            &["~p"],
+        );
     }
 }

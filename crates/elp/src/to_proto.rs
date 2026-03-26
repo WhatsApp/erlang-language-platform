@@ -702,6 +702,7 @@ fn semantic_token_type_and_modifiers(
             HlMod::ExportedType => semantic_tokens::EXPORTED_TYPE,
             HlMod::DeprecatedFunction => semantic_tokens::DEPRECATED_FUNCTION,
             HlMod::TypeDynamic => semantic_tokens::TYPE_DYNAMIC,
+            HlMod::FormatSpecifier => semantic_tokens::FORMAT_SPECIFIER,
         };
         mods |= modifier;
     }

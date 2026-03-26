@@ -52,6 +52,8 @@ pub enum HlMod {
     DeprecatedFunction,
     // Eqwalizer Dynamic type
     TypeDynamic,
+    // Format specifier in a format string (e.g., ~p, ~s in io:format)
+    FormatSpecifier,
 }
 
 impl HlTag {
@@ -81,12 +83,13 @@ impl fmt::Display for HlTag {
 }
 
 impl HlMod {
-    const ALL: &'static [HlMod; 5] = &[
+    const ALL: &'static [HlMod; 6] = &[
         HlMod::Bound,
         HlMod::ExportedFunction,
         HlMod::ExportedType,
         HlMod::DeprecatedFunction,
         HlMod::TypeDynamic,
+        HlMod::FormatSpecifier,
     ];
 
     fn as_str(self) -> &'static str {
@@ -96,6 +99,7 @@ impl HlMod {
             HlMod::ExportedType => "exported_type",
             HlMod::DeprecatedFunction => "deprecated_function",
             HlMod::TypeDynamic => "type_dynamic",
+            HlMod::FormatSpecifier => "format_specifier",
         }
     }
 
