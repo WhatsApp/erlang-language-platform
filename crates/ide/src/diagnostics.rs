@@ -95,6 +95,7 @@ use crate::common_test;
 
 mod application_env;
 mod atoms_exhaustion;
+mod bad_dialyzer_attribute;
 mod binary_string_to_sigil;
 mod boolean_precedence;
 mod bound_variable;
@@ -1881,6 +1882,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &dependent_header::LINTER,
     &expression_can_be_simplified::LINTER,
     &nonstandard_integer_formatting::LINTER,
+    &bad_dialyzer_attribute::LINTER,
 ];
 
 /// Unified registry for all types of linters

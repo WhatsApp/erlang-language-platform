@@ -217,6 +217,8 @@ mod tests {
             r#"
     -module(main).
     -di~alyzer({nowarn_function, f/0}).
+
+    f() -> ok.
             "#,
         );
         let config =

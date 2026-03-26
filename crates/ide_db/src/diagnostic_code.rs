@@ -197,6 +197,8 @@ pub enum DiagnosticCode {
     EqwalizerIgnore,
     #[strum(props(code = "W0075"))]
     UncheckedCast,
+    #[strum(props(code = "W0076"))]
+    BadDialyzerAttribute,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),

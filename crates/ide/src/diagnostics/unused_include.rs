@@ -650,7 +650,7 @@ foo() -> ok.
 foo() -> ok.
 
 //- /src/header.hrl
--dialyzer({nowarn_function, delete_at/3}).
+-dialyzer(no_return).
 
 "#,
         )
