@@ -2459,13 +2459,8 @@ pub fn erlang_service_diagnostics(
                     && !config.disabled.contains(&d.code)
                     && should_process_app(&app_name, config, &d.code)
             })
-            .map(|(file_id, d)| {
-                (
-                    file_id,
-                    add_elp_assists_to_erlang_service_diagnostic(db, file_id, d),
-                )
-            })
             .collect_vec();
+        let diags = add_elp_assists_to_erlang_service_diagnostics(db, file_id, diags);
         let diags = if diags.is_empty() {
             // If there are no diagnostics reported, return an empty list
             // against the `file_id` to clear the list of diagnostics for
@@ -2498,27 +2493,65 @@ fn tag_erlang_service_diagnostic(d: Diagnostic) -> Diagnostic {
     }
 }
 
-fn add_elp_assists_to_erlang_service_diagnostic(
+fn add_elp_assists_to_erlang_service_diagnostics(
     db: &RootDatabase,
     file_id: FileId,
-    d: Diagnostic,
-) -> Diagnostic {
-    match &d.code {
-        DiagnosticCode::ErlangService(s) => match s.as_str() {
-            "E1507" | "E1508" => {
-                let mut d = d.clone();
-                undefined_macro::add_assist(&Semantic::new(db), file_id, &mut d);
-                d
-            }
-            "L1252" => {
-                let mut d = d.clone();
-                undefined_record::add_assist(&Semantic::new(db), file_id, &mut d);
-                d
-            }
-            _ => d,
-        },
-        _ => d,
+    diags: Vec<(FileId, Diagnostic)>,
+) -> Vec<(FileId, Diagnostic)> {
+    // Check if any diagnostics need assists before building indexes
+    let needs_macro_index = diags.iter().any(|(_, d)| matches!(&d.code, DiagnosticCode::ErlangService(s) if s == "E1507" || s == "E1508"));
+    let needs_record_index = diags
+        .iter()
+        .any(|(_, d)| matches!(&d.code, DiagnosticCode::ErlangService(s) if s == "L1252"));
+
+    if !needs_macro_index && !needs_record_index {
+        return diags;
     }
+
+    let sema = Semantic::new(db);
+    let project_id = sema.db.file_project_id(file_id);
+
+    let macro_index = if needs_macro_index {
+        project_id.map(|pid| sema.macro_define_index(pid))
+    } else {
+        None
+    };
+    let record_index = if needs_record_index {
+        project_id.map(|pid| sema.record_define_index(pid))
+    } else {
+        None
+    };
+
+    diags
+        .into_iter()
+        .map(|(fid, d)| {
+            let d = match &d.code {
+                DiagnosticCode::ErlangService(s) => match s.as_str() {
+                    "E1507" | "E1508" => {
+                        if let Some(ref index) = macro_index {
+                            let mut d = d.clone();
+                            undefined_macro::add_assist(&sema, fid, index, &mut d);
+                            d
+                        } else {
+                            d
+                        }
+                    }
+                    "L1252" => {
+                        if let Some(ref index) = record_index {
+                            let mut d = d.clone();
+                            undefined_record::add_assist(&sema, fid, index, &mut d);
+                            d
+                        } else {
+                            d
+                        }
+                    }
+                    _ => d,
+                },
+                _ => d,
+            };
+            (fid, d)
+        })
+        .collect()
 }
 
 /// We split erlang service diagnostics into syntax errors and others.

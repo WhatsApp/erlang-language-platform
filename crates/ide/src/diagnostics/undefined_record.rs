@@ -10,12 +10,15 @@
 
 // Add an assist to an erlang service diagnostic for an undefined record.
 
+use std::sync::Arc;
+
 use elp_ide_completion::get_include_file;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::path_for_file;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use fxhash::FxHashSet;
+use hir::RecordDefineIndex;
 use hir::Semantic;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -26,11 +29,10 @@ use crate::fix;
 pub(crate) fn add_assist(
     sema: &Semantic,
     file_id: FileId,
+    index: &Arc<RecordDefineIndex>,
     diagnostic: &mut Diagnostic,
 ) -> Option<()> {
     let record_name = record_undefined_from_message(&diagnostic.message)?;
-    let project_id = sema.db.file_project_id(file_id)?;
-    let index = sema.record_define_index(project_id);
     let includes: FxHashSet<_> = index
         .complete(&record_name)
         .iter()

@@ -167,6 +167,8 @@ pub use sema::FaDef;
 pub use sema::InFunctionBody;
 pub use sema::InFunctionClauseBody;
 pub use sema::MacroCallDef;
+pub use sema::MacroDefineIndex;
+pub use sema::RecordDefineIndex;
 pub use sema::ScopeAnalysis;
 pub use sema::Semantic;
 

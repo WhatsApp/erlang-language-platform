@@ -10,6 +10,8 @@
 
 // Add an assist to an erlang service diagnostic for an undefined macro.
 
+use std::sync::Arc;
+
 use elp_ide_completion::get_include_file;
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
@@ -17,6 +19,7 @@ use elp_ide_db::elp_base_db::path_for_file;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use fxhash::FxHashSet;
+use hir::MacroDefineIndex;
 use hir::Semantic;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -27,12 +30,11 @@ use crate::fix;
 pub(crate) fn add_assist(
     sema: &Semantic,
     file_id: FileId,
+    index: &Arc<MacroDefineIndex>,
     diagnostic: &mut Diagnostic,
 ) -> Option<()> {
     let (macro_name, macro_arity) =
         macro_undefined_from_message(&diagnostic.code, &diagnostic.message)?;
-    let project_id = sema.db.file_project_id(file_id)?;
-    let index = sema.macro_define_index(project_id);
     let name = match macro_arity {
         Some(macro_arity) => format!("{macro_name}/{macro_arity}"),
         None => macro_name.clone(),
