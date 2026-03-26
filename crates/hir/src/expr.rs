@@ -927,7 +927,7 @@ pub enum TypeExpr {
         // arguments, for things like highlight related, or unused
         // function arguments.
         expansion: TypeExprId,
-        args: Vec<ExprId>,
+        args: Vec<TypeExprId>,
         macro_def: Option<InFile<DefineId>>,
         macro_name: MacroCallName,
     },

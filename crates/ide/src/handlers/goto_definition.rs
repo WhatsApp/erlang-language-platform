@@ -3948,4 +3948,36 @@ foo() ->
             "#,
         )
     }
+
+    #[test]
+    fn goto_type_in_macro_arg() {
+        // T261560129: type navigation should work inside macro arguments
+        check(
+            r#"
+//- /src/main.erl
+-module(main).
+
+-define(MY_MACRO(A, B), {A, B}).
+
+-type foo() :: number().
+%%    ^^^^^
+-type bar() :: ?MY_MACRO(atom(), f~oo()).
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_type_in_unresolved_macro_arg() {
+        // T261560129: type navigation should work inside unresolved macro arguments
+        check_expect_parse_error(
+            r#"
+//- /src/main.erl
+-module(main).
+
+-type foo() :: number().
+%%    ^^^^^
+-type bar() :: ?UNKNOWN_MACRO(atom(), f~oo()).
+"#,
+        );
+    }
 }

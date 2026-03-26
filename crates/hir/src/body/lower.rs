@@ -2244,7 +2244,7 @@ impl<'a> Ctx<'a> {
                         .args()
                         .iter()
                         .flat_map(|args| args.args())
-                        .map(|expr| self.lower_optional_expr(expr.expr()))
+                        .map(|expr| self.lower_optional_type_expr(expr.expr()))
                         .collect();
                     self.alloc_type_expr(
                         TypeExpr::MacroCall {
@@ -2265,7 +2265,7 @@ impl<'a> Ctx<'a> {
                         .args()
                         .iter()
                         .flat_map(|args| args.args())
-                        .map(|expr| self.lower_optional_expr(expr.expr()))
+                        .map(|expr| self.lower_optional_type_expr(expr.expr()))
                         .collect();
                     self.alloc_type_expr(
                         TypeExpr::MacroCall {

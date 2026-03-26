@@ -1211,7 +1211,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 macro_name: _,
             } => {
                 if self.strategy.macros == MacroStrategy::DoNotExpand {
-                    self.do_fold_exprs(args, acc)
+                    self.do_fold_type_exprs(args, acc)
                 } else {
                     self.macro_stack.push((
                         HirIdx {
@@ -2004,7 +2004,7 @@ bar() ->
                     Literal(Atom('foo')),
                     TypeExpr::MacroCall {
                         args
-                            Expr<0>:Literal(Atom('foo')),
+                            Literal(Atom('foo')),
                         macro_def
                             Some(InFile { file_id: FileId(0), value: Idx::<Define>(0) })
                         expansion
@@ -2041,7 +2041,7 @@ bar() ->
                     Literal(Atom('foo')),
                     TypeExpr::MacroCall {
                         args
-                            Expr<0>:Literal(Atom('foo')),
+                            Literal(Atom('foo')),
                         macro_def
                             Some(InFile { file_id: FileId(0), value: Idx::<Define>(0) })
                     },

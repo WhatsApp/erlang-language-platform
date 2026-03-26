@@ -1292,7 +1292,7 @@ impl<'a> Printer<'a> {
                 macro_name: _,
             } => {
                 self.print_herald("TypeExpr::MacroCall", &mut |this| {
-                    this.print_labelled("args", false, &mut |this| this.print_exprs(args));
+                    this.print_labelled("args", false, &mut |this| this.print_type_exprs(args));
                     this.print_labelled("macro_def", false, &mut |this| {
                         writeln!(this, "{macro_def:?}").ok();
                     });
@@ -1396,6 +1396,13 @@ impl<'a> Printer<'a> {
     fn print_exprs(&mut self, exprs: &[ExprId]) {
         for expr_id in exprs {
             self.print_expr(expr_id);
+            writeln!(self, ",").ok();
+        }
+    }
+
+    fn print_type_exprs(&mut self, types: &[TypeExprId]) {
+        for type_id in types {
+            self.print_type(type_id);
             writeln!(self, ",").ok();
         }
     }
