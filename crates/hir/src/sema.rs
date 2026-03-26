@@ -73,6 +73,7 @@ use crate::NameArity;
 use crate::PPDirective;
 use crate::Pat;
 use crate::PatId;
+use crate::RecordId;
 use crate::SpecId;
 use crate::SsrSource;
 use crate::Term;
@@ -979,6 +980,29 @@ impl Semantic<'_> {
         Arc::new(MacroDefineIndex { index })
     }
 
+    pub fn record_define_index(&self, project_id: ProjectId) -> Arc<RecordDefineIndex> {
+        let mut defines: FxHashMap<String, Vec<InFile<RecordId>>> = FxHashMap::default();
+        let include_file_index = self.db.include_file_index(project_id);
+        for file_id in include_file_index.path_to_file_id.values() {
+            let form_list = self.form_list(*file_id);
+            for (record_id, record) in form_list.records() {
+                let name = record.name.to_string();
+                let record = InFile::new(*file_id, record_id);
+                defines
+                    .entry(name)
+                    .and_modify(|ds| ds.push(record))
+                    .or_insert(vec![record]);
+            }
+        }
+
+        let mut builder = map::TrieBuilder::<char, Vec<InFile<RecordId>>>::new();
+        for (name, val) in defines {
+            builder.push(name.chars().collect::<Vec<_>>(), val)
+        }
+        let index = builder.build();
+        Arc::new(RecordDefineIndex { index })
+    }
+
     // -----------------------------------------------------------------
     // Folds
 
@@ -1187,6 +1211,24 @@ impl MacroDefineIndex {
     pub fn complete(&self, so_far: &str) -> Vec<(Vec<char>, &Vec<InFile<DefineId>>)> {
         let chars: Vec<char> = so_far.chars().collect();
         self.index.postfix_search::<Vec<_>, _>(&chars).collect()
+    }
+}
+
+#[derive(Debug)]
+pub struct RecordDefineIndex {
+    pub index: map::Trie<char, Vec<InFile<RecordId>>>,
+}
+
+impl RecordDefineIndex {
+    pub fn complete(&self, so_far: &str) -> Vec<(Vec<char>, &Vec<InFile<RecordId>>)> {
+        let chars: Vec<char> = so_far.chars().collect();
+        let mut results: Vec<_> = self.index.postfix_search::<Vec<_>, _>(&chars).collect();
+        // postfix_search only returns strict prefix matches, not exact matches.
+        // We need exact matches too for record lookups.
+        if let Some(val) = self.index.exact_match(&chars) {
+            results.push((chars, val));
+        }
+        results
     }
 }
 

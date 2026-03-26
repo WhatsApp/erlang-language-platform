@@ -157,6 +157,7 @@ mod trivial_match;
 mod unavailable_type;
 mod undefined_function;
 mod undefined_macro;
+mod undefined_record;
 mod undocumented_function;
 mod undocumented_module;
 mod unexported_function;
@@ -2507,6 +2508,11 @@ fn add_elp_assists_to_erlang_service_diagnostic(
             "E1507" | "E1508" => {
                 let mut d = d.clone();
                 undefined_macro::add_assist(&Semantic::new(db), file_id, &mut d);
+                d
+            }
+            "L1252" => {
+                let mut d = d.clone();
+                undefined_record::add_assist(&Semantic::new(db), file_id, &mut d);
                 d
             }
             _ => d,
