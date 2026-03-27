@@ -389,7 +389,7 @@ impl TypedSemantic for RootDatabase {
 
         let project_id = app_data.project_id;
 
-        let eqwalizer_enabled = self.is_eqwalizer_enabled(file_id);
+        let eqwalizer_enabled = EqwalizerDatabase::is_eqwalizer_enabled(self, file_id);
         if !eqwalizer_enabled {
             return Some(vec![]);
         }
@@ -416,6 +416,10 @@ impl TypedSemantic for RootDatabase {
 
     fn eqwalizer_type_at_position(&self, range: FileRange) -> Option<Arc<(Type, FileRange)>> {
         self.type_at_position(range)
+    }
+
+    fn is_eqwalizer_enabled(&self, file_id: FileId) -> bool {
+        EqwalizerDatabase::is_eqwalizer_enabled(self, file_id)
     }
 }
 

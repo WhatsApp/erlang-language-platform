@@ -79,4 +79,8 @@ impl TypedSemantic for TestDB {
     ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>> {
         panic!("Eqwalizer data is not available in HIR tests")
     }
+
+    fn is_eqwalizer_enabled(&self, _file_id: elp_base_db::FileId) -> bool {
+        false
+    }
 }

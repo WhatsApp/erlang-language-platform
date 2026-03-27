@@ -34,4 +34,6 @@ pub trait TypedSemantic {
         &self,
         range: FileRange,
     ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>>;
+
+    fn is_eqwalizer_enabled(&self, file_id: FileId) -> bool;
 }
