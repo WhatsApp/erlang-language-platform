@@ -604,13 +604,22 @@
 			</dict>
 			<key>name</key>
 			<string>meta.directive.doc.erlang</string>
-			<key>contentName</key>
-			<string>meta.embedded.block.markdown</string>
 			<key>patterns</key>
 			<array>
 				<dict>
-					<key>include</key>
-					<string>text.html.markdown</string>
+					<key>begin</key>
+					<string>(\s*|$)</string>
+					<key>while</key>
+					<string>^(?!\s*["]{3,})</string>
+					<key>contentName</key>
+					<string>meta.embedded.block.markdown</string>
+					<key>patterns</key>
+					<array>
+						<dict>
+							<key>include</key>
+							<string>text.html.markdown</string>
+						</dict>
+					</array>
 				</dict>
 			</array>
 		</dict>
