@@ -2314,6 +2314,7 @@ mod tests {
             let spec = r#"
         //- eqwalizer
         //- erlang_service
+        //- otp_apps:stdlib
         //- /app_glean/src/glean_module5.erl app:app_glean
             -module(glean_module5).
             foo(B) -> 1.
