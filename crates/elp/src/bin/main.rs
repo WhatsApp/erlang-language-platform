@@ -1200,30 +1200,28 @@ mod tests {
     fn lint_recursive(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix(
-            args_vec![
-                "lint",
-                "--module",
-                "lint_recursive",
-                "--diagnostic-filter",
-                "W0007",
-                "--apply-fix",
-                "--recursive",
-                "--experimental",
-                "--to",
-                tmp_path,
-            ],
-            "diagnostics",
-            resource_file!("diagnostics/parse_elp_lint_recursive.stdout"),
-            0,
-            buck,
-            None,
-            tmp_path,
-            get_resources_dir().join("lint/lint_recursive").as_path(),
-            &[("app_a/src/lint_recursive.erl", "lint_recursive.erl")],
-            false,
-        )
-        .expect("bad test");
+        let expected_dir = get_resources_dir().join("lint/lint_recursive");
+        let files = [("app_a/src/lint_recursive.erl", "lint_recursive.erl")];
+        LintFixSettings::new(tmp_path, expected_dir.as_path(), &files)
+            .buck(buck)
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--module",
+                    "lint_recursive",
+                    "--diagnostic-filter",
+                    "W0007",
+                    "--apply-fix",
+                    "--recursive",
+                    "--experimental",
+                    "--to",
+                    tmp_path,
+                ],
+                "diagnostics",
+                resource_file!("diagnostics/parse_elp_lint_recursive.stdout"),
+                None,
+            )
+            .expect("bad test");
     }
 
     #[test_case(false ; "rebar")]
@@ -1231,27 +1229,24 @@ mod tests {
     fn lint_ignore_apps_a(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix(
-            args_vec![
-                "lint",
-                "--no-stream",
-                "--diagnostic-filter",
-                "W0010",
-                "--experimental",
-                // ignored apps
-                "app_a",
-            ],
-            "linter",
-            resource_file!("linter/parse_elp_lint_ignore_apps.stdout"),
-            0,
-            buck,
-            None,
-            tmp_path,
-            get_resources_dir().join("lint/lint_recursive").as_path(),
-            &[],
-            false,
-        )
-        .expect("bad test");
+        let expected_dir = get_resources_dir().join("lint/lint_recursive");
+        LintFixSettings::new(tmp_path, expected_dir.as_path(), &[])
+            .buck(buck)
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--no-stream",
+                    "--diagnostic-filter",
+                    "W0010",
+                    "--experimental",
+                    // ignored apps
+                    "app_a",
+                ],
+                "linter",
+                resource_file!("linter/parse_elp_lint_ignore_apps.stdout"),
+                None,
+            )
+            .expect("bad test");
     }
 
     #[test_case(false ; "rebar")]
@@ -1259,28 +1254,25 @@ mod tests {
     fn lint_ignore_apps_b(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix(
-            args_vec![
-                "lint",
-                "--no-stream",
-                "--diagnostic-filter",
-                "W0010",
-                "--experimental",
-                // ignored apps
-                "app_b",
-                "app_c",
-            ],
-            "linter",
-            resource_file!("linter/parse_elp_lint_ignore_apps_b.stdout"),
-            0,
-            buck,
-            None,
-            tmp_path,
-            get_resources_dir().join("lint/lint_recursive").as_path(),
-            &[],
-            false,
-        )
-        .expect("bad test");
+        let expected_dir = get_resources_dir().join("lint/lint_recursive");
+        LintFixSettings::new(tmp_path, expected_dir.as_path(), &[])
+            .buck(buck)
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--no-stream",
+                    "--diagnostic-filter",
+                    "W0010",
+                    "--experimental",
+                    // ignored apps
+                    "app_b",
+                    "app_c",
+                ],
+                "linter",
+                resource_file!("linter/parse_elp_lint_ignore_apps_b.stdout"),
+                None,
+            )
+            .expect("bad test");
     }
 
     #[test_case(false ; "rebar")]
@@ -1288,28 +1280,26 @@ mod tests {
     fn lint_config_file_used(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix_stderr_sorted(
-            args_vec![
-                "lint",
-                "--diagnostic-filter",
-                "W0010",
-                "--experimental",
-                "--read-config"
-            ],
-            "linter",
-            resource_file!("linter/parse_elp_lint_config_output.stdout"),
-            101,
-            buck,
-            None,
-            tmp_path,
-            get_resources_dir().join("lint/lint_recursive").as_path(),
-            &[],
-            false,
-            Some(expect![[r#"
-                Errors found
-            "#]]),
-        )
-        .expect("bad test");
+        let expected_dir = get_resources_dir().join("lint/lint_recursive");
+        LintFixSettings::new(tmp_path, expected_dir.as_path(), &[])
+            .buck(buck)
+            .expect_code(101)
+            .sorted()
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--diagnostic-filter",
+                    "W0010",
+                    "--experimental",
+                    "--read-config"
+                ],
+                "linter",
+                resource_file!("linter/parse_elp_lint_config_output.stdout"),
+                Some(expect![[r#"
+                    Errors found
+                "#]]),
+            )
+            .expect("bad test");
     }
 
     #[test_case(false ; "rebar")]
@@ -1320,22 +1310,19 @@ mod tests {
         let project_path = project_path("linter");
         let project_path = Path::new(&project_path);
         let config_file_path = project_path.join("does_not_exist.toml");
-        check_lint_fix_stderr(
-            args_vec!["lint", "--experimental", "--config-file", &config_file_path],
-            "linter",
-            resource_file!("linter/parse_elp_lint_custom_config_invalid_output.stdout"),
-            101,
-            buck,
-            None,
-            tmp_path,
-            get_resources_dir().join("lint/lint_recursive").as_path(),
-            &[],
-            false,
-            Some(expect![[r#"
-                unable to read "{project_path}/does_not_exist.toml": No such file or directory (os error 2)
-            "#]]),
-        )
-        .expect("bad test");
+        let expected_dir = get_resources_dir().join("lint/lint_recursive");
+        LintFixSettings::new(tmp_path, expected_dir.as_path(), &[])
+            .buck(buck)
+            .expect_code(101)
+            .check_lint_fix(
+                args_vec!["lint", "--experimental", "--config-file", &config_file_path],
+                "linter",
+                resource_file!("linter/parse_elp_lint_custom_config_invalid_output.stdout"),
+                Some(expect![[r#"
+                    unable to read "{project_path}/does_not_exist.toml": No such file or directory (os error 2)
+                "#]]),
+            )
+            .expect("bad test");
     }
 
     #[test_case(false ; "rebar")]
@@ -1343,25 +1330,22 @@ mod tests {
     fn lint_custom_config_file_used(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix_stderr_sorted(
-            args_vec![
-                "lint",
-                "--experimental",
-                "--config-file",
-                project_path("linter/elp_lint_test1.toml")
-            ],
-            "linter",
-            resource_file!("linter/parse_elp_lint_custom_config_output.stdout"),
-            0,
-            buck,
-            None,
-            tmp_path,
-            get_resources_dir().join("lint/lint_recursive").as_path(),
-            &[],
-            false,
-            None,
-        )
-        .expect("bad test");
+        let expected_dir = get_resources_dir().join("lint/lint_recursive");
+        LintFixSettings::new(tmp_path, expected_dir.as_path(), &[])
+            .buck(buck)
+            .sorted()
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--experimental",
+                    "--config-file",
+                    project_path("linter/elp_lint_test1.toml")
+                ],
+                "linter",
+                resource_file!("linter/parse_elp_lint_custom_config_output.stdout"),
+                None,
+            )
+            .expect("bad test");
     }
 
     #[test_case(false ; "rebar")]
@@ -1370,30 +1354,28 @@ mod tests {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
         let config_path = project_path("linter/elp_lint_adhoc.toml");
-        check_lint_fix(
-            args_vec![
-                "lint",
-                "--experimental",
-                "--config-file",
-                &config_path,
-                "--module",
-                "app_b",
-                "--apply-fix",
-                "--one-shot",
-                "--to",
-                tmp_path,
-            ],
-            "linter",
-            resource_file!("linter/parse_elp_lint_adhoc_output.stdout"),
-            0,
-            buck,
-            None,
-            tmp_path,
-            get_resources_dir().join("lint/from_config").as_path(),
-            &[("app_b/src/app_b.erl", "app_b.erl")],
-            false,
-        )
-        .expect("bad test");
+        let expected_dir = get_resources_dir().join("lint/from_config");
+        let files = [("app_b/src/app_b.erl", "app_b.erl")];
+        LintFixSettings::new(tmp_path, expected_dir.as_path(), &files)
+            .buck(buck)
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--experimental",
+                    "--config-file",
+                    &config_path,
+                    "--module",
+                    "app_b",
+                    "--apply-fix",
+                    "--one-shot",
+                    "--to",
+                    tmp_path,
+                ],
+                "linter",
+                resource_file!("linter/parse_elp_lint_adhoc_output.stdout"),
+                None,
+            )
+            .expect("bad test");
     }
 
     #[test_case(false ; "rebar")]
@@ -1438,27 +1420,23 @@ mod tests {
     fn lint_config_file_parse_error(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix_stderr(
-            args_vec!["lint", "--experimental", "--read-config"],
-            "linter_bad_config",
-            resource_file!("linter/parse_elp_lint_bad_config_output.stdout"),
-            101,
-            buck,
-            None,
-            tmp_path,
-            tmp_path,
-            &[],
-            false,
-            Some(expect![[r#"
-                failed to read "{project_path}/.elp_lint.toml":TOML parse error at line 6, column 4
-                  |
-                6 |    syntax error
-                  |    ^
-                missing comma between array elements, expected `,`
+        LintFixSettings::new(tmp_path, tmp_path, &[])
+            .buck(buck)
+            .expect_code(101)
+            .check_lint_fix(
+                args_vec!["lint", "--experimental", "--read-config"],
+                "linter_bad_config",
+                resource_file!("linter/parse_elp_lint_bad_config_output.stdout"),
+                Some(expect![[r#"
+                    failed to read "{project_path}/.elp_lint.toml":TOML parse error at line 6, column 4
+                      |
+                    6 |    syntax error
+                      |    ^
+                    missing comma between array elements, expected `,`
 
-            "#]]),
-        )
-        .expect("bad test");
+                "#]]),
+            )
+            .expect("bad test");
     }
 
     #[test_case(false ; "rebar")]
@@ -1517,26 +1495,24 @@ mod tests {
     fn lint_explicit_enable_diagnostic(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix_stderr_sorted(
-            args_vec![
-                "lint",
-                "--config-file",
-                project_path("linter/elp_lint_test2.toml")
-            ],
-            "linter",
-            resource_file!("linter/parse_elp_lint_explicit_enable_output.stdout"),
-            101,
-            buck,
-            None,
-            tmp_path,
-            get_resources_dir().join("lint/lint_recursive").as_path(),
-            &[],
-            false,
-            Some(expect![[r#"
-                Errors found
-            "#]]),
-        )
-        .expect("bad test");
+        let expected_dir = get_resources_dir().join("lint/lint_recursive");
+        LintFixSettings::new(tmp_path, expected_dir.as_path(), &[])
+            .buck(buck)
+            .expect_code(101)
+            .sorted()
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--config-file",
+                    project_path("linter/elp_lint_test2.toml")
+                ],
+                "linter",
+                resource_file!("linter/parse_elp_lint_explicit_enable_output.stdout"),
+                Some(expect![[r#"
+                    Errors found
+                "#]]),
+            )
+            .expect("bad test");
     }
 
     #[test_case(false ; "rebar")]
@@ -1544,29 +1520,27 @@ mod tests {
     fn lint_json_output(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix_stderr_sorted(
-            args_vec![
-                "lint",
-                "--diagnostic-filter",
-                "W0010",
-                "--experimental",
-                "--format",
-                "json",
-            ],
-            "linter",
-            resource_file!("linter/parse_elp_lint_json_output.stdout"),
-            101,
-            buck,
-            None,
-            tmp_path,
-            get_resources_dir().join("lint/lint_recursive").as_path(),
-            &[],
-            false,
-            Some(expect![[r#"
-                Errors found
-            "#]]),
-        )
-        .expect("bad test");
+        let expected_dir = get_resources_dir().join("lint/lint_recursive");
+        LintFixSettings::new(tmp_path, expected_dir.as_path(), &[])
+            .buck(buck)
+            .expect_code(101)
+            .sorted()
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--diagnostic-filter",
+                    "W0010",
+                    "--experimental",
+                    "--format",
+                    "json",
+                ],
+                "linter",
+                resource_file!("linter/parse_elp_lint_json_output.stdout"),
+                Some(expect![[r#"
+                    Errors found
+                "#]]),
+            )
+            .expect("bad test");
     }
 
     #[test_case(false ; "rebar")]
@@ -1574,31 +1548,29 @@ mod tests {
     fn lint_applies_fix_using_to_dir(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix_stderr(
-            args_vec![
-                "lint",
-                "--module",
-                "lints",
-                "--diagnostic-filter",
-                "P1700",
-                "--to",
-                tmp_path,
-                "--apply-fix",
-            ],
-            "diagnostics",
-            resource_file!("diagnostics/parse_elp_lint_fix.stdout"),
-            101,
-            buck,
-            None,
-            tmp_path,
-            get_resources_dir().join("lint/head_mismatch").as_path(),
-            &[("app_a/src/lints.erl", "lints.erl")],
-            false,
-            Some(expect![[r#"
-                Errors found
-            "#]]),
-        )
-        .expect("Bad test");
+        let expected_dir = get_resources_dir().join("lint/head_mismatch");
+        let files = [("app_a/src/lints.erl", "lints.erl")];
+        LintFixSettings::new(tmp_path, expected_dir.as_path(), &files)
+            .buck(buck)
+            .expect_code(101)
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--module",
+                    "lints",
+                    "--diagnostic-filter",
+                    "P1700",
+                    "--to",
+                    tmp_path,
+                    "--apply-fix",
+                ],
+                "diagnostics",
+                resource_file!("diagnostics/parse_elp_lint_fix.stdout"),
+                Some(expect![[r#"
+                    Errors found
+                "#]]),
+            )
+            .expect("Bad test");
     }
 
     #[test_case(false ; "rebar")]
@@ -1606,33 +1578,31 @@ mod tests {
     fn lint_applies_fix_using_to_dir_json_output(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix_stderr(
-            args_vec![
-                "lint",
-                "--module",
-                "lints",
-                "--diagnostic-filter",
-                "P1700",
-                "--format",
-                "json",
-                "--to",
-                tmp_path,
-                "--apply-fix"
-            ],
-            "diagnostics",
-            resource_file!("diagnostics/parse_elp_lint_fix_json.stdout"),
-            101,
-            buck,
-            None,
-            tmp_path,
-            get_resources_dir().join("lint/head_mismatch").as_path(),
-            &[("app_a/src/lints.erl", "lints.erl")],
-            false,
-            Some(expect![[r#"
-                Errors found
-            "#]]),
-        )
-        .expect("Bad test");
+        let expected_dir = get_resources_dir().join("lint/head_mismatch");
+        let files = [("app_a/src/lints.erl", "lints.erl")];
+        LintFixSettings::new(tmp_path, expected_dir.as_path(), &files)
+            .buck(buck)
+            .expect_code(101)
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--module",
+                    "lints",
+                    "--diagnostic-filter",
+                    "P1700",
+                    "--format",
+                    "json",
+                    "--to",
+                    tmp_path,
+                    "--apply-fix"
+                ],
+                "diagnostics",
+                resource_file!("diagnostics/parse_elp_lint_fix_json.stdout"),
+                Some(expect![[r#"
+                    Errors found
+                "#]]),
+            )
+            .expect("Bad test");
     }
 
     #[test]
@@ -1652,29 +1622,30 @@ mod tests {
 
     fn do_lint_applies_fix_in_place(buck: bool) {
         let project = "in_place_tests";
-        check_lint_fix_stderr(
-            args_vec![
-                "lint",
-                "--module",
-                "lints",
-                "--diagnostic-filter",
-                "P1700",
-                "--apply-fix",
-            ],
-            project,
-            resource_file!("diagnostics/parse_elp_lint_fix.stdout"),
-            101,
-            buck,
-            None,
-            Path::new(&project_path(project)),
-            get_resources_dir().join("lint/head_mismatch").as_path(),
-            &[("app_a/src/lints.erl", "app_a/src/lints.erl")],
-            true,
-            Some(expect![[r#"
-                Errors found
-            "#]]),
-        )
-        .expect("Bad test");
+        let project_path_str = project_path(project);
+        let actual_dir = Path::new(&project_path_str);
+        let expected_dir = get_resources_dir().join("lint/head_mismatch");
+        let files = [("app_a/src/lints.erl", "app_a/src/lints.erl")];
+        LintFixSettings::new(actual_dir, expected_dir.as_path(), &files)
+            .buck(buck)
+            .expect_code(101)
+            .backup_files()
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--module",
+                    "lints",
+                    "--diagnostic-filter",
+                    "P1700",
+                    "--apply-fix",
+                ],
+                project,
+                resource_file!("diagnostics/parse_elp_lint_fix.stdout"),
+                Some(expect![[r#"
+                    Errors found
+                "#]]),
+            )
+            .expect("Bad test");
     }
 
     #[test_case(false ; "rebar")]
@@ -1682,29 +1653,27 @@ mod tests {
     fn lint_applies_ignore_fix_if_requested(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix(
-            args_vec![
-                "lint",
-                "--module",
-                "app_b",
-                "--diagnostic-filter",
-                "W0011",
-                "--to",
-                tmp_path,
-                "--apply-fix",
-                "--ignore-fix-only",
-            ],
-            "linter",
-            resource_file!("linter/parse_elp_lint_fix_ignore.stdout"),
-            0,
-            buck,
-            None,
-            tmp_path,
-            get_resources_dir().join("lint/ignore_app_env").as_path(),
-            &[("app_b/src/app_b.erl", "app_b.erl")],
-            false,
-        )
-        .expect("Bad test");
+        let expected_dir = get_resources_dir().join("lint/ignore_app_env");
+        let files = [("app_b/src/app_b.erl", "app_b.erl")];
+        LintFixSettings::new(tmp_path, expected_dir.as_path(), &files)
+            .buck(buck)
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--module",
+                    "app_b",
+                    "--diagnostic-filter",
+                    "W0011",
+                    "--to",
+                    tmp_path,
+                    "--apply-fix",
+                    "--ignore-fix-only",
+                ],
+                "linter",
+                resource_file!("linter/parse_elp_lint_fix_ignore.stdout"),
+                None,
+            )
+            .expect("Bad test");
     }
 
     #[test_case(false ; "rebar")]
@@ -1712,32 +1681,30 @@ mod tests {
     fn lint_applies_code_action_fixme_if_requested(buck: bool) {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
-        check_lint_fix_stderr(
-            args_vec![
-                "lint",
-                "--module",
-                "spelling",
-                "--diagnostic-filter",
-                "W0013",
-                "--to",
-                tmp_path,
-                "--apply-fix",
-                "--ignore-fix-only",
-            ],
-            "linter",
-            resource_file!("linter/parse_elp_lint_fixme_spelling.stdout"),
-            101,
-            buck,
-            None,
-            tmp_path,
-            get_resources_dir().join("lint/ignore_app_env").as_path(),
-            &[("app_a/src/spelling.erl", "spelling.erl")],
-            false,
-            Some(expect![[r#"
-                Errors found
-            "#]]),
-        )
-        .expect("Bad test");
+        let expected_dir = get_resources_dir().join("lint/ignore_app_env");
+        let files = [("app_a/src/spelling.erl", "spelling.erl")];
+        LintFixSettings::new(tmp_path, expected_dir.as_path(), &files)
+            .buck(buck)
+            .expect_code(101)
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--module",
+                    "spelling",
+                    "--diagnostic-filter",
+                    "W0013",
+                    "--to",
+                    tmp_path,
+                    "--apply-fix",
+                    "--ignore-fix-only",
+                ],
+                "linter",
+                resource_file!("linter/parse_elp_lint_fixme_spelling.stdout"),
+                Some(expect![[r#"
+                    Errors found
+                "#]]),
+            )
+            .expect("Bad test");
     }
 
     #[test_case(false ; "rebar")]
@@ -2695,6 +2662,114 @@ mod tests {
         first_line_only: bool,
     }
 
+    struct LintFixSettings<'a> {
+        snapshot: SnapshotSettings<'a>,
+        actual_dir: &'a Path,
+        expected_dir: &'a Path,
+        files: &'a [(&'a str, &'a str)],
+        backup_files: bool,
+    }
+
+    impl<'a> LintFixSettings<'a> {
+        fn new(
+            actual_dir: &'a Path,
+            expected_dir: &'a Path,
+            files: &'a [(&'a str, &'a str)],
+        ) -> Self {
+            Self {
+                snapshot: SnapshotSettings::default(),
+                actual_dir,
+                expected_dir,
+                files,
+                backup_files: false,
+            }
+        }
+
+        fn buck(mut self, buck: bool) -> Self {
+            self.snapshot = self.snapshot.buck(buck);
+            self
+        }
+
+        #[allow(dead_code)]
+        fn file(mut self, file: &'a str) -> Self {
+            self.snapshot = self.snapshot.file(file);
+            self
+        }
+
+        fn expect_code(mut self, code: i32) -> Self {
+            self.snapshot = self.snapshot.expect_code(code);
+            self
+        }
+
+        fn sorted(mut self) -> Self {
+            self.snapshot = self.snapshot.sorted();
+            self
+        }
+
+        fn backup_files(mut self) -> Self {
+            self.backup_files = true;
+            self
+        }
+
+        #[track_caller]
+        fn check_lint_fix(
+            &self,
+            args: Vec<OsString>,
+            project: &str,
+            expected: ExpectFile,
+            expected_stderr: Option<Expect>,
+        ) -> Result<()> {
+            let snapshot = &self.snapshot;
+            if !snapshot.buck || cfg!(feature = "buck") {
+                let (mut args, path) =
+                    add_project(args, project, snapshot.file, snapshot.json_config);
+                if !snapshot.buck {
+                    args.push("--rebar".into());
+                }
+                let orig_files = self.files.iter().map(|x| x.0).collect::<Vec<_>>();
+                // Take a backup. The Drop instance will restore at the end
+                let _backup = if self.backup_files {
+                    BackupFiles::save_files(project, &orig_files)
+                } else {
+                    BackupFiles::save_files(project, &[])
+                };
+                let (stdout, stderr, code) = elp(args);
+                assert_eq!(
+                    code, snapshot.expected_code,
+                    "Expected exit code {}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}",
+                    snapshot.expected_code
+                );
+                if let Some(expected_stderr) = expected_stderr {
+                    let project_path = path.to_str().expect("project_path");
+                    let normalised_stderr = stderr.replace(project_path, "{project_path}");
+                    expected_stderr.assert_eq(&normalised_stderr);
+                } else {
+                    expect![[""]].assert_eq(&stderr);
+                }
+                let output = if snapshot.sorted {
+                    sort_lines(&stdout)
+                } else {
+                    stdout
+                };
+                assert_normalised_file(
+                    expected,
+                    &output,
+                    path,
+                    snapshot.normalise_urls,
+                    snapshot.first_line_only,
+                );
+                for (expected_file, file) in self.files {
+                    let expected = expect_file!(self.expected_dir.join(expected_file));
+                    let actual = self.actual_dir.join(file);
+                    assert!(actual.exists());
+                    let content = fs::read_to_string(actual).unwrap();
+                    expected.assert_eq(content.as_str());
+                }
+            }
+            Ok(())
+        }
+    }
+
     impl<'a> SnapshotSettings<'a> {
         fn buck(mut self, buck: bool) -> Self {
             self.buck = buck;
@@ -2851,136 +2926,6 @@ mod tests {
             settings = settings.file(f);
         }
         settings.run_expect_patterns(args, project, expected_patterns);
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn check_lint_fix(
-        args: Vec<OsString>,
-        project: &str,
-        expected: ExpectFile,
-        expected_code: i32,
-        buck: bool,
-        file: Option<&str>,
-        actual_dir: &Path,
-        expected_dir: &Path,
-        files: &[(&str, &str)],
-        backup_files: bool,
-    ) -> Result<()> {
-        check_lint_fix_stderr(
-            args,
-            project,
-            expected,
-            expected_code,
-            buck,
-            file,
-            actual_dir,
-            expected_dir,
-            files,
-            backup_files,
-            None,
-        )
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn check_lint_fix_stderr(
-        args: Vec<OsString>,
-        project: &str,
-        expected: ExpectFile,
-        expected_code: i32,
-        buck: bool,
-        file: Option<&str>,
-        actual_dir: &Path,
-        expected_dir: &Path,
-        files: &[(&str, &str)],
-        backup_files: bool,
-        expected_stderr: Option<Expect>,
-    ) -> Result<()> {
-        if !buck || cfg!(feature = "buck") {
-            let (mut args, path) = add_project(args, project, file, None);
-            if !buck {
-                args.push("--rebar".into());
-            }
-            let orig_files = files.iter().map(|x| x.0).collect::<Vec<_>>();
-            // Take a backup. The Drop instance will restore at the end
-            let _backup = if backup_files {
-                BackupFiles::save_files(project, &orig_files)
-            } else {
-                BackupFiles::save_files(project, &[])
-            };
-            let (stdout, stderr, code) = elp(args);
-            assert_eq!(
-                code, expected_code,
-                "Expected exit code {expected_code}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
-            );
-            if let Some(expected_stderr) = expected_stderr {
-                let project_path = path.to_str().expect("project_path");
-                let mut normalised_stderr = stderr.clone();
-                normalised_stderr = normalised_stderr.replace(project_path, "{project_path}");
-                expected_stderr.assert_eq(&normalised_stderr);
-            } else {
-                expect![[""]].assert_eq(&stderr);
-            }
-            assert_normalised_file(expected, &stdout, path, false, false);
-            for (expected_file, file) in files {
-                let expected = expect_file!(expected_dir.join(expected_file));
-                let actual = actual_dir.join(file);
-                assert!(actual.exists());
-                let content = fs::read_to_string(actual).unwrap();
-                expected.assert_eq(content.as_str());
-            }
-        }
-        Ok(())
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn check_lint_fix_stderr_sorted(
-        args: Vec<OsString>,
-        project: &str,
-        expected: ExpectFile,
-        expected_code: i32,
-        buck: bool,
-        file: Option<&str>,
-        actual_dir: &Path,
-        expected_dir: &Path,
-        files: &[(&str, &str)],
-        backup_files: bool,
-        expected_stderr: Option<Expect>,
-    ) -> Result<()> {
-        if !buck || cfg!(feature = "buck") {
-            let (mut args, path) = add_project(args, project, file, None);
-            if !buck {
-                args.push("--rebar".into());
-            }
-            let orig_files = files.iter().map(|x| x.0).collect::<Vec<_>>();
-            // Take a backup. The Drop instance will restore at the end
-            let _backup = if backup_files {
-                BackupFiles::save_files(project, &orig_files)
-            } else {
-                BackupFiles::save_files(project, &[])
-            };
-            let (stdout, stderr, code) = elp(args);
-            assert_eq!(
-                code, expected_code,
-                "Expected exit code {expected_code}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}"
-            );
-            if let Some(expected_stderr) = expected_stderr {
-                let project_path = path.to_str().expect("project_path");
-                let normalised_stderr = stderr.replace(project_path, "{project_path}");
-                expected_stderr.assert_eq(&normalised_stderr);
-            } else {
-                expect![[""]].assert_eq(&stderr);
-            }
-            let sorted_stdout = sort_lines(&stdout);
-            assert_normalised_file(expected, &sorted_stdout, path, false, false);
-            for (expected_file, file) in files {
-                let expected = expect_file!(expected_dir.join(expected_file));
-                let actual = actual_dir.join(file);
-                assert!(actual.exists());
-                let content = fs::read_to_string(actual).unwrap();
-                expected.assert_eq(content.as_str());
-            }
-        }
-        Ok(())
     }
 
     fn assert_normalised_file(
