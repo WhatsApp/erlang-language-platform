@@ -15,6 +15,7 @@ elp_syntax.workspace = true
 
 anyhow.workspace = true
 dirs.workspace = true
+dunce.workspace = true
 eetf.workspace = true
 fxhash.workspace = true
 glob.workspace = true
