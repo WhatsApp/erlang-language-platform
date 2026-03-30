@@ -148,7 +148,7 @@ impl Linter for UncheckedCastLinter {
     }
 
     fn description(&self) -> &'static str {
-        "Avoid `?UNCHECKED_CAST`: this macro bypasses eqwalizer type checking by asserting a value \
+        "Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST`: these macros bypass eqwalizer type checking by asserting a value \
          has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative."
     }
 
@@ -166,8 +166,10 @@ impl SsrPatternsLinter for UncheckedCastLinter {
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
         lazy_static! {
-            static ref PATTERNS: Vec<(String, ())> =
-                vec![("ssr: ?UNCHECKED_CAST(_@Expr, _@Type).".to_string(), ())];
+            static ref PATTERNS: Vec<(String, ())> = vec![
+                ("ssr: ?UNCHECKED_CAST(_@Expr, _@Type).".to_string(), ()),
+                ("ssr: ?DYNAMIC_CAST(_@Expr).".to_string(), ()),
+            ];
         }
         &PATTERNS
     }
@@ -241,7 +243,57 @@ test() -> ok.
 -spec test(atom()) -> ok.
 test(A) ->
   ?UNCHECKED_CAST(A, ok).
-%%^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0075: Avoid `?UNCHECKED_CAST`: this macro bypasses eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
+%%^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST`: these macros bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
+"#,
+        )
+    }
+
+    /// Regression test: a wrapper macro that internally uses ?UNCHECKED_CAST
+    /// should trigger W0075 at the call site in the .erl, but currently:
+    ///   - BUG 1 (false positive): the ?UNCHECKED_CAST in the .hrl macro
+    ///     definition body is flagged instead of the use site.
+    ///   - BUG 2 (false negative): ?MY_CAST(A) in the .erl escapes detection
+    ///     entirely — no W0075 is emitted at the call site.
+    ///
+    /// Root cause: SSR match ranges point to the .hrl definition site, not
+    /// the .erl use site. The .in_file() filter discards the expansion match.
+    #[test]
+    fn test_unchecked_cast_through_wrapper_macro() {
+        check_diagnostics(
+            r#"
+//- /include/eqwalizer.hrl
+-define(UNCHECKED_CAST(Expr, _Type), Expr).
+-define(MY_CAST(Expr), ?UNCHECKED_CAST(Expr, binary())).
+%%                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST`: these macros bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
+
+//- /src/main.erl
+-module(main).
+-include("eqwalizer.hrl").
+-export([test/1]).
+
+-spec test(atom()) -> binary().
+test(A) ->
+  ?MY_CAST(A). % BUG: should trigger W0075 here but doesn't
+"#,
+        )
+    }
+
+    #[test]
+    fn test_dynamic_cast() {
+        check_diagnostics(
+            r#"
+//- /include/eqwalizer.hrl
+-define(DYNAMIC_CAST(Expr), Expr).
+
+//- /src/main.erl
+-module(main).
+-include("eqwalizer.hrl").
+-export([test/1]).
+
+-spec test(atom()) -> ok.
+test(A) ->
+  ?DYNAMIC_CAST(A).
+%%^^^^^^^^^^^^^^^^ 💡 warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST`: these macros bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
 "#,
         )
     }
