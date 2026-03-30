@@ -549,6 +549,93 @@ should_not_match() -> #foo{a = 1}.
     }
 
     #[test]
+    fn test_functions_supervisor_child_spec() {
+        check(
+            r#"
+        //- /src/main.erl
+
+        -export([start_link/1]).
+          start_link~(Arg) -> ok.
+        %%^^^^^^^^^^def
+
+        init([]) ->
+            {ok, {#{}, [
+                #{
+                    id => worker,
+                    start => {main, start_link, [arg]}
+                %%                  ^^^^^^^^^^
+                }
+            ]}}.
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_supervisor_child_spec_module() {
+        check(
+            r#"
+        //- /src/main.erl
+          -module(main).
+        %%^^^^^^^^^^^^^^def
+
+        init([]) ->
+            {ok, {#{}, [
+                #{
+                    id => worker,
+                    start => {ma~in, start_link, [arg]}
+                %%            ^^^^
+                }
+            ]}}.
+
+        //- /src/another.erl
+        -module(another).
+        foo() -> main:bar().
+        %%       ^^^^
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_supervisor_child_spec_no_id() {
+        // A map with `start => {M, F, A}` but without `id` should not
+        // be recognised as a supervisor child spec.
+        check(
+            r#"
+        //- /src/main.erl
+        -module(main).
+        -export([start_link/1]).
+        start_link(Arg) -> ok.
+
+        foo() ->
+            #{
+                start => {main, start_li~nk, [arg]}
+            }.
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_supervisor_child_spec_unknown_key() {
+        // A map with `id` and `start` but also an unknown key should
+        // not be recognised as a supervisor child spec.
+        check(
+            r#"
+        //- /src/main.erl
+        -module(main).
+        -export([start_link/1]).
+        start_link(Arg) -> ok.
+
+        foo() ->
+            #{
+                id => worker,
+                start => {main, start_li~nk, [arg]},
+                custom_key => value
+            }.
+        "#,
+        );
+    }
+
+    #[test]
     fn test_functions_import_1() {
         check(
             r#"

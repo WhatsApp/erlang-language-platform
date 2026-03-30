@@ -266,15 +266,21 @@ pub mod known {
         graphql_scanner,
         handle,
         hidden,
+        id,
         is_record,
         lager,
         main,
         module_info,
+        modules,
         ok,
         parse_transform,
+        restart,
         server,
         stacktrace,
         start_link,
+        shutdown,
+        significant,
+        start,
         string,
         thrift_parser,
         thrift_scanner,
@@ -338,4 +344,6 @@ pub mod known {
     pub const true_name: super::Name = super::Name::new_inline("true");
     #[allow(bad_style)]
     pub const false_name: super::Name = super::Name::new_inline("false");
+    #[allow(bad_style)]
+    pub const type_name: super::Name = super::Name::new_inline("type");
 }

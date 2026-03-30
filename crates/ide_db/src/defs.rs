@@ -37,6 +37,8 @@ use hir::InFile;
 use hir::Literal;
 use hir::MacroCallDef;
 use hir::Module;
+use hir::Name;
+use hir::NameArity;
 use hir::RecordDef;
 use hir::RecordFieldDef;
 use hir::Semantic;
@@ -573,10 +575,102 @@ pub fn from_wrapper(
     token: &InFile<SyntaxToken>,
     wrapper: SyntaxNode,
 ) -> Option<SymbolClass> {
-    // Parent is nothing structured, it must be a raw atom or var literal
     if let Some(atom) = ast::Atom::cast(wrapper.clone()) {
-        reference_direct(sema.to_def(token.with_value(&atom)))
+        from_supervisor_child_spec(sema, token, &atom)
+            .or_else(|| reference_direct(sema.to_def(token.with_value(&atom))))
     } else {
         classify_var(sema, token.file_id, wrapper)
+    }
+}
+
+/// Detect MFA tuples in supervisor child specs.
+/// Pattern: `#{start => {Module, Function, Args}, ...}`
+/// Returns a reference to the function if the atom is the module or function
+/// in a supervisor child spec's `start` field.
+pub fn from_supervisor_child_spec(
+    sema: &Semantic,
+    token: &InFile<SyntaxToken>,
+    atom: &ast::Atom,
+) -> Option<SymbolClass> {
+    let tuple = atom.syntax().ancestors().find_map(ast::Tuple::cast)?;
+    let tuple_exprs: Vec<_> = tuple.expr().collect();
+    if tuple_exprs.len() != 3 {
+        return None;
+    }
+
+    let map_field = tuple.syntax().ancestors().find_map(ast::MapField::cast)?;
+
+    let key = map_field.key()?;
+    let key_atom = match key {
+        ast::Expr::ExprMax(ast::ExprMax::Atom(a)) => a,
+        _ => return None,
+    };
+    if key_atom.as_name() != known::start {
+        return None;
+    }
+
+    // Sanity check: validate this looks like a supervisor child spec.
+    // A child spec must have an `id` key, and all keys must be from the
+    // valid set: id, start, restart, significant, shutdown, type, modules.
+    let map_expr = map_field
+        .syntax()
+        .ancestors()
+        .find_map(ast::MapExpr::cast)?;
+    const CHILD_SPEC_KEYS: &[Name] = &[
+        known::id,
+        known::start,
+        known::restart,
+        known::significant,
+        known::shutdown,
+        known::type_name,
+        known::modules,
+    ];
+    let mut has_id_key = false;
+    for field in map_expr.fields() {
+        match field.key() {
+            Some(ast::Expr::ExprMax(ast::ExprMax::Atom(a))) => {
+                let name = a.as_name();
+                if !CHILD_SPEC_KEYS.contains(&name) {
+                    return None;
+                }
+                if name == known::id {
+                    has_id_key = true;
+                }
+            }
+            _ => return None,
+        }
+    }
+    if !has_id_key {
+        return None;
+    }
+
+    let module_atom = match &tuple_exprs[0] {
+        ast::Expr::ExprMax(ast::ExprMax::Atom(a)) => a,
+        _ => return None,
+    };
+    let function_atom = match &tuple_exprs[1] {
+        ast::Expr::ExprMax(ast::ExprMax::Atom(a)) => a,
+        _ => return None,
+    };
+    let args_list = match &tuple_exprs[2] {
+        ast::Expr::ExprMax(ast::ExprMax::List(l)) => l,
+        _ => return None,
+    };
+
+    let module_name = module_atom.as_name();
+    let function_name = function_atom.as_name();
+    let arity = args_list.exprs().count() as u32;
+
+    let module = sema.resolve_module_name(token.file_id, module_name.as_str())?;
+    let def_map = sema.def_map(module.file.file_id);
+    let name_arity = NameArity::new(function_name, arity);
+    let function_def = def_map.get_function(&name_arity)?;
+
+    if atom.syntax().text_range() == module_atom.syntax().text_range() {
+        reference_direct(Some(module))
+    } else if atom.syntax().text_range() == function_atom.syntax().text_range() {
+        reference_direct(Some(function_def.clone()))
+    } else {
+        None
     }
 }
