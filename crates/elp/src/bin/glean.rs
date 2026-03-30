@@ -86,7 +86,6 @@ const HEADER_ARITY: u32 = 100;
 const FACTS_FILE: &str = "facts.json";
 
 // @fb-only: mod meta_only;
-
 #[derive(Serialize, Debug, Eq, Hash, PartialEq, Clone)]
 struct GleanFileId(u32);
 
@@ -859,8 +858,7 @@ pub fn index(
                 }
             }
             if args.print_metrics {
-                // @fb-only: println!("{}", meta_only::metrics_to_json(&metrics));
-            println!("{}", serde_json::to_string_pretty(&metrics)?); // @oss-only
+                print_metrics(&metrics)?;
             } else {
                 // @fb-only: meta_only::report_indexer_metrics(&metrics);
             }
@@ -869,14 +867,20 @@ pub fn index(
         Err(err) => {
             let metrics = IndexerMetrics::failed(duration_ms, &err);
             if args.print_metrics {
-                // @fb-only: println!("{}", meta_only::metrics_to_json(&metrics));
-            println!("{}", serde_json::to_string_pretty(&metrics)?); // @oss-only
+                print_metrics(&metrics)?;
             } else {
                 // @fb-only: meta_only::report_indexer_metrics(&metrics);
             }
             Err(err)
         }
     }
+}
+
+#[rustfmt::skip]
+fn print_metrics(metrics: &IndexerMetrics) -> Result<()> {
+    // @fb-only: println!("{}", meta_only::metrics_to_json(metrics));
+    println!("{}", serde_json::to_string_pretty(metrics)?); // @oss-only
+    Ok(())
 }
 
 /// Runs indexing and writes results. Duration filled in by caller.
