@@ -33,7 +33,6 @@ use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
-use elp_ide::elp_ide_db::elp_base_db::module_name;
 use elp_ide::elp_ide_db::elp_base_db::path_for_file;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
@@ -192,16 +191,6 @@ pub(crate) struct FunctionDeclarationFact {
     span: Location,
 }
 
-impl FunctionDeclarationFact {
-    fn new(file_id: FileId, fqn: MFA, span: Location) -> Self {
-        Self {
-            file_id: file_id.into(),
-            fqn,
-            span,
-        }
-    }
-}
-
 #[derive(Serialize, Debug)]
 pub(crate) struct XRefFact {
     #[serde(rename = "file")]
@@ -209,25 +198,10 @@ pub(crate) struct XRefFact {
     xrefs: Vec<XRefFactVal>,
 }
 
-impl XRefFact {
-    fn new(file_id: FileId, xrefs: Vec<XRefFactVal>) -> Self {
-        Self {
-            file_id: file_id.into(),
-            xrefs,
-        }
-    }
-}
-
 #[derive(Serialize, Debug)]
 struct XRefFactVal {
     source: Location,
     target: MFA,
-}
-
-impl XRefFactVal {
-    fn new(source: Location, target: MFA) -> Self {
-        Self { source, target }
-    }
 }
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
@@ -238,17 +212,6 @@ struct MFA {
     arity: u32,
     #[serde(skip_serializing)]
     file_id: GleanFileId,
-}
-
-impl MFA {
-    fn new(module: &ModuleName, name: &Name, arity: u32, file_id: FileId) -> Self {
-        Self {
-            module: module.to_string(),
-            name: name.to_string(),
-            arity,
-            file_id: file_id.into(),
-        }
-    }
 }
 
 #[derive(Serialize, Debug, Clone, Hash, PartialEq, Eq)]
@@ -484,12 +447,9 @@ pub(crate) struct DocDecl {
 struct IndexedFacts {
     file_facts: Vec<FileFact>,
     file_line_facts: Vec<FileLinesFact>,
-    declaration_facts: Vec<FunctionDeclarationFact>,
-    xref_facts: Vec<XRefFact>,
     module_facts: Vec<ModuleFact>,
-    //v2 facts
     file_declarations: Vec<FileDeclaration>,
-    xref_v2: Vec<XRefFile>,
+    xrefs: Vec<XRefFile>,
 }
 
 impl IndexedFacts {
@@ -498,18 +458,13 @@ impl IndexedFacts {
         line_fact: FileLinesFact,
         decl: FileDeclaration,
         xref: XRefFile,
-        facts_v1: Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
         module_fact: Option<ModuleFact>,
     ) -> Self {
         let mut facts = Self::default();
         facts.file_facts.push(file_fact);
         facts.file_line_facts.push(line_fact);
         facts.file_declarations.push(decl);
-        facts.xref_v2.push(xref);
-        if let Some((decl, xref)) = facts_v1 {
-            facts.declaration_facts.extend(decl);
-            facts.xref_facts.push(xref);
-        }
+        facts.xrefs.push(xref);
         if let Some(module_fact) = module_fact {
             facts.module_facts.push(module_fact);
         }
@@ -522,44 +477,18 @@ impl IndexedFacts {
         line_fact: FileLinesFact,
         decl: FileDeclaration,
         xref: XRefFile,
-        facts: Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
         module_fact: Option<ModuleFact>,
     ) {
         self.file_facts.push(file_fact);
         self.file_line_facts.push(line_fact);
         self.file_declarations.push(decl);
-        self.xref_v2.push(xref);
-        if let Some((decl, xref)) = facts {
-            self.declaration_facts.extend(decl);
-            self.xref_facts.push(xref);
-        }
+        self.xrefs.push(xref);
         if let Some(module_fact) = module_fact {
             self.module_facts.push(module_fact);
         }
     }
 
-    fn into_v1_facts(mut self) -> Vec<Fact> {
-        let file_lines_fact = mem::take(&mut self.file_line_facts);
-        let file_lines_fact = file_lines_fact.into_iter().map_into().collect();
-        let declaration_fact = mem::take(&mut self.declaration_facts);
-        let declaration_fact = declaration_fact.into_iter().map_into().collect();
-        let xref_fact = mem::take(&mut self.xref_facts);
-        let xref_fact = xref_fact.into_iter().map_into().collect();
-        vec![
-            Fact::File {
-                facts: mem::take(&mut self.file_facts),
-            },
-            Fact::FileLine {
-                facts: file_lines_fact,
-            },
-            Fact::FunctionDeclaration {
-                facts: declaration_fact,
-            },
-            Fact::XRef { facts: xref_fact },
-        ]
-    }
-
-    fn declaration_to_v1(
+    fn declaration_to_fact(
         decl: Declaration,
         file_id: GleanFileId,
         module: String,
@@ -648,7 +577,7 @@ impl IndexedFacts {
         Some(fact)
     }
 
-    fn into_v2_facts(mut self, modules: &FxHashMap<GleanFileId, String>) -> Vec<Fact> {
+    fn into_glean_facts(mut self, modules: &FxHashMap<GleanFileId, String>) -> Vec<Fact> {
         let file_lines_fact = mem::take(&mut self.file_line_facts);
         let file_lines_fact = file_lines_fact.into_iter().map_into().collect();
         let declaration_fact = mem::take(&mut self.file_declarations);
@@ -660,7 +589,7 @@ impl IndexedFacts {
                     let file_id = decl.file_id.clone();
                     if let Declaration::DocDeclaration(doc) = &d {
                         let declaration = doc.key.target.as_ref();
-                        if let Some(target) = Self::declaration_to_v1(
+                        if let Some(target) = Self::declaration_to_fact(
                             declaration.clone(),
                             file_id.clone(),
                             module.clone(),
@@ -677,14 +606,14 @@ impl IndexedFacts {
                             continue;
                         }
                     }
-                    if let Some(fact) = Self::declaration_to_v1(d, file_id, module.clone()) {
+                    if let Some(fact) = Self::declaration_to_fact(d, file_id, module.clone()) {
                         declarations.push(fact);
                     }
                 }
             }
         }
         let declaration_fact = declarations.into_iter().map_into().collect();
-        let xref_fact = mem::take(&mut self.xref_v2);
+        let xref_fact = mem::take(&mut self.xrefs);
         let mut xrefs = vec![];
         for fact in xref_fact {
             let file_id = fact.file_id;
@@ -791,11 +720,7 @@ impl IndexerMetrics {
                 .iter()
                 .map(|fd| fd.declarations.len())
                 .sum::<usize>();
-            xref_count += indexed
-                .xref_facts
-                .iter()
-                .map(|f| f.xrefs.len())
-                .sum::<usize>();
+            xref_count += indexed.xrefs.iter().map(|f| f.xrefs.len()).sum::<usize>();
         }
 
         Self {
@@ -905,13 +830,12 @@ fn write_results(
     cli: &mut dyn Cli,
     args: &Glean,
 ) -> Result<u64> {
+    if args.v2 {
+        eprintln!("elp-glean: --v2 is deprecated and now a no-op (v2 is always enabled)");
+    }
     let mut total_bytes: u64 = 0;
     for (name, fact) in facts {
-        let fact = if args.v2 {
-            fact.into_v2_facts(&module_index)
-        } else {
-            fact.into_v1_facts()
-        };
+        let fact = fact.into_glean_facts(&module_index);
         let content = if args.pretty {
             serde_json::to_string_pretty(&fact)?
         } else {
@@ -990,11 +914,11 @@ impl GleanIndexer {
                 let source_root = db.source_root(source_root_id);
                 let path = source_root.path_for_file(&file_id).unwrap();
                 match Self::index_file(db, file_id, path, project_id, &module_index) {
-                    Some((file, line, decl, xref, facts, module_fact)) => {
+                    Some((file, line, decl, xref, module_fact)) => {
                         let mut result = FxHashMap::default();
                         result.insert(
                             FACTS_FILE.to_string(),
-                            IndexedFacts::new(file, line, decl, xref, facts, module_fact),
+                            IndexedFacts::new(file, line, decl, xref, module_fact),
                         );
                         (result, vec![])
                     }
@@ -1029,8 +953,8 @@ impl GleanIndexer {
 
                 let iter = results.into_iter();
                 let facts = if config.multi {
-                    iter.map(|(file, line, decl, xref, facts, module_fact)| {
-                        IndexedFacts::new(file, line, decl, xref, facts, module_fact)
+                    iter.map(|(file, line, decl, xref, module_fact)| {
+                        IndexedFacts::new(file, line, decl, xref, module_fact)
                     })
                     .collect::<Vec<_>>()
                     .into_iter()
@@ -1041,8 +965,8 @@ impl GleanIndexer {
                     let mut result = FxHashMap::default();
                     let facts = iter.fold(
                         IndexedFacts::default(),
-                        |mut acc, (file_fact, line_fact, decl, xref, facts, module_fact)| {
-                            acc.add(file_fact, line_fact, decl, xref, facts, module_fact);
+                        |mut acc, (file_fact, line_fact, decl, xref, module_fact)| {
+                            acc.add(file_fact, line_fact, decl, xref, module_fact);
                             acc
                         },
                     );
@@ -1074,7 +998,6 @@ impl GleanIndexer {
         files
     }
 
-    #[allow(clippy::type_complexity)]
     fn index_file(
         db: &RootDatabase,
         file_id: FileId,
@@ -1086,30 +1009,19 @@ impl GleanIndexer {
         FileLinesFact,
         FileDeclaration,
         XRefFile,
-        Option<(Vec<FunctionDeclarationFact>, XRefFact)>,
         Option<ModuleFact>,
     )> {
         let file_fact = Self::file_fact(db, file_id, path, project_id)?;
         let line_fact = Self::line_fact(db, file_id);
-        let mut xref_v2 = Self::xrefs_v2(db, file_id, module_index);
-        let mut file_decl = Self::declarations_v2(db, file_id, path)?;
-        Self::add_xref_based_declarations(db, project_id, file_id, &mut xref_v2, &mut file_decl);
+        let mut xrefs = Self::xrefs(db, file_id, module_index);
+        let mut file_decl = Self::declarations(db, file_id, path)?;
+        Self::add_xref_based_declarations(db, project_id, file_id, &mut xrefs, &mut file_decl);
 
         let elp_module_index = db.module_index(project_id);
-        if let Some(module) = elp_module_index.module_for_file(file_id) {
-            let decl = Self::declarations_v1(db, file_id, module);
-            let xref = Self::xrefs(db, file_id, module_index);
-            let module_fact = Self::module_fact(db, file_id, module);
-            return Some((
-                file_fact,
-                line_fact,
-                file_decl,
-                xref_v2,
-                Some((decl, xref)),
-                Some(module_fact),
-            ));
-        }
-        Some((file_fact, line_fact, file_decl, xref_v2, None, None))
+        let module_fact = elp_module_index
+            .module_for_file(file_id)
+            .map(|module| Self::module_fact(db, file_id, module));
+        Some((file_fact, line_fact, file_decl, xrefs, module_fact))
     }
 
     fn module_fact(db: &RootDatabase, file_id: FileId, module_name: &ModuleName) -> ModuleFact {
@@ -1347,41 +1259,7 @@ impl GleanIndexer {
         FileLinesFact::new(file_id, lengths, ends_with_new_line)
     }
 
-    fn declarations_v1(
-        db: &RootDatabase,
-        file_id: FileId,
-        module: &ModuleName,
-    ) -> Vec<FunctionDeclarationFact> {
-        let def_map = db.def_map_local(file_id);
-        let mut result = vec![];
-        for (fun, def) in def_map.get_functions() {
-            let range = def.range(db);
-            if let Some(range) = range {
-                let loc = range.into();
-                let mfa = MFA::new(module, fun.name(), fun.arity(), def.file.file_id);
-                result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
-            }
-        }
-        for (ty, def) in def_map.get_types() {
-            let range = def.source(db).syntax().text_range();
-            let loc = range.into();
-            let mfa = MFA::new(module, ty.name(), ty.arity(), def.file.file_id);
-            result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
-        }
-        for (rec, def) in def_map.get_records() {
-            let range = def.source(db).syntax().text_range();
-            let loc = range.into();
-            let mfa = MFA::new(module, rec, REC_ARITY, def.file.file_id);
-            result.push(FunctionDeclarationFact::new(file_id, mfa, loc));
-        }
-        result
-    }
-
-    fn declarations_v2(
-        db: &RootDatabase,
-        file_id: FileId,
-        path: &VfsPath,
-    ) -> Option<FileDeclaration> {
+    fn declarations(db: &RootDatabase, file_id: FileId, path: &VfsPath) -> Option<FileDeclaration> {
         let mut declarations = vec![];
         let def_map = db.def_map_local(file_id);
         // file docs are too slow. Going with specs for now
@@ -1502,134 +1380,7 @@ impl GleanIndexer {
         })
     }
 
-    fn xrefs(
-        db: &RootDatabase,
-        file_id: FileId,
-        module_index: &FxHashMap<GleanFileId, String>,
-    ) -> XRefFact {
-        let sema = Semantic::new(db);
-        let source_file = sema.parse(file_id);
-        let mut xrefs = fold::fold_file(
-            &sema,
-            Strategy {
-                macros: MacroStrategy::DoNotExpand,
-                parens: ParenStrategy::InvisibleParens,
-            },
-            file_id,
-            vec![],
-            &mut |mut acc, ctx| match &ctx.item {
-                hir::AnyExpr::Expr(Expr::Call { target, args }) => {
-                    if let Some((body, _, expr_source)) = ctx.body_with_expr_source(&sema)
-                        && let Some(range) =
-                            Self::find_range(&sema, &ctx, &source_file, &expr_source)
-                    {
-                        let arity = args.len() as u32;
-                        if let Some(fact) =
-                            Self::resolve_call(&sema, target, arity, file_id, &body, range)
-                        {
-                            acc.push(fact);
-                        }
-                    }
-                    acc
-                }
-                hir::AnyExpr::Expr(Expr::CaptureFun { target, arity }) => {
-                    if let Some((body, range)) = ctx.find_range(&sema)
-                        && range.file_id == file_id
-                    {
-                        let arity: Option<u32> = match &body[*arity] {
-                            Expr::Literal(Literal::Integer(int)) => int.value.try_into().ok(),
-                            _ => None,
-                        };
-                        if let Some(arity) = arity
-                            && let Some(fact) = Self::resolve_call(
-                                &sema,
-                                target,
-                                arity,
-                                file_id,
-                                &body,
-                                range.range,
-                            )
-                        {
-                            acc.push(fact);
-                        }
-                    }
-                    acc
-                }
-                hir::AnyExpr::TypeExpr(TypeExpr::Call { target, args }) => {
-                    if let Some((body, _, expr_source)) = ctx.body_with_expr_source(&sema)
-                        && let Some(range) =
-                            Self::find_range(&sema, &ctx, &source_file, &expr_source)
-                    {
-                        let arity = args.len() as u32;
-                        if let Some(fact) =
-                            Self::resolve_type(&sema, target, arity, file_id, &body, range)
-                        {
-                            acc.push(fact);
-                        }
-                    }
-                    acc
-                }
-                hir::AnyExpr::Expr(Expr::Record { name, fields: _ }) => {
-                    if let Some(fact) = Self::resolve_record(&sema, *name, file_id, &ctx) {
-                        acc.push(fact);
-                    }
-                    acc
-                }
-                hir::AnyExpr::Expr(Expr::RecordIndex { name, field: _ }) => {
-                    if let Some(fact) = Self::resolve_record(&sema, *name, file_id, &ctx) {
-                        acc.push(fact);
-                    }
-                    acc
-                }
-                hir::AnyExpr::Expr(Expr::RecordField {
-                    name,
-                    expr: _,
-                    field: _,
-                }) => {
-                    if let Some(fact) = Self::resolve_record(&sema, *name, file_id, &ctx) {
-                        acc.push(fact);
-                    }
-                    acc
-                }
-                hir::AnyExpr::Expr(Expr::RecordUpdate {
-                    name,
-                    expr: _,
-                    fields: _,
-                }) => {
-                    if let Some(fact) = Self::resolve_record(&sema, *name, file_id, &ctx) {
-                        acc.push(fact);
-                    }
-                    acc
-                }
-                hir::AnyExpr::Pat(Pat::Record { name, fields: _ }) => {
-                    if let Some(fact) = Self::resolve_record(&sema, *name, file_id, &ctx) {
-                        acc.push(fact);
-                    }
-                    acc
-                }
-                hir::AnyExpr::Pat(Pat::RecordIndex { name, field: _ }) => {
-                    if let Some(fact) = Self::resolve_record(&sema, *name, file_id, &ctx) {
-                        acc.push(fact);
-                    }
-                    acc
-                }
-                hir::AnyExpr::TypeExpr(TypeExpr::Record { name, fields: _ }) => {
-                    if let Some(fact) = Self::resolve_record(&sema, *name, file_id, &ctx) {
-                        acc.push(fact);
-                    }
-                    acc
-                }
-                _ => acc,
-            },
-            &mut |acc, _on, _form_id| acc,
-        );
-
-        xrefs.retain(|x| module_index.contains_key(&x.target.file_id));
-
-        XRefFact::new(file_id, xrefs)
-    }
-
-    fn xref_v2_callback(
+    fn xref_callback(
         db: &RootDatabase,
         sema: &Semantic,
         source_file: &InFile<ast::SourceFile>,
@@ -1662,7 +1413,7 @@ impl GleanIndexer {
                 let (body, _, expr_source) = ctx.body_with_expr_source(sema)?;
                 let range = Self::find_range(sema, ctx, source_file, &expr_source)?;
                 let arity = args.len() as u32;
-                Self::resolve_call_v2(sema, target, arity, file_id, &body, range)
+                Self::resolve_call(sema, target, arity, file_id, &body, range)
             }
             hir::AnyExpr::Expr(Expr::CaptureFun { target, arity }) => {
                 let (body, range) = ctx.find_range(sema)?;
@@ -1671,7 +1422,7 @@ impl GleanIndexer {
                     _ => None,
                 };
                 if range.file_id == file_id {
-                    Self::resolve_call_v2(sema, target, arity?, file_id, &body, range.range)
+                    Self::resolve_call(sema, target, arity?, file_id, &body, range.range)
                 } else {
                     None
                 }
@@ -1683,7 +1434,7 @@ impl GleanIndexer {
             | hir::AnyExpr::Expr(Expr::RecordIndex { name, .. })
             | hir::AnyExpr::Expr(Expr::RecordUpdate { name, .. })
             | hir::AnyExpr::Expr(Expr::RecordField { name, .. }) => {
-                Self::resolve_record_v2(sema, *name, file_id, ctx)
+                Self::resolve_record(sema, *name, file_id, ctx)
             }
             hir::AnyExpr::Expr(Expr::MacroCall {
                 macro_def,
@@ -1691,7 +1442,7 @@ impl GleanIndexer {
                 ..
             }) => {
                 let def = macro_def.as_ref()?;
-                let mut resolved = Self::resolve_macro_v2(sema, def, source_file, ctx)?;
+                let mut resolved = Self::resolve_macro(sema, def, source_file, ctx)?;
                 // @fb-only: meta_only::resolve_macro_expansion(sema, *expansion, ctx, &mut resolved);
                 Some(resolved)
             }
@@ -1699,13 +1450,13 @@ impl GleanIndexer {
             | hir::AnyExpr::TypeExpr(TypeExpr::MacroCall { macro_def, .. })
             | hir::AnyExpr::Term(Term::MacroCall { macro_def, .. }) => {
                 let def = macro_def.as_ref()?;
-                Self::resolve_macro_v2(sema, def, source_file, ctx)
+                Self::resolve_macro(sema, def, source_file, ctx)
             }
             hir::AnyExpr::TypeExpr(TypeExpr::Call { target, args }) => {
                 let (body, _, expr_source) = ctx.body_with_expr_source(sema)?;
                 let range = Self::find_range(sema, ctx, source_file, &expr_source)?;
                 let arity = args.len() as u32;
-                Self::resolve_type_v2(sema, target, arity, file_id, &body, range)
+                Self::resolve_type(sema, target, arity, file_id, &body, range)
             }
             _ => None,
         };
@@ -1749,7 +1500,7 @@ impl GleanIndexer {
         result
     }
 
-    fn xrefs_v2(
+    fn xrefs(
         db: &RootDatabase,
         file_id: FileId,
         module_index: &FxHashMap<GleanFileId, String>,
@@ -1767,7 +1518,7 @@ impl GleanIndexer {
             file_id,
             vec![],
             &mut |mut acc, ctx| {
-                Self::xref_v2_callback(db, &sema, &source_file, file_id, &mut acc, &ctx);
+                Self::xref_callback(db, &sema, &source_file, file_id, &mut acc, &ctx);
                 acc
             },
             &mut |mut acc, on, form_id| match (on, form_id) {
@@ -1897,20 +1648,6 @@ impl GleanIndexer {
         file_id: FileId,
         body: &Body,
         range: TextRange,
-    ) -> Option<XRefFactVal> {
-        let def = resolve_call_target(sema, target, Some(arity), file_id, body)?;
-        let module = &def.module?;
-        let mfa = MFA::new(module, def.name.name(), arity, def.file.file_id);
-        Some(XRefFactVal::new(range.into(), mfa))
-    }
-
-    fn resolve_call_v2(
-        sema: &Semantic<'_>,
-        target: &CallTarget<ExprId>,
-        arity: u32,
-        file_id: FileId,
-        body: &Body,
-        range: TextRange,
     ) -> Option<XRef> {
         let def = resolve_call_target(sema, target, Some(arity), file_id, body)?;
         let target = FunctionTarget {
@@ -1924,7 +1661,7 @@ impl GleanIndexer {
         })
     }
 
-    fn resolve_macro_v2(
+    fn resolve_macro(
         sema: &Semantic<'_>,
         macro_def: &InFile<DefineId>,
         source_file: &InFile<ast::SourceFile>,
@@ -1971,25 +1708,6 @@ impl GleanIndexer {
         file_id: FileId,
         body: &Body,
         range: TextRange,
-    ) -> Option<XRefFactVal> {
-        let def = resolve_type_target(sema, target, Some(arity), file_id, body)?;
-        let module = module_name(sema.db.upcast(), def.file.file_id)?;
-        let mfa = MFA::new(
-            &module,
-            def.type_alias.name().name(),
-            arity,
-            def.file.file_id,
-        );
-        Some(XRefFactVal::new(range.into(), mfa))
-    }
-
-    fn resolve_type_v2(
-        sema: &Semantic,
-        target: &CallTarget<TypeExprId>,
-        arity: u32,
-        file_id: FileId,
-        body: &Body,
-        range: TextRange,
     ) -> Option<XRef> {
         let def = resolve_type_target(sema, target, Some(arity), file_id, body)?;
         Some(XRef {
@@ -2006,23 +1724,6 @@ impl GleanIndexer {
     }
 
     fn resolve_record(
-        sema: &Semantic,
-        name: hir::Atom,
-        file_id: FileId,
-        ctx: &AnyCallBackCtx,
-    ) -> Option<XRefFactVal> {
-        let record_name = sema.db.lookup_atom(name);
-        let def_map = sema.db.def_map(file_id);
-        let def = def_map.get_record(&record_name)?;
-        let module = module_name(sema.db.upcast(), def.file.file_id)?;
-        let (_, _, expr_source) = ctx.body_with_expr_source(sema)?;
-        let source_file = sema.parse(file_id);
-        let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
-        let mfa = MFA::new(&module, &def.record.name, REC_ARITY, def.file.file_id);
-        Some(XRefFactVal::new(range.into(), mfa))
-    }
-
-    fn resolve_record_v2(
         sema: &Semantic,
         name: hir::Atom,
         file_id: FileId,
@@ -2123,7 +1824,7 @@ mod tests {
     use crate::test_utils::resource_file;
 
     #[test]
-    fn serialization_test_v1() {
+    fn serialization_test() {
         let mut cli = Fake::default();
         let file_id = FileId::from_raw(10071);
         let location = Location {
@@ -2183,11 +1884,9 @@ mod tests {
         let facts = IndexedFacts {
             file_facts,
             file_line_facts,
-            declaration_facts: vec![],
-            xref_facts: vec![],
             module_facts: vec![module],
             file_declarations: vec![decl],
-            xref_v2: vec![xref],
+            xrefs: vec![xref],
         };
         let mut map = FxHashMap::default();
         map.insert(FACTS_FILE.to_string(), facts);
@@ -2257,21 +1956,6 @@ mod tests {
 
     #[test]
     fn declaration_test() {
-        let spec = r#"
-        //- /glean/app_glean/src/glean_module5.erl
-            -module(glean_module5).
-            -type tree() :: {'node', tree(), tree(), any(), any()}.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ glean_module5/tree/0
-            -record(user, {name = "" :: string(), notes :: tree()}).
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ glean_module5/user/99
-            main(A) -> A.
-        %%  ^^^^^^^^^^^^^ glean_module5/main/1
-        "#;
-        decl_check(spec);
-    }
-
-    #[test]
-    fn declaration_v2_test() {
         if otp_supported_by_eqwalizer() {
             let spec = r#"
         //- /app_glean/src/glean_module5.erl app:app_glean
@@ -2308,12 +1992,12 @@ mod tests {
             main(A) -> A.
         %%  ^^^^^^^^^^^^^ func/main/1/not_deprecated/not_exported
         "#;
-            decl_v2_check(spec);
+            decl_check(spec);
         }
     }
 
     #[test]
-    fn declaration_v2_types_test() {
+    fn declaration_types_test() {
         if otp_supported_by_eqwalizer() {
             let spec = r#"
         //- eqwalizer
@@ -2334,12 +2018,12 @@ mod tests {
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/not_exported
         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doc/-spec doc_foo(integer() | atom()) -> [integer()].
         "#;
-            decl_v2_check(spec);
+            decl_check(spec);
         }
     }
 
     #[test]
-    fn declaration_in_header_v2_test() {
+    fn declaration_in_header_test() {
         let spec = r#"
         //- /glean/app_glean/include/glean_module5.hrl include_path:/include
         % header
@@ -2353,37 +2037,11 @@ mod tests {
         //- /glean/app_glean/src/glean_module5.erl
             -module(glean_module5).
         "#;
-        decl_v2_check(spec);
+        decl_check(spec);
     }
 
     #[test]
     fn xref_call_test() {
-        let spec = r#"
-        //- /glean/app_glean/src/glean_module61.erl
-        -module(glean_module61).
-        foo(Bar) -> Bar + 1.
-        %%          ^^^ glean_module61/Bar/37
-        %%  ^^^ glean_module61/Bar/29
-
-        //- /glean/app_glean/src/glean_module6.erl
-        main() ->
-            B = baz(1, 2),
-        %%  ^ glean_module6/B/14
-        %%      ^^^ glean_module6/baz/2
-            F = glean_module61:foo(B),
-        %%                         ^ glean_module6/B/56
-        %%  ^ glean_module6/F/33
-        %%      ^^^^^^^^^^^^^^^^^^ glean_module61/foo/1
-            0.
-        baz(1, 2) ->
-            1 + 2.
-        "#;
-
-        xref_check(spec);
-    }
-
-    #[test]
-    fn xref_call_v2_test() {
         let spec = r#"
         //- /glean/app_glean/src/glean_module61.erl
         -module(glean_module61).
@@ -2399,11 +2057,11 @@ mod tests {
         baz(A, B) ->
             A + B."#;
 
-        xref_v2_check(spec);
+        xref_check(spec);
     }
 
     #[test]
-    fn xref_export_v2_test() {
+    fn xref_export_test() {
         let spec = r#"
         //- /src/glean_module61.erl
         -module(glean_module61).
@@ -2412,11 +2070,11 @@ mod tests {
         foo(Bar) -> Bar + 1.
         "#;
 
-        xref_v2_check(spec);
+        xref_check(spec);
     }
 
     #[test]
-    fn xref_deprecated_v2_test() {
+    fn xref_deprecated_test() {
         let spec = r#"
         //- /src/glean_module61.erl
         -module(glean_module61).
@@ -2429,11 +2087,11 @@ mod tests {
         bar(A) -> A.
         "#;
 
-        xref_v2_check(spec);
+        xref_check(spec);
     }
 
     #[test]
-    fn xref_header_v2_test() {
+    fn xref_header_test() {
         let spec = r#"
         //- /kernel/include/logger.hrl include_path:/include app:kernel
             % empty
@@ -2449,33 +2107,11 @@ mod tests {
         %%  ^^^^^^^^^^^^^^^^^^^^^^ macro.hrl/header
         "#;
 
-        xref_v2_check(spec);
-    }
-
-    #[test]
-    fn xref_captured_fun_test() {
-        let spec = r#"
-        //- /glean/app_glean/src/glean_module71.erl
-        foo(Bar) -> Bar + 1.
-        %%  ^^^ glean_module71/Bar/4
-        %%          ^^^ glean_module71/Bar/12
-
-        //- /glean/app_glean/src/glean_module7.erl
-        main() ->
-            Foo = fun glean_module71:foo/1,
-        %%        ^^^^^^^^^^^^^^^^^^^^^^^^ glean_module71/foo/1
-        %%  ^^^ glean_module7/Foo/14
-            Baz = fun baz/2.
-        %%  ^^^ glean_module7/Baz/50
-        %%        ^^^^^^^^^ glean_module7/baz/2
-        baz(1, 2) ->
-            1 + 2."#;
-
         xref_check(spec);
     }
 
     #[test]
-    fn xref_captured_fun_v2_test() {
+    fn xref_captured_fun_test() {
         let spec = r#"
         //- /glean/app_glean/src/glean_module71.erl
         foo(Bar) -> Bar + 1.
@@ -2489,53 +2125,11 @@ mod tests {
         baz(A, B) ->
             A + B."#;
 
-        xref_v2_check(spec);
-    }
-
-    #[test]
-    fn xref_types_test() {
-        let spec = r#"
-        //- /glean/app_glean/src/glean_module81.erl
-        -type small() ::  {non_neg_integer() | infinity}.
-
-        //- /glean/app_glean/src/glean_module8.erl
-        -type huuuge() ::  {non_neg_integer() | infinity}.
-        -spec baz(
-            A :: huuuge(),
-        %%       ^^^^^^ glean_module8/huuuge/0
-            B :: glean_module81:small()
-        %%       ^^^^^^^^^^^^^^^^^^^^ glean_module81/small/0
-        ) -> huuuge().
-        %%   ^^^^^^ glean_module8/huuuge/0
-        baz(A, B) ->
-        %%  ^ glean_module8/A/132
-        %%     ^ glean_module8/B/135
-            1 + 2."#;
-
         xref_check(spec);
     }
 
     #[test]
     fn xref_parametrized_type_test() {
-        let spec = r#"
-        //- /glean/app_glean/src/glean_module_parametrized.erl
-        -type my_type(X) :: X.
-        %%                  ^ glean_module_parametrized/X/20
-        -type my_integer() :: integer().
-
-        -spec my_function(my_type(my_integer())) -> integer().
-        %%                ^^^^^^^ glean_module_parametrized/my_type/1
-        %%                        ^^^^^^^^^^ glean_module_parametrized/my_integer/0
-        my_function(X) -> X.
-        %%          ^ glean_module_parametrized/X/124
-        %%                ^ glean_module_parametrized/X/130
-        "#;
-
-        xref_check(spec);
-    }
-
-    #[test]
-    fn xref_parametrized_type_v2_test() {
         let spec = r#"
         //- /glean/app_glean/src/glean_module_parametrized.erl
         -type my_type(X) :: X.
@@ -2547,11 +2141,11 @@ mod tests {
         my_function(X) -> X.
         "#;
 
-        xref_v2_check(spec);
+        xref_check(spec);
     }
 
     #[test]
-    fn xref_types_v2_test() {
+    fn xref_types_test() {
         let spec = r#"
         //- /glean/app_glean/src/glean_module81.erl
         -type small() ::  {non_neg_integer() | infinity}.
@@ -2568,7 +2162,7 @@ mod tests {
         baz(A, B) ->
             A + B."#;
 
-        xref_v2_check(spec);
+        xref_check(spec);
     }
 
     #[test]
@@ -2579,48 +2173,15 @@ mod tests {
             size :: non_neg_integer()
         }).
         baz(A) ->
-        %%  ^ glean_module9/A/55
-            #query{ size = 1 }.
-        %%  ^^^^^^ glean_module9/query/99
-        "#;
-
-        xref_check(spec);
-    }
-
-    #[test]
-    fn xref_record_v2_test() {
-        let spec = r#"
-        //- /glean/app_glean/src/glean_module9.erl
-        -record(query, {
-            size :: non_neg_integer()
-        }).
-        baz(A) ->
             #query{ size = A }.
         %%  ^^^^^^ glean_module9.erl/rec/query/no_urls
         "#;
 
-        xref_v2_check(spec);
-    }
-
-    #[test]
-    fn xref_record_index_test() {
-        let spec = r#"
-        //- /glean/app_glean/src/glean_module10.erl
-        -record(stats, {count, time}).
-        baz(Time) ->
-        %%  ^^^^ glean_module10/Time/35
-            [{#stats.count, 1},
-        %%    ^^^^^^ glean_module10/stats/99
-            {#stats.time, 2}].
-        %%   ^^^^^^ glean_module10/stats/99
-
-        "#;
-
         xref_check(spec);
     }
 
     #[test]
-    fn xref_record_index_v2_test() {
+    fn xref_record_index_test() {
         let spec = r#"
         //- /glean/app_glean/src/glean_module10.erl
         -record(stats, {count, time}).
@@ -2632,7 +2193,7 @@ mod tests {
 
         "#;
 
-        xref_v2_check(spec);
+        xref_check(spec);
     }
 
     #[test]
@@ -2641,45 +2202,15 @@ mod tests {
         //- /glean/app_glean/src/glean_module11.erl
         -record(stats, {count, time}).
         baz(Stats) ->
-        %%  ^^^^^ glean_module11/Stats/35
-            Stats#stats.count.
-        %%       ^^^^^^ glean_module11/stats/99
-        %%  ^^^^^ glean_module11/Stats/49
-        "#;
-
-        xref_check(spec);
-    }
-
-    #[test]
-    fn xref_record_field_v2_test() {
-        let spec = r#"
-        //- /glean/app_glean/src/glean_module11.erl
-        -record(stats, {count, time}).
-        baz(Stats) ->
             Stats#stats.count.
         %%       ^^^^^^ glean_module11.erl/rec/stats/no_urls
         "#;
 
-        xref_v2_check(spec);
-    }
-
-    #[test]
-    fn xref_record_update_test() {
-        let spec = r#"
-        //- /glean/app_glean/src/glean_module12.erl
-        -record(stats, {count, time}).
-        baz(Stats, 1) ->
-        %%  ^^^^^ glean_module12/Stats/35
-            Stats#stats{count = 1}.
-        %%       ^^^^^^ glean_module12/stats/99
-        %%  ^^^^^ glean_module12/Stats/52
-        "#;
-
         xref_check(spec);
     }
 
     #[test]
-    fn xref_record_update_v2_test() {
+    fn xref_record_update_test() {
         let spec = r#"
         //- /glean/app_glean/src/glean_module12.erl
         -record(stats, {count, time}).
@@ -2688,7 +2219,7 @@ mod tests {
         %%       ^^^^^^ glean_module12.erl/rec/stats/no_urls
         "#;
 
-        xref_v2_check(spec);
+        xref_check(spec);
     }
 
     #[test]
@@ -2697,37 +2228,8 @@ mod tests {
         //- /glean/app_glean/src/glean_module13.erl
         -record(stats, {count, time}).
         baz(Stats) ->
-        %%  ^^^^^ glean_module13/Stats/35
-            #stats{count = Count, time = Time} = Stats.
-        %%                 ^^^^^ glean_module13/Count/64
-        %%                               ^^^^ glean_module13/Time/78
-        %%                                       ^^^^^ glean_module13/Stats/86
-        %%  ^^^^^^ glean_module13/stats/99
-        "#;
-
-        xref_check(spec);
-    }
-
-    #[test]
-    fn xref_pat_record_v2_test() {
-        let spec = r#"
-        //- /glean/app_glean/src/glean_module13.erl
-        -record(stats, {count, time}).
-        baz(Stats) ->
             #stats{count = Count, time = Time} = Stats.
         %%  ^^^^^^ glean_module13.erl/rec/stats/no_urls
-        "#;
-
-        xref_v2_check(spec);
-    }
-
-    #[test]
-    fn xref_pat_record_index() {
-        let spec = r#"
-        //- /glean/app_glean/src/glean_module14.erl
-        -record(rec, {field}).
-        foo(#rec.field) -> ok.
-        %%  ^^^^ glean_module14/rec/99
         "#;
 
         xref_check(spec);
@@ -2742,25 +2244,11 @@ mod tests {
         %%  ^^^^ glean_module14.erl/rec/rec/no_urls
         "#;
 
-        xref_v2_check(spec);
-    }
-
-    #[test]
-    fn xref_record_in_type_test() {
-        let spec = r#"
-        //- /glean/app_glean/src/glean_module15.erl
-        -record(stats, {count, time}).
-        -spec baz() -> #stats{}.
-        %%             ^^^^^^ glean_module15/stats/99
-        baz() ->
-            #stats{count = 1, time = 2}.
-        %%  ^^^^^^ glean_module15/stats/99
-        "#;
         xref_check(spec);
     }
 
     #[test]
-    fn xref_record_in_type_v2_test() {
+    fn xref_record_in_type_test() {
         let spec = r#"
         //- /glean/app_glean/src/glean_module15.erl
         -record(stats, {count, time}).
@@ -2771,11 +2259,11 @@ mod tests {
         %%  ^^^^^^ glean_module15.erl/rec/stats/no_urls
         "#;
 
-        xref_v2_check(spec);
+        xref_check(spec);
     }
 
     #[test]
-    fn xref_macro_v2_test() {
+    fn xref_macro_test() {
         let spec = r#"
         //- /include/macro.hrl include_path:/include
         -define(TAU, 6.28).
@@ -2792,11 +2280,11 @@ mod tests {
         %%             ^^^ macro.erl/macro/MAX/137/no_urls/if (N > 200) -> N; true -> 200 end
 
         "#;
-        xref_v2_check(spec);
+        xref_check(spec);
     }
 
     #[test]
-    fn xref_macro_in_pat_v2_test() {
+    fn xref_macro_in_pat_test() {
         let spec = r#"
         //- /src/macro.erl
             -module(macro).
@@ -2806,11 +2294,11 @@ mod tests {
         %%       ^^^ macro.erl/macro/TAU/54/no_urls/6.28
 
         "#;
-        xref_v2_check(spec);
+        xref_check(spec);
     }
 
     #[test]
-    fn xref_macro_in_type_v2_test() {
+    fn xref_macro_in_type_test() {
         let spec = r#"
         //- /src/macro.erl
             -module(macro).
@@ -2821,11 +2309,11 @@ mod tests {
             baz(ok) -> 1.
 
         "#;
-        xref_v2_check(spec);
+        xref_check(spec);
     }
 
     #[test]
-    fn xref_macro_in_term_v2_test() {
+    fn xref_macro_in_term_test() {
         let spec = r#"
         //- /src/macro.erl
             -module(macro).
@@ -2834,7 +2322,7 @@ mod tests {
         %%        ^^^ macro.erl/macro/FOO/53/no_urls/atom
 
         "#;
-        xref_v2_check(spec);
+        xref_check(spec);
     }
 
     #[test]
@@ -2995,46 +2483,10 @@ mod tests {
         )
     }
 
-    fn xref_check(spec: &str) {
-        let (facts, mut expected_by_file, _, _d, module_index) = facts_with_annotations(spec);
-        let facts = facts.into_v2_facts(&module_index);
-        let xref_facts = facts
-            .iter()
-            .find_map(|x| match x {
-                Fact::XRef { facts } => Some(facts),
-                _ => None,
-            })
-            .unwrap();
-        for xref_fact in xref_facts {
-            let file_id = &xref_fact.key.file_id;
-            let mut annotations = expected_by_file
-                .remove(file_id)
-                .expect("Annotations should be present");
-            for xref in &xref_fact.key.xrefs {
-                let range: TextRange = xref.source.clone().into();
-                let label = xref.target.to_string();
-                let tuple = (range, label);
-                let idx = annotations
-                    .iter()
-                    .position(|a| a == &tuple)
-                    .unwrap_or_else(|| {
-                        panic!("Expected to find {:?} in {:?}", &tuple, &annotations)
-                    });
-                annotations.remove(idx);
-            }
-            assert_eq!(annotations, vec![], "Expected no more annotations");
-        }
-        assert_eq!(
-            expected_by_file,
-            HashMap::new(),
-            "Expected no more annotations"
-        );
-    }
-
     #[track_caller]
-    pub(crate) fn xref_v2_check(spec: &str) {
+    pub(crate) fn xref_check(spec: &str) {
         let (facts, mut expected_by_file, file_names, _d, _) = facts_with_annotations(spec);
-        for xref_fact in facts.xref_v2 {
+        for xref_fact in facts.xrefs {
             let file_id = xref_fact.file_id;
             let mut annotations = expected_by_file
                 .remove(&file_id)
@@ -3068,38 +2520,6 @@ mod tests {
     }
 
     fn decl_check(spec: &str) {
-        let (facts, mut expected_by_file, _, _d, module_index) = facts_with_annotations(spec);
-        let facts = facts.into_v2_facts(&module_index);
-        let func_decl = facts
-            .iter()
-            .find_map(|x| match x {
-                Fact::FunctionDeclaration { facts } => Some(facts),
-                _ => None,
-            })
-            .unwrap();
-        let file_id = &func_decl[0].key.file_id;
-        let mut annotations = expected_by_file
-            .remove(file_id)
-            .expect("Annotations should be present");
-        for decl in func_decl {
-            let range: TextRange = decl.key.span.clone().into();
-            let label = decl.key.fqn.to_string();
-            let tuple = (range, label);
-            let idx = annotations
-                .iter()
-                .position(|a| a == &tuple)
-                .unwrap_or_else(|| panic!("Expected to find {:?} in {:?}", &tuple, &annotations));
-            annotations.remove(idx);
-        }
-        assert_eq!(annotations, vec![], "Expected no more annotations");
-        assert_eq!(
-            expected_by_file,
-            HashMap::new(),
-            "Expected no more annotations"
-        );
-    }
-
-    fn decl_v2_check(spec: &str) {
         let (facts, mut expected_by_file, _, _d, _) = facts_with_annotations(spec);
         let hash_map = &expected_by_file.clone();
         let fixture_files = FxHashSet::from_iter(hash_map.keys());
