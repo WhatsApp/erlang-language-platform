@@ -76,7 +76,6 @@ use hir::sema::to_def::resolve_type_target;
 use itertools::Itertools;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
-use serde::Serialize;
 
 use crate::args::Glean;
 
@@ -85,362 +84,43 @@ const HEADER_ARITY: u32 = 100;
 const FACTS_FILE: &str = "facts.json";
 
 // @fb-only: mod meta_only;
-#[derive(Serialize, Debug, Eq, Hash, PartialEq, Clone)]
-struct GleanFileId(u32);
+pub(crate) mod types;
+
+use types::CommentFact;
+use types::Declaration;
+use types::DocDecl;
+use types::Fact;
+use types::FileDeclaration;
+use types::FileFact;
+use types::FileLinesFact;
+use types::FuncDecl;
+use types::FunctionDeclarationFact;
+use types::FunctionTarget;
+use types::GleanFileId;
+use types::HeaderDecl;
+use types::HeaderTarget;
+use types::Key;
+use types::Location;
+use types::MFA;
+use types::MacroDecl;
+use types::MacroTarget;
+use types::ModuleFact;
+use types::RecordDecl;
+use types::RecordTarget;
+use types::TaggedUrl;
+use types::TypeDecl;
+use types::TypeTarget;
+use types::VarDecl;
+use types::VarTarget;
+use types::XRef;
+use types::XRefFact;
+use types::XRefFactVal;
+use types::XRefFile;
+use types::XRefTarget;
 
 #[derive(Clone, Debug, Default)]
 struct IndexConfig {
     pub multi: bool,
-}
-
-impl From<GleanFileId> for FileId {
-    fn from(val: GleanFileId) -> Self {
-        FileId::from_raw(val.0 - 1)
-    }
-}
-
-impl From<FileId> for GleanFileId {
-    fn from(value: FileId) -> Self {
-        GleanFileId(value.index() + 1)
-    }
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct FileFact {
-    #[serde(rename = "id")]
-    file_id: GleanFileId,
-    #[serde(rename = "key")]
-    file_path: String,
-}
-
-impl FileFact {
-    fn new(file_id: FileId, file_path: String) -> Self {
-        Self {
-            file_id: file_id.into(),
-            file_path,
-        }
-    }
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct FileLinesFact {
-    #[serde(rename = "file")]
-    file_id: GleanFileId,
-    lengths: Vec<u32>,
-    #[serde(rename = "endsInNewline")]
-    ends_with_new_line: bool,
-    #[serde(rename = "hasUnicodeOrTabs")]
-    unicode_or_tabs: bool,
-}
-
-impl FileLinesFact {
-    fn new(file_id: FileId, lengths: Vec<u32>, ends_with_new_line: bool) -> Self {
-        Self {
-            file_id: file_id.into(),
-            lengths,
-            ends_with_new_line,
-            unicode_or_tabs: true,
-        }
-    }
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct ModuleFact {
-    #[serde(rename = "file")]
-    file_id: GleanFileId,
-    name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    oncall: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    exports: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    behaviours: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    module_doc: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    exdoc_link: Option<String>,
-}
-
-impl ModuleFact {
-    fn new(
-        file_id: FileId,
-        name: String,
-        oncall: Option<String>,
-        exports: Option<Vec<String>>,
-        behaviours: Option<Vec<String>>,
-        module_doc: Option<String>,
-        exdoc_link: Option<String>,
-    ) -> Self {
-        Self {
-            file_id: file_id.into(),
-            name,
-            oncall,
-            exports,
-            behaviours,
-            module_doc,
-            exdoc_link,
-        }
-    }
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct FunctionDeclarationFact {
-    #[serde(rename = "file")]
-    file_id: GleanFileId,
-    fqn: MFA,
-    span: Location,
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct XRefFact {
-    #[serde(rename = "file")]
-    file_id: GleanFileId,
-    xrefs: Vec<XRefFactVal>,
-}
-
-#[derive(Serialize, Debug)]
-struct XRefFactVal {
-    source: Location,
-    target: MFA,
-}
-
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
-#[allow(clippy::upper_case_acronyms)]
-struct MFA {
-    module: String,
-    name: String,
-    arity: u32,
-    #[serde(skip_serializing)]
-    file_id: GleanFileId,
-}
-
-#[derive(Serialize, Debug, Clone, Hash, PartialEq, Eq)]
-struct Location {
-    start: u32,
-    length: u32,
-}
-
-impl From<Location> for TextRange {
-    fn from(val: Location) -> Self {
-        TextRange::at(val.start.into(), val.length.into())
-    }
-}
-
-#[derive(Serialize, Debug)]
-#[serde(tag = "predicate")]
-pub(crate) enum Fact {
-    #[serde(rename = "src.File")]
-    File { facts: Vec<FileFact> },
-    #[serde(rename = "src.FileLines")]
-    FileLine { facts: Vec<Key<FileLinesFact>> },
-    #[serde(rename = "erlang.FunctionDeclaration")]
-    FunctionDeclaration {
-        facts: Vec<Key<FunctionDeclarationFact>>,
-    },
-    #[serde(rename = "erlang.XRefsViaFqnByFile")]
-    XRef { facts: Vec<Key<XRefFact>> },
-    #[serde(rename = "erlang.DeclarationComment")]
-    DeclarationComment { facts: Vec<Key<CommentFact>> },
-    #[serde(rename = "erlang.Module")]
-    Module { facts: Vec<Key<ModuleFact>> },
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct XRefFile {
-    #[serde(rename = "file")]
-    file_id: GleanFileId,
-    xrefs: Vec<XRef>,
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct XRef {
-    source: Location,
-    target: XRefTarget,
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) enum XRefTarget {
-    #[serde(rename = "func")]
-    Function(Key<FunctionTarget>),
-    #[serde(rename = "macro")]
-    Macro(Key<MacroTarget>),
-    #[serde(rename = "header")]
-    Header(Key<HeaderTarget>),
-    #[serde(rename = "record")]
-    Record(Key<RecordTarget>),
-    #[serde(rename = "ttype")]
-    Type(Key<TypeTarget>),
-    #[serde(rename = "varr")]
-    Var(Key<VarTarget>),
-}
-
-impl XRefTarget {
-    fn file_id(&self) -> &GleanFileId {
-        match self {
-            XRefTarget::Function(xref) => &xref.key.file_id,
-            XRefTarget::Macro(xref) => &xref.key.file_id,
-            XRefTarget::Header(xref) => &xref.key.file_id,
-            XRefTarget::Record(xref) => &xref.key.file_id,
-            XRefTarget::Type(xref) => &xref.key.file_id,
-            XRefTarget::Var(xref) => &xref.key.file_id,
-        }
-    }
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct FunctionTarget {
-    #[serde(rename = "file")]
-    file_id: GleanFileId,
-    name: String,
-    arity: u32,
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct TaggedUrl {
-    pub tag: String,
-    pub display_name: String,
-    pub url: String,
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct MacroTarget {
-    #[serde(rename = "file")]
-    file_id: GleanFileId,
-    name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    arity: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    expansion: Option<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    tagged_urls: Vec<TaggedUrl>,
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct HeaderTarget {
-    #[serde(rename = "file")]
-    file_id: GleanFileId,
-    name: String,
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct RecordTarget {
-    #[serde(rename = "file")]
-    file_id: GleanFileId,
-    name: String,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    tagged_urls: Vec<TaggedUrl>,
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct TypeTarget {
-    #[serde(rename = "file")]
-    file_id: GleanFileId,
-    name: String,
-    arity: u32,
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct VarTarget {
-    #[serde(rename = "file")]
-    file_id: GleanFileId,
-    name: String,
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct FileDeclaration {
-    #[serde(rename = "file")]
-    file_id: GleanFileId,
-    declarations: Vec<Declaration>,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub(crate) struct Key<T> {
-    key: T,
-}
-
-impl<T> From<T> for Key<T> {
-    fn from(item: T) -> Self {
-        Key { key: item }
-    }
-}
-
-#[derive(Serialize, Debug)]
-pub(crate) struct CommentFact {
-    #[serde(rename = "file")]
-    file_id: GleanFileId,
-    declaration: Key<FunctionDeclarationFact>,
-    span: Location,
-    text: String,
-}
-
-#[derive(Serialize, Debug, Clone)]
-#[allow(clippy::enum_variant_names)]
-pub(crate) enum Declaration {
-    #[serde(rename = "func")]
-    FunctionDeclaration(Key<FuncDecl>),
-    #[serde(rename = "macro")]
-    MacroDeclaration(Key<MacroDecl>),
-    #[serde(rename = "ttype")]
-    TypeDeclaration(Key<TypeDecl>),
-    #[serde(rename = "record")]
-    RecordDeclaration(Key<RecordDecl>),
-    #[serde(rename = "varr")]
-    VarDeclaration(Key<VarDecl>),
-    #[serde(rename = "header")]
-    HeaderDeclaration(Key<HeaderDecl>),
-    #[serde(rename = "doc")]
-    DocDeclaration(Key<DocDecl>),
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub(crate) struct FuncDecl {
-    name: String,
-    arity: u32,
-    span: Location,
-    exported: bool,
-    deprecated: bool,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub(crate) struct MacroDecl {
-    name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    arity: Option<u32>,
-    span: Location,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub(crate) struct TypeDecl {
-    name: String,
-    arity: u32,
-    span: Location,
-    exported: bool,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub(crate) struct RecordDecl {
-    name: String,
-    span: Location,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub(crate) struct VarDecl {
-    name: String,
-    doc: String,
-    span: Location,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub(crate) struct HeaderDecl {
-    name: String,
-    span: Location,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub(crate) struct DocDecl {
-    target: Box<Declaration>,
-    span: Location,
-    text: String,
 }
 
 #[derive(Debug, Default)]
