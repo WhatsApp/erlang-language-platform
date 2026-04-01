@@ -1786,6 +1786,41 @@ mod tests {
         );
     }
 
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_select_files_skip_unsupported(buck: bool) {
+        // Like lint_select_files, but one of the --file arguments is a
+        // BUCK file that won't be in the VFS.  The linter should
+        // gracefully skip it and still process the valid Erlang file.
+        simple_snapshot_expect_error(
+            args_vec![
+                "lint",
+                "--file",
+                project_path("linter/app_a/src/app_a.erl"),
+                "--file",
+                project_path("linter/BUCK.ELP")
+            ],
+            "linter",
+            resource_file!("linter/select_files_skip_unsupported.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_select_files_only_unsupported(buck: bool) {
+        // Only an unsupported file is selected. The linter should
+        // gracefully skip it and NOT fall back to analysing all files.
+        simple_snapshot(
+            args_vec!["lint", "--file", project_path("linter/BUCK.ELP")],
+            "linter",
+            resource_file!("linter/select_files_only_unsupported.stdout"),
+            buck,
+            None,
+        );
+    }
+
     #[test]
     fn lint_warnings_as_errors() {
         simple_snapshot_expect_error_sorted(

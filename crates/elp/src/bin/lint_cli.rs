@@ -349,23 +349,31 @@ fn do_diagnostics_one(
 
 // ---------------------------------------------------------------------
 
+/// Resolve user-specified targets (`--module` or `--file`) to file IDs.
+///
+/// Returns `None` when no specific targets were requested (i.e. lint all),
+/// or `Some(files)` when the user expressed intent to select files — even
+/// if the resulting vec is empty because every target was skipped.
 fn resolve_target_files(
     analysis: &Analysis,
     loaded: &LoadResult,
     args: &Lint,
     cli: &mut dyn Cli,
-) -> Result<Vec<(FileId, ModuleName)>> {
+) -> Result<Option<Vec<(FileId, ModuleName)>>> {
     let mut file_ids: Vec<FileId> = vec![];
+    let user_selected_targets;
     if let Some(module) = &args.module {
-        file_ids.push(
-            analysis
-                .module_file_id(loaded.project_id, module)?
-                .unwrap_or_else(|| panic!("Module not found: {module}")),
-        );
-        if args.is_format_normal() {
-            writeln!(cli, "module specified: {module}")?;
+        user_selected_targets = true;
+        if let Some(file_id) = analysis.module_file_id(loaded.project_id, module)? {
+            file_ids.push(file_id);
+            if args.is_format_normal() {
+                writeln!(cli, "module specified: {module}")?;
+            }
+        } else {
+            log::warn!("Module not found, skipping: {module}");
         }
     } else if !args.file.is_empty() {
+        user_selected_targets = true;
         for file_name in &args.file {
             if args.is_format_normal() {
                 writeln!(cli, "file specified: {file_name}")?;
@@ -374,25 +382,36 @@ fn resolve_target_files(
                 .expect("UTF8 conversion failed");
             let path = AbsPath::assert(&path_buf);
             let path = path.as_os_str().to_str().unwrap();
-            file_ids.push(
-                loaded
-                    .vfs
-                    .file_id(&VfsPath::new_real_path(path.to_string()))
-                    .map(|(id, _)| id)
-                    .unwrap_or_else(|| panic!("File not found in VFS: {file_name}")),
-            );
+            if let Some(file_id) = loaded
+                .vfs
+                .file_id(&VfsPath::new_real_path(path.to_string()))
+                .map(|(id, _)| id)
+            {
+                file_ids.push(file_id);
+            } else {
+                log::warn!("File not found in VFS, skipping: {file_name}");
+            }
+        }
+    } else {
+        user_selected_targets = false;
+    }
+
+    let mut resolved = Vec::new();
+    for file_id in file_ids {
+        match analysis.module_name(file_id) {
+            Ok(Some(name)) => resolved.push((file_id, name)),
+            Ok(None) => {
+                log::warn!("Could not get module name for {file_id:?}, skipping");
+            }
+            Err(e) => return Err(e.into()),
         }
     }
 
-    file_ids
-        .into_iter()
-        .map(|file_id| {
-            let name = analysis
-                .module_name(file_id)?
-                .unwrap_or_else(|| panic!("Could not get name from file_id for {file_id:?}"));
-            Ok((file_id, name))
-        })
-        .collect()
+    if user_selected_targets {
+        Ok(Some(resolved))
+    } else {
+        Ok(None)
+    }
 }
 
 pub fn do_codemod(
@@ -410,23 +429,12 @@ pub fn do_codemod(
         // analysis_host, which will deadlock if there is
         // still an active analysis().
         let analysis = loaded.analysis();
-        let files = resolve_target_files(&analysis, loaded, args, cli)?;
+        let maybe_files = resolve_target_files(&analysis, loaded, args, cli)?;
 
-        if files.is_empty() {
-            let (results, err_in_diag, any_printed) = do_diagnostics_all(
-                cli,
-                &analysis,
-                &loaded.project_id,
-                diagnostics_config,
-                args,
-                loaded,
-                &args.module,
-            )?;
-            streamed_err_in_diag = err_in_diag;
-            any_diagnostics_printed = any_printed;
-            results
-        } else {
-            // Print diagnostics for modules / files specified on the command line
+        if let Some(files) = maybe_files {
+            // User specified --module or --file: only process the resolved
+            // targets. If every target was skipped the vec is empty and we
+            // intentionally do *not* fall back to a full analysis.
             let mut all_results = Vec::new();
             let mut err_in_diag = false;
             let mut module_count = 0;
@@ -463,6 +471,20 @@ pub fn do_codemod(
             }
             streamed_err_in_diag = err_in_diag;
             all_results
+        } else {
+            // No specific targets requested: lint all project files.
+            let (results, err_in_diag, any_printed) = do_diagnostics_all(
+                cli,
+                &analysis,
+                &loaded.project_id,
+                diagnostics_config,
+                args,
+                loaded,
+                &args.module,
+            )?;
+            streamed_err_in_diag = err_in_diag;
+            any_diagnostics_printed = any_printed;
+            results
         }
     };
     let mut err_in_diag = streamed_err_in_diag;
