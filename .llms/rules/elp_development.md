@@ -5,394 +5,63 @@ oncalls: ['vscode_erlang']
 ---
 # ELP Development Rules for LLMs (OSS)
 
-## Project Overview
-
-ELP (Erlang Language Platform) is a language server and development tools suite
-for Erlang, built in Rust. This project provides IDE features, diagnostics, and
-code analysis for Erlang codebases.
-
-## Build System
-
-Use standard Cargo commands:
-
-```bash
-# Build
-cargo build --release
-
-# Run tests
-cargo test --workspace
-
-# Run clippy
-cargo clippy --tests
-
-# Format code
-cargo fmt
-
-# Code generation
-cargo xtask codegen
-```
-
 ## Diagnostic Code Management
 
 ### Adding New Diagnostic Codes
 
-When adding new diagnostic codes to `DiagnosticCode` enum:
-
-1. **Naming Convention**: Use descriptive PascalCase names that clearly indicate
-   the issue
-   - Good: `UnusedFunctionArg`, `MissingCompileWarnMissingSpec`
-   - Bad: `Error1`, `BadCode`
-
-2. **Code Assignment**: Follow the established numbering scheme
-   - `W0000-W9999`: Native ELP diagnostics, visible in the OSS version
-   - Use the next available number in the appropriate range
-   - Never change the number of an existing diagnostic code
-   - Never change the label of an existing diagnostic code
-   - Always add the new diagnostic constructor to the end of the list
-
-3. **Documentation File**: Create a corresponding documentation file in the
-   website
-   - Location: `website/docs/erlang-error-index/{namespace}/{code}.md`
-   - Example: `W0051` → `website/docs/erlang-error-index/w/W0051.md`
-   - Include frontmatter with `sidebar_position` matching the code number
-   - Structure should include:
-     - Title with code and brief description
-     - Severity level (Error, Warning, WeakWarning, Information)
-     - Code example showing the diagnostic in action
-     - Explanation section describing the issue and why it matters
-     - Optional: Fix suggestions or alternatives
-   - The `as_uri()` method automatically generates URLs pointing to these docs
+- `W0000-W9999` range for native ELP diagnostics
+- Never change the number or label of an existing diagnostic code
+- Always add new constructors to the end of the `DiagnosticCode` enum
+- Create doc file: `website/docs/erlang-error-index/{namespace}/{code}.md` (e.g., `W0051` → `w/W0051.md`)
 
 ### Creating Linters
 
-Linters are defined in `crates/ide/src/diagnostics/`. Each linter:
+After implementing `Linter` + a specialized trait (`FunctionCallLinter`, `SsrPatternsLinter`, or `GenericLinter`), register the `pub static LINTER` in `crates/ide/src/diagnostics.rs` in `FUNCTION_CALL_LINTERS`, `SSR_PATTERN_LINTERS`, or `GENERIC_LINTERS`.
 
-1. Implements the base `Linter` trait (defines `id()`, `description()`, and
-   optional config like `severity()`, `is_experimental()`, `should_process_test_files()`)
-2. Implements one of three specialized traits:
-   - `FunctionCallLinter`: For checking function calls (see `undefined_function.rs`)
-   - `SsrPatternsLinter`: For SSR pattern matching (see `binary_string_to_sigil.rs`)
-   - `GenericLinter`: For custom AST traversal (see `mixed_strict_relaxed_generators.rs`)
-3. Exports a `pub static LINTER` instance
-4. Is registered in `diagnostics.rs` in the appropriate constant:
-   `FUNCTION_CALL_LINTERS`, `SSR_PATTERN_LINTERS`, or `GENERIC_LINTERS`
+## Anti-Patterns
 
-See the `Linter` trait definition in `crates/ide/src/diagnostics.rs` for all
-available configuration options.
+### Use `FxHashMap`, not `std::HashMap`
 
-## Rust Code Style
+`FxHashMap`/`FxHashSet` are used project-wide. Do not introduce `std::collections::HashMap`.
 
-### Error Handling
-
-- Use `Result<T, E>` for fallible operations
-- Prefer `?` operator over explicit match for error propagation
-- Use descriptive error messages with context
-
-### Pattern Matching
-
-- Use exhaustive matches for enums to catch new variants at compile time
-- Add explicit comments when intentionally using catch-all patterns
-- Prefer early returns to reduce nesting
-
-### String Handling
-
-- Use `&str` for borrowed strings, `String` for owned
-- Use `format!()` for complex string formatting
-- Use `to_string()` for simple conversions
-
-### Collections
-
-- Use `FxHashMap` instead of `std::HashMap` for better performance
-- Use `lazy_static!` for expensive static computations
-- Prefer iterators over manual loops where possible
-
-### HIR Name Matching
-
-When comparing `hir::Name` values, prefer using constants from the `known` module
-over string comparisons:
+### Use `known` module constants for atom comparison
 
 ```rust
-// Good - use known:: constants
-use crate::known;
+// Correct
 if db.lookup_atom(*atom) == known::erlang { ... }
-if name == known::module_info { ... }
 
-// Bad - avoid string comparisons
+// Wrong — do not use .as_str() string comparisons
 if db.lookup_atom(*atom).as_str() == "erlang" { ... }
-if name.as_str() == "module_info" { ... }
 ```
 
-The `known` module in `crates/hir/src/name.rs` defines constants for well-known
-atoms. If you need to match against an atom that isn't already defined, add it
-to the `known_names!` macro in alphabetical order within the appropriate category.
+Add missing atoms to `known_names!` in `crates/hir/src/name.rs` (alphabetical within category).
 
-## Testing Guidelines
+### Use `assert_eq_expected!`, not `assert_eq!`
 
-### Test Structure
-
-- Use `expect_test` and the `expect!` macro if possible
-- Group related tests in the same module
-- Use descriptive test names that explain the scenario
-
-### Updating Expect-Test Snapshots
-
-When expect-test assertions fail because the expected output has changed (not because of a bug), use `UPDATE_EXPECT=1` to auto-update the snapshots:
-
-```bash
-# Update snapshots for a specific crate
-UPDATE_EXPECT=1 cargo test -p hir
-
-# Update snapshots for a specific test
-UPDATE_EXPECT=1 cargo test -p hir -- test_name
-```
-
-Do NOT manually edit `expect![[...]]` strings — always use `UPDATE_EXPECT=1` to regenerate them.
-
-### Test Assertions
-
-Use `assert_eq_expected!` instead of `assert_eq!` for comparing expected vs actual
-values in tests. This macro provides clearer error messages by labeling values as
-"expected" and "actual" rather than the confusing "left" and "right".
-
-**Usage:**
-
+First argument must be named `expected` or start with `expected`:
 ```rust
 use elp_base_db::assert_eq_expected;
-
-// First argument must be named `expected` or start with `expected`
-assert_eq_expected!(expected, actual);
-assert_eq_expected!(expected_range, found_range);
-assert_eq_expected!(expected_count, result);
-```
-
-**Naming Convention:**
-
-- The first argument (expected value) must be a variable named `expected` or a
-  variable whose name starts with `expected` (e.g., `expected_range`, `expected_count`)
-- The second argument (actual value) can be named anything descriptive
-
-**Examples:**
-
-```rust
-// Good - variable named `expected`
-let expected = fixture.annotations();
-let actual = compute_result();
-assert_eq_expected!(expected, actual);
-
-// Good - variable starts with `expected`
-let expected_range = FileRange { file_id, range };
-let actual_range = nav.file_range();
 assert_eq_expected!(expected_range, actual_range);
-
-// Bad - first argument doesn't start with `expected`
-let annotations = fixture.annotations();  // Should be `expected`
-assert_eq_expected!(annotations, actual); // Incorrect naming
 ```
 
-### Declarative Test Fixtures
-
-ELP uses a declarative test fixture system that allows you to write tests with
-inline annotations and markers directly in test strings. This system is defined
-in `crates/project_model/src/test_fixture.rs`.
-
-#### Key Features
-
-1. **File Organization**: Use `//- /path/to/file.erl` to define multiple files
-   in a single test
-2. **Metadata Markers**: Specify app names, include paths, OTP apps, etc. using
-   metadata after the path
-3. **Annotations**: Mark expected diagnostics or ranges using `%% ^^^` syntax
-4. **Cursors and Ranges**: Use `~` markers to indicate positions or ranges in
-   test code
-
-#### Annotation Syntax
-
-Annotations allow you to mark expected diagnostics, types, or other information
-directly in test code:
-
-- **Basic annotation**: `%% ^^^ some text` - Points to the range above matching
-  the caret length
-- **Top-of-file marker**: `%% <<< text` (at file start) - Creates annotation at
-  position 0..0
-- **File-wide annotation**: `%% ^^^file text` - Annotation spans the entire file
-  contents
-- **Left-margin annotation**: `%%<^^^ text` - Annotation starts at `%%` position
-  instead of first `^`
-- **Multiline annotations**: Use continuation lines with `%%   | next line`
-  - Continuation lines are particularly useful for diagnostics with related information:
-    ```erlang
-    foo() -> syntax error oops.
-    %%              ^^^^^ error: P1711: syntax error before: error
-    %%                  | Related info: 0:45-50 function foo/0 undefined
-    ```
-
-#### Example Test Fixture
-
-```rust
-let fixture = r#"
-//- /src/main.erl
--module(main).
-
-foo( -> ok. %%
-%%  ^ error: W0004: Missing ')'~
-"#;
-```
-
-### Test Data
-
-- Create minimal test cases that focus on specific functionality
-- Use realistic Erlang code examples in tests
-- Test both positive and negative cases
-
-### Running Tests for Specific Crates
-
-When running tests for a specific crate, you need to specify the crate name, not
-the directory name. The mapping is:
-
-| Crate Name           | Directory Name          |
-| -------------------- | ----------------------- |
-| `elp`                | `crates/elp`            |
-| `elp_base_db`        | `crates/base_db`        |
-| `elp_eqwalizer`      | `crates/eqwalizer`      |
-| `elp_erlang_service` | `crates/erlang_service` |
-| `elp_ide`            | `crates/ide`            |
-| `elp_ide_assists`    | `crates/ide_assists`    |
-| `elp_ide_completion` | `crates/ide_completion` |
-| `elp_ide_db`         | `crates/ide_db`         |
-| `elp_ide_ssr`        | `crates/ide_ssr`        |
-| `elp_log`            | `crates/elp_log`        |
-| `elp_project_model`  | `crates/project_model`  |
-| `elp_syntax`         | `crates/syntax`         |
-| `elp_text_edit`      | `crates/text_edit`      |
-| `elp_types_db`       | `crates/types_db`       |
-| `hir`                | `crates/hir`            |
-
-Example: To run tests for the `elp_ide` crate:
+### Snapshot updates: use `UPDATE_EXPECT=1`, never manually edit
 
 ```bash
-cargo test -p elp_ide
+UPDATE_EXPECT=1 cargo test -p <crate_name> -- <test_name>
 ```
 
-Or to run tests in a specific directory:
+Do NOT manually edit `expect![[...]]` strings.
 
-```bash
-cargo test --manifest-path crates/ide/Cargo.toml
-```
+### Crate names ≠ directory names
 
-### Existing tests
+Crate names use `elp_` prefix on directory names (e.g., `crates/ide` → `elp_ide`, `crates/syntax` → `elp_syntax`). Exceptions: `crates/elp` → `elp`, `crates/hir` → `hir`. Check `Cargo.toml` for exact crate name.
 
-- Do not change existing tests without asking
+### Do not change existing tests without asking
 
-## Documentation
+### CLI argument deprecation
 
-### Code Comments
+Make removed CLI arguments a no-op with a stderr warning. Remove after at least one month.
 
-- Document complex algorithms and business logic
-- Explain WHY, not just WHAT the code does
-- Use `///` for public API documentation
-- Use `//` for internal implementation notes
+### Avoid code duplication
 
-### Error Messages
-
-- Make error messages actionable and user-friendly
-- Include context about what was expected vs. what was found
-- Provide suggestions for fixing the issue when possible
-
-## Performance Considerations
-
-### Memory Usage
-
-- Use `Box<T>` for large enum variants to keep enum size small
-- Consider using `Cow<str>` for strings that might be borrowed or owned
-- Use `Arc<T>` for shared immutable data
-
-### Computation
-
-- Cache expensive computations using `lazy_static!` or `once_cell`
-- Use appropriate data structures (HashMap for lookups, Vec for sequences)
-- Profile code paths that handle large Erlang codebases
-
-## Integration Guidelines
-
-### Erlang Service Integration
-
-- Handle Erlang service errors gracefully
-- Use appropriate namespaces for different error sources
-- Maintain backward compatibility with existing error codes
-
-### IDE Integration
-
-- Provide rich diagnostic information (ranges, severity, fixes)
-- Support quick fixes and code actions where appropriate
-- Ensure diagnostics are fast enough for real-time feedback
-
-## Maintenance
-
-### Backward Compatibility
-
-- Don't change existing diagnostic codes or their meanings
-- Deprecate old codes before removing them
-- Maintain serialization compatibility for configuration files
-- Instead of removing a CLI argument, make it a no-op but emit a message
-  to stderr that it is no longer required. When it has been like that for at least
-  a month, remove it.
-
-### Code Organization
-
-- Keep related functionality together in modules
-- Use clear module boundaries and public APIs
-- Minimize dependencies between modules
-- Don't needlessly duplicate code. Use existing code and functions if possible.
-  If you need to add a new function as a copy of an existing one, check
-  if it can be merged with the original.
-
-### Version Management
-
-- Follow semantic versioning for public APIs
-- Document breaking changes in release notes
-- Provide migration guides for major changes
-
-## Common Patterns
-
-### Regex Usage
-
-- Use `lazy_static!` for compiled regexes
-- Prefer specific patterns over overly broad ones
-- Test regex patterns thoroughly with edge cases
-
-### Configuration
-
-- Support both code-based and label-based diagnostic references
-- Use serde for serialization/deserialization
-- Provide sensible defaults for all configuration options
-
-### Error Recovery
-
-- Continue processing after encountering errors when possible
-- Collect multiple errors rather than failing on the first one
-- Provide partial results when full analysis isn't possible
-
-### Process
-
-- Always run tests before finishing
-- Always run `cargo clippy --tests` before submitting PRs
-- Use `cargo fmt` for code formatting
-
-#### Recommended Build/Test Workflow
-
-When making changes across multiple files, follow this order for fast feedback:
-
-1. **Edit all files first**, then run a single build check:
-   ```bash
-   cargo build --workspace --tests
-   ```
-2. **Run tests for the affected crate only** (faster than `--workspace`):
-   ```bash
-   cargo test -p <crate_name>
-   ```
-3. **Run clippy as a final check** before submitting:
-   ```bash
-   cargo clippy --workspace --tests
-   ```
-
-Avoid running `--workspace` tests after every edit — scope to the affected crate for faster iteration.
+Before adding a function similar to an existing one, check if they can be merged.
