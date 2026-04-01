@@ -4,8 +4,8 @@ PROFILE] [--include-generated] [--include-tests] [--no-diags] [[--format FORMAT]
 [--include-eqwalizer-diagnostics] [--include-suppressed] [--use-cli-severity] [[--severity SEVERITY]]
 [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--experimental] [--read-config] [--config-file
 CONFIG_FILE] [--apply-fix] [--ignore-fix-only] [--fixme-fix-only] [--to TO] [--recursive]
-[--with-check] [--check-eqwalize-all] [--one-shot] [--report-system-stats] [--no-stream]
-<IGNORED_APPS>...
+[--with-check] [--check-eqwalize-all] [--one-shot] [--arc-patch] [--report-system-stats]
+[--no-stream] <IGNORED_APPS>...
 
 Available positional items:
     <IGNORED_APPS>  Rest of args are space separated list of apps to ignore
@@ -53,6 +53,8 @@ Available options:
                           are clear, else roll back
         --one-shot        Apply to all matching diagnostic occurrences at once, rather than one at a
                           time.
+        --arc-patch       When using --format=json, populate original/replacement fields with fix
+                          information for arc lint auto-fix support
         --report-system-stats  Report system memory usage and other statistics
         --no-stream       Disable streaming of diagnostics when applying fixes (collect all before
                           printing)

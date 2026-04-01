@@ -813,6 +813,7 @@ fn do_print_diagnostics_json_filtered(
                         *file_id,
                         relative_path,
                         args.use_cli_severity,
+                        args.arc_patch,
                         cli,
                     )?;
                 }
@@ -930,11 +931,19 @@ fn print_diagnostic_json(
     file_id: FileId,
     path: &Path,
     use_cli_severity: bool,
+    arc_patch: bool,
     cli: &mut dyn Cli,
 ) -> Result<(), anyhow::Error> {
     let line_index = analysis.line_index(file_id)?;
-    let converted_diagnostic =
+    let mut converted_diagnostic =
         convert::ide_to_arc_diagnostic(&line_index, path, diagnostic, use_cli_severity);
+    if arc_patch
+        && let Ok(file_text) = analysis.file_text(file_id)
+        && let Some(fix) = convert::extract_arc_fix(diagnostic, &line_index, file_id, &file_text)
+    {
+        converted_diagnostic =
+            converted_diagnostic.with_fix(fix.line, fix.char, fix.original, fix.replacement);
+    }
     writeln!(
         cli,
         "{}",
@@ -1667,6 +1676,64 @@ mod tests {
                 Diagnostics reported:
                 app_a/src/lints.erl:5:3-5:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
                         4:3-4:16: Mismatched clause name
+            "#]],
+            expect![""],
+        );
+    }
+
+    #[test]
+    fn lint_json_arc_patch() {
+        // --arc-patch should populate original/replacement in JSON output
+        // for diagnostics that have fixes (P1700 head mismatch has a rename fix)
+        run_lint_command(
+            args_vec![
+                "lint",
+                "--module",
+                "lints",
+                "--diagnostic-filter",
+                "P1700",
+                "--format",
+                "json",
+                "--arc-patch",
+            ],
+            r#"
+            //- /app_a/src/lints.erl app:app_a
+              -module(lints).
+              -export([head_mismatch/1]).
+
+              head_mismatch(X) -> X;
+              head_mismatcX(0) -> 0.
+          "#,
+            expect![[r#"
+                {"path":"app_a/src/lints.erl","line":5,"char":3,"code":"ELP","severity":"error","name":"P1700 (head_mismatch)","original":"head_mismatcX","replacement":"head_mismatch","description":"head mismatch 'head_mismatcX' vs 'head_mismatch'\n\nFor more information see: https://www.internalfb.com/intern/staticdocs/elp/docs/erlang-error-index/p/P1700","docPath":null}
+            "#]],
+            expect![""],
+        );
+    }
+
+    #[test]
+    fn lint_json_without_arc_patch() {
+        // Without --arc-patch, original/replacement should remain null
+        run_lint_command(
+            args_vec![
+                "lint",
+                "--module",
+                "lints",
+                "--diagnostic-filter",
+                "P1700",
+                "--format",
+                "json",
+            ],
+            r#"
+            //- /app_a/src/lints.erl app:app_a
+              -module(lints).
+              -export([head_mismatch/1]).
+
+              head_mismatch(X) -> X;
+              head_mismatcX(0) -> 0.
+          "#,
+            expect![[r#"
+                {"path":"app_a/src/lints.erl","line":5,"char":3,"code":"ELP","severity":"error","name":"P1700 (head_mismatch)","original":null,"replacement":null,"description":"head mismatch 'head_mismatcX' vs 'head_mismatch'\n\nFor more information see: https://www.internalfb.com/intern/staticdocs/elp/docs/erlang-error-index/p/P1700","docPath":null}
             "#]],
             expect![""],
         );

@@ -352,6 +352,10 @@ pub struct Lint {
     /// than one at a time.
     pub one_shot: bool,
 
+    /// When using --format=json, populate original/replacement fields
+    /// with fix information for arc lint auto-fix support
+    pub arc_patch: bool,
+
     /// Report system memory usage and other statistics
     #[bpaf(long("report-system-stats"))]
     pub report_system_stats: bool,

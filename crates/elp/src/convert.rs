@@ -263,3 +263,71 @@ pub fn ide_to_arc_diagnostic(
         doc_path,
     )
 }
+
+pub struct ArcFix {
+    pub line: u32,
+    pub char: Option<u32>,
+    pub original: String,
+    pub replacement: String,
+}
+
+/// Extract fix information from a diagnostic's attached fixes.
+/// Returns an [`ArcFix`] with the `original` text and its `replacement`,
+/// suitable for the arc lint auto-fix protocol.
+///
+/// Skips `elp:ignore` / `elp:fixme` suppression assists and fixes that
+/// span multiple files.
+pub fn extract_arc_fix(
+    diagnostic: &Diagnostic,
+    line_index: &LineIndex,
+    file_id: FileId,
+    file_text: &str,
+) -> Option<ArcFix> {
+    let fixes = diagnostic.fixes.as_ref()?;
+    for fix in fixes {
+        // Skip ignore/fixme suppression fixes
+        if let Some(group) = &fix.group
+            && (group.0 == "ignore" || group.0 == "fixme")
+        {
+            continue;
+        }
+        let source_change = match fix.source_change.as_ref() {
+            Some(sc) => sc,
+            None => continue,
+        };
+        // Only handle single-file fixes for the current file
+        if source_change.source_file_edits.len() != 1 {
+            continue;
+        }
+        let text_edit = match source_change.source_file_edits.get(&file_id) {
+            Some(te) => te,
+            None => continue,
+        };
+        let indels: Vec<_> = text_edit.iter().collect();
+        if indels.is_empty() {
+            continue;
+        }
+        // Compute original/replacement from indels
+        let first_start = indels.first().unwrap().delete.start();
+        let last_end = indels.last().unwrap().delete.end();
+        let original = &file_text[usize::from(first_start)..usize::from(last_end)];
+        let mut replacement = String::new();
+        let mut cursor = first_start;
+        for indel in &indels {
+            // Unchanged text between previous edit and this one
+            replacement
+                .push_str(&file_text[usize::from(cursor)..usize::from(indel.delete.start())]);
+            replacement.push_str(&indel.insert);
+            cursor = indel.delete.end();
+        }
+        // Compute 1-based line/char for the start of original
+        let pos = position(line_index, first_start);
+        return Some(ArcFix {
+            line: pos.line + 1,
+            char: Some(pos.character + 1),
+            original: original.to_string(),
+            replacement,
+        });
+    }
+    None
+}

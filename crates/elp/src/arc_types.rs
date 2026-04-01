@@ -68,4 +68,18 @@ impl Diagnostic {
             doc_path,
         }
     }
+
+    pub fn with_fix(
+        mut self,
+        line: u32,
+        character: Option<u32>,
+        original: String,
+        replacement: String,
+    ) -> Self {
+        self.line = Some(line);
+        self.r#char = character;
+        self.original = Some(original);
+        self.replacement = Some(replacement);
+        self
+    }
 }
