@@ -119,6 +119,13 @@ impl ToDoc for InFile<&ast::Atom> {
     }
 }
 
+impl ToDoc for InFile<&ast::InternalFun> {
+    fn to_doc(docs: &Documentation<'_>, ast: Self) -> Option<Doc> {
+        let fun_def = docs.sema.to_def(ast)?;
+        docs.function_doc(fun_def.file.file_id, fun_def.name)
+    }
+}
+
 impl ToDoc for InFile<&ast::ExternalFun> {
     fn to_doc(docs: &Documentation<'_>, ast: Self) -> Option<Doc> {
         let fun_def = docs.sema.to_def(ast)?;
@@ -455,7 +462,8 @@ impl Doc {
                 ast::RecordName(_) => None,
                 ast::RecordFieldName(_) => None,
                 ast::RecordField(_) => None,
-                ast::InternalFun(_) => None,
+                ast::InternalFun(fun) =>
+                    docdb.to_doc(token.with_value(&fun)),
                 ast::ExternalFun(fun) =>
                     docdb.to_doc(token.with_value(&fun)),
                 ast::TryClass(_) => None,

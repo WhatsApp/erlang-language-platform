@@ -126,4 +126,33 @@ My function",
             );
         }
     }
+
+    #[test]
+    fn internal_fun() {
+        if supports_eep59_doc_attributes() {
+            check(
+                r#"
+-module(main).
+-export([main/0]).
+
+-doc """
+My function
+""".
+-spec main() -> ok.
+main() -> ok.
+
+-spec caller() -> ok.
+caller() -> fun ma~in/0.
+"#,
+                "\
+```erlang
+-spec main() -> ok.
+```
+
+-----
+
+My function",
+            );
+        }
+    }
 }
