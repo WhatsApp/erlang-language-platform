@@ -148,7 +148,7 @@ impl Linter for UncheckedCastLinter {
     }
 
     fn description(&self) -> &'static str {
-        "Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST`: these macros bypass eqwalizer type checking by asserting a value \
+        "Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST` / `eqwalizer:dynamic_cast/1`: these bypass eqwalizer type checking by asserting a value \
          has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative."
     }
 
@@ -169,6 +169,7 @@ impl SsrPatternsLinter for UncheckedCastLinter {
             static ref PATTERNS: Vec<(String, ())> = vec![
                 ("ssr: ?UNCHECKED_CAST(_@Expr, _@Type).".to_string(), ()),
                 ("ssr: ?DYNAMIC_CAST(_@Expr).".to_string(), ()),
+                ("ssr: eqwalizer:dynamic_cast(_@Expr).".to_string(), ()),
             ];
         }
         &PATTERNS
@@ -243,7 +244,7 @@ test() -> ok.
 -spec test(atom()) -> ok.
 test(A) ->
   ?UNCHECKED_CAST(A, ok).
-%%^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST`: these macros bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
+%%^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST` / `eqwalizer:dynamic_cast/1`: these bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
 "#,
         )
     }
@@ -264,7 +265,7 @@ test(A) ->
 //- /include/eqwalizer.hrl
 -define(UNCHECKED_CAST(Expr, _Type), Expr).
 -define(MY_CAST(Expr), ?UNCHECKED_CAST(Expr, binary())).
-%%                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST`: these macros bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
+%%                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST` / `eqwalizer:dynamic_cast/1`: these bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
 
 //- /src/main.erl
 -module(main).
@@ -293,7 +294,29 @@ test(A) ->
 -spec test(atom()) -> ok.
 test(A) ->
   ?DYNAMIC_CAST(A).
-%%^^^^^^^^^^^^^^^^ 💡 warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST`: these macros bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
+%%^^^^^^^^^^^^^^^^ 💡 warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST` / `eqwalizer:dynamic_cast/1`: these bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
+"#,
+        )
+    }
+
+    #[test]
+    fn test_eqwalizer_dynamic_cast_function() {
+        check_diagnostics(
+            r#"
+//- /src/eqwalizer.erl
+-module(eqwalizer).
+-export([dynamic_cast/1]).
+-spec dynamic_cast(term()) -> term().
+dynamic_cast(X) -> X.
+
+//- /src/main.erl
+-module(main).
+-export([test/1]).
+
+-spec test(atom()) -> ok.
+test(A) ->
+  eqwalizer:dynamic_cast(A).
+%%^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST` / `eqwalizer:dynamic_cast/1`: these bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
 "#,
         )
     }
