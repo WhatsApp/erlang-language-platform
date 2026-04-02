@@ -1668,7 +1668,6 @@ pub fn native_diagnostics(
             .lints_from_config
             .get_diagnostics(&mut res, &sema, file_id);
         // @fb-only: meta_only::diagnostics(&mut res, &sema, file_id, file_kind, config);
-        syntax_diagnostics(&sema, &parse, &mut res, file_id);
         diagnostics_from_descriptors(
             &mut res,
             &sema,
@@ -1886,6 +1885,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &expression_can_be_simplified::LINTER,
     &nonstandard_integer_formatting::LINTER,
     &bad_dialyzer_attribute::LINTER,
+    &module_mismatch::LINTER,
 ];
 
 /// Unified registry for all types of linters
@@ -2090,17 +2090,6 @@ fn widen_range(range: TextRange) -> TextRange {
         TextRange::new(range.start(), range.end() + TextSize::from(1))
     } else {
         range
-    }
-}
-
-fn syntax_diagnostics(
-    sema: &Semantic,
-    parse: &Parse<ast::SourceFile>,
-    res: &mut Vec<Diagnostic>,
-    file_id: FileId,
-) {
-    for node in parse.tree().syntax().descendants() {
-        module_mismatch::module_mismatch(sema, res, file_id, &node);
     }
 }
 

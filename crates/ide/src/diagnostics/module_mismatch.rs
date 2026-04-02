@@ -12,60 +12,103 @@
 //
 // Diagnostic for mismatches between the module attribute name and the path of the given file
 
+use std::borrow::Cow;
+
 use elp_ide_assists::Assist;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use elp_syntax::AstNode;
-use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
-use elp_syntax::ast;
 use hir::Semantic;
 
-use crate::Diagnostic;
+use crate::diagnostics::DiagnosticCode;
+use crate::diagnostics::GenericLinter;
+use crate::diagnostics::GenericLinterMatchContext;
+use crate::diagnostics::Linter;
+use crate::diagnostics::Severity;
 use crate::fix;
 
-pub(crate) fn module_mismatch(
-    sema: &Semantic,
-    acc: &mut Vec<Diagnostic>,
-    file_id: FileId,
-    node: &SyntaxNode,
-) -> Option<()> {
-    let module_name = ast::ModuleAttribute::cast(node.clone())?.name()?;
-    // Context for T171541590
-    let _ = stdx::panic_context::enter(format!("\nmodule_mismatch: {file_id:?}"));
-    let root_id = sema.db.file_source_root(file_id);
-    let root = sema.db.source_root(root_id);
-    let path = root
-        .path_for_file(&file_id)
-        .expect("file should have a path in source root");
-    let filename = path.name_and_extension().unwrap_or_default().0;
-    let loc = module_name.syntax().text_range();
-    if module_name.text()? != filename {
-        let d = Diagnostic::new(
-            crate::diagnostics::DiagnosticCode::ModuleMismatch,
-            format!("Module name ({module_name}) does not match file name ({filename})"),
-            loc,
-        )
-        .with_fixes(Some(vec![rename_module_to_match_filename(
-            file_id, loc, filename,
-        )]));
-        acc.push(d);
-    };
-    Some(())
+#[derive(Clone, Debug)]
+pub(crate) struct ModuleMismatchContext {
+    module_name: String,
+    filename: String,
 }
 
-fn rename_module_to_match_filename(file_id: FileId, loc: TextRange, filename: &str) -> Assist {
-    let mut builder = TextEdit::builder();
-    builder.replace(loc, filename.to_string());
-    let edit = builder.finish();
-    fix(
-        "rename_module_to_match_filename",
-        &format!("Rename module to: {filename}"),
-        SourceChange::from_text_edit(file_id, edit),
-        loc,
-    )
+pub(crate) struct ModuleMismatchLinter;
+
+impl Linter for ModuleMismatchLinter {
+    fn id(&self) -> DiagnosticCode {
+        DiagnosticCode::ModuleMismatch
+    }
+
+    fn description(&self) -> &'static str {
+        "Module name does not match file name"
+    }
+
+    fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
+        Severity::Error
+    }
 }
+
+impl GenericLinter for ModuleMismatchLinter {
+    type Context = ModuleMismatchContext;
+
+    fn matches(
+        &self,
+        sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
+        let root_id = sema.db.file_source_root(file_id);
+        let root = sema.db.source_root(root_id);
+        let path = root.path_for_file(&file_id)?;
+        let (filename, _) = path.name_and_extension()?;
+
+        let module_name_ast = sema.module_attribute_name(file_id)?;
+        let module_name_text = module_name_ast.text()?;
+
+        if module_name_text.as_str() != filename {
+            let range = module_name_ast.syntax().text_range();
+            Some(vec![GenericLinterMatchContext {
+                range: FileRange { file_id, range },
+                context: ModuleMismatchContext {
+                    module_name: module_name_text.to_string(),
+                    filename: filename.to_string(),
+                },
+            }])
+        } else {
+            Some(vec![])
+        }
+    }
+
+    fn match_description(&self, context: &Self::Context) -> Cow<'_, str> {
+        Cow::Owned(format!(
+            "Module name ({}) does not match file name ({})",
+            context.module_name, context.filename
+        ))
+    }
+
+    fn fixes(
+        &self,
+        context: &Self::Context,
+        range: TextRange,
+        _sema: &Semantic,
+        file_id: FileId,
+    ) -> Option<Vec<Assist>> {
+        let mut builder = TextEdit::builder();
+        builder.replace(range, context.filename.clone());
+        let edit = builder.finish();
+        Some(vec![fix(
+            "rename_module_to_match_filename",
+            &format!("Rename module to: {}", context.filename),
+            SourceChange::from_text_edit(file_id, edit),
+            range,
+        )])
+    }
+}
+
+pub static LINTER: ModuleMismatchLinter = ModuleMismatchLinter;
 
 #[cfg(test)]
 mod tests {
