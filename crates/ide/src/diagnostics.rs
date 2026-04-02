@@ -104,6 +104,7 @@ mod cross_node_eval;
 mod debugging_function;
 mod dependent_header;
 mod deprecated_function;
+mod duplicate_include;
 mod duplicate_module;
 mod effect_free_statement;
 mod encode_hex_with_case;
@@ -1852,6 +1853,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &no_catch::LINTER,
     &unavailable_type::LINTER,
     &no_dialyzer_attribute::LINTER,
+    &duplicate_include::LINTER,
     &duplicate_module::LINTER,
     &no_nowarn_suppressions::LINTER,
     &macro_precedence_suprise::LINTER,

@@ -201,6 +201,8 @@ pub enum DiagnosticCode {
     BadDialyzerAttribute,
     #[strum(props(code = "W0077"))]
     UnusedExportedFunction,
+    #[strum(props(code = "W0078"))]
+    DuplicateInclude,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
