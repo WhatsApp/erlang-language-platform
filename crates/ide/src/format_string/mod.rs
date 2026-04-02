@@ -322,8 +322,10 @@ pub fn match_format_function(
             format_arg_index: 0,
             args_list_index: 1,
         }),
-        // @fb-only: _ => meta_only::match_format_function(module, function, arity),
-                                                                        _ => None, // @oss-only
+        _ => {
+            meta_only::match_format_function(module, function, arity) // @fb-only
+            // @oss-only: None
+        }
     }
 }
 

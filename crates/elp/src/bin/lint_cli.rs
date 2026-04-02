@@ -1481,6 +1481,8 @@ mod tests {
     use expect_test::expect;
     use fxhash::FxHashMap;
 
+    use elp_ide::elp_ide_db::diagnostic_code::BASE_URL;
+
     use super::LintConfig;
     use super::do_codemod;
     use super::get_and_report_diagnostics_config;
@@ -1584,6 +1586,10 @@ mod tests {
 
             do_codemod(&mut cli, &mut loaded, &diagnostics_config, &lint).ok();
             let (stdout, stderr) = cli.to_strings();
+            let (stdout, stderr) = (
+                stdout.replace(BASE_URL, "<BASE_URL>"),
+                stderr.replace(BASE_URL, "<BASE_URL>"),
+            );
             exp_stdout.assert_eq(&stdout);
             exp_stderr.assert_eq(&stderr);
         } else {
@@ -1708,7 +1714,7 @@ mod tests {
               head_mismatcX(0) -> 0.
           "#,
             expect![[r#"
-                {"path":"app_a/src/lints.erl","line":5,"char":3,"code":"ELP","severity":"error","name":"P1700 (head_mismatch)","original":"head_mismatcX","replacement":"head_mismatch","description":"head mismatch 'head_mismatcX' vs 'head_mismatch'\n\nFor more information see: https://www.internalfb.com/intern/staticdocs/elp/docs/erlang-error-index/p/P1700","docPath":null}
+                {"path":"app_a/src/lints.erl","line":5,"char":3,"code":"ELP","severity":"error","name":"P1700 (head_mismatch)","original":"head_mismatcX","replacement":"head_mismatch","description":"head mismatch 'head_mismatcX' vs 'head_mismatch'\n\nFor more information see: <BASE_URL>/erlang-error-index/p/P1700","docPath":null}
             "#]],
             expect![""],
         );
@@ -1736,7 +1742,7 @@ mod tests {
               head_mismatcX(0) -> 0.
           "#,
             expect![[r#"
-                {"path":"app_a/src/lints.erl","line":5,"char":3,"code":"ELP","severity":"error","name":"P1700 (head_mismatch)","original":null,"replacement":null,"description":"head mismatch 'head_mismatcX' vs 'head_mismatch'\n\nFor more information see: https://www.internalfb.com/intern/staticdocs/elp/docs/erlang-error-index/p/P1700","docPath":null}
+                {"path":"app_a/src/lints.erl","line":5,"char":3,"code":"ELP","severity":"error","name":"P1700 (head_mismatch)","original":null,"replacement":null,"description":"head mismatch 'head_mismatcX' vs 'head_mismatch'\n\nFor more information see: <BASE_URL>/erlang-error-index/p/P1700","docPath":null}
             "#]],
             expect![""],
         );
