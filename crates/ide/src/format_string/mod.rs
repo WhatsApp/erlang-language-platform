@@ -323,8 +323,8 @@ pub fn match_format_function(
             args_list_index: 1,
         }),
         _ => {
-            meta_only::match_format_function(module, function, arity) // @fb-only
-            // @oss-only: None
+            // @fb-only: meta_only::match_format_function(module, function, arity)
+            None // @oss-only
         }
     }
 }
