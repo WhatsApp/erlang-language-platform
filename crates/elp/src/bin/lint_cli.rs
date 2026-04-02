@@ -1477,11 +1477,10 @@ mod tests {
     use elp_ide::diagnostics::ReplaceCall;
     use elp_ide::diagnostics::ReplaceCallAction;
     use elp_ide::diagnostics::Replacement;
+    use elp_ide::elp_ide_db::diagnostic_code::BASE_URL;
     use expect_test::Expect;
     use expect_test::expect;
     use fxhash::FxHashMap;
-
-    use elp_ide::elp_ide_db::diagnostic_code::BASE_URL;
 
     use super::LintConfig;
     use super::do_codemod;
