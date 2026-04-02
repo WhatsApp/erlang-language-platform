@@ -103,11 +103,13 @@ fn meets_severity_threshold(
 }
 
 pub fn run_lint_command(
-    args: &Lint,
+    mut args: Lint,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
     ifdef: bool,
 ) -> Result<()> {
+    args.normalize();
+    let args = &args;
     let start_time = SystemTime::now();
     let memory_start = MemoryUsage::now();
 
@@ -1576,7 +1578,8 @@ mod tests {
         let args = args::args().run_inner(args).unwrap();
         let mut cli = Fake::default();
 
-        if let Command::Lint(lint) = args.command {
+        if let Command::Lint(mut lint) = args.command {
+            lint.normalize();
             let diagnostics_config = get_and_report_diagnostics_config(&lint, &mut cli).unwrap();
 
             do_codemod(&mut cli, &mut loaded, &diagnostics_config, &lint).ok();

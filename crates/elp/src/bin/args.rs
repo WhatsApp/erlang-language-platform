@@ -935,6 +935,12 @@ pub fn gen_completions(shell: &str) -> String {
 }
 
 impl Lint {
+    pub fn normalize(&mut self) {
+        if self.arc_patch {
+            self.format = Some("json".to_string());
+        }
+    }
+
     pub fn is_format_normal(&self) -> bool {
         self.format.is_none()
     }
