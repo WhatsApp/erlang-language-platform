@@ -437,6 +437,16 @@ impl DiagnosticCode {
     pub fn codes_iter() -> impl Iterator<Item = DiagnosticCode> {
         DiagnosticCode::iter()
     }
+
+    pub fn all_diagnostic_codes() -> impl Iterator<Item = DiagnosticCode> {
+        DiagnosticCode::codes_iter().filter(|code| match code {
+            DiagnosticCode::DefaultCodeForEnumIter
+            | DiagnosticCode::ErlangService(_)
+            | DiagnosticCode::Eqwalizer(_)
+            | DiagnosticCode::AdHoc(_) => false,
+            _ => true,
+        })
+    }
 }
 
 lazy_static! {

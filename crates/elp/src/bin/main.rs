@@ -40,6 +40,7 @@ mod erlang_service_cli;
 mod explain_cli;
 mod glean;
 mod lint_cli;
+mod lint_list_cli;
 // @fb-only: mod meta_only;
 mod reporting;
 mod shell;
@@ -179,6 +180,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
             writeln!(cli, "{help}")?
         }
         args::Command::Explain(args) => explain_cli::explain(&args, cli)?,
+        args::Command::LintList(args) => lint_list_cli::lint_list(&args, cli)?,
         args::Command::Glean(args) => glean::index(&args, cli, &query_config, ifdef)?,
         args::Command::ConfigStanza(args) => config_stanza::config_stanza(&args, cli)?,
     }
@@ -2529,6 +2531,16 @@ mod tests {
         let args = args_vec!["explain", "--code", "does_not_exist"];
         let (stdout, stderr, code) = elp(args);
         let expected = resource_file!("explain_unkwnown_code.stdout");
+        expected.assert_eq(&stdout);
+        assert!(stderr.is_empty());
+        assert_eq!(code, 0);
+    }
+
+    #[test]
+    fn lint_list() {
+        let args = args_vec!["lint-list"];
+        let (stdout, stderr, code) = elp(args);
+        let expected = resource_file!("lint_list.stdout");
         expected.assert_eq(&stdout);
         assert!(stderr.is_empty());
         assert_eq!(code, 0);

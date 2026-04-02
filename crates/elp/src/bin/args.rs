@@ -464,6 +464,9 @@ pub struct Explain {
 }
 
 #[derive(Clone, Debug, Bpaf)]
+pub struct LintList {}
+
+#[derive(Clone, Debug, Bpaf)]
 pub struct Shell {
     /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
@@ -528,6 +531,7 @@ pub enum Command {
     Version(Version),
     Shell(Shell),
     Explain(Explain),
+    LintList(LintList),
     ProjectInfo(ProjectInfo),
     Glean(Glean),
     ConfigStanza(ConfigStanza),
@@ -711,6 +715,12 @@ pub fn command() -> impl Parser<Command> {
         .command("glean")
         .help("Glean indexer");
 
+    let lint_list = lint_list()
+        .map(Command::LintList)
+        .to_options()
+        .command("lint-list")
+        .help("List all available lint diagnostic codes");
+
     let config_stanza = config_stanza()
         .map(Command::ConfigStanza)
         .to_options()
@@ -729,6 +739,7 @@ pub fn command() -> impl Parser<Command> {
         eqwalize_stats,
         dialyze_all,
         lint,
+        lint_list,
         ssr,
         search,
         parse_all,
@@ -788,14 +799,7 @@ fn module_completer(input: &String) -> Vec<(String, Option<String>)> {
 }
 
 fn diagnostic_code_completer(input: &Option<String>) -> Vec<(String, Option<String>)> {
-    let codes: Vec<String> = DiagnosticCode::codes_iter()
-        .filter(|code| match code {
-            DiagnosticCode::DefaultCodeForEnumIter
-            | DiagnosticCode::ErlangService(_)
-            | DiagnosticCode::Eqwalizer(_)
-            | DiagnosticCode::AdHoc(_) => false,
-            _ => true,
-        })
+    let codes: Vec<String> = DiagnosticCode::all_diagnostic_codes()
         .flat_map(|code| vec![code.as_code().to_string(), code.as_label().to_string()])
         .collect();
     codes
