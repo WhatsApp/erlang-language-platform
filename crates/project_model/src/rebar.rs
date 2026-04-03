@@ -447,7 +447,7 @@ fn into_tuple(mut term: eetf::Term) -> Result<eetf::Term> {
 fn into_abs_path(term: eetf::Term) -> Result<AbsPathBuf> {
     let path_buf = PathBuf::from(into_string(term)?);
     let path = if fs::metadata(&path_buf).is_ok() {
-        match fs::canonicalize::<PathBuf>(path_buf) {
+        match dunce::canonicalize::<PathBuf>(path_buf) {
             Ok(path) => path,
             Err(err) => bail!("expected absolute path, got: {:?}", err),
         }
