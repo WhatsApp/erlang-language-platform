@@ -33,6 +33,7 @@ use lsp_server::Connection;
 mod args;
 mod build_info_cli;
 mod config_stanza;
+#[cfg(unix)]
 mod daemon;
 mod dialyzer_cli;
 mod elp_parse_cli;
@@ -76,6 +77,9 @@ static INIT: Once = Once::new();
 /// Due to inefficient encoding of lists, the default stack size of 2MiB may not be
 /// enough to parse some generated modules, and eqWAlizer may stack overflow.
 const THREAD_STACK_SIZE: usize = 10_000_000;
+
+#[cfg(not(unix))]
+const DAEMON_UNSUPPORTED: &str = "ELP daemon mode is not supported on this platform";
 
 fn main() {
     let _timer = timeit!("main");
@@ -150,20 +154,38 @@ fn try_main(cli: &mut dyn Cli, mut args: Args) -> Result<()> {
             elp_parse_cli::parse_all(args, cli, &query_config, ifdef)?
         }
         args::Command::Eqwalize(eqwalize_args) if eqwalize_args.connect => {
-            daemon::connect_eqwalize(eqwalize_args, cli)?
+            #[cfg(unix)]
+            daemon::connect_eqwalize(eqwalize_args, cli)?;
+            #[cfg(not(unix))]
+            {
+                let _ = eqwalize_args;
+                anyhow::bail!(DAEMON_UNSUPPORTED);
+            }
         }
         args::Command::Eqwalize(args) => {
             eqwalizer_cli::eqwalize_module(args, cli, &query_config, ifdef)?
         }
         args::Command::EqwalizeAll(eqwalize_all_args) if eqwalize_all_args.connect => {
-            daemon::connect_eqwalize_all(eqwalize_all_args, cli)?
+            #[cfg(unix)]
+            daemon::connect_eqwalize_all(eqwalize_all_args, cli)?;
+            #[cfg(not(unix))]
+            {
+                let _ = eqwalize_all_args;
+                anyhow::bail!(DAEMON_UNSUPPORTED);
+            }
         }
         args::Command::EqwalizeAll(args) => {
             eqwalizer_cli::eqwalize_all(args, cli, &query_config, ifdef)?
         }
         args::Command::DialyzeAll(args) => dialyzer_cli::dialyze_all(args, cli)?,
         args::Command::EqwalizeApp(eqwalize_app_args) if eqwalize_app_args.connect => {
-            daemon::connect_eqwalize_app(eqwalize_app_args, cli)?
+            #[cfg(unix)]
+            daemon::connect_eqwalize_app(eqwalize_app_args, cli)?;
+            #[cfg(not(unix))]
+            {
+                let _ = eqwalize_app_args;
+                anyhow::bail!(DAEMON_UNSUPPORTED);
+            }
         }
         args::Command::EqwalizeApp(args) => {
             eqwalizer_cli::eqwalize_app(args, cli, &query_config, ifdef)?
@@ -172,7 +194,13 @@ fn try_main(cli: &mut dyn Cli, mut args: Args) -> Result<()> {
             eqwalizer_cli::eqwalize_stats(args, cli, &query_config, ifdef)?
         }
         args::Command::EqwalizeTarget(eqwalize_target_args) if eqwalize_target_args.connect => {
-            daemon::connect_eqwalize_target(eqwalize_target_args, cli)?
+            #[cfg(unix)]
+            daemon::connect_eqwalize_target(eqwalize_target_args, cli)?;
+            #[cfg(not(unix))]
+            {
+                let _ = eqwalize_target_args;
+                anyhow::bail!(DAEMON_UNSUPPORTED);
+            }
         }
         args::Command::EqwalizeTarget(args) => {
             eqwalizer_cli::eqwalize_target(args, cli, &query_config, ifdef)?
@@ -189,7 +217,15 @@ fn try_main(cli: &mut dyn Cli, mut args: Args) -> Result<()> {
         }
         args::Command::Version(_) => writeln!(cli, "elp {}", elp::version())?,
         args::Command::Shell(args) => shell::run_shell(args, cli, &query_config, ifdef)?,
-        args::Command::Daemon(cmd) => daemon::daemon_command(cmd, cli, &query_config, ifdef)?,
+        args::Command::Daemon(cmd) => {
+            #[cfg(unix)]
+            daemon::daemon_command(cmd, cli, &query_config, ifdef)?;
+            #[cfg(not(unix))]
+            {
+                let _ = cmd;
+                anyhow::bail!(DAEMON_UNSUPPORTED);
+            }
+        }
         args::Command::Help() => {
             let help = batteries::get_usage(args::args());
             writeln!(cli, "{help}")?
