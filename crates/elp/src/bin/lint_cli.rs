@@ -181,7 +181,7 @@ pub fn load_project(
 }
 
 fn canonicalize_or_keep(path: &Path) -> PathBuf {
-    fs::canonicalize(path)
+    dunce::canonicalize(path)
         .ok()
         .unwrap_or_else(|| path.to_path_buf())
 }
@@ -372,7 +372,7 @@ fn resolve_target_files(
             if args.is_format_normal() {
                 writeln!(cli, "file specified: {file_name}")?;
             }
-            let path_buf = Utf8PathBuf::from_path_buf(fs::canonicalize(file_name).unwrap())
+            let path_buf = Utf8PathBuf::from_path_buf(dunce::canonicalize(file_name).unwrap())
                 .expect("UTF8 conversion failed");
             let path = AbsPath::assert(&path_buf);
             let path = path.as_os_str().to_str().unwrap();

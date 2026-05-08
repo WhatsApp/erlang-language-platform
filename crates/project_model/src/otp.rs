@@ -153,7 +153,7 @@ impl Otp {
         }
         let path = String::from_utf8(output.stdout)?;
         let result: Utf8PathBuf = format!("{path}/lib").into();
-        let result = fs::canonicalize(result)?;
+        let result = dunce::canonicalize(result)?;
         Ok(Utf8PathBuf::from_path_buf(result).expect("Could not create Utf8PathBuf"))
     }
 
@@ -250,7 +250,7 @@ impl Otp {
                         return None;
                     }
 
-                    let path = fs::canonicalize(entry.path()).expect("Could not canonicalize path");
+                    let path = dunce::canonicalize(entry.path()).expect("Could not canonicalize path");
                     let dir = AbsPathBuf::assert(
                         Utf8PathBuf::from_path_buf(path).expect("Could not convert to Utf8PathBuf"),
                     );

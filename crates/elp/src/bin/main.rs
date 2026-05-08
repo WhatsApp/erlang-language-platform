@@ -109,13 +109,13 @@ fn setup_static(args: &Args) {
         log::warn!("Failed to setup eqwalizer_support: {err}");
     }
     if let Some(erl) = &args.erl {
-        let path = fs::canonicalize(erl).expect("erl path should be valid");
+        let path = dunce::canonicalize(erl).expect("erl path should be valid");
         let mut erl = ERL.write().unwrap();
         *erl = path.to_string_lossy().to_string();
     }
 
     if let Some(escript) = &args.escript {
-        let path = fs::canonicalize(escript).expect("escript path should be valid");
+        let path = dunce::canonicalize(escript).expect("escript path should be valid");
         let mut escript = ESCRIPT.write().unwrap();
         *escript = path.to_string_lossy().to_string();
     }
@@ -1054,7 +1054,7 @@ mod tests {
 
             let mut buck_config = BuckConfig::default();
 
-            let abs = fs::canonicalize(path_str).unwrap();
+            let abs = dunce::canonicalize(path_str).unwrap();
             buck_config.buck_root =
                 Some(AbsPathBuf::assert(Utf8PathBuf::from_path_buf(abs).unwrap()));
             let content = normalise_prelude_path(content, buck_config);
