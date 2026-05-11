@@ -24,6 +24,8 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::Diagnostic;
+use super::DiagnosticExtra;
+use super::PlaceholderBinding;
 use super::Severity;
 use super::TypeReplacement;
 use super::replace_call;
@@ -263,27 +265,60 @@ impl MatchSsr {
                 .clone()
                 .unwrap_or_else(|| format!("SSR pattern matched: {}", self.ssr_pattern));
 
+            let placeholders = collect_placeholder_bindings(sema, &matched);
+            let extra = DiagnosticExtra::Ssr { placeholders };
+
             let severity = self.severity.unwrap_or(Severity::WeakWarning);
             let diag = Diagnostic::new(
                 DiagnosticCode::AdHoc("ssr-match".to_string()),
                 message,
                 matched.range.range,
             )
-            .with_severity(severity);
+            .with_severity(severity)
+            .with_extra(extra);
             acc.push(diag);
         }
     }
+}
+
+/// One binding per occurrence (repeated `_@A` binds twice). Strips `_@` and
+/// sorts by `(name, start)` for deterministic output.
+fn collect_placeholder_bindings(
+    sema: &Semantic,
+    matched: &elp_ide_ssr::Match,
+) -> Vec<PlaceholderBinding> {
+    let mut bindings: Vec<PlaceholderBinding> = matched
+        .placeholder_bindings(sema)
+        .map(|(name, text, range)| {
+            let name_str = name.as_str();
+            PlaceholderBinding {
+                name: name_str.strip_prefix("_@").unwrap_or(name_str).to_owned(),
+                text,
+                range,
+            }
+        })
+        .collect();
+    bindings.sort_by(|a, b| {
+        a.name
+            .cmp(&b.name)
+            .then_with(|| a.range.start().cmp(&b.range.start()))
+    });
+    bindings
 }
 
 // ---------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
+    use elp_ide_db::RootDatabase;
+    use elp_ide_db::elp_base_db::fixture::WithFixture;
     use expect_test::expect;
+    use hir::Semantic;
     use hir::Strategy;
     use hir::fold::MacroStrategy;
     use hir::fold::ParenStrategy;
 
+    use super::DiagnosticExtra;
     use super::Lint;
     use super::LintsFromConfig;
     use super::MatchSsr;
@@ -971,5 +1006,29 @@ mod tests {
             }
         "#]]
         .assert_debug_eq(&lints);
+    }
+
+    /// Regression: `{_@A, _@A}` previously panicked through the singular
+    /// `placeholder_text` accessor. Verify one binding per occurrence.
+    #[test]
+    fn ssr_diagnostic_handles_repeated_placeholder() {
+        use elp_ide_db::elp_base_db::assert_eq_expected;
+        let (db, file_id) = RootDatabase::with_single_file("t() -> X = 1, {X, X}.");
+        let sema = Semantic::new(&db);
+        let lint = MatchSsr {
+            ssr_pattern: "ssr: {_@A, _@A}.".to_string(),
+            message: None,
+            strategy: None,
+            severity: None,
+        };
+        let mut acc = Vec::new();
+        lint.get_diagnostics(&mut acc, &sema, file_id);
+        assert_eq_expected!(1, acc.len());
+        let Some(DiagnosticExtra::Ssr { placeholders }) = &acc[0].extra else {
+            panic!("expected DiagnosticExtra::Ssr, got {:?}", acc[0].extra);
+        };
+        // Two bindings for `_@A` (one per occurrence), both naming `A`.
+        assert_eq_expected!(2, placeholders.len());
+        assert!(placeholders.iter().all(|b| b.name == "A" && b.text == "X"));
     }
 }

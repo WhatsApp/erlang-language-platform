@@ -48,6 +48,7 @@ use hir::Literal;
 use hir::MacroCallName;
 use hir::MapOp;
 use hir::MaybeExpr;
+use hir::Name;
 use hir::NativeRecordName;
 use hir::Pat;
 use hir::PatId;
@@ -191,6 +192,30 @@ impl Match {
             SubId::AnyExprId(any_expr_id) => sema.any_expr_comments(&body_map, any_expr_id),
             _ => None,
         }
+    }
+
+    /// Every binding for every placeholder, as `(name, source text, source
+    /// range)` tuples. One entry per occurrence — repeated placeholders
+    /// (e.g. `{_@A, _@A}`) yield multiple entries. Bindings whose source
+    /// text cannot be resolved are skipped (text and range stay paired by
+    /// originating from the same `PlaceholderMatch`, never zipped).
+    pub fn placeholder_bindings<'a>(
+        &'a self,
+        sema: &'a Semantic,
+    ) -> impl Iterator<Item = (Name, String, TextRange)> + 'a {
+        let body = self.matched_node_body.get_body(sema);
+        self.placeholders_by_var
+            .iter()
+            .flat_map(move |(var, sub_ids)| {
+                let name = var.as_name();
+                let body = body.clone();
+                sub_ids.iter().filter_map(move |sub_id| {
+                    let pm = self.placeholder_values.get(sub_id)?;
+                    let body = body.as_ref()?;
+                    let text = pm.text(sema, body)?;
+                    Some((name.clone(), text, pm.range()))
+                })
+            })
     }
 }
 

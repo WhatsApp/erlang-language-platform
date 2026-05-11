@@ -228,6 +228,22 @@ pub struct Diagnostic {
     pub related_info: Option<Vec<RelatedInformation>>,
     pub code: DiagnosticCode,
     pub code_doc_uri: Option<String>,
+    /// Producer-specific data; see `DiagnosticExtra`.
+    pub extra: Option<DiagnosticExtra>,
+}
+
+#[derive(Debug, Clone)]
+pub enum DiagnosticExtra {
+    Ssr {
+        placeholders: Vec<PlaceholderBinding>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub struct PlaceholderBinding {
+    pub name: String,
+    pub text: String,
+    pub range: TextRange,
 }
 
 struct SuppressionFixLocation {
@@ -250,7 +266,13 @@ impl Diagnostic {
             fixes: None,
             related_info: None,
             code_doc_uri: code.as_uri(),
+            extra: None,
         }
+    }
+
+    pub(crate) fn with_extra(mut self, extra: DiagnosticExtra) -> Diagnostic {
+        self.extra = Some(extra);
+        self
     }
 
     pub(crate) fn with_related(
@@ -1759,6 +1781,7 @@ pub fn eqwalizer_to_diagnostic(
         fixes: None,
         related_info: None,
         code_doc_uri: Some(d.uri.clone()),
+        extra: None,
     };
     add_eqwalizer_assists(sema, file_id, d, &mut diagnostic);
     diagnostic
@@ -3440,6 +3463,7 @@ foo() -> XX 3.0.
                     related_info: None,
                     code: "L1227".into(),
                     code_doc_uri: None,
+                    extra: None,
                 },
                 Diagnostic {
                     message: "function foo/0 undefined".to_string(),
@@ -3452,6 +3476,7 @@ foo() -> XX 3.0.
                     related_info: None,
                     code: "L1227".into(),
                     code_doc_uri: None,
+                    extra: None,
                 },
                 Diagnostic {
                     message: "spec for undefined function foo/0".to_string(),
@@ -3464,6 +3489,7 @@ foo() -> XX 3.0.
                     related_info: None,
                     code: "L1308".into(),
                     code_doc_uri: None,
+                    extra: None,
                 },
             ],
         )]);
@@ -3480,6 +3506,7 @@ foo() -> XX 3.0.
                 related_info: None,
                 code: "P1711".into(),
                 code_doc_uri: None,
+                extra: None,
             }],
         )]);
         let extra_diags = LabeledDiagnostics {

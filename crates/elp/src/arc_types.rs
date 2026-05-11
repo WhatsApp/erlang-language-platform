@@ -23,10 +23,7 @@ pub struct Diagnostic {
     path: String,
     line: Option<u32>,
     char: Option<u32>,
-    // End-position of the diagnostic range, when known. The arc lint protocol
-    // does not require these, but downstream consumers (e.g. SSR audit tools
-    // reading `elp ssr --format=json`) benefit from knowing the full range
-    // rather than just the start point. Omitted from JSON when None.
+    // End of the diagnostic range, when known.
     #[serde(skip_serializing_if = "Option::is_none")]
     end_line: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -41,6 +38,21 @@ pub struct Diagnostic {
     replacement: Option<String>,
     description: Option<String>,
     doc_path: Option<String>,
+    // SSR placeholder bindings; only set by `elp ssr --format=json`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    placeholders: Option<Vec<PlaceholderBinding>>,
+}
+
+/// SSR placeholder binding. Positions are 1-indexed.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaceholderBinding {
+    pub name: String,
+    pub text: String,
+    pub start_line: u32,
+    pub start_char: u32,
+    pub end_line: u32,
+    pub end_char: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -117,18 +129,20 @@ impl Diagnostic {
             replacement: None,
             description: Some(description),
             doc_path,
+            placeholders: None,
         }
     }
 
-    /// Attach a precise end-position to the diagnostic. Both values are
-    /// 1-indexed (matching `line` / `char`). Used by callers that have a
-    /// `TextRange` available; producers that only know a single line/column
-    /// (e.g. parse errors) leave this unset.
     /// Attach the diagnostic's end-position. Both values are 1-indexed,
     /// matching `line` / `char`.
     pub fn with_end_position(mut self, end_line: u32, end_character: u32) -> Self {
         self.end_line = Some(end_line);
         self.end_char = Some(end_character);
+        self
+    }
+
+    pub fn with_ssr(mut self, placeholders: Vec<PlaceholderBinding>) -> Self {
+        self.placeholders = Some(placeholders);
         self
     }
 

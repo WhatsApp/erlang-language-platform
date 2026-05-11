@@ -17,7 +17,9 @@ use elp_ide::TextRange;
 use elp_ide::TextSize;
 use elp_ide::diagnostics::Diagnostic;
 use elp_ide::diagnostics::DiagnosticCode;
+use elp_ide::diagnostics::DiagnosticExtra;
 use elp_ide::diagnostics::DiagnosticTag;
+use elp_ide::diagnostics::PlaceholderBinding;
 use elp_ide::diagnostics::RelatedInformation;
 use elp_ide::diagnostics::Severity;
 use elp_ide::elp_ide_db::EqwalizerDiagnostic;
@@ -259,7 +261,7 @@ pub fn ide_to_arc_diagnostic(
     };
     let severity = diagnostic.severity(use_cli_severity);
     let doc_path = diagnostic.code.as_doc_path();
-    arc_types::Diagnostic::new(
+    let mut arc = arc_types::Diagnostic::new(
         path,
         line_num,
         character,
@@ -269,7 +271,43 @@ pub fn ide_to_arc_diagnostic(
         None,
         doc_path,
     )
-    .with_end_position(end_line, end_character)
+    .with_end_position(end_line, end_character);
+    if let Some(extra) = diagnostic.extra.as_ref() {
+        arc = apply_diagnostic_extra(arc, line_index, extra);
+    }
+    arc
+}
+
+fn apply_diagnostic_extra(
+    arc: arc_types::Diagnostic,
+    line_index: &LineIndex,
+    extra: &DiagnosticExtra,
+) -> arc_types::Diagnostic {
+    match extra {
+        DiagnosticExtra::Ssr { placeholders } => {
+            let bindings = placeholders
+                .iter()
+                .map(|p| placeholder_to_arc(line_index, p))
+                .collect();
+            arc.with_ssr(bindings)
+        }
+    }
+}
+
+fn placeholder_to_arc(
+    line_index: &LineIndex,
+    placeholder: &PlaceholderBinding,
+) -> arc_types::PlaceholderBinding {
+    let start = position(line_index, placeholder.range.start());
+    let end = position(line_index, placeholder.range.end());
+    arc_types::PlaceholderBinding {
+        name: placeholder.name.clone(),
+        text: placeholder.text.clone(),
+        start_line: start.line + 1,
+        start_char: start.character + 1,
+        end_line: end.line + 1,
+        end_char: end.character + 1,
+    }
 }
 
 pub struct ArcFix {
