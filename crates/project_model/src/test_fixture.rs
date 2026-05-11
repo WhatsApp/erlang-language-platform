@@ -161,6 +161,8 @@ pub struct FixtureWithProjectMeta {
     pub expect_parse_errors: bool,
     /// OTP app names to load from the real OTP installation (e.g., "stdlib").
     pub otp_apps: Vec<String>,
+    /// Extra dynamic call pattern strings (e.g., `"my_rpc:call(_, Module, Function, Args)"`).
+    pub dynamic_call_patterns: Vec<String>,
 }
 
 impl FixtureWithProjectMeta {
@@ -208,6 +210,7 @@ impl FixtureWithProjectMeta {
         }
 
         let mut otp_apps = Vec::new();
+        let mut dynamic_call_patterns = Vec::new();
         if let Some(meta) = fixture.strip_prefix("//- otp_apps:") {
             let (apps_str, remain) = meta.split_once('\n').unwrap();
             for app in apps_str.split(',') {
@@ -215,6 +218,14 @@ impl FixtureWithProjectMeta {
                 if !app.is_empty() {
                     otp_apps.push(app.to_string());
                 }
+            }
+            fixture = remain;
+        }
+        while let Some(meta) = fixture.strip_prefix("//- dynamic_call:") {
+            let (pattern, remain) = meta.split_once('\n').unwrap();
+            let pat = pattern.trim();
+            if !pat.is_empty() {
+                dynamic_call_patterns.push(pat.to_string());
             }
             fixture = remain;
         }
@@ -287,6 +298,7 @@ impl FixtureWithProjectMeta {
             diagnostics_enabled,
             expect_parse_errors,
             otp_apps,
+            dynamic_call_patterns,
         }
     }
 

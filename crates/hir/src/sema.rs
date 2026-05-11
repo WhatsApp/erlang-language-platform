@@ -103,6 +103,7 @@ pub use crate::intern::InternDatabaseStorage;
 use crate::resolver::Resolution;
 use crate::resolver::Resolver;
 
+pub mod dynamic_calls;
 mod find;
 // @fb-only: pub mod meta_only;
 pub mod to_def;

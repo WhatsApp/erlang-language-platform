@@ -1,0 +1,5 @@
+{application, app_a,
+ [{description, "Dynamic calls test app"},
+  {vsn, "1.0.0"},
+  {modules, []}
+ ]}.

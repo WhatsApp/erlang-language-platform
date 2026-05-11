@@ -434,6 +434,7 @@ dependencies = [
 name = "elp_base_db"
 version = "1.1.0"
 dependencies = [
+ "anyhow",
  "dissimilar",
  "eetf",
  "elp_project_model",
@@ -445,7 +446,6 @@ dependencies = [
  "paths",
  "regex",
  "salsa",
- "serde_json",
  "stdx",
  "tracing",
  "vfs",

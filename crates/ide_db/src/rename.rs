@@ -537,6 +537,7 @@ impl SymbolDefinition {
             let usages = self.clone().usages(sema).all();
             let mut renamed_module_edit: TextEdit = TextEdit::default();
             rename_remote_module_call_refs(
+                sema.db.upcast(),
                 usages,
                 file_id,
                 new_name,
@@ -574,6 +575,7 @@ impl SymbolDefinition {
 }
 
 fn rename_remote_module_call_refs(
+    db: &dyn elp_base_db::SourceDatabase,
     usages: crate::UsageSearchResult,
     file_id: FileId,
     new_name: &str,
@@ -581,7 +583,7 @@ fn rename_remote_module_call_refs(
     renamed_module_edit: &mut TextEdit,
 ) {
     usages.iter().for_each(|(usage_file_id, refs)| {
-        if let Some(edit) = rename_module_in_refs(refs, new_name) {
+        if let Some(edit) = rename_module_in_refs(db, refs, new_name) {
             if usage_file_id == file_id {
                 renamed_module_edit
                     .union(edit)
@@ -593,13 +595,17 @@ fn rename_remote_module_call_refs(
     });
 }
 
-fn rename_module_in_refs(refs: &[NameLike], new_name: &str) -> Option<TextEdit> {
+fn rename_module_in_refs(
+    db: &dyn elp_base_db::SourceDatabase,
+    refs: &[NameLike],
+    new_name: &str,
+) -> Option<TextEdit> {
     let mut builder = TextEdit::builder();
     for usage in refs {
         // Note: we cannot blindly replace all occurrences of an
         // atom that happens to be a module name
         // We will flesh out other usages as we need them
-        let _ = rename_call_module_in_ref(usage, &mut builder, new_name);
+        let _ = rename_call_module_in_ref(db, usage, &mut builder, new_name);
         let _ = rename_external_fun_module_in_ref(usage, &mut builder, new_name);
     }
     Some(builder.finish())
@@ -625,6 +631,7 @@ fn get_remote_call(syntax: &SyntaxNode) -> Option<(ast::Remote, ast::Call)> {
 }
 
 fn rename_call_module_in_ref(
+    db: &dyn elp_base_db::SourceDatabase,
     usage: &NameLike,
     builder: &mut TextEditBuilder,
     new_name: &str,
@@ -641,7 +648,7 @@ fn rename_call_module_in_ref(
         None => {
             // Try local call for module-as-argument patterns
             if let Some(call) = get_call(usage.syntax()) {
-                return rename_module_arg_in_call(usage_atom, &call, None, builder, new_name);
+                return rename_module_arg_in_call(db, usage_atom, &call, None, builder, new_name);
             }
             return Some(());
         }
@@ -670,6 +677,7 @@ fn rename_call_module_in_ref(
     };
 
     rename_module_arg_in_call(
+        db,
         usage_atom,
         &call,
         Some((&module_name, &function_name)),
@@ -679,6 +687,7 @@ fn rename_call_module_in_ref(
 }
 
 fn rename_module_arg_in_call(
+    db: &dyn elp_base_db::SourceDatabase,
     usage_atom: &ast::Atom,
     call: &ast::Call,
     remote_info: Option<(&Option<String>, &String)>,
@@ -703,32 +712,32 @@ fn rename_module_arg_in_call(
     let args = call.args()?;
     let args_vec: Vec<_> = args.args().collect();
     let arity = args_vec.len();
-    let pattern_key = (module_name, function_name, arity);
 
-    // Use combined patterns that merge dynamic call patterns and module argument patterns
-    let combined_patterns = hir::sema::to_def::get_module_arg_patterns();
-    if let Some(pattern) = combined_patterns.get(&pattern_key)
-        && let Some(arg) = args_vec.get(pattern.index)
-    {
-        match arg {
-            ast::Expr::ExprMax(ast::ExprMax::Atom(arg_atom))
-                if pattern.accepts_atom() && arg_atom.syntax() == usage_atom.syntax() =>
-            {
-                builder.replace(usage_atom.syntax().text_range(), new_name.to_string());
-            }
-            ast::Expr::ExprMax(ast::ExprMax::List(list)) if pattern.accepts_list() => {
-                // Handle list of modules (e.g., meck:new([mod1, mod2], Options))
-                for expr in list.exprs() {
-                    if let ast::Expr::ExprMax(ast::ExprMax::Atom(list_atom)) = expr
-                        && list_atom.syntax() == usage_atom.syntax()
-                    {
-                        builder.replace(usage_atom.syntax().text_range(), new_name.to_string());
-                        break;
-                    }
+    // Single lookup — the pattern's `module_arg_shape` (Atom / List /
+    // Either) tells us which call-site shapes are accepted for this
+    // signature. Inspect the actual arg and operate accordingly.
+    let pattern = hir::sema::dynamic_calls::lookup_pattern(db, module_name, function_name, arity)?;
+    let module_idx = pattern.module_arg_index?;
+    let arg = args_vec.get(module_idx as usize)?;
+    let shape = pattern.module_arg_shape;
+
+    match arg {
+        ast::Expr::ExprMax(ast::ExprMax::Atom(arg_atom))
+            if shape.allows_atom() && arg_atom.syntax() == usage_atom.syntax() =>
+        {
+            builder.replace(usage_atom.syntax().text_range(), new_name.to_string());
+        }
+        ast::Expr::ExprMax(ast::ExprMax::List(list)) if shape.allows_list() => {
+            for expr in list.exprs() {
+                if let ast::Expr::ExprMax(ast::ExprMax::Atom(list_atom)) = expr
+                    && list_atom.syntax() == usage_atom.syntax()
+                {
+                    builder.replace(usage_atom.syntax().text_range(), new_name.to_string());
+                    break;
                 }
             }
-            _ => {}
         }
+        _ => {}
     }
 
     Some(())

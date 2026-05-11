@@ -1,0 +1,5 @@
+[dynamic_calls]
+patterns = [
+    "my_rpc:call(_, Module, Function, Args)",
+    "my_mock:setup([Module], _)"
+]

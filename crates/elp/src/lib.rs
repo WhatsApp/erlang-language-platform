@@ -12,13 +12,16 @@ use std::fmt;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::Result;
 use anyhow::anyhow;
 use anyhow::bail;
 use elp_ide::Analysis;
+use elp_ide::AnalysisHost;
 use elp_ide::diagnostics::LintConfig;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
+use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_syntax::SmolStr;
 use fxhash::FxHashSet;
 use lazy_static::lazy_static;
@@ -172,6 +175,16 @@ pub fn read_lint_config_file(project: &Path, config_file: &Option<String>) -> Re
     Ok(LintConfig::default())
 }
 
+/// Apply dynamic call patterns from a lint config to the database.
+/// Call this whenever a lint config is loaded or updated.
+pub fn apply_lint_config(analysis_host: &mut AnalysisHost, lint_config: &LintConfig) {
+    let patterns = lint_config.dynamic_calls.parse();
+    let db = analysis_host.raw_database_mut();
+    db.set_extra_dynamic_call_patterns(Arc::new(elp_ide::elp_ide_db::elp_base_db::build_index(
+        patterns,
+    )));
+}
+
 #[cfg(test)]
 mod tests {
     use elp_ide::FunctionMatch;
@@ -214,11 +227,12 @@ mod tests {
             },
             linters: FxHashMap::default(),
             erlang_service: ErlangServiceConfig::default(),
+            dynamic_calls: Default::default(),
         };
         expect![[r#"
             [erlang_service]
             warnings_as_errors = false
-            
+
             [[ad_hoc_lints.lints]]
             type = "ReplaceCall"
 
@@ -248,6 +262,9 @@ mod tests {
             ssr_pattern = "ssr: _@A = 10."
 
             [linters]
+
+            [dynamic_calls]
+            patterns = []
         "#]]
         .assert_eq(&toml::to_string::<LintConfig>(&lint_config).unwrap());
     }

@@ -1513,6 +1513,10 @@ impl Server {
             let path_buf: PathBuf = path.clone().into();
             if let Ok(lint_config) = read_lint_config_file(&path_buf, &None) {
                 log::warn!("update_configuration: read lint file: {lint_config:?}");
+
+                // Update dynamic call patterns from lint config
+                crate::apply_lint_config(&mut self.analysis_host, &lint_config);
+
                 self.lint_config = Arc::new(lint_config);
 
                 // Diagnostic config may have changed, regen

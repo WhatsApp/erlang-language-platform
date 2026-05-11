@@ -837,302 +837,7 @@ impl ToDef for ast::ExprArgs {
     }
 }
 
-use fxhash::FxHashMap;
-use lazy_static::lazy_static;
-
-/// Pattern for matching dynamic call expressions (apply, rpc calls, etc.)
-#[derive(Debug, Clone)]
-pub(crate) struct DynamicCallPattern {
-    /// Index of the target module argument (None when target function is in same module)
-    pub(crate) module_arg_index: Option<usize>,
-    /// Index of the target function argument
-    pub(crate) function_arg_index: usize,
-    /// Index of the arguments list or arity argument
-    pub(crate) args_list_index: usize,
-    /// Whether to extract arity directly from an integer argument (true) or from list length (false)
-    pub(crate) direct_arity: bool,
-}
-
-pub(crate) type PatternKey = (Option<&'static str>, &'static str, usize);
-
-#[macro_export]
-macro_rules! add_patterns {
-    ($patterns:ident, [$(($module:expr, $func:literal, $arity:literal, $module_idx:expr, $func_idx:literal, $args_idx:literal, $direct:expr)),* $(,)?]) => {
-        $(
-            $patterns.insert(
-                ($module, $func, $arity),
-                DynamicCallPattern {
-                    module_arg_index: $module_idx,
-                    function_arg_index: $func_idx,
-                    args_list_index: $args_idx,
-                    direct_arity: $direct,
-                },
-            );
-        )*
-    };
-}
-
-fn add_dynamic_call_patterns(patterns: &mut FxHashMap<PatternKey, DynamicCallPattern>) {
-    // Each entry follows the format:
-    //
-    // (module, function, arity, module_arg_index, function_arg_index, args_list_index, direct_arity)
-    //
-    // Where:
-    //
-    // module:             Module name (Some("erlang"), Some("rpc"), etc.) or None for implicit erlang functions
-    // function:           Function name as string literal (e.g., "apply", "call", "spawn")
-    // arity:              Number of arguments this function pattern expects
-    // module_arg_index:   Which argument position contains the target module name
-    // function_arg_index: Which argument position contains the target function name
-    // args_list_index:    Which argument position contains the arguments list or arity value
-    // direct_arity:       true if the argument contains the arity value, false if the argument contains a list of arguments
-    //
-    // All indexes are 0-based.
-    add_patterns!(
-        patterns,
-        [
-            // erlang module (implicit)
-            (None, "apply", 2, None, 0, 1, false),
-            (None, "apply", 3, Some(0), 1, 2, false),
-            (None, "function_exported", 3, Some(0), 1, 2, true),
-            (None, "hibernate", 3, Some(0), 1, 2, false),
-            (None, "is_builtin", 3, Some(0), 1, 2, true),
-            (None, "spawn_link", 3, Some(0), 1, 2, false),
-            (None, "spawn_link", 4, Some(1), 2, 3, false),
-            (None, "spawn_monitor", 3, Some(0), 1, 2, false),
-            (None, "spawn_monitor", 4, Some(1), 2, 3, false),
-            (None, "spawn_opt", 4, Some(0), 1, 2, false),
-            (None, "spawn_opt", 5, Some(1), 2, 3, false),
-            (None, "spawn_request", 5, Some(1), 2, 3, false),
-            (None, "spawn", 3, Some(0), 1, 2, false),
-            (None, "spawn", 4, Some(1), 2, 3, false),
-            // erlang module (explicit)
-            (Some("erlang"), "apply", 2, None, 0, 1, false),
-            (Some("erlang"), "apply", 3, Some(0), 1, 2, false),
-            (Some("erlang"), "function_exported", 3, Some(0), 1, 2, true),
-            (Some("erlang"), "hibernate", 3, Some(0), 1, 2, false),
-            (Some("erlang"), "is_builtin", 3, Some(0), 1, 2, true),
-            (Some("erlang"), "spawn_link", 3, Some(0), 1, 2, false),
-            (Some("erlang"), "spawn_link", 4, Some(1), 2, 3, false),
-            (Some("erlang"), "spawn_monitor", 3, Some(0), 1, 2, false),
-            (Some("erlang"), "spawn_monitor", 4, Some(1), 2, 3, false),
-            (Some("erlang"), "spawn_opt", 4, Some(0), 1, 2, false),
-            (Some("erlang"), "spawn_opt", 5, Some(1), 2, 3, false),
-            (Some("erlang"), "spawn_request", 5, Some(1), 2, 3, false),
-            (Some("erlang"), "spawn", 3, Some(0), 1, 2, false),
-            (Some("erlang"), "spawn", 4, Some(1), 2, 3, false),
-            // rpc
-            (Some("rpc"), "call", 4, Some(1), 2, 3, false),
-            (Some("rpc"), "call", 5, Some(1), 2, 3, false),
-            (Some("rpc"), "async_call", 4, Some(1), 2, 3, false),
-            (Some("rpc"), "cast", 4, Some(1), 2, 3, false),
-            (Some("rpc"), "multicall", 3, Some(0), 1, 2, false),
-            (Some("rpc"), "multicall", 4, Some(0), 1, 2, false),
-            (Some("rpc"), "multicall", 5, Some(1), 2, 3, false),
-            // erpc
-            (Some("erpc"), "call", 4, Some(1), 2, 3, false),
-            (Some("erpc"), "call", 5, Some(1), 2, 3, false),
-            (Some("erpc"), "cast", 4, Some(1), 2, 3, false),
-            (Some("erpc"), "multicall", 4, Some(1), 2, 3, false),
-            (Some("erpc"), "multicall", 5, Some(1), 2, 3, false),
-            (Some("erpc"), "multicast", 4, Some(1), 2, 3, false),
-            (Some("erpc"), "send_request", 6, Some(1), 2, 3, false),
-            // peer
-            (Some("peer"), "call", 4, Some(1), 2, 3, false),
-            (Some("peer"), "call", 5, Some(1), 2, 3, false),
-            (Some("peer"), "cast", 4, Some(1), 2, 3, false),
-        ]
-    );
-}
-
-/// Specifies what forms a module argument can take.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ModuleArgType {
-    /// The argument must be a single module atom (e.g., `apply(Mod, Fun, Args)`)
-    Atom,
-    /// The argument must be a list of module atoms (e.g., some batch operations)
-    List,
-    /// The argument can be either a single module atom or a list of modules
-    /// (e.g., `meck:new(Mod | [Mod], Opts)`)
-    AtomOrList,
-}
-
-/// Pattern for matching module argument positions in function calls.
-/// Used by rename operations to identify which argument contains a module name.
-#[derive(Debug, Clone, Copy)]
-pub struct ModuleArgPattern {
-    /// Index of the argument containing the module name (0-based)
-    pub index: usize,
-    /// The type of the module argument (atom, list, or either)
-    pub arg_type: ModuleArgType,
-}
-
-impl ModuleArgPattern {
-    /// Creates a pattern where the argument is a single module atom.
-    pub const fn atom(index: usize) -> Self {
-        Self {
-            index,
-            arg_type: ModuleArgType::Atom,
-        }
-    }
-
-    /// Creates a pattern where the argument is a list of module atoms.
-    pub const fn list(index: usize) -> Self {
-        Self {
-            index,
-            arg_type: ModuleArgType::List,
-        }
-    }
-
-    /// Creates a pattern where the argument can be either a single atom or a list.
-    pub const fn atom_or_list(index: usize) -> Self {
-        Self {
-            index,
-            arg_type: ModuleArgType::AtomOrList,
-        }
-    }
-
-    /// Returns true if this pattern accepts a single atom.
-    pub const fn accepts_atom(&self) -> bool {
-        matches!(
-            self.arg_type,
-            ModuleArgType::Atom | ModuleArgType::AtomOrList
-        )
-    }
-
-    /// Returns true if this pattern accepts a list of atoms.
-    pub const fn accepts_list(&self) -> bool {
-        matches!(
-            self.arg_type,
-            ModuleArgType::List | ModuleArgType::AtomOrList
-        )
-    }
-}
-
-fn add_module_argument_patterns(patterns: &mut FxHashMap<PatternKey, ModuleArgPattern>) {
-    // Each entry follows the format:
-    // (module, function, arity) -> ModuleArgPattern
-    //
-    // Where:
-    // module:           Module name (Some("meck"), Some("application"), etc.)
-    // function:         Function name as string literal (e.g., "new", "get_env")
-    // arity:            Number of arguments this function pattern expects
-    // ModuleArgPattern: Contains the argument index and the expected type
-    //
-    // All indexes are 0-based.
-
-    // meck - mocking library
-    // meck:new/2 accepts either a single module atom or a list of modules
-    patterns.insert((Some("meck"), "called", 3), ModuleArgPattern::atom(0));
-    patterns.insert((Some("meck"), "called", 4), ModuleArgPattern::atom(0));
-    patterns.insert((Some("meck"), "capture", 5), ModuleArgPattern::atom(1));
-    patterns.insert((Some("meck"), "capture", 6), ModuleArgPattern::atom(1));
-    patterns.insert(
-        (Some("meck"), "delete", 3),
-        ModuleArgPattern::atom_or_list(0),
-    );
-    patterns.insert(
-        (Some("meck"), "delete", 4),
-        ModuleArgPattern::atom_or_list(0),
-    );
-    patterns.insert(
-        (Some("meck"), "expect", 3),
-        ModuleArgPattern::atom_or_list(0),
-    );
-    patterns.insert(
-        (Some("meck"), "expect", 4),
-        ModuleArgPattern::atom_or_list(0),
-    );
-    patterns.insert(
-        (Some("meck"), "expects", 2),
-        ModuleArgPattern::atom_or_list(0),
-    );
-    patterns.insert((Some("meck"), "history", 1), ModuleArgPattern::atom(0));
-    patterns.insert((Some("meck"), "history", 2), ModuleArgPattern::atom(0));
-    patterns.insert((Some("meck"), "loop", 4), ModuleArgPattern::atom_or_list(0));
-    patterns.insert((Some("meck"), "new", 1), ModuleArgPattern::atom_or_list(0));
-    patterns.insert((Some("meck"), "new", 2), ModuleArgPattern::atom_or_list(0));
-    patterns.insert((Some("meck"), "num_calls", 3), ModuleArgPattern::atom(0));
-    patterns.insert((Some("meck"), "num_calls", 4), ModuleArgPattern::atom(0));
-    patterns.insert(
-        (Some("meck"), "reset", 1),
-        ModuleArgPattern::atom_or_list(0),
-    );
-    patterns.insert(
-        (Some("meck"), "sequence", 4),
-        ModuleArgPattern::atom_or_list(0),
-    );
-    patterns.insert(
-        (Some("meck"), "unload", 1),
-        ModuleArgPattern::atom_or_list(0),
-    );
-    patterns.insert(
-        (Some("meck"), "validate", 1),
-        ModuleArgPattern::atom_or_list(0),
-    );
-    patterns.insert((Some("meck"), "wait", 4), ModuleArgPattern::atom(0));
-    patterns.insert((Some("meck"), "wait", 5), ModuleArgPattern::atom(1));
-    patterns.insert((Some("meck"), "wait", 6), ModuleArgPattern::atom(1));
-
-    // code module - module loading and management
-    // These functions from the Erlang stdlib take module() as their argument
-    patterns.insert((Some("code"), "load_file", 1), ModuleArgPattern::atom(0));
-    patterns.insert(
-        (Some("code"), "ensure_loaded", 1),
-        ModuleArgPattern::atom(0),
-    );
-    patterns.insert((Some("code"), "delete", 1), ModuleArgPattern::atom(0));
-    patterns.insert((Some("code"), "purge", 1), ModuleArgPattern::atom(0));
-    patterns.insert((Some("code"), "soft_purge", 1), ModuleArgPattern::atom(0));
-    patterns.insert((Some("code"), "is_loaded", 1), ModuleArgPattern::atom(0));
-    patterns.insert(
-        (Some("code"), "get_object_code", 1),
-        ModuleArgPattern::atom(0),
-    );
-    patterns.insert((Some("code"), "module_md5", 1), ModuleArgPattern::atom(0));
-    patterns.insert((Some("code"), "is_sticky", 1), ModuleArgPattern::atom(0));
-}
-
-// Lazy static initialization for the patterns maps
-lazy_static! {
-    static ref DYNAMIC_CALL_PATTERNS: FxHashMap<PatternKey, DynamicCallPattern> = {
-        let mut patterns = FxHashMap::default();
-        add_dynamic_call_patterns(&mut patterns);
-        // @fb-only: meta_only::add_dynamic_call_patterns(&mut patterns);
-        patterns
-    };
-    static ref MODULE_ARGUMENT_PATTERNS: FxHashMap<PatternKey, ModuleArgPattern> = {
-        let mut patterns = FxHashMap::default();
-        add_module_argument_patterns(&mut patterns);
-        // @fb-only: meta_only::add_module_argument_patterns(&mut patterns);
-        patterns
-    };
-    /// Combined patterns for module argument positions.
-    /// Merges dynamic call patterns (that have module_arg_index) with simple module argument patterns.
-    /// Used by rename operations where we only care about the module argument position.
-    static ref COMBINED_MODULE_ARG_PATTERNS: FxHashMap<PatternKey, ModuleArgPattern> = {
-        let mut patterns: FxHashMap<PatternKey, ModuleArgPattern> = FxHashMap::default();
-        // Add module_arg_index from dynamic call patterns (where present)
-        for (key, pattern) in DYNAMIC_CALL_PATTERNS.iter() {
-            if let Some(module_idx) = pattern.module_arg_index {
-                patterns.insert(*key, ModuleArgPattern::atom(module_idx));
-            }
-        }
-        // Add from simple module argument patterns
-        for (key, module_arg_pattern) in MODULE_ARGUMENT_PATTERNS.iter() {
-            patterns.insert(*key, *module_arg_pattern);
-        }
-        patterns
-    };
-}
-
-fn get_dynamic_call_patterns() -> &'static FxHashMap<PatternKey, DynamicCallPattern> {
-    &DYNAMIC_CALL_PATTERNS
-}
-
-pub fn get_module_arg_patterns() -> &'static FxHashMap<PatternKey, ModuleArgPattern> {
-    &COMBINED_MODULE_ARG_PATTERNS
-}
+use super::dynamic_calls::lookup_pattern;
 
 pub(crate) fn look_for_dynamic_call(
     sema: &Semantic,
@@ -1152,50 +857,68 @@ pub(crate) fn look_for_dynamic_call(
     let function_atom = body[fun].as_atom()?;
     let function_name = function_atom.as_name();
 
-    // Create pattern key and look up in HashMap for O(1) lookup
-    let module_str = module_name.as_ref().map(|name| name.as_str());
-    let pattern_key = (module_str, function_name.as_str(), args.len());
+    let pattern = lookup_pattern(
+        sema.db.upcast(),
+        module_name.as_ref().map(|name| name.as_str()),
+        function_name.as_str(),
+        args.len(),
+    )?;
 
-    let patterns_map = get_dynamic_call_patterns();
-    if let Some(pattern) = patterns_map.get(&pattern_key) {
-        return resolve_dynamic_call(sema, file_id, pattern, args, body);
+    // Dynamic call patterns require both function_arg_index and args_list_index
+    let function_arg_index = pattern.function_arg_index? as usize;
+    let args_list_index = pattern.args_list_index? as usize;
+
+    let arity = if pattern.direct_arity {
+        arity_from_integer_arg(args[args_list_index], body)?
+    } else {
+        arity_from_apply_args(args[args_list_index], body)?
+    };
+
+    let resolve_atom_module = |module_expr: ExprId| {
+        let target = CallTarget::Remote {
+            module: module_expr,
+            name: args[function_arg_index],
+            parens: false,
+        };
+        resolve_call_target(sema, &target, Some(arity), file_id, body).map(CallDef::Function)
+    };
+
+    if let Some(module_idx) = pattern.module_arg_index {
+        let module_expr = args[module_idx as usize];
+        let actual_is_list = matches!(body[module_expr], Expr::List { .. });
+
+        // Reject if the call-site shape isn't accepted by the pattern.
+        let shape_ok = if actual_is_list {
+            pattern.module_arg_shape.allows_list()
+        } else {
+            pattern.module_arg_shape.allows_atom()
+        };
+        if !shape_ok {
+            return None;
+        }
+
+        if actual_is_list {
+            // List-form dispatch (e.g. `meck:expect([m1, m2], ...)`):
+            // the call resolves to one function per list element. Try
+            // each atom element in turn and return the first that
+            // resolves to a known function.
+            //
+            // Limitation: only the first resolvable target is returned.
+            // Find-references on a function in a later list element
+            // misses the call site. Lifting this requires returning
+            // multiple `CallDef`s, a wider API change.
+            if let Expr::List { exprs, .. } = &body[module_expr] {
+                return exprs.iter().copied().find_map(resolve_atom_module);
+            }
+            return None;
+        }
+        return resolve_atom_module(module_expr);
     }
 
-    None
-}
-
-fn resolve_dynamic_call(
-    sema: &Semantic,
-    file_id: FileId,
-    pattern: &DynamicCallPattern,
-    args: &[ExprId],
-    body: &Body,
-) -> Option<CallDef> {
-    // Extract arity based on pattern type
-    let arity = if pattern.direct_arity {
-        // Extract arity directly from an integer argument
-        arity_from_integer_arg(args[pattern.args_list_index], body)?
-    } else {
-        // Extract arity from list length
-        arity_from_apply_args(args[pattern.args_list_index], body)?
+    let target = CallTarget::Local {
+        name: args[function_arg_index],
     };
-
-    // Build the call target
-    let call_target = if let Some(module_idx) = pattern.module_arg_index {
-        // Remote call
-        CallTarget::Remote {
-            module: args[module_idx],
-            name: args[pattern.function_arg_index],
-            parens: false,
-        }
-    } else {
-        // Local call
-        CallTarget::Local {
-            name: args[pattern.function_arg_index],
-        }
-    };
-
-    resolve_call_target(sema, &call_target, Some(arity), file_id, body).map(CallDef::Function)
+    resolve_call_target(sema, &target, Some(arity), file_id, body).map(CallDef::Function)
 }
 
 /// The apply call has a last parameter being a list of arguments.

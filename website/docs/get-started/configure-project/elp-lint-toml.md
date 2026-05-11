@@ -99,3 +99,57 @@ Enable a linter only on save:
 enabled = true
 runs_on_save_only = true
 ```
+
+## [dynamic_calls]
+
+Through the `dynamic_calls` section, you can teach ELP about additional dynamic call patterns in your codebase. This helps find-references resolve calls made through custom wrappers that forward to `Module:Function(Args)` at runtime, and helps rename track module name arguments in library calls.
+
+### patterns
+
+A list of pattern strings describing how your wrapper functions pass module, function, and arguments to a dynamic call.
+
+**Format:** `[module:]function(Arg1, Arg2, ...)`
+
+Each argument name has a special meaning:
+
+| Name       | Meaning |
+|------------|---------|
+| `Module`   | Argument position containing a single target module name (atom) |
+| `[Module]` | Argument position containing a list of target module names |
+| `Function` | Argument position containing the target function name |
+| `Args`     | Argument position containing a list of arguments (arity = list length) |
+| `Arity`    | Argument position containing the arity as an integer |
+| Any other  | Ignored (serves as documentation, e.g., `Node`, `Opts`, `_`) |
+
+**Validation rules:**
+- `Function` and `Args`/`Arity` must both be present or both absent
+- If neither `Function` nor `Args`/`Arity` is present, at least `Module` or `[Module]` is required (module-arg-only pattern, used for rename support)
+- At most one `Module` or `[Module]` argument
+- At most one `Function` argument
+- At most one of `Args` or `Arity` (not both)
+
+There are two kinds of patterns:
+
+1. **Dynamic call patterns** — include `Function` and `Args`/`Arity`. Used by find-references to resolve dynamic calls.
+2. **Module-arg-only patterns** — include only `Module` or `[Module]`, without `Function`/`Args`. Used by rename to track module name arguments.
+
+**Example:**
+
+```toml
+[dynamic_calls]
+patterns = [
+  # Dynamic call patterns (resolve calls)
+  "my_rpc:call(Node, Module, Function, Args)",
+  "my_utils:check_exported(Module, Function, Arity)",
+  "my_apply(Function, Args)",
+  # Module-arg-only patterns (rename support)
+  "my_mock:setup(Module, _)",
+  "my_mock:setup([Module], _)",
+]
+```
+
+In this example:
+- `my_rpc:call/4` — ELP learns that argument 2 is the module, argument 3 is the function, and argument 4 is the args list
+- `my_utils:check_exported/3` — a local utility where argument 3 is a direct arity integer
+- `my_apply/2` — an unqualified function with no module argument
+- `my_mock:setup/2` — two patterns together tell ELP that argument 1 can be either a single module atom or a list of modules (rename will update both forms)

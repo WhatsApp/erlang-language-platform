@@ -25,6 +25,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 mod change;
+mod dynamic_calls;
 mod include;
 mod input;
 mod module_index;
@@ -176,6 +177,13 @@ impl FileKind {
     }
 }
 
+pub use dynamic_calls::DynamicCallPatternInput;
+pub use dynamic_calls::ModuleArgShape;
+pub use dynamic_calls::PatternKey;
+pub use dynamic_calls::build_index;
+pub use dynamic_calls::parse_dynamic_call_pattern;
+pub use dynamic_calls::pattern_key;
+
 pub trait FileLoader {
     /// Text of the file.
     fn file_text(&self, file_id: FileId) -> Arc<str>;
@@ -225,6 +233,15 @@ pub trait SourceDatabase: FileLoader + salsa::Database {
     /// When false (default), all forms are treated as active (legacy behavior).
     #[salsa::input]
     fn ifdef_enabled(&self) -> bool;
+
+    /// Extra dynamic call patterns from `.elp_lint.toml` configuration.
+    /// These patterns extend the built-in OTP patterns for find-references
+    /// on dynamic calls (e.g., `apply/3`, `rpc:call/4`).
+    ///
+    /// Stored pre-indexed by `(module, function, arity)` so look-ups are
+    /// O(1) (mirroring the built-in pattern index).
+    #[salsa::input]
+    fn extra_dynamic_call_patterns(&self) -> Arc<FxHashMap<PatternKey, DynamicCallPatternInput>>;
 
     fn file_app_data(&self, file_id: FileId) -> Option<Arc<AppData>>;
 

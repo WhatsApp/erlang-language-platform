@@ -1936,6 +1936,17 @@ mod tests {
     }
 
     #[test]
+    fn lint_dynamic_calls_project() {
+        simple_snapshot(
+            args_vec!["lint", "--read-config", "--diagnostic-filter", "W0077"],
+            "dynamic_calls",
+            resource_file!("dynamic_calls/lint.stdout"),
+            true,
+            None,
+        );
+    }
+
+    #[test]
     fn lint_ssr_from_bad_config() {
         let config_file = project_path("linter/elp_lint_ssr_adhoc_parse_fail.toml");
         simple_snapshot_expect_stderror(

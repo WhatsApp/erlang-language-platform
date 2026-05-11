@@ -3339,4 +3339,112 @@ pub(crate) mod tests {
             "#,
         );
     }
+
+    #[test]
+    fn test_rename_with_custom_dynamic_call_pattern() {
+        check_rename(
+            "new_name",
+            r#"
+               //- dynamic_call: my_rpc:call(_, Module, Function, Args)
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   my_rpc:call(node(), baz, bar, [1, 2]).
+
+               b~ar(_, _) ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   my_rpc:call(node(), baz, new_name, [1, 2]).
+
+               new_name(_, _) ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn test_rename_with_two_custom_dynamic_call_patterns() {
+        check_rename(
+            "new_name",
+            r#"
+               //- dynamic_call: my_rpc:call(_, Module, Function, Args)
+               //- dynamic_call: my_other_rpc:invoke(Module, Function, Args)
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   my_rpc:call(node(), baz, bar, [1, 2]),
+                   my_other_rpc:invoke(baz, bar, [1, 2]).
+
+               b~ar(_, _) ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   my_rpc:call(node(), baz, new_name, [1, 2]),
+                   my_other_rpc:invoke(baz, new_name, [1, 2]).
+
+               new_name(_, _) ->
+                    ok."#,
+        );
+    }
+
+    #[test]
+    fn rename_module_in_meck_expect_list_arg() {
+        check_rename(
+            "renamed_mod",
+            r#"
+            //- /app_a/src/main.erl
+              -module(ma~in).
+              -export([foo/0]).
+              foo() -> ok.
+            //- /app_a/src/helper.erl
+              -module(helper).
+            //- /app_a/src/other.erl
+              -module(other).
+              -export([test/0]).
+              test() ->
+               meck:expect([main, helper], foo, fun() -> ok end),
+               ok.
+             "#,
+            //------------------
+            r#"
+            //- /app_a/src/renamed_mod.erl
+              -module(renamed_mod).
+              -export([foo/0]).
+              foo() -> ok.
+            //- /app_a/src/helper.erl
+              -module(helper).
+            //- /app_a/src/other.erl
+              -module(other).
+              -export([test/0]).
+              test() ->
+               meck:expect([renamed_mod, helper], foo, fun() -> ok end),
+               ok.
+             "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_function_with_list_form_dynamic_call_pattern() {
+        check_rename(
+            "new_name",
+            r#"
+               //- dynamic_call: my_multicall([Module], Function, Args)
+               //- /src/baz.erl
+               -module(baz).
+               foo() ->
+                   my_multicall([baz, other], bar, [1, 2]).
+
+               b~ar(_, _) ->
+                    ok."#,
+            r#"
+               -module(baz).
+               foo() ->
+                   my_multicall([baz, other], new_name, [1, 2]).
+
+               new_name(_, _) ->
+                    ok."#,
+        );
+    }
 }

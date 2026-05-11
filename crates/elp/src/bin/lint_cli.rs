@@ -137,11 +137,18 @@ pub fn run_lint_command(
         fs::create_dir_all(to)?
     };
 
-    let diagnostics_config = get_diagnostics_config(args)?;
+    let lint_config = if args.read_config || args.config_file.is_some() {
+        read_lint_config_file(&args.project, &args.config_file)?
+    } else {
+        LintConfig::default()
+    };
+
+    let diagnostics_config = get_diagnostics_config(args, &lint_config)?;
 
     // We load the project after loading config, in case it bails with
     // errors. No point wasting time if the config is wrong.
-    let mut loaded = load_project(args, cli, query_config, ifdef)?;
+    let mut loaded = load_project(args, cli, query_config, ifdef, &lint_config)?;
+
     telemetry::report_elapsed_time("lint operational", start_time);
 
     let result = do_codemod(cli, &mut loaded, &diagnostics_config, args);
@@ -166,10 +173,11 @@ pub fn load_project(
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
     ifdef: bool,
+    lint_config: &LintConfig,
 ) -> Result<LoadResult> {
     log::info!("Loading project at: {:?}", args.project);
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    load::load_project_at(
+    let mut loaded = load::load_project_at(
         cli,
         &args.project,
         config,
@@ -177,7 +185,11 @@ pub fn load_project(
         Mode::Server,
         query_config,
         ifdef,
-    )
+    )?;
+
+    elp::apply_lint_config(&mut loaded.analysis_host, lint_config);
+
+    Ok(loaded)
 }
 
 fn canonicalize_or_keep(path: &Path) -> PathBuf {
@@ -817,16 +829,10 @@ fn do_print_diagnostics_json_filtered(
     Ok(())
 }
 
-fn get_diagnostics_config(args: &Lint) -> Result<DiagnosticsConfig> {
-    let cfg_from_file = if args.read_config || args.config_file.is_some() {
-        read_lint_config_file(&args.project, &args.config_file)?
-    } else {
-        LintConfig::default()
-    };
-
+fn get_diagnostics_config(args: &Lint, lint_config: &LintConfig) -> Result<DiagnosticsConfig> {
     let cfg = DiagnosticsConfig::default()
         .configure_diagnostics(
-            &cfg_from_file,
+            lint_config,
             &args.diagnostic_filter,
             &args.diagnostic_ignore,
         )?
@@ -1499,6 +1505,7 @@ mod tests {
             erlang_service: ErlangServiceConfig {
                 warnings_as_errors: true,
             },
+            dynamic_calls: Default::default(),
         })
         .unwrap();
 
@@ -1519,6 +1526,9 @@ mod tests {
             type = "UseOk"
 
             [linters]
+
+            [dynamic_calls]
+            patterns = []
         "#]]
         .assert_eq(&result);
     }
@@ -1561,6 +1571,9 @@ mod tests {
                         ),
                     },
                 },
+                dynamic_calls: DynamicCallsConfig {
+                    patterns: [],
+                },
             }
         "#]]
         .assert_debug_eq(&lint_config);
@@ -1582,9 +1595,9 @@ mod tests {
         let mut cli = Fake::default();
 
         if let Command::Lint(mut lint) = args.command {
+            let lint_config = LintConfig::default();
             lint.normalize();
-            let diagnostics_config = super::get_diagnostics_config(&lint).unwrap();
-
+            let diagnostics_config = super::get_diagnostics_config(&lint, &lint_config).unwrap();
             do_codemod(&mut cli, &mut loaded, &diagnostics_config, &lint).ok();
             let (stdout, stderr) = cli.to_strings();
             let (stdout, stderr) = (

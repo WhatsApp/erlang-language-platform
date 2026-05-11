@@ -102,6 +102,7 @@ mod dependent_header;
 mod deprecated_function;
 mod duplicate_include;
 mod duplicate_module;
+mod dynamic_calls;
 mod effect_free_statement;
 mod elp_ci_test_diagnostic;
 mod encode_hex_with_case;
@@ -173,6 +174,8 @@ mod unused_include;
 mod unused_macro;
 mod unused_record_field;
 
+pub use dynamic_calls::DynamicCallsConfig;
+pub use dynamic_calls::parse_dynamic_call_pattern;
 pub use elp_ide_db::DiagnosticCode;
 pub use from_config::Lint;
 pub use from_config::LintsFromConfig;
@@ -1516,6 +1519,8 @@ pub struct LintConfig {
     pub ad_hoc_lints: LintsFromConfig,
     #[serde(default)]
     pub linters: FxHashMap<DiagnosticCode, LinterConfig>,
+    #[serde(default)]
+    pub dynamic_calls: DynamicCallsConfig,
 }
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]

@@ -83,6 +83,15 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         // Enable ifdef for tests by default
         db.set_ifdef_enabled(true);
         change.apply(&mut db, &|path| fixture.resolve_file_id(path));
+        let patterns: Vec<crate::DynamicCallPatternInput> = fixture
+            .dynamic_call_patterns
+            .iter()
+            .map(|s| {
+                crate::parse_dynamic_call_pattern(s)
+                    .unwrap_or_else(|e| panic!("invalid dynamic call pattern '{}': {}", s, e))
+            })
+            .collect();
+        db.set_extra_dynamic_call_patterns(std::sync::Arc::new(crate::build_index(patterns)));
         fixture.validate(&db);
         (db, fixture)
     }
@@ -96,6 +105,7 @@ pub struct ChangeFixture {
     pub files: Vec<FileId>,
     pub files_by_path: FxHashMap<VfsPath, FileId>,
     pub diagnostics_enabled: DiagnosticsEnabled,
+    pub dynamic_call_patterns: Vec<String>,
     pub tags: FxHashMap<FileId, Vec<(TextRange, Option<String>)>>,
     pub annotations: FxHashMap<FileId, Vec<(TextRange, String)>>,
     pub expect_parse_errors: bool,
@@ -132,6 +142,7 @@ impl ChangeFixture {
             diagnostics_enabled,
             expect_parse_errors,
             otp_apps: mut requested_otp_apps,
+            dynamic_call_patterns,
         } = fixture_with_meta.clone();
 
         let builder = Builder::new(diagnostics_enabled.clone());
@@ -352,6 +363,7 @@ impl ChangeFixture {
                 files,
                 files_by_path,
                 diagnostics_enabled,
+                dynamic_call_patterns,
                 tags,
                 annotations,
                 expect_parse_errors,
