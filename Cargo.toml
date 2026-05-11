@@ -100,8 +100,8 @@ toml = "0.9.11"
 tracing = "0.1.40"
 tree-sitter = "0.23.2"
 # When developing the grammar, you may want to point to a local version
-# tree-sitter-erlang = { path = "../tree-sitter-erlang" }
-tree-sitter-erlang = "0.16.0"
+tree-sitter-erlang = { path = "../tree-sitter-erlang" }
+# tree-sitter-erlang = "0.16.0"
 trie-rs = "0.4.2"
 triple_accel = "0.4.0"
 url = "2.5.4"

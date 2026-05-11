@@ -715,6 +715,7 @@ fn map_name(name: &str) -> Result<NameType> {
         // type
         // opaque
         "::" => Ok(Punctuation("ColonColon".into())),
+        ":>" => Ok(Punctuation("ColonGt".into())),
         // spec
         // callback
         "->" => Ok(Punctuation("DashGt".into())),
