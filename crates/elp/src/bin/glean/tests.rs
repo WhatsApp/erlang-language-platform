@@ -1115,16 +1115,26 @@ fn decl_check(spec: &str) {
                 .remove(&file_decl.file_id)
                 .expect("Annotations should be present");
             for decl in file_decl.declarations {
-                let range: TextRange = decl.span().clone().into();
                 let label = decl.to_string();
-                let tuple = (range, label);
-                let idx = annotations
-                    .iter()
-                    .position(|a| a == &tuple)
-                    .unwrap_or_else(|| {
-                        panic!("Expected to find {:?} in {:?}", &tuple, &annotations)
-                    });
-                annotations.remove(idx);
+                if matches!(decl, Declaration::HeaderDeclaration(_)) {
+                    let idx = annotations
+                        .iter()
+                        .position(|a| a.1 == label)
+                        .unwrap_or_else(|| {
+                            panic!("Expected to find header {:?} in {:?}", &label, &annotations)
+                        });
+                    annotations.remove(idx);
+                } else {
+                    let range: TextRange = decl.span().clone().into();
+                    let tuple = (range, label);
+                    let idx = annotations
+                        .iter()
+                        .position(|a| a == &tuple)
+                        .unwrap_or_else(|| {
+                            panic!("Expected to find {:?} in {:?}", &tuple, &annotations)
+                        });
+                    annotations.remove(idx);
+                }
             }
             assert_eq!(annotations, vec![], "Expected no more annotations");
         }
@@ -1145,10 +1155,7 @@ impl Declaration {
             Declaration::TypeDeclaration(decl) => decl.key.span.clone(),
             Declaration::RecordDeclaration(decl) => decl.key.span.clone(),
             Declaration::VarDeclaration(decl) => decl.key.span.clone(),
-            Declaration::HeaderDeclaration(decl) => Location {
-                start: decl.key.span.start + 2,
-                length: decl.key.span.length,
-            },
+            Declaration::HeaderDeclaration(decl) => decl.key.span.clone(),
             Declaration::DocDeclaration(decl) => decl.key.target.span().clone(),
         }
     }

@@ -1065,12 +1065,13 @@ impl GleanIndexer {
         }
 
         if let Some((name, Some("hrl"))) = path.name_and_extension() {
+            let file_length = db.file_text(file_id).len() as u32;
             declarations.push(Declaration::HeaderDeclaration(
                 HeaderDecl {
                     name: format!("{name}.hrl"),
                     span: Location {
                         start: 0,
-                        length: 1,
+                        length: file_length,
                     },
                 }
                 .into(),
