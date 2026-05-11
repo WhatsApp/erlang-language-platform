@@ -19,6 +19,8 @@ use elp_base_db::VfsPath;
 use elp_base_db::salsa;
 use elp_eqwalizer::EqwalizerDiagnostic;
 use elp_eqwalizer::EqwalizerDiagnostics;
+use elp_eqwalizer::FunCheckResult;
+use elp_eqwalizer::FunToCheck;
 use elp_eqwalizer::analyses::EqwalizerAnalysesDatabase;
 use elp_eqwalizer::ast::Error;
 use elp_eqwalizer::ast::Pos;
@@ -39,6 +41,11 @@ use crate::LineCol;
 
 pub trait EqwalizerLoader {
     fn typecheck(&self, project_id: ProjectId, modules: Vec<FileId>) -> EqwalizerDiagnostics;
+    fn typecheck_functions(
+        &self,
+        project_id: ProjectId,
+        funs: Vec<FunToCheck>,
+    ) -> Result<Vec<FunCheckResult>, String>;
 }
 
 impl EqwalizerLoader for crate::RootDatabase {
@@ -60,6 +67,16 @@ impl EqwalizerLoader for crate::RootDatabase {
             };
         }
         self.eqwalizer.typecheck(self, project_id, module_names)
+    }
+
+    fn typecheck_functions(
+        &self,
+        project_id: ProjectId,
+        funs: Vec<FunToCheck>,
+    ) -> Result<Vec<FunCheckResult>, String> {
+        self.eqwalizer
+            .typecheck_functions(self, project_id, funs)
+            .map_err(|err| format!("{err:?}"))
     }
 }
 

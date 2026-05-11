@@ -14,6 +14,7 @@ use std::ffi::OsString;
 use std::fs;
 #[cfg(not(buck_build))]
 use std::io::Write;
+use std::ops::ControlFlow;
 #[cfg(all(unix, not(buck_build)))]
 use std::os::unix::prelude::PermissionsExt;
 use std::path::PathBuf;
@@ -51,6 +52,8 @@ use crate::ipc::EqWAlizerASTFormat;
 pub mod analyses;
 pub mod ast;
 pub use elp_types_db::eqwalizer::types;
+pub use ipc::FunCheckResult;
+pub use ipc::FunToCheck;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Mode {
@@ -286,6 +289,20 @@ impl Eqwalizer {
             Err(err) => EqwalizerDiagnostics::Error(format!("{err:?}")),
         }
     }
+
+    pub fn typecheck_functions(
+        &self,
+        db: &dyn EqwalizerDiagnosticsDatabase,
+        project_id: ProjectId,
+        funs: Vec<ipc::FunToCheck>,
+    ) -> Result<Vec<ipc::FunCheckResult>> {
+        let mut cmd = self.cmd();
+        db.eqwalizer_config().set_cmd_env(&mut cmd);
+        cmd.arg("ipc-check-funs");
+        cmd.env("EQWALIZER_MODE", self.mode.to_env_var());
+
+        do_typecheck_functions(cmd, db, project_id, funs)
+    }
 }
 
 fn do_typecheck(
@@ -331,6 +348,43 @@ fn do_typecheck(
     }
 }
 
+fn do_typecheck_functions(
+    mut cmd: Command,
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+    funs: Vec<ipc::FunToCheck>,
+) -> Result<Vec<ipc::FunCheckResult>> {
+    let mut handle = IpcHandle::from_command(&mut cmd)
+        .with_context(|| format!("starting eqWAlizer process for ipc-check-funs: {cmd:?}"))?;
+
+    // Send the functions to check
+    let funs_bytes =
+        serde_json::to_vec(&funs).context("serializing FunToCheck list for eqwalizer")?;
+    let len: u32 = funs_bytes.len().try_into()?;
+    handle.send(&MsgToEqWAlizer::FunsToCheckReply { len })?;
+    handle.receive_newline()?;
+    handle
+        .send_bytes(&funs_bytes)
+        .context("sending FunToCheck bytes to eqwalizer")?;
+
+    // Handle dependency requests until we get FunCheckDone
+    match serve_eqwalizer(&mut handle, db, project_id, |msg, _handle| match msg {
+        MsgFromEqWAlizer::FunCheckDone { results } => Ok(ControlFlow::Break(results)),
+        msg => {
+            log::warn!(
+                "ipc-check-funs: received unexpected message from eqwalizer, ignoring: {}",
+                limit_logged_string(&format!("{msg:?}"))
+            );
+            Ok(ControlFlow::Continue(()))
+        }
+    })? {
+        Completion::Done(results) => Ok(results),
+        Completion::IpcError(diags) => {
+            anyhow::bail!("eqwalizer IPC error: {diags:?}")
+        }
+    }
+}
+
 fn get_module_diagnostics(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
@@ -343,30 +397,112 @@ fn get_module_diagnostics(
         )))?;
     let mut handle = handle_mutex.lock();
     handle.send(&MsgToEqWAlizer::ELPEnteringModule)?;
+    match serve_eqwalizer(&mut handle, db, project_id, |msg, handle| match msg {
+        MsgFromEqWAlizer::ValidateType { ty } => {
+            log::debug!("received from eqwalizer: ValidateType");
+            let pos = ty.pos().to_owned();
+            let mut expander = CastExpander::new(db, project_id, module.clone().into());
+            let expanded_ty = expander.expand(ty).map_err(Error::TypeConversionError)?;
+            let mut trans_checker = TransitiveChecker::new(db, project_id, module.clone().into());
+            let validated_ty = match expanded_ty {
+                Ok(exp_ty) => trans_checker.check_type(pos, exp_ty),
+                Err(invalid) => Err(invalid),
+            };
+            match validated_ty {
+                Ok(valid_ty) => {
+                    let type_bytes = serde_json::to_vec(&valid_ty)
+                        .expect("validated type should be JSON serializable");
+                    let len = type_bytes.len().try_into()?;
+                    let reply = &MsgToEqWAlizer::ValidatedType { len };
+                    handle.send(reply)?;
+                    handle.receive_newline()?;
+                    handle
+                        .send_bytes(&type_bytes)
+                        .with_context(|| "sending to eqwalizer: ValidatedType".to_string())?
+                }
+                Err(invalid) => {
+                    let invalid_bytes = serde_json::to_vec(&invalid)
+                        .expect("validated type should be JSON serializable");
+                    let len = invalid_bytes.len().try_into()?;
+                    let reply = &MsgToEqWAlizer::InvalidType { len };
+                    handle.send(reply)?;
+                    handle.receive_newline()?;
+                    handle
+                        .send_bytes(&invalid_bytes)
+                        .with_context(|| "sending to eqwalizer: InvalidType".to_string())?
+                }
+            }
+            Ok(ControlFlow::Continue(()))
+        }
+        MsgFromEqWAlizer::EqwalizingStart { module } => {
+            db.eqwalizing_start(module);
+            Ok(ControlFlow::Continue(()))
+        }
+        MsgFromEqWAlizer::EqwalizingDone { module } => {
+            db.eqwalizing_done(module);
+            Ok(ControlFlow::Continue(()))
+        }
+        MsgFromEqWAlizer::Done {
+            diagnostics,
+            type_info,
+        } => {
+            log::debug!(
+                "received from eqwalizer: Done with diagnostics length {}",
+                diagnostics.len()
+            );
+            Ok(ControlFlow::Break(EqwalizerDiagnostics::Diagnostics {
+                errors: diagnostics,
+                type_info,
+            }))
+        }
+        msg => {
+            log::warn!(
+                "received unexpected message from eqwalizer, ignoring: {}",
+                limit_logged_string(&format!("{msg:?}"))
+            );
+            Ok(ControlFlow::Continue(()))
+        }
+    })? {
+        Completion::Done(diags) | Completion::IpcError(diags) => Ok(diags),
+    }
+}
+
+enum Completion<R> {
+    Done(R),
+    IpcError(EqwalizerDiagnostics),
+}
+
+/// Shared IPC loop that handles dependency requests from eqwalizer.
+/// Calls `on_message` for any message that is not a dependency request.
+/// Returns when `on_message` returns `ControlFlow::Break(result)`.
+fn serve_eqwalizer<R>(
+    handle: &mut IpcHandle,
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+    mut on_message: impl FnMut(MsgFromEqWAlizer, &mut IpcHandle) -> Result<ControlFlow<R>>,
+) -> Result<Completion<R>> {
     loop {
         db.unwind_if_cancelled();
-        match handle.receive()? {
+        let msg = handle.receive()?;
+        match msg {
             MsgFromEqWAlizer::GetAstBytes { module, format } => {
                 log::debug!(
                     "received from eqwalizer: GetAstBytes for module {module} (format = {format:?})"
                 );
                 let module_name = ModuleName::new(&module);
-                let ast = {
-                    match format {
-                        EqWAlizerASTFormat::ConvertedForms => {
-                            db.eqwalizer_ast_bytes(project_id, module_name)
-                        }
-                        EqWAlizerASTFormat::TransitiveStub => {
-                            db.transitive_stub_bytes(project_id, module_name)
-                        }
+                let ast = match format {
+                    EqWAlizerASTFormat::ConvertedForms => {
+                        db.eqwalizer_ast_bytes(project_id, module_name)
+                    }
+                    EqWAlizerASTFormat::TransitiveStub => {
+                        db.transitive_stub_bytes(project_id, module_name)
                     }
                 };
                 match ast {
                     Ok(ast_bytes) => {
                         log::debug!("sending to eqwalizer: GetAstBytesReply for module {module}");
                         let len = ast_bytes.len().try_into()?;
-                        let reply = &MsgToEqWAlizer::GetAstBytesReply { len };
-                        handle.send(reply)?;
+                        handle.send(&MsgToEqWAlizer::GetAstBytesReply { len })?;
                         handle.receive_newline()?;
                         handle.send_bytes(&ast_bytes).with_context(|| {
                             format!(
@@ -378,79 +514,66 @@ fn get_module_diagnostics(
                         log::debug!(
                             "module not found, sending to eqwalizer: empty GetAstBytesReply for module {module}"
                         );
-                        let len = 0;
-                        let reply = &MsgToEqWAlizer::GetAstBytesReply { len };
-                        handle.send(reply)?;
+                        handle.send(&MsgToEqWAlizer::GetAstBytesReply { len: 0 })?;
                         handle.receive_newline()?;
                     }
                     Err(Error::ParseError) => {
                         log::debug!(
                             "parse error, sending to eqwalizer: CannotCompleteRequest for module {module}"
                         );
-                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
-                        handle.send(reply)?;
-                        return Ok(EqwalizerDiagnostics::NoAst { module });
+                        handle.send(&MsgToEqWAlizer::CannotCompleteRequest)?;
+                        return Ok(Completion::IpcError(EqwalizerDiagnostics::NoAst { module }));
                     }
                     Err(err) => {
                         log::debug!(
                             "error {err} sending to eqwalizer: CannotCompleteRequest for module {module}"
                         );
-                        let reply = &MsgToEqWAlizer::CannotCompleteRequest;
-                        handle.send(reply)?;
-                        return Ok(EqwalizerDiagnostics::Error(err.to_string()));
+                        handle.send(&MsgToEqWAlizer::CannotCompleteRequest)?;
+                        return Ok(Completion::IpcError(EqwalizerDiagnostics::Error(
+                            err.to_string(),
+                        )));
                     }
                 }
             }
-            MsgFromEqWAlizer::ValidateType { ty } => {
-                log::debug!("received from eqwalizer: ValidateType");
-                let pos = ty.pos().to_owned();
-                let mut expander = CastExpander::new(db, project_id, module.clone().into());
-                let expanded_ty = expander.expand(ty).map_err(Error::TypeConversionError)?;
-                let mut trans_checker =
-                    TransitiveChecker::new(db, project_id, module.clone().into());
-                let validated_ty = match expanded_ty {
-                    Ok(exp_ty) => trans_checker.check_type(pos, exp_ty),
-                    Err(invalid) => Err(invalid),
-                };
-                match validated_ty {
-                    Ok(valid_ty) => {
-                        let type_bytes = serde_json::to_vec(&valid_ty)
-                            .expect("validated type should be JSON serializable");
-                        let len = type_bytes.len().try_into()?;
-                        let reply = &MsgToEqWAlizer::ValidatedType { len };
-                        handle.send(reply)?;
-                        handle.receive_newline()?;
-                        handle
-                            .send_bytes(&type_bytes)
-                            .with_context(|| "sending to eqwalizer: ValidatedType".to_string())?
-                    }
-                    Err(invalid) => {
-                        let invalid_bytes = serde_json::to_vec(&invalid)
-                            .expect("validated type should be JSON serializable");
-                        let len = invalid_bytes.len().try_into()?;
-                        let reply = &&MsgToEqWAlizer::InvalidType { len };
-                        handle.send(reply)?;
-                        handle.receive_newline()?;
-                        handle
-                            .send_bytes(&invalid_bytes)
-                            .with_context(|| "sending to eqwalizer: InvalidType".to_string())?
-                    }
+            MsgFromEqWAlizer::GetTypeDecl { module, id } => {
+                let result = db.type_decl_bytes(project_id, ModuleName::new(&module), id);
+                if let Some(diag) = send_bytes(result, handle, module, |len| {
+                    MsgToEqWAlizer::GetTypeDeclReply { len }
+                })? {
+                    return Ok(Completion::IpcError(diag));
                 }
             }
-            MsgFromEqWAlizer::EqwalizingStart { module } => db.eqwalizing_start(module),
-            MsgFromEqWAlizer::EqwalizingDone { module } => db.eqwalizing_done(module),
-            MsgFromEqWAlizer::Done {
-                diagnostics,
-                type_info,
-            } => {
-                log::debug!(
-                    "received from eqwalizer: Done with diagnostics length {}",
-                    diagnostics.len()
-                );
-                return Ok(EqwalizerDiagnostics::Diagnostics {
-                    errors: diagnostics,
-                    type_info,
-                });
+            MsgFromEqWAlizer::GetRecDecl { module, id } => {
+                let result = db.rec_decl_bytes(project_id, ModuleName::new(&module), id);
+                if let Some(diag) = send_bytes(result, handle, module, |len| {
+                    MsgToEqWAlizer::GetRecDeclReply { len }
+                })? {
+                    return Ok(Completion::IpcError(diag));
+                }
+            }
+            MsgFromEqWAlizer::GetFunSpec { module, id } => {
+                let result = db.fun_spec_bytes(project_id, ModuleName::new(&module), id);
+                if let Some(diag) = send_bytes(result, handle, module, |len| {
+                    MsgToEqWAlizer::GetFunSpecReply { len }
+                })? {
+                    return Ok(Completion::IpcError(diag));
+                }
+            }
+            MsgFromEqWAlizer::GetOverloadedFunSpec { module, id } => {
+                let result = db.overloaded_fun_spec_bytes(project_id, ModuleName::new(&module), id);
+                if let Some(diag) = send_bytes(result, handle, module, |len| {
+                    MsgToEqWAlizer::GetOverloadedFunSpecReply { len }
+                })? {
+                    return Ok(Completion::IpcError(diag));
+                }
+            }
+            MsgFromEqWAlizer::GetCallbacks { module } => {
+                let result = db.callbacks_bytes(project_id, ModuleName::new(&module));
+                if let Some(diag) = send_bytes(result, handle, module, |len| {
+                    MsgToEqWAlizer::GetCallbacksReply { len }
+                })? {
+                    return Ok(Completion::IpcError(diag));
+                }
             }
             MsgFromEqWAlizer::Dependencies { modules } => {
                 modules.iter().for_each(|module| {
@@ -458,51 +581,10 @@ fn get_module_diagnostics(
                     _ = db.transitive_stub_bytes(project_id, module);
                 });
             }
-            MsgFromEqWAlizer::GetTypeDecl { module, id } => {
-                let result = db.type_decl_bytes(project_id, ModuleName::new(&module), id);
-                if let Some(error) = send_bytes(result, &mut handle, module, |len| {
-                    MsgToEqWAlizer::GetTypeDeclReply { len }
-                })? {
-                    return Ok(error);
-                }
-            }
-            MsgFromEqWAlizer::GetRecDecl { module, id } => {
-                let result = db.rec_decl_bytes(project_id, ModuleName::new(&module), id);
-                if let Some(error) = send_bytes(result, &mut handle, module, |len| {
-                    MsgToEqWAlizer::GetRecDeclReply { len }
-                })? {
-                    return Ok(error);
-                }
-            }
-            MsgFromEqWAlizer::GetFunSpec { module, id } => {
-                let result = db.fun_spec_bytes(project_id, ModuleName::new(&module), id);
-                if let Some(error) = send_bytes(result, &mut handle, module, |len| {
-                    MsgToEqWAlizer::GetFunSpecReply { len }
-                })? {
-                    return Ok(error);
-                }
-            }
-            MsgFromEqWAlizer::GetOverloadedFunSpec { module, id } => {
-                let result = db.overloaded_fun_spec_bytes(project_id, ModuleName::new(&module), id);
-                if let Some(error) = send_bytes(result, &mut handle, module, |len| {
-                    MsgToEqWAlizer::GetOverloadedFunSpecReply { len }
-                })? {
-                    return Ok(error);
-                }
-            }
-            MsgFromEqWAlizer::GetCallbacks { module } => {
-                let result = db.callbacks_bytes(project_id, ModuleName::new(&module));
-                if let Some(error) = send_bytes(result, &mut handle, module, |len| {
-                    MsgToEqWAlizer::GetCallbacksReply { len }
-                })? {
-                    return Ok(error);
-                }
-            }
             msg => {
-                log::warn!(
-                    "received unexpected message from eqwalizer, ignoring: {}",
-                    limit_logged_string(&format!("{msg:?}"))
-                )
+                if let ControlFlow::Break(result) = on_message(msg, handle)? {
+                    return Ok(Completion::Done(result));
+                }
             }
         }
     }

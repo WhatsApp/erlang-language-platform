@@ -30,6 +30,7 @@ use elp_types_db::StringId;
 use elp_types_db::eqwalizer::EqwalizerDiagnostic;
 use elp_types_db::eqwalizer::Id;
 use elp_types_db::eqwalizer::ext_types::ExtType;
+use elp_types_db::eqwalizer::form;
 use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashMap;
 use serde::Deserialize;
@@ -136,6 +137,9 @@ pub enum MsgFromEqWAlizer {
     GetCallbacks {
         module: String,
     },
+    FunCheckDone {
+        results: Vec<FunCheckResult>,
+    },
 }
 
 #[derive(Serialize, Debug)]
@@ -151,6 +155,21 @@ pub enum MsgToEqWAlizer {
     GetFunSpecReply { len: u32 },
     GetOverloadedFunSpecReply { len: u32 },
     GetCallbacksReply { len: u32 },
+    FunsToCheckReply { len: u32 },
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct FunToCheck {
+    pub module: String,
+    pub id: Id,
+    pub fun_decl: form::FunDecl,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct FunCheckResult {
+    pub module: String,
+    pub id: Id,
+    pub errors: Vec<EqwalizerDiagnostic>,
 }
 
 pub struct IpcHandle {
