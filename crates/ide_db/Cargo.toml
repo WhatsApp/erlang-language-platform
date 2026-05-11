@@ -42,5 +42,6 @@ tracing.workspace = true
 jemalloc-ctl = { workspace = true, optional = true }
 
 [dev-dependencies]
+dunce.workspace = true
 expect-test.workspace = true
 toml.workspace = true

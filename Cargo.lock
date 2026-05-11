@@ -358,6 +358,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aeda16ab4059c5fd2a83f2b9c9e9c981327b18aa8e3b313f7e6563799d4f093e"
 
 [[package]]
+name = "dunce"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
+
+[[package]]
 name = "dyn-clone"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -391,6 +397,7 @@ dependencies = [
  "bpaf",
  "codespan-reporting",
  "crossbeam-channel",
+ "dunce",
  "elp_eqwalizer",
  "elp_ide",
  "elp_ide_db",
@@ -456,6 +463,7 @@ name = "elp_eqwalizer"
 version = "1.1.0"
 dependencies = [
  "anyhow",
+ "dunce",
  "eetf",
  "elp_base_db",
  "elp_syntax",
@@ -480,6 +488,7 @@ dependencies = [
  "anyhow",
  "byteorder",
  "crossbeam-channel",
+ "dunce",
  "eetf",
  "elp_base_db",
  "elp_project_model",
@@ -567,6 +576,7 @@ name = "elp_ide_db"
 version = "1.1.0"
 dependencies = [
  "cov-mark",
+ "dunce",
  "eetf",
  "either",
  "elp_base_db",
@@ -632,6 +642,7 @@ version = "1.1.0"
 dependencies = [
  "anyhow",
  "dirs",
+ "dunce",
  "eetf",
  "elp_log",
  "elp_syntax",

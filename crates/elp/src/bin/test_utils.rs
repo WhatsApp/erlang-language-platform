@@ -15,7 +15,7 @@ pub fn get_resources_dir() -> PathBuf {
     let resource_path = buck_resources::get("whatsapp/elp/crates/elp/test_resources")
         .unwrap()
         .join("src/resources/test");
-    std::fs::canonicalize(&resource_path).unwrap_or_else(|_| {
+    dunce::canonicalize(&resource_path).unwrap_or_else(|_| {
         panic!(
             "Failed to canonicalize resources path: {}",
             resource_path.display()
@@ -39,7 +39,7 @@ pub fn project_path(project: &str) -> String {
             .join("test")
             .join("test_projects")
             .join(project);
-        let canonical = std::fs::canonicalize(&project_path).unwrap_or_else(|_| {
+        let canonical = dunce::canonicalize(&project_path).unwrap_or_else(|_| {
             panic!(
                 "Failed to canonicalize project path: {}",
                 project_path.display()

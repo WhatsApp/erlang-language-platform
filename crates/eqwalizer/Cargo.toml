@@ -24,3 +24,6 @@ stdx.workspace = true
 tempfile.workspace = true
 timeout-readwrite.workspace = true
 indexmap.workspace = true
+
+[build-dependencies]
+dunce.workspace = true

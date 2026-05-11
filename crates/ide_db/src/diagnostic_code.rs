@@ -501,7 +501,7 @@ mod tests {
     fn get_doc_path(doc_path: &str) -> std::path::PathBuf {
         let resource_path =
             buck_resources::get("whatsapp/elp/crates/ide_db/error_index_docs").unwrap();
-        let canonical = std::fs::canonicalize(&resource_path)
+        let canonical = dunce::canonicalize(&resource_path)
             .expect("Failed to canonicalize resource path. Check test_resources in BUCK file.");
         canonical.join(doc_path)
     }

@@ -41,7 +41,7 @@ fn main() {
             java = if env::var("CARGO_CFG_TARGET_OS").expect("CARGO_CFG_TARGET_OS set by Cargo")
                 == "linux"
             {
-                fs::canonicalize(tools_dir.join("graalvm/bin/java"))
+                dunce::canonicalize(tools_dir.join("graalvm/bin/java"))
                     .expect("graalvm java path exists")
             } else {
                 "java".into()
@@ -64,9 +64,9 @@ fn main() {
 }
 
 fn build_native_image(source_directory: &Path, eqwalizer_out_dir: &Path, jar: PathBuf) -> PathBuf {
-    let native_image = fs::canonicalize(source_directory.join("./meta/native-image.sh"))
+    let native_image = dunce::canonicalize(source_directory.join("./meta/native-image.sh"))
         .expect("native-image.sh path exists");
-    let image_path = fs::canonicalize(eqwalizer_out_dir)
+    let image_path = dunce::canonicalize(eqwalizer_out_dir)
         .expect("eqwalizer output dir exists")
         .join("eqwalizer");
     let output = Command::new(native_image)
@@ -90,7 +90,8 @@ fn build_native_image(source_directory: &Path, eqwalizer_out_dir: &Path, jar: Pa
 
 fn build_jar(source_directory: &Path, eqwalizer_out_dir: &Path) -> PathBuf {
     // Use the sbt wrapper on linux or otherwise require sbt to be installed
-    let sbt = fs::canonicalize(source_directory.join("./meta/sbt.sh")).expect("sbt.sh path exists");
+    let sbt =
+        dunce::canonicalize(source_directory.join("./meta/sbt.sh")).expect("sbt.sh path exists");
     let output = Command::new(sbt)
         .arg("assembly")
         .current_dir(source_directory)
@@ -104,7 +105,7 @@ fn build_jar(source_directory: &Path, eqwalizer_out_dir: &Path) -> PathBuf {
         panic!("sbt assembly failed with stdout:\n{stdout}\n\nstderr:\n{stderr}");
     }
 
-    fs::canonicalize(eqwalizer_out_dir.join("eqwalizer.jar"))
+    dunce::canonicalize(eqwalizer_out_dir.join("eqwalizer.jar"))
         .expect("eqwalizer.jar exists after sbt assembly")
 }
 

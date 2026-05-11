@@ -10,7 +10,6 @@
 
 //! Loads a rebar project into a static instance of ELP,
 //! without support for incorporating changes
-use std::fs;
 use std::path::Path;
 
 use anyhow::Result;
@@ -51,7 +50,7 @@ pub fn discover_manifest(
     root: &Path,
     conf: &DiscoverConfig,
 ) -> Result<(ElpConfig, ProjectManifest)> {
-    let root = fs::canonicalize(root)?;
+    let root = dunce::canonicalize(root)?;
     let root = AbsPathBuf::assert_utf8(root);
     let (elp_config, manifest) = match conf.rebar {
         true => (

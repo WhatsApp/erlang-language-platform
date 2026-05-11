@@ -1206,8 +1206,6 @@ pub fn to_abs_path_buf(path: &Path) -> Result<AbsPathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
-
     use expect_test::expect;
 
     use self::temp_dir::TempDir;
@@ -1423,7 +1421,7 @@ mod tests {
         %% test
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let dir_path = AbsPathBuf::assert_utf8(fs::canonicalize(dir.path()).unwrap());
+        let dir_path = AbsPathBuf::assert_utf8(dunce::canonicalize(dir.path()).unwrap());
         if let Ok((elp_config, ProjectManifest::Json(mut manifest))) =
             ProjectManifest::discover(&dir_path.join("build_info.json"))
         {
@@ -1531,7 +1529,7 @@ mod tests {
         -module(app).
         "#;
         let dir = FixtureWithProjectMeta::gen_project(spec);
-        let dir_path = to_abs_path_buf(&fs::canonicalize(dir.path()).unwrap()).unwrap();
+        let dir_path = to_abs_path_buf(&dunce::canonicalize(dir.path()).unwrap()).unwrap();
         let manifest = ProjectManifest::discover(&dir_path.join("app_b/src/app.erl"));
         expect![[r#"
             Err(
@@ -2093,7 +2091,7 @@ mod tests {
             let resource_path =
                 buck_resources::get("whatsapp/elp/crates/project_model/fixtures").unwrap();
             let fixtures_path = resource_path.join("fixtures");
-            let canonical = fs::canonicalize(&fixtures_path).unwrap_or_else(|_| {
+            let canonical = dunce::canonicalize(&fixtures_path).unwrap_or_else(|_| {
                 panic!(
                     "Failed to canonicalize fixtures path: {}",
                     fixtures_path.display()

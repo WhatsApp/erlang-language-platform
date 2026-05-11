@@ -8,7 +8,6 @@
  * above-listed licenses.
  */
 
-use std::fs;
 use std::path::Path;
 use std::str;
 use std::thread;
@@ -170,7 +169,7 @@ pub fn run_ssr(
                 if args.is_format_normal() {
                     writeln!(cli, "file specified: {file_name}")?;
                 }
-                let path_buf = Utf8PathBuf::from_path_buf(fs::canonicalize(file_name).unwrap())
+                let path_buf = Utf8PathBuf::from_path_buf(dunce::canonicalize(file_name).unwrap())
                     .expect("UTF8 conversion failed");
                 let path = AbsPath::assert(&path_buf);
                 let path = path.as_os_str().to_str().unwrap();

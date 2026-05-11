@@ -902,7 +902,7 @@ mod tests {
         let resource_path =
             buck_resources::get("whatsapp/elp/crates/erlang_service/fixtures").unwrap();
         let fixtures_path = resource_path.join("fixtures");
-        let canonical = fs::canonicalize(&fixtures_path).unwrap_or_else(|_| {
+        let canonical = dunce::canonicalize(&fixtures_path).unwrap_or_else(|_| {
             panic!(
                 "Failed to canonicalize fixtures path: {}",
                 fixtures_path.display()
