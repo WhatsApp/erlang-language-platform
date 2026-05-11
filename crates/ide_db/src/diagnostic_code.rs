@@ -205,6 +205,8 @@ pub enum DiagnosticCode {
     DuplicateInclude,
     #[strum(props(code = "W0079"))]
     ElpCiTestDiagnostic,
+    #[strum(props(code = "W0080"))]
+    SimplifyMapsMerge,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),

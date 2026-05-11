@@ -151,6 +151,7 @@ mod redundant_fun_wrapper;
 mod replace_call;
 mod replace_in_spec;
 mod sets_version_2;
+mod simplify_maps_merge;
 mod simplify_negation;
 mod trivial_match;
 mod unavailable_type;
@@ -1883,6 +1884,7 @@ const SSR_PATTERN_LINTERS: &[&dyn SsrPatternsDiagnostics] = &[
     &map_find_to_syntax::LINTER,
     &map_insertion_to_syntax::MAP_PUT_LINTER,
     &map_insertion_to_syntax::MAP_UPDATE_LINTER,
+    &simplify_maps_merge::LINTER,
     &lists_map_to_comprehension::LINTER,
     &no_and_or::LINTER,
     &inline_nested_list_comprehension::LINTER,
