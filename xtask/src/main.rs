@@ -17,9 +17,8 @@ use std::env;
 use std::path::Path;
 use std::path::PathBuf;
 
+use anyhow::Context;
 use anyhow::Result;
-#[cfg(not(buck_build))]
-use anyhow::bail;
 use bpaf::Bpaf;
 use bpaf::Parser;
 use bpaf::construct;
@@ -129,12 +128,8 @@ pub fn reformat(text: &str) -> Result<String> {
 
 #[cfg(not(buck_build))]
 fn ensure_rustfmt(sh: &Shell) -> Result<()> {
-    let out = cmd!(sh, "rustfmt --version").read()?;
-    if !out.contains("stable") {
-        bail!(
-            "Failed to run rustfmt from toolchain 'stable'. \
-             Please run `rustup component add rustfmt --toolchain stable` to install it.",
-        )
-    }
+    cmd!(sh, "rustfmt --version")
+        .read()
+        .context("Failed to run rustfmt. Please ensure rustfmt is installed and on PATH.")?;
     Ok(())
 }
