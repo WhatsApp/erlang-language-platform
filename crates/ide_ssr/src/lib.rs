@@ -67,11 +67,14 @@ use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use elp_syntax::ast;
 use elp_syntax::ast::CompOp;
+use elp_syntax::ast::UnaryOp;
 use fxhash::FxHashMap;
 use hir::AnyExprId;
 use hir::AnyExprRef;
 use hir::Atom;
 use hir::Body;
+use hir::BodySourceMap;
+use hir::CallTarget;
 use hir::Expr;
 use hir::ExprId;
 use hir::FoldBody;
@@ -93,6 +96,10 @@ use hir::fold::ParenStrategy;
 use hir::fold::fold_body;
 use hir::fold::fold_file;
 use hir::fold::fold_file_functions;
+use hir::known;
+use strum::AsRefStr;
+use strum::EnumIter;
+use strum::EnumString;
 
 #[macro_use]
 mod errors;
@@ -214,14 +221,51 @@ pub fn is_placeholder_a_var_from_sema_and_match(
 #[derive(Debug)]
 pub struct SsrRule {
     parsed_rule: Arc<SsrBody>,
-    conditions: FxHashMap<SsrPlaceholder, Condition>,
+    /// `when`-clause conditions in Erlang-guard disjunctive normal form.
+    /// Outer `Vec` is `;`-separated alternatives (OR); inner map gathers
+    /// `,`-separated conjuncts (AND) keyed by placeholder. Empty outer
+    /// `Vec` means the rule had no `when` clause — match unconditionally.
+    conditions: Vec<Conjunction>,
 }
 
-/// A possible condition extracted from the ssr rule `when` clause
+/// One AND-group of conditions in a `when` clause — i.e. one
+/// `;`-separated alternative. Multiple conditions on the same
+/// placeholder within a `Conjunction` are AND-ed at match time.
+pub(crate) type Conjunction = FxHashMap<SsrPlaceholder, Vec<Condition>>;
+
+/// A possible condition extracted from the ssr rule `when` clause.
+///
+/// `Literal` comes from `_@X == lit` (and `=:=`, `/=`, `=/=`) forms.
+/// `Kind` comes from `is_<kind>(_@X)` BIF calls and the SSR-only
+/// `is_var(_@X)` / `is_call(_@X)` predicates.
+/// `Not` wraps either above when the source had `not is_<kind>(_@X)`
+/// (or `=/=` for literals).
 #[derive(Debug)]
 pub enum Condition {
     Literal(GuardLiteral),
     Not(Box<Condition>),
+    Kind(NodeKind),
+}
+
+/// HIR node kinds usable in `when is_<kind>(_@X)` guard clauses. The
+/// snake_case spellings double as the Erlang BIF names — except for
+/// `Var` and `Call`, which have no native BIF and are SSR-only
+/// extension predicates spelled `is_var` / `is_call` (local calls,
+/// no `erlang:` prefix).
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, AsRefStr, EnumString, EnumIter
+)]
+#[strum(serialize_all = "snake_case")]
+pub enum NodeKind {
+    Atom,
+    Integer,
+    Fun,
+    List,
+    Tuple,
+    Map,
+    Binary,
+    Call,
+    Var,
 }
 
 impl SsrRule {
@@ -231,7 +275,7 @@ impl SsrRule {
     }
 
     fn parse_ssr_source(db: &dyn DefDatabase, ssr_source: SsrSource) -> Result<SsrRule, SsrError> {
-        if let Some((ssr_body, _)) = db.ssr_body_with_source(ssr_source) {
+        if let Some((ssr_body, source_map)) = db.ssr_body_with_source(ssr_source) {
             // Using a `FoldBody` with invisible parens is fine for
             // conditions, because either way we only check a
             // placeholder when we actually see one, and we do not
@@ -244,7 +288,7 @@ impl SsrRule {
                 },
                 &ssr_body.body,
             );
-            let conditions = SsrRule::make_conditions(&ssr_body, &body)?;
+            let conditions = SsrRule::make_conditions(&ssr_body, &body, &source_map)?;
             Ok(SsrRule {
                 parsed_rule: ssr_body.clone(),
                 conditions,
@@ -261,84 +305,224 @@ impl SsrRule {
 
     /// The `when` clause is lowered as HIR guards.
     /// Process these and turn them into something we can easily check
-    /// when matching.
-    /// Initially we only support conditions which check that a
-    /// placeholder is a literal, such as
+    /// when matching. Two condition shapes are supported, both
+    /// keyed by the placeholder they restrict, AND-ed when more than
+    /// one fires on the same placeholder:
     ///
-    /// ```erlang
-    /// ssr: _@X when _@X == foo.
-    /// ```
+    /// 1. Placeholder-equals-literal:
+    ///    ```erlang
+    ///    ssr: _@X when _@X == foo.
+    ///    ```
+    /// 2. Placeholder-is-of-kind, via Erlang's standard type-test BIFs
+    ///    (`is_atom`, `is_integer`, `is_function`, `is_list`, `is_tuple`,
+    ///    `is_map`, `is_binary`) plus SSR-only `is_var/1` and
+    ///    `is_call/1`:
+    ///    ```erlang
+    ///    ssr: meck:expect(_@MOD, _@FUN, _@A) when is_function(_@A).
+    ///    ```
+    ///    Only the local-call form is supported; the qualified form
+    ///    `erlang:is_atom(_@X)` is rejected with an error.
+    ///
+    /// Both forms may be negated with `not` (or `=/=` for literals).
     fn make_conditions(
         ssr_body: &SsrBody,
         body: &FoldBody,
-    ) -> Result<FxHashMap<SsrPlaceholder, Condition>, SsrError> {
-        let mut conditions: FxHashMap<SsrPlaceholder, Condition> = FxHashMap::default();
+        source_map: &BodySourceMap,
+    ) -> Result<Vec<Conjunction>, SsrError> {
+        // `when G1, G2 ; G3, G4` parses as `(G1 ∧ G2) ∨ (G3 ∧ G4)`; the
+        // HIR mirrors that with `Vec<Vec<ExprId>>` — outer over `;`,
+        // inner over `,`. We preserve the structure 1-1 as a DNF of
+        // per-placeholder condition maps.
+        let mut alternatives: Vec<Conjunction> = Vec::new();
         let mut error = None;
         if let Some(w) = ssr_body.when.as_ref() {
-            w.iter().for_each(|conds| {
-                conds.iter().for_each(|cond| {
-                    extract_condition(body, cond, &mut conditions, &mut error);
-                });
-            })
+            for conds in w {
+                let mut conjunction: Conjunction = FxHashMap::default();
+                for cond in conds {
+                    extract_condition(body, source_map, cond, &mut conjunction, &mut error);
+                }
+                alternatives.push(conjunction);
+            }
         }
         if let Some(error) = error {
             Err(error)
         } else {
-            Ok(conditions)
+            Ok(alternatives)
         }
     }
 }
 
 fn extract_condition(
     body: &FoldBody,
+    source_map: &BodySourceMap,
     cond: &ExprId,
-    conditions: &mut FxHashMap<SsrPlaceholder, Condition>,
+    conjunction: &mut Conjunction,
     error: &mut Option<SsrError>,
 ) {
-    match body[*cond] {
+    if let Some((placeholder, condition)) = condition_from_expr(body, source_map, cond, error) {
+        conjunction.entry(placeholder).or_default().push(condition);
+    }
+}
+
+/// Try to extract a `(placeholder, condition)` pair from a single `when`
+/// clause expression. Returns `None` if the expression doesn't refer to a
+/// placeholder; sets `*error` if the expression refers to a placeholder
+/// but is shaped wrongly.
+fn condition_from_expr(
+    body: &FoldBody,
+    source_map: &BodySourceMap,
+    cond: &ExprId,
+    error: &mut Option<SsrError>,
+) -> Option<(SsrPlaceholder, Condition)> {
+    match &body[*cond] {
         Expr::BinaryOp { lhs, rhs, op } => {
-            if let Expr::Var(var) = &body[lhs]
-                && let Some(ssr_placeholder) = SsrPlaceholder::from_var(*var)
-            {
-                // We have a condition on the current placeholder, store it if valid
-                match op {
-                    ast::BinaryOp::CompOp(CompOp::Eq { strict: _, negated }) => {
-                        if let Some(lit_rhs) =
-                            get_literal_subid(body, &SubId::AnyExprId(AnyExprId::Expr(rhs)))
-                        {
-                            if negated {
-                                conditions.insert(
-                                    ssr_placeholder.clone(),
-                                    Condition::Not(Box::new(Condition::Literal(lit_rhs.clone()))),
-                                );
-                            } else {
-                                conditions.insert(
-                                    ssr_placeholder.clone(),
-                                    Condition::Literal(lit_rhs.clone()),
-                                );
-                            }
-                        } else {
-                            *error = Some(SsrError::new("Invalid `when` RHS, expecting a literal"));
-                        }
-                    }
-                    _ => {
-                        *error = Some(SsrError::new(
-                            "Invalid `when` condition, must use `==`, `/=`, `=:=` or `=/=`",
-                        ))
-                    }
+            let var = body[*lhs].as_var()?;
+            let ssr_placeholder = SsrPlaceholder::from_var(var)?;
+            match op {
+                ast::BinaryOp::CompOp(CompOp::Eq { strict: _, negated }) => {
+                    let Some(lit_rhs) =
+                        get_literal_subid(body, &SubId::AnyExprId(AnyExprId::Expr(*rhs)))
+                    else {
+                        *error = Some(SsrError::new("Invalid `when` RHS, expecting a literal"));
+                        return None;
+                    };
+                    let inner = Condition::Literal(lit_rhs);
+                    let condition = if *negated {
+                        Condition::Not(Box::new(inner))
+                    } else {
+                        inner
+                    };
+                    Some((ssr_placeholder, condition))
+                }
+                _ => {
+                    *error = Some(SsrError::new(
+                        "Invalid `when` condition, must use `==`, `/=`, `=:=` or `=/=`",
+                    ));
+                    None
                 }
             }
         }
+        Expr::Call { target, args } => {
+            // Recognise `is_<kind>(_@X)` shaped guards. Only the
+            // local-call form is supported; SSR's match semantics for
+            // qualified calls differ from Erlang's, so
+            // `erlang:is_atom(_@X)` is rejected explicitly.
+            if args.len() != 1 {
+                return None;
+            }
+            let placeholder_arg = body[args[0]].as_var().and_then(SsrPlaceholder::from_var)?;
+            let kind = call_target_to_node_kind(body, source_map, target, error)?;
+            Some((placeholder_arg, Condition::Kind(kind)))
+        }
+        Expr::UnaryOp { expr, op } => {
+            if *op != UnaryOp::Not {
+                *error = Some(SsrError::new(
+                    "Invalid `when` unary operator, only `not` is supported",
+                ));
+                return None;
+            }
+            let (placeholder, inner) = condition_from_expr(body, source_map, expr, error)?;
+            Some((placeholder, Condition::Not(Box::new(inner))))
+        }
         _ => {
             *error = Some(SsrError::new("Invalid `when` condition"));
+            None
         }
+    }
+}
+
+/// Resolve a guard call target to a `NodeKind`. Recognises only the
+/// local-call form `is_<kind>(_@X)` — the standard Erlang type-test
+/// BIFs (`is_atom/1` and friends) plus the SSR-only predicates
+/// `is_var/1` and `is_call/1`. Sets `*error` if the user qualified
+/// the call (`erlang:is_atom(_@X)`) or named an unsupported predicate.
+///
+/// HIR lowering auto-qualifies unqualified BIF calls to
+/// `erlang:is_<kind>/1`, so by the time we get here both
+/// `is_atom(_@X)` and `erlang:is_atom(_@X)` look like
+/// `CallTarget::Remote { module: erlang, ... }`. We distinguish them
+/// via the source map: a user-written `erlang` module atom has a
+/// source span, while the synthesized one does not.
+fn call_target_to_node_kind(
+    body: &FoldBody,
+    source_map: &BodySourceMap,
+    target: &CallTarget<ExprId>,
+    error: &mut Option<SsrError>,
+) -> Option<NodeKind> {
+    match target {
+        CallTarget::Remote { module, name, .. } => {
+            let fn_name = body[*name].as_atom()?.as_name();
+            if source_map.expr(*module).is_some() {
+                // User explicitly wrote `<module>:<name>(_@X)`; reject
+                // it regardless of which module — qualified-call match
+                // semantics differ from the unqualified form.
+                let module_name = body[*module].as_atom()?.as_name();
+                *error = Some(SsrError::new(format!(
+                    "Invalid `when` guard `{module_name}:{fn_name}/1`: only local-call form is supported, e.g. `{fn_name}(_@X)`",
+                )));
+                return None;
+            }
+            // HIR-synthesized qualifier — user wrote the unqualified
+            // BIF call. Recognise the standard type-test BIFs.
+            match bif_name_to_node_kind(&fn_name) {
+                Some(kind) => Some(kind),
+                None => {
+                    *error = Some(SsrError::new(format!(
+                        "Invalid `when` guard `{fn_name}/1`: unsupported predicate",
+                    )));
+                    None
+                }
+            }
+        }
+        CallTarget::Local { name } => {
+            let name = body[*name].as_atom()?.as_name();
+            match ssr_predicate_to_node_kind(&name) {
+                Some(kind) => Some(kind),
+                None => {
+                    *error = Some(SsrError::new(format!(
+                        "Invalid `when` guard `{name}/1`: unsupported predicate",
+                    )));
+                    None
+                }
+            }
+        }
+    }
+}
+
+fn bif_name_to_node_kind(name: &Name) -> Option<NodeKind> {
+    if *name == known::is_atom {
+        Some(NodeKind::Atom)
+    } else if *name == known::is_integer {
+        Some(NodeKind::Integer)
+    } else if *name == known::is_function {
+        Some(NodeKind::Fun)
+    } else if *name == known::is_list {
+        Some(NodeKind::List)
+    } else if *name == known::is_tuple {
+        Some(NodeKind::Tuple)
+    } else if *name == known::is_map {
+        Some(NodeKind::Map)
+    } else if *name == known::is_binary {
+        Some(NodeKind::Binary)
+    } else {
+        None
+    }
+}
+
+fn ssr_predicate_to_node_kind(name: &Name) -> Option<NodeKind> {
+    if *name == known::is_var {
+        Some(NodeKind::Var)
+    } else if *name == known::is_call {
+        Some(NodeKind::Call)
+    } else {
+        bif_name_to_node_kind(name)
     }
 }
 
 #[derive(Debug)]
 pub(crate) struct SsrPattern {
     pub(crate) ssr_source: SsrSource,
-    pub(crate) conditions: FxHashMap<SsrPlaceholder, Condition>,
+    pub(crate) conditions: Vec<Conjunction>,
     pub(crate) pattern_node: SsrPatternIds,
     pub(crate) index: usize,
 }

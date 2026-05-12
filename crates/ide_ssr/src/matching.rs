@@ -59,6 +59,8 @@ use hir::TypeExpr;
 use hir::Var;
 
 use crate::Condition;
+use crate::Conjunction;
+use crate::NodeKind;
 use crate::SsrMatches;
 use crate::SsrPattern;
 use crate::get_literal_subid;
@@ -533,7 +535,62 @@ impl<'a> Matcher<'a> {
         // checks that we didn't want to do on the first pass.
         self.attempt_match_node(&mut Phase::Second(&mut the_match), self.pattern, code)?;
 
+        // Evaluate the `when` clause now that every placeholder has a
+        // binding. Must run after Phase::Second because OR (`;`)
+        // semantics can only be decided once all conjuncts in *some*
+        // alternative are knowable.
+        self.check_when_disjunction(&the_match)?;
+
         Ok(the_match)
+    }
+
+    /// Evaluate the rule's `when` clause against the recorded bindings.
+    /// The clause is in DNF: `Vec<Conjunction>` outer is `;` (OR),
+    /// inner-map AND-groups per placeholder. Match succeeds if the rule
+    /// has no `when` clause, or if at least one alternative passes all
+    /// its conjuncts. Last failure reason is returned for debugging.
+    fn check_when_disjunction(&self, the_match: &Match) -> Result<(), MatchFailed> {
+        if self.rule.conditions.is_empty() {
+            return Ok(());
+        }
+        let mut last_err: Option<MatchFailed> = None;
+        for conjunction in &self.rule.conditions {
+            match self.check_conjunction(the_match, conjunction) {
+                Ok(()) => return Ok(()),
+                Err(e) => last_err = Some(e),
+            }
+        }
+        Err(last_err.unwrap_or_else(|| match_error!("when clause: no alternative matched")))
+    }
+
+    fn check_conjunction(
+        &self,
+        the_match: &Match,
+        conjunction: &Conjunction,
+    ) -> Result<(), MatchFailed> {
+        for (placeholder, conditions) in conjunction {
+            // Resolve all SubIds the pattern bound under this
+            // placeholder's name. A placeholder used N times in the
+            // pattern has N occurrences; equivalence among them was
+            // already enforced during binding, so checking each is
+            // redundant but cheap and keeps error messages precise.
+            let Some(subids) = the_match.placeholders_by_var.get(&placeholder.var) else {
+                // The condition refers to a placeholder name that
+                // doesn't appear in the pattern. Match-time silence
+                // mirrors the lowering convention used for `_@X == lit`
+                // on a non-pattern placeholder — see `condition_from_expr`.
+                continue;
+            };
+            for subid in subids {
+                let Some(pm) = the_match.placeholder_values.get(subid) else {
+                    continue;
+                };
+                for condition in conditions {
+                    self.check_condition(&pm.code_id, condition)?;
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Checks that `range` is within the permitted range if any. This
@@ -596,10 +653,10 @@ impl<'a> Matcher<'a> {
     ) -> Result<bool, MatchFailed> {
         if let Some(placeholder) = self.get_placeholder_for_node(pattern) {
             if let Phase::Second(matches_out) = phase {
-                // check constraints
-                if let Some(condition) = self.rule.conditions.get(placeholder) {
-                    self.check_condition(code, condition)?;
-                }
+                // `when`-clause conditions are evaluated after the whole
+                // pattern binds, in `check_when_disjunction`, because OR
+                // (`;`) semantics need every binding in hand before any
+                // alternative can be ruled in.
                 if let Some(original_range) = self.get_code_range(code) {
                     // We validated the range for the node
                     // when we started the match, so the
@@ -655,6 +712,16 @@ impl<'a> Matcher<'a> {
             Condition::Not(condition) => {
                 if self.check_condition(code, condition).is_ok() {
                     fail_match!("condition matched when it was expected not to");
+                }
+            }
+            Condition::Kind(expected) => {
+                let actual = node_kind(self.code_body, code);
+                if actual != Some(*expected) {
+                    fail_match!(
+                        "kind constraint failed: expected {:?}, got {:?}",
+                        expected,
+                        actual
+                    );
                 }
             }
         }
@@ -964,6 +1031,46 @@ impl<'a> Matcher<'a> {
             },
             _ => false,
         }
+    }
+}
+
+/// Resolve a bound HIR node to its `NodeKind`. Position-agnostic: a tuple
+/// is `Tuple` whether it appears in expression or pattern position.
+/// Returns `None` for HIR variants outside the constraint vocabulary.
+pub(crate) fn node_kind(body: &FoldBody, code: &SubId) -> Option<NodeKind> {
+    let SubId::AnyExprId(any_expr_id) = code else {
+        return None;
+    };
+    match body.get_any(*any_expr_id) {
+        AnyExprRef::Expr(expr) => match expr {
+            Expr::Literal(lit) => literal_kind(lit),
+            Expr::Var(_) => Some(NodeKind::Var),
+            Expr::Tuple { .. } => Some(NodeKind::Tuple),
+            Expr::List { .. } => Some(NodeKind::List),
+            Expr::Map { .. } => Some(NodeKind::Map),
+            Expr::Binary { .. } => Some(NodeKind::Binary),
+            Expr::Call { .. } => Some(NodeKind::Call),
+            Expr::Closure { .. } | Expr::CaptureFun { .. } => Some(NodeKind::Fun),
+            _ => None,
+        },
+        AnyExprRef::Pat(pat) => match pat {
+            Pat::Literal(lit) => literal_kind(lit),
+            Pat::Var(_) => Some(NodeKind::Var),
+            Pat::Tuple { .. } => Some(NodeKind::Tuple),
+            Pat::List { .. } => Some(NodeKind::List),
+            Pat::Map { .. } => Some(NodeKind::Map),
+            Pat::Binary { .. } => Some(NodeKind::Binary),
+            _ => None,
+        },
+        AnyExprRef::TypeExpr(_) | AnyExprRef::Term(_) => None,
+    }
+}
+
+fn literal_kind(lit: &Literal) -> Option<NodeKind> {
+    match lit {
+        Literal::Atom(_) => Some(NodeKind::Atom),
+        Literal::Integer(_) => Some(NodeKind::Integer),
+        _ => None,
     }
 }
 
