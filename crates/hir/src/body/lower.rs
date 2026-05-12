@@ -549,7 +549,7 @@ impl<'a> Ctx<'a> {
                 pat: self.lower_pat(&rhs_ast),
             })
         });
-        let when = ssr.when().map(|w| self.lower_guards(w.guard()));
+        let when = ssr.r#where().map(|w| self.lower_guards(w.guard()));
         let (body, source_map) = self.finish();
         Some((
             SsrBody {

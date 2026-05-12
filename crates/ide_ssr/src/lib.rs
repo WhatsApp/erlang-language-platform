@@ -303,7 +303,7 @@ impl SsrRule {
         Self::parse_ssr_source(db, ssr_source)
     }
 
-    /// The `when` clause is lowered as HIR guards.
+    /// The `where` clause is lowered as HIR guards.
     /// Process these and turn them into something we can easily check
     /// when matching. Two condition shapes are supported, both
     /// keyed by the placeholder they restrict, AND-ed when more than
@@ -311,19 +311,22 @@ impl SsrRule {
     ///
     /// 1. Placeholder-equals-literal:
     ///    ```erlang
-    ///    ssr: _@X when _@X == foo.
+    ///    ssr: _@X where _@X == foo.
     ///    ```
     /// 2. Placeholder-is-of-kind, via Erlang's standard type-test BIFs
     ///    (`is_atom`, `is_integer`, `is_function`, `is_list`, `is_tuple`,
     ///    `is_map`, `is_binary`) plus SSR-only `is_var/1` and
     ///    `is_call/1`:
     ///    ```erlang
-    ///    ssr: meck:expect(_@MOD, _@FUN, _@A) when is_function(_@A).
+    ///    ssr: meck:expect(_@MOD, _@FUN, _@A) where is_function(_@A).
     ///    ```
     ///    Only the local-call form is supported; the qualified form
     ///    `erlang:is_atom(_@X)` is rejected with an error.
     ///
     /// Both forms may be negated with `not` (or `=/=` for literals).
+    /// ```erlang
+    /// ssr: _@X where _@X == foo.
+    /// ```
     fn make_conditions(
         ssr_body: &SsrBody,
         body: &FoldBody,
@@ -383,7 +386,7 @@ fn condition_from_expr(
                     let Some(lit_rhs) =
                         get_literal_subid(body, &SubId::AnyExprId(AnyExprId::Expr(*rhs)))
                     else {
-                        *error = Some(SsrError::new("Invalid `when` RHS, expecting a literal"));
+                        *error = Some(SsrError::new("Invalid `where` RHS, expecting a literal"));
                         return None;
                     };
                     let inner = Condition::Literal(lit_rhs);
@@ -396,7 +399,7 @@ fn condition_from_expr(
                 }
                 _ => {
                     *error = Some(SsrError::new(
-                        "Invalid `when` condition, must use `==`, `/=`, `=:=` or `=/=`",
+                        "Invalid `where` condition, must use `==`, `/=`, `=:=` or `=/=`",
                     ));
                     None
                 }
@@ -417,7 +420,7 @@ fn condition_from_expr(
         Expr::UnaryOp { expr, op } => {
             if *op != UnaryOp::Not {
                 *error = Some(SsrError::new(
-                    "Invalid `when` unary operator, only `not` is supported",
+                    "Invalid `where` unary operator, only `not` is supported",
                 ));
                 return None;
             }
@@ -425,7 +428,7 @@ fn condition_from_expr(
             Some((placeholder, Condition::Not(Box::new(inner))))
         }
         _ => {
-            *error = Some(SsrError::new("Invalid `when` condition"));
+            *error = Some(SsrError::new("Invalid `where` condition"));
             None
         }
     }
@@ -458,7 +461,7 @@ fn call_target_to_node_kind(
                 // semantics differ from the unqualified form.
                 let module_name = body[*module].as_atom()?.as_name();
                 *error = Some(SsrError::new(format!(
-                    "Invalid `when` guard `{module_name}:{fn_name}/1`: only local-call form is supported, e.g. `{fn_name}(_@X)`",
+                    "Invalid `where` guard `{module_name}:{fn_name}/1`: only local-call form is supported, e.g. `{fn_name}(_@X)`",
                 )));
                 return None;
             }
@@ -468,7 +471,7 @@ fn call_target_to_node_kind(
                 Some(kind) => Some(kind),
                 None => {
                     *error = Some(SsrError::new(format!(
-                        "Invalid `when` guard `{fn_name}/1`: unsupported predicate",
+                        "Invalid `where` guard `{fn_name}/1`: unsupported predicate",
                     )));
                     None
                 }
@@ -480,7 +483,7 @@ fn call_target_to_node_kind(
                 Some(kind) => Some(kind),
                 None => {
                     *error = Some(SsrError::new(format!(
-                        "Invalid `when` guard `{name}/1`: unsupported predicate",
+                        "Invalid `where` guard `{name}/1`: unsupported predicate",
                     )));
                     None
                 }

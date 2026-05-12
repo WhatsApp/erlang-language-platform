@@ -6535,7 +6535,7 @@ impl SsrDefinition {
     pub fn rhs(&self) -> Option<SsrReplacement> {
         support::child(&self.syntax, 0usize)
     }
-    pub fn when(&self) -> Option<SsrWhen> {
+    pub fn r#where(&self) -> Option<SsrWhere> {
         support::child(&self.syntax, 0usize)
     }
 }
@@ -6597,18 +6597,18 @@ impl std::fmt::Display for SsrReplacement {
 }
 #[doc = r" Via NodeType::Node 2 struct inner"]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SsrWhen {
+pub struct SsrWhere {
     pub(crate) syntax: SyntaxNode,
 }
-impl SsrWhen {
+impl SsrWhere {
     pub fn guard(&self) -> Option<Guard> {
         support::child(&self.syntax, 0usize)
     }
 }
 #[doc = r" Via NodeType::Node 2 struct"]
-impl AstNode for SsrWhen {
+impl AstNode for SsrWhere {
     fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SSR_WHEN
+        kind == SSR_WHERE
     }
     #[doc = r" Via field_casts"]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -6623,7 +6623,7 @@ impl AstNode for SsrWhen {
     }
 }
 #[doc = r" Via NodeType::Node 2 display"]
-impl std::fmt::Display for SsrWhen {
+impl std::fmt::Display for SsrWhere {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

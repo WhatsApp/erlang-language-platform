@@ -848,6 +848,62 @@ fn _map_type(child: &RawType) -> Result<String> {
     }
 }
 
+fn is_rust_keyword(name: &str) -> bool {
+    matches!(
+        name,
+        "as" | "break"
+            | "const"
+            | "continue"
+            | "crate"
+            | "else"
+            | "enum"
+            | "extern"
+            | "false"
+            | "fn"
+            | "for"
+            | "if"
+            | "impl"
+            | "in"
+            | "let"
+            | "loop"
+            | "match"
+            | "mod"
+            | "move"
+            | "mut"
+            | "pub"
+            | "ref"
+            | "return"
+            | "self"
+            | "Self"
+            | "static"
+            | "struct"
+            | "super"
+            | "trait"
+            | "true"
+            | "type"
+            | "unsafe"
+            | "use"
+            | "where"
+            | "while"
+            | "async"
+            | "await"
+            | "dyn"
+            | "abstract"
+            | "become"
+            | "box"
+            | "do"
+            | "final"
+            | "macro"
+            | "override"
+            | "priv"
+            | "typeof"
+            | "unsized"
+            | "virtual"
+            | "yield"
+            | "try"
+    )
+}
+
 fn build_fields(fields: &BTreeMap<String, RawField>) -> Vec<Field> {
     let mut mapped = Vec::new();
     let mut last_ty = None;
@@ -875,7 +931,11 @@ fn build_fields(fields: &BTreeMap<String, RawField>) -> Vec<Field> {
             nth = 0;
         }
 
-        let name = format_ident!("{}", name);
+        let name = if is_rust_keyword(name) {
+            format_ident!("r#{}", name)
+        } else {
+            format_ident!("{}", name)
+        };
 
         if field.multiple {
             assert!(ty.named);

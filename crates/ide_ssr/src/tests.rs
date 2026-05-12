@@ -109,7 +109,7 @@ fn parser_basic_query_with_placeholder() {
 fn parser_basic_query_with_cond() {
     parse_good_text(
         "ssr: V ==>> V + 1
-              when V == foo
+              where V == foo
          .
         ",
         expect![[r#"
@@ -1627,7 +1627,7 @@ fn ssr_term_no_blowup() {
 #[test]
 fn ssr_match_constant_atom_placeholder() {
     assert_matches(
-        "ssr: {_@X = _@Y} when _@X == foo.",
+        "ssr: {_@X = _@Y} where _@X == foo.",
         "foo() -> {foo = 3},{bar = 2}.",
         &[("{foo = 3}", &[("_@X", &["foo"]), ("_@Y", &["3"])])],
     );
@@ -1636,7 +1636,7 @@ fn ssr_match_constant_atom_placeholder() {
 #[test]
 fn ssr_match_constant_negated_atom_placeholder() {
     assert_matches(
-        "ssr: {_@X = _@Y} when _@X =/= foo.",
+        "ssr: {_@X = _@Y} where _@X =/= foo.",
         "foo() -> {foo = 3},{bar = 2}.",
         &[("{bar = 2}", &[("_@X", &["bar"]), ("_@Y", &["2"])])],
     );
@@ -1645,17 +1645,17 @@ fn ssr_match_constant_negated_atom_placeholder() {
 #[test]
 fn ssr_invalid_when_condition_not_literal() {
     expect![[r#"
-        "Parse error: Invalid `when` RHS, expecting a literal"
+        "Parse error: Invalid `where` RHS, expecting a literal"
     "#]]
-    .assert_debug_eq(&parse_error_text("ssr: {_@X = _@Y} when _@X == {Y}."));
+    .assert_debug_eq(&parse_error_text("ssr: {_@X = _@Y} where _@X == {Y}."));
 }
 
 #[test]
 fn ssr_invalid_when_condition_not_compop() {
     expect![[r#"
-        "Parse error: Invalid `when` condition"
+        "Parse error: Invalid `where` condition"
     "#]]
-    .assert_debug_eq(&parse_error_text("ssr: {_@X = _@Y} when _@X = foo."));
+    .assert_debug_eq(&parse_error_text("ssr: {_@X = _@Y} where _@X = foo."));
 }
 
 #[test]
@@ -1664,10 +1664,10 @@ fn ssr_invalid_when_guard_erlang_prefix_rejected() {
     // qualified form `erlang:is_atom(_@X)` is rejected because SSR's
     // match semantics for qualified calls differ from Erlang's.
     expect![[r#"
-        "Parse error: Invalid `when` guard `erlang:is_atom/1`: only local-call form is supported, e.g. `is_atom(_@X)`"
+        "Parse error: Invalid `where` guard `erlang:is_atom/1`: only local-call form is supported, e.g. `is_atom(_@X)`"
     "#]]
     .assert_debug_eq(&parse_error_text(
-        "ssr: f(_@A) when erlang:is_atom(_@A).",
+        "ssr: f(_@A) where erlang:is_atom(_@A).",
     ));
 }
 
@@ -1677,20 +1677,20 @@ fn ssr_invalid_when_guard_unsupported_predicate() {
     // recognises. Surface an error instead of silently dropping the
     // condition (previously this would compile but match anything).
     expect![[r#"
-        "Parse error: Invalid `when` guard `is_float/1`: unsupported predicate"
+        "Parse error: Invalid `where` guard `is_float/1`: unsupported predicate"
     "#]]
-    .assert_debug_eq(&parse_error_text("ssr: f(_@A) when is_float(_@A)."));
+    .assert_debug_eq(&parse_error_text("ssr: f(_@A) where is_float(_@A)."));
 }
 
 #[test]
 fn ssr_match_constant_var_placeholder() {
     assert_matches(
-        "ssr: _@X when _@X == A.",
+        "ssr: _@X where _@X == A.",
         "foo(A) -> 3.",
         &[("A", &[("_@X", &["A"])])],
     );
     assert_matches(
-        "ssr: _@X when _@X == _.",
+        "ssr: _@X where _@X == _.",
         "foo(_) -> 3.",
         &[("_", &[("_@X", &["_"])])],
     );
@@ -1701,7 +1701,7 @@ fn ssr_match_constant_var_placeholder() {
 #[test]
 fn ssr_retrieve_match_placeholder() {
     assert_match_placeholder(
-        "ssr: {_@X = _@Y} when _@X =/= foo.",
+        "ssr: {_@X = _@Y} where _@X =/= foo.",
         "foo() -> {foo = 3},{bar = 2}.",
         &["{bar = 2}"],
         "_@X",
@@ -2353,7 +2353,7 @@ fn ssr_native_record_anon_in_pat_does_not_match_qualified() {
 #[test]
 fn ssr_kind_constraint_atom_accept() {
     assert_matches(
-        "ssr: f(_@A) when is_atom(_@A).",
+        "ssr: f(_@A) where is_atom(_@A).",
         "fn() -> f(an_atom).",
         &[("f(an_atom)", &[("_@A", &["an_atom"])])],
     );
@@ -2361,13 +2361,13 @@ fn ssr_kind_constraint_atom_accept() {
 
 #[test]
 fn ssr_kind_constraint_atom_reject_integer() {
-    assert_matches("ssr: f(_@A) when is_atom(_@A).", "fn() -> f(42).", &[]);
+    assert_matches("ssr: f(_@A) where is_atom(_@A).", "fn() -> f(42).", &[]);
 }
 
 #[test]
 fn ssr_kind_constraint_integer_accept() {
     assert_matches(
-        "ssr: f(_@A) when is_integer(_@A).",
+        "ssr: f(_@A) where is_integer(_@A).",
         "fn() -> f(42).",
         &[("f(42)", &[("_@A", &["42"])])],
     );
@@ -2376,7 +2376,7 @@ fn ssr_kind_constraint_integer_accept() {
 #[test]
 fn ssr_kind_constraint_list_accept() {
     assert_matches(
-        "ssr: f(_@A) when is_list(_@A).",
+        "ssr: f(_@A) where is_list(_@A).",
         "fn() -> f([1, 2, 3]).",
         &[("f([1, 2, 3])", &[("_@A", &["[1, 2, 3]"])])],
     );
@@ -2385,7 +2385,7 @@ fn ssr_kind_constraint_list_accept() {
 #[test]
 fn ssr_kind_constraint_tuple_accept() {
     assert_matches(
-        "ssr: f(_@A) when is_tuple(_@A).",
+        "ssr: f(_@A) where is_tuple(_@A).",
         "fn() -> f({x, y}).",
         &[("f({x, y})", &[("_@A", &["{x, y}"])])],
     );
@@ -2396,7 +2396,7 @@ fn ssr_kind_constraint_call_accept_ssr_predicate() {
     // `is_call/1` has no Erlang BIF counterpart — it is an SSR-only
     // local predicate that matches any `Expr::Call` AST node.
     assert_matches(
-        "ssr: f(_@A) when is_call(_@A).",
+        "ssr: f(_@A) where is_call(_@A).",
         "fn() -> f(g(1)).",
         &[("f(g(1))", &[("_@A", &["g(1)"])])],
     );
@@ -2407,7 +2407,7 @@ fn ssr_kind_constraint_var_accept_ssr_predicate() {
     // `is_var/1` is also SSR-only — matches any `Expr::Var` /
     // `Pat::Var` AST node, regardless of binding state.
     assert_matches(
-        "ssr: f(_@A) when is_var(_@A).",
+        "ssr: f(_@A) where is_var(_@A).",
         "fn(X) -> f(X).",
         &[("f(X)", &[("_@A", &["X"])])],
     );
@@ -2416,7 +2416,7 @@ fn ssr_kind_constraint_var_accept_ssr_predicate() {
 #[test]
 fn ssr_kind_constraint_cross_kind_mismatch() {
     assert_matches(
-        "ssr: f(_@A) when is_function(_@A).",
+        "ssr: f(_@A) where is_function(_@A).",
         "fn() -> f([1, 2, 3]).",
         &[],
     );
@@ -2427,7 +2427,7 @@ fn ssr_kind_constraint_cross_kind_mismatch() {
 #[test]
 fn ssr_kind_constraint_fun_accepts_anonymous() {
     assert_matches(
-        "ssr: f(_@A) when is_function(_@A).",
+        "ssr: f(_@A) where is_function(_@A).",
         "fn() -> f(fun(X) -> X end).",
         &[("f(fun(X) -> X end)", &[("_@A", &["fun(X) -> X end"])])],
     );
@@ -2436,7 +2436,7 @@ fn ssr_kind_constraint_fun_accepts_anonymous() {
 #[test]
 fn ssr_kind_constraint_fun_accepts_local_capture() {
     assert_matches(
-        "ssr: f(_@A) when is_function(_@A).",
+        "ssr: f(_@A) where is_function(_@A).",
         "fn() -> f(fun func/1).",
         &[("f(fun func/1)", &[("_@A", &["fun func/1"])])],
     );
@@ -2445,7 +2445,7 @@ fn ssr_kind_constraint_fun_accepts_local_capture() {
 #[test]
 fn ssr_kind_constraint_fun_accepts_remote_capture() {
     assert_matches(
-        "ssr: f(_@A) when is_function(_@A).",
+        "ssr: f(_@A) where is_function(_@A).",
         "fn() -> f(fun mod:func/1).",
         &[("f(fun mod:func/1)", &[("_@A", &["fun mod:func/1"])])],
     );
@@ -2461,7 +2461,7 @@ fn ssr_kind_constraint_tuple_in_pat_position() {
         &[("{x, y} = rhs", &[("_@A", &["{x, y}"])])],
     );
     assert_matches(
-        "ssr: _@A = rhs when is_tuple(_@A).",
+        "ssr: _@A = rhs where is_tuple(_@A).",
         "fn() -> {x, y} = rhs.",
         &[("{x, y} = rhs", &[("_@A", &["{x, y}"])])],
     );
@@ -2471,7 +2471,7 @@ fn ssr_kind_constraint_tuple_in_pat_position() {
 #[test]
 fn ssr_kind_constraint_multi_placeholder_and() {
     assert_matches(
-        "ssr: f(_@A, _@B) when is_tuple(_@A), is_atom(_@B).",
+        "ssr: f(_@A, _@B) where is_tuple(_@A), is_atom(_@B).",
         "fn() -> f({x, y}, an_atom).",
         &[(
             "f({x, y}, an_atom)",
@@ -2479,7 +2479,7 @@ fn ssr_kind_constraint_multi_placeholder_and() {
         )],
     );
     assert_matches(
-        "ssr: f(_@A, _@B) when is_tuple(_@A), is_atom(_@B).",
+        "ssr: f(_@A, _@B) where is_tuple(_@A), is_atom(_@B).",
         "fn() -> f({x, y}, [1, 2]).",
         &[],
     );
@@ -2489,12 +2489,12 @@ fn ssr_kind_constraint_multi_placeholder_and() {
 #[test]
 fn ssr_kind_constraint_ands_with_when_literal_diff_placeholders() {
     assert_matches(
-        "ssr: f(_@A, _@B) when is_tuple(_@A), _@B == foo.",
+        "ssr: f(_@A, _@B) where is_tuple(_@A), _@B == foo.",
         "fn() -> f({x}, foo).",
         &[("f({x}, foo)", &[("_@A", &["{x}"]), ("_@B", &["foo"])])],
     );
     assert_matches(
-        "ssr: f(_@A, _@B) when is_tuple(_@A), _@B == foo.",
+        "ssr: f(_@A, _@B) where is_tuple(_@A), _@B == foo.",
         "fn() -> f({x}, bar).",
         &[],
     );
@@ -2506,17 +2506,17 @@ fn ssr_kind_constraint_ands_with_when_literal_diff_placeholders() {
 #[test]
 fn ssr_kind_constraint_ands_with_when_literal_same_placeholder() {
     assert_matches(
-        "ssr: f(_@A) when is_atom(_@A), _@A == foo.",
+        "ssr: f(_@A) where is_atom(_@A), _@A == foo.",
         "fn() -> f(foo).",
         &[("f(foo)", &[("_@A", &["foo"])])],
     );
     assert_matches(
-        "ssr: f(_@A) when is_atom(_@A), _@A == foo.",
+        "ssr: f(_@A) where is_atom(_@A), _@A == foo.",
         "fn() -> f(bar).",
         &[],
     );
     assert_matches(
-        "ssr: f(_@A) when is_tuple(_@A), _@A == foo.",
+        "ssr: f(_@A) where is_tuple(_@A), _@A == foo.",
         "fn() -> f(foo).",
         &[],
     );
@@ -2526,12 +2526,12 @@ fn ssr_kind_constraint_ands_with_when_literal_same_placeholder() {
 #[test]
 fn ssr_kind_constraint_negation() {
     assert_matches(
-        "ssr: f(_@A) when not is_atom(_@A).",
+        "ssr: f(_@A) where not is_atom(_@A).",
         "fn() -> f(42).",
         &[("f(42)", &[("_@A", &["42"])])],
     );
     assert_matches(
-        "ssr: f(_@A) when not is_atom(_@A).",
+        "ssr: f(_@A) where not is_atom(_@A).",
         "fn() -> f(an_atom).",
         &[],
     );
@@ -2544,7 +2544,7 @@ fn ssr_kind_constraint_negation() {
 /// Single-placeholder disjunction across kinds.
 #[test]
 fn ssr_when_or_single_placeholder_kinds() {
-    let pat = "ssr: f(_@A) when is_atom(_@A); is_integer(_@A).";
+    let pat = "ssr: f(_@A) where is_atom(_@A); is_integer(_@A).";
     assert_matches(
         pat,
         "fn() -> f(an_atom).",
@@ -2557,7 +2557,7 @@ fn ssr_when_or_single_placeholder_kinds() {
 /// Disjunction over different placeholders: either A or B is an atom.
 #[test]
 fn ssr_when_or_different_placeholders() {
-    let pat = "ssr: f(_@A, _@B) when is_atom(_@A); is_atom(_@B).";
+    let pat = "ssr: f(_@A, _@B) where is_atom(_@A); is_atom(_@B).";
     assert_matches(
         pat,
         "fn() -> f(an_atom, 1).",
@@ -2580,7 +2580,7 @@ fn ssr_when_or_different_placeholders() {
 /// `(is_atom(A) ∧ is_integer(B)) ∨ is_tuple(A)`.
 #[test]
 fn ssr_when_or_precedence_and_binds_tighter() {
-    let pat = "ssr: f(_@A, _@B) when is_atom(_@A), is_integer(_@B); is_tuple(_@A).";
+    let pat = "ssr: f(_@A, _@B) where is_atom(_@A), is_integer(_@B); is_tuple(_@A).";
     // First conjunction wins.
     assert_matches(
         pat,
@@ -2604,7 +2604,7 @@ fn ssr_when_or_precedence_and_binds_tighter() {
 /// `;` works for plain literal conditions too (no kind constraints).
 #[test]
 fn ssr_when_or_literal_alternatives() {
-    let pat = "ssr: _@X when _@X == foo; _@X == bar.";
+    let pat = "ssr: _@X where _@X == foo; _@X == bar.";
     assert_matches(pat, "fn() -> foo.", &[("foo", &[("_@X", &["foo"])])]);
     assert_matches(pat, "fn() -> bar.", &[("bar", &[("_@X", &["bar"])])]);
     assert_matches(pat, "fn() -> baz.", &[]);
@@ -2613,7 +2613,7 @@ fn ssr_when_or_literal_alternatives() {
 /// Mixed literal + kind across alternatives.
 #[test]
 fn ssr_when_or_mixed_literal_and_kind() {
-    let pat = "ssr: f(_@A) when _@A == foo; is_integer(_@A).";
+    let pat = "ssr: f(_@A) where _@A == foo; is_integer(_@A).";
     assert_matches(pat, "fn() -> f(foo).", &[("f(foo)", &[("_@A", &["foo"])])]);
     assert_matches(pat, "fn() -> f(42).", &[("f(42)", &[("_@A", &["42"])])]);
     // bar is an atom but not foo, and not an integer.
