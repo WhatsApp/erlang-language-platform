@@ -38,7 +38,9 @@ pub struct Diagnostic {
     replacement: Option<String>,
     description: Option<String>,
     doc_path: Option<String>,
-    // SSR placeholder bindings; only set by `elp ssr --format=json`.
+    // SSR-specific fields; only set by `elp ssr --format=json`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pattern_label: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     placeholders: Option<Vec<PlaceholderBinding>>,
 }
@@ -129,6 +131,7 @@ impl Diagnostic {
             replacement: None,
             description: Some(description),
             doc_path,
+            pattern_label: None,
             placeholders: None,
         }
     }
@@ -141,7 +144,12 @@ impl Diagnostic {
         self
     }
 
-    pub fn with_ssr(mut self, placeholders: Vec<PlaceholderBinding>) -> Self {
+    pub fn with_ssr(
+        mut self,
+        pattern_label: Option<String>,
+        placeholders: Vec<PlaceholderBinding>,
+    ) -> Self {
+        self.pattern_label = pattern_label;
         self.placeholders = Some(placeholders);
         self
     }

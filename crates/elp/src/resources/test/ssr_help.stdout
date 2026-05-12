@@ -4,7 +4,8 @@ Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--rebar]
 [--no-group-separator] [--report-system-stats] <SSR_SPECS>...
 
 Available positional items:
-    <SSR_SPECS>  SSR specs to use
+    <SSR_SPECS>  SSR specs to use. Each accepts `PATTERN`, `ssr: PATTERN.`, or `LABEL:ssr: PATTERN.`
+                 forms; the LABEL surfaces as `patternLabel` in JSON output.
 
 Available options:
         --project <PROJECT>  Path to directory with project, or to a JSON file (defaults to `.`)

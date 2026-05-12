@@ -235,6 +235,8 @@ pub struct Diagnostic {
 #[derive(Debug, Clone)]
 pub enum DiagnosticExtra {
     Ssr {
+        /// Optional human-readable label for the pattern (CLI-supplied).
+        pattern_label: Option<String>,
         placeholders: Vec<PlaceholderBinding>,
     },
 }

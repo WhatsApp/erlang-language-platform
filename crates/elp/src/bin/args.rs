@@ -464,7 +464,9 @@ pub struct Ssr {
     #[bpaf(long("report-system-stats"))]
     pub report_system_stats: bool,
 
-    /// SSR specs to use
+    /// SSR specs to use. Each accepts `PATTERN`, `ssr: PATTERN.`, or
+    /// `LABEL:ssr: PATTERN.` forms; the LABEL surfaces as `patternLabel` in
+    /// JSON output.
     #[bpaf(
         positional("SSR_SPECS"),
         guard(at_least_1, "there should be at least one spec")

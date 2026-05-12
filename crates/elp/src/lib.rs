@@ -217,12 +217,7 @@ mod tests {
                             perm: vec![1, 2],
                         }),
                     }),
-                    Lint::LintMatchSsr(MatchSsr {
-                        ssr_pattern: "ssr: _@A = 10.".to_string(),
-                        message: None,
-                        strategy: None,
-                        severity: None,
-                    }),
+                    Lint::LintMatchSsr(MatchSsr::from_pattern("ssr: _@A = 10.")),
                 ],
             },
             linters: FxHashMap::default(),

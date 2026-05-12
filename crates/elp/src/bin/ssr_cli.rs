@@ -52,12 +52,21 @@ use crate::args::Ssr;
 use crate::reporting;
 use crate::reporting::print_memory_usage;
 
-fn normalize_ssr_pattern(pattern: &str) -> String {
-    if pattern.starts_with("ssr:") {
-        pattern.to_string()
-    } else {
-        format!("ssr: {}.", pattern)
+/// Parse a positional SSR_SPECS argument into an optional label plus the
+/// canonical `ssr: ... .` pattern text. Three accepted shapes:
+///   `LABEL:ssr: PATTERN`  -> (Some(label), "ssr: PATTERN")
+///   `ssr: PATTERN`        -> (None, "ssr: PATTERN")
+///   `PATTERN`             -> (None, "ssr: PATTERN.")
+/// The literal `:ssr: ` substring is the label/pattern delimiter — it can't
+/// appear naturally in Erlang code, so detection is unambiguous.
+fn normalize_ssr_pattern(input: &str) -> (Option<String>, String) {
+    if let Some((label, rest)) = input.split_once(":ssr: ") {
+        return (Some(label.to_owned()), format!("ssr: {rest}"));
     }
+    if input.starts_with("ssr:") {
+        return (None, input.to_owned());
+    }
+    (None, format!("ssr: {input}."))
 }
 
 pub fn run_ssr_command(
@@ -80,7 +89,7 @@ pub fn run_ssr_command(
     let analysis_host = AnalysisHost::default();
     let analysis = analysis_host.analysis();
     for pattern in &args.ssr_specs {
-        let normalized_pattern = normalize_ssr_pattern(pattern);
+        let (_, normalized_pattern) = normalize_ssr_pattern(pattern);
         match analysis.validate_ssr_pattern(&normalized_pattern) {
             Ok(Ok(())) => {}
             Ok(Err(e)) => bail!("invalid SSR pattern '{}': {}", pattern, e),
@@ -94,7 +103,7 @@ pub fn run_ssr_command(
     // Create the lint config with all SSR patterns
     let mut lint_config = LintConfig::default();
     for pattern in &args.ssr_specs {
-        let normalized_pattern = normalize_ssr_pattern(pattern);
+        let (label, normalized_pattern) = normalize_ssr_pattern(pattern);
         let severity = if args.dump_config {
             // Set the severity so that squiggles are shown in the VS Code UI
             Some(diagnostics::Severity::Information)
@@ -106,6 +115,7 @@ pub fn run_ssr_command(
             message: None,
             strategy: Some(strategy),
             severity,
+            pattern_label: label,
         });
         lint_config.ad_hoc_lints.lints.push(ssr_lint);
     }
@@ -718,4 +728,44 @@ fn print_line_with_markers(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+    use super::*;
+
+    #[test]
+    fn normalize_ssr_pattern_bare_pattern() {
+        let expected = (None, "ssr: foo(_@X).".to_owned());
+        assert_eq_expected!(expected, normalize_ssr_pattern("foo(_@X)"));
+    }
+
+    #[test]
+    fn normalize_ssr_pattern_already_prefixed() {
+        let expected = (None, "ssr: foo(_@X).".to_owned());
+        assert_eq_expected!(expected, normalize_ssr_pattern("ssr: foo(_@X)."));
+    }
+
+    #[test]
+    fn normalize_ssr_pattern_labeled() {
+        let expected = (Some("L".to_owned()), "ssr: foo(_@X).".to_owned());
+        assert_eq_expected!(expected, normalize_ssr_pattern("L:ssr: foo(_@X)."));
+    }
+
+    /// Labels accept any chars except the literal `:ssr: ` delimiter.
+    #[test]
+    fn normalize_ssr_pattern_label_with_punctuation() {
+        let expected = (Some("foo-bar.baz".to_owned()), "ssr: ok.".to_owned());
+        assert_eq_expected!(expected, normalize_ssr_pattern("foo-bar.baz:ssr: ok."));
+    }
+
+    /// Module-qualified calls like `meck:expect` don't trip the labeling
+    /// rule because the `:` isn't followed by `ssr: `.
+    #[test]
+    fn normalize_ssr_pattern_pattern_only_module_call() {
+        let expected = (None, "ssr: meck:expect(_@A).".to_owned());
+        assert_eq_expected!(expected, normalize_ssr_pattern("meck:expect(_@A)"));
+    }
 }

@@ -284,12 +284,15 @@ fn apply_diagnostic_extra(
     extra: &DiagnosticExtra,
 ) -> arc_types::Diagnostic {
     match extra {
-        DiagnosticExtra::Ssr { placeholders } => {
+        DiagnosticExtra::Ssr {
+            pattern_label,
+            placeholders,
+        } => {
             let bindings = placeholders
                 .iter()
                 .map(|p| placeholder_to_arc(line_index, p))
                 .collect();
-            arc.with_ssr(bindings)
+            arc.with_ssr(pattern_label.clone(), bindings)
         }
     }
 }

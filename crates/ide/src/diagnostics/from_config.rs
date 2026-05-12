@@ -134,6 +134,9 @@ pub struct MatchSsr {
     pub message: Option<String>,
     pub strategy: Option<Strategy>,
     pub severity: Option<Severity>,
+    /// Optional label, surfaced as `patternLabel` in JSON output. Set via
+    /// CLI `LABEL:ssr: PATTERN.` syntax or directly in `.elp_lint.toml`.
+    pub pattern_label: Option<String>,
 }
 
 impl Serialize for MatchSsr {
@@ -143,10 +146,13 @@ impl Serialize for MatchSsr {
     {
         use serde::ser::SerializeStruct;
 
-        let mut state = serializer.serialize_struct("MatchSsr", 5)?;
+        let mut state = serializer.serialize_struct("MatchSsr", 6)?;
         state.serialize_field("ssr_pattern", &self.ssr_pattern)?;
         if let Some(ref message) = self.message {
             state.serialize_field("message", message)?;
+        }
+        if let Some(ref pattern_label) = self.pattern_label {
+            state.serialize_field("pattern_label", pattern_label)?;
         }
         if let Some(ref severity) = self.severity {
             state.serialize_field("severity", severity)?;
@@ -196,6 +202,8 @@ impl<'de> Deserialize<'de> for MatchSsr {
             macro_strategy: Option<String>,
             #[serde(default)]
             paren_strategy: Option<String>,
+            #[serde(default)]
+            pattern_label: Option<String>,
         }
 
         let helper = MatchSsrHelper::deserialize(deserializer)?;
@@ -245,11 +253,23 @@ impl<'de> Deserialize<'de> for MatchSsr {
             message: helper.message,
             strategy,
             severity: helper.severity,
+            pattern_label: helper.pattern_label,
         })
     }
 }
 
 impl MatchSsr {
+    /// MatchSsr from just a pattern; other fields default.
+    pub fn from_pattern(ssr_pattern: impl Into<String>) -> Self {
+        Self {
+            ssr_pattern: ssr_pattern.into(),
+            message: None,
+            strategy: None,
+            severity: None,
+            pattern_label: None,
+        }
+    }
+
     pub fn get_diagnostics(&self, acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
         let strategy = self.strategy.unwrap_or(Strategy {
             macros: MacroStrategy::Expand,
@@ -266,7 +286,10 @@ impl MatchSsr {
                 .unwrap_or_else(|| format!("SSR pattern matched: {}", self.ssr_pattern));
 
             let placeholders = collect_placeholder_bindings(sema, &matched);
-            let extra = DiagnosticExtra::Ssr { placeholders };
+            let extra = DiagnosticExtra::Ssr {
+                pattern_label: self.pattern_label.clone(),
+                placeholders,
+            };
 
             let severity = self.severity.unwrap_or(Severity::WeakWarning);
             let diag = Diagnostic::new(
@@ -693,6 +716,7 @@ mod tests {
             message: Some("Found pattern".to_string()),
             strategy: None,
             severity: None,
+            pattern_label: None,
         })
         .unwrap();
         expect![[r#"
@@ -720,9 +744,34 @@ mod tests {
                 ),
                 strategy: None,
                 severity: None,
+                pattern_label: None,
             }
         "#]]
         .assert_debug_eq(&match_ssr);
+    }
+
+    /// `pattern_label` round-trips through TOML so `--dump-config` preserves
+    /// it and `.elp_lint.toml` can set it directly.
+    #[test]
+    fn serde_match_ssr_pattern_label_round_trips() {
+        use elp_ide_db::elp_base_db::assert_eq_expected;
+        let with_label = MatchSsr {
+            ssr_pattern: "ssr: _@A = 10.".to_string(),
+            message: Some("Found pattern".to_string()),
+            strategy: None,
+            severity: None,
+            pattern_label: Some("my_label".to_string()),
+        };
+        let serialized = toml::to_string::<MatchSsr>(&with_label).unwrap();
+        expect![[r#"
+            ssr_pattern = "ssr: _@A = 10."
+            message = "Found pattern"
+            pattern_label = "my_label"
+        "#]]
+        .assert_eq(&serialized);
+
+        let round_tripped: MatchSsr = toml::from_str(&serialized).unwrap();
+        assert_eq_expected!(Some("my_label"), round_tripped.pattern_label.as_deref());
     }
 
     #[test]
@@ -733,6 +782,7 @@ mod tests {
                 message: Some("Found pattern".to_string()),
                 strategy: None,
                 severity: None,
+                pattern_label: None,
             })],
         })
         .unwrap();
@@ -756,6 +806,7 @@ mod tests {
                     parens: ParenStrategy::InvisibleParens,
                 }),
                 severity: None,
+                pattern_label: None,
             })],
         })
         .unwrap();
@@ -779,6 +830,7 @@ mod tests {
                     parens: ParenStrategy::VisibleParens,
                 }),
                 severity: None,
+                pattern_label: None,
             })],
         })
         .unwrap();
@@ -823,6 +875,7 @@ mod tests {
                                 },
                             ),
                             severity: None,
+                            pattern_label: None,
                         },
                     ),
                 ],
@@ -839,6 +892,7 @@ mod tests {
             message: Some("Found pattern".to_string()),
             strategy: None,
             severity: Some(Severity::Error),
+            pattern_label: None,
         })
         .unwrap();
         expect![[r#"
@@ -857,6 +911,7 @@ mod tests {
             message: Some("Found pattern".to_string()),
             strategy: None,
             severity: Some(Severity::Warning),
+            pattern_label: None,
         })
         .unwrap();
         expect![[r#"
@@ -875,6 +930,7 @@ mod tests {
             message: Some("Found pattern".to_string()),
             strategy: None,
             severity: Some(Severity::WeakWarning),
+            pattern_label: None,
         })
         .unwrap();
         expect![[r#"
@@ -893,6 +949,7 @@ mod tests {
             message: Some("Found pattern".to_string()),
             strategy: None,
             severity: Some(Severity::Information),
+            pattern_label: None,
         })
         .unwrap();
         expect![[r#"
@@ -952,6 +1009,7 @@ mod tests {
                     parens: ParenStrategy::VisibleParens,
                 }),
                 severity: Some(Severity::Error),
+                pattern_label: None,
             })],
         })
         .unwrap();
@@ -1000,6 +1058,7 @@ mod tests {
                             severity: Some(
                                 Error,
                             ),
+                            pattern_label: None,
                         },
                     ),
                 ],
@@ -1015,20 +1074,31 @@ mod tests {
         use elp_ide_db::elp_base_db::assert_eq_expected;
         let (db, file_id) = RootDatabase::with_single_file("t() -> X = 1, {X, X}.");
         let sema = Semantic::new(&db);
-        let lint = MatchSsr {
-            ssr_pattern: "ssr: {_@A, _@A}.".to_string(),
-            message: None,
-            strategy: None,
-            severity: None,
-        };
+        let lint = MatchSsr::from_pattern("ssr: {_@A, _@A}.");
         let mut acc = Vec::new();
         lint.get_diagnostics(&mut acc, &sema, file_id);
         assert_eq_expected!(1, acc.len());
-        let Some(DiagnosticExtra::Ssr { placeholders }) = &acc[0].extra else {
+        let Some(DiagnosticExtra::Ssr { placeholders, .. }) = &acc[0].extra else {
             panic!("expected DiagnosticExtra::Ssr, got {:?}", acc[0].extra);
         };
         // Two bindings for `_@A` (one per occurrence), both naming `A`.
         assert_eq_expected!(2, placeholders.len());
         assert!(placeholders.iter().all(|b| b.name == "A" && b.text == "X"));
+    }
+
+    #[test]
+    fn ssr_diagnostic_propagates_pattern_label() {
+        use elp_ide_db::elp_base_db::assert_eq_expected;
+        let (db, file_id) = RootDatabase::with_single_file("t() -> ok.");
+        let sema = Semantic::new(&db);
+        let mut lint = MatchSsr::from_pattern("ssr: ok.");
+        lint.pattern_label = Some("ok_literal".to_string());
+        let mut acc = Vec::new();
+        lint.get_diagnostics(&mut acc, &sema, file_id);
+        assert_eq_expected!(1, acc.len());
+        let Some(DiagnosticExtra::Ssr { pattern_label, .. }) = &acc[0].extra else {
+            panic!("expected DiagnosticExtra::Ssr, got {:?}", acc[0].extra);
+        };
+        assert_eq_expected!(Some("ok_literal"), pattern_label.as_deref());
     }
 }
