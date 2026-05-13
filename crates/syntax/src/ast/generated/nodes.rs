@@ -2,19 +2,11 @@
 
 #![allow(dead_code)]
 #[doc = r" TODO: remove this pragma"]
-use crate::SyntaxKind::*;
-#[doc = r" TODO: remove this pragma"]
-use crate::SyntaxKind::{self};
-#[doc = r" TODO: remove this pragma"]
-use crate::SyntaxNode;
-#[doc = r" TODO: remove this pragma"]
-use crate::SyntaxToken;
-#[doc = r" TODO: remove this pragma"]
-use crate::ast::AstChildren;
-#[doc = r" TODO: remove this pragma"]
-use crate::ast::AstNode;
-#[doc = r" TODO: remove this pragma"]
-use crate::ast::support;
+use crate::{
+    SyntaxKind::{self, *},
+    SyntaxNode, SyntaxToken,
+    ast::{AstChildren, AstNode, support},
+};
 #[doc = r" Via NodeType::Node 2 struct inner"]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AnnType {

@@ -1,8 +1,7 @@
 //! @generated file, do not edit by hand, see `xtask/src/codegen.rs`
 
 #![allow(bad_style, missing_docs, unreachable_pub)]
-use num_derive::FromPrimitive;
-use num_derive::ToPrimitive;
+use num_derive::{FromPrimitive, ToPrimitive};
 #[doc = r" The kind of syntax node, e.g. `ATOM`, `IF_KW`, or `DOT`."]
 #[derive(
     Clone,
