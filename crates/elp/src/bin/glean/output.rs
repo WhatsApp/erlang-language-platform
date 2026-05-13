@@ -644,9 +644,6 @@ impl IndexedFacts {
                             source: xref.source.clone(),
                         });
 
-                        let mut hasher = fxhash::FxHasher::default();
-                        m.key.expansion.hash(&mut hasher);
-                        let content_hash = format!("{}", hasher.finish());
                         let links: Vec<String> = m
                             .key
                             .tagged_urls
@@ -659,12 +656,25 @@ impl IndexedFacts {
                                 }
                             })
                             .collect();
+                        let expansion = {
+                            let links_text = links.join("\n\n");
+                            let exp = m.key.expansion.as_deref().unwrap_or("");
+                            match (links_text.is_empty(), exp.is_empty()) {
+                                (false, false) => Some(format!("{}\n\n---\n\n{}", links_text, exp)),
+                                (false, true) => Some(links_text),
+                                (true, false) => Some(exp.to_string()),
+                                (true, true) => None,
+                            }
+                        };
+                        let mut hasher = fxhash::FxHasher::default();
+                        expansion.hash(&mut hasher);
+                        let content_hash = format!("{}", hasher.finish());
                         let usage = Schema2MacroUsage {
                             name: m.key.name.clone(),
                             module: target_module.clone(),
                             arity: m.key.arity,
                             app: target_app.clone(),
-                            expansion: m.key.expansion.clone(),
+                            expansion,
                             links,
                             content_hash,
                         };
