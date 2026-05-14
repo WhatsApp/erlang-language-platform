@@ -698,6 +698,18 @@ impl<'a, T> FoldCtx<'a, T> {
             body_origin: self.body_origin,
             idx: AnyExprId::Expr(expr_id),
         }));
+        // Under `InvisibleParens`, descend straight into the inner
+        // ExprId so it gets its own callback at its real source
+        // position — not the wrapping Paren's. Matters most when the
+        // Paren and inner live in different files (e.g. a macro body
+        // wrapping a substituted arg).
+        if self.body.parens == ParenStrategy::InvisibleParens
+            && let crate::Expr::Paren { expr: inner } = &self.body.body.exprs[expr_id]
+        {
+            let r = self.do_fold_expr(*inner, initial);
+            self.parents.pop();
+            return r;
+        }
         let expr = &self.body[expr_id];
         let ctx = AnyCallBackCtx {
             in_macro: self.in_macro(),
@@ -955,6 +967,14 @@ impl<'a, T> FoldCtx<'a, T> {
             body_origin: self.body_origin,
             idx: AnyExprId::Pat(pat_id),
         }));
+        // See do_fold_expr — symmetric Paren descent on the Pat side.
+        if self.body.parens == ParenStrategy::InvisibleParens
+            && let crate::Pat::Paren { pat: inner } = &self.body.body.pats[pat_id]
+        {
+            let r = self.do_fold_pat(*inner, initial);
+            self.parents.pop();
+            return r;
+        }
         let pat = &self.body[pat_id];
         let ctx = AnyCallBackCtx {
             in_macro: self.in_macro(),
@@ -1173,6 +1193,14 @@ impl<'a, T> FoldCtx<'a, T> {
             body_origin: self.body_origin,
             idx: AnyExprId::TypeExpr(type_expr_id),
         }));
+        // See do_fold_expr — symmetric Paren descent on the TypeExpr side.
+        if self.body.parens == ParenStrategy::InvisibleParens
+            && let crate::TypeExpr::Paren { ty: inner } = &self.body.body.type_exprs[type_expr_id]
+        {
+            let r = self.do_fold_type_expr(*inner, initial);
+            self.parents.pop();
+            return r;
+        }
         let type_expr = &self.body[type_expr_id];
         let ctx = AnyCallBackCtx {
             in_macro: self.in_macro(),

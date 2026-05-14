@@ -63,9 +63,15 @@ impl GenericLinter for EffectFreeStatementLinter {
         sema.for_each_function(file_id, |def| {
             let def_fb = def.in_function_body(sema, def);
             def_fb.fold_function(
+                // VisibleParens so a Paren-wrapped statement like `(blah),`
+                // gets its own visit at the Paren ExprId. Under
+                // InvisibleParens the fold short-circuits the Paren and
+                // visits only the inner expression, whose source range
+                // covers just `blah` rather than the parenthesised form
+                // the user wrote.
                 Strategy {
                     macros: MacroStrategy::ExpandButIncludeMacroCall,
-                    parens: ParenStrategy::InvisibleParens,
+                    parens: ParenStrategy::VisibleParens,
                 },
                 (),
                 &mut |_acc, clause_id, ctx| {

@@ -169,16 +169,13 @@ mod tests {
         )
     }
 
-    // SSR can return matches with file_id from header files
-    // when the pattern is used in a macro argument. Only process matches
-    // that belong to the current file being analyzed.
+    // The lint catches the `lists:reverse/1 ++ T` pattern at the
+    // call site even when wrapped in a macro defined in a header.
     #[test]
-    fn ignores_match_in_macro_arg_from_header_file() {
+    fn detects_match_in_macro_arg_from_header_file() {
         check_diagnostics(
             r#"
         //- /assert/include/assert.hrl app:assert include_path:/assert/include
-        %% Padding to ensure header file range exceeds source file length
-        %% This triggers file_id mismatch when SSR matches in macro arg
         -define(assert(BoolExpr),
             case (BoolExpr) of
                 true -> ok;
@@ -189,6 +186,7 @@ mod tests {
         -module(test).
         -include_lib("assert/include/assert.hrl").
         f(L, T) -> ?assert(lists:reverse(L) ++ T).
+        %%                 ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0056: Use `lists:reverse/2` instead of `lists:reverse/1 ++ Tail` for better performance.
            "#,
         )
     }

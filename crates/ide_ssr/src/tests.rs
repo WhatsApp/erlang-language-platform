@@ -879,6 +879,77 @@ fn ssr_expr_match_macro_call() {
     );
 }
 
+/// Pins current `MacroStrategy::Expand` behaviour around macro
+/// references whose definition ELP cannot resolve. When the wrapping
+/// macro is defined inline or in a resolved include, the inner call
+/// surfaces through the expansion (1 match). When the include is
+/// unresolved, the entire macro-call subtree is silently dropped and
+/// the inner call is invisible (0 matches). The unresolved case is a
+/// known shortcoming and should ultimately match the resolved cases.
+#[test]
+fn ssr_expand_unresolved_macro_drops_inner_call() {
+    fn count_matches_in_main(fixture: &str, pattern: &str) -> usize {
+        let (db, files, _) = RootDatabase::with_many_files(fixture);
+        let main = files[0];
+        let sema = Semantic::new(&db);
+        let pattern = SsrRule::parse_str(sema.db, pattern).unwrap();
+        let strategy = Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        };
+        let mut mf = MatchFinder::in_context(&sema, strategy, SsrSearchScope::WholeFile(main));
+        mf.add_search_pattern(pattern);
+        mf.matches().flattened().matches.len()
+    }
+
+    // Inline define: call surfaces through the expansion.
+    let inline = count_matches_in_main(
+        r#"
+//- /src/main.erl
+-define(WRAP(BoolExpr),
+    case (BoolExpr) of
+        true -> ok;
+        _ -> erlang:error(assertion_failed)
+    end).
+bar() -> ?WRAP(f(1, 2, 3)).
+"#,
+        "ssr: f(_@A, _@B, _@C).",
+    );
+    assert_eq_expected!(1, inline);
+
+    // Resolved include: same shape, definition in an `.hrl` on the
+    // include path. Still 1.
+    let from_hrl_resolved = count_matches_in_main(
+        r#"
+//- /src/main.erl include_path:/include
+-include("wrap.hrl").
+bar() -> ?WRAP(f(1, 2, 3)).
+//- /include/wrap.hrl
+-define(WRAP(BoolExpr),
+    case (BoolExpr) of
+        true -> ok;
+        _ -> erlang:error(assertion_failed)
+    end).
+"#,
+        "ssr: f(_@A, _@B, _@C).",
+    );
+    assert_eq_expected!(1, from_hrl_resolved);
+
+    // Unresolved include: ELP cannot see the macro definition; the
+    // entire `?WRAP(...)` subtree is dropped from the fold and the
+    // inner call is invisible. Today 0; once the underlying issue is
+    // addressed this should also be 1.
+    let from_unresolved = count_matches_in_main(
+        r#"
+//- /src/main.erl
+-include("missing.hrl").
+bar() -> ?WRAP(f(1, 2, 3)).
+"#,
+        "ssr: f(_@A, _@B, _@C).",
+    );
+    assert_eq_expected!(0, from_unresolved);
+}
+
 #[test]
 fn ssr_expr_list_comprehension() {
     assert_matches(
@@ -1205,6 +1276,10 @@ fn ssr_expr_parens() {
         "bar(((X))) -> X = 3,X = (4).",
         &[("((X))", &[("_@AA", &["X"])])],
     );
+    // Under InvisibleParens the fold descends through Paren, so a
+    // paren-wrapped match is reported at the inner ExprId's range —
+    // "3" instead of "((3))", "4" instead of "(4)", "X" instead of
+    // "((X))" on the Pat side.
     assert_matches_with_strategy(
         invisible_parens,
         "ssr: ((_@AA)).",
@@ -1213,10 +1288,10 @@ fn ssr_expr_parens() {
             ("X", &[("_@AA", &["X"])]),
             ("X", &[("_@AA", &["X"])]),
             ("X = ((3))", &[("_@AA", &["X = ((3))"])]),
-            ("((3))", &[("_@AA", &["((3))"])]),
+            ("3", &[("_@AA", &["3"])]),
             ("X = (4)", &[("_@AA", &["X = (4)"])]),
             ("X", &[("_@AA", &["X"])]),
-            ("(4)", &[("_@AA", &["(4)"])]),
+            ("4", &[("_@AA", &["4"])]),
         ],
     );
     assert_matches_with_strategy(
@@ -1224,13 +1299,13 @@ fn ssr_expr_parens() {
         "ssr: ((_@AA)).",
         "bar(((X))) -> X = 3,X = (4).",
         &[
-            ("((X))", &[("_@AA", &["((X))"])]),
+            ("X", &[("_@AA", &["X"])]),
             ("X = 3", &[("_@AA", &["X = 3"])]),
             ("X", &[("_@AA", &["X"])]),
             ("3", &[("_@AA", &["3"])]),
             ("X = (4)", &[("_@AA", &["X = (4)"])]),
             ("X", &[("_@AA", &["X"])]),
-            ("(4)", &[("_@AA", &["(4)"])]),
+            ("4", &[("_@AA", &["4"])]),
         ],
     );
 }

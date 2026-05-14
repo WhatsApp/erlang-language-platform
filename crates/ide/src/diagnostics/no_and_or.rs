@@ -309,15 +309,13 @@ mod tests {
         )
     }
 
-    // T256431185 ELP currently returns the incorrect file_id for the operator
-    // used in the macro argument, which can lead to a crash due to a non existent offset.
+    // The lint catches `or` usage at the call site even when wrapped
+    // in a macro defined in a header.
     #[test]
     fn or_in_macro_argument_from_header_file() {
         check_diagnostics(
             r#"
          //- /assert/include/assert.hrl app:assert include_path:/assert/include
-         %% Padding to ensure header file range exceeds source file length
-         %% This triggers file_id mismatch when SSR matches 'or' in macro arg
          -define(assert(BoolExpr),
              case (BoolExpr) of
                  true -> ok;
@@ -329,6 +327,7 @@ mod tests {
          -include_lib("assert/include/assert.hrl").
          f(A, B) ->
              ?assert((A >= 0) or (B =< 2)).
+         %%                   ^^ 💡 warning: W0069: Use `orelse` instead of `or`. OTP 29 will warn for `or` usage.
             "#,
         )
     }

@@ -192,16 +192,14 @@ mod tests {
         )
     }
 
-    // SSR can return matches with file_id from header files
-    // when the pattern is used in a macro argument. Only process matches
-    // that belong to the current file being analyzed.
+    // The lint catches the `string:lowercase(binary:encode_hex(...))`
+    // pattern at the call site even when wrapped in a macro defined
+    // in a header.
     #[test]
-    fn ignores_match_in_macro_arg_from_header_file() {
+    fn detects_match_in_macro_arg_from_header_file() {
         check_diagnostics(
             r#"
         //- /assert/include/assert.hrl app:assert include_path:/assert/include
-        %% Padding to ensure header file range exceeds source file length
-        %% This triggers file_id mismatch when SSR matches in macro arg
         -define(assert(BoolExpr),
             case (BoolExpr) of
                 true -> ok;
@@ -212,6 +210,7 @@ mod tests {
         -module(test).
         -include_lib("assert/include/assert.hrl").
         f(X) -> ?assert(string:lowercase(binary:encode_hex(X))).
+        %%              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0072: Use `binary:encode_hex/2` with a case argument instead of wrapping with `string:lowercase/1`.
            "#,
         )
     }
