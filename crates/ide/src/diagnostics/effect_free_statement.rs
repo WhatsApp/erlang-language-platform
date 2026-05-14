@@ -13,17 +13,11 @@
 //! Return a diagnostic if a statement is just a literal or a variable, and
 //! offer to remove the statement as a fix.
 
-use std::iter;
-
 use elp_ide_assists::Assist;
-use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use elp_ide_db::text_edit::TextRange;
-use elp_syntax::AstNode;
-use elp_syntax::SyntaxElement;
-use elp_syntax::SyntaxKind;
-use elp_syntax::ast;
+use hir::AnyExpr;
 use hir::AnyExprId;
 use hir::Expr;
 use hir::ExprId;
@@ -34,7 +28,7 @@ use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 
 use super::Category;
-use crate::codemod_helpers::statement_range;
+use crate::codemod_helpers::next_statement_in_slot;
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::GenericLinter;
 use crate::diagnostics::GenericLinterMatchContext;
@@ -67,35 +61,32 @@ impl GenericLinter for EffectFreeStatementLinter {
         let file_id = ctx.file_id;
         let mut res = Vec::new();
         sema.for_each_function(file_id, |def| {
-            let source_file = sema.parse(file_id);
-
             let def_fb = def.in_function_body(sema, def);
             def_fb.fold_function(
                 Strategy {
-                    macros: MacroStrategy::Expand,
+                    macros: MacroStrategy::ExpandButIncludeMacroCall,
                     parens: ParenStrategy::InvisibleParens,
                 },
                 (),
                 &mut |_acc, clause_id, ctx| {
-                    if let AnyExprId::Expr(expr_id) = ctx.item_id {
-                        let body_map = def_fb.get_body_map(clause_id);
-                        let in_clause = def_fb.in_clause(clause_id);
-                        if let Some(in_file_ast_ptr) = body_map.expr(expr_id)
-                            && let Some(expr_ast) = in_file_ast_ptr.to_node(&source_file)
-                            && is_statement(&expr_ast)
-                            && !is_macro_usage(&expr_ast)
-                            && has_no_effect(in_clause, &expr_id)
-                            && is_followed_by(SyntaxKind::ANON_COMMA, &expr_ast)
-                        {
-                            let node = expr_ast.syntax();
-                            let range = node.text_range();
-                            res.push(GenericLinterMatchContext {
-                                range: FileRange { file_id, range },
-                                context: Context {
-                                    statement_removal: remove_statement(&expr_ast),
-                                },
-                            });
-                        }
+                    let in_clause = def_fb.in_clause(clause_id);
+                    if ctx.in_macro.is_none()
+                        && !matches!(ctx.item, AnyExpr::Expr(Expr::MacroCall { .. }))
+                        && let AnyExprId::Expr(expr_id) = ctx.item_id
+                        && let Some(next_expr_id) =
+                            next_statement_in_slot(in_clause, ctx.parent(), expr_id)
+                        && has_no_effect(in_clause, &expr_id)
+                        && let Some(curr_range) = in_clause.range_for_expr(expr_id)
+                        && let Some(next_range) = in_clause.range_for_expr(next_expr_id)
+                    {
+                        let deletion_range =
+                            TextRange::new(curr_range.range.start(), next_range.range.start());
+                        res.push(GenericLinterMatchContext {
+                            range: curr_range,
+                            context: Context {
+                                statement_removal: Some(TextEdit::delete(deletion_range)),
+                            },
+                        });
                     }
                 },
             );
@@ -206,51 +197,6 @@ fn has_no_effect(def_fb: &InFunctionClauseBody<&FunctionDef>, expr_id: &ExprId) 
         }
         Expr::Paren { .. } => false,
     }
-}
-
-#[allow(clippy::match_like_matches_macro)]
-fn is_statement(expr: &ast::Expr) -> bool {
-    let syntax = expr.syntax();
-    match syntax.parent() {
-        Some(parent) => match parent.kind() {
-            SyntaxKind::CLAUSE_BODY => true,
-            SyntaxKind::BLOCK_EXPR => true,
-            SyntaxKind::TRY_EXPR => true,
-            SyntaxKind::CATCH_EXPR => true,
-            SyntaxKind::TRY_AFTER => true,
-            _ => false,
-        },
-        _ => false,
-    }
-}
-
-fn is_macro_usage(expr: &ast::Expr) -> bool {
-    let syntax = expr.syntax();
-    syntax.kind() == SyntaxKind::MACRO_CALL_EXPR
-}
-
-fn is_followed_by(expected_kind: SyntaxKind, expr: &ast::Expr) -> bool {
-    let node = expr.syntax();
-    let elements = iter::successors(node.next_sibling_or_token(), |n| {
-        (*n).next_sibling_or_token()
-    });
-    for element in elements {
-        if let Some(t) = &SyntaxElement::into_token(element) {
-            let kind = t.kind();
-            if kind != SyntaxKind::WHITESPACE {
-                return kind == expected_kind;
-            }
-        }
-    }
-    false
-}
-
-fn remove_statement(expr: &ast::Expr) -> Option<TextEdit> {
-    let range = statement_range(expr.syntax());
-
-    let mut edit_builder = TextEdit::builder();
-    edit_builder.delete(range);
-    Some(edit_builder.finish())
 }
 
 #[cfg(test)]
@@ -558,6 +504,54 @@ mod tests {
                  ?also_noop,
                  ok.
         "#,
+        )
+    }
+
+    #[test]
+    fn ignore_multistatement_macro_expansion() {
+        // A same-file macro whose expansion is a multi-statement block must
+        // not produce a diagnostic pointing inside the macro definition.
+        // The HIR-only walker stops at any `in_macro` ancestor, so neither
+        // `a` nor `b` inside the expansion is considered a user statement.
+        check_diagnostics(
+            r#"
+            -module(main).
+            -define(two_stmts, begin a, b end).
+
+            test() ->
+                ?two_stmts,
+                do_something(),
+                ok.
+            do_something() -> ok.
+            "#,
+        )
+    }
+
+    #[test]
+    fn maybe_block_statements() {
+        // In a `maybe` block, an effect-free `Expr` statement is only
+        // flagged when the next entry is also an `Expr` — never when it
+        // is a `Cond` (`Pat ?= Expr`). With a `Cond` as the next entry
+        // the deletion range start..start would span the cond's `?=`
+        // pattern and produce an incorrect fix, so we conservatively
+        // skip the diagnostic.
+        check_diagnostics(
+            r#"
+            -module(main).
+
+            ok_a() -> ok.
+            ok_b() -> ok.
+
+            test() ->
+                maybe
+                    a,
+                %%  ^ 💡 warning: W0006: this statement has no effect
+                    b,
+                    {ok, AA} ?= ok_a(),
+                    {ok, BB} ?= ok_b(),
+                    {AA, BB}
+                end.
+            "#,
         )
     }
 }

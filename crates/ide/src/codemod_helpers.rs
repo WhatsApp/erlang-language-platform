@@ -24,9 +24,11 @@ use hir::CallTarget;
 use hir::Expr;
 use hir::ExprId;
 use hir::FunctionDef;
+use hir::HirIdx;
 use hir::InFile;
 use hir::InFunctionClauseBody;
 use hir::Literal;
+use hir::MaybeExpr;
 use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
@@ -99,6 +101,66 @@ pub(crate) fn statement_range(node: &SyntaxNode) -> TextRange {
     }
 
     node_range.cover(final_node_range)
+}
+
+/// Return the next statement in the statement slot containing `current`,
+/// or `None` if `current` is not in a statement slot or is its slot's last entry.
+///
+/// A `Some(next)` result simultaneously witnesses that:
+///   1. `current` sits in a statement-bearing `Vec<ExprId>` of its parent.
+///   2. It is not the last entry — dropping it does not change the surrounding
+///      block's value.
+///   3. `next` provides the upper bound for the deletion range.
+///
+/// `parent` is typically taken from `AnyCallBackCtx::parent()` and `current`
+/// from `AnyCallBackCtx::item_id` while folding a function body.
+pub(crate) fn next_statement_in_slot<T>(
+    in_clause: &InFunctionClauseBody<T>,
+    parent: ParentId,
+    current: ExprId,
+) -> Option<ExprId> {
+    let next_after = |exprs: &[ExprId]| {
+        let pos = exprs.iter().position(|e| *e == current)?;
+        exprs.get(pos + 1).copied()
+    };
+    match parent {
+        ParentId::TopLevel => next_after(&in_clause.body.clause.exprs),
+        ParentId::HirIdx(HirIdx {
+            idx: AnyExprId::Expr(p),
+            ..
+        }) => match &in_clause[p] {
+            Expr::Block { exprs } => next_after(exprs),
+            Expr::Try {
+                exprs,
+                of_clauses,
+                catch_clauses,
+                after,
+            } => next_after(exprs)
+                .or_else(|| next_after(after))
+                .or_else(|| of_clauses.iter().find_map(|cr| next_after(&cr.exprs)))
+                .or_else(|| catch_clauses.iter().find_map(|cc| next_after(&cc.exprs))),
+            Expr::Case { clauses, .. } => clauses.iter().find_map(|cr| next_after(&cr.exprs)),
+            Expr::Receive { clauses, after } => clauses
+                .iter()
+                .find_map(|cr| next_after(&cr.exprs))
+                .or_else(|| after.as_ref().and_then(|a| next_after(&a.exprs))),
+            Expr::If { clauses } => clauses.iter().find_map(|c| next_after(&c.exprs)),
+            Expr::Maybe {
+                exprs,
+                else_clauses,
+            } => exprs
+                .iter()
+                .position(|me| matches!(me, MaybeExpr::Expr(e) if *e == current))
+                .and_then(|pos| match exprs.get(pos + 1) {
+                    Some(MaybeExpr::Expr(next)) => Some(*next),
+                    _ => None,
+                })
+                .or_else(|| else_clauses.iter().find_map(|cr| next_after(&cr.exprs))),
+            Expr::Closure { clauses, .. } => clauses.iter().find_map(|c| next_after(&c.exprs)),
+            _ => None,
+        },
+        _ => None,
+    }
 }
 
 pub(crate) fn var_name_starts_with_underscore(var: &hir::Var) -> bool {

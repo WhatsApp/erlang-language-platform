@@ -96,10 +96,7 @@ app_a/src/otp27_sigils.erl:49:5-49:24::[Warning] [W0006] this statement has no e
 app_a/src/otp27_sigils.erl:50:5-50:24::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:51:5-51:24::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:53:6-53:24::[Warning] [W0006] this statement has no effect
-app_a/src/otp27_sigils.erl:53:6-53:24::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:54:5-54:24::[Warning] [W0006] this statement has no effect
-app_a/src/otp27_sigils.erl:54:5-54:24::[Warning] [W0006] this statement has no effect
-app_a/src/otp27_sigils.erl:55:5-55:24::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:55:5-55:24::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:56:5-56:24::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:57:5-57:24::[Warning] [W0006] this statement has no effect
@@ -114,10 +111,7 @@ app_a/src/otp27_sigils.erl:67:5-67:24::[Warning] [W0006] this statement has no e
 app_a/src/otp27_sigils.erl:68:5-68:24::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:69:5-69:24::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:76:5-79:8::[Warning] [W0006] this statement has no effect
-app_a/src/otp27_sigils.erl:76:5-79:8::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:80:5-84:9::[Warning] [W0006] this statement has no effect
-app_a/src/otp27_sigils.erl:80:5-84:9::[Warning] [W0006] this statement has no effect
-app_a/src/otp27_sigils.erl:85:5-89:10::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:85:5-89:10::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:90:5-94:11::[Warning] [W0006] this statement has no effect
 app_a/src/otp27_sigils.erl:95:5-99:12::[Warning] [W0006] this statement has no effect
