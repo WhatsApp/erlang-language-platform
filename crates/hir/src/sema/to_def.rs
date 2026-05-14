@@ -879,6 +879,7 @@ pub(crate) fn look_for_dynamic_call(
             module: module_expr,
             name: args[function_arg_index],
             parens: false,
+            unqualified: false,
         };
         resolve_call_target(sema, &target, Some(arity), file_id, body).map(CallDef::Function)
     };

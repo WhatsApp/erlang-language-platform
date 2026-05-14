@@ -489,6 +489,7 @@ impl FoldBody<'_> {
                         module,
                         name,
                         parens,
+                        unqualified,
                     },
                 args,
             } => match self.parens {
@@ -497,6 +498,7 @@ impl FoldBody<'_> {
                         module: *module,
                         name: *name,
                         parens: *parens,
+                        unqualified: *unqualified,
                     },
                     args: args.clone(),
                 },
@@ -505,6 +507,7 @@ impl FoldBody<'_> {
                         module: *module,
                         name: *name,
                         parens: false,
+                        unqualified: *unqualified,
                     },
                     args: args.clone(),
                 },

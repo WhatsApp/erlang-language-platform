@@ -582,8 +582,18 @@ pub struct ReceiveAfter {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CallTarget<Id> {
-    Local { name: Id },
-    Remote { module: Id, name: Id, parens: bool },
+    Local {
+        name: Id,
+    },
+    Remote {
+        module: Id,
+        name: Id,
+        parens: bool,
+        /// Whether the call was originally unqualified in source (a bare
+        /// function name resolved to a remote call via auto-imported BIF or
+        /// `-import` directive) rather than explicitly module-qualified.
+        unqualified: bool,
+    },
 }
 
 impl CallTarget<TypeExprId> {

@@ -1166,13 +1166,18 @@ impl<'a> Ctx<'a> {
                             module,
                             name,
                             parens: false,
+                            unqualified: false,
                         },
                         CallTarget::Remote { name, parens, .. } => {
-                            // Nested remote (unlikely but handle gracefully)
+                            // Nested remote: the inner call resolved via
+                            // BIF/import inference, but we have an explicit
+                            // outer module qualifier here, so the resulting
+                            // call is NOT unqualified.
                             CallTarget::Remote {
                                 module,
                                 name,
                                 parens,
+                                unqualified: false,
                             }
                         }
                     };
@@ -1341,10 +1346,16 @@ impl<'a> Ctx<'a> {
                         CallTarget::Local { name: parened_name }
                     }
                     // The entire remote call is wrapped in parens. How do we capture this?
-                    CallTarget::Remote { module, name, .. } => CallTarget::Remote {
+                    CallTarget::Remote {
+                        module,
+                        name,
+                        unqualified,
+                        ..
+                    } => CallTarget::Remote {
                         module,
                         name,
                         parens: true,
+                        unqualified,
                     },
                 }
             }
@@ -1353,6 +1364,7 @@ impl<'a> Ctx<'a> {
                     .lower_optional_expr(remote.module().and_then(|module| module.module())),
                 name: self.lower_optional_expr(remote.fun()),
                 parens: false,
+                unqualified: false,
             },
             Some(ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(call))) => self
                 .resolve_macro(call, |this, source, replacement| match replacement {
@@ -1404,6 +1416,7 @@ impl<'a> Ctx<'a> {
                 module,
                 name,
                 parens: false,
+                unqualified: true,
             }
         } else {
             CallTarget::Local { name }
@@ -1549,6 +1562,7 @@ impl<'a> Ctx<'a> {
                     ),
                     name: self.lower_optional_expr(fun.fun().map(Into::into)),
                     parens: false,
+                    unqualified: false,
                 };
                 let arity = self.lower_optional_expr(
                     fun.arity().and_then(|arity| arity.value()).map(Into::into),
@@ -2145,12 +2159,20 @@ impl<'a> Ctx<'a> {
                             module,
                             name,
                             parens: false,
+                            unqualified: false,
                         },
-                        CallTarget::Remote { name, parens, .. } => CallTarget::Remote {
-                            module,
-                            name,
-                            parens,
-                        },
+                        CallTarget::Remote { name, parens, .. } => {
+                            // Nested remote: the inner call resolved via
+                            // BIF/import inference, but we have an explicit
+                            // outer module qualifier here, so the resulting
+                            // call is NOT unqualified.
+                            CallTarget::Remote {
+                                module,
+                                name,
+                                parens,
+                                unqualified: false,
+                            }
+                        }
                     };
                     let args = call
                         .args()
@@ -2240,6 +2262,7 @@ impl<'a> Ctx<'a> {
                     .lower_optional_type_expr(remote.module().and_then(|module| module.module())),
                 name: self.lower_optional_type_expr(remote.fun()),
                 parens: false,
+                unqualified: false,
             },
             Some(ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(call))) => self
                 .resolve_macro(call, |this, source, replacement| match replacement {
@@ -2295,6 +2318,7 @@ impl<'a> Ctx<'a> {
                 module,
                 name,
                 parens: false,
+                unqualified: true,
             }
         } else {
             CallTarget::Local { name }
