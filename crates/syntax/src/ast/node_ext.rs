@@ -108,17 +108,28 @@ impl nodes::Atom {
 }
 
 pub const SSR_PLACEHOLDER_PREFIX: &str = "_@";
+pub const SSR_GLOB_PLACEHOLDER_PREFIX: &str = "_@@";
 
 impl nodes::Var {
     pub fn text(&self) -> TokenText<'_> {
         text_of_token(self.syntax())
     }
 
-    /// Returns true if this is a SSR placeholder, when parsing an SSR
-    /// template.
-    /// This is recognised by having a prefix of `_@`
+    /// Returns true if this is an SSR placeholder, when parsing an SSR
+    /// template. Recognised by a prefix of `_@`. This returns true for
+    /// both single-element placeholders (`_@Name`) and glob placeholders
+    /// (`_@@Name`) — the latter is a strict subset of the former. Use
+    /// [`Self::is_ssr_glob_placeholder`] to distinguish.
     pub fn is_ssr_placeholder(&self) -> bool {
         self.text().starts_with(SSR_PLACEHOLDER_PREFIX)
+    }
+
+    /// Returns true if this is an SSR glob placeholder, when parsing an
+    /// SSR template. Recognised by a prefix of `_@@`. Glob placeholders
+    /// bind zero-or-more elements within a sequence (tuple, list, call
+    /// args, etc.), à la Erlang Merl.
+    pub fn is_ssr_glob_placeholder(&self) -> bool {
+        self.text().starts_with(SSR_GLOB_PLACEHOLDER_PREFIX)
     }
 }
 
@@ -841,6 +852,49 @@ mod tests {
             .flat_map(|body| body.exprs())
             .next()
             .expect("no expression parsed")
+    }
+
+    fn parse_var(arg: &str) -> nodes::Var {
+        match parse_expr(arg) {
+            ast::Expr::ExprMax(nodes::ExprMax::Var(var)) => var,
+            got => panic!("expected var, got: {got:?}"),
+        }
+    }
+
+    #[test]
+    fn test_is_ssr_placeholder() {
+        // Plain vars are not SSR placeholders.
+        assert!(!parse_var("X").is_ssr_placeholder());
+        assert!(!parse_var("_X").is_ssr_placeholder());
+        assert!(!parse_var("X@Y").is_ssr_placeholder());
+        // Single-element placeholders.
+        assert!(parse_var("_@X").is_ssr_placeholder());
+        assert!(parse_var("_@_").is_ssr_placeholder());
+        // Glob placeholders are also SSR placeholders.
+        assert!(parse_var("_@@X").is_ssr_placeholder());
+        assert!(parse_var("_@@_").is_ssr_placeholder());
+    }
+
+    #[test]
+    fn test_is_ssr_glob_placeholder() {
+        assert!(!parse_var("X").is_ssr_glob_placeholder());
+        assert!(!parse_var("_X").is_ssr_glob_placeholder());
+        // Single-element placeholders are not globs.
+        assert!(!parse_var("_@X").is_ssr_glob_placeholder());
+        assert!(!parse_var("_@_").is_ssr_glob_placeholder());
+        // Glob placeholders.
+        assert!(parse_var("_@@X").is_ssr_glob_placeholder());
+        assert!(parse_var("_@@_").is_ssr_glob_placeholder());
+        assert!(parse_var("_@@Rest").is_ssr_glob_placeholder());
+    }
+
+    #[test]
+    fn test_glob_placeholder_tokenizes_as_single_var() {
+        // Regression guard: `_@@Rest` must lex as one VAR token, not as
+        // a sequence of smaller tokens. If this breaks, the SSR glob
+        // recogniser would silently see something other than a var.
+        let var = parse_var("_@@Rest");
+        assert_eq!(var.text().as_str(), "_@@Rest");
     }
 
     #[test]

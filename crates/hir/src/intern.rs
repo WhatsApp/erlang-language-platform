@@ -96,10 +96,23 @@ impl Var {
 
     /// Returns true if this variable is an SSR placeholder.
     /// SSR placeholders are variables with names starting with `_@`.
+    /// This is true for both single-element placeholders (`_@Name`) and
+    /// glob placeholders (`_@@Name`). Use
+    /// [`Self::is_ssr_glob_placeholder`] to distinguish.
     pub fn is_ssr_placeholder(&self) -> bool {
         self.0
             .as_str()
             .starts_with(elp_syntax::ast::SSR_PLACEHOLDER_PREFIX)
+    }
+
+    /// Returns true if this variable is an SSR glob placeholder.
+    /// Glob placeholders are variables with names starting with `_@@`,
+    /// and bind zero-or-more elements within a sequence (tuple, list,
+    /// call args, etc.), à la Erlang Merl.
+    pub fn is_ssr_glob_placeholder(&self) -> bool {
+        self.0
+            .as_str()
+            .starts_with(elp_syntax::ast::SSR_GLOB_PLACEHOLDER_PREFIX)
     }
 }
 
@@ -113,5 +126,37 @@ impl salsa::InternKey for SsrSource {
 
     fn as_intern_id(&self) -> salsa::InternId {
         self.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn var(name: &str) -> Var {
+        Var::new(&Name::from_erlang_service(name))
+    }
+
+    #[test]
+    fn test_is_ssr_placeholder() {
+        assert!(!var("X").is_ssr_placeholder());
+        assert!(!var("_X").is_ssr_placeholder());
+        assert!(!var("_").is_ssr_placeholder());
+        assert!(var("_@X").is_ssr_placeholder());
+        assert!(var("_@_").is_ssr_placeholder());
+        // Glob placeholders are also SSR placeholders.
+        assert!(var("_@@X").is_ssr_placeholder());
+        assert!(var("_@@_").is_ssr_placeholder());
+    }
+
+    #[test]
+    fn test_is_ssr_glob_placeholder() {
+        assert!(!var("X").is_ssr_glob_placeholder());
+        assert!(!var("_X").is_ssr_glob_placeholder());
+        assert!(!var("_@X").is_ssr_glob_placeholder());
+        assert!(!var("_@_").is_ssr_glob_placeholder());
+        assert!(var("_@@X").is_ssr_glob_placeholder());
+        assert!(var("_@@_").is_ssr_glob_placeholder());
+        assert!(var("_@@Rest").is_ssr_glob_placeholder());
     }
 }
