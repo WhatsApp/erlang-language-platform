@@ -95,6 +95,7 @@
     in_prefix = true :: boolean(),
     fname = [] :: function_name_type(),
     scan_opts = [] :: erl_scan:options(),
+    deterministic = false :: boolean(),
     % Id required for requests to host ELP for file name resolution
     request_id :: erlang_service_server:id()
 }).
@@ -706,9 +707,14 @@ init_server(Pid, FileName, Options0, St0) ->
     {ScanOpts0, Options} = proplists:split(Options0, [structured_comments]),
     ScanOpts = lists:append(ScanOpts0),
     SourceName = proplists:get_value(source_name, Options, FileName),
+    Deterministic = proplists:get_value(deterministic, Options, false),
     Pdm = proplists:get_value(macros, Options, []),
     Offset = proplists:get_value(offset, Options, 0),
-    Ms0 = predef_macros(FileName),
+    MacroFile = case Deterministic of
+        true -> filename:basename(SourceName);
+        false -> SourceName
+    end,
+    Ms0 = predef_macros(MacroFile),
     case user_predef(Pdm, Ms0) of
         {ok, Ms1} ->
             DefEncoding = proplists:get_value(
@@ -731,6 +737,7 @@ init_server(Pid, FileName, Options0, St0) ->
                 offset = Offset,
                 macs = Ms1,
                 default_encoding = DefEncoding,
+                deterministic = Deterministic,
                 scan_opts = ScanOpts
             },
             From = wait_request(St),
@@ -861,10 +868,15 @@ enter_file2(NewF, Pname, FileId, From, St0) ->
         include_offset = Offset,
         macs = Ms0,
         default_encoding = DefEncoding,
+        deterministic = Deterministic,
         request_id = ReqId
     } = St0,
+    MacroFileName = case Deterministic of
+        true -> filename:basename(Pname);
+        false -> Pname
+    end,
     enter_file_reply(From, Pname, 0, Offset),
-    Ms = Ms0#{'FILE' := {none, [{string, {0, 0}, Pname}]}},
+    Ms = Ms0#{'FILE' := {none, [{string, {0, 0}, MacroFileName}]}},
     %% update the head of the include path to be the directory of the new
     %% source file, so that an included file can always include other files
     %% relative to its current location (this is also how C does it); note
@@ -883,6 +895,7 @@ enter_file2(NewF, Pname, FileId, From, St0) ->
         path = Path,
         macs = Ms,
         default_encoding = DefEncoding,
+        deterministic = Deterministic,
         request_id = ReqId
     }.
 
@@ -926,7 +939,11 @@ leave_file(From, St) ->
                         name2 = OldName2
                     } = OldSt,
                     Ms0 = St#epp.macs,
-                    Ms = Ms0#{'FILE' := {none, [{string, {0, 0}, OldName2}]}},
+                    MacroFile = case St#epp.deterministic of
+                        true -> filename:basename(OldName2);
+                        false -> OldName2
+                    end,
+                    Ms = Ms0#{'FILE' := {none, [{string, {0, 0}, MacroFile}]}},
                     NextSt = OldSt#epp{sstk = Sts, macs = Ms, uses = St#epp.uses},
                     enter_file_reply(From, OldName, 0, 0),
                     case OldName2 =:= OldName of
@@ -1611,7 +1628,11 @@ scan_file1(
 ) ->
     enter_file_reply(From, Name, Ln, 0),
     Ms0 = St#epp.macs,
-    Ms = Ms0#{'FILE' := {none, [{string, {0, 0}, Name}]}},
+    MacroFile = case St#epp.deterministic of
+        true -> filename:basename(Name);
+        false -> Name
+    end,
+    Ms = Ms0#{'FILE' := {none, [{string, {0, 0}, MacroFile}]}},
     wait_req_scan(St#epp{name2 = Name, macs = Ms});
 scan_file1(Toks, Tf, From, St) ->
     T = find_mismatch(['(', string, ',', integer, ')', dot], Toks, Tf),

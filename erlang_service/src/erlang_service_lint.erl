@@ -49,7 +49,7 @@ parse_options(FileName, Options0, Deterministic) ->
             true ->
                 % Force determinism.
                 % The added options mirrors https://fburl.com/code/hwv3vzl5
-                [{deterministic, true}, {source_name, filename:basename(FileName)} | Options0];
+                [{deterministic, true} | Options0];
             false ->
                 Options0
         end,
