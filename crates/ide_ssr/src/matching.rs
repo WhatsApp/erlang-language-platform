@@ -342,15 +342,24 @@ impl PlaceholderMatch {
     }
 
     pub fn text(&self, sema: &Semantic, body: &Body) -> Option<String> {
-        let placeholder_match_id = self.code_id()?.any_expr_id()?;
-        let placeholder_match_src: InFileAstPtr<ast::Expr> =
-            body.get_body_map(sema)?.any(placeholder_match_id)?;
+        text_of_code_subid(self.code_id()?, sema, body)
+    }
 
-        Some(
-            placeholder_match_src
-                .to_node(&sema.parse(body.origin.file_id()))?
-                .to_string(),
-        )
+    /// Per-element source texts. For a `Single` placeholder this returns
+    /// a one-element vector (or empty if the binding has no source range,
+    /// e.g. a synthetic node). For a `Glob` placeholder it returns one
+    /// entry per bound element, in source order — empty for an empty
+    /// glob match.
+    pub fn texts(&self, sema: &Semantic, body: &Body) -> Vec<String> {
+        match self {
+            Self::Single { code_id, .. } => text_of_code_subid(code_id, sema, body)
+                .into_iter()
+                .collect(),
+            Self::Glob { code_ids, .. } => code_ids
+                .iter()
+                .filter_map(|id| text_of_code_subid(id, sema, body))
+                .collect(),
+        }
     }
 
     pub fn is_string(&self, body: &Body) -> Option<StringVariant> {
@@ -483,6 +492,15 @@ impl PlaceholderMatch {
         )
         .is_ok()
     }
+}
+
+/// Render the source text of a code-side `SubId` by following its
+/// `AnyExprId` back through the body source map. Returns `None` for
+/// synthetic/constant subids that do not correspond to an AST node.
+fn text_of_code_subid(code_id: &SubId, sema: &Semantic, body: &Body) -> Option<String> {
+    let any_expr_id = code_id.any_expr_id()?;
+    let src: InFileAstPtr<ast::Expr> = body.get_body_map(sema)?.any(any_expr_id)?;
+    Some(src.to_node(&sema.parse(body.origin.file_id()))?.to_string())
 }
 
 #[derive(Debug)]
@@ -863,41 +881,182 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    /// Walk the elements of each list matching each one.  Succeed if
-    /// they both end at the same time having matched all elements.
+    /// Walk the elements of each list, matching each one. Patterns may
+    /// contain at most one glob (`_@@Name`) placeholder, in which case
+    /// the prefix and suffix of the pattern around the glob are matched
+    /// lock-step against the corresponding ends of the code list, and
+    /// the glob binds to the middle slice. Without a glob, the two
+    /// lists must have equal length and match lock-step.
     fn attempt_match_pattern_lists(
         &self,
         phase: &mut Phase<'_>,
         pattern_it: PatternList,
-        mut code_it: PatternList,
+        code_it: PatternList,
     ) -> Result<(), MatchFailed> {
-        let mut recursion_limit = 100;
-        let mut pattern_it = pattern_it.peekable();
-        loop {
-            recursion_limit -= 1;
-            if recursion_limit <= 0 {
-                fail_match!("Internal error: attempt_match_pattern_lists recursion limit");
+        let patterns = pattern_it.children;
+        let codes = code_it.children;
+
+        // Pattern-compile-time validation guarantees at most one glob
+        // per sequence (see `validate_glob_usage`), so we can stop at
+        // the first match.
+        let glob_idx = patterns.iter().position(|p| self.is_glob_subid(p));
+
+        match glob_idx {
+            None => self.attempt_match_lockstep(phase, &patterns, &codes),
+            Some(i) => self.attempt_match_with_glob(phase, &patterns, &codes, i),
+        }
+    }
+
+    fn attempt_match_lockstep(
+        &self,
+        phase: &mut Phase<'_>,
+        patterns: &[SubId],
+        codes: &[SubId],
+    ) -> Result<(), MatchFailed> {
+        if patterns.len() != codes.len() {
+            fail_match!(
+                "Pattern list has {} elements, code list has {}",
+                patterns.len(),
+                codes.len()
+            );
+        }
+        for (p, c) in patterns.iter().zip(codes.iter()) {
+            if self.is_code_leaf(c) {
+                self.attempt_match_leaf(phase, p, c)?;
+            } else {
+                self.attempt_match_node(phase, p, c)?;
             }
-            match code_it.next() {
-                None => {
-                    if let Some(p) = pattern_it.next() {
-                        fail_match!("Part of the pattern was unmatched: {:?}", p);
-                    }
-                    return Ok(());
-                }
-                Some(c) => match pattern_it.next() {
-                    Some(p) => {
-                        if self.is_code_leaf(&c) {
-                            self.attempt_match_leaf(phase, &p, &c)?;
-                        } else {
-                            self.attempt_match_node(phase, &p, &c)?;
-                        }
-                    }
-                    None => {
-                        fail_match!("Pattern reached end, code has {:?}", &c)
-                    }
+        }
+        Ok(())
+    }
+
+    fn attempt_match_with_glob(
+        &self,
+        phase: &mut Phase<'_>,
+        patterns: &[SubId],
+        codes: &[SubId],
+        glob_idx: usize,
+    ) -> Result<(), MatchFailed> {
+        let prefix = &patterns[..glob_idx];
+        let glob_pattern = &patterns[glob_idx];
+        let suffix = &patterns[glob_idx + 1..];
+
+        let required = prefix.len() + suffix.len();
+        if required > codes.len() {
+            fail_match!(
+                "glob pattern needs at least {} sibling code elements, found {}",
+                required,
+                codes.len()
+            );
+        }
+
+        let glob_end = codes.len() - suffix.len();
+        let prefix_codes = &codes[..prefix.len()];
+        let glob_codes = &codes[prefix.len()..glob_end];
+        let suffix_codes = &codes[glob_end..];
+
+        self.attempt_match_lockstep(phase, prefix, prefix_codes)?;
+        self.attempt_match_lockstep(phase, suffix, suffix_codes)?;
+        self.bind_glob(phase, glob_pattern, glob_codes, prefix_codes, suffix_codes)?;
+        Ok(())
+    }
+
+    fn bind_glob(
+        &self,
+        phase: &mut Phase<'_>,
+        glob_pattern: &SubId,
+        glob_codes: &[SubId],
+        prefix_codes: &[SubId],
+        suffix_codes: &[SubId],
+    ) -> Result<(), MatchFailed> {
+        // `glob_pattern` was identified as a glob via `is_glob_subid`,
+        // so the cache lookup must succeed — but be defensive.
+        let Some(placeholder) = self.get_placeholder_for_node(glob_pattern) else {
+            fail_match!("internal: glob pattern is not in the placeholder cache");
+        };
+        if let Phase::Second(matches_out) = phase {
+            let range = self.glob_range(glob_codes, prefix_codes, suffix_codes);
+            self.validate_range(&range)?;
+
+            // Repeated glob placeholders (same name in two sequences) need
+            // element-wise equivalence; this lands in a later commit. For
+            // now record the binding without cross-checking earlier
+            // occurrences. Tests in this commit avoid repeated globs.
+            matches_out.placeholder_values.insert(
+                glob_pattern.clone(),
+                PlaceholderMatch::Glob {
+                    range,
+                    code_ids: glob_codes.to_vec(),
+                    inner_matches: SsrMatches::default(),
                 },
-            }
+            );
+            matches_out
+                .placeholders_by_var
+                .entry(placeholder.var)
+                .and_modify(|s| {
+                    s.insert(glob_pattern.clone());
+                })
+                .or_insert(FxHashSet::from_iter(vec![glob_pattern.clone()]));
+        }
+        Ok(())
+    }
+
+    /// Compute the file range covered by a glob match.
+    ///
+    /// - Non-empty: span from the first element's start to the last
+    ///   element's end.
+    /// - Empty glob with a following suffix element: an empty range
+    ///   anchored at the suffix element's start.
+    /// - Empty glob with no suffix but a preceding prefix element: an
+    ///   empty range anchored at the prefix element's end.
+    /// - Empty glob with neither prefix nor suffix (the glob is the
+    ///   entire sequence): a degenerate empty range — commit 5 may
+    ///   refine this to the parent's bracket position.
+    fn glob_range(
+        &self,
+        glob_codes: &[SubId],
+        prefix_codes: &[SubId],
+        suffix_codes: &[SubId],
+    ) -> FileRange {
+        if !glob_codes.is_empty() {
+            let first = self.get_code_range(&glob_codes[0]);
+            let last = self.get_code_range(&glob_codes[glob_codes.len() - 1]);
+            return match (first, last) {
+                (Some(f), Some(l)) if f.file_id == l.file_id => FileRange {
+                    file_id: f.file_id,
+                    range: TextRange::new(f.range.start(), l.range.end()),
+                },
+                (Some(f), _) => f,
+                (_, Some(l)) => l,
+                _ => self.default_glob_range(),
+            };
+        }
+        if let Some(first_suffix) = suffix_codes.first().and_then(|c| self.get_code_range(c)) {
+            return FileRange {
+                file_id: first_suffix.file_id,
+                range: TextRange::empty(first_suffix.range.start()),
+            };
+        }
+        if let Some(last_prefix) = prefix_codes.last().and_then(|c| self.get_code_range(c)) {
+            return FileRange {
+                file_id: last_prefix.file_id,
+                range: TextRange::empty(last_prefix.range.end()),
+            };
+        }
+        self.default_glob_range()
+    }
+
+    fn default_glob_range(&self) -> FileRange {
+        FileRange {
+            file_id: self.code_body_origin.file_id(),
+            range: TextRange::empty(0.into()),
+        }
+    }
+
+    fn is_glob_subid(&self, p: &SubId) -> bool {
+        match p {
+            SubId::AnyExprId(id) => self.placeholder_cache.is_glob(id),
+            _ => false,
         }
     }
 

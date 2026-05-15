@@ -1852,12 +1852,114 @@ fn ssr_glob_valid_in_call_args_parses() {
     );
 }
 
+// -----------------------------------------------------------------
+// Glob matching (prefix + glob + suffix algorithm against
+// ordered-list sequences — tuples, lists, blocks, and call arguments).
+// -----------------------------------------------------------------
+
 #[test]
-fn ssr_glob_pattern_does_not_match_as_single_yet() {
-    // Until commit 4 adds glob-aware list matching, well-formed glob
-    // patterns simply produce no matches (rather than accidentally
-    // binding the glob to a single element).
-    assert_matches("ssr: {a, _@@Rest}.", "f() -> {a, b, c}.", &[]);
+fn ssr_glob_match_tuple_at_end() {
+    assert_matches(
+        "ssr: {a, b, _@@Rest}.",
+        "f() -> {a, b, c, d}.",
+        &[("{a, b, c, d}", &[("_@@Rest", &["c", "d"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_tuple_at_start() {
+    assert_matches(
+        "ssr: {_@@Head, c, d}.",
+        "f() -> {a, b, c, d}.",
+        &[("{a, b, c, d}", &[("_@@Head", &["a", "b"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_tuple_in_middle() {
+    assert_matches(
+        "ssr: {a, _@@Mid, d}.",
+        "f() -> {a, b, c, d}.",
+        &[("{a, b, c, d}", &[("_@@Mid", &["b", "c"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_empty() {
+    // Pattern requires `a` and `b` to be adjacent — glob binds to zero
+    // elements between them.
+    assert_matches(
+        "ssr: {a, _@@X, b}.",
+        "f() -> {a, b}.",
+        &[("{a, b}", &[("_@@X", &[])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_insufficient_code_elements() {
+    // Pattern needs at least 2 elements (a + b); code only has 1.
+    assert_matches("ssr: {a, _@@X, b}.", "f() -> {a}.", &[]);
+}
+
+#[test]
+fn ssr_glob_match_list() {
+    // Placeholders are reported in alphabetical order — `_@@Rest`
+    // sorts before `_@First` because `@` < `F`.
+    assert_matches(
+        "ssr: [_@First, _@@Rest].",
+        "f() -> [a, b, c].",
+        &[(
+            "[a, b, c]",
+            &[("_@@Rest", &["b", "c"]), ("_@First", &["a"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_call_args() {
+    assert_matches(
+        "ssr: foo(_@@Args).",
+        "f() -> foo(1, 2, 3).",
+        &[("foo(1, 2, 3)", &[("_@@Args", &["1", "2", "3"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_call_args_with_fixed_prefix() {
+    assert_matches(
+        "ssr: foo(1, _@@Rest).",
+        "f() -> foo(1, 2, 3).",
+        &[("foo(1, 2, 3)", &[("_@@Rest", &["2", "3"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_anonymous_glob() {
+    // `_@@_` is an anonymous glob — it binds (per the same single-binding
+    // semantics as `_@_`), but the binding is uninteresting.
+    assert_matches(
+        "ssr: {_@@_, _@Last}.",
+        "f() -> {a, b, c}.",
+        &[("{a, b, c}", &[("_@@_", &["a", "b"]), ("_@Last", &["c"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_only_element() {
+    assert_matches(
+        "ssr: {_@@All}.",
+        "f() -> {a, b, c}.",
+        &[("{a, b, c}", &[("_@@All", &["a", "b", "c"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_empty_tuple_with_only_glob() {
+    assert_matches(
+        "ssr: {_@@All}.",
+        "f() -> {}.",
+        &[("{}", &[("_@@All", &[])])],
+    );
 }
 
 #[test]

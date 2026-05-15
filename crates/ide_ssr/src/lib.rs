@@ -775,10 +775,14 @@ impl Match {
     ) -> Option<Vec<String>> {
         let placeholder_matches = self.get_placeholder_matches(placeholder_name)?;
         let body = self.matched_node_body.get_body(sema)?;
+        // Use `PlaceholderMatch::texts` (plural) so each Glob binding
+        // expands to one text per element, while each Single still
+        // contributes its one text. The behavior for Single placeholders
+        // is unchanged.
         Some(
             placeholder_matches
                 .iter()
-                .flat_map(|pm| pm.text(sema, &body))
+                .flat_map(|pm| pm.texts(sema, &body))
                 .collect(),
         )
     }
