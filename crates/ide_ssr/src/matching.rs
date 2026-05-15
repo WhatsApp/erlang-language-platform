@@ -222,30 +222,92 @@ impl Match {
 }
 
 /// Information about a placeholder bound in a match.
+///
+/// `Single` corresponds to a `_@Name` placeholder bound to one HIR node.
+/// `Glob` corresponds to a `_@@Name` glob placeholder bound to a (possibly
+/// empty) contiguous slice of sibling HIR nodes within a sequence — added
+/// in support of Erlang-Merl-style sequence matching. Only `Single` is
+/// constructed today; `Glob` is introduced by later commits.
 #[derive(Debug, Clone)]
-pub struct PlaceholderMatch {
-    pub range: FileRange,
-    /// The code node that matched the placeholder
-    pub code_id: SubId,
-    /// More matches, found within `node`.
-    pub inner_matches: SsrMatches,
+pub enum PlaceholderMatch {
+    Single {
+        range: FileRange,
+        /// The code node that matched the placeholder.
+        code_id: SubId,
+        /// More matches, found within `code_id`.
+        inner_matches: SsrMatches,
+    },
+    Glob {
+        /// Range spanning the matched slice. Empty range positioned at
+        /// the insertion point when the glob matched zero elements.
+        range: FileRange,
+        /// The code nodes that matched the glob, in source order.
+        code_ids: Vec<SubId>,
+        /// More matches, found within the glob's bound elements.
+        inner_matches: SsrMatches,
+    },
 }
 
 impl PlaceholderMatch {
-    fn new(range: FileRange, code_id: SubId) -> Self {
-        Self {
+    pub(crate) fn single(range: FileRange, code_id: SubId) -> Self {
+        Self::Single {
             range,
             code_id,
             inner_matches: SsrMatches::default(),
         }
     }
 
+    /// The file range covered by this placeholder.
+    pub fn file_range(&self) -> FileRange {
+        match self {
+            Self::Single { range, .. } | Self::Glob { range, .. } => *range,
+        }
+    }
+
     pub fn range(&self) -> TextRange {
-        self.range.range
+        self.file_range().range
+    }
+
+    /// The single code node bound to this placeholder, if it is a
+    /// `Single` placeholder. Returns `None` for `Glob` — use
+    /// [`Self::code_ids`] there.
+    pub fn code_id(&self) -> Option<&SubId> {
+        match self {
+            Self::Single { code_id, .. } => Some(code_id),
+            Self::Glob { .. } => None,
+        }
+    }
+
+    /// The slice of code nodes bound to this placeholder, if it is a
+    /// `Glob` placeholder. Returns `None` for `Single`.
+    pub fn code_ids(&self) -> Option<&[SubId]> {
+        match self {
+            Self::Single { .. } => None,
+            Self::Glob { code_ids, .. } => Some(code_ids),
+        }
+    }
+
+    /// Returns true if this placeholder is a glob (zero-or-more) match.
+    pub fn is_glob(&self) -> bool {
+        matches!(self, Self::Glob { .. })
+    }
+
+    pub fn inner_matches(&self) -> &SsrMatches {
+        match self {
+            Self::Single { inner_matches, .. } | Self::Glob { inner_matches, .. } => inner_matches,
+        }
+    }
+
+    pub(crate) fn take_inner_matches(&mut self) -> SsrMatches {
+        match self {
+            Self::Single { inner_matches, .. } | Self::Glob { inner_matches, .. } => {
+                std::mem::take(inner_matches)
+            }
+        }
     }
 
     pub fn text(&self, sema: &Semantic, body: &Body) -> Option<String> {
-        let placeholder_match_id = self.code_id.any_expr_id()?;
+        let placeholder_match_id = self.code_id()?.any_expr_id()?;
         let placeholder_match_src: InFileAstPtr<ast::Expr> =
             body.get_body_map(sema)?.any(placeholder_match_id)?;
 
@@ -257,20 +319,20 @@ impl PlaceholderMatch {
     }
 
     pub fn is_string(&self, body: &Body) -> Option<StringVariant> {
-        match self.code_id {
-            SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match &body[expr_id] {
+        match self.code_id()? {
+            SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match &body[*expr_id] {
                 Expr::Literal(Literal::String(s)) => Some(s.clone()),
                 _ => None,
             },
-            SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match &body[pat_id] {
+            SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match &body[*pat_id] {
                 Pat::Literal(Literal::String(s)) => Some(s.clone()),
                 _ => None,
             },
-            SubId::AnyExprId(AnyExprId::TypeExpr(type_expr_id)) => match &body[type_expr_id] {
+            SubId::AnyExprId(AnyExprId::TypeExpr(type_expr_id)) => match &body[*type_expr_id] {
                 TypeExpr::Literal(Literal::String(s)) => Some(s.clone()),
                 _ => None,
             },
-            SubId::AnyExprId(AnyExprId::Term(term_id)) => match &body[term_id] {
+            SubId::AnyExprId(AnyExprId::Term(term_id)) => match &body[*term_id] {
                 Term::Literal(Literal::String(s)) => Some(s.clone()),
                 _ => None,
             },
@@ -279,20 +341,20 @@ impl PlaceholderMatch {
     }
 
     pub fn is_atom(&self, body: &Body) -> Option<Atom> {
-        match self.code_id {
-            SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match &body[expr_id] {
+        match self.code_id()? {
+            SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match &body[*expr_id] {
                 Expr::Literal(Literal::Atom(a)) => Some(*a),
                 _ => None,
             },
-            SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match &body[pat_id] {
+            SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match &body[*pat_id] {
                 Pat::Literal(Literal::Atom(a)) => Some(*a),
                 _ => None,
             },
-            SubId::AnyExprId(AnyExprId::TypeExpr(type_expr_id)) => match &body[type_expr_id] {
+            SubId::AnyExprId(AnyExprId::TypeExpr(type_expr_id)) => match &body[*type_expr_id] {
                 TypeExpr::Literal(Literal::Atom(a)) => Some(*a),
                 _ => None,
             },
-            SubId::AnyExprId(AnyExprId::Term(term_id)) => match &body[term_id] {
+            SubId::AnyExprId(AnyExprId::Term(term_id)) => match &body[*term_id] {
                 Term::Literal(Literal::Atom(a)) => Some(*a),
                 _ => None,
             },
@@ -301,16 +363,16 @@ impl PlaceholderMatch {
     }
 
     pub fn is_var(&self, body: &Body) -> Option<Var> {
-        match self.code_id {
-            SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match &body[expr_id] {
+        match self.code_id()? {
+            SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match &body[*expr_id] {
                 Expr::Var(v) => Some(*v),
                 _ => None,
             },
-            SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match &body[pat_id] {
+            SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match &body[*pat_id] {
                 Pat::Var(v) => Some(*v),
                 _ => None,
             },
-            SubId::AnyExprId(AnyExprId::TypeExpr(type_expr_id)) => match &body[type_expr_id] {
+            SubId::AnyExprId(AnyExprId::TypeExpr(type_expr_id)) => match &body[*type_expr_id] {
                 TypeExpr::Var(v) => Some(*v),
                 _ => None,
             },
@@ -322,20 +384,24 @@ impl PlaceholderMatch {
     // As such, if you want to find macros you will need to make sure you used `MacroStrategy::DoNotExpand`
     // or `MacroStrategy::ExpandButIncludeMacroCall` when constructing the `Body` given as an argument here.
     pub fn is_macro(&self, body: &FoldBody) -> Option<bool> {
-        match self.code_id {
-            SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match &body[expr_id] {
+        // Glob matches bind a list of nodes, not a single macro; report `Some(false)`.
+        let Some(code_id) = self.code_id() else {
+            return Some(false);
+        };
+        match code_id {
+            SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match &body[*expr_id] {
                 Expr::MacroCall { .. } => Some(true),
                 _ => Some(false),
             },
-            SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match &body[pat_id] {
+            SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match &body[*pat_id] {
                 Pat::MacroCall { .. } => Some(true),
                 _ => Some(false),
             },
-            SubId::AnyExprId(AnyExprId::TypeExpr(type_expr_id)) => match &body[type_expr_id] {
+            SubId::AnyExprId(AnyExprId::TypeExpr(type_expr_id)) => match &body[*type_expr_id] {
                 TypeExpr::MacroCall { .. } => Some(true),
                 _ => Some(false),
             },
-            SubId::AnyExprId(AnyExprId::Term(term_id)) => match &body[term_id] {
+            SubId::AnyExprId(AnyExprId::Term(term_id)) => match &body[*term_id] {
                 Term::MacroCall { .. } => Some(true),
                 _ => Some(false),
             },
@@ -343,16 +409,17 @@ impl PlaceholderMatch {
         }
     }
 
-    /// Return any comments on the matched item
+    /// Return any comments on the matched item.
     pub fn comments(&self, sema: &Semantic, body_map: &BodySourceMap) -> Option<Vec<ast::Comment>> {
-        match self.code_id {
-            SubId::AnyExprId(any_expr_id) => sema.any_expr_comments(body_map, any_expr_id),
+        match self.code_id()? {
+            SubId::AnyExprId(any_expr_id) => sema.any_expr_comments(body_map, *any_expr_id),
             _ => None,
         }
     }
 
     // Check if our `code_id` and the `other` represent equivalent
-    // code fragments.
+    // code fragments. Glob equivalence (list-vs-list) is handled in a
+    // later commit; today only `Single` is constructed.
     fn equivalent(
         &self,
         sema: &Semantic,
@@ -361,26 +428,25 @@ impl PlaceholderMatch {
         other: &SubId,
     ) -> bool {
         let debug_print = false;
-        if let SubId::AnyExprId(code_id) = self.code_id {
-            // The "pattern body" here is the code body itself (equivalence check).
-            // Regular code bodies have no SSR placeholders, so the cache is empty.
-            let placeholder_cache = PlaceholderCache::build(body);
-            get_match(
-                debug_print,
-                rule,
-                other,
-                &body.body.origin,
-                &code_id,
-                &None,
-                sema,
-                body,
-                body,
-                &placeholder_cache,
-            )
-            .is_ok()
-        } else {
-            false
-        }
+        let Some(SubId::AnyExprId(code_id)) = self.code_id() else {
+            return false;
+        };
+        // The "pattern body" here is the code body itself (equivalence check).
+        // Regular code bodies have no SSR placeholders, so the cache is empty.
+        let placeholder_cache = PlaceholderCache::build(body);
+        get_match(
+            debug_print,
+            rule,
+            other,
+            &body.body.origin,
+            code_id,
+            &None,
+            sema,
+            body,
+            body,
+            &placeholder_cache,
+        )
+        .is_ok()
     }
 }
 
@@ -585,8 +651,15 @@ impl<'a> Matcher<'a> {
                 let Some(pm) = the_match.placeholder_values.get(subid) else {
                     continue;
                 };
+                // `when`-clause conditions target single-element
+                // placeholders today; globs are rejected during pattern
+                // compilation by a later commit, so this branch is
+                // unreachable for well-formed rules.
+                let Some(code_id) = pm.code_id() else {
+                    continue;
+                };
                 for condition in conditions {
-                    self.check_condition(&pm.code_id, condition)?;
+                    self.check_condition(code_id, condition)?;
                 }
             }
         }
@@ -682,7 +755,7 @@ impl<'a> Matcher<'a> {
 
                     matches_out.placeholder_values.insert(
                         pattern.clone(),
-                        PlaceholderMatch::new(original_range, code.clone()),
+                        PlaceholderMatch::single(original_range, code.clone()),
                     );
                     matches_out
                         .placeholders_by_var
@@ -1741,4 +1814,62 @@ where
     iter::once(s.elem.into())
         .chain(s.size.into_iter().map(|id| id.into()))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use elp_ide_db::elp_base_db::FileId;
+    use elp_ide_db::elp_base_db::FileRange;
+    use elp_syntax::TextRange;
+
+    use super::*;
+
+    fn dummy_range() -> FileRange {
+        FileRange {
+            file_id: FileId::from_raw(0u32),
+            range: TextRange::new(0.into(), 1.into()),
+        }
+    }
+
+    #[test]
+    fn placeholder_match_single_accessors() {
+        let code_id = SubId::Constant("a".to_string());
+        let m = PlaceholderMatch::single(dummy_range(), code_id.clone());
+
+        assert!(!m.is_glob());
+        assert_eq!(m.code_id(), Some(&code_id));
+        assert_eq!(m.code_ids(), None);
+        assert_eq!(m.file_range(), dummy_range());
+        assert_eq!(m.range(), dummy_range().range);
+        assert_eq!(m.inner_matches().matches.len(), 0);
+    }
+
+    #[test]
+    fn placeholder_match_glob_accessors() {
+        // Pre-construct a Glob to lock the enum surface, even though
+        // the matching engine does not produce Glob bindings yet.
+        let code_ids = vec![
+            SubId::Constant("a".to_string()),
+            SubId::Constant("b".to_string()),
+        ];
+        let m = PlaceholderMatch::Glob {
+            range: dummy_range(),
+            code_ids: code_ids.clone(),
+            inner_matches: SsrMatches::default(),
+        };
+
+        assert!(m.is_glob());
+        assert_eq!(m.code_id(), None);
+        assert_eq!(m.code_ids(), Some(code_ids.as_slice()));
+        assert_eq!(m.file_range(), dummy_range());
+    }
+
+    #[test]
+    fn placeholder_match_take_inner_matches() {
+        let mut m = PlaceholderMatch::single(dummy_range(), SubId::Constant("a".to_string()));
+        let inner = m.take_inner_matches();
+        assert_eq!(inner.matches.len(), 0);
+        // Re-takeable, returns a fresh empty SsrMatches.
+        assert_eq!(m.take_inner_matches().matches.len(), 0);
+    }
 }

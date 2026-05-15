@@ -164,7 +164,7 @@ fn count_var_occurrences_in_body(sema: &Semantic, matched: &Match) -> Option<usi
 
     let body_match = matched.get_placeholder_match(BODY_VAR)?;
     let body = matched.matched_node_body.get_body(sema)?;
-    let any_expr_id = body_match.code_id.any_expr_id()?;
+    let any_expr_id = body_match.code_id()?.any_expr_id()?;
     let expr_id = match any_expr_id {
         AnyExprId::Expr(id) => id,
         _ => return None,
@@ -207,7 +207,7 @@ fn get_var_def_from_match(
     placeholder_match: &elp_ide_ssr::PlaceholderMatch,
 ) -> Option<hir::VarDef> {
     let in_clause = get_in_function_clause_body(sema, &matched.matched_node_body)?;
-    let any_expr_id = placeholder_match.code_id.any_expr_id()?;
+    let any_expr_id = placeholder_match.code_id()?.any_expr_id()?;
     match in_clause.to_var_def_any(any_expr_id)? {
         hir::DefinitionOrReference::Definition(def) => Some(def),
         hir::DefinitionOrReference::Reference(mut refs) if refs.len() == 1 => {
@@ -225,7 +225,7 @@ fn find_single_var_occurrence_in_body(sema: &Semantic, matched: &Match) -> Optio
 
     let body_match = matched.get_placeholder_match(BODY_VAR)?;
     let body = matched.matched_node_body.get_body(sema)?;
-    let any_expr_id = body_match.code_id.any_expr_id()?;
+    let any_expr_id = body_match.code_id()?.any_expr_id()?;
     let expr_id = match any_expr_id {
         AnyExprId::Expr(id) => id,
         _ => return None,

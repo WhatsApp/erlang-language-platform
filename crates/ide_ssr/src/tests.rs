@@ -1783,7 +1783,7 @@ fn ssr_retrieve_match_placeholder() {
         expect![[r#"
             Some(
                 [
-                    PlaceholderMatch {
+                    Single {
                         range: FileRange {
                             file_id: FileId(
                                 0,
@@ -1815,7 +1815,7 @@ fn ssr_retrieve_match_placeholder_multiple_matches() {
         expect![[r#"
             Some(
                 [
-                    PlaceholderMatch {
+                    Single {
                         range: FileRange {
                             file_id: FileId(
                                 0,
@@ -1831,7 +1831,7 @@ fn ssr_retrieve_match_placeholder_multiple_matches() {
                             matches: [],
                         },
                     },
-                    PlaceholderMatch {
+                    Single {
                         range: FileRange {
                             file_id: FileId(
                                 0,
@@ -2017,7 +2017,7 @@ fn ssr_patterns_and_branches_correspond() {
         expect![[r#"
             Some(
                 [
-                    PlaceholderMatch {
+                    Single {
                         range: FileRange {
                             file_id: FileId(
                                 0,
@@ -2045,7 +2045,7 @@ fn ssr_patterns_and_branches_correspond() {
         expect![[r#"
             Some(
                 [
-                    PlaceholderMatch {
+                    Single {
                         range: FileRange {
                             file_id: FileId(
                                 0,
@@ -2073,7 +2073,7 @@ fn ssr_patterns_and_branches_correspond() {
         expect![[r#"
             Some(
                 [
-                    PlaceholderMatch {
+                    Single {
                         range: FileRange {
                             file_id: FileId(
                                 0,
@@ -2105,7 +2105,7 @@ fn ssr_placeholder_does_not_match_already_matched_arm() {
         expect![[r#"
             Some(
                 [
-                    PlaceholderMatch {
+                    Single {
                         range: FileRange {
                             file_id: FileId(
                                 0,

@@ -262,11 +262,14 @@ static VALUE_VAR2: &str = "_@Value2";
 static FOUND_BODY_VAR2: &str = "_@Found2";
 
 fn is_match_valid_pat(body: &Body, matched: PlaceholderMatch) -> bool {
-    match matched.code_id {
+    let Some(code_id) = matched.code_id() else {
+        return false;
+    };
+    match code_id {
         SubId::AnyExprId(AnyExprId::Expr(expr_id)) => {
-            is_expr_valid_pat(body, body.exprs[expr_id].clone())
+            is_expr_valid_pat(body, body.exprs[*expr_id].clone())
         }
-        SubId::AnyExprId(AnyExprId::Pat(pat_id)) => is_pat_valid(body, body.pats[pat_id].clone()),
+        SubId::AnyExprId(AnyExprId::Pat(pat_id)) => is_pat_valid(body, body.pats[*pat_id].clone()),
         SubId::Var(_) => true,
         SubId::Atom(_) => true,
         _ => false,

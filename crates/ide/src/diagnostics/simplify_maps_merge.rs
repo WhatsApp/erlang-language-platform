@@ -132,8 +132,8 @@ impl SsrPatternsLinter for SimplifyMapsMergeLinter {
         let body_arc = matched.matched_node_body.get_body(ctx.sema)?;
         let body = body_arc.as_ref();
         let kind = |m: &PlaceholderMatch| -> Option<&Expr> {
-            match m.code_id {
-                SubId::AnyExprId(AnyExprId::Expr(expr_id)) => Some(&body.exprs[expr_id]),
+            match m.code_id()? {
+                SubId::AnyExprId(AnyExprId::Expr(expr_id)) => Some(&body.exprs[*expr_id]),
                 _ => None,
             }
         };
@@ -205,12 +205,12 @@ impl SsrPatternsLinter for SimplifyMapsMergeLinter {
                 let body_arc = matched.matched_node_body.get_body(ctx.sema)?;
                 let body = body_arc.as_ref();
                 let arg1 = matched.get_placeholder_match(MAP_VAR)?;
-                let arg1_extends_in_place = match arg1.code_id {
-                    SubId::AnyExprId(AnyExprId::Expr(expr_id)) => {
+                let arg1_extends_in_place = match arg1.code_id() {
+                    Some(SubId::AnyExprId(AnyExprId::Expr(expr_id))) => {
                         matches!(
-                            &body.exprs[expr_id],
+                            &body.exprs[*expr_id],
                             Expr::Map { fields } if !fields.is_empty()
-                        ) || matches!(&body.exprs[expr_id], Expr::MapUpdate { .. })
+                        ) || matches!(&body.exprs[*expr_id], Expr::MapUpdate { .. })
                     }
                     _ => false,
                 };

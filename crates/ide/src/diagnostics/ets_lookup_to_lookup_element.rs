@@ -184,9 +184,12 @@ static DEFAULT_PAT_VAR: &str = "_@DefaultPattern";
 static RESULT_KEY_VAR: &str = "_@ResultKey";
 
 fn is_not_a_computation(body: &Body, matched: &PlaceholderMatch) -> bool {
-    match matched.code_id {
+    let Some(code_id) = matched.code_id() else {
+        return false;
+    };
+    match code_id {
         SubId::AnyExprId(AnyExprId::Expr(expr_id)) => {
-            is_not_a_computation_expr(body, body.exprs[expr_id].clone())
+            is_not_a_computation_expr(body, body.exprs[*expr_id].clone())
         }
         SubId::AnyExprId(AnyExprId::Pat(_)) => true,
         SubId::Var(_) => true,
@@ -217,23 +220,24 @@ fn is_not_a_computation_expr(body: &Body, expr: Expr) -> bool {
 }
 
 fn is_wildcard_match(body: &Body, wildcard: &Option<PlaceholderMatch>) -> bool {
-    match wildcard {
-        Some(m) => match m.code_id {
-            SubId::AnyExprId(expr_id) => match expr_id {
-                AnyExprId::Expr(expr_id) => match body.exprs[expr_id] {
-                    Expr::Var(var) => is_wildcard(var),
-                    _ => false,
-                },
-                AnyExprId::Pat(pat_id) => match body.pats[pat_id] {
-                    Pat::Var(var) => is_wildcard(var),
-                    _ => false,
-                },
-                _ => false,
-            },
-            SubId::Var(var) => is_wildcard(var),
+    let Some(m) = wildcard else {
+        return false;
+    };
+    let Some(code_id) = m.code_id() else {
+        return false;
+    };
+    match code_id {
+        SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match body.exprs[*expr_id] {
+            Expr::Var(var) => is_wildcard(var),
             _ => false,
         },
-        None => false,
+        SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match body.pats[*pat_id] {
+            Pat::Var(var) => is_wildcard(var),
+            _ => false,
+        },
+        SubId::AnyExprId(_) => false,
+        SubId::Var(var) => is_wildcard(*var),
+        _ => false,
     }
 }
 

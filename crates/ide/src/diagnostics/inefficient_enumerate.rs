@@ -129,8 +129,8 @@ fn is_indexing_from_literal_one(sema: &Semantic, m: &Match) -> bool {
     || -> Option<bool> {
         let index_match = m.get_placeholder_match(INDEX_VAR)?;
         let body = &m.matched_node_body.get_body(sema)?;
-        match index_match.code_id {
-            SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match body[expr_id] {
+        match index_match.code_id()? {
+            SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match body[*expr_id] {
                 Expr::Literal(Literal::Integer(BasedInteger { base: _, value: 1 })) => Some(true),
                 _ => Some(false),
             },

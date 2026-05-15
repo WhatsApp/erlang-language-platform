@@ -292,23 +292,24 @@ fn check_underscore(
 }
 
 fn is_underscore(body: &Body, wildcard: &Option<PlaceholderMatch>) -> bool {
-    match wildcard {
-        Some(m) => match m.code_id {
-            SubId::AnyExprId(expr_id) => match expr_id {
-                AnyExprId::Expr(expr_id) => match body.exprs[expr_id] {
-                    Expr::Var(var) => is_wildcard(var),
-                    _ => false,
-                },
-                AnyExprId::Pat(pat_id) => match body.pats[pat_id] {
-                    Pat::Var(var) => is_wildcard(var),
-                    _ => false,
-                },
-                _ => false,
-            },
-            SubId::Var(var) => is_wildcard(var),
+    let Some(m) = wildcard else {
+        return false;
+    };
+    let Some(code_id) = m.code_id() else {
+        return false;
+    };
+    match code_id {
+        SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match body.exprs[*expr_id] {
+            Expr::Var(var) => is_wildcard(var),
             _ => false,
         },
-        None => false,
+        SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match body.pats[*pat_id] {
+            Pat::Var(var) => is_wildcard(var),
+            _ => false,
+        },
+        SubId::AnyExprId(_) => false,
+        SubId::Var(var) => is_wildcard(*var),
+        _ => false,
     }
 }
 
@@ -364,12 +365,12 @@ impl Ord for PatternPriority {
 
 // Returns None if the match is not a valid pattern
 fn pattern_priority(body: &Body, matched: &PlaceholderMatch) -> Option<PatternPriority> {
-    let pp = match matched.code_id {
+    let pp = match matched.code_id()? {
         SubId::AnyExprId(AnyExprId::Expr(expr_id)) => {
-            pattern_priority_expr(body, body.exprs[expr_id].clone())
+            pattern_priority_expr(body, body.exprs[*expr_id].clone())
         }
         SubId::AnyExprId(AnyExprId::Pat(pat_id)) => {
-            pattern_priority_pat(body, body.pats[pat_id].clone())
+            pattern_priority_pat(body, body.pats[*pat_id].clone())
         }
         SubId::AnyExprId(AnyExprId::TypeExpr(_)) => None,
         SubId::AnyExprId(AnyExprId::Term(_)) => None,
@@ -519,10 +520,10 @@ fn is_length_zero_comparison(body: &Body, lhs: &PlaceholderMatch, rhs: &Placehol
 }
 
 fn is_length_call(body: &Body, pm: &PlaceholderMatch) -> bool {
-    let SubId::AnyExprId(AnyExprId::Expr(expr_id)) = pm.code_id else {
+    let Some(SubId::AnyExprId(AnyExprId::Expr(expr_id))) = pm.code_id() else {
         return false;
     };
-    let Expr::Call { target, args } = &body[expr_id] else {
+    let Expr::Call { target, args } = &body[*expr_id] else {
         return false;
     };
     if args.len() != 1 {
@@ -540,10 +541,10 @@ fn is_length_call(body: &Body, pm: &PlaceholderMatch) -> bool {
 }
 
 fn is_integer_zero(body: &Body, pm: &PlaceholderMatch) -> bool {
-    let SubId::AnyExprId(AnyExprId::Expr(expr_id)) = pm.code_id else {
+    let Some(SubId::AnyExprId(AnyExprId::Expr(expr_id))) = pm.code_id() else {
         return false;
     };
-    matches!(&body[expr_id], Expr::Literal(Literal::Integer(n)) if n.value == 0)
+    matches!(&body[*expr_id], Expr::Literal(Literal::Integer(n)) if n.value == 0)
 }
 
 fn make_fix(

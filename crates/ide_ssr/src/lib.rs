@@ -186,15 +186,16 @@ pub fn match_pattern_in_file_functions(
 }
 
 pub fn is_placeholder_a_var_from_body(body: &Body, m: &PlaceholderMatch) -> bool {
-    match m.code_id {
-        SubId::AnyExprId(AnyExprId::Expr(expr_id)) => match body.exprs[expr_id] {
-            Expr::Var(_) => true,
-            _ => false,
-        },
-        SubId::AnyExprId(AnyExprId::Pat(pat_id)) => match body.pats[pat_id] {
-            Pat::Var(_) => true,
-            _ => false,
-        },
+    let Some(code_id) = m.code_id() else {
+        return false;
+    };
+    match code_id {
+        SubId::AnyExprId(AnyExprId::Expr(expr_id)) => {
+            matches!(body.exprs[*expr_id], Expr::Var(_))
+        }
+        SubId::AnyExprId(AnyExprId::Pat(pat_id)) => {
+            matches!(body.pats[*pat_id], Pat::Var(_))
+        }
         SubId::Var(_) => true,
         _ => false,
     }
@@ -725,7 +726,7 @@ impl SsrMatches {
     fn flatten_into(self, out: &mut SsrMatches) {
         for mut m in self.matches {
             for p in m.placeholder_values.values_mut() {
-                std::mem::take(&mut p.inner_matches).flatten_into(out);
+                p.take_inner_matches().flatten_into(out);
             }
             out.matches.push(m);
         }
@@ -935,7 +936,7 @@ mod test {
                                 Expr(
                                     Idx::<Expr>(1),
                                 ),
-                            ): PlaceholderMatch {
+                            ): Single {
                                 range: FileRange {
                                     file_id: FileId(
                                         0,
@@ -1021,7 +1022,7 @@ mod test {
                                 Expr(
                                     Idx::<Expr>(1),
                                 ),
-                            ): PlaceholderMatch {
+                            ): Single {
                                 range: FileRange {
                                     file_id: FileId(
                                         0,

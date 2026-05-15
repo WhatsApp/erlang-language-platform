@@ -162,9 +162,12 @@ fn from_keys_match_is_valid(sema: &Semantic, m: &Match) -> Option<bool> {
 }
 
 fn is_pure(body: &Body, matched: &PlaceholderMatch) -> bool {
-    match matched.code_id {
+    let Some(code_id) = matched.code_id() else {
+        return false;
+    };
+    match code_id {
         SubId::AnyExprId(AnyExprId::Expr(expr_id)) => {
-            is_pure_expr(body, body.exprs[expr_id].clone())
+            is_pure_expr(body, body.exprs[*expr_id].clone())
         }
         SubId::AnyExprId(AnyExprId::Pat(_)) => true,
         SubId::Var(_) => true,
