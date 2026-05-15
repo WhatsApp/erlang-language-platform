@@ -100,9 +100,7 @@ impl Var {
     /// glob placeholders (`_@@Name`). Use
     /// [`Self::is_ssr_glob_placeholder`] to distinguish.
     pub fn is_ssr_placeholder(&self) -> bool {
-        self.0
-            .as_str()
-            .starts_with(elp_syntax::ast::SSR_PLACEHOLDER_PREFIX)
+        elp_syntax::ast::is_ssr_placeholder_name(self.0.as_str())
     }
 
     /// Returns true if this variable is an SSR glob placeholder.
@@ -110,9 +108,7 @@ impl Var {
     /// and bind zero-or-more elements within a sequence (tuple, list,
     /// call args, etc.), à la Erlang Merl.
     pub fn is_ssr_glob_placeholder(&self) -> bool {
-        self.0
-            .as_str()
-            .starts_with(elp_syntax::ast::SSR_GLOB_PLACEHOLDER_PREFIX)
+        elp_syntax::ast::is_ssr_glob_placeholder_name(self.0.as_str())
     }
 }
 

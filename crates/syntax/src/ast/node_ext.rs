@@ -110,6 +110,14 @@ impl nodes::Atom {
 pub const SSR_PLACEHOLDER_PREFIX: &str = "_@";
 pub const SSR_GLOB_PLACEHOLDER_PREFIX: &str = "_@@";
 
+pub fn is_ssr_placeholder_name(name: &str) -> bool {
+    name.starts_with(SSR_PLACEHOLDER_PREFIX)
+}
+
+pub fn is_ssr_glob_placeholder_name(name: &str) -> bool {
+    name.starts_with(SSR_GLOB_PLACEHOLDER_PREFIX)
+}
+
 impl nodes::Var {
     pub fn text(&self) -> TokenText<'_> {
         text_of_token(self.syntax())
@@ -121,7 +129,7 @@ impl nodes::Var {
     /// (`_@@Name`) — the latter is a strict subset of the former. Use
     /// [`Self::is_ssr_glob_placeholder`] to distinguish.
     pub fn is_ssr_placeholder(&self) -> bool {
-        self.text().starts_with(SSR_PLACEHOLDER_PREFIX)
+        is_ssr_placeholder_name(&self.text())
     }
 
     /// Returns true if this is an SSR glob placeholder, when parsing an
@@ -129,7 +137,7 @@ impl nodes::Var {
     /// bind zero-or-more elements within a sequence (tuple, list, call
     /// args, etc.), à la Erlang Merl.
     pub fn is_ssr_glob_placeholder(&self) -> bool {
-        self.text().starts_with(SSR_GLOB_PLACEHOLDER_PREFIX)
+        is_ssr_glob_placeholder_name(&self.text())
     }
 }
 

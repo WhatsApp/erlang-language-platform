@@ -32,6 +32,8 @@ pub use self::node_ext::ClauseSeparator;
 pub use self::node_ext::HasArity;
 pub use self::node_ext::SSR_GLOB_PLACEHOLDER_PREFIX;
 pub use self::node_ext::SSR_PLACEHOLDER_PREFIX;
+pub use self::node_ext::is_ssr_glob_placeholder_name;
+pub use self::node_ext::is_ssr_placeholder_name;
 pub use self::operators::ArithOp;
 pub use self::operators::BinaryOp;
 pub use self::operators::CompOp;
