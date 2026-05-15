@@ -1092,6 +1092,69 @@ foo(??X) -> ??X.
 }
 
 #[test]
+fn macro_string_simple_atom() {
+    // `??X` inside a macro body stringifies the macro argument.
+    check(
+        r#"
+-define(STR(X), ??X).
+foo() -> ?STR(hello).
+"#,
+        expect![[r#"
+            foo() ->
+                "hello".
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_compound_expression() {
+    // Tokens are joined with single spaces, mirroring the Erlang
+    // preprocessor; whitespace and comments are stripped as trivia.
+    check(
+        r#"
+-define(STR(X), ??X).
+foo() -> ?STR(1 + 2).
+"#,
+        expect![[r#"
+            foo() ->
+                "1 + 2".
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_in_pattern() {
+    // `??X` resolves at pattern positions as well.
+    check(
+        r#"
+-define(STR(X), ??X).
+foo(?STR(hello)) -> ok.
+"#,
+        expect![[r#"
+            foo("hello") ->
+                ok.
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_unknown_param_falls_back_to_missing() {
+    // `??Z` where `Z` is not a parameter of the surrounding macro must
+    // still produce `Missing`, matching the pre-fix behaviour for the
+    // unresolved case.
+    check(
+        r#"
+-define(STR(X), ??Z).
+foo() -> ?STR(hello).
+"#,
+        expect![[r#"
+            foo() ->
+                [missing].
+        "#]],
+    );
+}
+
+#[test]
 fn invalid_receive() {
     check(
         r#"

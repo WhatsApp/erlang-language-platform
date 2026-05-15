@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use either::Either;
 use elp_base_db::FileId;
+use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
 use elp_syntax::ast;
 use elp_syntax::ast::ExprMax;
@@ -933,7 +934,13 @@ impl<'a> Ctx<'a> {
                         Some(expr),
                     )
                 }),
-            ast::ExprMax::MacroString(_) => self.alloc_pat(Pat::Missing, Some(expr)),
+            ast::ExprMax::MacroString(ms) => {
+                if let Some(lit) = self.resolve_macro_string(ms) {
+                    self.alloc_pat(Pat::Literal(lit), Some(expr))
+                } else {
+                    self.alloc_pat(Pat::Missing, Some(expr))
+                }
+            }
             ExprMax::MapComprehension(map_comp) => {
                 map_comp.exprs().for_each(|mf| {
                     let _ = self.lower_optional_pat(mf.key());
@@ -1710,7 +1717,13 @@ impl<'a> Ctx<'a> {
                     )
                 })
             }
-            ast::ExprMax::MacroString(_) => self.alloc_expr(Expr::Missing, Some(expr)),
+            ast::ExprMax::MacroString(ms) => {
+                if let Some(lit) = self.resolve_macro_string(ms) {
+                    self.alloc_expr(Expr::Literal(lit), Some(expr))
+                } else {
+                    self.alloc_expr(Expr::Missing, Some(expr))
+                }
+            }
             ast::ExprMax::ParenExpr(paren_expr) => {
                 if let Some(inner_expr) = paren_expr.expr() {
                     let expr_id = self.lower_expr(&inner_expr);
@@ -2851,7 +2864,13 @@ impl<'a> Ctx<'a> {
                         Some(expr),
                     )
                 }),
-            ast::ExprMax::MacroString(_) => self.alloc_term(Term::Missing, Some(expr)),
+            ast::ExprMax::MacroString(ms) => {
+                if let Some(lit) = self.resolve_macro_string(ms) {
+                    self.alloc_term(Term::Literal(lit), Some(expr))
+                } else {
+                    self.alloc_term(Term::Missing, Some(expr))
+                }
+            }
             ast::ExprMax::ParenExpr(paren_expr) => {
                 if let Some(expr) = paren_expr.expr() {
                     self.lower_term(&expr)
@@ -3296,6 +3315,35 @@ impl<'a> Ctx<'a> {
         } else {
             Err(var)
         }
+    }
+
+    /// Resolve a `??Arg` macro stringification.
+    /// If `Arg` is a macro parameter in the current expansion context,
+    /// returns the stringified tokens of the argument as a string literal.
+    /// Matches the Erlang preprocessor behavior: tokens are joined with
+    /// single spaces and comments/whitespace are stripped.
+    fn resolve_macro_string(&self, macro_string: &ast::MacroString) -> Option<Literal> {
+        let name = macro_string.name()?;
+        if let ast::MacroName::Var(ref var) = name {
+            let hir_var = Var::new(&var.as_name());
+            let entry = &self.macro_stack[self.macro_stack_id];
+            if let Some(macro_expr) = entry.var_map.get(&hir_var)
+                && let Some(expr) = macro_expr.expr()
+            {
+                // Collect non-trivia tokens and join with spaces,
+                // matching the Erlang preprocessor's stringification.
+                let text: String = expr
+                    .syntax()
+                    .descendants_with_tokens()
+                    .filter_map(|elem| elem.into_token())
+                    .filter(|token| !token.kind().is_trivia())
+                    .map(|token| token.text().to_string())
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                return Some(Literal::String(StringVariant::Normal(text)));
+            }
+        }
+        None
     }
 
     fn alloc_expr(&mut self, expr: Expr, source: Option<&ast::Expr>) -> ExprId {
