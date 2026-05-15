@@ -26,6 +26,19 @@
 // replacement.  Within a macro call, a placeholder will match up
 // until whatever token follows the placeholder.
 //
+// Glob placeholders, written `_@@<name>`, match zero-or-more sibling
+// elements within an ordered sequence — tuple elements, list elements,
+// block expressions, or call arguments — à la Erlang Merl. At most one
+// glob is permitted per sequence, and globs are not allowed inside
+// maps/records or `when`-clause guards. When the same glob name appears
+// in two sequences, both bindings must be element-wise equivalent.
+// Globs are matching-only today (no template-side support).
+//
+// ```erlang
+// // ssr: {a, _@@Rest} matches {a, b, c, d}; Rest binds to [b, c, d]
+// // ssr: foo(_@@Args) matches foo(1, 2, 3); Args binds to [1, 2, 3]
+// ```
+//
 // The scope of the search / replace will be restricted to the current
 // selection if any, otherwise it will apply to the whole workspace.
 //
@@ -758,14 +771,90 @@ impl Match {
         let var = Var::new(&Name::from_erlang_service(placeholder_name));
         let subids = self.placeholders_by_var.get(&var)?;
         if subids.len() == 1 {
-            self.placeholder_values
-                .get(&subids.iter().next().cloned()?)
-                .cloned()
+            let pm = self
+                .placeholder_values
+                .get(&subids.iter().next().cloned()?)?
+                .clone();
+            // Glob bindings carry a slice of code nodes, not a single
+            // value — surface a clear panic that points at the glob API
+            // rather than letting callers silently see an empty `text`.
+            if pm.is_glob() {
+                panic!(
+                    "'{placeholder_name}' is a glob placeholder; \
+                     use `get_placeholder_glob_match` / `placeholder_glob_texts` / \
+                     `placeholder_glob_range` instead"
+                );
+            }
+            Some(pm)
         } else {
             // We panic here because this should be used when doing
             // development only, give feedback to the dev.
             panic!("expecting a single match for '{placeholder_name}', got multiple");
         }
+    }
+
+    /// Look up a glob placeholder binding by name. Returns `None` if the
+    /// name isn't bound in this match, or if it refers to a non-glob
+    /// placeholder (use `get_placeholder_match` for those).
+    pub fn get_placeholder_glob_match(&self, placeholder_name: &str) -> Option<PlaceholderMatch> {
+        let var = Var::new(&Name::from_erlang_service(placeholder_name));
+        let subids = self.placeholders_by_var.get(&var)?;
+        let pm = self
+            .placeholder_values
+            .get(&subids.iter().next().cloned()?)?
+            .clone();
+        if pm.is_glob() { Some(pm) } else { None }
+    }
+
+    /// The code-side `SubId`s bound by a glob placeholder, in source
+    /// order. Returns `None` for non-glob placeholders or unmatched
+    /// names.
+    pub fn placeholder_glob_subids(&self, placeholder_name: &str) -> Option<Vec<SubId>> {
+        Some(
+            self.get_placeholder_glob_match(placeholder_name)?
+                .code_ids()?
+                .to_vec(),
+        )
+    }
+
+    /// Per-element source texts of a glob binding, in source order.
+    /// Empty vector for an empty glob.
+    pub fn placeholder_glob_texts(
+        &self,
+        sema: &Semantic,
+        placeholder_name: &str,
+    ) -> Option<Vec<String>> {
+        let pm = self.get_placeholder_glob_match(placeholder_name)?;
+        let body = self.matched_node_body.get_body(sema)?;
+        Some(pm.texts(sema, &body))
+    }
+
+    /// The overall byte range spanning the glob's matched elements. For
+    /// an empty glob this is an empty range anchored where the elements
+    /// would have appeared (see `Matcher::glob_range`).
+    pub fn placeholder_glob_range(&self, placeholder_name: &str) -> Option<TextRange> {
+        Some(self.get_placeholder_glob_match(placeholder_name)?.range())
+    }
+
+    /// Per-element byte ranges of a glob binding. Empty vector for an
+    /// empty glob.
+    pub fn placeholder_glob_ranges(
+        &self,
+        sema: &Semantic,
+        placeholder_name: &str,
+    ) -> Option<Vec<TextRange>> {
+        let pm = self.get_placeholder_glob_match(placeholder_name)?;
+        let code_ids = pm.code_ids()?;
+        let body = self.matched_node_body.get_body(sema)?;
+        Some(
+            code_ids
+                .iter()
+                .filter_map(|id| {
+                    let any_expr_id = id.any_expr_id()?;
+                    Some(body.range_for_any(sema, any_expr_id)?.range)
+                })
+                .collect(),
+        )
     }
 
     pub fn placeholder_texts(

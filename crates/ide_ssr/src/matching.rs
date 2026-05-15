@@ -461,9 +461,9 @@ impl PlaceholderMatch {
         }
     }
 
-    // Check if our `code_id` and the `other` represent equivalent
-    // code fragments. Glob equivalence (list-vs-list) is handled in a
-    // later commit; today only `Single` is constructed.
+    // Check if our binding and the `other` SubId represent equivalent
+    // code fragments. Only meaningful for `Single` bindings; glob
+    // equivalence (list-vs-list) goes through `glob_codes_equivalent`.
     fn equivalent(
         &self,
         sema: &Semantic,
@@ -471,27 +471,51 @@ impl PlaceholderMatch {
         body: &FoldBody,
         other: &SubId,
     ) -> bool {
-        let debug_print = false;
         let Some(SubId::AnyExprId(code_id)) = self.code_id() else {
             return false;
         };
-        // The "pattern body" here is the code body itself (equivalence check).
-        // Regular code bodies have no SSR placeholders, so the cache is empty.
-        let placeholder_cache = PlaceholderCache::build(body);
-        get_match(
-            debug_print,
-            rule,
-            other,
-            &body.body.origin,
-            code_id,
-            &None,
-            sema,
-            body,
-            body,
-            &placeholder_cache,
-        )
-        .is_ok()
+        subids_structurally_equivalent(sema, rule, body, other, code_id)
     }
+}
+
+/// Whether two code-side SubIds reference structurally-equivalent HIR
+/// fragments. Implemented by re-running the SSR matcher with one side
+/// as the pattern and the other as the code, against a placeholder-free
+/// cache (code bodies have no SSR placeholders). Used for cross-occurrence
+/// checks: same `_@Name` must bind to equivalent fragments; same glob
+/// must bind to element-wise-equivalent slices.
+fn subids_structurally_equivalent(
+    sema: &Semantic,
+    rule: &SsrPattern,
+    body: &FoldBody,
+    pattern: &SubId,
+    code: &AnyExprId,
+) -> bool {
+    let placeholder_cache = PlaceholderCache::build(body);
+    subids_structurally_equivalent_with_cache(sema, rule, body, pattern, code, &placeholder_cache)
+}
+
+fn subids_structurally_equivalent_with_cache(
+    sema: &Semantic,
+    rule: &SsrPattern,
+    body: &FoldBody,
+    pattern: &SubId,
+    code: &AnyExprId,
+    placeholder_cache: &PlaceholderCache,
+) -> bool {
+    get_match(
+        false,
+        rule,
+        pattern,
+        &body.body.origin,
+        code,
+        &None,
+        sema,
+        body,
+        body,
+        placeholder_cache,
+    )
+    .is_ok()
 }
 
 /// Render the source text of a code-side `SubId` by following its
@@ -978,10 +1002,23 @@ impl<'a> Matcher<'a> {
             let range = self.glob_range(glob_codes, prefix_codes, suffix_codes);
             self.validate_range(&range)?;
 
-            // Repeated glob placeholders (same name in two sequences) need
-            // element-wise equivalence; this lands in a later commit. For
-            // now record the binding without cross-checking earlier
-            // occurrences. Tests in this commit avoid repeated globs.
+            // Cross-occurrence equivalence: if this glob var was already
+            // bound in another sequence (e.g. `[_@@X, sep, _@@X]`), the
+            // new binding must be element-wise equivalent to the prior
+            // one. Mismatches fail the overall match.
+            if let Some(match_ids) = matches_out.placeholders_by_var.get(&placeholder.var) {
+                for match_id in match_ids.iter() {
+                    if let Some(existing) = matches_out.placeholder_values.get(match_id)
+                        && !self.glob_codes_equivalent(existing, glob_codes)
+                    {
+                        fail_match!(
+                            "glob placeholder match failed: occurrences of `{}` bound to non-equivalent slices",
+                            placeholder.var.as_name()
+                        );
+                    }
+                }
+            }
+
             matches_out.placeholder_values.insert(
                 glob_pattern.clone(),
                 PlaceholderMatch::Glob {
@@ -999,6 +1036,39 @@ impl<'a> Matcher<'a> {
                 .or_insert(FxHashSet::from_iter(vec![glob_pattern.clone()]));
         }
         Ok(())
+    }
+
+    /// Element-wise compare an existing glob binding against a newly
+    /// proposed slice of code SubIds. Returns false if the existing
+    /// match isn't a glob, the lengths differ, or any pair fails
+    /// structural equivalence.
+    fn glob_codes_equivalent(&self, existing: &PlaceholderMatch, new_code_ids: &[SubId]) -> bool {
+        let Some(existing_ids) = existing.code_ids() else {
+            return false;
+        };
+        if existing_ids.len() != new_code_ids.len() {
+            return false;
+        }
+        let placeholder_cache = PlaceholderCache::build(self.code_body);
+        for (existing_id, new_id) in existing_ids.iter().zip(new_code_ids.iter()) {
+            let SubId::AnyExprId(new_any) = new_id else {
+                if existing_id != new_id {
+                    return false;
+                }
+                continue;
+            };
+            if !subids_structurally_equivalent_with_cache(
+                self.sema,
+                self.rule,
+                self.code_body,
+                existing_id,
+                new_any,
+                &placeholder_cache,
+            ) {
+                return false;
+            }
+        }
+        true
     }
 
     /// Compute the file range covered by a glob match.

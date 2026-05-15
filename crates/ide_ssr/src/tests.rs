@@ -1962,6 +1962,140 @@ fn ssr_glob_match_empty_tuple_with_only_glob() {
     );
 }
 
+// -----------------------------------------------------------------
+// Glob: cross-occurrence equivalence and public retrieval API
+// (commit 5).
+// -----------------------------------------------------------------
+
+#[test]
+fn ssr_glob_repeated_var_equivalent_matches() {
+    // Same `_@@X` in two separate sequences (nested tuples within a
+    // call) must bind to element-wise-equivalent slices. One glob per
+    // sequence is still enforced by commit-3 validation, so the
+    // repetition has to live in different parents.
+    assert_matches(
+        "ssr: foo({_@@X}, {_@@X}).",
+        "f() -> foo({a, b}, {a, b}).",
+        &[("foo({a, b}, {a, b})", &[("_@@X", &["a", "b", "a", "b"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_repeated_var_non_equivalent_does_not_match() {
+    // Second tuple binds [a, c]; not equivalent to [a, b] from the first.
+    assert_matches(
+        "ssr: foo({_@@X}, {_@@X}).",
+        "f() -> foo({a, b}, {a, c}).",
+        &[],
+    );
+}
+
+#[test]
+fn ssr_glob_repeated_var_different_lengths_does_not_match() {
+    // Length mismatch fails equivalence even when elements would
+    // individually compare equal.
+    assert_matches("ssr: foo({_@@X}, {_@@X}).", "f() -> foo({a}, {a, b}).", &[]);
+    assert_matches("ssr: foo({_@@X}, {_@@X}).", "f() -> foo({a}, {a, a}).", &[]);
+}
+
+#[test]
+fn ssr_glob_repeated_var_both_empty_matches() {
+    // Two empty globs in different sequences are trivially equivalent.
+    assert_matches(
+        "ssr: foo({a, _@@X, b}, {c, _@@X, d}).",
+        "f() -> foo({a, b}, {c, d}).",
+        &[("foo({a, b}, {c, d})", &[("_@@X", &[])])],
+    );
+}
+
+#[test]
+fn ssr_glob_placeholder_glob_texts_api() {
+    // Verify `placeholder_glob_texts` returns per-element source texts
+    // in order.
+    let (db, file_id) = RootDatabase::with_single_file("f() -> {a, b, c, d}.");
+    let sema = Semantic::new(&db);
+    let pattern = SsrRule::parse_str(&db, "ssr: {a, _@@Rest}.").unwrap();
+    let strategy = Strategy {
+        macros: MacroStrategy::Expand,
+        parens: ParenStrategy::InvisibleParens,
+    };
+    let mut finder = MatchFinder::in_context(&sema, strategy, SsrSearchScope::WholeFile(file_id));
+    finder.add_search_pattern(pattern);
+    let matches = finder.matches().flattened();
+    assert_eq_expected!(1, matches.matches.len(), "expected one match");
+    let m = &matches.matches[0];
+    let expected_texts = Some(vec!["b".to_string(), "c".to_string(), "d".to_string()]);
+    assert_eq_expected!(expected_texts, m.placeholder_glob_texts(&sema, "_@@Rest"));
+    let ranges = m
+        .placeholder_glob_ranges(&sema, "_@@Rest")
+        .expect("expected per-element ranges");
+    assert_eq_expected!(3, ranges.len());
+    // The overall span covers the joined matched slice.
+    let overall = m
+        .placeholder_glob_range("_@@Rest")
+        .expect("expected overall range");
+    assert_eq_expected!(ranges[0].start(), overall.start());
+    assert_eq_expected!(ranges[2].end(), overall.end());
+}
+
+#[test]
+fn ssr_glob_placeholder_glob_texts_empty() {
+    // For an empty glob match, `placeholder_glob_texts` returns an
+    // empty vector and `placeholder_glob_range` returns an empty range.
+    let (db, file_id) = RootDatabase::with_single_file("f() -> {a, b}.");
+    let sema = Semantic::new(&db);
+    let pattern = SsrRule::parse_str(&db, "ssr: {a, _@@X, b}.").unwrap();
+    let strategy = Strategy {
+        macros: MacroStrategy::Expand,
+        parens: ParenStrategy::InvisibleParens,
+    };
+    let mut finder = MatchFinder::in_context(&sema, strategy, SsrSearchScope::WholeFile(file_id));
+    finder.add_search_pattern(pattern);
+    let matches = finder.matches().flattened();
+    assert_eq_expected!(1, matches.matches.len());
+    let m = &matches.matches[0];
+    let expected_texts: Option<Vec<String>> = Some(Vec::new());
+    assert_eq_expected!(expected_texts, m.placeholder_glob_texts(&sema, "_@@X"));
+    let range = m.placeholder_glob_range("_@@X").expect("range present");
+    assert!(range.is_empty(), "empty glob should have empty range");
+}
+
+#[test]
+fn ssr_glob_get_placeholder_glob_match_returns_none_for_singles() {
+    let (db, file_id) = RootDatabase::with_single_file("f() -> foo(1).");
+    let sema = Semantic::new(&db);
+    let pattern = SsrRule::parse_str(&db, "ssr: foo(_@X).").unwrap();
+    let strategy = Strategy {
+        macros: MacroStrategy::Expand,
+        parens: ParenStrategy::InvisibleParens,
+    };
+    let mut finder = MatchFinder::in_context(&sema, strategy, SsrSearchScope::WholeFile(file_id));
+    finder.add_search_pattern(pattern);
+    let matches = finder.matches().flattened();
+    let m = &matches.matches[0];
+    assert!(m.get_placeholder_glob_match("_@X").is_none());
+}
+
+#[test]
+#[should_panic(expected = "glob placeholder")]
+fn ssr_glob_get_placeholder_match_panics_on_glob() {
+    // `get_placeholder_match` is for single placeholders only; calling
+    // it on a glob name surfaces a clear panic pointing at the glob API.
+    let (db, file_id) = RootDatabase::with_single_file("f() -> {a, b, c}.");
+    let sema = Semantic::new(&db);
+    let pattern = SsrRule::parse_str(&db, "ssr: {a, _@@Rest}.").unwrap();
+    let strategy = Strategy {
+        macros: MacroStrategy::Expand,
+        parens: ParenStrategy::InvisibleParens,
+    };
+    let mut finder = MatchFinder::in_context(&sema, strategy, SsrSearchScope::WholeFile(file_id));
+    finder.add_search_pattern(pattern);
+    let matches = finder.matches().flattened();
+    let m = &matches.matches[0];
+    // This should panic.
+    let _ = m.get_placeholder_match("_@@Rest");
+}
+
 #[test]
 fn ssr_invalid_when_condition_not_literal() {
     expect![[r#"
