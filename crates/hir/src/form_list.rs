@@ -1130,6 +1130,8 @@ pub struct TypeExport {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Behaviour {
     pub name: Name,
+    /// Whether the original source used the American spelling `-behavior`.
+    pub is_american_spelling: bool,
     pub pp_ctx: FormPPContext,
     pub form_id: FormId<ast::BehaviourAttribute>,
 }

@@ -275,9 +275,15 @@ impl Printer<'_> {
     }
 
     fn print_behaviour(&mut self, behaviour: &Behaviour) -> fmt::Result {
+        let attr = if behaviour.is_american_spelling {
+            "behavior"
+        } else {
+            "behaviour"
+        };
         writeln!(
             self,
-            "-behaviour({}). %% cond: {:?}",
+            "-{}({}). %% cond: {:?}",
+            attr,
             behaviour.name,
             raw_cond(&behaviour.pp_ctx)
         )

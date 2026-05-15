@@ -388,15 +388,23 @@ fn type_export() {
 
 #[test]
 fn behaviour() {
+    // Pretty-printer preserves the original spelling: `-behaviour` (UK) and
+    // `-behavior` (US) round-trip independently.
     check(
         r#"
 -behaviour(foo).
--behavior(foo).
+-behavior(bar).
+-behaviour(baz).
+-behavior(quux).
 "#,
         expect![[r#"
             -behaviour(foo). %% cond: None
 
-            -behaviour(foo). %% cond: None
+            -behavior(bar). %% cond: None
+
+            -behaviour(baz). %% cond: None
+
+            -behavior(quux). %% cond: None
         "#]],
     )
 }

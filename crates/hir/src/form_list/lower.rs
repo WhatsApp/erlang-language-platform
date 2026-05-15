@@ -700,8 +700,13 @@ impl<'a> Ctx<'a> {
         let pp_ctx = self.current_pp_ctx();
         let form_id = self.id_map.get_id(behaviour);
         let name = self.resolve_name(&behaviour.name()?);
+        let is_american_spelling = behaviour
+            .syntax()
+            .children_with_tokens()
+            .any(|it| it.kind() == elp_syntax::SyntaxKind::ANON_BEHAVIOR);
         let res = Behaviour {
             name,
+            is_american_spelling,
             pp_ctx,
             form_id,
         };
