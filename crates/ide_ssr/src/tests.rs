@@ -1717,6 +1717,149 @@ fn ssr_match_constant_negated_atom_placeholder() {
     );
 }
 
+// -----------------------------------------------------------------
+// Glob placeholder validation (commit 3: parse-time enforcement only;
+// matching support for globs lands in a subsequent commit).
+// -----------------------------------------------------------------
+
+#[test]
+fn ssr_glob_two_globs_in_tuple_rejected() {
+    expect![[r#"
+        "Parse error: at most one glob placeholder allowed per sequence (found 2)"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: {a, _@@X, _@@Y}."));
+}
+
+#[test]
+fn ssr_glob_two_globs_in_call_args_rejected() {
+    expect![[r#"
+        "Parse error: at most one glob placeholder allowed per sequence (found 2)"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: foo(_@@X, _@@Y)."));
+}
+
+#[test]
+fn ssr_glob_two_globs_in_list_rejected() {
+    expect![[r#"
+        "Parse error: at most one glob placeholder allowed per sequence (found 2)"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: [_@@X, sep, _@@Y]."));
+}
+
+#[test]
+fn ssr_glob_in_map_field_rejected() {
+    expect![[r#"
+        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements and call arguments"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: #{a => _@@X}."));
+}
+
+#[test]
+fn ssr_glob_in_list_tail_rejected() {
+    expect![[r#"
+        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements and call arguments"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: [a | _@@Tail]."));
+}
+
+#[test]
+fn ssr_glob_as_call_target_rejected() {
+    expect![[r#"
+        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements and call arguments"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: _@@F(1, 2)."));
+}
+
+#[test]
+fn ssr_glob_in_binary_op_rejected() {
+    expect![[r#"
+        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements and call arguments"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: _@@X + 1."));
+}
+
+#[test]
+fn ssr_glob_in_when_clause_rejected() {
+    expect![[r#"
+        "Parse error: glob placeholder not allowed in `where` clause"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: _@X where is_list(_@@Y)."));
+}
+
+#[test]
+fn ssr_glob_at_top_level_rejected() {
+    expect![[r#"
+        "Parse error: glob placeholder must appear inside a sequence (tuple, list, block, or call args), not at the top level"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: _@@X."));
+}
+
+#[test]
+fn ssr_glob_valid_in_tuple_parses() {
+    // A well-formed glob pattern parses; matching support arrives in a
+    // later commit, so for now it produces no matches against any code.
+    // A non-empty template is included to avoid a tree_print whitespace
+    // quirk with empty `rhs` sections — the validation logic does not
+    // care whether a template is present.
+    parse_good_text(
+        "ssr: {a, _@@Rest} ==>> ok.",
+        expect![[r#"
+
+            SsrBody {
+                lhs
+                    expr
+                        Expr<2>:Expr::Tuple {
+                            Expr<0>:Literal(Atom('a')),
+                            Expr<1>:Expr::Var(_@@Rest),
+                        }
+                    pat
+                        Pat<2>:Pat::Tuple {
+                            Pat<0>:Literal(Atom('a')),
+                            Pat<1>:Pat::Var(_@@Rest),
+                        }
+                rhs
+                    Expr<3>:Literal(Atom('ok'))
+                when
+            }
+        "#]],
+    );
+}
+
+#[test]
+fn ssr_glob_valid_in_call_args_parses() {
+    parse_good_text(
+        "ssr: foo(_@@Args) ==>> ok.",
+        expect![[r#"
+
+            SsrBody {
+                lhs
+                    expr
+                        Expr<2>:Expr::Call {
+                            target
+                                CallTarget::Local {
+                                    Expr<0>:Literal(Atom('foo'))
+                                }
+                            args
+                                Expr<1>:Expr::Var(_@@Args),
+                        }
+                    pat
+                        Pat<2>:Pat::Missing
+                rhs
+                    Expr<3>:Literal(Atom('ok'))
+                when
+            }
+        "#]],
+    );
+}
+
+#[test]
+fn ssr_glob_pattern_does_not_match_as_single_yet() {
+    // Until commit 4 adds glob-aware list matching, well-formed glob
+    // patterns simply produce no matches (rather than accidentally
+    // binding the glob to a single element).
+    assert_matches("ssr: {a, _@@Rest}.", "f() -> {a, b, c}.", &[]);
+}
+
 #[test]
 fn ssr_invalid_when_condition_not_literal() {
     expect![[r#"

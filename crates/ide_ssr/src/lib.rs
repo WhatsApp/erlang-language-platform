@@ -290,6 +290,11 @@ impl SsrRule {
                 &ssr_body.body,
             );
             let conditions = SsrRule::make_conditions(&ssr_body, &body, &source_map)?;
+            // Reject malformed glob-placeholder usage at parse time so
+            // bad patterns surface as a clear error instead of silently
+            // mis-matching.
+            let placeholder_cache = matching::PlaceholderCache::build(&body);
+            matching::validate_glob_usage(&ssr_body, &body, &placeholder_cache)?;
             Ok(SsrRule {
                 parsed_rule: ssr_body.clone(),
                 conditions,

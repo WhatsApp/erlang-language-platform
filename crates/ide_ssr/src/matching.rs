@@ -53,10 +53,15 @@ use hir::NativeRecordName;
 use hir::Pat;
 use hir::PatId;
 use hir::Semantic;
+use hir::Strategy;
 use hir::StringVariant;
 use hir::Term;
 use hir::TypeExpr;
 use hir::Var;
+use hir::fold::FoldCtx;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
+use hir::fold::ParentId;
 
 use crate::Condition;
 use crate::Conjunction;
@@ -70,16 +75,38 @@ use crate::get_literal_subid;
 #[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct SsrPlaceholder {
     pub var: Var,
+    pub kind: PlaceholderKind,
+}
+
+/// Distinguishes single-element placeholders (`_@Name`) from glob
+/// placeholders (`_@@Name`). Glob placeholders bind a contiguous slice
+/// of sibling HIR nodes within a sequence (à la Erlang Merl).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, PartialOrd, Ord)]
+pub enum PlaceholderKind {
+    Single,
+    Glob,
 }
 
 impl SsrPlaceholder {
-    /// Create from a Var, if it's an SSR placeholder
+    /// Create from a Var, if it's an SSR placeholder.
     pub fn from_var(var: Var) -> Option<Self> {
-        if var.is_ssr_placeholder() {
-            Some(SsrPlaceholder { var })
+        if var.is_ssr_glob_placeholder() {
+            Some(SsrPlaceholder {
+                var,
+                kind: PlaceholderKind::Glob,
+            })
+        } else if var.is_ssr_placeholder() {
+            Some(SsrPlaceholder {
+                var,
+                kind: PlaceholderKind::Single,
+            })
         } else {
             None
         }
+    }
+
+    pub fn is_glob(&self) -> bool {
+        matches!(self.kind, PlaceholderKind::Glob)
     }
 }
 
@@ -134,6 +161,14 @@ impl PlaceholderCache {
     /// Get the placeholder for a pattern AnyExprId, if it is one.
     fn get_placeholder(&self, id: &AnyExprId) -> Option<&SsrPlaceholder> {
         self.placeholders.get(id)
+    }
+
+    /// Returns true if the given pattern AnyExprId is a glob placeholder
+    /// (i.e. a placeholder with the `_@@` prefix).
+    pub(crate) fn is_glob(&self, id: &AnyExprId) -> bool {
+        self.placeholders
+            .get(id)
+            .is_some_and(SsrPlaceholder::is_glob)
     }
 }
 
@@ -725,6 +760,14 @@ impl<'a> Matcher<'a> {
         phase: &mut Phase<'_>,
     ) -> Result<bool, MatchFailed> {
         if let Some(placeholder) = self.get_placeholder_for_node(pattern) {
+            // Glob placeholders bind a contiguous slice of sibling nodes
+            // and are only meaningful in list-walking
+            // (`attempt_match_pattern_lists`). Reaching this point with a
+            // glob means the surrounding context is not a sequence — fall
+            // through so the normal variant comparison rejects the match.
+            if placeholder.is_glob() {
+                return Ok(false);
+            }
             if let Phase::Second(matches_out) = phase {
                 // `when`-clause conditions are evaluated after the whole
                 // pattern binds, in `check_when_disjunction`, because OR
@@ -1814,6 +1857,127 @@ where
     iter::once(s.elem.into())
         .chain(s.size.into_iter().map(|id| id.into()))
         .collect()
+}
+
+/// Validate the usage of glob placeholders (`_@@Name`) in an SSR rule.
+///
+/// Globs are only allowed as direct elements of a "sequence position":
+/// `Tuple.exprs`, `List.exprs`, `Block.exprs`, and `Call.args` (and the
+/// corresponding `Pat` variants). At most one glob per sequence is
+/// permitted, mirroring Erlang Merl. Globs are forbidden inside `when`
+/// clauses entirely. Any violation surfaces as an `SsrError` so the
+/// rule fails to parse rather than silently producing wrong matches.
+pub(crate) fn validate_glob_usage(
+    ssr_body: &hir::SsrBody,
+    pattern_body: &FoldBody,
+    cache: &PlaceholderCache,
+) -> Result<(), crate::SsrError> {
+    let strategy = Strategy {
+        macros: MacroStrategy::Expand,
+        parens: ParenStrategy::InvisibleParens,
+    };
+    let body = pattern_body.body;
+    let pattern = &ssr_body.pattern;
+
+    // Walk the pattern's expr and pat trees, collecting each glob with
+    // its immediate parent. `ctx.parents` ends with the current item, so
+    // the parent is the second-to-last entry (when present).
+    let mut globs: Vec<(AnyExprId, Option<AnyExprId>)> = Vec::new();
+    let mut collect = |ctx: &hir::fold::AnyCallBackCtx| {
+        if cache.is_glob(&ctx.item_id) {
+            let parent_id = if ctx.parents.len() >= 2 {
+                match ctx.parents[ctx.parents.len() - 2] {
+                    ParentId::HirIdx(idx) => Some(idx.idx),
+                    _ => None,
+                }
+            } else {
+                None
+            };
+            globs.push((ctx.item_id, parent_id));
+        }
+    };
+    FoldCtx::fold_expr(strategy, body, pattern.expr, (), &mut |(), ctx| {
+        collect(&ctx);
+    });
+    FoldCtx::fold_pat(strategy, body, pattern.pat, (), &mut |(), ctx| {
+        collect(&ctx);
+    });
+
+    // Validate placements and tally per-parent glob counts.
+    let mut seq_glob_count: FxHashMap<AnyExprId, usize> = FxHashMap::default();
+    for (glob_id, parent_id) in &globs {
+        let Some(parent_id) = parent_id else {
+            return Err(crate::SsrError::new(
+                "glob placeholder must appear inside a sequence \
+                 (tuple, list, block, or call args), not at the top level"
+                    .to_string(),
+            ));
+        };
+        match glob_role(body, *parent_id, *glob_id) {
+            GlobRole::Sequence => {
+                *seq_glob_count.entry(*parent_id).or_insert(0) += 1;
+            }
+            GlobRole::Forbidden => {
+                return Err(crate::SsrError::new(
+                    "glob placeholder not allowed in this position; \
+                     globs are only allowed in tuple/list/block elements \
+                     and call arguments"
+                        .to_string(),
+                ));
+            }
+        }
+    }
+    if let Some((_, count)) = seq_glob_count.iter().find(|(_, c)| **c > 1) {
+        return Err(crate::SsrError::new(format!(
+            "at most one glob placeholder allowed per sequence (found {count})"
+        )));
+    }
+
+    // Reject any glob anywhere in `where` clauses.
+    if let Some(when) = &ssr_body.when {
+        for conjunction in when {
+            for guard_expr_id in conjunction {
+                let found =
+                    FoldCtx::fold_expr(strategy, body, *guard_expr_id, false, &mut |acc, ctx| {
+                        acc || cache.is_glob(&ctx.item_id)
+                    });
+                if found {
+                    return Err(crate::SsrError::new(
+                        "glob placeholder not allowed in `where` clause".to_string(),
+                    ));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Role a child plays in its parent HIR node, from the perspective of
+/// glob-placement validation.
+enum GlobRole {
+    /// Direct element of a sequence position (tuple/list/block/call args).
+    Sequence,
+    /// Any other slot — globs are forbidden here.
+    Forbidden,
+}
+
+fn glob_role(body: &Body, parent_id: AnyExprId, glob_id: AnyExprId) -> GlobRole {
+    match (parent_id, glob_id) {
+        (AnyExprId::Expr(p), AnyExprId::Expr(g)) => match &body.exprs[p] {
+            Expr::Tuple { exprs } if exprs.contains(&g) => GlobRole::Sequence,
+            Expr::List { exprs, .. } if exprs.contains(&g) => GlobRole::Sequence,
+            Expr::Block { exprs } if exprs.contains(&g) => GlobRole::Sequence,
+            Expr::Call { args, .. } if args.contains(&g) => GlobRole::Sequence,
+            _ => GlobRole::Forbidden,
+        },
+        (AnyExprId::Pat(p), AnyExprId::Pat(g)) => match &body.pats[p] {
+            Pat::Tuple { pats } if pats.contains(&g) => GlobRole::Sequence,
+            Pat::List { pats, .. } if pats.contains(&g) => GlobRole::Sequence,
+            _ => GlobRole::Forbidden,
+        },
+        _ => GlobRole::Forbidden,
+    }
 }
 
 #[cfg(test)]
