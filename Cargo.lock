@@ -389,6 +389,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "daemonize"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab8bfdaacb3c887a54d41bdf48d3af8873b3f5566469f8ba21b92057509f116e"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "darling"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -516,6 +525,7 @@ dependencies = [
  "buck-resources",
  "codespan-reporting 0.11.1",
  "crossbeam-channel",
+ "daemonize",
  "dunce",
  "elp_eqwalizer",
  "elp_ide",

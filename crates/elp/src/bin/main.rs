@@ -72,12 +72,6 @@ static GLOBAL: Jemalloc = Jemalloc;
 static EQWALIZER_SUPPORT_DIR: Dir = include_dir!("$EQWALIZER_SUPPORT_DIR");
 static INIT: Once = Once::new();
 
-/// Thread stack size for rayon, in bytes.
-///
-/// Due to inefficient encoding of lists, the default stack size of 2MiB may not be
-/// enough to parse some generated modules, and eqWAlizer may stack overflow.
-const THREAD_STACK_SIZE: usize = 10_000_000;
-
 #[cfg(not(unix))]
 const DAEMON_UNSUPPORTED: &str = "ELP daemon mode is not supported on this platform";
 
@@ -137,10 +131,7 @@ fn try_main(cli: &mut dyn Cli, mut args: Args) -> Result<()> {
     let logger = setup_logging(&args.log_file, args.no_log_buffering)?;
     setup_cli_telemetry(&args);
 
-    INIT.call_once(|| {
-        setup_static(&args);
-        setup_thread_pool();
-    });
+    INIT.call_once(|| setup_static(&args));
     let query_config = args.query_config();
     let use_color = args.should_use_color();
     let ifdef = args.ifdef;
@@ -264,16 +255,8 @@ fn setup_logging(log_file: &Option<PathBuf>, no_buffering: bool) -> Result<Logge
     Ok(logger)
 }
 
-fn setup_thread_pool() {
-    if let Err(err) = rayon::ThreadPoolBuilder::new()
-        .stack_size(THREAD_STACK_SIZE)
-        .build_global()
-    {
-        log::warn!("Failed to setup thread pool: {err}");
-    }
-}
-
 fn run_server(logger: Logger) -> Result<()> {
+    elp::ensure_rayon_pool();
     log::info!("server will start, pid: {}", process::id());
     let (connection, io_threads) = Connection::stdio();
 

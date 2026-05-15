@@ -95,6 +95,31 @@ pub fn version() -> String {
     format!("{}+{}", env!("CARGO_PKG_VERSION"), env!("BUILD_ID"))
 }
 
+/// Initialize rayon's global thread pool with a stack size large enough for
+/// eqwalizer to parse generated modules without stack-overflowing.
+///
+/// Idempotent — call from any code path that is about to use rayon.
+/// We don't init eagerly at process start because (a) several commands
+/// (`daemon stop`, `daemon status`, the `--connect` client, `version`)
+/// never use rayon, and (b) the daemon's double-fork would orphan the
+/// pool's worker threads in the grandchild and deadlock its first
+/// `par_iter`. Initializing here, after `daemonize()` and right before the
+/// first parallel work, avoids both problems.
+pub fn ensure_rayon_pool() {
+    /// Default rayon stack is 2 MiB — too small for eqwalizer to parse
+    /// generated modules with deeply-nested list literals.
+    const THREAD_STACK_SIZE: usize = 10_000_000;
+    static INIT: std::sync::Once = std::sync::Once::new();
+    INIT.call_once(|| {
+        if let Err(err) = rayon::ThreadPoolBuilder::new()
+            .stack_size(THREAD_STACK_SIZE)
+            .build_global()
+        {
+            log::warn!("Failed to setup thread pool: {err}");
+        }
+    });
+}
+
 /// Sort items by file text length in descending order (biggest first).
 /// Convenience wrapper around `elp_ide::sort_by_size_descending` for
 /// callers that have an `&Analysis` and a `FileId` accessor.

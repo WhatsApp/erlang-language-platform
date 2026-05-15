@@ -103,6 +103,7 @@ pub fn load_project_from_manifest(
     query_config: &BuckQueryConfig,
     ifdef: bool,
 ) -> Result<LoadResult> {
+    crate::ensure_rayon_pool();
     log::info!("Loading project: {manifest:?}");
     let pb = cli.spinner("Loading build info");
     let project = Project::load(manifest, elp_config, query_config, &|_progress| {})?;

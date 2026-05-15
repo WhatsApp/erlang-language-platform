@@ -514,6 +514,9 @@ pub struct DaemonRun {
     /// Idle timeout in seconds before auto-shutdown (default: 1800, 0=never)
     #[bpaf(long("idle-timeout"), argument("SECONDS"), fallback(1800u64))]
     pub idle_timeout: u64,
+    /// Detach from parent process and run as daemon (internal use only)
+    #[bpaf(hide)]
+    pub daemonize: bool,
 }
 
 #[derive(Clone, Debug, Bpaf)]

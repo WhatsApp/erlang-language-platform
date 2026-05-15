@@ -34,6 +34,40 @@ use std::time::Duration;
 use std::time::Instant;
 use std::time::SystemTime;
 
+// ---------------------------------------------------------------------------
+// Unix daemonization
+// ---------------------------------------------------------------------------
+
+/// Daemonize the current process using the daemonize crate.
+///
+/// This function performs the classic Unix double-fork to detach the process
+/// from the parent process tree, allowing it to persist even if the parent exits.
+#[cfg(unix)]
+fn daemonize() -> Result<()> {
+    use daemonize::Daemonize;
+
+    let daemonize = Daemonize::new()
+        .umask(0o027)
+        // Keep the current working directory since the daemon needs access to project files
+        // Traditional daemons chdir to "/", but we need to access the project
+        .working_directory(std::env::current_dir()?)
+        // Preserve the stdout/stderr FDs the parent wired up (start_daemon
+        // attaches stderr to daemon.log). Without this, daemonize replaces
+        // both with /dev/null, silently dropping every post-startup eprintln.
+        .stdout(daemonize::Stdio::keep())
+        .stderr(daemonize::Stdio::keep());
+
+    daemonize.start().context("Failed to daemonize process")?;
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn daemonize() -> Result<()> {
+    // No-op on non-Unix platforms
+    Ok(())
+}
+
+use anyhow::Context;
 use anyhow::Result;
 use anyhow::bail;
 use codespan_reporting::term::termcolor::ColorSpec;
@@ -237,12 +271,19 @@ fn run_daemon_server(
     let start_time = SystemTime::now();
 
     // Discover manifest once — shared for daemon dir + project loading
+    // Do this BEFORE daemonization so errors are reported to the parent
     let config = DiscoverConfig::new(args.rebar, &args.profile);
     let (elp_config, manifest) = load::discover_manifest(&args.project, &config)?;
     let root = project_root(&manifest);
+    let dir = daemon_dir(&root, &args.profile);
+
+    // Daemonize if requested (must happen before creating socket/pid files)
+    if args.daemonize {
+        fs::create_dir_all(&dir)?;
+        daemonize()?;
+    }
 
     // Create daemon directory and derive paths from it
-    let dir = daemon_dir(&root, &args.profile);
     fs::create_dir_all(&dir)?;
     let _guard = DaemonGuard { dir: dir.clone() };
     let sock = dir.join("daemon.sock");
@@ -258,7 +299,7 @@ fn run_daemon_server(
         let _ = fs::remove_file(&sock);
     }
 
-    // Write PID and version files
+    // Write PID and version files AFTER daemonization so PID is correct
     fs::write(&pid_file, process::id().to_string())?;
     fs::write(&version_file, elp::version())?;
 
@@ -600,7 +641,8 @@ fn start_daemon(
         .arg("--project")
         .arg(project)
         .arg("--as")
-        .arg(profile);
+        .arg(profile)
+        .arg("--daemonize");
     if rebar {
         cmd.arg("--rebar");
     }
@@ -982,6 +1024,7 @@ mod tests {
                     profile: profile_bg,
                     rebar: false,
                     idle_timeout: 60,
+                    daemonize: false,
                 },
                 &mut cli,
                 &query_config,
