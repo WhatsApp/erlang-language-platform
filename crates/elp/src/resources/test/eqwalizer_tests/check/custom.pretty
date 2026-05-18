@@ -1695,26 +1695,6 @@ Because in the expression's type:
   ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:1757:5
-     │    
-1757 │ ╭ ╭     maps:without(
-1758 │ │ │         [a, c, DOrE],
-1759 │ │ │         #{
-1760 │ │ │             a => ka,
-     · │ │
-1764 │ │ │         }
-1765 │ │ │     ).
-     │ ╰─│─────^ maps:without(['a', 'c', DOrE], #{..}).
-Expression has type:   #{a => 'ka', b => atom(), c => pid(), d => 'kd'}
-Context expected type: #{b => atom()}
-     │   ╰─────' 
-
-Because in the expression's type:
-  Here the type is:     #{a => ...}
-  Context expects type: #{...}
-  The expected map has no corresponding key for: a.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1769:18
      │
 1769 │     maps:without(non_list, #{}).
@@ -1790,12 +1770,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1839 │ │ │         #{a => ka, b => self()}
 1840 │ │ │     ).
      │ ╰─│─────^ maps:without(Keys, #{..}).
-Expression has type:   #{a => 'ka', b => pid()}
+Expression has type:   #{}
 Context expected type: #{b := pid()}
      │   ╰─────' 
 
 Because in the expression's type:
-  Here the type is:     #{b => ..., ...}
+  Here the type is:     #{...}
   Context expects type: #{b := ..., ...}
   The type of the expression is missing the following required keys: b.
 
@@ -1814,150 +1794,6 @@ Because in the expression's type:
   Here the type is:     #{d := ...}
   Context expects type: #{...}
   The expected map has no corresponding key for: d.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:1861:5
-     │
-1861 │     maps:without(L, M).
-     │     ^^^^^^^^^^^^^^^^^^
-     │     │
-     │     maps:without(L, M).
-Expression has type:   #{a => 'av', b => 'bv'}
-Context expected type: #{b := 'bv'}
-     │     
-
-Because in the expression's type:
-  Here the type is:     #{b => ..., ...}
-  Context expects type: #{b := ..., ...}
-  The type of the expression is missing the following required keys: b.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:1893:5
-     │
-1893 │     maps:without(maps_make_keys_a(), M).
-     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-     │     │
-     │     maps:without(maps_make_keys_a(), M).
-Expression has type:   #{a => 'av', b => 'bv'}
-Context expected type: #{b := 'bv'}
-     │     
-
-Because in the expression's type:
-  Here the type is:     #{b => ..., ...}
-  Context expects type: #{b := ..., ...}
-  The type of the expression is missing the following required keys: b.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:1898:5
-     │
-1898 │     maps:without(maps_make_keys_ac(), M).
-     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-     │     │
-     │     maps:without(maps_make_keys_ac(), M).
-Expression has type:   #{a => 'av', b => 'bv', c => 'cv'}
-Context expected type: #{b := 'bv'}
-     │     
-
-Because in the expression's type:
-  Here the type is:     #{b => ..., ...}
-  Context expects type: #{b := ..., ...}
-  The type of the expression is missing the following required keys: b.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:1903:5
-     │
-1903 │     maps:without(maps:keys(M2), M).
-     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-     │     │
-     │     maps:without(maps:keys(M2), M).
-Expression has type:   #{a => 'av', b => 'bv'}
-Context expected type: #{b := 'bv'}
-     │     
-
-Because in the expression's type:
-  Here the type is:     #{b => ..., ...}
-  Context expects type: #{b := ..., ...}
-  The type of the expression is missing the following required keys: b.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:1911:5
-     │
-1911 │     maps:without(maps_make_tuple_keys(), M).
-     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-     │     │
-     │     maps:without(maps_make_tuple_keys(), M).
-Expression has type:   #{{tag, a} => 'av', {tag, b} => 'bv', {tag, c} => 'cv'}
-Context expected type: #{{tag, c} := 'cv'}
-     │     
-
-Because in the expression's type:
-  Here the type is:     #{{tag, c} => ..., ...}
-  Context expects type: #{{tag, c} := ..., ...}
-  The type of the expression is missing the following required keys: {tag, c}.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:1941:5
-     │
-1941 │     maps:with(maps_make_keys_a(), M).
-     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-     │     │
-     │     maps:with(maps_make_keys_a(), M).
-Expression has type:   #{a => 'av', b => 'bv'}
-Context expected type: #{a := 'av'}
-     │     
-
-Because in the expression's type:
-  Here the type is:     #{a => ..., ...}
-  Context expects type: #{a := ..., ...}
-  The type of the expression is missing the following required keys: a.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:1947:5
-     │
-1947 │     maps:with(maps_make_keys_ac(), M).
-     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-     │     │
-     │     maps:with(maps_make_keys_ac(), M).
-Expression has type:   #{a => 'av', b => 'bv', c => 'cv'}
-Context expected type: #{a := 'av', c := 'cv'}
-     │     
-
-Because in the expression's type:
-  Here the type is:     #{a => ..., c => ..., ...}
-  Context expects type: #{a := ..., c := ..., ...}
-  The type of the expression is missing the following required keys: a, c.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:1952:5
-     │
-1952 │     maps:with(maps:keys(M2), M).
-     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-     │     │
-     │     maps:with(maps:keys(M2), M).
-Expression has type:   #{a => 'av', b => 'bv'}
-Context expected type: #{a := 'av'}
-     │     
-
-Because in the expression's type:
-  Here the type is:     #{a => ..., ...}
-  Context expects type: #{a := ..., ...}
-  The type of the expression is missing the following required keys: a.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:1960:5
-     │
-1960 │     maps:with(maps_make_tuple_keys(), M).
-     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-     │     │
-     │     maps:with(maps_make_tuple_keys(), M).
-Expression has type:   #{{tag, a} => 'av', {tag, b} => 'bv', {tag, c} => 'cv'}
-Context expected type: #{{tag, a} := 'av', {tag, b} := 'bv'}
-     │     
-
-Because in the expression's type:
-  Here the type is:     #{{tag, a} => ..., {tag, b} => ..., ...}
-  Context expects type: #{{tag, a} := ..., {tag, b} := ..., ...}
-  The type of the expression is missing the following required keys: {tag, a}, {tag, b}.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:2033:23
@@ -2480,4 +2316,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number()
 Context expected type: binary()
 
-196 ERRORS
+186 ERRORS
