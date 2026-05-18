@@ -57,7 +57,6 @@ use hir::File;
 use hir::FormIdx;
 use hir::InFile;
 use hir::Literal;
-use hir::MacroName;
 use hir::Module;
 use hir::Name;
 use hir::NameArity;
@@ -122,7 +121,6 @@ use types::XRefTarget;
 #[derive(Clone, Debug, Default)]
 struct IndexConfig {
     pub multi: bool,
-    pub schema2: bool,
 }
 
 struct IndexResult {
@@ -198,10 +196,7 @@ fn index_inner(
     ifdef: bool,
 ) -> Result<(IndexerMetrics, Vec<String>)> {
     let (indexer, _loaded) = GleanIndexer::new(args, cli, query_config, ifdef)?;
-    let config = IndexConfig {
-        multi: args.multi,
-        schema2: args.schema2,
-    };
+    let config = IndexConfig { multi: args.multi };
     let result = indexer.index(config)?;
     let errored_paths = result.errored_paths.clone();
     let (output_bytes, counts) = write_results(result, cli, args)?;
@@ -219,6 +214,11 @@ fn write_results(
     if args.v2 {
         eprintln!("elp-glean: --v2 is deprecated and now a no-op (v2 is always enabled)");
     }
+    if args.schema2 {
+        eprintln!(
+            "elp-glean: --schema2 is deprecated and now a no-op (v2 is the only supported schema)"
+        );
+    }
     let IndexResult {
         facts,
         module_index,
@@ -230,24 +230,16 @@ fn write_results(
     let mut total_counts = FactCounts::default();
     let mut app_infos_emitted = false;
     for (name, fact) in facts {
-        let (fact, counts) = if args.schema2 {
-            let (v1_facts, _) = fact.clone().into_glean_facts(&module_index);
-            let (mut v2_facts, counts) = fact.into_schema2_facts(&module_index, &app_index);
-            if !app_infos_emitted && !app_infos.is_empty() {
-                v2_facts.push(types::Fact::AppInfo2 {
-                    facts: app_infos
-                        .iter()
-                        .map(|ai| types::Key { key: ai.clone() })
-                        .collect(),
-                });
-                app_infos_emitted = true;
-            }
-            let mut all_facts = v1_facts;
-            all_facts.extend(v2_facts);
-            (all_facts, counts)
-        } else {
-            fact.into_glean_facts(&module_index)
-        };
+        let (mut fact, counts) = fact.into_schema2_facts(&module_index, &app_index);
+        if !app_infos_emitted && !app_infos.is_empty() {
+            fact.push(types::Fact::AppInfo2 {
+                facts: app_infos
+                    .iter()
+                    .map(|ai| types::Key { key: ai.clone() })
+                    .collect(),
+            });
+            app_infos_emitted = true;
+        }
         total_counts.accumulate(&counts);
         let content = if args.pretty {
             serde_json::to_string_pretty(&fact)?
@@ -310,17 +302,13 @@ impl GleanIndexer {
                     path_to_module_name(path).map(|name| ((*file_id).into(), name))
                 })
                 .collect();
-            // Collect OTP source roots for schema v2 facts
-            let otp_source_roots: Vec<_> = if config.schema2 {
-                let project_data = db.project_data(project_id);
-                project_data
-                    .otp_project_id
-                    .map(|otp_id| db.project_data(otp_id).source_roots.clone())
-                    .unwrap_or_default()
-            } else {
-                vec![]
-            };
-            // app index: file_id → OTP application name (for erlang.2 schema)
+            // Collect OTP source roots.
+            let project_data = db.project_data(project_id);
+            let otp_source_roots: Vec<_> = project_data
+                .otp_project_id
+                .map(|otp_id| db.project_data(otp_id).source_roots.clone())
+                .unwrap_or_default();
+            // app index: file_id → OTP application name
             let (app_index, app_infos) = {
                 let project_data = db.project_data(project_id);
                 let mut index = FxHashMap::default();
@@ -722,126 +710,8 @@ impl GleanIndexer {
     ) {
         let mut vars = FxHashMap::default();
         for xref in &mut xrefs.xrefs {
-            match &mut xref.target {
-                XRefTarget::Var(x) => {
-                    vars.insert(&xref.source, &x.key.name);
-                }
-                XRefTarget::Macro(x) => {
-                    let id: FileId = x.key.file_id.clone().into();
-                    let def_map = db.def_map(id);
-                    let name = Name::from_erlang_service(&x.key.name);
-                    let def = def_map.get_macros().get(&MacroName::new(name, x.key.arity));
-                    if let Some(def) = def {
-                        let range = def.source(db).syntax().text_range();
-                        let text = &db.file_text(id)[range];
-                        let text = format!("```erlang\n{text}\n```");
-
-                        // Generate links section from tagged_urls
-                        // If URL is empty, output display_name only - this
-                        // signifies preformatted markdown
-                        let links_section: String = x
-                            .key
-                            .tagged_urls
-                            .iter()
-                            .map(|url| {
-                                if url.url.is_empty() {
-                                    format!("{}\n", url.display_name)
-                                } else {
-                                    format!("[{}]({})\n", url.display_name, url.url)
-                                }
-                            })
-                            .collect();
-
-                        let doc = format!(
-                            "{}{}{}",
-                            links_section,
-                            text,
-                            x.key
-                                .expansion
-                                .as_ref()
-                                .map_or(String::new(), |e| format!("\n---\n\n{}", e))
-                        );
-                        let def_span: Location = range.into();
-                        let decl = Declaration::MacroDeclaration(
-                            MacroDecl {
-                                name: x.key.name.clone(),
-                                v1_fake_arity: Some(xref.source.start),
-                                v1_span: xref.source.clone(),
-                                arity: x.key.arity,
-                                span: def_span.clone(),
-                                definition_text: None,
-                            }
-                            .into(),
-                        );
-                        let doc_decl = Declaration::DocDeclaration(
-                            DocDecl {
-                                target: Box::new(decl.clone()),
-                                span: xref.source.clone(),
-                                text: doc,
-                                v1_skip: false,
-                            }
-                            .into(),
-                        );
-                        file_decl.v1_only_declarations.push(decl);
-                        file_decl.v1_only_declarations.push(doc_decl);
-                        x.key.v1_file_id = file_id.into();
-                        // @fb-only: Using xref.source.start as arity is a
-                        // @fb-only: design choice - see D55916496. This should
-                        // @fb-only: be revisited during Glean schema redesign.
-                        x.key.v1_arity = Some(xref.source.start);
-                    }
-                }
-                XRefTarget::Record(x)
-                    // Add documentation for records that have tagged_urls
-                    if !x.key.tagged_urls.is_empty() => {
-                        let id: FileId = x.key.file_id.clone().into();
-                        let def_map = db.def_map(id);
-                        let record_name = Name::from_erlang_service(&x.key.name);
-                        if let Some(def) = def_map.get_record(&record_name) {
-                            let range = def.source(db).syntax().text_range();
-                            let text = &db.file_text(id)[range];
-                            let text = format!("```erlang\n{text}\n```");
-
-                            // Generate links section from tagged_urls
-                            // If url is empty, display_name contains pre-formatted markdown
-                            let links_section: String = x
-                                .key
-                                .tagged_urls
-                                .iter()
-                                .map(|url| {
-                                    if url.url.is_empty() {
-                                        format!("{}\n", url.display_name)
-                                    } else {
-                                        format!("[{}]({})\n", url.display_name, url.url)
-                                    }
-                                })
-                                .collect();
-
-                            let doc = format!("{}{}", links_section, text);
-                            let def_span: Location = range.into();
-                            let decl = Declaration::RecordDeclaration(
-                                RecordDecl {
-                                    name: x.key.name.clone(),
-                                    v1_span: xref.source.clone(),
-                                    span: def_span.clone(),
-                                }
-                                .into(),
-                            );
-                            let doc_decl = Declaration::DocDeclaration(
-                                DocDecl {
-                                    target: Box::new(decl.clone()),
-                                    span: xref.source.clone(),
-                                    text: doc,
-                                    v1_skip: false,
-                                }
-                                .into(),
-                            );
-                            file_decl.v1_only_declarations.push(decl);
-                            file_decl.v1_only_declarations.push(doc_decl);
-                            x.key.v1_file_id = file_id.into();
-                        }
-                    }
-                _ => (),
+            if let XRefTarget::Var(x) = &mut xref.target {
+                vars.insert(&xref.source, &x.key.name);
             }
         }
         let var_decls = Self::types(db, project_id, file_id, vars);
@@ -860,7 +730,6 @@ impl GleanIndexer {
                     target: Box::new(decl.clone()),
                     span,
                     text: doc,
-                    v1_skip: false,
                 }
                 .into(),
             );
@@ -948,7 +817,6 @@ impl GleanIndexer {
                             target: Box::new(decl.clone()),
                             span: doc_range.into(),
                             text: doc,
-                            v1_skip: false,
                         }
                         .into(),
                     ));
@@ -963,7 +831,6 @@ impl GleanIndexer {
                             target: Box::new(decl.clone()),
                             span: doc_range.into(),
                             text,
-                            v1_skip: true,
                         }
                         .into(),
                     ));
@@ -977,7 +844,6 @@ impl GleanIndexer {
                             target: Box::new(decl.clone()),
                             span,
                             text: markdown,
-                            v1_skip: true,
                         }
                         .into(),
                     ));
@@ -994,8 +860,6 @@ impl GleanIndexer {
             let decl = Declaration::MacroDeclaration(
                 MacroDecl {
                     name: macros.name().to_string(),
-                    v1_fake_arity: macros.arity(),
-                    v1_span: span.clone(),
                     arity: macros.arity(),
                     span,
                     definition_text,
@@ -1030,7 +894,6 @@ impl GleanIndexer {
                     target: Box::new(decl.clone()),
                     span,
                     text,
-                    v1_skip: false,
                 }
                 .into(),
             ));
@@ -1046,7 +909,6 @@ impl GleanIndexer {
             let decl = Declaration::RecordDeclaration(
                 RecordDecl {
                     name: rec.to_string(),
-                    v1_span: span.clone(),
                     span: span.clone(),
                 }
                 .into(),
@@ -1057,7 +919,6 @@ impl GleanIndexer {
                     target: Box::new(decl.clone()),
                     span,
                     text,
-                    v1_skip: false,
                 }
                 .into(),
             ));
@@ -1081,7 +942,6 @@ impl GleanIndexer {
         Some(FileDeclaration {
             file_id: file_id.into(),
             declarations,
-            v1_only_declarations: vec![],
         })
     }
 
@@ -1470,9 +1330,7 @@ impl GleanIndexer {
         let arity = define.name.arity();
         let file_id: GleanFileId = macro_def.file_id.into();
         let target = MacroTarget {
-            v1_file_id: file_id.clone(),
             name: name.to_string(),
-            v1_arity: arity,
             file_id,
             arity,
             expansion,
@@ -1553,7 +1411,6 @@ impl GleanIndexer {
             source: range.into(),
             target: XRefTarget::Record(
                 RecordTarget {
-                    v1_file_id: def.file.file_id.into(),
                     name: def.record.name.to_string(),
                     file_id: def.file.file_id.into(),
                     tagged_urls,

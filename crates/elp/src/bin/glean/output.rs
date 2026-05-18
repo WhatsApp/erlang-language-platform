@@ -16,17 +16,14 @@ use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use itertools::Itertools;
 
-use super::types::CommentFact;
 use super::types::Declaration;
 use super::types::Fact;
 use super::types::FileDeclaration;
 use super::types::FileFact;
 use super::types::FileLinesFact;
-use super::types::FunctionDeclarationFact;
 use super::types::GleanFileId;
 use super::types::Key;
 use super::types::Location;
-use super::types::MFA;
 use super::types::ModuleFact;
 use super::types::Schema2CallbackDecl;
 use super::types::Schema2CallbackDef;
@@ -57,13 +54,8 @@ use super::types::Schema2VarXRef;
 use super::types::Schema2VarXRefsByFile;
 use super::types::Schema2XRef;
 use super::types::Schema2XRefsByFile;
-use super::types::XRefFact;
-use super::types::XRefFactVal;
 use super::types::XRefFile;
 use super::types::XRefTarget;
-
-const REC_ARITY: u32 = 99;
-const HEADER_ARITY: u32 = 100;
 
 #[derive(Debug, Default)]
 pub(crate) struct FactCounts {
@@ -133,236 +125,7 @@ impl IndexedFacts {
         }
     }
 
-    fn declaration_to_fact(
-        decl: Declaration,
-        file_id: GleanFileId,
-        module: String,
-    ) -> Option<FunctionDeclarationFact> {
-        let fact = match decl {
-            Declaration::FunctionDeclaration(d) => {
-                let fqn = MFA {
-                    module,
-                    name: d.key.name,
-                    arity: d.key.arity,
-                    file_id: file_id.clone(),
-                };
-                FunctionDeclarationFact {
-                    file_id,
-                    fqn,
-                    span: d.key.span,
-                }
-            }
-            Declaration::MacroDeclaration(d) => {
-                let fqn = MFA {
-                    module,
-                    name: d.key.name,
-                    arity: d.key.v1_fake_arity.unwrap_or(0),
-                    file_id: file_id.clone(),
-                };
-                FunctionDeclarationFact {
-                    file_id,
-                    fqn,
-                    span: d.key.v1_span,
-                }
-            }
-            Declaration::TypeDeclaration(d) => {
-                let fqn = MFA {
-                    module,
-                    name: d.key.name,
-                    arity: d.key.arity,
-                    file_id: file_id.clone(),
-                };
-                FunctionDeclarationFact {
-                    file_id,
-                    fqn,
-                    span: d.key.span,
-                }
-            }
-            Declaration::RecordDeclaration(d) => {
-                let fqn = MFA {
-                    module,
-                    name: d.key.name,
-                    arity: REC_ARITY,
-                    file_id: file_id.clone(),
-                };
-                FunctionDeclarationFact {
-                    file_id,
-                    fqn,
-                    span: d.key.v1_span,
-                }
-            }
-            Declaration::HeaderDeclaration(d) => {
-                let fqn = MFA {
-                    module,
-                    name: d.key.name,
-                    arity: HEADER_ARITY,
-                    file_id: file_id.clone(),
-                };
-                FunctionDeclarationFact {
-                    file_id,
-                    fqn,
-                    span: d.key.span,
-                }
-            }
-            Declaration::VarDeclaration(d) => {
-                let fqn = MFA {
-                    module,
-                    name: d.key.name,
-                    arity: d.key.span.start,
-                    file_id: file_id.clone(),
-                };
-                FunctionDeclarationFact {
-                    file_id,
-                    fqn,
-                    span: d.key.span,
-                }
-            }
-            Declaration::DocDeclaration(_) => return None,
-        };
-        Some(fact)
-    }
-
-    pub(crate) fn into_glean_facts(
-        mut self,
-        modules: &FxHashMap<GleanFileId, String>,
-    ) -> (Vec<Fact>, FactCounts) {
-        let file_lines_fact = mem::take(&mut self.file_line_facts);
-        let file_lines_fact = file_lines_fact.into_iter().map_into().collect();
-        let declaration_fact = mem::take(&mut self.file_declarations);
-        let mut declarations = vec![];
-        let mut comments = vec![];
-        for decl in declaration_fact {
-            if let Some(module) = modules.get(&decl.file_id) {
-                for d in decl
-                    .declarations
-                    .into_iter()
-                    .chain(decl.v1_only_declarations)
-                {
-                    let file_id = decl.file_id.clone();
-                    if let Declaration::DocDeclaration(doc) = &d {
-                        if doc.key.v1_skip {
-                            continue;
-                        }
-                        let declaration = doc.key.target.as_ref();
-                        if let Some(target) = Self::declaration_to_fact(
-                            declaration.clone(),
-                            file_id.clone(),
-                            module.clone(),
-                        ) {
-                            comments.push(
-                                CommentFact {
-                                    file_id,
-                                    declaration: target.into(),
-                                    span: doc.key.span.clone(),
-                                    text: doc.key.text.clone(),
-                                }
-                                .into(),
-                            );
-                            continue;
-                        }
-                    }
-                    if let Some(fact) = Self::declaration_to_fact(d, file_id, module.clone()) {
-                        declarations.push(fact);
-                    }
-                }
-            }
-        }
-        let declaration_count = declarations.len();
-        let doc_count = comments.len();
-        let declaration_fact = declarations.into_iter().map_into().collect();
-        let xref_fact = mem::take(&mut self.xrefs);
-        let mut xrefs = vec![];
-        let mut xref_count = 0usize;
-        for fact in xref_fact {
-            let file_id = fact.file_id;
-            let mut facts = vec![];
-            for xref in fact.xrefs {
-                xref_count += 1;
-                let source = xref.source;
-                let file_id = xref.target.v1_file_id();
-                if let Some(module) = modules.get(file_id) {
-                    let target = match xref.target {
-                        XRefTarget::Function(x) => MFA {
-                            module: module.clone(),
-                            name: x.key.name,
-                            arity: x.key.arity,
-                            file_id: x.key.file_id,
-                        },
-                        XRefTarget::Macro(x) => MFA {
-                            module: module.clone(),
-                            name: x.key.name,
-                            arity: x.key.v1_arity.unwrap_or(0),
-                            file_id: x.key.v1_file_id,
-                        },
-                        XRefTarget::Header(x) => MFA {
-                            module: module.clone(),
-                            name: x.key.name,
-                            arity: HEADER_ARITY,
-                            file_id: x.key.file_id,
-                        },
-                        XRefTarget::Record(x) => MFA {
-                            module: module.clone(),
-                            name: x.key.name,
-                            arity: REC_ARITY,
-                            file_id: x.key.v1_file_id,
-                        },
-                        XRefTarget::Type(x) => MFA {
-                            module: module.clone(),
-                            name: x.key.name,
-                            arity: x.key.arity,
-                            file_id: x.key.file_id,
-                        },
-                        XRefTarget::Var(x) => MFA {
-                            module: module.clone(),
-                            name: x.key.name,
-                            arity: source.start,
-                            file_id: x.key.file_id,
-                        },
-                        XRefTarget::RecordField(_) | XRefTarget::Callback(_) => continue,
-                    };
-                    let val = XRefFactVal { source, target };
-                    facts.push(val);
-                }
-            }
-            xrefs.push(XRefFact {
-                file_id,
-                xrefs: facts,
-            });
-        }
-        let xref_fact = xrefs.into_iter().map_into().collect();
-        let module_facts = mem::take(&mut self.module_facts);
-
-        let counts = FactCounts {
-            file_count: self.file_facts.len(),
-            module_count: module_facts.len(),
-            declaration_count,
-            var_decl_count: 0,
-            macro_usage_count: 0,
-            xref_count,
-            doc_count,
-        };
-
-        let module_facts = module_facts.into_iter().map_into().collect();
-        let facts = vec![
-            Fact::File {
-                facts: mem::take(&mut self.file_facts),
-            },
-            Fact::FileLine {
-                facts: file_lines_fact,
-            },
-            Fact::FunctionDeclaration {
-                facts: declaration_fact,
-            },
-            Fact::XRef { facts: xref_fact },
-            Fact::DeclarationComment { facts: comments },
-            Fact::Module {
-                facts: module_facts,
-            },
-        ];
-        (facts, counts)
-    }
-
-    /// Convert internal facts to erlang.2 schema output (dual-write).
+    /// Convert internal facts to erlang.2 schema output.
     pub(crate) fn into_schema2_facts(
         mut self,
         modules: &FxHashMap<GleanFileId, String>,
@@ -991,12 +754,19 @@ impl IndexedFacts {
             doc_count: comments.len(),
         };
 
-        let mut result = vec![];
-        if !extra_file_facts.is_empty() {
-            result.push(Fact::File {
-                facts: extra_file_facts,
-            });
-        }
+        let mut file_facts = mem::take(&mut self.file_facts);
+        file_facts.extend(extra_file_facts);
+        let file_line_facts = mem::take(&mut self.file_line_facts)
+            .into_iter()
+            .map_into()
+            .collect();
+
+        let mut result = vec![
+            Fact::File { facts: file_facts },
+            Fact::FileLine {
+                facts: file_line_facts,
+            },
+        ];
         result.extend([
             Fact::FuncDecl2 { facts: func_decls },
             Fact::MacroDecl2 { facts: macro_decls },

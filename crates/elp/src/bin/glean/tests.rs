@@ -57,7 +57,6 @@ fn serialization_test() {
             }
             .into(),
         )],
-        v1_only_declarations: vec![],
     };
 
     let xref = XRefFile {
@@ -114,7 +113,7 @@ fn serialization_test() {
         project: PathBuf::default(),
         module: None,
         to: None,
-        v2: true,
+        v2: false,
         schema2: false,
         pretty: false,
         multi: false,
@@ -153,6 +152,8 @@ fn schema2_serialization_test() {
     let predicates: Vec<&str> = schema2_facts
         .iter()
         .filter_map(|f| match f {
+            Fact::File { facts } if !facts.is_empty() => Some("src.File"),
+            Fact::FileLine { facts } if !facts.is_empty() => Some("src.FileLines"),
             Fact::FuncDecl2 { facts } if !facts.is_empty() => Some("FunctionDeclaration.2"),
             Fact::FuncDef2 { facts } if !facts.is_empty() => Some("FunctionDefinition.2"),
             Fact::DeclLocation2 { facts } if !facts.is_empty() => Some("DeclarationLocation.2"),
@@ -164,6 +165,8 @@ fn schema2_serialization_test() {
         .collect();
 
     for expected in [
+        "src.File",
+        "src.FileLines",
         "FunctionDeclaration.2",
         "FunctionDefinition.2",
         "DeclarationLocation.2",
@@ -229,11 +232,7 @@ fn declaration_target_test() {
     foo(X) -> X + 1.
     bar(X) -> foo(X).
     "#;
-    let config = IndexConfig {
-        schema2: true,
-        ..Default::default()
-    };
-    let (facts, _, _, _, module_index) = facts_with_annotations_with_config(spec, config);
+    let (facts, _, _, _, module_index) = facts_with_annotations(spec);
     let app_index = FxHashMap::default();
     let (schema2_facts, _) = facts.into_schema2_facts(&module_index, &app_index);
 
@@ -253,8 +252,7 @@ fn declaration_target_test() {
 }
 
 #[test]
-fn schema2_dual_write_test() {
-    // Verify dual-write produces both erlang.1 and erlang.2 facts
+fn schema2_flag_is_noop_test() {
     let spec = r#"
     //- /glean/app_glean/src/glean_module1.erl
     -module(glean_module1).
@@ -262,29 +260,41 @@ fn schema2_dual_write_test() {
     hello(X) -> X.
     "#;
     let (facts, _, _, _, module_index) = facts_with_annotations(spec);
-    let app_index = FxHashMap::default();
+    let build_result = |facts| {
+        let mut map = FxHashMap::default();
+        map.insert(FACTS_FILE.to_string(), facts);
+        IndexResult {
+            facts: map,
+            module_index: module_index.clone(),
+            app_index: FxHashMap::default(),
+            app_infos: vec![],
+            errored_paths: vec![],
+        }
+    };
+    let args = Glean {
+        project: PathBuf::default(),
+        module: None,
+        to: None,
+        v2: false,
+        schema2: false,
+        pretty: false,
+        multi: false,
+        print_metrics: false,
+    };
 
-    // Simulate dual-write: clone for v1, original for v2
-    let (v1_facts, _) = facts.clone().into_glean_facts(&module_index);
-    let (v2_facts, _) = facts.into_schema2_facts(&module_index, &app_index);
+    let mut cli_without_flag = Fake::default();
+    write_results(build_result(facts.clone()), &mut cli_without_flag, &args).expect("success");
+    let (without_flag_out, _) = cli_without_flag.to_strings();
 
-    // v1 should have FunctionDeclaration.1
-    let has_v1_func = v1_facts
-        .iter()
-        .any(|f| matches!(f, Fact::FunctionDeclaration { facts } if !facts.is_empty()));
-    assert!(
-        has_v1_func,
-        "Dual-write should produce erlang.1 FunctionDeclaration"
-    );
+    let mut cli_with_flag = Fake::default();
+    let args_with_schema2 = Glean {
+        schema2: true,
+        ..args.clone()
+    };
+    write_results(build_result(facts), &mut cli_with_flag, &args_with_schema2).expect("success");
+    let (with_flag_out, _) = cli_with_flag.to_strings();
 
-    // v2 should have FunctionDeclaration.2
-    let has_v2_func = v2_facts
-        .iter()
-        .any(|f| matches!(f, Fact::FuncDecl2 { facts } if !facts.is_empty()));
-    assert!(
-        has_v2_func,
-        "Dual-write should produce erlang.2 FunctionDeclaration.2"
-    );
+    assert_eq!(without_flag_out, with_flag_out);
 }
 
 #[test]
@@ -733,9 +743,9 @@ fn xref_macro_test() {
         -define(MAX(X, Y), if X > Y -> X; true -> Y end).
 
         baz(1) -> ?TAU;
-    %%             ^^^ macro.erl/macro/TAU/117/no_urls/6.28
+    %%             ^^^ macro.hrl/macro/TAU/no_arity/no_urls/6.28
         baz(N) -> ?MAX(N, 200).
-    %%             ^^^ macro.erl/macro/MAX/137/no_urls/if (N > 200) -> N; true -> 200 end
+    %%             ^^^ macro.erl/macro/MAX/2/no_urls/if (N > 200) -> N; true -> 200 end
 
     "#;
     xref_check(spec);
@@ -749,7 +759,7 @@ fn xref_macro_in_pat_test() {
         -define(TAU, 6.28).
 
         baz(?TAU) -> 1.
-    %%       ^^^ macro.erl/macro/TAU/54/no_urls/6.28
+    %%       ^^^ macro.erl/macro/TAU/no_arity/no_urls/6.28
 
     "#;
     xref_check(spec);
@@ -763,7 +773,7 @@ fn xref_macro_in_type_test() {
         -define(TYPE, integer()).
 
         -spec baz(ok) -> ?TYPE.
-    %%                    ^^^^ macro.erl/macro/TYPE/73/no_urls/erlang:integer()
+    %%                    ^^^^ macro.erl/macro/TYPE/no_arity/no_urls/erlang:integer()
         baz(ok) -> 1.
 
     "#;
@@ -777,7 +787,7 @@ fn xref_macro_in_term_test() {
         -module(macro).
        -define(FOO(X), X).
        -wild(?FOO(atom)).
-    %%        ^^^ macro.erl/macro/FOO/53/no_urls/atom
+    %%        ^^^ macro.erl/macro/FOO/1/no_urls/atom
 
     "#;
     xref_check(spec);
@@ -972,21 +982,6 @@ pub(crate) fn facts_with_annotations(
     DiagnosticsEnabled,
     FxHashMap<GleanFileId, String>,
 ) {
-    let config = IndexConfig::default();
-    facts_with_annotations_with_config(spec, config)
-}
-
-#[allow(clippy::type_complexity)]
-fn facts_with_annotations_with_config(
-    spec: &str,
-    config: IndexConfig,
-) -> (
-    IndexedFacts,
-    HashMap<GleanFileId, Vec<(TextRange, String)>>,
-    HashMap<GleanFileId, String>,
-    DiagnosticsEnabled,
-    FxHashMap<GleanFileId, String>,
-) {
     let (db, fixture) = RootDatabase::with_fixture(spec);
     let project_id = ProjectId(0);
     let host = AnalysisHost::new(db);
@@ -999,7 +994,7 @@ fn facts_with_annotations_with_config(
         facts,
         module_index,
         ..
-    } = glean.index(config).expect("success");
+    } = glean.index(IndexConfig::default()).expect("success");
     let facts = facts.into_values().next().unwrap();
     let mut expected_by_file: HashMap<GleanFileId, _> = HashMap::new();
     let mut file_names = HashMap::new();
@@ -1035,7 +1030,7 @@ pub(crate) fn xref_check(spec: &str) {
         for xref in xref_fact.xrefs {
             let range: TextRange = xref.source.clone().into();
             let file_name = file_names
-                .get(xref.target.v1_file_id())
+                .get(xref.target.file_id())
                 .expect("must be present");
             let label = xref.target.to_string();
             if label.is_empty() {
@@ -1235,7 +1230,7 @@ impl fmt::Display for XRefTarget {
                 f.write_str(format!("func/{}/{}", xref.key.name, xref.key.arity).as_str())
             }
             XRefTarget::Macro(xref) => {
-                let arity = match &xref.key.v1_arity {
+                let arity = match &xref.key.arity {
                     Some(arity) => arity.to_string(),
                     None => "no_arity".to_string(),
                 };

@@ -573,9 +573,9 @@ pub struct Glean {
     /// Path to a directory where to dump result
     #[bpaf(argument("TO"))]
     pub to: Option<PathBuf>,
-    /// Produce glean db with macros, types, xrefs. Incompatible with previous
+    /// Deprecated no-op.
     pub v2: bool,
-    /// Emit erlang.2 schema glean facts
+    /// Deprecated no-op.
     pub schema2: bool,
     /// Pretty print
     pub pretty: bool,
