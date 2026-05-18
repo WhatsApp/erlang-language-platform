@@ -1963,6 +1963,49 @@ fn ssr_glob_match_empty_tuple_with_only_glob() {
 }
 
 // -----------------------------------------------------------------
+// Glob: begin..end block bodies.
+// -----------------------------------------------------------------
+
+#[test]
+fn ssr_glob_match_block_body() {
+    assert_matches(
+        "ssr: begin _@@Body end.",
+        "f() -> begin a, b, c end.",
+        &[("begin a, b, c end", &[("_@@Body", &["a", "b", "c"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_block_with_prefix() {
+    assert_matches(
+        "ssr: begin setup, _@@Rest end.",
+        "f() -> begin setup, work, cleanup end.",
+        &[(
+            "begin setup, work, cleanup end",
+            &[("_@@Rest", &["work", "cleanup"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_block_single() {
+    assert_matches(
+        "ssr: begin _@@Body end.",
+        "f() -> begin ok end.",
+        &[("begin ok end", &[("_@@Body", &["ok"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_block_prefix_mismatch() {
+    assert_matches(
+        "ssr: begin setup, _@@Rest end.",
+        "f() -> begin other, work end.",
+        &[],
+    );
+}
+
+// -----------------------------------------------------------------
 // Glob: cross-occurrence equivalence and public retrieval API
 // (commit 5).
 // -----------------------------------------------------------------
