@@ -202,6 +202,15 @@ fn try_main(cli: &mut dyn Cli, mut args: Args) -> Result<()> {
         args::Command::ProjectInfo(args) => {
             build_info_cli::save_project_info(args, cli, &query_config)?
         }
+        args::Command::Lint(lint_args) if lint_args.connect => {
+            #[cfg(unix)]
+            daemon::connect_lint(lint_args, cli)?;
+            #[cfg(not(unix))]
+            {
+                let _ = lint_args;
+                anyhow::bail!(DAEMON_UNSUPPORTED);
+            }
+        }
         args::Command::Lint(args) => lint_cli::run_lint_command(args, cli, &query_config, ifdef)?,
         args::Command::Ssr(ssr_args) => {
             ssr_cli::run_ssr_command(ssr_args, cli, &query_config, use_color, ifdef)?

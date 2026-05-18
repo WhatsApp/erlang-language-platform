@@ -27,6 +27,7 @@ use hir::fold::ParenStrategy;
 use hir::fold::Strategy;
 use itertools::Itertools;
 use serde::Deserialize;
+use serde::Serialize;
 
 use crate::args::Command::Help;
 
@@ -265,7 +266,8 @@ pub struct RunServer {}
 #[derive(Clone, Debug, Bpaf)]
 pub struct Version {}
 
-#[derive(Debug, Clone, Bpaf)]
+#[derive(Debug, Clone, Default, Bpaf, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Lint {
     /// Path to directory with project, or to a JSON file (defaults to `.`)
     #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
@@ -288,6 +290,8 @@ pub struct Lint {
     /// Rebar3 profile to pickup (default is test)
     #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
     pub profile: String,
+    /// Use a persistent daemon for fast turnaround (auto-starts if needed)
+    pub connect: bool,
 
     /// Also generate diagnostics for generated files
     pub include_generated: bool,

@@ -75,9 +75,11 @@ use codespan_reporting::term::termcolor::WriteColor;
 use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
+use elp::read_lint_config_file;
 use elp::watchman::UpdateResult;
 use elp::watchman::Watchman;
 use elp_eqwalizer::Mode;
+use elp_ide::diagnostics::LintConfig;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_log::telemetry;
 use elp_project_model::DiscoverConfig;
@@ -93,8 +95,10 @@ use crate::args::Eqwalize;
 use crate::args::EqwalizeAll;
 use crate::args::EqwalizeApp;
 use crate::args::EqwalizeTarget;
+use crate::args::Lint;
 use crate::args::Shell;
 use crate::eqwalizer_cli;
+use crate::lint_cli;
 use crate::reporting;
 use crate::shell::ShellCommand;
 
@@ -249,6 +253,26 @@ impl Drop for DaemonGuard {
     }
 }
 
+/// Immutable per-daemon state borrowed by every request handler.
+struct DaemonContext<'a> {
+    /// Discovered manifest root — used for shell command parsing.
+    project: &'a Path,
+    /// User-supplied `--project` arg — used for `.elp_lint.toml` walk-up.
+    /// Can differ from `project` (Buck pushes manifest root much higher).
+    user_project: &'a Path,
+    manifest: &'a ProjectManifest,
+    elp_config: &'a ElpConfig,
+    query_config: &'a BuckQueryConfig,
+    ifdef: bool,
+}
+
+/// Mutable per-daemon state that survives across requests.
+struct DaemonState {
+    loaded: LoadResult,
+    watchman: Watchman,
+    lint_config: LintConfig,
+}
+
 pub fn daemon_command(
     cmd: &DaemonCommand,
     cli: &mut dyn Cli,
@@ -315,6 +339,26 @@ fn run_daemon_server(
         ifdef,
     )?;
     watchman.set_project_dirs(&loaded);
+
+    // Read .elp_lint.toml (walks up from project); missing → default; parse
+    // error at spawn → fail fast. Reloaded on watchman events.
+    let lint_config = read_lint_config_file(&args.project, &None)?;
+    elp::apply_lint_config(&mut loaded.analysis_host, &lint_config);
+
+    let mut state = DaemonState {
+        loaded,
+        watchman,
+        lint_config,
+    };
+    let ctx = DaemonContext {
+        project: &root,
+        user_project: &args.project,
+        manifest: &manifest,
+        elp_config: &elp_config,
+        query_config,
+        ifdef,
+    };
+
     telemetry::report_elapsed_time("daemon operational", start_time);
 
     eprintln!("[elp-daemon] Ready, listening on {}", sock.display());
@@ -357,17 +401,7 @@ fn run_daemon_server(
         match conn_rx.recv_timeout(Duration::from_secs(2)) {
             Ok(stream) => {
                 last_activity = Instant::now();
-                let should_stop = handle_connection(
-                    stream,
-                    &root,
-                    &mut loaded,
-                    &mut watchman,
-                    &manifest,
-                    &elp_config,
-                    query_config,
-                    ifdef,
-                    cli,
-                );
+                let should_stop = handle_connection(stream, &mut state, &ctx, cli);
                 if let Ok(true) = should_stop {
                     eprintln!("[elp-daemon] Stop requested, shutting down");
                     break;
@@ -391,16 +425,10 @@ fn run_daemon_server(
 }
 
 /// Handle a single client connection. Returns Ok(true) if the daemon should stop.
-#[allow(clippy::too_many_arguments)]
 fn handle_connection(
     stream: UnixStream,
-    project: &Path,
-    loaded: &mut LoadResult,
-    watchman: &mut Watchman,
-    manifest: &ProjectManifest,
-    elp_config: &ElpConfig,
-    query_config: &BuckQueryConfig,
-    ifdef: bool,
+    state: &mut DaemonState,
+    ctx: &DaemonContext<'_>,
     cli: &mut dyn Cli,
 ) -> Result<bool> {
     let mut reader = BufReader::new(&stream);
@@ -412,7 +440,15 @@ fn handle_connection(
         return Ok(false);
     }
 
-    eprintln!("[elp-daemon] Command: {line}");
+    // Strip the JSON payload from log output for lint commands — it can be
+    // multi-KB and dominates the log file.
+    if let Some(prefix) = line.split_once(' ').map(|(p, _)| p)
+        && prefix == "lint"
+    {
+        eprintln!("[elp-daemon] Command: lint <json>");
+    } else {
+        eprintln!("[elp-daemon] Command: {line}");
+    }
 
     // Handle stop command
     if line == "__stop__" {
@@ -424,7 +460,7 @@ fn handle_connection(
     }
 
     // Check for file changes and apply them
-    match watchman.poll_and_apply_changes(loaded)? {
+    match state.watchman.poll_and_apply_changes(&mut state.loaded)? {
         UpdateResult::NeedsRestart { reason } => {
             eprintln!("[elp-daemon] {reason}");
             let done = serde_json::to_string(&DoneMessage::ok().with_restart())?;
@@ -435,23 +471,70 @@ fn handle_connection(
         }
         UpdateResult::NeedsFullReload { reason } => {
             eprintln!("[elp-daemon] {reason}");
-            *loaded = load::load_project_from_manifest(
+            state.loaded = load::load_project_from_manifest(
                 cli,
-                manifest,
-                elp_config,
+                ctx.manifest,
+                ctx.elp_config,
                 IncludeOtp::Yes,
                 Mode::Shell,
-                query_config,
-                ifdef,
+                ctx.query_config,
+                ctx.ifdef,
             )?;
-            watchman.set_project_dirs(loaded);
+            state.watchman.set_project_dirs(&state.loaded);
+            // Fresh analysis_host loses the lint config; re-apply.
+            elp::apply_lint_config(&mut state.loaded.analysis_host, &state.lint_config);
+        }
+        UpdateResult::NeedsLintConfigReload { reason } => {
+            eprintln!("[elp-daemon] {reason}");
+            // Parse failure → restart rather than carry stale config forward.
+            match read_lint_config_file(ctx.user_project, &None) {
+                Ok(new_config) => {
+                    state.lint_config = new_config;
+                    elp::apply_lint_config(&mut state.loaded.analysis_host, &state.lint_config);
+                }
+                Err(e) => {
+                    eprintln!("[elp-daemon] Failed to reload .elp_lint.toml, restarting: {e}");
+                    let done = serde_json::to_string(&DoneMessage::ok().with_restart())?;
+                    let mut writer = BufWriter::new(&stream);
+                    writeln!(writer, "{done}")?;
+                    writer.flush()?;
+                    return Ok(true);
+                }
+            }
         }
         UpdateResult::Updated => {}
     }
 
+    // Lint requests use a JSON-encoded `Lint` struct on the wire — too many
+    // flags to express through the shell parser. Handle them before falling
+    // through to ShellCommand::parse.
+    if let Some(json) = line.strip_prefix("lint ") {
+        let mut socket_cli = SocketCli::new(stream.try_clone()?);
+        let done = match serde_json::from_str::<Lint>(json) {
+            Ok(mut lint_args) => {
+                lint_args.format = Some("json".to_string());
+                match lint_cli::do_lint(
+                    &lint_args,
+                    &state.lint_config,
+                    &mut state.loaded,
+                    &mut socket_cli,
+                ) {
+                    Ok(()) => DoneMessage::ok(),
+                    Err(e) => DoneMessage::error(e.to_string()),
+                }
+            }
+            Err(e) => DoneMessage::error(format!("invalid lint payload: {e}")),
+        };
+        let done = done.with_stderr(std::mem::take(&mut socket_cli.stderr));
+        let done = serde_json::to_string(&done)?;
+        writeln!(socket_cli, "{done}")?;
+        socket_cli.flush()?;
+        return Ok(false);
+    }
+
     // Create a shell struct for command parsing
     let shell = Shell {
-        project: project.to_path_buf(),
+        project: ctx.project.to_path_buf(),
         command: vec![],
     };
 
@@ -464,7 +547,11 @@ fn handle_connection(
         Ok(Some(ShellCommand::Quit)) => (DoneMessage::ok(), true),
         Ok(Some(ShellCommand::ShellEqwalize(mut eqwalize))) => {
             eqwalize.format = Some("json".to_string());
-            let done = match eqwalizer_cli::do_eqwalize_module(&eqwalize, loaded, &mut socket_cli) {
+            let done = match eqwalizer_cli::do_eqwalize_module(
+                &eqwalize,
+                &mut state.loaded,
+                &mut socket_cli,
+            ) {
                 Ok(()) => DoneMessage::ok(),
                 Err(e) => DoneMessage::error(e.to_string()),
             };
@@ -472,8 +559,11 @@ fn handle_connection(
         }
         Ok(Some(ShellCommand::ShellEqwalizeApp(mut eqwalize_app))) => {
             eqwalize_app.format = Some("json".to_string());
-            let done = match eqwalizer_cli::do_eqwalize_app(&eqwalize_app, loaded, &mut socket_cli)
-            {
+            let done = match eqwalizer_cli::do_eqwalize_app(
+                &eqwalize_app,
+                &mut state.loaded,
+                &mut socket_cli,
+            ) {
                 Ok(()) => DoneMessage::ok(),
                 Err(e) => DoneMessage::error(e.to_string()),
             };
@@ -481,8 +571,11 @@ fn handle_connection(
         }
         Ok(Some(ShellCommand::ShellEqwalizeAll(mut eqwalize_all))) => {
             eqwalize_all.format = Some("json".to_string());
-            let done = match eqwalizer_cli::do_eqwalize_all(&eqwalize_all, loaded, &mut socket_cli)
-            {
+            let done = match eqwalizer_cli::do_eqwalize_all(
+                &eqwalize_all,
+                &mut state.loaded,
+                &mut socket_cli,
+            ) {
                 Ok(()) => DoneMessage::ok(),
                 Err(e) => DoneMessage::error(e.to_string()),
             };
@@ -492,7 +585,7 @@ fn handle_connection(
             eqwalize_target.format = Some("json".to_string());
             let done = match eqwalizer_cli::do_eqwalize_target(
                 &eqwalize_target,
-                loaded,
+                &mut state.loaded,
                 &mut socket_cli,
             ) {
                 Ok(()) => DoneMessage::ok(),
@@ -615,7 +708,10 @@ fn connect_and_run(
     }
 
     if exit_code != 0 {
-        bail!("eqwalizer reported errors");
+        // Shared between eqwalize and lint; the daemon's own error message
+        // was already printed to stderr above, so the bail is just an
+        // exit-code carrier.
+        bail!("Errors found");
     }
     Ok(())
 }
@@ -717,6 +813,59 @@ pub fn connect_eqwalize_target(args: &EqwalizeTarget, cli: &mut dyn Cli) -> Resu
     let format_json = args.format.is_some();
     // eqwalize-target is buck-only, so profile is always "test" and rebar is always false
     connect_and_run(&cmd, &args.project, "test", false, format_json, cli)
+}
+
+/// Reject `Lint` flag combinations that don't make sense in daemon mode.
+///
+/// Some flags (config sources) must be fixed at daemon spawn time; others
+/// (filesystem outputs, fix application, process-level stats) would resolve
+/// against the daemon process instead of the client.
+fn validate_lint_for_daemon(args: &Lint) -> Result<()> {
+    if args.read_config {
+        bail!(
+            "--read-config is not supported with --connect; the daemon reads .elp_lint.toml at startup"
+        );
+    }
+    if args.config_file.is_some() {
+        bail!(
+            "--config-file is not supported with --connect; the daemon's lint config is fixed at startup"
+        );
+    }
+    if args.to.is_some() {
+        bail!(
+            "--to is not supported with --connect (paths resolve relative to the daemon process, not the client)"
+        );
+    }
+    if args.report_system_stats {
+        bail!(
+            "--report-system-stats is not supported with --connect (would measure daemon process state, not lint cost)"
+        );
+    }
+    if args.apply_fix {
+        bail!("--apply-fix is not yet supported with --connect");
+    }
+    // `--no-diags` flips the JSON writer to emit a plain-text per-module
+    // summary, which the daemon client's per-line JSON parser would reject.
+    if !args.print_diags {
+        bail!(
+            "--no-diags is not supported with --connect (the daemon's JSON wire format has no plain-text summary)"
+        );
+    }
+    Ok(())
+}
+
+pub fn connect_lint(args: &Lint, cli: &mut dyn Cli) -> Result<()> {
+    validate_lint_for_daemon(args)?;
+    let cmd = format!("lint {}", serde_json::to_string(args)?);
+    let format_json = args.format.is_some();
+    connect_and_run(
+        &cmd,
+        &args.project,
+        &args.profile,
+        args.rebar,
+        format_json,
+        cli,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -874,6 +1023,210 @@ mod tests {
         let json = serde_json::to_string(&msg).unwrap();
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert!(v.get("stderr").is_none());
+    }
+
+    // -- Lint payload + validation --
+
+    /// Locks down the wire JSON shape AND verifies both encode and decode
+    /// directions. If a new field is added to `Lint`, this snapshot will
+    /// fail and force an intentional update (run with `UPDATE_EXPECT=1`),
+    /// which surfaces the wire-format change at review time.
+    #[test]
+    fn lint_payload_round_trips_json() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+        use expect_test::expect;
+
+        let original = Lint {
+            project: PathBuf::from("/some/project"),
+            module: Some("my_mod".to_string()),
+            app: Some("my_app".to_string()),
+            file: vec!["a.erl".to_string(), "b.erl".to_string()],
+            path: Some(PathBuf::from("/some/path")),
+            rebar: true,
+            profile: "prod".to_string(),
+            connect: true,
+            include_generated: true,
+            print_diags: false,
+            format: Some("json".to_string()),
+            include_erlc_diagnostics: true,
+            include_eqwalizer_diagnostics: true,
+            include_suppressed: true,
+            use_cli_severity: true,
+            severity: Some("warning".to_string()),
+            diagnostic_ignore: Some("W0001".to_string()),
+            diagnostic_filter: Some("W0010".to_string()),
+            experimental_diags: true,
+            arc_patch: true,
+            ignore_apps: vec!["dep_a".to_string(), "dep_b".to_string()],
+            ..Lint::default()
+        };
+
+        // struct -> JSON (pretty-printed for readable snapshot)
+        let expected_json = serde_json::to_string_pretty(&original).unwrap();
+        expect![[r#"
+            {
+              "project": "/some/project",
+              "module": "my_mod",
+              "app": "my_app",
+              "file": [
+                "a.erl",
+                "b.erl"
+              ],
+              "path": "/some/path",
+              "rebar": true,
+              "profile": "prod",
+              "connect": true,
+              "include_generated": true,
+              "include_tests": false,
+              "print_diags": false,
+              "format": "json",
+              "include_erlc_diagnostics": true,
+              "include_ct_diagnostics": false,
+              "include_edoc_diagnostics": false,
+              "include_eqwalizer_diagnostics": true,
+              "include_suppressed": true,
+              "use_cli_severity": true,
+              "severity": "warning",
+              "diagnostic_ignore": "W0001",
+              "diagnostic_filter": "W0010",
+              "experimental_diags": true,
+              "read_config": false,
+              "config_file": null,
+              "apply_fix": false,
+              "ignore_fix_only": false,
+              "fixme_fix_only": false,
+              "to": null,
+              "recursive": false,
+              "with_check": false,
+              "check_eqwalize_all": false,
+              "one_shot": false,
+              "arc_patch": true,
+              "report_system_stats": false,
+              "no_stream": false,
+              "ignore_apps": [
+                "dep_a",
+                "dep_b"
+              ]
+            }"#]]
+        .assert_eq(&expected_json);
+
+        // JSON -> struct -> JSON (other direction; same JSON must come back)
+        let parsed: Lint = serde_json::from_str(&expected_json).unwrap();
+        let reserialized = serde_json::to_string_pretty(&parsed).unwrap();
+        assert_eq_expected!(expected_json, reserialized);
+    }
+
+    #[test]
+    fn lint_payload_tolerates_unknown_fields() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        // Forward compatibility: an older daemon receiving a newer client's
+        // payload should ignore fields it doesn't recognise rather than error.
+        let json = r#"{"project":"/p","profile":"test","__future_field__":42}"#;
+        let parsed: Lint = serde_json::from_str(json).unwrap();
+        let expected_project = PathBuf::from("/p");
+        assert_eq_expected!(expected_project, parsed.project);
+        let expected_profile = "test";
+        assert_eq_expected!(expected_profile, parsed.profile);
+    }
+
+    #[test]
+    fn validate_lint_for_daemon_accepts_safe_args() {
+        let args = Lint {
+            project: PathBuf::from("."),
+            module: Some("foo".to_string()),
+            connect: true,
+            // print_diags=true matches the bpaf default for `--no-diags`
+            // (absent ⇒ true). Lint::default() leaves it at bool::default()=false.
+            print_diags: true,
+            ..Lint::default()
+        };
+        assert!(validate_lint_for_daemon(&args).is_ok());
+    }
+
+    fn assert_rejects_with_flag(flag: &str, args: Lint) {
+        let err = match validate_lint_for_daemon(&args) {
+            Ok(()) => panic!("expected {flag} to be rejected with --connect"),
+            Err(e) => e,
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains(flag),
+            "error message for {flag} should mention the flag name; got: {msg}"
+        );
+    }
+
+    #[test]
+    fn validate_lint_for_daemon_rejects_read_config() {
+        assert_rejects_with_flag(
+            "--read-config",
+            Lint {
+                connect: true,
+                read_config: true,
+                ..Lint::default()
+            },
+        );
+    }
+
+    #[test]
+    fn validate_lint_for_daemon_rejects_config_file() {
+        assert_rejects_with_flag(
+            "--config-file",
+            Lint {
+                connect: true,
+                config_file: Some("x.toml".to_string()),
+                ..Lint::default()
+            },
+        );
+    }
+
+    #[test]
+    fn validate_lint_for_daemon_rejects_to() {
+        assert_rejects_with_flag(
+            "--to",
+            Lint {
+                connect: true,
+                to: Some(PathBuf::from("/tmp/out")),
+                ..Lint::default()
+            },
+        );
+    }
+
+    #[test]
+    fn validate_lint_for_daemon_rejects_report_system_stats() {
+        assert_rejects_with_flag(
+            "--report-system-stats",
+            Lint {
+                connect: true,
+                report_system_stats: true,
+                ..Lint::default()
+            },
+        );
+    }
+
+    #[test]
+    fn validate_lint_for_daemon_rejects_apply_fix() {
+        assert_rejects_with_flag(
+            "--apply-fix",
+            Lint {
+                connect: true,
+                apply_fix: true,
+                ..Lint::default()
+            },
+        );
+    }
+
+    #[test]
+    fn validate_lint_for_daemon_rejects_no_diags() {
+        // `print_diags = false` corresponds to passing `--no-diags`.
+        assert_rejects_with_flag(
+            "--no-diags",
+            Lint {
+                connect: true,
+                print_diags: false,
+                ..Lint::default()
+            },
+        );
     }
 
     // -- Diagnostic Display --

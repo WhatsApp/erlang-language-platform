@@ -102,7 +102,16 @@ impl Watchman {
             return Ok(UpdateResult::Updated);
         }
 
-        if result.files.iter().any(|f| is_elp_config_file(&f.name)) {
+        // Branches that throw away the in-memory project state can return
+        // without applying VFS changes — the daemon will rebuild from scratch
+        // (or exit). Order matters: project-config changes shadow lint-config
+        // and suite-file changes, which shadow ordinary source changes.
+
+        if result
+            .files
+            .iter()
+            .any(|f| is_elp_proj_config_file(&f.name))
+        {
             return Ok(UpdateResult::NeedsRestart {
                 reason: "ELP config change detected, restart required",
             });
@@ -124,8 +133,22 @@ impl Watchman {
             });
         }
 
+        // `.elp_lint.toml` change is hot-reloaded by the caller; the daemon
+        // keeps its loaded project, so we MUST still apply any non-config
+        // changes from the same batch to VFS before advancing the clock —
+        // otherwise batched source-file changes are silently lost.
+        let lint_config_changed = result
+            .files
+            .iter()
+            .any(|f| is_elp_lint_config_file(&f.name));
+
         let vfs = &mut loaded.vfs;
         for file in &result.files {
+            // .elp_lint.toml itself is not tracked in VFS; the daemon's
+            // reload path reads it via read_lint_config_file directly.
+            if is_elp_lint_config_file(&file.name) {
+                continue;
+            }
             let path = self.watch.join(&file.name);
             let vfs_path = VfsPath::from(AbsPathBuf::assert(
                 Utf8PathBuf::from_path_buf(path.clone()).expect("UTF8 conversion failed"),
@@ -145,9 +168,15 @@ impl Watchman {
             }
         }
         loaded.apply_vfs_changes();
-
         self.clock = result.clock;
-        Ok(UpdateResult::Updated)
+
+        if lint_config_changed {
+            Ok(UpdateResult::NeedsLintConfigReload {
+                reason: "Lint config change detected, reloading",
+            })
+        } else {
+            Ok(UpdateResult::Updated)
+        }
     }
 
     fn get_clock_for(watch: &Path) -> Result<String> {
@@ -189,6 +218,7 @@ pub enum UpdateResult {
     Updated,
     NeedsFullReload { reason: &'static str },
     NeedsRestart { reason: &'static str },
+    NeedsLintConfigReload { reason: &'static str },
 }
 
 fn collect_project_dirs(loaded: &LoadResult, watch_root: &Path) -> Vec<PathBuf> {
@@ -236,25 +266,66 @@ fn build_watchman_expression(project_dirs: &[PathBuf]) -> serde_json::Value {
     ])
 }
 
-fn is_elp_config_file(name: &str) -> bool {
-    let basename = Path::new(name)
+fn file_basename(name: &str) -> &str {
+    Path::new(name)
         .file_name()
         .and_then(|f| f.to_str())
-        .unwrap_or("");
-    matches!(basename, ".elp.toml" | ".elp_lint.toml")
+        .unwrap_or("")
+}
+
+fn is_elp_proj_config_file(name: &str) -> bool {
+    file_basename(name) == ".elp.toml"
+}
+
+fn is_elp_lint_config_file(name: &str) -> bool {
+    file_basename(name) == ".elp_lint.toml"
 }
 
 fn is_config_file(name: &str) -> bool {
-    let basename = Path::new(name)
-        .file_name()
-        .and_then(|f| f.to_str())
-        .unwrap_or("");
     matches!(
-        basename,
+        file_basename(name),
         "BUCK" | "TARGETS" | "TARGETS.v2" | "rebar.config" | "rebar.config.script"
     )
 }
 
 fn is_suite_file(name: &str) -> bool {
     name.ends_with("_SUITE.erl")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn elp_proj_config_matches_only_elp_toml() {
+        assert!(is_elp_proj_config_file(".elp.toml"));
+        assert!(is_elp_proj_config_file("path/to/.elp.toml"));
+        assert!(!is_elp_proj_config_file(".elp_lint.toml"));
+        assert!(!is_elp_proj_config_file("path/to/.elp_lint.toml"));
+        assert!(!is_elp_proj_config_file("BUCK"));
+        assert!(!is_elp_proj_config_file("src/foo.erl"));
+    }
+
+    #[test]
+    fn elp_lint_config_matches_only_elp_lint_toml() {
+        assert!(is_elp_lint_config_file(".elp_lint.toml"));
+        assert!(is_elp_lint_config_file("path/to/.elp_lint.toml"));
+        assert!(!is_elp_lint_config_file(".elp.toml"));
+        assert!(!is_elp_lint_config_file("path/to/.elp.toml"));
+        assert!(!is_elp_lint_config_file("rebar.config"));
+        assert!(!is_elp_lint_config_file("src/foo.erl"));
+    }
+
+    #[test]
+    fn project_and_lint_config_predicates_are_disjoint() {
+        // Ensures a single file change can't trigger both restart and reload —
+        // important because handle_connection's match treats them as separate
+        // branches with different recovery actions.
+        for name in [".elp.toml", ".elp_lint.toml", "deep/nested/.elp_lint.toml"] {
+            assert!(
+                !(is_elp_proj_config_file(name) && is_elp_lint_config_file(name)),
+                "{name} matched both predicates"
+            );
+        }
+    }
 }

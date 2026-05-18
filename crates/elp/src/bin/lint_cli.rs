@@ -114,6 +114,41 @@ pub fn run_lint_command(
     let start_time = SystemTime::now();
     let memory_start = MemoryUsage::now();
 
+    let lint_config = if args.read_config || args.config_file.is_some() {
+        read_lint_config_file(&args.project, &args.config_file)?
+    } else {
+        LintConfig::default()
+    };
+
+    // We load the project after loading config, in case it bails with
+    // errors. No point wasting time if the config is wrong.
+    let mut loaded = load_project(args, cli, query_config, ifdef, &lint_config)?;
+
+    telemetry::report_elapsed_time("lint operational", start_time);
+
+    let result = do_lint(args, &lint_config, &mut loaded, cli);
+
+    telemetry::report_elapsed_time("lint done", start_time);
+
+    let memory_end = MemoryUsage::now();
+    let memory_used = memory_end - memory_start;
+
+    // Print memory usage at the end if requested and format is normal
+    if args.is_format_normal() && args.report_system_stats {
+        let (analysis_host, vfs) = loaded.into_parts();
+        print_memory_usage(analysis_host, vfs, cli)?;
+        writeln!(cli, "{}", memory_used)?;
+    }
+
+    result
+}
+
+pub fn do_lint(
+    args: &Lint,
+    lint_config: &LintConfig,
+    loaded: &mut LoadResult,
+    cli: &mut dyn Cli,
+) -> Result<()> {
     if args.include_ct_diagnostics && args.is_format_normal() {
         writeln!(
             cli.err(),
@@ -137,35 +172,8 @@ pub fn run_lint_command(
         fs::create_dir_all(to)?
     };
 
-    let lint_config = if args.read_config || args.config_file.is_some() {
-        read_lint_config_file(&args.project, &args.config_file)?
-    } else {
-        LintConfig::default()
-    };
-
-    let diagnostics_config = get_diagnostics_config(args, &lint_config)?;
-
-    // We load the project after loading config, in case it bails with
-    // errors. No point wasting time if the config is wrong.
-    let mut loaded = load_project(args, cli, query_config, ifdef, &lint_config)?;
-
-    telemetry::report_elapsed_time("lint operational", start_time);
-
-    let result = do_codemod(cli, &mut loaded, &diagnostics_config, args);
-
-    telemetry::report_elapsed_time("lint done", start_time);
-
-    let memory_end = MemoryUsage::now();
-    let memory_used = memory_end - memory_start;
-
-    // Print memory usage at the end if requested and format is normal
-    if args.is_format_normal() && args.report_system_stats {
-        let (analysis_host, vfs) = loaded.into_parts();
-        print_memory_usage(analysis_host, vfs, cli)?;
-        writeln!(cli, "{}", memory_used)?;
-    }
-
-    result
+    let diagnostics_config = get_diagnostics_config(args, lint_config)?;
+    do_codemod(cli, loaded, &diagnostics_config, args)
 }
 
 pub fn load_project(

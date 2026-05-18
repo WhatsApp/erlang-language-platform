@@ -238,6 +238,9 @@ pub fn run_shell(
                 rl.add_history_entry(line.as_str())?;
                 match watchman.poll_and_apply_changes(&mut loaded)? {
                     UpdateResult::Updated => {}
+                    // The interactive shell only runs eqwalize, which doesn't
+                    // consult lint config — safe to ignore.
+                    UpdateResult::NeedsLintConfigReload { .. } => {}
                     UpdateResult::NeedsFullReload { reason }
                     | UpdateResult::NeedsRestart { reason } => {
                         let _ = writeln!(cli, "{reason}");

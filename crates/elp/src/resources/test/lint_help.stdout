@@ -1,5 +1,5 @@
 Usage: [--project PROJECT] [--module MODULE] [--app APP] --file FILE... [--path PATH] [--rebar] [--as
-PROFILE] [--include-generated] [--include-tests] [--no-diags] [[--format FORMAT]]
+PROFILE] [--connect] [--include-generated] [--include-tests] [--no-diags] [[--format FORMAT]]
 [--include-erlc-diagnostics] [--include-ct-diagnostics] [--include-edoc-diagnostics]
 [--include-eqwalizer-diagnostics] [--include-suppressed] [--use-cli-severity] [[--severity SEVERITY]]
 [--diagnostic-ignore CODE] [--diagnostic-filter CODE] [--experimental] [--read-config] [--config-file
@@ -19,6 +19,7 @@ Available options:
         --path <PATH>     Only process files under this path (can be a file or directory).
         --rebar           Run with rebar
         --as <PROFILE>    Rebar3 profile to pickup (default is test)
+        --connect         Use a persistent daemon for fast turnaround (auto-starts if needed)
         --include-generated  Also generate diagnostics for generated files
         --include-tests   Deprecated (no-op): Diagnostics for test files are now always included
         --no-diags        Do not print the full diagnostics for a file, just the count
