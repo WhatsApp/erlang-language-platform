@@ -196,8 +196,12 @@ fn try_main(cli: &mut dyn Cli, mut args: Args) -> Result<()> {
         args::Command::EqwalizeTarget(args) => {
             eqwalizer_cli::eqwalize_target(args, cli, &query_config, ifdef)?
         }
-        args::Command::BuildInfo(args) => build_info_cli::save_build_info(args, &query_config)?,
-        args::Command::ProjectInfo(args) => build_info_cli::save_project_info(args, &query_config)?,
+        args::Command::BuildInfo(args) => {
+            build_info_cli::save_build_info(args, cli, &query_config)?
+        }
+        args::Command::ProjectInfo(args) => {
+            build_info_cli::save_project_info(args, cli, &query_config)?
+        }
         args::Command::Lint(args) => lint_cli::run_lint_command(args, cli, &query_config, ifdef)?,
         args::Command::Ssr(ssr_args) => {
             ssr_cli::run_ssr_command(ssr_args, cli, &query_config, use_color, ifdef)?

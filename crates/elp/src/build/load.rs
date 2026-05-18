@@ -106,7 +106,9 @@ pub fn load_project_from_manifest(
     crate::ensure_rayon_pool();
     log::info!("Loading project: {manifest:?}");
     let pb = cli.spinner("Loading build info");
-    let project = Project::load(manifest, elp_config, query_config, &|_progress| {})?;
+    let project = Project::load(manifest, elp_config, query_config, &|message| {
+        pb.set_message(message.to_string())
+    })?;
     pb.finish();
 
     load_project(cli, project, include_otp, eqwalizer_mode, ifdef)

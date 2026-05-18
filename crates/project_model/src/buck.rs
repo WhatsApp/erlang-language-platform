@@ -1178,21 +1178,20 @@ impl BuckQueryError {
 
 impl fmt::Display for BuckQueryError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "Project Initialisation Failed: buck2 command exited with an error"
+        )?;
         if let Some(url) = &self.buck_ui_url {
-            write!(
-                f,
-                "Project Initialisation Failed: invalid or missing buck 2 configuration. See {url} for details"
-            )
-        } else {
-            write!(
-                f,
-                "Project Initialisation Failed: invalid or missing buck 2 configuration\n\
-                 Command:\n{}\n\
-                 Reason:\n{}\n\
-                 Details:\n{}",
-                self.command, self.reason, self.details
-            )
+            writeln!(f, "Buck UI: {url}")?;
         }
+        write!(
+            f,
+            "Command:\n{}\n\
+             Reason:\n{}\n\
+             Details:\n{}",
+            self.command, self.reason, self.details
+        )
     }
 }
 
@@ -1480,6 +1479,7 @@ fn get_prelude_cell_bundled(buck_config: &BuckConfig) -> Result<String> {
 #[cfg(test)]
 mod tests {
 
+    use elp_base_db::assert_eq_expected;
     use expect_test::expect;
     use fxhash::FxHashMap;
     use fxhash::FxHashSet;
@@ -1779,13 +1779,37 @@ mod tests {
         );
         assert!(error.buck_ui_url.is_none());
         expect![[r#"
-            Project Initialisation Failed: invalid or missing buck 2 configuration
+            Project Initialisation Failed: buck2 command exited with an error
             Command:
             buck2 bxl //some:target
             Reason:
             Exited with status code: 1
             Details:
             some error details without a url"#]]
+        .assert_eq(&error.to_string());
+    }
+
+    #[test]
+    fn display_buck_query_error_with_url() {
+        let error = BuckQueryError::new(
+            "buck2 bxl //some:target".to_string(),
+            "Exited with status code: 1".to_string(),
+            "Buck UI: https://a.b.com/buck2/ref-hash\nRE_CAS_ZIPPYDB_THROTTLED_ERROR: too many requests".to_string(),
+        );
+        assert_eq_expected!(
+            Some("https://a.b.com/buck2/ref-hash"),
+            error.buck_ui_url.as_deref()
+        );
+        expect![[r#"
+            Project Initialisation Failed: buck2 command exited with an error
+            Buck UI: https://a.b.com/buck2/ref-hash
+            Command:
+            buck2 bxl //some:target
+            Reason:
+            Exited with status code: 1
+            Details:
+            Buck UI: https://a.b.com/buck2/ref-hash
+            RE_CAS_ZIPPYDB_THROTTLED_ERROR: too many requests"#]]
         .assert_eq(&error.to_string());
     }
 

@@ -12,6 +12,7 @@ use std::fs::File;
 use std::io::Write;
 
 use anyhow::Result;
+use elp::cli::Cli;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_project_model::AppType;
@@ -30,18 +31,30 @@ use fxhash::FxHashMap;
 use crate::args::BuildInfo;
 use crate::args::ProjectInfo;
 
-pub(crate) fn save_build_info(args: &BuildInfo, query_config: &BuckQueryConfig) -> Result<()> {
+pub(crate) fn save_build_info(
+    args: &BuildInfo,
+    cli: &dyn Cli,
+    query_config: &BuckQueryConfig,
+) -> Result<()> {
     let root = dunce::canonicalize(&args.project)?;
     let root = AbsPathBuf::assert_utf8(root);
     let (elp_config, manifest) = ProjectManifest::discover(&root)?;
-    let project = Project::load(&manifest, &elp_config, query_config, &|_| {})?;
+    let pb = cli.spinner("Loading build info");
+    let project = Project::load(&manifest, &elp_config, query_config, &|message| {
+        pb.set_message(message.to_string())
+    })?;
+    pb.finish();
     let mut writer = File::create(&args.to)?;
     let json_str = serde_json::to_string_pretty::<JsonConfig>(&project.as_json(root))?;
     writer.write_all(json_str.as_bytes())?;
     Ok(())
 }
 
-pub(crate) fn save_project_info(args: &ProjectInfo, query_config: &BuckQueryConfig) -> Result<()> {
+pub(crate) fn save_project_info(
+    args: &ProjectInfo,
+    cli: &dyn Cli,
+    query_config: &BuckQueryConfig,
+) -> Result<()> {
     let mut writer: Box<dyn Write> = match &args.to {
         Some(to) => Box::new(
             std::fs::OpenOptions::new()
@@ -54,14 +67,14 @@ pub(crate) fn save_project_info(args: &ProjectInfo, query_config: &BuckQueryConf
     };
     let root = dunce::canonicalize(&args.project)?;
     let root = AbsPathBuf::assert_utf8(root);
-    let (manifest, project) = match load_project(&root, query_config) {
+    let (manifest, project) = match load_project(&root, cli, query_config) {
         Ok(res) => res,
         Err(err) => {
             writer.write_all(
                 format!("could not load manifest:\n-----\n{err},\n-----\nfalling back\n")
                     .as_bytes(),
             )?;
-            load_fallback(&root, query_config)?
+            load_fallback(&root, cli, query_config)?
         }
     };
 
@@ -126,19 +139,29 @@ fn buck_targets_and_types(apps: &[ProjectAppData]) -> Vec<String> {
 
 fn load_project(
     root: &AbsPath,
+    cli: &dyn Cli,
     query_config: &BuckQueryConfig,
 ) -> Result<(ProjectManifest, Project)> {
     let (elp_config, manifest) = ProjectManifest::discover(root)?;
-    let project = Project::load(&manifest, &elp_config, query_config, &|_| {})?;
+    let pb = cli.spinner("Loading build info");
+    let project = Project::load(&manifest, &elp_config, query_config, &|message| {
+        pb.set_message(message.to_string())
+    })?;
+    pb.finish();
     Ok((manifest, project))
 }
 
 fn load_fallback(
     root: &AbsPath,
+    cli: &dyn Cli,
     query_config: &BuckQueryConfig,
 ) -> Result<(ProjectManifest, Project)> {
     let manifest = ProjectManifest::discover_no_manifest(root, IncludeParentDirs::Yes);
     let elp_config = ElpConfig::default();
-    let project = Project::load(&manifest, &elp_config, query_config, &|_| {})?;
+    let pb = cli.spinner("Loading build info");
+    let project = Project::load(&manifest, &elp_config, query_config, &|message| {
+        pb.set_message(message.to_string())
+    })?;
+    pb.finish();
     Ok((manifest, project))
 }

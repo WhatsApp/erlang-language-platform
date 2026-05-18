@@ -36,6 +36,7 @@ thiserror.workspace = true
 toml.workspace = true
 
 [dev-dependencies]
+elp_base_db.workspace = true
 expect-test.workspace = true
 
 [features]

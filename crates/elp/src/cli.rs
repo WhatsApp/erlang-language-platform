@@ -66,7 +66,7 @@ impl Cli for StandardCli {
     fn spinner(&self, prefix: &'static str) -> ProgressBar {
         let pb = ProgressBar::new_spinner();
         pb.set_style(
-            ProgressStyle::with_template("{spinner} {prefix} {wide_msg}")
+            ProgressStyle::with_template("{spinner} {prefix} [{elapsed_precise}] {wide_msg}")
                 .expect("BUG: invalid template"),
         );
         pb.enable_steady_tick(Duration::from_millis(120));
