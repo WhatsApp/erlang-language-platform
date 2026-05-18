@@ -1816,17 +1816,161 @@ Because in the expression's type:
   The expected map has no corresponding key for: d.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:1916:23
+     ┌─ check/src/custom.erl:1861:5
      │
-1916 │     custom_overloaded(X).
+1861 │     maps:without(L, M).
+     │     ^^^^^^^^^^^^^^^^^^
+     │     │
+     │     maps:without(L, M).
+Expression has type:   #{a => 'av', b => 'bv'}
+Context expected type: #{b := 'bv'}
+     │     
+
+Because in the expression's type:
+  Here the type is:     #{b => ..., ...}
+  Context expects type: #{b := ..., ...}
+  The type of the expression is missing the following required keys: b.
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1893:5
+     │
+1893 │     maps:without(maps_make_keys_a(), M).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     maps:without(maps_make_keys_a(), M).
+Expression has type:   #{a => 'av', b => 'bv'}
+Context expected type: #{b := 'bv'}
+     │     
+
+Because in the expression's type:
+  Here the type is:     #{b => ..., ...}
+  Context expects type: #{b := ..., ...}
+  The type of the expression is missing the following required keys: b.
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1898:5
+     │
+1898 │     maps:without(maps_make_keys_ac(), M).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     maps:without(maps_make_keys_ac(), M).
+Expression has type:   #{a => 'av', b => 'bv', c => 'cv'}
+Context expected type: #{b := 'bv'}
+     │     
+
+Because in the expression's type:
+  Here the type is:     #{b => ..., ...}
+  Context expects type: #{b := ..., ...}
+  The type of the expression is missing the following required keys: b.
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1903:5
+     │
+1903 │     maps:without(maps:keys(M2), M).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     maps:without(maps:keys(M2), M).
+Expression has type:   #{a => 'av', b => 'bv'}
+Context expected type: #{b := 'bv'}
+     │     
+
+Because in the expression's type:
+  Here the type is:     #{b => ..., ...}
+  Context expects type: #{b := ..., ...}
+  The type of the expression is missing the following required keys: b.
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1911:5
+     │
+1911 │     maps:without(maps_make_tuple_keys(), M).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     maps:without(maps_make_tuple_keys(), M).
+Expression has type:   #{{tag, a} => 'av', {tag, b} => 'bv', {tag, c} => 'cv'}
+Context expected type: #{{tag, c} := 'cv'}
+     │     
+
+Because in the expression's type:
+  Here the type is:     #{{tag, c} => ..., ...}
+  Context expects type: #{{tag, c} := ..., ...}
+  The type of the expression is missing the following required keys: {tag, c}.
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1941:5
+     │
+1941 │     maps:with(maps_make_keys_a(), M).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     maps:with(maps_make_keys_a(), M).
+Expression has type:   #{a => 'av', b => 'bv'}
+Context expected type: #{a := 'av'}
+     │     
+
+Because in the expression's type:
+  Here the type is:     #{a => ..., ...}
+  Context expects type: #{a := ..., ...}
+  The type of the expression is missing the following required keys: a.
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1947:5
+     │
+1947 │     maps:with(maps_make_keys_ac(), M).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     maps:with(maps_make_keys_ac(), M).
+Expression has type:   #{a => 'av', b => 'bv', c => 'cv'}
+Context expected type: #{a := 'av', c := 'cv'}
+     │     
+
+Because in the expression's type:
+  Here the type is:     #{a => ..., c => ..., ...}
+  Context expects type: #{a := ..., c := ..., ...}
+  The type of the expression is missing the following required keys: a, c.
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1952:5
+     │
+1952 │     maps:with(maps:keys(M2), M).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     maps:with(maps:keys(M2), M).
+Expression has type:   #{a => 'av', b => 'bv'}
+Context expected type: #{a := 'av'}
+     │     
+
+Because in the expression's type:
+  Here the type is:     #{a => ..., ...}
+  Context expects type: #{a := ..., ...}
+  The type of the expression is missing the following required keys: a.
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1960:5
+     │
+1960 │     maps:with(maps_make_tuple_keys(), M).
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     maps:with(maps_make_tuple_keys(), M).
+Expression has type:   #{{tag, a} => 'av', {tag, b} => 'bv', {tag, c} => 'cv'}
+Context expected type: #{{tag, a} := 'av', {tag, b} := 'bv'}
+     │     
+
+Because in the expression's type:
+  Here the type is:     #{{tag, a} => ..., {tag, b} => ..., ...}
+  Context expects type: #{{tag, a} := ..., {tag, b} := ..., ...}
+  The type of the expression is missing the following required keys: {tag, a}, {tag, b}.
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:2033:23
+     │
+2033 │     custom_overloaded(X).
      │                       ^ X.
 Expression has type:   term()
 Context expected type: atom() | binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:1939:5
+     ┌─ check/src/custom.erl:2056:5
      │
-1939 │     {A, N}.
+2056 │     {A, N}.
      │     ^^^^^^
      │     │
      │     {A, N}.
@@ -1842,9 +1986,9 @@ Because in the expression's type:
   }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2041:5
+     ┌─ check/src/custom.erl:2158:5
      │
-2041 │     filename:join(["server", "erl"]).
+2158 │     filename:join(["server", "erl"]).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     filename:join([string_lit, string_lit]).
@@ -1857,9 +2001,9 @@ Because in the expression's type:
   Context expects type: string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2046:5
+     ┌─ check/src/custom.erl:2163:5
      │
-2046 │     filename:join(["server", <<>>]).
+2163 │     filename:join(["server", <<>>]).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     filename:join([string_lit, <<..>>]).
@@ -1872,9 +2016,9 @@ Because in the expression's type:
   Context expects type: string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2051:5
+     ┌─ check/src/custom.erl:2168:5
      │
-2051 │     filename:join([<<>>, ""]).
+2168 │     filename:join([<<>>, ""]).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     filename:join([<<..>>, string_lit]).
@@ -1887,9 +2031,9 @@ Because in the expression's type:
   Context expects type: string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2066:5
+     ┌─ check/src/custom.erl:2183:5
      │
-2066 │     filename:join([<<>>, <<>>]).
+2183 │     filename:join([<<>>, <<>>]).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     filename:join([<<..>>, <<..>>]).
@@ -1903,9 +2047,9 @@ Because in the expression's type:
   Differs from the expected type:  binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2081:19
+     ┌─ check/src/custom.erl:2198:19
      │
-2081 │     filename:join([<<>>, self()]).
+2198 │     filename:join([<<>>, self()]).
      │                   ^^^^^^^^^^^^^^
      │                   │
      │                   [<<..>>, erlang:self()].
@@ -1921,9 +2065,9 @@ Because in the expression's type:
   ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2086:5
+     ┌─ check/src/custom.erl:2203:5
      │
-2086 │     filename:join("server", "erl").
+2203 │     filename:join("server", "erl").
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     filename:join(string_lit, string_lit).
@@ -1936,9 +2080,9 @@ Because in the expression's type:
   Context expects type: string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2091:5
+     ┌─ check/src/custom.erl:2208:5
      │
-2091 │     filename:join("server", <<>>).
+2208 │     filename:join("server", <<>>).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     filename:join(string_lit, <<..>>).
@@ -1951,9 +2095,9 @@ Because in the expression's type:
   Context expects type: string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2096:5
+     ┌─ check/src/custom.erl:2213:5
      │
-2096 │     filename:join(<<>>, "").
+2213 │     filename:join(<<>>, "").
      │     ^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     filename:join(<<..>>, string_lit).
@@ -1966,9 +2110,9 @@ Because in the expression's type:
   Context expects type: string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2111:5
+     ┌─ check/src/custom.erl:2228:5
      │
-2111 │     filename:join(atom, <<>>).
+2228 │     filename:join(atom, <<>>).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     filename:join('atom', <<..>>).
@@ -1982,9 +2126,9 @@ Because in the expression's type:
   Differs from the expected type:  binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2121:25
+     ┌─ check/src/custom.erl:2238:25
      │
-2121 │     filename:join(<<>>, self()).
+2238 │     filename:join(<<>>, self()).
      │                         ^^^^^^
      │                         │
      │                         erlang:self().
@@ -1998,12 +2142,12 @@ Because in the expression's type:
   No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2150:5
+     ┌─ check/src/custom.erl:2267:5
      │    
-2150 │ ╭ ╭     queue:filter(
-2151 │ │ │         fun my_filter1/1,
-2152 │ │ │         Q
-2153 │ │ │     ).
+2267 │ ╭ ╭     queue:filter(
+2268 │ │ │         fun my_filter1/1,
+2269 │ │ │         Q
+2270 │ │ │     ).
      │ ╰─│─────^ queue:filter(my_filter1/1, Q).
 Expression has type:   queue:queue(atom() | number())
 Context expected type: queue:queue(number())
@@ -2019,9 +2163,9 @@ Because in the expression's type:
   , [atom() | number()]}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2191:5
+     ┌─ check/src/custom.erl:2308:5
      │
-2191 │     M3.
+2308 │     M3.
      │     ^^
      │     │
      │     M3.
@@ -2037,17 +2181,17 @@ Because in the expression's type:
   The type of the expression is missing the following required keys: count.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2223:13
+     ┌─ check/src/custom.erl:2340:13
      │
-2223 │             Atom + Sum
+2340 │             Atom + Sum
      │             ^^^^ Atom.
 Expression has type:   atom()
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2279:5
+     ┌─ check/src/custom.erl:2396:5
      │
-2279 │     maps:remove(A, M).
+2396 │     maps:remove(A, M).
      │     ^^^^^^^^^^^^^^^^^
      │     │
      │     maps:remove(A, M).
@@ -2061,15 +2205,15 @@ Because in the expression's type:
   The type of the expression is missing the following required keys: a.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2320:5
+     ┌─ check/src/custom.erl:2437:5
      │    
-2320 │ ╭ ╭     maps:filtermap(
-2321 │ │ │         fun
-2322 │ │ │             (a, V) -> true;
-2323 │ │ │             (b, V) -> {true, atom_to_binary(V)};
+2437 │ ╭ ╭     maps:filtermap(
+2438 │ │ │         fun
+2439 │ │ │             (a, V) -> true;
+2440 │ │ │             (b, V) -> {true, atom_to_binary(V)};
      · │ │
-2326 │ │ │         M
-2327 │ │ │     ).
+2443 │ │ │         M
+2444 │ │ │     ).
      │ ╰─│─────^ maps:filtermap(fun, M).
 Expression has type:   #{a => atom() | binary(), b => atom() | binary(), c => atom() | binary()}
 Context expected type: #{a := atom(), b := binary()}
@@ -2081,14 +2225,14 @@ Because in the expression's type:
   The type of the expression is missing the following required keys: a, b.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2342:5
+     ┌─ check/src/custom.erl:2459:5
      │    
-2342 │ ╭ ╭     maps:filtermap(
-2343 │ │ │         fun (_, V) ->
-2344 │ │ │             {true, atom_to_binary(V)}
-2345 │ │ │         end,
-2346 │ │ │         M
-2347 │ │ │     ).
+2459 │ ╭ ╭     maps:filtermap(
+2460 │ │ │         fun (_, V) ->
+2461 │ │ │             {true, atom_to_binary(V)}
+2462 │ │ │         end,
+2463 │ │ │         M
+2464 │ │ │     ).
      │ ╰─│─────^ maps:filtermap(fun, M).
 Expression has type:   #{atom() => binary()}
 Context expected type: #{atom() => atom()}
@@ -2101,9 +2245,9 @@ Because in the expression's type:
   , ... }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2354:23
+     ┌─ check/src/custom.erl:2471:23
      │
-2354 │         fun (_, _) -> err end,
+2471 │         fun (_, _) -> err end,
      │                       ^^^
      │                       │
      │                       'err'.
@@ -2117,12 +2261,12 @@ Because in the expression's type:
   No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2362:5
+     ┌─ check/src/custom.erl:2479:5
      │    
-2362 │ ╭ ╭     maps:filtermap(
-2363 │ │ │         fun (_, V) -> {true, atom_to_binary(V)} end,
-2364 │ │ │         M
-2365 │ │ │     ).
+2479 │ ╭ ╭     maps:filtermap(
+2480 │ │ │         fun (_, V) -> {true, atom_to_binary(V)} end,
+2481 │ │ │         M
+2482 │ │ │     ).
      │ ╰─│─────^ maps:filtermap(fun, M).
 Expression has type:   #{atom() => binary()}
 Context expected type: #{atom() => atom()}
@@ -2135,33 +2279,33 @@ Because in the expression's type:
   , ... }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2363:45
+     ┌─ check/src/custom.erl:2480:45
      │
-2363 │         fun (_, V) -> {true, atom_to_binary(V)} end,
+2480 │         fun (_, V) -> {true, atom_to_binary(V)} end,
      │                                             ^ V.
 Expression has type:   binary()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2377:5
+     ┌─ check/src/custom.erl:2494:5
      │
-2377 │     re:replace(Subj, "+", "-", [{return, binary}]).
+2494 │     re:replace(Subj, "+", "-", [{return, binary}]).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ re:replace(Subj, string_lit, string_lit, [{'return', 'binary'}]).
 Expression has type:   binary()
 Context expected type: string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2381:5
+     ┌─ check/src/custom.erl:2498:5
      │
-2381 │     re:replace(Subj, "+", "-", [{return, list}]).
+2498 │     re:replace(Subj, "+", "-", [{return, list}]).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ re:replace(Subj, string_lit, string_lit, [{'return', 'list'}]).
 Expression has type:   string()
 Context expected type: binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2385:22
+     ┌─ check/src/custom.erl:2502:22
      │
-2385 │     Res = re:replace(Subj, "+", "-", [{return, list}]),
+2502 │     Res = re:replace(Subj, "+", "-", [{return, list}]),
      │                      ^^^^
      │                      │
      │                      Subj.
@@ -2175,17 +2319,17 @@ Because in the expression's type:
   No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2386:5
+     ┌─ check/src/custom.erl:2503:5
      │
-2386 │     Res.
+2503 │     Res.
      │     ^^^ Res.
 Expression has type:   string()
 Context expected type: binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2390:38
+     ┌─ check/src/custom.erl:2507:38
      │
-2390 │     Res = re:replace(Subj, "+", "-", [{return, something}]),
+2507 │     Res = re:replace(Subj, "+", "-", [{return, something}]),
      │                                      ^^^^^^^^^^^^^^^^^^^^^
      │                                      │
      │                                      [{'return', 'something'}].
@@ -2203,9 +2347,9 @@ Because in the expression's type:
   ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2506:5
+     ┌─ check/src/custom.erl:2623:5
      │
-2506 │     lists:partition(fun is_number/1, L).
+2623 │     lists:partition(fun is_number/1, L).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
@@ -2222,9 +2366,9 @@ Because in the expression's type:
   , [atom()]}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2518:5
+     ┌─ check/src/custom.erl:2635:5
      │
-2518 │     lists:partition(fun({_Term, V}) -> is_number(V) end, L).
+2635 │     lists:partition(fun({_Term, V}) -> is_number(V) end, L).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
@@ -2243,9 +2387,9 @@ Because in the expression's type:
   , [{term(), atom()}]}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2536:5
+     ┌─ check/src/custom.erl:2653:5
      │
-2536 │     lists:partition(fun({ok, _}) -> true; (_) -> false end, L).
+2653 │     lists:partition(fun({ok, _}) -> true; (_) -> false end, L).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
@@ -2264,9 +2408,9 @@ Because in the expression's type:
   }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2576:33
+     ┌─ check/src/custom.erl:2693:33
      │
-2576 │ maps_intersect_2_neg(M1, M2) -> maps:intersect(M1, M2).
+2693 │ maps_intersect_2_neg(M1, M2) -> maps:intersect(M1, M2).
      │                                 ^^^^^^^^^^^^^^^^^^^^^^
      │                                 │
      │                                 maps:intersect(M1, M2).
@@ -2280,9 +2424,9 @@ Because in the expression's type:
   The type of the expression is missing the following required keys: a.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2586:33
+     ┌─ check/src/custom.erl:2703:33
      │
-2586 │ maps_intersect_4_neg(M1, M2) -> maps:intersect(M1, M2).
+2703 │ maps_intersect_4_neg(M1, M2) -> maps:intersect(M1, M2).
      │                                 ^^^^^^^^^^^^^^^^^^^^^^
      │                                 │
      │                                 maps:intersect(M1, M2).
@@ -2297,9 +2441,9 @@ Because in the expression's type:
   , ... }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2596:33
+     ┌─ check/src/custom.erl:2713:33
      │
-2596 │ maps_intersect_6_neg(M1, M2) -> maps:intersect(M1, M2).
+2713 │ maps_intersect_6_neg(M1, M2) -> maps:intersect(M1, M2).
      │                                 ^^^^^^^^^^^^^^^^^^^^^^
      │                                 │
      │                                 maps:intersect(M1, M2).
@@ -2313,27 +2457,27 @@ Because in the expression's type:
   The type of the expression is missing the following required keys: a.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2709:40
+     ┌─ check/src/custom.erl:2826:40
      │
-2709 │             (foo, A) -> binary_to_atom(A);
+2826 │             (foo, A) -> binary_to_atom(A);
      │                                        ^ A.
 Expression has type:   atom()
 Context expected type: binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2710:40
+     ┌─ check/src/custom.erl:2827:40
      │
-2710 │             (bar, B) -> atom_to_binary(B);
+2827 │             (bar, B) -> atom_to_binary(B);
      │                                        ^ B.
 Expression has type:   binary()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ check/src/custom.erl:2711:50
+     ┌─ check/src/custom.erl:2828:50
      │
-2711 │             ({foo, bar}, I) -> binary_to_integer(I);
+2828 │             ({foo, bar}, I) -> binary_to_integer(I);
      │                                                  ^ I.
 Expression has type:   number()
 Context expected type: binary()
 
-187 ERRORS
+196 ERRORS

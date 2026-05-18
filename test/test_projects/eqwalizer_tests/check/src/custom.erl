@@ -1855,7 +1855,7 @@ maps_without_17_neg(M) ->
 
 -spec maps_without_18
     (#{a := av, b := bv})
-    -> #{a => av, b => bv}.
+    -> #{b := bv}.
 maps_without_18(M) ->
     L = [a, c, d],
     maps:without(L, M).
@@ -1865,6 +1865,123 @@ maps_without_18(M) ->
     -> #{a => av, b => bv}.
 maps_without_19(M) ->
     maps:without([a, c, d], M).
+
+%% Tests for type-based key extraction in maps:with/2 and
+%% maps:without/2: when the keys argument is not a syntactic list
+%% literal but its type narrows to a list of static keys, the same
+%% precise narrowing should apply.
+
+-spec maps_make_keys_a() -> [a].
+maps_make_keys_a() -> [a].
+
+-spec maps_make_keys_ac() -> [a | c].
+maps_make_keys_ac() -> [a, c].
+
+-spec maps_make_tuple_keys() -> [{tag, a} | {tag, b}].
+maps_make_tuple_keys() ->
+    [{tag, a}, {tag, b}].
+
+-spec maps_make_partial_dynamic_keys()
+    -> [a | b | {c, eqwalizer:dynamic()}].
+maps_make_partial_dynamic_keys() ->
+    [a, b, {c, foo}].
+
+%% maps:without — positive cases (precise narrowing expected).
+-spec maps_without_keys_from_type
+    (#{a := av, b := bv}) -> #{b := bv}.
+maps_without_keys_from_type(M) ->
+    maps:without(maps_make_keys_a(), M).
+
+-spec maps_without_keys_union
+    (#{a := av, b := bv, c := cv}) -> #{b := bv}.
+maps_without_keys_union(M) ->
+    maps:without(maps_make_keys_ac(), M).
+
+-spec maps_without_keys_from_maps_keys
+    (#{a := av, b := bv}, #{a := av}) -> #{b := bv}.
+maps_without_keys_from_maps_keys(M, M2) ->
+    maps:without(maps:keys(M2), M).
+
+-spec maps_without_keys_tuple_lit
+    (#{{tag, a} := av,
+       {tag, b} := bv,
+       {tag, c} := cv})
+    -> #{{tag, c} := cv}.
+maps_without_keys_tuple_lit(M) ->
+    maps:without(maps_make_tuple_keys(), M).
+
+%% maps:without — negative cases (fall back to all-optional).
+-spec maps_without_keys_dynamic
+    (eqwalizer:dynamic(), #{a := av, b := bv})
+    -> #{a => av, b => bv}.
+maps_without_keys_dynamic(Keys, M) ->
+    maps:without(Keys, M).
+
+-spec maps_without_keys_partial_dynamic
+    (#{a := av, b := bv}) -> #{a => av, b => bv}.
+maps_without_keys_partial_dynamic(M) ->
+    maps:without(maps_make_partial_dynamic_keys(), M).
+
+-spec maps_without_keys_open_atom
+    ([atom()], #{a := av, b := bv})
+    -> #{a => av, b => bv}.
+maps_without_keys_open_atom(Keys, M) ->
+    maps:without(Keys, M).
+
+-spec maps_without_keys_with_term
+    ([a | term()], #{a := av, b := bv})
+    -> #{a => av, b => bv}.
+maps_without_keys_with_term(Keys, M) ->
+    maps:without(Keys, M).
+
+%% maps:with — positive cases (precise narrowing expected).
+-spec maps_with_keys_from_type
+    (#{a := av, b := bv}) -> #{a := av}.
+maps_with_keys_from_type(M) ->
+    maps:with(maps_make_keys_a(), M).
+
+-spec maps_with_keys_union
+    (#{a := av, b := bv, c := cv})
+    -> #{a := av, c := cv}.
+maps_with_keys_union(M) ->
+    maps:with(maps_make_keys_ac(), M).
+
+-spec maps_with_keys_from_maps_keys
+    (#{a := av, b := bv}, #{a := av}) -> #{a := av}.
+maps_with_keys_from_maps_keys(M, M2) ->
+    maps:with(maps:keys(M2), M).
+
+-spec maps_with_keys_tuple_lit
+    (#{{tag, a} := av,
+       {tag, b} := bv,
+       {tag, c} := cv})
+    -> #{{tag, a} := av, {tag, b} := bv}.
+maps_with_keys_tuple_lit(M) ->
+    maps:with(maps_make_tuple_keys(), M).
+
+%% maps:with — negative cases (fall back to all-optional).
+-spec maps_with_keys_dynamic
+    (eqwalizer:dynamic(), #{a := av, b := bv})
+    -> #{a => av, b => bv}.
+maps_with_keys_dynamic(Keys, M) ->
+    maps:with(Keys, M).
+
+-spec maps_with_keys_partial_dynamic
+    (#{a := av, b := bv}) -> #{a => av, b => bv}.
+maps_with_keys_partial_dynamic(M) ->
+    maps:with(maps_make_partial_dynamic_keys(), M).
+
+-spec maps_with_keys_open_atom
+    ([atom()], #{a := av, b := bv})
+    -> #{a => av, b => bv}.
+maps_with_keys_open_atom(Keys, M) ->
+    maps:with(Keys, M).
+
+-spec maps_with_keys_with_term
+    ([a | term()], #{a := av, b := bv})
+    -> #{a => av, b => bv}.
+maps_with_keys_with_term(Keys, M) ->
+    maps:with(Keys, M).
 
 -spec none() -> none().
 none() -> error(none).
