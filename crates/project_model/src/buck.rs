@@ -110,6 +110,7 @@ impl BuckConfig {
             .env_remove("RUST_LIB_BACKTRACE");
         cmd.arg("--isolation-dir");
         cmd.arg(BUCK_ISOLATION_DIR);
+        cmd.arg("--client-metadata=id=elp");
         cmd.current_dir(self.buck_root());
         CommandProxy::new(guard, cmd)
     }
@@ -1009,7 +1010,6 @@ fn query_buck_targets_bxl(
     let mut command = buck_config.buck_command();
     command
         .arg("bxl")
-        .arg("--config=client.id=elp")
         .arg("prelude//erlang/elp.bxl:elp_config")
         .arg("--")
         .args(build_args)
@@ -1207,7 +1207,6 @@ fn build_third_party_targets(
     let output = buck_config
         .buck_command()
         .arg("build")
-        .arg("--config=client.id=elp")
         .arg("--prefer-local")
         .arg("--show-full-json-output")
         .arg(deps_target)
