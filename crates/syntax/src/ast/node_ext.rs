@@ -763,6 +763,7 @@ impl From<nodes::CatchPat> for nodes::Expr {
             nodes::CatchPat::RecordIndexExpr(index) => nodes::Expr::RecordIndexExpr(index),
             nodes::CatchPat::UnaryOpExpr(unary_op) => nodes::Expr::UnaryOpExpr(unary_op),
             nodes::CatchPat::AnonRecordExpr(anon) => nodes::Expr::AnonRecordExpr(anon),
+            nodes::CatchPat::MatchExpr(mat) => nodes::Expr::MatchExpr(mat),
             nodes::CatchPat::QualifiedRecordExpr(qual) => nodes::Expr::QualifiedRecordExpr(qual),
         }
     }

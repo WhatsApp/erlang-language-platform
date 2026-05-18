@@ -1018,6 +1018,7 @@ pub enum CatchPat {
     AnonRecordExpr(AnonRecordExpr),
     BinaryOpExpr(BinaryOpExpr),
     MapExpr(MapExpr),
+    MatchExpr(MatchExpr),
     QualifiedRecordExpr(QualifiedRecordExpr),
     RecordExpr(RecordExpr),
     RecordIndexExpr(RecordIndexExpr),
@@ -1056,6 +1057,7 @@ impl AstNode for CatchPat {
             | ANON_RECORD_EXPR
             | BINARY_OP_EXPR
             | MAP_EXPR
+            | MATCH_EXPR
             | QUALIFIED_RECORD_EXPR
             | RECORD_EXPR
             | RECORD_INDEX_EXPR
@@ -1074,6 +1076,7 @@ impl AstNode for CatchPat {
             ANON_RECORD_EXPR => Some(CatchPat::AnonRecordExpr(AnonRecordExpr { syntax })),
             BINARY_OP_EXPR => Some(CatchPat::BinaryOpExpr(BinaryOpExpr { syntax })),
             MAP_EXPR => Some(CatchPat::MapExpr(MapExpr { syntax })),
+            MATCH_EXPR => Some(CatchPat::MatchExpr(MatchExpr { syntax })),
             QUALIFIED_RECORD_EXPR => Some(CatchPat::QualifiedRecordExpr(QualifiedRecordExpr {
                 syntax,
             })),
@@ -1089,6 +1092,7 @@ impl AstNode for CatchPat {
             CatchPat::AnonRecordExpr(it) => it.syntax(),
             CatchPat::BinaryOpExpr(it) => it.syntax(),
             CatchPat::MapExpr(it) => it.syntax(),
+            CatchPat::MatchExpr(it) => it.syntax(),
             CatchPat::QualifiedRecordExpr(it) => it.syntax(),
             CatchPat::RecordExpr(it) => it.syntax(),
             CatchPat::RecordIndexExpr(it) => it.syntax(),
@@ -1115,6 +1119,11 @@ impl From<BinaryOpExpr> for CatchPat {
 impl From<MapExpr> for CatchPat {
     fn from(node: MapExpr) -> CatchPat {
         CatchPat::MapExpr(node)
+    }
+}
+impl From<MatchExpr> for CatchPat {
+    fn from(node: MatchExpr) -> CatchPat {
+        CatchPat::MatchExpr(node)
     }
 }
 impl From<QualifiedRecordExpr> for CatchPat {

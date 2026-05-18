@@ -679,6 +679,38 @@ foo() ->
 }
 
 #[test]
+fn catch_clause_alias_match_in_reason_pattern() {
+    // In a catch clause, the reason pattern can be an alias `E = Subpat`.
+    // The grammar parses this as a `match_expr`, so the existing `MatchExpr`
+    // lowering path produces `Pat::Match` directly.
+    check(
+        r#"
+foo() ->
+    try 1 of
+        _ -> ok
+    catch
+        throw:E = {bad, _}:_ -> E
+    end.
+"#,
+        expect![[r#"
+            foo() ->
+                try
+                    1
+                of
+                    _ ->
+                        ok
+                catch
+                    throw:E = {
+                        bad,
+                        _
+                    }:_ ->
+                        E
+                end.
+        "#]],
+    );
+}
+
+#[test]
 fn try_expr() {
     check(
         r#"
