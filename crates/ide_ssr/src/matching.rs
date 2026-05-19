@@ -2102,11 +2102,12 @@ where
 ///
 /// Globs are only allowed as direct elements of a "sequence position":
 /// `Tuple.exprs`, `List.exprs`, `Block.exprs`, `Call.args`, and
-/// clause body `exprs` inside `Closure` (and the corresponding `Pat`
-/// variants). At most one glob per sequence is permitted, mirroring
-/// Erlang Merl. Globs are forbidden inside `when` clauses entirely.
-/// Any violation surfaces as an `SsrError` so the rule fails to parse
-/// rather than silently producing wrong matches.
+/// clause body `exprs` inside `Closure`, `Case`, `Receive`, `If`,
+/// `Try`, and `Maybe` (and the corresponding `Pat` variants). At most
+/// one glob per sequence is permitted, mirroring Erlang Merl. Globs
+/// are forbidden inside `when` clauses entirely. Any violation surfaces
+/// as an `SsrError` so the rule fails to parse rather than silently
+/// producing wrong matches.
 pub(crate) fn validate_glob_usage(
     ssr_body: &hir::SsrBody,
     pattern_body: &FoldBody,
@@ -2211,6 +2212,42 @@ fn glob_role(body: &Body, parent_id: AnyExprId, glob_id: AnyExprId) -> GlobRole 
             Expr::Block { exprs } if exprs.contains(&g) => GlobRole::Sequence,
             Expr::Call { args, .. } if args.contains(&g) => GlobRole::Sequence,
             Expr::Closure { clauses, .. } if clauses.iter().any(|c| c.exprs.contains(&g)) => {
+                GlobRole::Sequence
+            }
+            Expr::Case { clauses, .. } if clauses.iter().any(|c| c.exprs.contains(&g)) => {
+                GlobRole::Sequence
+            }
+            Expr::Receive { clauses, after } => {
+                if clauses.iter().any(|c| c.exprs.contains(&g))
+                    || after.as_ref().is_some_and(|a| a.exprs.contains(&g))
+                {
+                    GlobRole::Sequence
+                } else {
+                    GlobRole::Forbidden
+                }
+            }
+            Expr::If { clauses } if clauses.iter().any(|c| c.exprs.contains(&g)) => {
+                GlobRole::Sequence
+            }
+            Expr::Try {
+                exprs,
+                of_clauses,
+                catch_clauses,
+                after,
+            } => {
+                if exprs.contains(&g)
+                    || of_clauses.iter().any(|c| c.exprs.contains(&g))
+                    || catch_clauses.iter().any(|c| c.exprs.contains(&g))
+                    || after.contains(&g)
+                {
+                    GlobRole::Sequence
+                } else {
+                    GlobRole::Forbidden
+                }
+            }
+            Expr::Maybe { else_clauses, .. }
+                if else_clauses.iter().any(|c| c.exprs.contains(&g)) =>
+            {
                 GlobRole::Sequence
             }
             _ => GlobRole::Forbidden,

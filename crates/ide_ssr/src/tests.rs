@@ -2052,6 +2052,120 @@ fn ssr_glob_closure_multi_clause_no_match() {
 }
 
 // -----------------------------------------------------------------
+// Glob: case / receive / if / try clause bodies.
+// -----------------------------------------------------------------
+
+#[test]
+fn ssr_glob_match_case_clause_body() {
+    assert_matches(
+        "ssr: case _@X of _@Y -> _@@Body end.",
+        "f(X) -> case X of ok -> a, b, c end.",
+        &[(
+            "case X of ok -> a, b, c end",
+            &[
+                ("_@@Body", &["a", "b", "c"]),
+                ("_@X", &["X"]),
+                ("_@Y", &["ok"]),
+            ],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_case_clause_body_with_prefix() {
+    assert_matches(
+        "ssr: case _@X of _@Y -> setup, _@@Rest end.",
+        "f(X) -> case X of ok -> setup, work, cleanup end.",
+        &[(
+            "case X of ok -> setup, work, cleanup end",
+            &[
+                ("_@@Rest", &["work", "cleanup"]),
+                ("_@X", &["X"]),
+                ("_@Y", &["ok"]),
+            ],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_case_multi_clause_no_match() {
+    assert_matches(
+        "ssr: case _@X of _@Y -> _@@Body end.",
+        "f(X) -> case X of ok -> a; err -> b end.",
+        &[],
+    );
+}
+
+#[test]
+fn ssr_glob_match_receive_clause_body() {
+    assert_matches(
+        "ssr: receive _@Msg -> _@@Body end.",
+        "f() -> receive ping -> a, b end.",
+        &[(
+            "receive ping -> a, b end",
+            &[("_@@Body", &["a", "b"]), ("_@Msg", &["ping"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_receive_after_body() {
+    assert_matches(
+        "ssr: receive _@Msg -> ok after _@T -> _@@Body end.",
+        "f() -> receive ping -> ok after 5000 -> a, b, c end.",
+        &[(
+            "receive ping -> ok after 5000 -> a, b, c end",
+            &[
+                ("_@@Body", &["a", "b", "c"]),
+                ("_@Msg", &["ping"]),
+                ("_@T", &["5000"]),
+            ],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_if_clause_body() {
+    assert_matches(
+        "ssr: if true -> _@@Body end.",
+        "f() -> if true -> a, b, c end.",
+        &[("if true -> a, b, c end", &[("_@@Body", &["a", "b", "c"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_try_body() {
+    assert_matches(
+        "ssr: try _@@Body catch _@C:_@R -> error end.",
+        "f() -> try a, b, c catch _:_ -> error end.",
+        &[(
+            "try a, b, c catch _:_ -> error end",
+            &[
+                ("_@@Body", &["a", "b", "c"]),
+                ("_@C", &["_"]),
+                ("_@R", &["_"]),
+            ],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_maybe_else_clause_body() {
+    assert_matches(
+        "ssr: maybe ok ?= _@X else _@Y -> _@@Body end.",
+        "f(X) -> maybe ok ?= X else err -> log, crash end.",
+        &[(
+            "maybe ok ?= X else err -> log, crash end",
+            &[
+                ("_@@Body", &["log", "crash"]),
+                ("_@X", &["X"]),
+                ("_@Y", &["err"]),
+            ],
+        )],
+    );
+}
+
+// -----------------------------------------------------------------
 // Glob: cross-occurrence equivalence and public retrieval API
 // (commit 5).
 // -----------------------------------------------------------------
