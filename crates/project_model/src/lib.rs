@@ -425,6 +425,8 @@ pub struct ElpConfig {
     pub rebar: ElpRebarConfig,
     #[serde(default)]
     pub otp: OtpConfig,
+    #[serde(default)]
+    pub daemon: DaemonConfig,
 }
 
 #[derive(
@@ -557,6 +559,24 @@ pub struct OtpConfig {
     pub exclude_apps: Vec<String>,
 }
 
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Ord,
+    PartialOrd,
+    Deserialize,
+    Serialize
+)]
+pub struct DaemonConfig {
+    /// Seconds of inactivity before the daemon shuts itself down. `0` means
+    /// never. When unset, the built-in default applies.
+    pub idle_timeout_secs: Option<u64>,
+}
+
 impl ElpConfig {
     pub fn new(
         config_path: AbsPathBuf,
@@ -572,6 +592,7 @@ impl ElpConfig {
             eqwalizer,
             rebar,
             otp: OtpConfig::default(),
+            daemon: DaemonConfig::default(),
         }
     }
     pub fn try_parse(path: &AbsPath) -> Result<ElpConfig> {
@@ -1263,6 +1284,9 @@ mod tests {
                         otp: OtpConfig {
                             exclude_apps: [],
                         },
+                        daemon: DaemonConfig {
+                            idle_timeout_secs: None,
+                        },
                     },
                     Rebar(
                         RebarConfig {
@@ -1330,6 +1354,9 @@ mod tests {
                         },
                         otp: OtpConfig {
                             exclude_apps: [],
+                        },
+                        daemon: DaemonConfig {
+                            idle_timeout_secs: None,
                         },
                     },
                     Json(
@@ -1443,6 +1470,9 @@ mod tests {
                         },
                         otp: OtpConfig {
                             exclude_apps: [],
+                        },
+                        daemon: DaemonConfig {
+                            idle_timeout_secs: None,
                         },
                     },
                     JsonConfig {
@@ -1606,6 +1636,9 @@ mod tests {
                         otp: OtpConfig {
                             exclude_apps: [],
                         },
+                        daemon: DaemonConfig {
+                            idle_timeout_secs: None,
+                        },
                     },
                     NoManifest(
                         NoManifestConfig {
@@ -1675,6 +1708,9 @@ mod tests {
                             otp: OtpConfig {
                                 exclude_apps: [],
                             },
+                            daemon: DaemonConfig {
+                                idle_timeout_secs: None,
+                            },
                         },
                         Rebar(
                             RebarConfig {
@@ -1731,6 +1767,9 @@ mod tests {
                             },
                             otp: OtpConfig {
                                 exclude_apps: [],
+                            },
+                            daemon: DaemonConfig {
+                                idle_timeout_secs: None,
                             },
                         },
                         NoManifest(
@@ -1926,6 +1965,9 @@ mod tests {
                     otp: OtpConfig {
                         exclude_apps: [],
                     },
+                    daemon: DaemonConfig {
+                        idle_timeout_secs: None,
+                    },
                 }
             "#]]
             .assert_eq(&debug_normalise_temp_dir(dir, &elp_config));
@@ -1971,6 +2013,7 @@ mod tests {
                 profile: "my_profile".to_string(),
             },
             otp: OtpConfig::default(),
+            daemon: DaemonConfig::default(),
         })
         .unwrap();
         expect![[r#"
@@ -1997,6 +2040,8 @@ mod tests {
 
             [otp]
             exclude_apps = []
+
+            [daemon]
         "#]]
         .assert_eq(&result);
     }
@@ -2075,6 +2120,9 @@ mod tests {
                 },
                 otp: OtpConfig {
                     exclude_apps: [],
+                },
+                daemon: DaemonConfig {
+                    idle_timeout_secs: None,
                 },
             }
         "#]]
@@ -2252,6 +2300,9 @@ mod tests {
                             "eunit",
                         ],
                     },
+                    daemon: DaemonConfig {
+                        idle_timeout_secs: None,
+                    },
                 }
             "#]]
             .assert_eq(&debug_normalise_temp_dir(dir, &elp_config));
@@ -2271,6 +2322,7 @@ mod tests {
             otp: OtpConfig {
                 exclude_apps: vec!["megaco".to_string(), "eunit".to_string()],
             },
+            daemon: DaemonConfig::default(),
         })
         .unwrap();
         expect![[r#"
@@ -2284,6 +2336,8 @@ mod tests {
 
             [otp]
             exclude_apps = ["megaco", "eunit"]
+
+            [daemon]
         "#]]
         .assert_eq(&result);
     }
@@ -2317,6 +2371,9 @@ mod tests {
                         "megaco",
                         "eunit",
                     ],
+                },
+                daemon: DaemonConfig {
+                    idle_timeout_secs: None,
                 },
             }
         "#]]

@@ -515,9 +515,10 @@ pub struct DaemonRun {
     pub profile: String,
     /// Run with rebar
     pub rebar: bool,
-    /// Idle timeout in seconds before auto-shutdown (default: 1800, 0=never)
-    #[bpaf(long("idle-timeout"), argument("SECONDS"), fallback(1800u64))]
-    pub idle_timeout: u64,
+    /// Deprecated: configure `[daemon].idle_timeout_secs` in `.elp.toml` instead.
+    /// This flag is a no-op and will be removed in a future release.
+    #[bpaf(long("idle-timeout"), argument("SECONDS"))]
+    pub idle_timeout: Option<u64>,
     /// Detach from parent process and run as daemon (internal use only)
     #[bpaf(hide)]
     pub daemonize: bool,

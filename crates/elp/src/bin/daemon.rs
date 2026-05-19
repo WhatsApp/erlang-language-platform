@@ -108,6 +108,22 @@ use crate::shell::ShellCommand;
 
 const DAEMON_DIR_PREFIX: &str = "elp-daemon-";
 
+/// Default for `[daemon].idle_timeout_secs` when the project's `.elp.toml`
+/// doesn't set one. 30 minutes — long enough to bridge typical "go for coffee"
+/// breaks, short enough that idle daemons don't accumulate on dev hosts.
+const DEFAULT_IDLE_TIMEOUT_SECS: u64 = 1800;
+
+/// Resolve the daemon's idle timeout from the project config.
+/// Returns `None` when the user explicitly set `0` ("never time out").
+fn effective_idle_timeout(config: Option<u64>) -> Option<Duration> {
+    let seconds = config.unwrap_or(DEFAULT_IDLE_TIMEOUT_SECS);
+    if seconds == 0 {
+        None
+    } else {
+        Some(Duration::from_secs(seconds))
+    }
+}
+
 /// Extract the project root directory from a manifest.
 fn project_root(manifest: &ProjectManifest) -> PathBuf {
     let p = manifest.root();
@@ -384,11 +400,12 @@ fn run_daemon_server(
         }
     });
 
-    let idle_timeout = if args.idle_timeout == 0 {
-        None
-    } else {
-        Some(Duration::from_secs(args.idle_timeout))
-    };
+    if args.idle_timeout.is_some() {
+        eprintln!(
+            "[elp-daemon] Warning: --idle-timeout is deprecated and ignored; configure [daemon].idle_timeout_secs in .elp.toml instead"
+        );
+    }
+    let idle_timeout = effective_idle_timeout(elp_config.daemon.idle_timeout_secs);
     let mut last_activity = Instant::now();
 
     loop {
@@ -1025,6 +1042,32 @@ mod tests {
         assert!(v.get("stderr").is_none());
     }
 
+    // -- effective_idle_timeout --
+
+    #[test]
+    fn effective_idle_timeout_uses_default_when_unset() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        let expected = Some(Duration::from_secs(DEFAULT_IDLE_TIMEOUT_SECS));
+        assert_eq_expected!(expected, effective_idle_timeout(None));
+    }
+
+    #[test]
+    fn effective_idle_timeout_honours_config() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        let expected = Some(Duration::from_secs(60));
+        assert_eq_expected!(expected, effective_idle_timeout(Some(60)));
+    }
+
+    #[test]
+    fn effective_idle_timeout_zero_means_never() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        let expected: Option<Duration> = None;
+        assert_eq_expected!(expected, effective_idle_timeout(Some(0)));
+    }
+
     // -- Lint payload + validation --
 
     /// Locks down the wire JSON shape AND verifies both encode and decode
@@ -1376,7 +1419,7 @@ mod tests {
                     project: project_bg,
                     profile: profile_bg,
                     rebar: false,
-                    idle_timeout: 60,
+                    idle_timeout: None,
                     daemonize: false,
                 },
                 &mut cli,
