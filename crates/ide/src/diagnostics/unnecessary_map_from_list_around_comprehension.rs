@@ -64,49 +64,13 @@ impl SsrPatternsLinter for UnnecessaryMapFromListAroundComprehensionLinter {
             static ref PATTERNS: Vec<(String, GeneratorStrictness)> = vec![
                 (
                     format!(
-                        "ssr: maps:from_list([{{{KEY_VAR},{VALUE_VAR}}} || {BINDING_VAR} <- {GENERATOR_VAR}])."
+                        "ssr: maps:from_list([{{{KEY_VAR},{VALUE_VAR}}} || {BINDING_VAR} <- {GENERATOR_VAR}, {CONDS_VAR}])."
                     ),
                     GeneratorStrictness::NonStrict,
                 ),
                 (
                     format!(
-                        "ssr: maps:from_list([{{{KEY_VAR},{VALUE_VAR}}} || {BINDING_VAR} <- {GENERATOR_VAR}, {COND1_VAR}])."
-                    ),
-                    GeneratorStrictness::NonStrict,
-                ),
-                (
-                    format!(
-                        "ssr: maps:from_list([{{{KEY_VAR},{VALUE_VAR}}} || {BINDING_VAR} <- {GENERATOR_VAR}, {COND1_VAR}, {COND2_VAR}])."
-                    ),
-                    GeneratorStrictness::NonStrict,
-                ),
-                (
-                    format!(
-                        "ssr: maps:from_list([{{{KEY_VAR},{VALUE_VAR}}} || {BINDING_VAR} <- {GENERATOR_VAR}, {COND1_VAR}, {COND2_VAR}, {COND3_VAR}])."
-                    ),
-                    GeneratorStrictness::NonStrict,
-                ),
-                (
-                    format!(
-                        "ssr: maps:from_list([{{{KEY_VAR},{VALUE_VAR}}} || {BINDING_VAR} <:- {GENERATOR_VAR}])."
-                    ),
-                    GeneratorStrictness::Strict,
-                ),
-                (
-                    format!(
-                        "ssr: maps:from_list([{{{KEY_VAR},{VALUE_VAR}}} || {BINDING_VAR} <:- {GENERATOR_VAR}, {COND1_VAR}])."
-                    ),
-                    GeneratorStrictness::Strict,
-                ),
-                (
-                    format!(
-                        "ssr: maps:from_list([{{{KEY_VAR},{VALUE_VAR}}} || {BINDING_VAR} <:- {GENERATOR_VAR}, {COND1_VAR}, {COND2_VAR}])."
-                    ),
-                    GeneratorStrictness::Strict,
-                ),
-                (
-                    format!(
-                        "ssr: maps:from_list([{{{KEY_VAR},{VALUE_VAR}}} || {BINDING_VAR} <:- {GENERATOR_VAR}, {COND1_VAR}, {COND2_VAR}, {COND3_VAR}])."
+                        "ssr: maps:from_list([{{{KEY_VAR},{VALUE_VAR}}} || {BINDING_VAR} <:- {GENERATOR_VAR}, {CONDS_VAR}])."
                     ),
                     GeneratorStrictness::Strict,
                 ),
@@ -141,16 +105,9 @@ impl SsrPatternsLinter for UnnecessaryMapFromListAroundComprehensionLinter {
         let key = matched.placeholder_text(ctx.sema, KEY_VAR)?;
         let value = matched.placeholder_text(ctx.sema, VALUE_VAR)?;
         let generator = matched.placeholder_text(ctx.sema, GENERATOR_VAR)?;
-
-        let cond1 = matched.placeholder_text(ctx.sema, COND1_VAR);
-        let cond2 = matched.placeholder_text(ctx.sema, COND2_VAR);
-        let cond3 = matched.placeholder_text(ctx.sema, COND3_VAR);
+        let conds = matched.placeholder_texts(ctx.sema, CONDS_VAR)?;
 
         let mut builder = SourceChangeBuilder::new(ctx.file_id);
-        let conds = vec![cond1, cond2, cond3]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
         let conds_str = if !conds.is_empty() {
             format!(", {}", conds.join(", "))
         } else {
@@ -180,10 +137,7 @@ static GENERATOR_VAR: &str = "_@Generator";
 static BINDING_VAR: &str = "_@Binding";
 static KEY_VAR: &str = "_@Key";
 static VALUE_VAR: &str = "_@Value";
-
-static COND1_VAR: &str = "_@Cond1";
-static COND2_VAR: &str = "_@Cond2";
-static COND3_VAR: &str = "_@Cond3";
+static CONDS_VAR: &str = "_@@Conds";
 
 #[cfg(test)]
 mod tests {
