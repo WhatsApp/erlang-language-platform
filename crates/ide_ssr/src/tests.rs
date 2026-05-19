@@ -2380,6 +2380,18 @@ fn ssr_glob_match_map_bare_underscore_key_with_glob_value() {
 }
 
 #[test]
+fn ssr_glob_match_map_bare_underscore_key_with_glob_value_named_last() {
+    assert_matches(
+        "ssr: #{_ => _@@Vals, tag => error}.",
+        "f() -> #{tag => error, reason => timeout, code => 42}.",
+        &[(
+            "#{tag => error, reason => timeout, code => 42}",
+            &[("_@@Vals", &["42", "timeout"])],
+        )],
+    );
+}
+
+#[test]
 fn ssr_glob_match_map_two_value_only_glob_entries_rejected() {
     expect![[r#"
         "Parse error: at most one glob entry allowed per map (found 2)"
@@ -2410,6 +2422,75 @@ fn ssr_glob_map_cross_occurrence_non_equivalent_does_not_match() {
         "ssr: foo(#{_@@X => _}, {_@@X}).",
         "f() -> foo(#{a => 1}, {b}).",
         &[],
+    );
+}
+
+// -----------------------------------------------------------------
+// Glob: map update fields.
+// -----------------------------------------------------------------
+
+#[test]
+fn ssr_glob_match_map_update_rest() {
+    assert_matches(
+        "ssr: _@M#{tag := error, _@@_ := _}.",
+        "f(M) -> M#{tag := error, reason := timeout}.",
+        &[(
+            "M#{tag := error, reason := timeout}",
+            &[("_@@_", &["reason"]), ("_@M", &["M"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_map_update_rest_named_last() {
+    assert_matches(
+        "ssr: _@M#{_@@_ := _, tag := error}.",
+        "f(M) -> M#{tag := error, reason := timeout}.",
+        &[(
+            "M#{tag := error, reason := timeout}",
+            &[("_@@_", &["reason"]), ("_@M", &["M"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_map_update_rest_empty() {
+    assert_matches(
+        "ssr: _@M#{tag := error, _@@_ := _}.",
+        "f(M) -> M#{tag := error}.",
+        &[("M#{tag := error}", &[("_@@_", &[]), ("_@M", &["M"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_map_update_two_glob_entries_rejected() {
+    expect![[r#"
+        "Parse error: at most one glob entry allowed per map (found 2)"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: _@M#{_@@K1 := _, _@@K2 := _}."));
+}
+
+#[test]
+fn ssr_glob_match_map_update_value_glob() {
+    assert_matches(
+        "ssr: _@M#{tag := error, _ := _@@V}.",
+        "f(M) -> M#{tag := error, reason := timeout}.",
+        &[(
+            "M#{tag := error, reason := timeout}",
+            &[("_@@V", &["timeout"]), ("_@M", &["M"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_map_update_value_glob_cross_occurrence() {
+    assert_matches(
+        "ssr: foo(_@M#{tag := error, _ := _@@V}, {_@@V}).",
+        "f(M) -> foo(M#{tag := error, reason := timeout}, {timeout}).",
+        &[(
+            "foo(M#{tag := error, reason := timeout}, {timeout})",
+            &[("_@@V", &["timeout", "timeout"]), ("_@M", &["M"])],
+        )],
     );
 }
 

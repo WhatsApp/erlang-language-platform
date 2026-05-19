@@ -1221,7 +1221,7 @@ impl<'a> Matcher<'a> {
         let mut placeholders: Vec<(&SubId, &Vec<SubId>)> = Vec::new();
         let mut non_placeholders: Vec<(&SubId, &Vec<SubId>)> = Vec::new();
         for (k, v) in &pattern_it.children {
-            let val_is_glob = v.first().is_some_and(|val| self.is_glob_subid(val));
+            let val_is_glob = v.last().is_some_and(|val| self.is_glob_subid(val));
             if self.is_glob_subid(k) || val_is_glob {
                 globs.push((k, v));
             } else if self.is_placeholder_expr(k) {
@@ -1259,12 +1259,12 @@ impl<'a> Matcher<'a> {
             }
 
             // Bind the value if it is a glob placeholder.
-            if let Some(val_subid) = glob_entry.1.first()
+            if let Some(val_subid) = glob_entry.1.last()
                 && self.is_glob_subid(val_subid)
             {
                 let glob_vals: Vec<SubId> = code_keys
                     .iter()
-                    .flat_map(|(_k, v)| v.iter().cloned())
+                    .filter_map(|(_k, v)| v.last().cloned())
                     .collect();
                 self.bind_map_glob(phase, val_subid, glob_vals)?;
             }
@@ -2312,32 +2312,45 @@ fn validate_map_glob_entries(
         matches!(&body.exprs[*id], Expr::Var(var) if var.as_string() == "_")
     };
 
-    // Check Expr::Map fields in the pattern expression tree.
+    let check_expr_pair = |key_id: &ExprId, val_id: &ExprId| -> Result<(), crate::SsrError> {
+        let key_is_glob = cache.is_glob(&AnyExprId::Expr(*key_id));
+        let val_is_glob = cache.is_glob(&AnyExprId::Expr(*val_id));
+
+        if !key_is_glob && !val_is_glob {
+            return Ok(());
+        }
+
+        if key_is_glob && !val_is_glob && !is_bare_underscore_expr(val_id) {
+            return Err(crate::SsrError::new(
+                "in a map glob entry, the non-glob side must be \
+                     bare underscore (`_`) or a glob placeholder (`_@@Name`)"
+                    .to_string(),
+            ));
+        }
+        if val_is_glob && !key_is_glob && !is_bare_underscore_expr(key_id) {
+            return Err(crate::SsrError::new(
+                "in a map glob entry, the non-glob side must be \
+                     bare underscore (`_`) or a glob placeholder (`_@@Name`)"
+                    .to_string(),
+            ));
+        }
+        Ok(())
+    };
+
+    // Check Expr::Map and Expr::MapUpdate fields.
     for (expr_id, _) in body.exprs.iter() {
-        if let Expr::Map { fields } = &pattern_body[expr_id] {
-            for (key_id, val_id) in fields {
-                let key_is_glob = cache.is_glob(&AnyExprId::Expr(*key_id));
-                let val_is_glob = cache.is_glob(&AnyExprId::Expr(*val_id));
-
-                if !key_is_glob && !val_is_glob {
-                    continue;
-                }
-
-                if key_is_glob && !val_is_glob && !is_bare_underscore_expr(val_id) {
-                    return Err(crate::SsrError::new(
-                        "in a map glob entry, the non-glob side must be \
-                         bare underscore (`_`) or a glob placeholder (`_@@Name`)"
-                            .to_string(),
-                    ));
-                }
-                if val_is_glob && !key_is_glob && !is_bare_underscore_expr(key_id) {
-                    return Err(crate::SsrError::new(
-                        "in a map glob entry, the non-glob side must be \
-                         bare underscore (`_`) or a glob placeholder (`_@@Name`)"
-                            .to_string(),
-                    ));
+        match &pattern_body[expr_id] {
+            Expr::Map { fields } => {
+                for (key_id, val_id) in fields {
+                    check_expr_pair(key_id, val_id)?;
                 }
             }
+            Expr::MapUpdate { fields, .. } => {
+                for (key_id, _op, val_id) in fields {
+                    check_expr_pair(key_id, val_id)?;
+                }
+            }
+            _ => {}
         }
     }
 
@@ -2460,6 +2473,15 @@ fn glob_role(body: &Body, parent_id: AnyExprId, glob_id: AnyExprId) -> GlobRole 
                     GlobRole::Forbidden
                 }
             }
+            Expr::MapUpdate { fields, .. } => {
+                if fields.iter().any(|(k, _, _)| *k == g) {
+                    GlobRole::MapKey
+                } else if fields.iter().any(|(_, _, v)| *v == g) {
+                    GlobRole::MapValue
+                } else {
+                    GlobRole::Forbidden
+                }
+            }
             _ => GlobRole::Forbidden,
         },
         (AnyExprId::Pat(p), AnyExprId::Pat(g)) => match &body.pats[p] {
@@ -2486,13 +2508,13 @@ fn map_field_index_for_glob(
     glob_id: AnyExprId,
 ) -> Option<usize> {
     match (parent_id, glob_id) {
-        (AnyExprId::Expr(p), AnyExprId::Expr(g)) => {
-            if let Expr::Map { fields } = &body.exprs[p] {
-                fields.iter().position(|(k, v)| *k == g || *v == g)
-            } else {
-                None
+        (AnyExprId::Expr(p), AnyExprId::Expr(g)) => match &body.exprs[p] {
+            Expr::Map { fields } => fields.iter().position(|(k, v)| *k == g || *v == g),
+            Expr::MapUpdate { fields, .. } => {
+                fields.iter().position(|(k, _, v)| *k == g || *v == g)
             }
-        }
+            _ => None,
+        },
         (AnyExprId::Pat(p), AnyExprId::Expr(g)) => {
             if let Pat::Map { fields } = &body.pats[p] {
                 fields.iter().position(|(k, _)| *k == g)
