@@ -28,7 +28,8 @@
 //
 // Glob placeholders, written `_@@<name>`, match zero-or-more sibling
 // elements within an ordered sequence — tuple elements, list elements,
-// block expressions, or call arguments — à la Erlang Merl. At most one
+// block expressions, call arguments, or clause body expressions
+// (closures, case/receive/if/try) — à la Erlang Merl. At most one
 // glob is permitted per sequence, and globs are not allowed inside
 // maps/records or `when`-clause guards. When the same glob name appears
 // in two sequences, both bindings must be element-wise equivalent.

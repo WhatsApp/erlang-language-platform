@@ -1749,7 +1749,7 @@ fn ssr_glob_two_globs_in_list_rejected() {
 #[test]
 fn ssr_glob_in_map_field_rejected() {
     expect![[r#"
-        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements and call arguments"
+        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements, call arguments, and clause bodies"
     "#]]
     .assert_debug_eq(&parse_error_text("ssr: #{a => _@@X}."));
 }
@@ -1757,7 +1757,7 @@ fn ssr_glob_in_map_field_rejected() {
 #[test]
 fn ssr_glob_in_list_tail_rejected() {
     expect![[r#"
-        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements and call arguments"
+        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements, call arguments, and clause bodies"
     "#]]
     .assert_debug_eq(&parse_error_text("ssr: [a | _@@Tail]."));
 }
@@ -1765,7 +1765,7 @@ fn ssr_glob_in_list_tail_rejected() {
 #[test]
 fn ssr_glob_as_call_target_rejected() {
     expect![[r#"
-        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements and call arguments"
+        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements, call arguments, and clause bodies"
     "#]]
     .assert_debug_eq(&parse_error_text("ssr: _@@F(1, 2)."));
 }
@@ -1773,7 +1773,7 @@ fn ssr_glob_as_call_target_rejected() {
 #[test]
 fn ssr_glob_in_binary_op_rejected() {
     expect![[r#"
-        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements and call arguments"
+        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements, call arguments, and clause bodies"
     "#]]
     .assert_debug_eq(&parse_error_text("ssr: _@@X + 1."));
 }
@@ -2001,6 +2001,52 @@ fn ssr_glob_match_block_prefix_mismatch() {
     assert_matches(
         "ssr: begin setup, _@@Rest end.",
         "f() -> begin other, work end.",
+        &[],
+    );
+}
+
+// -----------------------------------------------------------------
+// Glob: closure / anonymous fun clause bodies.
+// -----------------------------------------------------------------
+
+#[test]
+fn ssr_glob_match_closure_body() {
+    assert_matches(
+        "ssr: fun() -> _@@Body end.",
+        "f() -> fun() -> a, b, c end.",
+        &[("fun() -> a, b, c end", &[("_@@Body", &["a", "b", "c"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_closure_body_with_args() {
+    assert_matches(
+        "ssr: fun(_@A) -> _@@Body end.",
+        "f() -> fun(X) -> use(X), done end.",
+        &[(
+            "fun(X) -> use(X), done end",
+            &[("_@@Body", &["use(X)", "done"]), ("_@A", &["X"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_closure_body_with_prefix() {
+    assert_matches(
+        "ssr: fun() -> setup, _@@Rest end.",
+        "f() -> fun() -> setup, work, cleanup end.",
+        &[(
+            "fun() -> setup, work, cleanup end",
+            &[("_@@Rest", &["work", "cleanup"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_closure_multi_clause_no_match() {
+    assert_matches(
+        "ssr: fun(_@A) -> _@@Body end.",
+        "f() -> fun(X) -> a; (Y) -> b end.",
         &[],
     );
 }

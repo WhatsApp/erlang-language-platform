@@ -979,6 +979,16 @@ impl<'a> Matcher<'a> {
         let glob_codes = &codes[prefix.len()..glob_end];
         let suffix_codes = &codes[glob_end..];
 
+        // Sentinel barrier: `SubId::Constant` values are structural
+        // markers (clause separators, comprehension boundaries, etc.)
+        // that never represent real Erlang expressions.  If any appear
+        // in the glob slice, the code has more structure than the
+        // pattern expects (e.g. a single-clause pattern matched
+        // against a multi-clause expression) and the match must fail.
+        if glob_codes.iter().any(|c| matches!(c, SubId::Constant(_))) {
+            fail_match!("glob match crossed a structural boundary");
+        }
+
         self.attempt_match_lockstep(phase, prefix, prefix_codes)?;
         self.attempt_match_lockstep(phase, suffix, suffix_codes)?;
         self.bind_glob(phase, glob_pattern, glob_codes, prefix_codes, suffix_codes)?;
@@ -2091,11 +2101,12 @@ where
 /// Validate the usage of glob placeholders (`_@@Name`) in an SSR rule.
 ///
 /// Globs are only allowed as direct elements of a "sequence position":
-/// `Tuple.exprs`, `List.exprs`, `Block.exprs`, and `Call.args` (and the
-/// corresponding `Pat` variants). At most one glob per sequence is
-/// permitted, mirroring Erlang Merl. Globs are forbidden inside `when`
-/// clauses entirely. Any violation surfaces as an `SsrError` so the
-/// rule fails to parse rather than silently producing wrong matches.
+/// `Tuple.exprs`, `List.exprs`, `Block.exprs`, `Call.args`, and
+/// clause body `exprs` inside `Closure` (and the corresponding `Pat`
+/// variants). At most one glob per sequence is permitted, mirroring
+/// Erlang Merl. Globs are forbidden inside `when` clauses entirely.
+/// Any violation surfaces as an `SsrError` so the rule fails to parse
+/// rather than silently producing wrong matches.
 pub(crate) fn validate_glob_usage(
     ssr_body: &hir::SsrBody,
     pattern_body: &FoldBody,
@@ -2149,8 +2160,8 @@ pub(crate) fn validate_glob_usage(
             GlobRole::Forbidden => {
                 return Err(crate::SsrError::new(
                     "glob placeholder not allowed in this position; \
-                     globs are only allowed in tuple/list/block elements \
-                     and call arguments"
+                     globs are only allowed in tuple/list/block elements, \
+                     call arguments, and clause bodies"
                         .to_string(),
                 ));
             }
@@ -2185,7 +2196,8 @@ pub(crate) fn validate_glob_usage(
 /// Role a child plays in its parent HIR node, from the perspective of
 /// glob-placement validation.
 enum GlobRole {
-    /// Direct element of a sequence position (tuple/list/block/call args).
+    /// Direct element of a sequence position (tuple/list/block/call
+    /// args/clause body exprs).
     Sequence,
     /// Any other slot — globs are forbidden here.
     Forbidden,
@@ -2198,6 +2210,9 @@ fn glob_role(body: &Body, parent_id: AnyExprId, glob_id: AnyExprId) -> GlobRole 
             Expr::List { exprs, .. } if exprs.contains(&g) => GlobRole::Sequence,
             Expr::Block { exprs } if exprs.contains(&g) => GlobRole::Sequence,
             Expr::Call { args, .. } if args.contains(&g) => GlobRole::Sequence,
+            Expr::Closure { clauses, .. } if clauses.iter().any(|c| c.exprs.contains(&g)) => {
+                GlobRole::Sequence
+            }
             _ => GlobRole::Forbidden,
         },
         (AnyExprId::Pat(p), AnyExprId::Pat(g)) => match &body.pats[p] {
