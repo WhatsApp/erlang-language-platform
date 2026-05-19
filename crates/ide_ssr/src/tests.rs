@@ -2166,6 +2166,68 @@ fn ssr_glob_match_maybe_else_clause_body() {
 }
 
 // -----------------------------------------------------------------
+// Glob: comprehension guards.
+// -----------------------------------------------------------------
+
+#[test]
+fn ssr_glob_match_lc_guards() {
+    assert_matches(
+        "ssr: [_@X || _@X <- _@L, _@@Guards].",
+        "f(L) -> [X || X <- L, X > 0, X < 10].",
+        &[(
+            "[X || X <- L, X > 0, X < 10]",
+            &[
+                ("_@@Guards", &["X > 0", "X < 10"]),
+                ("_@L", &["L"]),
+                ("_@X", &["X", "X"]),
+            ],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_lc_guards_empty() {
+    assert_matches(
+        "ssr: [_@X || _@X <- _@L, _@@Guards].",
+        "f(L) -> [X || X <- L].",
+        &[(
+            "[X || X <- L]",
+            &[("_@@Guards", &[]), ("_@L", &["L"]), ("_@X", &["X", "X"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_lc_guards_no_cross_generator() {
+    assert_matches(
+        "ssr: [_@X || _@X <- _@L, _@@Guards].",
+        "f(L1, L2) -> [X || X <- L1, Y <- L2].",
+        &[],
+    );
+}
+
+#[test]
+fn ssr_glob_lc_guards_interleaved_generators() {
+    // Guards and generators interleaved: the glob should not match
+    // when there are additional generators after the matched one.
+    assert_matches(
+        "ssr: [_@X || _@X <- _@L, _@@Guards].",
+        "f(L) -> [X || Y =:= 2, X <- L, X > 0, W <- L, W < 10].",
+        &[],
+    );
+}
+
+#[test]
+fn ssr_glob_lc_two_globs_rejected() {
+    expect![[r#"
+        "Parse error: at most one glob placeholder allowed per sequence (found 2)"
+    "#]]
+    .assert_debug_eq(&parse_error_text(
+        "ssr: [_@X || _@@Guards1, _@X <- _@L, _@@Guards2].",
+    ));
+}
+
+// -----------------------------------------------------------------
 // Glob: cross-occurrence equivalence and public retrieval API
 // (commit 5).
 // -----------------------------------------------------------------

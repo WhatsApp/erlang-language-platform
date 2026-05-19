@@ -2250,6 +2250,18 @@ fn glob_role(body: &Body, parent_id: AnyExprId, glob_id: AnyExprId) -> GlobRole 
             {
                 GlobRole::Sequence
             }
+            Expr::Comprehension { builder, exprs } => {
+                let in_builder =
+                    matches!(builder, ComprehensionBuilder::List(es) if es.contains(&g));
+                let in_guard = exprs
+                    .iter()
+                    .any(|ce| matches!(ce, ComprehensionExpr::Expr(e) if *e == g));
+                if in_builder || in_guard {
+                    GlobRole::Sequence
+                } else {
+                    GlobRole::Forbidden
+                }
+            }
             _ => GlobRole::Forbidden,
         },
         (AnyExprId::Pat(p), AnyExprId::Pat(g)) => match &body.pats[p] {
