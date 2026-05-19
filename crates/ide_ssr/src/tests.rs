@@ -1747,9 +1747,9 @@ fn ssr_glob_two_globs_in_list_rejected() {
 }
 
 #[test]
-fn ssr_glob_in_map_field_rejected() {
+fn ssr_glob_in_map_value_without_glob_or_underscore_key_rejected() {
     expect![[r#"
-        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements, call arguments, and clause bodies"
+        "Parse error: in a map glob entry, the non-glob side must be bare underscore (`_`) or a glob placeholder (`_@@Name`)"
     "#]]
     .assert_debug_eq(&parse_error_text("ssr: #{a => _@@X}."));
 }
@@ -1757,7 +1757,7 @@ fn ssr_glob_in_map_field_rejected() {
 #[test]
 fn ssr_glob_in_list_tail_rejected() {
     expect![[r#"
-        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements, call arguments, and clause bodies"
+        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements, call arguments, map fields, and clause bodies"
     "#]]
     .assert_debug_eq(&parse_error_text("ssr: [a | _@@Tail]."));
 }
@@ -1765,7 +1765,7 @@ fn ssr_glob_in_list_tail_rejected() {
 #[test]
 fn ssr_glob_as_call_target_rejected() {
     expect![[r#"
-        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements, call arguments, and clause bodies"
+        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements, call arguments, map fields, and clause bodies"
     "#]]
     .assert_debug_eq(&parse_error_text("ssr: _@@F(1, 2)."));
 }
@@ -1773,7 +1773,7 @@ fn ssr_glob_as_call_target_rejected() {
 #[test]
 fn ssr_glob_in_binary_op_rejected() {
     expect![[r#"
-        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements, call arguments, and clause bodies"
+        "Parse error: glob placeholder not allowed in this position; globs are only allowed in tuple/list/block elements, call arguments, map fields, and clause bodies"
     "#]]
     .assert_debug_eq(&parse_error_text("ssr: _@@X + 1."));
 }
@@ -2225,6 +2225,192 @@ fn ssr_glob_lc_two_globs_rejected() {
     .assert_debug_eq(&parse_error_text(
         "ssr: [_@X || _@@Guards1, _@X <- _@L, _@@Guards2].",
     ));
+}
+
+// -----------------------------------------------------------------
+// Glob: map key-value pairs.
+// -----------------------------------------------------------------
+
+#[test]
+fn ssr_glob_match_map_rest_keys_only() {
+    assert_matches(
+        "ssr: #{tag => error, _@@_ => _}.",
+        "f() -> #{tag => error, reason => timeout, code => 42}.",
+        &[(
+            "#{tag => error, reason => timeout, code => 42}",
+            &[("_@@_", &["code", "reason"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_map_rest_keys_only_unordered() {
+    // The fixed field `tag => error` is in the middle of the code map,
+    // not at the start.  The glob still absorbs the other entries.
+    assert_matches(
+        "ssr: #{tag => error, _@@_ => _}.",
+        "f() -> #{reason => timeout, tag => error, code => 42}.",
+        &[(
+            "#{reason => timeout, tag => error, code => 42}",
+            &[("_@@_", &["reason", "code"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_map_rest_keys_and_values() {
+    assert_matches(
+        "ssr: #{tag => error, _@@Keys => _@@Vals}.",
+        "f() -> #{tag => error, reason => timeout, code => 42}.",
+        &[(
+            "#{tag => error, reason => timeout, code => 42}",
+            &[
+                ("_@@Keys", &["code", "reason"]),
+                ("_@@Vals", &["42", "timeout"]),
+            ],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_map_rest_empty() {
+    assert_matches(
+        "ssr: #{tag => error, _@@_ => _}.",
+        "f() -> #{tag => error}.",
+        &[("#{tag => error}", &[("_@@_", &[])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_map_rest_empty_keys_and_values() {
+    assert_matches(
+        "ssr: #{tag => error, _@@Keys => _@@Vals}.",
+        "f() -> #{tag => error}.",
+        &[("#{tag => error}", &[("_@@Keys", &[]), ("_@@Vals", &[])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_map_only_glob() {
+    assert_matches(
+        "ssr: #{_@@_ => _}.",
+        "f() -> #{a => 1, b => 2}.",
+        &[("#{a => 1, b => 2}", &[("_@@_", &["a", "b"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_match_map_only_glob_keys_and_values() {
+    assert_matches(
+        "ssr: #{_@@Keys => _@@Vals}.",
+        "f() -> #{a => 1, b => 2}.",
+        &[(
+            "#{a => 1, b => 2}",
+            &[("_@@Keys", &["a", "b"]), ("_@@Vals", &["1", "2"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_map_values_only() {
+    assert_matches(
+        "ssr: #{tag => error, _@@_ => _@@Vals}.",
+        "f() -> #{tag => error, reason => timeout, code => 42}.",
+        &[(
+            "#{tag => error, reason => timeout, code => 42}",
+            &[
+                ("_@@Vals", &["42", "timeout"]),
+                ("_@@_", &["code", "reason"]),
+            ],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_map_exact_no_glob() {
+    assert_matches(
+        "ssr: #{tag => error}.",
+        "f() -> #{tag => error, extra => field}.",
+        &[],
+    );
+}
+
+#[test]
+fn ssr_glob_match_map_no_match_missing_fixed_key() {
+    assert_matches(
+        "ssr: #{tag => error, _@@_ => _}.",
+        "f() -> #{reason => timeout}.",
+        &[],
+    );
+}
+
+#[test]
+fn ssr_glob_match_map_bare_underscores_is_literal_match() {
+    // `_ => _` has no globs or placeholders — it is a literal key
+    // match, not a wildcard.  No validation error; just no match.
+    assert_matches("ssr: #{_ => _}.", "f() -> #{a => 1, b => 2}.", &[]);
+}
+
+#[test]
+fn ssr_glob_match_map_single_placeholder_value_rejected() {
+    expect![[r#"
+        "Parse error: in a map glob entry, the non-glob side must be bare underscore (`_`) or a glob placeholder (`_@@Name`)"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: #{_@@K => _@V}."));
+}
+
+#[test]
+fn ssr_glob_match_map_non_underscore_key_with_glob_value_rejected() {
+    expect![[r#"
+        "Parse error: in a map glob entry, the non-glob side must be bare underscore (`_`) or a glob placeholder (`_@@Name`)"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: #{a => _@@V}."));
+}
+
+#[test]
+fn ssr_glob_match_map_bare_underscore_key_with_glob_value() {
+    assert_matches(
+        "ssr: #{tag => error, _ => _@@Vals}.",
+        "f() -> #{tag => error, reason => timeout, code => 42}.",
+        &[(
+            "#{tag => error, reason => timeout, code => 42}",
+            &[("_@@Vals", &["42", "timeout"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_match_map_two_value_only_glob_entries_rejected() {
+    expect![[r#"
+        "Parse error: at most one glob entry allowed per map (found 2)"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: #{_ => _@@V1, _ => _@@V2}."));
+}
+
+#[test]
+fn ssr_glob_match_map_key_glob_plus_value_only_glob_rejected() {
+    expect![[r#"
+        "Parse error: at most one glob entry allowed per map (found 2)"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: #{_@@K => _, _ => _@@V}."));
+}
+
+#[test]
+fn ssr_glob_map_cross_occurrence_equivalent_matches() {
+    assert_matches(
+        "ssr: foo(#{_@@X => _}, {_@@X}).",
+        "f() -> foo(#{a => 1}, {a}).",
+        &[("foo(#{a => 1}, {a})", &[("_@@X", &["a", "a"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_map_cross_occurrence_non_equivalent_does_not_match() {
+    assert_matches(
+        "ssr: foo(#{_@@X => _}, {_@@X}).",
+        "f() -> foo(#{a => 1}, {b}).",
+        &[],
+    );
 }
 
 // -----------------------------------------------------------------

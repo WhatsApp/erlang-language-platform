@@ -30,14 +30,22 @@
 // elements within an ordered sequence — tuple elements, list elements,
 // block expressions, call arguments, or clause body expressions
 // (closures, case/receive/if/try) — à la Erlang Merl. At most one
-// glob is permitted per sequence, and globs are not allowed inside
-// maps/records or `when`-clause guards. When the same glob name appears
-// in two sequences, both bindings must be element-wise equivalent.
-// Globs are matching-only today (no template-side support).
+// glob is permitted per sequence. In maps, a glob entry absorbs
+// unmatched fields; the allowed forms are:
+//   `#{_@@K => _@@V}` — bind remaining keys and values as parallel globs
+//   `#{_@@K => _}`    — bind keys, don't-care values
+//   `#{_ => _@@V}`    — don't-care keys, bind values
+//   `#{_@@_ => _}`    — absorb extras
+// Globs are not allowed in records or `when`-clause guards. When the
+// same glob name appears in two sequences, both bindings must be
+// element-wise equivalent. Globs are matching-only today (no
+// template-side support).
 //
 // ```erlang
 // // ssr: {a, _@@Rest} matches {a, b, c, d}; Rest binds to [b, c, d]
 // // ssr: foo(_@@Args) matches foo(1, 2, 3); Args binds to [1, 2, 3]
+// // ssr: #{tag => error, _@@K => _@@V} matches #{tag => error, a => 1};
+// //      K binds to [a], V binds to [1]
 // ```
 //
 // The scope of the search / replace will be restricted to the current

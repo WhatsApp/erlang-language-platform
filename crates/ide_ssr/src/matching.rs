@@ -1048,6 +1048,72 @@ impl<'a> Matcher<'a> {
         Ok(())
     }
 
+    /// Bind a glob placeholder to remaining unmatched map keys. Unlike
+    /// `bind_glob` (which computes a contiguous source range from
+    /// ordered prefix/suffix neighbours), map entries are unordered so
+    /// the range spans from the earliest to the latest key.
+    fn bind_map_glob(
+        &self,
+        phase: &mut Phase<'_>,
+        glob_pattern: &SubId,
+        glob_codes: Vec<SubId>,
+    ) -> Result<(), MatchFailed> {
+        let Some(placeholder) = self.get_placeholder_for_node(glob_pattern) else {
+            fail_match!("internal: glob pattern is not in the placeholder cache");
+        };
+        if let Phase::Second(matches_out) = phase {
+            let range = if glob_codes.is_empty() {
+                self.default_glob_range()
+            } else {
+                let ranges: Vec<FileRange> = glob_codes
+                    .iter()
+                    .filter_map(|c| self.get_code_range(c))
+                    .collect();
+                if let (Some(first), Some(_last)) = (ranges.first(), ranges.last()) {
+                    let start = ranges.iter().map(|r| r.range.start()).min().unwrap();
+                    let end = ranges.iter().map(|r| r.range.end()).max().unwrap();
+                    FileRange {
+                        file_id: first.file_id,
+                        range: TextRange::new(start, end),
+                    }
+                } else {
+                    self.default_glob_range()
+                }
+            };
+            self.validate_range(&range)?;
+
+            if let Some(match_ids) = matches_out.placeholders_by_var.get(&placeholder.var) {
+                for match_id in match_ids.iter() {
+                    if let Some(existing) = matches_out.placeholder_values.get(match_id)
+                        && !self.glob_codes_equivalent(existing, &glob_codes)
+                    {
+                        fail_match!(
+                            "glob placeholder match failed: occurrences of `{}` bound to non-equivalent slices",
+                            placeholder.var.as_name()
+                        );
+                    }
+                }
+            }
+
+            matches_out.placeholder_values.insert(
+                glob_pattern.clone(),
+                PlaceholderMatch::Glob {
+                    range,
+                    code_ids: glob_codes,
+                    inner_matches: SsrMatches::default(),
+                },
+            );
+            matches_out
+                .placeholders_by_var
+                .entry(placeholder.var)
+                .and_modify(|s| {
+                    s.insert(glob_pattern.clone());
+                })
+                .or_insert(FxHashSet::from_iter(vec![glob_pattern.clone()]));
+        }
+        Ok(())
+    }
+
     /// Element-wise compare an existing glob binding against a newly
     /// proposed slice of code SubIds. Returns false if the existing
     /// match isn't a glob, the lengths differ, or any pair fails
@@ -1147,32 +1213,24 @@ impl<'a> Matcher<'a> {
         code_it: PatternMap,
     ) -> Result<(), MatchFailed> {
         self.attempt_match_pattern_lists(phase, pattern_it.prefix, code_it.prefix)?;
-        // We have a map of fields that can map in any order.  Each is
-        // a key, with possible values
 
-        // Some of the keys might be placeholders.  So first see what
-        // non-placeholders we can match.
+        // Partition pattern fields into glob entries, placeholder keys,
+        // and literal (non-placeholder) keys.  A glob entry is one where
+        // the key is a glob, OR the value is a glob (with bare `_` key).
+        let mut globs: Vec<(&SubId, &Vec<SubId>)> = Vec::new();
+        let mut placeholders: Vec<(&SubId, &Vec<SubId>)> = Vec::new();
+        let mut non_placeholders: Vec<(&SubId, &Vec<SubId>)> = Vec::new();
+        for (k, v) in &pattern_it.children {
+            let val_is_glob = v.first().is_some_and(|val| self.is_glob_subid(val));
+            if self.is_glob_subid(k) || val_is_glob {
+                globs.push((k, v));
+            } else if self.is_placeholder_expr(k) {
+                placeholders.push((k, v));
+            } else {
+                non_placeholders.push((k, v));
+            }
+        }
 
-        // Note: Perhaps preprocess the pattern map when constructing
-        // it, to avoid rework on every match.  But make it work
-        // first.
-
-        // What do we do if we have more than one possible match?
-        // e.g. two placeholder field names, with placeholder RHS?
-        // Pathological, ignore for now.
-        #[allow(clippy::type_complexity)]
-        let (placeholders, non_placeholders): (
-            Vec<(&SubId, &Vec<SubId>)>,
-            Vec<(&SubId, &Vec<SubId>)>,
-        ) = pattern_it
-            .children
-            .iter()
-            .partition(|(k, _v)| self.is_placeholder_expr(k));
-
-        // We are likely to have best results matching in order
-        // (heuristic).  So pulling something out of the set is not
-        // ideal, but we need to be able to loop through, attempting,
-        // and then remove if matched. Optimize later.
         let mut code_keys: Vec<(&SubId, &Vec<SubId>)> = code_it.children.iter().collect();
         // Note: this is potentially n^2 in the number of fields
         for p in non_placeholders {
@@ -1192,7 +1250,25 @@ impl<'a> Matcher<'a> {
                 fail_match!("no placeholder match in child vector");
             };
         }
-        if !code_keys.is_empty() {
+
+        if let Some(glob_entry) = globs.first() {
+            // Bind the key if it is a glob placeholder.
+            if self.is_glob_subid(glob_entry.0) {
+                let glob_keys: Vec<SubId> = code_keys.iter().map(|(k, _v)| (*k).clone()).collect();
+                self.bind_map_glob(phase, glob_entry.0, glob_keys)?;
+            }
+
+            // Bind the value if it is a glob placeholder.
+            if let Some(val_subid) = glob_entry.1.first()
+                && self.is_glob_subid(val_subid)
+            {
+                let glob_vals: Vec<SubId> = code_keys
+                    .iter()
+                    .flat_map(|(_k, v)| v.iter().cloned())
+                    .collect();
+                self.bind_map_glob(phase, val_subid, glob_vals)?;
+            }
+        } else if !code_keys.is_empty() {
             fail_match!("unmatched fields");
         }
         Ok(())
@@ -2145,7 +2221,14 @@ pub(crate) fn validate_glob_usage(
     });
 
     // Validate placements and tally per-parent glob counts.
+    // A map glob *entry* is any map field where at least the key or
+    // value is a glob.  A single entry like `_@@K => _@@V` has two
+    // glob placeholders but counts as one entry.  We track which field
+    // indices contain globs per map parent and reject when more than
+    // one distinct field has a glob (the matching code only processes
+    // the first glob entry).
     let mut seq_glob_count: FxHashMap<AnyExprId, usize> = FxHashMap::default();
+    let mut map_glob_fields: FxHashMap<AnyExprId, FxHashSet<usize>> = FxHashMap::default();
     for (glob_id, parent_id) in &globs {
         let Some(parent_id) = parent_id else {
             return Err(crate::SsrError::new(
@@ -2158,11 +2241,16 @@ pub(crate) fn validate_glob_usage(
             GlobRole::Sequence => {
                 *seq_glob_count.entry(*parent_id).or_insert(0) += 1;
             }
+            GlobRole::MapKey | GlobRole::MapValue => {
+                if let Some(idx) = map_field_index_for_glob(body, *parent_id, *glob_id) {
+                    map_glob_fields.entry(*parent_id).or_default().insert(idx);
+                }
+            }
             GlobRole::Forbidden => {
                 return Err(crate::SsrError::new(
                     "glob placeholder not allowed in this position; \
                      globs are only allowed in tuple/list/block elements, \
-                     call arguments, and clause bodies"
+                     call arguments, map fields, and clause bodies"
                         .to_string(),
                 ));
             }
@@ -2173,6 +2261,14 @@ pub(crate) fn validate_glob_usage(
             "at most one glob placeholder allowed per sequence (found {count})"
         )));
     }
+    if let Some((_, fields)) = map_glob_fields.iter().find(|(_, s)| s.len() > 1) {
+        let count = fields.len();
+        return Err(crate::SsrError::new(format!(
+            "at most one glob entry allowed per map (found {count})"
+        )));
+    }
+
+    validate_map_glob_entries(pattern_body, cache)?;
 
     // Reject any glob anywhere in `where` clauses.
     if let Some(when) = &ssr_body.when {
@@ -2194,12 +2290,105 @@ pub(crate) fn validate_glob_usage(
     Ok(())
 }
 
+/// Validate map glob entries.
+///
+/// A map glob entry is any map field where at least one of the key or
+/// value is a glob placeholder.  The allowed forms are:
+///
+///   `#{_@@K => _@@V}` — bind remaining keys and values as parallel globs
+///   `#{_@@K => _}`    — bind keys, don't-care values
+///   `#{_ => _@@V}`    — don't-care keys, bind values
+///   `#{_@@_ => _}`    — absorb extras
+///
+/// In every case the non-glob side must be bare underscore (`_`).
+/// Rejected: `#{_@@K => _@V}`, `#{_@@K => literal}`, `#{a => _@@V}`.
+fn validate_map_glob_entries(
+    pattern_body: &FoldBody,
+    cache: &PlaceholderCache,
+) -> Result<(), crate::SsrError> {
+    let body = pattern_body.body;
+
+    let is_bare_underscore_expr = |id: &ExprId| -> bool {
+        matches!(&body.exprs[*id], Expr::Var(var) if var.as_string() == "_")
+    };
+
+    // Check Expr::Map fields in the pattern expression tree.
+    for (expr_id, _) in body.exprs.iter() {
+        if let Expr::Map { fields } = &pattern_body[expr_id] {
+            for (key_id, val_id) in fields {
+                let key_is_glob = cache.is_glob(&AnyExprId::Expr(*key_id));
+                let val_is_glob = cache.is_glob(&AnyExprId::Expr(*val_id));
+
+                if !key_is_glob && !val_is_glob {
+                    continue;
+                }
+
+                if key_is_glob && !val_is_glob && !is_bare_underscore_expr(val_id) {
+                    return Err(crate::SsrError::new(
+                        "in a map glob entry, the non-glob side must be \
+                         bare underscore (`_`) or a glob placeholder (`_@@Name`)"
+                            .to_string(),
+                    ));
+                }
+                if val_is_glob && !key_is_glob && !is_bare_underscore_expr(key_id) {
+                    return Err(crate::SsrError::new(
+                        "in a map glob entry, the non-glob side must be \
+                         bare underscore (`_`) or a glob placeholder (`_@@Name`)"
+                            .to_string(),
+                    ));
+                }
+            }
+        }
+    }
+
+    // Check Pat::Map fields in the pattern pat tree.
+    for (pat_id, _) in body.pats.iter() {
+        if let Pat::Map { fields } = &pattern_body[pat_id] {
+            for (key_id, val_id) in fields {
+                let key_is_glob = cache.is_glob(&AnyExprId::Expr(*key_id));
+                let val_is_glob = cache.is_glob(&AnyExprId::Pat(*val_id));
+
+                if !key_is_glob && !val_is_glob {
+                    continue;
+                }
+
+                if key_is_glob && !val_is_glob {
+                    match &body.pats[*val_id] {
+                        Pat::Var(var) if var.as_string() == "_" => {}
+                        _ => {
+                            return Err(crate::SsrError::new(
+                                "in a map glob entry, the non-glob side must be \
+                                 bare underscore (`_`) or a glob placeholder (`_@@Name`)"
+                                    .to_string(),
+                            ));
+                        }
+                    }
+                }
+                if val_is_glob && !key_is_glob && !is_bare_underscore_expr(key_id) {
+                    return Err(crate::SsrError::new(
+                        "in a map glob entry, the non-glob side must be \
+                         bare underscore (`_`) or a glob placeholder (`_@@Name`)"
+                            .to_string(),
+                    ));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 /// Role a child plays in its parent HIR node, from the perspective of
 /// glob-placement validation.
 enum GlobRole {
     /// Direct element of a sequence position (tuple/list/block/call
     /// args/clause body exprs).
     Sequence,
+    /// Key of a map field — globs here absorb remaining unmatched entries.
+    MapKey,
+    /// Value of a map field — allowed when the key is a glob or bare
+    /// `_` (validated in `validate_map_glob_entries`).
+    MapValue,
     /// Any other slot — globs are forbidden here.
     Forbidden,
 }
@@ -2262,14 +2451,63 @@ fn glob_role(body: &Body, parent_id: AnyExprId, glob_id: AnyExprId) -> GlobRole 
                     GlobRole::Forbidden
                 }
             }
+            Expr::Map { fields } => {
+                if fields.iter().any(|(k, _)| *k == g) {
+                    GlobRole::MapKey
+                } else if fields.iter().any(|(_, v)| *v == g) {
+                    GlobRole::MapValue
+                } else {
+                    GlobRole::Forbidden
+                }
+            }
             _ => GlobRole::Forbidden,
         },
         (AnyExprId::Pat(p), AnyExprId::Pat(g)) => match &body.pats[p] {
             Pat::Tuple { pats } if pats.contains(&g) => GlobRole::Sequence,
             Pat::List { pats, .. } if pats.contains(&g) => GlobRole::Sequence,
+            Pat::Map { fields } if fields.iter().any(|(_, v)| *v == g) => GlobRole::MapValue,
+            _ => GlobRole::Forbidden,
+        },
+        // Pat::Map keys are ExprId, so a glob key has an Expr id
+        // inside a Pat parent.
+        (AnyExprId::Pat(p), AnyExprId::Expr(g)) => match &body.pats[p] {
+            Pat::Map { fields } if fields.iter().any(|(k, _)| *k == g) => GlobRole::MapKey,
             _ => GlobRole::Forbidden,
         },
         _ => GlobRole::Forbidden,
+    }
+}
+
+/// Return the field index of the map entry that contains `glob_id`,
+/// either as a key or as a value, within the map at `parent_id`.
+fn map_field_index_for_glob(
+    body: &Body,
+    parent_id: AnyExprId,
+    glob_id: AnyExprId,
+) -> Option<usize> {
+    match (parent_id, glob_id) {
+        (AnyExprId::Expr(p), AnyExprId::Expr(g)) => {
+            if let Expr::Map { fields } = &body.exprs[p] {
+                fields.iter().position(|(k, v)| *k == g || *v == g)
+            } else {
+                None
+            }
+        }
+        (AnyExprId::Pat(p), AnyExprId::Expr(g)) => {
+            if let Pat::Map { fields } = &body.pats[p] {
+                fields.iter().position(|(k, _)| *k == g)
+            } else {
+                None
+            }
+        }
+        (AnyExprId::Pat(p), AnyExprId::Pat(g)) => {
+            if let Pat::Map { fields } = &body.pats[p] {
+                fields.iter().position(|(_, v)| *v == g)
+            } else {
+                None
+            }
+        }
+        _ => None,
     }
 }
 
