@@ -136,7 +136,7 @@ jobs:
           echo "ELP_EQWALIZER_PATH=${{ github.workspace }}\eqwalizer\eqwalizer\eqwalizer.exe" >> $env:GITHUB_ENV
       - name: Test elp
         # Do not run the tests in case of cross-compilation or on Windows
-        if: matrix.platform-arch != 'macos-latest-arm' && matrix.os != 'windows'
+        if: matrix.platform-arch != 'macos-latest-arm'
         run: 'cargo test --workspace --target ${{ matrix.target }}'
       - name: Build elp (No Windows)
         if: matrix.os != 'windows'
