@@ -64,13 +64,13 @@ impl SsrPatternsLinter for UnnecessaryMapToListInComprehensionLinter {
             static ref PATTERNS: Vec<(String, GeneratorStrictness)> = vec![
                 (
                     format!(
-                        "ssr: [{BODY_VAR} || {{{KEY_VAR}, {VALUE_VAR}}} <- maps:to_list({MAP_VAR}), {CONDS_VAR}]."
+                        "ssr: [{BODY_VAR} || {{{KEY_VAR}, {VALUE_VAR}}} <- maps:to_list({MAP_VAR}), {CONDS_GLOB}]."
                     ),
                     GeneratorStrictness::NonStrict,
                 ),
                 (
                     format!(
-                        "ssr: [{BODY_VAR} || {{{KEY_VAR}, {VALUE_VAR}}} <:- maps:to_list({MAP_VAR}), {CONDS_VAR}]."
+                        "ssr: [{BODY_VAR} || {{{KEY_VAR}, {VALUE_VAR}}} <:- maps:to_list({MAP_VAR}), {CONDS_GLOB}]."
                     ),
                     GeneratorStrictness::Strict,
                 ),
@@ -105,7 +105,7 @@ impl SsrPatternsLinter for UnnecessaryMapToListInComprehensionLinter {
         let key = matched.placeholder_text(ctx.sema, KEY_VAR)?;
         let value = matched.placeholder_text(ctx.sema, VALUE_VAR)?;
         let map = matched.placeholder_text(ctx.sema, MAP_VAR)?;
-        let conds = matched.placeholder_texts(ctx.sema, CONDS_VAR)?;
+        let conds = matched.placeholder_texts(ctx.sema, CONDS_GLOB)?;
 
         let mut builder = SourceChangeBuilder::new(ctx.file_id);
         let conds_str = if !conds.is_empty() {
@@ -136,7 +136,7 @@ static MAP_VAR: &str = "_@Map";
 static KEY_VAR: &str = "_@Key";
 static VALUE_VAR: &str = "_@Value";
 static BODY_VAR: &str = "_@Body";
-static CONDS_VAR: &str = "_@@Conds";
+static CONDS_GLOB: &str = "_@@Conds";
 
 #[cfg(test)]
 mod tests {

@@ -64,13 +64,13 @@ impl SsrPatternsLinter for UnnecessaryMapFromListAroundComprehensionLinter {
             static ref PATTERNS: Vec<(String, GeneratorStrictness)> = vec![
                 (
                     format!(
-                        "ssr: maps:from_list([{{{KEY_VAR},{VALUE_VAR}}} || {BINDING_VAR} <- {GENERATOR_VAR}, {CONDS_VAR}])."
+                        "ssr: maps:from_list([{{{KEY_VAR},{VALUE_VAR}}} || {BINDING_VAR} <- {GENERATOR_VAR}, {CONDS_GLOB}])."
                     ),
                     GeneratorStrictness::NonStrict,
                 ),
                 (
                     format!(
-                        "ssr: maps:from_list([{{{KEY_VAR},{VALUE_VAR}}} || {BINDING_VAR} <:- {GENERATOR_VAR}, {CONDS_VAR}])."
+                        "ssr: maps:from_list([{{{KEY_VAR},{VALUE_VAR}}} || {BINDING_VAR} <:- {GENERATOR_VAR}, {CONDS_GLOB}])."
                     ),
                     GeneratorStrictness::Strict,
                 ),
@@ -105,7 +105,7 @@ impl SsrPatternsLinter for UnnecessaryMapFromListAroundComprehensionLinter {
         let key = matched.placeholder_text(ctx.sema, KEY_VAR)?;
         let value = matched.placeholder_text(ctx.sema, VALUE_VAR)?;
         let generator = matched.placeholder_text(ctx.sema, GENERATOR_VAR)?;
-        let conds = matched.placeholder_texts(ctx.sema, CONDS_VAR)?;
+        let conds = matched.placeholder_texts(ctx.sema, CONDS_GLOB)?;
 
         let mut builder = SourceChangeBuilder::new(ctx.file_id);
         let conds_str = if !conds.is_empty() {
@@ -137,7 +137,7 @@ static GENERATOR_VAR: &str = "_@Generator";
 static BINDING_VAR: &str = "_@Binding";
 static KEY_VAR: &str = "_@Key";
 static VALUE_VAR: &str = "_@Value";
-static CONDS_VAR: &str = "_@@Conds";
+static CONDS_GLOB: &str = "_@@Conds";
 
 #[cfg(test)]
 mod tests {
