@@ -207,6 +207,8 @@ pub enum DiagnosticCode {
     ElpCiTestDiagnostic,
     #[strum(props(code = "W0080"))]
     SimplifyMapsMerge,
+    #[strum(props(code = "W0081"))]
+    RedundantSuppression,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
@@ -433,6 +435,20 @@ impl DiagnosticCode {
             DiagnosticCode::ErlangService(s) => s == "P1711",
             _ => false,
         }
+    }
+
+    /// True for *meta-diagnostics* — codes whose own analysis depends on
+    /// observing the diagnostics produced by other linters. When such a
+    /// code is the target of `--diagnostic-filter` (without `--recursive`),
+    /// the pipeline must still run every other linter so the meta check has
+    /// the data it needs; the CLI's output filter then drops the
+    /// non-matching diagnostics from the final report.
+    ///
+    /// Without this opt-in, `--diagnostic-filter <meta-code>` would shut
+    /// down every other linter via `should_run`, leaving the meta check
+    /// blind and producing no useful output.
+    pub fn requires_all_linters_to_run(&self) -> bool {
+        matches!(self, DiagnosticCode::RedundantSuppression)
     }
 
     pub fn codes_iter() -> impl Iterator<Item = DiagnosticCode> {

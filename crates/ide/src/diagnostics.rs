@@ -26,6 +26,7 @@ use elp_ide_db::EqwalizerDatabase;
 use elp_ide_db::EqwalizerDiagnostics;
 use elp_ide_db::ErlAstDatabase;
 use elp_ide_db::LineIndex;
+use elp_ide_db::LineIndexDatabase;
 use elp_ide_db::assists::Assist;
 use elp_ide_db::assists::AssistContextDiagnostic;
 use elp_ide_db::assists::AssistContextDiagnosticCode;
@@ -35,6 +36,7 @@ use elp_ide_db::common_test::CommonTestDatabase;
 use elp_ide_db::common_test::CommonTestInfo;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
+use elp_ide_db::elp_base_db::FileLoader;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::ProjectId;
 use elp_ide_db::elp_base_db::VfsPath;
@@ -148,6 +150,7 @@ mod old_edoc_syntax;
 mod record_tuple_match;
 mod redundant_assignment;
 mod redundant_fun_wrapper;
+mod redundant_suppression;
 mod replace_call;
 mod replace_in_spec;
 mod sets_version_2;
@@ -729,6 +732,7 @@ fn should_run(
     if let Some(filter) = &config.diagnostic_filter
         && *filter != linter.id()
         && !config.recursive
+        && !filter.requires_all_linters_to_run()
     {
         return false;
     }
@@ -1841,6 +1845,77 @@ pub fn native_diagnostics(
     };
     let app_name = db.file_app_name(file_id);
     let metadata = db.elp_metadata(file_id);
+
+    // `code_reportable` mirrors the per-code conditions inside `should_run`
+    // and the retain step so the redundant-suppression post-pass never
+    // flags a code whose target diagnostic was never going to be reported
+    // anyway.
+    let is_generated = db.generated_status(file_id).is_generated();
+    let is_test = db.is_test_suite_or_test_helper(file_id).unwrap_or(false);
+    let all_linters = linters();
+    let linters_by_code: FxHashMap<DiagnosticCode, &dyn Linter> = all_linters
+        .iter()
+        .map(|l| {
+            let linter = l.as_linter();
+            (linter.id(), linter)
+        })
+        .collect();
+    let code_reportable = |code: &DiagnosticCode| -> bool {
+        if config.disabled.contains(code) {
+            return false;
+        }
+        if let Some(filter) = &config.diagnostic_filter
+            && filter != code
+            && !config.recursive
+            && !filter.requires_all_linters_to_run()
+        {
+            return false;
+        }
+        if !should_process_app(&app_name, config, code) {
+            return false;
+        }
+        // If a Linter is registered for this code, defer to should_run for
+        // the trigger / experimental / runs_on_save_only / EnabledDiagnostics
+        // checks. Codes without a registered Linter (e.g. SyntaxError,
+        // MissingSeparator coming from parse errors) are assumed reportable
+        // if they passed the cheap config-level checks above.
+        match linters_by_code.get(code) {
+            Some(linter) => should_run(*linter, config, trigger, &app_name, is_generated, is_test),
+            None => true,
+        }
+    };
+    let line_index = db.file_line_index(file_id);
+    let file_text = db.file_text(file_id);
+
+    // Run the redundant-suppression post-pass BEFORE the retain step so it
+    // observes diagnostics that retain is about to filter out (via
+    // `config.disabled`, the experimental gate, or `should_process_app`).
+    // Without this an annotation that successfully suppressed a
+    // `--diagnostic-ignore`d code would be falsely flagged as redundant.
+    // Its output bypasses retain — W0081 handles its own internal
+    // suppression. Enablement uses the same `should_run` gate as the
+    // regular linter registries.
+    let post_pass_diags = if should_run(
+        &redundant_suppression::LINTER,
+        config,
+        trigger,
+        &app_name,
+        is_generated,
+        is_test,
+    ) {
+        redundant_suppression::run(
+            &metadata,
+            config,
+            file_id,
+            &line_index,
+            &file_text,
+            &code_reportable,
+            &res,
+        )
+    } else {
+        Vec::new()
+    };
+
     // TODO: can we  ever disable DiagnosticCode::SyntaxError?
     //       In which case we must check labeled_syntax_errors
     res.retain(|d| {
@@ -1850,6 +1925,8 @@ pub fn native_diagnostics(
             && !d.should_be_suppressed(&metadata, config)
             && should_process_app(&app_name, config, &d.code)
     });
+
+    res.extend(post_pass_diags);
 
     LabeledDiagnostics {
         normal: res,
@@ -3404,9 +3481,15 @@ foo() -> XX 3.0.
 
     #[test]
     fn elp_ignore_3() {
+        // The `%% elp:ignore L1201` annotation is on the line *above* the
+        // blank line, so its suppression range covers the blank — not the
+        // `baz(1)->4.` that triggers L1201. The L1201 still fires, AND
+        // W0081 (redundant_suppression) now correctly flags the misplaced
+        // annotation, anchored on the stale `L1201` code.
         check_diagnostics(
             r#"
  %% elp:ignore L1201
+%%             ^^^^^ 💡 warning: W0081: Redundant suppression: no `L1201 (missing_module)` diagnostic in suppressed range
 
   baz(1)->4.
 %%^^^^^^^^^^ 💡 error: L1201: no module definition
@@ -3433,6 +3516,10 @@ foo() -> XX 3.0.
 
     #[test]
     fn elp_ignore_5() {
+        // The `% elp:ignore W0007` annotation has a blank line below it, so
+        // its suppression range covers that blank. W0007 still fires on the
+        // `Bar = 2,` line below the blank, and W0081 now correctly flags
+        // the stale `W0007` code in the misplaced annotation.
         check_diagnostics(
             r#"
              -module(main).
@@ -3441,6 +3528,7 @@ foo() -> XX 3.0.
                Foo = 1,
              %%^^^ 💡 warning: W0007: match is redundant
                % elp:ignore W0007
+             %%             ^^^^^ 💡 warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
 
                Bar = 2,
              %%^^^ 💡 warning: W0007: match is redundant

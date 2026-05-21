@@ -32,6 +32,17 @@ impl Metadata {
             .iter()
             .filter(move |ann| ann.source == source)
     }
+
+    /// Iterate over all `Source::Elp` annotations together with a stable index
+    /// (the position in `self.annotations`). The index is used by the
+    /// redundant-suppression post-pass to track which annotations have been
+    /// "consumed" by a suppressed diagnostic.
+    pub fn elp_annotations_indexed(&self) -> impl Iterator<Item = (usize, &Annotation)> + '_ {
+        self.annotations
+            .iter()
+            .enumerate()
+            .filter(|(_, ann)| ann.source == Source::Elp)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -81,9 +92,54 @@ pub struct Annotation {
     pub source: Source,
     pub kind: Kind,
     pub comment: String,
+    /// Range of the pattern marker only — e.g. `% elp:ignore` or
+    /// `% eqwalizer:fixme`. This is the canonical "anchor" for the
+    /// annotation: it points at the leading `%` of the matched marker and
+    /// is what the eqwalizer wire format and the existing
+    /// eqwalizer-escape-hatches diagnostic use.
     pub comment_range: TextRange,
+    /// Range of the *entire* comment token in the file. Useful for callers
+    /// that want to search for substrings within `comment` and translate
+    /// the resulting offset back to a file position
+    /// (`token_range.start() + offset_within_comment`).
+    ///
+    /// Note: `token_range.start() <= comment_range.start()` always — for a
+    /// `%% elp:ignore W0007` comment, the token starts at the first `%`
+    /// while `comment_range` starts at the second `%` (where the
+    /// `% elp:ignore` substring begins).
+    pub token_range: TextRange,
     pub suppression_range: TextRange,
     pub codes: FxHashSet<DiagnosticCode>,
+}
+
+impl Annotation {
+    /// Returns true if every code in this annotation is a "native" ELP
+    /// diagnostic — i.e. a first-party ELP linter whose output flows
+    /// through the consumption-tracking pipeline. External diagnostic
+    /// systems whose outputs are not currently routed through that
+    /// pipeline (`ErlangService(_)`, `Eqwalizer(_)`, `AdHoc(_)`) are
+    /// excluded. Codeless annotations return `true` since they have no
+    /// codes that could be non-native.
+    ///
+    /// `MetaOnly(_)` codes are first-party ELP linters too — they live
+    /// under `crates/ide/src/diagnostics/meta_only/` and emit through
+    /// the same pipeline — so they count as native here. (The line
+    /// listing them was removed; only the externally-sourced wrappers
+    /// remain in the exclusion list.)
+    ///
+    /// Used by the redundant-suppression post-pass: annotations that
+    /// mention non-native codes are conservatively treated as out of
+    /// scope and never flagged.
+    pub fn is_native_only(&self) -> bool {
+        self.codes.iter().all(|code| {
+            !matches!(
+                code,
+                DiagnosticCode::ErlangService(_)
+                    | DiagnosticCode::Eqwalizer(_)
+                    | DiagnosticCode::AdHoc(_)
+            )
+        })
+    }
 }
 
 impl From<Metadata> for eetf::Term {
@@ -168,6 +224,7 @@ pub fn collect_metadata(
                 let suppression_range = get_suppression_range(line_index, line_num, file_text);
                 let comment = token.to_string();
                 let comment_range = TextRange::new(pattern_start, pattern_end);
+                let token_range = token.text_range();
                 let codes = comment
                     .split_whitespace()
                     .filter_map(DiagnosticCode::maybe_from_string)
@@ -176,6 +233,7 @@ pub fn collect_metadata(
                 annotations.push(Annotation {
                     comment,
                     comment_range,
+                    token_range,
                     suppression_range,
                     codes,
                     source: pattern.source,

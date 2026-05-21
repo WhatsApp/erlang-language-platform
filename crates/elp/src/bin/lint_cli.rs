@@ -1682,6 +1682,41 @@ mod tests {
     }
 
     #[test]
+    fn lint_w0081_filter_audits_without_recursive() {
+        // `--diagnostic-filter W0081` must produce a useful audit even
+        // without `--recursive`. Its analysis depends on observing what other
+        // linters fire, so the filter check in `should_run` and the
+        // eligibility predicate are bypassed for it (via
+        // `DiagnosticCode::requires_all_linters_to_run`). The CLI's
+        // separate output filter then drops everything that isn't W0081
+        // (or a syntax error) from the report, so the user gets a clean
+        // W0081-only audit.
+        run_lint_command(
+            args_vec![
+                "lint",
+                "--module",
+                "lints",
+                "--diagnostic-filter",
+                "W0081",
+                "--experimental",
+            ],
+            r#"
+            //- /app_a/src/lints.erl app:app_a
+              -module(lints).
+
+              % elp:ignore W0007
+              foo() -> ok.
+        "#,
+            expect![[r#"
+                module specified: lints
+                Diagnostics reported:
+                app_a/src/lints.erl:3:16-3:21::[Warning] [W0081] Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+            "#]],
+            expect![""],
+        );
+    }
+
+    #[test]
     fn lint_path_filter() {
         // When --path is specified, only files under that path should be processed.
         // Here we have two apps with similar diagnostics, but we only want to lint app_a.
