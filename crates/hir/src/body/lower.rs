@@ -106,6 +106,11 @@ pub struct Ctx<'a> {
     macro_stack_id: usize,
     function_info: Option<(Atom, u32)>,
     function_name: Option<NameArity>, // Equivalent to function_info, cached
+    // OTP epp.erl compat: arity as epp would compute it (may differ from
+    // actual arity due to the update_fun_name_1 bracket-only bug).
+    // https://github.com/erlang/otp/issues/10705
+    // Used exclusively for ?FUNCTION_ARITY expansion.
+    epp_function_arity: Option<u32>,
     body: Body,
     module_expr_ids: FxHashMap<Name, ExprId>, // Lowering of module `Name`s as literals
     erlang_type_expr_id: Option<TypeExprId>,
@@ -164,6 +169,7 @@ impl<'a> Ctx<'a> {
             macro_stack_id: 0,
             function_info: None,
             function_name: None,
+            epp_function_arity: None,
             body: Body::new(origin),
             module_expr_ids: FxHashMap::default(),
             erlang_type_expr_id: None,
@@ -197,6 +203,27 @@ impl<'a> Ctx<'a> {
             let arity = info.arity();
             self.function_info = Some((name, arity));
             self.function_name = Some(info.clone());
+        }
+    }
+
+    /// Set the epp-compatible function arity used exclusively for
+    /// `?FUNCTION_ARITY` expansion.  OTP's `epp:update_fun_name_1`
+    /// scans the **first clause** of the function to determine the
+    /// arity; when that clause's first argument consists entirely of
+    /// bracket tokens (e.g. `[]`, `{}`, `<<>>`), the arity is off by
+    /// one.  We replicate the bug so our abstract forms match the
+    /// compiler output.
+    /// <https://github.com/erlang/otp/issues/10705>
+    ///
+    /// `first_clause` must be the AST of the **first** clause of the
+    /// enclosing function, regardless of which clause is currently
+    /// being lowered.
+    pub fn set_epp_function_arity(&mut self, first_clause: &ast::FunctionClause) {
+        if elp_base_db::epp_has_function_arity_bug()
+            && let Some((_, arity)) = self.function_info
+            && is_first_arg_bracket_only(first_clause)
+        {
+            self.epp_function_arity = Some(arity.saturating_sub(1));
         }
     }
 
@@ -476,12 +503,18 @@ impl<'a> Ctx<'a> {
         clause: ast::FunctionOrMacroClause,
         clause_id: &InFile<FunctionClauseId>,
         macro_def: Option<(InFile<DefineId>, Vec<ast::MacroExpr>)>,
+        first_clause_ast: Option<&ast::FunctionClause>,
     ) -> impl Iterator<Item = (FunctionClauseBody, BodySourceMap)> + use<> {
         match clause {
             ast::FunctionOrMacroClause::FunctionClause(clause) => {
                 let macrostack = self.get_macro_information();
                 Either::Left(once(FunctionClauseBody::lower_clause_body(
-                    self.db, &clause, clause_id, macrostack, macro_def,
+                    self.db,
+                    &clause,
+                    clause_id,
+                    macrostack,
+                    macro_def,
+                    first_clause_ast,
                 )))
             }
             ast::FunctionOrMacroClause::MacroCallExpr(call) => {
@@ -501,6 +534,7 @@ impl<'a> Ctx<'a> {
                                         clause,
                                         clause_id,
                                         Some((def_idx, args)),
+                                        None,
                                     )
                                 })
                                 .collect(),
@@ -2932,9 +2966,10 @@ impl<'a> Ctx<'a> {
                 })
             }
             BuiltInMacro::FUNCTION_NAME => self.function_info.map(|(name, _)| Literal::Atom(name)),
-            BuiltInMacro::FUNCTION_ARITY => self
-                .function_info
-                .map(|(_, arity)| Literal::Integer(arity.into())),
+            BuiltInMacro::FUNCTION_ARITY => self.function_info.map(|(_, arity)| {
+                let arity = self.epp_function_arity.unwrap_or(arity);
+                Literal::Integer(arity.into())
+            }),
             // Dummy value, we don't want to depend on the exact position
             BuiltInMacro::LINE => Some(Literal::Integer(0.into())),
             BuiltInMacro::MODULE => {
@@ -3570,4 +3605,33 @@ fn lower_concat(concat: &ast::Concatables) -> Option<Literal> {
     }
 
     Some(Literal::String(StringVariant::Normal(buf)))
+}
+
+/// Check if the first argument of a function clause consists entirely
+/// of bracket tokens when tokenized by OTP's epp.  OTP's
+/// `update_fun_name_1` classifies tokens as `left` (`(`, `[`, `{`,
+/// `<<`), `right` (`)`, `]`, `}`, `>>`), `comma` (`,`), or `other`.
+/// The first-argument flag is set only on encountering an `other`
+/// token, so arguments made up exclusively of brackets/commas (e.g.
+/// `[]`, `{}`, `<<>>`, `[[], {}]`) are never detected.  In a pattern
+/// context `<`/`>` can only appear as part of `<<`/`>>`, so a
+/// per-character check is sufficient.
+/// <https://github.com/erlang/otp/issues/10705>
+fn is_first_arg_bracket_only(clause: &ast::FunctionClause) -> bool {
+    let args = match clause.args() {
+        Some(args) => args,
+        None => return false,
+    };
+    let first_arg = match args.args().next() {
+        Some(arg) => arg,
+        None => return false,
+    };
+    let text = first_arg.syntax().text().to_string();
+    !text.is_empty()
+        && text.chars().all(|c| {
+            matches!(
+                c,
+                '[' | ']' | '{' | '}' | '(' | ')' | '<' | '>' | ',' | ' ' | '\t' | '\n' | '\r'
+            )
+        })
 }

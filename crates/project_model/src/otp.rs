@@ -102,6 +102,13 @@ pub fn supports_binary_encode_hex_with_case() -> bool {
         .unwrap_or(true)
 }
 
+pub fn epp_has_function_arity_bug() -> bool {
+    OTP_VERSION
+        .as_ref()
+        .map(|v| v.as_str() < "29")
+        .unwrap_or(true)
+}
+
 /// Find an OTP app's ProjectAppData by app name (e.g., "stdlib").
 /// Returns None if the app is not found in the OTP installation.
 /// Uses the cached `OTP_APPS` list to avoid repeated filesystem discovery.

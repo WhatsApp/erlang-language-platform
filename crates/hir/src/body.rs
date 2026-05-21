@@ -603,11 +603,16 @@ impl FunctionBody {
                                 function.pp_ctx.env,
                             );
                             ctx.set_function_info(&function.name);
-                            ctx.lower_clause_or_macro_body(clause_ast, &clause_id_in_file, None)
-                                .map(|(body, source_map)| {
-                                    (Arc::new(body), Arc::new(source_map), clause_id)
-                                })
-                                .collect()
+                            ctx.lower_clause_or_macro_body(
+                                clause_ast,
+                                &clause_id_in_file,
+                                None,
+                                None,
+                            )
+                            .map(|(body, source_map)| {
+                                (Arc::new(body), Arc::new(source_map), clause_id)
+                            })
+                            .collect()
                         }
                         None => vec![],
                     }
@@ -692,6 +697,27 @@ impl FunctionClauseBody {
         let function_ast = function
             .form_id
             .get(&function_clause_id.file_syntax(db.upcast()));
+        // OTP epp compat (https://github.com/erlang/otp/issues/10705):
+        // find the first clause of this function so all clauses can
+        // compute the epp-compatible ?FUNCTION_ARITY.
+        let first_clause_ast = db
+            .def_map(function_clause_id.file_id)
+            .function_def_id(&function_clause_id)
+            .and_then(|def_id| {
+                let first_id = def_id.as_form_id();
+                if let FormIdx::FunctionClause(first_clause_id) = first_id {
+                    let first_fc = &form_list[first_clause_id];
+                    let first_ast = first_fc
+                        .form_id
+                        .get(&function_clause_id.file_syntax(db.upcast()));
+                    first_ast.clause().and_then(|c| match c {
+                        ast::FunctionOrMacroClause::FunctionClause(fc) => Some(fc),
+                        _ => None,
+                    })
+                } else {
+                    None
+                }
+            });
         let body_origin = BodyOrigin::new(
             function_clause_id.file_id,
             FormIdx::FunctionClause(function_clause_id.value),
@@ -701,7 +727,12 @@ impl FunctionClauseBody {
             ctx.set_macro_defs_from_preprocessor(function_clause_id.file_id, function.pp_ctx.env);
             ctx.set_function_info(&function.name);
             if let Some((body, source_map)) = ctx
-                .lower_clause_or_macro_body(clause_ast, &function_clause_id, None)
+                .lower_clause_or_macro_body(
+                    clause_ast,
+                    &function_clause_id,
+                    None,
+                    first_clause_ast.as_ref(),
+                )
                 .next()
             {
                 (Arc::new(body), Arc::new(source_map))
@@ -719,6 +750,7 @@ impl FunctionClauseBody {
         clause_id: &InFile<FunctionClauseId>,
         macrostack: MacroInformation,
         macro_def: Option<(InFile<DefineId>, Vec<ast::MacroExpr>)>,
+        first_clause_ast: Option<&ast::FunctionClause>,
     ) -> (FunctionClauseBody, BodySourceMap) {
         let form_list = db.file_form_list(clause_id.file_id);
         let mut ctx = lower::Ctx::new(
@@ -730,6 +762,9 @@ impl FunctionClauseBody {
             form_list[clause_id.value].pp_ctx.env,
         );
         ctx.set_function_info_from_ast(clause_ast);
+        if let Some(first_clause) = first_clause_ast {
+            ctx.set_epp_function_arity(first_clause);
+        }
         ctx.set_macro_information(macrostack);
         let from_macro =
             macro_def.map(|(macro_def, args)| ctx.lower_top_level_macro(args, macro_def));

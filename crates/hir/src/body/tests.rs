@@ -2230,6 +2230,212 @@ foo(?FUNCTION_ARITY) -> ?FUNCTION_ARITY.
     );
 }
 
+// OTP epp.erl bug compatibility for ?FUNCTION_ARITY:
+// https://github.com/erlang/otp/issues/10705
+//
+// `epp:update_fun_name_1` scans tokens of the first clause to compute
+// arity. It only flags the first argument when it sees an `other`
+// (non-bracket, non-comma) token. So if the first clause's first
+// argument is made entirely of brackets/commas (`[]`, `{}`, `<<>>`,
+// `[[], {}]`, ...), epp under-counts the arity by one. ELP must
+// reproduce that off-by-one so abstract forms match the compiler.
+// Fixed in OTP 29: https://github.com/erlang/otp/issues/10705
+
+fn epp_has_function_arity_bug() -> bool {
+    elp_base_db::epp_has_function_arity_bug()
+}
+
+#[test]
+fn epp_function_arity_bracket_only_first_arg_list() {
+    if epp_has_function_arity_bug() {
+        check(
+            r#"
+foo([]) -> ?FUNCTION_ARITY.
+"#,
+            expect![[r#"
+                foo([]) ->
+                    0.
+            "#]],
+        );
+    } else {
+        check(
+            r#"
+foo([]) -> ?FUNCTION_ARITY.
+"#,
+            expect![[r#"
+                foo([]) ->
+                    1.
+            "#]],
+        );
+    }
+}
+
+#[test]
+fn epp_function_arity_bracket_only_first_arg_tuple() {
+    if epp_has_function_arity_bug() {
+        check(
+            r#"
+foo({}) -> ?FUNCTION_ARITY.
+"#,
+            expect![[r#"
+                foo({}) ->
+                    0.
+            "#]],
+        );
+    } else {
+        check(
+            r#"
+foo({}) -> ?FUNCTION_ARITY.
+"#,
+            expect![[r#"
+                foo({}) ->
+                    1.
+            "#]],
+        );
+    }
+}
+
+#[test]
+fn epp_function_arity_bracket_only_first_arg_binary() {
+    if epp_has_function_arity_bug() {
+        check(
+            r#"
+foo(<<>>) -> ?FUNCTION_ARITY.
+"#,
+            expect![[r#"
+                foo(<<>>) ->
+                    0.
+            "#]],
+        );
+    } else {
+        check(
+            r#"
+foo(<<>>) -> ?FUNCTION_ARITY.
+"#,
+            expect![[r#"
+                foo(<<>>) ->
+                    1.
+            "#]],
+        );
+    }
+}
+
+#[test]
+fn epp_function_arity_bracket_only_nested() {
+    if epp_has_function_arity_bug() {
+        check(
+            r#"
+foo([[], {}]) -> ?FUNCTION_ARITY.
+"#,
+            expect![[r#"
+                foo([
+                    [],
+                    {}
+                ]) ->
+                    0.
+            "#]],
+        );
+    } else {
+        check(
+            r#"
+foo([[], {}]) -> ?FUNCTION_ARITY.
+"#,
+            expect![[r#"
+                foo([
+                    [],
+                    {}
+                ]) ->
+                    1.
+            "#]],
+        );
+    }
+}
+
+#[test]
+fn epp_function_arity_bracket_only_first_of_two_args() {
+    if epp_has_function_arity_bug() {
+        check(
+            r#"
+foo([], X) -> ?FUNCTION_ARITY.
+"#,
+            expect![[r#"
+                foo([], X) ->
+                    1.
+            "#]],
+        );
+    } else {
+        check(
+            r#"
+foo([], X) -> ?FUNCTION_ARITY.
+"#,
+            expect![[r#"
+                foo([], X) ->
+                    2.
+            "#]],
+        );
+    }
+}
+
+#[test]
+fn epp_function_arity_non_bracket_first_arg_unaffected() {
+    check(
+        r#"
+foo(X, []) -> ?FUNCTION_ARITY.
+"#,
+        expect![[r#"
+            foo(X, []) ->
+                2.
+        "#]],
+    );
+}
+
+#[test]
+fn epp_function_arity_uses_first_clause_only_buggy_first() {
+    if epp_has_function_arity_bug() {
+        check(
+            r#"
+foo([], 1) -> ?FUNCTION_ARITY;
+foo(X, Y) -> ?FUNCTION_ARITY.
+"#,
+            expect![[r#"
+                foo([], 1) ->
+                    1;
+                foo(X, Y) ->
+                    1.
+            "#]],
+        );
+    } else {
+        check(
+            r#"
+foo([], 1) -> ?FUNCTION_ARITY;
+foo(X, Y) -> ?FUNCTION_ARITY.
+"#,
+            expect![[r#"
+                foo([], 1) ->
+                    2;
+                foo(X, Y) ->
+                    2.
+            "#]],
+        );
+    }
+}
+
+#[test]
+fn epp_function_arity_uses_first_clause_only_clean_first() {
+    check(
+        r#"
+foo(X, Y) -> ?FUNCTION_ARITY;
+foo([], 1) -> ?FUNCTION_ARITY.
+"#,
+        expect![[r#"
+            foo(X, Y) ->
+                2;
+            foo([], 1) ->
+                2.
+        "#]],
+    );
+}
+
 #[test]
 fn expand_built_in_line() {
     check(
