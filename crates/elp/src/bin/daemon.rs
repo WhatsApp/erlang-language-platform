@@ -400,11 +400,6 @@ fn run_daemon_server(
         }
     });
 
-    if args.idle_timeout.is_some() {
-        eprintln!(
-            "[elp-daemon] Warning: --idle-timeout is deprecated and ignored; configure [daemon].idle_timeout_secs in .elp.toml instead"
-        );
-    }
     let idle_timeout = effective_idle_timeout(elp_config.daemon.idle_timeout_secs);
     let mut last_activity = Instant::now();
 
@@ -1419,7 +1414,6 @@ mod tests {
                     project: project_bg,
                     profile: profile_bg,
                     rebar: false,
-                    idle_timeout: None,
                     daemonize: false,
                 },
                 &mut cli,
