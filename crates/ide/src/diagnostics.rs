@@ -635,7 +635,7 @@ impl<F> AdhocSemanticDiagnostics for F where
 }
 
 // A base trait for linters
-pub(crate) trait Linter {
+pub(crate) trait Linter: Sync {
     // A unique identifier for the linter.
     fn id(&self) -> DiagnosticCode;
 
@@ -1801,13 +1801,13 @@ pub fn native_diagnostics(
     adhoc_semantic_diagnostics: &Vec<&dyn AdhocSemanticDiagnostics>,
     file_id: FileId,
 ) -> LabeledDiagnostics {
-    lazy_static! {
-        static ref EXTENSIONS: FxHashSet<FileKind> = FxHashSet::from_iter(vec![
+    static EXTENSIONS: std::sync::LazyLock<FxHashSet<FileKind>> = std::sync::LazyLock::new(|| {
+        FxHashSet::from_iter(vec![
             FileKind::SrcModule,
             FileKind::TestModule,
-            FileKind::Header
-        ]);
-    };
+            FileKind::Header,
+        ])
+    });
     let parse = db.parse(file_id);
 
     let file_kind = db.file_kind(file_id);
@@ -2045,35 +2045,38 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &unreachable_test::LINTER,
 ];
 
-/// Unified registry for all types of linters
-fn linters() -> Vec<DiagnosticLinter> {
-    let mut all_linters = Vec::new();
+/// Unified registry for all types of linters, initialized once and reused.
+fn linters() -> &'static [DiagnosticLinter] {
+    static LINTERS: std::sync::LazyLock<Vec<DiagnosticLinter>> = std::sync::LazyLock::new(|| {
+        let mut all_linters = Vec::new();
 
-    // Add function call linters
-    all_linters.extend(
-        FUNCTION_CALL_LINTERS
-            .iter()
-            .map(|linter| DiagnosticLinter::FunctionCall(*linter)),
-    );
+        // Add function call linters
+        all_linters.extend(
+            FUNCTION_CALL_LINTERS
+                .iter()
+                .map(|linter| DiagnosticLinter::FunctionCall(*linter)),
+        );
 
-    // Add SSR pattern linters
-    all_linters.extend(
-        SSR_PATTERN_LINTERS
-            .iter()
-            .map(|linter| DiagnosticLinter::SsrPatterns(*linter)),
-    );
+        // Add SSR pattern linters
+        all_linters.extend(
+            SSR_PATTERN_LINTERS
+                .iter()
+                .map(|linter| DiagnosticLinter::SsrPatterns(*linter)),
+        );
 
-    // Add generic linters
-    all_linters.extend(
-        GENERIC_LINTERS
-            .iter()
-            .map(|linter| DiagnosticLinter::Generic(*linter)),
-    );
+        // Add generic linters
+        all_linters.extend(
+            GENERIC_LINTERS
+                .iter()
+                .map(|linter| DiagnosticLinter::Generic(*linter)),
+        );
 
-    // Add meta-only linters
-    // @fb-only: all_linters.extend(meta_only::linters());
+        // Add meta-only linters
+        // @fb-only: all_linters.extend(meta_only::linters());
 
-    all_linters
+        all_linters
+    });
+    &LINTERS
 }
 
 fn diagnostics_from_linters(
@@ -2081,7 +2084,7 @@ fn diagnostics_from_linters(
     ctx: &LinterContext,
     config: &DiagnosticsConfig,
     trigger: &DiagnosticsTrigger,
-    linters: Vec<DiagnosticLinter>,
+    linters: &[DiagnosticLinter],
 ) {
     let sema = ctx.sema;
     let file_id = ctx.file_id;
