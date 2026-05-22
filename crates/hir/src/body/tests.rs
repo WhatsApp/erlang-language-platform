@@ -26,6 +26,7 @@ use crate::Literal;
 use crate::PPDirective;
 use crate::SpecOrCallback;
 use crate::Strategy;
+use crate::TypeExpr;
 use crate::db::DefDatabase;
 use crate::fold::MacroStrategy;
 use crate::fold::ParenStrategy;
@@ -4758,75 +4759,136 @@ fn call_target_unqualified_for_dash_import() {
     }
 }
 
-fn type_atom_of(body: &crate::Body, type_expr_id: crate::TypeExprId) -> String {
-    match &body.type_exprs[type_expr_id] {
-        crate::TypeExpr::Literal(Literal::Atom(a)) => a.as_string(),
-        other => panic!("expected atom literal, got {other:?}"),
+// Type-level analogue of the value-level `unqualified` invariant. The
+// pretty printer ignores the `unqualified` field (it always prints the
+// canonical `module:name(...)` form), so we walk the type body's root
+// `TypeExpr::Call` directly to assert on the `unqualified` flag.
+
+#[track_caller]
+fn root_type_call_target(
+    db: &TestDB,
+    file_id: elp_base_db::FileId,
+    name: &str,
+    arity: u32,
+) -> CallTarget<crate::TypeExprId> {
+    let form_list = db.file_form_list(file_id);
+    let na = crate::NameArity::new(crate::Name::from_erlang_service(name), arity);
+    let (alias_id, _) = form_list
+        .type_aliases()
+        .find(|(_, ta)| ta.name() == &na)
+        .unwrap_or_else(|| panic!("type alias {name}/{arity} not in form list"));
+    let body = db.type_body(InFile::new(file_id, alias_id));
+    match &body.body.type_exprs[body.ty] {
+        TypeExpr::Call { target, .. } => target.clone(),
+        other => panic!("expected root TypeExpr::Call, got {other:?}"),
+    }
+}
+
+#[track_caller]
+fn type_atom_of(body: &crate::Body, ty_id: crate::TypeExprId) -> String {
+    match &body.type_exprs[ty_id] {
+        TypeExpr::Literal(Literal::Atom(a)) => a.as_string(),
+        other => panic!("expected atom literal type, got {other:?}"),
     }
 }
 
 #[test]
-fn type_call_target_unqualified_for_explicit_remote() {
-    // `integer()` is a BIF type that `disambiguate_type_call_target` resolves
-    // to `erlang:integer()` with `unqualified: true`.  When the user writes
-    // `mymod:integer()` explicitly, the nested-remote path must force
-    // `unqualified: false` — the call is fully qualified.
+fn type_call_target_unqualified_for_bif() {
+    // `pid()` is a built-in type — lowering rewrites it to
+    // `erlang:pid()` with `unqualified: true`.
     let (db, file_ids, _) = TestDB::with_many_files(
         r#"
-            -spec bare() -> integer().
-            -spec qualified() -> mymod:integer().
+            -type t() :: pid().
         "#,
     );
     let file_id = file_ids[0];
-    let form_list = db.file_form_list(file_id);
 
-    let specs = form_list
-        .forms()
-        .iter()
-        .filter_map(|&form_idx| match form_idx {
-            FormIdx::Spec(spec_id) => {
-                let spec_body = db.spec_body(InFile::new(file_id, spec_id));
-                Some(spec_body)
-            }
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-
-    // bare `integer()` — should be resolved as unqualified remote to erlang:integer
-    let bare_body = &specs[0];
-    let bare_result = bare_body.sigs[0].result;
-    match &bare_body.body.type_exprs[bare_result] {
-        crate::TypeExpr::Call { target, .. } => match target {
-            CallTarget::Remote { unqualified, .. } => {
-                assert!(*unqualified, "bare BIF type should set unqualified = true");
-            }
-            other => panic!("expected CallTarget::Remote for bare BIF type, got {other:?}"),
-        },
-        other => panic!("expected TypeExpr::Call, got {other:?}"),
+    let target = root_type_call_target(&db, file_id, "t", 0);
+    let body = {
+        let form_list = db.file_form_list(file_id);
+        let na = crate::NameArity::new(crate::Name::from_erlang_service("t"), 0);
+        let (alias_id, _) = form_list
+            .type_aliases()
+            .find(|(_, ta)| ta.name() == &na)
+            .unwrap();
+        db.type_body(InFile::new(file_id, alias_id))
+    };
+    match &target {
+        CallTarget::Remote {
+            module,
+            name,
+            unqualified,
+            ..
+        } => {
+            assert!(*unqualified, "BIF type call should set unqualified = true");
+            assert_eq_expected!("erlang", type_atom_of(&body.body, *module));
+            assert_eq_expected!("pid", type_atom_of(&body.body, *name));
+        }
+        other => panic!("expected CallTarget::Remote for BIF type, got {other:?}"),
     }
+}
 
-    // `mymod:integer()` — explicitly qualified, must have unqualified = false
-    let qual_body = &specs[1];
-    let qual_result = qual_body.sigs[0].result;
-    match &qual_body.body.type_exprs[qual_result] {
-        crate::TypeExpr::Call { target, .. } => match target {
-            CallTarget::Remote {
-                module,
-                name,
-                unqualified,
-                ..
-            } => {
-                assert!(
-                    !*unqualified,
-                    "explicitly qualified type call must keep unqualified = false"
-                );
-                assert_eq_expected!("mymod", type_atom_of(&qual_body.body, *module));
-                assert_eq_expected!("integer", type_atom_of(&qual_body.body, *name));
-            }
-            other => panic!("expected CallTarget::Remote for qualified type, got {other:?}"),
-        },
-        other => panic!("expected TypeExpr::Call, got {other:?}"),
+#[test]
+fn type_call_target_explicit_erlang_qualification() {
+    // `erlang:pid()` is written with an explicit module qualifier.
+    // Even though `pid/0` resolves through the BIF auto-import on the
+    // inner call target, the outer remote-with-call-fun lowering must
+    // set `unqualified: false` because the user wrote the module name in
+    // source.
+    let (db, file_ids, _) = TestDB::with_many_files(
+        r#"
+            -type t() :: erlang:pid().
+        "#,
+    );
+    let file_id = file_ids[0];
+
+    let target = root_type_call_target(&db, file_id, "t", 0);
+    let body = {
+        let form_list = db.file_form_list(file_id);
+        let na = crate::NameArity::new(crate::Name::from_erlang_service("t"), 0);
+        let (alias_id, _) = form_list
+            .type_aliases()
+            .find(|(_, ta)| ta.name() == &na)
+            .unwrap();
+        db.type_body(InFile::new(file_id, alias_id))
+    };
+    match &target {
+        CallTarget::Remote {
+            module,
+            name,
+            unqualified,
+            ..
+        } => {
+            assert!(
+                !*unqualified,
+                "explicit remote type call must keep unqualified = false"
+            );
+            assert_eq_expected!("erlang", type_atom_of(&body.body, *module));
+            assert_eq_expected!("pid", type_atom_of(&body.body, *name));
+        }
+        other => panic!("expected CallTarget::Remote for explicit type, got {other:?}"),
     }
+}
 
-    drop(specs);
+#[test]
+fn type_call_target_explicit_user_module() {
+    // Sanity check: explicit `m:t()` for a non-erlang module also
+    // produces `unqualified: false`.
+    let (db, file_ids, _) = TestDB::with_many_files(
+        r#"
+            -type t() :: my_mod:my_type().
+        "#,
+    );
+    let file_id = file_ids[0];
+
+    let target = root_type_call_target(&db, file_id, "t", 0);
+    match &target {
+        CallTarget::Remote { unqualified, .. } => {
+            assert!(
+                !*unqualified,
+                "explicit user-module type call must keep unqualified = false"
+            );
+        }
+        other => panic!("expected CallTarget::Remote, got {other:?}"),
+    }
 }
