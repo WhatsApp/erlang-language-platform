@@ -17,13 +17,13 @@ once_cell.workspace = true
 regex.workspace = true
 rowan.workspace = true
 smol_str.workspace = true
-stdx.workspace = true
 tracing.workspace = true
 tree-sitter.workspace = true
 tree-sitter-erlang.workspace = true
 
 [dev-dependencies]
 expect-test.workspace = true
+stdx.workspace = true
 
 [lints]
 workspace = true

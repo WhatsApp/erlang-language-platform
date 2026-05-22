@@ -20,7 +20,6 @@ use rowan::GreenTokenData;
 use rowan::NodeOrToken;
 use rowan::TextRange;
 use smol_str::SmolStr;
-use stdx::trim_indent;
 
 use super::ArithOp;
 use super::BinaryOp;
@@ -472,13 +471,7 @@ fn trim_quotes_and_sigils(s: &str) -> String {
                 quoted = false;
             }
             if is_tq {
-                let trimmed = trim_indent(captures[3].trim_end_matches("\""));
-                if let Some(rest) = trimmed.strip_suffix("\n") {
-                    // tq string terminates with \n whitespace, quotes
-                    rest.to_string()
-                } else {
-                    trimmed
-                }
+                trim_indent_tq(captures[3].trim_end_matches("\""))
             } else if captures[1] == *"B" || captures[1] == *"S" {
                 // Verbatim non-tq string. Only escape processed
                 // is for `\"`, to avoid clash with final terminator.
@@ -502,6 +495,36 @@ fn trim_quotes_and_sigils(s: &str) -> String {
     } else {
         trimmed
     }
+}
+
+/// Strip indentation from triple-quoted strings using OTP-style rules.
+/// The indentation to strip is determined by the whitespace before the
+/// closing `"""`, not the minimum content indentation.
+fn trim_indent_tq(text: &str) -> String {
+    // Strip leading newline (content starts on line after opening """)
+    let text = text.strip_prefix('\n').unwrap_or(text);
+
+    // Find indentation from the last line (whitespace before closing """)
+    let indent = text
+        .rsplit_once('\n')
+        .map(|(_, last_line)| last_line.len())
+        .unwrap_or(0);
+
+    // Strip the last line (just whitespace before closing """)
+    let text = text.rsplit_once('\n').map(|(rest, _)| rest).unwrap_or(text);
+
+    // Strip up to `indent` leading spaces from each line
+    text.split_inclusive('\n')
+        .map(|line| {
+            let stripped = line.trim_start_matches(' ');
+            let leading_spaces = line.len() - stripped.len();
+            if leading_spaces >= indent {
+                &line[indent..]
+            } else {
+                stripped
+            }
+        })
+        .collect()
 }
 
 // Generator types
@@ -1130,6 +1153,84 @@ mod tests {
                """
               ab\"c\"\d
               """""#,
+        ));
+    }
+
+    // OTP triple-quoted string indentation: the indent to strip is taken
+    // from the whitespace before the *closing* `"""`, not the minimum
+    // content indent. This matters when a content line has more or less
+    // indentation than the closing line.
+
+    #[test]
+    fn test_tq_indent_taken_from_closing_quotes() {
+        // Closing `"""` and content lines are indented the same amount;
+        // every line gets that indent stripped.
+        expect![[r#"
+            first
+            second"#]]
+        .assert_eq(&trim_quotes_and_sigils(
+            r#""""
+              first
+              second
+              """"#,
+        ));
+    }
+
+    #[test]
+    fn test_tq_content_more_indented_than_closing() {
+        // The second content line is indented MORE than the closing `"""`.
+        // After stripping the closing's indent, the extra leading spaces
+        // are preserved on that line.
+        expect![[r#"
+            top
+              nested"#]]
+        .assert_eq(&trim_quotes_and_sigils(
+            r#""""
+              top
+                nested
+              """"#,
+        ));
+    }
+
+    #[test]
+    fn test_tq_content_less_indented_than_closing() {
+        // The middle line is indented LESS than the closing `"""`.
+        // OTP strips ALL leading spaces from such lines (the
+        // `line.len() <= indent` branch in trim_indent_tq).
+        expect![[r#"
+                a
+            b
+                c"#]]
+        .assert_eq(&trim_quotes_and_sigils(
+            r#""""
+                  a
+              b
+                  c
+              """"#,
+        ));
+    }
+
+    #[test]
+    fn test_tq_closing_zero_indent() {
+        // Closing `"""` has no indent (flush left): nothing is stripped,
+        // so the original leading whitespace on each content line is kept.
+        expect![[r#"
+              indented
+            flush"#]]
+        .assert_eq(&trim_quotes_and_sigils(
+            r#""""
+  indented
+flush
+""""#,
+        ));
+    }
+
+    #[test]
+    fn test_tq_single_line_content() {
+        expect![["one line"]].assert_eq(&trim_quotes_and_sigils(
+            r#""""
+              one line
+              """"#,
         ));
     }
 }
