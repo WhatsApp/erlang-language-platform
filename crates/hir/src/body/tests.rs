@@ -2164,6 +2164,528 @@ foo() ->
     );
 }
 
+// Macro expansion in guard context uses textual substitution semantics.
+// See body/lower.rs `lower_guard_clause`.
+
+#[test]
+fn expand_macro_guard_or_alternatives() {
+    // `?IS_ABC(X)` expands to a `;`-separated list, producing three
+    // guard alternatives.
+    check(
+        r#"
+-define(IS_ABC(X), X =:= a; X =:= b; X =:= c).
+
+foo(X) when ?IS_ABC(X) -> ok.
+"#,
+        expect![[r#"
+            foo(X) when
+                (X =:= a);
+                (X =:= b);
+                (X =:= c)
+            ->
+                ok.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_guard_or_with_preceding_guards() {
+    // Text substitution: `is_atom(X), ?IS_AB(X)` becomes
+    // `is_atom(X), X =:= a; X =:= b` — preceding expressions only
+    // attach to the first OR branch.
+    check(
+        r#"
+-define(IS_AB(X), X =:= a; X =:= b).
+
+foo(X) when is_atom(X), ?IS_AB(X) -> ok.
+"#,
+        expect![[r#"
+            foo(X) when
+                erlang:is_atom(
+                    X
+                ),
+                (X =:= a);
+                (X =:= b)
+            ->
+                ok.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_guard_and_conjunction() {
+    // `?CHECK(X)` expands to a `,`-separated list (AND), producing a
+    // single guard with multiple conjuncts.
+    check(
+        r#"
+-define(CHECK(X), is_integer(X), X > 0).
+
+foo(X) when ?CHECK(X) -> ok.
+"#,
+        expect![[r#"
+            foo(X) when
+                erlang:is_integer(
+                    X
+                ),
+                (X > 0)
+            ->
+                ok.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_guard_or_with_trailing_guards() {
+    // Text substitution: `?IS_AB(X), is_atom(X)` becomes
+    // `X =:= a; X =:= b, is_atom(X)` — trailing expressions only
+    // attach to the last OR branch.
+    check(
+        r#"
+-define(IS_AB(X), X =:= a; X =:= b).
+
+foo(X) when ?IS_AB(X), is_atom(X) -> ok.
+"#,
+        expect![[r#"
+            foo(X) when
+                (X =:= a);
+                (X =:= b),
+                erlang:is_atom(
+                    X
+                )
+            ->
+                ok.
+        "#]],
+    );
+}
+
+#[test]
+fn tree_print_guard_no_macro() {
+    // Baseline: plain guards with disjunction and conjunction, no macros.
+    check_ast(
+        r#"
+foo(X) when is_atom(X), X =/= undefined; is_integer(X) -> ok.
+"#,
+        expect![[r#"
+            function: foo/1
+            Clause {
+                pats
+                    Pat<0>:Pat::Var(X),
+                guards
+                    guard
+                        Expr<4>:Expr::Call {
+                            target
+                                CallTarget::Remote {
+                                    Expr<2>:Literal(Atom('erlang'))
+                                    Expr<1>:Literal(Atom('is_atom'))
+                                }
+                            args
+                                Expr<3>:Expr::Var(X),
+                        },
+                        Expr<7>:Expr::BinaryOp {
+                            lhs
+                                Expr<5>:Expr::Var(X)
+                            rhs
+                                Expr<6>:Literal(Atom('undefined'))
+                            op
+                                CompOp(Eq { strict: true, negated: true }),
+                        },
+                    guard
+                        Expr<10>:Expr::Call {
+                            target
+                                CallTarget::Remote {
+                                    Expr<2>:Literal(Atom('erlang'))
+                                    Expr<8>:Literal(Atom('is_integer'))
+                                }
+                            args
+                                Expr<9>:Expr::Var(X),
+                        },
+                exprs
+                    Expr<11>:Literal(Atom('ok')),
+            }.
+        "#]],
+    );
+}
+
+#[test]
+fn tree_print_guard_macro_or_standalone() {
+    // OR macro as the only guard expression — splices into multiple
+    // disjunctive guard clauses.
+    check_ast(
+        r#"
+-define(IS_ABC(X), X =:= a; X =:= b; X =:= c).
+
+foo(X) when ?IS_ABC(X) -> ok.
+"#,
+        expect![[r#"
+            -define(IS_ABC/1,
+                Expr<0>:Expr::Missing
+            ).
+            function: foo/1
+            Clause {
+                pats
+                    Pat<0>:Pat::Var(X),
+                guards
+                    guard
+                        Expr<3>:Expr::BinaryOp {
+                            lhs
+                                Expr<1>:Expr::Var(X)
+                            rhs
+                                Expr<2>:Literal(Atom('a'))
+                            op
+                                CompOp(Eq { strict: true, negated: false }),
+                        },
+                    guard
+                        Expr<6>:Expr::BinaryOp {
+                            lhs
+                                Expr<4>:Expr::Var(X)
+                            rhs
+                                Expr<5>:Literal(Atom('b'))
+                            op
+                                CompOp(Eq { strict: true, negated: false }),
+                        },
+                    guard
+                        Expr<9>:Expr::BinaryOp {
+                            lhs
+                                Expr<7>:Expr::Var(X)
+                            rhs
+                                Expr<8>:Literal(Atom('c'))
+                            op
+                                CompOp(Eq { strict: true, negated: false }),
+                        },
+                exprs
+                    Expr<10>:Literal(Atom('ok')),
+            }.
+        "#]],
+    );
+}
+
+#[test]
+fn tree_print_guard_macro_or_with_trailing() {
+    // Text substitution: trailing expression attaches to last OR branch only.
+    check_ast(
+        r#"
+-define(IS_AB(X), X =:= a; X =:= b).
+
+foo(X) when ?IS_AB(X), is_atom(X) -> ok.
+"#,
+        expect![[r#"
+            -define(IS_AB/1,
+                Expr<0>:Expr::Missing
+            ).
+            function: foo/1
+            Clause {
+                pats
+                    Pat<0>:Pat::Var(X),
+                guards
+                    guard
+                        Expr<3>:Expr::BinaryOp {
+                            lhs
+                                Expr<1>:Expr::Var(X)
+                            rhs
+                                Expr<2>:Literal(Atom('a'))
+                            op
+                                CompOp(Eq { strict: true, negated: false }),
+                        },
+                    guard
+                        Expr<6>:Expr::BinaryOp {
+                            lhs
+                                Expr<4>:Expr::Var(X)
+                            rhs
+                                Expr<5>:Literal(Atom('b'))
+                            op
+                                CompOp(Eq { strict: true, negated: false }),
+                        },
+                        Expr<10>:Expr::Call {
+                            target
+                                CallTarget::Remote {
+                                    Expr<8>:Literal(Atom('erlang'))
+                                    Expr<7>:Literal(Atom('is_atom'))
+                                }
+                            args
+                                Expr<9>:Expr::Var(X),
+                        },
+                exprs
+                    Expr<11>:Literal(Atom('ok')),
+            }.
+        "#]],
+    );
+}
+
+#[test]
+fn tree_print_guard_macro_or_with_preceding() {
+    // Text substitution: preceding expression attaches to first OR branch only.
+    check_ast(
+        r#"
+-define(IS_AB(X), X =:= a; X =:= b).
+
+foo(X) when is_atom(X), ?IS_AB(X) -> ok.
+"#,
+        expect![[r#"
+            -define(IS_AB/1,
+                Expr<0>:Expr::Missing
+            ).
+            function: foo/1
+            Clause {
+                pats
+                    Pat<0>:Pat::Var(X),
+                guards
+                    guard
+                        Expr<4>:Expr::Call {
+                            target
+                                CallTarget::Remote {
+                                    Expr<2>:Literal(Atom('erlang'))
+                                    Expr<1>:Literal(Atom('is_atom'))
+                                }
+                            args
+                                Expr<3>:Expr::Var(X),
+                        },
+                        Expr<7>:Expr::BinaryOp {
+                            lhs
+                                Expr<5>:Expr::Var(X)
+                            rhs
+                                Expr<6>:Literal(Atom('a'))
+                            op
+                                CompOp(Eq { strict: true, negated: false }),
+                        },
+                    guard
+                        Expr<10>:Expr::BinaryOp {
+                            lhs
+                                Expr<8>:Expr::Var(X)
+                            rhs
+                                Expr<9>:Literal(Atom('b'))
+                            op
+                                CompOp(Eq { strict: true, negated: false }),
+                        },
+                exprs
+                    Expr<11>:Literal(Atom('ok')),
+            }.
+        "#]],
+    );
+}
+
+#[test]
+fn tree_print_guard_macro_or_with_both() {
+    // Text substitution with expressions on both sides of the OR macro.
+    check_ast(
+        r#"
+-define(IS_AB(X), X =:= a; X =:= b).
+
+foo(X) when is_list(X), ?IS_AB(X), is_atom(X) -> ok.
+"#,
+        expect![[r#"
+            -define(IS_AB/1,
+                Expr<0>:Expr::Missing
+            ).
+            function: foo/1
+            Clause {
+                pats
+                    Pat<0>:Pat::Var(X),
+                guards
+                    guard
+                        Expr<4>:Expr::Call {
+                            target
+                                CallTarget::Remote {
+                                    Expr<2>:Literal(Atom('erlang'))
+                                    Expr<1>:Literal(Atom('is_list'))
+                                }
+                            args
+                                Expr<3>:Expr::Var(X),
+                        },
+                        Expr<7>:Expr::BinaryOp {
+                            lhs
+                                Expr<5>:Expr::Var(X)
+                            rhs
+                                Expr<6>:Literal(Atom('a'))
+                            op
+                                CompOp(Eq { strict: true, negated: false }),
+                        },
+                    guard
+                        Expr<10>:Expr::BinaryOp {
+                            lhs
+                                Expr<8>:Expr::Var(X)
+                            rhs
+                                Expr<9>:Literal(Atom('b'))
+                            op
+                                CompOp(Eq { strict: true, negated: false }),
+                        },
+                        Expr<13>:Expr::Call {
+                            target
+                                CallTarget::Remote {
+                                    Expr<2>:Literal(Atom('erlang'))
+                                    Expr<11>:Literal(Atom('is_atom'))
+                                }
+                            args
+                                Expr<12>:Expr::Var(X),
+                        },
+                exprs
+                    Expr<14>:Literal(Atom('ok')),
+            }.
+        "#]],
+    );
+}
+
+#[test]
+fn tree_print_guard_macro_and() {
+    // AND macro expands into a single guard clause with multiple conjuncts.
+    check_ast(
+        r#"
+-define(CHECK(X), is_integer(X), X > 0).
+
+foo(X) when ?CHECK(X) -> ok.
+"#,
+        expect![[r#"
+            -define(CHECK/1,
+                Expr<0>:Expr::Missing
+            ).
+            function: foo/1
+            Clause {
+                pats
+                    Pat<0>:Pat::Var(X),
+                guards
+                    guard
+                        Expr<4>:Expr::Call {
+                            target
+                                CallTarget::Remote {
+                                    Expr<2>:Literal(Atom('erlang'))
+                                    Expr<1>:Literal(Atom('is_integer'))
+                                }
+                            args
+                                Expr<3>:Expr::Var(X),
+                        },
+                        Expr<7>:Expr::BinaryOp {
+                            lhs
+                                Expr<5>:Expr::Var(X)
+                            rhs
+                                Expr<6>:Literal(Integer(0))
+                            op
+                                CompOp(Ord { ordering: Greater, strict: true }),
+                        },
+                exprs
+                    Expr<8>:Literal(Atom('ok')),
+            }.
+        "#]],
+    );
+}
+
+#[test]
+fn tree_print_guard_macro_mixed_or_and_explicit() {
+    // OR macro combined with an explicit disjunction in the source.
+    check_ast(
+        r#"
+-define(IS_AB(X), X =:= a; X =:= b).
+
+foo(X) when ?IS_AB(X); is_list(X) -> ok.
+"#,
+        expect![[r#"
+            -define(IS_AB/1,
+                Expr<0>:Expr::Missing
+            ).
+            function: foo/1
+            Clause {
+                pats
+                    Pat<0>:Pat::Var(X),
+                guards
+                    guard
+                        Expr<3>:Expr::BinaryOp {
+                            lhs
+                                Expr<1>:Expr::Var(X)
+                            rhs
+                                Expr<2>:Literal(Atom('a'))
+                            op
+                                CompOp(Eq { strict: true, negated: false }),
+                        },
+                    guard
+                        Expr<6>:Expr::BinaryOp {
+                            lhs
+                                Expr<4>:Expr::Var(X)
+                            rhs
+                                Expr<5>:Literal(Atom('b'))
+                            op
+                                CompOp(Eq { strict: true, negated: false }),
+                        },
+                    guard
+                        Expr<10>:Expr::Call {
+                            target
+                                CallTarget::Remote {
+                                    Expr<8>:Literal(Atom('erlang'))
+                                    Expr<7>:Literal(Atom('is_list'))
+                                }
+                            args
+                                Expr<9>:Expr::Var(X),
+                        },
+                exprs
+                    Expr<11>:Literal(Atom('ok')),
+            }.
+        "#]],
+    );
+}
+
+#[test]
+fn tree_print_guard_macro_two_or_macros() {
+    // Two consecutive OR macros — last branch of first merges with
+    // first branch of second (text substitution semantics).
+    check_ast(
+        r#"
+-define(AB(X), X =:= a; X =:= b).
+-define(CD(X), X =:= c; X =:= d).
+
+foo(X) when ?AB(X), ?CD(X) -> ok.
+"#,
+        expect![[r#"
+            -define(AB/1,
+                Expr<0>:Expr::Missing
+            ).
+
+            -define(CD/1,
+                Expr<0>:Expr::Missing
+            ).
+            function: foo/1
+            Clause {
+                pats
+                    Pat<0>:Pat::Var(X),
+                guards
+                    guard
+                        Expr<3>:Expr::BinaryOp {
+                            lhs
+                                Expr<1>:Expr::Var(X)
+                            rhs
+                                Expr<2>:Literal(Atom('a'))
+                            op
+                                CompOp(Eq { strict: true, negated: false }),
+                        },
+                    guard
+                        Expr<6>:Expr::BinaryOp {
+                            lhs
+                                Expr<4>:Expr::Var(X)
+                            rhs
+                                Expr<5>:Literal(Atom('b'))
+                            op
+                                CompOp(Eq { strict: true, negated: false }),
+                        },
+                        Expr<9>:Expr::BinaryOp {
+                            lhs
+                                Expr<7>:Expr::Var(X)
+                            rhs
+                                Expr<8>:Literal(Atom('c'))
+                            op
+                                CompOp(Eq { strict: true, negated: false }),
+                        },
+                    guard
+                        Expr<12>:Expr::BinaryOp {
+                            lhs
+                                Expr<10>:Expr::Var(X)
+                            rhs
+                                Expr<11>:Literal(Atom('d'))
+                            op
+                                CompOp(Eq { strict: true, negated: false }),
+                        },
+                exprs
+                    Expr<13>:Literal(Atom('ok')),
+            }.
+        "#]],
+    );
+}
+
 #[test]
 fn expand_macro_arity() {
     check(

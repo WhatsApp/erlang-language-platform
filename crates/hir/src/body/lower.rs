@@ -2022,8 +2022,71 @@ impl<'a> Ctx<'a> {
         guards
             .iter()
             .flat_map(|guard| guard.clauses())
-            .map(|clause| clause.exprs().map(|expr| self.lower_expr(&expr)).collect())
+            .flat_map(|clause| self.lower_guard_clause(clause))
             .collect()
+    }
+
+    /// Lower a single guard clause, handling macro expansion.
+    ///
+    /// A guard clause is a comma-separated list of guard expressions.
+    /// If any expression is a macro that expands to a `ReplacementGuardOr`,
+    /// the single clause is split into multiple clauses using textual
+    /// substitution semantics: the first OR branch merges with whatever
+    /// preceded the macro, and the last branch receives whatever follows.
+    fn lower_guard_clause(&mut self, clause: ast::GuardClause) -> Vec<Vec<ExprId>> {
+        let mut result_clauses: Vec<Vec<ExprId>> = vec![vec![]];
+
+        for expr in clause.exprs() {
+            if let ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(ref call)) = expr
+                && let Some(expanded) = self.try_expand_guard_macro(call)
+            {
+                let mut iter = expanded.into_iter();
+                if let Some(first_branch) = iter.next() {
+                    result_clauses.last_mut().unwrap().extend(first_branch);
+                    for branch in iter {
+                        result_clauses.push(branch);
+                    }
+                }
+                continue;
+            }
+            let expr_id = self.lower_expr(&expr);
+            result_clauses.last_mut().unwrap().push(expr_id);
+        }
+
+        result_clauses
+    }
+
+    /// Try to expand a macro call as a guard replacement.
+    ///
+    /// Returns `Some(clauses)` if the macro expands to `ReplacementGuardOr`
+    /// or `ReplacementGuardAnd`, where each inner Vec is a conjunction (AND)
+    /// and the outer Vec is a disjunction (OR).
+    fn try_expand_guard_macro(&mut self, call: &ast::MacroCallExpr) -> Option<Vec<Vec<ExprId>>> {
+        self.resolve_macro(call, |this, _source, replacement| match replacement {
+            MacroReplacement::Ast(_, ast::MacroDefReplacement::ReplacementGuardOr(guard_or)) => {
+                Some(
+                    guard_or
+                        .guard()
+                        .map(|guard_and| {
+                            guard_and
+                                .guard()
+                                .map(|expr| this.lower_expr(&expr))
+                                .collect()
+                        })
+                        .collect(),
+                )
+            }
+            MacroReplacement::Ast(_, ast::MacroDefReplacement::ReplacementGuardAnd(guard_and)) => {
+                Some(vec![
+                    guard_and
+                        .guard()
+                        .map(|expr| this.lower_expr(&expr))
+                        .collect(),
+                ])
+            }
+            _ => None,
+        })
+        .flatten()
     }
 
     fn lower_clause_body(&mut self, body: Option<ast::ClauseBody>) -> Vec<ExprId> {
