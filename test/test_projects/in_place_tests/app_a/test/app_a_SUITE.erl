@@ -2,8 +2,8 @@
 -compile([export_all, nowarn_export_all]).
 -typing([eqwalizer]).
 
--include_lib("stdlib/include/assert.hrl").
 -include("app_a.hrl").
+-define(assert(X), X =:= true).
 
 -spec ok() -> ok.
 ok() ->
