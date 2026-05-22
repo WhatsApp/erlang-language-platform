@@ -16,10 +16,13 @@
 use elp_ide_assists::Assist;
 use elp_ide_assists::helpers::add_parens_edit;
 use elp_ide_db::source_change::SourceChange;
+use elp_ide_db::text_edit::TextEdit;
 use elp_ide_db::text_edit::TextRange;
 use hir::AnyExpr;
 use hir::AnyExprRef;
 use hir::Expr;
+use hir::ExprId;
+use hir::FoldBody;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
@@ -34,7 +37,13 @@ use crate::diagnostics::LinterContext;
 use crate::fix;
 
 #[derive(Debug, Default, Clone, PartialEq)]
-pub(crate) struct MacroPrecedenceContext;
+pub(crate) enum MacroPrecedenceContext {
+    #[default]
+    MacroCallSite,
+    MacroArg {
+        arg_ranges: Vec<TextRange>,
+    },
+}
 
 pub(crate) struct MacroPrecedenceSupriseLinter;
 
@@ -95,12 +104,43 @@ impl GenericLinter for MacroPrecedenceSupriseLinter {
                                 let range = ast.range();
                                 res.push(GenericLinterMatchContext {
                                     range,
-                                    context: MacroPrecedenceContext,
+                                    context: MacroPrecedenceContext::MacroCallSite,
                                 });
                             }
                         }
                     };
                 };
+            }
+            // Check for macro argument match-in-binop: a BinaryOp inside
+            // a macro expansion where an operand is a bare Match
+            // (not wrapped in parens). This can only occur through
+            // macro argument substitution, since tree-sitter
+            // precedence prevents it in normal code.
+            if let AnyExpr::Expr(Expr::BinaryOp { lhs, rhs, .. }) = &ctx.item
+                && let Some((macro_hir_idx, _)) = ctx.in_macro
+                && macro_hir_idx.body_origin == ctx.body_origin
+                && let Some((body, body_map, _ast)) = ctx.body_with_expr_source(sema)
+            {
+                let visible_parens_body = body.index_with_strategy(index_strategy);
+                let arg_ranges: Vec<TextRange> = [*lhs, *rhs]
+                    .into_iter()
+                    .filter(|&operand| is_bare_match_operand(&visible_parens_body, operand))
+                    .filter_map(|operand| {
+                        let operand_range = body_map.expr(operand)?.range();
+                        (operand_range.file_id == file_id).then_some(operand_range.range)
+                    })
+                    .collect();
+                if !arg_ranges.is_empty()
+                    && let Some(macro_ast) = body_map.any(macro_hir_idx.idx)
+                {
+                    let range = macro_ast.range();
+                    if range.file_id == file_id {
+                        res.push(GenericLinterMatchContext {
+                            range,
+                            context: MacroPrecedenceContext::MacroArg { arg_ranges },
+                        });
+                    }
+                }
             }
         });
         Some(res)
@@ -108,23 +148,49 @@ impl GenericLinter for MacroPrecedenceSupriseLinter {
 
     fn fixes(
         &self,
-        _context: &Self::Context,
+        context: &Self::Context,
         range: TextRange,
         ctx: &LinterContext,
     ) -> Option<Vec<Assist>> {
         let file_id = ctx.file_id;
-        let edit = add_parens_edit(&range);
-        let fix = fix(
-            "macro_precedence_add_parens",
-            "Add parens to macro call",
-            SourceChange::from_text_edit(file_id, edit),
-            range,
-        );
-        Some(vec![fix])
+        match context {
+            MacroPrecedenceContext::MacroCallSite => {
+                let edit = add_parens_edit(&range);
+                let fix = fix(
+                    "macro_precedence_add_parens",
+                    "Add parens to macro call",
+                    SourceChange::from_text_edit(file_id, edit),
+                    range,
+                );
+                Some(vec![fix])
+            }
+            MacroPrecedenceContext::MacroArg { arg_ranges } => {
+                let mut builder = TextEdit::builder();
+                for arg_range in arg_ranges {
+                    builder.insert(arg_range.start(), "(".to_string());
+                    builder.insert(arg_range.end(), ")".to_string());
+                }
+                let fix = fix(
+                    "macro_precedence_add_parens",
+                    "Add parens to macro argument",
+                    SourceChange::from_text_edit(file_id, builder.finish()),
+                    range,
+                );
+                Some(vec![fix])
+            }
+        }
     }
 }
 
 pub static LINTER: MacroPrecedenceSupriseLinter = MacroPrecedenceSupriseLinter;
+
+/// Check if an expression is a bare `Match` (not wrapped in parens),
+/// which can only appear as a BinaryOp operand through macro argument
+/// substitution since tree-sitter precedence would prevent it in
+/// normal code.
+fn is_bare_match_operand(body: &FoldBody, expr_id: ExprId) -> bool {
+    matches!(&body[expr_id], Expr::Match { .. })
+}
 
 #[cfg(test)]
 mod tests {
@@ -208,6 +274,46 @@ mod tests {
              foo(A,B,C) -> A * (?MYOP(B,C)).
             "#]],
         );
+    }
+
+    #[test]
+    fn match_in_macro_arg_binop() {
+        check_diagnostics(
+            r#"
+             -module(main).
+             -define(RATE(TPS, Interval), round(TPS * Interval)).
+             test() -> ?RATE(_TPS = 30, 60).
+              %%       ^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0039: The macro expansion can have unexpected precedence here
+            "#,
+        )
+    }
+
+    #[test]
+    fn match_in_macro_arg_binop_with_fix() {
+        check_fix(
+            r#"
+             -module(main).
+             -define(RATE(TPS, Interval), round(TPS * Interval)).
+             test() -> ?R~ATE(_TPS = 30, 60).
+              %%       ^^^^^^^^^^^^^^^^^^^^ 💡 warning: The macro expansion can have unexpected precedence here
+            "#,
+            expect![[r#"
+             -module(main).
+             -define(RATE(TPS, Interval), round(TPS * Interval)).
+             test() -> ?RATE((_TPS = 30), 60).
+            "#]],
+        );
+    }
+
+    #[test]
+    fn match_in_macro_arg_binop_fine_if_parens() {
+        check_diagnostics(
+            r#"
+             -module(main).
+             -define(RATE(TPS, Interval), round(TPS * Interval)).
+             test() -> ?RATE((_TPS = 30), 60).
+            "#,
+        )
     }
 
     #[test]
