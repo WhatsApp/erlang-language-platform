@@ -584,6 +584,9 @@ pub struct Glean {
     pub multi: bool,
     /// Print indexer metrics as JSON
     pub print_metrics: bool,
+    /// Prefix for every emitted `src.File` path
+    #[bpaf(argument("PATH"))]
+    pub source_root: Option<String>,
 }
 
 #[derive(Clone, Debug, Bpaf)]

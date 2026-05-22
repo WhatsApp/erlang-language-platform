@@ -14,6 +14,7 @@ use std::path::PathBuf;
 
 use elp::cli::Fake;
 use elp_ide::AnalysisHost;
+use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
 use elp_ide::elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_project_model::otp::otp_supported_by_eqwalizer;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
@@ -118,6 +119,7 @@ fn serialization_test() {
         pretty: false,
         multi: false,
         print_metrics: false,
+        source_root: None,
     };
     let mut module_index = FxHashMap::default();
     module_index.insert(file_id.into(), module_name.to_string());
@@ -280,6 +282,7 @@ fn schema2_flag_is_noop_test() {
         pretty: false,
         multi: false,
         print_metrics: false,
+        source_root: None,
     };
 
     let mut cli_without_flag = Fake::default();
@@ -309,6 +312,29 @@ fn file_fact_test() {
     assert_eq!(
         file_fact.file_path.as_str(),
         "glean/app_glean/src/glean_module2.erl"
+    );
+}
+
+#[test]
+fn apply_source_root_no_prefix_leaves_path_unchanged() {
+    let expected_path = "lib/stdlib/src/lists.erl";
+    assert_eq_expected!(expected_path, apply_source_root(expected_path, None));
+    assert_eq_expected!(expected_path, apply_source_root(expected_path, Some("")));
+}
+
+#[test]
+fn apply_source_root_joins_prefix_with_separator() {
+    assert_eq_expected!(
+        "prefix/lib/stdlib/src/lists.erl",
+        apply_source_root("lib/stdlib/src/lists.erl", Some("prefix"))
+    );
+}
+
+#[test]
+fn apply_source_root_trims_trailing_slash() {
+    assert_eq_expected!(
+        "prefix/lib/stdlib/src/lists.erl",
+        apply_source_root("lib/stdlib/src/lists.erl", Some("prefix/"))
     );
 }
 

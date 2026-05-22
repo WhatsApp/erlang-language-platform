@@ -121,6 +121,7 @@ use types::XRefTarget;
 #[derive(Clone, Debug, Default)]
 struct IndexConfig {
     pub multi: bool,
+    pub source_root: Option<String>,
 }
 
 struct IndexResult {
@@ -196,7 +197,10 @@ fn index_inner(
     ifdef: bool,
 ) -> Result<(IndexerMetrics, Vec<String>)> {
     let (indexer, _loaded) = GleanIndexer::new(args, cli, query_config, ifdef)?;
-    let config = IndexConfig { multi: args.multi };
+    let config = IndexConfig {
+        multi: args.multi,
+        source_root: args.source_root.clone(),
+    };
     let result = indexer.index(config)?;
     let errored_paths = result.errored_paths.clone();
     let (output_bytes, counts) = write_results(result, cli, args)?;
@@ -363,7 +367,14 @@ impl GleanIndexer {
                 let source_root_id = db.file_source_root(file_id);
                 let source_root = db.source_root(source_root_id);
                 let path = source_root.path_for_file(&file_id).unwrap();
-                match Self::index_file(db, file_id, path, project_id, &module_index) {
+                match Self::index_file(
+                    db,
+                    file_id,
+                    path,
+                    project_id,
+                    &module_index,
+                    config.source_root.as_deref(),
+                ) {
                     Some((file, line, decl, xref, module_fact)) => {
                         let mut result = FxHashMap::default();
                         result.insert(
@@ -379,12 +390,21 @@ impl GleanIndexer {
                 // Sort biggest files first to reduce long-tail in parallel processing
                 let mut files = files;
                 elp_ide::sort_by_size_descending(&mut files, |f| db.file_text(f.0).len());
+                let source_root = config.source_root.clone();
                 let results: Vec<_> = files
                     .into_par_iter()
                     .map_with(self.analysis.clone(), |analysis, (file_id, path)| {
+                        let source_root = source_root.as_deref();
                         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                             analysis.with_db(|db| {
-                                Self::index_file(db, file_id, &path, project_id, &module_index)
+                                Self::index_file(
+                                    db,
+                                    file_id,
+                                    &path,
+                                    project_id,
+                                    &module_index,
+                                    source_root,
+                                )
                             })
                         }));
                         match result {
@@ -460,6 +480,7 @@ impl GleanIndexer {
         path: &VfsPath,
         project_id: ProjectId,
         module_index: &FxHashMap<GleanFileId, String>,
+        source_root: Option<&str>,
     ) -> Option<(
         FileFact,
         FileLinesFact,
@@ -467,7 +488,7 @@ impl GleanIndexer {
         XRefFile,
         Option<ModuleFact>,
     )> {
-        let file_fact = Self::file_fact(db, file_id, path, project_id)?;
+        let file_fact = Self::file_fact(db, file_id, path, project_id, source_root)?;
         let line_fact = Self::line_fact(db, file_id);
         let mut xrefs = Self::xrefs(db, file_id, module_index);
         let mut file_decl = Self::declarations(db, file_id, path)?;
@@ -750,13 +771,16 @@ impl GleanIndexer {
         file_id: FileId,
         path: &VfsPath,
         project_id: ProjectId,
+        source_root: Option<&str>,
     ) -> Option<FileFact> {
         let project_data = db.project_data(project_id);
         let root = project_data.root_dir.as_path();
         let file_path = path.as_path()?;
         let file_path = file_path.strip_prefix(root)?;
-        let file_path = file_path.as_str().to_string();
-        Some(FileFact::new(file_id, file_path))
+        Some(FileFact::new(
+            file_id,
+            apply_source_root(file_path.as_str(), source_root),
+        ))
     }
 
     fn line_fact(db: &RootDatabase, file_id: FileId) -> FileLinesFact {
@@ -1563,6 +1587,15 @@ fn path_to_module_name(path: &VfsPath) -> Option<String> {
         Some((name, Some("escript"))) => Some(format!("{name}.escript")),
         Some((name, Some("hrl"))) => Some(format!("{name}.hrl")),
         _ => None,
+    }
+}
+
+fn apply_source_root(file_path: &str, source_root: Option<&str>) -> String {
+    match source_root {
+        Some(prefix) if !prefix.is_empty() => {
+            format!("{}/{}", prefix.trim_end_matches('/'), file_path)
+        }
+        _ => file_path.to_string(),
     }
 }
 
