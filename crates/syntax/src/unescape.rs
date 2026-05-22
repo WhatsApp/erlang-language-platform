@@ -36,17 +36,19 @@ pub fn unescape_string(s_in: &str) -> Option<Cow<'_, str>> {
     let mut queue: VecDeque<_> = String::from(s_in).chars().collect();
     let mut s = String::new();
 
+    let mut is_char_literal = false;
     if let Some(&c) = queue.front() {
         if c != '\'' && c != '\"' && c != '$' {
             return Some(Cow::Borrowed(s_in));
         } else {
+            is_char_literal = c == '$';
             // Remove leading delimiter
             queue.pop_front();
         }
     }
 
     while let Some(c) = queue.pop_front() {
-        if (c == '\'' || c == '\"') && queue.is_empty() {
+        if !is_char_literal && (c == '\'' || c == '\"') && queue.is_empty() {
             return Some(Cow::Owned(s));
         }
         if c != '\\' {
@@ -191,6 +193,18 @@ mod tests {
     #[test]
     fn unescape_string_char() {
         expect![[r#"a"#]].assert_eq(&unescape_string(r#"$a"#).unwrap());
+    }
+
+    #[test]
+    fn unescape_string_char_double_quote() {
+        // $" is the double-quote character literal (codepoint 34)
+        expect![[r#"""#]].assert_eq(&unescape_string("$\"").unwrap());
+    }
+
+    #[test]
+    fn unescape_string_char_single_quote() {
+        // $' is the single-quote character literal (codepoint 39)
+        expect![[r#"'"#]].assert_eq(&unescape_string("$'").unwrap());
     }
 
     #[test]
