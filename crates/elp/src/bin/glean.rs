@@ -476,7 +476,14 @@ impl GleanIndexer {
         let elp_module_index = db.module_index(project_id);
         let module_fact = elp_module_index
             .module_for_file(file_id)
-            .map(|module| Self::module_fact(db, file_id, module, project_id));
+            .cloned()
+            .or_else(|| match path.name_and_extension() {
+                Some((_, Some("escript"))) => {
+                    path_to_module_name(path).map(|name| ModuleName::new(&name))
+                }
+                _ => None,
+            })
+            .map(|module| Self::module_fact(db, file_id, &module, project_id));
         Some((file_fact, line_fact, file_decl, xrefs, module_fact))
     }
 
@@ -1553,6 +1560,7 @@ impl GleanIndexer {
 fn path_to_module_name(path: &VfsPath) -> Option<String> {
     match path.name_and_extension() {
         Some((name, Some("erl"))) => Some(name.to_string()),
+        Some((name, Some("escript"))) => Some(format!("{name}.escript")),
         Some((name, Some("hrl"))) => Some(format!("{name}.hrl")),
         _ => None,
     }
