@@ -1225,6 +1225,107 @@ foo("a" B "c") -> "a" B "c".
     );
 }
 
+// Macro resolution inside string concatenations: a `?MACRO` whose
+// definition is (or recursively expands to) a string literal can be
+// folded into the surrounding concatenation. Non-string macros still
+// fall back to `Missing`.
+
+#[test]
+fn concat_with_macro_string_in_expr() {
+    check(
+        r#"
+-define(GREETING, "hello").
+
+foo() -> ?GREETING " world".
+"#,
+        expect![[r#"
+            foo() ->
+                "hello world".
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_two_macro_strings() {
+    check(
+        r#"
+-define(A, "ab").
+-define(B, "cd").
+
+foo() -> ?A ?B.
+"#,
+        expect![[r#"
+            foo() ->
+                "abcd".
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_recursive_macro_concat() {
+    // Macro body is itself a concatenation (`"head" " mid"`); the outer
+    // concat must recursively resolve through it.
+    check(
+        r#"
+-define(WRAPPED, "head" " mid").
+
+foo() -> ?WRAPPED " tail".
+"#,
+        expect![[r#"
+            foo() ->
+                "head mid tail".
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_non_string_macro_falls_back_to_missing() {
+    // Macro expands to an atom, not a string — concatenation cannot
+    // be folded, so the whole expression becomes `Missing`.
+    check(
+        r#"
+-define(NOT_A_STRING, hello).
+
+foo() -> ?NOT_A_STRING " world".
+"#,
+        expect![[r#"
+            foo() ->
+                [missing].
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_macro_string_in_pattern() {
+    // Same resolution must work at pattern positions.
+    check(
+        r#"
+-define(GREETING, "hello").
+
+foo(?GREETING " world") -> ok.
+"#,
+        expect![[r#"
+            foo("hello world") ->
+                ok.
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_macro_string_in_term() {
+    // Same resolution must work in term/attribute positions.
+    check(
+        r#"
+-define(GREETING, "hello").
+
+-foo(?GREETING " world").
+"#,
+        expect![[r#"
+            -foo("hello world").
+        "#]],
+    );
+}
+
 #[test]
 fn invalid_macro_case_clause() {
     check(

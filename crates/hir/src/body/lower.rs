@@ -846,7 +846,9 @@ impl<'a> Ctx<'a> {
                 self.alloc_pat(value, Some(expr))
             }
             ast::ExprMax::Concatables(concat) => {
-                let value = lower_concat(concat).map_or(Pat::Missing, Pat::Literal);
+                let value = self
+                    .lower_concat_with_macros(concat)
+                    .map_or(Pat::Missing, Pat::Literal);
                 self.alloc_pat(value, Some(expr))
             }
             ast::ExprMax::ExternalFun(fun) => {
@@ -1591,7 +1593,9 @@ impl<'a> Ctx<'a> {
                 self.alloc_expr(value, Some(expr))
             }
             ast::ExprMax::Concatables(concat) => {
-                let value = lower_concat(concat).map_or(Expr::Missing, Expr::Literal);
+                let value = self
+                    .lower_concat_with_macros(concat)
+                    .map_or(Expr::Missing, Expr::Literal);
                 self.alloc_expr(value, Some(expr))
             }
             ast::ExprMax::ExternalFun(fun) => {
@@ -2845,7 +2849,9 @@ impl<'a> Ctx<'a> {
                 self.alloc_term(value, Some(expr))
             }
             ast::ExprMax::Concatables(concat) => {
-                let value = lower_concat(concat).map_or(Term::Missing, Term::Literal);
+                let value = self
+                    .lower_concat_with_macros(concat)
+                    .map_or(Term::Missing, Term::Literal);
                 self.alloc_term(value, Some(expr))
             }
             ast::ExprMax::ExternalFun(fun) => {
@@ -3447,6 +3453,59 @@ impl<'a> Ctx<'a> {
         None
     }
 
+    /// Lower a Concatables node, resolving macros that expand to strings.
+    fn lower_concat_with_macros(&mut self, concat: &ast::Concatables) -> Option<Literal> {
+        let mut buf = String::new();
+        for concatable in concat.elems() {
+            match concatable {
+                ast::Concatable::MacroCallExpr(call) => {
+                    let string_value = self.resolve_macro_concat_string(&call)?;
+                    buf.push_str(&string_value);
+                }
+                ast::Concatable::MacroString(_) => return None,
+                ast::Concatable::String(str) => {
+                    let contents: String = str.clone().into();
+                    buf.push_str(&contents);
+                }
+                ast::Concatable::Var(_) => return None,
+            }
+        }
+        Some(Literal::String(StringVariant::Normal(buf)))
+    }
+
+    /// Try to resolve a macro call to its string value.
+    ///
+    /// Returns `Some(string)` if the macro expands to a string literal
+    /// or a Concatables that resolves to a string (possibly containing
+    /// further macros that also resolve to strings).
+    fn resolve_macro_concat_string(&mut self, call: &ast::MacroCallExpr) -> Option<String> {
+        self.resolve_macro(call, |this, _source, replacement| match replacement {
+            MacroReplacement::Ast(_, ast::MacroDefReplacement::Expr(ref expr)) => {
+                if let ast::Expr::ExprMax(expr_max) = expr {
+                    match expr_max {
+                        ast::ExprMax::Concatables(concat) => this
+                            .lower_concat_with_macros(concat)
+                            .and_then(|lit| match lit {
+                                Literal::String(
+                                    StringVariant::Normal(s) | StringVariant::Verbatim(s),
+                                ) => Some(s),
+                                _ => None,
+                            }),
+                        ast::ExprMax::String(str) => {
+                            let contents: std::string::String = str.clone().into();
+                            Some(contents)
+                        }
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
+        .flatten()
+    }
+
     fn alloc_expr(&mut self, expr: Expr, source: Option<&ast::Expr>) -> ExprId {
         let expr_id = self.body.exprs.alloc(expr);
         if let Some(source) = source {
@@ -3689,25 +3748,6 @@ fn int_text_to_u32(int: &ast::Integer) -> u32 {
     lower_raw_int(int)
         .and_then(|bi| u32::try_from(bi.value).ok())
         .unwrap_or(0)
-}
-
-fn lower_concat(concat: &ast::Concatables) -> Option<Literal> {
-    let mut buf = String::new();
-
-    for concatable in concat.elems() {
-        // TODO: macro resolution
-        match concatable {
-            ast::Concatable::MacroCallExpr(_) => return None,
-            ast::Concatable::MacroString(_) => return None,
-            ast::Concatable::String(str) => {
-                let contents: String = str.clone().into();
-                buf.push_str(&contents)
-            }
-            ast::Concatable::Var(_) => return None,
-        }
-    }
-
-    Some(Literal::String(StringVariant::Normal(buf)))
 }
 
 /// Check if the first argument of a function clause consists entirely
