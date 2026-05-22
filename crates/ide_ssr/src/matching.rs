@@ -111,9 +111,7 @@ impl SsrPlaceholder {
 }
 
 /// Pre-computed placeholder information for a pattern body.
-/// This avoids repeated Salsa intern lookups (`is_ssr_placeholder(db)`)
-/// during matching, which was a major source of RwLock contention
-/// when many threads were matching patterns simultaneously.
+/// This avoids repeated placeholder checks during matching.
 pub struct PlaceholderCache {
     /// Maps each pattern AnyExprId that is a placeholder to its SsrPlaceholder.
     placeholders: FxHashMap<AnyExprId, SsrPlaceholder>,
@@ -121,8 +119,6 @@ pub struct PlaceholderCache {
 
 impl PlaceholderCache {
     /// Build a placeholder cache by scanning all nodes in the pattern body.
-    /// This does the Salsa intern lookups once upfront, so the matching
-    /// hot path never needs to access the database for placeholder checks.
     pub fn build(pattern_body: &FoldBody) -> Self {
         let mut placeholders = FxHashMap::default();
         // Use FoldBody indexing (pattern_body[id]) instead of raw body iteration
@@ -621,8 +617,6 @@ struct Matcher<'a> {
     pattern_body: &'a FoldBody<'a>,
     code_body: &'a FoldBody<'a>,
     code_body_origin: &'a BodyOrigin,
-    /// Pre-computed placeholder information for the pattern body.
-    /// Avoids Salsa intern lookups in the matching hot path.
     placeholder_cache: &'a PlaceholderCache,
 }
 

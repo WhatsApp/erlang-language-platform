@@ -35,9 +35,6 @@ impl MatchFinder<'_> {
     pub(crate) fn find_matches_for_rule(&self, rule: &SsrPattern, matches_out: &mut Vec<Match>) {
         let pattern_body = rule.get_body(self.sema).expect("Cannot get pattern_body");
         let pattern_body = fold_body(self.strategy, &pattern_body);
-        // Pre-compute placeholder info once for the entire pattern.
-        // This avoids Salsa intern lookups in the matching hot path,
-        // which was a major source of RwLock contention with many threads.
         let placeholder_cache = PlaceholderCache::build(&pattern_body);
         self.slow_scan_node(rule, &None, matches_out, &pattern_body, &placeholder_cache);
     }
