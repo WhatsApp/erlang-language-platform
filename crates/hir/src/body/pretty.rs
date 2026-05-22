@@ -824,6 +824,7 @@ impl<'a> Printer<'a> {
                 macro_name: _,
             } => self.print_type(&self.body[*expansion]),
             TypeExpr::Paren { ty } => self.print_type(&self.body[*ty]),
+            TypeExpr::Bitstring { m, n } => write!(self, "<<_:{m}, _:_*{n}>>"),
         }
     }
 

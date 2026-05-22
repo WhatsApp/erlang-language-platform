@@ -1340,6 +1340,9 @@ impl<'a> Printer<'a> {
                     this.print_type(ty);
                 });
             }
+            TypeExpr::Bitstring { m, n } => {
+                write!(self, "TypeExpr::Bitstring({m}, {n})").ok();
+            }
         }
     }
 

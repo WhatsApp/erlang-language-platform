@@ -964,6 +964,10 @@ pub enum TypeExpr {
         op: UnaryOp,
     },
     Var(Var),
+    Bitstring {
+        m: u32,
+        n: u32,
+    },
     MacroCall {
         // This constructor captures the point a macro is expanded
         // into an expression. This allows us to separately track the
@@ -1010,6 +1014,7 @@ impl TypeExpr {
             TypeExpr::Var(_) => "TypeExpr::Var",
             TypeExpr::MacroCall { .. } => "TypeExpr::MacroCall",
             TypeExpr::Paren { .. } => "TypeExpr::Paren",
+            TypeExpr::Bitstring { .. } => "TypeExpr::Bitstring",
         }
     }
 }

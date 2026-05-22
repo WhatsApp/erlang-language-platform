@@ -1265,6 +1265,7 @@ impl<'a, T> FoldCtx<'a, T> {
                 .fold(acc, |acc, ty| self.do_fold_type_expr(*ty, acc)),
             TypeExpr::UnaryOp { type_expr, op: _ } => self.do_fold_type_expr(*type_expr, acc),
             TypeExpr::Var(_) => acc,
+            TypeExpr::Bitstring { .. } => acc,
             TypeExpr::MacroCall {
                 expansion,
                 args,

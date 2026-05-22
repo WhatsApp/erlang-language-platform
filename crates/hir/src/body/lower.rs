@@ -2392,7 +2392,10 @@ impl<'a> Ctx<'a> {
                 let atom = Atom::new(&atom.as_name());
                 self.alloc_type_expr(TypeExpr::Literal(Literal::Atom(atom)), Some(expr))
             }
-            ast::ExprMax::Binary(_bin) => self.alloc_type_expr(TypeExpr::Missing, Some(expr)),
+            ast::ExprMax::Binary(bin) => {
+                let (m, n) = lower_binary_type(bin);
+                self.alloc_type_expr(TypeExpr::Bitstring { m, n }, Some(expr))
+            }
             ast::ExprMax::BinaryComprehension(_bc) => {
                 self.alloc_type_expr(TypeExpr::Missing, Some(expr))
             }
@@ -3586,6 +3589,43 @@ fn parse_based(base: u32, str: &str) -> Option<i128> {
 
 fn lower_int(int: &ast::Integer) -> Option<Literal> {
     lower_raw_int(int).map(Literal::Integer)
+}
+
+/// Lower a binary type expression like `<<>>`, `<<_:M>>`, `<<_:_*N>>`, or `<<_:M, _:_*N>>`
+/// into (M, N) integer values.
+///
+/// In Erlang type syntax:
+/// - `<<>>` means M=0, N=0
+/// - `<<_:M>>` means a binary of exactly M bits
+/// - `<<_:_*N>>` means a binary whose size is a multiple of N
+/// - `<<_:M, _:_*N>>` means a binary of at least M bits, remainder multiple of N
+fn lower_binary_type(bin: &ast::Binary) -> (u32, u32) {
+    let mut m: u32 = 0;
+    let mut n: u32 = 0;
+    for element in bin.elements() {
+        if let Some(size_expr) = element.size().and_then(|s| s.size()) {
+            match &size_expr {
+                // Simple integer size: <<_:M>> -- this is M (base size)
+                ast::BitExpr::ExprMax(ast::ExprMax::Integer(int)) => {
+                    m = int_text_to_u32(int);
+                }
+                // Multiplication expression: <<_:_*N>> -- this is N (unit size)
+                ast::BitExpr::BinaryOpExpr(bin_op) => {
+                    if let Some(ast::Expr::ExprMax(ast::ExprMax::Integer(int))) = bin_op.rhs() {
+                        n = int_text_to_u32(&int);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    (m, n)
+}
+
+fn int_text_to_u32(int: &ast::Integer) -> u32 {
+    lower_raw_int(int)
+        .and_then(|bi| u32::try_from(bi.value).ok())
+        .unwrap_or(0)
 }
 
 fn lower_concat(concat: &ast::Concatables) -> Option<Literal> {

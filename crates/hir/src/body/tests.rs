@@ -1528,6 +1528,58 @@ fn invalid_type() {
     );
 }
 
+// Binary (bitstring) type expressions: `<<>>`, `<<_:M>>`, `<<_:_*N>>`,
+// and `<<_:M, _:_*N>>`. The pretty printer always emits the canonical
+// two-element form `<<_:M, _:_*N>>`.
+
+#[test]
+fn binary_type_empty() {
+    check(
+        r#"
+-type foo() :: <<>>.
+"#,
+        expect![[r#"
+            -type foo() :: <<_:0, _:_*0>>.
+        "#]],
+    );
+}
+
+#[test]
+fn binary_type_fixed_size() {
+    check(
+        r#"
+-type foo() :: <<_:8>>.
+"#,
+        expect![[r#"
+            -type foo() :: <<_:8, _:_*0>>.
+        "#]],
+    );
+}
+
+#[test]
+fn binary_type_unit() {
+    check(
+        r#"
+-type foo() :: <<_:_*4>>.
+"#,
+        expect![[r#"
+            -type foo() :: <<_:0, _:_*4>>.
+        "#]],
+    );
+}
+
+#[test]
+fn binary_type_fixed_and_unit() {
+    check(
+        r#"
+-type foo() :: <<_:8, _:_*1>>.
+"#,
+        expect![[r#"
+            -type foo() :: <<_:8, _:_*1>>.
+        "#]],
+    );
+}
+
 #[test]
 fn simple_spec() {
     check(
@@ -3204,6 +3256,27 @@ fn tree_print_type_body() {
             -nominal bar() :: TypeExpr::Tuple {
                 Literal(Atom('ok')),
             }.
+        "#]],
+    );
+}
+
+#[test]
+fn tree_print_binary_type() {
+    check_ast(
+        r#"
+        -type a() :: <<>>.
+        -type b() :: <<_:8>>.
+        -type c() :: <<_:_*4>>.
+        -type d() :: <<_:8, _:_*1>>.
+        "#,
+        expect![[r#"
+            -type a() :: TypeExpr::Bitstring(0, 0).
+
+            -type b() :: TypeExpr::Bitstring(8, 0).
+
+            -type c() :: TypeExpr::Bitstring(0, 4).
+
+            -type d() :: TypeExpr::Bitstring(8, 1).
         "#]],
     );
 }
