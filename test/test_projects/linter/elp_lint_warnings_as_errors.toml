@@ -1,2 +1,5 @@
 [erlang_service]
 warnings_as_errors = true
+
+[linters.redundant_suppression]
+enabled = false

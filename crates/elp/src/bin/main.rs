@@ -1498,7 +1498,7 @@ mod tests {
     fn lint_no_stream_produces_output(buck: bool) {
         if otp::supports_eep66_sigils() {
             simple_snapshot_expect_error(
-                args_vec!["lint", "--no-stream"],
+                args_vec!["lint", "--no-stream", "--read-config"],
                 "diagnostics",
                 resource_file!("diagnostics/lint_no_stream.stdout"),
                 buck,
@@ -1523,7 +1523,7 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn lint_apply_fix_no_diagnostics_enabled(buck: bool) {
         simple_snapshot_expect_stderror(
-            args_vec!["lint", "--apply-fix",],
+            args_vec!["lint", "--apply-fix"],
             "linter",
             resource_file!("linter/parse_elp_apply_fix_no_lint_output.stdout"),
             buck,
@@ -1868,7 +1868,7 @@ mod tests {
         simple_snapshot_expect_error_sorted(
             args_vec![
                 "lint",
-                "--no-stream"
+                "--no-stream",
                 "--config-file",
                 project_path("linter/elp_lint_warnings_as_errors.toml")
             ],

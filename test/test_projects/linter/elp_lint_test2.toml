@@ -39,3 +39,6 @@ enabled = false
 
 [linters.compile-warn-missing-spec]
 enabled = true
+
+[linters.redundant_suppression]
+enabled = false

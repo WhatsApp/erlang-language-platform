@@ -33,3 +33,6 @@ enabled = false
 
 [linters.L1318]
 enabled = false
+
+[linters.redundant_suppression]
+enabled = false
