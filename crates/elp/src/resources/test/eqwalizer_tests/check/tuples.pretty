@@ -1,0 +1,15 @@
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/tuples.erl:15:27
+   │
+15 │     eqwalizer:reveal_type(Tuple),
+   │                           ^^^^^ {term()}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/tuples.erl:17:5
+   │
+17 │     Z.
+   │     ^ Z.
+Expression has type:   term()
+Context expected type: number()
+
+2 ERRORS
