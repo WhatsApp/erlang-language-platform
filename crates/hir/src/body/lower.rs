@@ -3429,25 +3429,65 @@ impl<'a> Ctx<'a> {
     /// returns the stringified tokens of the argument as a string literal.
     /// Matches the Erlang preprocessor behavior: tokens are joined with
     /// single spaces and comments/whitespace are stripped.
+    ///
+    /// When the argument is a variable that corresponds to a parent macro's
+    /// parameter, walks up the macro stack to find the original argument
+    /// tokens. This handles nested macros like:
+    ///   -define(OUTER(Pattern), ?INNER(??Pattern)).
+    ///   -define(INNER(PatStr), ...PatStr...).
+    /// where `?OUTER(?IQ_RESULT(X))` should stringify to `"? IQ_RESULT ( X )"`.
     fn resolve_macro_string(&self, macro_string: &ast::MacroString) -> Option<Literal> {
+        const MAX_WALKUP_DEPTH: usize = 100;
         let name = macro_string.name()?;
         if let ast::MacroName::Var(ref var) = name {
             let hir_var = Var::new(&var.as_name());
-            let entry = &self.macro_stack[self.macro_stack_id];
-            if let Some(macro_expr) = entry.var_map.get(&hir_var)
-                && let Some(expr) = macro_expr.expr()
-            {
-                // Collect non-trivia tokens and join with spaces,
-                // matching the Erlang preprocessor's stringification.
-                let text: String = expr
-                    .syntax()
-                    .descendants_with_tokens()
-                    .filter_map(|elem| elem.into_token())
-                    .filter(|token| !token.kind().is_trivia())
-                    .map(|token| token.text().to_string())
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                return Some(Literal::String(StringVariant::Normal(text)));
+            let mut current_stack_id = self.macro_stack_id;
+            let mut current_var = hir_var;
+            let mut depth = 0;
+            loop {
+                let entry = &self.macro_stack[current_stack_id];
+                if let Some(macro_expr) = entry.var_map.get(&current_var)
+                    && let Some(expr) = macro_expr.expr()
+                {
+                    // If the argument is a simple variable reference that
+                    // corresponds to a parent macro's parameter, walk up
+                    // the stack to find the original argument tokens.
+                    if let ast::Expr::ExprMax(ast::ExprMax::Var(ref inner_var)) = expr {
+                        let parent_id = entry.parent_id;
+                        if parent_id != current_stack_id {
+                            let parent_var = Var::new(&inner_var.as_name());
+                            if self.macro_stack[parent_id]
+                                .var_map
+                                .contains_key(&parent_var)
+                            {
+                                depth += 1;
+                                if depth > MAX_WALKUP_DEPTH {
+                                    log::error!(
+                                        "resolve_macro_string: exceeded max walk-up depth of {} for ??{}",
+                                        MAX_WALKUP_DEPTH,
+                                        var.as_name()
+                                    );
+                                    return None;
+                                }
+                                current_var = parent_var;
+                                current_stack_id = parent_id;
+                                continue;
+                            }
+                        }
+                    }
+                    // Collect non-trivia tokens and join with spaces,
+                    // matching the Erlang preprocessor's stringification.
+                    let text: String = expr
+                        .syntax()
+                        .descendants_with_tokens()
+                        .filter_map(|elem| elem.into_token())
+                        .filter(|token| !token.kind().is_trivia())
+                        .map(|token| token.text().to_string())
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    return Some(Literal::String(StringVariant::Normal(text)));
+                }
+                break;
             }
         }
         None

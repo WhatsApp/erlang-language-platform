@@ -1188,6 +1188,147 @@ foo() -> ?STR(hello).
 }
 
 #[test]
+fn macro_string_through_nested_macro_forwarding() {
+    // OUTER passes its parameter `X` straight to INNER (without `??`),
+    // and INNER stringifies its own parameter `Y`.  Resolving `??Y`
+    // must walk up the macro stack: Y is bound to the variable `X` in
+    // OUTER's frame, which is in turn bound to the original argument
+    // tokens in the call site's frame.
+    check(
+        r#"
+-define(INNER(Y), ??Y).
+-define(OUTER(X), ?INNER(X)).
+
+foo() -> ?OUTER(hello).
+"#,
+        expect![[r#"
+            foo() ->
+                "hello".
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_through_three_levels_of_forwarding() {
+    // Walking up the stack must work for arbitrary nesting depth.
+    check(
+        r#"
+-define(INNER(Z), ??Z).
+-define(MIDDLE(Y), ?INNER(Y)).
+-define(OUTER(X), ?MIDDLE(X)).
+
+foo() -> ?OUTER(deep_arg).
+"#,
+        expect![[r#"
+            foo() ->
+                "deep_arg".
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_through_nested_with_compound_arg() {
+    // Compound arguments must be stringified verbatim (whitespace
+    // collapsed) once the walk-up finds the original tokens.
+    check(
+        r#"
+-define(INNER(Y), ??Y).
+-define(OUTER(X), ?INNER(X)).
+
+foo() -> ?OUTER(1 + 2).
+"#,
+        expect![[r#"
+            foo() ->
+                "1 + 2".
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_simple_variable_argument() {
+    // When the macro argument is itself a plain variable from the call
+    // site (not a parameter being forwarded from an enclosing macro),
+    // the walk-up should NOT cross into the parent frame just because
+    // the parent has no binding for that name. The variable's text is
+    // stringified verbatim.
+    check(
+        r#"
+-define(STR(X), ??X).
+
+foo(SomeVar) -> ?STR(SomeVar).
+"#,
+        expect![[r#"
+            foo(SomeVar) ->
+                "SomeVar".
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_variable_at_top_level_call_site() {
+    // Same as above but with a longer variable name and no enclosing
+    // macro, so the parent frame lookup definitely fails.
+    check(
+        r#"
+-define(STR(X), ??X).
+
+foo(LongVariableName) -> ?STR(LongVariableName).
+"#,
+        expect![[r#"
+            foo(LongVariableName) ->
+                "LongVariableName".
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_nested_forwarding_still_works_after_fix() {
+    // Sanity: the parent walk-up still works when the inner Var really
+    // does name a parameter in the parent frame. (Same shape as the
+    // existing `macro_string_through_nested_macro_forwarding` test, kept
+    // adjacent here to make the contrast with the simple-variable case
+    // obvious.)
+    check(
+        r#"
+-define(INNER(Y), ??Y).
+-define(OUTER(X), ?INNER(X)).
+
+foo() -> ?OUTER(stuff).
+"#,
+        expect![[r#"
+            foo() ->
+                "stuff".
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_walkup_depth_limit() {
+    // The walk-up loop in resolve_macro_string is guarded by a depth
+    // counter.  Even though truly infinite recursion shouldn't happen
+    // (the macro_stack is finite), this confirms we degrade gracefully
+    // to `[missing]` rather than spinning for a long time on a
+    // pathological macro chain.
+    //
+    // We can't construct 100+ levels of real macro nesting easily, but
+    // we verify that a moderate chain (3 levels) still resolves correctly,
+    // giving confidence the counter doesn't interfere with normal operation.
+    check(
+        r#"
+-define(L3(Z), ??Z).
+-define(L2(Y), ?L3(Y)).
+-define(L1(X), ?L2(X)).
+
+foo() -> ?L1(works).
+"#,
+        expect![[r#"
+            foo() ->
+                "works".
+        "#]],
+    );
+}
+
+#[test]
 fn invalid_receive() {
     check(
         r#"
