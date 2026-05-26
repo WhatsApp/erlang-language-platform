@@ -3502,7 +3502,12 @@ impl<'a> Ctx<'a> {
                     let string_value = self.resolve_macro_concat_string(&call)?;
                     buf.push_str(&string_value);
                 }
-                ast::Concatable::MacroString(_) => return None,
+                ast::Concatable::MacroString(ms) => match self.resolve_macro_string(&ms)? {
+                    Literal::String(StringVariant::Normal(s) | StringVariant::Verbatim(s)) => {
+                        buf.push_str(&s);
+                    }
+                    _ => return None,
+                },
                 ast::Concatable::String(str) => {
                     let contents: String = str.clone().into();
                     buf.push_str(&contents);

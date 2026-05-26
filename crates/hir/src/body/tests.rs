@@ -1468,6 +1468,88 @@ fn concat_with_macro_string_in_term() {
     );
 }
 
+// `??Param` may appear inside a string concatenation alongside literal
+// strings. The stringified macro argument is folded into the resulting
+// concatenation buffer.
+
+#[test]
+fn concat_with_macro_string_stringification_trailing() {
+    check(
+        r#"
+-define(STR(X), ??X " tail").
+
+foo() -> ?STR(hello).
+"#,
+        expect![[r#"
+            foo() ->
+                "hello tail".
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_macro_string_stringification_leading() {
+    check(
+        r#"
+-define(STR(X), "head " ??X).
+
+foo() -> ?STR(world).
+"#,
+        expect![[r#"
+            foo() ->
+                "head world".
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_macro_string_stringification_surrounded() {
+    check(
+        r#"
+-define(STR(X), "[" ??X "]").
+
+foo() -> ?STR(item).
+"#,
+        expect![[r#"
+            foo() ->
+                "[item]".
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_macro_string_stringification_compound_arg() {
+    // Compound argument tokens are joined with single spaces and folded
+    // into the surrounding concatenation.
+    check(
+        r#"
+-define(STR(X), "got: " ??X).
+
+foo() -> ?STR(1 + 2).
+"#,
+        expect![[r#"
+            foo() ->
+                "got: 1 + 2".
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_macro_string_stringification_in_pattern() {
+    // Same resolution applies in pattern position.
+    check(
+        r#"
+-define(STR(X), ??X " mark").
+
+foo(?STR(hello)) -> ok.
+"#,
+        expect![[r#"
+            foo("hello mark") ->
+                ok.
+        "#]],
+    );
+}
+
 #[test]
 fn invalid_macro_case_clause() {
     check(
