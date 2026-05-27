@@ -69,16 +69,8 @@ impl RebarConfig {
     }
 
     pub fn rebar3_command_base() -> Command {
-        #[cfg(buck_build)]
         fn get_rebar3_path() -> Option<PathBuf> {
-            buck_resources::get("whatsapp/elp/crates/project_model/rebar3")
-                .ok()
-                .map(|p| p.to_path_buf())
-        }
-
-        #[cfg(not(buck_build))]
-        fn get_rebar3_path() -> Option<PathBuf> {
-            env::var_os("ELP_REBAR3_PATH").map(|p| {
+            env::var_os("ELP_REBAR3").map(|p| {
                 let path = PathBuf::from(p);
                 if path.is_relative() {
                     env::current_dir()
@@ -90,25 +82,26 @@ impl RebarConfig {
             })
         }
 
-        #[cfg(buck_build)]
         fn get_escript_path() -> Option<PathBuf> {
-            buck_resources::get("whatsapp/elp/crates/project_model/escript")
-                .ok()
-                .map(|p| p.to_path_buf())
-        }
-
-        #[cfg(not(buck_build))]
-        fn get_escript_path() -> Option<PathBuf> {
-            env::var_os("ELP_ESCRIPT_PATH").map(|p| {
-                let path = PathBuf::from(p);
-                if path.is_relative() {
-                    env::current_dir()
-                        .map(|cwd| cwd.join(&path))
-                        .unwrap_or(path)
-                } else {
-                    path
-                }
-            })
+            #[cfg(buck_build)]
+            {
+                buck_resources::get("whatsapp/elp/crates/project_model/escript")
+                    .ok()
+                    .map(|p| p.to_path_buf())
+            }
+            #[cfg(not(buck_build))]
+            {
+                env::var_os("ELP_ESCRIPT").map(|p| {
+                    let path = PathBuf::from(p);
+                    if path.is_relative() {
+                        env::current_dir()
+                            .map(|cwd| cwd.join(&path))
+                            .unwrap_or(path)
+                    } else {
+                        path
+                    }
+                })
+            }
         }
 
         let rebar3_path = get_rebar3_path();
