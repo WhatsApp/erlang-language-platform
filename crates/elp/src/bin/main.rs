@@ -43,6 +43,7 @@ mod explain_cli;
 mod glean;
 mod lint_cli;
 mod lint_list_cli;
+// @fb-only: #[cfg(buck_build)]
 // @fb-only: mod meta_only;
 mod reporting;
 mod shell;
@@ -122,6 +123,7 @@ fn setup_cli_telemetry(args: &Args) {
         }
         _ => {
             // Initialize CLI telemetry, if used
+            // @fb-only: #[cfg(buck_build)]
             // @fb-only: meta_only::initialize_telemetry();
         }
     }
