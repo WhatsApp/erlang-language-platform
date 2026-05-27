@@ -47,6 +47,7 @@ stdx.workspace = true
 strsim.workspace = true
 threadpool.workspace = true
 toml.workspace = true
+tower-lsp-server.workspace = true
 tracing.workspace = true
 vfs.workspace = true
 vfs-notify.workspace = true

@@ -219,7 +219,7 @@ pub enum ExternalDocs {}
 
 impl Request for ExternalDocs {
     type Params = lsp_types::TextDocumentPositionParams;
-    type Result = Option<Vec<lsp_types::Url>>;
+    type Result = Option<Vec<lsp_types::Uri>>;
     const METHOD: &'static str = "experimental/externalDocs";
 }
 

@@ -107,17 +107,17 @@ pub(crate) fn text_edit(
     lsp_types::TextEdit { range, new_text }
 }
 
-pub(crate) fn url(snap: &Snapshot, file_id: FileId) -> lsp_types::Url {
-    snap.file_id_to_url(file_id)
+pub(crate) fn uri(snap: &Snapshot, file_id: FileId) -> lsp_types::Uri {
+    snap.file_id_to_uri(file_id)
 }
 
 pub(crate) fn optional_versioned_text_document_identifier(
     snap: &Snapshot,
     file_id: FileId,
 ) -> lsp_types::OptionalVersionedTextDocumentIdentifier {
-    let url = url(snap, file_id);
-    let version = snap.url_file_version(&url);
-    lsp_types::OptionalVersionedTextDocumentIdentifier { uri: url, version }
+    let uri = uri(snap, file_id);
+    let version = snap.uri_file_version(&uri);
+    lsp_types::OptionalVersionedTextDocumentIdentifier { uri, version }
 }
 
 pub(crate) fn text_document_edit(
@@ -175,7 +175,7 @@ pub(crate) fn text_document_ops(
         }
         FileSystemEdit::MoveFile { src, dst } => {
             if let Some(new_uri) = snap.anchored_path(&dst) {
-                let old_uri = snap.file_id_to_url(src);
+                let old_uri = snap.file_id_to_uri(src);
                 let rename_file = lsp_types::RenameFile {
                     old_uri,
                     new_uri,
@@ -241,7 +241,7 @@ pub(crate) fn workspace_edit(
     // Edits on renamed files.  The LineIndex from the original can be used.
     for (file_ref, edit) in source_change.new_file_edits {
         if let Some(uri) = snap.anchored_path(&file_ref.clone().into()) {
-            let version = snap.url_file_version(&uri);
+            let version = snap.uri_file_version(&uri);
             let text_document = lsp_types::OptionalVersionedTextDocumentIdentifier { uri, version };
             let edit = text_document_edit(snap, file_ref.anchor, text_document, edit)?;
             document_changes.push(lsp_types::DocumentChangeOperation::Edit(
@@ -307,10 +307,10 @@ pub(crate) fn code_action(
 }
 
 pub(crate) fn location(snap: &Snapshot, file_range: FileRange) -> Cancellable<lsp_types::Location> {
-    let url = url(snap, file_range.file_id);
+    let uri = uri(snap, file_range.file_id);
     let line_index = snap.analysis.line_index(file_range.file_id)?;
     let range = range(&line_index, file_range.range);
-    let loc = lsp_types::Location::new(url, range);
+    let loc = lsp_types::Location::new(uri, range);
     Ok(loc)
 }
 
@@ -348,10 +348,10 @@ pub(crate) fn location_link(
 fn location_info(
     snap: &Snapshot,
     target: NavigationTarget,
-) -> Result<(lsp_types::Url, lsp_types::Range, lsp_types::Range)> {
+) -> Result<(lsp_types::Uri, lsp_types::Range, lsp_types::Range)> {
     let line_index = snap.analysis.line_index(target.file_id)?;
 
-    let target_uri = url(snap, target.file_id);
+    let target_uri = uri(snap, target.file_id);
     let target_range = range(&line_index, target.full_range);
     let target_selection_range = target
         .focus_range
@@ -532,7 +532,7 @@ fn completion_item(snap: &Snapshot, c: Completion) -> lsp_types::CompletionItem 
 fn completion_item_data(snap: &Snapshot, pos: Option<FilePosition>) -> Option<CompletionData> {
     let file_id = pos?.file_id;
     if let Ok(line_index) = snap.analysis.line_index(file_id) {
-        let uri = url(snap, file_id);
+        let uri = uri(snap, file_id);
         let text_document = lsp_types::TextDocumentIdentifier { uri };
         let pos = position(&line_index, pos?.offset);
         let doc_pos = lsp_types::TextDocumentPositionParams::new(text_document, pos);
@@ -922,9 +922,9 @@ pub(crate) fn code_lens(
                 }
             {
                 let annotation_range = range(line_index, annotation.range);
-                let url = link.url;
+                let uri = link.url;
                 let text = link.text;
-                let command = command::open_uri(&url, &text);
+                let command = command::open_uri(&uri, &text);
                 acc.push(lsp_types::CodeLens {
                     range: annotation_range,
                     command: Some(command),

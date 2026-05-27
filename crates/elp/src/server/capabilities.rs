@@ -39,7 +39,6 @@ use crate::semantic_tokens;
 pub fn compute(client: &ClientCapabilities) -> ServerCapabilities {
     ServerCapabilities {
         position_encoding: None,
-        selection_range_provider: Some(SelectionRangeProviderCapability::Simple(true)),
         text_document_sync: Some(TextDocumentSyncCapability::Options(
             TextDocumentSyncOptions {
                 open_close: Some(true),
@@ -49,6 +48,8 @@ pub fn compute(client: &ClientCapabilities) -> ServerCapabilities {
                 save: Some(SaveOptions::default().into()),
             },
         )),
+        notebook_document_sync: None,
+        selection_range_provider: Some(SelectionRangeProviderCapability::Simple(true)),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
             resolve_provider: Some(true),

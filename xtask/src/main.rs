@@ -17,7 +17,8 @@ use std::env;
 use std::path::Path;
 use std::path::PathBuf;
 
-use anyhow::Context;
+#[cfg(not(buck_build))]
+use anyhow::Context as _;
 use anyhow::Result;
 use bpaf::Bpaf;
 use bpaf::Parser;

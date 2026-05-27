@@ -81,7 +81,7 @@ la-arena = "0.3.1"
 lazy_static = "1.5"
 log = { version = "0.4.29", features = ["kv_unstable", "kv_unstable_std"] }
 lsp-server = "0.7.9"
-lsp-types = "0.94.1"
+lsp-types = "0.97"
 memchr = "2.8.0"
 num-derive = "0.4.2"
 num-traits = { version = "0.2.19", default-features = false }
@@ -115,6 +115,7 @@ threadpool = "1.8.1"
 time = { version = "0.3.47", features = ["formatting"] }
 timeout-readwrite = "0.3.3"
 toml = { version = "0.9.12", features = ["preserve_order"] }
+tower-lsp-server = "0.21.1"
 tracing = { version = "0.1.41", features = ["attributes", "valuable"] }
 tree-sitter = "0.23.2"
 tree-sitter-erlang = "0.18.0"

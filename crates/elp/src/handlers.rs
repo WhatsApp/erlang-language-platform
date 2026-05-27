@@ -12,6 +12,7 @@
 //! Protocol. The majority of requests are fulfilled by calling into the
 //! `ide` crate.
 
+use std::str::FromStr as _;
 use std::time::SystemTime;
 
 use anyhow::Result;
@@ -59,7 +60,7 @@ use lsp_types::SemanticTokensRangeResult;
 use lsp_types::SemanticTokensResult;
 use lsp_types::SymbolInformation;
 use lsp_types::TextDocumentIdentifier;
-use lsp_types::Url;
+use lsp_types::Uri;
 use lsp_types::WorkspaceEdit;
 
 use crate::LspError;
@@ -102,7 +103,7 @@ pub(crate) fn handle_code_action(
         AssistResolveStrategy::All
     };
 
-    let file_id = snap.url_to_file_id(&params.text_document.uri)?;
+    let file_id = snap.uri_to_file_id(&params.text_document.uri)?;
     let line_index = snap.analysis.line_index(file_id)?;
     let diagnostics = params.clone().context.diagnostics;
     let assist_context_diagnostics = to_assist_context_diagnostics(&line_index, diagnostics);
@@ -141,7 +142,7 @@ pub(crate) fn handle_code_action_resolve(
 
     let params: lsp_ext::CodeActionData = serde::Deserialize::deserialize(params_raw)?;
 
-    let file_id = snap.url_to_file_id(&params.code_action_params.text_document.uri)?;
+    let file_id = snap.uri_to_file_id(&params.code_action_params.text_document.uri)?;
     let line_index = snap.analysis.line_index(file_id)?;
     // Temporary for T147609435
     let _pctx = stdx::panic_context::enter("\nhandle_code_action_resolve".to_string());
@@ -339,9 +340,9 @@ fn goto_definition_telemetry(snap: &Snapshot, targets: &[NavigationTarget], star
     let targets_include_generated = targets
         .iter()
         .any(|tgt| snap.analysis.is_generated(tgt.file_id).unwrap_or(false));
-    let target_urls: Vec<_> = targets
+    let target_uris: Vec<_> = targets
         .iter()
-        .map(|tgt| snap.file_id_to_url(tgt.file_id))
+        .map(|tgt| snap.file_id_to_uri(tgt.file_id))
         .collect();
     let target_names: Vec<_> = targets.iter().map(|tgt| tgt.name.clone()).collect();
     let target_kinds: Vec<_> = targets.iter().map(|tgt| tgt.kind).collect();
@@ -353,7 +354,7 @@ fn goto_definition_telemetry(snap: &Snapshot, targets: &[NavigationTarget], star
     #[derive(serde::Serialize)]
     struct Data {
         targets_include_generated: bool,
-        target_urls: Vec<Url>,
+        target_uris: Vec<Uri>,
         target_names: Vec<SmolStr>,
         target_kinds: Vec<SymbolKind>,
         target_has_focus_range: Vec<bool>,
@@ -361,7 +362,7 @@ fn goto_definition_telemetry(snap: &Snapshot, targets: &[NavigationTarget], star
 
     let detail = Data {
         targets_include_generated,
-        target_urls,
+        target_uris,
         target_names,
         target_kinds,
         target_has_focus_range,
@@ -421,7 +422,7 @@ pub(crate) fn handle_references(
 ) -> Result<Option<Vec<lsp_types::Location>>> {
     let _p = tracing::info_span!("handle_references").entered();
     let _timer = timeit_with_telemetry!(TelemetryData::References {
-        file_url: params.text_document_position.text_document.uri.clone(),
+        file_uri: params.text_document_position.text_document.uri.clone(),
         position: params.text_document_position.position
     });
 
@@ -605,7 +606,7 @@ pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option
                             format!(
                                 "[{}]({}#L{}-{})",
                                 name,
-                                loc.uri,
+                                *loc.uri,
                                 loc.range.start.line + 1,
                                 loc.range.end.line + 1
                             )
@@ -968,7 +969,7 @@ pub(crate) fn handle_code_lens(
 pub(crate) fn handle_external_docs(
     snap: Snapshot,
     params: lsp_types::TextDocumentPositionParams,
-) -> Result<Option<Vec<lsp_types::Url>>> {
+) -> Result<Option<Vec<lsp_types::Uri>>> {
     let _p = tracing::info_span!("handle_external_docs").entered();
 
     let mut position = from_proto::file_position(&snap, params)?;
@@ -980,7 +981,7 @@ pub(crate) fn handle_external_docs(
     Ok(docs.map(|links| {
         links
             .iter()
-            .filter_map(|link| Url::parse(&link.uri).ok())
+            .filter_map(|link| Uri::from_str(&link.uri).ok())
             .collect()
     }))
 }

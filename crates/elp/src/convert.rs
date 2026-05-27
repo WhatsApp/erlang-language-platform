@@ -11,6 +11,7 @@
 use std::path::Path;
 use std::str::FromStr;
 
+use anyhow::Context as _;
 use anyhow::Result;
 use anyhow::anyhow;
 use elp_ide::TextRange;
@@ -32,22 +33,23 @@ use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use lsp_types::DiagnosticRelatedInformation;
 use lsp_types::Location;
-use lsp_types::Url;
+use lsp_types::Uri;
 use paths::Utf8Component;
 use paths::Utf8Prefix;
+use tower_lsp_server::UriExt as _;
 
 use crate::arc_types;
 use crate::from_proto;
 
-pub fn abs_path(url: &lsp_types::Url) -> Result<AbsPathBuf> {
-    let path = url
+pub fn abs_path(uri: &lsp_types::Uri) -> Result<AbsPathBuf> {
+    let path = uri
         .to_file_path()
-        .map_err(|()| anyhow!("url '{}' is not a file", url))?;
-    Ok(AbsPathBuf::assert_utf8(path))
+        .with_context(|| anyhow!("URI '{}' is not a file", **uri))?;
+    Ok(AbsPathBuf::assert_utf8(path.into_owned()))
 }
 
-pub fn vfs_path(url: &lsp_types::Url) -> Result<VfsPath> {
-    abs_path(url).map(VfsPath::from)
+pub fn vfs_path(uri: &lsp_types::Uri) -> Result<VfsPath> {
+    abs_path(uri).map(VfsPath::from)
 }
 
 pub fn range(line_index: &LineIndex, range: TextRange) -> lsp_types::Range {
@@ -76,10 +78,10 @@ pub fn ide_to_lsp_diagnostic<F>(
     get_file_info: F,
 ) -> lsp_types::Diagnostic
 where
-    F: Fn(FileId) -> Option<(LineIndex, Url)>,
+    F: Fn(FileId) -> Option<(LineIndex, Uri)>,
 {
     let code_description = match &d.code_doc_uri {
-        Some(uri) => match lsp_types::Url::parse(uri) {
+        Some(uri) => match lsp_types::Uri::from_str(uri) {
             Ok(href) => Some(lsp_types::CodeDescription { href }),
             Err(_) => None,
         },
@@ -173,12 +175,12 @@ fn from_related<F>(
     r: &Option<Vec<RelatedInformation>>,
 ) -> Option<Vec<DiagnosticRelatedInformation>>
 where
-    F: Fn(elp_ide::elp_ide_db::elp_base_db::FileId) -> Option<(LineIndex, Url)>,
+    F: Fn(elp_ide::elp_ide_db::elp_base_db::FileId) -> Option<(LineIndex, Uri)>,
 {
     r.as_ref().map(|ri| {
         ri.iter()
             .filter_map(|i| {
-                // Get the line index and URL for the file that contains the related information
+                // Get the line index and URI for the file that contains the related information
                 let (line_index, uri) = get_file_info(i.file_id)?;
                 let location = Location {
                     range: range(&line_index, i.range),
@@ -195,12 +197,12 @@ where
 
 // Taken from rust-analyzer to_proto.rs
 
-/// Returns a `Url` object from a given path, will lowercase drive letters if present.
+/// Returns a `Uri` object from a given path, will lowercase drive letters if present.
 /// This will only happen when processing windows paths.
 ///
-/// When processing non-windows path, this is essentially the same as `Url::from_file_path`.
-pub(crate) fn url_from_abs_path(path: &AbsPath) -> lsp_types::Url {
-    let url = lsp_types::Url::from_file_path(path).unwrap();
+/// When processing non-windows path, this is essentially the same as `Uri::from_file_path`.
+pub(crate) fn uri_from_abs_path(path: &AbsPath) -> lsp_types::Uri {
+    let uri = lsp_types::Uri::from_file_path(path).unwrap();
     match path.components().next() {
         Some(Utf8Component::Prefix(prefix))
             if matches!(
@@ -210,27 +212,27 @@ pub(crate) fn url_from_abs_path(path: &AbsPath) -> lsp_types::Url {
         {
             // Need to lowercase driver letter
         }
-        _ => return url,
+        _ => return uri,
     }
 
     let driver_letter_range = {
-        let mut segments = url.as_str().splitn(3, ':');
+        let mut segments = uri.as_str().splitn(3, ':');
         let start = match segments.next() {
             Some(scheme) => scheme.len() + ':'.len_utf8(),
-            None => return url,
+            None => return uri,
         };
         match segments.next() {
             Some(drive_letter) => start..(start + drive_letter.len()),
-            None => return url,
+            None => return uri,
         }
     };
 
-    // Note: lowercasing the `path` itself doesn't help, the `Url::parse`
+    // Note: lowercasing the `path` itself doesn't help, the `Uri::parse`
     // machinery *also* canonicalizes the drive letter. So, just massage the
     // string in place.
-    let mut url: String = url.into();
-    url[driver_letter_range].make_ascii_lowercase();
-    lsp_types::Url::parse(&url).unwrap()
+    let mut uri = uri.as_str().to_owned();
+    uri[driver_letter_range].make_ascii_lowercase();
+    lsp_types::Uri::from_str(&uri).unwrap()
 }
 
 fn ide_to_arc_severity(severity: Severity) -> arc_types::Severity {

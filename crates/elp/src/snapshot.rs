@@ -31,7 +31,7 @@ use elp_project_model::Project;
 use fxhash::FxHashMap;
 use itertools::Itertools;
 use lsp_types::SemanticTokens;
-use lsp_types::Url;
+use lsp_types::Uri;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
 use serde::Deserialize;
@@ -40,33 +40,33 @@ use vfs::AnchoredPathBuf;
 
 use crate::config::Config;
 use crate::convert;
-use crate::convert::url_from_abs_path;
+use crate::convert::uri_from_abs_path;
 use crate::line_endings::LineEndings;
 use crate::mem_docs::MemDocs;
 use crate::server::EqwalizerTypes;
 use crate::server::file_id_to_path;
-use crate::server::file_id_to_url;
+use crate::server::file_id_to_uri;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TelemetryData {
     NativeDiagnostics {
-        file_url: Url,
+        file_uri: Uri,
     },
     EqwalizerDiagnostics {
-        file_url: Url,
+        file_uri: Uri,
     },
     EqwalizerProjectDiagnostics {
         project_name: String,
     },
     ParseServerDiagnostics {
-        file_url: Url,
+        file_uri: Uri,
     },
     MetaDiagnostics {
-        file_url: Url,
+        file_uri: Uri,
     },
     Initialize,
     References {
-        file_url: Url,
+        file_uri: Uri,
         position: lsp_types::Position,
     },
 }
@@ -74,11 +74,11 @@ pub enum TelemetryData {
 impl fmt::Display for TelemetryData {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            TelemetryData::NativeDiagnostics { file_url } => {
-                write!(f, "Native Diagnostics file_url: {file_url}")
+            TelemetryData::NativeDiagnostics { file_uri } => {
+                write!(f, "Native Diagnostics file_uri: {}", **file_uri)
             }
-            TelemetryData::EqwalizerDiagnostics { file_url } => {
-                write!(f, "Eqwalizer Diagnostics file_url: {file_url}")
+            TelemetryData::EqwalizerDiagnostics { file_uri } => {
+                write!(f, "Eqwalizer Diagnostics file_uri: {}", **file_uri)
             }
             TelemetryData::EqwalizerProjectDiagnostics { project_name } => {
                 write!(
@@ -86,20 +86,20 @@ impl fmt::Display for TelemetryData {
                     "Eqwalizer Project Diagnostics project_name: {project_name}"
                 )
             }
-            TelemetryData::ParseServerDiagnostics { file_url } => {
-                write!(f, "Parse Server Diagnostics file_url: {file_url}")
+            TelemetryData::ParseServerDiagnostics { file_uri } => {
+                write!(f, "Parse Server Diagnostics file_uri: {}", **file_uri)
             }
-            TelemetryData::MetaDiagnostics { file_url } => {
-                write!(f, "Meta Diagnostics file_url: {file_url}")
+            TelemetryData::MetaDiagnostics { file_uri } => {
+                write!(f, "Meta Diagnostics file_uri: {}", **file_uri)
             }
             TelemetryData::Initialize => {
                 write!(f, "Initialize")
             }
             TelemetryData::References {
-                file_url,
+                file_uri,
                 position: _,
             } => {
-                write!(f, "Find References file_url: {file_url}")
+                write!(f, "Find References file_uri: {}", **file_uri)
             }
         }
     }
@@ -117,7 +117,7 @@ pub struct Snapshot {
     pub(crate) analysis: Analysis,
     pub(crate) diagnostics: Arc<DiagnosticCollection>,
     pub(crate) eqwalizer_types: Arc<EqwalizerTypes>,
-    pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
+    pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Uri, SemanticTokens>>>,
     vfs: Arc<RwLock<Vfs>>,
     pub(crate) mem_docs: Arc<RwLock<MemDocs>>,
     line_ending_map: SharedMap<FileId, LineEndings>,
@@ -151,8 +151,8 @@ impl Snapshot {
         }
     }
 
-    pub(crate) fn url_to_file_id(&self, url: &Url) -> Result<FileId> {
-        let path = convert::vfs_path(url)?;
+    pub(crate) fn uri_to_file_id(&self, uri: &Uri) -> Result<FileId> {
+        let path = convert::vfs_path(uri)?;
         let vfs = self.vfs.read();
         let (res, _) = vfs
             .file_id(&path)
@@ -164,12 +164,12 @@ impl Snapshot {
         file_id_to_path(&self.vfs.read(), id).ok()
     }
 
-    pub(crate) fn file_id_to_url(&self, id: FileId) -> Url {
-        file_id_to_url(&self.vfs.read(), id)
+    pub(crate) fn file_id_to_uri(&self, id: FileId) -> Uri {
+        file_id_to_uri(&self.vfs.read(), id)
     }
 
-    pub(crate) fn url_file_version(&self, url: &Url) -> Option<i32> {
-        let path = convert::vfs_path(url).ok()?;
+    pub(crate) fn uri_file_version(&self, uri: &Uri) -> Option<i32> {
+        let path = convert::vfs_path(uri).ok()?;
         self.mem_docs.read().get(&path).map(|v| v.version)
     }
 
@@ -177,12 +177,12 @@ impl Snapshot {
         self.line_ending_map.read()[&id]
     }
 
-    pub(crate) fn anchored_path(&self, path: &AnchoredPathBuf) -> Option<Url> {
+    pub(crate) fn anchored_path(&self, path: &AnchoredPathBuf) -> Option<Uri> {
         let mut base = self.vfs.read().file_path(path.anchor).clone();
         base.pop();
         let path = base.join(&path.path)?;
         let path = path.as_path()?;
-        Some(url_from_abs_path(path))
+        Some(uri_from_abs_path(path))
     }
 
     pub fn update_cache_for_file(
@@ -210,8 +210,8 @@ impl Snapshot {
             return None;
         }
 
-        let file_url = self.file_id_to_url(file_id);
-        let _timer = timeit_with_telemetry!(TelemetryData::NativeDiagnostics { file_url });
+        let file_uri = self.file_id_to_uri(file_id);
+        let _timer = timeit_with_telemetry!(TelemetryData::NativeDiagnostics { file_uri });
 
         self.analysis
             .native_diagnostics(&self.diagnostics_config.clone(), trigger, &vec![], file_id)
@@ -227,8 +227,8 @@ impl Snapshot {
             return None;
         }
 
-        let file_url = self.file_id_to_url(file_id);
-        let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_url });
+        let file_uri = self.file_id_to_uri(file_id);
+        let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_uri });
         self.analysis.eqwalizer_diagnostics_for_file(file_id).ok()?
     }
 
@@ -277,8 +277,8 @@ impl Snapshot {
             return None;
         }
 
-        let file_url = self.file_id_to_url(file_id);
-        let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_url });
+        let file_uri = self.file_id_to_uri(file_id);
+        let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_uri });
         self.analysis.types_for_file(file_id).ok()?
     }
 
@@ -291,9 +291,9 @@ impl Snapshot {
             return None;
         }
 
-        let file_url = self.file_id_to_url(file_id);
+        let file_uri = self.file_id_to_uri(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::ParseServerDiagnostics {
-            file_url: file_url.clone()
+            file_uri: file_uri.clone()
         });
 
         let diags = &*self

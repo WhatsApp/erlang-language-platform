@@ -75,15 +75,15 @@ pub(crate) fn safe_text_range(
     }
 }
 
-pub(crate) fn file_id(snap: &Snapshot, url: &lsp_types::Url) -> Result<FileId> {
-    snap.url_to_file_id(url)
+pub(crate) fn file_id(snap: &Snapshot, uri: &lsp_types::Uri) -> Result<FileId> {
+    snap.uri_to_file_id(uri)
 }
 
 pub(crate) fn file_position(
     snap: &Snapshot,
     tdpp: lsp_types::TextDocumentPositionParams,
 ) -> Result<FilePosition> {
-    let file_id = snap.url_to_file_id(&tdpp.text_document.uri)?;
+    let file_id = snap.uri_to_file_id(&tdpp.text_document.uri)?;
     let line_index = snap.analysis.line_index(file_id)?;
     let offset = offset(&line_index, tdpp.position);
     Ok(FilePosition { file_id, offset })
@@ -94,7 +94,7 @@ pub(crate) fn file_range(
     text_document_identifier: lsp_types::TextDocumentIdentifier,
     range: lsp_types::Range,
 ) -> Result<FileRange> {
-    let file_id = snap.url_to_file_id(&text_document_identifier.uri)?;
+    let file_id = snap.uri_to_file_id(&text_document_identifier.uri)?;
     let line_index = snap.analysis.line_index(file_id)?;
     let range =
         safe_text_range(&line_index, range).ok_or(anyhow::anyhow!("invalid range: {:?}", range))?;

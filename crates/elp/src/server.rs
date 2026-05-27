@@ -78,10 +78,11 @@ use lsp_types::FileChangeType;
 use lsp_types::FileEvent;
 use lsp_types::MessageActionItem;
 use lsp_types::MessageActionItemProperty;
+use lsp_types::OneOf;
 use lsp_types::ShowDocumentParams;
 use lsp_types::ShowMessageParams;
 use lsp_types::ShowMessageRequestParams;
-use lsp_types::Url;
+use lsp_types::Uri;
 use lsp_types::notification;
 use lsp_types::notification::Notification as _;
 use lsp_types::request;
@@ -593,7 +594,7 @@ impl Server {
 
             let snapshot = self.snapshot();
             for file_id in &diagnostic_changes {
-                let url = file_id_to_url(&self.vfs.read(), *file_id);
+                let uri = file_id_to_uri(&self.vfs.read(), *file_id);
                 let line_index = match snapshot.analysis.line_index(*file_id) {
                     Ok(line_index) => line_index,
                     Err(err) => {
@@ -605,7 +606,7 @@ impl Server {
                         break;
                     }
                 };
-                let version = convert::vfs_path(&url)
+                let version = convert::vfs_path(&uri)
                     .ok()
                     .and_then(|path| self.mem_docs.read().get(&path).cloned())
                     .map(|d| d.version);
@@ -621,18 +622,18 @@ impl Server {
                     .map(|d| {
                         let vfs = self.vfs.clone();
                         ide_to_lsp_diagnostic(&line_index, d, |related_file_id| {
-                            // Get the line index and URL for the related file
-                            let url = file_id_to_url(&vfs.read(), related_file_id);
+                            // Get the line index and URI for the related file
+                            let uri = file_id_to_uri(&vfs.read(), related_file_id);
                             let snapshot = self.snapshot();
                             let line_index = snapshot.analysis.line_index(related_file_id).ok()?;
-                            Some(((*line_index).clone(), url))
+                            Some(((*line_index).clone(), uri))
                         })
                     })
                     .collect();
 
                 self.send_notification::<notification::PublishDiagnostics>(
                     lsp_types::PublishDiagnosticsParams {
-                        uri: url,
+                        uri,
                         diagnostics,
                         version,
                     },
@@ -772,7 +773,7 @@ impl Server {
                 } else {
                     log::error!(
                         "DidOpenTextDocument: could not get vfs path for {}",
-                        params.text_document.uri
+                        *params.text_document.uri
                     );
                 }
 
@@ -802,10 +803,10 @@ impl Server {
                 Ok(())
             })?
             .on::<notification::DidCloseTextDocument>(|this, params| {
-                let url = params.text_document.uri;
+                let uri = params.text_document.uri;
                 let analysis = this.snapshot().analysis;
                 let mut diagnostics = Vec::new();
-                if let Ok(path) = convert::vfs_path(&url) {
+                if let Ok(path) = convert::vfs_path(&uri) {
                     if this.mem_docs.write().remove(&path).is_err() {
                         tracing::error!("orphan DidCloseTextDocument: {}", path);
                         log::error!("unexpected DidCloseTextDocument: {path}");
@@ -833,10 +834,10 @@ impl Server {
                                 .map(|d| {
                                     let snapshot = this.snapshot();
                                     ide_to_lsp_diagnostic(&line_index, d, |related_file_id| {
-                                        // Get the line index and URL for the related file
-                                        let url = file_id_to_url(&vfs.read(), related_file_id);
+                                        // Get the line index and URI for the related file
+                                        let uri = file_id_to_uri(&vfs.read(), related_file_id);
                                         let line_index = snapshot.analysis.line_index(related_file_id).ok()?;
-                                        Some(((*line_index).clone(), url))
+                                        Some(((*line_index).clone(), uri))
                                     })
                                 })
                                 .collect()
@@ -847,7 +848,7 @@ impl Server {
                 // Clear the diagnostics for the previously known version of the file.
                 this.send_notification::<lsp_types::notification::PublishDiagnostics>(
                     lsp_types::PublishDiagnosticsParams {
-                        uri: url,
+                        uri,
                         diagnostics,
                         version: None,
                     },
@@ -884,7 +885,8 @@ impl Server {
                 // But we cannot use FxHashSet because change does not implement Hash.
                 let changes: &[FileEvent] = &params.changes;
                 let mut refresh_config = false;
-                let mut seen: FxHashMap<Url,FileChangeType> = FxHashMap::default();
+                #[allow(clippy::mutable_key_type)]
+                let mut seen: FxHashMap<Uri, FileChangeType> = FxHashMap::default();
                 for change in changes {
                     if seen.get(&change.uri).is_some_and(|prev_typ| prev_typ == &change.typ) {
                         continue;
@@ -1571,8 +1573,8 @@ impl Server {
         self.send_request::<request::ShowMessageRequest>(params, |this, resp| {
             if let Some(res) = resp.result
                 && let Ok(hm) = serde_json::from_value::<HashMap<String, String>>(res)
-                && let Some(url) = hm.get("URL")
-                && let Ok(uri) = Url::from_str(url)
+                && let Some(uri) = hm.get("URL")
+                && let Ok(uri) = Uri::from_str(uri)
             {
                 this.send_request::<request::ShowDocument>(
                     ShowDocumentParams {
@@ -2094,7 +2096,9 @@ impl Server {
 
     fn on_telemetry(&mut self, message: TelemetryMessage) {
         match serde_json::to_value(message.clone()) {
-            Ok(params) => self.send_notification::<lsp_types::notification::TelemetryEvent>(params),
+            Ok(serde_json::Value::Object(params)) => self
+                .send_notification::<lsp_types::notification::TelemetryEvent>(OneOf::Left(params)),
+            Ok(_) => unreachable!(),
             Err(err) => {
                 log::warn!("Error serializing telemetry. message: {message:?} error: {err}")
             }
@@ -2139,14 +2143,14 @@ fn parse_id(id: lsp_types::NumberOrString) -> RequestId {
 }
 
 pub fn file_id_to_path(vfs: &Vfs, id: FileId) -> Result<AbsPathBuf> {
-    let url = file_id_to_url(vfs, id);
-    convert::abs_path(&url)
+    let uri = file_id_to_uri(vfs, id);
+    convert::abs_path(&uri)
 }
 
-pub fn file_id_to_url(vfs: &Vfs, id: FileId) -> Url {
+pub fn file_id_to_uri(vfs: &Vfs, id: FileId) -> Uri {
     let path = vfs.file_path(id);
     let path = path.as_path().unwrap();
-    convert::url_from_abs_path(path)
+    convert::uri_from_abs_path(path)
 }
 
 pub fn is_supported_by_erlang_service(analysis: &Analysis, id: FileId) -> bool {

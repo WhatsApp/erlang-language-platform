@@ -28,6 +28,7 @@ use lsp_types::InitializeResult;
 use lsp_types::ServerInfo;
 use lsp_types::notification::Notification as _;
 use threadpool::ThreadPool;
+use tower_lsp_server::UriExt as _;
 
 use super::FILE_WATCH_LOGGER_NAME;
 use super::logger::LspLogger;
@@ -193,12 +194,13 @@ fn set_up_single_thread_pool() -> TaskHandle {
     Handle { handle, receiver }
 }
 
+#[expect(deprecated)]
 fn root_path(params: &InitializeParams) -> Result<AbsPathBuf> {
     match params
         .root_uri
         .as_ref()
-        .and_then(|uri| uri.to_file_path().ok())
-        .map(AbsPathBuf::assert_utf8)
+        .and_then(|uri| uri.to_file_path())
+        .map(|path| AbsPathBuf::assert_utf8(path.into_owned()))
     {
         Some(path) => Ok(path),
         None => {
