@@ -10,12 +10,10 @@
 
 use std::env;
 use std::ffi::OsString;
-#[cfg(not(buck_build))]
 use std::fs;
-#[cfg(not(buck_build))]
 use std::io::Write;
 use std::ops::ControlFlow;
-#[cfg(all(unix, not(buck_build)))]
+#[cfg(unix)]
 use std::os::unix::prelude::PermissionsExt;
 use std::path::PathBuf;
 use std::process::Command;
@@ -33,7 +31,6 @@ pub use elp_types_db::eqwalizer::EqwalizerDiagnostic;
 use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashMap;
 use parking_lot::Mutex;
-#[cfg(not(buck_build))]
 use tempfile::Builder;
 use tempfile::TempPath;
 
@@ -180,14 +177,12 @@ static EQWALIZER_EXE: LazyLock<Mutex<EqwalizerExe>> =
     LazyLock::new(|| Mutex::new(EqwalizerExe::ensure_exe()));
 
 impl EqwalizerExe {
-    #[cfg(buck_build)]
-    fn get_eqwalizer_path() -> (PathBuf, String, Option<TempPath>) {
-        let path =
-            buck_resources::get("whatsapp/elp/crates/eqwalizer/eqwalizer").expect("bad eqwalizer");
-        (path.to_path_buf(), String::new(), None)
-    }
-
-    #[cfg(not(buck_build))]
+    // The eqwalizer native image is embedded into the binary at compile
+    // time via `env!("ELP_EQWALIZER_PATH")` — Cargo sets this from
+    // build.rs and Buck sets it via `env = {...}` in the BUCK file. The
+    // `ELP_EQWALIZER_PATH` *runtime* env var override below stays as the
+    // developer escape hatch (e.g. to point at a locally-built binary
+    // without recompiling ELP).
     fn get_eqwalizer_path() -> (PathBuf, String, Option<TempPath>) {
         if let Ok(path) = env::var("ELP_EQWALIZER_PATH") {
             let path = PathBuf::from(path);
@@ -200,7 +195,7 @@ impl EqwalizerExe {
             (path, ext, None)
         } else {
             let extension = env!("ELP_EQWALIZER_EXT").to_string();
-            let eqwalizer_src = include_bytes!(concat!(env!("OUT_DIR"), "/eqwalizer"));
+            let eqwalizer_src = include_bytes!(env!("ELP_EQWALIZER_PATH"));
             let mut temp_file = Builder::new()
                 .prefix("eqwalizer")
                 .tempfile()

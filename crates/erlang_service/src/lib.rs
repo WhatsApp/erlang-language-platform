@@ -48,7 +48,6 @@ use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use regex::Regex;
 use stdx::JodChild;
-#[cfg(not(buck_build))]
 use tempfile::Builder;
 use tempfile::TempPath;
 use text_size::TextRange;
@@ -59,7 +58,8 @@ use text_size::TextSize;
 pub mod common_test;
 
 lazy_static! {
-    pub static ref ESCRIPT: RwLock<String> = RwLock::new("escript".to_string());
+    pub static ref ESCRIPT: RwLock<String> =
+        RwLock::new(std::env::var("ELP_ESCRIPT").unwrap_or_else(|_| "escript".to_string()));
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -313,32 +313,18 @@ pub type ResolveInclude<'a> = dyn Fn(IncludeType, &str) -> Option<String>;
 
 impl Connection {
     pub fn start() -> Result<Connection> {
-        #[cfg(buck_build)]
-        fn get_erlang_service_path() -> Result<std::path::PathBuf> {
-            Ok(
-                buck_resources::get("whatsapp/elp/crates/erlang_service/erlang_service")
-                    .map(|p| p.to_path_buf())?,
-            )
-        }
-
-        #[cfg(not(buck_build))]
+        // The erlang_service escript is embedded into the binary at compile
+        // time via `env!("ELP_PARSE_SERVER_ESCRIPT_PATH")`. Both Cargo (via
+        // build.rs `cargo:rustc-env=`) and Buck (via `env = {...}` in the
+        // BUCK file) set the same env var to the artifact path, so we end
+        // up with a single self-contained binary on either build system.
         fn get_erlang_service_path() -> Result<tempfile::TempPath> {
-            let escript_src =
-                include_bytes!(concat!(env!("OUT_DIR"), "/erlang_service/erlang_service"));
+            let escript_src = include_bytes!(env!("ELP_PARSE_SERVER_ESCRIPT_PATH"));
             let mut escript = Builder::new().prefix("erlang_service").tempfile()?;
             escript.write_all(escript_src)?;
             Ok(escript.into_temp_path())
         }
 
-        #[cfg(buck_build)]
-        fn get_escript_path() -> Result<std::path::PathBuf> {
-            Ok(
-                buck_resources::get("whatsapp/elp/crates/erlang_service/escript")
-                    .map(|p| p.to_path_buf())?,
-            )
-        }
-
-        #[cfg(not(buck_build))]
         fn get_escript_path() -> Result<std::path::PathBuf> {
             Ok(PathBuf::from(ESCRIPT.read().unwrap().clone()))
         }
@@ -355,11 +341,7 @@ impl Connection {
 
         let mut proc = cmd.spawn()?;
 
-        #[cfg(not(buck_build))]
-        let file_for_drop = Some(erlang_service_path);
-
-        #[cfg(buck_build)]
-        let file_for_drop: Option<TempPath> = None;
+        let file_for_drop: Option<TempPath> = Some(erlang_service_path);
 
         let (sender, writer, reader) = stdio_transport(&mut proc);
 

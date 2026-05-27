@@ -10,7 +10,6 @@ license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-buck-resources.workspace = true
 eetf.workspace = true
 elp_base_db.workspace = true
 elp_syntax.workspace = true

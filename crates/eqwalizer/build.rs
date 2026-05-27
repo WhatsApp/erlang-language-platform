@@ -32,7 +32,7 @@ fn main() {
             .to_str()
             .expect("valid UTF-8 path")
             .to_string();
-        fs::copy(from, dest_path).expect("Copying precompiled eqwalizer failed");
+        fs::copy(from, &dest_path).expect("Copying precompiled eqwalizer failed");
     } else {
         let jar = build_jar(source_directory, eqwalizer_out_dir);
 
@@ -46,12 +46,12 @@ fn main() {
             } else {
                 "java".into()
             };
-            fs::copy(jar, dest_path).expect("Copying fresh eqwalizer failed");
+            fs::copy(jar, &dest_path).expect("Copying fresh eqwalizer failed");
         } else {
             extension = "".to_string();
             java = "java".into();
             let image_path = build_native_image(source_directory, eqwalizer_out_dir, jar);
-            fs::copy(image_path, dest_path).expect("Copying fresh eqwalizer failed");
+            fs::copy(image_path, &dest_path).expect("Copying fresh eqwalizer failed");
         }
 
         rerun_if_changed(source_directory.join("build.sbt"));
@@ -60,6 +60,7 @@ fn main() {
 
     println!("cargo:rustc-env=ELP_EQWALIZER_EXT={extension}");
     println!("cargo:rustc-env=ELP_EQWALIZER_JAVA={}", java.display());
+    println!("cargo:rustc-env=ELP_EQWALIZER_PATH={}", dest_path.display());
     println!("cargo:rerun-if-env-changed=ELP_EQWALIZER_PATH");
 }
 

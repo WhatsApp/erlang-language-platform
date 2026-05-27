@@ -20,6 +20,15 @@ fn main() {
     fs::create_dir_all(&dest_dir).unwrap();
 
     build_with_rebar3(source_directory, &dest_dir);
+
+    // Expose the final escript path to the Rust source via `env!`, so the
+    // `include_bytes!` call works under both Cargo and Buck (Buck wires the
+    // same env var via `env = {...}` on the rust_library).
+    let escript_path = dest_dir.join("erlang_service");
+    println!(
+        "cargo:rustc-env=ELP_PARSE_SERVER_ESCRIPT_PATH={}",
+        escript_path.display()
+    );
 }
 
 fn build_with_rebar3(source_directory: &str, dest_dir: &Path) {
