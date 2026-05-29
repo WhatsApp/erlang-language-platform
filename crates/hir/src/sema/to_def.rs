@@ -709,21 +709,19 @@ fn resolve_record(
     let expr = InFile::new(file_id, expr);
     let any_expr_id = body_map.any_id(expr)?;
     let (name, field) = match body.get_any(any_expr_id) {
-        AnyExprRef::Expr(Expr::Record { name, fields }) => {
+        AnyExprRef::Expr(Expr::Record { name, fields, .. }) => {
             (*name, idx.and_then(|idx| Some(fields.get(idx)?.0)))
         }
-        AnyExprRef::Expr(Expr::RecordUpdate {
-            expr: _,
-            name,
-            fields,
-        }) => (*name, idx.and_then(|idx| Some(fields.get(idx)?.0))),
+        AnyExprRef::Expr(Expr::RecordUpdate { name, fields, .. }) => {
+            (*name, idx.and_then(|idx| Some(fields.get(idx)?.0)))
+        }
         AnyExprRef::Expr(Expr::RecordIndex { name, field }) => (*name, Some(*field)),
         AnyExprRef::Expr(Expr::RecordField {
             expr: _,
             name,
             field,
         }) => (*name, Some(*field)),
-        AnyExprRef::Pat(Pat::Record { name, fields }) => {
+        AnyExprRef::Pat(Pat::Record { name, fields, .. }) => {
             (*name, idx.and_then(|idx| Some(fields.get(idx)?.0)))
         }
         AnyExprRef::Pat(Pat::RecordIndex { name, field }) => (*name, Some(*field)),

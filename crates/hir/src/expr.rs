@@ -288,6 +288,7 @@ pub enum Expr {
     Record {
         name: Atom,
         fields: Vec<(Atom, ExprId)>,
+        default_field: Option<ExprId>,
     },
     RecordUpdate {
         expr: ExprId,
@@ -791,6 +792,7 @@ pub enum Pat {
     Record {
         name: Atom,
         fields: Vec<(Atom, PatId)>,
+        default_field: Option<PatId>,
     },
     RecordIndex {
         name: Atom,

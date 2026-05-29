@@ -751,9 +751,20 @@ impl<'a, T> FoldCtx<'a, T> {
                 let r = self.do_fold_expr(*lhs, acc);
                 self.do_fold_expr(*rhs, r)
             }
-            crate::Expr::Record { name: _, fields } => fields
-                .iter()
-                .fold(acc, |acc, (_, field)| self.do_fold_expr(*field, acc)),
+            crate::Expr::Record {
+                name: _,
+                fields,
+                default_field,
+            } => {
+                let r = fields
+                    .iter()
+                    .fold(acc, |acc, (_, field)| self.do_fold_expr(*field, acc));
+                if let Some(df) = default_field {
+                    self.do_fold_expr(*df, r)
+                } else {
+                    r
+                }
+            }
             crate::Expr::RecordUpdate {
                 expr,
                 name: _,
@@ -1015,9 +1026,20 @@ impl<'a, T> FoldCtx<'a, T> {
                 let r = self.do_fold_pat(*lhs, acc);
                 self.do_fold_pat(*rhs, r)
             }
-            crate::Pat::Record { name: _, fields } => fields
-                .iter()
-                .fold(acc, |acc, (_, field)| self.do_fold_pat(*field, acc)),
+            crate::Pat::Record {
+                name: _,
+                fields,
+                default_field,
+            } => {
+                let r = fields
+                    .iter()
+                    .fold(acc, |acc, (_, field)| self.do_fold_pat(*field, acc));
+                if let Some(df) = default_field {
+                    self.do_fold_pat(*df, r)
+                } else {
+                    r
+                }
+            }
             crate::Pat::RecordIndex { name: _, field: _ } => acc,
             crate::Pat::NativeRecord { name: _, fields } => fields
                 .iter()
@@ -3177,6 +3199,28 @@ bar() ->
                bar() -> ?M(<<foo:8>>).
                "#;
         count_macro_args_foo_surface(fixture_str, 2);
+    }
+
+    #[test]
+    fn macro_args_superset_record_with_default_field_expr() {
+        let fixture_str = r#"
+               -module(f~oo).
+               -define(M(X), X).
+               -record(r, {a, b, c}).
+               bar() -> ?M(#r{a = foo, _ = foo}).
+               "#;
+        count_macro_args_foo_surface(fixture_str, 3);
+    }
+
+    #[test]
+    fn macro_args_superset_record_with_default_field_pat() {
+        let fixture_str = r#"
+               -module(f~oo).
+               -define(M(X), X).
+               -record(r, {a, b, c}).
+               bar(#r{a = foo, _ = foo}) -> ok.
+               "#;
+        count_macro_args_foo_surface(fixture_str, 3);
     }
 
     #[test]

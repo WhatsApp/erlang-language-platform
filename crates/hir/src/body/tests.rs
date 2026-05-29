@@ -499,6 +499,99 @@ foo2() -> Expr#record{field = ok, missing = }.
     );
 }
 
+// `#r{_ = V}` is Erlang's wildcard record-field initialiser: it sets
+// every otherwise-unset field of the record to `V`. The field name is
+// represented as `None` in HIR; the pretty printer surfaces it as `_`.
+
+#[test]
+fn record_wildcard_construction() {
+    check(
+        r#"
+foo() -> #record{_ = undefined}.
+"#,
+        expect![[r#"
+            foo() ->
+                #record{
+                    _ = undefined
+                }.
+        "#]],
+    );
+}
+
+#[test]
+fn record_wildcard_in_pattern() {
+    check(
+        r#"
+foo(#record{_ = _}) -> ok.
+"#,
+        expect![[r#"
+            foo(#record{
+                _ = _
+            }) ->
+                ok.
+        "#]],
+    );
+}
+
+#[test]
+fn record_wildcard_mixed_with_named_fields() {
+    // Mixing named fields with the wildcard: `a` is set explicitly,
+    // every other field is initialised to `0`.
+    check(
+        r#"
+foo() -> #record{a = 1, _ = 0}.
+"#,
+        expect![[r#"
+            foo() ->
+                #record{
+                    a = 1,
+                    _ = 0
+                }.
+        "#]],
+    );
+}
+
+#[test]
+fn record_wildcard_hir_structure() {
+    // Verify the HIR distinguishes wildcard `_` (None) from named
+    // fields (Some(Atom)) via tree_print.
+    check_ast(
+        r#"
+foo() -> #record{a = 1, _ = 0}.
+foo(#record{_ = _}) -> ok.
+"#,
+        expect![[r#"
+            function: foo/0
+            Clause {
+                pats
+                guards
+                exprs
+                    Expr<6>:Expr::Record {
+                        name: Atom('record')
+                        fields
+                            Atom('a'):
+                                Expr<2>:Literal(Integer(1)),
+                        default_field
+                            Expr<4>:Literal(Integer(0)),
+                    },
+            }.
+            function: foo/1
+            Clause {
+                pats
+                    Pat<1>:Pat::Record {
+                        name: Atom('record')
+                        fields
+                        default_field
+                            Pat<0>:Pat::Var(_),
+                    },
+                guards
+                exprs
+                    Expr<3>:Literal(Atom('ok')),
+            }.
+        "#]],
+    );
+}
+
 #[test]
 fn record_field() {
     check(

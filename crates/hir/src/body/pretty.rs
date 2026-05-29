@@ -15,6 +15,7 @@ use std::str;
 
 use super::SpecOrCallback;
 use crate::AnyAttribute;
+use crate::Atom;
 use crate::AttributeBody;
 use crate::BinarySeg;
 use crate::Body;
@@ -320,12 +321,13 @@ impl<'a> Printer<'a> {
             Pat::RecordIndex { name, field } => {
                 write!(self, "#{}.{}", name.as_name(), field.as_name())
             }
-            Pat::Record { name, fields } => {
+            Pat::Record {
+                name,
+                fields,
+                default_field,
+            } => {
                 write!(self, "#{}", name.as_name())?;
-                self.print_seq(fields, None, "{", "}", ",", |this, (key, val)| {
-                    write!(this, "{} = ", key.as_name())?;
-                    this.print_pat(&this.body[*val])
-                })
+                self.print_record_fields(fields, *default_field, |s, val| s.print_pat(&s.body[val]))
             }
             Pat::NativeRecord { name, fields } => {
                 self.print_native_record_name(name)?;
@@ -467,20 +469,20 @@ impl<'a> Printer<'a> {
             Expr::RecordIndex { name, field } => {
                 write!(self, "#{}.{}", name.as_name(), field.as_name())
             }
-            Expr::Record { name, fields } => {
+            Expr::Record {
+                name,
+                fields,
+                default_field,
+            } => {
                 write!(self, "#{}", name.as_name())?;
-                self.print_seq(fields, None, "{", "}", ",", |this, (key, val)| {
-                    write!(this, "{} = ", key.as_name())?;
-                    this.print_expr(&this.body[*val])
+                self.print_record_fields(fields, *default_field, |s, val| {
+                    s.print_expr(&s.body[val])
                 })
             }
             Expr::RecordUpdate { expr, name, fields } => {
                 self.print_expr(&self.body[*expr])?;
                 write!(self, "#{}", name.as_name())?;
-                self.print_seq(fields, None, "{", "}", ",", |this, (key, val)| {
-                    write!(this, "{} = ", key.as_name())?;
-                    this.print_expr(&this.body[*val])
-                })
+                self.print_record_fields(fields, None, |s, val| s.print_expr(&s.body[val]))
             }
             Expr::RecordField { expr, name, field } => {
                 self.print_expr(&self.body[*expr])?;
@@ -925,6 +927,33 @@ impl<'a> Printer<'a> {
                 write!(self, "#{}:{}", module.as_name(), name.as_name())
             }
         }
+    }
+
+    fn print_record_fields<T: Copy>(
+        &mut self,
+        fields: &[(Atom, T)],
+        default_field: Option<T>,
+        print_value: impl Fn(&mut Self, T) -> fmt::Result,
+    ) -> fmt::Result {
+        if fields.is_empty() && default_field.is_none() {
+            return write!(self, "{{}}");
+        }
+        write!(self, "{{")?;
+        self.indent_level += 1;
+        let mut sep = "";
+        for (key, val) in fields {
+            writeln!(self, "{sep}")?;
+            sep = ",";
+            write!(self, "{} = ", key.as_name())?;
+            print_value(self, *val)?;
+        }
+        if let Some(val) = default_field {
+            writeln!(self, "{sep}")?;
+            write!(self, "_ = ")?;
+            print_value(self, val)?;
+        }
+        self.indent_level -= 1;
+        write!(self, "\n}}")
     }
 
     fn print_seq<T>(

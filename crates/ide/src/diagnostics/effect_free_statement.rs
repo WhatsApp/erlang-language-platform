@@ -154,9 +154,16 @@ fn has_no_effect(def_fb: &InFunctionClauseBody<&FunctionDef>, expr_id: &ExprId) 
             false
         }
 
-        Expr::Record { fields, .. } => fields
-            .iter()
-            .all(|(_key, value)| has_no_effect(def_fb, value)),
+        Expr::Record {
+            fields,
+            default_field,
+            ..
+        } => {
+            fields
+                .iter()
+                .all(|(_key, value)| has_no_effect(def_fb, value))
+                && default_field.is_none_or(|df| has_no_effect(def_fb, &df))
+        }
         Expr::RecordUpdate { .. } | Expr::RecordField { .. } => {
             // Side-effect: may throw (e.g. expr not a record)
             false

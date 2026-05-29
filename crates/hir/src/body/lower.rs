@@ -680,9 +680,16 @@ impl<'a> Ctx<'a> {
             }
             ast::Expr::RecordExpr(record) => {
                 let name = record.name().and_then(|n| self.resolve_name(n.name()?));
-                let fields = self.lower_record_fields_pat(record.fields());
+                let (fields, default_field) = self.lower_record_fields_pat(record.fields());
                 if let Some(name) = name {
-                    self.alloc_pat(Pat::Record { name, fields }, Some(expr))
+                    self.alloc_pat(
+                        Pat::Record {
+                            name,
+                            fields,
+                            default_field,
+                        },
+                        Some(expr),
+                    )
                 } else {
                     self.alloc_pat(Pat::Missing, Some(expr))
                 }
@@ -744,7 +751,7 @@ impl<'a> Ctx<'a> {
                 self.alloc_pat(Pat::Missing, Some(expr))
             }
             ast::Expr::AnonRecordExpr(record) => {
-                let fields = self.lower_record_fields_pat(record.fields());
+                let fields = self.lower_native_record_fields_pat(record.fields());
                 self.alloc_pat(
                     Pat::NativeRecord {
                         name: NativeRecordName::Anon,
@@ -771,7 +778,7 @@ impl<'a> Ctx<'a> {
                 let name = record
                     .name()
                     .and_then(|n| self.lower_qualified_record_name(&n));
-                let fields = self.lower_record_fields_pat(record.fields());
+                let fields = self.lower_native_record_fields_pat(record.fields());
                 if let Some(name) = name {
                     self.alloc_pat(Pat::NativeRecord { name, fields }, Some(expr))
                 } else {
@@ -1149,9 +1156,16 @@ impl<'a> Ctx<'a> {
             }
             ast::Expr::RecordExpr(record) => {
                 let name = record.name().and_then(|n| self.resolve_name(n.name()?));
-                let fields = self.lower_record_fields(record.fields());
+                let (fields, default_field) = self.lower_record_fields(record.fields());
                 if let Some(name) = name {
-                    self.alloc_expr(Expr::Record { name, fields }, Some(expr))
+                    self.alloc_expr(
+                        Expr::Record {
+                            name,
+                            fields,
+                            default_field,
+                        },
+                        Some(expr),
+                    )
                 } else {
                     self.alloc_expr(Expr::Missing, Some(expr))
                 }
@@ -1185,7 +1199,7 @@ impl<'a> Ctx<'a> {
             ast::Expr::RecordUpdateExpr(update) => {
                 let base = self.lower_optional_expr(update.expr().map(Into::into));
                 let name = update.name().and_then(|n| self.resolve_name(n.name()?));
-                let fields = self.lower_record_fields(update.fields());
+                let (fields, _default_field) = self.lower_record_fields(update.fields());
                 if let Some(name) = name {
                     self.alloc_expr(
                         Expr::RecordUpdate {
@@ -1275,7 +1289,7 @@ impl<'a> Ctx<'a> {
                 }
             }
             ast::Expr::AnonRecordExpr(record) => {
-                let fields = self.lower_record_fields(record.fields());
+                let fields = self.lower_native_record_fields(record.fields());
                 self.alloc_expr(
                     Expr::NativeRecord {
                         name: NativeRecordName::Anon,
@@ -1304,7 +1318,7 @@ impl<'a> Ctx<'a> {
             }
             ast::Expr::AnonRecordUpdateExpr(update) => {
                 let base = self.lower_optional_expr(update.expr().map(Into::into));
-                let fields = self.lower_record_fields(update.fields());
+                let fields = self.lower_native_record_fields(update.fields());
                 self.alloc_expr(
                     Expr::NativeRecordUpdate {
                         expr: base,
@@ -1318,7 +1332,7 @@ impl<'a> Ctx<'a> {
                 let name = record
                     .name()
                     .and_then(|n| self.lower_qualified_record_name(&n));
-                let fields = self.lower_record_fields(record.fields());
+                let fields = self.lower_native_record_fields(record.fields());
                 if let Some(name) = name {
                     self.alloc_expr(Expr::NativeRecord { name, fields }, Some(expr))
                 } else {
@@ -1351,7 +1365,7 @@ impl<'a> Ctx<'a> {
                 let name = update
                     .name()
                     .and_then(|n| self.lower_qualified_record_name(&n));
-                let fields = self.lower_record_fields(update.fields());
+                let fields = self.lower_native_record_fields(update.fields());
                 if let Some(name) = name {
                     self.alloc_expr(
                         Expr::NativeRecordUpdate {
@@ -3240,7 +3254,51 @@ impl<'a> Ctx<'a> {
         }
     }
 
+    fn is_wildcard_field_name(name: &ast::Name) -> bool {
+        matches!(name, ast::Name::Var(v) if v.text() == "_")
+    }
+
     fn lower_record_fields(
+        &mut self,
+        fields: impl Iterator<Item = ast::RecordField>,
+    ) -> (Vec<(Atom, ExprId)>, Option<ExprId>) {
+        let mut named = Vec::new();
+        let mut default_field = None;
+        for field in fields {
+            let value = self.lower_optional_expr(field.expr().and_then(|expr| expr.expr()));
+            if let Some(name) = field.name().and_then(|n| self.resolve_name(n)) {
+                named.push((name, value));
+            } else if field
+                .name()
+                .is_some_and(|n| Self::is_wildcard_field_name(&n))
+            {
+                default_field = Some(value);
+            }
+        }
+        (named, default_field)
+    }
+
+    fn lower_record_fields_pat(
+        &mut self,
+        fields: impl Iterator<Item = ast::RecordField>,
+    ) -> (Vec<(Atom, PatId)>, Option<PatId>) {
+        let mut named = Vec::new();
+        let mut default_field = None;
+        for field in fields {
+            let value = self.lower_optional_pat(field.expr().and_then(|expr| expr.expr()));
+            if let Some(name) = field.name().and_then(|n| self.resolve_name(n)) {
+                named.push((name, value));
+            } else if field
+                .name()
+                .is_some_and(|n| Self::is_wildcard_field_name(&n))
+            {
+                default_field = Some(value);
+            }
+        }
+        (named, default_field)
+    }
+
+    fn lower_native_record_fields(
         &mut self,
         fields: impl Iterator<Item = ast::RecordField>,
     ) -> Vec<(Atom, ExprId)> {
@@ -3253,7 +3311,7 @@ impl<'a> Ctx<'a> {
             .collect()
     }
 
-    fn lower_record_fields_pat(
+    fn lower_native_record_fields_pat(
         &mut self,
         fields: impl Iterator<Item = ast::RecordField>,
     ) -> Vec<(Atom, PatId)> {

@@ -25,6 +25,7 @@ use super::SpecBody;
 use super::SpecOrCallback;
 use crate::AnyAttribute;
 use crate::AnyExprId;
+use crate::Atom;
 use crate::AttributeBody;
 use crate::BinarySeg;
 use crate::CRClause;
@@ -574,33 +575,21 @@ impl<'a> Printer<'a> {
                     });
                 });
             }
-            Expr::Record { name, fields } => {
+            Expr::Record {
+                name,
+                fields,
+                default_field,
+            } => {
                 self.print_herald("Expr::Record", &mut |this| {
                     writeln!(this, "name: Atom('{}')", name.as_name()).ok();
-                    this.print_labelled("fields", false, &mut |this| {
-                        fields.iter().for_each(|(name, expr_id)| {
-                            writeln!(this, "Atom('{}'):", name.as_name()).ok();
-                            this.indent();
-                            this.print_expr(expr_id);
-                            writeln!(this, ",").ok();
-                            this.dedent();
-                        });
-                    });
+                    this.print_record_fields_expr(fields, *default_field);
                 });
             }
             Expr::RecordUpdate { expr, name, fields } => {
                 self.print_herald("Expr::RecordUpdate", &mut |this| {
                     this.print_labelled("expr", true, &mut |this| this.print_expr(expr));
                     writeln!(this, "name: Atom('{}')", name.as_name()).ok();
-                    this.print_labelled("fields", false, &mut |this| {
-                        fields.iter().for_each(|(name, expr_id)| {
-                            writeln!(this, "Atom('{}'):", name.as_name()).ok();
-                            this.indent();
-                            this.print_expr(expr_id);
-                            writeln!(this, ",").ok();
-                            this.dedent();
-                        });
-                    });
+                    this.print_record_fields_expr(fields, None);
                 });
             }
             Expr::RecordIndex { name, field } => {
@@ -975,18 +964,14 @@ impl<'a> Printer<'a> {
                     });
                 });
             }
-            Pat::Record { name, fields } => {
+            Pat::Record {
+                name,
+                fields,
+                default_field,
+            } => {
                 self.print_herald("Pat::Record", &mut |this| {
                     writeln!(this, "name: Atom('{}')", name.as_name()).ok();
-                    this.print_labelled("fields", false, &mut |this| {
-                        fields.iter().for_each(|(name, pat_id)| {
-                            writeln!(this, "Atom('{}'):", name.as_name()).ok();
-                            this.indent();
-                            this.print_pat(pat_id);
-                            writeln!(this, ",").ok();
-                            this.dedent();
-                        });
-                    });
+                    this.print_record_fields_pat(fields, *default_field);
                 });
             }
             Pat::RecordIndex { name, field } => {
@@ -1583,6 +1568,46 @@ impl<'a> Printer<'a> {
         for field in fields {
             self.print_record_field_body(field);
             writeln!(self, ",").ok();
+        }
+    }
+
+    fn print_record_fields_expr(
+        &mut self,
+        fields: &[(Atom, ExprId)],
+        default_field: Option<ExprId>,
+    ) {
+        self.print_labelled("fields", false, &mut |this| {
+            fields.iter().for_each(|(name, expr_id)| {
+                writeln!(this, "Atom('{}'):", name.as_name()).ok();
+                this.indent();
+                this.print_expr(expr_id);
+                writeln!(this, ",").ok();
+                this.dedent();
+            });
+        });
+        if let Some(df) = default_field {
+            self.print_labelled("default_field", false, &mut |this| {
+                this.print_expr(&df);
+                writeln!(this, ",").ok();
+            });
+        }
+    }
+
+    fn print_record_fields_pat(&mut self, fields: &[(Atom, PatId)], default_field: Option<PatId>) {
+        self.print_labelled("fields", false, &mut |this| {
+            fields.iter().for_each(|(name, pat_id)| {
+                writeln!(this, "Atom('{}'):", name.as_name()).ok();
+                this.indent();
+                this.print_pat(pat_id);
+                writeln!(this, ",").ok();
+                this.dedent();
+            });
+        });
+        if let Some(df) = default_field {
+            self.print_labelled("default_field", false, &mut |this| {
+                this.print_pat(&df);
+                writeln!(this, ",").ok();
+            });
         }
     }
 

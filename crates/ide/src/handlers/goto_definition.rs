@@ -1505,6 +1505,61 @@ foo() -> #rec{field1 = 1, f~ield3 = ok, field2 = ""}.
     }
 
     #[test]
+    fn record_wildcard_field_name_unresolved() {
+        // `_` in `#rec{_ = V}` is a wildcard, not a named field.
+        // Goto-definition on the `_` field name should not resolve.
+        let fixture = r#"
+//- /src/main.erl
+-module(main).
+
+-record(rec, {field}).
+
+foo() -> #rec{~_ = ok}.
+"#;
+        let (analysis, position, _) = fixture::position(fixture);
+        match analysis.goto_definition(position).unwrap() {
+            Some(navs) if !navs.info.is_empty() => {
+                panic!("didn't expect wildcard `_` to resolve: {navs:?}")
+            }
+            _ => {}
+        }
+    }
+
+    #[test]
+    fn record_wildcard_record_name_resolves() {
+        // Even with a wildcard field, goto-definition on the record
+        // name itself should still resolve to the record declaration.
+        check_worker(
+            r#"
+//- /src/main.erl
+-module(main).
+
+-record(rec, {field}).
+%%      ^^^
+
+foo() -> #r~ec{_ = ok}.
+"#,
+            false,
+        );
+    }
+
+    #[test]
+    fn record_wildcard_in_pattern_record_name_resolves() {
+        check_worker(
+            r#"
+//- /src/main.erl
+-module(main).
+
+-record(rec, {field}).
+%%      ^^^
+
+foo(#r~ec{_ = _}) -> ok.
+"#,
+            false,
+        );
+    }
+
+    #[test]
     fn export_entry() {
         check(
             r#"

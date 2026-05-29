@@ -420,10 +420,19 @@ fn pattern_priority_expr(body: &Body, expr: Expr) -> Option<PatternPriority> {
         Expr::UnaryOp { expr, op: _ } => {
             nest(pattern_priority_expr(body, body.exprs[expr].clone()))
         }
-        Expr::Record { name: _, fields } => coalesce_all_nested_children(
+        Expr::Record {
+            name: _,
+            fields,
+            default_field,
+        } => coalesce_all_nested_children(
             &fields
                 .iter()
                 .map(|(_, field)| pattern_priority_expr(body, body.exprs[*field].clone()))
+                .chain(
+                    default_field
+                        .iter()
+                        .map(|df| pattern_priority_expr(body, body.exprs[*df].clone())),
+                )
                 .collect::<Vec<_>>(),
         ),
         Expr::Paren { expr } => pattern_priority_expr(body, body.exprs[expr].clone()),
@@ -501,10 +510,19 @@ fn pattern_priority_pat(body: &Body, pat: Pat) -> Option<PatternPriority> {
         ),
         Pat::Map { .. } => None, // Map's expression semantics are different to their pattern semantics (e.g. patterns need match only a subset of the map value, so we explicitly reject them here for simplicity)
         Pat::UnaryOp { pat, op: _ } => nest(pattern_priority_pat(body, body.pats[pat].clone())),
-        Pat::Record { name: _, fields } => coalesce_all_nested_children(
+        Pat::Record {
+            name: _,
+            fields,
+            default_field,
+        } => coalesce_all_nested_children(
             &fields
                 .iter()
                 .map(|(_, field)| pattern_priority_pat(body, body.pats[*field].clone()))
+                .chain(
+                    default_field
+                        .iter()
+                        .map(|df| pattern_priority_pat(body, body.pats[*df].clone())),
+                )
                 .collect::<Vec<_>>(),
         ),
         _ => None,

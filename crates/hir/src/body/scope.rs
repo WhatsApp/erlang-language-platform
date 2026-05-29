@@ -325,8 +325,15 @@ impl ExprScopes {
                 self.add_bindings(body, scope, *lhs, vt, add_bindings);
                 self.add_bindings(body, scope, *rhs, vt, add_bindings);
             }
-            crate::Pat::Record { name: _, fields } => {
+            crate::Pat::Record {
+                name: _,
+                fields,
+                default_field,
+            } => {
                 for (_, pat) in fields {
+                    self.add_bindings(body, scope, *pat, vt, add_bindings);
+                }
+                if let Some(pat) = default_field {
                     self.add_bindings(body, scope, *pat, vt, add_bindings);
                 }
             }
@@ -475,9 +482,16 @@ fn compute_expr_scopes(
                 }
             }
         }
-        crate::Expr::Record { name: _, fields } => {
+        crate::Expr::Record {
+            name: _,
+            fields,
+            default_field,
+        } => {
             for (_, expr) in fields {
                 compute_expr_scopes(*expr, body, scopes, scope, vt);
+            }
+            if let Some(df) = default_field {
+                compute_expr_scopes(*df, body, scopes, scope, vt);
             }
         }
         crate::Expr::RecordUpdate {

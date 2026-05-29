@@ -1583,6 +1583,42 @@ fn ssr_pat_match_record() {
 }
 
 #[test]
+fn ssr_record_expr_with_wildcard_field_no_match() {
+    // A pattern without `_ = ...` must NOT match a record expression
+    // that contains a wildcard field.
+    assert_matches(
+        "ssr: #foo{k1 = _@A}.",
+        "fn() -> X = #foo{k1 = a, _ = default}, X.",
+        &[],
+    );
+}
+
+#[test]
+fn ssr_pat_record_with_wildcard_field_no_match() {
+    // Same for patterns: the wildcard in the target must be explicitly
+    // matched by the SSR pattern.
+    assert_matches(
+        "ssr: #foo{k1 = _@A, k2 = _@B}.",
+        "fn(X) -> #foo{k1 = a, k2 = b, _ = _} = X.",
+        &[],
+    );
+}
+
+#[test]
+fn ssr_record_expr_wildcard_in_pattern() {
+    // The SSR pattern uses a wildcard field `_ = _@A` alongside a named
+    // field. Both the wildcard value and the named field are captured.
+    assert_matches(
+        "ssr: #foo{_ = _@A, x = _@B}.",
+        "fn() -> X = #foo{x = hello, _ = default}, X.",
+        &[(
+            "#foo{x = hello, _ = default}",
+            &[("_@A", &["default"]), ("_@B", &["hello"])],
+        )],
+    );
+}
+
+#[test]
 fn ssr_pat_record_index() {
     assert_matches(
         "ssr: #a_record.a_field.",

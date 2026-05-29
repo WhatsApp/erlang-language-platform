@@ -208,22 +208,32 @@ fn matches_trivially(
         Pat::Record {
             name: pat_name,
             fields: pat_fields,
+            default_field: pat_default,
         } => match expr {
             Expr::Record {
                 name: expr_name,
                 fields: expr_fields,
+                default_field,
             } => match {} {
                 _ if pat_name != expr_name => false,
                 _ => {
-                    let pat_fields_map = pat_fields.iter().copied().collect::<HashMap<_, _>>();
-                    let expr_fields_map = expr_fields.iter().copied().collect::<HashMap<_, _>>();
-                    pat_fields_map.iter().all(|(field, pat_val)| {
-                        if let Some(expr_val) = expr_fields_map.get(field) {
-                            matches_trivially(sema, in_clause, pat_val, expr_val)
-                        } else {
-                            false
-                        }
-                    })
+                    let defaults_match = match (pat_default, default_field) {
+                        (Some(p), Some(e)) => matches_trivially(sema, in_clause, p, e),
+                        (None, None) => true,
+                        _ => false,
+                    };
+                    defaults_match && {
+                        let pat_fields_map = pat_fields.iter().copied().collect::<HashMap<_, _>>();
+                        let expr_fields_map =
+                            expr_fields.iter().copied().collect::<HashMap<_, _>>();
+                        pat_fields_map.iter().all(|(field, pat_val)| {
+                            if let Some(expr_val) = expr_fields_map.get(field) {
+                                matches_trivially(sema, in_clause, pat_val, expr_val)
+                            } else {
+                                false
+                            }
+                        })
+                    }
                 }
             },
             _ => false,

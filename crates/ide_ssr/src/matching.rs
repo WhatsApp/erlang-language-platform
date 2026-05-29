@@ -1798,11 +1798,18 @@ impl PatternIterator {
                     (*lhs).into(),
                     (*rhs).into(),
                 ]),
-                Expr::Record { name, fields } => {
-                    let children: FxHashMap<SubId, Vec<SubId>> = fields
+                Expr::Record {
+                    name,
+                    fields,
+                    default_field,
+                } => {
+                    let mut children: FxHashMap<SubId, Vec<SubId>> = fields
                         .iter()
-                        .map(|(name, val)| ((*name).into(), vec![(*val).into()]))
+                        .map(|(n, val)| ((*n).into(), vec![(*val).into()]))
                         .collect();
+                    if let Some(df) = default_field {
+                        children.insert(SubId::Constant("_".to_string()), vec![(*df).into()]);
+                    }
                     PatternIterator::as_pattern_map(vec![(*name).into()], children)
                 }
                 Expr::RecordUpdate { expr, name, fields } => PatternIterator::as_pattern_list(
@@ -1811,7 +1818,7 @@ impl PatternIterator {
                         .chain(
                             fields
                                 .iter()
-                                .flat_map(|(name, val)| vec![(*name).into(), (*val).into()]),
+                                .flat_map(|(n, val)| vec![(*n).into(), (*val).into()]),
                         )
                         .collect(),
                 ),
@@ -2038,11 +2045,18 @@ impl PatternIterator {
                     (*lhs).into(),
                     (*rhs).into(),
                 ]), // match op first to fail fast
-                Pat::Record { name, fields } => {
-                    let children: FxHashMap<SubId, Vec<SubId>> = fields
+                Pat::Record {
+                    name,
+                    fields,
+                    default_field,
+                } => {
+                    let mut children: FxHashMap<SubId, Vec<SubId>> = fields
                         .iter()
-                        .map(|(name, val)| ((*name).into(), vec![(*val).into()]))
+                        .map(|(n, val)| ((*n).into(), vec![(*val).into()]))
                         .collect();
+                    if let Some(df) = default_field {
+                        children.insert(SubId::Constant("_".to_string()), vec![(*df).into()]);
+                    }
                     PatternIterator::as_pattern_map(vec![(*name).into()], children)
                 }
                 Pat::RecordIndex { name, field } => {
