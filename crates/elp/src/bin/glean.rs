@@ -215,9 +215,6 @@ fn write_results(
     cli: &mut dyn Cli,
     args: &Glean,
 ) -> Result<(u64, FactCounts)> {
-    if args.v2 {
-        eprintln!("elp-glean: --v2 is deprecated and now a no-op (v2 is always enabled)");
-    }
     if args.schema2 {
         eprintln!(
             "elp-glean: --schema2 is deprecated and now a no-op (v2 is the only supported schema)"

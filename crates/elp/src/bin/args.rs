@@ -612,8 +612,6 @@ pub struct Glean {
     #[bpaf(argument("TO"))]
     pub to: Option<PathBuf>,
     /// Deprecated no-op.
-    pub v2: bool,
-    /// Deprecated no-op.
     pub schema2: bool,
     /// Pretty print
     pub pretty: bool,
