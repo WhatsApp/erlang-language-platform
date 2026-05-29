@@ -760,6 +760,51 @@ main() ->
     }
 
     #[test]
+    fn test_fn_signature_doc_parenthesized_eep59_metadata() {
+        if supports_eep59_doc_attributes() {
+            check(
+                r#"
+//- expect_parse_errors
+-module(main).
+
+-compile(export_all).
+
+-doc """
+Add This to That
+Returns the sum of This and That plus 0
+""".
+-doc(#{params => #{"This" => """
+The first thing
+""", "That" => "The second thing"}}).
+-spec add(integer(), integer()) -> integer().
+add(This, That) ->
+  This + That.
+
+main() ->
+  main:add(This, ~)
+"#,
+                expect![[r#"
+                    ```erlang
+                    -spec add(integer(), integer()) -> integer().
+                    ```
+
+                    -----
+
+                    Add This to That
+                    Returns the sum of This and That plus 0
+                    ------
+                    main:add(This, That)
+                             ----  ^^^^
+                    ------
+                    That: The second thing
+                    This: The first thing
+                    ======
+                "#]],
+            );
+        }
+    }
+
+    #[test]
     fn test_fn_signature_local_imported() {
         check(
             r#"

@@ -880,7 +880,10 @@ impl<'a> Ctx<'a> {
         pp_ctx: FormPPContext,
     ) -> Option<FormIdx> {
         let form_id = self.id_map.get_id(attribute);
-        let res = if let Some(ast::Expr::MapExpr(_)) = attribute.value() {
+        let res = if attribute
+            .value()
+            .is_some_and(doc_attribute_value_is_metadata)
+        {
             FormIdx::ModuleDocMetadataAttribute(
                 self.data
                     .moduledoc_metadata_attributes
@@ -902,7 +905,10 @@ impl<'a> Ctx<'a> {
         pp_ctx: FormPPContext,
     ) -> Option<FormIdx> {
         let form_id = self.id_map.get_id(attribute);
-        let res = if let Some(ast::Expr::MapExpr(_)) = attribute.value() {
+        let res = if attribute
+            .value()
+            .is_some_and(doc_attribute_value_is_metadata)
+        {
             FormIdx::DocMetadataAttribute(
                 self.data
                     .doc_metadata_attributes
@@ -976,6 +982,16 @@ impl<'a> Ctx<'a> {
             condition: self.conditions.last().copied(),
             env: self.current_env(),
         }
+    }
+}
+
+fn doc_attribute_value_is_metadata(expr: ast::Expr) -> bool {
+    match expr {
+        ast::Expr::MapExpr(_) => true,
+        ast::Expr::ExprMax(ast::ExprMax::ParenExpr(paren)) => {
+            paren.expr().is_some_and(doc_attribute_value_is_metadata)
+        }
+        _ => false,
     }
 }
 

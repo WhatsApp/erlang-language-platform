@@ -1105,6 +1105,41 @@ mod tests {
     }
 
     #[test]
+    fn parenthesized_doc_metadata_stays_separate_from_function_doc() {
+        let (db, files, _) = TestDB::with_many_files(
+            r#"
+-doc """
+Useful function docs.
+""".
+-doc(#{since => <<"OTP 17.0">>}).
+foo() -> ok.
+"#,
+        );
+        let file_id = files[0];
+        let def_map = db.def_map(file_id);
+        let function = def_map
+            .functions
+            .values()
+            .next()
+            .expect("expected one function");
+
+        let doc_id = function.doc_id.expect("expected a function doc");
+        let doc_metadata_id = function
+            .doc_metadata_id
+            .expect("expected function doc metadata");
+
+        let form_list = db.file_form_list(file_id);
+        let doc = form_list[doc_id].form_id.get_ast(&db, file_id).to_string();
+        let doc_metadata = form_list[doc_metadata_id]
+            .form_id
+            .get_ast(&db, file_id)
+            .to_string();
+
+        assert!(doc.contains("Useful function docs."));
+        assert!(doc_metadata.contains("since => <<\"OTP 17.0\">>"));
+    }
+
+    #[test]
     fn exported_functions() {
         check_functions(
             r#"

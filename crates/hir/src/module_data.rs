@@ -351,10 +351,10 @@ impl FunctionDef {
     fn parameters_doc_from_doc_attribute(&self, db: &dyn DefDatabase) -> FxHashMap<String, String> {
         let mut res = FxHashMap::default();
         if let Some(doc_metadata) = self.doc_metadata(db)
-            && let Some(ast::Expr::MapExpr(doc_metadata)) = doc_metadata.value()
+            && let Some(doc_metadata) = doc_metadata.value().and_then(expr_as_map)
         {
             let params = doc_metadata_params(&doc_metadata);
-            if let Some(ast::Expr::MapExpr(params)) = params {
+            if let Some(params) = params.and_then(expr_as_map) {
                 for param in params.fields() {
                     if let Some((key, value)) = as_param(param) {
                         res.insert(key, value);
@@ -388,6 +388,14 @@ fn doc_metadata_params(map: &MapExpr) -> Option<Expr> {
             }
         })
     })
+}
+
+fn expr_as_map(expr: Expr) -> Option<MapExpr> {
+    match expr {
+        Expr::MapExpr(map) => Some(map),
+        Expr::ExprMax(ast::ExprMax::ParenExpr(paren)) => paren.expr().and_then(expr_as_map),
+        _ => None,
+    }
 }
 
 fn is_params_key(expr: Expr) -> bool {
