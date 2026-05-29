@@ -2379,6 +2379,85 @@ foo() -> ?EXPR.
     );
 }
 
+// A macro whose body is a `,`-separated list of expressions, when used
+// in a clause body, contributes each expression as a separate body
+// expression (matching Erlang preprocessor semantics).
+
+#[test]
+fn expand_macro_multi_expr_body() {
+    check(
+        r#"
+-define(MULTI(X), foo(X), bar(X), baz(X)).
+
+run() -> ?MULTI(1).
+"#,
+        expect![[r#"
+            run() ->
+                foo(
+                    1
+                ),
+                bar(
+                    1
+                ),
+                baz(
+                    1
+                ).
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_multi_expr_body_with_surrounding() {
+    // Multi-expression macros also work alongside other clause body
+    // expressions.
+    check(
+        r#"
+-define(MULTI(X), a(X), b(X)).
+
+run(N) -> begin_thing, ?MULTI(N), end_thing.
+"#,
+        expect![[r#"
+            run(N) ->
+                begin_thing,
+                a(
+                    N
+                ),
+                b(
+                    N
+                ),
+                end_thing.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_multi_expr_two_invocations() {
+    // Two separate multi-expression macro invocations in the same
+    // clause body each contribute their own expressions.
+    check(
+        r#"
+-define(PAIR(X), p1(X), p2(X)).
+
+run() -> ?PAIR(1), ?PAIR(2).
+"#,
+        expect![[r#"
+            run() ->
+                p1(
+                    1
+                ),
+                p2(
+                    1
+                ),
+                p1(
+                    2
+                ),
+                p2(
+                    2
+                ).
+        "#]],
+    );
+}
+
 #[test]
 fn expand_macro_var_in_expr() {
     check(

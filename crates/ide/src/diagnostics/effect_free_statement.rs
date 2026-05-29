@@ -84,6 +84,8 @@ impl GenericLinter for EffectFreeStatementLinter {
                         && has_no_effect(in_clause, &expr_id)
                         && let Some(curr_range) = in_clause.range_for_expr(expr_id)
                         && let Some(next_range) = in_clause.range_for_expr(next_expr_id)
+                        && curr_range.file_id == next_range.file_id
+                        && curr_range.range.start() <= next_range.range.start()
                     {
                         let deletion_range =
                             TextRange::new(curr_range.range.start(), next_range.range.start());

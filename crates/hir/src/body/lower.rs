@@ -2079,28 +2079,25 @@ impl<'a> Ctx<'a> {
     /// Returns `Some(clauses)` if the macro expands to `ReplacementGuardOr`
     /// or `ReplacementGuardAnd`, where each inner Vec is a conjunction (AND)
     /// and the outer Vec is a disjunction (OR).
+    fn lower_guard_and_exprs(&mut self, guard_and: &ast::ReplacementGuardAnd) -> Vec<ExprId> {
+        guard_and
+            .guard()
+            .map(|expr| self.lower_expr(&expr))
+            .collect()
+    }
+
     fn try_expand_guard_macro(&mut self, call: &ast::MacroCallExpr) -> Option<Vec<Vec<ExprId>>> {
         self.resolve_macro(call, |this, _source, replacement| match replacement {
             MacroReplacement::Ast(_, ast::MacroDefReplacement::ReplacementGuardOr(guard_or)) => {
                 Some(
                     guard_or
                         .guard()
-                        .map(|guard_and| {
-                            guard_and
-                                .guard()
-                                .map(|expr| this.lower_expr(&expr))
-                                .collect()
-                        })
+                        .map(|guard_and| this.lower_guard_and_exprs(&guard_and))
                         .collect(),
                 )
             }
             MacroReplacement::Ast(_, ast::MacroDefReplacement::ReplacementGuardAnd(guard_and)) => {
-                Some(vec![
-                    guard_and
-                        .guard()
-                        .map(|expr| this.lower_expr(&expr))
-                        .collect(),
-                ])
+                Some(vec![this.lower_guard_and_exprs(&guard_and)])
             }
             _ => None,
         })
@@ -2110,8 +2107,25 @@ impl<'a> Ctx<'a> {
     fn lower_clause_body(&mut self, body: Option<ast::ClauseBody>) -> Vec<ExprId> {
         body.iter()
             .flat_map(|body| body.exprs())
-            .map(|expr| self.lower_expr(&expr))
+            .flat_map(|expr| {
+                if let ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(ref call)) = expr
+                    && let Some(exprs) = self.try_expand_body_macro(call)
+                {
+                    return exprs;
+                }
+                vec![self.lower_expr(&expr)]
+            })
             .collect()
+    }
+
+    fn try_expand_body_macro(&mut self, call: &ast::MacroCallExpr) -> Option<Vec<ExprId>> {
+        self.resolve_macro(call, |this, _source, replacement| match replacement {
+            MacroReplacement::Ast(_, ast::MacroDefReplacement::ReplacementGuardAnd(guard_and)) => {
+                Some(this.lower_guard_and_exprs(&guard_and))
+            }
+            _ => None,
+        })
+        .flatten()
     }
 
     fn lower_lc_exprs(&mut self, exprs: Option<ast::LcExprs>) -> Vec<ComprehensionExpr> {
