@@ -472,6 +472,7 @@ dependencies = [
  "strsim 0.10.0",
  "tempfile",
  "test-case",
+ "thiserror 2.0.18",
  "threadpool",
  "tikv-jemalloc-ctl",
  "tikv-jemallocator",

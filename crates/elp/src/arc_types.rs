@@ -16,7 +16,7 @@ use std::path::Path;
 use serde::Deserialize;
 use serde::Serialize;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Diagnostic {
     // Filepath
@@ -46,7 +46,7 @@ pub struct Diagnostic {
 }
 
 /// SSR placeholder binding. Positions are 1-indexed.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaceholderBinding {
     pub name: String,
@@ -57,7 +57,7 @@ pub struct PlaceholderBinding {
     pub end_char: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
     Error,    // May crash (eg. syntax errors); always shown; need confirmation
@@ -171,5 +171,19 @@ impl Diagnostic {
         self.original = Some(original);
         self.replacement = Some(replacement);
         self
+    }
+
+    /// Diagnostic name (e.g. `"P1700 (head_mismatch)"`). Used as part of
+    /// the `(name, severity)` group key by `elp lint-compare`.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Diagnostic severity. Used as part of the `(name, severity)`
+    /// group key by `elp lint-compare` so a lint that flips
+    /// severity (e.g. `warning` -> `error`) shows up as one row
+    /// removed and one row added.
+    pub fn severity(&self) -> &Severity {
+        &self.severity
     }
 }

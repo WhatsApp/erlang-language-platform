@@ -42,6 +42,7 @@ mod erlang_service_cli;
 mod explain_cli;
 mod glean;
 mod lint_cli;
+mod lint_compare;
 mod lint_list_cli;
 // @fb-only: #[cfg(buck_build)]
 // @fb-only: mod meta_only;
@@ -92,6 +93,19 @@ fn main() {
 
 fn handle_res(result: Result<()>, stderr: &mut dyn Write) -> i32 {
     if let Err(err) = result {
+        // `elp lint-compare` returns LintCompareRegression when the
+        // diagnostic landscape shifted vs the supplied base. The
+        // user-facing detail lives in the report file we already
+        // wrote; here we only translate the typed error into a
+        // dedicated exit code so callers (CI workflows, scripts) can
+        // distinguish "regression detected" from "elp itself failed".
+        if err
+            .downcast_ref::<lint_compare::LintCompareRegression>()
+            .is_some()
+        {
+            writeln!(stderr, "{err:#}").unwrap();
+            return 1;
+        }
         writeln!(stderr, "{err:#}").unwrap();
         101
     } else {
@@ -214,6 +228,7 @@ fn try_main(cli: &mut dyn Cli, mut args: Args) -> Result<()> {
             }
         }
         args::Command::Lint(args) => lint_cli::run_lint_command(args, cli, &query_config, ifdef)?,
+        args::Command::LintCompare(args) => lint_compare::run_lint_compare_command(args, cli)?,
         args::Command::Ssr(ssr_args) => {
             ssr_cli::run_ssr_command(ssr_args, cli, &query_config, use_color, ifdef)?
         }
@@ -2502,6 +2517,16 @@ mod tests {
             .run_inner(Args::from(&["lint", "--help"]))
             .unwrap_err();
         let expected = resource_file!("lint_help.stdout");
+        let stdout = args.unwrap_stdout();
+        expected.assert_eq(&stdout);
+    }
+
+    #[test]
+    fn lint_compare_help() {
+        let args = args::args()
+            .run_inner(Args::from(&["lint-compare", "--help"]))
+            .unwrap_err();
+        let expected = resource_file!("lint_compare_help.stdout");
         let stdout = args.unwrap_stdout();
         expected.assert_eq(&stdout);
     }

@@ -388,6 +388,43 @@ pub struct Lint {
     pub ignore_apps: Vec<String>,
 }
 
+/// `elp lint-compare` -- pure data primitive that takes two
+/// `elp lint --format=json` JSONL artifacts and reports the
+/// per-(`name`, `severity`) diagnostic count delta between them.
+///
+/// No project is loaded, no lint is run -- this command operates
+/// purely on the two input files. The expected workflow is:
+///   1. `elp lint --format=json > before.jsonl` (at base revision)
+///   2. `elp lint --format=json > after.jsonl`  (at diff revision)
+///   3. `elp lint-compare --base before.jsonl --diff after.jsonl --report-path report.md`
+///
+/// Step 3 is the same primitive whether the caller is CI comparing
+/// two diff revisions, a developer checking what they changed
+/// locally, or a tool comparing two ELP releases. The compare step
+/// has zero project dependencies (no BUCK, no OTP, no source tree).
+#[derive(Debug, Clone, Default, Bpaf)]
+pub struct LintCompare {
+    /// JSONL artifact for the **base** side of the comparison
+    /// (typically an `elp lint --format=json` run at a prior project
+    /// state). Diagnostics present here but missing on the diff side
+    /// are reported as removed.
+    #[bpaf(argument("BASE_JSONL"))]
+    pub base: PathBuf,
+
+    /// JSONL artifact for the **diff** side of the comparison
+    /// (typically an `elp lint --format=json` run at the current
+    /// project state). Diagnostics present here but missing on the
+    /// base side are reported as new.
+    #[bpaf(argument("DIFF_JSONL"))]
+    pub diff: PathBuf,
+
+    /// Optional path to write the Markdown comparison report
+    /// (headline counts + per-(diagnostic, severity) summary table) to.
+    /// When omitted, the report is written to stdout.
+    #[bpaf(argument("REPORT_PATH"))]
+    pub report_path: Option<PathBuf>,
+}
+
 #[derive(Clone, Debug, Bpaf)]
 pub struct Ssr {
     /// Path to directory with project, or to a JSON file (defaults to `.`)
@@ -606,6 +643,7 @@ pub enum Command {
     GenerateCompletions(GenerateCompletions),
     RunServer(RunServer),
     Lint(Lint),
+    LintCompare(LintCompare),
     Ssr(Ssr),
     Version(Version),
     Shell(Shell),
@@ -755,6 +793,16 @@ pub fn command() -> impl Parser<Command> {
         .command("lint")
         .help("Parse files in project and emit diagnostics, optionally apply fixes.");
 
+    let lint_compare = lint_compare()
+        .map(Command::LintCompare)
+        .to_options()
+        .command("lint-compare")
+        .help(
+            "Diff two `elp lint --format=json` JSONL artifacts. \
+             Exits 0 if the per-(name, severity) counts match, \
+             1 if any group's count changed.",
+        );
+
     let search = ssr()
         .map(Command::Ssr)
         .to_options()
@@ -834,6 +882,7 @@ pub fn command() -> impl Parser<Command> {
         eqwalize_stats,
         dialyze_all,
         lint,
+        lint_compare,
         lint_list,
         ssr,
         search,
