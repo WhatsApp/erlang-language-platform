@@ -3588,28 +3588,3 @@ name = "zmij"
 version = "1.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
-
-[[patch.unused]]
-name = "cxx"
-version = "1.0.194"
-source = "git+https://github.com/facebookexperimental/cxx.git?rev=d98f6c434f8e6a018533c31a7a4cf7cdc7252210#d98f6c434f8e6a018533c31a7a4cf7cdc7252210"
-
-[[patch.unused]]
-name = "cxx-build"
-version = "1.0.194"
-source = "git+https://github.com/facebookexperimental/cxx.git?rev=d98f6c434f8e6a018533c31a7a4cf7cdc7252210#d98f6c434f8e6a018533c31a7a4cf7cdc7252210"
-
-[[patch.unused]]
-name = "cxxbridge-cmd"
-version = "1.0.194"
-source = "git+https://github.com/facebookexperimental/cxx.git?rev=d98f6c434f8e6a018533c31a7a4cf7cdc7252210#d98f6c434f8e6a018533c31a7a4cf7cdc7252210"
-
-[[patch.unused]]
-name = "cxxbridge-flags"
-version = "1.0.194"
-source = "git+https://github.com/facebookexperimental/cxx.git?rev=d98f6c434f8e6a018533c31a7a4cf7cdc7252210#d98f6c434f8e6a018533c31a7a4cf7cdc7252210"
-
-[[patch.unused]]
-name = "cxxbridge-macro"
-version = "1.0.194"
-source = "git+https://github.com/facebookexperimental/cxx.git?rev=d98f6c434f8e6a018533c31a7a4cf7cdc7252210#d98f6c434f8e6a018533c31a7a4cf7cdc7252210"
