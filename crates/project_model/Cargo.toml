@@ -39,8 +39,5 @@ toml.workspace = true
 elp_base_db.workspace = true
 expect-test.workspace = true
 
-[features]
-buck = []
-
 [lints]
 workspace = true

@@ -1575,8 +1575,7 @@ mod tests {
         if std::env::var("GITHUB_ACTIONS").is_ok() {
             return;
         }
-        if cfg!(feature = "buck") {
-            let spec = r#"
+        let spec = r#"
             //- /.elp.toml
             [buck]
             enabled = true
@@ -1585,19 +1584,18 @@ mod tests {
             //- /app_a/src/app.erl
             -module(app).
             "#;
-            let dir = FixtureWithProjectMeta::gen_project(spec);
-            let manifest = ProjectManifest::discover(
-                &to_abs_path_buf(&dir.path().join("app_a/src/app.erl")).unwrap(),
-            );
-            match manifest
-                .expect_err("Must be err")
-                .downcast_ref::<ProjectModelError>()
-            {
-                Some(ProjectModelError::NotInBuckProject) => (),
-                Some(err) => panic!("Wrong err {err:?}"),
-                None => panic!("Wrong error"),
-            };
-        }
+        let dir = FixtureWithProjectMeta::gen_project(spec);
+        let manifest = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("app_a/src/app.erl")).unwrap(),
+        );
+        match manifest
+            .expect_err("Must be err")
+            .downcast_ref::<ProjectModelError>()
+        {
+            Some(ProjectModelError::NotInBuckProject) => (),
+            Some(err) => panic!("Wrong err {err:?}"),
+            None => panic!("Wrong error"),
+        };
     }
 
     #[test]
@@ -1674,18 +1672,17 @@ mod tests {
 
     #[test]
     fn test_toml_empty_rebar_config() {
-        if cfg!(feature = "buck") {
-            let spec = r#"
+        let spec = r#"
         //- /root/.elp.toml
         //- /root/rebar.config
         //- /root/app_a/src/app.erl
         -module(app).
         "#;
-            let dir = FixtureWithProjectMeta::gen_project(spec);
-            let discovered = ProjectManifest::discover(
-                &to_abs_path_buf(&dir.path().join("root/app_a/src/app.erl")).unwrap(),
-            );
-            expect![[r#"
+        let dir = FixtureWithProjectMeta::gen_project(spec);
+        let discovered = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("root/app_a/src/app.erl")).unwrap(),
+        );
+        expect![[r#"
                 Ok(
                     (
                         ElpConfig {
@@ -1725,8 +1722,7 @@ mod tests {
                     ),
                 )
             "#]]
-            .assert_eq(&debug_normalise_temp_dir(dir, &discovered));
-        }
+        .assert_eq(&debug_normalise_temp_dir(dir, &discovered));
     }
 
     #[test]
@@ -1735,17 +1731,16 @@ mod tests {
         // the directory where .elp.toml is found, so it does not find the
         // app structure below. Perhaps it can be improved in future, but
         // it is very low priority, and an unlikely scenario.
-        if cfg!(feature = "buck") {
-            let spec = r#"
+        let spec = r#"
         //- /root/.elp.toml
         //- /root/app_a/src/app.erl
         -module(app).
         "#;
-            let dir = FixtureWithProjectMeta::gen_project(spec);
-            let discovered = ProjectManifest::discover(
-                &to_abs_path_buf(&dir.path().join("root/app_a/src/app.erl")).unwrap(),
-            );
-            expect![[r#"
+        let dir = FixtureWithProjectMeta::gen_project(spec);
+        let discovered = ProjectManifest::discover(
+            &to_abs_path_buf(&dir.path().join("root/app_a/src/app.erl")).unwrap(),
+        );
+        expect![[r#"
                 Ok(
                     (
                         ElpConfig {
@@ -1795,8 +1790,7 @@ mod tests {
                     ),
                 )
             "#]]
-            .assert_eq(&debug_normalise_temp_dir(dir, &discovered));
-        }
+        .assert_eq(&debug_normalise_temp_dir(dir, &discovered));
     }
 
     #[test]

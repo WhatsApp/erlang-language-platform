@@ -421,33 +421,31 @@ mod tests {
     }
 
     fn eqwalize_snapshot_json(project: &str, module: &str, fast: bool, buck: bool, json: bool) {
-        if !buck || cfg!(feature = "buck") {
-            let mut args = args_vec!["eqwalize", module];
-            if !buck {
-                args.push("--rebar".into());
-            }
-            if json {
-                args.push("--format".into());
-                args.push("json".into());
-            }
-            let (args, path) = add_project(args, project, None, None);
-            let fast_str = if fast { "_fast" } else { "" };
-            let extension = if json { "jsonl" } else { "pretty" };
-            let exp_path = expect_file!(get_resources_dir().join(format!(
-                "{}/eqwalize_{}{}.{}",
-                project, module, fast_str, extension
-            )));
+        let mut args = args_vec!["eqwalize", module];
+        if !buck {
+            args.push("--rebar".into());
+        }
+        if json {
+            args.push("--format".into());
+            args.push("json".into());
+        }
+        let (args, path) = add_project(args, project, None, None);
+        let fast_str = if fast { "_fast" } else { "" };
+        let extension = if json { "jsonl" } else { "pretty" };
+        let exp_path = expect_file!(get_resources_dir().join(format!(
+            "{}/eqwalize_{}{}.{}",
+            project, module, fast_str, extension
+        )));
 
-            let (stdout, stderr, code) = elp(args);
-            match code {
-                0 => {
-                    assert_normalised_file(exp_path, &stdout, path, false, false);
-                    assert!(stderr.is_empty());
-                }
-                _ => {
-                    assert_normalised_file(exp_path, &stderr, path, false, false);
-                    assert!(stdout.is_empty());
-                }
+        let (stdout, stderr, code) = elp(args);
+        match code {
+            0 => {
+                assert_normalised_file(exp_path, &stdout, path, false, false);
+                assert!(stderr.is_empty());
+            }
+            _ => {
+                assert_normalised_file(exp_path, &stderr, path, false, false);
+                assert!(stdout.is_empty());
             }
         }
     }
@@ -457,7 +455,7 @@ mod tests {
     // This function is a simplified/inlined version of eqwalizer_cli::eqwalize_app,
     // with panics in case of failures, and checks eqWAlization results per module.
     pub fn eqwalize_all_snapshots(project: &str, app: &str, buck: bool, config: EqwalizerConfig) {
-        if otp_supported_by_eqwalizer() && (!buck || cfg!(feature = "buck")) {
+        if otp_supported_by_eqwalizer() {
             let cli = Fake::default();
             let project_config = DiscoverConfig::new(!buck, "test");
             let str_path = project_path(project);
@@ -712,15 +710,13 @@ mod tests {
 
     #[test]
     fn eqwalize_target_diagnostics_match_snapshot_pretty() {
-        if cfg!(feature = "buck") {
-            simple_snapshot(
-                args_vec!["eqwalize-target", "//standard:app_a",],
-                "standard",
-                resource_file!("standard/eqwalize_target_diagnostics.pretty"),
-                true,
-                None,
-            );
-        }
+        simple_snapshot(
+            args_vec!["eqwalize-target", "//standard:app_a",],
+            "standard",
+            resource_file!("standard/eqwalize_target_diagnostics.pretty"),
+            true,
+            None,
+        );
     }
 
     #[test_case(false ; "rebar")]
@@ -1033,147 +1029,144 @@ mod tests {
 
     #[test]
     fn build_info_json_buck() {
-        if cfg!(feature = "buck") {
-            let tmp_dir = make_tmp_dir();
-            let tmp_file = tmp_dir.path().join("test_build_info.json");
-            let project = "diagnostics";
-            let path_str = project_path(project);
-            let args = args_vec![
-                "build-info",
-                "--to",
-                tmp_file.clone(),
-                "--project",
-                path_str.clone()
-            ];
-            let (stdout, stderr, code) = elp(args);
-            assert_eq!(
-                code, 0,
-                "failed with unexpected exit code: got {} not {}\nstdout:\n{}\nstderr:\n{}",
-                code, 0, stdout, stderr
-            );
-            assert!(
-                stderr.is_empty(),
-                "expected stderr to be empty, got:\n{stderr}"
-            );
-            assert!(tmp_file.clone().exists());
-            let content = fs::read_to_string(tmp_file).unwrap();
-            let mut buck_config = BuckConfig::default();
-            buck_config.buck_root = Some(AbsPathBuf::assert_utf8(
-                current_dir().unwrap().join(path_str.clone()),
-            ));
-            let prelude_cell = get_prelude_cell(&buck_config).expect("could not get prelude");
-            let prelude_cell = prelude_cell.strip_prefix("/").unwrap();
-            let content = content.replace(prelude_cell, "/[prelude]/");
+        let tmp_dir = make_tmp_dir();
+        let tmp_file = tmp_dir.path().join("test_build_info.json");
+        let project = "diagnostics";
+        let path_str = project_path(project);
+        let args = args_vec![
+            "build-info",
+            "--to",
+            tmp_file.clone(),
+            "--project",
+            path_str.clone()
+        ];
+        let (stdout, stderr, code) = elp(args);
+        assert_eq!(
+            code, 0,
+            "failed with unexpected exit code: got {} not {}\nstdout:\n{}\nstderr:\n{}",
+            code, 0, stdout, stderr
+        );
+        assert!(
+            stderr.is_empty(),
+            "expected stderr to be empty, got:\n{stderr}"
+        );
+        assert!(tmp_file.clone().exists());
+        let content = fs::read_to_string(tmp_file).unwrap();
+        let mut buck_config = BuckConfig::default();
+        buck_config.buck_root = Some(AbsPathBuf::assert_utf8(
+            current_dir().unwrap().join(path_str.clone()),
+        ));
+        let prelude_cell = get_prelude_cell(&buck_config).expect("could not get prelude");
+        let prelude_cell = prelude_cell.strip_prefix("/").unwrap();
+        let content = content.replace(prelude_cell, "/[prelude]/");
 
-            let mut buck_config = BuckConfig::default();
+        let mut buck_config = BuckConfig::default();
 
-            let abs = dunce::canonicalize(path_str).unwrap();
-            buck_config.buck_root =
-                Some(AbsPathBuf::assert(Utf8PathBuf::from_path_buf(abs).unwrap()));
-            let content = normalise_prelude_path(content, buck_config);
+        let abs = dunce::canonicalize(path_str).unwrap();
+        buck_config.buck_root = Some(AbsPathBuf::assert(Utf8PathBuf::from_path_buf(abs).unwrap()));
+        let content = normalise_prelude_path(content, buck_config);
 
-            let content = sort_json(&content);
+        let content = sort_json(&content);
 
-            expect![[r#"
+        expect![[r#"
+            {
+              "apps": [
                 {
-                  "apps": [
-                    {
-                      "dir": "app_a/test",
-                      "extra_src_dirs": [
-                        ""
-                      ],
-                      "include_dirs": [],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      },
-                      "name": "app_a_SUITE",
-                      "src_dirs": []
-                    },
-                    {
-                      "dir": "/[prelude]//erlang/common_test/test_exec/src",
-                      "extra_src_dirs": [],
-                      "include_dirs": [],
-                      "macros": {},
-                      "name": "test_exec",
-                      "src_dirs": [
-                        ""
-                      ]
-                    },
-                    {
-                      "dir": "/[prelude]//erlang/common_test/common",
-                      "extra_src_dirs": [],
-                      "include_dirs": [
-                        "include"
-                      ],
-                      "macros": {},
-                      "name": "common",
-                      "src_dirs": [
-                        "src"
-                      ]
-                    },
-                    {
-                      "dir": "/[prelude]//erlang/common_test/cth_hooks/src",
-                      "extra_src_dirs": [],
-                      "include_dirs": [
-                        ""
-                      ],
-                      "macros": {},
-                      "name": "cth_hooks",
-                      "src_dirs": [
-                        ""
-                      ]
-                    },
-                    {
-                      "dir": "/[prelude]//erlang/shell/src",
-                      "extra_src_dirs": [],
-                      "include_dirs": [],
-                      "macros": {},
-                      "name": "buck2_shell_utils",
-                      "src_dirs": [
-                        ""
-                      ]
-                    },
-                    {
-                      "dir": "/[prelude]//erlang/common_test/test_binary/src",
-                      "extra_src_dirs": [],
-                      "include_dirs": [],
-                      "macros": {},
-                      "name": "test_binary",
-                      "src_dirs": [
-                        ""
-                      ]
-                    },
-                    {
-                      "dir": "/[prelude]//erlang/common_test/test_cli_lib/src",
-                      "extra_src_dirs": [],
-                      "include_dirs": [],
-                      "macros": {},
-                      "name": "test_cli_lib",
-                      "src_dirs": [
-                        ""
-                      ]
-                    },
-                    {
-                      "dir": "app_a",
-                      "extra_src_dirs": [],
-                      "include_dirs": [
-                        "include"
-                      ],
-                      "macros": {
-                        "COMMON_TEST": "true",
-                        "TEST": "true"
-                      },
-                      "name": "app_a",
-                      "src_dirs": [
-                        "src"
-                      ]
-                    }
+                  "dir": "app_a/test",
+                  "extra_src_dirs": [
+                    ""
                   ],
-                  "deps": []
-                }"#]]
-            .assert_eq(content.as_str());
-        }
+                  "include_dirs": [],
+                  "macros": {
+                    "COMMON_TEST": "true",
+                    "TEST": "true"
+                  },
+                  "name": "app_a_SUITE",
+                  "src_dirs": []
+                },
+                {
+                  "dir": "/[prelude]//erlang/common_test/test_exec/src",
+                  "extra_src_dirs": [],
+                  "include_dirs": [],
+                  "macros": {},
+                  "name": "test_exec",
+                  "src_dirs": [
+                    ""
+                  ]
+                },
+                {
+                  "dir": "/[prelude]//erlang/common_test/common",
+                  "extra_src_dirs": [],
+                  "include_dirs": [
+                    "include"
+                  ],
+                  "macros": {},
+                  "name": "common",
+                  "src_dirs": [
+                    "src"
+                  ]
+                },
+                {
+                  "dir": "/[prelude]//erlang/common_test/cth_hooks/src",
+                  "extra_src_dirs": [],
+                  "include_dirs": [
+                    ""
+                  ],
+                  "macros": {},
+                  "name": "cth_hooks",
+                  "src_dirs": [
+                    ""
+                  ]
+                },
+                {
+                  "dir": "/[prelude]//erlang/shell/src",
+                  "extra_src_dirs": [],
+                  "include_dirs": [],
+                  "macros": {},
+                  "name": "buck2_shell_utils",
+                  "src_dirs": [
+                    ""
+                  ]
+                },
+                {
+                  "dir": "/[prelude]//erlang/common_test/test_binary/src",
+                  "extra_src_dirs": [],
+                  "include_dirs": [],
+                  "macros": {},
+                  "name": "test_binary",
+                  "src_dirs": [
+                    ""
+                  ]
+                },
+                {
+                  "dir": "/[prelude]//erlang/common_test/test_cli_lib/src",
+                  "extra_src_dirs": [],
+                  "include_dirs": [],
+                  "macros": {},
+                  "name": "test_cli_lib",
+                  "src_dirs": [
+                    ""
+                  ]
+                },
+                {
+                  "dir": "app_a",
+                  "extra_src_dirs": [],
+                  "include_dirs": [
+                    "include"
+                  ],
+                  "macros": {
+                    "COMMON_TEST": "true",
+                    "TEST": "true"
+                  },
+                  "name": "app_a",
+                  "src_dirs": [
+                    "src"
+                  ]
+                }
+              ],
+              "deps": []
+            }"#]]
+        .assert_eq(content.as_str());
     }
 
     fn normalise_prelude_path(content: String, buck_config: BuckConfig) -> String {
@@ -1674,9 +1667,7 @@ mod tests {
         // conditions.
 
         do_lint_applies_fix_in_place(false);
-        if cfg!(feature = "buck") {
-            do_lint_applies_fix_in_place(true);
-        }
+        do_lint_applies_fix_in_place(true);
     }
 
     fn do_lint_applies_fix_in_place(buck: bool) {
@@ -1797,34 +1788,30 @@ mod tests {
 
     #[test]
     fn lint_resolves_generated_includes() {
-        if cfg!(feature = "buck") {
-            simple_snapshot_expect_error_sorted(
-                args_vec!["lint", "--module", "top_includer",],
-                "buck_tests_2",
-                resource_file!("buck_tests_2/resolves_generated_includes.stdout"),
-                true,
-                None,
-            );
-        }
+        simple_snapshot_expect_error_sorted(
+            args_vec!["lint", "--module", "top_includer",],
+            "buck_tests_2",
+            resource_file!("buck_tests_2/resolves_generated_includes.stdout"),
+            true,
+            None,
+        );
     }
 
     #[test]
     #[rustfmt::skip]
     fn lint_reports_bxl_project_error() {
-        if cfg!(feature = "buck") {
-            SnapshotSettings::default()
-                .buck(true)
-                .expect_error()
-                .check_stderr()
-                .normalise_urls()
-                .first_line_only()
-                .run(
-                    args_vec!["lint",],
-                    "buck_bad_config",
-                    resource_file!("buck_bad_config/bxl_error_message_oss.stdout"), // @oss-only
-                    // @fb-only: resource_file!("buck_bad_config/bxl_error_message.stdout"),
-                );
-        }
+        SnapshotSettings::default()
+            .buck(true)
+            .expect_error()
+            .check_stderr()
+            .normalise_urls()
+            .first_line_only()
+            .run(
+                args_vec!["lint",],
+                "buck_bad_config",
+                resource_file!("buck_bad_config/bxl_error_message_oss.stdout"), // @oss-only
+                // @fb-only: resource_file!("buck_bad_config/bxl_error_message.stdout"),
+            );
     }
 
     #[test_case(false ; "rebar")]
@@ -2854,51 +2841,48 @@ mod tests {
             expected_stderr: Option<Expect>,
         ) -> Result<()> {
             let snapshot = &self.snapshot;
-            if !snapshot.buck || cfg!(feature = "buck") {
-                let (mut args, path) =
-                    add_project(args, project, snapshot.file, snapshot.json_config);
-                if !snapshot.buck {
-                    args.push("--rebar".into());
-                }
-                let orig_files = self.files.iter().map(|x| x.0).collect::<Vec<_>>();
-                // Take a backup. The Drop instance will restore at the end
-                let _backup = if self.backup_files {
-                    BackupFiles::save_files(project, &orig_files)
-                } else {
-                    BackupFiles::save_files(project, &[])
-                };
-                let (stdout, stderr, code) = elp(args);
-                assert_eq!(
-                    code, snapshot.expected_code,
-                    "Expected exit code {}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}",
-                    snapshot.expected_code
-                );
-                if let Some(expected_stderr) = expected_stderr {
-                    let project_path = path.to_str().expect("project_path");
-                    let normalised_stderr = stderr.replace(project_path, "{project_path}");
-                    expected_stderr.assert_eq(&normalised_stderr);
-                } else {
-                    expect![[""]].assert_eq(&stderr);
-                }
-                let output = if snapshot.sorted {
-                    sort_lines(&stdout)
-                } else {
-                    stdout
-                };
-                assert_normalised_file(
-                    expected,
-                    &output,
-                    path,
-                    snapshot.normalise_urls,
-                    snapshot.first_line_only,
-                );
-                for (expected_file, file) in self.files {
-                    let expected = expect_file!(self.expected_dir.join(expected_file));
-                    let actual = self.actual_dir.join(file);
-                    assert!(actual.exists());
-                    let content = fs::read_to_string(actual).unwrap();
-                    expected.assert_eq(content.as_str());
-                }
+            let (mut args, path) = add_project(args, project, snapshot.file, snapshot.json_config);
+            if !snapshot.buck {
+                args.push("--rebar".into());
+            }
+            let orig_files = self.files.iter().map(|x| x.0).collect::<Vec<_>>();
+            // Take a backup. The Drop instance will restore at the end
+            let _backup = if self.backup_files {
+                BackupFiles::save_files(project, &orig_files)
+            } else {
+                BackupFiles::save_files(project, &[])
+            };
+            let (stdout, stderr, code) = elp(args);
+            assert_eq!(
+                code, snapshot.expected_code,
+                "Expected exit code {}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}",
+                snapshot.expected_code
+            );
+            if let Some(expected_stderr) = expected_stderr {
+                let project_path = path.to_str().expect("project_path");
+                let normalised_stderr = stderr.replace(project_path, "{project_path}");
+                expected_stderr.assert_eq(&normalised_stderr);
+            } else {
+                expect![[""]].assert_eq(&stderr);
+            }
+            let output = if snapshot.sorted {
+                sort_lines(&stdout)
+            } else {
+                stdout
+            };
+            assert_normalised_file(
+                expected,
+                &output,
+                path,
+                snapshot.normalise_urls,
+                snapshot.first_line_only,
+            );
+            for (expected_file, file) in self.files {
+                let expected = expect_file!(self.expected_dir.join(expected_file));
+                let actual = self.actual_dir.join(file);
+                assert!(actual.exists());
+                let content = fs::read_to_string(actual).unwrap();
+                expected.assert_eq(content.as_str());
             }
             Ok(())
         }
@@ -2952,39 +2936,37 @@ mod tests {
 
         #[track_caller]
         fn run(&self, args: Vec<OsString>, project: &str, expected: ExpectFile) {
-            if !self.buck || cfg!(feature = "buck") {
-                let (mut args, path) = add_project(args, project, self.file, self.json_config);
-                if !self.buck {
-                    args.push("--rebar".into());
-                }
-                let (stdout, stderr, code) = elp(args);
-                assert_eq!(
-                    code, self.expected_code,
-                    "Expected exit code {}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}",
-                    self.expected_code
+            let (mut args, path) = add_project(args, project, self.file, self.json_config);
+            if !self.buck {
+                args.push("--rebar".into());
+            }
+            let (stdout, stderr, code) = elp(args);
+            assert_eq!(
+                code, self.expected_code,
+                "Expected exit code {}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}",
+                self.expected_code
+            );
+
+            let output = if self.check_stderr { &stderr } else { &stdout };
+            let output = if self.sorted {
+                sort_lines(output)
+            } else {
+                output.to_string()
+            };
+
+            assert_normalised_file(
+                expected,
+                &output,
+                path,
+                self.normalise_urls,
+                self.first_line_only,
+            );
+
+            if self.expected_code == 0 && !self.check_stderr {
+                assert!(
+                    stderr.is_empty(),
+                    "expected stderr to be empty, got:\n{stderr}"
                 );
-
-                let output = if self.check_stderr { &stderr } else { &stdout };
-                let output = if self.sorted {
-                    sort_lines(output)
-                } else {
-                    output.to_string()
-                };
-
-                assert_normalised_file(
-                    expected,
-                    &output,
-                    path,
-                    self.normalise_urls,
-                    self.first_line_only,
-                );
-
-                if self.expected_code == 0 && !self.check_stderr {
-                    assert!(
-                        stderr.is_empty(),
-                        "expected stderr to be empty, got:\n{stderr}"
-                    );
-                }
             }
         }
 
@@ -2995,30 +2977,28 @@ mod tests {
             project: &str,
             expected_patterns: &[&str],
         ) {
-            if !self.buck || cfg!(feature = "buck") {
-                let (mut args, _path) = add_project(args, project, self.file, self.json_config);
-                if !self.buck {
-                    args.push("--rebar".into());
-                }
-                let (stdout, stderr, code) = elp(args);
-                assert_eq!(
-                    code, self.expected_code,
-                    "Expected exit code {}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}",
-                    self.expected_code
+            let (mut args, _path) = add_project(args, project, self.file, self.json_config);
+            if !self.buck {
+                args.push("--rebar".into());
+            }
+            let (stdout, stderr, code) = elp(args);
+            assert_eq!(
+                code, self.expected_code,
+                "Expected exit code {}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}",
+                self.expected_code
+            );
+
+            if self.expected_code == 0 {
+                assert!(stderr.is_empty(), "Expected empty stderr, got:\n{stderr}");
+            }
+
+            for pattern in expected_patterns {
+                assert!(
+                    stdout.contains(pattern),
+                    "Expected stdout to contain '{}', but got:\n{}",
+                    pattern,
+                    stdout
                 );
-
-                if self.expected_code == 0 {
-                    assert!(stderr.is_empty(), "Expected empty stderr, got:\n{stderr}");
-                }
-
-                for pattern in expected_patterns {
-                    assert!(
-                        stdout.contains(pattern),
-                        "Expected stdout to contain '{}', but got:\n{}",
-                        pattern,
-                        stdout
-                    );
-                }
             }
         }
     }

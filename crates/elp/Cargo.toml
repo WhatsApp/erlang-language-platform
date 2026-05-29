@@ -71,8 +71,7 @@ jemallocator = { workspace = true, optional = true }
 daemonize.workspace = true
 
 [features]
-buck = ["elp_project_model/buck"]
-default = ["buck", "jemalloc"]
+default = ["jemalloc"]
 jemalloc = ["dep:jemalloc-ctl", "dep:jemallocator", "elp_ide_db/jemalloc"]
 
 [lints]
