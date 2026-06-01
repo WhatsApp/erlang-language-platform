@@ -1779,6 +1779,88 @@ fn tuple_type() {
     );
 }
 
+// A macro whose body is a `,`-separated list of types (parsed as
+// `ReplacementGuardAnd`) must splice its elements into a surrounding
+// tuple type rather than collapsing to a single `any()`.
+
+#[test]
+fn tuple_type_with_multi_type_macro() {
+    check(
+        r#"
+-define(PAIR, integer(), atom()).
+-type foo() :: {first, ?PAIR, last}.
+"#,
+        expect![[r#"
+            -type foo() :: {
+                first,
+                erlang:integer(),
+                erlang:atom(),
+                last
+            }.
+        "#]],
+    );
+}
+
+#[test]
+fn tuple_type_with_only_multi_type_macro() {
+    // Macro is the entire body — its types fill the tuple directly.
+    check(
+        r#"
+-define(TRIPLE, a, b, c).
+-type foo() :: {?TRIPLE}.
+"#,
+        expect![[r#"
+            -type foo() :: {
+                a,
+                b,
+                c
+            }.
+        "#]],
+    );
+}
+
+#[test]
+fn tuple_type_with_wrapper_macro() {
+    // Outer macro is a single Expr that calls into the multi-type
+    // inner macro. Exercises the `MacroDefReplacement::Expr(MacroCallExpr)`
+    // arm of `try_expand_type_tuple_macro`.
+    check(
+        r#"
+-define(INNER, integer(), atom()).
+-define(OUTER, ?INNER).
+-type foo() :: {?OUTER}.
+"#,
+        expect![[r#"
+            -type foo() :: {
+                erlang:integer(),
+                erlang:atom()
+            }.
+        "#]],
+    );
+}
+
+#[test]
+fn tuple_type_with_macro_inside_multi_macro() {
+    // Outer macro's `,`-separated body contains another macro call
+    // whose own body is multi-type. Exercises the recursive `flat_map`
+    // arm.
+    check(
+        r#"
+-define(INNER, integer(), atom()).
+-define(OUTER, first_atom, ?INNER).
+-type foo() :: {?OUTER, last}.
+"#,
+        expect![[r#"
+            -type foo() :: {
+                first_atom,
+                erlang:integer(),
+                erlang:atom(),
+                last
+            }.
+        "#]],
+    );
+}
+
 #[test]
 fn range_type() {
     check(

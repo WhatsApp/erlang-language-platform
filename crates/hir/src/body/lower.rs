@@ -2134,6 +2134,46 @@ impl<'a> Ctx<'a> {
         .flatten()
     }
 
+    /// Try to expand a macro call that appears as an element of a tuple type
+    /// into multiple type expressions.
+    ///
+    /// Handles macros like `-define(VER5, xx:version(), xx:version(), ...).`
+    /// whose body is a comma-separated list of types parsed as
+    /// `ReplacementGuardAnd`. When used inside a tuple type like
+    /// `{atom(), ?VER5, binary()}`, the macro should splice its elements
+    /// into the tuple rather than producing a single `any()`.
+    fn try_expand_type_tuple_macro(
+        &mut self,
+        call: &ast::MacroCallExpr,
+    ) -> Option<Vec<TypeExprId>> {
+        self.resolve_macro(call, |this, _source, replacement| match replacement {
+            MacroReplacement::Ast(_, ast::MacroDefReplacement::ReplacementGuardAnd(guard_and)) => {
+                Some(
+                    guard_and
+                        .guard()
+                        .flat_map(|expr| {
+                            if let ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(ref inner_call)) =
+                                expr
+                                && let Some(types) = this.try_expand_type_tuple_macro(inner_call)
+                            {
+                                return types;
+                            }
+                            vec![this.lower_type_expr(&expr)]
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            }
+            MacroReplacement::Ast(
+                _,
+                ast::MacroDefReplacement::Expr(ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(
+                    ref inner_call,
+                ))),
+            ) => this.try_expand_type_tuple_macro(inner_call),
+            _ => None,
+        })
+        .flatten()
+    }
+
     fn lower_lc_exprs(&mut self, exprs: Option<ast::LcExprs>) -> Vec<ComprehensionExpr> {
         // If the LcExprs has more than one child, it is a zip generator
         exprs
@@ -2664,7 +2704,17 @@ impl<'a> Ctx<'a> {
             }
             ast::ExprMax::TryExpr(_try_expr) => self.alloc_type_expr(TypeExpr::Missing, Some(expr)),
             ast::ExprMax::Tuple(tup) => {
-                let args = tup.expr().map(|expr| self.lower_type_expr(&expr)).collect();
+                let args = tup
+                    .expr()
+                    .flat_map(|expr| {
+                        if let ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(ref call)) = expr
+                            && let Some(types) = self.try_expand_type_tuple_macro(call)
+                        {
+                            return types;
+                        }
+                        vec![self.lower_type_expr(&expr)]
+                    })
+                    .collect();
                 self.alloc_type_expr(TypeExpr::Tuple { args }, Some(expr))
             }
             ast::ExprMax::Var(var) => self
