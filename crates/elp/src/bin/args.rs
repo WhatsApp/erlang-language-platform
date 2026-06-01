@@ -28,6 +28,7 @@ use hir::fold::Strategy;
 use itertools::Itertools;
 use serde::Deserialize;
 use serde::Serialize;
+use strum::AsRefStr;
 
 use crate::args::Command::Help;
 
@@ -627,7 +628,8 @@ pub struct Glean {
 #[derive(Clone, Debug, Bpaf)]
 pub struct ConfigStanza {}
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, AsRefStr)]
+#[strum(serialize_all = "kebab-case")]
 pub enum Command {
     ParseAllElp(ParseAllElp),
     ParseAll(ParseAll),

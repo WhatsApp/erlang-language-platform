@@ -80,6 +80,16 @@ const DAEMON_UNSUPPORTED: &str = "ELP daemon mode is not supported on this platf
 fn main() {
     let _timer = timeit!("main");
     let args = args::args().run();
+    // @fb-only: #[cfg(buck_build)]
+    // @fb-only: let subcommand = args.command.as_ref().to_owned();
+    // @fb-only: #[cfg(buck_build)]
+    // @fb-only: let code = meta_only::run_with_usage_metadata(&subcommand, || run_cli(args));
+    #[cfg(not(buck_build))]
+    let code = run_cli(args);
+    process::exit(code);
+}
+
+fn run_cli(args: Args) -> i32 {
     let use_color = args.should_use_color();
     let mut cli: Box<dyn cli::Cli> = if use_color {
         Box::new(cli::Real::default())
@@ -87,8 +97,7 @@ fn main() {
         Box::new(cli::NoColor::default())
     };
     let res = try_main(&mut *cli, args);
-    let code = handle_res(res, cli.err());
-    process::exit(code);
+    handle_res(res, cli.err())
 }
 
 fn handle_res(result: Result<()>, stderr: &mut dyn Write) -> i32 {
