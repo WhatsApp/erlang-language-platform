@@ -2458,6 +2458,122 @@ run() -> ?PAIR(1), ?PAIR(2).
     );
 }
 
+// Multi-expression macros must expand the same way wherever expressions
+// are sequenced. The original support was in clause bodies; this commit
+// extends it to `begin ... end` blocks, `try Body of ...`, and try
+// `after Body end`.
+
+#[test]
+fn expand_macro_multi_expr_in_begin_end() {
+    check(
+        r#"
+-define(MULTI(X), a(X), b(X)).
+
+run() -> begin ?MULTI(1) end.
+"#,
+        expect![[r#"
+            run() ->
+                begin
+                    a(
+                        1
+                    ),
+                    b(
+                        1
+                    )
+                end.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_multi_expr_in_try_body() {
+    check(
+        r#"
+-define(MULTI(X), a(X), b(X)).
+
+run() -> try ?MULTI(1) of _ -> ok catch _:_ -> error end.
+"#,
+        expect![[r#"
+            run() ->
+                try
+                    a(
+                        1
+                    ),
+                    b(
+                        1
+                    )
+                of
+                    _ ->
+                        ok
+                catch
+                    _:_ ->
+                        error
+                end.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_multi_expr_in_try_after() {
+    check(
+        r#"
+-define(MULTI(X), a(X), b(X)).
+
+run() ->
+    try
+        x
+    of
+        _ -> ok
+    after
+        ?MULTI(1)
+    end.
+"#,
+        expect![[r#"
+            run() ->
+                try
+                    x
+                of
+                    _ ->
+                        ok
+                after
+                    a(
+                        1
+                    ),
+                    b(
+                        1
+                    )
+                end.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_multi_expr_in_block_with_surrounding() {
+    // Multi-expr macro interleaved with literal expressions inside a
+    // block — proves the new helper still threads non-macro expressions
+    // through correctly.
+    check(
+        r#"
+-define(MULTI(X), a(X), b(X)).
+
+run() -> begin start, ?MULTI(1), finish end.
+"#,
+        expect![[r#"
+            run() ->
+                begin
+                    start,
+                    a(
+                        1
+                    ),
+                    b(
+                        1
+                    ),
+                    finish
+                end.
+        "#]],
+    );
+}
+
 #[test]
 fn expand_macro_var_in_expr() {
     check(

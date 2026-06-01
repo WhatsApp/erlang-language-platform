@@ -1585,7 +1585,7 @@ impl<'a> Ctx<'a> {
                 self.alloc_expr(Expr::Comprehension { builder, exprs }, Some(expr))
             }
             ast::ExprMax::BlockExpr(block) => {
-                let exprs = block.exprs().map(|expr| self.lower_expr(&expr)).collect();
+                let exprs = self.lower_body_exprs(block.exprs());
                 self.alloc_expr(Expr::Block { exprs }, Some(expr))
             }
             ast::ExprMax::CaseExpr(case) => {
@@ -1808,10 +1808,7 @@ impl<'a> Ctx<'a> {
                 self.alloc_expr(value, Some(expr))
             }
             ast::ExprMax::TryExpr(try_expr) => {
-                let exprs = try_expr
-                    .exprs()
-                    .map(|expr| self.lower_expr(&expr))
-                    .collect();
+                let exprs = self.lower_body_exprs(try_expr.exprs());
                 let of_clauses = try_expr
                     .clauses()
                     .flat_map(|clause| self.lower_cr_clause(clause))
@@ -1842,8 +1839,7 @@ impl<'a> Ctx<'a> {
                 let after = try_expr
                     .after()
                     .iter()
-                    .flat_map(|after| after.exprs())
-                    .map(|expr| self.lower_expr(&expr))
+                    .flat_map(|after| self.lower_body_exprs(after.exprs()))
                     .collect();
                 self.alloc_expr(
                     Expr::Try {
@@ -2105,8 +2101,18 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_clause_body(&mut self, body: Option<ast::ClauseBody>) -> Vec<ExprId> {
-        body.iter()
-            .flat_map(|body| body.exprs())
+        self.lower_body_exprs(body.iter().flat_map(|body| body.exprs()))
+    }
+
+    /// Lower a sequence of body expressions, expanding macros that produce
+    /// multiple comma-separated expressions (`ReplacementGuardAnd`).
+    ///
+    /// This must be used in any context where expressions are sequenced
+    /// (clause bodies, try bodies, try-after blocks, begin...end blocks)
+    /// so that macros like `-define(M(X), a(X), b(X)).` correctly expand
+    /// to multiple body expressions rather than producing `Expr::Missing`.
+    fn lower_body_exprs(&mut self, exprs: impl Iterator<Item = ast::Expr>) -> Vec<ExprId> {
+        exprs
             .flat_map(|expr| {
                 if let ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(ref call)) = expr
                     && let Some(exprs) = self.try_expand_body_macro(call)
