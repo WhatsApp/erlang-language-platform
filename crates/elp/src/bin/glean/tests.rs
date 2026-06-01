@@ -21,7 +21,8 @@ use elp_project_model::test_fixture::DiagnosticsEnabled;
 use expect_test::expect_file;
 use fxhash::FxHashSet;
 
-use super::types::Fact;
+use super::types::glean;
+use super::types::parser;
 use super::*;
 use crate::test_utils::resource_file;
 
@@ -37,17 +38,17 @@ fn serialization_test() {
     let func_name = "test_function";
     let arity = 0;
 
-    let file_facts = vec![FileFact::new(
+    let file_facts = vec![glean::FileFact::new(
         file_id,
         "/test/app/src/test_module.erl".into(),
     )];
 
-    let file_line_facts = vec![FileLinesFact::new(file_id, vec![71, 42], true)];
+    let file_line_facts = vec![glean::FileLinesFact::new(file_id, vec![71, 42], true)];
 
-    let decl = FileDeclaration {
+    let decl = parser::FileDeclaration {
         file_id: file_id.into(),
-        declarations: vec![Declaration::FunctionDeclaration(
-            FuncDecl {
+        declarations: vec![parser::Declaration::FunctionDeclaration(
+            parser::FuncDecl {
                 name: func_name.to_string(),
                 arity,
                 span: location.clone(),
@@ -60,12 +61,12 @@ fn serialization_test() {
         )],
     };
 
-    let xref = XRefFile {
+    let xref = parser::XRefFile {
         file_id: file_id.into(),
-        xrefs: vec![XRef {
+        xrefs: vec![parser::XRef {
             source: location,
-            target: XRefTarget::Function(
-                FunctionTarget {
+            target: parser::XRefTarget::Function(
+                parser::FunctionTarget {
                     file_id: file_id.into(),
                     name: func_name.to_string(),
                     arity,
@@ -76,13 +77,13 @@ fn serialization_test() {
         }],
     };
 
-    let module = ModuleFact {
+    let module = parser::ModuleFact {
         file_id: file_id.into(),
         name: module_name.to_string(),
         oncall: Some("test_team".to_string()),
         exports: Some(vec![format!("{func_name}/{arity}")]),
         behaviours: Some(vec!["test_behaviour".to_string()]),
-        module_doc: Some(ModuleDocComment {
+        module_doc: Some(parser::ModuleDocComment {
             text: "Test module documentation".to_string(),
             span: Location {
                 start: 0,
@@ -139,7 +140,7 @@ fn serialization_test() {
 }
 
 #[test]
-fn schema2_serialization_test() {
+fn glean_serialization_test() {
     let spec = r#"
     //- /glean/app_glean/src/glean_module1.erl
     -module(glean_module1).
@@ -148,19 +149,31 @@ fn schema2_serialization_test() {
     "#;
     let (facts, _, _, _, module_index) = facts_with_annotations(spec);
     let app_index = FxHashMap::default();
-    let (schema2_facts, _) = facts.into_schema2_facts(&module_index, &app_index);
+    let (glean_facts, _) = facts.into_glean_facts(&module_index, &app_index);
 
-    let predicates: Vec<&str> = schema2_facts
+    let predicates: Vec<&str> = glean_facts
         .iter()
         .filter_map(|f| match f {
-            Fact::File { facts } if !facts.is_empty() => Some("src.File"),
-            Fact::FileLine { facts } if !facts.is_empty() => Some("src.FileLines"),
-            Fact::FuncDecl2 { facts } if !facts.is_empty() => Some("FunctionDeclaration.2"),
-            Fact::FuncDef2 { facts } if !facts.is_empty() => Some("FunctionDefinition.2"),
-            Fact::DeclLocation2 { facts } if !facts.is_empty() => Some("DeclarationLocation.2"),
-            Fact::FileDecls2 { facts } if !facts.is_empty() => Some("FileDeclarations.2"),
-            Fact::Module2 { facts } if !facts.is_empty() => Some("ModuleDeclaration.2"),
-            Fact::ModuleDef2 { facts } if !facts.is_empty() => Some("ModuleDefinition.2"),
+            glean::Fact::File { facts } if !facts.is_empty() => Some("src.File"),
+            glean::Fact::FileLine { facts } if !facts.is_empty() => Some("src.FileLines"),
+            glean::Fact::FunctionDeclaration { facts } if !facts.is_empty() => {
+                Some("FunctionDeclaration.2")
+            }
+            glean::Fact::FunctionDefinition { facts } if !facts.is_empty() => {
+                Some("FunctionDefinition.2")
+            }
+            glean::Fact::DeclarationLocation { facts } if !facts.is_empty() => {
+                Some("DeclarationLocation.2")
+            }
+            glean::Fact::FileDeclarations { facts } if !facts.is_empty() => {
+                Some("FileDeclarations.2")
+            }
+            glean::Fact::ModuleDeclaration { facts } if !facts.is_empty() => {
+                Some("ModuleDeclaration.2")
+            }
+            glean::Fact::ModuleDefinition { facts } if !facts.is_empty() => {
+                Some("ModuleDefinition.2")
+            }
             _ => None,
         })
         .collect();
@@ -177,31 +190,28 @@ fn schema2_serialization_test() {
     ] {
         assert!(
             predicates.contains(&expected),
-            "Expected {expected} in schema2 output, got: {predicates:?}",
+            "Expected {expected} in glean output, got: {predicates:?}",
         );
     }
 }
 
 #[test]
 fn app_info_serialization_test() {
-    use types::Schema2AppInfo;
-    use types::Schema2AppType;
-
     let app_infos = vec![
-        Schema2AppInfo {
+        glean::AppInfo {
             name: "my_app".to_string(),
-            type_: Schema2AppType::FirstParty,
+            type_: glean::AppType::FirstParty,
         },
-        Schema2AppInfo {
+        glean::AppInfo {
             name: "stdlib".to_string(),
-            type_: Schema2AppType::Otp,
+            type_: glean::AppType::Otp,
         },
-        Schema2AppInfo {
+        glean::AppInfo {
             name: "lager".to_string(),
-            type_: Schema2AppType::ThirdParty,
+            type_: glean::AppType::ThirdParty,
         },
     ];
-    let facts: Vec<Fact> = vec![Fact::AppInfo2 {
+    let facts: Vec<glean::Fact> = vec![glean::Fact::AppInfo {
         facts: app_infos.into_iter().map(|ai| Key { key: ai }).collect(),
     }];
     let json = serde_json::to_value(&facts).unwrap();
@@ -235,12 +245,12 @@ fn declaration_target_test() {
     "#;
     let (facts, _, _, _, module_index) = facts_with_annotations(spec);
     let app_index = FxHashMap::default();
-    let (schema2_facts, _) = facts.into_schema2_facts(&module_index, &app_index);
+    let (glean_facts, _) = facts.into_glean_facts(&module_index, &app_index);
 
-    let target_json = schema2_facts
+    let target_json = glean_facts
         .iter()
         .filter_map(|f| match f {
-            Fact::DeclTarget2 { facts } => Some(facts),
+            glean::Fact::DeclarationTarget { facts } => Some(facts),
             _ => None,
         })
         .flatten()
@@ -967,7 +977,7 @@ fn type_definition_text_and_opaque_test() {
         .iter()
         .flat_map(|fd| &fd.declarations)
         .filter_map(|d| match d {
-            Declaration::TypeDeclaration(t) => Some(&t.key),
+            parser::Declaration::TypeDeclaration(t) => Some(&t.key),
             _ => None,
         })
         .collect();
@@ -1091,7 +1101,7 @@ fn var_xref_check(spec: &str) {
             .remove(&file_id)
             .expect("Annotations should be present");
         for xref in xref_fact.xrefs {
-            if let XRefTarget::Var(v) = &xref.target {
+            if let parser::XRefTarget::Var(v) = &xref.target {
                 let span = match v.key.decl_span_start {
                     Some(s) => s.to_string(),
                     None => continue,
@@ -1135,7 +1145,7 @@ fn decl_check(spec: &str) {
                 .expect("Annotations should be present");
             for decl in file_decl.declarations {
                 let label = decl.to_string();
-                if matches!(decl, Declaration::HeaderDeclaration(_)) {
+                if matches!(decl, parser::Declaration::HeaderDeclaration(_)) {
                     let idx = annotations
                         .iter()
                         .position(|a| a.1 == label)
@@ -1166,24 +1176,24 @@ fn decl_check(spec: &str) {
     );
 }
 
-impl Declaration {
+impl parser::Declaration {
     fn span(&self) -> Location {
         match self {
-            Declaration::FunctionDeclaration(decl) => decl.key.span.clone(),
-            Declaration::MacroDeclaration(decl) => decl.key.span.clone(),
-            Declaration::TypeDeclaration(decl) => decl.key.span.clone(),
-            Declaration::RecordDeclaration(decl) => decl.key.span.clone(),
-            Declaration::VarDeclaration(decl) => decl.key.span.clone(),
-            Declaration::HeaderDeclaration(decl) => decl.key.span.clone(),
-            Declaration::DocDeclaration(decl) => decl.key.target.span().clone(),
+            parser::Declaration::FunctionDeclaration(decl) => decl.key.span.clone(),
+            parser::Declaration::MacroDeclaration(decl) => decl.key.span.clone(),
+            parser::Declaration::TypeDeclaration(decl) => decl.key.span.clone(),
+            parser::Declaration::RecordDeclaration(decl) => decl.key.span.clone(),
+            parser::Declaration::VarDeclaration(decl) => decl.key.span.clone(),
+            parser::Declaration::HeaderDeclaration(decl) => decl.key.span.clone(),
+            parser::Declaration::DocDeclaration(decl) => decl.key.target.span().clone(),
         }
     }
 }
 
-impl fmt::Display for Declaration {
+impl fmt::Display for parser::Declaration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Declaration::FunctionDeclaration(decl) => {
+            parser::Declaration::FunctionDeclaration(decl) => {
                 let deprecated = match decl.key.deprecated {
                     true => "deprecated",
                     false => "not_deprecated",
@@ -1200,14 +1210,14 @@ impl fmt::Display for Declaration {
                     .as_str(),
                 )
             }
-            Declaration::MacroDeclaration(decl) => {
+            parser::Declaration::MacroDeclaration(decl) => {
                 let arity = match &decl.key.arity {
                     Some(arity) => arity.to_string(),
                     None => "no_arity".to_string(),
                 };
                 f.write_str(format!("macro/{}/{}", decl.key.name, arity).as_str())
             }
-            Declaration::TypeDeclaration(decl) => {
+            parser::Declaration::TypeDeclaration(decl) => {
                 let exported = match decl.key.exported {
                     true => "exported",
                     false => "not_exported",
@@ -1216,10 +1226,10 @@ impl fmt::Display for Declaration {
                     format!("type/{}/{}/{}", decl.key.name, decl.key.arity, exported).as_str(),
                 )
             }
-            Declaration::RecordDeclaration(decl) => {
+            parser::Declaration::RecordDeclaration(decl) => {
                 f.write_str(format!("rec/{}", decl.key.name).as_str())
             }
-            Declaration::VarDeclaration(decl) => {
+            parser::Declaration::VarDeclaration(decl) => {
                 let ttype = decl
                     .key
                     .doc
@@ -1230,10 +1240,10 @@ impl fmt::Display for Declaration {
                     .to_string();
                 f.write_str(format!("var/{ttype}").as_str())
             }
-            Declaration::HeaderDeclaration(decl) => {
+            parser::Declaration::HeaderDeclaration(decl) => {
                 f.write_str(format!("header/{}", decl.key.name).as_str())
             }
-            Declaration::DocDeclaration(decl) => f.write_str(
+            parser::Declaration::DocDeclaration(decl) => f.write_str(
                 format!(
                     "doc/{}",
                     decl.key
@@ -1247,13 +1257,13 @@ impl fmt::Display for Declaration {
     }
 }
 
-impl fmt::Display for XRefTarget {
+impl fmt::Display for parser::XRefTarget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            XRefTarget::Function(xref) => {
+            parser::XRefTarget::Function(xref) => {
                 f.write_str(format!("func/{}/{}", xref.key.name, xref.key.arity).as_str())
             }
-            XRefTarget::Macro(xref) => {
+            parser::XRefTarget::Macro(xref) => {
                 let arity = match &xref.key.arity {
                     Some(arity) => arity.to_string(),
                     None => "no_arity".to_string(),
@@ -1286,8 +1296,8 @@ impl fmt::Display for XRefTarget {
                     format!("macro/{}/{}/{}/{}", xref.key.name, arity, url_tag, exp).as_str(),
                 )
             }
-            XRefTarget::Header(_) => f.write_str("header"),
-            XRefTarget::Record(xref) => {
+            parser::XRefTarget::Header(_) => f.write_str("header"),
+            parser::XRefTarget::Record(xref) => {
                 let url_tag = if xref.key.tagged_urls.is_empty() {
                     "no_urls".to_string()
                 } else {
@@ -1302,14 +1312,14 @@ impl fmt::Display for XRefTarget {
                 };
                 f.write_str(format!("rec/{}/{}", xref.key.name, url_tag).as_str())
             }
-            XRefTarget::Type(xref) => {
+            parser::XRefTarget::Type(xref) => {
                 f.write_str(format!("type/{}/{}", xref.key.name, xref.key.arity).as_str())
             }
-            XRefTarget::Var(_) => Ok(()),
-            XRefTarget::RecordField(rf) => f.write_str(
+            parser::XRefTarget::Var(_) => Ok(()),
+            parser::XRefTarget::RecordField(rf) => f.write_str(
                 format!("rec_field/{}/{}", rf.key.record_name, rf.key.field_name).as_str(),
             ),
-            XRefTarget::Callback(cb) => {
+            parser::XRefTarget::Callback(cb) => {
                 f.write_str(format!("callback/{}/{}", cb.key.name, cb.key.arity).as_str())
             }
         }

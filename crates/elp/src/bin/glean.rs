@@ -91,32 +91,11 @@ pub(crate) mod types;
 use output::FactCounts;
 use output::IndexedFacts;
 use output::IndexerMetrics;
-use types::Declaration;
-use types::DocDecl;
-use types::FileDeclaration;
-use types::FileFact;
-use types::FileLinesFact;
-use types::FuncDecl;
-use types::FunctionTarget;
 use types::GleanFileId;
-use types::HeaderDecl;
-use types::HeaderTarget;
 use types::Key;
 use types::Location;
-use types::MacroDecl;
-use types::MacroTarget;
-use types::ModuleDocComment;
-use types::ModuleFact;
-use types::RecordDecl;
-use types::RecordTarget;
-use types::TaggedUrl;
-use types::TypeDecl;
-use types::TypeTarget;
-use types::VarDecl;
-use types::VarTarget;
-use types::XRef;
-use types::XRefFile;
-use types::XRefTarget;
+use types::glean;
+use types::parser;
 
 #[derive(Clone, Debug, Default)]
 struct IndexConfig {
@@ -128,7 +107,7 @@ struct IndexResult {
     facts: FxHashMap<String, IndexedFacts>,
     module_index: FxHashMap<GleanFileId, String>,
     app_index: FxHashMap<GleanFileId, String>,
-    app_infos: Vec<types::Schema2AppInfo>,
+    app_infos: Vec<glean::AppInfo>,
     errored_paths: Vec<String>,
 }
 
@@ -216,9 +195,7 @@ fn write_results(
     args: &Glean,
 ) -> Result<(u64, FactCounts)> {
     if args.schema2 {
-        eprintln!(
-            "elp-glean: --schema2 is deprecated and now a no-op (v2 is the only supported schema)"
-        );
+        eprintln!("elp-glean: --schema2 is deprecated and now a no-op");
     }
     let IndexResult {
         facts,
@@ -231,9 +208,9 @@ fn write_results(
     let mut total_counts = FactCounts::default();
     let mut app_infos_emitted = false;
     for (name, fact) in facts {
-        let (mut fact, counts) = fact.into_schema2_facts(&module_index, &app_index);
+        let (mut fact, counts) = fact.into_glean_facts(&module_index, &app_index);
         if !app_infos_emitted && !app_infos.is_empty() {
-            fact.push(types::Fact::AppInfo2 {
+            fact.push(glean::Fact::AppInfo {
                 facts: app_infos
                     .iter()
                     .map(|ai| types::Key { key: ai.clone() })
@@ -324,11 +301,11 @@ impl GleanIndexer {
                         let app_name = app_data.name.as_str().to_string();
                         if seen_apps.insert(app_name.clone()) {
                             let type_ = match app_data.app_type {
-                                AppType::App => types::Schema2AppType::FirstParty,
-                                AppType::Otp => types::Schema2AppType::Otp,
-                                AppType::Dep => types::Schema2AppType::ThirdParty,
+                                AppType::App => glean::AppType::FirstParty,
+                                AppType::Otp => glean::AppType::Otp,
+                                AppType::Dep => glean::AppType::ThirdParty,
                             };
-                            infos.push(types::Schema2AppInfo {
+                            infos.push(glean::AppInfo {
                                 name: app_name.clone(),
                                 type_,
                             });
@@ -479,11 +456,11 @@ impl GleanIndexer {
         module_index: &FxHashMap<GleanFileId, String>,
         source_root: Option<&str>,
     ) -> Option<(
-        FileFact,
-        FileLinesFact,
-        FileDeclaration,
-        XRefFile,
-        Option<ModuleFact>,
+        glean::FileFact,
+        glean::FileLinesFact,
+        parser::FileDeclaration,
+        parser::XRefFile,
+        Option<parser::ModuleFact>,
     )> {
         let file_fact = Self::file_fact(db, file_id, path, project_id, source_root)?;
         let line_fact = Self::line_fact(db, file_id);
@@ -510,7 +487,7 @@ impl GleanIndexer {
         file_id: FileId,
         module_name: &ModuleName,
         project_id: ProjectId,
-    ) -> ModuleFact {
+    ) -> parser::ModuleFact {
         let module = Module {
             file: File { file_id },
         };
@@ -537,33 +514,32 @@ impl GleanIndexer {
             .map(|(_, behaviour)| behaviour.name.to_string())
             .collect();
 
-        let behaviour_callback_stubs: Vec<types::BehaviourCallbackStub> =
-            behaviours
-                .iter()
-                .flat_map(|behaviour_name| {
-                    let name = Name::from_erlang_service(behaviour_name);
-                    sema.resolve_behaviour(file_id, &name)
-                        .into_iter()
-                        .filter_map(move |(behaviour_mod, callbacks)| {
-                            let app_data =
-                                db.app_data(db.file_source_root(behaviour_mod.file.file_id))?;
-                            if app_data.app_type != AppType::Otp {
-                                return None;
+        let behaviour_callback_stubs: Vec<types::parser::BehaviourCallbackStub> = behaviours
+            .iter()
+            .flat_map(|behaviour_name| {
+                let name = Name::from_erlang_service(behaviour_name);
+                sema.resolve_behaviour(file_id, &name)
+                    .into_iter()
+                    .filter_map(move |(behaviour_mod, callbacks)| {
+                        let app_data =
+                            db.app_data(db.file_source_root(behaviour_mod.file.file_id))?;
+                        if app_data.app_type != AppType::Otp {
+                            return None;
+                        }
+                        let bn = behaviour_name.clone();
+                        let ba = app_data.name.as_str().to_string();
+                        Some(callbacks.into_keys().map(move |na| {
+                            types::parser::BehaviourCallbackStub {
+                                callback_name: na.name().to_string(),
+                                callback_arity: na.arity(),
+                                behaviour_module: bn.clone(),
+                                behaviour_app: ba.clone(),
                             }
-                            let bn = behaviour_name.clone();
-                            let ba = app_data.name.as_str().to_string();
-                            Some(callbacks.into_keys().map(move |na| {
-                                types::BehaviourCallbackStub {
-                                    callback_name: na.name().to_string(),
-                                    callback_arity: na.arity(),
-                                    behaviour_module: bn.clone(),
-                                    behaviour_app: ba.clone(),
-                                }
-                            }))
-                        })
-                        .flatten()
-                })
-                .collect();
+                        }))
+                    })
+                    .flatten()
+            })
+            .collect();
 
         let module_attribute = sema.module_attribute(file_id);
         let module_doc = module_attribute.as_ref().and_then(|ma| {
@@ -586,7 +562,7 @@ impl GleanIndexer {
                 })
                 .unwrap_or_else(|| ma.syntax().text_range().into());
 
-            Some(ModuleDocComment { text, span })
+            Some(parser::ModuleDocComment { text, span })
         });
 
         // @fb-only: let exdoc_link = elp_ide::meta_only::exdoc_links::module_exdoc_link(&module, &sema);
@@ -595,25 +571,25 @@ impl GleanIndexer {
         let def_map = db.def_map(file_id);
         let def_map_local = db.def_map_local(file_id);
 
-        let record_def_texts: Vec<types::RecordDefText> = def_map_local
+        let record_def_texts: Vec<types::parser::RecordDefText> = def_map_local
             .get_records()
             .iter()
             .map(|(name, rec_def)| {
                 let text = rec_def.source(db).syntax().text().to_string();
-                types::RecordDefText {
+                types::parser::RecordDefText {
                     name: name.to_string(),
                     definition_text: text,
                 }
             })
             .collect();
 
-        let record_fields: Vec<types::RecordFieldInfo> = def_map_local
+        let record_fields: Vec<types::parser::RecordFieldInfo> = def_map_local
             .get_records()
             .iter()
             .flat_map(|(name, rec_def)| {
                 rec_def.fields(db).map(move |(field_name, field_def)| {
                     let span = field_def.source(db).syntax().text_range().into();
-                    types::RecordFieldInfo {
+                    types::parser::RecordFieldInfo {
                         record_name: name.to_string(),
                         field_name: field_name.to_string(),
                         span,
@@ -638,12 +614,12 @@ impl GleanIndexer {
             })
             .collect();
 
-        let callbacks: Vec<types::CallbackInfo> = def_map
+        let callbacks: Vec<types::parser::CallbackInfo> = def_map
             .get_callbacks()
             .iter()
             .map(|(na, cb_def)| {
                 let span = cb_def.source(db).syntax().text_range().into();
-                types::CallbackInfo {
+                types::parser::CallbackInfo {
                     name: na.name().to_string(),
                     arity: na.arity(),
                     optional: cb_def.optional,
@@ -706,7 +682,7 @@ impl GleanIndexer {
             .as_ref()
             .map(|ma| ma.syntax().text_range().into());
 
-        ModuleFact {
+        parser::ModuleFact {
             file_id: file_id.into(),
             name,
             oncall,
@@ -730,12 +706,12 @@ impl GleanIndexer {
         db: &RootDatabase,
         project_id: ProjectId,
         file_id: FileId,
-        xrefs: &mut XRefFile,
-        file_decl: &mut FileDeclaration,
+        xrefs: &mut parser::XRefFile,
+        file_decl: &mut parser::FileDeclaration,
     ) {
         let mut vars = FxHashMap::default();
         for xref in &mut xrefs.xrefs {
-            if let XRefTarget::Var(x) = &mut xref.target {
+            if let parser::XRefTarget::Var(x) = &mut xref.target {
                 vars.insert(&xref.source, &x.key.name);
             }
         }
@@ -749,9 +725,9 @@ impl GleanIndexer {
             }
             let doc = var.doc.clone();
             let span = var.span.clone();
-            let decl = Declaration::VarDeclaration(var.into());
-            let doc_decl = Declaration::DocDeclaration(
-                DocDecl {
+            let decl = parser::Declaration::VarDeclaration(var.into());
+            let doc_decl = parser::Declaration::DocDeclaration(
+                parser::DocDecl {
                     target: Box::new(decl.clone()),
                     span,
                     text: doc,
@@ -769,18 +745,18 @@ impl GleanIndexer {
         path: &VfsPath,
         project_id: ProjectId,
         source_root: Option<&str>,
-    ) -> Option<FileFact> {
+    ) -> Option<glean::FileFact> {
         let project_data = db.project_data(project_id);
         let root = project_data.root_dir.as_path();
         let file_path = path.as_path()?;
         let file_path = file_path.strip_prefix(root)?;
-        Some(FileFact::new(
+        Some(glean::FileFact::new(
             file_id,
             apply_source_root(file_path.as_str(), source_root),
         ))
     }
 
-    fn line_fact(db: &RootDatabase, file_id: FileId) -> FileLinesFact {
+    fn line_fact(db: &RootDatabase, file_id: FileId) -> glean::FileLinesFact {
         let line_index = db.file_line_index(file_id);
         let mut line = 1;
         let mut prev_offset = 0;
@@ -802,10 +778,14 @@ impl GleanIndexer {
             };
             lengths.push(len);
         }
-        FileLinesFact::new(file_id, lengths, ends_with_new_line)
+        glean::FileLinesFact::new(file_id, lengths, ends_with_new_line)
     }
 
-    fn declarations(db: &RootDatabase, file_id: FileId, path: &VfsPath) -> Option<FileDeclaration> {
+    fn declarations(
+        db: &RootDatabase,
+        file_id: FileId,
+        path: &VfsPath,
+    ) -> Option<parser::FileDeclaration> {
         let mut declarations = vec![];
         let def_map = db.def_map_local(file_id);
         // file docs are too slow. Going with specs for now
@@ -825,8 +805,8 @@ impl GleanIndexer {
                         DeprecatedDesc::Str(s) | DeprecatedDesc::Atom(s) => s.to_string(),
                     }
                 });
-                let decl = Declaration::FunctionDeclaration(
-                    FuncDecl {
+                let decl = parser::Declaration::FunctionDeclaration(
+                    parser::FuncDecl {
                         name: fun.name().to_string(),
                         arity: fun.arity(),
                         span,
@@ -840,8 +820,8 @@ impl GleanIndexer {
                 if let (Some(spec_def), Some(spec)) = (&def.spec, specs.get(fun)) {
                     let doc_range = spec_def.source(db).syntax().text_range();
                     let doc = spec.markdown_text().to_string();
-                    declarations.push(Declaration::DocDeclaration(
-                        DocDecl {
+                    declarations.push(parser::Declaration::DocDeclaration(
+                        parser::DocDecl {
                             target: Box::new(decl.clone()),
                             span: doc_range.into(),
                             text: doc,
@@ -854,8 +834,8 @@ impl GleanIndexer {
                     let attr = form_list[doc_id].form_id.get_ast(db, file_id);
                     let doc_range = attr.syntax().text_range();
                     let text = attr.syntax().text().to_string();
-                    declarations.push(Declaration::DocDeclaration(
-                        DocDecl {
+                    declarations.push(parser::Declaration::DocDeclaration(
+                        parser::DocDecl {
                             target: Box::new(decl.clone()),
                             span: doc_range.into(),
                             text,
@@ -867,8 +847,8 @@ impl GleanIndexer {
                     && let Some(markdown) = doc_tag.to_markdown()
                 {
                     let span = doc_tag.range.into();
-                    declarations.push(Declaration::DocDeclaration(
-                        DocDecl {
+                    declarations.push(parser::Declaration::DocDeclaration(
+                        parser::DocDecl {
                             target: Box::new(decl.clone()),
                             span,
                             text: markdown,
@@ -885,8 +865,8 @@ impl GleanIndexer {
             let range = source.syntax().text_range();
             let span: Location = range.into();
             let definition_text = Some(source.syntax().text().to_string());
-            let decl = Declaration::MacroDeclaration(
-                MacroDecl {
+            let decl = parser::Declaration::MacroDeclaration(
+                parser::MacroDecl {
                     name: macros.name().to_string(),
                     arity: macros.arity(),
                     span,
@@ -905,8 +885,8 @@ impl GleanIndexer {
             let text = format!("```erlang\n{definition_text}\n```");
             let span: Location = range.into();
 
-            let decl = Declaration::TypeDeclaration(
-                TypeDecl {
+            let decl = parser::Declaration::TypeDeclaration(
+                parser::TypeDecl {
                     name: ty.name().to_string(),
                     arity: ty.arity(),
                     span: span.clone(),
@@ -917,8 +897,8 @@ impl GleanIndexer {
                 .into(),
             );
 
-            declarations.push(Declaration::DocDeclaration(
-                DocDecl {
+            declarations.push(parser::Declaration::DocDeclaration(
+                parser::DocDecl {
                     target: Box::new(decl.clone()),
                     span,
                     text,
@@ -934,16 +914,16 @@ impl GleanIndexer {
             let text = format!("```erlang\n{text}\n```");
             let span: Location = range.into();
 
-            let decl = Declaration::RecordDeclaration(
-                RecordDecl {
+            let decl = parser::Declaration::RecordDeclaration(
+                parser::RecordDecl {
                     name: rec.to_string(),
                     span: span.clone(),
                 }
                 .into(),
             );
 
-            declarations.push(Declaration::DocDeclaration(
-                DocDecl {
+            declarations.push(parser::Declaration::DocDeclaration(
+                parser::DocDecl {
                     target: Box::new(decl.clone()),
                     span,
                     text,
@@ -955,8 +935,8 @@ impl GleanIndexer {
 
         if let Some((name, Some("hrl"))) = path.name_and_extension() {
             let file_length = db.file_text(file_id).len() as u32;
-            declarations.push(Declaration::HeaderDeclaration(
-                HeaderDecl {
+            declarations.push(parser::Declaration::HeaderDeclaration(
+                parser::HeaderDecl {
                     name: format!("{name}.hrl"),
                     span: Location {
                         start: 0,
@@ -967,7 +947,7 @@ impl GleanIndexer {
             ));
         }
 
-        Some(FileDeclaration {
+        Some(parser::FileDeclaration {
             file_id: file_id.into(),
             declarations,
         })
@@ -977,7 +957,7 @@ impl GleanIndexer {
         sema: &Semantic,
         source_file: &InFile<ast::SourceFile>,
         file_id: FileId,
-        acc: &mut Vec<XRef>,
+        acc: &mut Vec<parser::XRef>,
         ctx: &AnyCallBackCtx,
     ) -> Option<()> {
         let target = match &ctx.item {
@@ -988,10 +968,10 @@ impl GleanIndexer {
                 let (_, range) = ctx.find_range(sema)?;
                 if range.file_id == file_id {
                     let decl_span_start = Self::resolve_var_decl_span(sema, var, ctx);
-                    Some(XRef {
+                    Some(parser::XRef {
                         source: range.range.into(),
-                        target: XRefTarget::Var(
-                            VarTarget {
+                        target: parser::XRefTarget::Var(
+                            parser::VarTarget {
                                 file_id: file_id.into(),
                                 name,
                                 decl_span_start,
@@ -1114,7 +1094,7 @@ impl GleanIndexer {
         project_id: ProjectId,
         file_id: FileId,
         vars: FxHashMap<&Location, &String>,
-    ) -> Vec<VarDecl> {
+    ) -> Vec<parser::VarDecl> {
         let mut result = vec![];
         if !db.file_kind(file_id).is_module() || !db.is_eqwalizer_enabled(file_id) {
             return result;
@@ -1133,7 +1113,7 @@ impl GleanIndexer {
                     if let Some(name) = vars.get(&range) {
                         let type_str = format!("{name} :: {ty}");
                         let text = format!("```erlang\n{type_str}\n```");
-                        let decl = VarDecl {
+                        let decl = parser::VarDecl {
                             name: name.to_string(),
                             doc: text,
                             type_text: Some(type_str),
@@ -1151,7 +1131,7 @@ impl GleanIndexer {
         db: &RootDatabase,
         file_id: FileId,
         module_index: &FxHashMap<GleanFileId, String>,
-    ) -> XRefFile {
+    ) -> parser::XRefFile {
         let sema = Semantic::new(db);
         let source_file = sema.parse(file_id);
         let form_list = sema.form_list(file_id);
@@ -1181,13 +1161,13 @@ impl GleanIndexer {
                         ) && let Some(path) = path_for_file(db, file)
                             && let Some((name, Some("hrl"))) = path.name_and_extension()
                         {
-                            let target = HeaderTarget {
+                            let target = parser::HeaderTarget {
                                 file_id: file.into(),
                                 name: format!("{name}.hrl"),
                             };
-                            let xref = XRef {
+                            let xref = parser::XRef {
                                 source: range,
-                                target: XRefTarget::Header(target.into()),
+                                target: parser::XRefTarget::Header(target.into()),
                                 caller: None,
                             };
                             acc.push(xref);
@@ -1203,14 +1183,14 @@ impl GleanIndexer {
                             && let Some(def) = sema.def_map(file_id).get_function(&na)
                         {
                             let range = fun.syntax().text_range().into();
-                            let target = FunctionTarget {
+                            let target = parser::FunctionTarget {
                                 file_id: def.file.file_id.into(),
                                 name: na.name().to_string(),
                                 arity: na.arity(),
                             };
-                            let xref = XRef {
+                            let xref = parser::XRef {
                                 source: range,
-                                target: XRefTarget::Function(target.into()),
+                                target: parser::XRefTarget::Function(target.into()),
                                 caller: None,
                             };
                             acc.push(xref);
@@ -1250,19 +1230,17 @@ impl GleanIndexer {
                         for behaviour_name in def_map.get_behaviours() {
                             if let Some((behaviour_module, callbacks)) =
                                 sema.resolve_behaviour(file_id, behaviour_name)
-                                && let Some(cb_def) = callbacks.get(fun_na)
+                                && callbacks.contains_key(fun_na)
                             {
-                                let cb_span = cb_def.source(db).syntax().text_range().into();
                                 let fun_ast = form_list[function_id].form_id.get_ast(db, file_id);
                                 let fun_range: Location = fun_ast.syntax().text_range().into();
-                                acc.push(XRef {
+                                acc.push(parser::XRef {
                                     source: fun_range,
-                                    target: XRefTarget::Callback(
-                                        types::CallbackTarget {
+                                    target: parser::XRefTarget::Callback(
+                                        types::parser::CallbackTarget {
                                             file_id: behaviour_module.file.file_id.into(),
                                             name: fun_na.name().to_string(),
                                             arity: fun_na.arity(),
-                                            span: cb_span,
                                         }
                                         .into(),
                                     ),
@@ -1277,13 +1255,13 @@ impl GleanIndexer {
             },
         );
         xrefs.retain(|x| module_index.contains_key(x.target.file_id()));
-        XRefFile {
+        parser::XRefFile {
             file_id: file_id.into(),
             xrefs,
         }
     }
 
-    fn deprecated_xref(def_map: &DefMap, fun: &DeprecatedFa) -> Option<XRef> {
+    fn deprecated_xref(def_map: &DefMap, fun: &DeprecatedFa) -> Option<parser::XRef> {
         let name = fun.fun()?.as_name();
         let arity = fun.arity()?;
         let (na, def) = match arity {
@@ -1302,14 +1280,14 @@ impl GleanIndexer {
             }
         };
         let range = fun.fun()?.syntax().text_range().into();
-        let target = FunctionTarget {
+        let target = parser::FunctionTarget {
             file_id: def.file.file_id.into(),
             name: na.name().to_string(),
             arity: na.arity(),
         };
-        let xref = XRef {
+        let xref = parser::XRef {
             source: range,
-            target: XRefTarget::Function(target.into()),
+            target: parser::XRefTarget::Function(target.into()),
             caller: None,
         };
         Some(xref)
@@ -1329,16 +1307,16 @@ impl GleanIndexer {
         file_id: FileId,
         body: &Body,
         range: TextRange,
-    ) -> Option<XRef> {
+    ) -> Option<parser::XRef> {
         let def = resolve_call_target(sema, target, Some(arity), file_id, body)?;
-        let target = FunctionTarget {
+        let target = parser::FunctionTarget {
             file_id: def.file.file_id.into(),
             name: def.name.name().to_string(),
             arity,
         };
-        Some(XRef {
+        Some(parser::XRef {
             source: range.into(),
-            target: XRefTarget::Function(target.into()),
+            target: parser::XRefTarget::Function(target.into()),
             caller: None,
         })
     }
@@ -1348,7 +1326,7 @@ impl GleanIndexer {
         macro_def: &InFile<DefineId>,
         source_file: &InFile<ast::SourceFile>,
         ctx: &AnyCallBackCtx,
-    ) -> Option<XRef> {
+    ) -> Option<parser::XRef> {
         let (_, _, expr_source) = ctx.body_with_expr_source(sema)?;
         let range = Self::find_range(sema, ctx, source_file, &expr_source)?;
         let form_list = sema.form_list(macro_def.file_id);
@@ -1357,16 +1335,16 @@ impl GleanIndexer {
         let expansion = Self::expand_macro(sema, &expr_source, source_file);
         let arity = define.name.arity();
         let file_id: GleanFileId = macro_def.file_id.into();
-        let target = MacroTarget {
+        let target = parser::MacroTarget {
             name: name.to_string(),
             file_id,
             arity,
             expansion,
             tagged_urls: Vec::new(),
         };
-        Some(XRef {
+        Some(parser::XRef {
             source: range.into(),
-            target: XRefTarget::Macro(target.into()),
+            target: parser::XRefTarget::Macro(target.into()),
             caller: None,
         })
     }
@@ -1393,12 +1371,12 @@ impl GleanIndexer {
         file_id: FileId,
         body: &Body,
         range: TextRange,
-    ) -> Option<XRef> {
+    ) -> Option<parser::XRef> {
         let def = resolve_type_target(sema, target, Some(arity), file_id, body)?;
-        Some(XRef {
+        Some(parser::XRef {
             source: range.into(),
-            target: XRefTarget::Type(
-                TypeTarget {
+            target: parser::XRefTarget::Type(
+                parser::TypeTarget {
                     file_id: def.file.file_id.into(),
                     name: def.type_alias.name().name().to_string(),
                     arity,
@@ -1427,18 +1405,18 @@ impl GleanIndexer {
         name: hir::Atom,
         file_id: FileId,
         ctx: &AnyCallBackCtx,
-    ) -> Option<XRef> {
+    ) -> Option<parser::XRef> {
         let (def, expr_source) = Self::lookup_record(sema, name, file_id, ctx)?;
         let source_file = sema.parse(file_id);
         let range = Self::find_range(sema, ctx, &source_file, &expr_source)?;
 
         // @fb-only: let tagged_urls = meta_only::build_record_tagged_urls(name);
-        let tagged_urls: Vec<TaggedUrl> = Vec::new(); // @oss-only
+        let tagged_urls: Vec<parser::TaggedUrl> = Vec::new(); // @oss-only
 
-        Some(XRef {
+        Some(parser::XRef {
             source: range.into(),
-            target: XRefTarget::Record(
-                RecordTarget {
+            target: parser::XRefTarget::Record(
+                parser::RecordTarget {
                     name: def.record.name.to_string(),
                     file_id: def.file.file_id.into(),
                     tagged_urls,
@@ -1467,7 +1445,7 @@ impl GleanIndexer {
         file_id: FileId,
         source_file: &InFile<ast::SourceFile>,
         ctx: &AnyCallBackCtx,
-        acc: &mut Vec<XRef>,
+        acc: &mut Vec<parser::XRef>,
     ) {
         let (def, node) = match Self::resolve_record_context(sema, name, file_id, source_file, ctx)
         {
@@ -1512,10 +1490,10 @@ impl GleanIndexer {
         };
 
         for (field_name, range) in fields {
-            acc.push(XRef {
+            acc.push(parser::XRef {
                 source: range.into(),
-                target: XRefTarget::RecordField(
-                    types::RecordFieldTarget {
+                target: parser::XRefTarget::RecordField(
+                    types::parser::RecordFieldTarget {
                         file_id: target_file_id.clone(),
                         record_name: record_name_str.clone(),
                         field_name,

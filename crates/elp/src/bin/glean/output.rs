@@ -16,46 +16,11 @@ use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use itertools::Itertools;
 
-use super::types::Declaration;
-use super::types::Fact;
-use super::types::FileDeclaration;
-use super::types::FileFact;
-use super::types::FileLinesFact;
 use super::types::GleanFileId;
 use super::types::Key;
 use super::types::Location;
-use super::types::ModuleFact;
-use super::types::Schema2CallbackDecl;
-use super::types::Schema2CallbackDef;
-use super::types::Schema2CommentFact;
-use super::types::Schema2DeclLocation;
-use super::types::Schema2Declaration;
-use super::types::Schema2DeclarationTarget;
-use super::types::Schema2FileDeclarations;
-use super::types::Schema2FileIncludes;
-use super::types::Schema2Fqn;
-use super::types::Schema2FuncDecl;
-use super::types::Schema2FuncDef;
-use super::types::Schema2HeaderDecl;
-use super::types::Schema2MacroDecl;
-use super::types::Schema2MacroDef;
-use super::types::Schema2MacroUsage;
-use super::types::Schema2MacroUsageLocation;
-use super::types::Schema2ModuleDecl;
-use super::types::Schema2ModuleDef;
-use super::types::Schema2RecordDecl;
-use super::types::Schema2RecordDef;
-use super::types::Schema2RecordFieldDecl;
-use super::types::Schema2TypeDecl;
-use super::types::Schema2TypeDef;
-use super::types::Schema2VarDecl;
-use super::types::Schema2VarLocation;
-use super::types::Schema2VarXRef;
-use super::types::Schema2VarXRefsByFile;
-use super::types::Schema2XRef;
-use super::types::Schema2XRefsByFile;
-use super::types::XRefFile;
-use super::types::XRefTarget;
+use super::types::glean;
+use super::types::parser;
 
 #[derive(Debug, Default)]
 pub(crate) struct FactCounts {
@@ -82,20 +47,20 @@ impl FactCounts {
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct IndexedFacts {
-    pub(crate) file_facts: Vec<FileFact>,
-    pub(crate) file_line_facts: Vec<FileLinesFact>,
-    pub(crate) module_facts: Vec<ModuleFact>,
-    pub(crate) file_declarations: Vec<FileDeclaration>,
-    pub(crate) xrefs: Vec<XRefFile>,
+    pub(crate) file_facts: Vec<glean::FileFact>,
+    pub(crate) file_line_facts: Vec<glean::FileLinesFact>,
+    pub(crate) module_facts: Vec<parser::ModuleFact>,
+    pub(crate) file_declarations: Vec<parser::FileDeclaration>,
+    pub(crate) xrefs: Vec<parser::XRefFile>,
 }
 
 impl IndexedFacts {
     pub(crate) fn new(
-        file_fact: FileFact,
-        line_fact: FileLinesFact,
-        decl: FileDeclaration,
-        xref: XRefFile,
-        module_fact: Option<ModuleFact>,
+        file_fact: glean::FileFact,
+        line_fact: glean::FileLinesFact,
+        decl: parser::FileDeclaration,
+        xref: parser::XRefFile,
+        module_fact: Option<parser::ModuleFact>,
     ) -> Self {
         let mut facts = Self::default();
         facts.file_facts.push(file_fact);
@@ -110,11 +75,11 @@ impl IndexedFacts {
 
     pub(crate) fn add(
         &mut self,
-        file_fact: FileFact,
-        line_fact: FileLinesFact,
-        decl: FileDeclaration,
-        xref: XRefFile,
-        module_fact: Option<ModuleFact>,
+        file_fact: glean::FileFact,
+        line_fact: glean::FileLinesFact,
+        decl: parser::FileDeclaration,
+        xref: parser::XRefFile,
+        module_fact: Option<parser::ModuleFact>,
     ) {
         self.file_facts.push(file_fact);
         self.file_line_facts.push(line_fact);
@@ -125,36 +90,36 @@ impl IndexedFacts {
         }
     }
 
-    /// Convert internal facts to erlang.2 schema output.
-    pub(crate) fn into_schema2_facts(
+    /// Convert internal parser facts into `erlang.2` Glean facts.
+    pub(crate) fn into_glean_facts(
         mut self,
         modules: &FxHashMap<GleanFileId, String>,
         apps: &FxHashMap<GleanFileId, String>,
-    ) -> (Vec<Fact>, FactCounts) {
+    ) -> (Vec<glean::Fact>, FactCounts) {
         let unknown = "unknown".to_string();
         let mut known_files: FxHashSet<GleanFileId> =
             self.file_facts.iter().map(|f| f.file_id.clone()).collect();
-        let mut extra_file_facts: Vec<FileFact> = vec![];
+        let mut extra_file_facts: Vec<glean::FileFact> = vec![];
 
-        let mut func_decls: Vec<Key<Schema2FuncDecl>> = vec![];
-        let mut macro_decls: Vec<Key<Schema2MacroDecl>> = vec![];
-        let mut record_decls: Vec<Key<Schema2RecordDecl>> = vec![];
-        let mut type_decls: Vec<Key<Schema2TypeDecl>> = vec![];
-        let mut header_decls: Vec<Key<Schema2HeaderDecl>> = vec![];
-        let mut callback_decls: Vec<Key<Schema2CallbackDecl>> = vec![];
-        let mut record_field_decls: Vec<Key<Schema2RecordFieldDecl>> = vec![];
-        let mut var_decls: Vec<Key<Schema2VarDecl>> = vec![];
-        let mut func_defs: Vec<Key<Schema2FuncDef>> = vec![];
-        let mut macro_defs: Vec<Key<Schema2MacroDef>> = vec![];
-        let mut record_defs: Vec<Key<Schema2RecordDef>> = vec![];
-        let mut type_defs: Vec<Key<Schema2TypeDef>> = vec![];
-        let mut callback_defs: Vec<Key<Schema2CallbackDef>> = vec![];
-        let mut decl_locations: Vec<Key<Schema2DeclLocation>> = vec![];
-        let mut var_locations: Vec<Key<Schema2VarLocation>> = vec![];
-        let mut comments: Vec<Key<Schema2CommentFact>> = vec![];
-        let mut file_decls_list: Vec<Key<Schema2FileDeclarations>> = vec![];
-        let mut macro_usages: Vec<Key<Schema2MacroUsage>> = vec![];
-        let mut macro_usage_locations: Vec<Key<Schema2MacroUsageLocation>> = vec![];
+        let mut func_decls: Vec<Key<glean::FuncDecl>> = vec![];
+        let mut macro_decls: Vec<Key<glean::MacroDecl>> = vec![];
+        let mut record_decls: Vec<Key<glean::RecordDecl>> = vec![];
+        let mut type_decls: Vec<Key<glean::TypeDecl>> = vec![];
+        let mut header_decls: Vec<Key<glean::HeaderDecl>> = vec![];
+        let mut callback_decls: Vec<Key<glean::CallbackDecl>> = vec![];
+        let mut record_field_decls: Vec<Key<glean::RecordFieldDecl>> = vec![];
+        let mut var_decls: Vec<Key<glean::VarDecl>> = vec![];
+        let mut func_defs: Vec<Key<glean::FuncDef>> = vec![];
+        let mut macro_defs: Vec<Key<glean::MacroDef>> = vec![];
+        let mut record_defs: Vec<Key<glean::RecordDef>> = vec![];
+        let mut type_defs: Vec<Key<glean::TypeDef>> = vec![];
+        let mut callback_defs: Vec<Key<glean::CallbackDef>> = vec![];
+        let mut decl_locations: Vec<Key<glean::DeclLocation>> = vec![];
+        let mut var_locations: Vec<Key<glean::VarLocation>> = vec![];
+        let mut comments: Vec<Key<glean::CommentFact>> = vec![];
+        let mut file_decls_list: Vec<Key<glean::FileDeclarations>> = vec![];
+        let mut macro_usages: Vec<Key<glean::MacroUsage>> = vec![];
+        let mut macro_usage_locations: Vec<Key<glean::MacroUsageLocation>> = vec![];
 
         let on_load_by_file: FxHashMap<GleanFileId, Vec<String>> = self
             .module_facts
@@ -175,23 +140,23 @@ impl IndexedFacts {
             let app = apps.get(&file_decl.file_id).unwrap_or(&unknown);
             let module_on_load_fns = on_load_by_file.get(&file_decl.file_id);
             let module_nif_fns = nif_by_file.get(&file_decl.file_id);
-            let mut file_schema2_decls: Vec<Schema2Declaration> = vec![];
+            let mut file_decls: Vec<glean::Declaration> = vec![];
 
             for d in file_decl.declarations {
                 match d {
-                    Declaration::FunctionDeclaration(ref f) => {
-                        let decl = Schema2FuncDecl {
-                            fqn: Schema2Fqn {
+                    parser::Declaration::FunctionDeclaration(ref f) => {
+                        let decl = glean::FuncDecl {
+                            fqn: glean::Fqn {
                                 module: module.clone(),
                                 name: f.key.name.clone(),
                                 arity: f.key.arity,
                             },
                             app: app.clone(),
                         };
-                        let s2decl = Schema2Declaration::Func(decl.clone().into());
+                        let glean_decl = glean::Declaration::Func(decl.clone().into());
                         decl_locations.push(
-                            Schema2DeclLocation {
-                                declaration: s2decl.clone(),
+                            glean::DeclLocation {
+                                declaration: glean_decl.clone(),
                                 file_id: file_decl.file_id.clone(),
                                 span: f.key.span.clone(),
                             }
@@ -200,7 +165,7 @@ impl IndexedFacts {
                         let is_on_load =
                             module_on_load_fns.is_some_and(|fns| fns.contains(&f.key.name));
                         func_defs.push(
-                            Schema2FuncDef {
+                            glean::FuncDef {
                                 declaration: decl.clone().into(),
                                 exported: f.key.exported,
                                 deprecated: if f.key.deprecated {
@@ -223,29 +188,29 @@ impl IndexedFacts {
                             }
                             .into(),
                         );
-                        file_schema2_decls.push(s2decl);
+                        file_decls.push(glean_decl);
                         func_decls.push(decl.into());
                     }
-                    Declaration::MacroDeclaration(ref m) => {
-                        let decl = Schema2MacroDecl {
+                    parser::Declaration::MacroDeclaration(ref m) => {
+                        let decl = glean::MacroDecl {
                             name: m.key.name.clone(),
                             arity: m.key.arity,
                             module: module.clone(),
                             app: app.clone(),
                         };
-                        let s2decl = Schema2Declaration::Macro(decl.clone().into());
+                        let glean_decl = glean::Declaration::Macro(decl.clone().into());
                         decl_locations.push(
-                            Schema2DeclLocation {
-                                declaration: s2decl.clone(),
+                            glean::DeclLocation {
+                                declaration: glean_decl.clone(),
                                 file_id: file_decl.file_id.clone(),
                                 span: m.key.span.clone(),
                             }
                             .into(),
                         );
-                        file_schema2_decls.push(s2decl);
+                        file_decls.push(glean_decl);
                         if m.key.definition_text.is_some() {
                             macro_defs.push(
-                                Schema2MacroDef {
+                                glean::MacroDef {
                                     declaration: decl.clone().into(),
                                     definition_text: m.key.definition_text.clone(),
                                 }
@@ -254,24 +219,24 @@ impl IndexedFacts {
                         }
                         macro_decls.push(decl.into());
                     }
-                    Declaration::TypeDeclaration(ref t) => {
-                        let decl = Schema2TypeDecl {
+                    parser::Declaration::TypeDeclaration(ref t) => {
+                        let decl = glean::TypeDecl {
                             name: t.key.name.clone(),
                             arity: t.key.arity,
                             module: module.clone(),
                             app: app.clone(),
                         };
-                        let s2decl = Schema2Declaration::Type(decl.clone().into());
+                        let glean_decl = glean::Declaration::Type(decl.clone().into());
                         decl_locations.push(
-                            Schema2DeclLocation {
-                                declaration: s2decl.clone(),
+                            glean::DeclLocation {
+                                declaration: glean_decl.clone(),
                                 file_id: file_decl.file_id.clone(),
                                 span: t.key.span.clone(),
                             }
                             .into(),
                         );
                         type_defs.push(
-                            Schema2TypeDef {
+                            glean::TypeDef {
                                 declaration: decl.clone().into(),
                                 exported: t.key.exported,
                                 opaque: t.key.opaque,
@@ -279,46 +244,46 @@ impl IndexedFacts {
                             }
                             .into(),
                         );
-                        file_schema2_decls.push(s2decl);
+                        file_decls.push(glean_decl);
                         type_decls.push(decl.into());
                     }
-                    Declaration::RecordDeclaration(ref r) => {
-                        let decl = Schema2RecordDecl {
+                    parser::Declaration::RecordDeclaration(ref r) => {
+                        let decl = glean::RecordDecl {
                             name: r.key.name.clone(),
                             module: module.clone(),
                             app: app.clone(),
                         };
-                        let s2decl = Schema2Declaration::Record(decl.clone().into());
+                        let glean_decl = glean::Declaration::Record(decl.clone().into());
                         decl_locations.push(
-                            Schema2DeclLocation {
-                                declaration: s2decl.clone(),
+                            glean::DeclLocation {
+                                declaration: glean_decl.clone(),
                                 file_id: file_decl.file_id.clone(),
                                 span: r.key.span.clone(),
                             }
                             .into(),
                         );
-                        file_schema2_decls.push(s2decl);
+                        file_decls.push(glean_decl);
                         record_decls.push(decl.into());
                     }
-                    Declaration::HeaderDeclaration(ref h) => {
-                        let decl = Schema2HeaderDecl {
+                    parser::Declaration::HeaderDeclaration(ref h) => {
+                        let decl = glean::HeaderDecl {
                             name: h.key.name.clone(),
                             app: app.clone(),
                         };
-                        let s2decl = Schema2Declaration::Header(decl.clone().into());
+                        let glean_decl = glean::Declaration::Header(decl.clone().into());
                         decl_locations.push(
-                            Schema2DeclLocation {
-                                declaration: s2decl.clone(),
+                            glean::DeclLocation {
+                                declaration: glean_decl.clone(),
                                 file_id: file_decl.file_id.clone(),
                                 span: h.key.span.clone(),
                             }
                             .into(),
                         );
-                        file_schema2_decls.push(s2decl);
+                        file_decls.push(glean_decl);
                         header_decls.push(decl.into());
                     }
-                    Declaration::VarDeclaration(ref v) => {
-                        let decl = Schema2VarDecl {
+                    parser::Declaration::VarDeclaration(ref v) => {
+                        let decl = glean::VarDecl {
                             name: v.key.name.clone(),
                             module: module.clone(),
                             app: app.clone(),
@@ -326,7 +291,7 @@ impl IndexedFacts {
                             type_text: v.key.type_text.clone(),
                         };
                         var_locations.push(
-                            Schema2VarLocation {
+                            glean::VarLocation {
                                 var_: decl.clone().into(),
                                 file_id: file_decl.file_id.clone(),
                                 span: v.key.span.clone(),
@@ -335,11 +300,12 @@ impl IndexedFacts {
                         );
                         var_decls.push(decl.into());
                     }
-                    Declaration::DocDeclaration(ref doc) => {
-                        if let Some(s2target) = self.decl_to_schema2(&doc.key.target, module, app) {
+                    parser::Declaration::DocDeclaration(ref doc) => {
+                        if let Some(glean_target) = self.decl_to_glean(&doc.key.target, module, app)
+                        {
                             comments.push(
-                                Schema2CommentFact {
-                                    declaration: s2target,
+                                glean::CommentFact {
+                                    declaration: glean_target,
                                     file_id: file_decl.file_id.clone(),
                                     span: doc.key.span.clone(),
                                     text: Some(doc.key.text.clone()),
@@ -352,9 +318,9 @@ impl IndexedFacts {
             }
 
             file_decls_list.push(
-                Schema2FileDeclarations {
+                glean::FileDeclarations {
                     file_id: file_decl.file_id.clone(),
-                    declarations: file_schema2_decls,
+                    declarations: file_decls,
                 }
                 .into(),
             );
@@ -362,24 +328,24 @@ impl IndexedFacts {
 
         // Convert xrefs to typed xrefs + collect DeclarationTarget facts
         let xref_files = mem::take(&mut self.xrefs);
-        let mut typed_xrefs: Vec<Key<Schema2XRefsByFile>> = vec![];
-        let mut var_xrefs: Vec<Key<Schema2VarXRefsByFile>> = vec![];
-        let mut decl_targets: Vec<Key<Schema2DeclarationTarget>> = vec![];
+        let mut typed_xrefs: Vec<Key<glean::XRefsByFile>> = vec![];
+        let mut var_xrefs: Vec<Key<glean::VarXRefsByFile>> = vec![];
+        let mut decl_targets: Vec<Key<glean::DeclarationTarget>> = vec![];
         let mut xref_count = 0usize;
         for xref_file in xref_files {
-            let mut file_typed: Vec<Schema2XRef> = vec![];
+            let mut file_typed: Vec<glean::XRef> = vec![];
             let mut var_map: FxHashMap<(String, u32), Vec<Location>> = FxHashMap::default();
             for xref in xref_file.xrefs {
                 xref_count += 1;
                 let caller = xref.caller;
                 match &xref.target {
-                    XRefTarget::Function(f) => {
+                    parser::XRefTarget::Function(f) => {
                         let target_module = modules.get(&f.key.file_id).unwrap_or(&unknown);
                         let target_app = apps.get(&f.key.file_id).unwrap_or(&unknown);
-                        file_typed.push(Schema2XRef {
-                            target: Schema2Declaration::Func(
-                                Schema2FuncDecl {
-                                    fqn: Schema2Fqn {
+                        file_typed.push(glean::XRef {
+                            target: glean::Declaration::Func(
+                                glean::FuncDecl {
+                                    fqn: glean::Fqn {
                                         module: target_module.clone(),
                                         name: f.key.name.clone(),
                                         arity: f.key.arity,
@@ -391,12 +357,12 @@ impl IndexedFacts {
                             source: xref.source,
                         });
                     }
-                    XRefTarget::Macro(m) => {
+                    parser::XRefTarget::Macro(m) => {
                         let target_module = modules.get(&m.key.file_id).unwrap_or(&unknown);
                         let target_app = apps.get(&m.key.file_id).unwrap_or(&unknown);
-                        file_typed.push(Schema2XRef {
-                            target: Schema2Declaration::Macro(
-                                Schema2MacroDecl {
+                        file_typed.push(glean::XRef {
+                            target: glean::Declaration::Macro(
+                                glean::MacroDecl {
                                     name: m.key.name.clone(),
                                     arity: m.key.arity,
                                     module: target_module.clone(),
@@ -432,7 +398,7 @@ impl IndexedFacts {
                         let mut hasher = fxhash::FxHasher::default();
                         expansion.hash(&mut hasher);
                         let content_hash = format!("{}", hasher.finish());
-                        let usage = Schema2MacroUsage {
+                        let usage = glean::MacroUsage {
                             name: m.key.name.clone(),
                             module: target_module.clone(),
                             arity: m.key.arity,
@@ -442,7 +408,7 @@ impl IndexedFacts {
                             content_hash,
                         };
                         macro_usage_locations.push(
-                            Schema2MacroUsageLocation {
+                            glean::MacroUsageLocation {
                                 usage: usage.clone().into(),
                                 file_id: xref_file.file_id.clone(),
                                 span: xref.source,
@@ -451,11 +417,11 @@ impl IndexedFacts {
                         );
                         macro_usages.push(usage.into());
                     }
-                    XRefTarget::Header(h) => {
+                    parser::XRefTarget::Header(h) => {
                         let target_app = apps.get(&h.key.file_id).unwrap_or(&unknown);
-                        file_typed.push(Schema2XRef {
-                            target: Schema2Declaration::Header(
-                                Schema2HeaderDecl {
+                        file_typed.push(glean::XRef {
+                            target: glean::Declaration::Header(
+                                glean::HeaderDecl {
                                     name: h.key.name.clone(),
                                     app: target_app.clone(),
                                 }
@@ -464,12 +430,12 @@ impl IndexedFacts {
                             source: xref.source,
                         });
                     }
-                    XRefTarget::Record(r) => {
+                    parser::XRefTarget::Record(r) => {
                         let target_module = modules.get(&r.key.file_id).unwrap_or(&unknown);
                         let target_app = apps.get(&r.key.file_id).unwrap_or(&unknown);
-                        file_typed.push(Schema2XRef {
-                            target: Schema2Declaration::Record(
-                                Schema2RecordDecl {
+                        file_typed.push(glean::XRef {
+                            target: glean::Declaration::Record(
+                                glean::RecordDecl {
                                     name: r.key.name.clone(),
                                     module: target_module.clone(),
                                     app: target_app.clone(),
@@ -479,12 +445,12 @@ impl IndexedFacts {
                             source: xref.source,
                         });
                     }
-                    XRefTarget::Type(t) => {
+                    parser::XRefTarget::Type(t) => {
                         let target_module = modules.get(&t.key.file_id).unwrap_or(&unknown);
                         let target_app = apps.get(&t.key.file_id).unwrap_or(&unknown);
-                        file_typed.push(Schema2XRef {
-                            target: Schema2Declaration::Type(
-                                Schema2TypeDecl {
+                        file_typed.push(glean::XRef {
+                            target: glean::Declaration::Type(
+                                glean::TypeDecl {
                                     name: t.key.name.clone(),
                                     arity: t.key.arity,
                                     module: target_module.clone(),
@@ -495,17 +461,17 @@ impl IndexedFacts {
                             source: xref.source,
                         });
                     }
-                    XRefTarget::Var(v) => {
+                    parser::XRefTarget::Var(v) => {
                         let span_start = v.key.decl_span_start.unwrap_or(xref.source.start);
                         let key = (v.key.name.clone(), span_start);
                         var_map.entry(key).or_default().push(xref.source);
                     }
-                    XRefTarget::RecordField(rf) => {
+                    parser::XRefTarget::RecordField(rf) => {
                         let target_module = modules.get(&rf.key.file_id).unwrap_or(&unknown);
                         let target_app = apps.get(&rf.key.file_id).unwrap_or(&unknown);
-                        file_typed.push(Schema2XRef {
-                            target: Schema2Declaration::RecordField(
-                                Schema2RecordFieldDecl {
+                        file_typed.push(glean::XRef {
+                            target: glean::Declaration::RecordField(
+                                glean::RecordFieldDecl {
                                     record_name: rf.key.record_name.clone(),
                                     field_name: rf.key.field_name.clone(),
                                     module: target_module.clone(),
@@ -516,12 +482,12 @@ impl IndexedFacts {
                             source: xref.source,
                         });
                     }
-                    XRefTarget::Callback(cb) => {
+                    parser::XRefTarget::Callback(cb) => {
                         let target_module = modules.get(&cb.key.file_id).unwrap_or(&unknown);
                         let target_app = apps.get(&cb.key.file_id).unwrap_or(&unknown);
-                        file_typed.push(Schema2XRef {
-                            target: Schema2Declaration::Callback(
-                                Schema2CallbackDecl {
+                        file_typed.push(glean::XRef {
+                            target: glean::Declaration::Callback(
+                                glean::CallbackDecl {
                                     name: cb.key.name.clone(),
                                     arity: cb.key.arity,
                                     module: target_module.clone(),
@@ -536,9 +502,9 @@ impl IndexedFacts {
                 if let Some((caller_file_id, caller_name, caller_arity)) = caller {
                     let caller_module = modules.get(&caller_file_id).unwrap_or(&unknown).clone();
                     let caller_app = apps.get(&caller_file_id).unwrap_or(&unknown).clone();
-                    let source_decl = Schema2Declaration::Func(
-                        Schema2FuncDecl {
-                            fqn: Schema2Fqn {
+                    let source_decl = glean::Declaration::Func(
+                        glean::FuncDecl {
+                            fqn: glean::Fqn {
                                 module: caller_module,
                                 name: caller_name,
                                 arity: caller_arity,
@@ -551,7 +517,7 @@ impl IndexedFacts {
                         Self::xref_target_to_decl(&xref.target, modules, apps, &unknown)
                     {
                         decl_targets.push(
-                            Schema2DeclarationTarget {
+                            glean::DeclarationTarget {
                                 source: source_decl,
                                 target: target_decl,
                             }
@@ -562,7 +528,7 @@ impl IndexedFacts {
             }
             if !file_typed.is_empty() {
                 typed_xrefs.push(
-                    Schema2XRefsByFile {
+                    glean::XRefsByFile {
                         file_id: xref_file.file_id.clone(),
                         xrefs: file_typed,
                     }
@@ -570,16 +536,16 @@ impl IndexedFacts {
                 );
             }
             if !var_map.is_empty() {
-                let file_vars: Vec<Schema2VarXRef> = var_map
+                let file_vars: Vec<glean::VarXRef> = var_map
                     .into_iter()
-                    .map(|((name, span_start), sources)| Schema2VarXRef {
+                    .map(|((name, span_start), sources)| glean::VarXRef {
                         target_name: name,
                         target_span_start: span_start,
                         sources,
                     })
                     .collect();
                 var_xrefs.push(
-                    Schema2VarXRefsByFile {
+                    glean::VarXRefsByFile {
                         file_id: xref_file.file_id,
                         xrefs: file_vars,
                     }
@@ -590,27 +556,27 @@ impl IndexedFacts {
 
         // Convert module facts to erlang.2 Module + ModuleDefinition
         let module_facts = mem::take(&mut self.module_facts);
-        let mut module2_decls: Vec<Key<Schema2ModuleDecl>> = vec![];
-        let mut module2_defs: Vec<Key<Schema2ModuleDef>> = vec![];
-        let mut file_includes: Vec<Key<Schema2FileIncludes>> = vec![];
+        let mut module_decls: Vec<Key<glean::ModuleDecl>> = vec![];
+        let mut module_defs: Vec<Key<glean::ModuleDef>> = vec![];
+        let mut file_includes: Vec<Key<glean::FileIncludes>> = vec![];
         for mf in module_facts {
             let app = apps.get(&mf.file_id).unwrap_or(&unknown);
-            let decl = Schema2ModuleDecl {
+            let decl = glean::ModuleDecl {
                 file_id: mf.file_id.clone(),
                 name: mf.name.clone(),
                 app: app.clone(),
             };
             if let Some(span) = &mf.module_span {
                 decl_locations.push(
-                    Schema2DeclLocation {
-                        declaration: Schema2Declaration::Module(decl.clone().into()),
+                    glean::DeclLocation {
+                        declaration: glean::Declaration::Module(decl.clone().into()),
                         file_id: mf.file_id.clone(),
                         span: span.clone(),
                     }
                     .into(),
                 );
             }
-            let exports: Vec<Key<Schema2FuncDecl>> = mf
+            let exports: Vec<Key<glean::FuncDecl>> = mf
                 .exports
                 .unwrap_or_default()
                 .into_iter()
@@ -619,8 +585,8 @@ impl IndexedFacts {
                     let parts: Vec<&str> = e.splitn(2, '/').collect();
                     if parts.len() == 2 {
                         Some(
-                            Schema2FuncDecl {
-                                fqn: Schema2Fqn {
+                            glean::FuncDecl {
+                                fqn: glean::Fqn {
                                     module: mf.name.clone(),
                                     name: parts[0].to_string(),
                                     arity: parts[1].parse().unwrap_or(0),
@@ -635,8 +601,8 @@ impl IndexedFacts {
                 })
                 .collect();
             record_defs.extend(mf.record_def_texts.iter().map(|rd| {
-                Schema2RecordDef {
-                    declaration: Schema2RecordDecl {
+                glean::RecordDef {
+                    declaration: glean::RecordDecl {
                         name: rd.name.clone(),
                         module: mf.name.clone(),
                         app: app.clone(),
@@ -647,15 +613,15 @@ impl IndexedFacts {
                 .into()
             }));
             for rf in &mf.record_fields {
-                let rf_decl = Schema2RecordFieldDecl {
+                let rf_decl = glean::RecordFieldDecl {
                     record_name: rf.record_name.clone(),
                     field_name: rf.field_name.clone(),
                     module: mf.name.clone(),
                     app: app.clone(),
                 };
                 decl_locations.push(
-                    Schema2DeclLocation {
-                        declaration: Schema2Declaration::RecordField(rf_decl.clone().into()),
+                    glean::DeclLocation {
+                        declaration: glean::Declaration::RecordField(rf_decl.clone().into()),
                         file_id: mf.file_id.clone(),
                         span: rf.span.clone(),
                     }
@@ -665,14 +631,14 @@ impl IndexedFacts {
             }
             for (inc_id, inc_path) in &mf.included_files {
                 if !known_files.contains(inc_id) {
-                    extra_file_facts.push(FileFact::new_from_glean_id(
+                    extra_file_facts.push(glean::FileFact::new_from_glean_id(
                         inc_id.clone(),
                         inc_path.clone(),
                     ));
                     known_files.insert(inc_id.clone());
                 }
                 file_includes.push(
-                    Schema2FileIncludes {
+                    glean::FileIncludes {
                         file_id: mf.file_id.clone(),
                         included: inc_id.clone(),
                     }
@@ -680,22 +646,22 @@ impl IndexedFacts {
                 );
             }
             for cb in &mf.callbacks {
-                let cb_decl = Schema2CallbackDecl {
+                let cb_decl = glean::CallbackDecl {
                     name: cb.name.clone(),
                     arity: cb.arity,
                     module: mf.name.clone(),
                     app: app.clone(),
                 };
                 decl_locations.push(
-                    Schema2DeclLocation {
-                        declaration: Schema2Declaration::Callback(cb_decl.clone().into()),
+                    glean::DeclLocation {
+                        declaration: glean::Declaration::Callback(cb_decl.clone().into()),
                         file_id: mf.file_id.clone(),
                         span: cb.span.clone(),
                     }
                     .into(),
                 );
                 callback_defs.push(
-                    Schema2CallbackDef {
+                    glean::CallbackDef {
                         declaration: cb_decl.clone().into(),
                         optional_: cb.optional,
                     }
@@ -704,7 +670,7 @@ impl IndexedFacts {
                 callback_decls.push(cb_decl.into());
             }
             for stub in &mf.behaviour_callback_stubs {
-                let cb_decl = Schema2CallbackDecl {
+                let cb_decl = glean::CallbackDecl {
                     name: stub.callback_name.clone(),
                     arity: stub.callback_arity,
                     module: stub.behaviour_module.clone(),
@@ -714,8 +680,8 @@ impl IndexedFacts {
             }
             if let Some(doc) = mf.module_doc {
                 comments.push(
-                    Schema2CommentFact {
-                        declaration: Schema2Declaration::Module(decl.clone().into()),
+                    glean::CommentFact {
+                        declaration: glean::Declaration::Module(decl.clone().into()),
                         file_id: mf.file_id.clone(),
                         span: doc.span,
                         text: Some(doc.text),
@@ -723,8 +689,8 @@ impl IndexedFacts {
                     .into(),
                 );
             }
-            module2_defs.push(
-                Schema2ModuleDef {
+            module_defs.push(
+                glean::ModuleDef {
                     declaration: decl.clone().into(),
                     oncall: mf.oncall,
                     exports,
@@ -734,12 +700,12 @@ impl IndexedFacts {
                 }
                 .into(),
             );
-            module2_decls.push(decl.into());
+            module_decls.push(decl.into());
         }
 
         let counts = FactCounts {
             file_count: self.file_facts.len(),
-            module_count: module2_decls.len(),
+            module_count: module_decls.len(),
             declaration_count: func_decls.len()
                 + macro_decls.len()
                 + record_decls.len()
@@ -747,7 +713,7 @@ impl IndexedFacts {
                 + header_decls.len()
                 + callback_decls.len()
                 + record_field_decls.len()
-                + module2_decls.len(),
+                + module_decls.len(),
             var_decl_count: var_decls.len(),
             macro_usage_count: macro_usages.len(),
             xref_count,
@@ -762,80 +728,78 @@ impl IndexedFacts {
             .collect();
 
         let mut result = vec![
-            Fact::File { facts: file_facts },
-            Fact::FileLine {
+            glean::Fact::File { facts: file_facts },
+            glean::Fact::FileLine {
                 facts: file_line_facts,
             },
         ];
         result.extend([
-            Fact::FuncDecl2 { facts: func_decls },
-            Fact::MacroDecl2 { facts: macro_decls },
-            Fact::RecordDecl2 {
+            glean::Fact::FunctionDeclaration { facts: func_decls },
+            glean::Fact::MacroDeclaration { facts: macro_decls },
+            glean::Fact::RecordDeclaration {
                 facts: record_decls,
             },
-            Fact::TypeDecl2 { facts: type_decls },
-            Fact::HeaderDecl2 {
+            glean::Fact::TypeDeclaration { facts: type_decls },
+            glean::Fact::HeaderDeclaration {
                 facts: header_decls,
             },
-            Fact::CallbackDecl2 {
+            glean::Fact::CallbackDeclaration {
                 facts: callback_decls,
             },
-            Fact::RecordFieldDecl2 {
+            glean::Fact::RecordFieldDeclaration {
                 facts: record_field_decls,
             },
-            Fact::Module2 {
-                facts: module2_decls,
+            glean::Fact::ModuleDeclaration {
+                facts: module_decls,
             },
-            Fact::VarDecl2 { facts: var_decls },
-            Fact::FuncDef2 { facts: func_defs },
-            Fact::MacroDef2 { facts: macro_defs },
-            Fact::RecordDef2 { facts: record_defs },
-            Fact::TypeDef2 { facts: type_defs },
-            Fact::CallbackDef2 {
+            glean::Fact::VarDeclaration { facts: var_decls },
+            glean::Fact::FunctionDefinition { facts: func_defs },
+            glean::Fact::MacroDefinition { facts: macro_defs },
+            glean::Fact::RecordDefinition { facts: record_defs },
+            glean::Fact::TypeDefinition { facts: type_defs },
+            glean::Fact::CallbackDefinition {
                 facts: callback_defs,
             },
-            Fact::ModuleDef2 {
-                facts: module2_defs,
-            },
-            Fact::DeclLocation2 {
+            glean::Fact::ModuleDefinition { facts: module_defs },
+            glean::Fact::DeclarationLocation {
                 facts: decl_locations,
             },
-            Fact::VarLocation2 {
+            glean::Fact::VarLocation {
                 facts: var_locations,
             },
-            Fact::TypedXRefs2 { facts: typed_xrefs },
-            Fact::VarXRefs2 { facts: var_xrefs },
-            Fact::FileDecls2 {
+            glean::Fact::XRefsByFile { facts: typed_xrefs },
+            glean::Fact::VarXRefsByFile { facts: var_xrefs },
+            glean::Fact::FileDeclarations {
                 facts: file_decls_list,
             },
-            Fact::DeclComment2 { facts: comments },
-            Fact::FileIncludes2 {
+            glean::Fact::DeclarationComment { facts: comments },
+            glean::Fact::FileIncludes {
                 facts: file_includes,
             },
-            Fact::MacroUsage2 {
+            glean::Fact::MacroUsage {
                 facts: macro_usages,
             },
-            Fact::MacroUsageLocation2 {
+            glean::Fact::MacroUsageLocation {
                 facts: macro_usage_locations,
             },
-            Fact::DeclTarget2 {
+            glean::Fact::DeclarationTarget {
                 facts: decl_targets,
             },
         ]);
         (result, counts)
     }
 
-    /// Helper: convert internal Declaration to Schema2Declaration
-    fn decl_to_schema2(
+    /// Helper: convert internal parser::Declaration to glean::Declaration
+    fn decl_to_glean(
         &self,
-        decl: &Declaration,
+        decl: &parser::Declaration,
         module: &str,
         app: &str,
-    ) -> Option<Schema2Declaration> {
+    ) -> Option<glean::Declaration> {
         match decl {
-            Declaration::FunctionDeclaration(f) => Some(Schema2Declaration::Func(
-                Schema2FuncDecl {
-                    fqn: Schema2Fqn {
+            parser::Declaration::FunctionDeclaration(f) => Some(glean::Declaration::Func(
+                glean::FuncDecl {
+                    fqn: glean::Fqn {
                         module: module.to_string(),
                         name: f.key.name.clone(),
                         arity: f.key.arity,
@@ -844,8 +808,8 @@ impl IndexedFacts {
                 }
                 .into(),
             )),
-            Declaration::MacroDeclaration(m) => Some(Schema2Declaration::Macro(
-                Schema2MacroDecl {
+            parser::Declaration::MacroDeclaration(m) => Some(glean::Declaration::Macro(
+                glean::MacroDecl {
                     name: m.key.name.clone(),
                     arity: m.key.arity,
                     module: module.to_string(),
@@ -853,16 +817,16 @@ impl IndexedFacts {
                 }
                 .into(),
             )),
-            Declaration::RecordDeclaration(r) => Some(Schema2Declaration::Record(
-                Schema2RecordDecl {
+            parser::Declaration::RecordDeclaration(r) => Some(glean::Declaration::Record(
+                glean::RecordDecl {
                     name: r.key.name.clone(),
                     module: module.to_string(),
                     app: app.to_string(),
                 }
                 .into(),
             )),
-            Declaration::TypeDeclaration(t) => Some(Schema2Declaration::Type(
-                Schema2TypeDecl {
+            parser::Declaration::TypeDeclaration(t) => Some(glean::Declaration::Type(
+                glean::TypeDecl {
                     name: t.key.name.clone(),
                     arity: t.key.arity,
                     module: module.to_string(),
@@ -870,8 +834,8 @@ impl IndexedFacts {
                 }
                 .into(),
             )),
-            Declaration::HeaderDeclaration(h) => Some(Schema2Declaration::Header(
-                Schema2HeaderDecl {
+            parser::Declaration::HeaderDeclaration(h) => Some(glean::Declaration::Header(
+                glean::HeaderDecl {
                     name: h.key.name.clone(),
                     app: app.to_string(),
                 }
@@ -882,18 +846,18 @@ impl IndexedFacts {
     }
 
     fn xref_target_to_decl(
-        target: &XRefTarget,
+        target: &parser::XRefTarget,
         modules: &FxHashMap<GleanFileId, String>,
         apps: &FxHashMap<GleanFileId, String>,
         unknown: &String,
-    ) -> Option<Schema2Declaration> {
+    ) -> Option<glean::Declaration> {
         match target {
-            XRefTarget::Function(f) => {
+            parser::XRefTarget::Function(f) => {
                 let module = modules.get(&f.key.file_id).unwrap_or(unknown);
                 let app = apps.get(&f.key.file_id).unwrap_or(unknown);
-                Some(Schema2Declaration::Func(
-                    Schema2FuncDecl {
-                        fqn: Schema2Fqn {
+                Some(glean::Declaration::Func(
+                    glean::FuncDecl {
+                        fqn: glean::Fqn {
                             module: module.clone(),
                             name: f.key.name.clone(),
                             arity: f.key.arity,
@@ -903,11 +867,11 @@ impl IndexedFacts {
                     .into(),
                 ))
             }
-            XRefTarget::Macro(m) => {
+            parser::XRefTarget::Macro(m) => {
                 let module = modules.get(&m.key.file_id).unwrap_or(unknown);
                 let app = apps.get(&m.key.file_id).unwrap_or(unknown);
-                Some(Schema2Declaration::Macro(
-                    Schema2MacroDecl {
+                Some(glean::Declaration::Macro(
+                    glean::MacroDecl {
                         name: m.key.name.clone(),
                         arity: m.key.arity,
                         module: module.clone(),
@@ -916,11 +880,11 @@ impl IndexedFacts {
                     .into(),
                 ))
             }
-            XRefTarget::Record(r) => {
+            parser::XRefTarget::Record(r) => {
                 let module = modules.get(&r.key.file_id).unwrap_or(unknown);
                 let app = apps.get(&r.key.file_id).unwrap_or(unknown);
-                Some(Schema2Declaration::Record(
-                    Schema2RecordDecl {
+                Some(glean::Declaration::Record(
+                    glean::RecordDecl {
                         name: r.key.name.clone(),
                         module: module.clone(),
                         app: app.clone(),
@@ -928,11 +892,11 @@ impl IndexedFacts {
                     .into(),
                 ))
             }
-            XRefTarget::Type(t) => {
+            parser::XRefTarget::Type(t) => {
                 let module = modules.get(&t.key.file_id).unwrap_or(unknown);
                 let app = apps.get(&t.key.file_id).unwrap_or(unknown);
-                Some(Schema2Declaration::Type(
-                    Schema2TypeDecl {
+                Some(glean::Declaration::Type(
+                    glean::TypeDecl {
                         name: t.key.name.clone(),
                         arity: t.key.arity,
                         module: module.clone(),
@@ -941,17 +905,19 @@ impl IndexedFacts {
                     .into(),
                 ))
             }
-            XRefTarget::Header(h) => {
+            parser::XRefTarget::Header(h) => {
                 let app = apps.get(&h.key.file_id).unwrap_or(unknown);
-                Some(Schema2Declaration::Header(
-                    Schema2HeaderDecl {
+                Some(glean::Declaration::Header(
+                    glean::HeaderDecl {
                         name: h.key.name.clone(),
                         app: app.clone(),
                     }
                     .into(),
                 ))
             }
-            XRefTarget::Var(_) | XRefTarget::RecordField(_) | XRefTarget::Callback(_) => None,
+            parser::XRefTarget::Var(_)
+            | parser::XRefTarget::RecordField(_)
+            | parser::XRefTarget::Callback(_) => None,
         }
     }
 }
