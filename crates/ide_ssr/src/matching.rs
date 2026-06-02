@@ -70,15 +70,15 @@ use crate::SsrMatches;
 use crate::SsrPattern;
 use crate::get_literal_subid;
 
-/// An SSR placeholder detected from a Var with the `_@` prefix.
-/// This type is local to the SSR crate since it's only meaningful in SSR context.
+/// The underlying identity of an SSR placeholder: either a variable
+/// (`_@Name` / `_@@Name`) or an atom (`@Name`).
 #[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
-pub struct SsrPlaceholder {
-    pub var: Var,
-    pub kind: PlaceholderKind,
+pub enum PlaceholderSource {
+    Var(Var),
+    Atom(Atom),
 }
 
-/// Distinguishes single-element placeholders (`_@Name`) from glob
+/// Distinguishes single-element placeholders (`_@Name`, `@Name`) from glob
 /// placeholders (`_@@Name`). Glob placeholders bind a contiguous slice
 /// of sibling HIR nodes within a sequence (à la Erlang Merl).
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, PartialOrd, Ord)]
@@ -87,17 +87,38 @@ pub enum PlaceholderKind {
     Glob,
 }
 
+/// An SSR placeholder detected from a Var with the `_@` prefix
+/// or an Atom with the `@` prefix.
+/// This type is local to the SSR crate since it's only meaningful in SSR context.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
+pub struct SsrPlaceholder {
+    pub source: PlaceholderSource,
+    pub kind: PlaceholderKind,
+}
+
 impl SsrPlaceholder {
     /// Create from a Var, if it's an SSR placeholder.
     pub fn from_var(var: Var) -> Option<Self> {
         if var.is_ssr_glob_placeholder() {
             Some(SsrPlaceholder {
-                var,
+                source: PlaceholderSource::Var(var),
                 kind: PlaceholderKind::Glob,
             })
         } else if var.is_ssr_placeholder() {
             Some(SsrPlaceholder {
-                var,
+                source: PlaceholderSource::Var(var),
+                kind: PlaceholderKind::Single,
+            })
+        } else {
+            None
+        }
+    }
+
+    #[allow(dead_code)] // Used in subsequent commit wiring atom placeholders into matching
+    pub fn from_atom(atom: Atom) -> Option<Self> {
+        if atom.is_ssr_placeholder() {
+            Some(SsrPlaceholder {
+                source: PlaceholderSource::Atom(atom),
                 kind: PlaceholderKind::Single,
             })
         } else {
@@ -107,6 +128,29 @@ impl SsrPlaceholder {
 
     pub fn is_glob(&self) -> bool {
         matches!(self.kind, PlaceholderKind::Glob)
+    }
+
+    pub fn as_name(&self) -> Name {
+        match &self.source {
+            PlaceholderSource::Var(var) => var.as_name(),
+            PlaceholderSource::Atom(atom) => atom.as_name(),
+        }
+    }
+
+    #[allow(dead_code)] // Used in subsequent commit
+    pub fn as_var(&self) -> Option<&Var> {
+        match &self.source {
+            PlaceholderSource::Var(var) => Some(var),
+            _ => None,
+        }
+    }
+
+    #[allow(dead_code)] // Used in subsequent commit
+    pub fn as_atom(&self) -> Option<&Atom> {
+        match &self.source {
+            PlaceholderSource::Atom(atom) => Some(atom),
+            _ => None,
+        }
     }
 }
 
@@ -207,6 +251,7 @@ pub struct Match {
     // `hir::Var` in a match corresponds to the `same` code fragment.
     pub placeholder_values: FxHashMap<SubId, PlaceholderMatch>,
     pub(crate) placeholders_by_var: FxHashMap<Var, FxHashSet<SubId>>,
+    pub(crate) placeholders_by_atom: FxHashMap<Atom, FxHashSet<SubId>>,
     /// Which rule matched
     pub rule_index: usize,
     /// The depth of matched_node.
@@ -663,6 +708,7 @@ impl<'a> Matcher<'a> {
             matched_node: code.clone(),
             placeholder_values: FxHashMap::default(),
             placeholders_by_var: FxHashMap::default(),
+            placeholders_by_atom: FxHashMap::default(),
             rule_index: self.rule.index,
             depth: 0,
         };
@@ -711,7 +757,10 @@ impl<'a> Matcher<'a> {
             // pattern has N occurrences; equivalence among them was
             // already enforced during binding, so checking each is
             // redundant but cheap and keeps error messages precise.
-            let Some(subids) = the_match.placeholders_by_var.get(&placeholder.var) else {
+            let Some(subids) = (match &placeholder.source {
+                PlaceholderSource::Var(var) => the_match.placeholders_by_var.get(var),
+                PlaceholderSource::Atom(atom) => the_match.placeholders_by_atom.get(atom),
+            }) else {
                 // The condition refers to a placeholder name that
                 // doesn't appear in the pattern. Match-time silence
                 // mirrors the lowering convention used for `_@X == lit`
@@ -817,8 +866,12 @@ impl<'a> Matcher<'a> {
                     self.validate_range(&original_range)?;
 
                     // If there is already a match for the same
-                    // placeholder.var, fail if they are not compatible.
-                    if let Some(match_ids) = matches_out.placeholders_by_var.get(&placeholder.var) {
+                    // placeholder, fail if they are not compatible.
+                    let existing_ids = match &placeholder.source {
+                        PlaceholderSource::Var(var) => matches_out.placeholders_by_var.get(var),
+                        PlaceholderSource::Atom(atom) => matches_out.placeholders_by_atom.get(atom),
+                    };
+                    if let Some(match_ids) = existing_ids {
                         for match_id in match_ids.iter() {
                             if let Some(m) = matches_out.placeholder_values.get(match_id)
                                 && !m.equivalent(self.sema, self.rule, self.code_body, code)
@@ -829,20 +882,32 @@ impl<'a> Matcher<'a> {
                                 );
                             }
                         }
-                        // })
                     }
 
                     matches_out.placeholder_values.insert(
                         pattern.clone(),
                         PlaceholderMatch::single(original_range, code.clone()),
                     );
-                    matches_out
-                        .placeholders_by_var
-                        .entry(placeholder.var)
-                        .and_modify(|s| {
-                            s.insert(pattern.clone());
-                        })
-                        .or_insert(FxHashSet::from_iter(vec![pattern.clone()]));
+                    match &placeholder.source {
+                        PlaceholderSource::Var(var) => {
+                            matches_out
+                                .placeholders_by_var
+                                .entry(*var)
+                                .and_modify(|s| {
+                                    s.insert(pattern.clone());
+                                })
+                                .or_insert(FxHashSet::from_iter(vec![pattern.clone()]));
+                        }
+                        PlaceholderSource::Atom(atom) => {
+                            matches_out
+                                .placeholders_by_atom
+                                .entry(*atom)
+                                .and_modify(|s| {
+                                    s.insert(pattern.clone());
+                                })
+                                .or_insert(FxHashSet::from_iter(vec![pattern.clone()]));
+                        }
+                    }
                 }
             }
             return Ok(true);
@@ -1006,18 +1071,22 @@ impl<'a> Matcher<'a> {
             let range = self.glob_range(glob_codes, prefix_codes, suffix_codes);
             self.validate_range(&range)?;
 
-            // Cross-occurrence equivalence: if this glob var was already
+            // Cross-occurrence equivalence: if this glob was already
             // bound in another sequence (e.g. `[_@@X, sep, _@@X]`), the
             // new binding must be element-wise equivalent to the prior
             // one. Mismatches fail the overall match.
-            if let Some(match_ids) = matches_out.placeholders_by_var.get(&placeholder.var) {
+            let existing_ids = match &placeholder.source {
+                PlaceholderSource::Var(var) => matches_out.placeholders_by_var.get(var),
+                PlaceholderSource::Atom(atom) => matches_out.placeholders_by_atom.get(atom),
+            };
+            if let Some(match_ids) = existing_ids {
                 for match_id in match_ids.iter() {
                     if let Some(existing) = matches_out.placeholder_values.get(match_id)
                         && !self.glob_codes_equivalent(existing, glob_codes)
                     {
                         fail_match!(
                             "glob placeholder match failed: occurrences of `{}` bound to non-equivalent slices",
-                            placeholder.var.as_name()
+                            placeholder.as_name()
                         );
                     }
                 }
@@ -1031,13 +1100,26 @@ impl<'a> Matcher<'a> {
                     inner_matches: SsrMatches::default(),
                 },
             );
-            matches_out
-                .placeholders_by_var
-                .entry(placeholder.var)
-                .and_modify(|s| {
-                    s.insert(glob_pattern.clone());
-                })
-                .or_insert(FxHashSet::from_iter(vec![glob_pattern.clone()]));
+            match &placeholder.source {
+                PlaceholderSource::Var(var) => {
+                    matches_out
+                        .placeholders_by_var
+                        .entry(*var)
+                        .and_modify(|s| {
+                            s.insert(glob_pattern.clone());
+                        })
+                        .or_insert(FxHashSet::from_iter(vec![glob_pattern.clone()]));
+                }
+                PlaceholderSource::Atom(atom) => {
+                    matches_out
+                        .placeholders_by_atom
+                        .entry(*atom)
+                        .and_modify(|s| {
+                            s.insert(glob_pattern.clone());
+                        })
+                        .or_insert(FxHashSet::from_iter(vec![glob_pattern.clone()]));
+                }
+            }
         }
         Ok(())
     }
@@ -1076,14 +1158,18 @@ impl<'a> Matcher<'a> {
             };
             self.validate_range(&range)?;
 
-            if let Some(match_ids) = matches_out.placeholders_by_var.get(&placeholder.var) {
+            let existing_ids = match &placeholder.source {
+                PlaceholderSource::Var(var) => matches_out.placeholders_by_var.get(var),
+                PlaceholderSource::Atom(atom) => matches_out.placeholders_by_atom.get(atom),
+            };
+            if let Some(match_ids) = existing_ids {
                 for match_id in match_ids.iter() {
                     if let Some(existing) = matches_out.placeholder_values.get(match_id)
                         && !self.glob_codes_equivalent(existing, &glob_codes)
                     {
                         fail_match!(
                             "glob placeholder match failed: occurrences of `{}` bound to non-equivalent slices",
-                            placeholder.var.as_name()
+                            placeholder.as_name()
                         );
                     }
                 }
@@ -1097,13 +1183,26 @@ impl<'a> Matcher<'a> {
                     inner_matches: SsrMatches::default(),
                 },
             );
-            matches_out
-                .placeholders_by_var
-                .entry(placeholder.var)
-                .and_modify(|s| {
-                    s.insert(glob_pattern.clone());
-                })
-                .or_insert(FxHashSet::from_iter(vec![glob_pattern.clone()]));
+            match &placeholder.source {
+                PlaceholderSource::Var(var) => {
+                    matches_out
+                        .placeholders_by_var
+                        .entry(*var)
+                        .and_modify(|s| {
+                            s.insert(glob_pattern.clone());
+                        })
+                        .or_insert(FxHashSet::from_iter(vec![glob_pattern.clone()]));
+                }
+                PlaceholderSource::Atom(atom) => {
+                    matches_out
+                        .placeholders_by_atom
+                        .entry(*atom)
+                        .and_modify(|s| {
+                            s.insert(glob_pattern.clone());
+                        })
+                        .or_insert(FxHashSet::from_iter(vec![glob_pattern.clone()]));
+                }
+            }
         }
         Ok(())
     }
