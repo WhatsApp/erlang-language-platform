@@ -55,6 +55,12 @@ impl Atom {
     pub fn as_name(&self) -> Name {
         Name::from_erlang_service(self.0.as_str())
     }
+
+    pub fn is_ssr_placeholder(&self) -> bool {
+        self.0
+            .as_str()
+            .starts_with(elp_syntax::ast::SSR_ATOM_PLACEHOLDER_PREFIX)
+    }
 }
 
 /// An interned variable name, backed by a global concurrent string interner.
@@ -129,8 +135,20 @@ impl salsa::InternKey for SsrSource {
 mod tests {
     use super::*;
 
+    fn atom(name: &str) -> Atom {
+        Atom::new(&Name::from_erlang_service(name))
+    }
+
     fn var(name: &str) -> Var {
         Var::new(&Name::from_erlang_service(name))
+    }
+
+    #[test]
+    fn test_atom_is_ssr_placeholder() {
+        assert!(!atom("foo").is_ssr_placeholder());
+        assert!(!atom("_foo").is_ssr_placeholder());
+        assert!(atom("@Foo").is_ssr_placeholder());
+        assert!(atom("@_").is_ssr_placeholder());
     }
 
     #[test]

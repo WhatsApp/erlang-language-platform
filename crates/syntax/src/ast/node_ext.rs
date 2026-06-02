@@ -107,6 +107,7 @@ impl nodes::Atom {
 }
 
 pub const SSR_PLACEHOLDER_PREFIX: &str = "_@";
+pub const SSR_ATOM_PLACEHOLDER_PREFIX: &str = "@";
 pub const SSR_GLOB_PLACEHOLDER_PREFIX: &str = "_@@";
 
 pub fn is_ssr_placeholder_name(name: &str) -> bool {
