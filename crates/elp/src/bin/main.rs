@@ -77,16 +77,35 @@ static INIT: Once = Once::new();
 #[cfg(not(unix))]
 const DAEMON_UNSUPPORTED: &str = "ELP daemon mode is not supported on this platform";
 
+#[rustfmt::skip]
 fn main() {
     let _timer = timeit!("main");
-    let args = args::args().run();
-    // @fb-only: #[cfg(buck_build)]
-    // @fb-only: let subcommand = args.command.as_ref().to_owned();
-    // @fb-only: #[cfg(buck_build)]
-    // @fb-only: let code = meta_only::run_with_usage_metadata(&subcommand, || run_cli(args));
-    #[cfg(not(buck_build))]
-    let code = run_cli(args);
-    process::exit(code);
+    match args::args().run_inner(bpaf::Args::current_args()) {
+        Ok(args) => {
+            // @fb-only: #[cfg(buck_build)] let subcommand = args.command.as_ref().to_owned();
+            // @fb-only: #[cfg(buck_build)] let code = meta_only::run_with_usage_metadata(&subcommand, || run_cli(args));
+            #[cfg(not(buck_build))]
+            let code = run_cli(args);
+            process::exit(code);
+        }
+        Err(failure) => {
+            // @fb-only: #[cfg(buck_build)] meta_only::log_parser_invocation(&failure);
+            process::exit(parse_failure_exit_code(failure));
+        }
+    }
+}
+
+fn parse_failure_exit_code(failure: bpaf::ParseFailure) -> i32 {
+    match failure {
+        bpaf::ParseFailure::Stdout(message) => {
+            print!("{message}");
+            0
+        }
+        bpaf::ParseFailure::Stderr(message) => {
+            eprintln!("{message}");
+            1
+        }
+    }
 }
 
 fn run_cli(args: Args) -> i32 {

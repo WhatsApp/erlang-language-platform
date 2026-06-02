@@ -53,7 +53,7 @@ pub fn receiver() -> &'static TelemetryReceiver {
     &CHANNEL.1
 }
 
-fn build_message(
+pub fn build_message(
     typ: String,
     data: TelemetryData,
     duration_ms: Option<DurationMs>,
