@@ -25,7 +25,6 @@ use super::SpecBody;
 use super::SpecOrCallback;
 use crate::AnyAttribute;
 use crate::AnyExprId;
-use crate::Atom;
 use crate::AttributeBody;
 use crate::BinarySeg;
 use crate::CRClause;
@@ -63,6 +62,7 @@ use crate::db::DefDatabase;
 use crate::db::InternDatabase;
 use crate::expr::Guards;
 use crate::expr::MaybeExpr;
+use crate::expr::NamedAtom;
 use crate::expr::NativeRecordName;
 use crate::fold::MacroStrategy;
 use crate::fold::ParenStrategy;
@@ -1573,7 +1573,7 @@ impl<'a> Printer<'a> {
 
     fn print_record_fields_expr(
         &mut self,
-        fields: &[(Atom, ExprId)],
+        fields: &[(NamedAtom, ExprId)],
         default_field: Option<ExprId>,
     ) {
         self.print_labelled("fields", false, &mut |this| {
@@ -1593,7 +1593,11 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_record_fields_pat(&mut self, fields: &[(Atom, PatId)], default_field: Option<PatId>) {
+    fn print_record_fields_pat(
+        &mut self,
+        fields: &[(NamedAtom, PatId)],
+        default_field: Option<PatId>,
+    ) {
         self.print_labelled("fields", false, &mut |this| {
             fields.iter().for_each(|(name, pat_id)| {
                 writeln!(this, "Atom('{}'):", name.as_name()).ok();

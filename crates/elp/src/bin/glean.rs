@@ -1009,8 +1009,8 @@ impl GleanIndexer {
             | hir::AnyExpr::Expr(Expr::RecordUpdate { name, .. })
             | hir::AnyExpr::Expr(Expr::RecordIndex { name, .. })
             | hir::AnyExpr::Expr(Expr::RecordField { name, .. }) => {
-                if let Some(record_xref) = Self::resolve_record(sema, *name, file_id, ctx) {
-                    Self::resolve_record_fields(sema, *name, file_id, source_file, ctx, acc);
+                if let Some(record_xref) = Self::resolve_record(sema, name.atom, file_id, ctx) {
+                    Self::resolve_record_fields(sema, name.atom, file_id, source_file, ctx, acc);
                     Some(record_xref)
                 } else {
                     None

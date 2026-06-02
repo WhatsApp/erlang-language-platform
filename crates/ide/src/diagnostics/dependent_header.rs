@@ -81,7 +81,7 @@ impl GenericLinter for DependentHeaderLinter {
                 (),
                 &mut |acc, ctx| {
                     if let Some(name) = match ctx.item {
-                        AnyExpr::Expr(expr) => expr.as_record_name().cloned(),
+                        AnyExpr::Expr(expr) => expr.as_record_name(),
                         _ => None,
                     } {
                         let record_name = name.as_name();

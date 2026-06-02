@@ -215,7 +215,7 @@ fn matches_trivially(
                 fields: expr_fields,
                 default_field,
             } => match {} {
-                _ if pat_name != expr_name => false,
+                _ if pat_name.atom != expr_name.atom => false,
                 _ => {
                     let defaults_match = match (pat_default, default_field) {
                         (Some(p), Some(e)) => matches_trivially(sema, in_clause, p, e),
@@ -223,9 +223,10 @@ fn matches_trivially(
                         _ => false,
                     };
                     defaults_match && {
-                        let pat_fields_map = pat_fields.iter().copied().collect::<HashMap<_, _>>();
-                        let expr_fields_map =
-                            expr_fields.iter().copied().collect::<HashMap<_, _>>();
+                        let pat_fields_map: HashMap<_, _> =
+                            pat_fields.iter().map(|(k, v)| (k.atom, *v)).collect();
+                        let expr_fields_map: HashMap<_, _> =
+                            expr_fields.iter().map(|(k, v)| (k.atom, *v)).collect();
                         pat_fields_map.iter().all(|(field, pat_val)| {
                             if let Some(expr_val) = expr_fields_map.get(field) {
                                 matches_trivially(sema, in_clause, pat_val, expr_val)

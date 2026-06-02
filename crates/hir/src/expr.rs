@@ -34,6 +34,29 @@ use crate::Var;
 use crate::known;
 use crate::sema;
 
+/// An atom paired with the `ExprId` it was lowered from.
+///
+/// During HIR lowering, `resolve_name` creates an `ExprId` pointing to
+/// `Expr::Literal(Literal::Atom(atom))` for every name position (record
+/// names, field names, etc.).  `NamedAtom` preserves that association so
+/// that later passes (notably SSR) can resolve the source range of each
+/// specific occurrence without an ambiguous reverse lookup.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub struct NamedAtom {
+    pub atom: Atom,
+    pub expr_id: ExprId,
+}
+
+impl NamedAtom {
+    pub fn new(atom: Atom, expr_id: ExprId) -> Self {
+        Self { atom, expr_id }
+    }
+
+    pub fn as_name(&self) -> Name {
+        self.atom.as_name()
+    }
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum AnyExprId {
     Expr(ExprId),
@@ -247,7 +270,7 @@ pub enum NativeRecordName {
     /// Anonymous record: `#_`
     Anon,
     /// Qualified record: `#module:name`
-    Qualified { module: Atom, name: Atom },
+    Qualified { module: NamedAtom, name: NamedAtom },
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -286,37 +309,37 @@ pub enum Expr {
         op: BinaryOp,
     },
     Record {
-        name: Atom,
-        fields: Vec<(Atom, ExprId)>,
+        name: NamedAtom,
+        fields: Vec<(NamedAtom, ExprId)>,
         default_field: Option<ExprId>,
     },
     RecordUpdate {
         expr: ExprId,
-        name: Atom,
-        fields: Vec<(Atom, ExprId)>,
+        name: NamedAtom,
+        fields: Vec<(NamedAtom, ExprId)>,
     },
     RecordIndex {
-        name: Atom,
-        field: Atom,
+        name: NamedAtom,
+        field: NamedAtom,
     },
     RecordField {
         expr: ExprId,
-        name: Atom,
-        field: Atom,
+        name: NamedAtom,
+        field: NamedAtom,
     },
     NativeRecord {
         name: NativeRecordName,
-        fields: Vec<(Atom, ExprId)>,
+        fields: Vec<(NamedAtom, ExprId)>,
     },
     NativeRecordUpdate {
         expr: ExprId,
         name: NativeRecordName,
-        fields: Vec<(Atom, ExprId)>,
+        fields: Vec<(NamedAtom, ExprId)>,
     },
     NativeRecordField {
         expr: ExprId,
         name: NativeRecordName,
-        field: Atom,
+        field: NamedAtom,
     },
     /// In pure expression context, only `=>` (Assoc) fields are valid Erlang.
     /// We also keep `:=` (Exact) fields here so that map shapes appearing in
@@ -414,12 +437,12 @@ impl Expr {
         }
     }
 
-    pub fn as_record_name(&self) -> Option<&Atom> {
+    pub fn as_record_name(&self) -> Option<Atom> {
         match self {
             Expr::Record { name, .. }
             | Expr::RecordField { name, .. }
             | Expr::RecordIndex { name, .. }
-            | Expr::RecordUpdate { name, .. } => Some(name),
+            | Expr::RecordUpdate { name, .. } => Some(name.atom),
             _ => None,
         }
     }
@@ -790,17 +813,17 @@ pub enum Pat {
         op: BinaryOp,
     },
     Record {
-        name: Atom,
-        fields: Vec<(Atom, PatId)>,
+        name: NamedAtom,
+        fields: Vec<(NamedAtom, PatId)>,
         default_field: Option<PatId>,
     },
     RecordIndex {
-        name: Atom,
-        field: Atom,
+        name: NamedAtom,
+        field: NamedAtom,
     },
     NativeRecord {
         name: NativeRecordName,
-        fields: Vec<(Atom, PatId)>,
+        fields: Vec<(NamedAtom, PatId)>,
     },
     /// map keys in patterns are allowed to be a subset of expressions
     Map {
@@ -951,12 +974,12 @@ pub enum TypeExpr {
         rhs: TypeExprId,
     },
     Record {
-        name: Atom,
-        fields: Vec<(Atom, TypeExprId)>,
+        name: NamedAtom,
+        fields: Vec<(NamedAtom, TypeExprId)>,
     },
     NativeRecord {
         name: NativeRecordName,
-        fields: Vec<(Atom, TypeExprId)>,
+        fields: Vec<(NamedAtom, TypeExprId)>,
     },
     Tuple {
         args: Vec<TypeExprId>,

@@ -83,6 +83,7 @@ use crate::db::DefDatabase;
 use crate::expr::Guards;
 use crate::expr::MacroCallName;
 use crate::expr::MaybeExpr;
+use crate::expr::NamedAtom;
 use crate::expr::NativeRecordName;
 use crate::expr::StringVariant;
 use crate::form_list::ConditionEnvId;
@@ -364,8 +365,8 @@ impl<'a> Ctx<'a> {
         &mut self,
         function_clause: &ast::FunctionClause,
     ) -> Option<NameArity> {
-        let name_atom = self.resolve_name(function_clause.name()?)?;
-        let name = name_atom.as_name();
+        let named_atom = self.resolve_name(function_clause.name()?)?;
+        let name = named_atom.as_name();
         let arity = function_clause.args()?.args().count().try_into().ok()?;
         Some(NameArity::new(name, arity))
     }
@@ -1980,7 +1981,7 @@ impl<'a> Ctx<'a> {
             .iter()
             .flat_map(|types| types.types())
             .flat_map(|ty| match ty {
-                ast::BitType::Name(name) => self.resolve_name(name),
+                ast::BitType::Name(name) => self.resolve_name(name).map(|na| na.atom),
                 ast::BitType::BitTypeUnit(ty_unit) => {
                     unit = ty_unit.size().and_then(|unit| self.resolve_arity(unit));
                     None
@@ -3306,10 +3307,10 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    fn resolve_name(&mut self, name: ast::Name) -> Option<Atom> {
+    fn resolve_name(&mut self, name: ast::Name) -> Option<NamedAtom> {
         let expr_id = self.lower_expr(&name.into());
         if let Expr::Literal(Literal::Atom(atom)) = self.body[expr_id] {
-            Some(atom)
+            Some(NamedAtom::new(atom, expr_id))
         } else {
             None
         }
@@ -3331,7 +3332,7 @@ impl<'a> Ctx<'a> {
     fn lower_record_fields(
         &mut self,
         fields: impl Iterator<Item = ast::RecordField>,
-    ) -> (Vec<(Atom, ExprId)>, Option<ExprId>) {
+    ) -> (Vec<(NamedAtom, ExprId)>, Option<ExprId>) {
         let mut named = Vec::new();
         let mut default_field = None;
         for field in fields {
@@ -3351,7 +3352,7 @@ impl<'a> Ctx<'a> {
     fn lower_record_fields_pat(
         &mut self,
         fields: impl Iterator<Item = ast::RecordField>,
-    ) -> (Vec<(Atom, PatId)>, Option<PatId>) {
+    ) -> (Vec<(NamedAtom, PatId)>, Option<PatId>) {
         let mut named = Vec::new();
         let mut default_field = None;
         for field in fields {
@@ -3371,7 +3372,7 @@ impl<'a> Ctx<'a> {
     fn lower_native_record_fields(
         &mut self,
         fields: impl Iterator<Item = ast::RecordField>,
-    ) -> Vec<(Atom, ExprId)> {
+    ) -> Vec<(NamedAtom, ExprId)> {
         fields
             .flat_map(|field| {
                 let value = self.lower_optional_expr(field.expr().and_then(|expr| expr.expr()));
@@ -3384,7 +3385,7 @@ impl<'a> Ctx<'a> {
     fn lower_native_record_fields_pat(
         &mut self,
         fields: impl Iterator<Item = ast::RecordField>,
-    ) -> Vec<(Atom, PatId)> {
+    ) -> Vec<(NamedAtom, PatId)> {
         fields
             .flat_map(|field| {
                 let value = self.lower_optional_pat(field.expr().and_then(|expr| expr.expr()));
@@ -3397,7 +3398,7 @@ impl<'a> Ctx<'a> {
     fn lower_record_fields_type(
         &mut self,
         fields: impl Iterator<Item = ast::RecordField>,
-    ) -> Vec<(Atom, TypeExprId)> {
+    ) -> Vec<(NamedAtom, TypeExprId)> {
         fields
             .flat_map(|field| {
                 let ty = self.lower_optional_type_expr(field.ty().and_then(|expr| expr.expr()));

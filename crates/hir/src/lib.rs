@@ -79,6 +79,7 @@ pub use expr::Literal;
 pub use expr::MacroCallName;
 pub use expr::MapOp;
 pub use expr::MaybeExpr;
+pub use expr::NamedAtom;
 pub use expr::NativeRecordName;
 pub use expr::Pat;
 pub use expr::PatId;

@@ -710,23 +710,23 @@ fn resolve_record(
     let any_expr_id = body_map.any_id(expr)?;
     let (name, field) = match body.get_any(any_expr_id) {
         AnyExprRef::Expr(Expr::Record { name, fields, .. }) => {
-            (*name, idx.and_then(|idx| Some(fields.get(idx)?.0)))
+            (name.atom, idx.and_then(|idx| Some(fields.get(idx)?.0.atom)))
         }
         AnyExprRef::Expr(Expr::RecordUpdate { name, fields, .. }) => {
-            (*name, idx.and_then(|idx| Some(fields.get(idx)?.0)))
+            (name.atom, idx.and_then(|idx| Some(fields.get(idx)?.0.atom)))
         }
-        AnyExprRef::Expr(Expr::RecordIndex { name, field }) => (*name, Some(*field)),
+        AnyExprRef::Expr(Expr::RecordIndex { name, field }) => (name.atom, Some(field.atom)),
         AnyExprRef::Expr(Expr::RecordField {
             expr: _,
             name,
             field,
-        }) => (*name, Some(*field)),
+        }) => (name.atom, Some(field.atom)),
         AnyExprRef::Pat(Pat::Record { name, fields, .. }) => {
-            (*name, idx.and_then(|idx| Some(fields.get(idx)?.0)))
+            (name.atom, idx.and_then(|idx| Some(fields.get(idx)?.0.atom)))
         }
-        AnyExprRef::Pat(Pat::RecordIndex { name, field }) => (*name, Some(*field)),
+        AnyExprRef::Pat(Pat::RecordIndex { name, field }) => (name.atom, Some(field.atom)),
         AnyExprRef::TypeExpr(TypeExpr::Record { name, fields }) => {
-            (*name, idx.and_then(|idx| Some(fields.get(idx)?.0)))
+            (name.atom, idx.and_then(|idx| Some(fields.get(idx)?.0.atom)))
         }
         _ => return None,
     };

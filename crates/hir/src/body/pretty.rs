@@ -15,7 +15,6 @@ use std::str;
 
 use super::SpecOrCallback;
 use crate::AnyAttribute;
-use crate::Atom;
 use crate::AttributeBody;
 use crate::BinarySeg;
 use crate::Body;
@@ -48,6 +47,7 @@ use crate::Var;
 use crate::db::InternDatabase;
 use crate::expr::Guards;
 use crate::expr::MaybeExpr;
+use crate::expr::NamedAtom;
 use crate::expr::NativeRecordName;
 use crate::expr::StringVariant;
 use crate::quote;
@@ -931,7 +931,7 @@ impl<'a> Printer<'a> {
 
     fn print_record_fields<T: Copy>(
         &mut self,
-        fields: &[(Atom, T)],
+        fields: &[(NamedAtom, T)],
         default_field: Option<T>,
         print_value: impl Fn(&mut Self, T) -> fmt::Result,
     ) -> fmt::Result {
