@@ -60,7 +60,6 @@ use anyhow::Context;
 use anyhow::Result;
 use elp::arc_types;
 use elp::cli::Cli;
-use fxhash::FxHashSet;
 
 use crate::args::LintCompare;
 
@@ -199,14 +198,6 @@ impl CompareRow {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CompareResult {
     pub(crate) rows: Vec<CompareRow>,
-    /// Total number of diff-side diagnostics that don't appear in the
-    /// base side (set difference on whole JSON objects, not the
-    /// per-group rollup). Used for the headline "X new, Y removed"
-    /// line at the top of the Markdown report.
-    pub(crate) new_count: usize,
-    /// Mirror of `new_count` for diagnostics present on the base side
-    /// but not on the diff side.
-    pub(crate) removed_count: usize,
 }
 
 impl CompareResult {
@@ -254,53 +245,25 @@ impl CompareResult {
             })
             .collect();
 
-        // Headline NEW/REMOVED counts: set difference on whole-object
-        // JSON identity. Comparing whole objects means any field-level
-        // change (severity, message, line, etc.) counts, not just
-        // per-group count shifts.
-        let to_json = |ds: &[arc_types::Diagnostic]| -> FxHashSet<String> {
-            ds.iter()
-                .filter_map(|d| serde_json::to_string(d).ok())
-                .collect()
-        };
-        let base_set = to_json(base);
-        let diff_set = to_json(diff);
-        let new_count = diff_set.difference(&base_set).count();
-        let removed_count = base_set.difference(&diff_set).count();
-
-        CompareResult {
-            rows,
-            new_count,
-            removed_count,
-        }
+        CompareResult { rows }
     }
 
     /// True iff any per-(`name`, `severity`) row has a non-zero delta.
     /// This is the source of truth for the CLI's exit code under
-    /// `lint-compare` — line drift inside the same group (which only
-    /// affects the headline counts, not per-group counts) does **not**
+    /// `lint-compare` — line drift inside the same group does **not**
     /// fire the regression signal.
     pub(crate) fn has_changes(&self) -> bool {
         !self.rows.is_empty()
     }
 
-    /// Full Markdown report combining the headline counts and the
-    /// per-(diagnostic, severity) summary table. This is the single
-    /// artifact emitted by `--report`; consumers post it as-is or
-    /// extract / truncate as needed.
+    /// Full Markdown report containing the per-(diagnostic, severity)
+    /// summary table. This is the single artifact emitted by `--report`;
+    /// consumers post it as-is or extract / truncate as needed.
     pub(crate) fn markdown_report(&self) -> String {
         let mut out = String::new();
         out.push_str("# ELP Lint Compare Report\n\n");
         out.push_str("Comparing two `elp lint --format=json` JSONL artifacts.\n\n");
-        out.push_str(&format!(
-            "- New diagnostics (in diff, not in base): **{}**\n",
-            self.new_count
-        ));
-        out.push_str(&format!(
-            "- Removed diagnostics (in base, not in diff): **{}**\n",
-            self.removed_count
-        ));
-        out.push_str("\n## Per-(diagnostic, severity) summary\n\n");
+        out.push_str("## Per-(diagnostic, severity) summary\n\n");
         out.push_str("| diagnostic [severity] | base | diff | \u{0394} |\n");
         out.push_str("|------------------------|------|------|---|\n");
         if self.rows.is_empty() {
@@ -359,17 +322,12 @@ mod tests {
     fn empty_inputs_have_no_changes() {
         let result = CompareResult::compute(&[], &[]);
         assert!(!result.has_changes());
-        assert_eq_expected!(0, result.new_count);
-        assert_eq_expected!(0, result.removed_count);
         check_report(
             &result,
             expect![[r#"
                 # ELP Lint Compare Report
 
                 Comparing two `elp lint --format=json` JSONL artifacts.
-
-                - New diagnostics (in diff, not in base): **0**
-                - Removed diagnostics (in base, not in diff): **0**
 
                 ## Per-(diagnostic, severity) summary
 
@@ -386,8 +344,6 @@ mod tests {
         let diff = base.clone();
         let result = CompareResult::compute(&base, &diff);
         assert!(!result.has_changes());
-        assert_eq_expected!(0, result.new_count);
-        assert_eq_expected!(0, result.removed_count);
     }
 
     // ---- diff primitive: one added ----
@@ -401,17 +357,12 @@ mod tests {
         ];
         let result = CompareResult::compute(&base, &diff);
         assert!(result.has_changes());
-        assert_eq_expected!(1, result.new_count);
-        assert_eq_expected!(0, result.removed_count);
         check_report(
             &result,
             expect![[r#"
                 # ELP Lint Compare Report
 
                 Comparing two `elp lint --format=json` JSONL artifacts.
-
-                - New diagnostics (in diff, not in base): **1**
-                - Removed diagnostics (in base, not in diff): **0**
 
                 ## Per-(diagnostic, severity) summary
 
@@ -434,20 +385,12 @@ mod tests {
             .collect();
         let result = CompareResult::compute(&base, &diff);
         assert!(result.has_changes());
-        // 5 diagnostics on the diff side don't appear on the base
-        // side (different severity changes the whole-object identity);
-        // 5 on the base don't appear on the diff.
-        assert_eq_expected!(5, result.new_count);
-        assert_eq_expected!(5, result.removed_count);
         check_report(
             &result,
             expect![[r#"
                 # ELP Lint Compare Report
 
                 Comparing two `elp lint --format=json` JSONL artifacts.
-
-                - New diagnostics (in diff, not in base): **5**
-                - Removed diagnostics (in base, not in diff): **5**
 
                 ## Per-(diagnostic, severity) summary
 
@@ -465,16 +408,10 @@ mod tests {
     fn same_group_different_line_does_not_fire() {
         // Same (name, severity), same count, but different line numbers
         // -> per-group delta is zero -> has_changes() must be false.
-        // The whole-object set diff still reports new/removed because
-        // the JSON identities differ, but that's just signal for the
-        // human-readable headline; the exit-code decision uses
-        // has_changes().
         let base = vec![diag("a.erl", 1, "W0001 (foo)", Severity::Warning)];
         let diff = vec![diag("a.erl", 2, "W0001 (foo)", Severity::Warning)];
         let result = CompareResult::compute(&base, &diff);
         assert!(!result.has_changes());
-        assert_eq_expected!(1, result.new_count);
-        assert_eq_expected!(1, result.removed_count);
     }
 
     // ---- diff primitive: removed ----
@@ -488,8 +425,6 @@ mod tests {
         let diff = vec![diag("a.erl", 1, "W0001 (foo)", Severity::Warning)];
         let result = CompareResult::compute(&base, &diff);
         assert!(result.has_changes());
-        assert_eq_expected!(0, result.new_count);
-        assert_eq_expected!(1, result.removed_count);
     }
 
     // ---- loader ----

@@ -420,7 +420,7 @@ pub struct LintCompare {
     pub diff: PathBuf,
 
     /// Optional path to write the Markdown comparison report
-    /// (headline counts + per-(diagnostic, severity) summary table) to.
+    /// (per-(diagnostic, severity) summary table) to.
     /// When omitted, the report is written to stdout.
     #[bpaf(argument("REPORT_PATH"))]
     pub report_path: Option<PathBuf>,
