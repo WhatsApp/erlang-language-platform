@@ -2190,11 +2190,32 @@ impl<'a> Ctx<'a> {
             .collect()
     }
 
+    /// Try to expand a macro call in clause body context as multiple expressions.
+    ///
+    /// When a macro expands to `ReplacementGuardAnd` (comma-separated expressions),
+    /// each sub-expression is lowered individually and returned as separate body
+    /// expressions. This matches the Erlang preprocessor behavior where macro
+    /// expansion happens before parsing, so comma-separated expressions in a macro
+    /// body become individual clause body expressions.
+    ///
+    /// Also handles the case where a macro expands to another macro call
+    /// (single `Expr`) whose own expansion is `ReplacementGuardAnd`.
+    /// This occurs with wrapper macros like:
+    ///   -define(OUTER(X), ?INNER("prefix", X)).
+    ///   -define(INNER(A, B), expr1(A), expr2(B)).
+    /// where `?OUTER(Y)` in a clause body should produce two separate
+    /// body expressions, not a single `missing` atom.
     fn try_expand_body_macro(&mut self, call: &ast::MacroCallExpr) -> Option<Vec<ExprId>> {
         self.resolve_macro(call, |this, _source, replacement| match replacement {
             MacroReplacement::Ast(_, ast::MacroDefReplacement::ReplacementGuardAnd(guard_and)) => {
-                Some(this.lower_guard_and_exprs(&guard_and))
+                Some(this.lower_body_exprs(guard_and.guard()))
             }
+            MacroReplacement::Ast(
+                _,
+                ast::MacroDefReplacement::Expr(ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(
+                    ref inner_call,
+                ))),
+            ) => this.try_expand_body_macro(inner_call),
             _ => None,
         })
         .flatten()

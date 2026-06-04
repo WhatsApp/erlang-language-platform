@@ -2764,6 +2764,88 @@ run() -> ?PAIR(1), ?PAIR(2).
     );
 }
 
+// Recursive expansion of multi-expression macros: when a wrapper macro
+// expands to a single inner macro call (or has an inner macro call
+// inside its `,`-separated body), the inner expansion is recursively
+// flattened into the surrounding clause body instead of producing a
+// `missing` atom.
+
+#[test]
+fn expand_macro_wrapper_around_multi_expr() {
+    // OUTER's body is a single Expr — a call to INNER. Without the
+    // recursive `MacroDefReplacement::Expr(MacroCallExpr)` arm in
+    // `try_expand_body_macro`, this would lower as a single missing
+    // expression. With the arm, it re-enters expansion and produces
+    // INNER's two body expressions.
+    check(
+        r#"
+-define(INNER(A, B), e1(A), e2(B)).
+-define(OUTER(X), ?INNER("prefix", X)).
+
+run() -> ?OUTER(arg).
+"#,
+        expect![[r#"
+            run() ->
+                e1(
+                    "prefix"
+                ),
+                e2(
+                    arg
+                ).
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_multi_expr_with_nested_macro_call() {
+    // The outer macro body is `,`-separated, and one of the entries is
+    // itself a multi-expression macro call. The recursive `flat_map`
+    // arm in `try_expand_body_macro` flattens it.
+    check(
+        r#"
+-define(INNER(X), bar(X), baz(X)).
+-define(OUTER(X), foo, ?INNER(X)).
+
+run() -> ?OUTER(arg).
+"#,
+        expect![[r#"
+            run() ->
+                foo,
+                bar(
+                    arg
+                ),
+                baz(
+                    arg
+                ).
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_three_levels_of_wrapping() {
+    // Wrapping is recursive to arbitrary depth: A → B → C, where C
+    // expands to a multi-expr body. Each step of the recursion goes
+    // through the new `Expr(MacroCallExpr)` arm.
+    check(
+        r#"
+-define(C(X), c1(X), c2(X)).
+-define(B(X), ?C(X)).
+-define(A(X), ?B(X)).
+
+run() -> ?A(arg).
+"#,
+        expect![[r#"
+            run() ->
+                c1(
+                    arg
+                ),
+                c2(
+                    arg
+                ).
+        "#]],
+    );
+}
+
 // Multi-expression macros must expand the same way wherever expressions
 // are sequenced. The original support was in clause bodies; this commit
 // extends it to `begin ... end` blocks, `try Body of ...`, and try
