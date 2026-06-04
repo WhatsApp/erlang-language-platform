@@ -2970,6 +2970,159 @@ foo() ->
     );
 }
 
+// `ReplacementExprGuard` macros in case-clause patterns: a macro like
+// `-define(NAME, Pattern when Guard1; Guard2; ...)` expands to a pattern
+// plus a list of guard alternatives. The pattern is lowered normally and
+// the guards are merged with the clause's own guards via
+// `pending_macro_guards`.
+
+#[test]
+fn expand_macro_cr_clause_with_guards() {
+    // Macro contributes pattern + two guard alternatives. The clause has
+    // no own guards, so the macro's guards become the clause's guards.
+    check(
+        r#"
+-define(DISCONNECT_ERROR, X when X =:= timeout; X =:= shutdown).
+
+foo(X) ->
+    case X of
+        ?DISCONNECT_ERROR -> ok;
+        _ -> error
+    end.
+"#,
+        expect![[r#"
+            foo(X) ->
+                case X of
+                    X when
+                        (X =:= timeout);
+                        (X =:= shutdown)
+                    ->
+                        ok;
+                    _ ->
+                        error
+                end.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_cr_clause_with_single_guard_alternative() {
+    // Macro with a single guard (no `;`): just one alternative.
+    check(
+        r#"
+-define(POS(N), N when N > 0).
+
+foo(X) ->
+    case X of
+        ?POS(M) -> M;
+        _ -> 0
+    end.
+"#,
+        expect![[r#"
+            foo(X) ->
+                case X of
+                    M when
+                        (M > 0)
+                    ->
+                        M;
+                    _ ->
+                        0
+                end.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_cr_clause_with_guards_and_own_guard() {
+    // OTP preprocessor does lexical substitution, so `?MACRO when extra`
+    // produces `Pattern when MacroGuard when extra` — a syntax error.
+    // The macro guards win; the clause's own guard is discarded.
+    check(
+        r#"
+-define(DISCONNECT_ERROR, X when X =:= timeout; X =:= shutdown).
+
+foo(X) ->
+    case X of
+        ?DISCONNECT_ERROR when is_atom(X) -> ok;
+        _ -> error
+    end.
+"#,
+        expect![[r#"
+            foo(X) ->
+                case X of
+                    X when
+                        (X =:= timeout);
+                        (X =:= shutdown)
+                    ->
+                        ok;
+                    _ ->
+                        error
+                end.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_expr_guard_in_function_clause_no_leak() {
+    // A ReplacementExprGuard macro in a function-clause pattern must NOT
+    // leak its guards into a subsequent case clause.
+    check(
+        r#"
+-define(DISCONNECT_ERROR, X when X =:= timeout; X =:= shutdown).
+
+foo(?DISCONNECT_ERROR) ->
+    case ok of
+        A -> A;
+        _ -> error
+    end.
+"#,
+        expect![[r#"
+            foo(X) ->
+                case ok of
+                    A ->
+                        A;
+                    _ ->
+                        error
+                end.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_expr_guard_in_try_catch_no_leak() {
+    // A ReplacementExprGuard macro in a try-catch reason pattern must NOT
+    // leak its guards into a subsequent case clause.
+    check(
+        r#"
+-define(DISCONNECT_ERROR, X when X =:= timeout; X =:= shutdown).
+
+foo() ->
+    try bar() catch
+        error:?DISCONNECT_ERROR -> handle_error
+    end,
+    case ok of
+        A -> A;
+        _ -> error
+    end.
+"#,
+        expect![[r#"
+            foo() ->
+                try
+                    bar()
+                catch
+                    error:X ->
+                        handle_error
+                end,
+                case ok of
+                    A ->
+                        A;
+                    _ ->
+                        error
+                end.
+        "#]],
+    );
+}
+
 // Macro expansion in guard context uses textual substitution semantics.
 // See body/lower.rs `lower_guard_clause`.
 

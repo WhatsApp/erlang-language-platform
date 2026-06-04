@@ -141,6 +141,15 @@ pub struct Ctx<'a> {
     // Condition expressions only contain guard expressions, whose BIFs are
     // resolved via is_erlang_fun, not through the import table.
     skip_import_resolution: bool,
+    // Guards extracted from ReplacementExprGuard macros during pattern lowering.
+    // When a macro like ?DISCONNECT_ERROR expands to `Pattern when Guard1; Guard2; ...`
+    // (a ReplacementExprGuard), the pattern part is lowered normally but the guards
+    // are stored here so that lower_cr_clause can merge them with the clause's own guards.
+    pending_macro_guards: Guards,
+    // When true, ReplacementExprGuard macros in pattern position will stash
+    // their guards into pending_macro_guards. Only set during lower_cr_clause
+    // pattern lowering to prevent guards leaking from other pattern contexts.
+    in_cr_clause_pattern: bool,
 }
 
 #[derive(Debug)]
@@ -183,6 +192,8 @@ impl<'a> Ctx<'a> {
             local_macro_defs: None,
             module_name_override: None,
             skip_import_resolution: false,
+            pending_macro_guards: Vec::new(),
+            in_cr_clause_pattern: false,
         }
     }
 
@@ -934,6 +945,23 @@ impl<'a> Ctx<'a> {
                         let pat_id = this.lower_pat(&macro_expr);
                         this.record_pat_source(pat_id, source);
                         Some((Some(def_idx), pat_id))
+                    }
+                    MacroReplacement::Ast(def_idx, ast::MacroDefReplacement::ReplacementExprGuard(expr_guard)) => {
+                        // Macro expands to `Pattern when Guard1; Guard2; ...`
+                        // (e.g., ?DISCONNECT_ERROR). Lower the pattern part and,
+                        // if in a CR-clause pattern, stash the guards so
+                        // lower_cr_clause can merge them.
+                        if let Some(macro_expr) = expr_guard.expr() {
+                            let pat_id = this.lower_pat(&macro_expr);
+                            this.record_pat_source(pat_id, source);
+                            if this.in_cr_clause_pattern {
+                                let guards = this.lower_guards(expr_guard.guard());
+                                this.pending_macro_guards.extend(guards);
+                            }
+                            Some((Some(def_idx), pat_id))
+                        } else {
+                            None
+                        }
                     }
                     MacroReplacement::Ast(_,_)
                     // calls are not allowed in patterns
@@ -2016,8 +2044,20 @@ impl<'a> Ctx<'a> {
     ) -> impl Iterator<Item = CRClause> + use<> {
         match clause {
             ast::CrClauseOrMacro::CrClause(clause) => {
+                self.in_cr_clause_pattern = true;
                 let pat = self.lower_optional_pat(clause.pat());
-                let guards = self.lower_guards(clause.guard());
+                self.in_cr_clause_pattern = false;
+                let macro_guards = std::mem::take(&mut self.pending_macro_guards);
+                let guards = if !macro_guards.is_empty() {
+                    // OTP preprocessor does lexical substitution, so
+                    // `?MACRO_WITH_GUARD when extra` produces a double
+                    // `when` — a syntax error reported by the parser.
+                    // Still lower the clause guard for source map coverage.
+                    let _ = self.lower_guards(clause.guard());
+                    macro_guards
+                } else {
+                    self.lower_guards(clause.guard())
+                };
                 let exprs = self.lower_clause_body(clause.body());
                 Either::Left(Some(CRClause { pat, guards, exprs }).into_iter())
             }
