@@ -1916,27 +1916,27 @@ fn ssr_match_constant_negated_atom_placeholder() {
 // -----------------------------------------------------------------
 
 #[test]
-fn ssr_glob_two_globs_in_tuple_rejected() {
+fn ssr_glob_three_globs_in_tuple_rejected() {
     expect![[r#"
-        "Parse error: at most one glob placeholder allowed per sequence (found 2)"
+        "Parse error: at most two glob placeholders allowed per sequence (found 3)"
     "#]]
-    .assert_debug_eq(&parse_error_text("ssr: {a, _@@X, _@@Y}."));
+    .assert_debug_eq(&parse_error_text("ssr: {_@@X, a, _@@Y, b, _@@Z}."));
 }
 
 #[test]
-fn ssr_glob_two_globs_in_call_args_rejected() {
+fn ssr_glob_three_globs_in_call_args_rejected() {
     expect![[r#"
-        "Parse error: at most one glob placeholder allowed per sequence (found 2)"
+        "Parse error: at most two glob placeholders allowed per sequence (found 3)"
     "#]]
-    .assert_debug_eq(&parse_error_text("ssr: foo(_@@X, _@@Y)."));
+    .assert_debug_eq(&parse_error_text("ssr: foo(_@@X, _@@Y, _@@Z)."));
 }
 
 #[test]
-fn ssr_glob_two_globs_in_list_rejected() {
+fn ssr_glob_three_globs_in_list_rejected() {
     expect![[r#"
-        "Parse error: at most one glob placeholder allowed per sequence (found 2)"
+        "Parse error: at most two glob placeholders allowed per sequence (found 3)"
     "#]]
-    .assert_debug_eq(&parse_error_text("ssr: [_@@X, sep, _@@Y]."));
+    .assert_debug_eq(&parse_error_text("ssr: [_@@X, sep, _@@Y, sep, _@@Z]."));
 }
 
 #[test]
@@ -2156,6 +2156,111 @@ fn ssr_glob_match_empty_tuple_with_only_glob() {
 }
 
 // -----------------------------------------------------------------
+// Two-glob matching (lazy-first semantics).
+// -----------------------------------------------------------------
+
+#[test]
+fn ssr_glob_two_globs_find_element_in_tuple() {
+    assert_matches(
+        "ssr: {_@@Pre, x, _@@Post}.",
+        "f() -> {a, b, x, c, d}.",
+        &[(
+            "{a, b, x, c, d}",
+            &[("_@@Post", &["c", "d"]), ("_@@Pre", &["a", "b"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_two_globs_element_at_start() {
+    assert_matches(
+        "ssr: {_@@Pre, x, _@@Post}.",
+        "f() -> {x, c, d}.",
+        &[("{x, c, d}", &[("_@@Post", &["c", "d"]), ("_@@Pre", &[])])],
+    );
+}
+
+#[test]
+fn ssr_glob_two_globs_element_at_end() {
+    assert_matches(
+        "ssr: {_@@Pre, x, _@@Post}.",
+        "f() -> {a, b, x}.",
+        &[("{a, b, x}", &[("_@@Post", &[]), ("_@@Pre", &["a", "b"])])],
+    );
+}
+
+#[test]
+fn ssr_glob_two_globs_element_alone() {
+    assert_matches(
+        "ssr: {_@@Pre, x, _@@Post}.",
+        "f() -> {x}.",
+        &[("{x}", &[("_@@Post", &[]), ("_@@Pre", &[])])],
+    );
+}
+
+#[test]
+fn ssr_glob_two_globs_no_match() {
+    assert_matches("ssr: {_@@Pre, x, _@@Post}.", "f() -> {a, b, c}.", &[]);
+}
+
+#[test]
+fn ssr_glob_two_globs_lazy_first() {
+    // Lazy-first: finds the first occurrence of x
+    assert_matches(
+        "ssr: [_@@Pre, x, _@@Post].",
+        "f() -> [a, x, b, x, c].",
+        &[(
+            "[a, x, b, x, c]",
+            &[("_@@Post", &["b", "x", "c"]), ("_@@Pre", &["a"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_two_globs_in_call_args() {
+    assert_matches(
+        "ssr: foo(_@@Pre, ok, _@@Post).",
+        "f() -> foo(1, 2, ok, 3).",
+        &[(
+            "foo(1, 2, ok, 3)",
+            &[("_@@Post", &["3"]), ("_@@Pre", &["1", "2"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_two_globs_with_fixed_prefix_and_suffix() {
+    assert_matches(
+        "ssr: {a, _@@Pre, x, _@@Post, z}.",
+        "f() -> {a, b, c, x, d, e, z}.",
+        &[(
+            "{a, b, c, x, d, e, z}",
+            &[("_@@Post", &["d", "e"]), ("_@@Pre", &["b", "c"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_two_globs_adjacent_rejected() {
+    expect![[r#"
+        "Parse error: two glob placeholders must have at least one fixed element between them"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: {_@@A, _@@B}."));
+}
+
+#[test]
+fn ssr_glob_two_globs_with_placeholder_between() {
+    assert_matches(
+        "ssr: [_@@Pre, _@Mid, _@@Post].",
+        "f() -> [a, b, c].",
+        &[(
+            "[a, b, c]",
+            &[("_@@Post", &["b", "c"]), ("_@@Pre", &[]), ("_@Mid", &["a"])],
+        )],
+    );
+}
+
+// -----------------------------------------------------------------
 // Glob: begin..end block bodies.
 // -----------------------------------------------------------------
 
@@ -2278,6 +2383,36 @@ fn ssr_glob_match_case_clause_body_with_prefix() {
             ],
         )],
     );
+}
+
+#[test]
+fn ssr_glob_two_globs_in_separate_case_clauses() {
+    // Two globs share one `case` parent but live in *different* clause
+    // bodies, which are independent sub-sequences. This is valid and
+    // each glob absorbs its own clause body. Regression test: keying
+    // the two-glob validation by HIR parent (rather than sub-sequence)
+    // previously rejected this as "two glob placeholders must have at
+    // least one fixed element between them", because both globs sit at
+    // index 0 of their respective clause bodies.
+    assert_matches(
+        "ssr: case foo of ok -> _@@A; error -> _@@B end.",
+        "f() -> case foo of ok -> a, b; error -> c, d end.",
+        &[(
+            "case foo of ok -> a, b; error -> c, d end",
+            &[("_@@A", &["a", "b"]), ("_@@B", &["c", "d"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_glob_two_globs_same_clause_body_adjacent_rejected() {
+    // Two *adjacent* globs within the same clause body are still
+    // rejected — the per-sub-sequence constraint applies here, where
+    // both globs genuinely share one sequence.
+    expect![[r#"
+        "Parse error: two glob placeholders must have at least one fixed element between them"
+    "#]]
+    .assert_debug_eq(&parse_error_text("ssr: case foo of ok -> _@@A, _@@B end."));
 }
 
 #[test]
@@ -2411,12 +2546,12 @@ fn ssr_glob_lc_guards_interleaved_generators() {
 }
 
 #[test]
-fn ssr_glob_lc_two_globs_rejected() {
+fn ssr_glob_lc_three_globs_rejected() {
     expect![[r#"
-        "Parse error: at most one glob placeholder allowed per sequence (found 2)"
+        "Parse error: at most two glob placeholders allowed per sequence (found 3)"
     "#]]
     .assert_debug_eq(&parse_error_text(
-        "ssr: [_@X || _@@Guards1, _@X <- _@L, _@@Guards2].",
+        "ssr: [_@X || _@@G1, _@X <- _@L, _@@G2, _@@G3].",
     ));
 }
 

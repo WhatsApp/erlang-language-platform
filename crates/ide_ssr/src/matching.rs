@@ -968,11 +968,12 @@ impl<'a> Matcher<'a> {
     }
 
     /// Walk the elements of each list, matching each one. Patterns may
-    /// contain at most one glob (`_@@Name`) placeholder, in which case
-    /// the prefix and suffix of the pattern around the glob are matched
-    /// lock-step against the corresponding ends of the code list, and
-    /// the glob binds to the middle slice. Without a glob, the two
-    /// lists must have equal length and match lock-step.
+    /// contain up to two glob (`_@@Name`) placeholders. With one glob,
+    /// the prefix and suffix around the glob are matched lock-step and
+    /// the glob binds to the middle. With two globs, the fixed elements
+    /// between them are located via a lazy-first scan (first glob takes
+    /// the minimum prefix). Without a glob, the two lists must have
+    /// equal length and match lock-step.
     fn attempt_match_pattern_lists(
         &self,
         phase: &mut Phase<'_>,
@@ -982,14 +983,23 @@ impl<'a> Matcher<'a> {
         let patterns = pattern_it.children;
         let codes = code_it.children;
 
-        // Pattern-compile-time validation guarantees at most one glob
-        // per sequence (see `validate_glob_usage`), so we can stop at
-        // the first match.
-        let glob_idx = patterns.iter().position(|p| self.is_glob_subid(p));
+        let glob_indices: Vec<usize> = patterns
+            .iter()
+            .enumerate()
+            .filter_map(|(i, p)| if self.is_glob_subid(p) { Some(i) } else { None })
+            .collect();
 
-        match glob_idx {
-            None => self.attempt_match_lockstep(phase, &patterns, &codes),
-            Some(i) => self.attempt_match_with_glob(phase, &patterns, &codes, i),
+        match glob_indices.len() {
+            0 => self.attempt_match_lockstep(phase, &patterns, &codes),
+            1 => self.attempt_match_with_glob(phase, &patterns, &codes, glob_indices[0]),
+            2 => self.attempt_match_with_two_globs(
+                phase,
+                &patterns,
+                &codes,
+                glob_indices[0],
+                glob_indices[1],
+            ),
+            n => fail_match!("too many glob placeholders in sequence ({})", n),
         }
     }
 
@@ -1054,6 +1064,90 @@ impl<'a> Matcher<'a> {
         self.attempt_match_lockstep(phase, prefix, prefix_codes)?;
         self.attempt_match_lockstep(phase, suffix, suffix_codes)?;
         self.bind_glob(phase, glob_pattern, glob_codes, prefix_codes, suffix_codes)?;
+        Ok(())
+    }
+
+    /// Two-glob matching with lazy-first semantics. The pattern has the
+    /// shape `[prefix..., glob_a, between..., glob_b, suffix...]`.
+    /// Fixed prefix and suffix are matched lockstep. Then the fixed
+    /// `between` segment is located in the remaining code elements by
+    /// scanning left-to-right; the first valid position wins (glob_a
+    /// takes the minimum prefix). glob_b gets everything after.
+    fn attempt_match_with_two_globs(
+        &self,
+        phase: &mut Phase<'_>,
+        patterns: &[SubId],
+        codes: &[SubId],
+        first_glob_idx: usize,
+        second_glob_idx: usize,
+    ) -> Result<(), MatchFailed> {
+        let prefix = &patterns[..first_glob_idx];
+        let first_glob = &patterns[first_glob_idx];
+        let between = &patterns[first_glob_idx + 1..second_glob_idx];
+        let second_glob = &patterns[second_glob_idx];
+        let suffix = &patterns[second_glob_idx + 1..];
+
+        let required = prefix.len() + between.len() + suffix.len();
+        if required > codes.len() {
+            fail_match!(
+                "two-glob pattern needs at least {} fixed elements, code has {}",
+                required,
+                codes.len()
+            );
+        }
+
+        let prefix_codes = &codes[..prefix.len()];
+        let suffix_start = codes.len() - suffix.len();
+        let suffix_codes = &codes[suffix_start..];
+        let remaining = &codes[prefix.len()..suffix_start];
+
+        // Probe for the first valid offset using Phase::First so no
+        // partial bindings are recorded during the scan.
+        let between_len = between.len();
+        let max_offset = remaining.len().saturating_sub(between_len);
+
+        let offset = (0..=max_offset)
+            .find(|&offset| {
+                let candidate = &remaining[offset..offset + between_len];
+                if self
+                    .attempt_match_lockstep(&mut Phase::First, between, candidate)
+                    .is_err()
+                {
+                    return false;
+                }
+                let first_codes = &remaining[..offset];
+                let second_codes = &remaining[offset + between_len..];
+                !first_codes.iter().any(|c| matches!(c, SubId::Constant(_)))
+                    && !second_codes.iter().any(|c| matches!(c, SubId::Constant(_)))
+            })
+            .ok_or_else(|| {
+                match_error!(
+                    "two-glob pattern: no valid position found for fixed elements between globs"
+                )
+            })?;
+
+        let first_glob_codes = &remaining[..offset];
+        let between_codes = &remaining[offset..offset + between_len];
+        let second_glob_codes = &remaining[offset + between_len..];
+
+        self.attempt_match_lockstep(phase, prefix, prefix_codes)?;
+        self.attempt_match_lockstep(phase, suffix, suffix_codes)?;
+        self.attempt_match_lockstep(phase, between, between_codes)?;
+        self.bind_glob(
+            phase,
+            first_glob,
+            first_glob_codes,
+            prefix_codes,
+            between_codes,
+        )?;
+        self.bind_glob(
+            phase,
+            second_glob,
+            second_glob_codes,
+            between_codes,
+            suffix_codes,
+        )?;
+
         Ok(())
     }
 
@@ -2304,9 +2398,11 @@ where
 /// `Tuple.exprs`, `List.exprs`, `Block.exprs`, `Call.args`, and
 /// clause body `exprs` inside `Closure`, `Case`, `Receive`, `If`,
 /// `Try`, and `Maybe` (and the corresponding `Pat` variants). At most
-/// one glob per sequence is permitted, mirroring Erlang Merl. Globs
-/// are forbidden inside `when` clauses entirely. Any violation surfaces
-/// as an `SsrError` so the rule fails to parse rather than silently
+/// two globs per sequence are permitted — two globs allow matching an
+/// element at an arbitrary position within a list with possibly-empty
+/// prefix and suffix (lazy-first semantics). Globs are forbidden
+/// inside `when` clauses entirely. Any violation surfaces as an
+/// `SsrError` so the rule fails to parse rather than silently
 /// producing wrong matches.
 pub(crate) fn validate_glob_usage(
     ssr_body: &hir::SsrBody,
@@ -2344,14 +2440,23 @@ pub(crate) fn validate_glob_usage(
         collect(&ctx);
     });
 
-    // Validate placements and tally per-parent glob counts.
+    // Validate placements and tally glob counts.
     // A map glob *entry* is any map field where at least the key or
     // value is a glob.  A single entry like `_@@K => _@@V` has two
     // glob placeholders but counts as one entry.  We track which field
     // indices contain globs per map parent and reject when more than
     // one distinct field has a glob (the matching code only processes
     // the first glob entry).
-    let mut seq_glob_count: FxHashMap<AnyExprId, usize> = FxHashMap::default();
+    //
+    // For sequence globs we tally positions per *sub-sequence*, not per
+    // HIR parent: a single parent (e.g. `case`, `try`, `receive`,
+    // comprehension) can own several independent sub-sequences (one per
+    // clause body, the comprehension builder vs. its guards, ...). The
+    // two-glob constraint applies within a single sub-sequence, so we
+    // key on the sub-sequence (identified by the id of its first
+    // element) rather than the parent. This avoids comparing positions
+    // from non-comparable index spaces.
+    let mut seq_glob_positions: FxHashMap<AnyExprId, Vec<usize>> = FxHashMap::default();
     let mut map_glob_fields: FxHashMap<AnyExprId, FxHashSet<usize>> = FxHashMap::default();
     for (glob_id, parent_id) in &globs {
         let Some(parent_id) = parent_id else {
@@ -2363,7 +2468,9 @@ pub(crate) fn validate_glob_usage(
         };
         match glob_role(body, *parent_id, *glob_id) {
             GlobRole::Sequence => {
-                *seq_glob_count.entry(*parent_id).or_insert(0) += 1;
+                let (seq_id, pos) = glob_position_in_sequence(body, *parent_id, *glob_id)
+                    .unwrap_or((*parent_id, 0));
+                seq_glob_positions.entry(seq_id).or_default().push(pos);
             }
             GlobRole::MapKey | GlobRole::MapValue => {
                 if let Some(idx) = map_field_index_for_glob(body, *parent_id, *glob_id) {
@@ -2380,10 +2487,26 @@ pub(crate) fn validate_glob_usage(
             }
         }
     }
-    if let Some((_, count)) = seq_glob_count.iter().find(|(_, c)| **c > 1) {
-        return Err(crate::SsrError::new(format!(
-            "at most one glob placeholder allowed per sequence (found {count})"
-        )));
+    for positions in seq_glob_positions.values() {
+        let count = positions.len();
+        if count > 2 {
+            return Err(crate::SsrError::new(format!(
+                "at most two glob placeholders allowed per sequence (found {count})"
+            )));
+        }
+        if count == 2 {
+            let (first, last) = (
+                positions[0].min(positions[1]),
+                positions[0].max(positions[1]),
+            );
+            if last - first < 2 {
+                return Err(crate::SsrError::new(
+                    "two glob placeholders must have at least one \
+                     fixed element between them"
+                        .to_string(),
+                ));
+            }
+        }
     }
     if let Some((_, fields)) = map_glob_fields.iter().find(|(_, s)| s.len() > 1) {
         let count = fields.len();
@@ -2653,6 +2776,89 @@ fn map_field_index_for_glob(
                 None
             }
         }
+        _ => None,
+    }
+}
+
+/// Return the `(sub_sequence_id, position)` of `glob_id` within its
+/// parent's child sequence. Mirrors the sequence-position cases from
+/// `glob_role` so it covers exactly the same HIR variants.
+///
+/// `sub_sequence_id` identifies the specific flat sub-sequence the glob
+/// lives in — keyed by the id of that sub-sequence's first element. A
+/// single parent can own several independent sub-sequences (e.g. one per
+/// `case`/`receive`/`if`/`try`/`maybe` clause body, or a comprehension's
+/// builder vs. its guards), and globs in distinct sub-sequences must not
+/// be compared against each other.
+fn glob_position_in_sequence(
+    body: &Body,
+    parent_id: AnyExprId,
+    glob_id: AnyExprId,
+) -> Option<(AnyExprId, usize)> {
+    let find_expr = |seq: &[ExprId], g: ExprId| -> Option<(AnyExprId, usize)> {
+        let pos = seq.iter().position(|e| *e == g)?;
+        let first = *seq.first()?;
+        Some((AnyExprId::Expr(first), pos))
+    };
+    let find_pat = |seq: &[PatId], g: PatId| -> Option<(AnyExprId, usize)> {
+        let pos = seq.iter().position(|p| *p == g)?;
+        let first = *seq.first()?;
+        Some((AnyExprId::Pat(first), pos))
+    };
+    match (parent_id, glob_id) {
+        (AnyExprId::Expr(p), AnyExprId::Expr(g)) => match &body.exprs[p] {
+            Expr::Tuple { exprs } => find_expr(exprs, g),
+            Expr::List { exprs, .. } => find_expr(exprs, g),
+            Expr::Block { exprs } => find_expr(exprs, g),
+            Expr::Call { args, .. } => find_expr(args, g),
+            Expr::Closure { clauses, .. } => clauses.iter().find_map(|c| find_expr(&c.exprs, g)),
+            Expr::Case { clauses, .. } => clauses.iter().find_map(|c| find_expr(&c.exprs, g)),
+            Expr::Receive { clauses, after } => clauses
+                .iter()
+                .find_map(|c| find_expr(&c.exprs, g))
+                .or_else(|| after.as_ref().and_then(|a| find_expr(&a.exprs, g))),
+            Expr::If { clauses } => clauses.iter().find_map(|c| find_expr(&c.exprs, g)),
+            Expr::Try {
+                exprs,
+                of_clauses,
+                catch_clauses,
+                after,
+            } => find_expr(exprs, g)
+                .or_else(|| of_clauses.iter().find_map(|c| find_expr(&c.exprs, g)))
+                .or_else(|| catch_clauses.iter().find_map(|c| find_expr(&c.exprs, g)))
+                .or_else(|| find_expr(after, g)),
+            Expr::Maybe { else_clauses, .. } => {
+                else_clauses.iter().find_map(|c| find_expr(&c.exprs, g))
+            }
+            Expr::Comprehension { builder, exprs } => {
+                let in_builder = if let ComprehensionBuilder::List(es) = builder {
+                    find_expr(es, g)
+                } else {
+                    None
+                };
+                in_builder.or_else(|| {
+                    // Find `g`'s position among the guard exprs, keyed by the
+                    // first guard expr, without collecting into a `Vec`.
+                    let mut guards = exprs.iter().filter_map(|ce| match ce {
+                        ComprehensionExpr::Expr(e) => Some(*e),
+                        _ => None,
+                    });
+                    let first = guards.next()?;
+                    let pos = if first == g {
+                        0
+                    } else {
+                        guards.position(|e| e == g)? + 1
+                    };
+                    Some((AnyExprId::Expr(first), pos))
+                })
+            }
+            _ => None,
+        },
+        (AnyExprId::Pat(p), AnyExprId::Pat(g)) => match &body.pats[p] {
+            Pat::Tuple { pats } => find_pat(pats, g),
+            Pat::List { pats, .. } => find_pat(pats, g),
+            _ => None,
+        },
         _ => None,
     }
 }
