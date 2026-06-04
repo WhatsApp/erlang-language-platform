@@ -197,6 +197,11 @@ fn get_placeholder_info(sema: &Semantic, m: &Match) -> Vec<(String, Vec<String>)
             let texts = m.placeholder_texts(sema, &name)?;
             Some((name, texts))
         })
+        .chain(m.placeholders_by_atom.keys().filter_map(|atom| {
+            let name = atom.as_name().to_string();
+            let texts = m.placeholder_texts(sema, &name)?;
+            Some((name, texts))
+        }))
         .collect();
     placeholders.sort_by(|a, b| a.0.cmp(&b.0));
     placeholders
@@ -437,9 +442,161 @@ fn ssr_record_expr_match_5() {
 #[test]
 fn ssr_record_expr_match_6() {
     assert_matches(
-        "ssr: #foo{_@K = _@A, k2 = _@B, k3 = _@C}.",
+        "ssr: #foo{'@K' = _@A, k2 = _@B, k3 = _@C}.",
         "fn() -> X = #foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}, X.",
+        &[(
+            "#foo{k1 = a, k2 = <<\"blah\">>, k3 = {c, d}}",
+            &[
+                ("@K", &["k1"]),
+                ("_@A", &["a"]),
+                ("_@B", &["<<\"blah\">>"]),
+                ("_@C", &["{c, d}"]),
+            ],
+        )],
+    );
+}
+
+#[test]
+fn ssr_atom_placeholder_record_name() {
+    // Atom placeholder for record name: '@RecName' matches any record name
+    assert_matches(
+        "ssr: #'@RecName'{k1 = _@A}.",
+        "fn() -> X = #foo{k1 = a}, X.",
+        &[("#foo{k1 = a}", &[("@RecName", &["foo"]), ("_@A", &["a"])])],
+    );
+}
+
+#[test]
+fn ssr_atom_placeholder_field_name() {
+    // Atom placeholder for field name: '@K' matches any field name
+    assert_matches(
+        "ssr: #foo{'@K' = _@A, k2 = _@B}.",
+        "fn() -> X = #foo{k1 = a, k2 = b}, X.",
+        &[(
+            "#foo{k1 = a, k2 = b}",
+            &[("@K", &["k1"]), ("_@A", &["a"]), ("_@B", &["b"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_atom_placeholder_consistency() {
+    // Same atom placeholder must match the same name.
+    // Each '@N' occurrence gets its own ExprId, so both matches are reported.
+    assert_matches(
+        "ssr: #'@N'{k1 = #'@N'{k2 = _@V}}.",
+        "fn() -> X = #foo{k1 = #foo{k2 = a}}, X.",
+        &[(
+            "#foo{k1 = #foo{k2 = a}}",
+            &[("@N", &["foo", "foo"]), ("_@V", &["a"])],
+        )],
+    );
+    // Different record names should fail consistency
+    assert_matches(
+        "ssr: #'@N'{k1 = #'@N'{k2 = _@V}}.",
+        "fn() -> X = #foo{k1 = #bar{k2 = a}}, X.",
         &[],
+    );
+}
+
+#[test]
+fn ssr_atom_placeholder_distinct_ranges() {
+    // Verify that each occurrence of '@N' reports a distinct range
+    // corresponding to the actual source location of each matched atom.
+    // The two "foo" occurrences should have different source ranges
+    // because each atom in the pattern gets its own ExprId.
+    assert_match_placeholder(
+        "ssr: #'@N'{k1 = #'@N'{k2 = _@V}}.",
+        "fn() -> X = #foo{k1 = #foo{k2 = a}}, X.",
+        &["#foo{k1 = #foo{k2 = a}}"],
+        "@N",
+        expect![[r#"
+            Some(
+                [
+                    Single {
+                        range: FileRange {
+                            file_id: FileId(
+                                0,
+                            ),
+                            range: 13..16,
+                        },
+                        code_id: AnyExprId(
+                            Expr(
+                                Idx::<Expr>(1),
+                            ),
+                        ),
+                        inner_matches: SsrMatches {
+                            matches: [],
+                        },
+                    },
+                    Single {
+                        range: FileRange {
+                            file_id: FileId(
+                                0,
+                            ),
+                            range: 23..26,
+                        },
+                        code_id: AnyExprId(
+                            Expr(
+                                Idx::<Expr>(2),
+                            ),
+                        ),
+                        inner_matches: SsrMatches {
+                            matches: [],
+                        },
+                    },
+                ],
+            )
+        "#]],
+    );
+}
+
+#[test]
+fn ssr_atom_placeholder_from_macro() {
+    // A macro expanding to a record name should be matched correctly
+    // because the ExprId tracks through the macro expansion.
+    // The placeholder text is the source text ("?REC"), not the expanded value.
+    assert_matches(
+        "ssr: #'@N'{k1 = _@V}.",
+        "-define(REC, foo).
+         fn() -> X = #?REC{k1 = a}, X.",
+        &[("#?REC{k1 = a}", &[("@N", &["?REC"]), ("_@V", &["a"])])],
+    );
+}
+
+#[test]
+fn ssr_atom_placeholder_separate_namespaces() {
+    // '@X' (atom placeholder) and '_@X' (var placeholder) are separate namespaces
+    assert_matches(
+        "ssr: #'@X'{'@K' = _@X}.",
+        "fn() -> X = #foo{k1 = a}, X.",
+        &[(
+            "#foo{k1 = a}",
+            &[("@K", &["k1"]), ("@X", &["foo"]), ("_@X", &["a"])],
+        )],
+    );
+}
+
+#[test]
+fn ssr_atom_placeholder_expr_position() {
+    // '@X' matching any atom in expression position within a tuple
+    assert_matches(
+        "ssr: {'@X', _@Y}.",
+        "fn() -> X = {foo, bar}, X.",
+        &[("{foo, bar}", &[("@X", &["foo"]), ("_@Y", &["bar"])])],
+    );
+}
+
+#[test]
+fn ssr_atom_placeholder_remote_call() {
+    // '@M':'@F'(_@A) matching a remote call
+    assert_matches(
+        "ssr: '@M':'@F'(_@A).",
+        "fn() -> X = mymod:myfun(1), X.",
+        &[(
+            "mymod:myfun(1)",
+            &[("@F", &["myfun"]), ("@M", &["mymod"]), ("_@A", &["1"])],
+        )],
     );
 }
 

@@ -767,8 +767,12 @@ impl Match {
     }
 
     pub fn get_placeholder_matches(&self, placeholder_name: &str) -> Option<Vec<PlaceholderMatch>> {
-        let var = Var::new(&Name::from_erlang_service(placeholder_name));
-        let subids = self.placeholders_by_var.get(&var)?;
+        let name = Name::from_erlang_service(placeholder_name);
+        // Try var placeholder first, then fall back to atom placeholder.
+        let subids = self
+            .placeholders_by_var
+            .get(&Var::new(&name))
+            .or_else(|| self.placeholders_by_atom.get(&Atom::new(&name)))?;
         Some(
             subids
                 .iter()
@@ -777,16 +781,9 @@ impl Match {
         )
     }
     pub fn get_placeholder_match(&self, placeholder_name: &str) -> Option<PlaceholderMatch> {
-        let var = Var::new(&Name::from_erlang_service(placeholder_name));
-        let subids = self.placeholders_by_var.get(&var)?;
-        if subids.len() == 1 {
-            let pm = self
-                .placeholder_values
-                .get(&subids.iter().next().cloned()?)?
-                .clone();
-            // Glob bindings carry a slice of code nodes, not a single
-            // value — surface a clear panic that points at the glob API
-            // rather than letting callers silently see an empty `text`.
+        let matches = self.get_placeholder_matches(placeholder_name)?;
+        if matches.len() == 1 {
+            let pm = matches.into_iter().next()?;
             if pm.is_glob() {
                 panic!(
                     "'{placeholder_name}' is a glob placeholder; \
@@ -796,8 +793,6 @@ impl Match {
             }
             Some(pm)
         } else {
-            // We panic here because this should be used when doing
-            // development only, give feedback to the dev.
             panic!("expecting a single match for '{placeholder_name}', got multiple");
         }
     }

@@ -114,7 +114,6 @@ impl SsrPlaceholder {
         }
     }
 
-    #[allow(dead_code)] // Used in subsequent commit wiring atom placeholders into matching
     pub fn from_atom(atom: Atom) -> Option<Self> {
         if atom.is_ssr_placeholder() {
             Some(SsrPlaceholder {
@@ -134,22 +133,6 @@ impl SsrPlaceholder {
         match &self.source {
             PlaceholderSource::Var(var) => var.as_name(),
             PlaceholderSource::Atom(atom) => atom.as_name(),
-        }
-    }
-
-    #[allow(dead_code)] // Used in subsequent commit
-    pub fn as_var(&self) -> Option<&Var> {
-        match &self.source {
-            PlaceholderSource::Var(var) => Some(var),
-            _ => None,
-        }
-    }
-
-    #[allow(dead_code)] // Used in subsequent commit
-    pub fn as_atom(&self) -> Option<&Atom> {
-        match &self.source {
-            PlaceholderSource::Atom(atom) => Some(atom),
-            _ => None,
         }
     }
 }
@@ -517,10 +500,19 @@ impl PlaceholderMatch {
         body: &FoldBody,
         other: &SubId,
     ) -> bool {
-        let Some(SubId::AnyExprId(code_id)) = self.code_id() else {
-            return false;
-        };
-        subids_structurally_equivalent(sema, rule, body, other, code_id)
+        match self.code_id() {
+            Some(SubId::Atom(a1)) => {
+                if let SubId::Atom(a2) = other {
+                    a1 == a2
+                } else {
+                    false
+                }
+            }
+            Some(SubId::AnyExprId(code_id)) => {
+                subids_structurally_equivalent(sema, rule, body, other, code_id)
+            }
+            _ => false,
+        }
     }
 }
 
@@ -565,12 +557,18 @@ fn subids_structurally_equivalent_with_cache(
 }
 
 /// Render the source text of a code-side `SubId` by following its
-/// `AnyExprId` back through the body source map. Returns `None` for
+/// `AnyExprId` back through the body source map, or by looking up the
+/// atom name directly for `SubId::Atom` entries. Returns `None` for
 /// synthetic/constant subids that do not correspond to an AST node.
 fn text_of_code_subid(code_id: &SubId, sema: &Semantic, body: &Body) -> Option<String> {
-    let any_expr_id = code_id.any_expr_id()?;
-    let src: InFileAstPtr<ast::Expr> = body.get_body_map(sema)?.any(any_expr_id)?;
-    Some(src.to_node(&sema.parse(body.origin.file_id()))?.to_string())
+    match code_id {
+        SubId::Atom(atom) => Some(atom.as_string()),
+        _ => {
+            let any_expr_id = code_id.any_expr_id()?;
+            let src: InFileAstPtr<ast::Expr> = body.get_body_map(sema)?.any(any_expr_id)?;
+            Some(src.to_node(&sema.parse(body.origin.file_id()))?.to_string())
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -1502,9 +1500,13 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    fn get_placeholder_for_node(&self, id: &SubId) -> Option<&SsrPlaceholder> {
+    fn get_placeholder_for_node(&self, id: &SubId) -> Option<Cow<'_, SsrPlaceholder>> {
         match id {
-            SubId::AnyExprId(any_expr) => self.placeholder_cache.get_placeholder(any_expr),
+            SubId::AnyExprId(any_expr) => self
+                .placeholder_cache
+                .get_placeholder(any_expr)
+                .map(Cow::Borrowed),
+            SubId::Atom(atom) => SsrPlaceholder::from_atom(*atom).map(Cow::Owned),
             _ => None,
         }
     }
@@ -1522,6 +1524,7 @@ impl<'a> Matcher<'a> {
     fn get_code_range(&self, code: &SubId) -> Option<FileRange> {
         match code {
             SubId::AnyExprId(code) => self.code_body.body.range_for_any(self.sema, *code),
+            SubId::Atom(_) => None,
             _ => None,
         }
     }
@@ -1558,6 +1561,7 @@ impl<'a> Matcher<'a> {
                 }
                 _ => false,
             },
+            SubId::Atom(atom) => atom.is_ssr_placeholder(),
             _ => false,
         }
     }
@@ -1653,7 +1657,13 @@ impl SubId {
     pub fn variant_str(&self, body: &FoldBody) -> Cow<'static, str> {
         match self {
             SubId::AnyExprId(e) => Cow::Borrowed(body.get_any(*e).variant_str()),
-            SubId::Atom(_) => Cow::Borrowed("Atom"),
+            SubId::Atom(atom) => {
+                if atom.is_ssr_placeholder() {
+                    Cow::Borrowed("Atom::SsrPlaceholder")
+                } else {
+                    Cow::Borrowed("Atom")
+                }
+            }
             SubId::Var(_) => Cow::Borrowed("Var"),
             SubId::UnaryOp(op) => Cow::Borrowed(match op {
                 UnaryOp::Plus => "UnaryOp::Plus",
