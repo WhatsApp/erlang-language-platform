@@ -2161,6 +2161,18 @@ impl<'a> Ctx<'a> {
             MacroReplacement::Ast(_, ast::MacroDefReplacement::ReplacementGuardAnd(guard_and)) => {
                 Some(vec![this.lower_guard_and_exprs(&guard_and)])
             }
+            // Wrapper macro whose replacement is itself a macro call, e.g.
+            //   -define(B(X), ?A(X)).
+            //   -define(A(X), X =:= a; X =:= b).
+            // `?B(X)` in guard context must recurse into `?A(X)` so the
+            // guard-OR/AND structure is preserved rather than falling
+            // through to `lower_expr` and producing `Missing`.
+            MacroReplacement::Ast(
+                _,
+                ast::MacroDefReplacement::Expr(ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(
+                    ref inner_call,
+                ))),
+            ) => this.try_expand_guard_macro(inner_call),
             _ => None,
         })
         .flatten()

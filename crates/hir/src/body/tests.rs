@@ -3413,6 +3413,51 @@ foo(X) when ?IS_AB(X), is_atom(X) -> ok.
 }
 
 #[test]
+fn expand_macro_guard_or_nested_wrapper() {
+    // `?B(X)` expands to another macro call `?A(X)`, whose own body is a
+    // `;`-separated guard-OR. The wrapper must recurse so the OR structure
+    // is preserved rather than collapsing to `Missing`.
+    check(
+        r#"
+-define(A(X), X =:= a; X =:= b).
+-define(B(X), ?A(X)).
+
+foo(X) when ?B(X) -> ok.
+"#,
+        expect![[r#"
+            foo(X) when
+                (X =:= a);
+                (X =:= b)
+            ->
+                ok.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_macro_guard_and_nested_wrapper() {
+    // Same wrapper indirection, but the inner macro is a `,`-separated
+    // guard-AND conjunction.
+    check(
+        r#"
+-define(A(X), is_integer(X), X > 0).
+-define(B(X), ?A(X)).
+
+foo(X) when ?B(X) -> ok.
+"#,
+        expect![[r#"
+            foo(X) when
+                erlang:is_integer(
+                    X
+                ),
+                (X > 0)
+            ->
+                ok.
+        "#]],
+    );
+}
+
+#[test]
 fn tree_print_guard_no_macro() {
     // Baseline: plain guards with disjunction and conjunction, no macros.
     check_ast(
