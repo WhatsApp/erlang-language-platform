@@ -837,7 +837,13 @@ impl<'a> Ctx<'a> {
             ast::ExprMax::Binary(bin) => {
                 let segs = bin
                     .elements()
-                    .flat_map(|element| self.lower_bin_element(&element, Self::lower_optional_pat))
+                    .flat_map(|element| {
+                        self.lower_bin_element_or_expand_macro(
+                            &element,
+                            Self::lower_optional_pat,
+                            |this, call| this.try_expand_binary_pat_macro(call),
+                        )
+                    })
                     .collect();
                 self.alloc_pat(Pat::Binary { segs }, Some(expr))
             }
@@ -1604,7 +1610,13 @@ impl<'a> Ctx<'a> {
             ast::ExprMax::Binary(bin) => {
                 let segs = bin
                     .elements()
-                    .flat_map(|element| self.lower_bin_element(&element, Self::lower_optional_expr))
+                    .flat_map(|element| {
+                        self.lower_bin_element_or_expand_macro(
+                            &element,
+                            Self::lower_optional_expr,
+                            |this, call| this.try_expand_binary_expr_macro(call),
+                        )
+                    })
                     .collect();
                 self.alloc_expr(Expr::Binary { segs }, Some(expr))
             }
@@ -2300,6 +2312,118 @@ impl<'a> Ctx<'a> {
             _ => None,
         })
         .flatten()
+    }
+
+    /// Try to expand a macro call that appears as a binary element
+    /// into multiple binary segments (patterns).
+    ///
+    /// Handles macros like `-define(PREFIX, 13,10,13,10).`
+    /// whose body is a comma-separated list of expressions parsed as
+    /// `ReplacementGuardAnd`. When used inside a binary pattern like
+    /// `<<?PREFIX, _/binary>>`, the macro should splice its
+    /// elements into the binary as separate segments rather than
+    /// producing a single `_` (missing).
+    fn try_expand_binary_pat_macro(
+        &mut self,
+        call: &ast::MacroCallExpr,
+    ) -> Option<Vec<BinarySeg<PatId>>> {
+        self.resolve_macro(call, |this, _source, replacement| match replacement {
+            MacroReplacement::Ast(_, ast::MacroDefReplacement::ReplacementGuardAnd(guard_and)) => {
+                Some(
+                    guard_and
+                        .guard()
+                        .flat_map(|expr| {
+                            if let ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(ref inner_call)) =
+                                expr
+                                && let Some(segs) = this.try_expand_binary_pat_macro(inner_call)
+                            {
+                                return segs;
+                            }
+                            vec![BinarySeg {
+                                elem: this.lower_pat(&expr),
+                                size: None,
+                                tys: vec![],
+                                unit: None,
+                            }]
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            }
+            MacroReplacement::Ast(
+                _,
+                ast::MacroDefReplacement::Expr(ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(
+                    ref inner_call,
+                ))),
+            ) => this.try_expand_binary_pat_macro(inner_call),
+            _ => None,
+        })
+        .flatten()
+    }
+
+    /// Try to expand a macro call that appears as a binary element
+    /// into multiple binary segments (expressions).
+    fn try_expand_binary_expr_macro(
+        &mut self,
+        call: &ast::MacroCallExpr,
+    ) -> Option<Vec<BinarySeg<ExprId>>> {
+        self.resolve_macro(call, |this, _source, replacement| match replacement {
+            MacroReplacement::Ast(_, ast::MacroDefReplacement::ReplacementGuardAnd(guard_and)) => {
+                Some(
+                    guard_and
+                        .guard()
+                        .flat_map(|expr| {
+                            if let ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(ref inner_call)) =
+                                expr
+                                && let Some(segs) = this.try_expand_binary_expr_macro(inner_call)
+                            {
+                                return segs;
+                            }
+                            vec![BinarySeg {
+                                elem: this.lower_expr(&expr),
+                                size: None,
+                                tys: vec![],
+                                unit: None,
+                            }]
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            }
+            MacroReplacement::Ast(
+                _,
+                ast::MacroDefReplacement::Expr(ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(
+                    ref inner_call,
+                ))),
+            ) => this.try_expand_binary_expr_macro(inner_call),
+            _ => None,
+        })
+        .flatten()
+    }
+
+    /// Lower a binary element, handling macros that expand to multiple
+    /// binary segments (e.g., `-define(PREFIX, 13,10,13,10).` used as
+    /// `<<?PREFIX, Rest/binary>>`).
+    ///
+    /// When the element is a macro call that expands to comma-separated
+    /// values and has no size/type specifiers, the macro's elements are
+    /// spliced as individual segments. Otherwise, falls through to
+    /// the standard single-element lowering.
+    fn lower_bin_element_or_expand_macro<Id>(
+        &mut self,
+        element: &ast::BinElement,
+        lower: fn(&mut Self, Option<ast::Expr>) -> Id,
+        try_expand_multi: impl Fn(&mut Self, &ast::MacroCallExpr) -> Option<Vec<BinarySeg<Id>>>,
+    ) -> Vec<BinarySeg<Id>> {
+        // Only attempt macro expansion if the element has no size or type
+        // specifiers (they can't meaningfully apply to multiple segments).
+        if element.size().is_none()
+            && element.types().is_none()
+            && let Some(ast::BitExpr::ExprMax(ast::ExprMax::MacroCallExpr(ref call))) =
+                element.element()
+            && let Some(expanded) = try_expand_multi(self, call)
+        {
+            return expanded;
+        }
+        self.lower_bin_element(element, lower).into_iter().collect()
     }
 
     fn lower_lc_exprs(&mut self, exprs: Option<ast::LcExprs>) -> Vec<ComprehensionExpr> {

@@ -734,6 +734,119 @@ foo(<<Size, Data:Size/binary>>) -> <<+1/integer-little-unit:8>>.
     );
 }
 
+// A macro whose body is a `,`-separated list of values must splice its
+// elements into a surrounding `<<...>>` binary as separate segments —
+// in both expression and pattern positions. Macros with their own size
+// or type specifier must NOT trigger the splice.
+
+#[test]
+fn binary_expr_with_multi_element_macro() {
+    check(
+        r#"
+-define(PREFIX, 13, 10, 13, 10).
+
+foo(Rest) -> <<?PREFIX, Rest/binary>>.
+"#,
+        expect![[r#"
+            foo(Rest) ->
+                <<
+                    13,
+                    10,
+                    13,
+                    10,
+                    Rest/binary
+                >>.
+        "#]],
+    );
+}
+
+#[test]
+fn binary_pat_with_multi_element_macro() {
+    check(
+        r#"
+-define(PREFIX, 13, 10, 13, 10).
+
+foo(<<?PREFIX, Rest/binary>>) -> Rest.
+"#,
+        expect![[r#"
+            foo(<<
+                13,
+                10,
+                13,
+                10,
+                Rest/binary
+            >>) ->
+                Rest.
+        "#]],
+    );
+}
+
+#[test]
+fn binary_expr_with_only_multi_element_macro() {
+    // Macro fills the whole binary.
+    check(
+        r#"
+-define(PAIR, 1, 2).
+
+foo() -> <<?PAIR>>.
+"#,
+        expect![[r#"
+            foo() ->
+                <<
+                    1,
+                    2
+                >>.
+        "#]],
+    );
+}
+
+#[test]
+fn binary_expr_with_wrapper_multi_element_macro() {
+    // OUTER is a single Expr that calls into the multi-element INNER —
+    // exercises the `MacroDefReplacement::Expr(MacroCallExpr)` arm of
+    // `try_expand_binary_expr_macro`.
+    check(
+        r#"
+-define(INNER, 1, 2, 3).
+-define(OUTER, ?INNER).
+
+foo() -> <<?OUTER, 4>>.
+"#,
+        expect![[r#"
+            foo() ->
+                <<
+                    1,
+                    2,
+                    3,
+                    4
+                >>.
+        "#]],
+    );
+}
+
+#[test]
+fn binary_expr_macro_with_size_specifier_does_not_expand() {
+    // `?PREFIX:8` has a size specifier — splicing wouldn't make sense
+    // (size can't apply to multiple segments), so the macro is lowered
+    // as a single segment whose element comes from the standard path.
+    // With a multi-element macro body, that path lowers it as `Missing`
+    // (the existing pre-fix behaviour for un-spliceable cases).
+    check(
+        r#"
+-define(PREFIX, 1, 2).
+
+foo() -> <<?PREFIX:8, 0>>.
+"#,
+        expect![[r#"
+            foo() ->
+                <<
+                    [missing]:8,
+                    0
+                >>.
+        "#]],
+    );
+}
+
 #[test]
 fn catch() {
     check(
