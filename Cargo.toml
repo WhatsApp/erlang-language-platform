@@ -112,7 +112,7 @@ toml = { version = "0.9.12", features = ["preserve_order"] }
 tower-lsp-server = "0.22.1"
 tracing = { version = "0.1.41", features = ["attributes", "valuable"] }
 tree-sitter = "0.23.2"
-tree-sitter-erlang = "0.18.0"
+tree-sitter-erlang = { path = "../tree-sitter-erlang" }
 trie-rs = "0.4.2"
 triple_accel = "0.4.0"
 url = "2.5.8"
