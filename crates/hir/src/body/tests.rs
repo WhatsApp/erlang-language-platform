@@ -361,6 +361,117 @@ foo([a | b]) -> [1, 2 | 3].
     );
 }
 
+// A macro whose body is a `,`-separated list of expressions (parsed as
+// `ReplacementGuardAnd`) must splice its elements into a surrounding
+// list — both as a regular element and as the LHS of a `|` pipe. The
+// same applies to list patterns.
+
+#[test]
+fn list_expr_with_multi_element_macro() {
+    check(
+        r#"
+-define(ELEMS, 1, 2, 3).
+
+foo() -> [start, ?ELEMS, finish].
+"#,
+        expect![[r#"
+            foo() ->
+                [
+                    start,
+                    1,
+                    2,
+                    3,
+                    finish
+                ].
+        "#]],
+    );
+}
+
+#[test]
+fn list_expr_with_multi_element_macro_before_pipe() {
+    // `?ELEMS` is the LHS of a `|`. Its expansion must splice the
+    // elements before the tail.
+    check(
+        r#"
+-define(ELEMS, 1, 2, 3).
+
+foo(Tail) -> [?ELEMS | Tail].
+"#,
+        expect![[r#"
+            foo(Tail) ->
+                [
+                    1,
+                    2,
+                    3
+                    | Tail
+                ].
+        "#]],
+    );
+}
+
+#[test]
+fn list_pat_with_multi_element_macro() {
+    check(
+        r#"
+-define(ELEMS, _, _).
+
+foo([?ELEMS, last]) -> ok.
+"#,
+        expect![[r#"
+            foo([
+                _,
+                _,
+                last
+            ]) ->
+                ok.
+        "#]],
+    );
+}
+
+#[test]
+fn list_pat_with_multi_element_macro_before_pipe() {
+    // Same splice happens at pattern positions, including before `|`.
+    check(
+        r#"
+-define(ELEMS, _, _).
+
+foo([?ELEMS | Tail]) -> Tail.
+"#,
+        expect![[r#"
+            foo([
+                _,
+                _
+                | Tail
+            ]) ->
+                Tail.
+        "#]],
+    );
+}
+
+#[test]
+fn list_expr_with_wrapper_multi_element_macro() {
+    // OUTER is a single Expr that calls into the multi-element INNER.
+    // Exercises the `MacroDefReplacement::Expr(MacroCallExpr)` arm of
+    // `try_expand_list_expr_macro`.
+    check(
+        r#"
+-define(INNER, 1, 2).
+-define(OUTER, ?INNER).
+
+foo() -> [head, ?OUTER, tail].
+"#,
+        expect![[r#"
+            foo() ->
+                [
+                    head,
+                    1,
+                    2,
+                    tail
+                ].
+        "#]],
+    );
+}
+
 #[test]
 fn r#match() {
     check(
