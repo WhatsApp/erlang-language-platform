@@ -1099,7 +1099,11 @@ impl<'a> Ctx<'a> {
                 self.alloc_pat(Pat::Missing, Some(expr))
             }
             ast::ExprMax::Tuple(tup) => {
-                let pats = tup.expr().map(|expr| self.lower_pat(&expr)).collect();
+                let pats = self.expand_or_lower(
+                    tup.expr(),
+                    |this, call| this.try_expand_list_pat_macro(call),
+                    |this, expr| this.lower_pat(expr),
+                );
                 self.alloc_pat(Pat::Tuple { pats }, Some(expr))
             }
             ast::ExprMax::Var(var) => self
@@ -1895,7 +1899,11 @@ impl<'a> Ctx<'a> {
                 )
             }
             ast::ExprMax::Tuple(tup) => {
-                let exprs = tup.expr().map(|expr| self.lower_expr(&expr)).collect();
+                let exprs = self.expand_or_lower(
+                    tup.expr(),
+                    |this, call| this.try_expand_list_expr_macro(call),
+                    |this, expr| this.lower_expr(expr),
+                );
                 self.alloc_expr(Expr::Tuple { exprs }, Some(expr))
             }
             ast::ExprMax::Var(var) => self
@@ -2273,6 +2281,30 @@ impl<'a> Ctx<'a> {
         .flatten()
     }
 
+    /// Splice macro elements into a comma-separated sequence.
+    ///
+    /// For each element, if it is a macro call that `try_expand` knows how to
+    /// expand into multiple items, splice those items in; otherwise `lower` the
+    /// element into a single item. Shared by the tuple/list pattern and
+    /// expression lowering paths.
+    fn expand_or_lower<T>(
+        &mut self,
+        exprs: impl Iterator<Item = ast::Expr>,
+        try_expand: impl Fn(&mut Self, &ast::MacroCallExpr) -> Option<Vec<T>>,
+        lower: impl Fn(&mut Self, &ast::Expr) -> T,
+    ) -> Vec<T> {
+        exprs
+            .flat_map(|expr| {
+                if let ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(ref call)) = expr
+                    && let Some(items) = try_expand(self, call)
+                {
+                    return items;
+                }
+                vec![lower(self, &expr)]
+            })
+            .collect()
+    }
+
     /// Try to expand a macro call that appears as an element of a list pattern
     /// into multiple patterns.
     ///
@@ -2284,20 +2316,11 @@ impl<'a> Ctx<'a> {
     fn try_expand_list_pat_macro(&mut self, call: &ast::MacroCallExpr) -> Option<Vec<PatId>> {
         self.resolve_macro(call, |this, _source, replacement| match replacement {
             MacroReplacement::Ast(_, ast::MacroDefReplacement::ReplacementGuardAnd(guard_and)) => {
-                Some(
-                    guard_and
-                        .guard()
-                        .flat_map(|expr| {
-                            if let ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(ref inner_call)) =
-                                expr
-                                && let Some(pats) = this.try_expand_list_pat_macro(inner_call)
-                            {
-                                return pats;
-                            }
-                            vec![this.lower_pat(&expr)]
-                        })
-                        .collect::<Vec<_>>(),
-                )
+                Some(this.expand_or_lower(
+                    guard_and.guard(),
+                    |this, call| this.try_expand_list_pat_macro(call),
+                    |this, expr| this.lower_pat(expr),
+                ))
             }
             MacroReplacement::Ast(
                 _,
@@ -2321,20 +2344,11 @@ impl<'a> Ctx<'a> {
     fn try_expand_list_expr_macro(&mut self, call: &ast::MacroCallExpr) -> Option<Vec<ExprId>> {
         self.resolve_macro(call, |this, _source, replacement| match replacement {
             MacroReplacement::Ast(_, ast::MacroDefReplacement::ReplacementGuardAnd(guard_and)) => {
-                Some(
-                    guard_and
-                        .guard()
-                        .flat_map(|expr| {
-                            if let ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(ref inner_call)) =
-                                expr
-                                && let Some(exprs) = this.try_expand_list_expr_macro(inner_call)
-                            {
-                                return exprs;
-                            }
-                            vec![this.lower_expr(&expr)]
-                        })
-                        .collect::<Vec<_>>(),
-                )
+                Some(this.expand_or_lower(
+                    guard_and.guard(),
+                    |this, call| this.try_expand_list_expr_macro(call),
+                    |this, expr| this.lower_expr(expr),
+                ))
             }
             MacroReplacement::Ast(
                 _,

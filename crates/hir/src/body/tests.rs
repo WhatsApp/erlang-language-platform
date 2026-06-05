@@ -472,6 +472,152 @@ foo() -> [head, ?OUTER, tail].
     );
 }
 
+// A macro whose body is a `,`-separated list of expressions (parsed as
+// `ReplacementGuardAnd`) must splice its elements into a surrounding
+// tuple expression or tuple pattern.
+
+#[test]
+fn tuple_expr_with_multi_element_macro() {
+    check(
+        r#"
+-define(ELEMS, a, b, c).
+
+foo() -> {first, ?ELEMS, last}.
+"#,
+        expect![[r#"
+            foo() ->
+                {
+                    first,
+                    a,
+                    b,
+                    c,
+                    last
+                }.
+        "#]],
+    );
+}
+
+#[test]
+fn tuple_expr_with_only_multi_element_macro() {
+    check(
+        r#"
+-define(ELEMS, a, b, c).
+
+foo() -> {?ELEMS}.
+"#,
+        expect![[r#"
+            foo() ->
+                {
+                    a,
+                    b,
+                    c
+                }.
+        "#]],
+    );
+}
+
+#[test]
+fn tuple_expr_with_wrapper_multi_element_macro() {
+    check(
+        r#"
+-define(INNER, 1, 2).
+-define(OUTER, ?INNER).
+
+foo() -> {head, ?OUTER, tail}.
+"#,
+        expect![[r#"
+            foo() ->
+                {
+                    head,
+                    1,
+                    2,
+                    tail
+                }.
+        "#]],
+    );
+}
+
+#[test]
+fn tuple_expr_with_macro_inside_multi_macro() {
+    check(
+        r#"
+-define(INNER, 1, 2).
+-define(OUTER, first, ?INNER).
+
+foo() -> {?OUTER, last}.
+"#,
+        expect![[r#"
+            foo() ->
+                {
+                    first,
+                    1,
+                    2,
+                    last
+                }.
+        "#]],
+    );
+}
+
+#[test]
+fn tuple_pat_with_multi_element_macro() {
+    check(
+        r#"
+-define(ELEMS, _, _).
+
+foo({first, ?ELEMS, last}) -> ok.
+"#,
+        expect![[r#"
+            foo({
+                first,
+                _,
+                _,
+                last
+            }) ->
+                ok.
+        "#]],
+    );
+}
+
+#[test]
+fn tuple_pat_with_only_multi_element_macro() {
+    check(
+        r#"
+-define(ELEMS, _, _, _).
+
+foo({?ELEMS}) -> ok.
+"#,
+        expect![[r#"
+            foo({
+                _,
+                _,
+                _
+            }) ->
+                ok.
+        "#]],
+    );
+}
+
+#[test]
+fn tuple_pat_with_wrapper_multi_element_macro() {
+    check(
+        r#"
+-define(INNER, _, _).
+-define(OUTER, ?INNER).
+
+foo({head, ?OUTER, tail}) -> ok.
+"#,
+        expect![[r#"
+            foo({
+                head,
+                _,
+                _,
+                tail
+            }) ->
+                ok.
+        "#]],
+    );
+}
+
 #[test]
 fn r#match() {
     check(
