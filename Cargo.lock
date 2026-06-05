@@ -317,7 +317,7 @@ dependencies = [
  "ident_case",
  "proc-macro2",
  "quote",
- "strsim 0.11.1",
+ "strsim",
  "syn 2.0.117",
 ]
 
@@ -469,7 +469,7 @@ dependencies = [
  "serde_json",
  "serde_path_to_error",
  "stdx",
- "strsim 0.10.0",
+ "strsim",
  "strum",
  "tempfile",
  "test-case",
@@ -581,7 +581,7 @@ dependencies = [
  "serde",
  "smallvec",
  "stdx",
- "strsim 0.10.0",
+ "strsim",
  "toml",
  "tracing",
  "triple_accel",
@@ -2351,12 +2351,6 @@ dependencies = [
  "tracing",
  "windows-sys 0.60.2",
 ]
-
-[[package]]
-name = "strsim"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "strsim"
