@@ -3969,6 +3969,9 @@ impl<'a> Ctx<'a> {
                             let contents: std::string::String = str.clone().into();
                             Some(contents)
                         }
+                        ast::ExprMax::MacroCallExpr(inner_call) => {
+                            this.resolve_macro_concat_string(inner_call)
+                        }
                         _ => None,
                     }
                 } else {

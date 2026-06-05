@@ -2200,6 +2200,66 @@ foo(?FMT("body")) -> ok.
     );
 }
 
+// Macro-to-macro chaining inside string concatenation: when a macro's
+// body is itself a `?OTHER` reference, `resolve_macro_concat_string`
+// must recurse through the inner `MacroCallExpr` to find the literal
+// string, instead of bailing out as `Missing`.
+
+#[test]
+fn concat_with_macro_alias_chain() {
+    // `?OUTER` is an alias for `?INNER` which is `"value"`. The outer
+    // expansion's body is a single MacroCallExpr, which is handled by
+    // the new `MacroCallExpr` arm of `resolve_macro_concat_string`.
+    check(
+        r#"
+-define(INNER, "value").
+-define(OUTER, ?INNER).
+
+foo() -> ?OUTER " tail".
+"#,
+        expect![[r#"
+            foo() ->
+                "value tail".
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_three_link_macro_alias_chain() {
+    // Three-level alias chain: A → B → C → "deep". Recursion proves
+    // the new arm chains to arbitrary depth.
+    check(
+        r#"
+-define(C, "deep").
+-define(B, ?C).
+-define(A, ?B).
+
+foo() -> "[" ?A "]".
+"#,
+        expect![[r#"
+            foo() ->
+                "[deep]".
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_macro_alias_chain_in_pattern() {
+    // Same alias chain works at pattern positions.
+    check(
+        r#"
+-define(INNER, "value").
+-define(OUTER, ?INNER).
+
+foo(?OUTER " tail") -> ok.
+"#,
+        expect![[r#"
+            foo("value tail") ->
+                ok.
+        "#]],
+    );
+}
+
 #[test]
 fn invalid_macro_case_clause() {
     check(
