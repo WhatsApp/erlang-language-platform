@@ -1963,6 +1963,85 @@ foo() -> ?STR({'undefined', 'and', plain}).
     );
 }
 
+// `??Param` stringification of a complex argument now substitutes any
+// VAR tokens inside that argument with the actual values they were
+// bound to in an enclosing macro's frame. Previously the VAR text was
+// emitted literally, producing surprising results like `foo ( Y )`
+// instead of `foo ( 42 )`.
+
+#[test]
+fn macro_string_compound_arg_substitutes_parent_vars() {
+    // OUTER(42) calls INNER with `foo(Y)` where Y is OUTER's parameter
+    // bound to 42. Stringifying `??X` inside INNER must walk up and
+    // substitute Y with 42, producing "foo ( 42 )".
+    check(
+        r#"
+-define(INNER(X), ??X).
+-define(OUTER(Y), ?INNER(foo(Y))).
+
+run() -> ?OUTER(42).
+"#,
+        expect![[r#"
+            run() ->
+                "foo ( 42 )".
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_compound_arg_substitutes_multiple_parent_vars() {
+    // Two parent vars both substituted in the same compound argument.
+    check(
+        r#"
+-define(INNER(X), ??X).
+-define(OUTER(A, B), ?INNER([A, B, A])).
+
+run() -> ?OUTER(1, 2).
+"#,
+        expect![[r#"
+            run() ->
+                "[ 1 , 2 , 1 ]".
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_compound_arg_substitutes_through_three_levels() {
+    // Three levels of nesting: each VAR substitution walks one step up
+    // the macro stack until the original argument tokens are found.
+    check(
+        r#"
+-define(C(X), ??X).
+-define(B(Y), ?C({wrap, Y})).
+-define(A(Z), ?B(Z)).
+
+run() -> ?A(deep).
+"#,
+        expect![[r#"
+            run() ->
+                "{ wrap , deep }".
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_compound_arg_var_with_no_parent_binding_stays_literal() {
+    // A VAR inside the compound argument that doesn't name a parent
+    // parameter is stringified verbatim (the recursion's
+    // `var_map.get(&var)` lookup falls through).
+    check(
+        r#"
+-define(STR(X), ??X).
+
+run(LocalVar) -> ?STR({tag, LocalVar}).
+"#,
+        expect![[r#"
+            run(LocalVar) ->
+                "{ tag , LocalVar }".
+        "#]],
+    );
+}
+
 #[test]
 fn invalid_receive() {
     check(

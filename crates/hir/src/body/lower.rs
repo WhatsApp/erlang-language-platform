@@ -3902,37 +3902,61 @@ impl<'a> Ctx<'a> {
                             }
                         }
                     }
-                    // Collect non-trivia tokens and join with spaces,
-                    // matching the Erlang preprocessor's stringification.
-                    // Atom tokens are normalized: the Erlang preprocessor
-                    // uses io_lib:write/1 which only quotes atoms when
-                    // necessary (e.g., reserved words, special chars),
-                    // so 'undefined' becomes undefined but 'and' stays 'and'.
-                    let text: String = expr
-                        .syntax()
-                        .descendants_with_tokens()
-                        .filter_map(|elem| elem.into_token())
-                        .filter(|token| !token.kind().is_trivia())
-                        .map(|token| {
-                            if token.kind() == SyntaxKind::ATOM && token.text().starts_with('\'') {
-                                match unescape::unescape_string(token.text()) {
-                                    Some(unescaped) => {
-                                        crate::quote::escape_and_quote_atom(&unescaped)
-                                    }
-                                    None => token.text().to_string(),
-                                }
-                            } else {
-                                token.text().to_string()
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                        .join(" ");
+                    // Stringify the expression tokens, substituting any
+                    // variable tokens that are parameters of an outer macro
+                    // with their actual argument text.
+                    let text = self.stringify_macro_expr_tokens(&expr, entry.parent_id);
                     return Some(Literal::String(StringVariant::Normal(text)));
                 }
                 break;
             }
         }
         None
+    }
+
+    /// Collect non-trivia tokens from `expr` and join with spaces,
+    /// matching the Erlang preprocessor's stringification behavior.
+    ///
+    /// `scope_stack_id` is the macro stack entry in whose context the
+    /// expression was written. Any VAR token that corresponds to a
+    /// parameter of that scope's macro is recursively substituted with
+    /// the actual argument tokens.
+    fn stringify_macro_expr_tokens(&self, expr: &ast::Expr, scope_stack_id: usize) -> String {
+        expr.syntax()
+            .descendants_with_tokens()
+            .filter_map(|elem| elem.into_token())
+            .filter(|token| !token.kind().is_trivia())
+            .map(|token| {
+                // Check if this VAR token is a macro parameter in the
+                // enclosing scope, and if so substitute with the actual
+                // argument tokens (recursively).
+                if token.kind() == SyntaxKind::VAR
+                    && let Some(parent) = token.parent()
+                    && let Some(var_node) = ast::Var::cast(parent)
+                {
+                    let var = Var::new(&var_node.as_name());
+                    let scope = &self.macro_stack[scope_stack_id];
+                    if let Some(macro_expr) = scope.var_map.get(&var)
+                        && let Some(inner_expr) = macro_expr.expr()
+                    {
+                        return self.stringify_macro_expr_tokens(&inner_expr, scope.parent_id);
+                    }
+                }
+                // Atom tokens are normalized: the Erlang preprocessor
+                // uses io_lib:write/1 which only quotes atoms when
+                // necessary (e.g., reserved words, special chars),
+                // so 'undefined' becomes undefined but 'and' stays 'and'.
+                if token.kind() == SyntaxKind::ATOM && token.text().starts_with('\'') {
+                    match unescape::unescape_string(token.text()) {
+                        Some(unescaped) => crate::quote::escape_and_quote_atom(&unescaped),
+                        None => token.text().to_string(),
+                    }
+                } else {
+                    token.text().to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 
     /// Lower a Concatables node, resolving macros that expand to strings.
