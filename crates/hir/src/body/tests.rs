@@ -2098,6 +2098,108 @@ foo(?STR(hello)) -> ok.
     );
 }
 
+// A bare macro-parameter variable inside a Concatables — e.g.
+// `-define(FMT(F), "head " F).` — must resolve via the macro stack
+// instead of producing `Missing`.
+
+#[test]
+fn concat_with_var_bound_to_string_literal() {
+    check(
+        r#"
+-define(FMT(F), "head " F).
+
+foo() -> ?FMT("body").
+"#,
+        expect![[r#"
+            foo() ->
+                "head body".
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_var_bound_to_string_surrounded() {
+    check(
+        r#"
+-define(FMT(F), "[" F "]").
+
+foo() -> ?FMT("body").
+"#,
+        expect![[r#"
+            foo() ->
+                "[body]".
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_var_bound_to_concat_expression() {
+    // Argument is itself a concatenation of two string literals; the
+    // recursive `lower_concat_with_macros` call resolves it.
+    check(
+        r#"
+-define(FMT(F), "head " F).
+
+foo() -> ?FMT("a" "b").
+"#,
+        expect![[r#"
+            foo() ->
+                "head ab".
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_var_forwarded_through_nested_macro() {
+    // Outer macro forwards its parameter into an inner macro that uses
+    // the parameter inside a concatenation. The walk through the macro
+    // stack must reach the original string argument.
+    check(
+        r#"
+-define(INNER(F), "[" F "]").
+-define(OUTER(X), ?INNER(X)).
+
+foo() -> ?OUTER("body").
+"#,
+        expect![[r#"
+            foo() ->
+                "[body]".
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_var_bound_to_non_string_falls_back_to_missing() {
+    // Variable bound to an atom (not a string-shaped expression) leaves
+    // the concatenation unresolvable, falling back to `Missing`.
+    check(
+        r#"
+-define(FMT(F), "head " F).
+
+foo() -> ?FMT(some_atom).
+"#,
+        expect![[r#"
+            foo() ->
+                [missing].
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_var_bound_to_string_in_pattern() {
+    check(
+        r#"
+-define(FMT(F), "head " F).
+
+foo(?FMT("body")) -> ok.
+"#,
+        expect![[r#"
+            foo("head body") ->
+                ok.
+        "#]],
+    );
+}
+
 #[test]
 fn invalid_macro_case_clause() {
     check(

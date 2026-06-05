@@ -3938,7 +3938,10 @@ impl<'a> Ctx<'a> {
                     let contents: String = str.clone().into();
                     buf.push_str(&contents);
                 }
-                ast::Concatable::Var(_) => return None,
+                ast::Concatable::Var(ref var) => {
+                    let string_value = self.resolve_var_concat_string(var)?;
+                    buf.push_str(&string_value);
+                }
             }
         }
         Some(Literal::String(StringVariant::Normal(buf)))
@@ -3974,6 +3977,39 @@ impl<'a> Ctx<'a> {
             }
             _ => None,
         })
+        .flatten()
+    }
+
+    /// Try to resolve a macro parameter variable to its string value.
+    ///
+    /// When a variable appears in a string concatenation position inside
+    /// a macro body (e.g., `-define(FMT(Format), ?PREFIX Format).`),
+    /// this resolves the variable through the macro stack. If the variable
+    /// is a macro parameter bound to a string literal, concatables, or
+    /// another macro parameter variable, it is recursively resolved.
+    fn resolve_var_concat_string(&mut self, var: &ast::Var) -> Option<String> {
+        self.resolve_var(var, |this, macro_expr| -> Option<String> {
+            let expr = macro_expr.expr()?;
+            match &expr {
+                ast::Expr::ExprMax(ast::ExprMax::String(str)) => {
+                    let contents: String = str.clone().into();
+                    Some(contents)
+                }
+                ast::Expr::ExprMax(ast::ExprMax::Concatables(concat)) => this
+                    .lower_concat_with_macros(concat)
+                    .and_then(|lit| match lit {
+                        Literal::String(StringVariant::Normal(s) | StringVariant::Verbatim(s)) => {
+                            Some(s)
+                        }
+                        _ => None,
+                    }),
+                ast::Expr::ExprMax(ast::ExprMax::Var(inner_var)) => {
+                    this.resolve_var_concat_string(inner_var)
+                }
+                _ => None,
+            }
+        })
+        .ok()
         .flatten()
     }
 
