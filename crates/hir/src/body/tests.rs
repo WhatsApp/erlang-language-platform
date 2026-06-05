@@ -1876,6 +1876,93 @@ foo() -> ?L1(works).
     );
 }
 
+// `??Param` stringification normalizes atom quoting: atoms whose source
+// text is quoted but don't actually need quoting have the quotes stripped,
+// matching `io_lib:write/1`. Atoms that DO need quoting (reserved words,
+// special chars) keep their quotes.
+
+#[test]
+fn macro_string_strips_unneeded_atom_quotes() {
+    // `'undefined'` is a quoted atom that doesn't need to be quoted, so
+    // stringification renders it as `undefined`.
+    check(
+        r#"
+-define(STR(X), ??X).
+
+foo() -> ?STR('undefined').
+"#,
+        expect![[r#"
+            foo() ->
+                "undefined".
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_preserves_quotes_on_reserved_word_atom() {
+    // `'and'` is a reserved word and must remain quoted.
+    check(
+        r#"
+-define(STR(X), ??X).
+
+foo() -> ?STR('and').
+"#,
+        expect![[r#"
+            foo() ->
+                "'and'".
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_preserves_quotes_on_special_char_atom() {
+    // An atom containing whitespace must remain quoted.
+    check(
+        r#"
+-define(STR(X), ??X).
+
+foo() -> ?STR('foo bar').
+"#,
+        expect![[r#"
+            foo() ->
+                "'foo bar'".
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_unquoted_atom_unchanged() {
+    // Sanity: an already-unquoted atom is rendered verbatim.
+    check(
+        r#"
+-define(STR(X), ??X).
+
+foo() -> ?STR(plain_atom).
+"#,
+        expect![[r#"
+            foo() ->
+                "plain_atom".
+        "#]],
+    );
+}
+
+#[test]
+fn macro_string_atom_normalization_in_compound_arg() {
+    // Atom normalization also applies when the atom is one token among
+    // many in a compound argument.
+    check(
+        r#"
+-define(STR(X), ??X).
+
+foo() -> ?STR({'undefined', 'and', plain}).
+"#,
+        expect![[r#"
+            foo() ->
+                "{ undefined , 'and' , plain }".
+        "#]],
+    );
+}
+
 #[test]
 fn invalid_receive() {
     check(

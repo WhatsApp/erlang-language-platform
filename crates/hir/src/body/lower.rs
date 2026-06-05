@@ -16,6 +16,7 @@ use either::Either;
 use elp_base_db::FileId;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
+use elp_syntax::SyntaxKind;
 use elp_syntax::ast;
 use elp_syntax::ast::ExprMax;
 use elp_syntax::ast::HasArity;
@@ -3903,12 +3904,27 @@ impl<'a> Ctx<'a> {
                     }
                     // Collect non-trivia tokens and join with spaces,
                     // matching the Erlang preprocessor's stringification.
+                    // Atom tokens are normalized: the Erlang preprocessor
+                    // uses io_lib:write/1 which only quotes atoms when
+                    // necessary (e.g., reserved words, special chars),
+                    // so 'undefined' becomes undefined but 'and' stays 'and'.
                     let text: String = expr
                         .syntax()
                         .descendants_with_tokens()
                         .filter_map(|elem| elem.into_token())
                         .filter(|token| !token.kind().is_trivia())
-                        .map(|token| token.text().to_string())
+                        .map(|token| {
+                            if token.kind() == SyntaxKind::ATOM && token.text().starts_with('\'') {
+                                match unescape::unescape_string(token.text()) {
+                                    Some(unescaped) => {
+                                        crate::quote::escape_and_quote_atom(&unescaped)
+                                    }
+                                    None => token.text().to_string(),
+                                }
+                            } else {
+                                token.text().to_string()
+                            }
+                        })
                         .collect::<Vec<_>>()
                         .join(" ");
                     return Some(Literal::String(StringVariant::Normal(text)));
