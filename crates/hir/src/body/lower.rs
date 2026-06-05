@@ -3994,6 +3994,15 @@ impl<'a> Ctx<'a> {
                     None
                 }
             }
+            MacroReplacement::BuiltIn(built_in) => {
+                this.lower_built_in_macro(built_in)
+                    .and_then(|lit| match lit {
+                        Literal::String(StringVariant::Normal(s) | StringVariant::Verbatim(s)) => {
+                            Some(s)
+                        }
+                        _ => None,
+                    })
+            }
             _ => None,
         })
         .flatten()

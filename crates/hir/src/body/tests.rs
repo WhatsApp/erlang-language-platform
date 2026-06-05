@@ -2347,6 +2347,85 @@ foo(?OUTER " tail") -> ok.
     );
 }
 
+// Built-in macros (`?MODULE_STRING`, `?FILE`, ...) that expand to string
+// literals must fold into a surrounding concatenation. Non-string built-ins
+// (`?MODULE` -> atom, `?LINE` -> integer) leave the concatenation as Missing.
+
+#[test]
+fn concat_with_module_string_builtin() {
+    check(
+        r#"
+-module(my_mod).
+
+foo() -> ?MODULE_STRING " is the module".
+"#,
+        expect![[r#"
+            foo() ->
+                "my_mod is the module".
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_module_string_builtin_in_pattern() {
+    check(
+        r#"
+-module(my_mod).
+
+foo(?MODULE_STRING " here") -> ok.
+"#,
+        expect![[r#"
+            foo("my_mod here") ->
+                ok.
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_module_string_surrounded() {
+    check(
+        r#"
+-module(my_mod).
+
+foo() -> "[" ?MODULE_STRING "]".
+"#,
+        expect![[r#"
+            foo() ->
+                "[my_mod]".
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_atom_builtin_falls_back_to_missing() {
+    // `?MODULE` is an atom (not a string) — concatenation is unresolvable.
+    check(
+        r#"
+-module(my_mod).
+
+foo() -> ?MODULE " trailing".
+"#,
+        expect![[r#"
+            foo() ->
+                [missing].
+        "#]],
+    );
+}
+
+#[test]
+fn concat_with_integer_builtin_falls_back_to_missing() {
+    // `?LINE` is an integer — concatenation is unresolvable.
+    check(
+        r#"
+foo() -> ?LINE " trailing".
+"#,
+        expect![[r#"
+            foo() ->
+                [missing].
+        "#]],
+    );
+}
+
 #[test]
 fn invalid_macro_case_clause() {
     check(
