@@ -79,6 +79,7 @@ use hir::sema::to_def::resolve_type_target;
 use itertools::Itertools;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
+use serde::Deserialize;
 
 use crate::args::Glean;
 
@@ -96,6 +97,18 @@ use types::Key;
 use types::Location;
 use types::glean;
 use types::parser;
+
+/// Per-file facts produced by [`GleanIndexer::index_file`], assembled into
+/// [`IndexedFacts`] by the caller. A named struct (rather than a wide tuple)
+/// so call sites bind fields by name instead of by position.
+struct IndexedFileFacts {
+    file: glean::FileFact,
+    line: glean::FileLinesFact,
+    declaration: parser::FileDeclaration,
+    xref: parser::XRefFile,
+    module_fact: Option<parser::ModuleFact>,
+    thrift_markers: Vec<(u32, glean::ThriftDeclaration)>,
+}
 
 #[derive(Clone, Debug, Default)]
 struct IndexConfig {
@@ -349,12 +362,19 @@ impl GleanIndexer {
                     &module_index,
                     config.source_root.as_deref(),
                 ) {
-                    Some((file, line, decl, xref, module_fact)) => {
+                    Some(IndexedFileFacts {
+                        file,
+                        line,
+                        declaration,
+                        xref,
+                        module_fact,
+                        thrift_markers,
+                    }) => {
+                        let mut facts =
+                            IndexedFacts::new(file, line, declaration, xref, module_fact);
+                        facts.add_thrift_annotations(file_id.into(), thrift_markers);
                         let mut result = FxHashMap::default();
-                        result.insert(
-                            FACTS_FILE.to_string(),
-                            IndexedFacts::new(file, line, decl, xref, module_fact),
-                        );
+                        result.insert(FACTS_FILE.to_string(), facts);
                         (result, vec![])
                     }
                     None => panic!("Can't find module {module}"),
@@ -397,8 +417,20 @@ impl GleanIndexer {
 
                 let iter = results.into_iter();
                 let facts = if config.multi {
-                    iter.map(|(file, line, decl, xref, module_fact)| {
-                        IndexedFacts::new(file, line, decl, xref, module_fact)
+                    iter.map(|indexed| {
+                        let IndexedFileFacts {
+                            file,
+                            line,
+                            declaration,
+                            xref,
+                            module_fact,
+                            thrift_markers,
+                        } = indexed;
+                        let file_id = file.file_id.clone();
+                        let mut facts =
+                            IndexedFacts::new(file, line, declaration, xref, module_fact);
+                        facts.add_thrift_annotations(file_id, thrift_markers);
+                        facts
                     })
                     .collect::<Vec<_>>()
                     .into_iter()
@@ -407,13 +439,20 @@ impl GleanIndexer {
                     .collect()
                 } else {
                     let mut result = FxHashMap::default();
-                    let facts = iter.fold(
-                        IndexedFacts::default(),
-                        |mut acc, (file_fact, line_fact, decl, xref, module_fact)| {
-                            acc.add(file_fact, line_fact, decl, xref, module_fact);
-                            acc
-                        },
-                    );
+                    let facts = iter.fold(IndexedFacts::default(), |mut acc, indexed| {
+                        let IndexedFileFacts {
+                            file,
+                            line,
+                            declaration,
+                            xref,
+                            module_fact,
+                            thrift_markers,
+                        } = indexed;
+                        let file_id = file.file_id.clone();
+                        acc.add(file, line, declaration, xref, module_fact);
+                        acc.add_thrift_annotations(file_id, thrift_markers);
+                        acc
+                    });
                     result.insert(FACTS_FILE.to_string(), facts);
                     result
                 };
@@ -455,13 +494,7 @@ impl GleanIndexer {
         project_id: ProjectId,
         module_index: &FxHashMap<GleanFileId, String>,
         source_root: Option<&str>,
-    ) -> Option<(
-        glean::FileFact,
-        glean::FileLinesFact,
-        parser::FileDeclaration,
-        parser::XRefFile,
-        Option<parser::ModuleFact>,
-    )> {
+    ) -> Option<IndexedFileFacts> {
         let file_fact = Self::file_fact(db, file_id, path, project_id, source_root)?;
         let line_fact = Self::line_fact(db, file_id);
         let mut xrefs = Self::xrefs(db, file_id, module_index);
@@ -469,6 +502,9 @@ impl GleanIndexer {
         Self::add_xref_based_declarations(db, project_id, file_id, &mut xrefs, &mut file_decl);
 
         let elp_module_index = db.module_index(project_id);
+        let source = db.file_text(file_id);
+        let is_thrift_generated = has_codegen_source(&source);
+
         let module_fact = elp_module_index
             .module_for_file(file_id)
             .cloned()
@@ -476,10 +512,28 @@ impl GleanIndexer {
                 Some((_, Some("escript"))) => {
                     path_to_module_name(path).map(|name| ModuleName::new(&name))
                 }
+                // Thrift `.hrl` headers have no `-module`; index them so field
+                // markers can resolve to their record fields.
+                Some((_, Some("hrl"))) if is_thrift_generated => {
+                    path_to_module_name(path).map(|name| ModuleName::new(&name))
+                }
                 _ => None,
             })
             .map(|module| Self::module_fact(db, file_id, &module, project_id));
-        Some((file_fact, line_fact, file_decl, xrefs, module_fact))
+
+        let thrift_markers = if is_thrift_generated {
+            parse_thrift_markers(&source)
+        } else {
+            vec![]
+        };
+        Some(IndexedFileFacts {
+            file: file_fact,
+            line: line_fact,
+            declaration: file_decl,
+            xref: xrefs,
+            module_fact,
+            thrift_markers,
+        })
     }
 
     fn module_fact(
@@ -1554,6 +1608,97 @@ impl GleanIndexer {
             }
         }
     }
+}
+
+// ── Erlang ↔ Thrift bridge: parse the generated `%% Glean {...}` markers ──
+//
+// The thrift code generator emits one JSON marker per generated declaration:
+//   %% Glean {"file": "foo/foo.thrift", "kind": "struct", "name": "Point"}
+// The indexer attaches each marker to the declaration that immediately
+// follows it and emits an `erlang.ErlangToThrift` fact.
+
+const GLEAN_MARKER_PREFIX: &str = "%% Glean ";
+
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+struct GleanMarker {
+    file: String,
+    kind: String,
+    name: String,
+    #[serde(default)]
+    service: Option<String>,
+    #[serde(default)]
+    container: Option<String>,
+    #[serde(default)]
+    container_kind: Option<String>,
+}
+
+/// Parse a single `%% Glean {...}` comment line into a marker, if it is one.
+fn parse_glean_marker(line: &str) -> Option<GleanMarker> {
+    let json = line.trim().strip_prefix(GLEAN_MARKER_PREFIX)?;
+    serde_json::from_str(json).ok()
+}
+
+/// Map a parsed marker to the thrift declaration it names.
+fn marker_to_thrift_decl(m: &GleanMarker) -> Option<glean::ThriftDeclaration> {
+    let file = m.file.as_str();
+    let decl = match m.kind.as_str() {
+        "struct" => glean::ThriftDeclaration::named(file, &m.name, glean::NAMED_KIND_STRUCT),
+        "union" => glean::ThriftDeclaration::named(file, &m.name, glean::NAMED_KIND_UNION),
+        "enum" => glean::ThriftDeclaration::named(file, &m.name, glean::NAMED_KIND_ENUM),
+        "typedef" => glean::ThriftDeclaration::named(file, &m.name, glean::NAMED_KIND_TYPEDEF),
+        "exception" => glean::ThriftDeclaration::exception(file, &m.name),
+        "service" => glean::ThriftDeclaration::service(file, &m.name),
+        "constant" => glean::ThriftDeclaration::constant(file, &m.name),
+        "function" => glean::ThriftDeclaration::function(file, m.service.as_deref()?, &m.name),
+        "field" => {
+            let kind = match m.container_kind.as_deref()? {
+                "struct" => glean::FIELD_KIND_STRUCT,
+                "exception" => glean::FIELD_KIND_EXCEPTION,
+                _ => return None,
+            };
+            glean::ThriftDeclaration::field(file, m.container.as_deref()?, kind, &m.name)
+        }
+        _ => return None,
+    };
+    Some(decl)
+}
+
+/// Scan a generated file for `%% Glean {...}` markers. Each result pairs a thrift
+/// declaration with the byte offset just past its marker line — the declaration
+/// that follows that offset is the one the marker annotates.
+fn parse_thrift_markers(source: &str) -> Vec<(u32, glean::ThriftDeclaration)> {
+    let mut markers = vec![];
+    let mut offset: u32 = 0;
+    // split_inclusive keeps the line terminator, so offsets stay byte-exact
+    // against ELP's spans regardless of `\n` vs `\r\n`.
+    for line in source.split_inclusive('\n') {
+        let next = offset + line.len() as u32;
+        if let Some(marker) = parse_glean_marker(line)
+            && let Some(decl) = marker_to_thrift_decl(&marker)
+        {
+            markers.push((next, decl));
+        }
+        offset = next;
+    }
+    markers
+}
+
+/// Returns whether `source` is a thrift-generated module. `.erl` files carry a
+/// `-codegen_source(...)` attribute; `.hrl` a `% @codegen_source` comment.
+fn has_codegen_source(source: &str) -> bool {
+    const ATTR_PREFIX: &str = "-codegen_source(\"";
+    const COMMENT_PREFIX: &str = "% @codegen_source ";
+    source.lines().any(|line| {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix(ATTR_PREFIX) {
+            let path = rest
+                .strip_suffix("\").")
+                .or_else(|| rest.strip_suffix("\")"));
+            return path.is_some_and(|p| p.ends_with(".thrift"));
+        }
+        line.strip_prefix(COMMENT_PREFIX)
+            .is_some_and(|path| path.ends_with(".thrift"))
+    })
 }
 
 fn path_to_module_name(path: &VfsPath) -> Option<String> {

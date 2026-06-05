@@ -52,6 +52,8 @@ pub(crate) struct IndexedFacts {
     pub(crate) module_facts: Vec<parser::ModuleFact>,
     pub(crate) file_declarations: Vec<parser::FileDeclaration>,
     pub(crate) xrefs: Vec<parser::XRefFile>,
+    /// Per-file thrift markers: (byte offset just past the marker, thrift decl).
+    pub(crate) thrift_annotations: Vec<(GleanFileId, Vec<(u32, glean::ThriftDeclaration)>)>,
 }
 
 impl IndexedFacts {
@@ -87,6 +89,16 @@ impl IndexedFacts {
         self.xrefs.push(xref);
         if let Some(module_fact) = module_fact {
             self.module_facts.push(module_fact);
+        }
+    }
+
+    pub(crate) fn add_thrift_annotations(
+        &mut self,
+        file_id: GleanFileId,
+        annotations: Vec<(u32, glean::ThriftDeclaration)>,
+    ) {
+        if !annotations.is_empty() {
+            self.thrift_annotations.push((file_id, annotations));
         }
     }
 
@@ -703,6 +715,64 @@ impl IndexedFacts {
             module_decls.push(decl.into());
         }
 
+        // ── Erlang → Thrift bridge facts + self-xrefs at generated def sites ──
+        let mut erlang_to_thrift: Vec<Key<glean::ErlangToThrift>> = vec![];
+        if !self.thrift_annotations.is_empty() {
+            // Group declaration locations by file (each sorted by start offset) so a
+            // marker can binary-search the declaration that immediately follows it.
+            let mut decls_by_file: FxHashMap<GleanFileId, Vec<_>> = FxHashMap::default();
+            for decl in &decl_locations {
+                decls_by_file
+                    .entry(decl.key.file_id.clone())
+                    .or_default()
+                    .push(decl);
+            }
+            for file_decls in decls_by_file.values_mut() {
+                file_decls.sort_by_key(|d| d.key.span.start);
+            }
+
+            let thrift_annotations = mem::take(&mut self.thrift_annotations);
+            for (file_id, annotations) in thrift_annotations {
+                let Some(file_decls) = decls_by_file.get(&file_id) else {
+                    continue;
+                };
+                let mut self_xrefs: Vec<glean::XRef> = vec![];
+                for (marker_end, to) in annotations {
+                    // Each marker annotates the declaration that immediately follows it.
+                    let from = file_decls
+                        .get(file_decls.partition_point(|d| d.key.span.start < marker_end))
+                        .map(|d| (d.key.declaration.clone(), d.key.span.clone()));
+                    if let Some((decl, span)) = from {
+                        erlang_to_thrift.push(
+                            glean::ErlangToThrift {
+                                from: decl.clone(),
+                                to,
+                            }
+                            .into(),
+                        );
+                        // Self-xref so the generated definition resolves to its thrift
+                        // source: codemarkup xlang dispatch keys off xref locations.
+                        self_xrefs.push(glean::XRef {
+                            target: decl,
+                            source: span,
+                        });
+                    }
+                }
+                if !self_xrefs.is_empty() {
+                    match typed_xrefs.iter_mut().find(|x| x.key.file_id == file_id) {
+                        Some(existing) => existing.key.xrefs.extend(self_xrefs),
+                        None => typed_xrefs.push(
+                            glean::XRefsByFile {
+                                file_id,
+                                xrefs: self_xrefs,
+                            }
+                            .into(),
+                        ),
+                    }
+                }
+            }
+        }
+
         let counts = FactCounts {
             file_count: self.file_facts.len(),
             module_count: module_decls.len(),
@@ -786,6 +856,13 @@ impl IndexedFacts {
                 facts: decl_targets,
             },
         ]);
+        // Only generated thrift modules carry bridge facts; omit the empty
+        // predicate everywhere else.
+        if !erlang_to_thrift.is_empty() {
+            result.push(glean::Fact::ErlangToThrift {
+                facts: erlang_to_thrift,
+            });
+        }
         (result, counts)
     }
 

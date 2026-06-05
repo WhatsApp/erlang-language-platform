@@ -108,6 +108,7 @@ fn serialization_test() {
         module_facts: vec![module],
         file_declarations: vec![decl],
         xrefs: vec![xref],
+        thrift_annotations: vec![],
     };
     let mut map = FxHashMap::default();
     map.insert(FACTS_FILE.to_string(), facts);
@@ -235,6 +236,34 @@ fn app_info_serialization_test() {
 }
 
 #[test]
+fn parses_glean_json_marker() {
+    let comment = r#"%% Glean {"file": "foo/foo.thrift", "kind": "function", "service": "Svc", "name": "bar"}"#;
+    let parsed = parse_glean_marker(comment).unwrap();
+    assert_eq!(parsed.kind, "function");
+    assert_eq!(parsed.name, "bar");
+    assert_eq!(parsed.service.as_deref(), Some("Svc"));
+    assert_eq!(parsed.file, "foo/foo.thrift");
+}
+
+#[test]
+fn field_marker_to_thrift_decl() {
+    let comment = r#"%% Glean {"file": "foo/foo.thrift", "kind": "field", "container_kind": "struct", "container": "Point", "name": "x"}"#;
+    let marker = parse_glean_marker(comment).unwrap();
+    assert_eq!(marker.container.as_deref(), Some("Point"));
+    assert_eq!(marker.container_kind.as_deref(), Some("struct"));
+    let decl = marker_to_thrift_decl(&marker).unwrap();
+    let json = serde_json::to_value(&decl).unwrap();
+    // fbthrift.FieldDecl: { qname: {file, name=container}, kind: FieldKind, name: field }
+    assert_eq!(json["field"]["key"]["qname"]["key"]["name"]["key"], "Point");
+    assert_eq!(
+        json["field"]["key"]["qname"]["key"]["file"]["key"]["key"],
+        "foo/foo.thrift"
+    );
+    assert_eq!(json["field"]["key"]["kind"], 0); // FIELD_KIND_STRUCT
+    assert_eq!(json["field"]["key"]["name"]["key"], "x");
+}
+
+#[test]
 fn declaration_target_test() {
     let spec = r#"
     //- /glean/app_glean/src/glean_module1.erl
@@ -260,6 +289,107 @@ fn declaration_target_test() {
     let fact = &target_json[0]["key"];
     assert_eq!(fact["source"]["func"]["key"]["fqn"]["name"], "bar");
     assert_eq!(fact["target"]["func"]["key"]["fqn"]["name"], "foo");
+}
+
+#[test]
+fn erlang_to_thrift_bridge_test() {
+    // Mimics generated thrift output: -codegen_source attribute + %% Glean
+    // markers, each immediately preceding the declaration it annotates.
+    let spec = r#"
+    //- /glean/app_glean/src/thrift_test.erl
+    -module(thrift_test).
+    -codegen_source("foo/foo.thrift").
+    -export([const_max/0]).
+
+    %% Glean {"file": "foo/foo.thrift", "kind": "struct", "name": "Point"}
+    -type point() :: #{x => integer()}.
+
+    %% Glean {"file": "foo/foo.thrift", "kind": "constant", "name": "MAX"}
+    const_max() -> 42.
+    "#;
+    let (facts, _, _, _, module_index) = facts_with_annotations(spec);
+    let app_index = FxHashMap::default();
+    let (glean_facts, _) = facts.into_glean_facts(&module_index, &app_index);
+
+    let bridges = glean_facts
+        .iter()
+        .filter_map(|f| match f {
+            glean::Fact::ErlangToThrift { facts } => Some(facts),
+            _ => None,
+        })
+        .flatten()
+        .map(|t| serde_json::to_value(t).unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(bridges.len(), 2, "Expected 2 ErlangToThrift facts");
+
+    let from_kind = |k: &str| {
+        bridges
+            .iter()
+            .find(|b| b["key"]["from"].get(k).is_some())
+            .unwrap_or_else(|| panic!("no bridge fact with `from` kind {k}"))
+            .clone()
+    };
+
+    // struct marker → generated `-type point()`, to = NamedDecl{kind=struct_=2}
+    let ty = from_kind("type_");
+    assert_eq!(ty["key"]["from"]["type_"]["key"]["name"], "point");
+    assert_eq!(ty["key"]["to"]["named"]["key"]["name"]["kind"], 2);
+    assert_eq!(
+        ty["key"]["to"]["named"]["key"]["name"]["name"]["key"]["name"]["key"],
+        "Point"
+    );
+    assert_eq!(
+        ty["key"]["to"]["named"]["key"]["name"]["name"]["key"]["file"]["key"]["key"],
+        "foo/foo.thrift"
+    );
+
+    // constant marker → generated accessor fn, to = Constant{name=MAX}
+    let func = from_kind("func");
+    assert_eq!(
+        func["key"]["from"]["func"]["key"]["fqn"]["name"],
+        "const_max"
+    );
+    assert_eq!(
+        func["key"]["to"]["constant"]["key"]["name"]["key"]["name"]["key"],
+        "MAX"
+    );
+}
+
+#[test]
+fn erlang_to_thrift_field_bridge_test() {
+    // A thrift `.hrl`: a `% @codegen_source` comment + a field marker before a record field.
+    let spec = r#"
+    //- /glean/app_glean/include/thrift_test.hrl
+    % @codegen_source foo/foo.thrift
+    -record(point, {
+        %% Glean {"file": "foo/foo.thrift", "kind": "field", "container_kind": "struct", "container": "Point", "name": "x"}
+        x :: integer()
+    }).
+    "#;
+    let (facts, _, _, _, module_index) = facts_with_annotations(spec);
+    let app_index = FxHashMap::default();
+    let (glean_facts, _) = facts.into_glean_facts(&module_index, &app_index);
+
+    let bridges = glean_facts
+        .iter()
+        .filter_map(|f| match f {
+            glean::Fact::ErlangToThrift { facts } => Some(facts),
+            _ => None,
+        })
+        .flatten()
+        .map(|t| serde_json::to_value(t).unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(bridges.len(), 1, "Expected 1 ErlangToThrift field fact");
+
+    // field marker → generated record field, to = FieldDecl{container=Point, kind=struct_=0, name=x}
+    let field = &bridges[0]["key"];
+    assert_eq!(field["from"]["record_field"]["key"]["field_name"], "x");
+    assert_eq!(
+        field["to"]["field"]["key"]["qname"]["key"]["name"]["key"],
+        "Point"
+    );
+    assert_eq!(field["to"]["field"]["key"]["kind"], 0);
+    assert_eq!(field["to"]["field"]["key"]["name"]["key"], "x");
 }
 
 #[test]

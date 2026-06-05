@@ -425,6 +425,8 @@ pub(crate) mod glean {
         FileIncludes { facts: Vec<Key<FileIncludes>> },
         #[serde(rename = "erlang.DeclarationTarget.2")]
         DeclarationTarget { facts: Vec<Key<DeclarationTarget>> },
+        #[serde(rename = "erlang.ErlangToThrift.2")]
+        ErlangToThrift { facts: Vec<Key<ErlangToThrift>> },
         #[serde(rename = "erlang.AppInfo.2")]
         AppInfo { facts: Vec<Key<AppInfo>> },
     }
@@ -716,5 +718,164 @@ pub(crate) mod glean {
         pub(crate) span: Location,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub(crate) text: Option<String>,
+    }
+
+    // ── fbthrift schema: the `to` side of erlang.ErlangToThrift ──
+    //
+    // Shapes mirror the fbthrift Glean schema. Each leaf is a predicate
+    // referenced by key value; Glean dedups it against the fbthrift DB at
+    // write time. Enum fields serialize as their ordinal:
+    // NamedKind { typedef_=0, enum_=1, struct_=2, union_=3 } and
+    // FieldKind { struct_=0, union_=1, exception_=2 }.
+
+    pub(crate) const NAMED_KIND_TYPEDEF: u32 = 0;
+    pub(crate) const NAMED_KIND_ENUM: u32 = 1;
+    pub(crate) const NAMED_KIND_STRUCT: u32 = 2;
+    pub(crate) const NAMED_KIND_UNION: u32 = 3;
+    pub(crate) const FIELD_KIND_STRUCT: u32 = 0;
+    pub(crate) const FIELD_KIND_EXCEPTION: u32 = 2;
+
+    // fbthrift.File : src.File : string
+    #[derive(Serialize, Debug, Clone)]
+    pub(crate) struct ThriftFile {
+        key: Key<String>,
+    }
+
+    // fbthrift.QualName : { file : File, name : Identifier }
+    #[derive(Serialize, Debug, Clone)]
+    pub(crate) struct ThriftQualName {
+        key: ThriftQualNameKey,
+    }
+    #[derive(Serialize, Debug, Clone)]
+    pub(crate) struct ThriftQualNameKey {
+        file: ThriftFile,
+        name: Key<String>,
+    }
+
+    // fbthrift.NamedType (type) : { name : QualName, kind : NamedKind }
+    #[derive(Serialize, Debug, Clone)]
+    pub(crate) struct ThriftNamedType {
+        name: ThriftQualName,
+        kind: u32,
+    }
+
+    #[derive(Serialize, Debug, Clone)]
+    pub(crate) struct ThriftNamedDeclKey {
+        name: ThriftNamedType,
+    }
+    #[derive(Serialize, Debug, Clone)]
+    pub(crate) struct ThriftQNameKey {
+        name: ThriftQualName,
+    }
+    #[derive(Serialize, Debug, Clone)]
+    pub(crate) struct ThriftFunctionNameKey {
+        service_: Key<ThriftQNameKey>,
+        name: Key<String>,
+    }
+    #[derive(Serialize, Debug, Clone)]
+    pub(crate) struct ThriftFieldDeclKey {
+        qname: ThriftQualName,
+        kind: u32,
+        name: Key<String>,
+    }
+
+    // fbthrift.Declaration = XRefTarget union (v1 omits include_ and enumValue)
+    #[derive(Serialize, Debug, Clone)]
+    pub(crate) enum ThriftDeclaration {
+        #[serde(rename = "named")]
+        Named(Key<ThriftNamedDeclKey>),
+        #[serde(rename = "exception_")]
+        Exception(Key<ThriftQNameKey>),
+        #[serde(rename = "service_")]
+        Service(Key<ThriftQNameKey>),
+        #[serde(rename = "constant")]
+        Constant(Key<ThriftQNameKey>),
+        #[serde(rename = "function_")]
+        Function(Key<ThriftFunctionNameKey>),
+        #[serde(rename = "field")]
+        Field(Key<ThriftFieldDeclKey>),
+    }
+
+    impl ThriftDeclaration {
+        fn qual_name(file: &str, name: &str) -> ThriftQualName {
+            ThriftQualName {
+                key: ThriftQualNameKey {
+                    file: ThriftFile {
+                        key: file.to_string().into(),
+                    },
+                    name: name.to_string().into(),
+                },
+            }
+        }
+
+        pub(crate) fn named(file: &str, name: &str, kind: u32) -> Self {
+            ThriftDeclaration::Named(
+                ThriftNamedDeclKey {
+                    name: ThriftNamedType {
+                        name: Self::qual_name(file, name),
+                        kind,
+                    },
+                }
+                .into(),
+            )
+        }
+
+        pub(crate) fn exception(file: &str, name: &str) -> Self {
+            ThriftDeclaration::Exception(
+                ThriftQNameKey {
+                    name: Self::qual_name(file, name),
+                }
+                .into(),
+            )
+        }
+
+        pub(crate) fn service(file: &str, name: &str) -> Self {
+            ThriftDeclaration::Service(
+                ThriftQNameKey {
+                    name: Self::qual_name(file, name),
+                }
+                .into(),
+            )
+        }
+
+        pub(crate) fn constant(file: &str, name: &str) -> Self {
+            ThriftDeclaration::Constant(
+                ThriftQNameKey {
+                    name: Self::qual_name(file, name),
+                }
+                .into(),
+            )
+        }
+
+        pub(crate) fn function(file: &str, service: &str, name: &str) -> Self {
+            ThriftDeclaration::Function(
+                ThriftFunctionNameKey {
+                    service_: ThriftQNameKey {
+                        name: Self::qual_name(file, service),
+                    }
+                    .into(),
+                    name: name.to_string().into(),
+                }
+                .into(),
+            )
+        }
+
+        pub(crate) fn field(file: &str, container: &str, kind: u32, name: &str) -> Self {
+            ThriftDeclaration::Field(
+                ThriftFieldDeclKey {
+                    qname: Self::qual_name(file, container),
+                    kind,
+                    name: name.to_string().into(),
+                }
+                .into(),
+            )
+        }
+    }
+
+    // erlang.ErlangToThrift : { from : Declaration, to : fbthrift.Declaration }
+    #[derive(Serialize, Debug, Clone)]
+    pub(crate) struct ErlangToThrift {
+        pub(crate) from: Declaration,
+        pub(crate) to: ThriftDeclaration,
     }
 }
