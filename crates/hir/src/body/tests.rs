@@ -618,6 +618,91 @@ foo({head, ?OUTER, tail}) -> ok.
     );
 }
 
+// A macro whose body is a `,`-separated list of expressions (parsed as
+// `ReplacementGuardAnd`) must splice its elements into function call
+// arguments — both local and remote calls.
+
+#[test]
+fn call_args_with_multi_element_macro() {
+    check(
+        r#"
+-define(ARGS, 1, 2, 3).
+
+foo() -> bar(first, ?ARGS, last).
+"#,
+        expect![[r#"
+            foo() ->
+                bar(
+                    first,
+                    1,
+                    2,
+                    3,
+                    last
+                ).
+        "#]],
+    );
+}
+
+#[test]
+fn call_args_with_only_multi_element_macro() {
+    check(
+        r#"
+-define(ARGS, a, b, c).
+
+foo() -> bar(?ARGS).
+"#,
+        expect![[r#"
+            foo() ->
+                bar(
+                    a,
+                    b,
+                    c
+                ).
+        "#]],
+    );
+}
+
+#[test]
+fn remote_call_args_with_multi_element_macro() {
+    check(
+        r#"
+-define(ARGS, 1, 2).
+
+foo() -> mod:func(head, ?ARGS, tail).
+"#,
+        expect![[r#"
+            foo() ->
+                mod:func(
+                    head,
+                    1,
+                    2,
+                    tail
+                ).
+        "#]],
+    );
+}
+
+#[test]
+fn call_args_with_wrapper_multi_element_macro() {
+    check(
+        r#"
+-define(INNER, 1, 2).
+-define(OUTER, ?INNER).
+
+foo() -> bar(head, ?OUTER, tail).
+"#,
+        expect![[r#"
+            foo() ->
+                bar(
+                    head,
+                    1,
+                    2,
+                    tail
+                ).
+        "#]],
+    );
+}
+
 #[test]
 fn r#match() {
     check(

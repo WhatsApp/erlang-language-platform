@@ -1138,12 +1138,11 @@ impl<'a> Ctx<'a> {
             }
             ast::Expr::Call(call) => {
                 let target = self.lower_call_target(call.expr(), call.arity_value());
-                let args = call
-                    .args()
-                    .iter()
-                    .flat_map(|args| args.args())
-                    .map(|expr| self.lower_expr(&expr))
-                    .collect();
+                let args = self.expand_or_lower(
+                    call.args().iter().flat_map(|args| args.args()),
+                    |this, call| this.try_expand_list_expr_macro(call),
+                    |this, expr| this.lower_expr(expr),
+                );
                 self.alloc_expr(Expr::Call { target, args }, Some(expr))
             }
             ast::Expr::CatchExpr(catch) => {
@@ -1278,12 +1277,11 @@ impl<'a> Ctx<'a> {
                             }
                         }
                     };
-                    let args = call
-                        .args()
-                        .iter()
-                        .flat_map(|args| args.args())
-                        .map(|expr| self.lower_expr(&expr))
-                        .collect();
+                    let args = self.expand_or_lower(
+                        call.args().iter().flat_map(|args| args.args()),
+                        |this, call| this.try_expand_list_expr_macro(call),
+                        |this, expr| this.lower_expr(expr),
+                    );
                     let expr_id = self.alloc_expr(Expr::Call { target, args }, Some(expr));
                     // Also record the inner Call node in the forward source map
                     // so that body_map.any_id(ast::Expr::Call) resolves too.
