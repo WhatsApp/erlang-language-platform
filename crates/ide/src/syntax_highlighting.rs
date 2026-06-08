@@ -373,7 +373,7 @@ fn format_specifier_highlight(
 ) {
     let highlight_spec = HlTag::Symbol(SymbolKind::Variable) | HlMod::FormatSpecifier;
     let def_map = sema.def_map_local(file_id);
-    let file_text = sema.db.file_text(file_id);
+    let file_text = sema.db.file_text(file_id).text(sema.db);
 
     for (_, def) in def_map.get_functions() {
         // Skip functions entirely outside the visible range.
@@ -476,11 +476,11 @@ fn find_format_highlight_info(
 
 #[cfg(test)]
 mod tests {
+    use elp_base_db::SourceDatabase;
     use elp_base_db::fixture::WithFixture;
     use elp_ide_db::EqwalizerDatabase;
     use elp_ide_db::RootDatabase;
     use elp_ide_db::elp_base_db;
-    use elp_ide_db::elp_base_db::FileLoader;
     use elp_ide_db::elp_base_db::assert_eq_expected;
     use elp_project_model::otp::otp_supported_by_eqwalizer;
     use itertools::Itertools;
@@ -662,7 +662,7 @@ mod tests {
                 disabled_code: true,
             },
         );
-        let file_text = db.file_text(file_id);
+        let file_text = db.file_text(file_id).text(&db);
         let mut format_highlights: Vec<_> = highlights
             .iter()
             .filter(|h| h.highlight.mods.contains(HlMod::FormatSpecifier))

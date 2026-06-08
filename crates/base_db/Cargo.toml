@@ -10,6 +10,7 @@ license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+dashmap.workspace = true
 dissimilar.workspace = true
 eetf.workspace = true
 elp_project_model.workspace = true
@@ -18,6 +19,7 @@ fxhash.workspace = true
 lazy_static.workspace = true
 log.workspace = true
 paths.workspace = true
+ra_ap_query-group-macro.workspace = true
 regex.workspace = true
 salsa.workspace = true
 stdx.workspace = true

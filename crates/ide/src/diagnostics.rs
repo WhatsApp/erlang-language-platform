@@ -36,9 +36,9 @@ use elp_ide_db::common_test::CommonTestDatabase;
 use elp_ide_db::common_test::CommonTestInfo;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
-use elp_ide_db::elp_base_db::FileLoader;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::ProjectId;
+use elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide_db::elp_base_db::VfsPath;
 use elp_ide_db::erlang_service::DiagnosticLocation;
 use elp_ide_db::erlang_service::ParseError;
@@ -1908,7 +1908,7 @@ pub fn native_diagnostics(
             config,
             file_id,
             &line_index,
-            &file_text,
+            &file_text.text(db),
             &code_reportable,
             &res,
         )
@@ -2895,13 +2895,13 @@ fn related_file_id(db: &RootDatabase, file_id: FileId, path: &Path) -> Option<Fi
     db.file_project_id(file_id).and_then(|project_id| {
         let vfs_path = VfsPath::new_real_path(path.to_string_lossy().as_ref().to_string());
 
-        let project_data = db.project_data(project_id);
+        let project_data = db.project_data(project_id).project_data(db);
         // Search through all source roots in the project to find the file
         project_data
             .source_roots
             .iter()
             .find_map(|&source_root_id| {
-                let source_root = db.source_root(source_root_id);
+                let source_root = db.source_root(source_root_id).source_root(db);
                 source_root.file_for_path(&vfs_path)
             })
     })

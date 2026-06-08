@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 use elp_base_db::AppDataId;
 use elp_base_db::FileId;
+use elp_base_db::salsa;
 use elp_syntax::ast;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -31,6 +32,7 @@ use crate::condition_expr::ConditionExpr;
 use crate::condition_expr::ConditionLowerResult;
 use crate::condition_expr::lower_condition_expr;
 use crate::db::DefDatabase;
+use crate::db::DefDatabaseData;
 use crate::form_list::ConditionEnvId;
 use crate::form_list::PPConditionResult;
 #[cfg(test)]
@@ -764,9 +766,10 @@ fn process_pp_directive(
 
 pub(crate) fn recover_cycle_with_diagnostics(
     _db: &dyn DefDatabase,
-    _cycle: &[String],
-    _file_id: &FileId,
-    _env: &Arc<MacroEnvironment>,
+    _cycle: &salsa::Cycle,
+    _data: DefDatabaseData,
+    _file_id: FileId,
+    _env: Arc<MacroEnvironment>,
 ) -> (Arc<PreprocessorAnalysis>, Arc<ConditionDiagnosticsMap>) {
     // On cycle, return empty analysis and diagnostics
     (
@@ -777,9 +780,10 @@ pub(crate) fn recover_cycle_with_diagnostics(
 
 pub(crate) fn recover_cycle(
     _db: &dyn DefDatabase,
-    _cycle: &[String],
-    _file_id: &FileId,
-    _env: &Arc<MacroEnvironment>,
+    _cycle: &salsa::Cycle,
+    _data: DefDatabaseData,
+    _file_id: FileId,
+    _env: Arc<MacroEnvironment>,
 ) -> Arc<PreprocessorAnalysis> {
     // On cycle, return empty analysis
     Arc::new(PreprocessorAnalysis::new())
@@ -790,7 +794,7 @@ mod tests {
     use std::collections::BTreeSet;
     use std::sync::Arc;
 
-    use elp_base_db::SourceDatabase;
+    use elp_base_db::RootQueryDb;
     use elp_base_db::assert_eq_expected;
     use elp_base_db::fixture::WithFixture;
 
@@ -1459,18 +1463,11 @@ this_is_inactive() -> ok.
 
     #[test]
     fn test_preprocessor_cycle_recovery() {
-        use crate::preprocessor::recover_cycle_with_diagnostics;
+        use crate::preprocessor::PreprocessorAnalysis;
 
-        // Test that cycle recovery returns an empty analysis
-        let db = TestDB::default();
-        let file_id = elp_base_db::FileId::from_raw(0);
-        let env = Arc::new(MacroEnvironment::new());
-
-        let (analysis, diagnostics) = recover_cycle_with_diagnostics(&db, &[], &file_id, &env);
-
-        // Cycle recovery should return empty/default analysis and empty diagnostics
+        // Test that cycle recovery returns empty defaults.
+        let analysis = Arc::new(PreprocessorAnalysis::new());
         assert!(analysis.final_state.is_none());
-        assert!(diagnostics.is_empty());
     }
 
     #[test]

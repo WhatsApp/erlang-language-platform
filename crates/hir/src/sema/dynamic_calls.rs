@@ -151,7 +151,7 @@ static BUILTIN: LazyLock<FxHashMap<PatternKey, DynamicCallPatternInput>> = LazyL
 /// allocation) and `Cow::Owned` for extra patterns (cloned from the
 /// salsa-managed `Arc`).
 pub fn lookup_pattern<'a>(
-    db: &dyn elp_base_db::SourceDatabase,
+    db: &dyn elp_base_db::RootQueryDb,
     module: Option<&str>,
     function: &str,
     arity: usize,

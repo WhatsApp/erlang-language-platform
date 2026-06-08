@@ -16,7 +16,7 @@ use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
-use elp_ide_db::elp_base_db::SourceDatabaseExt;
+use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::elp_base_db::assert_eq_expected;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::remove_annotations;
@@ -125,7 +125,11 @@ pub(crate) fn check_nth_fix(
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();
         let file_id = *source_change.source_file_edits.keys().next().unwrap();
-        let mut actual = analysis.db.file_text(file_id).to_string();
+        let mut actual = analysis
+            .db
+            .file_text(file_id)
+            .text(&analysis.db)
+            .to_string();
 
         for edit in source_change.source_file_edits.values() {
             edit.apply(&mut actual);
@@ -252,7 +256,11 @@ pub(crate) fn check_specific_fix_with_config_and_adhoc(
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();
         let file_id = *source_change.source_file_edits.keys().next().unwrap();
-        let mut actual = analysis.db.file_text(file_id).to_string();
+        let mut actual = analysis
+            .db
+            .file_text(file_id)
+            .text(&analysis.db)
+            .to_string();
 
         for edit in source_change.source_file_edits.values() {
             edit.apply(&mut actual);

@@ -21,7 +21,7 @@ use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
 use elp_ide::diagnostics::LintConfig;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
-use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
+use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_syntax::SmolStr;
 use fxhash::FxHashSet;
 use lazy_static::lazy_static;

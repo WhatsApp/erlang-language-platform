@@ -39,6 +39,7 @@ codespan-reporting = "0.11.1"
 cov-mark = "2.2.0"
 crossbeam-channel = "0.5.15"
 daemonize = "0.5"
+dashmap = { version = "6.2.1", features = ["rayon", "serde"] }
 dirs = "6.0"
 dissimilar = "1.0.11"
 dunce = "1.0.5"
@@ -85,12 +86,13 @@ paths = { git = "https://github.com/rust-lang/rust-analyzer.git", rev = "2026-04
 petgraph = { version = "0.8", features = ["serde-1"] }
 proc-macro2 = { version = "1.0.106", features = ["span-locations"] }
 quote = "1.0.45"
+ra_ap_query-group-macro = "0.0.270"
 rayon = "1.11.0"
 regex = "1.12.3"
 rowan = "0.15.18"
 rustc-hash = "2.1.2"
 rustyline = { version = "18.0.0", features = ["derive"] }
-salsa = "0.17.0-pre.2"
+salsa = "0.19.0"
 semver = { version = "1.0.28", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive", "rc"] }
 serde_json = { version = "1.0.140", features = ["alloc", "float_roundtrip", "raw_value", "unbounded_depth"] }

@@ -575,7 +575,7 @@ impl SymbolDefinition {
 }
 
 fn rename_remote_module_call_refs(
-    db: &dyn elp_base_db::SourceDatabase,
+    db: &dyn elp_base_db::RootQueryDb,
     usages: crate::UsageSearchResult,
     file_id: FileId,
     new_name: &str,
@@ -596,7 +596,7 @@ fn rename_remote_module_call_refs(
 }
 
 fn rename_module_in_refs(
-    db: &dyn elp_base_db::SourceDatabase,
+    db: &dyn elp_base_db::RootQueryDb,
     refs: &[NameLike],
     new_name: &str,
 ) -> Option<TextEdit> {
@@ -631,7 +631,7 @@ fn get_remote_call(syntax: &SyntaxNode) -> Option<(ast::Remote, ast::Call)> {
 }
 
 fn rename_call_module_in_ref(
-    db: &dyn elp_base_db::SourceDatabase,
+    db: &dyn elp_base_db::RootQueryDb,
     usage: &NameLike,
     builder: &mut TextEditBuilder,
     new_name: &str,
@@ -687,7 +687,7 @@ fn rename_call_module_in_ref(
 }
 
 fn rename_module_arg_in_call(
-    db: &dyn elp_base_db::SourceDatabase,
+    db: &dyn elp_base_db::RootQueryDb,
     usage_atom: &ast::Atom,
     call: &ast::Call,
     remote_info: Option<(&Option<String>, &String)>,

@@ -37,7 +37,7 @@ impl Linter for AtomsExhaustionLinter {
     #[rustfmt::skip]
     // @fb-only: fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
     fn should_process_file_id(&self, _sema: &Semantic, _file_id: FileId) -> bool { // @oss-only
-        // @fb-only: diagnostics::meta_only::is_relevant_file(sema.db.upcast(), file_id)
+        // @fb-only: diagnostics::meta_only::is_relevant_file(sema.db, file_id)
         true // @oss-only
     }
 }

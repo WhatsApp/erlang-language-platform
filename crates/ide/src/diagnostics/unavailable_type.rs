@@ -292,6 +292,7 @@ fn is_type_available(
     if let Some(include_mapping) = &sema
         .db
         .project_data(referencing_app_data.project_id)
+        .project_data(sema.db)
         .include_mapping
     {
         include_mapping.is_dep(referencing_target, defining_app_name)

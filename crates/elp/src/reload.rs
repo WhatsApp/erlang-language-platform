@@ -16,7 +16,6 @@ use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
-use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide::elp_ide_db::elp_base_db::SourceRoot;
 use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;

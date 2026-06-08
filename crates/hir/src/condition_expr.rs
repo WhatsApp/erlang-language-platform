@@ -700,7 +700,7 @@ mod tests {
     use std::collections::BTreeSet;
 
     use elp_base_db::FileId;
-    use elp_base_db::FileLoader;
+    use elp_base_db::RootQueryDb;
     use elp_base_db::SourceDatabase;
     use elp_base_db::fixture::ChangeFixture;
     use elp_base_db::fixture::WithFixture;
@@ -1320,7 +1320,7 @@ mod tests {
     /// - Unknown lines:  `?| source line`
     /// - Reason annotation at start of inactive/unknown block: `>>> reason`
     pub fn render_preprocessor_state(db: &TestDB, file_id: FileId) -> String {
-        let source = db.file_text(file_id);
+        let source = db.file_text(file_id).text(db);
         let form_list = db.file_form_list(file_id);
         let line_starts_vec = line_starts(&source);
         let lines: Vec<&str> = source.lines().collect();

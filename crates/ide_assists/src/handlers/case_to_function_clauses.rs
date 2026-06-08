@@ -15,7 +15,9 @@ use elp_syntax::AstNode;
 use elp_syntax::SyntaxNode;
 use elp_syntax::ast;
 use elp_syntax::ast::edit::IndentLevel;
+use fxhash::FxHashMap;
 use fxhash::FxHashSet;
+use hir::PatId;
 use hir::ScopeAnalysis;
 use hir::Var;
 use hir::resolver::Resolution;
@@ -141,12 +143,15 @@ pub(crate) fn case_to_function_clauses(acc: &mut Assists, ctx: &AssistContext<'_
             // Free variables become additional parameters (beyond the scrutinee).
             // Exclude scrutinee variables. If the scrutinee variable is used in
             // clause bodies, it will be bound in the pattern instead.
-            let free_vars: Vec<Var> = analyzer
-                .free
-                .into_iter()
-                .filter(|(var, _)| !scrutinee_vars.contains(var))
-                .map(|(var, _)| var)
-                .collect();
+            let free_vars: Vec<Var> = {
+                let mut free: Vec<_> = analyzer
+                    .free
+                    .into_iter()
+                    .filter(|(var, _)| !scrutinee_vars.contains(var))
+                    .collect();
+                free.sort_by_key(|(_, pats)| pats.first().copied());
+                free.into_iter().map(|(var, _)| var).collect()
+            };
 
             // Compute outliving locals (variables bound in the case that are used afterward)
             let outliving_locals =
@@ -350,20 +355,36 @@ fn compute_outliving_locals(
     let trailing_free_vars: FxHashSet<Var> = analyzer.free.iter().map(|(var, _)| *var).collect();
     let trailing_bound_vars: FxHashSet<Var> = analyzer.bound.iter().map(|(var, _)| *var).collect();
 
-    // Collect unique Vars from locals_bound_in_body first to avoid duplicates
-    // (the same variable may be bound in multiple case legs, each as a separate Resolution)
-    let bound_vars: FxHashSet<Var> = locals_bound_in_body.iter().map(|(var, _)| *var).collect();
+    // Collect unique Vars from locals_bound_in_body, keeping track of
+    // the minimum PatId for source-order sorting. Deduplicates because
+    // the same variable may be bound in multiple case legs.
+    let mut bound_vars: FxHashMap<Var, Option<PatId>> = FxHashMap::default();
+    for (var, pats) in locals_bound_in_body.iter() {
+        let min_pat = pats.first().copied();
+        bound_vars
+            .entry(*var)
+            .and_modify(|existing| {
+                if let (Some(new), Some(old)) = (min_pat, *existing)
+                    && new < old
+                {
+                    *existing = Some(new);
+                }
+            })
+            .or_insert(min_pat);
+    }
 
-    bound_vars
+    let mut results: Vec<_> = bound_vars
         .into_iter()
-        .filter(|var| {
+        .filter(|(var, _)| {
             // Check if the variable is used (free) or pattern-matched (bound)
             // in trailing expressions. In Erlang, a "bound" variable in trailing
             // code means it's being asserted/matched against, not rebound —
             // so both cases indicate the variable is "used" after the case.
             trailing_free_vars.contains(var) || trailing_bound_vars.contains(var)
         })
-        .collect()
+        .collect();
+    results.sort_by_key(|(_, pat)| *pat);
+    results.into_iter().map(|(var, _)| var).collect()
 }
 
 // ---------------------------------------------------------------------

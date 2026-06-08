@@ -69,7 +69,7 @@ pub fn expected_type(
                     && other == other2
                 {
                     // Add wrapping tuple to return
-                    let file_text = sema.db.file_text(file_id);
+                    let file_text = sema.db.file_text(file_id).text(sema.db);
                     let current = &file_text[d.range.start().into()..d.range.end().into()];
                     let replacement = format!("{{{atom}, {current}}}");
                     let edit = TextEdit::replace(d.range, replacement.clone());

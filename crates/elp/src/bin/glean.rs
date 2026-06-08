@@ -29,8 +29,8 @@ use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
+use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
-use elp_ide::elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::elp_base_db::path_for_file;
 use elp_project_model::AppType;
@@ -294,14 +294,19 @@ impl GleanIndexer {
                 })
                 .collect();
             // Collect OTP source roots.
-            let project_data = db.project_data(project_id);
+            let project_data = db.project_data(project_id).project_data(db);
             let otp_source_roots: Vec<_> = project_data
                 .otp_project_id
-                .map(|otp_id| db.project_data(otp_id).source_roots.clone())
+                .map(|otp_id| {
+                    db.project_data(otp_id)
+                        .project_data(db)
+                        .source_roots
+                        .clone()
+                })
                 .unwrap_or_default();
             // app index: file_id → OTP application name
             let (app_index, app_infos) = {
-                let project_data = db.project_data(project_id);
+                let project_data = db.project_data(project_id).project_data(db);
                 let mut index = FxHashMap::default();
                 let mut seen_apps = FxHashSet::default();
                 let mut infos = Vec::new();
@@ -323,7 +328,7 @@ impl GleanIndexer {
                                 type_,
                             });
                         }
-                        let source_root = db.source_root(source_root_id);
+                        let source_root = db.source_root(source_root_id).source_root(db);
                         for file_id in source_root.iter() {
                             let file_app = db
                                 .file_app_data(file_id)
@@ -337,7 +342,7 @@ impl GleanIndexer {
             };
             // Extend module_index with OTP files for xrefs to OTP functions
             for &source_root_id in &otp_source_roots {
-                let source_root = db.source_root(source_root_id);
+                let source_root = db.source_root(source_root_id).source_root(db);
                 for file_id in source_root.iter() {
                     if let Some(path) = source_root.path_for_file(&file_id)
                         && let Some(name) = path_to_module_name(path)
@@ -351,8 +356,8 @@ impl GleanIndexer {
                 let file_id = index
                     .file_for_module(&ModuleName::new(module))
                     .expect("No module found");
-                let source_root_id = db.file_source_root(file_id);
-                let source_root = db.source_root(source_root_id);
+                let source_root_id = db.file_source_root(file_id).source_root_id(db);
+                let source_root = db.source_root(source_root_id).source_root(db);
                 let path = source_root.path_for_file(&file_id).unwrap();
                 match Self::index_file(
                     db,
@@ -383,7 +388,7 @@ impl GleanIndexer {
                 let errored = std::sync::Mutex::new(Vec::new());
                 // Sort biggest files first to reduce long-tail in parallel processing
                 let mut files = files;
-                elp_ide::sort_by_size_descending(&mut files, |f| db.file_text(f.0).len());
+                elp_ide::sort_by_size_descending(&mut files, |f| db.file_text(f.0).text(db).len());
                 let source_root = config.source_root.clone();
                 let results: Vec<_> = files
                     .into_par_iter()
@@ -470,13 +475,13 @@ impl GleanIndexer {
     }
 
     fn project_files(db: &RootDatabase, project_id: ProjectId) -> Vec<(FileId, VfsPath)> {
-        let project_data = db.project_data(project_id);
+        let project_data = db.project_data(project_id).project_data(db);
         let mut files = vec![];
         for &source_root_id in &project_data.source_roots {
             if let Some(app_data) = db.app_data(source_root_id)
                 && app_data.app_type == AppType::App
             {
-                let source_root = db.source_root(source_root_id);
+                let source_root = db.source_root(source_root_id).source_root(db);
                 for file_id in source_root.iter() {
                     if let Some(path) = source_root.path_for_file(&file_id) {
                         files.push((file_id, path.clone()));
@@ -503,6 +508,7 @@ impl GleanIndexer {
 
         let elp_module_index = db.module_index(project_id);
         let source = db.file_text(file_id);
+        let source = source.text(db);
         let is_thrift_generated = has_codegen_source(&source);
 
         let module_fact = elp_module_index
@@ -575,8 +581,10 @@ impl GleanIndexer {
                 sema.resolve_behaviour(file_id, &name)
                     .into_iter()
                     .filter_map(move |(behaviour_mod, callbacks)| {
-                        let app_data =
-                            db.app_data(db.file_source_root(behaviour_mod.file.file_id))?;
+                        let app_data = db.app_data(
+                            db.file_source_root(behaviour_mod.file.file_id)
+                                .source_root_id(db),
+                        )?;
                         if app_data.app_type != AppType::Otp {
                             return None;
                         }
@@ -652,13 +660,13 @@ impl GleanIndexer {
             })
             .collect();
 
-        let project_data = db.project_data(project_id);
+        let project_data = db.project_data(project_id).project_data(db);
         let root = project_data.root_dir.as_path();
         let included_files: Vec<(GleanFileId, String)> = def_map
             .get_included_files()
             .filter_map(|inc_file_id| {
-                let sr_id = db.file_source_root(inc_file_id);
-                let sr = db.source_root(sr_id);
+                let sr_id = db.file_source_root(inc_file_id).source_root_id(db);
+                let sr = db.source_root(sr_id).source_root(db);
                 let path = sr.path_for_file(&inc_file_id)?;
                 let rel_path = path.as_path()?.strip_prefix(root)?;
                 Some((
@@ -800,7 +808,7 @@ impl GleanIndexer {
         project_id: ProjectId,
         source_root: Option<&str>,
     ) -> Option<glean::FileFact> {
-        let project_data = db.project_data(project_id);
+        let project_data = db.project_data(project_id).project_data(db);
         let root = project_data.root_dir.as_path();
         let file_path = path.as_path()?;
         let file_path = file_path.strip_prefix(root)?;
@@ -822,7 +830,7 @@ impl GleanIndexer {
             line += 1;
             prev_offset = curr_offset;
         }
-        let content = db.file_text(file_id);
+        let content = db.file_text(file_id).text(db);
         if !content.ends_with('\n') {
             ends_with_new_line = false;
             let len = if content.len() as u32 >= prev_offset {
@@ -935,7 +943,7 @@ impl GleanIndexer {
             let source = def.source(db);
             let opaque = matches!(source, hir::TypeAliasSource::Opaque(_));
             let range = source.syntax().text_range();
-            let definition_text = db.file_text(file_id)[range].to_string();
+            let definition_text = db.file_text(file_id).text(db)[range].to_string();
             let text = format!("```erlang\n{definition_text}\n```");
             let span: Location = range.into();
 
@@ -964,7 +972,7 @@ impl GleanIndexer {
 
         for (rec, def) in def_map.get_records() {
             let range = def.source(db).syntax().text_range();
-            let text = &db.file_text(file_id)[range];
+            let text = &db.file_text(file_id).text(db)[range];
             let text = format!("```erlang\n{text}\n```");
             let span: Location = range.into();
 
@@ -988,7 +996,7 @@ impl GleanIndexer {
         }
 
         if let Some((name, Some("hrl"))) = path.name_and_extension() {
-            let file_length = db.file_text(file_id).len() as u32;
+            let file_length = db.file_text(file_id).text(db).len() as u32;
             declarations.push(parser::Declaration::HeaderDeclaration(
                 parser::HeaderDecl {
                     name: format!("{name}.hrl"),

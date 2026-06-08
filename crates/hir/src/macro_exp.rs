@@ -11,6 +11,7 @@
 use std::sync::Arc;
 
 use elp_base_db::FileId;
+use elp_base_db::salsa::Cycle;
 use elp_syntax::ast;
 
 use crate::Define;
@@ -24,6 +25,7 @@ use crate::Name;
 use crate::PPDirective;
 use crate::body::SSR_SOURCE_FILE_ID;
 use crate::db::DefDatabase;
+use crate::db::DefDatabaseData;
 use crate::form_list::FormListData;
 use crate::form_list::PPConditionResult;
 use crate::known;
@@ -193,9 +195,10 @@ pub(crate) fn local_resolve_query(
 // This handles the case of headers accidentally forming cycles during macro resolution.
 pub(crate) fn recover_cycle(
     _db: &dyn DefDatabase,
-    _cycle: &[String],
-    _file_id: &FileId,
-    _name: &MacroName,
+    _cycle: &Cycle,
+    _data: DefDatabaseData,
+    _file_id: FileId,
+    _name: MacroName,
 ) -> MacroResolution {
     MacroResolution::Unresolved
 }
@@ -392,7 +395,7 @@ pub fn macro_name(macro_call: &ast::MacroCallExpr) -> Option<MacroName> {
 #[cfg(test)]
 mod tests {
     use elp_base_db::FileRange;
-    use elp_base_db::SourceDatabase;
+    use elp_base_db::RootQueryDb;
     use elp_base_db::assert_eq_expected;
     use elp_base_db::fixture::ChangeFixture;
     use elp_base_db::fixture::WithFixture;

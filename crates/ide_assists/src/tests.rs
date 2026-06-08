@@ -19,8 +19,8 @@ use elp_ide_db::assists::AssistId;
 use elp_ide_db::assists::AssistKind;
 use elp_ide_db::assists::AssistUserInput;
 use elp_ide_db::assists::AssistUserInputType;
+use elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide_db::elp_base_db::SourceDatabase;
-use elp_ide_db::elp_base_db::SourceDatabaseExt;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::remove_annotations;
 use elp_ide_db::helpers::SnippetCap;
@@ -155,7 +155,7 @@ fn check(
     // Check that the fixture is syntactically valid
     if check_parse_error {
         // Check that we have a syntactically valid starting point
-        let text = sema.file_text(frange.file_id);
+        let text = sema.file_text(frange.file_id).text(sema);
         let parse = sema.parse(frange.file_id);
         let errors = parse.errors();
         if !errors.is_empty() {
@@ -225,11 +225,11 @@ fn check(
 
             let mut buf = String::new();
             for (file_id, edit) in source_change.source_file_edits {
-                let mut text = db.file_text(file_id).as_ref().to_owned();
+                let mut text = db.file_text(file_id).text(&db).as_ref().to_owned();
                 edit.apply(&mut text);
                 if !skip_header {
-                    let sr = db.file_source_root(file_id);
-                    let sr = db.source_root(sr);
+                    let sr = db.file_source_root(file_id).source_root_id(&db);
+                    let sr = db.source_root(sr).source_root(&db);
                     let path = sr.path_for_file(&file_id).unwrap();
                     format_to!(buf, "//- {}\n", path)
                 }
@@ -242,8 +242,8 @@ fn check(
                     initial_contents,
                 } = file_system_edit
                 {
-                    let sr = db.file_source_root(dst.anchor);
-                    let sr = db.source_root(sr);
+                    let sr = db.file_source_root(dst.anchor).source_root_id(&db);
+                    let sr = db.source_root(sr).source_root(&db);
                     let mut base = sr.path_for_file(&dst.anchor).unwrap().clone();
                     base.pop();
                     let created_file_path = format!("{}{}", base, &dst.path[1..]);
@@ -739,7 +739,7 @@ fn add_compile_option_1() {
     let mut builder = SourceChangeBuilder::new(file_id);
     helpers::add_compile_option(&sema, file_id, "blah", None, &mut builder);
     let source_change = builder.finish();
-    let mut changed = db.file_text(file_id).to_string();
+    let mut changed = db.file_text(file_id).text(&db).to_string();
     for edit in source_change.source_file_edits.values() {
         edit.apply(&mut changed);
     }
@@ -775,7 +775,7 @@ fn add_to_suite_basic() {
         &mut builder,
     );
     let source_change = builder.finish();
-    let mut changed = db.file_text(file_id).to_string();
+    let mut changed = db.file_text(file_id).text(&db).to_string();
     for edit in source_change.source_file_edits.values() {
         edit.apply(&mut changed);
     }
@@ -810,7 +810,7 @@ fn add_to_suite_existing_no_match() {
     let mut builder = SourceChangeBuilder::new(file_id);
     helpers::add_suite_0_option(&sema, file_id, "require", "foo", None, &mut builder);
     let source_change = builder.finish();
-    let mut changed = db.file_text(file_id).to_string();
+    let mut changed = db.file_text(file_id).text(&db).to_string();
     for edit in source_change.source_file_edits.values() {
         edit.apply(&mut changed);
     }
@@ -855,7 +855,7 @@ fn add_to_suite_existing_with_match() {
         &mut builder,
     );
     let source_change = builder.finish();
-    let mut changed = db.file_text(file_id).to_string();
+    let mut changed = db.file_text(file_id).text(&db).to_string();
     for edit in source_change.source_file_edits.values() {
         edit.apply(&mut changed);
     }
@@ -901,7 +901,7 @@ fn add_to_suite_existing_with_comment() {
         &mut builder,
     );
     let source_change = builder.finish();
-    let mut changed = db.file_text(file_id).to_string();
+    let mut changed = db.file_text(file_id).text(&db).to_string();
     for edit in source_change.source_file_edits.values() {
         edit.apply(&mut changed);
     }
@@ -948,7 +948,7 @@ fn add_to_suite_grouped_export() {
         &mut builder,
     );
     let source_change = builder.finish();
-    let mut changed = db.file_text(file_id).to_string();
+    let mut changed = db.file_text(file_id).text(&db).to_string();
     for edit in source_change.source_file_edits.values() {
         edit.apply(&mut changed);
     }

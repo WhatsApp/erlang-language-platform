@@ -22,7 +22,7 @@ use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
-use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
+use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::loader::Handle;

@@ -1165,8 +1165,8 @@ pub(crate) fn facts_with_annotations(
     let db = host.raw_database();
     for file_id in &fixture.files {
         let file_id = *file_id;
-        let source_root_id = db.file_source_root(file_id);
-        let source_root = db.source_root(source_root_id);
+        let source_root_id = db.file_source_root(file_id).source_root_id(db);
+        let source_root = db.source_root(source_root_id).source_root(db);
         let path = source_root.path_for_file(&file_id).unwrap();
         let (name, ext) = path.name_and_extension().unwrap();
         let name = format!("{}.{}", name, ext.unwrap());

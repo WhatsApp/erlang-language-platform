@@ -41,12 +41,13 @@ use vfs::file_set::FileSet;
 use crate::FilePosition;
 use crate::FileRange;
 use crate::ProjectApps;
-use crate::SourceDatabaseExt;
+use crate::RootQueryDb;
+use crate::SourceDatabase;
 use crate::SourceRoot;
 use crate::change::Change;
 use crate::input::IncludeOtp;
 
-pub trait WithFixture: Default + SourceDatabaseExt + 'static {
+pub trait WithFixture: Default + SourceDatabase + 'static {
     #[track_caller]
     fn with_single_file(fixture: &str) -> (Self, FileId) {
         let (db, fixture) = Self::with_fixture(fixture);
@@ -97,7 +98,7 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
     }
 }
 
-impl<DB: SourceDatabaseExt + Default + 'static> WithFixture for DB {}
+impl<DB: SourceDatabase + Default + 'static> WithFixture for DB {}
 
 #[derive(Clone, Debug)]
 pub struct ChangeFixture {
@@ -433,7 +434,7 @@ impl ChangeFixture {
     /// Panics with context if any syntax errors are found.
     /// Skips validation if `expect_parse_errors` is set to true.
     #[track_caller]
-    pub fn validate<DB: SourceDatabaseExt>(&self, db: &DB) {
+    pub fn validate<DB: RootQueryDb>(&self, db: &DB) {
         if self.expect_parse_errors {
             return;
         }
@@ -462,9 +463,9 @@ impl ChangeFixture {
                     })
                     .unwrap_or_else(|| format!("FileId({:?})", file_id));
 
-                let file_text = SourceDatabaseExt::file_text(db, *file_id);
+                let file_text = db.file_text(*file_id);
                 let tree = parse.tree();
-                errors_found.push((path, file_text.to_string(), errors.to_vec(), tree));
+                errors_found.push((path, file_text.text(db).to_string(), errors.to_vec(), tree));
             }
         }
 

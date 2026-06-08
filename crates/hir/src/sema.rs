@@ -99,7 +99,6 @@ use crate::fold::MacroStrategy;
 use crate::fold::ParenStrategy;
 use crate::fold::Strategy;
 pub use crate::intern::InternDatabase;
-pub use crate::intern::InternDatabaseStorage;
 use crate::resolver::Resolution;
 use crate::resolver::Resolver;
 
@@ -586,7 +585,7 @@ impl Semantic<'_> {
     }
 
     pub fn vardef_source(&self, def: &VarDef) -> ast::Var {
-        def.source(self.db.upcast())
+        def.source(self.db)
     }
 
     pub fn range_for_any(&self, body: &Body, expr_id: &AnyExprId) -> Option<FileRange> {
@@ -1743,7 +1742,7 @@ impl<T> Index<TermId> for InFunctionClauseBody<'_, T> {
 #[cfg(test)]
 mod tests {
     use elp_base_db::ProjectId;
-    use elp_base_db::SourceDatabase;
+    use elp_base_db::RootQueryDb;
     use elp_base_db::assert_eq_expected;
     use elp_base_db::fixture::WithFixture;
     use elp_syntax::AstNode;

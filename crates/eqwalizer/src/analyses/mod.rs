@@ -19,7 +19,7 @@ use crate::db::EqwalizerDiagnosticsDatabase;
 mod escape_hatches;
 mod overloaded_specs;
 
-#[salsa::query_group(EqwalizerAnalysesDatabaseStorage)]
+#[ra_ap_query_group_macro::query_group(EqwalizerAnalysesDatabaseStorage)]
 pub trait EqwalizerAnalysesDatabase: EqwalizerDiagnosticsDatabase {
     fn compute_eqwalizer_stats(
         &self,

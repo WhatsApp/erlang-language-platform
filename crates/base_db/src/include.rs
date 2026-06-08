@@ -19,11 +19,11 @@ use vfs::VfsPath;
 use crate::AppData;
 use crate::AppDataId;
 use crate::ProjectId;
-use crate::SourceDatabase;
+use crate::RootQueryDb;
 use crate::SourceRoot;
 
 pub struct IncludeCtx<'a> {
-    db: &'a dyn SourceDatabase,
+    db: &'a dyn RootQueryDb,
     source_root: Arc<SourceRoot>,
     /// The `AppDataId` of the originating `.erl` file when resolving includes.
     /// The dependency graph for includes is calculated based on the
@@ -37,7 +37,7 @@ pub struct IncludeCtx<'a> {
 
 impl<'a> IncludeCtx<'a> {
     pub fn new(
-        db: &'a dyn SourceDatabase,
+        db: &'a dyn RootQueryDb,
         orig_app_data_id: Option<AppDataId>,
         current_file_id: FileId,
     ) -> Self {
@@ -45,8 +45,8 @@ impl<'a> IncludeCtx<'a> {
         let _ = stdx::panic_context::enter(format!(
             "\nIncludeCtx::new: {orig_app_data_id:?} {current_file_id:?}"
         ));
-        let source_root_id = db.file_source_root(current_file_id);
-        let source_root = db.source_root(source_root_id);
+        let source_root_id = db.file_source_root(current_file_id).source_root_id(db);
+        let source_root = db.source_root(source_root_id).source_root(db);
         Self {
             db,
             orig_app_data_id,
@@ -87,7 +87,7 @@ impl<'a> IncludeCtx<'a> {
     /// for a base filename in the includes of the current app (from
     /// the `file_id`) or any of its dependencies
     pub(crate) fn resolve_local_query(
-        db: &dyn SourceDatabase,
+        db: &dyn RootQueryDb,
         file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId> {
@@ -126,20 +126,20 @@ impl<'a> IncludeCtx<'a> {
     /// In this case, the originating app is identified by `orig_app_data_id`, and the current file is
     /// the one being processed.
     pub(crate) fn resolve_remote_query(
-        db: &dyn SourceDatabase,
+        db: &dyn RootQueryDb,
         orig_app_data_id: Option<AppDataId>,
         current_file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId> {
         let project_id = db.file_project_id(current_file_id)?;
-        let project_data = db.project_data(project_id);
+        let project_data = db.project_data(project_id).project_data(db);
 
         // Gather app data from both the originating app and the current
         // file's app.  For the dep check we accept the include if
         // *either* app has the target as a dependency.  This handles:
         //   - A→B→C where A deps C but B doesn't (orig check passes)
         //   - A→B→C where B deps C but A doesn't (current check passes)
-        let orig_app_data = orig_app_data_id.and_then(|id| db.app_data_by_id(id));
+        let orig_app_data = orig_app_data_id.and_then(|id| db.app_data_by_id(id).app_data(db));
         let current_app_data = db.file_app_data(current_file_id);
 
         // Need at least one valid app_data to proceed.
@@ -210,7 +210,7 @@ impl<'a> IncludeCtx<'a> {
 }
 
 fn find_generated_include_lib(
-    db: &dyn SourceDatabase,
+    db: &dyn RootQueryDb,
     project_id: ProjectId,
     include_path: &str,
     target_app_data: &AppData,
@@ -238,7 +238,7 @@ fn find_generated_include_lib(
 }
 
 pub fn generated_file_include_lib(
-    db: &dyn SourceDatabase,
+    db: &dyn RootQueryDb,
     file_id: FileId,
     included_file_id: FileId,
     include_path: VfsPath,

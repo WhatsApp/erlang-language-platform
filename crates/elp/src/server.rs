@@ -47,6 +47,7 @@ use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
+use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
@@ -1703,15 +1704,9 @@ impl Server {
             .into_iter()
             .map(|path| {
                 if let Some(app_data_id) = self.generated_app_inputs.get(&path) {
-                    if let Some(app_data) = self
-                        .analysis_host
-                        .raw_database()
-                        .app_data_by_id(*app_data_id)
-                    {
-                        let project = self
-                            .analysis_host
-                            .raw_database()
-                            .project_data(app_data.project_id);
+                    let db = self.analysis_host.raw_database();
+                    if let Some(app_data) = db.app_data_by_id(*app_data_id).app_data(db) {
+                        let project = db.project_data(app_data.project_id).project_data(db);
                         project.root_dir.clone()
                     } else {
                         path

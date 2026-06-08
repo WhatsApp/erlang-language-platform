@@ -17,7 +17,7 @@ use elp_ide_db::assists::AssistUserInput;
 use elp_ide_db::assists::GroupLabel;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
-use elp_ide_db::elp_base_db::SourceDatabase;
+use elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_syntax::Direction;
 use elp_syntax::SourceFile;

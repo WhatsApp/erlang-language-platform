@@ -124,7 +124,7 @@ fn delete_unused_macro(file_id: FileId, range: TextRange, name: &str) -> Assist 
 mod tests {
 
     use elp_ide_db::RootDatabase;
-    use elp_ide_db::elp_base_db::SourceDatabase;
+    use elp_ide_db::elp_base_db::RootQueryDb;
     use elp_ide_db::elp_base_db::assert_eq_expected;
     use elp_ide_db::elp_base_db::fixture::WithFixture;
     use expect_test::expect;

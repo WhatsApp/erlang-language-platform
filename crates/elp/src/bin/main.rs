@@ -990,13 +990,7 @@ mod tests {
         simple_snapshot_output_contains(
             args_vec!["parse-elp", "--report-system-stats", "--module", "app_a"],
             "standard",
-            &[
-                "Memory usage:",
-                "allocated:",
-                "active:",
-                "resident:",
-                "FileTextQuery",
-            ],
+            &["Memory usage:", "allocated:", "active:", "resident:", "VFS"],
             buck,
             None,
             0,
