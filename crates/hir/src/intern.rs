@@ -16,10 +16,28 @@ use ustr::Ustr;
 
 use crate::Name;
 
-#[ra_ap_query_group_macro::query_group]
+#[salsa::db]
 pub trait InternDatabase: salsa::Database {
-    #[salsa::interned]
     fn ssr(&self, source: Arc<str>) -> SsrSource;
+    fn lookup_ssr(&self, id: SsrSource) -> Arc<str>;
+}
+
+#[salsa::db]
+impl<DB> InternDatabase for DB
+where
+    DB: salsa::Database,
+{
+    fn ssr(&self, source: Arc<str>) -> SsrSource {
+        SsrSource::new(self, source)
+    }
+
+    fn lookup_ssr(&self, id: SsrSource) -> Arc<str> {
+        let zalsa = self.zalsa();
+        SsrSource::ingredient(zalsa)
+            .data(zalsa, id.as_id())
+            .0
+            .clone()
+    }
 }
 
 /// An interned atom, backed by a global concurrent string interner.
