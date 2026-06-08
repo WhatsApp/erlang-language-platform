@@ -127,7 +127,7 @@ pub enum FileKind {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum GeneratedStatus {
     /// File contains the `generated` marker.
-    /// This has precedence over `@partially-generated`.
+    /// This has precedence over `partially-generated`.
     Generated,
     /// File contains the `partially-generated` marker.
     /// The file contains a number of manual and generated sections.
@@ -389,6 +389,14 @@ pub struct InternedFileId {
     pub file_id: FileId,
 }
 
+/// Salsa-interned wrapper around `ProjectId`. Same rationale as `InternedFileId`:
+/// satisfies salsa 0.25's `SalsaStructInDb` constraint and bypasses the
+/// contended `create_data_RootQueryDb` wrapper.
+#[salsa::interned(no_lifetime)]
+pub struct InternedProjectId {
+    pub project_id: ProjectId,
+}
+
 /// Database which stores all significant input facts: source code and project
 /// model. Everything else in ELP is derived from these queries.
 #[ra_ap_query_group_macro::query_group]
@@ -409,13 +417,26 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     #[salsa::invoke(app_data_id_by_file_inner)]
     fn app_data_id_by_file_interned(&self, fid: InternedFileId) -> Option<AppDataId>;
 
-    #[salsa::invoke_interned(include_file_id)]
+    #[salsa::transparent]
+    #[salsa::invoke(include_file_id_dispatch)]
     fn include_file_id(&self, project_id: ProjectId, path: VfsPath) -> Option<FileId>;
 
-    #[salsa::invoke_interned(mapped_include_file)]
+    #[salsa::invoke(include_file_id_inner)]
+    fn include_file_id_interned(&self, pid: InternedProjectId, path: VfsPath) -> Option<FileId>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(mapped_include_file_dispatch)]
     fn mapped_include_file(
         &self,
         project_id: ProjectId,
+        scope: IncludeMappingScope,
+        path: SmolStr,
+    ) -> Option<FileId>;
+
+    #[salsa::invoke(mapped_include_file_inner)]
+    fn mapped_include_file_interned(
+        &self,
+        pid: InternedProjectId,
         scope: IncludeMappingScope,
         path: SmolStr,
     ) -> Option<FileId>;
@@ -443,11 +464,19 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     fn file_app_data_interned(&self, fid: InternedFileId) -> Option<Arc<AppData>>;
 
     /// Returns a map from module name to FileId of the containing file.
-    #[salsa::invoke_interned(module_index)]
+    #[salsa::transparent]
+    #[salsa::invoke(module_index_dispatch)]
     fn module_index(&self, project_id: ProjectId) -> Arc<ModuleIndex>;
 
-    #[salsa::invoke_interned(include_file_index)]
+    #[salsa::invoke(module_index_inner)]
+    fn module_index_interned(&self, pid: InternedProjectId) -> Arc<ModuleIndex>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(include_file_index_dispatch)]
     fn include_file_index(&self, project_id: ProjectId) -> Arc<IncludeFileIndex>;
+
+    #[salsa::invoke(include_file_index_inner)]
+    fn include_file_index_interned(&self, pid: InternedProjectId) -> Arc<IncludeFileIndex>;
 
     /// Returns a map from FileId to the AppDataId of the app the file
     /// belongs to.
@@ -622,7 +651,12 @@ fn file_app_data_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<Arc<
         })
 }
 
-fn module_index(db: &dyn RootQueryDb, project_id: ProjectId) -> Arc<ModuleIndex> {
+fn module_index_dispatch(db: &dyn RootQueryDb, project_id: ProjectId) -> Arc<ModuleIndex> {
+    db.module_index_interned(InternedProjectId::new(db, project_id))
+}
+
+fn module_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc<ModuleIndex> {
+    let project_id = pid.project_id(db);
     let mut builder = ModuleIndex::builder();
 
     let project_data = db.project_data(project_id).project_data(db);
@@ -677,7 +711,15 @@ impl IncludeFileIndex {
     }
 }
 
-fn include_file_index(db: &dyn RootQueryDb, project_id: ProjectId) -> Arc<IncludeFileIndex> {
+fn include_file_index_dispatch(
+    db: &dyn RootQueryDb,
+    project_id: ProjectId,
+) -> Arc<IncludeFileIndex> {
+    db.include_file_index_interned(InternedProjectId::new(db, project_id))
+}
+
+fn include_file_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc<IncludeFileIndex> {
+    let project_id = pid.project_id(db);
     let mut include_file_index = IncludeFileIndex::default();
     let project_data = db.project_data(project_id).project_data(db);
     build_include_file_index(db, &project_data, &mut include_file_index);
@@ -718,17 +760,40 @@ fn build_include_file_index(
     }
 }
 
-fn include_file_id(db: &dyn RootQueryDb, project_id: ProjectId, path: VfsPath) -> Option<FileId> {
+fn include_file_id_dispatch(
+    db: &dyn RootQueryDb,
+    project_id: ProjectId,
+    path: VfsPath,
+) -> Option<FileId> {
+    db.include_file_id_interned(InternedProjectId::new(db, project_id), path)
+}
+
+fn include_file_id_inner(
+    db: &dyn RootQueryDb,
+    pid: InternedProjectId,
+    path: VfsPath,
+) -> Option<FileId> {
+    let project_id = pid.project_id(db);
     let include_file_index = db.include_file_index(project_id);
     include_file_index.path_to_file_id.get(&path).copied()
 }
 
-fn mapped_include_file(
+fn mapped_include_file_dispatch(
     db: &dyn RootQueryDb,
     project_id: ProjectId,
     scope: IncludeMappingScope,
     path: SmolStr,
 ) -> Option<FileId> {
+    db.mapped_include_file_interned(InternedProjectId::new(db, project_id), scope, path)
+}
+
+fn mapped_include_file_inner(
+    db: &dyn RootQueryDb,
+    pid: InternedProjectId,
+    scope: IncludeMappingScope,
+    path: SmolStr,
+) -> Option<FileId> {
+    let project_id = pid.project_id(db);
     let include_file_index = db.include_file_index(project_id);
     let file_path = include_file_index.include_mapping.get(scope, &path)?;
     include_file_index
