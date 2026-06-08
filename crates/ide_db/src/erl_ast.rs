@@ -14,6 +14,7 @@ use std::sync::Arc;
 use elp_base_db::AbsPath;
 use elp_base_db::FileId;
 use elp_base_db::IncludeCtx;
+use elp_base_db::InternedFileId;
 use elp_base_db::ProjectId;
 use elp_base_db::RootQueryDb;
 use elp_base_db::SourceDatabase;
@@ -112,14 +113,25 @@ fn resolve_include(
 
 #[ra_ap_query_group_macro::query_group(ErlAstDatabaseStorage)]
 pub trait ErlAstDatabase: RootQueryDb + AstLoader + LineIndexDatabase {
-    #[salsa::invoke_interned(module_ast)]
+    #[salsa::transparent]
+    #[salsa::invoke(module_ast_dispatch)]
     fn module_ast(&self, file_id: FileId) -> Arc<ParseResult>;
-    #[salsa::invoke_interned(elp_metadata)]
+    #[salsa::invoke(module_ast_inner)]
+    fn module_ast_interned(&self, fid: InternedFileId) -> Arc<ParseResult>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(elp_metadata_dispatch)]
     fn elp_metadata(&self, file_id: FileId) -> Metadata;
+    #[salsa::invoke(elp_metadata_inner)]
+    fn elp_metadata_interned(&self, fid: InternedFileId) -> Metadata;
 }
 
-fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId) -> Arc<ParseResult> {
-    // Context for T171541590
+fn module_ast_dispatch(db: &dyn ErlAstDatabase, file_id: FileId) -> Arc<ParseResult> {
+    db.module_ast_interned(InternedFileId::new(db, file_id))
+}
+
+fn module_ast_inner(db: &dyn ErlAstDatabase, fid: InternedFileId) -> Arc<ParseResult> {
+    let file_id = fid.file_id(db);
     let _ = stdx::panic_context::enter(format!("\nmodule_ast: {file_id:?}"));
     let root_id = db.file_source_root(file_id).source_root_id(db);
     let root = db.source_root(root_id).source_root(db);
@@ -149,7 +161,12 @@ fn module_ast(db: &dyn ErlAstDatabase, file_id: FileId) -> Arc<ParseResult> {
     ))
 }
 
-fn elp_metadata(db: &dyn ErlAstDatabase, file_id: FileId) -> Metadata {
+fn elp_metadata_dispatch(db: &dyn ErlAstDatabase, file_id: FileId) -> Metadata {
+    db.elp_metadata_interned(InternedFileId::new(db, file_id))
+}
+
+fn elp_metadata_inner(db: &dyn ErlAstDatabase, fid: InternedFileId) -> Metadata {
+    let file_id = fid.file_id(db);
     let line_index = db.file_line_index(file_id);
     let file_text = db.file_text(file_id).text(db);
     let source = db.parse(file_id);

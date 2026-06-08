@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use elp_base_db::FileId;
 use elp_base_db::FileRange;
+use elp_base_db::InternedFileId;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_base_db::RootQueryDb;
@@ -107,14 +108,29 @@ pub trait EqwalizerDatabase:
         &self,
         position: FileRange,
     ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>>;
-    #[salsa::invoke_interned(types_for_file)]
+    #[salsa::transparent]
+    #[salsa::invoke(types_for_file_dispatch)]
     fn types_for_file(&self, file_id: FileId) -> Option<Arc<Vec<(Pos, Type)>>>;
-    #[salsa::invoke_interned(has_eqwalizer_module_marker)]
+    #[salsa::invoke(types_for_file_inner)]
+    fn types_for_file_interned(&self, fid: InternedFileId) -> Option<Arc<Vec<(Pos, Type)>>>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(has_eqwalizer_module_marker_dispatch)]
     fn has_eqwalizer_module_marker(&self, file_id: FileId) -> bool;
-    #[salsa::invoke_interned(has_eqwalizer_ignore_marker)]
+    #[salsa::invoke(has_eqwalizer_module_marker_inner)]
+    fn has_eqwalizer_module_marker_interned(&self, fid: InternedFileId) -> bool;
+
+    #[salsa::transparent]
+    #[salsa::invoke(has_eqwalizer_ignore_marker_dispatch)]
     fn has_eqwalizer_ignore_marker(&self, file_id: FileId) -> bool;
-    #[salsa::invoke_interned(is_eqwalizer_enabled)]
+    #[salsa::invoke(has_eqwalizer_ignore_marker_inner)]
+    fn has_eqwalizer_ignore_marker_interned(&self, fid: InternedFileId) -> bool;
+
+    #[salsa::transparent]
+    #[salsa::invoke(is_eqwalizer_enabled_dispatch)]
     fn is_eqwalizer_enabled(&self, file_id: FileId) -> bool;
+    #[salsa::invoke(is_eqwalizer_enabled_inner)]
+    fn is_eqwalizer_enabled_interned(&self, fid: InternedFileId) -> bool;
 }
 
 pub fn eqwalizer_diagnostics_by_project(
@@ -177,7 +193,18 @@ fn type_at_position(
     None
 }
 
-fn types_for_file(db: &dyn EqwalizerDatabase, file_id: FileId) -> Option<Arc<Vec<(Pos, Type)>>> {
+fn types_for_file_dispatch(
+    db: &dyn EqwalizerDatabase,
+    file_id: FileId,
+) -> Option<Arc<Vec<(Pos, Type)>>> {
+    db.types_for_file_interned(InternedFileId::new(db, file_id))
+}
+
+fn types_for_file_inner(
+    db: &dyn EqwalizerDatabase,
+    fid: InternedFileId,
+) -> Option<Arc<Vec<(Pos, Type)>>> {
+    let file_id = fid.file_id(db);
     if !db.is_eqwalizer_enabled(file_id) {
         return None;
     }
@@ -191,7 +218,12 @@ fn types_for_file(db: &dyn EqwalizerDatabase, file_id: FileId) -> Option<Arc<Vec
     None
 }
 
-fn is_eqwalizer_enabled(db: &dyn EqwalizerDatabase, file_id: FileId) -> bool {
+fn is_eqwalizer_enabled_dispatch(db: &dyn EqwalizerDatabase, file_id: FileId) -> bool {
+    db.is_eqwalizer_enabled_interned(InternedFileId::new(db, file_id))
+}
+
+fn is_eqwalizer_enabled_inner(db: &dyn EqwalizerDatabase, fid: InternedFileId) -> bool {
+    let file_id = fid.file_id(db);
     if !otp_supported_by_eqwalizer() {
         return false;
     }
@@ -221,7 +253,12 @@ fn is_eqwalizer_enabled(db: &dyn EqwalizerDatabase, file_id: FileId) -> bool {
     opt_in && !ignored
 }
 
-fn has_eqwalizer_module_marker(db: &dyn EqwalizerDatabase, file_id: FileId) -> bool {
+fn has_eqwalizer_module_marker_dispatch(db: &dyn EqwalizerDatabase, file_id: FileId) -> bool {
+    db.has_eqwalizer_module_marker_interned(InternedFileId::new(db, file_id))
+}
+
+fn has_eqwalizer_module_marker_inner(db: &dyn EqwalizerDatabase, fid: InternedFileId) -> bool {
+    let file_id = fid.file_id(db);
     let parsed = db.parse(file_id);
     parsed
         .tree()
@@ -243,7 +280,12 @@ fn has_eqwalizer_module_marker(db: &dyn EqwalizerDatabase, file_id: FileId) -> b
         .any(|attr| attr.value().map(has_eqwalizer_atom).unwrap_or_default())
 }
 
-fn has_eqwalizer_ignore_marker(db: &dyn EqwalizerDatabase, file_id: FileId) -> bool {
+fn has_eqwalizer_ignore_marker_dispatch(db: &dyn EqwalizerDatabase, file_id: FileId) -> bool {
+    db.has_eqwalizer_ignore_marker_interned(InternedFileId::new(db, file_id))
+}
+
+fn has_eqwalizer_ignore_marker_inner(db: &dyn EqwalizerDatabase, fid: InternedFileId) -> bool {
+    let file_id = fid.file_id(db);
     let parsed = db.parse(file_id);
     parsed
         .tree()
