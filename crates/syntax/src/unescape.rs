@@ -146,10 +146,7 @@ fn unescape_hex(queue: &mut VecDeque<char>) -> Option<char> {
 fn unescape_hex_curly(queue: &mut VecDeque<char>) -> Option<char> {
     let mut s = String::new();
 
-    let mut i = 0;
-    while i < 4 && next_digit(16, &mut s, queue) {
-        i += 1;
-    }
+    while next_digit(16, &mut s, queue) {}
     // Skip trailing curly brace
     let _ = queue.pop_front();
 
@@ -262,5 +259,17 @@ mod tests {
             "aGb%cd'\"\\",
             &unescape_string(r#"'a\Gb\%cd\'\"\\"#).unwrap()
         );
+    }
+
+    #[test]
+    fn unescape_string_esc_hex_braces_5_digits() {
+        // \x{1F3FB} is U+1F3FB (emoji skin tone modifier), codepoint 127995
+        assert_eq!("\u{1F3FB}", &unescape_string(r#"'\x{1F3FB}'"#).unwrap());
+    }
+
+    #[test]
+    fn unescape_string_esc_hex_braces_6_digits() {
+        // \x{10FFFF} is the maximum Unicode codepoint
+        assert_eq!("\u{10FFFF}", &unescape_string(r#"'\x{10FFFF}'"#).unwrap());
     }
 }
