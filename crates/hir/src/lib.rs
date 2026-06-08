@@ -218,6 +218,25 @@ impl<T> InFile<T> {
     }
 }
 
+// Salsa-interned wrappers around `InFile<X>` for the X variants used as the
+// first non-`db` argument of tracked queries. See QUERY_GROUP_MIGRATION_PLAN.md
+// PR 1.2 — these let the affected queries flip from `#[salsa::invoke_interned]`
+// to `#[salsa::invoke]` so they no longer pay the contended `create_data_DefDatabase`
+// wrapper cost on every call.
+//
+// Construct via `InternedInFileFunctionDef::new(db, in_file)`; unwrap via
+// `interned.value(db)`.
+
+#[elp_base_db::salsa::interned(no_lifetime)]
+pub struct InternedInFileFunctionDef {
+    pub value: InFile<FunctionDefId>,
+}
+
+#[elp_base_db::salsa::interned(no_lifetime)]
+pub struct InternedInFileFunctionClause {
+    pub value: InFile<FunctionClauseId>,
+}
+
 impl<T: Clone> InFile<&T> {
     pub fn cloned(&self) -> InFile<T> {
         self.with_value(self.value.clone())
@@ -375,7 +394,7 @@ mod tests {
         let sema = Semantic::new(&db);
         let function_def_id: FunctionDefId = FunctionDefId::new(Idx::from_raw(RawIdx::from(0)));
 
-        let (body, _body_map) = FunctionBody::function_body_with_source_query(
+        let (body, _body_map) = FunctionBody::function_body_with_source_dispatch(
             &db,
             InFile {
                 file_id,

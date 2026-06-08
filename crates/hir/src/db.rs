@@ -74,16 +74,30 @@ pub trait DefDatabase:
     #[salsa::invoke(FormList::file_form_list_inner)]
     fn file_form_list_interned(&self, fid: InternedFileId) -> Arc<FormList>;
 
-    #[salsa::invoke_interned(FunctionBody::function_body_with_source_query)]
+    #[salsa::transparent]
+    #[salsa::invoke(FunctionBody::function_body_with_source_dispatch)]
     fn function_body_with_source(
         &self,
         function_id: InFile<FunctionDefId>,
     ) -> (Arc<FunctionBody>, Vec<Arc<BodySourceMap>>);
 
-    #[salsa::invoke_interned(FunctionClauseBody::function_clause_body_with_source_query)]
+    #[salsa::invoke(FunctionBody::function_body_with_source_inner)]
+    fn function_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileFunctionDef,
+    ) -> (Arc<FunctionBody>, Vec<Arc<BodySourceMap>>);
+
+    #[salsa::transparent]
+    #[salsa::invoke(FunctionClauseBody::function_clause_body_with_source_dispatch)]
     fn function_clause_body_with_source(
         &self,
         function_clause_id: InFile<FunctionClauseId>,
+    ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>);
+
+    #[salsa::invoke(FunctionClauseBody::function_clause_body_with_source_inner)]
+    fn function_clause_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileFunctionClause,
     ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>);
 
     #[salsa::invoke_interned(RecordBody::record_body_with_source_query)]
@@ -140,12 +154,24 @@ pub trait DefDatabase:
     ) -> Option<(Arc<SsrBody>, Arc<BodySourceMap>)>;
 
     // Projection queries to stop recomputation if structure didn't change, even if positions did
-    #[salsa::invoke_interned(function_body)]
+    #[salsa::transparent]
+    #[salsa::invoke(function_body_dispatch)]
     fn function_body(&self, function_id: InFile<FunctionDefId>) -> Arc<FunctionBody>;
-    #[salsa::invoke_interned(function_clause_body)]
+
+    #[salsa::invoke(function_body_inner)]
+    fn function_body_interned(&self, fid: crate::InternedInFileFunctionDef) -> Arc<FunctionBody>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(function_clause_body_dispatch)]
     fn function_clause_body(
         &self,
         function_clause_id: InFile<FunctionClauseId>,
+    ) -> Arc<FunctionClauseBody>;
+
+    #[salsa::invoke(function_clause_body_inner)]
+    fn function_clause_body_interned(
+        &self,
+        fid: crate::InternedInFileFunctionClause,
     ) -> Arc<FunctionClauseBody>;
     #[salsa::invoke_interned(type_body)]
     fn type_body(&self, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody>;
@@ -165,11 +191,25 @@ pub trait DefDatabase:
     #[salsa::invoke(ssr_body)]
     fn ssr_body(&self, ssr_source: SsrSource) -> Option<Arc<SsrBody>>;
 
-    #[salsa::invoke_interned(FunctionScopes::function_scopes_query)]
+    #[salsa::transparent]
+    #[salsa::invoke(FunctionScopes::function_scopes_dispatch)]
     fn function_scopes(&self, fun: InFile<FunctionDefId>) -> Arc<FunctionScopes>;
 
-    #[salsa::invoke_interned(FunctionScopes::function_clause_scopes_query)]
+    #[salsa::invoke(FunctionScopes::function_scopes_inner)]
+    fn function_scopes_interned(
+        &self,
+        fid: crate::InternedInFileFunctionDef,
+    ) -> Arc<FunctionScopes>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(FunctionScopes::function_clause_scopes_dispatch)]
     fn function_clause_scopes(&self, clause: InFile<FunctionClauseId>) -> Arc<ExprScopes>;
+
+    #[salsa::invoke(FunctionScopes::function_clause_scopes_inner)]
+    fn function_clause_scopes_interned(
+        &self,
+        fid: crate::InternedInFileFunctionClause,
+    ) -> Arc<ExprScopes>;
 
     #[salsa::invoke_interned(include::resolve)]
     fn resolve_include(
@@ -288,14 +328,36 @@ pub trait DefDatabase:
     fn file_external_defines_interned(&self, fid: InternedFileId) -> Arc<Vec<Name>>;
 }
 
-fn function_body(db: &dyn DefDatabase, function_id: InFile<FunctionDefId>) -> Arc<FunctionBody> {
+fn function_body_dispatch(
+    db: &dyn DefDatabase,
+    function_id: InFile<FunctionDefId>,
+) -> Arc<FunctionBody> {
+    db.function_body_interned(crate::InternedInFileFunctionDef::new(db, function_id))
+}
+
+fn function_body_inner(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFileFunctionDef,
+) -> Arc<FunctionBody> {
+    let function_id = fid.value(db);
     db.function_body_with_source(function_id).0
 }
 
-fn function_clause_body(
+fn function_clause_body_dispatch(
     db: &dyn DefDatabase,
     function_clause_id: InFile<FunctionClauseId>,
 ) -> Arc<FunctionClauseBody> {
+    db.function_clause_body_interned(crate::InternedInFileFunctionClause::new(
+        db,
+        function_clause_id,
+    ))
+}
+
+fn function_clause_body_inner(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFileFunctionClause,
+) -> Arc<FunctionClauseBody> {
+    let function_clause_id = fid.value(db);
     db.function_clause_body_with_source(function_clause_id).0
 }
 

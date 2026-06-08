@@ -179,10 +179,18 @@ pub enum AddBinding {
 }
 
 impl FunctionScopes {
-    pub(crate) fn function_scopes_query(
+    pub(crate) fn function_scopes_dispatch(
         db: &dyn DefDatabase,
         function_id: InFile<FunctionDefId>,
     ) -> Arc<FunctionScopes> {
+        db.function_scopes_interned(crate::InternedInFileFunctionDef::new(db, function_id))
+    }
+
+    pub(crate) fn function_scopes_inner(
+        db: &dyn DefDatabase,
+        fid: crate::InternedInFileFunctionDef,
+    ) -> Arc<FunctionScopes> {
+        let function_id = fid.value(db);
         let function_body = db.function_body(function_id);
         let anonymous_var = Var::new(&Name::ANONYMOUS);
         let clause_scopes = function_body
@@ -193,10 +201,21 @@ impl FunctionScopes {
         Arc::new(FunctionScopes { clause_scopes })
     }
 
-    pub(crate) fn function_clause_scopes_query(
+    pub(crate) fn function_clause_scopes_dispatch(
         db: &dyn DefDatabase,
         function_clause_id: InFile<FunctionClauseId>,
     ) -> Arc<ExprScopes> {
+        db.function_clause_scopes_interned(crate::InternedInFileFunctionClause::new(
+            db,
+            function_clause_id,
+        ))
+    }
+
+    pub(crate) fn function_clause_scopes_inner(
+        db: &dyn DefDatabase,
+        fid: crate::InternedInFileFunctionClause,
+    ) -> Arc<ExprScopes> {
+        let function_clause_id = fid.value(db);
         let function_clause_body = db.function_clause_body(function_clause_id);
         let anonymous_var = Var::new(&Name::ANONYMOUS);
         Arc::new(ExprScopes::for_clause(&function_clause_body, anonymous_var))

@@ -1429,7 +1429,7 @@ bar() ->
             value: Idx::from_raw(RawIdx::from(0)),
         };
         let (body, body_map) =
-            FunctionClauseBody::function_clause_body_with_source_query(&db, function_clause_id);
+            FunctionClauseBody::function_clause_body_with_source_dispatch(&db, function_clause_id);
 
         let expr = ast::Expr::ExprMax(ast::ExprMax::Var(ast_var.clone()));
         let expr_id = body_map

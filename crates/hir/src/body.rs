@@ -557,10 +557,21 @@ impl Body {
 }
 
 impl FunctionBody {
-    pub(crate) fn function_body_with_source_query(
+    pub(crate) fn function_body_with_source_dispatch(
         db: &dyn DefDatabase,
         function_id: InFile<FunctionDefId>,
     ) -> (Arc<FunctionBody>, Vec<Arc<BodySourceMap>>) {
+        db.function_body_with_source_interned(crate::InternedInFileFunctionDef::new(
+            db,
+            function_id,
+        ))
+    }
+
+    pub(crate) fn function_body_with_source_inner(
+        db: &dyn DefDatabase,
+        fid: crate::InternedInFileFunctionDef,
+    ) -> (Arc<FunctionBody>, Vec<Arc<BodySourceMap>>) {
+        let function_id = fid.value(db);
         let def_map = db.def_map(function_id.file_id);
         if let Some(fun_def) = def_map.get_by_function_id(&function_id) {
             let fun_asts = fun_def.source(db.upcast());
@@ -676,10 +687,21 @@ impl FunctionBody {
 }
 
 impl FunctionClauseBody {
-    pub(crate) fn function_clause_body_with_source_query(
+    pub(crate) fn function_clause_body_with_source_dispatch(
         db: &dyn DefDatabase,
         function_clause_id: InFile<FunctionClauseId>,
     ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
+        db.function_clause_body_with_source_interned(crate::InternedInFileFunctionClause::new(
+            db,
+            function_clause_id,
+        ))
+    }
+
+    pub(crate) fn function_clause_body_with_source_inner(
+        db: &dyn DefDatabase,
+        fid: crate::InternedInFileFunctionClause,
+    ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
+        let function_clause_id = fid.value(db);
         fn empty(origin: BodyOrigin) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>) {
             (
                 Arc::new(FunctionClauseBody {
