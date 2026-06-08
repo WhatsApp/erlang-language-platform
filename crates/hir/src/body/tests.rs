@@ -5359,6 +5359,94 @@ fn quoted_string_with_sigil_in_tq_string() {
     );
 }
 
+#[test]
+fn quoted_s_sigil_does_not_double_unescape() {
+    // Source `\\n` is two chars (backslash + n). With single-pass
+    // unescape, that's what the runtime string contains, so the pretty
+    // printer re-escapes to `\\n` (visible backslash + n). With the
+    // pre-fix double-pass, the literal would have been a newline,
+    // which pretty-prints as `\n`.
+    check(
+        r#"
+        f() -> \~s"\\n".
+        "#,
+        expect![[r#"
+            f() ->
+                "\\n".
+        "#]],
+    );
+}
+
+#[test]
+fn quoted_default_binary_sigil_does_not_double_unescape() {
+    // Same regression for `~"..."` (default binary sigil).
+    check(
+        r#"
+        f() -> \~"\\n".
+        "#,
+        expect![[r#"
+            f() ->
+                <<
+                    "\\n"/utf8
+                >>.
+        "#]],
+    );
+}
+
+#[test]
+fn quoted_b_sigil_does_not_double_unescape() {
+    // Same regression for `~b"..."` (explicit binary sigil).
+    check(
+        r#"
+        f() -> \~b"\\n".
+        "#,
+        expect![[r#"
+            f() ->
+                <<
+                    "\\n"/utf8
+                >>.
+        "#]],
+    );
+}
+
+#[test]
+fn quoted_s_sigil_double_backslash_is_one_backslash() {
+    // `\\` in the source is one backslash in the runtime string —
+    // single-pass unescape stops there. The pretty printer re-escapes
+    // that single backslash to `\\`.
+    check(
+        r#"
+        f() -> \~s"a\\b".
+        "#,
+        expect![[r#"
+            f() ->
+                "a\\b".
+        "#]],
+    );
+}
+
+#[test]
+fn tq_b_sigil_still_unescapes() {
+    // Triple-quoted `~b"""..."""` contents come back verbatim from
+    // `trim_quotes_and_sigils`, so the lowering does still unescape
+    // them (the `is_tq` branch). `\\n` inside a tq sigil should produce
+    // backslash + n (the same final value as the single-quoted case,
+    // but reached via the tq-only unescape path).
+    check(
+        r#"
+        f() -> \~b"""
+                a\\nb
+                """.
+        "#,
+        expect![[r#"
+            f() ->
+                <<
+                    "a\\nb"/utf8
+                >>.
+        "#]],
+    );
+}
+
 // -------------------------------------
 // This section based on VS tests in
 // https://github.com/erlang/otp/pull/7684/files#diff-c10f10e80ad43db595859b195d163b88a51785fdefaa66e191ecfdde5eab4448R80-R84

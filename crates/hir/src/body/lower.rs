@@ -3488,9 +3488,8 @@ impl<'a> Ctx<'a> {
             Some(literal(Literal::String(StringVariant::Normal(contents))))
         } else if let Some(_rest) = s.strip_prefix("~s\"\"\"") {
             // Quoted String
-            Some(literal(Literal::String(StringVariant::Normal(
-                unescape::unescape_string(&format!("\"{contents}\""))?.to_string(),
-            ))))
+            // contents is already unescaped by trim_quotes_and_sigils (via Into<String>)
+            Some(literal(Literal::String(StringVariant::Normal(contents))))
         } else if let Some(_rest) = s.strip_prefix("~\"") {
             // Quoted binary, default when no additional char
             self.lower_quoted_binary_sigil(str, expr, lower)
@@ -3502,9 +3501,8 @@ impl<'a> Ctx<'a> {
             self.lower_verbatim_binary_sigil(str, expr, false, lower)
         } else if let Some(_rest) = s.strip_prefix("~s\"") {
             // Quoted String
-            Some(literal(Literal::String(StringVariant::Normal(
-                unescape::unescape_string(&format!("\"{contents}\""))?.to_string(),
-            ))))
+            // contents is already unescaped by trim_quotes_and_sigils (via Into<String>)
+            Some(literal(Literal::String(StringVariant::Normal(contents))))
         } else if let Some(_rest) = s.strip_prefix("~S\"") {
             // Verbatim string
             let contents: String = str.clone().into();
@@ -3520,9 +3518,8 @@ impl<'a> Ctx<'a> {
             Some(literal(Literal::String(StringVariant::Normal(contents))))
         } else if has_nonquote_sigil_prefix(&s, "~s") {
             // Quoted String with non-quote delimiter
-            Some(literal(Literal::String(StringVariant::Normal(
-                unescape::unescape_string(&format!("\"{contents}\""))?.to_string(),
-            ))))
+            // contents is already unescaped by trim_quotes_and_sigils (via Into<String>)
+            Some(literal(Literal::String(StringVariant::Normal(contents))))
         } else if s
             .strip_prefix("~")
             .and_then(|r| r.chars().next())
@@ -3563,9 +3560,20 @@ impl<'a> Ctx<'a> {
         lower: fn(&mut Self, Literal, &ast::Expr) -> Option<Id>,
     ) -> Option<Id> {
         let contents: String = str.clone().into();
-        let string_variant = Literal::String(StringVariant::Normal(
-            unescape::unescape_string(&format!("\"{contents}\""))?.to_string(),
-        ));
+        let s = str.text();
+        // For triple-quoted ~b sigils (e.g. ~b"""..."""), trim_quotes_and_sigils
+        // returns verbatim content without escape processing, so we must
+        // unescape here. For single-quoted sigils, trim_quotes_and_sigils
+        // already unescapes, so we use contents directly to avoid
+        // double-unescaping.
+        let is_tq = s.starts_with("~b\"\"\"") || s.starts_with("~\"\"\"");
+        let string_variant = if is_tq {
+            Literal::String(StringVariant::Normal(
+                unescape::unescape_string(&format!("\"{contents}\""))?.to_string(),
+            ))
+        } else {
+            Literal::String(StringVariant::Normal(contents))
+        };
 
         lower(self, string_variant, expr)
     }
