@@ -441,6 +441,17 @@ impl From<nodes::String> for std::string::String {
     }
 }
 
+/// Return the closing delimiter for a given opening delimiter.
+fn closing_delimiter(open: char) -> char {
+    match open {
+        '(' => ')',
+        '[' => ']',
+        '{' => '}',
+        '<' => '>',
+        other => other, // Self-closing: /, |, ', `, #
+    }
+}
+
 /// Trim leading and trailing quote marks and sigils.  It also dedents
 /// triple quoted strings, and returns verbatim or quoted strings
 /// according to the sigil
@@ -460,6 +471,12 @@ fn trim_quotes_and_sigils(s: &str) -> String {
               (.*)         # The actual string contents we care about           (cap 3)
               $            # End of string. Do not match quotes, we trim separately
             "#).expect("regex should be valid");
+        static ref RE_SIGIL_NONQUOTE: Regex = Regex::new(r#"(?sx)
+              ^~([bBsS]?)        # Sigil prefix (~ required, optional sigil char)  (cap 1)
+              ([(\[{</'|`\#])    # Non-quote opening delimiter                     (cap 2)
+              (.*)               # The actual string contents we care about        (cap 3)
+              $                  # End of string
+            "#).unwrap();
     }
     let mut quoted = true;
     let trimmed = if let Some(captures) = RE.captures(s) {
@@ -486,6 +503,23 @@ fn trim_quotes_and_sigils(s: &str) -> String {
         } else {
             captures[0].to_string()
         }
+    } else if let Some(captures) = RE_SIGIL_NONQUOTE.captures(s) {
+        // Handle sigil strings with non-quote delimiters (EEP-66)
+        let sigil = &captures[1];
+        let open_delim = captures[2].chars().next().unwrap();
+        let rest = &captures[3];
+
+        let close_delim = closing_delimiter(open_delim);
+        let content = rest
+            .strip_suffix(|c: char| c == close_delim)
+            .unwrap_or(rest);
+
+        // Verbatim sigils (B, S) don't need escape processing
+        if sigil == "B" || sigil == "S" {
+            quoted = false;
+        }
+
+        content.to_string()
     } else {
         s.to_string()
     };
@@ -1155,6 +1189,34 @@ mod tests {
               ab\"c\"\d
               """""#,
         ));
+
+        // Non-quote delimiters (EEP-66) -------------------
+        // Verbatim binary ~B with various delimiters
+        expect![[r#"hello"#]].assert_eq(&trim_quotes_and_sigils(r#"~B/hello/"#));
+        expect![[r#"hello"#]].assert_eq(&trim_quotes_and_sigils(r#"~B|hello|"#));
+        expect![[r#"hello"#]].assert_eq(&trim_quotes_and_sigils(r#"~B(hello)"#));
+        expect![[r#"hello"#]].assert_eq(&trim_quotes_and_sigils(r#"~B[hello]"#));
+        expect![[r#"hello"#]].assert_eq(&trim_quotes_and_sigils(r#"~B{hello}"#));
+        expect![[r#"hello"#]].assert_eq(&trim_quotes_and_sigils(r#"~B<hello>"#));
+        expect![[r#"hello"#]].assert_eq(&trim_quotes_and_sigils(r#"~B#hello#"#));
+        expect![[r#"hello"#]].assert_eq(&trim_quotes_and_sigils(r#"~B'hello'"#));
+        expect![[r#"hello"#]].assert_eq(&trim_quotes_and_sigils(r#"~B`hello`"#));
+
+        // Verbatim ~B preserves escape sequences literally
+        expect![[r#"ab\nc\td"#]].assert_eq(&trim_quotes_and_sigils(r#"~B/ab\nc\td/"#));
+
+        // Verbatim string ~S with non-quote delimiter
+        expect![[r#"hello"#]].assert_eq(&trim_quotes_and_sigils(r#"~S/hello/"#));
+        expect![[r#"ab\nc\td"#]].assert_eq(&trim_quotes_and_sigils(r#"~S/ab\nc\td/"#));
+
+        // Quoted binary ~b with non-quote delimiter (escape processing)
+        expect!["ab\nc\td"].assert_eq(&trim_quotes_and_sigils(r#"~b/ab\nc\td/"#));
+
+        // Quoted string ~s with non-quote delimiter (escape processing)
+        expect!["ab\nc\td"].assert_eq(&trim_quotes_and_sigils(r#"~s/ab\nc\td/"#));
+
+        // Default sigil ~ with non-quote delimiter (quoted binary)
+        expect!["ab\nc\td"].assert_eq(&trim_quotes_and_sigils(r#"~/ab\nc\td/"#));
     }
 
     // OTP triple-quoted string indentation: the indent to strip is taken

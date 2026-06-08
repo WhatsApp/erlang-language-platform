@@ -3509,6 +3509,27 @@ impl<'a> Ctx<'a> {
             // Verbatim string
             let contents: String = str.clone().into();
             Some(literal(Literal::String(StringVariant::Normal(contents))))
+        } else if has_nonquote_sigil_prefix(&s, "~B") {
+            // Verbatim Binary with non-quote delimiter
+            self.lower_verbatim_binary_sigil(str, expr, false, lower)
+        } else if has_nonquote_sigil_prefix(&s, "~b") {
+            // Quoted binary with non-quote delimiter
+            self.lower_quoted_binary_sigil(str, expr, lower)
+        } else if has_nonquote_sigil_prefix(&s, "~S") {
+            // Verbatim string with non-quote delimiter
+            Some(literal(Literal::String(StringVariant::Normal(contents))))
+        } else if has_nonquote_sigil_prefix(&s, "~s") {
+            // Quoted String with non-quote delimiter
+            Some(literal(Literal::String(StringVariant::Normal(
+                unescape::unescape_string(&format!("\"{contents}\""))?.to_string(),
+            ))))
+        } else if s
+            .strip_prefix("~")
+            .and_then(|r| r.chars().next())
+            .is_some_and(is_nonquote_sigil_delimiter)
+        {
+            // Default sigil (~) with non-quote delimiter → quoted binary
+            self.lower_quoted_binary_sigil(str, expr, lower)
         } else {
             // ordinary string
             Some(literal(Literal::String(StringVariant::Normal(
@@ -4336,4 +4357,18 @@ fn is_first_arg_bracket_only(clause: &ast::FunctionClause) -> bool {
                 '[' | ']' | '{' | '}' | '(' | ')' | '<' | '>' | ',' | ' ' | '\t' | '\n' | '\r'
             )
         })
+}
+
+/// Check if a character is a non-quote sigil delimiter (EEP-66).
+/// These are the opening delimiters for sigil strings other than `"`.
+fn is_nonquote_sigil_delimiter(c: char) -> bool {
+    matches!(c, '(' | '[' | '{' | '<' | '/' | '|' | '\'' | '`' | '#')
+}
+
+/// Check if a string starts with the given sigil prefix followed by
+/// a non-quote delimiter character.
+fn has_nonquote_sigil_prefix(s: &str, prefix: &str) -> bool {
+    s.strip_prefix(prefix)
+        .and_then(|r| r.chars().next())
+        .is_some_and(is_nonquote_sigil_delimiter)
 }
