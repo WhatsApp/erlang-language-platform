@@ -237,6 +237,12 @@ pub struct InternedInFileFunctionClause {
     pub value: InFile<FunctionClauseId>,
 }
 
+#[elp_base_db::salsa::interned(no_lifetime)]
+pub struct InternedResolveInclude {
+    pub orig_app: Option<elp_base_db::AppDataId>,
+    pub include_id: InFile<IncludeAttributeId>,
+}
+
 impl<T: Clone> InFile<&T> {
     pub fn cloned(&self) -> InFile<T> {
         self.with_value(self.value.clone())

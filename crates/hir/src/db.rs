@@ -211,12 +211,16 @@ pub trait DefDatabase:
         fid: crate::InternedInFileFunctionClause,
     ) -> Arc<ExprScopes>;
 
-    #[salsa::invoke_interned(include::resolve)]
+    #[salsa::transparent]
+    #[salsa::invoke(include::resolve_dispatch)]
     fn resolve_include(
         &self,
         orig_app: Option<AppDataId>,
         include_id: InFile<IncludeAttributeId>,
     ) -> Option<FileId>;
+
+    #[salsa::invoke(include::resolve_inner)]
+    fn resolve_include_interned(&self, key: crate::InternedResolveInclude) -> Option<FileId>;
 
     #[salsa::transparent]
     #[salsa::invoke(macro_exp::resolve_dispatch)]

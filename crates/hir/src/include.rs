@@ -15,13 +15,20 @@ use elp_base_db::IncludeCtx;
 use crate::InFile;
 use crate::IncludeAttribute;
 use crate::IncludeAttributeId;
+use crate::InternedResolveInclude;
 use crate::db::DefDatabase;
 
-pub(crate) fn resolve(
+pub(crate) fn resolve_dispatch(
     db: &dyn DefDatabase,
     orig_app: Option<AppDataId>,
     include_id: InFile<IncludeAttributeId>,
 ) -> Option<FileId> {
+    db.resolve_include_interned(InternedResolveInclude::new(db, orig_app, include_id))
+}
+
+pub(crate) fn resolve_inner(db: &dyn DefDatabase, key: InternedResolveInclude) -> Option<FileId> {
+    let orig_app = key.orig_app(db);
+    let include_id = key.include_id(db);
     let ctx = &IncludeCtx::new(db.upcast(), orig_app, include_id.file_id);
     let form_list = db.file_form_list(ctx.current_file_id);
     let (path, file_id) = match &form_list[include_id.value] {
