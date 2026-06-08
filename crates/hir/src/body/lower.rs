@@ -1524,13 +1524,38 @@ impl<'a> Ctx<'a> {
         let name = atom.as_name();
 
         // Check that it's not imported, e.g. -import(lists, [length/1]).
-        if let Some(import_module) = self.imported_module(name, arity) {
+        if let Some(import_module) = self.imported_module(name.clone(), arity) {
             Some(self.module_expr_id(&import_module))
-        } else if is_erlang_fun(&atom.as_string(), arity?) {
+        } else if is_erlang_fun(&atom.as_string(), arity?) && !self.is_no_auto_import(&name, arity)
+        {
             Some(self.erlang_expr_id())
         } else {
             None
         }
+    }
+
+    /// An auto-imported BIF can be disabled for a module via
+    /// `-compile({no_auto_import, [F/A]})` (or `-compile(no_auto_import)` for
+    /// all BIFs). When disabled, an unqualified call `F(...)` resolves to the
+    /// local function rather than `erlang:F/A`, so it must not be rewritten to
+    /// a remote call.
+    fn is_no_auto_import(&self, name: &Name, arity: ast::Arity) -> bool {
+        // Mirror `imported_module`: avoid the def_map query when import
+        // resolution is skipped (to break the preprocessor salsa cycle) or in
+        // SSR patterns, which have no concrete module.
+        if self.skip_import_resolution {
+            return false;
+        }
+        if self.file_id() == SSR_SOURCE_FILE_ID {
+            return false;
+        }
+        let Some(arity) = arity else {
+            return false;
+        };
+        let name_arity = NameArity::new(name.clone(), arity as u32);
+        self.db
+            .def_map(self.file_id())
+            .is_no_auto_import(&name_arity)
     }
 
     fn imported_module(&self, name: Name, arity: ast::Arity) -> Option<Name> {

@@ -89,6 +89,7 @@ pub struct DefMap {
     behaviours: FxHashSet<Name>,
     macros: FxHashMap<MacroName, DefineDef>,
     export_all: bool,
+    no_auto_imports: NoAutoImports,
     pub parse_transform: bool,
     pub moduledoc: FxHashSet<ModuleDoc>,
     pub moduledoc_metadata: FxHashSet<ModuleDocMetadata>,
@@ -151,6 +152,25 @@ impl Deprecated {
     fn shrink_to_fit(&mut self) {
         self.functions.shrink_to_fit();
         self.fa.shrink_to_fit();
+    }
+}
+
+/// Auto-imported BIFs disabled for a module via
+/// `-compile({no_auto_import, [F/A]})` or `-compile(no_auto_import)`.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct NoAutoImports {
+    /// `-compile(no_auto_import)` disables every auto-imported BIF.
+    all: bool,
+    fas: FxHashSet<NameArity>,
+}
+
+impl NoAutoImports {
+    fn is_no_auto_import(&self, fa: &NameArity) -> bool {
+        self.all || self.fas.contains(fa)
+    }
+
+    fn shrink_to_fit(&mut self) {
+        self.fas.shrink_to_fit();
     }
 }
 
@@ -311,6 +331,9 @@ impl DefMap {
                                         if a.as_name() == known::parse_transform {
                                             def_map.parse_transform = true;
                                         }
+                                        if a.as_name() == known::no_auto_import {
+                                            Self::def_map_no_auto_import(&mut def_map, &a);
+                                        }
                                     },
                                     _ => {},
                                 }
@@ -412,6 +435,43 @@ impl DefMap {
                 .insert(NameArity::new(fa.name.clone(), arity), desc),
             None => def_map.deprecated.functions.insert(fa.name.clone(), desc),
         };
+    }
+
+    fn def_map_no_auto_import(def_map: &mut DefMap, atom: &ast::Atom) {
+        // Two forms:
+        //   `-compile({no_auto_import, [F/A, ...]})` -> disable specific BIFs
+        //   `-compile(no_auto_import)`               -> disable all BIFs
+        // In the first form the `no_auto_import` atom is the tag of a tuple
+        // whose list holds `F/A` entries (each a `name / arity` binary
+        // expression). Otherwise the atom stands alone as a compile option and
+        // disables every auto-imported BIF.
+        if let Some(tuple) = atom.syntax().parent().and_then(ast::Tuple::cast) {
+            for bin in tuple
+                .syntax()
+                .descendants()
+                .filter_map(ast::BinaryOpExpr::cast)
+            {
+                if let Some(na) = Self::fa_from_arity_expr(&bin) {
+                    def_map.no_auto_imports.fas.insert(na);
+                }
+            }
+        } else {
+            def_map.no_auto_imports.all = true;
+        }
+    }
+
+    /// Extract a `name/arity` pair from a `name / arity` binary expression, as
+    /// it appears inside `-compile({no_auto_import, [F/A]})`.
+    fn fa_from_arity_expr(bin: &ast::BinaryOpExpr) -> Option<NameArity> {
+        if !matches!(
+            bin.op(),
+            Some((ast::BinaryOp::ArithOp(ast::ArithOp::FloatDiv), _))
+        ) {
+            return None;
+        }
+        let name = ast::Atom::cast(bin.lhs()?.syntax().clone())?.as_name();
+        let arity: u32 = ast::Integer::cast(bin.rhs()?.syntax().clone())?.into();
+        Some(NameArity::new(name, arity))
     }
 
     pub(crate) fn def_map_dispatch(db: &dyn DefDatabase, file_id: FileId) -> Arc<DefMap> {
@@ -558,6 +618,10 @@ impl DefMap {
 
     pub fn is_deprecated(&self, name: &NameArity) -> bool {
         self.deprecated.is_deprecated(name)
+    }
+
+    pub fn is_no_auto_import(&self, name: &NameArity) -> bool {
+        self.no_auto_imports.is_no_auto_import(name)
     }
 
     pub fn get_unowned_specs(&self) -> &FxHashMap<NameArity, SpecDef> {
@@ -807,6 +871,10 @@ impl DefMap {
                 .iter()
                 .map(|(name, desc)| (name.clone(), desc.clone())),
         );
+        self.no_auto_imports.all |= other.no_auto_imports.all;
+        self.no_auto_imports
+            .fas
+            .extend(other.no_auto_imports.fas.iter().cloned());
         self.behaviours.extend(other.behaviours.iter().cloned());
     }
 
@@ -1007,6 +1075,7 @@ impl DefMap {
             callbacks,
             macros,
             export_all: _,
+            no_auto_imports,
             parse_transform: _,
             optional_callbacks,
             function_by_function_id: function_by_form_id,
@@ -1031,6 +1100,7 @@ impl DefMap {
         callbacks.shrink_to_fit();
         macros.shrink_to_fit();
         deprecated.shrink_to_fit();
+        no_auto_imports.shrink_to_fit();
         function_by_form_id.shrink_to_fit();
         functions_by_fa.shrink_to_fit();
         behaviours.shrink_to_fit();

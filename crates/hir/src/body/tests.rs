@@ -6548,6 +6548,66 @@ fn call_target_unqualified_for_bif_auto_import() {
 }
 
 #[test]
+fn call_target_no_auto_import_disables_bif_rewrite() {
+    // `now/0` is an auto-imported BIF (`erlang:now/0`), but the module disables
+    // the auto-import via `-compile({no_auto_import, [now/0]})`, so the
+    // unqualified call must lower to `CallTarget::Local` rather than a remote
+    // `erlang:now/0` call.
+    let (db, file_ids, _) = TestDB::with_many_files(
+        r#"
+            -module(main).
+            -compile({no_auto_import, [now/0]}).
+            -export([now/0, later/0]).
+            now() -> really_now.
+            later() -> {now(), but_later}.
+        "#,
+    );
+    let file_id = file_ids[0];
+
+    let target = first_call_target(&db, file_id, "later", 0);
+    assert!(
+        matches!(target, CallTarget::Local { .. }),
+        "no_auto_import BIF call should be CallTarget::Local, got {target:?}"
+    );
+}
+
+#[test]
+fn call_target_bif_rewrite_without_no_auto_import() {
+    // Without `no_auto_import`, an unqualified call to an auto-imported BIF is
+    // still rewritten to a remote `erlang:F/A` call even when the module
+    // defines a clashing local function. That ambiguous case is surfaced
+    // separately by the compiler's "ambiguous call" warning, so the lowering
+    // behaviour here is intentionally left unchanged.
+    let (db, file_ids, _) = TestDB::with_many_files(
+        r#"
+            -module(main).
+            -export([now/0, later/0]).
+            now() -> really_now.
+            later() -> {now(), but_later}.
+        "#,
+    );
+    let file_id = file_ids[0];
+
+    let target = first_call_target(&db, file_id, "later", 0);
+    match &target {
+        CallTarget::Remote {
+            name, unqualified, ..
+        } => {
+            assert!(*unqualified, "BIF call should set unqualified = true");
+            let body = {
+                let def_map = db.def_map(file_id);
+                let na = crate::NameArity::new(crate::Name::from_erlang_service("later"), 0);
+                let fun_def = def_map.get_function(&na).unwrap();
+                db.function_body(InFile::new(file_id, fun_def.function_id))
+            };
+            let (_, clause) = body.clauses.iter().next().unwrap();
+            assert_eq_expected!("now", atom_of(&clause.body, *name));
+        }
+        other => panic!("expected CallTarget::Remote for auto-imported BIF, got {other:?}"),
+    }
+}
+
+#[test]
 fn call_target_unqualified_for_dash_import() {
     // A function brought in by `-import` should also be lowered as an
     // unqualified remote call.

@@ -242,6 +242,22 @@ mod tests {
     }
 
     #[test]
+    fn test_deprecated_function_no_auto_import() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+  -module(main).
+  -compile({no_auto_import, [now/0]}).
+  -export([now/0, later/0]).
+  now() ->
+    really_now.
+  later() ->
+    {now(), but_later}.
+            "#,
+        )
+    }
+
+    #[test]
     fn test_xref_ignore_fix() {
         check_fix(
             r#"

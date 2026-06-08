@@ -281,6 +281,7 @@ pub mod known {
         main,
         module_info,
         modules,
+        no_auto_import,
         ok,
         parse_transform,
         restart,
