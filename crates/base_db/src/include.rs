@@ -83,14 +83,23 @@ impl<'a> IncludeCtx<'a> {
         self.source_root.relative_path(self.current_file_id, path)
     }
 
-    /// Called via salsa for inserting in the graph.  We are looking
-    /// for a base filename in the includes of the current app (from
-    /// the `file_id`) or any of its dependencies
-    pub(crate) fn resolve_local_query(
+    pub(crate) fn resolve_local_dispatch(
         db: &dyn RootQueryDb,
         file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId> {
+        db.resolve_local_interned(crate::InternedFileId::new(db, file_id), path)
+    }
+
+    /// Called via salsa for inserting in the graph.  We are looking
+    /// for a base filename in the includes of the current app (from
+    /// the `file_id`) or any of its dependencies
+    pub(crate) fn resolve_local_inner(
+        db: &dyn RootQueryDb,
+        fid: crate::InternedFileId,
+        path: SmolStr,
+    ) -> Option<FileId> {
+        let file_id = fid.file_id(db);
         let project_id = db.file_project_id(file_id)?;
         let app_data = db.file_app_data(file_id)?;
         if let Some(file_id) = db.mapped_include_file(

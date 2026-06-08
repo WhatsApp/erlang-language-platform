@@ -378,6 +378,17 @@ pub struct ProjectDataInput {
     pub project_data: Arc<ProjectData>,
 }
 
+/// Salsa-interned wrapper around `vfs::FileId`. Used to satisfy salsa 0.25's
+/// "first non-`db` argument must implement `SalsaStructInDb`" constraint for
+/// queries that take a `FileId`. Construct via `InternedFileId::new(db, file_id)`;
+/// unwrap via `interned.file_id(db)`.
+///
+/// See `QUERY_GROUP_MIGRATION_PLAN.md` Phase 1 / PR 1.1.
+#[salsa::interned(no_lifetime)]
+pub struct InternedFileId {
+    pub file_id: FileId,
+}
+
 /// Database which stores all significant input facts: source code and project
 /// model. Everything else in ELP is derived from these queries.
 #[ra_ap_query_group_macro::query_group]
@@ -391,8 +402,12 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     #[salsa::invoke_interned(app_data)]
     fn app_data(&self, id: SourceRootId) -> Option<Arc<AppData>>;
 
-    #[salsa::invoke_interned(app_data_id_by_file)]
+    #[salsa::transparent]
+    #[salsa::invoke(app_data_id_by_file_dispatch)]
     fn app_data_id_by_file(&self, id: FileId) -> Option<AppDataId>;
+
+    #[salsa::invoke(app_data_id_by_file_inner)]
+    fn app_data_id_by_file_interned(&self, fid: InternedFileId) -> Option<AppDataId>;
 
     #[salsa::invoke_interned(include_file_id)]
     fn include_file_id(&self, project_id: ProjectId, path: VfsPath) -> Option<FileId>;
@@ -420,8 +435,12 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     #[salsa::input]
     fn extra_dynamic_call_patterns(&self) -> Arc<FxHashMap<PatternKey, DynamicCallPatternInput>>;
 
-    #[salsa::invoke_interned(file_app_data)]
+    #[salsa::transparent]
+    #[salsa::invoke(file_app_data_dispatch)]
     fn file_app_data(&self, file_id: FileId) -> Option<Arc<AppData>>;
+
+    #[salsa::invoke(file_app_data_inner)]
+    fn file_app_data_interned(&self, fid: InternedFileId) -> Option<Arc<AppData>>;
 
     /// Returns a map from module name to FileId of the containing file.
     #[salsa::invoke_interned(module_index)]
@@ -436,54 +455,109 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     fn app_index(&self) -> Arc<AppDataIndex>;
 
     /// Parse the file_id to AST
-    #[salsa::invoke_interned(parse)]
+    #[salsa::transparent]
+    #[salsa::invoke(parse_dispatch)]
     fn parse(&self, file_id: FileId) -> Parse<SourceFile>;
+
+    /// Salsa-tracked sibling of `parse` that takes the `InternedFileId` wrapper
+    /// directly. The non-interned `parse` is a transparent dispatch that wraps
+    /// the `FileId` and forwards here; this is the cached path.
+    #[salsa::invoke(parse_inner)]
+    fn parse_interned(&self, fid: InternedFileId) -> Parse<SourceFile>;
 
     /// Returns the generation status of the file.
     /// - `Generated`: File has `generated` marker (no manual sections)
     /// - `PartiallyGenerated`: File has `partially-generated` marker
     /// - `Regular`: No generation markers
-    #[salsa::invoke_interned(generated_status)]
+    #[salsa::transparent]
+    #[salsa::invoke(generated_status_dispatch)]
     fn generated_status(&self, file_id: FileId) -> GeneratedStatus;
+
+    #[salsa::invoke(generated_status_inner)]
+    fn generated_status_interned(&self, fid: InternedFileId) -> GeneratedStatus;
 
     /// Returns the ranges of manual sections in a partially-generated file.
     /// Manual sections are delimited by `% BEGIN MANUAL SECTION` and
     /// `% END MANUAL SECTION` comment markers.
-    #[salsa::invoke_interned(manual_section_ranges)]
+    #[salsa::transparent]
+    #[salsa::invoke(manual_section_ranges_dispatch)]
     fn manual_section_ranges(&self, file_id: FileId) -> Arc<Vec<TextRange>>;
+
+    #[salsa::invoke(manual_section_ranges_inner)]
+    fn manual_section_ranges_interned(&self, fid: InternedFileId) -> Arc<Vec<TextRange>>;
 
     /// The top level items are expressions, not forms.  Typically
     /// when parsing e.g. a `rebar.config` file.
-    #[salsa::invoke_interned(is_erlang_config_file)]
+    #[salsa::transparent]
+    #[salsa::invoke(is_erlang_config_file_dispatch)]
     fn is_erlang_config_file(&self, file_id: FileId) -> bool;
 
-    #[salsa::invoke_interned(is_otp)]
+    #[salsa::invoke(is_erlang_config_file_inner)]
+    fn is_erlang_config_file_interned(&self, fid: InternedFileId) -> bool;
+
+    #[salsa::transparent]
+    #[salsa::invoke(is_otp_dispatch)]
     fn is_otp(&self, file_id: FileId) -> Option<bool>;
 
-    #[salsa::invoke_interned(is_test_suite_or_test_helper)]
+    #[salsa::invoke(is_otp_inner)]
+    fn is_otp_interned(&self, fid: InternedFileId) -> Option<bool>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(is_test_suite_or_test_helper_dispatch)]
     fn is_test_suite_or_test_helper(&self, file_id: FileId) -> Option<bool>;
 
-    #[salsa::invoke_interned(file_app_type)]
+    #[salsa::invoke(is_test_suite_or_test_helper_inner)]
+    fn is_test_suite_or_test_helper_interned(&self, fid: InternedFileId) -> Option<bool>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(file_app_type_dispatch)]
     fn file_app_type(&self, file_id: FileId) -> Option<AppType>;
 
-    #[salsa::invoke_interned(file_app_name)]
+    #[salsa::invoke(file_app_type_inner)]
+    fn file_app_type_interned(&self, fid: InternedFileId) -> Option<AppType>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(file_app_name_dispatch)]
     fn file_app_name(&self, file_id: FileId) -> Option<AppName>;
 
-    #[salsa::invoke_interned(file_project_id)]
+    #[salsa::invoke(file_app_name_inner)]
+    fn file_app_name_interned(&self, fid: InternedFileId) -> Option<AppName>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(file_project_id_dispatch)]
     fn file_project_id(&self, file_id: FileId) -> Option<ProjectId>;
 
-    #[salsa::invoke_interned(file_kind)]
+    #[salsa::invoke(file_project_id_inner)]
+    fn file_project_id_interned(&self, fid: InternedFileId) -> Option<ProjectId>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(file_kind_dispatch)]
     fn file_kind(&self, file_id: FileId) -> FileKind;
 
+    #[salsa::invoke(file_kind_inner)]
+    fn file_kind_interned(&self, fid: InternedFileId) -> FileKind;
+
     /// When we get a range from the client, limit it to what is in the source file
-    #[salsa::invoke_interned(clamp_range)]
+    #[salsa::transparent]
+    #[salsa::invoke(clamp_range_dispatch)]
     fn clamp_range(&self, file_id: FileId, range: TextRange) -> TextRange;
 
-    #[salsa::invoke_interned(clamp_offset)]
+    #[salsa::invoke(clamp_range_inner)]
+    fn clamp_range_interned(&self, fid: InternedFileId, range: TextRange) -> TextRange;
+
+    #[salsa::transparent]
+    #[salsa::invoke(clamp_offset_dispatch)]
     fn clamp_offset(&self, file_id: FileId, offset: TextSize) -> TextSize;
 
-    #[salsa::invoke_interned(IncludeCtx::resolve_local_query)]
+    #[salsa::invoke(clamp_offset_inner)]
+    fn clamp_offset_interned(&self, fid: InternedFileId, offset: TextSize) -> TextSize;
+
+    #[salsa::transparent]
+    #[salsa::invoke(IncludeCtx::resolve_local_dispatch)]
     fn resolve_local(&self, file_id: FileId, path: SmolStr) -> Option<FileId>;
+
+    #[salsa::invoke(IncludeCtx::resolve_local_inner)]
+    fn resolve_local_interned(&self, fid: InternedFileId, path: SmolStr) -> Option<FileId>;
 
     #[salsa::invoke_interned(IncludeCtx::resolve_remote_query)]
     fn resolve_remote(
@@ -528,7 +602,12 @@ fn app_data(db: &dyn RootQueryDb, id: SourceRootId) -> Option<Arc<AppData>> {
         .app_data(db)
 }
 
-fn file_app_data(db: &dyn RootQueryDb, file_id: FileId) -> Option<Arc<AppData>> {
+fn file_app_data_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<Arc<AppData>> {
+    db.file_app_data_interned(InternedFileId::new(db, file_id))
+}
+
+fn file_app_data_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<Arc<AppData>> {
+    let file_id = fid.file_id(db);
     let lookup = if let Some(id) = db.app_data_id_by_file(file_id) {
         db.app_data_by_id(id).app_data(db)
     } else {
@@ -663,7 +742,12 @@ pub struct AppDataIndex {
     pub map: FxHashMap<FileId, AppDataId>,
 }
 
-fn app_data_id_by_file(db: &dyn RootQueryDb, file_id: FileId) -> Option<AppDataId> {
+fn app_data_id_by_file_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<AppDataId> {
+    db.app_data_id_by_file_interned(InternedFileId::new(db, file_id))
+}
+
+fn app_data_id_by_file_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<AppDataId> {
+    let file_id = fid.file_id(db);
     let app_data_index = db.app_index();
     app_data_index.map.get(&file_id).copied()
 }
@@ -676,7 +760,12 @@ pub fn set_app_data_id_by_file(db: &mut dyn RootQueryDb, id: FileId, app_data_id
     db.set_app_index(app_data_index);
 }
 
-fn parse(db: &dyn RootQueryDb, file_id: FileId) -> Parse<SourceFile> {
+fn parse_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Parse<SourceFile> {
+    db.parse_interned(InternedFileId::new(db, file_id))
+}
+
+fn parse_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Parse<SourceFile> {
+    let file_id = fid.file_id(db);
     let text = db.file_text(file_id).text(db);
     SourceFile::parse_text(&text)
 }
@@ -687,7 +776,12 @@ pub fn path_for_file(db: &dyn RootQueryDb, file_id: FileId) -> Option<VfsPath> {
     source_root.path_for_file(&file_id).cloned()
 }
 
-fn generated_status(db: &dyn RootQueryDb, file_id: FileId) -> GeneratedStatus {
+fn generated_status_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> GeneratedStatus {
+    db.generated_status_interned(InternedFileId::new(db, file_id))
+}
+
+fn generated_status_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> GeneratedStatus {
+    let file_id = fid.file_id(db);
     lazy_static! {
         // We operate at byte level via a regex (as opposed to use .contains)
         // to avoid issues with UTF8 character boundaries.
@@ -709,7 +803,12 @@ fn generated_status(db: &dyn RootQueryDb, file_id: FileId) -> GeneratedStatus {
     }
 }
 
-fn manual_section_ranges(db: &dyn RootQueryDb, file_id: FileId) -> Arc<Vec<TextRange>> {
+fn manual_section_ranges_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Arc<Vec<TextRange>> {
+    db.manual_section_ranges_interned(InternedFileId::new(db, file_id))
+}
+
+fn manual_section_ranges_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Arc<Vec<TextRange>> {
+    let file_id = fid.file_id(db);
     lazy_static! {
         static ref RE_BEGIN_MANUAL: regex::bytes::Regex =
             regex::bytes::Regex::new(r"% BEGIN MANUAL SECTION").expect("regex should be valid");
@@ -764,18 +863,33 @@ pub fn is_in_manual_section(db: &dyn RootQueryDb, file_id: FileId, range: TextRa
         .any(|manual_range| manual_range.contains_range(range))
 }
 
-fn is_erlang_config_file(db: &dyn RootQueryDb, file_id: FileId) -> bool {
+fn is_erlang_config_file_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> bool {
+    db.is_erlang_config_file_interned(InternedFileId::new(db, file_id))
+}
+
+fn is_erlang_config_file_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> bool {
+    let file_id = fid.file_id(db);
     let parse = db.parse(file_id);
     parse.tree().is_erlang_config_file()
 }
 
-fn is_otp(db: &dyn RootQueryDb, file_id: FileId) -> Option<bool> {
+fn is_otp_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<bool> {
+    db.is_otp_interned(InternedFileId::new(db, file_id))
+}
+
+fn is_otp_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<bool> {
+    let file_id = fid.file_id(db);
     let app_data = db.file_app_data(file_id)?;
     let project_id = app_data.project_id;
     Some(db.project_data(project_id).project_data(db).otp_project_id == Some(project_id))
 }
 
-fn is_test_suite_or_test_helper(db: &dyn RootQueryDb, file_id: FileId) -> Option<bool> {
+fn is_test_suite_or_test_helper_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<bool> {
+    db.is_test_suite_or_test_helper_interned(InternedFileId::new(db, file_id))
+}
+
+fn is_test_suite_or_test_helper_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<bool> {
+    let file_id = fid.file_id(db);
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nis_test_suite_or_test_helper: {file_id:?}"));
     let app_data = db.file_app_data(file_id)?;
@@ -789,21 +903,36 @@ fn is_test_suite_or_test_helper(db: &dyn RootQueryDb, file_id: FileId) -> Option
     }
 }
 
-fn file_app_type(db: &dyn RootQueryDb, file_id: FileId) -> Option<AppType> {
+fn file_app_type_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<AppType> {
+    db.file_app_type_interned(InternedFileId::new(db, file_id))
+}
+
+fn file_app_type_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<AppType> {
+    let file_id = fid.file_id(db);
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nfile_app_type: {file_id:?}"));
     let app_data = db.file_app_data(file_id)?;
     Some(app_data.app_type)
 }
 
-fn file_app_name(db: &dyn RootQueryDb, file_id: FileId) -> Option<AppName> {
+fn file_app_name_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<AppName> {
+    db.file_app_name_interned(InternedFileId::new(db, file_id))
+}
+
+fn file_app_name_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<AppName> {
+    let file_id = fid.file_id(db);
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nfile_app_name: {file_id:?}"));
     let app_data = db.file_app_data(file_id)?;
     Some(app_data.name.clone())
 }
 
-fn file_project_id(db: &dyn RootQueryDb, file_id: FileId) -> Option<ProjectId> {
+fn file_project_id_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<ProjectId> {
+    db.file_project_id_interned(InternedFileId::new(db, file_id))
+}
+
+fn file_project_id_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<ProjectId> {
+    let file_id = fid.file_id(db);
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nfile_project_id: {file_id:?}"));
     let app_data = db.file_app_data(file_id)?;
@@ -829,7 +958,12 @@ static ref IGNORED_SOURCES: Vec<Regex> = {
    };
 }
 
-fn file_kind(db: &dyn RootQueryDb, file_id: FileId) -> FileKind {
+fn file_kind_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> FileKind {
+    db.file_kind_interned(InternedFileId::new(db, file_id))
+}
+
+fn file_kind_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> FileKind {
+    let file_id = fid.file_id(db);
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nfile_kind: {file_id:?}"));
     let source_root_id = db.file_source_root(file_id).source_root_id(db);
@@ -871,7 +1005,12 @@ fn file_kind(db: &dyn RootQueryDb, file_id: FileId) -> FileKind {
 }
 
 /// When we get a range from the client, limit it to what is in the source file
-fn clamp_range(db: &dyn RootQueryDb, file_id: FileId, range: TextRange) -> TextRange {
+fn clamp_range_dispatch(db: &dyn RootQueryDb, file_id: FileId, range: TextRange) -> TextRange {
+    db.clamp_range_interned(InternedFileId::new(db, file_id), range)
+}
+
+fn clamp_range_inner(db: &dyn RootQueryDb, fid: InternedFileId, range: TextRange) -> TextRange {
+    let file_id = fid.file_id(db);
     let source_file = db.parse(file_id).tree();
     let file_range = source_file.syntax().text_range();
     let start = file_range.start();
@@ -882,7 +1021,12 @@ fn clamp_range(db: &dyn RootQueryDb, file_id: FileId, range: TextRange) -> TextR
     )
 }
 
-fn clamp_offset(db: &dyn RootQueryDb, file_id: FileId, offset: TextSize) -> TextSize {
+fn clamp_offset_dispatch(db: &dyn RootQueryDb, file_id: FileId, offset: TextSize) -> TextSize {
+    db.clamp_offset_interned(InternedFileId::new(db, file_id), offset)
+}
+
+fn clamp_offset_inner(db: &dyn RootQueryDb, fid: InternedFileId, offset: TextSize) -> TextSize {
+    let file_id = fid.file_id(db);
     let source_file = db.parse(file_id).tree();
     let file_range = source_file.syntax().text_range();
     let start = file_range.start();
