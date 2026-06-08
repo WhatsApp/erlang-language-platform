@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 use elp_base_db::AppDataId;
 use elp_base_db::FileId;
+use elp_base_db::salsa;
 use elp_syntax::ast;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -765,6 +766,7 @@ fn process_pp_directive(
 
 pub(crate) fn recover_cycle_with_diagnostics(
     _db: &dyn DefDatabase,
+    _id: salsa::Id,
     _data: DefDatabaseData,
     _file_id: FileId,
     _env: Arc<MacroEnvironment>,
@@ -778,6 +780,7 @@ pub(crate) fn recover_cycle_with_diagnostics(
 
 pub(crate) fn recover_cycle(
     _db: &dyn DefDatabase,
+    _id: salsa::Id,
     _data: DefDatabaseData,
     _file_id: FileId,
     _env: Arc<MacroEnvironment>,

@@ -671,6 +671,7 @@ dependencies = [
  "ra_ap_query-group-macro",
  "regex",
  "rustc-hash 2.1.2",
+ "salsa",
  "salsa-macros",
  "serde",
  "stdx",
@@ -1112,6 +1113,7 @@ dependencies = [
  "log",
  "ra_ap_query-group-macro",
  "regex",
+ "salsa",
  "salsa-macros",
  "stdx",
  "tracing",
@@ -1379,6 +1381,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e05c02b5e89bff3b946cedeca278abc628fe811e604f027c45a8aa3cf793d0eb"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "intrusive-collections"
+version = "0.9.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "189d0897e4cbe8c75efedf3502c18c887b05046e59d28404d4d8e46cbc4d1e86"
+dependencies = [
+ "memoffset",
+]
+
+[[package]]
+name = "inventory"
+version = "0.3.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4f0c30c76f2f4ccee3fe55a2435f691ca00c0e4bd87abe4f4a851b1d4dac39b"
+dependencies = [
+ "rustversion",
 ]
 
 [[package]]
@@ -1906,9 +1926,9 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "ra_ap_query-group-macro"
-version = "0.0.290"
+version = "0.0.328"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d536240c33a143fa612ffb43416cbaa16c3eb2ccd2ba5acb4c6c1fafa5f2bca"
+checksum = "770079ca5addde33d31b7f3fa8d399f0dc29c26f69642a9d5c2a5e623d8af64d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2104,16 +2124,18 @@ checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
 
 [[package]]
 name = "salsa"
-version = "0.22.0"
+version = "0.25.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8fff508e3d6ef42a32607f7538e17171a877a12015e32036f46e99d00c95781"
+checksum = "e2e2aa2fca57727371eeafc975acc8e6f4c52f8166a78035543f6ee1c74c2dcc"
 dependencies = [
  "boxcar",
  "crossbeam-queue",
- "dashmap",
+ "crossbeam-utils",
  "hashbrown 0.15.5",
  "hashlink",
  "indexmap 2.14.0",
+ "intrusive-collections",
+ "inventory",
  "parking_lot",
  "portable-atomic",
  "rayon",
@@ -2127,17 +2149,16 @@ dependencies = [
 
 [[package]]
 name = "salsa-macro-rules"
-version = "0.22.0"
+version = "0.25.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ea72b3c06f2ce6350fe3a0eeb7aaaf842d1d8352b706973c19c4f02e298a87c"
+checksum = "1bfc2a1e7bf06964105515451d728f2422dedc3a112383324a00b191a5c397a3"
 
 [[package]]
 name = "salsa-macros"
-version = "0.22.0"
+version = "0.25.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ce92025bc160b27814a207cb78d680973af17f863c7f4fc56cf3a535e22f378"
+checksum = "3d844c1aa34946da46af683b5c27ec1088a3d9d84a2b837a108223fd830220e1"
 dependencies = [
- "heck",
  "proc-macro2",
  "quote",
  "syn",
