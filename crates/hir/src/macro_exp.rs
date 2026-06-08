@@ -11,7 +11,6 @@
 use std::sync::Arc;
 
 use elp_base_db::FileId;
-use elp_base_db::salsa::Cycle;
 use elp_syntax::ast;
 
 use crate::Define;
@@ -195,7 +194,6 @@ pub(crate) fn local_resolve_query(
 // This handles the case of headers accidentally forming cycles during macro resolution.
 pub(crate) fn recover_cycle(
     _db: &dyn DefDatabase,
-    _cycle: &Cycle,
     _data: DefDatabaseData,
     _file_id: FileId,
     _name: MacroName,

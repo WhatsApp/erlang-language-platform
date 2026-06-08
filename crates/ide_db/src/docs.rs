@@ -193,10 +193,10 @@ pub struct FileDoc {
 // TODO Add an input so we know when to invalidate?
 #[ra_ap_query_group_macro::query_group]
 pub trait DocDatabase: DefDatabase + RootQueryDb + DocLoader + Upcast<dyn DefDatabase> {
-    #[salsa::invoke(get_file_docs)]
+    #[salsa::invoke_interned(get_file_docs)]
     fn file_doc(&self, file_id: FileId) -> Arc<FileDoc>;
 
-    #[salsa::invoke(get_file_specs)]
+    #[salsa::invoke_interned(get_file_specs)]
     fn file_specs(&self, file_id: FileId) -> Arc<FxHashMap<NameArity, Doc>>;
 }
 

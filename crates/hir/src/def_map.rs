@@ -22,7 +22,6 @@ use std::sync::Arc;
 
 use elp_base_db::FileId;
 use elp_base_db::module_name;
-use elp_base_db::salsa::Cycle;
 use elp_syntax::AstNode;
 use elp_syntax::ast;
 use elp_syntax::match_ast;
@@ -452,7 +451,6 @@ impl DefMap {
     // Return just the local def map in such cases, not resolving nested includes at all
     pub(crate) fn recover_cycle(
         db: &dyn DefDatabase,
-        _cycle: &Cycle,
         _data: DefDatabaseData,
         file_id: FileId,
     ) -> Arc<DefMap> {
@@ -513,7 +511,6 @@ impl DefMap {
 
     pub(crate) fn recover_cycle_with_env(
         db: &dyn DefDatabase,
-        _cycle: &Cycle,
         _data: DefDatabaseData,
         file_id: FileId,
         env: Arc<MacroEnvironment>,

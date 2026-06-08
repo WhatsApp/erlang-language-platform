@@ -180,9 +180,7 @@ impl fmt::Debug for RootDatabase {
 }
 
 #[salsa::db]
-impl salsa::Database for RootDatabase {
-    fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
-}
+impl salsa::Database for RootDatabase {}
 
 #[salsa::db]
 impl SourceDatabase for RootDatabase {
@@ -356,6 +354,7 @@ impl RootDatabase {
 
 #[ra_ap_query_group_macro::query_group(LineIndexDatabaseStorage)]
 pub trait LineIndexDatabase: RootQueryDb {
+    #[salsa::invoke_interned(file_line_index)]
     fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 }
 

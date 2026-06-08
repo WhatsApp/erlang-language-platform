@@ -31,6 +31,7 @@ paths.workspace = true
 ra_ap_query-group-macro.workspace = true
 regex.workspace = true
 rustc-hash.workspace = true
+salsa-macros.workspace = true
 serde.workspace = true
 stdx.workspace = true
 strum.workspace = true

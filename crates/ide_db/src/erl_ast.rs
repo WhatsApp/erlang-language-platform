@@ -112,7 +112,9 @@ fn resolve_include(
 
 #[ra_ap_query_group_macro::query_group(ErlAstDatabaseStorage)]
 pub trait ErlAstDatabase: RootQueryDb + AstLoader + LineIndexDatabase {
+    #[salsa::invoke_interned(module_ast)]
     fn module_ast(&self, file_id: FileId) -> Arc<ParseResult>;
+    #[salsa::invoke_interned(elp_metadata)]
     fn elp_metadata(&self, file_id: FileId) -> Metadata;
 }
 

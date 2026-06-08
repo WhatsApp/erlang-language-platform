@@ -124,6 +124,12 @@ pub struct SsrSource {
     pub source: Arc<str>,
 }
 
+impl std::fmt::Debug for SsrSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SsrSource").finish()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

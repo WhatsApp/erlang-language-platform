@@ -90,23 +90,30 @@ pub trait EqwalizerDatabase:
     + EqwalizerLoader
     + ErlAstDatabase
 {
+    #[salsa::invoke_interned(eqwalizer_diagnostics_by_project)]
     fn eqwalizer_diagnostics_by_project(
         &self,
         project_id: ProjectId,
         file_ids: Vec<FileId>,
     ) -> Arc<EqwalizerDiagnostics>;
+    #[salsa::invoke_interned(eqwalizer_stats)]
     fn eqwalizer_stats(
         &self,
         project_id: ProjectId,
         file_id: FileId,
     ) -> Option<Arc<Vec<EqwalizerDiagnostic>>>;
+    #[salsa::invoke_interned(type_at_position)]
     fn type_at_position(
         &self,
         position: FileRange,
     ) -> Option<Arc<(eqwalizer::types::Type, FileRange)>>;
+    #[salsa::invoke_interned(types_for_file)]
     fn types_for_file(&self, file_id: FileId) -> Option<Arc<Vec<(Pos, Type)>>>;
+    #[salsa::invoke_interned(has_eqwalizer_module_marker)]
     fn has_eqwalizer_module_marker(&self, file_id: FileId) -> bool;
+    #[salsa::invoke_interned(has_eqwalizer_ignore_marker)]
     fn has_eqwalizer_ignore_marker(&self, file_id: FileId) -> bool;
+    #[salsa::invoke_interned(is_eqwalizer_enabled)]
     fn is_eqwalizer_enabled(&self, file_id: FileId) -> bool;
 }
 

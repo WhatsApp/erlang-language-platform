@@ -66,67 +66,68 @@ use crate::preprocessor::PreprocessorAnalysis;
 pub trait DefDatabase:
     InternDatabase + Upcast<dyn InternDatabase> + RootQueryDb + Upcast<dyn RootQueryDb> + TypedSemantic
 {
-    #[salsa::invoke(FormList::file_form_list_query)]
+    #[salsa::invoke_interned(FormList::file_form_list_query)]
     fn file_form_list(&self, file_id: FileId) -> Arc<FormList>;
 
-    #[salsa::invoke(FunctionBody::function_body_with_source_query)]
+    #[salsa::invoke_interned(FunctionBody::function_body_with_source_query)]
     fn function_body_with_source(
         &self,
         function_id: InFile<FunctionDefId>,
     ) -> (Arc<FunctionBody>, Vec<Arc<BodySourceMap>>);
 
-    #[salsa::invoke(FunctionClauseBody::function_clause_body_with_source_query)]
+    #[salsa::invoke_interned(FunctionClauseBody::function_clause_body_with_source_query)]
     fn function_clause_body_with_source(
         &self,
         function_clause_id: InFile<FunctionClauseId>,
     ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(RecordBody::record_body_with_source_query)]
+    #[salsa::invoke_interned(RecordBody::record_body_with_source_query)]
     fn record_body_with_source(
         &self,
         record_id: InFile<RecordId>,
     ) -> (Arc<RecordBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(SpecBody::spec_body_with_source_query)]
+    #[salsa::invoke_interned(SpecBody::spec_body_with_source_query)]
     fn spec_body_with_source(&self, spec_id: InFile<SpecId>)
     -> (Arc<SpecBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(SpecBody::callback_body_with_source_query)]
+    #[salsa::invoke_interned(SpecBody::callback_body_with_source_query)]
     fn callback_body_with_source(
         &self,
         callback_id: InFile<CallbackId>,
     ) -> (Arc<SpecBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(TypeBody::type_body_with_source_query)]
+    #[salsa::invoke_interned(TypeBody::type_body_with_source_query)]
     fn type_body_with_source(
         &self,
         type_alias_id: InFile<TypeAliasId>,
     ) -> (Arc<TypeBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(AttributeBody::attribute_body_with_source_query)]
+    #[salsa::invoke_interned(AttributeBody::attribute_body_with_source_query)]
     fn attribute_body_with_source(
         &self,
         attribute_id: InFile<AttributeId>,
     ) -> (Arc<AttributeBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(AttributeBody::compile_body_with_source_query)]
+    #[salsa::invoke_interned(AttributeBody::compile_body_with_source_query)]
     fn compile_body_with_source(
         &self,
         attribute_id: InFile<CompileOptionId>,
     ) -> (Arc<AttributeBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(DefineBody::define_body_with_source_query)]
+    #[salsa::invoke_interned(DefineBody::define_body_with_source_query)]
     fn define_body_with_source(
         &self,
         define_id: InFile<DefineId>,
     ) -> (Arc<DefineBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(ConditionBody::condition_body_with_source_query)]
+    #[salsa::invoke_interned(ConditionBody::condition_body_with_source_query)]
     fn condition_body_with_source(
         &self,
         cond_id: InFile<PPConditionId>,
     ) -> Option<(Arc<ConditionBody>, Arc<BodySourceMap>)>;
 
+    // SsrSource is already a #[salsa::interned] struct, so use invoke (not invoke_interned)
     #[salsa::invoke(SsrBody::ssr_body_with_source_query)]
     fn ssr_body_with_source(
         &self,
@@ -134,47 +135,58 @@ pub trait DefDatabase:
     ) -> Option<(Arc<SsrBody>, Arc<BodySourceMap>)>;
 
     // Projection queries to stop recomputation if structure didn't change, even if positions did
+    #[salsa::invoke_interned(function_body)]
     fn function_body(&self, function_id: InFile<FunctionDefId>) -> Arc<FunctionBody>;
+    #[salsa::invoke_interned(function_clause_body)]
     fn function_clause_body(
         &self,
         function_clause_id: InFile<FunctionClauseId>,
     ) -> Arc<FunctionClauseBody>;
+    #[salsa::invoke_interned(type_body)]
     fn type_body(&self, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody>;
+    #[salsa::invoke_interned(spec_body)]
     fn spec_body(&self, spec_id: InFile<SpecId>) -> Arc<SpecBody>;
+    #[salsa::invoke_interned(callback_body)]
     fn callback_body(&self, callback_id: InFile<CallbackId>) -> Arc<SpecBody>;
+    #[salsa::invoke_interned(record_body)]
     fn record_body(&self, record_id: InFile<RecordId>) -> Arc<RecordBody>;
+    #[salsa::invoke_interned(attribute_body)]
     fn attribute_body(&self, attribute_id: InFile<AttributeId>) -> Arc<AttributeBody>;
+    #[salsa::invoke_interned(compile_body)]
     fn compile_body(&self, attribute_id: InFile<CompileOptionId>) -> Arc<AttributeBody>;
+    #[salsa::invoke_interned(define_body)]
     fn define_body(&self, define_id: InFile<DefineId>) -> Arc<DefineBody>;
+    // SsrSource is already a #[salsa::interned] struct, so use invoke (not invoke_interned)
+    #[salsa::invoke(ssr_body)]
     fn ssr_body(&self, ssr_source: SsrSource) -> Option<Arc<SsrBody>>;
 
-    #[salsa::invoke(FunctionScopes::function_scopes_query)]
+    #[salsa::invoke_interned(FunctionScopes::function_scopes_query)]
     fn function_scopes(&self, fun: InFile<FunctionDefId>) -> Arc<FunctionScopes>;
 
-    #[salsa::invoke(FunctionScopes::function_clause_scopes_query)]
+    #[salsa::invoke_interned(FunctionScopes::function_clause_scopes_query)]
     fn function_clause_scopes(&self, clause: InFile<FunctionClauseId>) -> Arc<ExprScopes>;
 
-    #[salsa::invoke(include::resolve)]
+    #[salsa::invoke_interned(include::resolve)]
     fn resolve_include(
         &self,
         orig_app: Option<AppDataId>,
         include_id: InFile<IncludeAttributeId>,
     ) -> Option<FileId>;
 
-    #[salsa::invoke(macro_exp::resolve_query)]
+    #[salsa::invoke_interned(macro_exp::resolve_query)]
     fn resolve_macro(&self, file_id: FileId, name: MacroName) -> Option<ResolvedMacro>;
 
-    #[salsa::invoke(edoc::file_edoc_comments_query)]
+    #[salsa::invoke_interned(edoc::file_edoc_comments_query)]
     fn file_edoc_comments(
         &self,
         file_id: FileId,
     ) -> Option<Arc<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>>>;
 
-    #[salsa::invoke(macro_exp::project_macro_environment_query)]
+    #[salsa::invoke_interned(macro_exp::project_macro_environment_query)]
     fn project_macro_environment(&self, file_id: FileId) -> Arc<MacroEnvironment>;
 
-    #[salsa::cycle(preprocessor::recover_cycle_with_diagnostics)]
-    #[salsa::invoke(preprocessor::file_preprocessor_analysis_with_diagnostics_query)]
+    #[salsa::cycle(cycle_result = preprocessor::recover_cycle_with_diagnostics)]
+    #[salsa::invoke_interned(preprocessor::file_preprocessor_analysis_with_diagnostics_query)]
     fn file_preprocessor_analysis_with_diagnostics(
         &self,
         file_id: FileId,
@@ -182,7 +194,8 @@ pub trait DefDatabase:
     ) -> (Arc<PreprocessorAnalysis>, Arc<ConditionDiagnosticsMap>);
 
     // Projection query - just returns analysis without diagnostics
-    #[salsa::cycle(preprocessor::recover_cycle)]
+    #[salsa::cycle(cycle_result = preprocessor::recover_cycle)]
+    #[salsa::invoke_interned(file_preprocessor_analysis)]
     fn file_preprocessor_analysis(
         &self,
         file_id: FileId,
@@ -190,26 +203,26 @@ pub trait DefDatabase:
     ) -> Arc<PreprocessorAnalysis>;
 
     // Helper query to run the recursive resolution algorithm
-    #[salsa::cycle(macro_exp::recover_cycle)]
-    #[salsa::invoke(macro_exp::local_resolve_query)]
+    #[salsa::cycle(cycle_result = macro_exp::recover_cycle)]
+    #[salsa::invoke_interned(macro_exp::local_resolve_query)]
     fn local_resolve_macro(&self, file_id: FileId, name: MacroName) -> MacroResolution;
 
-    #[salsa::cycle(DefMap::recover_cycle)]
-    #[salsa::invoke(DefMap::def_map_query)]
+    #[salsa::cycle(cycle_result = DefMap::recover_cycle)]
+    #[salsa::invoke_interned(DefMap::def_map_query)]
     fn def_map(&self, file_id: FileId) -> Arc<DefMap>;
 
-    #[salsa::cycle(DefMap::recover_cycle_with_env)]
-    #[salsa::invoke(DefMap::def_map_with_env_query)]
+    #[salsa::cycle(cycle_result = DefMap::recover_cycle_with_env)]
+    #[salsa::invoke_interned(DefMap::def_map_with_env_query)]
     fn def_map_with_env(&self, file_id: FileId, env: Arc<MacroEnvironment>) -> Arc<DefMap>;
 
     // Helper query to compute only local data, avoids recomputation of header data,
     // if only local information changed
-    #[salsa::invoke(DefMap::def_map_local_query)]
+    #[salsa::invoke_interned(DefMap::def_map_local_query)]
     fn def_map_local(&self, file_id: FileId) -> Arc<DefMap>;
 
     /// Returns the macro names defined externally (e.g., via `-D` command line flags)
     /// for a given file, based on its application's configuration.
-    #[salsa::invoke(file_external_defines_query)]
+    #[salsa::invoke_interned(file_external_defines_query)]
     fn file_external_defines(&self, file_id: FileId) -> Arc<Vec<Name>>;
 }
 

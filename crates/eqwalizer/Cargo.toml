@@ -21,6 +21,7 @@ parking_lot.workspace = true
 petgraph.workspace = true
 ra_ap_query-group-macro.workspace = true
 salsa.workspace = true
+salsa-macros.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 stdx.workspace = true

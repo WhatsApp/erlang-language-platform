@@ -176,7 +176,7 @@ pub use dynamic_calls::build_index;
 pub use dynamic_calls::parse_dynamic_call_pattern;
 pub use dynamic_calls::pattern_key;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Default, Clone)]
 pub struct Files {
     files: Arc<DashMap<FileId, FileText, BuildHasherDefault<FxHasher>>>,
     source_roots: Arc<DashMap<SourceRootId, SourceRootInput, BuildHasherDefault<FxHasher>>>,
@@ -184,6 +184,12 @@ pub struct Files {
     app_datas: Arc<DashMap<AppDataId, AppDataInput, BuildHasherDefault<FxHasher>>>,
     source_app_datas: Arc<DashMap<SourceRootId, SourceAppDataInput, BuildHasherDefault<FxHasher>>>,
     project_datas: Arc<DashMap<ProjectId, ProjectDataInput, BuildHasherDefault<FxHasher>>>,
+}
+
+impl std::fmt::Debug for Files {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Files").finish()
+    }
 }
 
 impl Files {
@@ -382,12 +388,16 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     /// The data for a given application. We can access this either
     /// from the `FileId` or by `SourceRootId`, so introduce an
     /// intermediate `AppDataId` to map from the two sources.
+    #[salsa::invoke_interned(app_data)]
     fn app_data(&self, id: SourceRootId) -> Option<Arc<AppData>>;
 
+    #[salsa::invoke_interned(app_data_id_by_file)]
     fn app_data_id_by_file(&self, id: FileId) -> Option<AppDataId>;
 
+    #[salsa::invoke_interned(include_file_id)]
     fn include_file_id(&self, project_id: ProjectId, path: VfsPath) -> Option<FileId>;
 
+    #[salsa::invoke_interned(mapped_include_file)]
     fn mapped_include_file(
         &self,
         project_id: ProjectId,
@@ -410,11 +420,14 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     #[salsa::input]
     fn extra_dynamic_call_patterns(&self) -> Arc<FxHashMap<PatternKey, DynamicCallPatternInput>>;
 
+    #[salsa::invoke_interned(file_app_data)]
     fn file_app_data(&self, file_id: FileId) -> Option<Arc<AppData>>;
 
     /// Returns a map from module name to FileId of the containing file.
+    #[salsa::invoke_interned(module_index)]
     fn module_index(&self, project_id: ProjectId) -> Arc<ModuleIndex>;
 
+    #[salsa::invoke_interned(include_file_index)]
     fn include_file_index(&self, project_id: ProjectId) -> Arc<IncludeFileIndex>;
 
     /// Returns a map from FileId to the AppDataId of the app the file
@@ -423,44 +436,56 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     fn app_index(&self) -> Arc<AppDataIndex>;
 
     /// Parse the file_id to AST
+    #[salsa::invoke_interned(parse)]
     fn parse(&self, file_id: FileId) -> Parse<SourceFile>;
 
     /// Returns the generation status of the file.
     /// - `Generated`: File has `generated` marker (no manual sections)
     /// - `PartiallyGenerated`: File has `partially-generated` marker
     /// - `Regular`: No generation markers
+    #[salsa::invoke_interned(generated_status)]
     fn generated_status(&self, file_id: FileId) -> GeneratedStatus;
 
     /// Returns the ranges of manual sections in a partially-generated file.
     /// Manual sections are delimited by `% BEGIN MANUAL SECTION` and
     /// `% END MANUAL SECTION` comment markers.
+    #[salsa::invoke_interned(manual_section_ranges)]
     fn manual_section_ranges(&self, file_id: FileId) -> Arc<Vec<TextRange>>;
 
     /// The top level items are expressions, not forms.  Typically
     /// when parsing e.g. a `rebar.config` file.
+    #[salsa::invoke_interned(is_erlang_config_file)]
     fn is_erlang_config_file(&self, file_id: FileId) -> bool;
 
+    #[salsa::invoke_interned(is_otp)]
     fn is_otp(&self, file_id: FileId) -> Option<bool>;
 
+    #[salsa::invoke_interned(is_test_suite_or_test_helper)]
     fn is_test_suite_or_test_helper(&self, file_id: FileId) -> Option<bool>;
 
+    #[salsa::invoke_interned(file_app_type)]
     fn file_app_type(&self, file_id: FileId) -> Option<AppType>;
 
+    #[salsa::invoke_interned(file_app_name)]
     fn file_app_name(&self, file_id: FileId) -> Option<AppName>;
 
+    #[salsa::invoke_interned(file_project_id)]
     fn file_project_id(&self, file_id: FileId) -> Option<ProjectId>;
 
+    #[salsa::invoke_interned(file_kind)]
     fn file_kind(&self, file_id: FileId) -> FileKind;
 
     /// When we get a range from the client, limit it to what is in the source file
+    #[salsa::invoke_interned(clamp_range)]
     fn clamp_range(&self, file_id: FileId, range: TextRange) -> TextRange;
 
+    #[salsa::invoke_interned(clamp_offset)]
     fn clamp_offset(&self, file_id: FileId, offset: TextSize) -> TextSize;
 
-    #[salsa::invoke(IncludeCtx::resolve_local_query)]
+    #[salsa::invoke_interned(IncludeCtx::resolve_local_query)]
     fn resolve_local(&self, file_id: FileId, path: SmolStr) -> Option<FileId>;
 
-    #[salsa::invoke(IncludeCtx::resolve_remote_query)]
+    #[salsa::invoke_interned(IncludeCtx::resolve_remote_query)]
     fn resolve_remote(
         &self,
         orig_app_data_id: Option<AppDataId>,

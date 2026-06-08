@@ -86,46 +86,55 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
     #[salsa::input]
     fn eqwalizer_config(&self) -> Arc<EqwalizerConfig>;
 
+    #[salsa::invoke_interned(module_diagnostics)]
     fn module_diagnostics(
         &self,
         project_id: ProjectId,
         module: String,
     ) -> (Arc<EqwalizerDiagnostics>, Instant);
 
+    #[salsa::invoke_interned(converted_stub)]
     fn converted_stub(&self, project_id: ProjectId, module: ModuleName) -> Result<Arc<AST>, Error>;
 
+    #[salsa::invoke_interned(type_ids)]
     fn type_ids(
         &self,
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<BTreeMap<Id, Visibility>>, Error>;
 
+    #[salsa::invoke_interned(expanded_stub)]
     fn expanded_stub(
         &self,
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<ModuleStub>, Error>;
 
+    #[salsa::invoke_interned(contractive_stub)]
     fn contractive_stub(
         &self,
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<VStub>, Error>;
 
+    #[salsa::invoke_interned(transitive_stub)]
     fn transitive_stub(
         &self,
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<ModuleStub>, Error>;
 
+    #[salsa::invoke_interned(transitive_stub_bytes)]
     fn transitive_stub_bytes(
         &self,
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error>;
 
+    #[salsa::invoke_interned(custom_types)]
     fn custom_types(&self, project_id: ProjectId) -> Result<Arc<TypeDeclMap>, Error>;
 
+    #[salsa::invoke_interned(type_decl)]
     fn type_decl(
         &self,
         project_id: ProjectId,
@@ -133,6 +142,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<TypeDecl>>, Error>;
 
+    #[salsa::invoke_interned(type_decl_bytes)]
     fn type_decl_bytes(
         &self,
         project_id: ProjectId,
@@ -140,6 +150,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 
+    #[salsa::invoke_interned(rec_decl)]
     fn rec_decl(
         &self,
         project_id: ProjectId,
@@ -147,6 +158,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: StringId,
     ) -> Result<Option<Arc<RecDecl>>, Error>;
 
+    #[salsa::invoke_interned(rec_decl_bytes)]
     fn rec_decl_bytes(
         &self,
         project_id: ProjectId,
@@ -154,6 +166,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: StringId,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 
+    #[salsa::invoke_interned(fun_spec)]
     fn fun_spec(
         &self,
         project_id: ProjectId,
@@ -161,6 +174,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<FunSpec>>, Error>;
 
+    #[salsa::invoke_interned(fun_spec_bytes)]
     fn fun_spec_bytes(
         &self,
         project_id: ProjectId,
@@ -168,6 +182,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 
+    #[salsa::invoke_interned(overloaded_fun_spec)]
     fn overloaded_fun_spec(
         &self,
         project_id: ProjectId,
@@ -175,6 +190,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<OverloadedFunSpec>>, Error>;
 
+    #[salsa::invoke_interned(overloaded_fun_spec_bytes)]
     fn overloaded_fun_spec_bytes(
         &self,
         project_id: ProjectId,
@@ -182,19 +198,23 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         id: Id,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 
+    #[salsa::invoke_interned(custom_fun_specs)]
     fn custom_fun_specs(&self, project_id: ProjectId) -> Result<Arc<FunSpecMap>, Error>;
 
+    #[salsa::invoke_interned(custom_overloaded_fun_specs)]
     fn custom_overloaded_fun_specs(
         &self,
         project_id: ProjectId,
     ) -> Result<Arc<OverloadedFunSpecMap>, Error>;
 
+    #[salsa::invoke_interned(callbacks)]
     fn callbacks(
         &self,
         project_id: ProjectId,
         module: ModuleName,
     ) -> Result<CallbacksResult, Error>;
 
+    #[salsa::invoke_interned(callbacks_bytes)]
     fn callbacks_bytes(
         &self,
         project_id: ProjectId,

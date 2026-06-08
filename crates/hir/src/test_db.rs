@@ -58,9 +58,7 @@ impl Upcast<dyn InternDatabase> for TestDB {
 }
 
 #[salsa::db]
-impl salsa::Database for TestDB {
-    fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
-}
+impl salsa::Database for TestDB {}
 
 impl fmt::Debug for TestDB {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

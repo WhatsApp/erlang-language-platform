@@ -44,7 +44,7 @@ pub enum CommonTestInfo {
 
 #[ra_ap_query_group_macro::query_group(CommonTestDatabaseStorage)]
 pub trait CommonTestDatabase: DefDatabase + RootQueryDb + CommonTestLoader {
-    #[salsa::invoke(ct_info)]
+    #[salsa::invoke_interned(ct_info)]
     fn ct_info(&self, file_id: FileId) -> Arc<CommonTestInfo>;
 }
 
