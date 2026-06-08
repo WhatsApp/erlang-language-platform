@@ -92,7 +92,15 @@ pub struct FormList {
 }
 
 impl FormList {
-    pub(crate) fn file_form_list_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<FormList> {
+    pub(crate) fn file_form_list_dispatch(db: &dyn DefDatabase, file_id: FileId) -> Arc<FormList> {
+        db.file_form_list_interned(elp_base_db::InternedFileId::new(db, file_id))
+    }
+
+    pub(crate) fn file_form_list_inner(
+        db: &dyn DefDatabase,
+        fid: elp_base_db::InternedFileId,
+    ) -> Arc<FormList> {
+        let file_id = fid.file_id(db);
         let _p = tracing::info_span!("form_list_query").entered();
         let syntax = db.parse(file_id).tree();
         let ctx = lower::Ctx::new(db, file_id, &syntax);

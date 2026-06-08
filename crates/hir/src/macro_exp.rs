@@ -25,7 +25,6 @@ use crate::Name;
 use crate::PPDirective;
 use crate::body::SSR_SOURCE_FILE_ID;
 use crate::db::DefDatabase;
-use crate::db::DefDatabaseData;
 use crate::form_list::FormListData;
 use crate::form_list::PPConditionResult;
 use crate::known;
@@ -116,11 +115,20 @@ pub enum MacroResolution {
     Unresolved,
 }
 
-pub(crate) fn resolve_query(
+pub(crate) fn resolve_dispatch(
     db: &dyn DefDatabase,
     file_id: FileId,
     name: MacroName,
 ) -> Option<ResolvedMacro> {
+    db.resolve_macro_interned(elp_base_db::InternedFileId::new(db, file_id), name)
+}
+
+pub(crate) fn resolve_inner(
+    db: &dyn DefDatabase,
+    fid: elp_base_db::InternedFileId,
+    name: MacroName,
+) -> Option<ResolvedMacro> {
+    let file_id = fid.file_id(db);
     if let Some(value) = resolve_built_in(&name) {
         return value.map(ResolvedMacro::BuiltIn);
     }
@@ -161,11 +169,20 @@ pub fn resolve_built_in(name: &MacroName) -> Option<Option<BuiltInMacro>> {
     None
 }
 
-pub(crate) fn local_resolve_query(
+pub(crate) fn local_resolve_dispatch(
     db: &dyn DefDatabase,
     file_id: FileId,
     name: MacroName,
 ) -> MacroResolution {
+    db.local_resolve_macro_interned(elp_base_db::InternedFileId::new(db, file_id), name)
+}
+
+pub(crate) fn local_resolve_inner(
+    db: &dyn DefDatabase,
+    fid: elp_base_db::InternedFileId,
+    name: MacroName,
+) -> MacroResolution {
+    let file_id = fid.file_id(db);
     if file_id == SSR_SOURCE_FILE_ID {
         return MacroResolution::Unresolved;
     }
@@ -196,17 +213,24 @@ pub(crate) fn local_resolve_query(
 pub(crate) fn recover_cycle(
     _db: &dyn DefDatabase,
     _id: salsa::Id,
-    _data: DefDatabaseData,
-    _file_id: FileId,
+    _fid: elp_base_db::InternedFileId,
     _name: MacroName,
 ) -> MacroResolution {
     MacroResolution::Unresolved
 }
 
-pub fn project_macro_environment_query(
+pub fn project_macro_environment_dispatch(
     db: &dyn DefDatabase,
     file_id: FileId,
 ) -> Arc<MacroEnvironment> {
+    db.project_macro_environment_interned(elp_base_db::InternedFileId::new(db, file_id))
+}
+
+pub fn project_macro_environment_inner(
+    db: &dyn DefDatabase,
+    fid: elp_base_db::InternedFileId,
+) -> Arc<MacroEnvironment> {
+    let file_id = fid.file_id(db);
     let mut env = MacroEnvironment::new();
 
     // Set ifdef from database configuration

@@ -48,7 +48,6 @@ use crate::PPDirective;
 use crate::RecordDef;
 use crate::TypeAliasDef;
 use crate::db::DefDatabase;
-use crate::db::DefDatabaseData;
 use crate::form_list::DeprecatedAttribute;
 use crate::form_list::DeprecatedDesc;
 use crate::form_list::DeprecatedFa;
@@ -156,7 +155,15 @@ impl Deprecated {
 }
 
 impl DefMap {
-    pub(crate) fn def_map_local_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<DefMap> {
+    pub(crate) fn def_map_local_dispatch(db: &dyn DefDatabase, file_id: FileId) -> Arc<DefMap> {
+        db.def_map_local_interned(elp_base_db::InternedFileId::new(db, file_id))
+    }
+
+    pub(crate) fn def_map_local_inner(
+        db: &dyn DefDatabase,
+        fid: elp_base_db::InternedFileId,
+    ) -> Arc<DefMap> {
+        let file_id = fid.file_id(db);
         Arc::new(Self::build_local_impl(db, file_id, None))
     }
 
@@ -407,7 +414,15 @@ impl DefMap {
         };
     }
 
-    pub(crate) fn def_map_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<DefMap> {
+    pub(crate) fn def_map_dispatch(db: &dyn DefDatabase, file_id: FileId) -> Arc<DefMap> {
+        db.def_map_interned(elp_base_db::InternedFileId::new(db, file_id))
+    }
+
+    pub(crate) fn def_map_inner(
+        db: &dyn DefDatabase,
+        fid: elp_base_db::InternedFileId,
+    ) -> Arc<DefMap> {
+        let file_id = fid.file_id(db);
         if !db.ifdef_enabled() {
             return Self::def_map_simple(db, file_id);
         }
@@ -453,20 +468,29 @@ impl DefMap {
     pub(crate) fn recover_cycle(
         db: &dyn DefDatabase,
         _id: salsa::Id,
-        _data: DefDatabaseData,
-        file_id: FileId,
+        fid: elp_base_db::InternedFileId,
     ) -> Arc<DefMap> {
+        let file_id = fid.file_id(db);
         db.def_map_local(file_id)
     }
 
     /// Env-aware def_map query — computes the full def_map using the provided
     /// macro environment for condition evaluation. Used by `def_map_query` to
     /// pass accumulated macro state to included header def_maps.
-    pub(crate) fn def_map_with_env_query(
+    pub(crate) fn def_map_with_env_dispatch(
         db: &dyn DefDatabase,
         file_id: FileId,
         env: Arc<MacroEnvironment>,
     ) -> Arc<DefMap> {
+        db.def_map_with_env_interned(elp_base_db::InternedFileId::new(db, file_id), env)
+    }
+
+    pub(crate) fn def_map_with_env_inner(
+        db: &dyn DefDatabase,
+        fid: elp_base_db::InternedFileId,
+        env: Arc<MacroEnvironment>,
+    ) -> Arc<DefMap> {
+        let file_id = fid.file_id(db);
         let local = Self::build_local_impl(db, file_id, Some(&env));
         let form_list = db.file_form_list(file_id);
         let analysis = db.file_preprocessor_analysis(file_id, Arc::clone(&env));
@@ -514,10 +538,10 @@ impl DefMap {
     pub(crate) fn recover_cycle_with_env(
         db: &dyn DefDatabase,
         _id: salsa::Id,
-        _data: DefDatabaseData,
-        file_id: FileId,
+        fid: elp_base_db::InternedFileId,
         env: Arc<MacroEnvironment>,
     ) -> Arc<DefMap> {
+        let file_id = fid.file_id(db);
         Arc::new(Self::build_local_impl(db, file_id, Some(&env)))
     }
 

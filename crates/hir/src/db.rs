@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use elp_base_db::AppDataId;
 use elp_base_db::FileId;
+use elp_base_db::InternedFileId;
 use elp_base_db::RootQueryDb;
 use elp_base_db::Upcast;
 use elp_base_db::eetf;
@@ -66,8 +67,12 @@ use crate::preprocessor::PreprocessorAnalysis;
 pub trait DefDatabase:
     InternDatabase + Upcast<dyn InternDatabase> + RootQueryDb + Upcast<dyn RootQueryDb> + TypedSemantic
 {
-    #[salsa::invoke_interned(FormList::file_form_list_query)]
+    #[salsa::transparent]
+    #[salsa::invoke(FormList::file_form_list_dispatch)]
     fn file_form_list(&self, file_id: FileId) -> Arc<FormList>;
+
+    #[salsa::invoke(FormList::file_form_list_inner)]
+    fn file_form_list_interned(&self, fid: InternedFileId) -> Arc<FormList>;
 
     #[salsa::invoke_interned(FunctionBody::function_body_with_source_query)]
     fn function_body_with_source(
@@ -173,57 +178,114 @@ pub trait DefDatabase:
         include_id: InFile<IncludeAttributeId>,
     ) -> Option<FileId>;
 
-    #[salsa::invoke_interned(macro_exp::resolve_query)]
+    #[salsa::transparent]
+    #[salsa::invoke(macro_exp::resolve_dispatch)]
     fn resolve_macro(&self, file_id: FileId, name: MacroName) -> Option<ResolvedMacro>;
 
-    #[salsa::invoke_interned(edoc::file_edoc_comments_query)]
+    #[salsa::invoke(macro_exp::resolve_inner)]
+    fn resolve_macro_interned(&self, fid: InternedFileId, name: MacroName)
+    -> Option<ResolvedMacro>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(edoc::file_edoc_comments_dispatch)]
     fn file_edoc_comments(
         &self,
         file_id: FileId,
     ) -> Option<Arc<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>>>;
 
-    #[salsa::invoke_interned(macro_exp::project_macro_environment_query)]
+    #[salsa::invoke(edoc::file_edoc_comments_inner)]
+    fn file_edoc_comments_interned(
+        &self,
+        fid: InternedFileId,
+    ) -> Option<Arc<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>>>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(macro_exp::project_macro_environment_dispatch)]
     fn project_macro_environment(&self, file_id: FileId) -> Arc<MacroEnvironment>;
 
-    #[salsa::cycle(cycle_result = preprocessor::recover_cycle_with_diagnostics)]
-    #[salsa::invoke_interned(preprocessor::file_preprocessor_analysis_with_diagnostics_query)]
+    #[salsa::invoke(macro_exp::project_macro_environment_inner)]
+    fn project_macro_environment_interned(&self, fid: InternedFileId) -> Arc<MacroEnvironment>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(preprocessor::file_preprocessor_analysis_with_diagnostics_dispatch)]
     fn file_preprocessor_analysis_with_diagnostics(
         &self,
         file_id: FileId,
         env: Arc<MacroEnvironment>,
     ) -> (Arc<PreprocessorAnalysis>, Arc<ConditionDiagnosticsMap>);
 
+    #[salsa::cycle(cycle_result = preprocessor::recover_cycle_with_diagnostics)]
+    #[salsa::invoke(preprocessor::file_preprocessor_analysis_with_diagnostics_inner)]
+    fn file_preprocessor_analysis_with_diagnostics_interned(
+        &self,
+        fid: InternedFileId,
+        env: Arc<MacroEnvironment>,
+    ) -> (Arc<PreprocessorAnalysis>, Arc<ConditionDiagnosticsMap>);
+
     // Projection query - just returns analysis without diagnostics
-    #[salsa::cycle(cycle_result = preprocessor::recover_cycle)]
-    #[salsa::invoke_interned(file_preprocessor_analysis)]
+    #[salsa::transparent]
+    #[salsa::invoke(preprocessor::file_preprocessor_analysis_dispatch)]
     fn file_preprocessor_analysis(
         &self,
         file_id: FileId,
         env: Arc<MacroEnvironment>,
     ) -> Arc<PreprocessorAnalysis>;
 
+    #[salsa::cycle(cycle_result = preprocessor::recover_cycle)]
+    #[salsa::invoke(preprocessor::file_preprocessor_analysis_inner)]
+    fn file_preprocessor_analysis_interned(
+        &self,
+        fid: InternedFileId,
+        env: Arc<MacroEnvironment>,
+    ) -> Arc<PreprocessorAnalysis>;
+
     // Helper query to run the recursive resolution algorithm
-    #[salsa::cycle(cycle_result = macro_exp::recover_cycle)]
-    #[salsa::invoke_interned(macro_exp::local_resolve_query)]
+    #[salsa::transparent]
+    #[salsa::invoke(macro_exp::local_resolve_dispatch)]
     fn local_resolve_macro(&self, file_id: FileId, name: MacroName) -> MacroResolution;
 
-    #[salsa::cycle(cycle_result = DefMap::recover_cycle)]
-    #[salsa::invoke_interned(DefMap::def_map_query)]
+    #[salsa::cycle(cycle_result = macro_exp::recover_cycle)]
+    #[salsa::invoke(macro_exp::local_resolve_inner)]
+    fn local_resolve_macro_interned(&self, fid: InternedFileId, name: MacroName)
+    -> MacroResolution;
+
+    #[salsa::transparent]
+    #[salsa::invoke(DefMap::def_map_dispatch)]
     fn def_map(&self, file_id: FileId) -> Arc<DefMap>;
 
-    #[salsa::cycle(cycle_result = DefMap::recover_cycle_with_env)]
-    #[salsa::invoke_interned(DefMap::def_map_with_env_query)]
+    #[salsa::cycle(cycle_result = DefMap::recover_cycle)]
+    #[salsa::invoke(DefMap::def_map_inner)]
+    fn def_map_interned(&self, fid: InternedFileId) -> Arc<DefMap>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(DefMap::def_map_with_env_dispatch)]
     fn def_map_with_env(&self, file_id: FileId, env: Arc<MacroEnvironment>) -> Arc<DefMap>;
+
+    #[salsa::cycle(cycle_result = DefMap::recover_cycle_with_env)]
+    #[salsa::invoke(DefMap::def_map_with_env_inner)]
+    fn def_map_with_env_interned(
+        &self,
+        fid: InternedFileId,
+        env: Arc<MacroEnvironment>,
+    ) -> Arc<DefMap>;
 
     // Helper query to compute only local data, avoids recomputation of header data,
     // if only local information changed
-    #[salsa::invoke_interned(DefMap::def_map_local_query)]
+    #[salsa::transparent]
+    #[salsa::invoke(DefMap::def_map_local_dispatch)]
     fn def_map_local(&self, file_id: FileId) -> Arc<DefMap>;
+
+    #[salsa::invoke(DefMap::def_map_local_inner)]
+    fn def_map_local_interned(&self, fid: InternedFileId) -> Arc<DefMap>;
 
     /// Returns the macro names defined externally (e.g., via `-D` command line flags)
     /// for a given file, based on its application's configuration.
-    #[salsa::invoke_interned(file_external_defines_query)]
+    #[salsa::transparent]
+    #[salsa::invoke(file_external_defines_dispatch)]
     fn file_external_defines(&self, file_id: FileId) -> Arc<Vec<Name>>;
+
+    #[salsa::invoke(file_external_defines_inner)]
+    fn file_external_defines_interned(&self, fid: InternedFileId) -> Arc<Vec<Name>>;
 }
 
 fn function_body(db: &dyn DefDatabase, function_id: InFile<FunctionDefId>) -> Arc<FunctionBody> {
@@ -270,20 +332,19 @@ fn ssr_body(db: &dyn DefDatabase, ssr_source: SsrSource) -> Option<Arc<SsrBody>>
         .map(|(body, _source)| body)
 }
 
-fn file_preprocessor_analysis(
-    db: &dyn DefDatabase,
-    file_id: FileId,
-    env: Arc<MacroEnvironment>,
-) -> Arc<PreprocessorAnalysis> {
-    db.file_preprocessor_analysis_with_diagnostics(file_id, env)
-        .0
+// `file_preprocessor_analysis_dispatch` and `_inner` live in `preprocessor.rs`
+// alongside the with-diagnostics dispatch / inner / cycle recovery siblings.
+
+fn file_external_defines_dispatch(db: &dyn DefDatabase, file_id: FileId) -> Arc<Vec<Name>> {
+    db.file_external_defines_interned(InternedFileId::new(db, file_id))
 }
 
 /// Extract macro names from application data for external defines.
 /// Macros in AppData.macros are stored as eetf::Term and can be:
 /// - An Atom (just the macro name, with implicit value true)
 /// - A Tuple of (Atom key, value) for {MacroName, Value}
-fn file_external_defines_query(db: &dyn DefDatabase, file_id: FileId) -> Arc<Vec<Name>> {
+fn file_external_defines_inner(db: &dyn DefDatabase, fid: InternedFileId) -> Arc<Vec<Name>> {
+    let file_id = fid.file_id(db);
     // Define ELP_ERLANG_SERVICE to match the Erlang service behavior.
     // Headers like assert.hrl use -ifdef(ELP_ERLANG_SERVICE) to select
     // simplified macro expansions that work without parse transforms.

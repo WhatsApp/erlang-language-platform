@@ -32,7 +32,6 @@ use crate::condition_expr::ConditionExpr;
 use crate::condition_expr::ConditionLowerResult;
 use crate::condition_expr::lower_condition_expr;
 use crate::db::DefDatabase;
-use crate::db::DefDatabaseData;
 use crate::form_list::ConditionEnvId;
 use crate::form_list::PPConditionResult;
 #[cfg(test)]
@@ -400,14 +399,43 @@ impl PreprocessorAnalysis {
     }
 }
 
-pub fn file_preprocessor_analysis_with_diagnostics_query(
+pub fn file_preprocessor_analysis_with_diagnostics_dispatch(
     db: &dyn DefDatabase,
     file_id: FileId,
     env: Arc<MacroEnvironment>,
 ) -> (Arc<PreprocessorAnalysis>, Arc<ConditionDiagnosticsMap>) {
+    db.file_preprocessor_analysis_with_diagnostics_interned(
+        elp_base_db::InternedFileId::new(db, file_id),
+        env,
+    )
+}
+
+pub fn file_preprocessor_analysis_with_diagnostics_inner(
+    db: &dyn DefDatabase,
+    fid: elp_base_db::InternedFileId,
+    env: Arc<MacroEnvironment>,
+) -> (Arc<PreprocessorAnalysis>, Arc<ConditionDiagnosticsMap>) {
+    let file_id = fid.file_id(db);
     let (analysis, _macro_defs, diagnostics_map) =
         file_preprocessor_analysis_impl(db, file_id, &env, false);
     (Arc::new(analysis), Arc::new(diagnostics_map))
+}
+
+pub fn file_preprocessor_analysis_dispatch(
+    db: &dyn DefDatabase,
+    file_id: FileId,
+    env: Arc<MacroEnvironment>,
+) -> Arc<PreprocessorAnalysis> {
+    db.file_preprocessor_analysis_interned(elp_base_db::InternedFileId::new(db, file_id), env)
+}
+
+pub fn file_preprocessor_analysis_inner(
+    db: &dyn DefDatabase,
+    fid: elp_base_db::InternedFileId,
+    env: Arc<MacroEnvironment>,
+) -> Arc<PreprocessorAnalysis> {
+    db.file_preprocessor_analysis_with_diagnostics_interned(fid, env)
+        .0
 }
 
 /// Compute point-in-time macro definition snapshots for a file.
@@ -767,8 +795,7 @@ fn process_pp_directive(
 pub(crate) fn recover_cycle_with_diagnostics(
     _db: &dyn DefDatabase,
     _id: salsa::Id,
-    _data: DefDatabaseData,
-    _file_id: FileId,
+    _fid: elp_base_db::InternedFileId,
     _env: Arc<MacroEnvironment>,
 ) -> (Arc<PreprocessorAnalysis>, Arc<ConditionDiagnosticsMap>) {
     // On cycle, return empty analysis and diagnostics
@@ -781,8 +808,7 @@ pub(crate) fn recover_cycle_with_diagnostics(
 pub(crate) fn recover_cycle(
     _db: &dyn DefDatabase,
     _id: salsa::Id,
-    _data: DefDatabaseData,
-    _file_id: FileId,
+    _fid: elp_base_db::InternedFileId,
     _env: Arc<MacroEnvironment>,
 ) -> Arc<PreprocessorAnalysis> {
     // On cycle, return empty analysis

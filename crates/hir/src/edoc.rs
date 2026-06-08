@@ -431,10 +431,18 @@ pub enum TagKind {
     Unknown(String),
 }
 
-pub fn file_edoc_comments_query(
+pub fn file_edoc_comments_dispatch(
     db: &dyn DefDatabase,
     file_id: FileId,
 ) -> Option<Arc<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>>> {
+    db.file_edoc_comments_interned(elp_base_db::InternedFileId::new(db, file_id))
+}
+
+pub fn file_edoc_comments_inner(
+    db: &dyn DefDatabase,
+    fid: elp_base_db::InternedFileId,
+) -> Option<Arc<FxHashMap<InFileAstPtr<ast::Form>, EdocHeader>>> {
+    let file_id = fid.file_id(db);
     let mut res = FxHashMap::default();
     if let Some((form, header)) = module_doc_header(db, file_id) {
         res.insert(form, header);
@@ -1033,7 +1041,7 @@ mod tests {
     fn check(fixture: &str, expected: Expect) {
         let (db, fixture) = TestDB::with_fixture(fixture);
         let file_id = fixture.files[0];
-        let edocs = file_edoc_comments_query(&db, file_id);
+        let edocs = file_edoc_comments_dispatch(&db, file_id);
         expected.assert_eq(&test_print(&edocs.unwrap()))
     }
 
