@@ -100,50 +100,106 @@ pub trait DefDatabase:
         fid: crate::InternedInFileFunctionClause,
     ) -> (Arc<FunctionClauseBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke_interned(RecordBody::record_body_with_source_query)]
+    #[salsa::transparent]
+    #[salsa::invoke(RecordBody::record_body_with_source_dispatch)]
     fn record_body_with_source(
         &self,
         record_id: InFile<RecordId>,
     ) -> (Arc<RecordBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke_interned(SpecBody::spec_body_with_source_query)]
+    #[salsa::invoke(RecordBody::record_body_with_source_inner)]
+    fn record_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileRecord,
+    ) -> (Arc<RecordBody>, Arc<BodySourceMap>);
+
+    #[salsa::transparent]
+    #[salsa::invoke(SpecBody::spec_body_with_source_dispatch)]
     fn spec_body_with_source(&self, spec_id: InFile<SpecId>)
     -> (Arc<SpecBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke_interned(SpecBody::callback_body_with_source_query)]
+    #[salsa::invoke(SpecBody::spec_body_with_source_inner)]
+    fn spec_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileSpec,
+    ) -> (Arc<SpecBody>, Arc<BodySourceMap>);
+
+    #[salsa::transparent]
+    #[salsa::invoke(SpecBody::callback_body_with_source_dispatch)]
     fn callback_body_with_source(
         &self,
         callback_id: InFile<CallbackId>,
     ) -> (Arc<SpecBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke_interned(TypeBody::type_body_with_source_query)]
+    #[salsa::invoke(SpecBody::callback_body_with_source_inner)]
+    fn callback_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileCallback,
+    ) -> (Arc<SpecBody>, Arc<BodySourceMap>);
+
+    #[salsa::transparent]
+    #[salsa::invoke(TypeBody::type_body_with_source_dispatch)]
     fn type_body_with_source(
         &self,
         type_alias_id: InFile<TypeAliasId>,
     ) -> (Arc<TypeBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke_interned(AttributeBody::attribute_body_with_source_query)]
+    #[salsa::invoke(TypeBody::type_body_with_source_inner)]
+    fn type_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileTypeAlias,
+    ) -> (Arc<TypeBody>, Arc<BodySourceMap>);
+
+    #[salsa::transparent]
+    #[salsa::invoke(AttributeBody::attribute_body_with_source_dispatch)]
     fn attribute_body_with_source(
         &self,
         attribute_id: InFile<AttributeId>,
     ) -> (Arc<AttributeBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke_interned(AttributeBody::compile_body_with_source_query)]
+    #[salsa::invoke(AttributeBody::attribute_body_with_source_inner)]
+    fn attribute_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileAttribute,
+    ) -> (Arc<AttributeBody>, Arc<BodySourceMap>);
+
+    #[salsa::transparent]
+    #[salsa::invoke(AttributeBody::compile_body_with_source_dispatch)]
     fn compile_body_with_source(
         &self,
         attribute_id: InFile<CompileOptionId>,
     ) -> (Arc<AttributeBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke_interned(DefineBody::define_body_with_source_query)]
+    #[salsa::invoke(AttributeBody::compile_body_with_source_inner)]
+    fn compile_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileCompileOption,
+    ) -> (Arc<AttributeBody>, Arc<BodySourceMap>);
+
+    #[salsa::transparent]
+    #[salsa::invoke(DefineBody::define_body_with_source_dispatch)]
     fn define_body_with_source(
         &self,
         define_id: InFile<DefineId>,
     ) -> (Arc<DefineBody>, Arc<BodySourceMap>);
 
-    #[salsa::invoke_interned(ConditionBody::condition_body_with_source_query)]
+    #[salsa::invoke(DefineBody::define_body_with_source_inner)]
+    fn define_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFileDefine,
+    ) -> (Arc<DefineBody>, Arc<BodySourceMap>);
+
+    #[salsa::transparent]
+    #[salsa::invoke(ConditionBody::condition_body_with_source_dispatch)]
     fn condition_body_with_source(
         &self,
         cond_id: InFile<PPConditionId>,
+    ) -> Option<(Arc<ConditionBody>, Arc<BodySourceMap>)>;
+
+    #[salsa::invoke(ConditionBody::condition_body_with_source_inner)]
+    fn condition_body_with_source_interned(
+        &self,
+        fid: crate::InternedInFilePPCondition,
     ) -> Option<(Arc<ConditionBody>, Arc<BodySourceMap>)>;
 
     // SsrSource is already a #[salsa::interned] struct, so use invoke (not invoke_interned)
@@ -173,20 +229,47 @@ pub trait DefDatabase:
         &self,
         fid: crate::InternedInFileFunctionClause,
     ) -> Arc<FunctionClauseBody>;
-    #[salsa::invoke_interned(type_body)]
+    #[salsa::transparent]
+    #[salsa::invoke(type_body_dispatch)]
     fn type_body(&self, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody>;
-    #[salsa::invoke_interned(spec_body)]
+    #[salsa::invoke(type_body_inner)]
+    fn type_body_interned(&self, fid: crate::InternedInFileTypeAlias) -> Arc<TypeBody>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(spec_body_dispatch)]
     fn spec_body(&self, spec_id: InFile<SpecId>) -> Arc<SpecBody>;
-    #[salsa::invoke_interned(callback_body)]
+    #[salsa::invoke(spec_body_inner)]
+    fn spec_body_interned(&self, fid: crate::InternedInFileSpec) -> Arc<SpecBody>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(callback_body_dispatch)]
     fn callback_body(&self, callback_id: InFile<CallbackId>) -> Arc<SpecBody>;
-    #[salsa::invoke_interned(record_body)]
+    #[salsa::invoke(callback_body_inner)]
+    fn callback_body_interned(&self, fid: crate::InternedInFileCallback) -> Arc<SpecBody>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(record_body_dispatch)]
     fn record_body(&self, record_id: InFile<RecordId>) -> Arc<RecordBody>;
-    #[salsa::invoke_interned(attribute_body)]
+    #[salsa::invoke(record_body_inner)]
+    fn record_body_interned(&self, fid: crate::InternedInFileRecord) -> Arc<RecordBody>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(attribute_body_dispatch)]
     fn attribute_body(&self, attribute_id: InFile<AttributeId>) -> Arc<AttributeBody>;
-    #[salsa::invoke_interned(compile_body)]
+    #[salsa::invoke(attribute_body_inner)]
+    fn attribute_body_interned(&self, fid: crate::InternedInFileAttribute) -> Arc<AttributeBody>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(compile_body_dispatch)]
     fn compile_body(&self, attribute_id: InFile<CompileOptionId>) -> Arc<AttributeBody>;
-    #[salsa::invoke_interned(define_body)]
+    #[salsa::invoke(compile_body_inner)]
+    fn compile_body_interned(&self, fid: crate::InternedInFileCompileOption) -> Arc<AttributeBody>;
+
+    #[salsa::transparent]
+    #[salsa::invoke(define_body_dispatch)]
     fn define_body(&self, define_id: InFile<DefineId>) -> Arc<DefineBody>;
+    #[salsa::invoke(define_body_inner)]
+    fn define_body_interned(&self, fid: crate::InternedInFileDefine) -> Arc<DefineBody>;
     // SsrSource is already a #[salsa::interned] struct, so use invoke (not invoke_interned)
     #[salsa::invoke(ssr_body)]
     fn ssr_body(&self, ssr_source: SsrSource) -> Option<Arc<SsrBody>>;
@@ -365,32 +448,65 @@ fn function_clause_body_inner(
     db.function_clause_body_with_source(function_clause_id).0
 }
 
-fn type_body(db: &dyn DefDatabase, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody> {
-    db.type_body_with_source(type_alias_id).0
+fn type_body_dispatch(db: &dyn DefDatabase, type_alias_id: InFile<TypeAliasId>) -> Arc<TypeBody> {
+    db.type_body_interned(crate::InternedInFileTypeAlias::new(db, type_alias_id))
+}
+fn type_body_inner(db: &dyn DefDatabase, fid: crate::InternedInFileTypeAlias) -> Arc<TypeBody> {
+    db.type_body_with_source(fid.value(db)).0
 }
 
-fn spec_body(db: &dyn DefDatabase, spec_id: InFile<SpecId>) -> Arc<SpecBody> {
-    db.spec_body_with_source(spec_id).0
+fn spec_body_dispatch(db: &dyn DefDatabase, spec_id: InFile<SpecId>) -> Arc<SpecBody> {
+    db.spec_body_interned(crate::InternedInFileSpec::new(db, spec_id))
+}
+fn spec_body_inner(db: &dyn DefDatabase, fid: crate::InternedInFileSpec) -> Arc<SpecBody> {
+    db.spec_body_with_source(fid.value(db)).0
 }
 
-fn callback_body(db: &dyn DefDatabase, callback_id: InFile<CallbackId>) -> Arc<SpecBody> {
-    db.callback_body_with_source(callback_id).0
+fn callback_body_dispatch(db: &dyn DefDatabase, callback_id: InFile<CallbackId>) -> Arc<SpecBody> {
+    db.callback_body_interned(crate::InternedInFileCallback::new(db, callback_id))
+}
+fn callback_body_inner(db: &dyn DefDatabase, fid: crate::InternedInFileCallback) -> Arc<SpecBody> {
+    db.callback_body_with_source(fid.value(db)).0
 }
 
-fn record_body(db: &dyn DefDatabase, record_id: InFile<RecordId>) -> Arc<RecordBody> {
-    db.record_body_with_source(record_id).0
+fn record_body_dispatch(db: &dyn DefDatabase, record_id: InFile<RecordId>) -> Arc<RecordBody> {
+    db.record_body_interned(crate::InternedInFileRecord::new(db, record_id))
+}
+fn record_body_inner(db: &dyn DefDatabase, fid: crate::InternedInFileRecord) -> Arc<RecordBody> {
+    db.record_body_with_source(fid.value(db)).0
 }
 
-fn attribute_body(db: &dyn DefDatabase, attribute_id: InFile<AttributeId>) -> Arc<AttributeBody> {
-    db.attribute_body_with_source(attribute_id).0
+fn attribute_body_dispatch(
+    db: &dyn DefDatabase,
+    attribute_id: InFile<AttributeId>,
+) -> Arc<AttributeBody> {
+    db.attribute_body_interned(crate::InternedInFileAttribute::new(db, attribute_id))
+}
+fn attribute_body_inner(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFileAttribute,
+) -> Arc<AttributeBody> {
+    db.attribute_body_with_source(fid.value(db)).0
 }
 
-fn compile_body(db: &dyn DefDatabase, attribute_id: InFile<CompileOptionId>) -> Arc<AttributeBody> {
-    db.compile_body_with_source(attribute_id).0
+fn compile_body_dispatch(
+    db: &dyn DefDatabase,
+    attribute_id: InFile<CompileOptionId>,
+) -> Arc<AttributeBody> {
+    db.compile_body_interned(crate::InternedInFileCompileOption::new(db, attribute_id))
+}
+fn compile_body_inner(
+    db: &dyn DefDatabase,
+    fid: crate::InternedInFileCompileOption,
+) -> Arc<AttributeBody> {
+    db.compile_body_with_source(fid.value(db)).0
 }
 
-fn define_body(db: &dyn DefDatabase, define_id: InFile<DefineId>) -> Arc<DefineBody> {
-    db.define_body_with_source(define_id).0
+fn define_body_dispatch(db: &dyn DefDatabase, define_id: InFile<DefineId>) -> Arc<DefineBody> {
+    db.define_body_interned(crate::InternedInFileDefine::new(db, define_id))
+}
+fn define_body_inner(db: &dyn DefDatabase, fid: crate::InternedInFileDefine) -> Arc<DefineBody> {
+    db.define_body_with_source(fid.value(db)).0
 }
 
 fn ssr_body(db: &dyn DefDatabase, ssr_source: SsrSource) -> Option<Arc<SsrBody>> {

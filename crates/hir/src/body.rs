@@ -849,10 +849,18 @@ impl FunctionClauseBody {
 }
 
 impl TypeBody {
-    pub(crate) fn type_body_with_source_query(
+    pub(crate) fn type_body_with_source_dispatch(
         db: &dyn DefDatabase,
         type_alias_id: InFile<TypeAliasId>,
     ) -> (Arc<TypeBody>, Arc<BodySourceMap>) {
+        db.type_body_with_source_interned(crate::InternedInFileTypeAlias::new(db, type_alias_id))
+    }
+
+    pub(crate) fn type_body_with_source_inner(
+        db: &dyn DefDatabase,
+        fid: crate::InternedInFileTypeAlias,
+    ) -> (Arc<TypeBody>, Arc<BodySourceMap>) {
+        let type_alias_id = fid.value(db);
         let form_list = db.file_form_list(type_alias_id.file_id);
         let pp_ctx_env = match &form_list[type_alias_id.value] {
             TypeAlias::Regular { pp_ctx, .. } => pp_ctx.env,
@@ -890,10 +898,18 @@ impl TypeBody {
 }
 
 impl DefineBody {
-    pub(crate) fn define_body_with_source_query(
+    pub(crate) fn define_body_with_source_dispatch(
         db: &dyn DefDatabase,
         define_id: InFile<DefineId>,
     ) -> (Arc<DefineBody>, Arc<BodySourceMap>) {
+        db.define_body_with_source_interned(crate::InternedInFileDefine::new(db, define_id))
+    }
+
+    pub(crate) fn define_body_with_source_inner(
+        db: &dyn DefDatabase,
+        fid: crate::InternedInFileDefine,
+    ) -> (Arc<DefineBody>, Arc<BodySourceMap>) {
+        let define_id = fid.value(db);
         let form_list = db.file_form_list(define_id.file_id);
         let source = define_id.file_syntax(db.upcast());
         let define = &form_list[define_id.value];
@@ -916,10 +932,18 @@ impl DefineBody {
 }
 
 impl ConditionBody {
-    pub(crate) fn condition_body_with_source_query(
+    pub(crate) fn condition_body_with_source_dispatch(
         db: &dyn DefDatabase,
         cond_id: InFile<PPConditionId>,
     ) -> Option<(Arc<ConditionBody>, Arc<BodySourceMap>)> {
+        db.condition_body_with_source_interned(crate::InternedInFilePPCondition::new(db, cond_id))
+    }
+
+    pub(crate) fn condition_body_with_source_inner(
+        db: &dyn DefDatabase,
+        fid: crate::InternedInFilePPCondition,
+    ) -> Option<(Arc<ConditionBody>, Arc<BodySourceMap>)> {
+        let cond_id = fid.value(db);
         let form_list = db.file_form_list(cond_id.file_id);
         let source = cond_id.file_syntax(db.upcast());
         let condition = &form_list[cond_id.value];
@@ -1006,10 +1030,18 @@ pub enum SpecOrCallback {
 }
 
 impl SpecBody {
-    pub(crate) fn spec_body_with_source_query(
+    pub(crate) fn spec_body_with_source_dispatch(
         db: &dyn DefDatabase,
         spec_id: InFile<SpecId>,
     ) -> (Arc<SpecBody>, Arc<BodySourceMap>) {
+        db.spec_body_with_source_interned(crate::InternedInFileSpec::new(db, spec_id))
+    }
+
+    pub(crate) fn spec_body_with_source_inner(
+        db: &dyn DefDatabase,
+        fid: crate::InternedInFileSpec,
+    ) -> (Arc<SpecBody>, Arc<BodySourceMap>) {
+        let spec_id = fid.value(db);
         let form_list = db.file_form_list(spec_id.file_id);
         let spec_ast = form_list[spec_id.value]
             .form_id
@@ -1024,10 +1056,18 @@ impl SpecBody {
         (Arc::new(body), Arc::new(source_map))
     }
 
-    pub(crate) fn callback_body_with_source_query(
+    pub(crate) fn callback_body_with_source_dispatch(
         db: &dyn DefDatabase,
         callback_id: InFile<CallbackId>,
     ) -> (Arc<SpecBody>, Arc<BodySourceMap>) {
+        db.callback_body_with_source_interned(crate::InternedInFileCallback::new(db, callback_id))
+    }
+
+    pub(crate) fn callback_body_with_source_inner(
+        db: &dyn DefDatabase,
+        fid: crate::InternedInFileCallback,
+    ) -> (Arc<SpecBody>, Arc<BodySourceMap>) {
+        let callback_id = fid.value(db);
         let form_list = db.file_form_list(callback_id.file_id);
         let callback_ast = form_list[callback_id.value]
             .form_id
@@ -1067,10 +1107,18 @@ impl SpecBody {
 }
 
 impl RecordBody {
-    pub(crate) fn record_body_with_source_query(
+    pub(crate) fn record_body_with_source_dispatch(
         db: &dyn DefDatabase,
         record_id: InFile<RecordId>,
     ) -> (Arc<RecordBody>, Arc<BodySourceMap>) {
+        db.record_body_with_source_interned(crate::InternedInFileRecord::new(db, record_id))
+    }
+
+    pub(crate) fn record_body_with_source_inner(
+        db: &dyn DefDatabase,
+        fid: crate::InternedInFileRecord,
+    ) -> (Arc<RecordBody>, Arc<BodySourceMap>) {
+        let record_id = fid.value(db);
         let form_list = db.file_form_list(record_id.file_id);
         let record = &form_list[record_id.value];
         let record_ast = record.form_id.get(&record_id.file_syntax(db.upcast()));
@@ -1109,10 +1157,21 @@ pub enum AnyAttribute {
 }
 
 impl AttributeBody {
-    pub(crate) fn attribute_body_with_source_query(
+    pub(crate) fn attribute_body_with_source_dispatch(
         db: &dyn DefDatabase,
         attribute_id: InFile<AttributeId>,
     ) -> (Arc<AttributeBody>, Arc<BodySourceMap>) {
+        db.attribute_body_with_source_interned(crate::InternedInFileAttribute::new(
+            db,
+            attribute_id,
+        ))
+    }
+
+    pub(crate) fn attribute_body_with_source_inner(
+        db: &dyn DefDatabase,
+        fid: crate::InternedInFileAttribute,
+    ) -> (Arc<AttributeBody>, Arc<BodySourceMap>) {
+        let attribute_id = fid.value(db);
         let form_list = db.file_form_list(attribute_id.file_id);
         let attribute_ast = form_list[attribute_id.value]
             .form_id
@@ -1130,10 +1189,21 @@ impl AttributeBody {
         (Arc::new(body), Arc::new(source_map))
     }
 
-    pub(crate) fn compile_body_with_source_query(
+    pub(crate) fn compile_body_with_source_dispatch(
         db: &dyn DefDatabase,
         attribute_id: InFile<CompileOptionId>,
     ) -> (Arc<AttributeBody>, Arc<BodySourceMap>) {
+        db.compile_body_with_source_interned(crate::InternedInFileCompileOption::new(
+            db,
+            attribute_id,
+        ))
+    }
+
+    pub(crate) fn compile_body_with_source_inner(
+        db: &dyn DefDatabase,
+        fid: crate::InternedInFileCompileOption,
+    ) -> (Arc<AttributeBody>, Arc<BodySourceMap>) {
+        let attribute_id = fid.value(db);
         let form_list = db.file_form_list(attribute_id.file_id);
         let attribute_ast = form_list[attribute_id.value]
             .form_id

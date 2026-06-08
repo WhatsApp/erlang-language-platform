@@ -243,6 +243,46 @@ pub struct InternedResolveInclude {
     pub include_id: InFile<IncludeAttributeId>,
 }
 
+#[elp_base_db::salsa::interned(no_lifetime)]
+pub struct InternedInFileRecord {
+    pub value: InFile<RecordId>,
+}
+
+#[elp_base_db::salsa::interned(no_lifetime)]
+pub struct InternedInFileSpec {
+    pub value: InFile<SpecId>,
+}
+
+#[elp_base_db::salsa::interned(no_lifetime)]
+pub struct InternedInFileCallback {
+    pub value: InFile<CallbackId>,
+}
+
+#[elp_base_db::salsa::interned(no_lifetime)]
+pub struct InternedInFileTypeAlias {
+    pub value: InFile<TypeAliasId>,
+}
+
+#[elp_base_db::salsa::interned(no_lifetime)]
+pub struct InternedInFileAttribute {
+    pub value: InFile<AttributeId>,
+}
+
+#[elp_base_db::salsa::interned(no_lifetime)]
+pub struct InternedInFileCompileOption {
+    pub value: InFile<CompileOptionId>,
+}
+
+#[elp_base_db::salsa::interned(no_lifetime)]
+pub struct InternedInFileDefine {
+    pub value: InFile<DefineId>,
+}
+
+#[elp_base_db::salsa::interned(no_lifetime)]
+pub struct InternedInFilePPCondition {
+    pub value: InFile<PPConditionId>,
+}
+
 impl<T: Clone> InFile<&T> {
     pub fn cloned(&self) -> InFile<T> {
         self.with_value(self.value.clone())
