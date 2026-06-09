@@ -783,11 +783,19 @@ impl FunctionClauseBody {
             clause_id.file_id,
             form_list[clause_id.value].pp_ctx.env,
         );
+        // Install the macro stack *before* resolving the function name. When the
+        // clause head comes from a macro (e.g. `?TEST(read_test).` expanding to
+        // `read_test(Config) -> ...`), the name token is a macro parameter that
+        // can only be resolved by walking the macro stack. Resolving it first
+        // would leave `function_info` unset and make `?FUNCTION_NAME` /
+        // `?FUNCTION_ARITY` in the body expand to the macro name/arity instead of
+        // the real function. This keeps name resolution consistent with how the
+        // head itself is lowered in `lower_function_clause`.
+        ctx.set_macro_information(macrostack);
         ctx.set_function_info_from_ast(clause_ast);
         if let Some(first_clause) = first_clause_ast {
             ctx.set_epp_function_arity(first_clause);
         }
-        ctx.set_macro_information(macrostack);
         let from_macro =
             macro_def.map(|(macro_def, args)| ctx.lower_top_level_macro(args, macro_def));
         let (body, source_map) = ctx.lower_function_clause(clause_ast, from_macro);

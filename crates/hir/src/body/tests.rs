@@ -4629,6 +4629,55 @@ foo() -> ?FUNCTION_NAME().
 }
 
 #[test]
+fn expand_built_in_function_name_in_macro_generated_clause() {
+    // The function head is produced by ?DEF(foo); ?FUNCTION_NAME /
+    // ?FUNCTION_ARITY in the body must resolve to the *expanded* function
+    // (foo/0), not the macro name/arity (DEF/1). Regression test for the
+    // ?ACTUAL:?FUNCTION_NAME CT-suite forwarding idiom
+    check(
+        r#"
+-define(DEF(Name), Name() -> ?FUNCTION_NAME).
+?DEF(foo).
+"#,
+        expect![[r#"
+            foo() ->
+                foo.
+        "#]],
+    );
+
+    check(
+        r#"
+-define(DEF(Name), Name() -> ?FUNCTION_ARITY).
+?DEF(foo).
+"#,
+        expect![[r#"
+            foo() ->
+                0.
+        "#]],
+    );
+}
+
+#[test]
+fn expand_built_in_function_name_nested_macro_remote_forward() {
+    // Faithful reproduction of the split-suite forwarding pattern: the head is
+    // produced by one macro and ?FUNCTION_NAME is supplied via a second macro in
+    // remote-call position.
+    check(
+        r#"
+-define(FORWARD, dependency:?FUNCTION_NAME).
+-define(TEST(Name), Name(Config) -> ?FORWARD(Config)).
+?TEST(read_test).
+"#,
+        expect![[r#"
+            read_test(Config) ->
+                dependency:read_test(
+                    Config
+                ).
+        "#]],
+    );
+}
+
+#[test]
 fn expand_built_in_function_arity() {
     check(
         r#"
