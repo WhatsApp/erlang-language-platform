@@ -1,0 +1,35 @@
+AST
+{attribute,{0,0},file,{"latin1_binary.erl",0}}.
+{attribute,{0,22},module,latin1_binary}.
+{attribute,{24,38},export,[{f,0}]}.
+{function,
+    {41,68},
+    f,0,
+    [{clause,
+         {41,68},
+         [],[],
+         [{bin,
+              {52,68},
+              [{bin_element,
+                   {54,66},
+                   {string,{54,66},"Motörhead"},
+                   default,default}]}]}]}.
+{eof,{70,70}}.
+
+
+WARNINGS
+[
+    ParseError {
+        path: "latin1_binary.erl",
+        location: Some(
+            Normal(
+                54..66,
+            ),
+        ),
+        msg: "binary string will be Latin-1 encoded.\nA binary text segment with no /utf8, /utf16, or /utf32 specifier is\nencoded using 1 byte per character (Latin-1), for historical reasons.\nYou probably only want to do this with characters in the ASCII range (0-127).\nCharacters in the range 128-255 will not be compatible with UTF-8, and codes\nabove 255 cannot be represented at all.\nUse compile directive 'nowarn_latin1_binary' to suppress this warning\nif Latin-1 is really what you want; otherwise specify an encoding.\nNote that `<<\"...\"/utf8>>` can simply be written `~\"...\"` since OTP 27.",
+        code: "L1329",
+    },
+]
+
+ERRORS
+[]

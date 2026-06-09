@@ -1,0 +1,35 @@
+AST
+{attribute,{0,0},file,{"truncated_integer.erl",0}}.
+{attribute,{0,26},module,truncated_integer}.
+{attribute,{28,42},export,[{f,0}]}.
+{function,
+    {45,63},
+    f,0,
+    [{clause,
+         {45,63},
+         [],[],
+         [{bin,
+              {56,63},
+              [{bin_element,
+                   {58,61},
+                   {integer,{58,61},256},
+                   default,default}]}]}]}.
+{eof,{65,65}}.
+
+
+WARNINGS
+[
+    ParseError {
+        path: "truncated_integer.erl",
+        location: Some(
+            Normal(
+                58..61,
+            ),
+        ),
+        msg: "integer value outside range of binary segment will be truncated.\nThe value 256 cannot be encoded as 8 bits unsigned.\nCompile directive 'nowarn_truncated_integer' can be used to suppress this\nwarning.",
+        code: "L1331",
+    },
+]
+
+ERRORS
+[]

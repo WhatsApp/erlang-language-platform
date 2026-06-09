@@ -1,0 +1,35 @@
+AST
+{attribute,{0,0},file,{"truncated_character.erl",0}}.
+{attribute,{0,28},module,truncated_character}.
+{attribute,{30,44},export,[{f,0}]}.
+{function,
+    {47,74},
+    f,0,
+    [{clause,
+         {47,74},
+         [],[],
+         [{bin,
+              {58,74},
+              [{bin_element,
+                   {60,72},
+                   {string,{60,72},[31354,25163,128578]},
+                   default,default}]}]}]}.
+{eof,{76,76}}.
+
+
+WARNINGS
+[
+    ParseError {
+        path: "truncated_character.erl",
+        location: Some(
+            Normal(
+                60..72,
+            ),
+        ),
+        msg: "character code larger than 255 will be truncated.\nA binary text segment with no /utf8, /utf16, or /utf32 specifier is\nencoded using 1 byte per character (Latin-1), for historical reasons.\nCharacters with code points above 255 will be truncated to a single byte\nrepresenting a different character than the one in the source code.\nYou should either specify another encoding or change the characters that\nare out of range, or you may suppress this warning with compile directive\n'nowarn_truncated_character'.\nNote that `<<\"...\"/utf8>>` can simply be written `~\"...\"` since OTP 27.",
+        code: "L1330",
+    },
+]
+
+ERRORS
+[]

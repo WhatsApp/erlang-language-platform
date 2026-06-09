@@ -319,6 +319,12 @@ make_code(elp_lint, compr_assign) ->
     "L1327";
 make_code(elp_lint, illegal_map_exact_in_comprehension) ->
     "L1328";
+make_code(elp_lint, latin1_binary) ->
+    "L1329";
+make_code(elp_lint, truncated_character) ->
+    "L1330";
+make_code(elp_lint, {truncated_integer, _Int, _Bits, _Sign}) ->
+    "L1331";
 make_code(elp_lint, _Other) ->
     "L1399";
 %% stdlib-3.15.2/src/erl_scan.erl

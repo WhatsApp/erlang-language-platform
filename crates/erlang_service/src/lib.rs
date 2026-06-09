@@ -961,6 +961,30 @@ mod tests {
     }
 
     #[test]
+    fn latin1_binary() {
+        expect_module(
+            "latin1_binary.erl".into(),
+            fixture_file!("latin1_binary.expected"),
+        );
+    }
+
+    #[test]
+    fn truncated_character() {
+        expect_module(
+            "truncated_character.erl".into(),
+            fixture_file!("truncated_character.expected"),
+        );
+    }
+
+    #[test]
+    fn truncated_integer() {
+        expect_module(
+            "truncated_integer.erl".into(),
+            fixture_file!("truncated_integer.expected"),
+        );
+    }
+
+    #[test]
     fn edoc_scan_errors() {
         expect_docs(
             "edoc_scan_errors.erl".into(),
