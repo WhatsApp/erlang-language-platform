@@ -303,6 +303,11 @@
           "markdownDescription": "Whether to show Hover Actions.",
           "type": "boolean"
         },
+        "elp.ifdef.enable": {
+          "default": false,
+          "markdownDescription": "Enable ifdef/ifndef condition evaluation (experimental).\nWhen enabled, preprocessor conditions are evaluated and inactive forms are skipped.",
+          "type": "boolean"
+        },
         "elp.inlayHints.parameterHints.enable": {
           "default": true,
           "markdownDescription": "Whether to show function parameter name inlay hints at the call\nsite.",
