@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout erlang-language-platform
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - id: setup-erlang
         uses: ./.github/actions/setup-erlang
         with:
@@ -74,7 +74,7 @@ jobs:
     needs: edb
     steps:
       - name: Checkout erlang-language-platform
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
         with:
           submodules: true
       - name: Set up GraalVM
@@ -99,6 +99,14 @@ jobs:
           sudo apt-get install -y crossbuild-essential-arm64
       - name: Install Buck2
         uses: dtolnay/install-buck2@latest
+      # The arm64 runner image (since ~2026-05-31) reports ImageOS=ubuntu22-arm64,
+      # which erlef/setup-beam's OS map does not recognise (it only knows ubuntu22 /
+      # ubuntu24, with the arch chosen separately). Override it back to the
+      # recognised value so setup-beam fetches the arm64 OTP build as it did before.
+      - name: Work around setup-beam ImageOS mapping on arm runner
+        if: matrix.platform-arch == 'ubuntu-22.04-arm'
+        run: echo "ImageOS=ubuntu22" >> "$GITHUB_ENV"
+        shell: bash
       - id: setup-erlang
         uses: ./.github/actions/setup-erlang
         with:
@@ -197,9 +205,9 @@ jobs:
           asset_path: elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
           upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - name: Install VSCE
         run: npm install -g vsce
       - name: Install OVSX

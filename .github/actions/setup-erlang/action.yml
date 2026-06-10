@@ -13,7 +13,7 @@ runs:
   steps:
   - name: Install Erlang/OTP (Linux, Windows)
     if: inputs.os == 'linux' || inputs.os == 'windows'
-    uses: erlef/setup-beam@v1
+    uses: erlef/setup-beam@v1.24.0
     with:
       otp-version: ${{ inputs.otp-version }}
       install-rebar: false
