@@ -128,7 +128,12 @@ pub fn run_ssr_command(
         .set_use_cli_severity(false);
 
     if args.dump_config {
-        let result = toml::to_string::<LintsFromConfig>(&diagnostics_config.lints_from_config)?;
+        let result = toml::to_string::<LintsFromConfig>(
+            &diagnostics_config
+                .ad_hoc_lints()
+                .cloned()
+                .unwrap_or_default(),
+        )?;
         // This is a subsection of .elp_lint.toml, add subsection prefix
         let result = result.replace("[[lints]]", "[[ad_hoc_lints.lints]]");
         writeln!(cli, "\n# Add this to your .elp_lint.toml")?;
@@ -422,13 +427,13 @@ fn do_parse_one(
         return Ok(None);
     }
 
-    // Run only the SSR lint configured in lints_from_config
+    // Run only the SSR lint configured in the lint config's ad-hoc lints
     let diagnostics = db.with_db(|database| {
         let sema = Semantic::new(database);
         let mut diags = Vec::new();
-        config
-            .lints_from_config
-            .get_diagnostics(&mut diags, &sema, file_id);
+        if let Some(lints) = config.ad_hoc_lints() {
+            lints.get_diagnostics(&mut diags, &sema, file_id);
+        }
         diags
     })?;
 

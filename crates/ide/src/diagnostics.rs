@@ -1279,7 +1279,6 @@ pub struct DiagnosticsConfig {
     pub experimental: bool,
     pub disabled: FxHashSet<DiagnosticCode>,
     pub enabled: EnabledDiagnostics,
-    pub lints_from_config: LintsFromConfig,
     pub lint_config: Option<LintConfig>,
     pub diagnostic_filter: Option<DiagnosticCode>,
     pub include_generated: bool,
@@ -1299,7 +1298,6 @@ impl Default for DiagnosticsConfig {
             experimental: false,
             disabled: FxHashSet::default(),
             enabled: EnabledDiagnostics::new(),
-            lints_from_config: LintsFromConfig::default(),
             lint_config: None,
             diagnostic_filter: None,
             include_generated: false,
@@ -1351,7 +1349,6 @@ impl DiagnosticsConfig {
         } else {
             self.enabled = EnabledDiagnostics::from_set(allowed_diagnostics);
         }
-        self.lints_from_config = lint_config.ad_hoc_lints.clone();
         self.lint_config = Some(lint_config.clone());
 
         // If a diagnostic_filter is specified, enable the corresponding linter in lint_config
@@ -1429,8 +1426,15 @@ impl DiagnosticsConfig {
         mut self,
         lints_from_config: &LintsFromConfig,
     ) -> DiagnosticsConfig {
-        self.lints_from_config = lints_from_config.clone();
+        self.lint_config
+            .get_or_insert_with(LintConfig::default)
+            .ad_hoc_lints = lints_from_config.clone();
         self
+    }
+
+    /// Ad-hoc lints from the lint config, if any are configured.
+    pub fn ad_hoc_lints(&self) -> Option<&LintsFromConfig> {
+        self.lint_config.as_ref().map(|c| &c.ad_hoc_lints)
     }
 
     /// If any diagnostics are enabled that are produced by the erlang
@@ -1821,9 +1825,9 @@ pub fn native_diagnostics(
         adhoc_semantic_diagnostics
             .iter()
             .for_each(|f| f(&mut res, &sema, file_id, file_kind));
-        config
-            .lints_from_config
-            .get_diagnostics(&mut res, &sema, file_id);
+        if let Some(lints) = config.ad_hoc_lints() {
+            lints.get_diagnostics(&mut res, &sema, file_id);
+        }
         let linter_ctx = LinterContext::new(&sema, file_id, db);
         diagnostics_from_linters(&mut res, &linter_ctx, config, trigger, linters());
 
