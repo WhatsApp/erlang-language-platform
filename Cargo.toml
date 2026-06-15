@@ -92,8 +92,8 @@ regex = "1.12.3"
 rowan = "0.15.18"
 rustc-hash = "2.1.2"
 rustyline = { version = "18.0.0", features = ["derive"] }
-salsa = { version = "0.26.2", features = ["macros", "rayon", "salsa_unstable"] }
-salsa-macros = "0.26.2"
+salsa = { version = "0.27.0", features = ["macros", "rayon", "salsa_unstable"] }
+salsa-macros = "0.27.0"
 semver = { version = "1.0.28", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive", "rc"] }
 serde_json = { version = "1.0.140", features = ["alloc", "float_roundtrip", "raw_value", "unbounded_depth"] }
