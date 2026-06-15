@@ -1,0 +1,6 @@
+# Intervening lint config inside a subdirectory. Enables
+# compile-warn-missing-spec (W0012). This MUST be ignored when linting: lint
+# config is anchored at the project root, not at the `--project` directory.
+# See T271918831.
+[linters.compile-warn-missing-spec]
+enabled = true

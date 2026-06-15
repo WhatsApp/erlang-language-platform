@@ -1,0 +1,6 @@
+# Project-root lint config. Disables compile-warn-missing-spec (W0012).
+# The subdirectory app_a/ has a competing `.elp_lint.toml` that enables it;
+# linting from that subdirectory must honor THIS root config, because lint
+# config discovery is anchored at the project root. See T271918831.
+[linters.compile-warn-missing-spec]
+enabled = false

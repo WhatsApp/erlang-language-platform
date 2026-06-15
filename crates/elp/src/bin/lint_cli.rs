@@ -60,6 +60,8 @@ use elp_log::telemetry;
 use elp_project_model::AppName;
 use elp_project_model::AppType;
 use elp_project_model::DiscoverConfig;
+use elp_project_model::ElpConfig;
+use elp_project_model::ProjectManifest;
 use elp_project_model::buck::BuckQueryConfig;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -114,11 +116,25 @@ pub fn run_lint_command(
     let start_time = SystemTime::now();
     let memory_start = MemoryUsage::now();
 
-    let lint_config = read_lint_config_file(&args.project, &args.config_file)?;
+    // Discover the project manifest first so the lint config (`.elp_lint.toml`)
+    // is resolved relative to the project root — the same root as the project
+    // (`.elp.toml`) config, and consistent with the daemon and LSP server.
+    let discover_config = DiscoverConfig::new(args.rebar, &args.profile);
+    let (elp_config, manifest) = load::discover_manifest(&args.project, &discover_config)?;
+    let root = load::project_root_dir(&manifest);
+
+    let lint_config = read_lint_config_file(&root, &args.config_file)?;
 
     // We load the project after loading config, in case it bails with
     // errors. No point wasting time if the config is wrong.
-    let mut loaded = load_project(args, cli, query_config, ifdef, &lint_config)?;
+    let mut loaded = load_project(
+        &manifest,
+        &elp_config,
+        cli,
+        query_config,
+        ifdef,
+        &lint_config,
+    )?;
 
     telemetry::report_elapsed_time("lint operational", start_time);
 
@@ -178,19 +194,18 @@ pub fn do_lint(
     do_codemod(cli, loaded, &diagnostics_config, args)
 }
 
-pub fn load_project(
-    args: &Lint,
+fn load_project(
+    manifest: &ProjectManifest,
+    elp_config: &ElpConfig,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
     ifdef: bool,
     lint_config: &LintConfig,
 ) -> Result<LoadResult> {
-    log::info!("Loading project at: {:?}", args.project);
-    let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let mut loaded = load::load_project_at(
+    let mut loaded = load::load_project_from_manifest(
         cli,
-        &args.project,
-        config,
+        manifest,
+        elp_config,
         IncludeOtp::Yes,
         Mode::Server,
         query_config,

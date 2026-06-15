@@ -124,13 +124,6 @@ fn effective_idle_timeout(config: Option<u64>) -> Option<Duration> {
     }
 }
 
-/// Extract the project root directory from a manifest.
-fn project_root(manifest: &ProjectManifest) -> PathBuf {
-    let p = manifest.root();
-    let root: &Path = p.parent().unwrap_or(p).as_ref();
-    root.to_path_buf()
-}
-
 fn daemon_id(canonical_root: &Path, profile: &str) -> String {
     let mut hasher = DefaultHasher::new();
     canonical_root.hash(&mut hasher);
@@ -271,11 +264,8 @@ impl Drop for DaemonGuard {
 
 /// Immutable per-daemon state borrowed by every request handler.
 struct DaemonContext<'a> {
-    /// Discovered manifest root — used for shell command parsing.
+    /// Discovered manifest root
     project: &'a Path,
-    /// User-supplied `--project` arg — used for `.elp_lint.toml` walk-up.
-    /// Can differ from `project` (Buck pushes manifest root much higher).
-    user_project: &'a Path,
     manifest: &'a ProjectManifest,
     elp_config: &'a ElpConfig,
     query_config: &'a BuckQueryConfig,
@@ -314,7 +304,7 @@ fn run_daemon_server(
     // Do this BEFORE daemonization so errors are reported to the parent
     let config = DiscoverConfig::new(args.rebar, &args.profile);
     let (elp_config, manifest) = load::discover_manifest(&args.project, &config)?;
-    let root = project_root(&manifest);
+    let root = load::project_root_dir(&manifest);
     let dir = daemon_dir(&root, &args.profile);
 
     // Daemonize if requested (must happen before creating socket/pid files)
@@ -356,9 +346,9 @@ fn run_daemon_server(
     )?;
     watchman.set_project_dirs(&loaded);
 
-    // Read .elp_lint.toml (walks up from project); missing → default; parse
-    // error at spawn → fail fast. Reloaded on watchman events.
-    let lint_config = read_lint_config_file(&args.project, &None)?;
+    // Read .elp_lint.toml (walks up from the project root); missing → default;
+    // parse error at spawn → fail fast. Reloaded on watchman events.
+    let lint_config = read_lint_config_file(&root, &None)?;
     elp::apply_lint_config(&mut loaded.analysis_host, &lint_config);
 
     let mut state = DaemonState {
@@ -368,7 +358,6 @@ fn run_daemon_server(
     };
     let ctx = DaemonContext {
         project: &root,
-        user_project: &args.project,
         manifest: &manifest,
         elp_config: &elp_config,
         query_config,
@@ -499,7 +488,7 @@ fn handle_connection(
         UpdateResult::NeedsLintConfigReload { reason } => {
             eprintln!("[elp-daemon] {reason}");
             // Parse failure → restart rather than carry stale config forward.
-            match read_lint_config_file(ctx.user_project, &None) {
+            match read_lint_config_file(ctx.project, &None) {
                 Ok(new_config) => {
                     state.lint_config = new_config;
                     elp::apply_lint_config(&mut state.loaded.analysis_host, &state.lint_config);
@@ -630,7 +619,7 @@ fn connect_and_run(
 ) -> Result<()> {
     let conf = DiscoverConfig::new(rebar, profile);
     let (_elp_config, manifest) = load::discover_manifest(project, &conf)?;
-    let root = project_root(&manifest);
+    let root = load::project_root_dir(&manifest);
     let dir = daemon_dir(&root, profile);
     let sock = dir.join("daemon.sock");
 
@@ -951,7 +940,7 @@ fn stop_daemon_in_dir(dir: &Path) -> bool {
 fn show_status(project: &Path, profile: &str, rebar: bool, cli: &mut dyn Cli) -> Result<()> {
     let conf = DiscoverConfig::new(rebar, profile);
     let (_elp_config, manifest) = load::discover_manifest(project, &conf)?;
-    let root = project_root(&manifest);
+    let root = load::project_root_dir(&manifest);
     let dir = daemon_dir(&root, profile);
     let sock = dir.join("daemon.sock");
     let pid_file = dir.join("daemon.pid");

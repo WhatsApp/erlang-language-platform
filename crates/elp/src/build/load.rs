@@ -11,6 +11,7 @@
 //! Loads a rebar project into a static instance of ELP,
 //! without support for incorporating changes
 use std::path::Path;
+use std::path::PathBuf;
 
 use anyhow::Result;
 use crossbeam_channel::Receiver;
@@ -68,6 +69,18 @@ pub fn discover_manifest(
     };
     let manifest = manifest.ok_or_else(|| anyhow::anyhow!("no projects"))?;
     Ok((elp_config, manifest))
+}
+
+/// The directory that contains the project manifest file — i.e. the project
+/// root. Lint config (`.elp_lint.toml`) discovery is anchored here so it is
+/// resolved relative to the same root as the project (`.elp.toml`) config,
+/// regardless of the directory `--project` points at. Otherwise the two configs
+/// can diverge and the reported diagnostics depend on the current directory.
+/// See T271918831.
+pub fn project_root_dir(manifest: &ProjectManifest) -> PathBuf {
+    let p = manifest.root();
+    let root: &Path = p.parent().unwrap_or(p).as_ref();
+    root.to_path_buf()
 }
 
 pub fn load_project_at(

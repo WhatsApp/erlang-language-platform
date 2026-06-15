@@ -1,0 +1,3 @@
+{application, app_a,
+  [{description, "lint subdir config app"}, {vsn, "inplace"}, {applications, [kernel, stdlib]}]
+}.

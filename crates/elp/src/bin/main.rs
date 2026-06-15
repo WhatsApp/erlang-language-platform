@@ -1440,6 +1440,29 @@ mod tests {
         );
     }
 
+    /// In the `lint_subdir_config` fixture the project root
+    /// disables `compile-warn-missing-spec` (W0012) while an intervening
+    /// `.elp_lint.toml` in the `app_a/` subdirectory enables it; linting with
+    /// `--project` pointing at the subdirectory must honor the project-root
+    /// config, so W0012 must NOT be reported.
+    #[test]
+    fn lint_config_anchored_at_project_root() {
+        let (stdout, _stderr, _code) = elp(args_vec![
+            "lint",
+            "--rebar",
+            "--project",
+            project_path("lint_subdir_config/app_a"),
+            "--module",
+            "lint_subdir_app"
+        ]);
+        assert!(
+            !stdout.contains("W0012"),
+            "lint config must be anchored at the project root (where W0012 is \
+             disabled), not at the --project subdirectory (where W0012 is \
+             enabled).\nstdout:\n{stdout}"
+        );
+    }
+
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_custom_ad_hoc_lints(buck: bool) {
