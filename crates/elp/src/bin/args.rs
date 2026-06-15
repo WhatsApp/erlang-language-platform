@@ -511,7 +511,10 @@ pub struct Ssr {
     /// JSON output.
     #[bpaf(
         positional("SSR_SPECS"),
-        guard(at_least_1, "there should be at least one spec")
+        guard(
+            at_least_1,
+            "no search pattern given. Example: elp search 'lists:reverse(_@List)'. Run 'elp search --help' for the pattern syntax and more examples"
+        )
     )]
     pub ssr_specs: Vec<String>,
 }
@@ -724,6 +727,28 @@ impl Command {
     }
 }
 
+/// One-line description shown at the top of `elp ssr --help` / `elp search --help`.
+const SSR_DESCR: &str = "Search Erlang code by syntax-tree shape (not text) using SSR (Structural Search and Replace) patterns.";
+
+/// Footer with a placeholder cheat-sheet, examples, and a link to the full guide.
+/// Shared by both `ssr` and `search` so their `--help` output stays identical.
+const SSR_FOOTER: &str = "\
+Patterns are Erlang code with placeholders:
+    _@Name   match any single expression or pattern; reuse a name to require the two matches be equal
+    _@_      anonymous wildcard (match anything, bind nothing)
+    _@@Name  glob: match zero or more sibling elements (at most one glob per sequence)
+
+Constrain placeholders with a `where` clause, e.g. `_@X where is_atom(_@X)`.
+
+Examples:
+    elp search 'lists:reverse(lists:reverse(_@List))'
+    elp search 'case _@Cond of true -> _@Body; false -> _@Body end'
+    elp search --format json 'foo(_@@Args)'
+
+A bare PATTERN is shorthand for `ssr: PATTERN.`. Prefix with `LABEL:ssr: ` to tag matches.
+
+Full syntax guide: https://whatsapp.github.io/erlang-language-platform/docs/structural-search";
+
 pub fn command() -> impl Parser<Command> {
     let parse_elp = parse_all_elp()
         .map(Command::ParseAllElp)
@@ -806,14 +831,20 @@ pub fn command() -> impl Parser<Command> {
     let search = ssr()
         .map(Command::Ssr)
         .to_options()
+        .descr(SSR_DESCR)
+        .footer(SSR_FOOTER)
         .command("search")
-        .help("Alias for 'ssr': Run SSR (Structural Search and Replace) pattern matching on project files.");
+        .help(
+            "Search Erlang code structurally using SSR (Structural Search and Replace) patterns.",
+        );
 
     let ssr = ssr()
         .map(Command::Ssr)
         .to_options()
+        .descr(SSR_DESCR)
+        .footer(SSR_FOOTER)
         .command("ssr")
-        .help("Run SSR (Structural Search and Replace) pattern matching on project files.");
+        .help("Alias for 'search': search Erlang code structurally using SSR patterns.");
 
     let run_server = run_server()
         .map(Command::RunServer)
@@ -884,8 +915,8 @@ pub fn command() -> impl Parser<Command> {
         lint,
         lint_compare,
         lint_list,
-        ssr,
         search,
+        ssr,
         parse_all,
         parse_elp,
         explain,

@@ -1,3 +1,6 @@
+Search Erlang code by syntax-tree shape (not text) using SSR (Structural Search and Replace)
+patterns.
+
 Usage: [--project PROJECT] [--module MODULE] [--app APP] [--file FILE] [--rebar] [--as PROFILE]
 [--include-generated] [--include-tests] [[--format FORMAT]] [[--macros STRATEGY]] [--parens]
 [--dump-config] [--show-source] [-B NUM] [-A NUM] [-C NUM] [--group-separator SEP]
@@ -32,3 +35,19 @@ Available options:
         --no-group-separator  Do not print separator for matches with context, enables --show-source
         --report-system-stats  Report system memory usage and other statistics
     -h, --help           Prints help information
+
+Patterns are Erlang code with placeholders:
+    _@Name   match any single expression or pattern; reuse a name to require the two matches be equal
+    _@_      anonymous wildcard (match anything, bind nothing)
+    _@@Name  glob: match zero or more sibling elements (at most one glob per sequence)
+
+Constrain placeholders with a `where` clause, e.g. `_@X where is_atom(_@X)`.
+
+Examples:
+    elp search 'lists:reverse(lists:reverse(_@List))'
+    elp search 'case _@Cond of true -> _@Body; false -> _@Body end'
+    elp search --format json 'foo(_@@Args)'
+
+A bare PATTERN is shorthand for `ssr: PATTERN.`. Prefix with `LABEL:ssr: ` to tag matches.
+
+Full syntax guide: https://whatsapp.github.io/erlang-language-platform/docs/structural-search

@@ -27,9 +27,9 @@ Available commands:
     lint-compare          Diff two `elp lint --format=json` JSONL artifacts. Exits 0 if the
                           per-(name, severity) counts match, 1 if any group's count changed.
     lint-list             List all available lint diagnostic codes
-    ssr                   Run SSR (Structural Search and Replace) pattern matching on project files.
-    search                Alias for 'ssr': Run SSR (Structural Search and Replace) pattern matching
-                          on project files.
+    search                Search Erlang code structurally using SSR (Structural Search and Replace)
+                          patterns.
+    ssr                   Alias for 'search': search Erlang code structurally using SSR patterns.
     parse-all             Dump ast for all files in a project for specified rebar.config file
     parse-elp             Tree-sitter parse all files in a project for specified rebar.config file
     explain               Explain a diagnostic code
