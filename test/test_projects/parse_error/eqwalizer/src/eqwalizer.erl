@@ -1,7 +1,6 @@
 -module(eqwalizer).
 
 -export_type([dynamic/0]).
--export([dynamic_cast/1, fix_me/1]).
 
 %% @doc
 %% This type is intended to help with code being transitioned
@@ -14,17 +13,3 @@
 %% In strict mode dynamic() is treated by eqWAlizer as an alias to any().
 %% @end
 -type dynamic() :: any().
-
-%% @doc
-%% "Cast" function to convert values to eqwalizer:dynamic() type.
-%% It communicates the intent: "I know that the value would be of the right type".
-%% @end
--spec dynamic_cast(any()) -> dynamic().
-dynamic_cast(X) -> X.
-
-%% @doc
-%% "Cast" function to convert values to eqwalizer:dynamic() type.
-%% It communicates the intent: "This code should be fixed" (later).
-%% @end
--spec fix_me(any()) -> dynamic().
-fix_me(X) -> X.

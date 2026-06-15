@@ -15,8 +15,3 @@ use_dynamic_type(Dyn) -> {Dyn}.
     (eqwalizer:dynamic()) -> {atom()}.
 use_dynamic_type_neg(Dyn) ->
   {erlang:atom_to_binary(Dyn)}.
-
--spec use_cast(term()) -> {atom()}.
-use_cast(A) ->
-  Dyn = eqwalizer:dynamic_cast(A),
-  {Dyn}.
