@@ -79,6 +79,7 @@ pub struct JsonReporter<'a> {
     analysis: &'a Analysis,
     loaded: &'a LoadResult,
     cli: &'a mut dyn Cli,
+    start: Instant,
 }
 
 impl<'a> PrettyReporter<'a> {
@@ -174,20 +175,8 @@ impl Reporter for PrettyReporter<'_> {
 
     fn write_stats(&mut self, count: u64, total: u64) -> Result<()> {
         let duration = self.start.elapsed().as_secs();
-        self.cli.set_color(&YELLOW_COLOR_SPEC)?;
-        if count == total {
-            write!(self.cli, "eqWAlized {count} module(s) in {duration}s")?;
-        } else {
-            write!(
-                self.cli,
-                "eqWAlized {} module(s) ({} cached) in {}s",
-                count,
-                total - count,
-                duration
-            )?;
-        }
-        self.cli.reset()?;
-        writeln!(self.cli)?;
+        self.cli
+            .info(&format_eqwalize_stats(count, total, duration))?;
         Ok(())
     }
 
@@ -202,6 +191,7 @@ impl<'a> JsonReporter<'a> {
             analysis,
             loaded,
             cli,
+            start: Instant::now(),
         }
     }
 }
@@ -275,12 +265,32 @@ impl Reporter for JsonReporter<'_> {
         Ok(())
     }
 
-    fn write_stats(&mut self, _count: u64, _total: u64) -> Result<()> {
+    fn write_stats(&mut self, count: u64, total: u64) -> Result<()> {
+        let duration = self.start.elapsed().as_secs();
+        self.cli
+            .info(&format_eqwalize_stats(count, total, duration))?;
         Ok(())
     }
 
     fn progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
         self.cli.progress(len, prefix)
+    }
+}
+
+/// The eqwalize summary line ("eqWAlized N module(s) ..."), shared by both
+/// reporters. It is status, not a result, so it is surfaced via `Cli::info`
+/// (stderr on a terminal, an `info` wire message under `--connect`) rather than
+/// stdout — keeping `--format json` stdout clean.
+fn format_eqwalize_stats(count: u64, total: u64, duration: u64) -> String {
+    if count == total {
+        format!("eqWAlized {count} module(s) in {duration}s")
+    } else {
+        format!(
+            "eqWAlized {} module(s) ({} cached) in {}s",
+            count,
+            total - count,
+            duration
+        )
     }
 }
 
@@ -343,11 +353,6 @@ lazy_static! {
         spec.set_fg(Some(Color::Cyan));
         spec
     };
-    static ref YELLOW_COLOR_SPEC: ColorSpec = {
-        let mut spec = ColorSpec::default();
-        spec.set_fg(Some(Color::Yellow));
-        spec
-    };
 }
 
 // ---------------------------------------------------------------------
@@ -400,4 +405,24 @@ pub(crate) fn print_memory_usage(
     writeln!(cli, "{unaccounted:>8}        Unaccounted")?;
     writeln!(cli, "{remaining:>8}        Remaining")?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+    use super::*;
+
+    #[test]
+    fn format_eqwalize_stats_all_eqwalized() {
+        let expected = "eqWAlized 10 module(s) in 5s".to_string();
+        assert_eq_expected!(expected, format_eqwalize_stats(10, 10, 5));
+    }
+
+    #[test]
+    fn format_eqwalize_stats_with_cached() {
+        // 3 of 10 were cached (eqwalized 7).
+        let expected = "eqWAlized 7 module(s) (3 cached) in 5s".to_string();
+        assert_eq_expected!(expected, format_eqwalize_stats(7, 10, 5));
+    }
 }

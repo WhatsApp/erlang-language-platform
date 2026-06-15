@@ -29,6 +29,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process;
 use std::process::Stdio;
+use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
@@ -87,6 +88,9 @@ use elp_project_model::ElpConfig;
 use elp_project_model::ProjectManifest;
 use elp_project_model::buck::BuckQueryConfig;
 use indicatif::ProgressBar;
+use indicatif::ProgressDrawTarget;
+use indicatif::ProgressStyle;
+use indicatif::TermLike;
 use serde::Serialize;
 
 use crate::args::DaemonCommand;
@@ -136,6 +140,16 @@ fn daemon_dir(canonical_root: &Path, profile: &str) -> PathBuf {
     env::temp_dir().join(format!("{DAEMON_DIR_PREFIX}{id}"))
 }
 
+/// Format a duration as a short human-readable string for user-facing status
+/// lines (e.g. "850ms" or "2.34s"). Not for telemetry — that uses raw millis.
+fn format_duration(d: Duration) -> String {
+    if d < Duration::from_secs(1) {
+        format!("{}ms", d.as_millis())
+    } else {
+        format!("{:.2}s", d.as_secs_f64())
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Wire protocol
 // ---------------------------------------------------------------------------
@@ -146,8 +160,11 @@ struct DoneMessage {
     status: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     message: Option<String>,
-    #[serde(skip_serializing_if = "std::ops::Not::not")]
-    restart: bool,
+    /// Set iff the daemon wants the client to restart it; the value is the
+    /// human-readable reason (e.g. ".elp.toml changed"), shown to the client.
+    /// Its presence *is* the restart flag — `None` means "no restart".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    restart: Option<String>,
 }
 
 impl DoneMessage {
@@ -156,7 +173,7 @@ impl DoneMessage {
             r#type: "done",
             status: "ok",
             message: None,
-            restart: false,
+            restart: None,
         }
     }
 
@@ -165,44 +182,62 @@ impl DoneMessage {
             r#type: "done",
             status: "error",
             message: Some(msg),
-            restart: false,
+            restart: None,
         }
     }
 
-    fn with_restart(mut self) -> Self {
-        self.restart = true;
+    fn with_restart(mut self, reason: impl Into<String>) -> Self {
+        self.restart = Some(reason.into());
         self
     }
 }
 
 // ---------------------------------------------------------------------------
-// DaemonCli — Cli implementation for a connected client
+// DaemonCli — Cli implementation for the daemon
 // ---------------------------------------------------------------------------
 
 /// An out-of-band status line pushed from the daemon to the client mid-request
-/// (e.g. a deprecation warning). The client prints these to stderr; they are
-/// not diagnostics and never appear on stdout, so `--format json` stays clean.
+/// (e.g. "reloading project"). The client prints these to stderr; they are not
+/// diagnostics and never appear on stdout, so `--format json` stays clean.
 #[derive(Serialize)]
 struct InfoMessage<'a> {
     r#type: &'static str,
     message: &'a str,
 }
 
-/// `Cli` used to run a client's command inside the daemon. Command results
-/// (diagnostics) stream to the client over the socket; `info()` surfaces a
-/// status line to the client and echoes it to `daemon.log`; everything else —
-/// `err()` and progress bars — goes to `daemon.log` only.
+/// Where a [`DaemonCli`]'s command results (stdout) go.
+enum DaemonOut {
+    /// Running a client's command: results stream to the connected client.
+    Client(BufWriter<UnixStream>),
+    /// Clientless project load (daemon startup): results go to the daemon log.
+    Log,
+}
+
+/// The one `Cli` the daemon uses, for both project loads and client commands.
+/// Progress always narrates into `daemon.log` (the real `Cli` hides its bars on
+/// a non-TTY); `info()` surfaces user-facing status — to the connected client
+/// when there is one, always echoed to the log; `err()` and any stray output go
+/// to the log. The `out` sink is the only thing that varies: a client's socket
+/// for a command, or the log for a clientless load.
 struct DaemonCli {
-    /// Results / diagnostics, streamed to the connected client.
-    writer: BufWriter<UnixStream>,
+    out: DaemonOut,
     /// The daemon's own stderr, which `start_daemon` redirects to `daemon.log`.
     stderr: io::Stderr,
 }
 
 impl DaemonCli {
-    fn new(stream: UnixStream) -> Self {
+    /// For running a client's command: results stream back over the socket.
+    fn client(stream: UnixStream) -> Self {
         Self {
-            writer: BufWriter::new(stream),
+            out: DaemonOut::Client(BufWriter::new(stream)),
+            stderr: io::stderr(),
+        }
+    }
+
+    /// For a clientless project load: everything goes to `daemon.log`.
+    fn log() -> Self {
+        Self {
+            out: DaemonOut::Log,
             stderr: io::stderr(),
         }
     }
@@ -210,11 +245,17 @@ impl DaemonCli {
 
 impl Write for DaemonCli {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.writer.write(buf)
+        match &mut self.out {
+            DaemonOut::Client(writer) => writer.write(buf),
+            DaemonOut::Log => self.stderr.write(buf),
+        }
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.writer.flush()
+        match &mut self.out {
+            DaemonOut::Client(writer) => writer.flush(),
+            DaemonOut::Log => self.stderr.flush(),
+        }
     }
 }
 
@@ -233,34 +274,178 @@ impl WriteColor for DaemonCli {
 }
 
 impl Cli for DaemonCli {
-    fn progress(&self, _len: u64, _prefix: &str) -> ProgressBar {
-        ProgressBar::hidden()
+    fn progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
+        log_progress_bar(len, prefix)
     }
 
-    fn simple_progress(&self, _len: u64, _prefix: &'static str) -> ProgressBar {
-        ProgressBar::hidden()
+    fn simple_progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
+        log_progress_bar(len, prefix)
     }
 
-    fn spinner(&self, _prefix: &'static str) -> ProgressBar {
-        ProgressBar::hidden()
+    fn spinner(&self, prefix: &'static str) -> ProgressBar {
+        log_spinner(prefix)
     }
 
     fn err(&mut self) -> &mut dyn Write {
         &mut self.stderr
     }
 
-    /// Surface a status line to the connected client and record it in the log.
-    /// Best-effort to the client: a write failure (e.g. the client went away)
+    /// Surface a status line: always logged (`[elp-daemon] ...` → `daemon.log`),
+    /// and, when a client is connected, also sent as a live `info` wire message.
+    /// Best-effort to the client — a write failure (e.g. the client went away)
     /// must not abort the in-flight command, so socket errors are ignored.
     fn info(&mut self, message: &str) -> io::Result<()> {
         let _ = writeln!(self.stderr, "[elp-daemon] {message}");
-        let info = InfoMessage {
-            r#type: "info",
-            message,
+        if let DaemonOut::Client(writer) = &mut self.out {
+            let info = InfoMessage {
+                r#type: "info",
+                message,
+            };
+            if let Ok(json) = serde_json::to_string(&info) {
+                let _ = writeln!(writer, "{json}");
+                let _ = writer.flush();
+            }
+        }
+        Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// LogProgress — narrates progress-bar redraws into the daemon log
+// ---------------------------------------------------------------------------
+
+/// Redraw rate (Hz) for the log-narrating progress bars. A log only needs an
+/// occasional heartbeat, not the 20 Hz a terminal uses; the rate limiter also
+/// keeps a tight per-item loop (file loading, per-module eqwalizing) from
+/// forcing a synchronous redraw on every update.
+const LOG_PROGRESS_HZ: u8 = 2;
+
+/// A count-style progress bar (`"{prefix} {pos}/{len}"`) that narrates to the
+/// log. Used for positional phases (loading files, eqwalizing modules), where a
+/// churning `{msg}` would flood the log.
+fn log_progress_bar(len: u64, prefix: &'static str) -> ProgressBar {
+    let pb = ProgressBar::new(len);
+    pb.set_draw_target(ProgressDrawTarget::term_like_with_hz(
+        Box::new(LogProgress::new()),
+        LOG_PROGRESS_HZ,
+    ));
+    pb.set_style(
+        ProgressStyle::with_template("{prefix} {pos}/{len}").expect("BUG: invalid template"),
+    );
+    pb.set_prefix(prefix);
+    pb
+}
+
+/// A message-style spinner (`"{prefix} {msg}"`) that narrates to the log. Used
+/// for phases reporting sub-steps via `set_message` (e.g. "Loading build info"
+/// → "Querying buck targets"). No `enable_steady_tick`, so the log isn't spammed
+/// with animation frames.
+fn log_spinner(prefix: &'static str) -> ProgressBar {
+    let pb = ProgressBar::new_spinner();
+    pb.set_draw_target(ProgressDrawTarget::term_like_with_hz(
+        Box::new(LogProgress::new()),
+        LOG_PROGRESS_HZ,
+    ));
+    pb.set_style(ProgressStyle::with_template("{prefix} {msg}").expect("BUG: invalid template"));
+    pb.set_prefix(prefix);
+    pb
+}
+
+/// An indicatif [`TermLike`] draw target that turns progress-bar redraws into
+/// log lines instead of terminal escape codes. The real `Cli`'s progress bars
+/// auto-hide when stderr is a redirected file (the daemon's `daemon.log`), so
+/// the per-phase messages would otherwise be dropped. This routes them to the
+/// log.
+///
+/// indicatif renders a redraw as a sequence of `write_str`/`write_line` calls
+/// (content plus a width-padding filler) terminated by `flush`. We accumulate
+/// those into a buffer and, on `flush`, emit each distinct, non-empty, trimmed
+/// line — deduping consecutive repeats, since a position-only update redraws the
+/// same text many times.
+#[derive(Debug)]
+struct LogProgress {
+    buffer: Mutex<String>,
+    last: Mutex<Option<String>>,
+}
+
+impl LogProgress {
+    fn new() -> Self {
+        Self {
+            buffer: Mutex::new(String::new()),
+            last: Mutex::new(None),
+        }
+    }
+
+    /// Extract the lines worth logging from one redraw's buffered content:
+    /// trimmed, non-empty, and not equal to the previously logged line.
+    /// Updates `last` to the final emitted line. Pure, so it can be unit tested.
+    fn distinct_lines(content: &str, last: &mut Option<String>) -> Vec<String> {
+        let mut out = Vec::new();
+        for line in content.split('\n') {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            if last.as_deref() == Some(line) {
+                continue;
+            }
+            out.push(line.to_string());
+            *last = Some(line.to_string());
+        }
+        out
+    }
+}
+
+impl TermLike for LogProgress {
+    // A wide line so indicatif never wraps these short phase messages; the
+    // trailing filler spaces are trimmed off when we log.
+    fn width(&self) -> u16 {
+        200
+    }
+
+    fn move_cursor_up(&self, _n: usize) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn move_cursor_down(&self, _n: usize) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn move_cursor_right(&self, _n: usize) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn move_cursor_left(&self, _n: usize) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn write_line(&self, s: &str) -> io::Result<()> {
+        let mut buffer = self.buffer.lock().expect("LogProgress buffer poisoned");
+        buffer.push_str(s);
+        buffer.push('\n');
+        Ok(())
+    }
+
+    fn write_str(&self, s: &str) -> io::Result<()> {
+        self.buffer
+            .lock()
+            .expect("LogProgress buffer poisoned")
+            .push_str(s);
+        Ok(())
+    }
+
+    fn clear_line(&self) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn flush(&self) -> io::Result<()> {
+        let content = {
+            let mut buffer = self.buffer.lock().expect("LogProgress buffer poisoned");
+            std::mem::take(&mut *buffer)
         };
-        if let Ok(json) = serde_json::to_string(&info) {
-            let _ = writeln!(self.writer, "{json}");
-            let _ = self.writer.flush();
+        let mut last = self.last.lock().expect("LogProgress last poisoned");
+        for line in Self::distinct_lines(&content, &mut last) {
+            eprintln!("[elp-daemon] {line}");
         }
         Ok(())
     }
@@ -306,19 +491,15 @@ pub fn daemon_command(
     ifdef: bool,
 ) -> Result<()> {
     match cmd {
-        DaemonCommand::Run(args) => run_daemon_server(args, cli, query_config, ifdef),
+        DaemonCommand::Run(args) => run_daemon_server(args, query_config, ifdef),
         DaemonCommand::Stop => stop_all_daemons(cli),
         DaemonCommand::Status(args) => show_status(&args.project, &args.profile, args.rebar, cli),
     }
 }
 
-fn run_daemon_server(
-    args: &DaemonRun,
-    cli: &mut dyn Cli,
-    query_config: &BuckQueryConfig,
-    ifdef: bool,
-) -> Result<()> {
+fn run_daemon_server(args: &DaemonRun, query_config: &BuckQueryConfig, ifdef: bool) -> Result<()> {
     let start_time = SystemTime::now();
+    let start_instant = Instant::now();
 
     // Discover manifest once — shared for daemon dir + project loading
     // Do this BEFORE daemonization so errors are reported to the parent
@@ -353,10 +534,14 @@ fn run_daemon_server(
     fs::write(&pid_file, process::id().to_string())?;
     fs::write(&version_file, elp::version())?;
 
-    // Load project from already-discovered manifest (no re-discovery)
+    // Load project from already-discovered manifest (no re-discovery). Narrate
+    // progress into daemon.log via a log-backed Cli (the real Cli hides its
+    // progress bars when stderr is a redirected file).
+    let mut daemon_cli = DaemonCli::log();
+    daemon_cli.info(&format!("Loading project from {}...", root.display()))?;
     let mut watchman = Watchman::new(&root)?;
     let mut loaded = load::load_project_from_manifest(
-        cli,
+        &daemon_cli,
         &manifest,
         &elp_config,
         IncludeOtp::Yes,
@@ -386,7 +571,11 @@ fn run_daemon_server(
 
     telemetry::report_elapsed_time("daemon operational", start_time);
 
-    eprintln!("[elp-daemon] Ready, listening on {}", sock.display());
+    daemon_cli.info(&format!(
+        "Ready in {}, listening on {}",
+        format_duration(start_instant.elapsed()),
+        sock.display()
+    ))?;
 
     // Listen on Unix socket — use a dedicated thread for blocking accept()
     // and a channel to pass connections to the main loop. This avoids the
@@ -416,24 +605,33 @@ fn run_daemon_server(
         if let Some(timeout) = idle_timeout
             && last_activity.elapsed() > timeout
         {
-            eprintln!("[elp-daemon] Idle timeout reached, shutting down");
+            let _ = writeln!(
+                daemon_cli.err(),
+                "[elp-daemon] Idle timeout reached, shutting down"
+            );
             break;
         }
         match conn_rx.recv_timeout(Duration::from_secs(2)) {
             Ok(stream) => {
                 last_activity = Instant::now();
-                let should_stop = handle_connection(stream, &mut state, &ctx, cli);
+                let should_stop = handle_connection(stream, &mut state, &ctx);
                 if let Ok(true) = should_stop {
-                    eprintln!("[elp-daemon] Stop requested, shutting down");
+                    let _ = writeln!(
+                        daemon_cli.err(),
+                        "[elp-daemon] Stop requested, shutting down"
+                    );
                     break;
                 }
                 if let Err(e) = should_stop {
-                    eprintln!("[elp-daemon] Error handling connection: {e}");
+                    let _ = writeln!(
+                        daemon_cli.err(),
+                        "[elp-daemon] Error handling connection: {e}"
+                    );
                 }
             }
             Err(crossbeam_channel::RecvTimeoutError::Timeout) => continue,
             Err(crossbeam_channel::RecvTimeoutError::Disconnected) => {
-                eprintln!("[elp-daemon] Accept thread terminated");
+                let _ = writeln!(daemon_cli.err(), "[elp-daemon] Accept thread terminated");
                 break;
             }
         }
@@ -441,7 +639,7 @@ fn run_daemon_server(
 
     // _guard's Drop cleans up the daemon directory
     telemetry::report_elapsed_time("daemon done", start_time);
-    eprintln!("[elp-daemon] Shutdown complete");
+    let _ = writeln!(daemon_cli.err(), "[elp-daemon] Shutdown complete");
     Ok(())
 }
 
@@ -450,7 +648,6 @@ fn handle_connection(
     stream: UnixStream,
     state: &mut DaemonState,
     ctx: &DaemonContext<'_>,
-    cli: &mut dyn Cli,
 ) -> Result<bool> {
     let mut reader = BufReader::new(&stream);
     let mut line = String::new();
@@ -461,39 +658,46 @@ fn handle_connection(
         return Ok(false);
     }
 
+    // One Cli for this connection: command results stream to the client, while
+    // progress narrates to daemon.log and reload status goes to the client via
+    // info().
+    let mut cli = DaemonCli::client(stream.try_clone()?);
+
     // Strip the JSON payload from log output for lint commands — it can be
     // multi-KB and dominates the log file.
     if let Some(prefix) = line.split_once(' ').map(|(p, _)| p)
         && prefix == "lint"
     {
-        eprintln!("[elp-daemon] Command: lint <json>");
+        let _ = writeln!(cli.err(), "[elp-daemon] Command: lint <json>");
     } else {
-        eprintln!("[elp-daemon] Command: {line}");
+        let _ = writeln!(cli.err(), "[elp-daemon] Command: {line}");
     }
 
     // Handle stop command
     if line == "__stop__" {
         let done = serde_json::to_string(&DoneMessage::ok())?;
-        let mut writer = BufWriter::new(&stream);
-        writeln!(writer, "{done}")?;
-        writer.flush()?;
+        writeln!(cli, "{done}")?;
+        cli.flush()?;
         return Ok(true);
     }
 
     // Check for file changes and apply them
     match state.watchman.poll_and_apply_changes(&mut state.loaded)? {
         UpdateResult::NeedsRestart { reason } => {
-            eprintln!("[elp-daemon] {reason}");
-            let done = serde_json::to_string(&DoneMessage::ok().with_restart())?;
-            let mut writer = BufWriter::new(&stream);
-            writeln!(writer, "{done}")?;
-            writer.flush()?;
+            let _ = writeln!(cli.err(), "[elp-daemon] {reason}");
+            let done = serde_json::to_string(&DoneMessage::ok().with_restart(reason))?;
+            writeln!(cli, "{done}")?;
+            cli.flush()?;
             return Ok(true);
         }
         UpdateResult::NeedsFullReload { reason } => {
-            eprintln!("[elp-daemon] {reason}");
+            // Tell the client before the slow reload — it would otherwise hang
+            // with no feedback for several seconds. Per-phase progress narrates
+            // to daemon.log via the load.
+            cli.info(reason)?;
+            let reload_start = Instant::now();
             state.loaded = load::load_project_from_manifest(
-                cli,
+                &cli,
                 ctx.manifest,
                 ctx.elp_config,
                 IncludeOtp::Yes,
@@ -504,9 +708,13 @@ fn handle_connection(
             state.watchman.set_project_dirs(&state.loaded);
             // Fresh analysis_host loses the lint config; re-apply.
             elp::apply_lint_config(&mut state.loaded.analysis_host, &state.lint_config);
+            cli.info(&format!(
+                "Project reloaded in {}",
+                format_duration(reload_start.elapsed())
+            ))?;
         }
         UpdateResult::NeedsLintConfigReload { reason } => {
-            eprintln!("[elp-daemon] {reason}");
+            cli.info(reason)?;
             // Parse failure → restart rather than carry stale config forward.
             match read_lint_config_file(ctx.project, &None) {
                 Ok(new_config) => {
@@ -514,11 +722,15 @@ fn handle_connection(
                     elp::apply_lint_config(&mut state.loaded.analysis_host, &state.lint_config);
                 }
                 Err(e) => {
-                    eprintln!("[elp-daemon] Failed to reload .elp_lint.toml, restarting: {e}");
-                    let done = serde_json::to_string(&DoneMessage::ok().with_restart())?;
-                    let mut writer = BufWriter::new(&stream);
-                    writeln!(writer, "{done}")?;
-                    writer.flush()?;
+                    let _ = writeln!(
+                        cli.err(),
+                        "[elp-daemon] Failed to reload .elp_lint.toml, restarting: {e}"
+                    );
+                    let done = serde_json::to_string(
+                        &DoneMessage::ok().with_restart(format!("Lint config reload failed: {e}")),
+                    )?;
+                    writeln!(cli, "{done}")?;
+                    cli.flush()?;
                     return Ok(true);
                 }
             }
@@ -530,16 +742,11 @@ fn handle_connection(
     // flags to express through the shell parser. Handle them before falling
     // through to ShellCommand::parse.
     if let Some(json) = line.strip_prefix("lint ") {
-        let mut socket_cli = DaemonCli::new(stream.try_clone()?);
         let done = match serde_json::from_str::<Lint>(json) {
             Ok(mut lint_args) => {
                 lint_args.format = Some("json".to_string());
-                match lint_cli::do_lint(
-                    &lint_args,
-                    &state.lint_config,
-                    &mut state.loaded,
-                    &mut socket_cli,
-                ) {
+                match lint_cli::do_lint(&lint_args, &state.lint_config, &mut state.loaded, &mut cli)
+                {
                     Ok(()) => DoneMessage::ok(),
                     Err(e) => DoneMessage::error(e.to_string()),
                 }
@@ -547,8 +754,8 @@ fn handle_connection(
             Err(e) => DoneMessage::error(format!("invalid lint payload: {e}")),
         };
         let done = serde_json::to_string(&done)?;
-        writeln!(socket_cli, "{done}")?;
-        socket_cli.flush()?;
+        writeln!(cli, "{done}")?;
+        cli.flush()?;
         return Ok(false);
     }
 
@@ -559,46 +766,35 @@ fn handle_connection(
     };
 
     // Parse and execute command, writing output to the socket
-    let mut socket_cli = DaemonCli::new(stream.try_clone()?);
-
     let (done, should_quit) = match ShellCommand::parse(&shell, line) {
         Ok(None) => (DoneMessage::ok(), false),
         Ok(Some(ShellCommand::Help)) => (DoneMessage::ok(), false),
         Ok(Some(ShellCommand::Quit)) => (DoneMessage::ok(), true),
         Ok(Some(ShellCommand::ShellEqwalize(mut eqwalize))) => {
             eqwalize.format = Some("json".to_string());
-            let done = match eqwalizer_cli::do_eqwalize_module(
-                &eqwalize,
-                &mut state.loaded,
-                &mut socket_cli,
-            ) {
-                Ok(()) => DoneMessage::ok(),
-                Err(e) => DoneMessage::error(e.to_string()),
-            };
+            let done =
+                match eqwalizer_cli::do_eqwalize_module(&eqwalize, &mut state.loaded, &mut cli) {
+                    Ok(()) => DoneMessage::ok(),
+                    Err(e) => DoneMessage::error(e.to_string()),
+                };
             (done, false)
         }
         Ok(Some(ShellCommand::ShellEqwalizeApp(mut eqwalize_app))) => {
             eqwalize_app.format = Some("json".to_string());
-            let done = match eqwalizer_cli::do_eqwalize_app(
-                &eqwalize_app,
-                &mut state.loaded,
-                &mut socket_cli,
-            ) {
-                Ok(()) => DoneMessage::ok(),
-                Err(e) => DoneMessage::error(e.to_string()),
-            };
+            let done =
+                match eqwalizer_cli::do_eqwalize_app(&eqwalize_app, &mut state.loaded, &mut cli) {
+                    Ok(()) => DoneMessage::ok(),
+                    Err(e) => DoneMessage::error(e.to_string()),
+                };
             (done, false)
         }
         Ok(Some(ShellCommand::ShellEqwalizeAll(mut eqwalize_all))) => {
             eqwalize_all.format = Some("json".to_string());
-            let done = match eqwalizer_cli::do_eqwalize_all(
-                &eqwalize_all,
-                &mut state.loaded,
-                &mut socket_cli,
-            ) {
-                Ok(()) => DoneMessage::ok(),
-                Err(e) => DoneMessage::error(e.to_string()),
-            };
+            let done =
+                match eqwalizer_cli::do_eqwalize_all(&eqwalize_all, &mut state.loaded, &mut cli) {
+                    Ok(()) => DoneMessage::ok(),
+                    Err(e) => DoneMessage::error(e.to_string()),
+                };
             (done, false)
         }
         Ok(Some(ShellCommand::ShellEqwalizeTarget(mut eqwalize_target))) => {
@@ -606,7 +802,7 @@ fn handle_connection(
             let done = match eqwalizer_cli::do_eqwalize_target(
                 &eqwalize_target,
                 &mut state.loaded,
-                &mut socket_cli,
+                &mut cli,
             ) {
                 Ok(()) => DoneMessage::ok(),
                 Err(e) => DoneMessage::error(e.to_string()),
@@ -617,8 +813,8 @@ fn handle_connection(
     };
 
     let done = serde_json::to_string(&done)?;
-    writeln!(socket_cli, "{done}")?;
-    socket_cli.flush()?;
+    writeln!(cli, "{done}")?;
+    cli.flush()?;
     Ok(should_quit)
 }
 
@@ -643,7 +839,7 @@ fn connect_and_run(
     // Try to connect, auto-start if needed
     let mut stream = match UnixStream::connect(&sock) {
         Ok(s) => s,
-        Err(_) => start_daemon(&dir, &sock, project, profile, rebar)?,
+        Err(_) => start_daemon(&dir, &sock, project, profile, rebar, cli)?,
     };
 
     // Check for version mismatch; if the daemon is from a different build, restart it
@@ -651,11 +847,11 @@ fn connect_and_run(
     if let Ok(daemon_version) = fs::read_to_string(&version_file)
         && daemon_version.trim() != elp::version()
     {
-        eprintln!(
+        cli.info(&format!(
             "Daemon version mismatch (daemon: {}, client: {}), restarting...",
             daemon_version.trim(),
             elp::version()
-        );
+        ))?;
         let mut writer = BufWriter::new(&stream);
         let _ = writeln!(writer, "__stop__");
         let _ = writer.flush();
@@ -668,7 +864,7 @@ fn connect_and_run(
         }
         cleanup_stale_in_dir(&dir);
 
-        stream = start_daemon(&dir, &sock, project, profile, rebar)?;
+        stream = start_daemon(&dir, &sock, project, profile, rebar, cli)?;
     }
 
     // Send command
@@ -697,9 +893,10 @@ fn connect_and_run(
             continue;
         }
         if v.get("type").and_then(|t| t.as_str()) == Some("done") {
-            // Check for restart request (e.g., config change)
-            if v.get("restart").and_then(|r| r.as_bool()) == Some(true) {
-                eprintln!("ELP config changed, restarting daemon...");
+            // A restart request (e.g. config change) carries its reason as the
+            // `restart` value; its presence means "restart".
+            if let Some(reason) = v.get("restart").and_then(|r| r.as_str()) {
+                cli.info(&format!("Restarting daemon: {reason}"))?;
                 // Wait for daemon to shut down
                 let start = Instant::now();
                 while sock.exists() && start.elapsed() < Duration::from_secs(10) {
@@ -747,14 +944,18 @@ fn start_daemon(
     project: &Path,
     profile: &str,
     rebar: bool,
+    cli: &mut dyn Cli,
 ) -> Result<UnixStream> {
     cleanup_stale_in_dir(dir);
 
-    eprintln!("Starting elp daemon...");
+    cli.info("Starting elp daemon...")?;
     let exe = env::current_exe()?;
     let log = dir.join("daemon.log");
     fs::create_dir_all(dir)?;
     let log_file = fs::File::create(&log)?;
+    // Surface the log path up front so the user can tail it during a long first
+    // load (project loading can take many seconds).
+    cli.info(&format!("elp daemon log: {}", log.display()))?;
 
     let mut cmd = process::Command::new(exe);
     cmd.arg("daemon")
@@ -772,12 +973,15 @@ fn start_daemon(
 
     let _child = cmd.spawn()?;
 
-    // Wait for socket to appear
+    // Wait for socket to appear. Poll at 100ms so the reported startup time is
+    // accurate (a coarser interval would round fast starts up to a full tick).
     let start = Instant::now();
     loop {
-        thread::sleep(Duration::from_secs(1));
         if let Ok(s) = UnixStream::connect(sock) {
-            eprintln!("Daemon ready.");
+            cli.info(&format!(
+                "elp daemon started in {}",
+                format_duration(start.elapsed())
+            ))?;
             return Ok(s);
         }
         if start.elapsed() > Duration::from_secs(120) {
@@ -786,6 +990,7 @@ fn start_daemon(
                 log.display()
             );
         }
+        thread::sleep(Duration::from_millis(100));
     }
 }
 
@@ -1031,6 +1236,27 @@ mod tests {
         assert_eq!(v["message"], "bad thing");
     }
 
+    #[test]
+    fn done_message_restart_carries_reason() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        // `restart` is the reason string; its presence is the restart flag.
+        let msg = DoneMessage::ok().with_restart("ELP config change detected, restart required");
+        let json = serde_json::to_string(&msg).unwrap();
+        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        let expected_reason = Some("ELP config change detected, restart required");
+        assert_eq_expected!(expected_reason, v["restart"].as_str());
+    }
+
+    #[test]
+    fn done_message_omits_restart_when_absent() {
+        // ok() without with_restart: `restart` (skip-when-None) is omitted.
+        let json = serde_json::to_string(&DoneMessage::ok()).unwrap();
+        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(v.get("restart").is_none(), "restart should be omitted");
+    }
+
     // -- DaemonCli info wire message --
 
     #[test]
@@ -1038,7 +1264,7 @@ mod tests {
         use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
 
         let (writer_end, reader_end) = UnixStream::pair().unwrap();
-        let mut cli = DaemonCli::new(writer_end);
+        let mut cli = DaemonCli::client(writer_end);
         cli.info("reloading project").unwrap();
         // Drop the cli (and its writer) so the reader sees the line then EOF.
         drop(cli);
@@ -1052,6 +1278,79 @@ mod tests {
         assert_eq_expected!(expected_type, v["type"].as_str());
         let expected_message = Some("reloading project");
         assert_eq_expected!(expected_message, v["message"].as_str());
+    }
+
+    // -- format_duration --
+
+    #[test]
+    fn format_duration_sub_second() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        let expected = "850ms".to_string();
+        assert_eq_expected!(expected, format_duration(Duration::from_millis(850)));
+    }
+
+    #[test]
+    fn format_duration_seconds() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        // 2340ms = 2.34s
+        let expected = "2.34s".to_string();
+        assert_eq_expected!(expected, format_duration(Duration::from_millis(2340)));
+    }
+
+    #[test]
+    fn format_duration_one_second_boundary() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        // Exactly 1s is rendered in seconds, not milliseconds.
+        let expected = "1.00s".to_string();
+        assert_eq_expected!(expected, format_duration(Duration::from_secs(1)));
+    }
+
+    #[test]
+    fn format_duration_zero() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        let expected = "0ms".to_string();
+        assert_eq_expected!(expected, format_duration(Duration::ZERO));
+    }
+
+    // -- LogProgress line extraction --
+
+    #[test]
+    fn log_progress_distinct_lines_filters_and_dedupes() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        let mut last = None;
+
+        // Trailing filler spaces (indicatif pads to terminal width) are trimmed.
+        let expected_first = vec!["Loading applications".to_string()];
+        assert_eq_expected!(
+            expected_first,
+            LogProgress::distinct_lines("Loading applications      ", &mut last)
+        );
+
+        // The same content again (e.g. a position-only redraw) emits nothing.
+        let expected_repeat: Vec<String> = vec![];
+        assert_eq_expected!(
+            expected_repeat,
+            LogProgress::distinct_lines("Loading applications      ", &mut last)
+        );
+
+        // Empty / whitespace-only draws are skipped.
+        let expected_blank: Vec<String> = vec![];
+        assert_eq_expected!(
+            expected_blank,
+            LogProgress::distinct_lines("   \n   ", &mut last)
+        );
+
+        // A new, distinct message is emitted.
+        let expected_next = vec!["Seeding database".to_string()];
+        assert_eq_expected!(
+            expected_next,
+            LogProgress::distinct_lines("Seeding database   ", &mut last)
+        );
     }
 
     // -- effective_idle_timeout --
@@ -1425,7 +1724,6 @@ mod tests {
         let profile_bg = profile.clone();
         let project_bg = project.clone();
         let handle = thread::spawn(move || {
-            let mut cli = elp::cli::Fake::default();
             run_daemon_server(
                 &DaemonRun {
                     project: project_bg,
@@ -1433,7 +1731,6 @@ mod tests {
                     rebar: false,
                     daemonize: false,
                 },
-                &mut cli,
                 &query_config,
                 false,
             )
