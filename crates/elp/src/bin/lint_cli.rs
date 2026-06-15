@@ -114,11 +114,7 @@ pub fn run_lint_command(
     let start_time = SystemTime::now();
     let memory_start = MemoryUsage::now();
 
-    let lint_config = if args.read_config || args.config_file.is_some() {
-        read_lint_config_file(&args.project, &args.config_file)?
-    } else {
-        LintConfig::default()
-    };
+    let lint_config = read_lint_config_file(&args.project, &args.config_file)?;
 
     // We load the project after loading config, in case it bails with
     // errors. No point wasting time if the config is wrong.
@@ -165,6 +161,12 @@ pub fn do_lint(
         writeln!(
             cli.err(),
             "Warning: the --include-tests flag is deprecated and will be removed in an upcoming release. Diagnostics for test files are now always included."
+        )?;
+    }
+    if args.read_config && args.is_format_normal() {
+        writeln!(
+            cli.err(),
+            "Warning: the --read-config flag is deprecated and will be removed in an upcoming release. The project's .elp_lint.toml is now read by default."
         )?;
     }
 

@@ -1366,7 +1366,7 @@ mod tests {
             .buck(buck)
             .sorted()
             .check_lint_fix(
-                args_vec!["lint", "--experimental", "--read-config"],
+                args_vec!["lint", "--experimental"],
                 "linter",
                 resource_file!("linter/parse_elp_lint_config_output.stdout"),
                 None,
@@ -1418,6 +1418,26 @@ mod tests {
                 None,
             )
             .expect("bad test");
+    }
+
+    #[test]
+    fn lint_config_read_by_default() {
+        let base = args_vec![
+            "lint",
+            "--rebar",
+            "--project",
+            project_path("linter"),
+            "--module",
+            "app_b"
+        ];
+        let mut with_flag = base.clone();
+        with_flag.push("--read-config".into());
+        let (out_default, _err_default, _) = elp(base);
+        let (out_flag, _err_flag, _) = elp(with_flag);
+        assert_eq!(
+            out_default, out_flag,
+            "reading .elp_lint.toml should be the default; --read-config must be a no-op"
+        );
     }
 
     #[test_case(false ; "rebar")]
@@ -1498,7 +1518,7 @@ mod tests {
             .buck(buck)
             .expect_code(101)
             .check_lint_fix(
-                args_vec!["lint", "--experimental", "--read-config"],
+                args_vec!["lint", "--experimental"],
                 "linter_bad_config",
                 resource_file!("linter/parse_elp_lint_bad_config_output.stdout"),
                 Some(expect![[r#"
@@ -1517,7 +1537,11 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn lint_no_diagnostics_filter_all_enabled(buck: bool) {
         simple_snapshot_expect_error_sorted(
-            args_vec!["lint"],
+            args_vec![
+                "lint",
+                "--config-file",
+                project_path("linter/elp_lint_empty.toml")
+            ],
             "linter",
             resource_file!("linter/parse_elp_no_lint_specified_output.stdout"),
             buck,
@@ -1530,7 +1554,12 @@ mod tests {
     fn lint_no_stream_produces_output(buck: bool) {
         if otp::supports_eep66_sigils() {
             simple_snapshot_expect_error(
-                args_vec!["lint", "--no-stream"],
+                args_vec![
+                    "lint",
+                    "--no-stream",
+                    "--config-file",
+                    project_path("linter/elp_lint_empty.toml")
+                ],
                 "diagnostics",
                 resource_file!("diagnostics/lint_no_stream.stdout"),
                 buck,
@@ -1543,7 +1572,13 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn lint_no_diagnostics_filter_all_enabled_json(buck: bool) {
         simple_snapshot_expect_error_sorted(
-            args_vec!["lint", "--format", "json"],
+            args_vec![
+                "lint",
+                "--format",
+                "json",
+                "--config-file",
+                project_path("linter/elp_lint_empty.toml")
+            ],
             "linter",
             resource_file!("linter/parse_elp_no_lint_specified_json_output.stdout"),
             buck,
@@ -1842,6 +1877,8 @@ mod tests {
         simple_snapshot_expect_error(
             args_vec![
                 "lint",
+                "--config-file",
+                project_path("linter/elp_lint_empty.toml"),
                 "--file",
                 project_path("linter/app_a/src/app_a.erl"),
                 "--file",
@@ -1863,6 +1900,8 @@ mod tests {
         simple_snapshot_expect_error(
             args_vec![
                 "lint",
+                "--config-file",
+                project_path("linter/elp_lint_empty.toml"),
                 "--file",
                 project_path("linter/app_a/src/app_a.erl"),
                 "--file",
@@ -1960,7 +1999,7 @@ mod tests {
     #[test]
     fn lint_dynamic_calls_project() {
         simple_snapshot(
-            args_vec!["lint", "--read-config", "--diagnostic-filter", "W0077"],
+            args_vec!["lint", "--diagnostic-filter", "W0077"],
             "dynamic_calls",
             resource_file!("dynamic_calls/lint.stdout"),
             true,
@@ -2196,7 +2235,7 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn lint_linter_config_basic(buck: bool) {
         simple_snapshot_sorted(
-            args_vec!["lint", "--read-config", "--no-stream"],
+            args_vec!["lint", "--no-stream"],
             "linter_config",
             resource_file!("linter_config/basic.stdout"),
             buck,

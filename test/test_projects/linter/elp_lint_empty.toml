@@ -1,0 +1,3 @@
+# Intentionally empty lint config. Passed via `--config-file` by tests that
+# need to exercise the default lint ruleset, now that reading the project's
+# `.elp_lint.toml` is the default behaviour.

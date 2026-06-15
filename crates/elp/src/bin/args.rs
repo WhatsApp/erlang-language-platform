@@ -344,9 +344,9 @@ pub struct Lint {
     #[bpaf(external(parse_experimental_diags))]
     pub experimental_diags: bool,
 
-    /// Get some configuration from a .elp_lint.toml file instead in the project root
+    /// Deprecated and now a no-op: the project's .elp_lint.toml is read by default. Use --config-file to override the config file.
     pub read_config: bool,
-    /// Override normal configuration file. When set, acts as if READ_CONFIG is true.
+    /// Override the lint configuration file (.elp_lint.toml) used.
     #[bpaf(argument("CONFIG_FILE"))]
     pub config_file: Option<String>,
 

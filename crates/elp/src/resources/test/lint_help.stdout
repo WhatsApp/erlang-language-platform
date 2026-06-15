@@ -37,10 +37,9 @@ Available options:
         --diagnostic-filter <CODE>  Filter out all reported diagnostics except this one, by code or
                           label
         --experimental    Report experimental diagnostics too, if diagnostics are enabled
-        --read-config     Get some configuration from a .elp_lint.toml file instead in the project
-                          root
-        --config-file <CONFIG_FILE>  Override normal configuration file. When set, acts as if
-                          READ_CONFIG is true.
+        --read-config     Deprecated and now a no-op: the project's .elp_lint.toml is read by
+                          default. Use --config-file to override the config file.
+        --config-file <CONFIG_FILE>  Override the lint configuration file (.elp_lint.toml) used.
         --apply-fix       If the diagnostic has an associated fix, apply it. Modifies the original
                           file. Use --to to write to a different directory.
         --ignore-fix-only  Only apply elp:ignore fixes
