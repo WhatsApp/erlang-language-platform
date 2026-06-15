@@ -146,8 +146,6 @@ struct DoneMessage {
     status: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     message: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    stderr: Option<String>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     restart: bool,
 }
@@ -158,7 +156,6 @@ impl DoneMessage {
             r#type: "done",
             status: "ok",
             message: None,
-            stderr: None,
             restart: false,
         }
     }
@@ -168,7 +165,6 @@ impl DoneMessage {
             r#type: "done",
             status: "error",
             message: Some(msg),
-            stderr: None,
             restart: false,
         }
     }
@@ -177,34 +173,42 @@ impl DoneMessage {
         self.restart = true;
         self
     }
-
-    fn with_stderr(mut self, stderr: Vec<u8>) -> Self {
-        if !stderr.is_empty() {
-            self.stderr = Some(String::from_utf8_lossy(&stderr).into_owned());
-        }
-        self
-    }
 }
 
 // ---------------------------------------------------------------------------
-// SocketCli — Cli implementation that writes to a UnixStream
+// DaemonCli — Cli implementation for a connected client
 // ---------------------------------------------------------------------------
 
-struct SocketCli {
+/// An out-of-band status line pushed from the daemon to the client mid-request
+/// (e.g. a deprecation warning). The client prints these to stderr; they are
+/// not diagnostics and never appear on stdout, so `--format json` stays clean.
+#[derive(Serialize)]
+struct InfoMessage<'a> {
+    r#type: &'static str,
+    message: &'a str,
+}
+
+/// `Cli` used to run a client's command inside the daemon. Command results
+/// (diagnostics) stream to the client over the socket; `info()` surfaces a
+/// status line to the client and echoes it to `daemon.log`; everything else —
+/// `err()` and progress bars — goes to `daemon.log` only.
+struct DaemonCli {
+    /// Results / diagnostics, streamed to the connected client.
     writer: BufWriter<UnixStream>,
-    stderr: Vec<u8>,
+    /// The daemon's own stderr, which `start_daemon` redirects to `daemon.log`.
+    stderr: io::Stderr,
 }
 
-impl SocketCli {
+impl DaemonCli {
     fn new(stream: UnixStream) -> Self {
         Self {
             writer: BufWriter::new(stream),
-            stderr: Vec::new(),
+            stderr: io::stderr(),
         }
     }
 }
 
-impl Write for SocketCli {
+impl Write for DaemonCli {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.writer.write(buf)
     }
@@ -214,7 +218,7 @@ impl Write for SocketCli {
     }
 }
 
-impl WriteColor for SocketCli {
+impl WriteColor for DaemonCli {
     fn supports_color(&self) -> bool {
         false
     }
@@ -228,7 +232,7 @@ impl WriteColor for SocketCli {
     }
 }
 
-impl Cli for SocketCli {
+impl Cli for DaemonCli {
     fn progress(&self, _len: u64, _prefix: &str) -> ProgressBar {
         ProgressBar::hidden()
     }
@@ -243,6 +247,22 @@ impl Cli for SocketCli {
 
     fn err(&mut self) -> &mut dyn Write {
         &mut self.stderr
+    }
+
+    /// Surface a status line to the connected client and record it in the log.
+    /// Best-effort to the client: a write failure (e.g. the client went away)
+    /// must not abort the in-flight command, so socket errors are ignored.
+    fn info(&mut self, message: &str) -> io::Result<()> {
+        let _ = writeln!(self.stderr, "[elp-daemon] {message}");
+        let info = InfoMessage {
+            r#type: "info",
+            message,
+        };
+        if let Ok(json) = serde_json::to_string(&info) {
+            let _ = writeln!(self.writer, "{json}");
+            let _ = self.writer.flush();
+        }
+        Ok(())
     }
 }
 
@@ -510,7 +530,7 @@ fn handle_connection(
     // flags to express through the shell parser. Handle them before falling
     // through to ShellCommand::parse.
     if let Some(json) = line.strip_prefix("lint ") {
-        let mut socket_cli = SocketCli::new(stream.try_clone()?);
+        let mut socket_cli = DaemonCli::new(stream.try_clone()?);
         let done = match serde_json::from_str::<Lint>(json) {
             Ok(mut lint_args) => {
                 lint_args.format = Some("json".to_string());
@@ -526,7 +546,6 @@ fn handle_connection(
             }
             Err(e) => DoneMessage::error(format!("invalid lint payload: {e}")),
         };
-        let done = done.with_stderr(std::mem::take(&mut socket_cli.stderr));
         let done = serde_json::to_string(&done)?;
         writeln!(socket_cli, "{done}")?;
         socket_cli.flush()?;
@@ -540,7 +559,7 @@ fn handle_connection(
     };
 
     // Parse and execute command, writing output to the socket
-    let mut socket_cli = SocketCli::new(stream.try_clone()?);
+    let mut socket_cli = DaemonCli::new(stream.try_clone()?);
 
     let (done, should_quit) = match ShellCommand::parse(&shell, line) {
         Ok(None) => (DoneMessage::ok(), false),
@@ -597,8 +616,6 @@ fn handle_connection(
         Err(err) => (DoneMessage::error(err.to_string()), false),
     };
 
-    // Attach any collected stderr to the done message and send it
-    let done = done.with_stderr(std::mem::take(&mut socket_cli.stderr));
     let done = serde_json::to_string(&done)?;
     writeln!(socket_cli, "{done}")?;
     socket_cli.flush()?;
@@ -669,6 +686,16 @@ fn connect_and_run(
         let line = line?;
         // Try to detect done message first (small JSON with "type" field)
         let v: serde_json::Value = serde_json::from_str(&line)?;
+        // Out-of-band status from the daemon (e.g. a deprecation warning).
+        // Render it via the client's own info channel (yellow on a TTY); it
+        // never reaches stdout, so `--format json` stays clean, and it is not
+        // counted as a diagnostic.
+        if v.get("type").and_then(|t| t.as_str()) == Some("info") {
+            if let Some(msg) = v.get("message").and_then(|m| m.as_str()) {
+                cli.info(msg)?;
+            }
+            continue;
+        }
         if v.get("type").and_then(|t| t.as_str()) == Some("done") {
             // Check for restart request (e.g., config change)
             if v.get("restart").and_then(|r| r.as_bool()) == Some(true) {
@@ -681,10 +708,6 @@ fn connect_and_run(
                 cleanup_stale_in_dir(&dir);
                 // Start new daemon and retry the command
                 return connect_and_run(command_line, project, profile, rebar, format_json, cli);
-            }
-            // Forward any stderr from the daemon
-            if let Some(stderr) = v.get("stderr").and_then(|s| s.as_str()) {
-                write!(cli.err(), "{stderr}")?;
             }
             if v.get("status").and_then(|s| s.as_str()) == Some("error") {
                 exit_code = 1;
@@ -997,7 +1020,6 @@ mod tests {
         assert_eq!(v["type"], "done");
         assert_eq!(v["status"], "ok");
         assert!(v.get("message").is_none());
-        assert!(v.get("stderr").is_none());
     }
 
     #[test]
@@ -1007,23 +1029,29 @@ mod tests {
         assert_eq!(v["type"], "done");
         assert_eq!(v["status"], "error");
         assert_eq!(v["message"], "bad thing");
-        assert!(v.get("stderr").is_none());
     }
 
-    #[test]
-    fn done_message_with_stderr_non_empty() {
-        let msg = DoneMessage::ok().with_stderr(b"some warning\n".to_vec());
-        let json = serde_json::to_string(&msg).unwrap();
-        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert_eq!(v["stderr"], "some warning\n");
-    }
+    // -- DaemonCli info wire message --
 
     #[test]
-    fn done_message_with_stderr_empty() {
-        let msg = DoneMessage::ok().with_stderr(vec![]);
-        let json = serde_json::to_string(&msg).unwrap();
-        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert!(v.get("stderr").is_none());
+    fn daemon_cli_info_writes_info_message() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        let (writer_end, reader_end) = UnixStream::pair().unwrap();
+        let mut cli = DaemonCli::new(writer_end);
+        cli.info("reloading project").unwrap();
+        // Drop the cli (and its writer) so the reader sees the line then EOF.
+        drop(cli);
+
+        let mut reader = BufReader::new(&reader_end);
+        let mut line = String::new();
+        reader.read_line(&mut line).unwrap();
+        let v: serde_json::Value = serde_json::from_str(line.trim_end()).unwrap();
+
+        let expected_type = Some("info");
+        assert_eq_expected!(expected_type, v["type"].as_str());
+        let expected_message = Some("reloading project");
+        assert_eq_expected!(expected_message, v["message"].as_str());
     }
 
     // -- effective_idle_timeout --

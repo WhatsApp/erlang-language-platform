@@ -162,21 +162,18 @@ pub fn do_lint(
     cli: &mut dyn Cli,
 ) -> Result<()> {
     if args.include_ct_diagnostics && args.is_format_normal() {
-        writeln!(
-            cli.err(),
-            "Warning: the --include-ct-diagnostics flag is deprecated and will be removed in an upcoming release. Common Test diagnostics are now always included."
+        cli.info(
+            "Warning: the --include-ct-diagnostics flag is deprecated and will be removed in an upcoming release. Common Test diagnostics are now always included.",
         )?;
     }
     if args.include_edoc_diagnostics && args.is_format_normal() {
-        writeln!(
-            cli.err(),
-            "Warning: the --include-edoc-diagnostics flag is deprecated and will be removed in an upcoming release. EDoc diagnostics have been removed."
+        cli.info(
+            "Warning: the --include-edoc-diagnostics flag is deprecated and will be removed in an upcoming release. EDoc diagnostics have been removed.",
         )?;
     }
     if args.include_tests && args.is_format_normal() {
-        writeln!(
-            cli.err(),
-            "Warning: the --include-tests flag is deprecated and will be removed in an upcoming release. Diagnostics for test files are now always included."
+        cli.info(
+            "Warning: the --include-tests flag is deprecated and will be removed in an upcoming release. Diagnostics for test files are now always included.",
         )?;
     }
     if args.read_config && args.is_format_normal() {

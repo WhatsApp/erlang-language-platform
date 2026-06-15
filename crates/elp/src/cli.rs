@@ -8,11 +8,11 @@
  * above-listed licenses.
  */
 
-use std::io::Stderr;
 use std::io::Write;
 use std::time::Duration;
 
 use codespan_reporting::term::termcolor::Buffer;
+use codespan_reporting::term::termcolor::Color;
 use codespan_reporting::term::termcolor::ColorChoice;
 use codespan_reporting::term::termcolor::ColorSpec;
 use codespan_reporting::term::termcolor::StandardStream;
@@ -28,13 +28,25 @@ pub trait Cli: Write + WriteColor {
     fn spinner(&self, prefix: &'static str) -> ProgressBar;
 
     fn err(&mut self) -> &mut dyn Write;
+
+    /// User-facing status that is neither a result nor an error (progress notes,
+    /// deprecation warnings, ...). The default writes it plainly to [`err`];
+    /// terminal CLIs override this to render it in yellow.
+    ///
+    /// [`err`]: Cli::err
+    fn info(&mut self, message: &str) -> std::io::Result<()> {
+        writeln!(self.err(), "{message}")
+    }
 }
 
-pub struct StandardCli(StandardStream, Stderr);
+pub struct StandardCli(StandardStream, StandardStream);
 
 impl StandardCli {
     fn new(color_choice: ColorChoice) -> Self {
-        Self(StandardStream::stdout(color_choice), std::io::stderr())
+        Self(
+            StandardStream::stdout(color_choice),
+            StandardStream::stderr(color_choice),
+        )
     }
 
     fn progress_with_style(
@@ -76,6 +88,14 @@ impl Cli for StandardCli {
 
     fn err(&mut self) -> &mut dyn Write {
         &mut self.1
+    }
+
+    fn info(&mut self, message: &str) -> std::io::Result<()> {
+        self.1
+            .set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))?;
+        write!(self.1, "{message}")?;
+        self.1.reset()?;
+        writeln!(self.1)
     }
 }
 
@@ -134,6 +154,10 @@ impl Cli for Real {
     fn err(&mut self) -> &mut dyn Write {
         self.0.err()
     }
+
+    fn info(&mut self, message: &str) -> std::io::Result<()> {
+        self.0.info(message)
+    }
 }
 
 impl Write for Real {
@@ -175,6 +199,10 @@ impl Cli for NoColor {
 
     fn err(&mut self) -> &mut dyn Write {
         self.0.err()
+    }
+
+    fn info(&mut self, message: &str) -> std::io::Result<()> {
+        self.0.info(message)
     }
 }
 
@@ -257,5 +285,26 @@ impl WriteColor for Fake {
 
     fn reset(&mut self) -> std::io::Result<()> {
         self.0.reset()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+    use super::*;
+
+    /// The default `info()` writes to the stderr channel (here the `Fake`
+    /// buffer), never to stdout — so `--format json` stdout stays clean.
+    #[test]
+    fn default_info_goes_to_stderr_not_stdout() {
+        let mut cli = Fake::default();
+        cli.info("status line").unwrap();
+        let (stdout, stderr) = cli.to_strings();
+
+        let expected_stdout = "";
+        assert_eq_expected!(expected_stdout, stdout.as_str());
+        let expected_stderr = "status line\n";
+        assert_eq_expected!(expected_stderr, stderr.as_str());
     }
 }
