@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-structural-search" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.0">
+<title data-rh="true">Structural Search (SSR) | ELP</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://whatsapp.github.io/erlang-language-platform/docs/structural-search/"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Structural Search (SSR) | ELP"><meta data-rh="true" name="description" content="ELP can search Erlang code structurally — by the shape of the syntax tree"><meta data-rh="true" property="og:description" content="ELP can search Erlang code structurally — by the shape of the syntax tree"><link data-rh="true" rel="icon" href="/erlang-language-platform/img/elp_icon_color.svg"><link data-rh="true" rel="canonical" href="https://whatsapp.github.io/erlang-language-platform/docs/structural-search/"><link data-rh="true" rel="alternate" href="https://whatsapp.github.io/erlang-language-platform/docs/structural-search/" hreflang="en"><link data-rh="true" rel="alternate" href="https://whatsapp.github.io/erlang-language-platform/docs/structural-search/" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Structural Search (SSR)","item":"https://whatsapp.github.io/erlang-language-platform/docs/structural-search"}]}</script><link rel="stylesheet" href="/erlang-language-platform/assets/css/styles.847e11ff.css">
+<script src="/erlang-language-platform/assets/js/runtime~main.cb487b3f.js" defer="defer"></script>
+<script src="/erlang-language-platform/assets/js/main.f534f5c7.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"light"),document.documentElement.setAttribute("data-theme-choice",t||"light")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script>
+<div style="display: none; text-align: center; background-color: white; color: black;" id="internaldocs-banner"></div><div id="__docusaurus"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/erlang-language-platform/"><div class="navbar__logo"><img src="/erlang-language-platform/img/elp_logo_color.svg" alt="ELP Logo" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/erlang-language-platform/img/elp_logo_color.svg" alt="ELP Logo" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/erlang-language-platform/docs/get-started/">Get Started</a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/erlang-language-platform/docs/feature-gallery/">Feature Gallery</a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/erlang-language-platform/docs/contributing/">Contributing</a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/erlang-language-platform/docs/erlang-error-index/">Erlang Error Index</a><a class="navbar__item navbar__link" href="/erlang-language-platform/docs/eqwalizer/reference/">eqWAlizer</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/whatsapp/erlang-language-platform" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><div class="navbar__search"><span aria-label="expand searchbar" role="button" class="search-icon" tabindex="0"></span><input id="search_input_react" type="search" placeholder="Loading..." aria-label="Search" class="navbar__search-input search-bar" disabled=""></div></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Scroll back to top" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/erlang-language-platform/docs/get-started/"><span title="Get Started" class="categoryLinkLabel_W154">Get Started</span></a><button aria-label="Expand sidebar category &#x27;Get Started&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/erlang-language-platform/docs/feature-gallery/"><span title="Feature Gallery" class="linkLabel_WmDU">Feature Gallery</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/erlang-language-platform/docs/contributing/"><span title="Contributing" class="categoryLinkLabel_W154">Contributing</span></a><button aria-label="Expand sidebar category &#x27;Contributing&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/erlang-language-platform/docs/find-references/"><span title="Find References" class="linkLabel_WmDU">Find References</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" href="/erlang-language-platform/docs/structural-search/"><span title="Structural Search (SSR)" class="linkLabel_WmDU">Structural Search (SSR)</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/erlang-language-platform/docs/architecture/"><span title="Architecture" class="linkLabel_WmDU">Architecture</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" href="/erlang-language-platform/docs/erlang-error-index/"><span title="Erlang Error Index" class="categoryLinkLabel_W154">Erlang Error Index</span></a><button aria-label="Expand sidebar category &#x27;Erlang Error Index&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Breadcrumbs"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Home page" class="breadcrumbs__link" href="/erlang-language-platform/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Structural Search (SSR)</span></li></ul></nav><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><div class="theme-doc-markdown markdown"><header><h1>Structural Search (SSR)</h1></header>
+<p>ELP can search Erlang code <strong>structurally</strong> — by the shape of the syntax tree
+rather than by raw text. This is exposed on the command line as:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token plain">$ elp search &#x27;PATTERN&#x27;</span><br></div></code></pre></div></div>
+<p><code>elp search</code> is the primary command; <code>elp ssr</code> is an alias for it (SSR stands for
+<em>Structural Search and Replace</em>). The two are identical — <code>search</code> is just the
+friendlier name for the read-only &quot;find me code shaped like this&quot; use case.</p>
+<p>Because matching happens on the syntax tree, structural search ignores
+formatting, whitespace, and comments. Parentheses are ignored too by default,
+though you can make them significant (see
+<a href="#macro-and-parenthesis-handling" class="">Macro and parenthesis handling</a>). A single
+pattern reliably finds code that a pile of regular expressions never could.</p>
+<div class="theme-admonition theme-admonition-tip admonition_xJq3 alert alert--success"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>tip</div><div class="admonitionContent_BuS1"><p>If you only remember one thing: a pattern is just <strong>Erlang code with
+placeholders</strong>. Write the code you are looking for, and replace the parts that
+vary with <code>_@Name</code>.</p></div></div>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="quick-start">Quick start<a href="#quick-start" class="hash-link" aria-label="Direct link to Quick start" title="Direct link to Quick start" translate="no">​</a></h2>
+<p>Find every double <code>lists:reverse/1</code> (a common no-op):</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token plain">$ elp search &#x27;lists:reverse(lists:reverse(_@List))&#x27;</span><br></div></code></pre></div></div>
+<p>Find a redundant <code>case</code> whose branches are identical:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token plain">$ elp search &#x27;case _@Cond of true -&gt; _@Body; false -&gt; _@Body end&#x27;</span><br></div></code></pre></div></div>
+<p>Find all calls to <code>foo</code> regardless of arity, as JSON:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token plain">$ elp search --format json &#x27;foo(_@@Args)&#x27;</span><br></div></code></pre></div></div>
+<p>By default the search runs over the whole project discovered from the current
+directory. See <a href="#scoping-the-search" class="">Scoping the search</a> to narrow it down.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="placeholders">Placeholders<a href="#placeholders" class="hash-link" aria-label="Direct link to Placeholders" title="Direct link to Placeholders" translate="no">​</a></h2>
+<p>Placeholders are how you say &quot;match anything here&quot;. They are written using a
+<code>_@</code> prefix so they can never collide with real Erlang variables.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Placeholder</th><th>Matches</th><th>Notes</th></tr></thead><tbody><tr><td><code>_@Name</code></td><td>Any single expression or pattern</td><td>Bound to <code>Name</code>; reuse the name to require equality (see below)</td></tr><tr><td><code>_@_</code></td><td>Anything</td><td>Anonymous wildcard — matches but binds nothing</td></tr><tr><td><code>_@@Name</code></td><td>Zero or more sibling elements</td><td>A <strong>glob</strong>; see <a href="#globs" class="">Globs</a></td></tr><tr><td><code>@Name</code></td><td>An atom</td><td>Atom placeholder, used where only an atom is syntactically valid</td></tr></tbody></table>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="reusing-a-placeholder-requires-equality">Reusing a placeholder requires equality<a href="#reusing-a-placeholder-requires-equality" class="hash-link" aria-label="Direct link to Reusing a placeholder requires equality" title="Direct link to Reusing a placeholder requires equality" translate="no">​</a></h3>
+<p>When the same placeholder name appears more than once in a pattern, every
+occurrence must match <strong>structurally equal</strong> code. This is what makes the
+identical-branches example above work:</p>
+<div class="language-erlang codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-erlang codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token comment" style="color:#999988;font-style:italic">%% _@Body appears twice, so both branches must be the same expression</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token keyword" style="color:#00009f">case</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@Cond</span><span class="token plain"> </span><span class="token keyword" style="color:#00009f">of</span><span class="token plain"> </span><span class="token boolean" style="color:#36acaa">true</span><span class="token plain"> </span><span class="token operator" style="color:#393A34">-</span><span class="token operator" style="color:#393A34">&gt;</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@Body</span><span class="token punctuation" style="color:#393A34">;</span><span class="token plain"> </span><span class="token boolean" style="color:#36acaa">false</span><span class="token plain"> </span><span class="token operator" style="color:#393A34">-</span><span class="token operator" style="color:#393A34">&gt;</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@Body</span><span class="token plain"> </span><span class="token keyword" style="color:#00009f">end</span><br></div></code></pre></div></div>
+<p>If you do not care whether two sub-expressions are equal, give them different
+names (<code>_@A</code>, <code>_@B</code>) or use the anonymous <code>_@_</code>.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="globs">Globs<a href="#globs" class="hash-link" aria-label="Direct link to Globs" title="Direct link to Globs" translate="no">​</a></h3>
+<p>A glob placeholder, written <code>_@@Name</code>, matches <strong>zero or more</strong> sibling elements
+in an ordered sequence — the elements of a tuple or list, the arguments of a
+call, or the expressions in a clause body. This mirrors Erlang
+<a href="https://www.erlang.org/doc/man/merl.html" target="_blank" rel="noopener noreferrer" class="">Merl</a>-style matching.</p>
+<div class="language-erlang codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-erlang codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token comment" style="color:#999988;font-style:italic">%% Match a tuple tagged `a`, capturing the rest of the elements</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token punctuation" style="color:#393A34">{</span><span class="token atom">a</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@@Rest</span><span class="token punctuation" style="color:#393A34">}</span><span class="token plain">        </span><span class="token comment" style="color:#999988;font-style:italic">%% matches {a, b, c, d}; Rest = [b, c, d]</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token comment" style="color:#999988;font-style:italic">%% Match a call to foo with any number of arguments</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token function" style="color:#d73a49">foo</span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@@Args</span><span class="token punctuation" style="color:#393A34">)</span><span class="token plain">        </span><span class="token comment" style="color:#999988;font-style:italic">%% matches foo(1, 2, 3); Args = [1, 2, 3]</span><br></div></code></pre></div></div>
+<p>Globs also work in maps, where a glob entry absorbs the unmatched fields:</p>
+<div class="language-erlang codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-erlang codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token punctuation" style="color:#393A34">#</span><span class="token punctuation" style="color:#393A34">{</span><span class="token atom">tag</span><span class="token plain"> </span><span class="token operator" style="color:#393A34">=</span><span class="token operator" style="color:#393A34">&gt;</span><span class="token plain"> </span><span class="token atom">error</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@@K</span><span class="token plain"> </span><span class="token operator" style="color:#393A34">=</span><span class="token operator" style="color:#393A34">&gt;</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@@V</span><span class="token punctuation" style="color:#393A34">}</span><span class="token plain">   </span><span class="token comment" style="color:#999988;font-style:italic">%% bind the remaining keys and values</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token punctuation" style="color:#393A34">#</span><span class="token punctuation" style="color:#393A34">{</span><span class="token variable" style="color:#36acaa">_@@K</span><span class="token plain"> </span><span class="token operator" style="color:#393A34">=</span><span class="token operator" style="color:#393A34">&gt;</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_</span><span class="token punctuation" style="color:#393A34">}</span><span class="token plain">                    </span><span class="token comment" style="color:#999988;font-style:italic">%% bind keys, don&#x27;t-care values</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token punctuation" style="color:#393A34">#</span><span class="token punctuation" style="color:#393A34">{</span><span class="token variable" style="color:#36acaa">_</span><span class="token plain"> </span><span class="token operator" style="color:#393A34">=</span><span class="token operator" style="color:#393A34">&gt;</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@@V</span><span class="token punctuation" style="color:#393A34">}</span><span class="token plain">                    </span><span class="token comment" style="color:#999988;font-style:italic">%% don&#x27;t-care keys, bind values</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token punctuation" style="color:#393A34">#</span><span class="token punctuation" style="color:#393A34">{</span><span class="token variable" style="color:#36acaa">_@@_</span><span class="token plain"> </span><span class="token operator" style="color:#393A34">=</span><span class="token operator" style="color:#393A34">&gt;</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_</span><span class="token punctuation" style="color:#393A34">}</span><span class="token plain">                    </span><span class="token comment" style="color:#999988;font-style:italic">%% just absorb the extras</span><br></div></code></pre></div></div>
+<p>Rules and limitations for globs:</p>
+<ul>
+<li class=""><strong>At most two globs per sequence, with at least one fixed element between
+them.</strong> So <code>{a, _@@A, b, _@@B, c}</code> is allowed (the <code>b</code> anchors the two globs),
+but <code>{_@@A, _@@B}</code> is not.</li>
+<li class=""><strong>Maps allow at most one glob entry</strong> — an entry such as <code>_@@K =&gt; _@@V</code> counts
+as a single entry.</li>
+<li class=""><strong>Not allowed in records</strong> or in <code>when</code>/<code>where</code> guards.</li>
+<li class="">When the same glob name appears in two sequences, both bindings must be
+element-wise equivalent.</li>
+</ul>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="constraints-with-where">Constraints with <code>where</code><a href="#constraints-with-where" class="hash-link" aria-label="Direct link to constraints-with-where" title="Direct link to constraints-with-where" translate="no">​</a></h2>
+<p>Append a <code>where</code> clause to constrain what a placeholder may match. There are two
+kinds of condition, and they can be combined.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="equality--inequality-against-a-literal">Equality / inequality against a literal<a href="#equality--inequality-against-a-literal" class="hash-link" aria-label="Direct link to Equality / inequality against a literal" title="Direct link to Equality / inequality against a literal" translate="no">​</a></h3>
+<div class="language-erlang codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-erlang codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token variable" style="color:#36acaa">_@X</span><span class="token plain"> </span><span class="token atom">where</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@X</span><span class="token plain"> </span><span class="token operator" style="color:#393A34">==</span><span class="token plain"> </span><span class="token atom">foo</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token variable" style="color:#36acaa">_@X</span><span class="token plain"> </span><span class="token atom">where</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@X</span><span class="token plain"> </span><span class="token operator" style="color:#393A34">=/=</span><span class="token plain"> </span><span class="token atom">undefined</span><br></div></code></pre></div></div>
+<p>Supported operators are <code>==</code>, <code>=:=</code>, <code>/=</code>, and <code>=/=</code>. The right-hand side must be
+a literal (or another placeholder).</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="type--kind-predicates">Type / kind predicates<a href="#type--kind-predicates" class="hash-link" aria-label="Direct link to Type / kind predicates" title="Direct link to Type / kind predicates" translate="no">​</a></h3>
+<p>Constrain a placeholder to a particular kind of node using a local-call
+predicate (note: <strong>no</strong> <code>erlang:</code> prefix):</p>
+<div class="language-erlang codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-erlang codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token atom">meck</span><span class="token punctuation" style="color:#393A34">:</span><span class="token function" style="color:#d73a49">expect</span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@Mod</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@Fun</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@Impl</span><span class="token punctuation" style="color:#393A34">)</span><span class="token plain"> </span><span class="token atom">where</span><span class="token plain"> </span><span class="token function" style="color:#d73a49">is_function</span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@Impl</span><span class="token punctuation" style="color:#393A34">)</span><br></div></code></pre></div></div>
+<p>Available predicates:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Predicate</th><th>Matches</th></tr></thead><tbody><tr><td><code>is_atom/1</code></td><td>An atom</td></tr><tr><td><code>is_integer/1</code></td><td>An integer literal</td></tr><tr><td><code>is_function/1</code></td><td>A <code>fun</code> expression or reference</td></tr><tr><td><code>is_list/1</code></td><td>A list</td></tr><tr><td><code>is_tuple/1</code></td><td>A tuple</td></tr><tr><td><code>is_map/1</code></td><td>A map</td></tr><tr><td><code>is_binary/1</code></td><td>A binary</td></tr><tr><td><code>is_var/1</code></td><td>A variable (SSR extension)</td></tr><tr><td><code>is_call/1</code></td><td>A function call (SSR extension)</td></tr></tbody></table>
+<p>Combine conditions with <code>,</code> for AND and <code>;</code> for OR, and negate with <code>not</code>:</p>
+<div class="language-erlang codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-erlang codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token function" style="color:#d73a49">f</span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@A</span><span class="token punctuation" style="color:#393A34">)</span><span class="token plain"> </span><span class="token atom">where</span><span class="token plain"> </span><span class="token function" style="color:#d73a49">is_atom</span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@A</span><span class="token punctuation" style="color:#393A34">)</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@A</span><span class="token plain"> </span><span class="token operator" style="color:#393A34">=/=</span><span class="token plain"> </span><span class="token atom">undefined</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token function" style="color:#d73a49">f</span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@A</span><span class="token punctuation" style="color:#393A34">)</span><span class="token plain"> </span><span class="token atom">where</span><span class="token plain"> </span><span class="token function" style="color:#d73a49">is_integer</span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@A</span><span class="token punctuation" style="color:#393A34">)</span><span class="token punctuation" style="color:#393A34">;</span><span class="token plain"> </span><span class="token function" style="color:#d73a49">is_atom</span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@A</span><span class="token punctuation" style="color:#393A34">)</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token function" style="color:#d73a49">f</span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@A</span><span class="token punctuation" style="color:#393A34">)</span><span class="token plain"> </span><span class="token atom">where</span><span class="token plain"> </span><span class="token operator" style="color:#393A34">not</span><span class="token plain"> </span><span class="token function" style="color:#d73a49">is_list</span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@A</span><span class="token punctuation" style="color:#393A34">)</span><br></div></code></pre></div></div>
+<div class="theme-admonition theme-admonition-note admonition_xJq3 alert alert--secondary"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M6.3 5.69a.942.942 0 0 1-.28-.7c0-.28.09-.52.28-.7.19-.18.42-.28.7-.28.28 0 .52.09.7.28.18.19.28.42.28.7 0 .28-.09.52-.28.7a1 1 0 0 1-.7.3c-.28 0-.52-.11-.7-.3zM8 7.99c-.02-.25-.11-.48-.31-.69-.2-.19-.42-.3-.69-.31H6c-.27.02-.48.13-.69.31-.2.2-.3.44-.31.69h1v3c.02.27.11.5.31.69.2.2.42.31.69.31h1c.27 0 .48-.11.69-.31.2-.19.3-.42.31-.69H8V7.98v.01zM7 2.3c-3.14 0-5.7 2.54-5.7 5.68 0 3.14 2.56 5.7 5.7 5.7s5.7-2.55 5.7-5.7c0-3.15-2.56-5.69-5.7-5.69v.01zM7 .98c3.86 0 7 3.14 7 7s-3.14 7-7 7-7-3.12-7-7 3.14-7 7-7z"></path></svg></span>note</div><div class="admonitionContent_BuS1"><p>The qualified form (<code>erlang:is_atom(_@X)</code>) is intentionally rejected — use the
+bare predicate name. Globs are not allowed inside a <code>where</code> clause.</p></div></div>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="pattern-spellings">Pattern spellings<a href="#pattern-spellings" class="hash-link" aria-label="Direct link to Pattern spellings" title="Direct link to Pattern spellings" translate="no">​</a></h2>
+<p>A positional argument to <code>elp search</code> is accepted in three shapes. They are
+equivalent ways of writing the same thing:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>You type</th><th>Interpreted as</th><th>When to use</th></tr></thead><tbody><tr><td><code>PATTERN</code></td><td><code>ssr: PATTERN.</code></td><td>The common case — just write the code</td></tr><tr><td><code>ssr: PATTERN.</code></td><td>itself</td><td>The canonical rule form</td></tr><tr><td><code>LABEL:ssr: PATTERN.</code></td><td>a labelled rule</td><td>Tag matches with <code>LABEL</code></td></tr></tbody></table>
+<p>The bare form is shorthand: ELP wraps it as <code>ssr: PATTERN.</code> for you (adding the
+<code>ssr:</code> prefix and the trailing <code>.</code>).</p>
+<p>The <code>LABEL:ssr:</code> form attaches a label to the rule. The label surfaces as
+<code>patternLabel</code> in <a href="#json-output" class="">JSON output</a>, which is handy when you pass
+several patterns at once and want to know which one matched:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token plain">$ elp search &#x27;double_reverse:ssr: lists:reverse(lists:reverse(_@L)).&#x27; \</span><br></div><div class="token-line" style="color:#393A34"><span class="token plain">             &#x27;noop_case:ssr: case _@C of true -&gt; _@B; false -&gt; _@B end.&#x27;</span><br></div></code></pre></div></div>
+<p>The delimiter is the literal substring <code>:ssr: </code> (with the trailing space), which
+cannot occur in Erlang code, so module-qualified calls such as <code>meck:expect(...)</code>
+are never mistaken for a label.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="searching-not-replacing">Searching, not replacing<a href="#searching-not-replacing" class="hash-link" aria-label="Direct link to Searching, not replacing" title="Direct link to Searching, not replacing" translate="no">​</a></h2>
+<p>The SSR rule grammar also accepts a replacement template, written
+<code>ssr: SEARCH ==&gt;&gt; REPLACE.</code>. <strong>Replacement is not currently implemented</strong> — the
+<code>==&gt;&gt;</code> template is parsed, but no tool acts on it yet. SSR is search-only today:
+<code>elp search</code> / <code>elp ssr</code> <em>matches</em> code and never rewrites it.</p>
+<p>So think of <code>elp search</code> as <em>grep for syntax trees</em>, not sed. (ELP&#x27;s own linters
+do detect and fix code, but they apply their own fixes rather than the SSR
+<code>==&gt;&gt;</code> template — see <a href="#patterns-in-linters" class="">Patterns in linters</a>.)</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="output">Output<a href="#output" class="hash-link" aria-label="Direct link to Output" title="Direct link to Output" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="default-output">Default output<a href="#default-output" class="hash-link" aria-label="Direct link to Default output" title="Direct link to Default output" translate="no">​</a></h3>
+<p>Matches are printed grouped by module. With no matches you get a
+<code>No matches found</code> message; otherwise ELP reports how many modules contained
+matches.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="showing-source-context">Showing source context<a href="#showing-source-context" class="hash-link" aria-label="Direct link to Showing source context" title="Direct link to Showing source context" translate="no">​</a></h3>
+<p>Like <code>grep</code>, you can print surrounding lines:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Flag</th><th>Meaning</th></tr></thead><tbody><tr><td><code>--show-source</code></td><td>Show the matched source</td></tr><tr><td><code>-A NUM</code> / <code>--after-context</code></td><td>Print <code>NUM</code> trailing lines</td></tr><tr><td><code>-B NUM</code> / <code>--before-context</code></td><td>Print <code>NUM</code> leading lines</td></tr><tr><td><code>-C NUM</code> / <code>--context</code></td><td>Print <code>NUM</code> lines on both sides</td></tr><tr><td><code>--group-separator SEP</code></td><td>Separator printed between match groups</td></tr><tr><td><code>--no-group-separator</code></td><td>Do not print a separator</td></tr></tbody></table>
+<p>Any of the context flags implies <code>--show-source</code>.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="json-output">JSON output<a href="#json-output" class="hash-link" aria-label="Direct link to JSON output" title="Direct link to JSON output" translate="no">​</a></h3>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token plain">$ elp search --format json &#x27;foo(_@@Args)&#x27;</span><br></div></code></pre></div></div>
+<p>JSON output is line-delimited and machine-readable, and includes the
+<code>patternLabel</code> for <a href="#pattern-spellings" class="">labelled patterns</a> — ideal for scripting
+or for feeding results to another tool.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="scoping-the-search">Scoping the search<a href="#scoping-the-search" class="hash-link" aria-label="Direct link to Scoping the search" title="Direct link to Scoping the search" translate="no">​</a></h2>
+<p>By default ELP loads the whole project from the current directory. You can narrow
+the input:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Flag</th><th>Effect</th></tr></thead><tbody><tr><td><code>--project PATH</code></td><td>Path to a project directory or a project JSON file (default <code>.</code>)</td></tr><tr><td><code>--module NAME</code></td><td>Search a single module</td></tr><tr><td><code>--app NAME</code></td><td>Search a single application</td></tr><tr><td><code>--file PATH</code></td><td>Search a single file (include file, escript, …)</td></tr><tr><td><code>--include-generated</code></td><td>Also search generated files</td></tr><tr><td><code>--rebar</code> / <code>--as PROFILE</code></td><td>Load via rebar3 with the given profile</td></tr></tbody></table>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="macro-and-parenthesis-handling">Macro and parenthesis handling<a href="#macro-and-parenthesis-handling" class="hash-link" aria-label="Direct link to Macro and parenthesis handling" title="Direct link to Macro and parenthesis handling" translate="no">​</a></h2>
+<ul>
+<li class=""><code>--macros STRATEGY</code> controls macro expansion before matching: <code>expand</code>
+(default), <code>no-expand</code>, or <code>visible-expand</code>. Use <code>no-expand</code> to match the code
+as written, with macros intact.</li>
+<li class=""><code>--parens</code> makes parentheses significant. By default they are ignored, so
+<code>(X + Y)</code> and <code>X + Y</code> match the same pattern.</li>
+</ul>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="generating-a-lint-config">Generating a lint config<a href="#generating-a-lint-config" class="hash-link" aria-label="Direct link to Generating a lint config" title="Direct link to Generating a lint config" translate="no">​</a></h2>
+<p><code>--dump-config</code> turns your pattern into a snippet you can paste into
+<code>.elp_lint.toml</code>, so a one-off search can become a persistent, project-wide
+check:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token plain">$ elp search --dump-config &#x27;lists:reverse(lists:reverse(_@List))&#x27;</span><br></div><div class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"># Add this to your .elp_lint.toml</span><br></div><div class="token-line" style="color:#393A34"><span class="token plain">[[ad_hoc_lints.lints]]</span><br></div><div class="token-line" style="color:#393A34"><span class="token plain">...</span><br></div></code></pre></div></div>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="patterns-in-linters">Patterns in linters<a href="#patterns-in-linters" class="hash-link" aria-label="Direct link to Patterns in linters" title="Direct link to Patterns in linters" translate="no">​</a></h2>
+<p>Many built-in ELP diagnostics are implemented as SSR patterns under the hood
+(the <code>SsrPatternsLinter</code> infrastructure). For example, the lint that suggests a
+list comprehension instead of <code>lists:map/2</code> is driven by patterns like:</p>
+<div class="language-erlang codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-erlang codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token atom">ssr</span><span class="token punctuation" style="color:#393A34">:</span><span class="token plain"> </span><span class="token atom">lists</span><span class="token punctuation" style="color:#393A34">:</span><span class="token function" style="color:#d73a49">map</span><span class="token punctuation" style="color:#393A34">(</span><span class="token keyword" style="color:#00009f">fun</span><span class="token plain"> </span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@Var</span><span class="token punctuation" style="color:#393A34">)</span><span class="token plain"> </span><span class="token operator" style="color:#393A34">-</span><span class="token operator" style="color:#393A34">&gt;</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@Body</span><span class="token plain"> </span><span class="token keyword" style="color:#00009f">end</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@List</span><span class="token punctuation" style="color:#393A34">)</span><span class="token punctuation" style="color:#393A34">.</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token atom">ssr</span><span class="token punctuation" style="color:#393A34">:</span><span class="token plain"> </span><span class="token atom">lists</span><span class="token punctuation" style="color:#393A34">:</span><span class="token function" style="color:#d73a49">map</span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@Fun</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@List</span><span class="token punctuation" style="color:#393A34">)</span><span class="token punctuation" style="color:#393A34">.</span><br></div></code></pre></div></div>
+<p>If you find yourself running the same <code>elp search</code> repeatedly, it may be a good
+candidate for a real linter — see the
+<a class="" href="/erlang-language-platform/docs/contributing/">contributing guide</a> for how linters are written.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="examples">Examples<a href="#examples" class="hash-link" aria-label="Direct link to Examples" title="Direct link to Examples" translate="no">​</a></h2>
+<div class="language-erlang codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-erlang codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token comment" style="color:#999988;font-style:italic">%% Any call to io:format, regardless of arguments</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token atom">io</span><span class="token punctuation" style="color:#393A34">:</span><span class="token function" style="color:#d73a49">format</span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@@Args</span><span class="token punctuation" style="color:#393A34">)</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token comment" style="color:#999988;font-style:italic">%% Any gen_server:call, regardless of arguments</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token atom">gen_server</span><span class="token punctuation" style="color:#393A34">:</span><span class="token function" style="color:#d73a49">call</span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@@Args</span><span class="token punctuation" style="color:#393A34">)</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token comment" style="color:#999988;font-style:italic">%% Comparing a term to the atom `true` (often redundant)</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token variable" style="color:#36acaa">_@X</span><span class="token plain"> </span><span class="token operator" style="color:#393A34">==</span><span class="token plain"> </span><span class="token boolean" style="color:#36acaa">true</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token comment" style="color:#999988;font-style:italic">%% A meck:expect where the implementation is a fun</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token atom">meck</span><span class="token punctuation" style="color:#393A34">:</span><span class="token function" style="color:#d73a49">expect</span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@Mod</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@Fun</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@Impl</span><span class="token punctuation" style="color:#393A34">)</span><span class="token plain"> </span><span class="token atom">where</span><span class="token plain"> </span><span class="token function" style="color:#d73a49">is_function</span><span class="token punctuation" style="color:#393A34">(</span><span class="token variable" style="color:#36acaa">_@Impl</span><span class="token punctuation" style="color:#393A34">)</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token comment" style="color:#999988;font-style:italic">%% A tuple tagged `error` with any payload</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token punctuation" style="color:#393A34">{</span><span class="token atom">error</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> </span><span class="token variable" style="color:#36acaa">_@@Rest</span><span class="token punctuation" style="color:#393A34">}</span><br></div></code></pre></div></div>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="see-also">See also<a href="#see-also" class="hash-link" aria-label="Direct link to See also" title="Direct link to See also" translate="no">​</a></h2>
+<ul>
+<li class=""><a class="" href="/erlang-language-platform/docs/find-references/">Find References</a> — the complementary &quot;where is this symbol
+used&quot; feature.</li>
+<li class=""><code>elp search --help</code> — the same cheat-sheet, always in sync with your installed
+version.</li>
+</ul></div></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/erlang-language-platform/docs/find-references/"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Find References</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/erlang-language-platform/docs/architecture/"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Architecture</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#quick-start" class="table-of-contents__link toc-highlight">Quick start</a></li><li><a href="#placeholders" class="table-of-contents__link toc-highlight">Placeholders</a><ul><li><a href="#reusing-a-placeholder-requires-equality" class="table-of-contents__link toc-highlight">Reusing a placeholder requires equality</a></li><li><a href="#globs" class="table-of-contents__link toc-highlight">Globs</a></li></ul></li><li><a href="#constraints-with-where" class="table-of-contents__link toc-highlight">Constraints with <code>where</code></a><ul><li><a href="#equality--inequality-against-a-literal" class="table-of-contents__link toc-highlight">Equality / inequality against a literal</a></li><li><a href="#type--kind-predicates" class="table-of-contents__link toc-highlight">Type / kind predicates</a></li></ul></li><li><a href="#pattern-spellings" class="table-of-contents__link toc-highlight">Pattern spellings</a></li><li><a href="#searching-not-replacing" class="table-of-contents__link toc-highlight">Searching, not replacing</a></li><li><a href="#output" class="table-of-contents__link toc-highlight">Output</a><ul><li><a href="#default-output" class="table-of-contents__link toc-highlight">Default output</a></li><li><a href="#showing-source-context" class="table-of-contents__link toc-highlight">Showing source context</a></li><li><a href="#json-output" class="table-of-contents__link toc-highlight">JSON output</a></li></ul></li><li><a href="#scoping-the-search" class="table-of-contents__link toc-highlight">Scoping the search</a></li><li><a href="#macro-and-parenthesis-handling" class="table-of-contents__link toc-highlight">Macro and parenthesis handling</a></li><li><a href="#generating-a-lint-config" class="table-of-contents__link toc-highlight">Generating a lint config</a></li><li><a href="#patterns-in-linters" class="table-of-contents__link toc-highlight">Patterns in linters</a></li><li><a href="#examples" class="table-of-contents__link toc-highlight">Examples</a></li><li><a href="#see-also" class="table-of-contents__link toc-highlight">See also</a></li></ul></div></div></div></div></main></div></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Docs</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/erlang-language-platform/docs/get-started/">Get Started</a></li><li class="footer__item"><a class="footer__link-item" href="/erlang-language-platform/docs/architecture/">Architecture</a></li><li class="footer__item"><a class="footer__link-item" href="/erlang-language-platform/docs/erlang-error-index/">Erlang Error Index</a></li><li class="footer__item"><a class="footer__link-item" href="/erlang-language-platform/docs/eqwalizer/reference/">eqWAlizer</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Community</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://github.com/whatsapp/erlang-language-platform/issues" target="_blank" rel="noopener noreferrer" class="footer__link-item">GitHub Issues<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">More</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://github.com/whatsapp/erlang-language-platform" target="_blank" rel="noopener noreferrer" class="footer__link-item">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://github.com/WhatsApp/erlang-language-platform/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer" class="footer__link-item">Contributing<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://github.com/WhatsApp/erlang-language-platform/blob/main/CODE_OF_CONDUCT.md" target="_blank" rel="noopener noreferrer" class="footer__link-item">Code Of Conduct<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://opensource.fb.com/legal/terms" target="_blank" rel="noopener noreferrer" class="footer__link-item">Terms of Use<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://opensource.fb.com/legal/privacy" target="_blank" rel="noopener noreferrer" class="footer__link-item">Privacy Policy<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 Meta Platforms, Inc. Built with Docusaurus.</div></div></div></footer></div>
+</body>
+</html>
