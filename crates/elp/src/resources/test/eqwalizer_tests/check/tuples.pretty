@@ -12,4 +12,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   term()
 Context expected type: number()
 
-2 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/tuples.erl:22:31
+   │
+22 │         T when is_tuple(T) -> T
+   │                               ^ T.
+Expression has type:   tuple()
+Context expected type: {atom(), binary()}
+
+3 ERRORS

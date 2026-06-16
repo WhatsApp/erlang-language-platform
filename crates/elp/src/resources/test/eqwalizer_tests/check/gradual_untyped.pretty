@@ -14,12 +14,52 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_untyped.erl:28:25
    │
 28 │   eqwalizer:reveal_type(A),
-   │                         ^ dynamic()
+   │                         ^ term()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_untyped.erl:29:3
+   │
+29 │   A.
+   │   ^ A.
+Expression has type:   term()
+Context expected type: 'ok'
 
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_untyped.erl:33:25
    │
 33 │   eqwalizer:reveal_type(B),
-   │                         ^ dynamic()
+   │                         ^ term()
 
-4 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_untyped.erl:34:3
+   │
+34 │   B.
+   │   ^ B.
+Expression has type:   term()
+Context expected type: 'ok'
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_untyped.erl:39:3
+   │
+39 │   T.
+   │   ^ T.
+Expression has type:   tuple()
+Context expected type: {number()}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_untyped.erl:44:3
+   │
+44 │   T.
+   │   ^ T.
+Expression has type:   tuple()
+Context expected type: {number(), number()}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/gradual_untyped.erl:49:3
+   │
+49 │   T.
+   │   ^ T.
+Expression has type:   tuple()
+Context expected type: #untyped{}
+
+9 ERRORS

@@ -69,20 +69,27 @@ Because in the expression's type:
   Differs from the expected type:  atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/custom.erl:64:5
+   │
+64 │     element(1, Tup).
+   │     ^^^^^^^^^^^^^^^ erlang:element(1, Tup).
+Expression has type:   term()
+Context expected type: atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/custom.erl:68:5
    │
 68 │     element(1, Tup).
    │     ^^^^^^^^^^^^^^^
    │     │
    │     erlang:element(1, Tup).
-Expression has type:   dynamic() | number()
+Expression has type:   term() | number()
 Context expected type: atom()
    │     
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: dynamic()
-  However the following candidate: number()
-  Differs from the expected type:  atom()
+  Here the type is:     term()
+  Context expects type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/custom.erl:86:5
@@ -1340,17 +1347,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      ┌─ check/src/custom.erl:1225:1
      │
 1225 │ proplists:lookup(self(), [a, {b, true}]).
-     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-     │ │
-     │ proplists:lookup(erlang:self(), ['a', {'b', 'true'}]).
+     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ proplists:lookup(erlang:self(), ['a', {'b', 'true'}]).
 Expression has type:   'none' | tuple()
 Context expected type: {'b', 'true'}
-     │ 
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: tuple()
-  However the following candidate: 'none'
-  Differs from the expected type:  {'b', 'true'}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1229:25
@@ -1359,6 +1358,22 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                         ^ 'b'.
 Expression has type:   'b'
 Context expected type: [term()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1234:1
+     │
+1234 │ proplists:lookup(self(), [a, {b, true}]).
+     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │ │
+     │ proplists:lookup(erlang:self(), ['a', {'b', 'true'}]).
+Expression has type:   'none' | tuple()
+Context expected type: 'none' | {'a', 'true'} | {'b', 'true'}
+     │ 
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: 'none'
+  However the following candidate: tuple()
+  Differs from the expected type:  'none' | {'a', 'true'} | {'b', 'true'}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1239:5
@@ -1377,12 +1392,49 @@ Because in the expression's type:
   Differs from the expected type:  'none'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1244:5
+     │    
+1244 │ ╭ ╭     proplists:lookup_all(
+1245 │ │ │         self(),
+1246 │ │ │         [a, {b, true}]
+1247 │ │ │     ).
+     │ ╰─│─────^ proplists:lookup_all(erlang:self(), ['a', {'b', 'true'}]).
+Expression has type:   [tuple()]
+Context expected type: [{'b', 'true'}]
+     │   ╰─────' 
+
+Because in the expression's type:
+  [
+    Here the type is:     tuple()
+    Context expects type: {'b', 'true'}
+  ]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1252:29
      │
 1252 │     proplists:lookup_all(a, b).
      │                             ^ 'b'.
 Expression has type:   'b'
 Context expected type: [term()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1257:5
+     │    
+1257 │ ╭ ╭     proplists:lookup_all(
+1258 │ │ │         self(),
+1259 │ │ │         [a, {b, true}]
+1260 │ │ │     ).
+     │ ╰─│─────^ proplists:lookup_all(erlang:self(), ['a', {'b', 'true'}]).
+Expression has type:   [tuple()]
+Context expected type: [{'a', 'true'} | {'b', 'true'}]
+     │   ╰─────' 
+
+Because in the expression's type:
+  [
+    Here the type is:     tuple()
+    Context expects type: {'a', 'true'} | {'b', 'true'}
+    No candidate matches in the expected union.
+  ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1265:5
@@ -2316,4 +2368,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number()
 Context expected type: binary()
 
-186 ERRORS
+190 ERRORS

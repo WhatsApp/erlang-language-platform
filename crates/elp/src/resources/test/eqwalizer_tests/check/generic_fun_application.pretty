@@ -280,6 +280,14 @@ Expression has type:   X
 Context expected type: 'false'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/generic_fun_application.erl:126:7
+    │
+126 │     F(Tuple).
+    │       ^^^^^ Tuple.
+Expression has type:   tuple()
+Context expected type: {X}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:130:5
     │
 130 │     lmap(F, [2, 4]).
@@ -743,4 +751,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   {dynamic()}
 Context expected type: 'error' | {'error', atom()}
 
-63 ERRORS
+64 ERRORS

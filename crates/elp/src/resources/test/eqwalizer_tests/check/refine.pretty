@@ -208,6 +208,14 @@ Expression has type:   #my_rec{}
 Context expected type: none()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/refine.erl:191:28
+    │
+191 │ record_as_tuple5_neg(R) -> R.
+    │                            ^ R.
+Expression has type:   tuple()
+Context expected type: #my_rec{}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:195:28
     │
 195 │ record_as_tuple6_neg(R) -> R.
@@ -429,4 +437,4 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
 386 │     eqwalizer:reveal_type(A),
     │                           ^ alias()
 
-38 ERRORS
+39 ERRORS
