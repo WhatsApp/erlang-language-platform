@@ -88,7 +88,7 @@ proc-macro2 = { version = "1.0.106", features = ["span-locations"] }
 quote = "1.0.45"
 ra_ap_query-group-macro = "0.0.328"
 rayon = "1.11.0"
-regex = "1.12.3"
+regex = "1.12.4"
 rowan = "0.15.18"
 rustc-hash = "2.1.2"
 rustyline = { version = "18.0.0", features = ["derive"] }
