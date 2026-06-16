@@ -50,7 +50,18 @@ pub fn project_path(project: &str) -> String {
 
     #[cfg(not(buck_build))]
     {
-        format!("../../test/test_projects/{project}")
+        let project_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../test/test_projects")
+            .join(project);
+        dunce::canonicalize(&project_path)
+            .unwrap_or_else(|_| {
+                panic!(
+                    "Failed to canonicalize project path: {}",
+                    project_path.display()
+                )
+            })
+            .to_string_lossy()
+            .to_string()
     }
 }
 
