@@ -7,6 +7,8 @@
 
 -compile([export_all, nowarn_export_all]).
 
+-record(rec, {a :: atom(), b :: binary()}).
+
 -spec test1(tuple()) -> integer().
 test1(Tuple) ->
     case Tuple of
@@ -21,3 +23,15 @@ test2_neg(Term) ->
     case Term of
         T when is_tuple(T) -> T
     end.
+
+-spec setelement1({atom(), binary()}) -> {binary(), binary()}.
+setelement1(AB) -> setelement(1, AB, ~"").
+
+-spec setelement_neg({atom(), binary()}) -> {atom(), binary()}.
+setelement_neg(AB) -> setelement(1, AB, ~"").
+
+-spec update_rec(#rec{}) -> #rec{}.
+update_rec(Rec) -> setelement(2, Rec, red).
+
+-spec update_rec_neg(#rec{}) -> #rec{}.
+update_rec_neg(Rec) -> setelement(2, Rec, ~"red").

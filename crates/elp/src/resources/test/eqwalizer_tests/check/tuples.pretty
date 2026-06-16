@@ -1,23 +1,55 @@
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-   ┌─ check/src/tuples.erl:15:27
+   ┌─ check/src/tuples.erl:17:27
    │
-15 │     eqwalizer:reveal_type(Tuple),
+17 │     eqwalizer:reveal_type(Tuple),
    │                           ^^^^^ {term()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/tuples.erl:17:5
+   ┌─ check/src/tuples.erl:19:5
    │
-17 │     Z.
+19 │     Z.
    │     ^ Z.
 Expression has type:   term()
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/tuples.erl:22:31
+   ┌─ check/src/tuples.erl:24:31
    │
-22 │         T when is_tuple(T) -> T
+24 │         T when is_tuple(T) -> T
    │                               ^ T.
 Expression has type:   tuple()
 Context expected type: {atom(), binary()}
 
-3 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/tuples.erl:28:20
+   │
+28 │ setelement1(AB) -> setelement(1, AB, ~"").
+   │                    ^^^^^^^^^^^^^^^^^^^^^^ erlang:setelement(1, AB, <<..>>).
+Expression has type:   tuple()
+Context expected type: {binary(), binary()}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/tuples.erl:31:23
+   │
+31 │ setelement_neg(AB) -> setelement(1, AB, ~"").
+   │                       ^^^^^^^^^^^^^^^^^^^^^^ erlang:setelement(1, AB, <<..>>).
+Expression has type:   tuple()
+Context expected type: {atom(), binary()}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/tuples.erl:34:20
+   │
+34 │ update_rec(Rec) -> setelement(2, Rec, red).
+   │                    ^^^^^^^^^^^^^^^^^^^^^^^ erlang:setelement(2, Rec, 'red').
+Expression has type:   tuple()
+Context expected type: #rec{}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/tuples.erl:37:24
+   │
+37 │ update_rec_neg(Rec) -> setelement(2, Rec, ~"red").
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ erlang:setelement(2, Rec, <<..>>).
+Expression has type:   tuple()
+Context expected type: #rec{}
+
+7 ERRORS
