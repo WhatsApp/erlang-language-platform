@@ -40,16 +40,4 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
 57 │ uncovered_last_3({err, _A}) -> ok.
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
 
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-   ┌─ options/src/uncovered_clauses.erl:66:1
-   │
-66 │ uncovered_neg({F}) when is_float(F) -> float;
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-   ┌─ options/src/uncovered_clauses.erl:67:1
-   │
-67 │ uncovered_neg({B}) when is_binary(B) -> binary;
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
-
-9 ERRORS
+7 ERRORS
