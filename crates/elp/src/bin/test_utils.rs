@@ -10,18 +10,9 @@
 
 use std::path::PathBuf;
 
-#[cfg(buck_build)]
-pub fn get_resources_dir() -> PathBuf {
-    let resource_path = buck_resources::get("whatsapp/elp/crates/elp/test_resources")
-        .unwrap()
-        .join("src/resources/test");
-    dunce::canonicalize(&resource_path).unwrap_or_else(|_| {
-        panic!(
-            "Failed to canonicalize resources path: {}",
-            resource_path.display()
-        )
-    })
-}
+// @fb-only: #[rustfmt::skip]
+// @fb-only: #[cfg(buck_build)]
+// @fb-only: pub fn get_resources_dir() -> PathBuf { crate::meta_only::get_resources_dir() }
 
 #[cfg(not(buck_build))]
 pub fn get_resources_dir() -> PathBuf {
