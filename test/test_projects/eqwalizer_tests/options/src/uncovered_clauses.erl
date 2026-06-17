@@ -59,3 +59,10 @@ uncovered_last_3({err, _A}) -> ok.
 -spec uncovered_last_4({ok, atom()}) -> ok.
 uncovered_last_4({ok, _A}) -> ok;
 uncovered_last_4(_) -> ok.
+
+-spec uncovered_neg({term()}) -> atom().
+uncovered_neg({A}) when is_atom(A) -> atom;
+uncovered_neg({I}) when is_integer(I) -> integer;
+uncovered_neg({F}) when is_float(F) -> float;
+uncovered_neg({B}) when is_binary(B) -> binary;
+uncovered_neg(_X) -> other.
