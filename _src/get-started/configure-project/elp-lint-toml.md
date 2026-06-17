@@ -119,19 +119,20 @@ Each argument name has a special meaning:
 | `Function` | Argument position containing the target function name |
 | `Args`     | Argument position containing a list of arguments (arity = list length) |
 | `Arity`    | Argument position containing the arity as an integer |
+| `FunArity` | Argument position containing a fun expression — arity is inferred from the clause parameter count (`fun(_, _) -> ok end` → arity 2) or from a fun reference (`fun M:F/A` → arity from the integer literal) |
 | Any other  | Ignored (serves as documentation, e.g., `Node`, `Opts`, `_`) |
 
 **Validation rules:**
-- `Function` and `Args`/`Arity` must both be present or both absent
-- If neither `Function` nor `Args`/`Arity` is present, at least `Module` or `[Module]` is required (module-arg-only pattern, used for rename support)
+- `Function` and `Args`/`Arity`/`FunArity` must both be present or both absent
+- If neither `Function` nor `Args`/`Arity`/`FunArity` is present, at least `Module` or `[Module]` is required (module-arg-only pattern, used for rename support)
 - At most one `Module` or `[Module]` argument
 - At most one `Function` argument
-- At most one of `Args` or `Arity` (not both)
+- At most one of `Args`, `Arity`, or `FunArity` (not multiple)
 
 There are two kinds of patterns:
 
-1. **Dynamic call patterns** — include `Function` and `Args`/`Arity`. Used by find-references to resolve dynamic calls.
-2. **Module-arg-only patterns** — include only `Module` or `[Module]`, without `Function`/`Args`. Used by rename to track module name arguments.
+1. **Dynamic call patterns** — include `Function` and `Args`/`Arity`/`FunArity`. Used by find-references to resolve dynamic calls.
+2. **Module-arg-only patterns** — include only `Module` or `[Module]`, without `Function`/`Args`/`Arity`/`FunArity`. Used by rename to track module name arguments.
 
 **Example:**
 
@@ -141,6 +142,7 @@ patterns = [
   # Dynamic call patterns (resolve calls)
   "my_rpc:call(Node, Module, Function, Args)",
   "my_utils:check_exported(Module, Function, Arity)",
+  "my_mock:expect(Module, Function, FunArity)",
   "my_apply(Function, Args)",
   # Module-arg-only patterns (rename support)
   "my_mock:setup(Module, _)",
@@ -151,5 +153,6 @@ patterns = [
 In this example:
 - `my_rpc:call/4` — ELP learns that argument 2 is the module, argument 3 is the function, and argument 4 is the args list
 - `my_utils:check_exported/3` — a local utility where argument 3 is a direct arity integer
+- `my_mock:expect/3` — argument 3 is a fun expression; arity is inferred from the clause parameter count (`fun(_, _) -> ok end` → arity 2) or from a fun reference (`fun M:F/A`)
 - `my_apply/2` — an unqualified function with no module argument
 - `my_mock:setup/2` — two patterns together tell ELP that argument 1 can be either a single module atom or a list of modules (rename will update both forms)
