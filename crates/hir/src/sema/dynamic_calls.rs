@@ -132,11 +132,8 @@ pub(crate) fn builtin_dynamic_call_patterns() -> Vec<DynamicCallPatternInput> {
         .collect()
 }
 
-static BUILTIN: LazyLock<FxHashMap<PatternKey, DynamicCallPatternInput>> = LazyLock::new(|| {
-    let mut patterns = builtin_dynamic_call_patterns();
-    // @fb-only: patterns.extend(crate::sema::meta_only::meta_only_dynamic_call_patterns());
-    build_index(patterns)
-});
+static BUILTIN: LazyLock<FxHashMap<PatternKey, DynamicCallPatternInput>> =
+    LazyLock::new(|| build_index(builtin_dynamic_call_patterns()));
 
 /// Look up a dynamic call pattern by call signature.
 ///
