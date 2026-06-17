@@ -532,6 +532,74 @@ should_not_match() -> #foo{a = 1}.
     }
 
     #[test]
+    fn test_functions_meck_called_args() {
+        check(
+            r#"
+        //- /src/main.erl
+
+        -export([foo/2]).
+          foo~(A, B) -> {A, B}.
+        %%^^^def
+
+        check() ->
+          meck:called(main, foo, [1, 2]).
+        %%                  ^^^
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_meck_delete_arity() {
+        check(
+            r#"
+        //- /src/main.erl
+
+        -export([foo/2]).
+          foo~(A, B) -> {A, B}.
+        %%^^^def
+
+        cleanup() ->
+          meck:delete(main, foo, 2).
+        %%                  ^^^
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_meck_expect_fun_arity() {
+        check(
+            r#"
+        //- /src/main.erl
+
+        -export([foo/2]).
+          foo~(A, B) -> {A, B}.
+        %%^^^def
+
+        setup() ->
+          meck:expect(main, foo, fun(_, _) -> ok end).
+        %%                  ^^^
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_functions_meck_expect_capture_fun() {
+        check(
+            r#"
+        //- /src/main.erl
+
+        -export([foo/1]).
+          foo~(A) -> A.
+        %%^^^def
+
+        setup() ->
+          meck:expect(main, foo, fun erlang:self/1).
+        %%                  ^^^
+        "#,
+        );
+    }
+
+    #[test]
     fn test_functions_no_false_ref_from_macro() {
         check(
             r#"

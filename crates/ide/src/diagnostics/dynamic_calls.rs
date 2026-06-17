@@ -39,6 +39,7 @@ pub fn parse_dynamic_call_pattern(input: &str) -> anyhow::Result<DynamicCallPatt
 
 #[cfg(test)]
 mod tests {
+    use elp_ide_db::elp_base_db::AritySource;
     use elp_ide_db::elp_base_db::ModuleArgShape;
 
     use super::parse_dynamic_call_pattern;
@@ -53,7 +54,7 @@ mod tests {
         assert_eq!(p.module_arg_shape, ModuleArgShape::Atom);
         assert_eq!(p.function_arg_index, Some(2));
         assert_eq!(p.args_list_index, Some(3));
-        assert!(!p.direct_arity);
+        assert_eq!(p.arity_source, AritySource::ListLength);
     }
 
     #[test]
@@ -66,7 +67,7 @@ mod tests {
         assert_eq!(p.module_arg_shape, ModuleArgShape::Atom);
         assert_eq!(p.function_arg_index, Some(1));
         assert_eq!(p.args_list_index, Some(2));
-        assert!(p.direct_arity);
+        assert_eq!(p.arity_source, AritySource::Integer);
     }
 
     #[test]
@@ -80,7 +81,7 @@ mod tests {
         assert_eq!(p.module_arg_shape, ModuleArgShape::Atom);
         assert_eq!(p.function_arg_index, Some(0));
         assert_eq!(p.args_list_index, Some(1));
-        assert!(!p.direct_arity);
+        assert_eq!(p.arity_source, AritySource::ListLength);
     }
 
     #[test]
@@ -100,18 +101,21 @@ mod tests {
         let err = parse_dynamic_call_pattern("foo(Function, Args, Arity)")
             .unwrap_err()
             .to_string();
-        assert!(err.contains("both"), "expected both error, got: {err}");
+        assert!(
+            err.contains("multiple arity-source"),
+            "expected multiple arity-source error, got: {err}"
+        );
     }
 
     #[test]
     fn error_no_args_or_arity() {
-        // Function present without Args/Arity → error
+        // Function present without Args/Arity/FunArity → error
         let err = parse_dynamic_call_pattern("foo(_, Function)")
             .unwrap_err()
             .to_string();
         assert!(
-            err.contains("Args") || err.contains("Arity"),
-            "expected Args/Arity error, got: {err}"
+            err.contains("Args") || err.contains("Arity") || err.contains("FunArity"),
+            "expected Args/Arity/FunArity error, got: {err}"
         );
     }
 
@@ -150,7 +154,7 @@ mod tests {
         assert_eq!(p.module_arg_shape, ModuleArgShape::Atom);
         assert_eq!(p.function_arg_index, Some(2));
         assert_eq!(p.args_list_index, Some(3));
-        assert!(!p.direct_arity);
+        assert_eq!(p.arity_source, AritySource::ListLength);
     }
 
     // --- [Module] syntax tests ---
@@ -197,7 +201,7 @@ mod tests {
         assert_eq!(p.module_arg_shape, ModuleArgShape::Atom);
         assert_eq!(p.function_arg_index, None);
         assert_eq!(p.args_list_index, None);
-        assert!(!p.direct_arity);
+        assert_eq!(p.arity_source, AritySource::ListLength);
     }
 
     #[test]
@@ -236,13 +240,37 @@ mod tests {
     }
 
     #[test]
+    fn parse_fun_arity_pattern() {
+        let p = parse_dynamic_call_pattern("meck:expect(Module, Function, FunArity)").unwrap();
+        assert_eq!(p.caller_module.as_deref(), Some("meck"));
+        assert_eq!(p.caller_function, "expect");
+        assert_eq!(p.caller_arity, 3);
+        assert_eq!(p.module_arg_index, Some(0));
+        assert_eq!(p.module_arg_shape, ModuleArgShape::Atom);
+        assert_eq!(p.function_arg_index, Some(1));
+        assert_eq!(p.args_list_index, Some(2));
+        assert_eq!(p.arity_source, AritySource::FunClause);
+    }
+
+    #[test]
+    fn error_fun_arity_and_args() {
+        let err = parse_dynamic_call_pattern("foo(Module, Function, Args, FunArity)")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("multiple arity-source"),
+            "expected multiple arity-source error, got: {err}"
+        );
+    }
+
+    #[test]
     fn error_function_without_args() {
         let err = parse_dynamic_call_pattern("foo(Module, Function)")
             .unwrap_err()
             .to_string();
         assert!(
-            err.contains("Args") || err.contains("Arity"),
-            "expected Args/Arity error, got: {err}"
+            err.contains("Args") || err.contains("Arity") || err.contains("FunArity"),
+            "expected Args/Arity/FunArity error, got: {err}"
         );
     }
 

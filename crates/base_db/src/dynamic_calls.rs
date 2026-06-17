@@ -57,6 +57,18 @@ pub fn build_index(
     index
 }
 
+/// How the arity of the target function is determined from the pattern.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AritySource {
+    /// `Args` — infer arity from the length of a list literal.
+    ListLength,
+    /// `Arity` — read arity directly from an integer literal.
+    Integer,
+    /// `FunArity` — infer arity from an anonymous function's clause arity
+    /// or a fun reference's (`fun M:F/A`) arity expression.
+    FunClause,
+}
+
 /// How the module argument is expressed at a pattern's call site.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ModuleArgShape {
@@ -100,10 +112,10 @@ pub struct DynamicCallPatternInput {
     pub module_arg_shape: ModuleArgShape,
     /// 0-based index of the `Function` argument (`None` for module-arg-only patterns)
     pub function_arg_index: Option<u32>,
-    /// 0-based index of the `Args`/`Arity` argument (`None` for module-arg-only patterns)
+    /// 0-based index of the `Args`/`Arity`/`FunArity` argument (`None` for module-arg-only patterns)
     pub args_list_index: Option<u32>,
-    /// `true` if `Arity` was used (direct integer), `false` if `Args` (list length)
-    pub direct_arity: bool,
+    /// How the target arity is determined from the argument at `args_list_index`.
+    pub arity_source: AritySource,
 }
 
 /// Parse the input string as a (possibly qualified) call expression using ELP's
@@ -192,7 +204,7 @@ pub fn parse_dynamic_call_pattern(input: &str) -> Result<DynamicCallPatternInput
     let mut module_arg_shape = ModuleArgShape::Atom;
     let mut function_arg_index: Option<u32> = None;
     let mut args_list_index: Option<u32> = None;
-    let mut direct_arity = false;
+    let mut arity_source = AritySource::ListLength;
 
     for (i, arg) in args.iter().enumerate() {
         match arg {
@@ -214,22 +226,29 @@ pub fn parse_dynamic_call_pattern(input: &str) -> Result<DynamicCallPatternInput
                     }
                     "Args" => {
                         if args_list_index.is_some() {
-                            bail!("both 'Args' and 'Arity' present");
+                            bail!("multiple arity-source arguments ('Args', 'Arity', 'FunArity')");
                         }
                         args_list_index = Some(i as u32);
-                        direct_arity = false;
+                        arity_source = AritySource::ListLength;
                     }
                     "Arity" => {
                         if args_list_index.is_some() {
-                            bail!("both 'Args' and 'Arity' present");
+                            bail!("multiple arity-source arguments ('Args', 'Arity', 'FunArity')");
                         }
                         args_list_index = Some(i as u32);
-                        direct_arity = true;
+                        arity_source = AritySource::Integer;
+                    }
+                    "FunArity" => {
+                        if args_list_index.is_some() {
+                            bail!("multiple arity-source arguments ('Args', 'Arity', 'FunArity')");
+                        }
+                        args_list_index = Some(i as u32);
+                        arity_source = AritySource::FunClause;
                     }
                     other => {
                         if !other.starts_with('_') {
                             bail!(
-                                "unexpected variable '{}' (expected 'Module', 'Function', 'Args', 'Arity', or a '_'-prefixed placeholder)",
+                                "unexpected variable '{}' (expected 'Module', 'Function', 'Args', 'Arity', 'FunArity', or a '_'-prefixed placeholder)",
                                 other
                             );
                         }
@@ -255,7 +274,7 @@ pub fn parse_dynamic_call_pattern(input: &str) -> Result<DynamicCallPatternInput
         }
     }
 
-    // Validate: Function and Args/Arity must both be present or both absent
+    // Validate: Function and Args/Arity/FunArity must both be present or both absent
     match (function_arg_index, args_list_index) {
         (Some(_), Some(_)) => {}
         (None, None) => {
@@ -264,10 +283,14 @@ pub fn parse_dynamic_call_pattern(input: &str) -> Result<DynamicCallPatternInput
             }
         }
         (Some(_), None) => {
-            bail!("missing 'Args' or 'Arity' argument (required when 'Function' is present)");
+            bail!(
+                "missing 'Args', 'Arity', or 'FunArity' argument (required when 'Function' is present)"
+            );
         }
         (None, Some(_)) => {
-            bail!("missing 'Function' argument (required when 'Args'/'Arity' is present)");
+            bail!(
+                "missing 'Function' argument (required when 'Args'/'Arity'/'FunArity' is present)"
+            );
         }
     }
 
@@ -279,6 +302,6 @@ pub fn parse_dynamic_call_pattern(input: &str) -> Result<DynamicCallPatternInput
         module_arg_shape,
         function_arg_index,
         args_list_index,
-        direct_arity,
+        arity_source,
     })
 }

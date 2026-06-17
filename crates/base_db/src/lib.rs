@@ -169,6 +169,7 @@ impl FileKind {
     }
 }
 
+pub use dynamic_calls::AritySource;
 pub use dynamic_calls::DynamicCallPatternInput;
 pub use dynamic_calls::ModuleArgShape;
 pub use dynamic_calls::PatternKey;

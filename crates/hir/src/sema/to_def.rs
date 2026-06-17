@@ -866,10 +866,10 @@ pub(crate) fn look_for_dynamic_call(
     let function_arg_index = pattern.function_arg_index? as usize;
     let args_list_index = pattern.args_list_index? as usize;
 
-    let arity = if pattern.direct_arity {
-        arity_from_integer_arg(args[args_list_index], body)?
-    } else {
-        arity_from_apply_args(args[args_list_index], body)?
+    let arity = match pattern.arity_source {
+        elp_base_db::AritySource::Integer => arity_from_integer_arg(args[args_list_index], body)?,
+        elp_base_db::AritySource::ListLength => arity_from_apply_args(args[args_list_index], body)?,
+        elp_base_db::AritySource::FunClause => arity_from_fun_expr(args[args_list_index], body)?,
     };
 
     let resolve_atom_module = |module_expr: ExprId| {
@@ -933,6 +933,19 @@ fn arity_from_apply_args(args: ExprId, body: &Body) -> Option<u32> {
 fn arity_from_integer_arg(arity_arg: ExprId, body: &Body) -> Option<u32> {
     match &body[arity_arg] {
         Expr::Literal(Literal::Integer(int)) => int.value.try_into().ok(),
+        _ => None,
+    }
+}
+
+/// Extract arity from a fun expression (anonymous function or fun reference).
+///
+/// Handles two forms:
+/// - `fun(X, Y) -> ... end` (`Closure`) — arity from the clause parameter count
+/// - `fun Module:Function/Arity` (`CaptureFun`) — arity from the integer literal
+fn arity_from_fun_expr(expr_id: ExprId, body: &Body) -> Option<u32> {
+    match &body[expr_id] {
+        Expr::Closure { clauses, .. } => clauses.first().map(|clause| clause.pats.len() as u32),
+        Expr::CaptureFun { arity, .. } => arity_from_integer_arg(*arity, body),
         _ => None,
     }
 }
