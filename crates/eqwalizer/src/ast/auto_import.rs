@@ -17,6 +17,16 @@ static FUNS: LazyLock<BTreeSet<ast::Id>> = LazyLock::new(|| {
     BTreeSet::from_iter(
         [
             "abs/1",
+            "alias/0",
+            // "alias/1" is intentionally left out of the auto-import list. It returns
+            // reference(), but the idiomatic way to use it is to build the OTP "alias"
+            // reply tag as an improper list ([alias | Ref]) when constructing a
+            // '$gen_call' message by hand (as the standard library does internally).
+            // eqwalizer requires the tail of a cons cell to be a list, so it cannot
+            // type-check [alias | Ref] and reports incompatible_types once alias/1 is
+            // precisely typed as returning reference(). Leaving alias/1 out lets such
+            // calls fall back to dynamic() so the idiom keeps eqwalizing.
+            // "alias/1",
             "apply/2",
             "apply/3",
             "atom_to_binary/1",
@@ -53,8 +63,12 @@ static FUNS: LazyLock<BTreeSet<ast::Id>> = LazyLock::new(|| {
             "erase/1",
             "error/1",
             "error/2",
+            "error/3",
             "exit/1",
             "exit/2",
+            "exit/3",
+            "exit_signal/2",
+            "exit_signal/3",
             "float/1",
             "float_to_list/1",
             "float_to_list/2",
@@ -67,6 +81,7 @@ static FUNS: LazyLock<BTreeSet<ast::Id>> = LazyLock::new(|| {
             "get/0",
             "get/1",
             "get_keys/0",
+            "get_keys/1",
             "group_leader/0",
             "group_leader/2",
             "halt/0",
@@ -89,6 +104,7 @@ static FUNS: LazyLock<BTreeSet<ast::Id>> = LazyLock::new(|| {
             "is_function/1",
             "is_function/2",
             "is_integer/1",
+            "is_integer/3",
             "is_list/1",
             "is_map/1",
             "is_map_key/2",
@@ -97,10 +113,12 @@ static FUNS: LazyLock<BTreeSet<ast::Id>> = LazyLock::new(|| {
             "is_port/1",
             "is_reference/1",
             "is_tuple/1",
+            "is_record/1",
             "is_record/2",
             "is_record/3",
             "length/1",
             "link/1",
+            "link/2",
             "list_to_atom/1",
             "list_to_binary/1",
             "list_to_bitstring/1",
@@ -120,11 +138,13 @@ static FUNS: LazyLock<BTreeSet<ast::Id>> = LazyLock::new(|| {
             "min/2",
             "module_loaded/1",
             "monitor/2",
+            "monitor/3",
             "monitor_node/2",
             "node/0",
             "node/1",
             "nodes/0",
             "nodes/1",
+            "nodes/2",
             "now/0",
             "open_port/2",
             "pid_to_list/1",
@@ -183,6 +203,7 @@ static FUNS: LazyLock<BTreeSet<ast::Id>> = LazyLock::new(|| {
             "trunc/1",
             "tuple_size/1",
             "tuple_to_list/1",
+            "unalias/1",
             "unlink/1",
             "unregister/1",
             "whereis/1",
