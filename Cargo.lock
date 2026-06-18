@@ -561,7 +561,7 @@ dependencies = [
  "include_dir",
  "indexmap 2.14.0",
  "indicatif",
- "itertools",
+ "itertools 0.15.0",
  "lazy_static",
  "log",
  "lsp-server",
@@ -684,7 +684,7 @@ dependencies = [
  "fxhash",
  "hir",
  "imara-diff",
- "itertools",
+ "itertools 0.15.0",
  "lazy_static",
  "log",
  "rayon",
@@ -709,7 +709,7 @@ dependencies = [
  "expect-test",
  "fxhash",
  "hir",
- "itertools",
+ "itertools 0.15.0",
  "lazy_static",
  "log",
  "regex",
@@ -750,7 +750,7 @@ dependencies = [
  "fxhash",
  "hir",
  "indexmap 2.14.0",
- "itertools",
+ "itertools 0.15.0",
  "lazy_static",
  "log",
  "memchr",
@@ -818,7 +818,7 @@ dependencies = [
  "glob",
  "include_dir",
  "indexmap 2.14.0",
- "itertools",
+ "itertools 0.15.0",
  "lazy_static",
  "log",
  "parking_lot",
@@ -839,7 +839,7 @@ name = "elp_syntax"
 version = "1.1.0"
 dependencies = [
  "expect-test",
- "itertools",
+ "itertools 0.15.0",
  "lazy_static",
  "num-derive",
  "num-traits",
@@ -1199,7 +1199,7 @@ dependencies = [
  "fxhash",
  "htmlentity",
  "indexmap 2.14.0",
- "itertools",
+ "itertools 0.15.0",
  "la-arena",
  "lazy_static",
  "log",
@@ -1504,6 +1504,15 @@ name = "itertools"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc"
 dependencies = [
  "either",
 ]
@@ -2474,7 +2483,7 @@ source = "git+https://github.com/rust-lang/rust-analyzer.git?rev=2026-04-13#7b6e
 dependencies = [
  "crossbeam-channel",
  "crossbeam-utils",
- "itertools",
+ "itertools 0.14.0",
  "jod-thread",
  "libc",
  "miow",
