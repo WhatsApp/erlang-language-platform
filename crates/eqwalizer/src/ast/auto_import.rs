@@ -18,15 +18,7 @@ static FUNS: LazyLock<BTreeSet<ast::Id>> = LazyLock::new(|| {
         [
             "abs/1",
             "alias/0",
-            // "alias/1" is intentionally left out of the auto-import list. It returns
-            // reference(), but the idiomatic way to use it is to build the OTP "alias"
-            // reply tag as an improper list ([alias | Ref]) when constructing a
-            // '$gen_call' message by hand (as the standard library does internally).
-            // eqwalizer requires the tail of a cons cell to be a list, so it cannot
-            // type-check [alias | Ref] and reports incompatible_types once alias/1 is
-            // precisely typed as returning reference(). Leaving alias/1 out lets such
-            // calls fall back to dynamic() so the idiom keeps eqwalizing.
-            // "alias/1",
+            "alias/1",
             "apply/2",
             "apply/3",
             "atom_to_binary/1",
