@@ -866,7 +866,7 @@ mod tests {
     use std::str;
 
     use elp_base_db::AbsPathBuf;
-    use elp_project_model::otp::supports_eep59_doc_attributes;
+    use elp_project_model::otp::Otp;
     use expect_test::ExpectFile;
     use expect_test::expect;
     use expect_test::expect_file;
@@ -1148,7 +1148,7 @@ mod tests {
         with_eep59_support: ExpectFile,
         without_eep59_support: ExpectFile,
     ) {
-        if supports_eep59_doc_attributes() {
+        if Otp::supports_eep59_doc_attributes() {
             expect_docs(path, with_eep59_support);
         } else {
             expect_docs(path, without_eep59_support);

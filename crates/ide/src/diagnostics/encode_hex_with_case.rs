@@ -15,7 +15,7 @@
 use elp_ide_assists::Assist;
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::source_change::SourceChangeBuilder;
-use elp_project_model::otp;
+use elp_project_model::otp::Otp;
 use lazy_static::lazy_static;
 
 use crate::diagnostics::Linter;
@@ -35,7 +35,7 @@ impl Linter for EncodeHexWithCaseLinter {
     }
 
     fn is_enabled(&self) -> bool {
-        otp::supports_binary_encode_hex_with_case()
+        Otp::supports_binary_encode_hex_with_case()
     }
 }
 
@@ -80,7 +80,7 @@ static ARG_VAR: &str = "_@X";
 #[cfg(test)]
 mod tests {
 
-    use elp_project_model::otp;
+    use elp_project_model::otp::Otp;
     use expect_test::Expect;
     use expect_test::expect;
 
@@ -94,14 +94,14 @@ mod tests {
 
     #[track_caller]
     fn check_diagnostics(fixture: &str) {
-        if otp::supports_binary_encode_hex_with_case() {
+        if Otp::supports_binary_encode_hex_with_case() {
             tests::check_filtered_diagnostics(fixture, &filter)
         }
     }
 
     #[track_caller]
     fn check_fix(fixture_before: &str, fixture_after: Expect) {
-        if otp::supports_binary_encode_hex_with_case() {
+        if Otp::supports_binary_encode_hex_with_case() {
             tests::check_fix(fixture_before, fixture_after)
         }
     }

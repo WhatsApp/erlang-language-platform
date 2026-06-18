@@ -254,7 +254,7 @@ fn get_function_doc(
 mod tests {
 
     use elp_ide_db::elp_base_db::fixture::WithFixture;
-    use elp_project_model::otp::supports_eep59_doc_attributes;
+    use elp_project_model::otp::Otp;
     use expect_test::Expect;
     use expect_test::expect;
     use itertools::Itertools;
@@ -691,7 +691,7 @@ main() ->
 
     #[test]
     fn test_fn_signature_doc_eep59() {
-        if supports_eep59_doc_attributes() {
+        if Otp::supports_eep59_doc_attributes() {
             check(
                 r#"
 //- expect_parse_errors
@@ -761,7 +761,7 @@ main() ->
 
     #[test]
     fn test_fn_signature_doc_parenthesized_eep59_metadata() {
-        if supports_eep59_doc_attributes() {
+        if Otp::supports_eep59_doc_attributes() {
             check(
                 r#"
 //- expect_parse_errors

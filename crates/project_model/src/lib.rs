@@ -1154,21 +1154,31 @@ impl Project {
             ProjectManifest::Json(config) => {
                 let otp_root = Otp::find_otp()?;
                 let config_path = config.config_path().to_path_buf();
-                let (mut apps, deps) = json::gen_app_data(config, AbsPath::assert(&otp_root));
+                let (mut apps, deps) = json::gen_app_data(config, AbsPath::assert(otp_root));
                 let project = StaticProject { config_path };
                 apps.extend(deps);
-                (ProjectBuildData::Static(project), apps, otp_root, None)
+                (
+                    ProjectBuildData::Static(project),
+                    apps,
+                    otp_root.to_path_buf(),
+                    None,
+                )
             }
             ProjectManifest::NoManifest(config) => {
                 let otp_root = Otp::find_otp()?;
-                let abs_otp_root = AbsPath::assert(&otp_root);
+                let abs_otp_root = AbsPath::assert(otp_root);
                 let config_path = config.config_path().to_path_buf();
                 let mut apps = config.to_project_app_data(abs_otp_root);
                 let eqwalizer_support_app =
                     eqwalizer_support::eqwalizer_suppport_data(abs_otp_root);
                 let project = StaticProject { config_path };
                 apps.push(eqwalizer_support_app);
-                (ProjectBuildData::Static(project), apps, otp_root, None)
+                (
+                    ProjectBuildData::Static(project),
+                    apps,
+                    otp_root.to_path_buf(),
+                    None,
+                )
             }
         };
 

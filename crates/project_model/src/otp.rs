@@ -49,13 +49,11 @@ fn get_default_erl_path() -> String {
 
 pub static ERL: LazyLock<RwLock<String>> = LazyLock::new(|| RwLock::new(get_default_erl_path()));
 
-pub static OTP_ROOT: LazyLock<Utf8PathBuf> =
-    LazyLock::new(|| Otp::find_otp().expect("tests should always be able to find OTP"));
-
 /// All OTP apps discovered from the local OTP installation, cached for
 /// the lifetime of the process so that `Otp::discover()` is only called once.
 pub static OTP_APPS: LazyLock<Vec<ProjectAppData>> = LazyLock::new(|| {
-    let (_otp, apps) = Otp::discover(OTP_ROOT.to_path_buf(), &OtpConfig::default());
+    let otp_root = Otp::find_otp().expect("tests should always be able to find OTP");
+    let (_otp, apps) = Otp::discover(otp_root.to_path_buf(), &OtpConfig::default());
     apps
 });
 
@@ -65,48 +63,71 @@ pub static STDLIB_APP: LazyLock<ProjectAppData> =
     LazyLock::new(|| find_otp_app("stdlib").expect("stdlib app must exist in OTP installation"));
 pub static KERNEL_APP: LazyLock<ProjectAppData> =
     LazyLock::new(|| find_otp_app("kernel").expect("kernel app must exist in OTP installation"));
-pub static OTP_VERSION: LazyLock<Option<String>> = LazyLock::new(|| Otp::otp_release().ok());
 
-pub fn otp_supported_by_eqwalizer() -> bool {
-    OTP_VERSION
-        .as_ref()
-        .map(|v| v.as_str() > "25")
-        .unwrap_or(true)
+/// Data points queried from the `erl` runtime.
+#[derive(Debug, Clone)]
+struct ErlSystemInfo {
+    /// The OTP `lib` directory (canonicalized), i.e. what `find_otp` returns.
+    lib_dir: Utf8PathBuf,
+    /// `erlang:system_info(otp_release)`, e.g. "26".
+    otp_release: String,
+    /// `erlang:system_info(system_version)`, the human-readable banner.
+    system_version: String,
 }
 
-pub fn supports_eep59_doc_attributes() -> bool {
-    OTP_VERSION
-        .as_ref()
-        .map(|v| v.as_str() >= "27")
-        .unwrap_or(true)
-}
+/// Separator used between fields in the consolidated `erl` output. None of the
+/// values we query (a path, an OTP release number, the version banner) contain
+/// this token.
+const ERL_FIELD_SEP: &str = "|ELP-SEP|";
 
-pub fn supports_eep66_sigils() -> bool {
-    OTP_VERSION
-        .as_ref()
-        .map(|v| v.as_str() >= "27")
-        .unwrap_or(true)
-}
+/// Run `erl` once to collect the OTP root dir, release, and system version.
+fn query_erl_system_info() -> Result<ErlSystemInfo> {
+    let _timer = timeit!("query erl system info");
+    let eval = format!(
+        "io:format(\"~s{sep}~s{sep}~s\", [code:root_dir(), erlang:system_info(otp_release), erlang:system_info(system_version)])",
+        sep = ERL_FIELD_SEP
+    );
+    let erl = ERL.read().unwrap();
+    let output = Command::new(&*erl)
+        // Speed up startup on loaded machines: a single scheduler, no async
+        // threads, and minimal code loading.
+        .arg("+S1")
+        .arg("+A0")
+        .arg("-mode")
+        .arg("minimal")
+        .arg("-noshell")
+        .arg("-eval")
+        .arg(&eval)
+        .arg("-s")
+        .arg("erlang")
+        .arg("halt")
+        .output()?;
 
-pub fn sets_v2_not_default() -> bool {
-    OTP_VERSION
-        .as_ref()
-        .map(|v| v.as_str() < "28")
-        .unwrap_or(true)
-}
+    if !output.status.success() {
+        bail!(
+            "Failed to query erl system info, error code: {:?}, stderr: {:?}",
+            output.status.code(),
+            String::from_utf8(output.stderr)
+        );
+    }
 
-pub fn supports_binary_encode_hex_with_case() -> bool {
-    OTP_VERSION
-        .as_ref()
-        .map(|v| v.as_str() >= "26")
-        .unwrap_or(true)
-}
+    let stdout = String::from_utf8(output.stdout)?;
+    let mut parts = stdout.splitn(3, ERL_FIELD_SEP);
+    let (Some(root_dir), Some(otp_release), Some(system_version)) =
+        (parts.next(), parts.next(), parts.next())
+    else {
+        bail!("Unexpected erl output, could not parse system info: {stdout:?}");
+    };
 
-pub fn epp_has_function_arity_bug() -> bool {
-    OTP_VERSION
-        .as_ref()
-        .map(|v| v.as_str() < "29")
-        .unwrap_or(true)
+    let lib_dir: Utf8PathBuf = format!("{root_dir}/lib").into();
+    let lib_dir = dunce::canonicalize(lib_dir)?;
+    let lib_dir = Utf8PathBuf::from_path_buf(lib_dir).expect("Could not create Utf8PathBuf");
+
+    Ok(ErlSystemInfo {
+        lib_dir,
+        otp_release: otp_release.to_string(),
+        system_version: system_version.to_string(),
+    })
 }
 
 /// Find an OTP app's ProjectAppData by app name (e.g., "stdlib").
@@ -139,75 +160,58 @@ pub fn read_otp_app_sources(app_data: &ProjectAppData) -> Vec<(PathBuf, String)>
 }
 
 impl Otp {
-    pub fn find_otp() -> Result<Utf8PathBuf> {
-        let _timer = timeit!("find otp");
-        let erl = ERL.read().unwrap();
-        let output = Command::new(&*erl)
-            .arg("-noshell")
-            .arg("-eval")
-            .arg("io:format('~s', [code:root_dir()])")
-            .arg("-s")
-            .arg("erlang")
-            .arg("halt")
-            .output()?;
-
-        if !output.status.success() {
-            bail!(
-                "Failed to get OTP dir, error code: {:?}, stderr: {:?}",
-                output.status.code(),
-                String::from_utf8(output.stderr)
-            );
-        }
-        let path = String::from_utf8(output.stdout)?;
-        let result: Utf8PathBuf = format!("{path}/lib").into();
-        let result = dunce::canonicalize(result)?;
-        Ok(Utf8PathBuf::from_path_buf(result).expect("Could not create Utf8PathBuf"))
+    /// The OTP `lib` directory, or an error if `erl` could not be queried.
+    pub fn find_otp() -> Result<&'static Utf8Path> {
+        Self::system_info().map(|info| info.lib_dir.as_path())
     }
 
-    pub fn otp_release() -> Result<String> {
-        let _timer = timeit!("otp_version");
-        let erl = ERL.read().unwrap();
-        let output = Command::new(&*erl)
-            .arg("-noshell")
-            .arg("-eval")
-            .arg("io:format('~s', [erlang:system_info(otp_release)])")
-            .arg("-s")
-            .arg("erlang")
-            .arg("halt")
-            .output()?;
-
-        if !output.status.success() {
-            bail!(
-                "Failed to get OTP release, error code: {:?}, stderr: {:?}",
-                output.status.code(),
-                String::from_utf8(output.stderr)
-            );
-        }
-        let val = String::from_utf8(output.stdout)?;
-        Ok(val)
+    /// The `erlang:system_info(system_version)` banner, or an error if `erl`
+    /// could not be queried.
+    pub fn system_version() -> Result<&'static str> {
+        Self::system_info().map(|info| info.system_version.as_str())
     }
 
-    pub fn system_version() -> Result<String> {
-        let _timer = timeit!("system_version");
-        let erl = ERL.read().unwrap();
-        let output = Command::new(&*erl)
-            .arg("-noshell")
-            .arg("-eval")
-            .arg("io:format('~s', [erlang:system_info(system_version)])")
-            .arg("-s")
-            .arg("erlang")
-            .arg("halt")
-            .output()?;
+    /// The OTP data points, queried from `erl` exactly once and cached for the
+    /// lifetime of the process. Returns the original query failure on every call
+    /// so accessors can degrade gracefully rather than panicking.
+    fn system_info() -> Result<&'static ErlSystemInfo> {
+        static ERL_SYSTEM_INFO: LazyLock<Result<ErlSystemInfo>> =
+            LazyLock::new(query_erl_system_info);
+        ERL_SYSTEM_INFO
+            .as_ref()
+            .map_err(|err| anyhow::anyhow!("{err:#}"))
+    }
 
-        if !output.status.success() {
-            bail!(
-                "Failed to get OTP system version, error code: {:?}, stderr: {:?}",
-                output.status.code(),
-                String::from_utf8(output.stderr)
-            );
-        }
-        let val = String::from_utf8(output.stdout)?;
-        Ok(val)
+    /// The OTP release of the local installation (e.g. "28"), or `None` if `erl`
+    /// could not be queried.
+    pub fn version() -> Option<&'static str> {
+        Self::system_info()
+            .ok()
+            .map(|info| info.otp_release.as_str())
+    }
+
+    pub fn supported_by_eqwalizer() -> bool {
+        Self::version().map(|v| v > "25").unwrap_or(true)
+    }
+
+    pub fn supports_eep59_doc_attributes() -> bool {
+        Self::version().map(|v| v >= "27").unwrap_or(true)
+    }
+
+    pub fn supports_eep66_sigils() -> bool {
+        Self::version().map(|v| v >= "27").unwrap_or(true)
+    }
+
+    pub fn sets_v2_not_default() -> bool {
+        Self::version().map(|v| v < "28").unwrap_or(true)
+    }
+
+    pub fn supports_binary_encode_hex_with_case() -> bool {
+        Self::version().map(|v| v >= "26").unwrap_or(true)
+    }
+
+    pub fn epp_has_function_arity_bug() -> bool {
+        Self::version().map(|v| v < "29").unwrap_or(true)
     }
 
     pub fn discover(path: Utf8PathBuf, otp_config: &OtpConfig) -> (Otp, Vec<ProjectAppData>) {
@@ -279,7 +283,7 @@ mod tests {
     fn test_discover_with_excluded_apps() {
         // Create a mock OTP directory structure
         let temp_dir = tempfile::tempdir().unwrap();
-        let otp_lib_dir = temp_dir.path().join("lib");
+        let otp_lib_dir = Utf8Path::from_path(temp_dir.path()).unwrap().join("lib");
         std::fs::create_dir_all(&otp_lib_dir).unwrap();
 
         // Create mock OTP app directories
@@ -298,10 +302,8 @@ mod tests {
             std::fs::create_dir_all(app_dir.join("ebin")).unwrap();
         }
 
-        let otp_path = Utf8PathBuf::from_path_buf(otp_lib_dir).unwrap();
-
         // Test without exclusions
-        let (_otp, all_apps) = Otp::discover(otp_path.clone(), &OtpConfig::default());
+        let (_otp, all_apps) = Otp::discover(otp_lib_dir.clone(), &OtpConfig::default());
         let app_names: Vec<&str> = all_apps.iter().map(|app| app.name.as_str()).collect();
         assert!(app_names.contains(&"kernel"));
         assert!(app_names.contains(&"stdlib"));
@@ -313,7 +315,7 @@ mod tests {
         let otp_config = OtpConfig {
             exclude_apps: vec!["megaco".to_string(), "eunit".to_string()],
         };
-        let (_otp, filtered_apps) = Otp::discover(otp_path, &otp_config);
+        let (_otp, filtered_apps) = Otp::discover(otp_lib_dir, &otp_config);
         let filtered_names: Vec<&str> = filtered_apps.iter().map(|app| app.name.as_str()).collect();
         assert!(filtered_names.contains(&"kernel"));
         assert!(filtered_names.contains(&"stdlib"));

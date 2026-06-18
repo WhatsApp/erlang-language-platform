@@ -16,7 +16,7 @@ use elp::cli::Fake;
 use elp_ide::AnalysisHost;
 use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
 use elp_ide::elp_ide_db::elp_base_db::fixture::WithFixture;
-use elp_project_model::otp::otp_supported_by_eqwalizer;
+use elp_project_model::otp::Otp;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 use expect_test::expect_file;
 use fxhash::FxHashSet;
@@ -508,7 +508,7 @@ fn line_fact_without_new_line_test() {
 
 #[test]
 fn declaration_test() {
-    if otp_supported_by_eqwalizer() {
+    if Otp::supported_by_eqwalizer() {
         let spec = r#"
     //- eqwalizer
     //- /app_glean/src/glean_module5.erl app:app_glean
@@ -551,7 +551,7 @@ fn declaration_test() {
 
 #[test]
 fn declaration_types_test() {
-    if otp_supported_by_eqwalizer() {
+    if Otp::supported_by_eqwalizer() {
         let spec = r#"
     //- eqwalizer
     //- erlang_service

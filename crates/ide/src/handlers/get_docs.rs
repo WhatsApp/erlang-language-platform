@@ -25,7 +25,7 @@ pub(crate) fn get_doc_for_token(
 
 #[cfg(test)]
 mod tests {
-    use elp_project_model::otp::supports_eep59_doc_attributes;
+    use elp_project_model::otp::Otp;
 
     use crate::fixture;
 
@@ -42,7 +42,7 @@ mod tests {
 
     #[test]
     fn local_type() {
-        if supports_eep59_doc_attributes() {
+        if Otp::supports_eep59_doc_attributes() {
             check(
                 r#"
 -module(main).
@@ -69,7 +69,7 @@ My integer",
 
     #[test]
     fn remote_type() {
-        if supports_eep59_doc_attributes() {
+        if Otp::supports_eep59_doc_attributes() {
             check(
                 r#"
 //- /src/main.erl
@@ -100,7 +100,7 @@ My integer",
 
     #[test]
     fn local_function() {
-        if supports_eep59_doc_attributes() {
+        if Otp::supports_eep59_doc_attributes() {
             check(
                 r#"
 -module(main).
@@ -129,7 +129,7 @@ My function",
 
     #[test]
     fn internal_fun() {
-        if supports_eep59_doc_attributes() {
+        if Otp::supports_eep59_doc_attributes() {
             check(
                 r#"
 -module(main).

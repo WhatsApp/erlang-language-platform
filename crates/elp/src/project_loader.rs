@@ -32,10 +32,8 @@ pub struct ProjectLoader {
 impl ProjectLoader {
     pub fn new() -> Self {
         let mut project_roots = FxHashMap::default();
-        let otp_root = Otp::find_otp();
-        if let Ok(otp_root) = otp_root {
-            let otp_root = AbsPathBuf::assert(otp_root);
-            project_roots.insert(otp_root, None);
+        if let Ok(otp_root) = Otp::find_otp() {
+            project_roots.insert(AbsPathBuf::assert(otp_root.to_path_buf()), None);
         }
         let start = SystemTime::now();
         let initialized = false;

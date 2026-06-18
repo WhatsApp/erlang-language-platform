@@ -418,7 +418,7 @@ impl BuckProject {
             target_info,
             buck_conf: buck_conf.clone(),
         };
-        let otp_root = Otp::find_otp()?;
+        let otp_root = Otp::find_otp()?.to_path_buf();
         // TODO: we now get these twice. Perhaps they should be cached?
         let (_otp, otp_project_apps) = Otp::discover(otp_root.clone(), &elp_config.otp);
         include_mapping.add_otp(&otp_project_apps);

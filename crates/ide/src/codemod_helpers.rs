@@ -929,7 +929,7 @@ mod tests {
     use elp_ide_db::elp_base_db::FileId;
     use elp_ide_db::elp_base_db::RootQueryDb;
     use elp_ide_db::elp_base_db::fixture::WithFixture;
-    use elp_project_model::otp::otp_supported_by_eqwalizer;
+    use elp_project_model::otp::Otp;
     use elp_syntax::algo::find_node_at_offset;
     use elp_syntax::ast;
     use expect_test::Expect;
@@ -1526,7 +1526,7 @@ mod tests {
 
     #[test]
     fn get_type_atom() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             check_type(
                 r#"
             //- eqwalizer
@@ -1544,7 +1544,7 @@ mod tests {
 
     #[test]
     fn get_type_custom() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             check_type(
                 r#"
             //- eqwalizer
@@ -1565,7 +1565,7 @@ mod tests {
 
     #[test]
     fn get_type_string() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             check_type(
                 r#"
             //- eqwalizer
@@ -1584,7 +1584,7 @@ mod tests {
 
     #[test]
     fn include_file_tracking() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             check_type(
                 r#"
             //- eqwalizer

@@ -76,7 +76,7 @@ pub fn unexported_type(
 
 #[cfg(test)]
 mod tests {
-    use elp_project_model::otp::otp_supported_by_eqwalizer;
+    use elp_project_model::otp::Otp;
     use expect_test::expect;
 
     use crate::tests::check_diagnostics;
@@ -84,7 +84,7 @@ mod tests {
 
     #[test]
     fn unexported_type() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             check_diagnostics(
                 r#"
             //- eqwalizer
@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn fix_unexported_type() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             check_fix(
                 r#"
             //- eqwalizer

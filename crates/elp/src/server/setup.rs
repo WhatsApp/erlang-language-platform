@@ -81,13 +81,18 @@ impl ServerSetup {
             .initialize_finish(id, serde_json::to_value(result.clone()).unwrap())
             .with_context(|| format!("during initialization finish: {result:?}"))?;
 
-        let otp_details =
-            Otp::system_version().unwrap_or_else(|err| format!("Could not find OTP: {err}"));
-        let message = format!(
-            "ELP version: {}, OTP version: {}",
-            crate::version(),
-            otp_details
-        );
+        let message = match Otp::system_version() {
+            Ok(otp_version) => {
+                format!(
+                    "ELP version: {}, OTP version: {otp_version}",
+                    crate::version()
+                )
+            }
+            Err(err) => format!(
+                "ELP version: {}, OTP version: Could not find OTP: {err}",
+                crate::version()
+            ),
+        };
         let show_message_params = lsp_types::ShowMessageParams {
             typ: lsp_types::MessageType::INFO,
             message,

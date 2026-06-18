@@ -371,9 +371,7 @@ mod tests {
     use elp_project_model::buck::BuckConfig;
     use elp_project_model::buck::BuckQueryConfig;
     use elp_project_model::buck::get_prelude_cell;
-    use elp_project_model::otp;
-    use elp_project_model::otp::OTP_VERSION;
-    use elp_project_model::otp::otp_supported_by_eqwalizer;
+    use elp_project_model::otp::Otp;
     use expect_test::Expect;
     use expect_test::ExpectFile;
     use expect_test::expect;
@@ -498,7 +496,7 @@ mod tests {
     // This function is a simplified/inlined version of eqwalizer_cli::eqwalize_app,
     // with panics in case of failures, and checks eqWAlization results per module.
     pub fn eqwalize_all_snapshots(project: &str, app: &str, buck: bool, config: EqwalizerConfig) {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             let cli = Fake::default();
             let project_config = DiscoverConfig::new(!buck, "test");
             let str_path = project_path(project);
@@ -594,7 +592,7 @@ mod tests {
                         )));
                         let (stdout, _) = cli.to_strings();
 
-                        let otp_version = OTP_VERSION.as_ref().expect("MISSING OTP VERSION");
+                        let otp_version = Otp::version().expect("MISSING OTP VERSION");
                         let otp_version_regex =
                             regex::bytes::Regex::new(&format!("{}OTP([0-9]+)Only", "@")).unwrap();
                         let contents = analysis.file_text(file_id).unwrap();
@@ -649,7 +647,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_diagnostics_match_snapshot_app_a_json(buck: bool) {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             eqwalize_snapshot_json("standard", "app_a", false, buck, true);
         }
     }
@@ -693,7 +691,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_diagnostics_match_snapshot_jsonl(buck: bool) {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             simple_snapshot(
                 args_vec!["eqwalize-all", "--format", "json"],
                 "standard",
@@ -707,7 +705,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_diagnostics_match_snapshot_jsonl_gen(buck: bool) {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             simple_snapshot(
                 args_vec!["eqwalize-all", "--format", "json"],
                 "standard",
@@ -721,7 +719,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_diagnostics_match_snapshot_pretty(buck: bool) {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             simple_snapshot(
                 args_vec!["eqwalize-all"],
                 "standard",
@@ -735,7 +733,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_app_diagnostics_match_snapshot_pretty(buck: bool) {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             let expected = if buck {
                 resource_file!("standard/eqwalize_app_diagnostics.pretty")
             } else {
@@ -771,7 +769,7 @@ mod tests {
             resource_file!("standard/eqwalize_app_diagnostics_gen_rebar.pretty")
         };
 
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             simple_snapshot(
                 args_vec!["eqwalize-app", "app_a",],
                 "standard",
@@ -1590,7 +1588,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_no_stream_produces_output(buck: bool) {
-        if otp::supports_eep66_sigils() {
+        if Otp::supports_eep66_sigils() {
             simple_snapshot_expect_error(
                 args_vec![
                     "lint",
@@ -2353,7 +2351,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_bail_on_error_failure(buck: bool) {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             simple_snapshot_expect_error(
                 args_vec!["eqwalize-all", "--bail-on-error"],
                 "standard",
@@ -2367,7 +2365,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_bail_on_error_success(buck: bool) {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             simple_snapshot(
                 args_vec!["eqwalize", "--bail-on-error", "app_a_no_errors"],
                 "standard",
@@ -2380,7 +2378,7 @@ mod tests {
 
     #[test]
     fn eqwalize_specific_module_overrides_ignore_modules() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             simple_snapshot_expect_error(
                 args_vec!["eqwalize", "--bail-on-error", "app_b"],
                 "eqwalizer_ignore_modules",
@@ -2393,7 +2391,7 @@ mod tests {
 
     #[test]
     fn eqwalize_all_ignore_modules_success() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             simple_snapshot(
                 args_vec!["eqwalize-all", "--bail-on-error"],
                 "eqwalizer_ignore_modules",
@@ -2409,7 +2407,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_with_color_vs_no_color(buck: bool) {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             // Test with color (default)
             let (mut args_color, _path) =
                 add_project(args_vec!["eqwalize", "app_a"], "standard", None, None);
@@ -2463,7 +2461,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_with_no_color_env_var(buck: bool) {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             // Test with NO_COLOR environment variable set
             unsafe {
                 env::set_var("NO_COLOR", "1");
@@ -2685,7 +2683,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn parse_otp27_sigils(buck: bool) {
-        if otp::supports_eep66_sigils() {
+        if Otp::supports_eep66_sigils() {
             simple_snapshot_expect_error(
                 args_vec!["parse-elp", "--module", "otp27_sigils"],
                 "diagnostics",

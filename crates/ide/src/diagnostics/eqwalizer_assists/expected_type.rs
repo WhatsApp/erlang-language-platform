@@ -175,7 +175,7 @@ fn get_spec(
 
 #[cfg(test)]
 mod tests {
-    use elp_project_model::otp::otp_supported_by_eqwalizer;
+    use elp_project_model::otp::Otp;
     use expect_test::expect;
 
     use crate::tests::check_diagnostics;
@@ -183,7 +183,7 @@ mod tests {
 
     #[test]
     fn mismatched_atom() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             check_diagnostics(
                 r#"
             //- eqwalizer
@@ -200,7 +200,7 @@ mod tests {
 
     #[test]
     fn mismatched_atom_fix_return() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             check_specific_fix(
                 "Update returned value to 'spec_atom'",
                 r#"
@@ -224,7 +224,7 @@ mod tests {
 
     #[test]
     fn mismatched_atom_fix_spec() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             check_specific_fix(
                 "Update function spec to return 'something_else'",
                 r#"
@@ -248,7 +248,7 @@ mod tests {
 
     #[test]
     fn mismatched_tuple_fix_return() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             check_specific_fix(
                 "Update returned value to '{ok, 53}'",
                 r#"
@@ -272,7 +272,7 @@ mod tests {
 
     #[test]
     fn mismatched_tuple_fix_spec() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             check_specific_fix(
                 "Update function spec to return 'number()'",
                 r#"
@@ -296,7 +296,7 @@ mod tests {
 
     #[test]
     fn mismatched_integer_fix_spec() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             check_specific_fix(
                 "Update function spec to return 'ok'",
                 r#"

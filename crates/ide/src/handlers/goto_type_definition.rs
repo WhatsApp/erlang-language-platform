@@ -54,7 +54,7 @@ fn classify(sema: &Semantic, range: FileRange) -> Option<SymbolClass> {
 #[cfg(test)]
 mod tests {
 
-    use elp_project_model::otp::otp_supported_by_eqwalizer;
+    use elp_project_model::otp::Otp;
 
     use crate::fixture;
     use crate::tests::check_navs;
@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn local_type_alias() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             check(
                 r#"
 //- eqwalizer
@@ -120,7 +120,7 @@ bar() ->
 
     #[test]
     fn multiple_type_aliases() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             check(
                 r#"
 //- eqwalizer

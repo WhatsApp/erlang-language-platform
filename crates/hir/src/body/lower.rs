@@ -232,7 +232,7 @@ impl<'a> Ctx<'a> {
     /// enclosing function, regardless of which clause is currently
     /// being lowered.
     pub fn set_epp_function_arity(&mut self, first_clause: &ast::FunctionClause) {
-        if elp_base_db::epp_has_function_arity_bug()
+        if elp_base_db::Otp::epp_has_function_arity_bug()
             && let Some((_, arity)) = self.function_info
             && is_first_arg_bracket_only(first_clause)
         {
@@ -3475,8 +3475,7 @@ impl<'a> Ctx<'a> {
             BuiltInMacro::MACHINE => Some(Literal::Atom(Atom::new(&known::ELP))),
             BuiltInMacro::OTP_RELEASE => {
                 // Use real OTP version if available, otherwise default to 2000
-                let version = elp_base_db::OTP_VERSION
-                    .as_ref()
+                let version = elp_base_db::Otp::version()
                     .and_then(|v| v.parse::<u32>().ok())
                     .unwrap_or(2000);
                 Some(Literal::Integer(version.into()))

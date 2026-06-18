@@ -10,7 +10,7 @@
 
 use std::fmt::Write;
 
-use elp_base_db::OTP_VERSION;
+use elp_base_db::Otp;
 use elp_base_db::assert_eq_expected;
 use elp_base_db::fixture::WithFixture;
 use expect_test::Expect;
@@ -4702,7 +4702,7 @@ foo(?FUNCTION_ARITY) -> ?FUNCTION_ARITY.
 // Fixed in OTP 29: https://github.com/erlang/otp/issues/10705
 
 fn epp_has_function_arity_bug() -> bool {
-    elp_base_db::epp_has_function_arity_bug()
+    elp_base_db::Otp::epp_has_function_arity_bug()
 }
 
 #[test]
@@ -4933,8 +4933,7 @@ foo(?MACHINE) -> ?MACHINE.
 #[test]
 fn expand_built_in_otp_release() {
     // OTP_RELEASE expands to the real OTP version if available, otherwise 2000
-    let version = OTP_VERSION
-        .as_ref()
+    let version = Otp::version()
         .and_then(|v| v.parse::<u32>().ok())
         .unwrap_or(2000);
 

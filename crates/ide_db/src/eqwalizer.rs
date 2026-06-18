@@ -30,7 +30,7 @@ use elp_eqwalizer::ast::RemoteId;
 use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
 use elp_eqwalizer::db::EqwalizerErlASTStorage;
 use elp_eqwalizer::ipc::IpcHandle;
-use elp_project_model::otp::otp_supported_by_eqwalizer;
+use elp_project_model::otp::Otp;
 use elp_syntax::SmolStr;
 use elp_syntax::ast;
 use elp_types_db::eqwalizer;
@@ -224,7 +224,7 @@ fn is_eqwalizer_enabled_dispatch(db: &dyn EqwalizerDatabase, file_id: FileId) ->
 
 fn is_eqwalizer_enabled_inner(db: &dyn EqwalizerDatabase, fid: InternedFileId) -> bool {
     let file_id = fid.file_id(db);
-    if !otp_supported_by_eqwalizer() {
+    if !Otp::supported_by_eqwalizer() {
         return false;
     }
 

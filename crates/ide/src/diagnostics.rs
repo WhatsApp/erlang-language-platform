@@ -3303,7 +3303,7 @@ pub fn spec_for_undefined_function_from_message(s: &str) -> Option<String> {
 // cargo test --package elp_ide --lib
 #[cfg(test)]
 mod tests {
-    use elp_project_model::otp::otp_supported_by_eqwalizer;
+    use elp_project_model::otp::Otp;
     use expect_test::expect;
 
     use super::*;
@@ -3734,7 +3734,7 @@ foo() -> XX 3.0.
 
     #[test]
     fn test_eqwalizer_diagnostics() {
-        if otp_supported_by_eqwalizer() {
+        if Otp::supported_by_eqwalizer() {
             check_diagnostics(
                 r#"
             //- eqwalizer
