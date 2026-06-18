@@ -99,6 +99,7 @@ use crate::args::Eqwalize;
 use crate::args::EqwalizeAll;
 use crate::args::EqwalizeApp;
 use crate::args::EqwalizeTarget;
+use crate::args::Format;
 use crate::args::Lint;
 use crate::args::Shell;
 use crate::eqwalizer_cli;
@@ -744,7 +745,7 @@ fn handle_connection(
     if let Some(json) = line.strip_prefix("lint ") {
         let done = match serde_json::from_str::<Lint>(json) {
             Ok(mut lint_args) => {
-                lint_args.format = Some("json".to_string());
+                lint_args.format = Some(Format::Json);
                 match lint_cli::do_lint(&lint_args, &state.lint_config, &mut state.loaded, &mut cli)
                 {
                     Ok(()) => DoneMessage::ok(),
@@ -771,7 +772,7 @@ fn handle_connection(
         Ok(Some(ShellCommand::Help)) => (DoneMessage::ok(), false),
         Ok(Some(ShellCommand::Quit)) => (DoneMessage::ok(), true),
         Ok(Some(ShellCommand::ShellEqwalize(mut eqwalize))) => {
-            eqwalize.format = Some("json".to_string());
+            eqwalize.format = Some(Format::Json);
             let done =
                 match eqwalizer_cli::do_eqwalize_module(&eqwalize, &mut state.loaded, &mut cli) {
                     Ok(()) => DoneMessage::ok(),
@@ -780,7 +781,7 @@ fn handle_connection(
             (done, false)
         }
         Ok(Some(ShellCommand::ShellEqwalizeApp(mut eqwalize_app))) => {
-            eqwalize_app.format = Some("json".to_string());
+            eqwalize_app.format = Some(Format::Json);
             let done =
                 match eqwalizer_cli::do_eqwalize_app(&eqwalize_app, &mut state.loaded, &mut cli) {
                     Ok(()) => DoneMessage::ok(),
@@ -789,7 +790,7 @@ fn handle_connection(
             (done, false)
         }
         Ok(Some(ShellCommand::ShellEqwalizeAll(mut eqwalize_all))) => {
-            eqwalize_all.format = Some("json".to_string());
+            eqwalize_all.format = Some(Format::Json);
             let done =
                 match eqwalizer_cli::do_eqwalize_all(&eqwalize_all, &mut state.loaded, &mut cli) {
                     Ok(()) => DoneMessage::ok(),
@@ -798,7 +799,7 @@ fn handle_connection(
             (done, false)
         }
         Ok(Some(ShellCommand::ShellEqwalizeTarget(mut eqwalize_target))) => {
-            eqwalize_target.format = Some("json".to_string());
+            eqwalize_target.format = Some(Format::Json);
             let done = match eqwalizer_cli::do_eqwalize_target(
                 &eqwalize_target,
                 &mut state.loaded,
@@ -1215,6 +1216,7 @@ fn cleanup_stale_in_dir(dir: &Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::args::Severity;
 
     // -- DoneMessage serialization --
 
@@ -1401,12 +1403,12 @@ mod tests {
             connect: true,
             include_generated: true,
             print_diags: false,
-            format: Some("json".to_string()),
+            format: Some(Format::Json),
             include_erlc_diagnostics: true,
             include_eqwalizer_diagnostics: true,
             include_suppressed: true,
             use_cli_severity: true,
-            severity: Some("warning".to_string()),
+            severity: Some(Severity::Warning),
             diagnostic_ignore: Some("W0001".to_string()),
             diagnostic_filter: Some("W0010".to_string()),
             experimental_diags: true,
@@ -1490,7 +1492,7 @@ mod tests {
             project: PathBuf::from("."),
             module: Some("foo".to_string()),
             connect: true,
-            // print_diags=true matches the bpaf default for `--no-diags`
+            // print_diags=true matches the clap default for `--no-diags`
             // (absent ⇒ true). Lint::default() leaves it at bool::default()=false.
             print_diags: true,
             ..Lint::default()

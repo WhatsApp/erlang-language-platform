@@ -1,3 +1,18 @@
+Run Dialyzer on the whole project by shelling out to a `dialyzer-run` tool on the path to do the
+legwork
 
-Available options:
-    -h, --help  Prints help information
+Usage: elp dialyze-all [OPTIONS]
+
+Options:
+  -h, --help  Print help
+
+Global options:
+      --log-file <LOG_FILE>  
+      --erl <ERL>            
+      --escript <ESCRIPT>    
+      --no-log-buffering     
+      --no-buck-generated    When using buck, do not invoke a build step for generated files
+      --buck-quick-start     Use buck2 targets for first stage project loading
+      --ifdef                Enable ifdef/ifndef condition evaluation (experimental)
+      --color <WHEN>         Use color in output [default: always] [possible values: always, never,
+                             auto]

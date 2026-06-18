@@ -1,14 +1,27 @@
-Usage: [--project PROJECT] [--as PROFILE] [[--format FORMAT]] [--rebar] [--connect] [--bail-on-error]
-<MODULES>...
+Eqwalize specified modules
 
-Available positional items:
-    <MODULES>  Eqwalize specified modules (not files)
+Usage: elp eqwalize [OPTIONS] <MODULES>...
 
-Available options:
-        --project <PROJECT>  Path to directory with project, or to a JSON file (defaults to `.`)
-        --as <PROFILE>   Rebar3 profile to pickup (default is test)
-        --format <FORMAT>  Show diagnostics in JSON format
-        --rebar          Run with rebar
-        --connect        Use a persistent daemon for fast turnaround (auto-starts if needed)
-        --bail-on-error  Exit with a non-zero status code if any errors are found
-    -h, --help           Prints help information
+Arguments:
+  <MODULES>...  Eqwalize specified modules (not files)
+
+Options:
+      --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
+      --as <PROFILE>       Rebar3 profile to pickup [default: test]
+      --format <FORMAT>    Customize the output format (defaults to human-readable) [possible
+                           values: json]
+      --rebar              Run with rebar
+      --connect            Use a persistent daemon for fast turnaround (auto-starts if needed)
+      --bail-on-error      Exit with a non-zero status code if any errors are found
+  -h, --help               Print help
+
+Global options:
+      --log-file <LOG_FILE>  
+      --erl <ERL>            
+      --escript <ESCRIPT>    
+      --no-log-buffering     
+      --no-buck-generated    When using buck, do not invoke a build step for generated files
+      --buck-quick-start     Use buck2 targets for first stage project loading
+      --ifdef                Enable ifdef/ifndef condition evaluation (experimental)
+      --color <WHEN>         Use color in output [default: always] [possible values: always, never,
+                             auto]

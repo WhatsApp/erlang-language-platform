@@ -16,7 +16,8 @@ use std::process;
 use std::sync::Once;
 
 use anyhow::Result;
-use bpaf::batteries;
+use clap::CommandFactory;
+use clap::Parser;
 use elp::ServerSetup;
 use elp::cli;
 use elp::cli::Cli;
@@ -79,36 +80,43 @@ const DAEMON_UNSUPPORTED: &str = "ELP daemon mode is not supported on this platf
 
 #[rustfmt::skip]
 fn main() {
+    // Handle dynamic shell-completion requests (driven by the `COMPLETE` env
+    // var) before writing anything to stdout. For normal invocations this
+    // returns immediately; for completion requests it prints candidates and
+    // exits. This is what powers the dynamic `--module`/`--code` completers.
+    clap_complete::CompleteEnv::with_factory(Args::command).complete();
+
     let _timer = timeit!("main");
-    match args::args().run_inner(bpaf::Args::current_args()) {
+    match args::Args::try_parse() {
         Ok(args) => {
-            // @fb-only: #[cfg(buck_build)] let subcommand = args.command.as_ref().to_owned();
+            // @fb-only: #[cfg(buck_build)] let subcommand = args.command.as_ref().map(|c| c.as_ref()).unwrap_or("help").to_owned();
             // @fb-only: #[cfg(buck_build)] let code = meta_only::run_with_usage_metadata(&subcommand, || run_cli(args));
             #[cfg(not(buck_build))]
             let code = run_cli(args);
             process::exit(code);
         }
-        Err(failure) => {
-            // @fb-only: #[cfg(buck_build)] meta_only::log_parser_invocation(&failure);
-            process::exit(parse_failure_exit_code(failure));
+        Err(err) => {
+            // @fb-only: #[cfg(buck_build)] meta_only::log_parser_invocation(&err);
+            process::exit(parse_error_exit_code(err));
         }
     }
 }
 
-fn parse_failure_exit_code(failure: bpaf::ParseFailure) -> i32 {
-    match failure {
-        bpaf::ParseFailure::Stdout(message) => {
-            print!("{message}");
-            0
-        }
-        bpaf::ParseFailure::Stderr(message) => {
-            eprintln!("{message}");
-            1
-        }
-    }
+fn parse_error_exit_code(err: clap::Error) -> i32 {
+    use clap::error::ErrorKind;
+    let code = match err.kind() {
+        ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => 0,
+        _ => 1,
+    };
+    let _ = err.print();
+    code
 }
 
 fn run_cli(args: Args) -> i32 {
+    if let Some(shell) = args.bpaf_compat_shell() {
+        args::generate_completions(shell, &mut std::io::stdout());
+        return 0;
+    }
     let use_color = args.should_use_color();
     let mut cli: Box<dyn cli::Cli> = if use_color {
         Box::new(cli::Real::default())
@@ -160,7 +168,7 @@ fn setup_static(args: &Args) {
 
 fn setup_cli_telemetry(args: &Args) {
     match &args.command {
-        args::Command::RunServer(_) => {
+        Some(args::Command::RunServer(_)) => {
             // Do nothing, we have server telemetry
         }
         _ => {
@@ -171,7 +179,7 @@ fn setup_cli_telemetry(args: &Args) {
     }
 }
 
-fn try_main(cli: &mut dyn Cli, mut args: Args) -> Result<()> {
+fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
     let logger = setup_logging(&args.log_file, args.no_log_buffering)?;
     setup_cli_telemetry(&args);
 
@@ -179,8 +187,16 @@ fn try_main(cli: &mut dyn Cli, mut args: Args) -> Result<()> {
     let query_config = args.query_config();
     let use_color = args.should_use_color();
     let ifdef = args.ifdef;
-    args.command.normalize();
-    match &args.command {
+
+    let Some(mut command) = args.command else {
+        let help = args::Args::render_help();
+        writeln!(cli, "{help}")?;
+        log::logger().flush();
+        return Ok(());
+    };
+
+    command.normalize();
+    match &command {
         args::Command::RunServer(_) => run_server(logger)?,
         args::Command::ParseAll(args) => {
             erlang_service_cli::parse_all(args, cli, &query_config, ifdef)?
@@ -257,27 +273,25 @@ fn try_main(cli: &mut dyn Cli, mut args: Args) -> Result<()> {
         }
         args::Command::Lint(args) => lint_cli::run_lint_command(args, cli, &query_config, ifdef)?,
         args::Command::LintCompare(args) => lint_compare::run_lint_compare_command(args, cli)?,
-        args::Command::Ssr(ssr_args) => {
+        args::Command::Search(ssr_args) | args::Command::Ssr(ssr_args) => {
             ssr_cli::run_ssr_command(ssr_args, cli, &query_config, use_color, ifdef)?
         }
-        args::Command::GenerateCompletions(args) => {
-            let instructions = args::gen_completions(&args.shell);
-            writeln!(cli, "#Please run this:\n{instructions}")?
+        args::Command::GenerateCompletions(completion_args) => {
+            let mut buf = Vec::new();
+            args::generate_completions(completion_args.shell, &mut buf);
+            cli.write_all(&buf)?;
         }
         args::Command::Version(_) => writeln!(cli, "elp {}", elp::version())?,
         args::Command::Shell(args) => shell::run_shell(args, cli, &query_config, ifdef)?,
-        args::Command::Daemon(cmd) => {
+        args::Command::Daemon(daemon_args) => {
+            let cmd = daemon_args.clone().into_command();
             #[cfg(unix)]
-            daemon::daemon_command(cmd, cli, &query_config, ifdef)?;
+            daemon::daemon_command(&cmd, cli, &query_config, ifdef)?;
             #[cfg(not(unix))]
             {
                 let _ = cmd;
                 anyhow::bail!(DAEMON_UNSUPPORTED);
             }
-        }
-        args::Command::Help() => {
-            let help = batteries::get_usage(args::args());
-            writeln!(cli, "{help}")?
         }
         args::Command::Explain(args) => explain_cli::explain(args, cli)?,
         args::Command::LintList(args) => lint_list_cli::lint_list(args, cli)?,
@@ -340,7 +354,7 @@ mod tests {
     use std::sync::Arc;
 
     use anyhow::Context;
-    use bpaf::Args;
+    use clap::Parser;
     use elp::build;
     use elp::build::load;
     use elp::cli::Fake;
@@ -395,8 +409,9 @@ mod tests {
         elp_project_model::enable_project_cache();
 
         let mut cli = Fake::default();
-        let args = Args::from(args.as_slice());
-        let args = args::args().run_inner(args).unwrap();
+        let mut full_args = vec![OsString::from("elp")];
+        full_args.extend(args);
+        let args = args::Args::try_parse_from(full_args).unwrap();
         let res = try_main(&mut cli, args);
         let code = handle_res(res, cli.err());
         let (stdout, stderr) = cli.to_strings();
@@ -2504,172 +2519,113 @@ mod tests {
 
     // -----------------------------------------------------------------
 
+    fn get_help_text(args: &[&str]) -> String {
+        let mut full_args = vec!["elp"];
+        full_args.extend_from_slice(args);
+        let err = args::Args::try_parse_from(full_args).unwrap_err();
+        err.to_string()
+    }
+
     #[test]
     fn help() {
-        let args = args::args().run_inner(Args::from(&["--help"])).unwrap_err();
         let expected = resource_file!("help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["--help"]));
     }
 
     #[test]
     fn eqwalize_all_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["eqwalize-all", "--help"]))
-            .unwrap_err();
         let expected = resource_file!("eqwalize_all_help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["eqwalize-all", "--help"]));
     }
 
     #[test]
     fn eqwalize_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["eqwalize", "--help"]))
-            .unwrap_err();
         let expected = resource_file!("eqwalize_help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["eqwalize", "--help"]));
     }
 
     #[test]
     fn eqwalize_target_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["eqwalize-target", "--help"]))
-            .unwrap_err();
         let expected = resource_file!("eqwalize_target_help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["eqwalize-target", "--help"]));
     }
 
     #[test]
     fn eqwalize_app_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["eqwalize-app", "--help"]))
-            .unwrap_err();
         let expected = resource_file!("eqwalize_app.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["eqwalize-app", "--help"]));
     }
 
     #[test]
     fn dialyze_all_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["dialyze-all", "--help"]))
-            .unwrap_err();
         let expected = resource_file!("dialyze_all_help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["dialyze-all", "--help"]));
     }
 
     #[test]
     fn parse_all_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["parse-all", "--help"]))
-            .unwrap_err();
         let expected = resource_file!("parse_all_help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["parse-all", "--help"]));
     }
 
     #[test]
     fn parse_elp_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["parse-elp", "--help"]))
-            .unwrap_err();
         let expected = resource_file!("parse_elp_help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["parse-elp", "--help"]));
     }
 
     #[test]
     fn lint_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["lint", "--help"]))
-            .unwrap_err();
         let expected = resource_file!("lint_help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["lint", "--help"]));
     }
 
     #[test]
     fn lint_compare_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["lint-compare", "--help"]))
-            .unwrap_err();
         let expected = resource_file!("lint_compare_help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["lint-compare", "--help"]));
     }
 
     #[test]
     fn ssr_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["ssr", "--help"]))
-            .unwrap_err();
         let expected = resource_file!("ssr_help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["ssr", "--help"]));
     }
 
     #[test]
     fn search_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["search", "--help"]))
-            .unwrap_err();
-        let expected = resource_file!("ssr_help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        let expected = resource_file!("search_help.stdout");
+        expected.assert_eq(&get_help_text(&["search", "--help"]));
     }
 
     #[test]
     fn build_info_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["build-info", "--help"]))
-            .unwrap_err();
         let expected = resource_file!("build_info_help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["build-info", "--help"]));
     }
 
     #[test]
     fn project_info_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["project-info", "--help"]))
-            .unwrap_err();
         let expected = resource_file!("project_info_help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["project-info", "--help"]));
     }
 
     #[test]
     fn explain_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["explain", "--help"]))
-            .unwrap_err();
         let expected = resource_file!("explain_help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["explain", "--help"]));
     }
 
     #[test]
     fn glean_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["glean", "--help"]))
-            .unwrap_err();
         let expected = resource_file!("glean_help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["glean", "--help"]));
     }
 
     #[test]
     fn config_help() {
-        let args = args::args()
-            .run_inner(Args::from(&["config", "--help"]))
-            .unwrap_err();
         let expected = resource_file!("config_help.stdout");
-        let stdout = args.unwrap_stdout();
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&get_help_text(&["config", "--help"]));
     }
 
     // -----------------------------------------------------------------

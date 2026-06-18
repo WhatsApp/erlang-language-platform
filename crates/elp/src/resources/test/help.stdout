@@ -1,40 +1,40 @@
-Usage: [--log-file LOG_FILE] [--erl ERL] [--escript ESCRIPT] [--no-log-buffering]
-[--no-buck-generated] [--buck-quick-start] [--ifdef] [[--color WHEN]] [COMMAND ...]
+Usage: elp [OPTIONS] [COMMAND]
 
-Available options:
-        --log-file <LOG_FILE>
-        --erl <ERL>
-        --escript <ESCRIPT>
-        --no-log-buffering
-        --no-buck-generated  When using buck, do not invoke a build step for generated files.
-        --buck-quick-start  Use buck2 targets for first stage project loading
-        --ifdef         Enable ifdef/ifndef condition evaluation (experimental)
-        --color <WHEN>  Use color in output; WHEN is 'always', 'never', or 'auto'
-    -h, --help          Prints help information
+Commands:
+  parse-elp             Tree-sitter parse all files in a project for specified rebar.config file
+  parse-all             Dump ast for all files in a project for specified rebar.config file
+  eqwalize              Eqwalize specified modules
+  eqwalize-all          Eqwalize all opted-in modules in a project
+  eqwalize-target       Eqwalize all opted-in modules in specified buck target
+  eqwalize-app          Eqwalize all opted-in modules in specified application
+  build-info            Generate build info JSON file
+  generate-completions  Generate shell completions
+  server                Run lsp server
+  lint                  Parse files in project and emit diagnostics, optionally apply fixes
+  lint-compare          Diff two `elp lint --format=json` JSONL artifacts
+  search                Search Erlang code by syntax-tree shape (not text) using SSR (Structural
+                        Search and Replace) patterns.
+  ssr                   Alias for 'search': search Erlang code structurally using SSR patterns.
+  version               Print version
+  shell                 Starts an interactive ELP shell
+  daemon                Manage a persistent ELP daemon for fast turnaround
+  explain               Explain a diagnostic code
+  lint-list             List all available lint diagnostic codes
+  project-info          Generate project info file
+  glean                 Glean indexer
+  config                Dump a JSON config stanza suitable for use in VS Code project.json
+  help                  Print this message or the help of the given subcommand(s)
 
-Available commands:
-    version               Print version
-    server                Run lsp server
-    shell                 Starts an interactive ELP shell
-    daemon                Manage a persistent ELP daemon for fast turnaround
-    eqwalize              Eqwalize specified modules
-    eqwalize-all          Eqwalize all opted-in modules in a project
-    eqwalize-app          Eqwalize all opted-in modules in specified application
-    eqwalize-target       Eqwalize all opted-in modules in specified buck target
-    dialyze-all           Run Dialyzer on the whole project by shelling out to a `dialyzer-run` tool
-                          on the path to do the legwork.
-    lint                  Parse files in project and emit diagnostics, optionally apply fixes.
-    lint-compare          Diff two `elp lint --format=json` JSONL artifacts. Exits 0 if the
-                          per-(name, severity) counts match, 1 if any group's count changed.
-    lint-list             List all available lint diagnostic codes
-    search                Search Erlang code structurally using SSR (Structural Search and Replace)
-                          patterns.
-    ssr                   Alias for 'search': search Erlang code structurally using SSR patterns.
-    parse-all             Dump ast for all files in a project for specified rebar.config file
-    parse-elp             Tree-sitter parse all files in a project for specified rebar.config file
-    explain               Explain a diagnostic code
-    build-info            Generate build info JSON file
-    project-info          Generate project info file
-    glean                 Glean indexer
-    generate-completions  Generate shell completions
-    config                Dump a JSON config stanza suitable for use in VS Code project.json
+Options:
+  -h, --help  Print help
+
+Global options:
+      --log-file <LOG_FILE>  
+      --erl <ERL>            
+      --escript <ESCRIPT>    
+      --no-log-buffering     
+      --no-buck-generated    When using buck, do not invoke a build step for generated files
+      --buck-quick-start     Use buck2 targets for first stage project loading
+      --ifdef                Enable ifdef/ifndef condition evaluation (experimental)
+      --color <WHEN>         Use color in output [default: always] [possible values: always, never,
+                             auto]

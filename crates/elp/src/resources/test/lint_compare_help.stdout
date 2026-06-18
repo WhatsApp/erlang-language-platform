@@ -1,13 +1,28 @@
-Usage: --base BASE_JSONL --diff DIFF_JSONL [--report-path REPORT_PATH]
+Diff two `elp lint --format=json` JSONL artifacts
 
-Available options:
-        --base <BASE_JSONL>  JSONL artifact for the **base** side of the comparison (typically an
-                `elp lint --format=json` run at a prior project state). Diagnostics present here but
-                missing on the diff side are reported as removed.
-        --diff <DIFF_JSONL>  JSONL artifact for the **diff** side of the comparison (typically an
-                `elp lint --format=json` run at the current project state). Diagnostics present here
-                but missing on the base side are reported as new.
-        --report-path <REPORT_PATH>  Optional path to write the Markdown comparison report
-                (per-(diagnostic, severity) summary table) to. When omitted, the report is written to
-                stdout.
-    -h, --help  Prints help information
+Usage: elp lint-compare [OPTIONS] --base <BASE_JSONL> --diff <DIFF_JSONL>
+
+Options:
+      --base <BASE_JSONL>          JSONL artifact for the **base** side of the comparison (typically
+                                   an `elp lint --format=json` run at a prior project state).
+                                   Diagnostics present here but missing on the diff side are
+                                   reported as removed
+      --diff <DIFF_JSONL>          JSONL artifact for the **diff** side of the comparison (typically
+                                   an `elp lint --format=json` run at the current project state).
+                                   Diagnostics present here but missing on the base side are
+                                   reported as new
+      --report-path <REPORT_PATH>  Optional path to write the Markdown comparison report
+                                   (per-(diagnostic, severity) summary table) to. When omitted, the
+                                   report is written to stdout
+  -h, --help                       Print help
+
+Global options:
+      --log-file <LOG_FILE>  
+      --erl <ERL>            
+      --escript <ESCRIPT>    
+      --no-log-buffering     
+      --no-buck-generated    When using buck, do not invoke a build step for generated files
+      --buck-quick-start     Use buck2 targets for first stage project loading
+      --ifdef                Enable ifdef/ifndef condition evaluation (experimental)
+      --color <WHEN>         Use color in output [default: always] [possible values: always, never,
+                             auto]

@@ -59,13 +59,12 @@ use crate::args::ParseAllElp;
 use crate::reporting;
 use crate::reporting::print_memory_usage;
 
-fn parse_severity(severity: &str) -> Option<diagnostics::Severity> {
+fn arg_severity(severity: crate::args::Severity) -> diagnostics::Severity {
     match severity {
-        "error" => Some(diagnostics::Severity::Error),
-        "warning" => Some(diagnostics::Severity::Warning),
-        "weak_warning" => Some(diagnostics::Severity::WeakWarning),
-        "information" => Some(diagnostics::Severity::Information),
-        _ => None,
+        crate::args::Severity::Error => diagnostics::Severity::Error,
+        crate::args::Severity::Warning => diagnostics::Severity::Warning,
+        crate::args::Severity::WeakWarning => diagnostics::Severity::WeakWarning,
+        crate::args::Severity::Information => diagnostics::Severity::Information,
     }
 }
 
@@ -180,10 +179,7 @@ pub fn parse_all(
     let memory_end = MemoryUsage::now();
     let memory_used = memory_end - memory_start;
 
-    let min_severity = args
-        .severity
-        .as_ref()
-        .and_then(|s| parse_severity(s.as_str()));
+    let min_severity = args.severity.map(arg_severity);
 
     res.retain(|parse_result| {
         parse_result

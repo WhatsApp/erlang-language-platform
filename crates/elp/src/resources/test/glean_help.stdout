@@ -1,13 +1,25 @@
-Usage: [--project PROJECT] [--module MODULE] [--to TO] [--schema2] [--pretty] [--multi]
-[--print-metrics] [--source-root PATH]
+Glean indexer
 
-Available options:
-        --project <PROJECT>  Path to directory with project, or to a JSON file (defaults to `.`)
-        --module <MODULE>
-        --to <TO>        Path to a directory where to dump result
-        --schema2        Deprecated no-op.
-        --pretty         Pretty print
-        --multi          Output each fact separately
-        --print-metrics  Print indexer metrics as JSON
-        --source-root <PATH>  Prefix for every emitted `src.File` path
-    -h, --help           Prints help information
+Usage: elp glean [OPTIONS]
+
+Options:
+      --project <PROJECT>   Path to directory with project, or to a JSON file [default: .]
+      --module <MODULE>     
+      --to <TO>             Path to a directory where to dump result
+      --schema2             Deprecated no-op
+      --pretty              Pretty print
+      --multi               Output each fact separately
+      --print-metrics       Print indexer metrics as JSON
+      --source-root <PATH>  Prefix for every emitted `src.File` path
+  -h, --help                Print help
+
+Global options:
+      --log-file <LOG_FILE>  
+      --erl <ERL>            
+      --escript <ESCRIPT>    
+      --no-log-buffering     
+      --no-buck-generated    When using buck, do not invoke a build step for generated files
+      --buck-quick-start     Use buck2 targets for first stage project loading
+      --ifdef                Enable ifdef/ifndef condition evaluation (experimental)
+      --color <WHEN>         Use color in output [default: always] [possible values: always, never,
+                             auto]

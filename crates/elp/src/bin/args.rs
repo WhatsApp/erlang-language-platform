@@ -10,16 +10,19 @@
 
 use std::cmp::Ordering;
 use std::env;
+use std::ffi::OsStr;
 use std::fs;
 use std::io::IsTerminal;
 use std::path::PathBuf;
 
 use anyhow::Result;
-use anyhow::bail;
-use bpaf::Bpaf;
-use bpaf::Parser;
-use bpaf::construct;
-use bpaf::long;
+use clap::ArgAction;
+use clap::CommandFactory;
+use clap::ValueHint;
+use clap_complete::aot::Shell as CompletionShell;
+use clap_complete::engine::ArgValueCandidates;
+use clap_complete::engine::ArgValueCompleter;
+use clap_complete::engine::CompletionCandidate;
 use elp_ide::elp_ide_db::DiagnosticCode;
 use elp_project_model::buck::BuckQueryConfig;
 use hir::fold::MacroStrategy;
@@ -30,362 +33,359 @@ use serde::Deserialize;
 use serde::Serialize;
 use strum::AsRefStr;
 
-use crate::args::Command::Help;
-
-#[derive(Clone, Debug, Bpaf)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct ParseAllElp {
-    /// Path to directory with project, or to a JSON file (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::DirPath)]
     pub project: PathBuf,
     /// Parse a single module from the project, not the entire project
-    #[bpaf(argument("MODULE"), complete(module_completer), optional)]
+    #[arg(long, value_name = "MODULE", add = ArgValueCompleter::new(module_completer))]
     pub module: Option<String>,
     /// Parse a single file from the project, not the entire project. \nThis can be an include file or escript, etc.
+    #[arg(long)]
     pub file: Option<String>,
     /// Path to a directory where to dump result files
-    #[bpaf(argument("TO"))]
+    #[arg(long, value_name = "TO", value_hint = ValueHint::DirPath)]
     pub to: Option<PathBuf>,
-    #[bpaf(external(parse_print_diags))]
+    /// Do not print the full diagnostics for a file, just the count
+    #[arg(long = "no-diags", action = ArgAction::SetFalse, default_value_t = true)]
     pub print_diags: bool,
-    #[bpaf(external(parse_experimental_diags))]
+    /// Report experimental diagnostics too, if diagnostics are enabled
+    #[arg(long = "experimental")]
     pub experimental_diags: bool,
-    /// Rebar3 profile to pickup (default is test)
-    #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
+    /// Rebar3 profile to pickup
+    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
     pub profile: String,
     /// Report the resolution of include directives for comparison with OTP ones
-    #[bpaf(long("dump-includes"))]
+    #[arg(long = "dump-includes")]
     pub dump_include_resolutions: bool,
     /// Run with rebar
+    #[arg(long)]
     pub rebar: bool,
     /// Also process generated modules
+    #[arg(long)]
     pub include_generated: bool,
     /// Parse the files serially, not in parallel
+    #[arg(long)]
     pub serial: bool,
     /// If specified, use the provided CLI severity mapping instead of the default one
+    #[arg(long)]
     pub use_cli_severity: bool,
-    /// Show diagnostics in JSON format
-    #[bpaf(
-        argument("FORMAT"),
-        complete(format_completer),
-        fallback(None),
-        guard(format_guard, "Please use json")
-    )]
-    pub format: Option<String>,
+    /// Customize the output format (defaults to human-readable)
+    #[arg(long, value_name = "FORMAT")]
+    pub format: Option<Format>,
     /// Report system memory usage and other statistics
-    #[bpaf(long("report-system-stats"))]
+    #[arg(long = "report-system-stats")]
     pub report_system_stats: bool,
-    /// Minimum severity level to report. Valid values: error, warning, weak_warning, information
-    #[bpaf(
-        argument("SEVERITY"),
-        complete(severity_completer),
-        fallback(None),
-        guard(
-            severity_guard,
-            "Please use error, warning, weak_warning, or information"
-        )
-    )]
-    pub severity: Option<String>,
+    /// Minimum severity level to report
+    #[arg(long, value_name = "SEVERITY")]
+    pub severity: Option<Severity>,
 }
 
-#[derive(Clone, Debug, Bpaf)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct ParseAll {
-    /// Path to directory with project, or to a JSON file (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
     pub project: PathBuf,
     /// Path to a directory where to dump .etf files
+    #[arg(long)]
     pub to: PathBuf,
-    /// Rebar3 profile to pickup (default is test)
-    #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
+    /// Rebar3 profile to pickup
+    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
     pub profile: String,
     /// Parse a single module from the project, not the entire project
-    #[bpaf(argument("MODULE"), complete(module_completer), optional)]
+    #[arg(long, value_name = "MODULE", add = ArgValueCompleter::new(module_completer))]
     pub module: Option<String>,
     /// Run with buck
+    #[arg(long)]
     pub buck: bool,
     /// Print statistics when done
+    #[arg(long)]
     pub stats: bool,
     /// When printing statistics, include the list of modules parsed
+    #[arg(long)]
     pub list_modules: bool,
 }
 
-#[derive(Clone, Debug, Bpaf)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct Eqwalize {
-    /// Path to directory with project, or to a JSON file (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
     pub project: PathBuf,
-    /// Rebar3 profile to pickup (default is test)
-    #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
+    /// Rebar3 profile to pickup
+    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
     pub profile: String,
-    /// Show diagnostics in JSON format
-    #[bpaf(
-        argument("FORMAT"),
-        complete(format_completer),
-        fallback(None),
-        guard(format_guard, "Please use json")
-    )]
-    pub format: Option<String>,
+    /// Customize the output format (defaults to human-readable)
+    #[arg(long, value_name = "FORMAT")]
+    pub format: Option<Format>,
     /// Run with rebar
+    #[arg(long)]
     pub rebar: bool,
     /// Use a persistent daemon for fast turnaround (auto-starts if needed)
+    #[arg(long)]
     pub connect: bool,
     /// Exit with a non-zero status code if any errors are found
+    #[arg(long)]
     pub bail_on_error: bool,
     /// Eqwalize specified modules (not files)
-    #[bpaf(
-        positional("MODULES"),
-        guard(at_least_1, "there should be at least one module")
-    )]
+    #[arg(value_name = "MODULES", required = true)]
     pub modules: Vec<String>,
 }
 
-#[derive(Clone, Debug, Bpaf)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct EqwalizeAll {
-    /// Path to directory with project, or to a JSON file (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
     pub project: PathBuf,
-    /// Rebar3 profile to pickup (default is test)
-    #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
+    /// Rebar3 profile to pickup
+    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
     pub profile: String,
-    /// Show diagnostics in JSON format
-    #[bpaf(
-        argument("FORMAT"),
-        complete(format_completer),
-        fallback(None),
-        guard(format_guard, "Please use json")
-    )]
-    pub format: Option<String>,
+    /// Customize the output format (defaults to human-readable)
+    #[arg(long, value_name = "FORMAT")]
+    pub format: Option<Format>,
     /// Run with rebar
+    #[arg(long)]
     pub rebar: bool,
     /// Use a persistent daemon for fast turnaround (auto-starts if needed)
+    #[arg(long)]
     pub connect: bool,
     /// Also eqwalize opted-in generated modules from project (deprecated)
-    #[bpaf(hide)]
+    #[arg(long, hide = true)]
     pub include_generated: bool,
     /// Exit with a non-zero status code if any errors are found
+    #[arg(long)]
     pub bail_on_error: bool,
     /// Print statistics when done
+    #[arg(long)]
     pub stats: bool,
     /// When printing statistics, include the list of modules parsed
+    #[arg(long)]
     pub list_modules: bool,
 }
 
-#[derive(Clone, Debug, Bpaf)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct EqwalizeTarget {
-    /// Path to directory with project, or to a JSON file (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
     pub project: PathBuf,
-    /// Show diagnostics in JSON format
-    #[bpaf(
-        argument("FORMAT"),
-        complete(format_completer),
-        fallback(None),
-        guard(format_guard, "Please use json")
-    )]
-    pub format: Option<String>,
+    /// Customize the output format (defaults to human-readable)
+    #[arg(long, value_name = "FORMAT")]
+    pub format: Option<Format>,
     /// Also eqwalize opted-in generated modules from application (deprecated)
-    #[bpaf(hide)]
+    #[arg(long, hide = true)]
     pub include_generated: bool,
     /// Use a persistent daemon for fast turnaround (auto-starts if needed)
+    #[arg(long)]
     pub connect: bool,
     /// Exit with a non-zero status code if any errors are found
+    #[arg(long)]
     pub bail_on_error: bool,
     /// target, like //erl/chatd/...
-    #[bpaf(positional("TARGET"))]
+    #[arg(value_name = "TARGET")]
     pub target: String,
 }
 
-#[derive(Clone, Debug, Bpaf)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct EqwalizeApp {
-    /// Path to directory with project, or to a JSON file (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
     pub project: PathBuf,
-    /// Rebar3 profile to pickup (default is test)
-    #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
+    /// Rebar3 profile to pickup
+    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
     pub profile: String,
-    /// Show diagnostics in JSON format
-    #[bpaf(
-        argument("FORMAT"),
-        complete(format_completer),
-        fallback(None),
-        guard(format_guard, "Please use json")
-    )]
-    pub format: Option<String>,
+    /// Customize the output format (defaults to human-readable)
+    #[arg(long, value_name = "FORMAT")]
+    pub format: Option<Format>,
     /// Also eqwalize opted-in generated modules from project (deprecated)
-    #[bpaf(hide)]
+    #[arg(long, hide = true)]
     pub include_generated: bool,
     /// Run with rebar
+    #[arg(long)]
     pub rebar: bool,
     /// Use a persistent daemon for fast turnaround (auto-starts if needed)
+    #[arg(long)]
     pub connect: bool,
     /// Exit with a non-zero status code if any errors are found
+    #[arg(long)]
     pub bail_on_error: bool,
     /// app name
-    #[bpaf(positional::< String > ("APP"))]
+    #[arg(value_name = "APP")]
     pub app: String,
 }
 
-#[derive(Clone, Debug, Bpaf)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct EqwalizeStats {
-    /// Path to directory with project, or to a JSON file (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
     pub project: PathBuf,
-    /// Rebar3 profile to pickup (default is test)
-    #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
+    /// Rebar3 profile to pickup
+    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
     pub profile: String,
     /// Run with rebar
+    #[arg(long)]
     pub rebar: bool,
     /// Also eqwalize opted-in generated modules from project (deprecated)
-    #[bpaf(hide)]
+    #[arg(long, hide = true)]
     pub include_generated: bool,
     /// If specified, use the provided CLI severity mapping instead of the default one
+    #[arg(long)]
     pub use_cli_severity: bool,
 }
 
-#[derive(Clone, Debug, Bpaf)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct DialyzeAll {}
 
-#[derive(Clone, Debug, Bpaf)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct BuildInfo {
-    /// Path to directory with project, or to a JSON file (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
     pub project: PathBuf,
     /// Path to a (JSON) file to write the build information
-    #[bpaf(argument("TO"))]
+    #[arg(long, value_name = "TO", value_hint = ValueHint::FilePath)]
     pub to: PathBuf,
 }
 
-#[derive(Clone, Debug, Bpaf)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct GenerateCompletions {
-    #[bpaf(positional::< String > ("shell"), complete(shell_completer), guard(shell_guard, "Please use bash|zsh|fish"))]
-    /// bash, zsh or fish
-    pub shell: String,
+    /// Shell to generate completions for
+    #[arg(value_enum, value_name = "SHELL")]
+    pub shell: CompletionShell,
 }
 
-#[derive(Clone, Debug, Bpaf)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct RunServer {}
 
-#[derive(Clone, Debug, Bpaf)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct Version {}
 
-#[derive(Debug, Clone, Default, Bpaf, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, clap::Args, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Lint {
-    /// Path to directory with project, or to a JSON file (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
     pub project: PathBuf,
     /// Parse a single module from the project, not the entire project.
-    #[bpaf(argument("MODULE"))]
+    #[arg(long, value_name = "MODULE", add = ArgValueCompleter::new(module_completer))]
     pub module: Option<String>,
     /// Parse a single application from the project, not the entire project.
-    #[bpaf(long("app"), long("application"), argument("APP"))]
+    #[arg(long = "app", alias = "application", value_name = "APP")]
     pub app: Option<String>,
     /// Parse one or more files from the project, not the entire project. This can be an include file or escript, etc.
-    #[bpaf(argument("FILE"))]
+    #[arg(long, value_name = "FILE")]
     pub file: Vec<String>,
     /// Only process files under this path (can be a file or directory).
-    #[bpaf(argument("PATH"))]
+    #[arg(long, value_name = "PATH", value_hint = ValueHint::AnyPath)]
     pub path: Option<PathBuf>,
 
     /// Run with rebar
+    #[arg(long)]
     pub rebar: bool,
-    /// Rebar3 profile to pickup (default is test)
-    #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
+    /// Rebar3 profile to pickup
+    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
     pub profile: String,
     /// Use a persistent daemon for fast turnaround (auto-starts if needed)
+    #[arg(long)]
     pub connect: bool,
 
     /// Also generate diagnostics for generated files
+    #[arg(long)]
     pub include_generated: bool,
     /// Deprecated (no-op): Diagnostics for test files are now always included
+    #[arg(long)]
     pub include_tests: bool,
 
     /// Do not print the full diagnostics for a file, just the count
-    #[bpaf(external(parse_print_diags))]
+    #[arg(long = "no-diags", action = ArgAction::SetFalse, default_value_t = true)]
+    #[serde(default)]
     pub print_diags: bool,
-    /// Show diagnostics in JSON format
-    #[bpaf(
-        argument("FORMAT"),
-        complete(format_completer),
-        fallback(None),
-        guard(format_guard, "Please use json")
-    )]
-    pub format: Option<String>,
+    /// Customize the output format (defaults to human-readable)
+    #[arg(long, value_name = "FORMAT")]
+    pub format: Option<Format>,
 
     /// Include diagnostics produced by erlc
+    #[arg(long)]
     pub include_erlc_diagnostics: bool,
     /// Deprecated (no-op): Common Test diagnostics are now always included
+    #[arg(long)]
     pub include_ct_diagnostics: bool,
     /// Deprecated (no-op): EDoc diagnostics have been removed
+    #[arg(long)]
     pub include_edoc_diagnostics: bool,
     /// Include Eqwalizer diagnostics
+    #[arg(long)]
     pub include_eqwalizer_diagnostics: bool,
     /// Include Suppressed diagnostics (e.g. elp:fixme)
+    #[arg(long)]
     pub include_suppressed: bool,
 
     /// If specified, use the provided CLI severity mapping instead of the default one
+    #[arg(long)]
     pub use_cli_severity: bool,
-    /// Minimum severity level to report. Valid values: error, warning, weak_warning, information
-    #[bpaf(
-        argument("SEVERITY"),
-        complete(severity_completer),
-        fallback(None),
-        guard(
-            severity_guard,
-            "Please use error, warning, weak_warning, or information"
-        )
-    )]
-    pub severity: Option<String>,
+    /// Minimum severity level to report
+    #[arg(long, value_name = "SEVERITY")]
+    pub severity: Option<Severity>,
     /// Ignore the specified diagnostic, by code or label
-    #[bpaf(argument("CODE"))]
+    #[arg(long, value_name = "CODE", add = ArgValueCandidates::new(diagnostic_code_candidates))]
     pub diagnostic_ignore: Option<String>,
     /// Filter out all reported diagnostics except this one, by code or label
-    #[bpaf(argument("CODE"), complete(diagnostic_code_completer))]
+    #[arg(long, value_name = "CODE", add = ArgValueCandidates::new(diagnostic_code_candidates))]
     pub diagnostic_filter: Option<String>,
-    #[bpaf(external(parse_experimental_diags))]
+    /// Report experimental diagnostics too, if diagnostics are enabled
+    #[arg(long = "experimental")]
     pub experimental_diags: bool,
 
     /// Deprecated and now a no-op: the project's .elp_lint.toml is read by default. Use --config-file to override the config file.
+    #[arg(long)]
     pub read_config: bool,
     /// Override the lint configuration file (.elp_lint.toml) used.
-    #[bpaf(argument("CONFIG_FILE"))]
+    #[arg(long, value_name = "CONFIG_FILE", value_hint = ValueHint::FilePath)]
     pub config_file: Option<String>,
 
     /// If the diagnostic has an associated fix, apply it. Modifies the original file. Use --to to write to a different directory.
+    #[arg(long)]
     pub apply_fix: bool,
     /// Only apply elp:ignore fixes
+    #[arg(long)]
     pub ignore_fix_only: bool,
     /// Only apply elp:fixme fixes
+    #[arg(long)]
     pub fixme_fix_only: bool,
 
     /// When applying a fix, put the results in this directory path
-    #[bpaf(argument("TO"))]
+    #[arg(long, value_name = "TO", value_hint = ValueHint::DirPath)]
     pub to: Option<PathBuf>,
 
     /// If applying fixes, apply any new ones that arise from the
     /// prior fixes recursively. Limited in scope to the clause of the
     /// prior change.
+    #[arg(long)]
     pub recursive: bool,
     /// After applying a fix step, check that the diagnostics are clear, else roll back
+    #[arg(long)]
     pub with_check: bool,
     /// After applying a fix step, check that all eqwalizer project diagnostics are clear, else roll back
+    #[arg(long)]
     pub check_eqwalize_all: bool,
     /// Apply to all matching diagnostic occurrences at once, rather
     /// than one at a time.
+    #[arg(long)]
     pub one_shot: bool,
 
     /// When using --format=json, populate original/replacement fields
     /// with fix information for arc lint auto-fix support
+    #[arg(long)]
     pub arc_patch: bool,
 
     /// Report system memory usage and other statistics
-    #[bpaf(long("report-system-stats"))]
+    #[arg(long = "report-system-stats")]
     pub report_system_stats: bool,
 
     /// Disable streaming of diagnostics when applying fixes (collect all before printing)
+    #[arg(long)]
     pub no_stream: bool,
 
     /// Rest of args are space separated list of apps to ignore
-    #[bpaf(positional("IGNORED_APPS"))]
+    #[arg(value_name = "IGNORED_APPS")]
     pub ignore_apps: Vec<String>,
 }
 
@@ -403,335 +403,39 @@ pub struct Lint {
 /// two diff revisions, a developer checking what they changed
 /// locally, or a tool comparing two ELP releases. The compare step
 /// has zero project dependencies (no BUCK, no OTP, no source tree).
-#[derive(Debug, Clone, Default, Bpaf)]
+#[derive(Debug, Clone, Default, clap::Args)]
 pub struct LintCompare {
     /// JSONL artifact for the **base** side of the comparison
     /// (typically an `elp lint --format=json` run at a prior project
     /// state). Diagnostics present here but missing on the diff side
     /// are reported as removed.
-    #[bpaf(argument("BASE_JSONL"))]
+    #[arg(long, value_name = "BASE_JSONL", value_hint = ValueHint::FilePath)]
     pub base: PathBuf,
 
     /// JSONL artifact for the **diff** side of the comparison
     /// (typically an `elp lint --format=json` run at the current
     /// project state). Diagnostics present here but missing on the
     /// base side are reported as new.
-    #[bpaf(argument("DIFF_JSONL"))]
+    #[arg(long, value_name = "DIFF_JSONL", value_hint = ValueHint::FilePath)]
     pub diff: PathBuf,
 
     /// Optional path to write the Markdown comparison report
     /// (per-(diagnostic, severity) summary table) to.
     /// When omitted, the report is written to stdout.
-    #[bpaf(argument("REPORT_PATH"))]
+    #[arg(long, value_name = "REPORT_PATH", value_hint = ValueHint::FilePath)]
     pub report_path: Option<PathBuf>,
-}
-
-#[derive(Clone, Debug, Bpaf)]
-pub struct Ssr {
-    /// Path to directory with project, or to a JSON file (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
-    pub project: PathBuf,
-    /// Parse a single module from the project, not the entire project.
-    #[bpaf(argument("MODULE"))]
-    pub module: Option<String>,
-    /// Parse a single application from the project, not the entire project.
-    #[bpaf(long("app"), long("application"), argument("APP"))]
-    pub app: Option<String>,
-    /// Parse a single file from the project, not the entire project. This can be an include file or escript, etc.
-    #[bpaf(argument("FILE"))]
-    pub file: Option<String>,
-
-    /// Run with rebar
-    pub rebar: bool,
-    /// Rebar3 profile to pickup (default is test)
-    #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
-    pub profile: String,
-
-    /// Also generate diagnostics for generated files
-    pub include_generated: bool,
-    /// Deprecated: has no effect, will be removed in future
-    pub include_tests: bool,
-
-    /// Show diagnostics in JSON format
-    #[bpaf(
-        argument("FORMAT"),
-        complete(format_completer),
-        fallback(None),
-        guard(format_guard, "Please use json")
-    )]
-    pub format: Option<String>,
-
-    /// Macro expansion strategy: expand | no-expand | visible-expand (default expand)
-    #[bpaf(
-        long("macros"),
-        argument("STRATEGY"),
-        complete(macros_completer),
-        fallback(None),
-        guard(macros_guard, "Please supply a valid macro expansion value")
-    )]
-    pub macro_strategy: Option<String>,
-
-    /// Explicitly match parentheses. If omitted, they are ignored.
-    #[bpaf(long("parens"))]
-    pub paren_strategy: bool,
-
-    /// Dump a configuration snippet that can be put in .elp_lint.toml to match the given SSR patterns
-    pub dump_config: bool,
-
-    /// Show source code context for matches
-    #[bpaf(long("show-source"))]
-    pub show_source: bool,
-
-    /// Print NUM lines of leading context, enables --show-source
-    #[bpaf(short('B'), long("before-context"), argument("NUM"))]
-    pub before_context: Option<usize>,
-
-    /// Print NUM lines of trailing context, enables --show-source
-    #[bpaf(short('A'), long("after-context"), argument("NUM"))]
-    pub after_context: Option<usize>,
-
-    /// Print NUM lines of output context, enables --show-source
-    #[bpaf(short('C'), long("context"), argument("NUM"))]
-    pub context: Option<usize>,
-
-    /// Print SEP on line between matches with context, enables --show-source
-    #[bpaf(long("group-separator"), argument("SEP"))]
-    pub group_separator: Option<String>,
-
-    /// Do not print separator for matches with context, enables --show-source
-    #[bpaf(long("no-group-separator"))]
-    pub no_group_separator: bool,
-
-    /// Report system memory usage and other statistics
-    #[bpaf(long("report-system-stats"))]
-    pub report_system_stats: bool,
-
-    /// SSR specs to use. Each accepts `PATTERN`, `ssr: PATTERN.`, or
-    /// `LABEL:ssr: PATTERN.` forms; the LABEL surfaces as `patternLabel` in
-    /// JSON output.
-    #[bpaf(
-        positional("SSR_SPECS"),
-        guard(
-            at_least_1,
-            "no search pattern given. Example: elp search 'lists:reverse(_@List)'. Run 'elp search --help' for the pattern syntax and more examples"
-        )
-    )]
-    pub ssr_specs: Vec<String>,
-}
-
-#[derive(Clone, Debug, Bpaf)]
-pub struct Explain {
-    /// Error code to explain
-    #[bpaf(argument("CODE"))]
-    pub code: String,
-}
-
-#[derive(Clone, Debug, Bpaf)]
-pub struct LintList {}
-
-#[derive(Clone, Debug, Bpaf)]
-pub struct Shell {
-    /// Path to directory with project, or to a JSON file (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
-    pub project: PathBuf,
-    /// Initial command to run on shell startup
-    #[bpaf(positional("INITIAL_COMMAND"))]
-    pub command: Vec<String>,
-}
-
-#[derive(Clone, Debug)]
-pub enum DaemonCommand {
-    Run(DaemonRun),
-    Stop,
-    Status(DaemonStatus),
-}
-
-#[derive(Clone, Debug, Bpaf)]
-pub struct DaemonRun {
-    /// Path to directory with project, or to a JSON file (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
-    pub project: PathBuf,
-    /// Rebar3 profile to pickup (default is test)
-    #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
-    pub profile: String,
-    /// Run with rebar
-    pub rebar: bool,
-    /// Detach from parent process and run as daemon (internal use only)
-    #[bpaf(hide)]
-    pub daemonize: bool,
-}
-
-#[derive(Clone, Debug, Bpaf)]
-pub struct DaemonStatus {
-    /// Path to directory with project, or to a JSON file (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
-    pub project: PathBuf,
-    /// Rebar3 profile to pickup (default is test)
-    #[bpaf(long("as"), argument("PROFILE"), fallback("test".to_string()))]
-    pub profile: String,
-    /// Run with rebar
-    pub rebar: bool,
-}
-
-pub fn daemon_command_parser() -> impl Parser<DaemonCommand> {
-    let stop = bpaf::pure(DaemonCommand::Stop)
-        .to_options()
-        .command("stop")
-        .help("Stop all running daemons");
-
-    let status = daemon_status()
-        .map(DaemonCommand::Status)
-        .to_options()
-        .command("status")
-        .help("Show daemon status for this project");
-
-    // When no subcommand is given, parse DaemonRun args directly
-    let run = daemon_run().map(DaemonCommand::Run);
-
-    construct!([stop, status, run])
-}
-
-#[derive(Clone, Debug, Bpaf)]
-pub struct ProjectInfo {
-    /// Path to directory with project, or to a JSON file (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
-    pub project: PathBuf,
-    /// Path to a directory where to dump wa.build_info
-    #[bpaf(argument("TO"))]
-    pub to: Option<PathBuf>,
-    /// Include the buck uquery results in the output
-    pub buck_query: bool,
-    /// Dump a list of targets and their types
-    pub target_types: bool,
-}
-
-#[derive(Clone, Debug, Bpaf)]
-pub struct Glean {
-    /// Path to directory with project, or to a JSON file (defaults to `.`)
-    #[bpaf(argument("PROJECT"), fallback(PathBuf::from(".")))]
-    pub project: PathBuf,
-    #[bpaf(argument("MODULE"))]
-    pub module: Option<String>,
-    /// Path to a directory where to dump result
-    #[bpaf(argument("TO"))]
-    pub to: Option<PathBuf>,
-    /// Deprecated no-op.
-    pub schema2: bool,
-    /// Pretty print
-    pub pretty: bool,
-    /// Output each fact separately
-    pub multi: bool,
-    /// Print indexer metrics as JSON
-    pub print_metrics: bool,
-    /// Prefix for every emitted `src.File` path
-    #[bpaf(argument("PATH"))]
-    pub source_root: Option<String>,
-}
-
-#[derive(Clone, Debug, Bpaf)]
-pub struct ConfigStanza {}
-
-#[derive(Clone, Debug, AsRefStr)]
-#[strum(serialize_all = "kebab-case")]
-pub enum Command {
-    ParseAllElp(ParseAllElp),
-    ParseAll(ParseAll),
-    Eqwalize(Eqwalize),
-    EqwalizeAll(EqwalizeAll),
-    EqwalizeTarget(EqwalizeTarget),
-    EqwalizeApp(EqwalizeApp),
-    EqwalizeStats(EqwalizeStats),
-    DialyzeAll(DialyzeAll),
-    BuildInfo(BuildInfo),
-    GenerateCompletions(GenerateCompletions),
-    RunServer(RunServer),
-    Lint(Lint),
-    LintCompare(LintCompare),
-    Ssr(Ssr),
-    Version(Version),
-    Shell(Shell),
-    Daemon(DaemonCommand),
-    Explain(Explain),
-    LintList(LintList),
-    ProjectInfo(ProjectInfo),
-    Glean(Glean),
-    ConfigStanza(ConfigStanza),
-    Help(),
-}
-
-#[derive(Debug, Clone, Bpaf)]
-#[bpaf(options)]
-pub struct Args {
-    #[bpaf(argument("LOG_FILE"))]
-    pub log_file: Option<PathBuf>,
-    #[bpaf(argument("ERL"))]
-    pub erl: Option<PathBuf>,
-    #[bpaf(argument("ESCRIPT"))]
-    pub escript: Option<PathBuf>,
-    pub no_log_buffering: bool,
-
-    /// When using buck, do not invoke a build step for generated files.
-    pub no_buck_generated: bool,
-
-    /// Use buck2 targets for first stage project loading
-    pub buck_quick_start: bool,
-
-    /// Enable ifdef/ifndef condition evaluation (experimental)
-    pub ifdef: bool,
-
-    /// Use color in output; WHEN is 'always', 'never', or 'auto'
-    #[bpaf(
-        long("color"),
-        long("colour"),
-        argument("WHEN"),
-        fallback(Some("always".to_string())),
-        guard(color_guard, "Please use always, never, or auto")
-    )]
-    pub color: Option<String>,
-
-    #[bpaf(external(command))]
-    pub command: Command,
-}
-
-impl Args {
-    pub fn query_config(&self) -> BuckQueryConfig {
-        if self.buck_quick_start {
-            BuckQueryConfig::BuckTargetsOnly
-        } else if self.no_buck_generated {
-            BuckQueryConfig::NoBuildGeneratedCode
-        } else {
-            BuckQueryConfig::BuildGeneratedCode
-        }
-    }
-
-    /// Determine if color should be used based on the --color argument
-    pub fn should_use_color(&self) -> bool {
-        match self.color.as_deref() {
-            Some("always") => true,
-            Some("never") => false,
-            Some("auto") | None => {
-                // Check NO_COLOR environment variable - if set (regardless of value), disable color
-                // Also check if stdout is connected to a TTY
-                env::var("NO_COLOR").is_err() && std::io::stdout().is_terminal()
-            }
-            _ => false, // Should be caught by the guard, but handle anyway
-        }
-    }
-}
-
-impl Command {
-    pub fn normalize(&mut self) {
-        if let Command::Lint(args) = self {
-            args.normalize()
-        }
-    }
 }
 
 /// One-line description shown at the top of `elp ssr --help` / `elp search --help`.
 const SSR_DESCR: &str = "Search Erlang code by syntax-tree shape (not text) using SSR (Structural Search and Replace) patterns.";
 
+/// One-line description for the `ssr` alias. Distinct from `SSR_DESCR` so that
+/// `elp --help` still shows `ssr` is an alias for the canonical `search`.
+const SSR_ALIAS_DESCR: &str =
+    "Alias for 'search': search Erlang code structurally using SSR patterns.";
+
 /// Footer with a placeholder cheat-sheet, examples, and a link to the full guide.
-/// Shared by both `ssr` and `search` so their `--help` output stays identical.
+/// Shared by both `ssr` and `search` so their `--help` footers stay identical.
 const SSR_FOOTER: &str = "\
 Patterns are Erlang code with placeholders:
     _@Name   match any single expression or pattern; reuse a name to require the two matches be equal
@@ -749,197 +453,454 @@ A bare PATTERN is shorthand for `ssr: PATTERN.`. Prefix with `LABEL:ssr: ` to ta
 
 Full syntax guide: https://whatsapp.github.io/erlang-language-platform/docs/structural-search";
 
-pub fn command() -> impl Parser<Command> {
-    let parse_elp = parse_all_elp()
-        .map(Command::ParseAllElp)
-        .to_options()
-        .command("parse-elp")
-        .help("Tree-sitter parse all files in a project for specified rebar.config file");
+#[derive(Clone, Debug, clap::Args)]
+pub struct Ssr {
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
+    pub project: PathBuf,
+    /// Parse a single module from the project, not the entire project.
+    #[arg(long, value_name = "MODULE", add = ArgValueCompleter::new(module_completer))]
+    pub module: Option<String>,
+    /// Parse a single application from the project, not the entire project.
+    #[arg(long = "app", alias = "application", value_name = "APP")]
+    pub app: Option<String>,
+    /// Parse a single file from the project, not the entire project. This can be an include file or escript, etc.
+    #[arg(long, value_name = "FILE")]
+    pub file: Option<String>,
 
-    let parse_all = parse_all()
-        .map(Command::ParseAll)
-        .to_options()
-        .command("parse-all")
-        .help("Dump ast for all files in a project for specified rebar.config file");
+    /// Run with rebar
+    #[arg(long)]
+    pub rebar: bool,
+    /// Rebar3 profile to pickup
+    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
+    pub profile: String,
 
-    let eqwalize = eqwalize()
-        .map(Command::Eqwalize)
-        .to_options()
-        .command("eqwalize")
-        .help("Eqwalize specified modules");
+    /// Also generate diagnostics for generated files
+    #[arg(long)]
+    pub include_generated: bool,
+    /// Deprecated: has no effect, will be removed in future
+    #[arg(long)]
+    pub include_tests: bool,
 
-    let eqwalize_all = eqwalize_all()
-        .map(Command::EqwalizeAll)
-        .to_options()
-        .command("eqwalize-all")
-        .help("Eqwalize all opted-in modules in a project");
+    /// Customize the output format (defaults to human-readable)
+    #[arg(long, value_name = "FORMAT")]
+    pub format: Option<Format>,
 
-    let eqwalize_target = eqwalize_target()
-        .map(Command::EqwalizeTarget)
-        .to_options()
-        .command("eqwalize-target")
-        .help("Eqwalize all opted-in modules in specified buck target");
+    /// Macro expansion strategy (default: expand)
+    #[arg(long = "macros", value_name = "STRATEGY")]
+    pub macro_strategy: Option<MacroStrategyArg>,
 
-    let eqwalize_app = eqwalize_app()
-        .map(Command::EqwalizeApp)
-        .to_options()
-        .command("eqwalize-app")
-        .help("Eqwalize all opted-in modules in specified application");
+    /// Explicitly match parentheses. If omitted, they are ignored.
+    #[arg(long = "parens")]
+    pub paren_strategy: bool,
 
-    let eqwalize_stats = eqwalize_stats()
-        .map(Command::EqwalizeStats)
-        .to_options()
-        .command("eqwalize-stats")
-        .help("Return statistics about code quality for eqWAlizer")
-        .hide();
+    /// Dump a configuration snippet that can be put in .elp_lint.toml to match the given SSR patterns
+    #[arg(long)]
+    pub dump_config: bool,
 
-    let dialyze_all = dialyze_all()
-        .map(Command::DialyzeAll)
-        .to_options()
-        .command("dialyze-all")
-        .help("Run Dialyzer on the whole project by shelling out to a `dialyzer-run` tool on the path to do the legwork.")
-        .hide_usage();
+    /// Show source code context for matches
+    #[arg(long = "show-source")]
+    pub show_source: bool,
 
-    let build_info = build_info()
-        .map(Command::BuildInfo)
-        .to_options()
-        .command("build-info")
-        .help("Generate build info JSON file");
+    /// Print NUM lines of leading context, enables --show-source
+    #[arg(short = 'B', long = "before-context", value_name = "NUM")]
+    pub before_context: Option<usize>,
 
-    let generate_completions = generate_completions()
-        .map(Command::GenerateCompletions)
-        .to_options()
-        .command("generate-completions")
-        .help("Generate shell completions");
+    /// Print NUM lines of trailing context, enables --show-source
+    #[arg(short = 'A', long = "after-context", value_name = "NUM")]
+    pub after_context: Option<usize>,
 
-    let lint = lint()
-        .map(Command::Lint)
-        .to_options()
-        .command("lint")
-        .help("Parse files in project and emit diagnostics, optionally apply fixes.");
+    /// Print NUM lines of output context, enables --show-source
+    #[arg(short = 'C', long = "context", value_name = "NUM")]
+    pub context: Option<usize>,
 
-    let lint_compare = lint_compare()
-        .map(Command::LintCompare)
-        .to_options()
-        .command("lint-compare")
-        .help(
-            "Diff two `elp lint --format=json` JSONL artifacts. \
-             Exits 0 if the per-(name, severity) counts match, \
-             1 if any group's count changed.",
-        );
+    /// Print SEP on line between matches with context, enables --show-source
+    #[arg(long = "group-separator", value_name = "SEP")]
+    pub group_separator: Option<String>,
 
-    let search = ssr()
-        .map(Command::Ssr)
-        .to_options()
-        .descr(SSR_DESCR)
-        .footer(SSR_FOOTER)
-        .command("search")
-        .help(
-            "Search Erlang code structurally using SSR (Structural Search and Replace) patterns.",
-        );
+    /// Do not print separator for matches with context, enables --show-source
+    #[arg(long = "no-group-separator")]
+    pub no_group_separator: bool,
 
-    let ssr = ssr()
-        .map(Command::Ssr)
-        .to_options()
-        .descr(SSR_DESCR)
-        .footer(SSR_FOOTER)
-        .command("ssr")
-        .help("Alias for 'search': search Erlang code structurally using SSR patterns.");
+    /// Report system memory usage and other statistics
+    #[arg(long = "report-system-stats")]
+    pub report_system_stats: bool,
 
-    let run_server = run_server()
-        .map(Command::RunServer)
-        .to_options()
-        .command("server")
-        .help("Run lsp server");
-
-    let version = version()
-        .map(Command::Version)
-        .to_options()
-        .command("version")
-        .help("Print version");
-
-    let shell = shell()
-        .map(Command::Shell)
-        .to_options()
-        .command("shell")
-        .help("Starts an interactive ELP shell");
-
-    let daemon = daemon_command_parser()
-        .map(Command::Daemon)
-        .to_options()
-        .command("daemon")
-        .help("Manage a persistent ELP daemon for fast turnaround");
-
-    let explain = explain()
-        .map(Command::Explain)
-        .to_options()
-        .command("explain")
-        .help("Explain a diagnostic code");
-
-    let project_info = project_info()
-        .map(Command::ProjectInfo)
-        .to_options()
-        .command("project-info")
-        .help("Generate project info file");
-
-    let glean = glean()
-        .map(Command::Glean)
-        .to_options()
-        .command("glean")
-        .help("Glean indexer");
-
-    let lint_list = lint_list()
-        .map(Command::LintList)
-        .to_options()
-        .command("lint-list")
-        .help("List all available lint diagnostic codes");
-
-    let config_stanza = config_stanza()
-        .map(Command::ConfigStanza)
-        .to_options()
-        .command("config")
-        .help("Dump a JSON config stanza suitable for use in VS Code project.json");
-
-    construct!([
-        // Note: The order here is what is used for `elp --help` output
-        version,
-        run_server,
-        shell,
-        daemon,
-        eqwalize,
-        eqwalize_all,
-        eqwalize_app,
-        eqwalize_target,
-        eqwalize_stats,
-        dialyze_all,
-        lint,
-        lint_compare,
-        lint_list,
-        search,
-        ssr,
-        parse_all,
-        parse_elp,
-        explain,
-        build_info,
-        project_info,
-        glean,
-        generate_completions,
-        config_stanza,
-    ])
-    .fallback(Help())
+    /// SSR specs to use. Each accepts `PATTERN`, `ssr: PATTERN.`, or
+    /// `LABEL:ssr: PATTERN.` forms; the LABEL surfaces as `patternLabel` in
+    /// JSON output.
+    #[arg(value_name = "SSR_SPECS", required = true)]
+    pub ssr_specs: Vec<String>,
 }
 
-fn parse_print_diags() -> impl Parser<bool> {
-    long("no-diags")
-        .help("Do not print the full diagnostics for a file, just the count")
-        .flag(/* present */ false, true)
+#[derive(Clone, Debug, clap::Args)]
+pub struct Explain {
+    /// Error code to explain
+    #[arg(long, value_name = "CODE", add = ArgValueCandidates::new(diagnostic_code_candidates))]
+    pub code: String,
 }
 
-fn parse_experimental_diags() -> impl Parser<bool> {
-    long("experimental")
-        .help("Report experimental diagnostics too, if diagnostics are enabled")
-        .flag(/* present */ true, false)
+#[derive(Clone, Debug, clap::Args)]
+pub struct LintList {}
+
+#[derive(Clone, Debug, clap::Args)]
+pub struct Shell {
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
+    pub project: PathBuf,
+    /// Initial command to run on shell startup
+    #[arg(value_name = "INITIAL_COMMAND")]
+    pub command: Vec<String>,
 }
+
+#[derive(Clone, Debug)]
+pub enum DaemonCommand {
+    Run(DaemonRun),
+    Stop,
+    Status(DaemonStatus),
+}
+
+#[derive(Clone, Debug, clap::Args)]
+pub struct DaemonRun {
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
+    pub project: PathBuf,
+    /// Rebar3 profile to pickup
+    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
+    pub profile: String,
+    /// Run with rebar
+    #[arg(long)]
+    pub rebar: bool,
+    /// Detach from parent process and run as daemon (internal use only)
+    #[arg(long, hide = true)]
+    pub daemonize: bool,
+}
+
+#[derive(Clone, Debug, clap::Args)]
+pub struct DaemonStatus {
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
+    pub project: PathBuf,
+    /// Rebar3 profile to pickup
+    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
+    pub profile: String,
+    /// Run with rebar
+    #[arg(long)]
+    pub rebar: bool,
+}
+
+#[derive(Clone, Debug, clap::Subcommand)]
+pub enum DaemonSubcommand {
+    /// Stop all running daemons
+    Stop,
+    /// Show daemon status for this project
+    Status(DaemonStatus),
+}
+
+#[derive(Clone, Debug, clap::Args)]
+#[command(about = "Manage a persistent ELP daemon for fast turnaround")]
+pub struct Daemon {
+    #[command(subcommand)]
+    pub subcommand: Option<DaemonSubcommand>,
+
+    #[command(flatten)]
+    pub run_args: DaemonRun,
+}
+
+impl Daemon {
+    pub fn into_command(self) -> DaemonCommand {
+        match self.subcommand {
+            Some(DaemonSubcommand::Stop) => DaemonCommand::Stop,
+            Some(DaemonSubcommand::Status(s)) => DaemonCommand::Status(s),
+            None => DaemonCommand::Run(self.run_args),
+        }
+    }
+}
+
+#[derive(Clone, Debug, clap::Args)]
+pub struct ProjectInfo {
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
+    pub project: PathBuf,
+    /// Path to a directory where to dump wa.build_info
+    #[arg(long, value_name = "TO", value_hint = ValueHint::DirPath)]
+    pub to: Option<PathBuf>,
+    /// Include the buck uquery results in the output
+    #[arg(long)]
+    pub buck_query: bool,
+    /// Dump a list of targets and their types
+    #[arg(long)]
+    pub target_types: bool,
+}
+
+#[derive(Clone, Debug, clap::Args)]
+pub struct Glean {
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
+    pub project: PathBuf,
+    #[arg(long, value_name = "MODULE", add = ArgValueCompleter::new(module_completer))]
+    pub module: Option<String>,
+    /// Path to a directory where to dump result
+    #[arg(long, value_name = "TO", value_hint = ValueHint::DirPath)]
+    pub to: Option<PathBuf>,
+    /// Deprecated no-op.
+    #[arg(long)]
+    pub schema2: bool,
+    /// Pretty print
+    #[arg(long)]
+    pub pretty: bool,
+    /// Output each fact separately
+    #[arg(long)]
+    pub multi: bool,
+    /// Print indexer metrics as JSON
+    #[arg(long)]
+    pub print_metrics: bool,
+    /// Prefix for every emitted `src.File` path
+    #[arg(long, value_name = "PATH")]
+    pub source_root: Option<String>,
+}
+
+#[derive(Clone, Debug, clap::Args)]
+pub struct ConfigStanza {}
+
+#[derive(Clone, Debug, AsRefStr, clap::Subcommand)]
+#[strum(serialize_all = "kebab-case")]
+pub enum Command {
+    /// Tree-sitter parse all files in a project for specified rebar.config file
+    #[command(name = "parse-elp")]
+    ParseAllElp(ParseAllElp),
+    /// Dump ast for all files in a project for specified rebar.config file
+    #[command(name = "parse-all")]
+    ParseAll(ParseAll),
+    /// Eqwalize specified modules
+    #[command(name = "eqwalize")]
+    Eqwalize(Eqwalize),
+    /// Eqwalize all opted-in modules in a project
+    #[command(name = "eqwalize-all")]
+    EqwalizeAll(EqwalizeAll),
+    /// Eqwalize all opted-in modules in specified buck target
+    #[command(name = "eqwalize-target")]
+    EqwalizeTarget(EqwalizeTarget),
+    /// Eqwalize all opted-in modules in specified application
+    #[command(name = "eqwalize-app")]
+    EqwalizeApp(EqwalizeApp),
+    /// Return statistics about code quality for eqWAlizer
+    #[command(name = "eqwalize-stats", hide = true)]
+    EqwalizeStats(EqwalizeStats),
+    /// Run Dialyzer on the whole project by shelling out to a `dialyzer-run` tool on the path to do the legwork.
+    #[command(name = "dialyze-all", hide = true)]
+    DialyzeAll(DialyzeAll),
+    /// Generate build info JSON file
+    #[command(name = "build-info")]
+    BuildInfo(BuildInfo),
+    /// Generate shell completions
+    #[command(name = "generate-completions")]
+    GenerateCompletions(GenerateCompletions),
+    /// Run lsp server
+    #[command(name = "server")]
+    RunServer(RunServer),
+    /// Parse files in project and emit diagnostics, optionally apply fixes.
+    #[command(name = "lint")]
+    Lint(Lint),
+    /// Diff two `elp lint --format=json` JSONL artifacts.
+    #[command(name = "lint-compare")]
+    LintCompare(LintCompare),
+    /// Search Erlang code structurally using SSR (Structural Search and Replace) patterns.
+    #[command(name = "search", about = SSR_DESCR, after_help = SSR_FOOTER)]
+    Search(Ssr),
+    /// Alias for 'search': search Erlang code structurally using SSR patterns.
+    #[command(name = "ssr", about = SSR_ALIAS_DESCR, after_help = SSR_FOOTER)]
+    Ssr(Ssr),
+    /// Print version
+    #[command(name = "version")]
+    Version(Version),
+    /// Starts an interactive ELP shell
+    #[command(name = "shell")]
+    Shell(Shell),
+    /// Manage a persistent ELP daemon for fast turnaround
+    #[command(name = "daemon")]
+    Daemon(Daemon),
+    /// Explain a diagnostic code
+    #[command(name = "explain")]
+    Explain(Explain),
+    /// List all available lint diagnostic codes
+    #[command(name = "lint-list")]
+    LintList(LintList),
+    /// Generate project info file
+    #[command(name = "project-info")]
+    ProjectInfo(ProjectInfo),
+    /// Glean indexer
+    #[command(name = "glean")]
+    Glean(Glean),
+    /// Dump a JSON config stanza suitable for use in VS Code project.json
+    #[command(name = "config")]
+    ConfigStanza(ConfigStanza),
+}
+
+#[derive(Debug, Clone, clap::Parser)]
+#[command(name = "elp")]
+pub struct Args {
+    // These top-level options are `global = true` so they can be supplied
+    // either before or after a subcommand. bpaf parsed them position
+    // independently; clap requires `global` to preserve that behaviour.
+    // Callers such as the Glean indexer pass `--erl`/`--escript` after the
+    // `glean` subcommand.
+    #[arg(long, value_name = "LOG_FILE", value_hint = ValueHint::FilePath, global = true, help_heading = "Global options")]
+    pub log_file: Option<PathBuf>,
+    #[arg(long, value_name = "ERL", value_hint = ValueHint::ExecutablePath, global = true, help_heading = "Global options")]
+    pub erl: Option<PathBuf>,
+    #[arg(long, value_name = "ESCRIPT", value_hint = ValueHint::ExecutablePath, global = true, help_heading = "Global options")]
+    pub escript: Option<PathBuf>,
+    #[arg(long, global = true, help_heading = "Global options")]
+    pub no_log_buffering: bool,
+
+    /// When using buck, do not invoke a build step for generated files.
+    #[arg(long, global = true, help_heading = "Global options")]
+    pub no_buck_generated: bool,
+
+    /// Use buck2 targets for first stage project loading
+    #[arg(long, global = true, help_heading = "Global options")]
+    pub buck_quick_start: bool,
+
+    /// Enable ifdef/ifndef condition evaluation (experimental)
+    #[arg(long, global = true, help_heading = "Global options")]
+    pub ifdef: bool,
+
+    /// Use color in output
+    #[arg(
+        long = "color",
+        alias = "colour",
+        value_name = "WHEN",
+        default_value = "always",
+        global = true,
+        help_heading = "Global options"
+    )]
+    pub color: Option<Color>,
+
+    // Backward-compatible hidden flags for the old bpaf-based completion
+    // generation. The OD provisioning scripts use these; remove after
+    // T276231496 migrates them to `elp generate-completions <shell>`.
+    #[arg(long = "bpaf-complete-style-bash", hide = true)]
+    pub bpaf_compat_bash: bool,
+    #[arg(long = "bpaf-complete-style-zsh", hide = true)]
+    pub bpaf_compat_zsh: bool,
+    #[arg(long = "bpaf-complete-style-fish", hide = true)]
+    pub bpaf_compat_fish: bool,
+
+    #[command(subcommand)]
+    pub command: Option<Command>,
+}
+
+impl Args {
+    pub fn query_config(&self) -> BuckQueryConfig {
+        if self.buck_quick_start {
+            BuckQueryConfig::BuckTargetsOnly
+        } else if self.no_buck_generated {
+            BuckQueryConfig::NoBuildGeneratedCode
+        } else {
+            BuckQueryConfig::BuildGeneratedCode
+        }
+    }
+
+    /// Determine if color should be used based on the --color argument
+    pub fn should_use_color(&self) -> bool {
+        match self.color {
+            Some(Color::Always) => true,
+            Some(Color::Never) => false,
+            Some(Color::Auto) | None => {
+                env::var("NO_COLOR").is_err() && std::io::stdout().is_terminal()
+            }
+        }
+    }
+
+    pub fn render_help() -> String {
+        Args::command().render_help().to_string()
+    }
+
+    pub fn bpaf_compat_shell(&self) -> Option<CompletionShell> {
+        if self.bpaf_compat_bash {
+            Some(CompletionShell::Bash)
+        } else if self.bpaf_compat_zsh {
+            Some(CompletionShell::Zsh)
+        } else if self.bpaf_compat_fish {
+            Some(CompletionShell::Fish)
+        } else {
+            None
+        }
+    }
+}
+
+impl Command {
+    pub fn normalize(&mut self) {
+        if let Command::Lint(args) = self {
+            args.normalize()
+        }
+    }
+}
+
+// --- Enumerated argument values ---
+//
+// These derive `clap::ValueEnum`, so clap parses and validates them directly
+// (no hand-written value parsers). The CLI value strings are the kebab-cased
+// variant names; `#[value(name = ...)]` pins any that must differ.
+
+/// Output format for diagnostics. Absent means the default human-readable output.
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    clap::ValueEnum,
+    Serialize,
+    Deserialize
+)]
+#[serde(rename_all = "snake_case")]
+pub enum Format {
+    Json,
+}
+
+/// Minimum diagnostic severity to report.
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    clap::ValueEnum,
+    Serialize,
+    Deserialize
+)]
+#[serde(rename_all = "snake_case")]
+pub enum Severity {
+    Error,
+    Warning,
+    #[value(name = "weak_warning")]
+    WeakWarning,
+    Information,
+}
+
+/// Macro expansion strategy for structural search.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
+pub enum MacroStrategyArg {
+    Expand,
+    NoExpand,
+    VisibleExpand,
+}
+
+/// When to use color in output.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
+pub enum Color {
+    Always,
+    Never,
+    Auto,
+}
+
+// --- Dynamic shell completers ---
+//
+// These are wired into clap via `#[arg(add = ...)]` and invoked by the
+// dynamic-completion engine (see the `CompleteEnv` hook in `main`). They
+// preserve the dynamic completion that the previous bpaf-based CLI provided.
 
 #[derive(Deserialize)]
 struct ModuleConfig {
@@ -948,8 +909,10 @@ struct ModuleConfig {
 
 const MODULES_FILE: &str = ".modules.toml";
 
-#[allow(clippy::ptr_arg)]
-fn module_completer(input: &String) -> Vec<(String, Option<String>)> {
+/// Complete a `--module` argument by fuzzy-matching the current input against
+/// the module names listed in the nearest `.modules.toml`.
+fn module_completer(current: &OsStr) -> Vec<CompletionCandidate> {
+    let input = current.to_string_lossy();
     let mut modules = vec![];
     let curr = env::current_dir().unwrap();
     let mut potential_path = Some(curr.as_path());
@@ -970,107 +933,19 @@ fn module_completer(input: &String) -> Vec<(String, Option<String>)> {
             break;
         }
     }
-    get_suggesions(input, modules)
+    get_suggesions(&input, modules)
 }
 
-fn diagnostic_code_completer(input: &Option<String>) -> Vec<(String, Option<String>)> {
-    let codes: Vec<String> = DiagnosticCode::all_diagnostic_codes()
-        .flat_map(|code| vec![code.as_code().to_string(), code.as_label().to_string()])
-        .collect();
-    codes
-        .into_iter()
-        .filter(|code| match input {
-            None => true,
-            Some(prefix) => code.starts_with(prefix),
-        })
-        .map(|c| (c.to_string(), None))
-        .collect::<Vec<_>>()
-}
-
-fn format_completer(_: &Option<String>) -> Vec<(String, Option<String>)> {
-    vec![("json".to_string(), None)]
-}
-
-fn format_guard(format: &Option<String>) -> bool {
-    match format {
-        None => true,
-        Some(f) if f == "json" => true,
-        _ => false,
-    }
-}
-
-fn severity_completer(_: &Option<String>) -> Vec<(String, Option<String>)> {
-    vec![
-        ("error".to_string(), None),
-        ("warning".to_string(), None),
-        ("weak_warning".to_string(), None),
-        ("information".to_string(), None),
-    ]
-}
-
-fn severity_guard(severity: &Option<String>) -> bool {
-    match severity {
-        None => true,
-        Some(s) if s == "error" || s == "warning" || s == "weak_warning" || s == "information" => {
-            true
-        }
-        _ => false,
-    }
-}
-
-fn macros_completer(_: &Option<String>) -> Vec<(String, Option<String>)> {
-    vec![
-        ("expand".to_string(), None),
-        ("no-expand".to_string(), None),
-        ("visible-expand".to_string(), None),
-    ]
-}
-
-fn macros_guard(format: &Option<String>) -> bool {
-    match format {
-        None => true,
-        Some(_) => parse_macro_strategy(format).is_ok(),
-    }
-}
-
-fn color_guard(color: &Option<String>) -> bool {
-    match color {
-        None => true,
-        Some(c) if c == "always" || c == "never" || c == "auto" => true,
-        _ => false,
-    }
-}
-
-#[allow(clippy::ptr_arg)] // This is needed in the BPAF macros
-fn at_least_1(data: &Vec<String>) -> bool {
-    !data.is_empty()
-}
-
-#[allow(clippy::ptr_arg)]
-fn shell_completer(shell: &String) -> Vec<(String, Option<String>)> {
-    let completions = match shell.to_lowercase().chars().next() {
-        Some('b') => vec!["bash"],
-        Some('f') => vec!["fish"],
-        Some('z') => vec!["zsh"],
-        _ => vec!["bash", "fish", "zsh"],
-    };
-    completions
-        .into_iter()
-        .map(|sh| (sh.into(), None))
+/// Complete a diagnostic `--code` argument with every known diagnostic code and
+/// label. clap prefix-filters the returned candidates against the current input.
+fn diagnostic_code_candidates() -> Vec<CompletionCandidate> {
+    DiagnosticCode::all_diagnostic_codes()
+        .flat_map(|code| [code.as_code().to_string(), code.as_label().to_string()])
+        .map(CompletionCandidate::new)
         .collect()
 }
 
-#[allow(clippy::match_like_matches_macro)]
-fn shell_guard(shell: &String) -> bool {
-    match shell.as_ref() {
-        "bash" => true,
-        "zsh" => true,
-        "fish" => true,
-        _ => false,
-    }
-}
-
-fn get_suggesions(input: &str, modules: Vec<String>) -> Vec<(String, Option<String>)> {
+fn get_suggesions(input: &str, modules: Vec<String>) -> Vec<CompletionCandidate> {
     const MAX_RESULTS: usize = 10;
 
     modules
@@ -1078,45 +953,22 @@ fn get_suggesions(input: &str, modules: Vec<String>) -> Vec<(String, Option<Stri
         .map(|key| (strsim::normalized_damerau_levenshtein(input, &key), key))
         .sorted_by(|a, b| PartialOrd::partial_cmp(&b.0, &a.0).unwrap_or(Ordering::Less))
         .take(MAX_RESULTS)
-        .map(|(_lev, v)| (v, None))
+        .map(|(_lev, v)| CompletionCandidate::new(v))
         .collect()
 }
 
-#[cfg(target_os = "macos")]
-pub fn gen_completions(shell: &str) -> &str {
-    match shell {
-        "bash" => "elp --bpaf-complete-style-bash",
-        "zsh" => {
-            "elp --bpaf-complete-style-zsh | sudo dd of=/usr/local/share/zsh/site-functions/_elp && echo 'autoload -U compinit; compinit ' >> ~/.zshrc && zsh"
-        }
-        "fish" => "elp --bpaf-complete-style-fish > ~/.config/fish/completions/elp.fish",
-        _ => unreachable!(),
-    }
+// --- Shell completion generation ---
+
+pub fn generate_completions(shell: CompletionShell, buf: &mut dyn std::io::Write) {
+    clap_complete::generate(shell, &mut Args::command(), "elp", buf);
 }
 
-#[cfg(target_os = "linux")]
-pub fn gen_completions(shell: &str) -> &str {
-    match shell {
-        "bash" => {
-            "elp --bpaf-complete-style-bash | sudo dd of=/usr/share/bash-completion/completions/elp && bash"
-        }
-        "zsh" => {
-            "elp --bpaf-complete-style-zsh | sudo dd of=/usr/share/zsh/site-functions/_elp && echo 'autoload -U compinit; compinit ' >> ~/.zshrc && zsh"
-        }
-        "fish" => "elp --bpaf-complete-style-fish > ~/.config/fish/completions/elp.fish",
-        _ => unreachable!(),
-    }
-}
-
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
-pub fn gen_completions(shell: &str) -> String {
-    format!("elp --bpaf-complete-style-{}", shell)
-}
+// --- Impl blocks ---
 
 impl Lint {
     pub fn normalize(&mut self) {
         if self.arc_patch {
-            self.format = Some("json".to_string());
+            self.format = Some(Format::Json);
         }
     }
 
@@ -1125,7 +977,7 @@ impl Lint {
     }
 
     pub fn is_format_json(&self) -> bool {
-        self.format == Some("json".to_string())
+        self.format == Some(Format::Json)
     }
 
     /// To prevent flaky test results we allow disabling streaming when applying fixes
@@ -1134,16 +986,11 @@ impl Lint {
     }
 }
 
-fn parse_macro_strategy(macro_strategy: &Option<String>) -> Result<MacroStrategy> {
-    match macro_strategy.as_deref() {
-        Some("no-expand") => Ok(MacroStrategy::DoNotExpand),
-        Some("expand") => Ok(MacroStrategy::Expand),
-        Some("visible-expand") => Ok(MacroStrategy::ExpandButIncludeMacroCall),
-        None => Ok(MacroStrategy::Expand),
-        Some(s) => bail!(
-            "Invalid macro strategy '{}'. Valid options are: expand, no-expand, visible-expand",
-            s
-        ),
+fn parse_macro_strategy(macro_strategy: Option<MacroStrategyArg>) -> MacroStrategy {
+    match macro_strategy {
+        Some(MacroStrategyArg::NoExpand) => MacroStrategy::DoNotExpand,
+        Some(MacroStrategyArg::Expand) | None => MacroStrategy::Expand,
+        Some(MacroStrategyArg::VisibleExpand) => MacroStrategy::ExpandButIncludeMacroCall,
     }
 }
 
@@ -1153,11 +1000,11 @@ impl Ssr {
     }
 
     pub fn is_format_json(&self) -> bool {
-        self.format == Some("json".to_string())
+        self.format == Some(Format::Json)
     }
 
     pub fn parse_strategy(&self) -> Result<Strategy> {
-        let macros = parse_macro_strategy(&self.macro_strategy)?;
+        let macros = parse_macro_strategy(self.macro_strategy);
         let parens = if self.paren_strategy {
             ParenStrategy::VisibleParens
         } else {
@@ -1173,19 +1020,53 @@ impl ParseAllElp {
     }
 
     pub fn is_format_json(&self) -> bool {
-        self.format == Some("json".to_string())
+        self.format == Some(Format::Json)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use clap::CommandFactory;
+    use clap::Parser;
 
-    use bpaf::Parser;
-
-    use super::command;
+    use super::Args;
+    use super::Command;
 
     #[test]
     fn check_options() {
-        command().to_options().check_invariants(false)
+        Args::command().debug_assert();
+    }
+
+    /// The Glean indexer invokes elp with the global `--erl`/`--escript`
+    /// options *after* the `glean` subcommand. These options are declared on
+    /// the top-level `Args`, so they must be `global = true` to be accepted in
+    /// that position (bpaf parsed them position independently).
+    #[test]
+    fn global_options_accepted_after_subcommand() {
+        let args = Args::try_parse_from([
+            "elp",
+            "glean",
+            "--schema2",
+            "--multi",
+            "--project",
+            "/some/project",
+            "--erl",
+            "/path/to/erl",
+            "--escript",
+            "/path/to/escript",
+            "--to",
+            "/path/to/out",
+        ])
+        .expect("global options must be accepted after a subcommand");
+
+        assert_eq!(
+            args.erl.as_deref(),
+            Some(std::path::Path::new("/path/to/erl"))
+        );
+        assert_eq!(
+            args.escript.as_deref(),
+            Some(std::path::Path::new("/path/to/escript"))
+        );
+        assert!(matches!(args.command, Some(Command::Glean(_))));
     }
 }

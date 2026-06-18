@@ -16,7 +16,8 @@ path = "src/bin/main.rs"
 [dependencies]
 always-assert.workspace = true
 anyhow.workspace = true
-bpaf.workspace = true
+clap.workspace = true
+clap_complete.workspace = true
 codespan-reporting.workspace = true
 crossbeam-channel.workspace = true
 dunce.workspace = true

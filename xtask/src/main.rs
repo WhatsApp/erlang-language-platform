@@ -20,24 +20,20 @@ use std::path::PathBuf;
 #[cfg(not(buck_build))]
 use anyhow::Context as _;
 use anyhow::Result;
-use bpaf::Bpaf;
-use bpaf::Parser;
-use bpaf::construct;
+use clap::Parser;
 use xshell::Shell;
 use xshell::cmd;
-
-use crate::Command::Help;
 
 mod codegen;
 
 fn main() -> Result<()> {
-    let args = args().run();
+    let args = Args::parse();
     match args.command {
-        Command::CodeGen(_) => {
+        Some(Command::Codegen) => {
             let mode = codegen::Mode::Overwrite;
             codegen::CodegenCmd { mode }.run()
         }
-        Help() => {
+        None => {
             eprintln!(
                 "\
 cargo xtask
@@ -54,31 +50,18 @@ SUBCOMMANDS:
     }
 }
 
-#[derive(Debug, Clone, Bpaf)]
-#[bpaf(options)]
+#[derive(Debug, Clone, clap::Parser)]
+#[command(name = "xtask")]
 struct Args {
-    #[bpaf(external(command))]
-    command: Command,
+    #[command(subcommand)]
+    command: Option<Command>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, clap::Subcommand)]
 enum Command {
-    CodeGen(CodeGen),
-    Help(),
+    /// Generate ast from tree-sitter grammar
+    Codegen,
 }
-
-fn command() -> impl Parser<Command> {
-    let code_gen = code_gen()
-        .map(Command::CodeGen)
-        .to_options()
-        .command("codegen")
-        .help("Generate ast from tree-sitter grammar");
-
-    construct!([code_gen]).fallback(Help())
-}
-
-#[derive(Clone, Debug, Bpaf)]
-struct CodeGen {}
 
 #[cfg(buck_build)]
 pub fn project_root() -> PathBuf {

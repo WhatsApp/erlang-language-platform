@@ -1,11 +1,25 @@
-Usage: [--project PROJECT] [[--format FORMAT]] [--connect] [--bail-on-error] <TARGET>
+Eqwalize all opted-in modules in specified buck target
 
-Available positional items:
-    <TARGET>  target, like //erl/chatd/...
+Usage: elp eqwalize-target [OPTIONS] <TARGET>
 
-Available options:
-        --project <PROJECT>  Path to directory with project, or to a JSON file (defaults to `.`)
-        --format <FORMAT>  Show diagnostics in JSON format
-        --connect        Use a persistent daemon for fast turnaround (auto-starts if needed)
-        --bail-on-error  Exit with a non-zero status code if any errors are found
-    -h, --help           Prints help information
+Arguments:
+  <TARGET>  target, like //erl/chatd/...
+
+Options:
+      --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
+      --format <FORMAT>    Customize the output format (defaults to human-readable) [possible
+                           values: json]
+      --connect            Use a persistent daemon for fast turnaround (auto-starts if needed)
+      --bail-on-error      Exit with a non-zero status code if any errors are found
+  -h, --help               Print help
+
+Global options:
+      --log-file <LOG_FILE>  
+      --erl <ERL>            
+      --escript <ESCRIPT>    
+      --no-log-buffering     
+      --no-buck-generated    When using buck, do not invoke a build step for generated files
+      --buck-quick-start     Use buck2 targets for first stage project loading
+      --ifdef                Enable ifdef/ifndef condition evaluation (experimental)
+      --color <WHEN>         Use color in output [default: always] [possible values: always, never,
+                             auto]

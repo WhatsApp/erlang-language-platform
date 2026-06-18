@@ -78,13 +78,12 @@ use crate::args::Lint;
 use crate::reporting;
 use crate::reporting::print_memory_usage;
 
-fn parse_severity(severity: &str) -> Option<diagnostics::Severity> {
+fn arg_severity(severity: crate::args::Severity) -> diagnostics::Severity {
     match severity {
-        "error" => Some(diagnostics::Severity::Error),
-        "warning" => Some(diagnostics::Severity::Warning),
-        "weak_warning" => Some(diagnostics::Severity::WeakWarning),
-        "information" => Some(diagnostics::Severity::Information),
-        _ => None,
+        crate::args::Severity::Error => diagnostics::Severity::Error,
+        crate::args::Severity::Warning => diagnostics::Severity::Warning,
+        crate::args::Severity::WeakWarning => diagnostics::Severity::WeakWarning,
+        crate::args::Severity::Information => diagnostics::Severity::Information,
     }
 }
 
@@ -548,10 +547,7 @@ pub fn do_codemod(
             );
         }
 
-        let min_severity = args
-            .severity
-            .as_ref()
-            .and_then(|s| parse_severity(s.as_str()));
+        let min_severity = args.severity.map(arg_severity);
         let mut filtered_diags = {
             let analysis = loaded.analysis();
             filter_diagnostics(
@@ -693,10 +689,7 @@ fn do_print_diagnostic_collection(
 ) -> Result<bool> {
     let single_result = vec![result.clone()];
     let mut has_diagnostics = false;
-    let min_severity = args
-        .severity
-        .as_ref()
-        .and_then(|s| parse_severity(s.as_str()));
+    let min_severity = args.severity.map(arg_severity);
     if let Ok(filtered) = filter_diagnostics(
         analysis,
         module,
@@ -782,10 +775,7 @@ fn do_print_diagnostic_collection_json(
 ) -> Result<bool> {
     let single_result = vec![result.clone()];
     let mut has_diagnostics = false;
-    let min_severity = args
-        .severity
-        .as_ref()
-        .and_then(|s| parse_severity(s.as_str()));
+    let min_severity = args.severity.map(arg_severity);
     if let Ok(filtered) = filter_diagnostics(
         analysis,
         module,
@@ -1489,6 +1479,7 @@ fn get_form_id_at_offset(
 mod tests {
     use std::ffi::OsString;
 
+    use clap::Parser;
     use elp::build::fixture;
     use elp::cli::Fake;
     use elp_ide::FunctionMatch;
@@ -1612,11 +1603,12 @@ mod tests {
     ) {
         let mut loaded = fixture::load_result(fixture);
 
-        let args = bpaf::Args::from(args_vec.as_slice());
-        let args = args::args().run_inner(args).unwrap();
+        let mut full_args = vec![std::ffi::OsString::from("elp")];
+        full_args.extend(args_vec);
+        let args = args::Args::try_parse_from(full_args).unwrap();
         let mut cli = Fake::default();
 
-        if let Command::Lint(mut lint) = args.command {
+        if let Some(Command::Lint(mut lint)) = args.command {
             let lint_config = LintConfig::default();
             lint.normalize();
             let diagnostics_config = super::get_diagnostics_config(&lint, &lint_config).unwrap();

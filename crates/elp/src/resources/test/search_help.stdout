@@ -1,6 +1,7 @@
-Alias for 'search': search Erlang code structurally using SSR patterns.
+Search Erlang code by syntax-tree shape (not text) using SSR (Structural Search and Replace)
+patterns.
 
-Usage: elp ssr [OPTIONS] <SSR_SPECS>...
+Usage: elp search [OPTIONS] <SSR_SPECS>...
 
 Arguments:
   <SSR_SPECS>...  SSR specs to use. Each accepts `PATTERN`, `ssr: PATTERN.`, or `LABEL:ssr:
