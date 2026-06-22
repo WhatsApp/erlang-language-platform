@@ -28,23 +28,6 @@
     "markdownDescription": "Update native diagnostics only when the file is saved.",
     "type": "boolean"
   },
-  "elp.eqwalizer.all": {
-    "default": false,
-    "markdownDescription": "Whether to report Eqwalizer diagnostics for the whole project and not only for opened files.",
-    "type": "boolean"
-  },
-  "elp.eqwalizer.chunkSize": {
-    "default": 100,
-    "markdownDescription": "Chunk size to use for project-wide eqwalization.",
-    "minimum": 0,
-    "type": "integer"
-  },
-  "elp.eqwalizer.maxTasks": {
-    "default": 32,
-    "markdownDescription": "Maximum number of tasks to run in parallel for project-wide eqwalization.",
-    "minimum": 0,
-    "type": "integer"
-  },
   "elp.highlightDisabledCode.enable": {
     "default": true,
     "markdownDescription": "Whether to highlight disabled code branches.",

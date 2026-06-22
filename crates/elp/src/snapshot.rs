@@ -55,9 +55,6 @@ pub enum TelemetryData {
     EqwalizerDiagnostics {
         file_uri: Uri,
     },
-    EqwalizerProjectDiagnostics {
-        project_name: String,
-    },
     ParseServerDiagnostics {
         file_uri: Uri,
     },
@@ -79,12 +76,6 @@ impl fmt::Display for TelemetryData {
             }
             TelemetryData::EqwalizerDiagnostics { file_uri } => {
                 write!(f, "Eqwalizer Diagnostics file_uri: {}", **file_uri)
-            }
-            TelemetryData::EqwalizerProjectDiagnostics { project_name } => {
-                write!(
-                    f,
-                    "Eqwalizer Project Diagnostics project_name: {project_name}"
-                )
             }
             TelemetryData::ParseServerDiagnostics { file_uri } => {
                 write!(f, "Parse Server Diagnostics file_uri: {}", **file_uri)
@@ -185,18 +176,8 @@ impl Snapshot {
         Some(uri_from_abs_path(path))
     }
 
-    pub fn update_cache_for_file(
-        &self,
-        file_id: FileId,
-        optimize_for_eqwalizer: bool,
-    ) -> Result<()> {
+    pub fn update_cache_for_file(&self, file_id: FileId) -> Result<()> {
         let _ = self.analysis.def_map(file_id)?;
-        if optimize_for_eqwalizer {
-            let should_eqwalize = self.analysis.should_eqwalize(file_id)?;
-            if should_eqwalize {
-                let _ = self.analysis.module_ast(file_id)?;
-            }
-        }
         Ok(())
     }
 
@@ -230,42 +211,6 @@ impl Snapshot {
         let file_uri = self.file_id_to_uri(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_uri });
         self.analysis.eqwalizer_diagnostics_for_file(file_id).ok()?
-    }
-
-    pub fn eqwalizer_project_diagnostics(
-        &self,
-        project_id: ProjectId,
-        max_tasks: usize,
-    ) -> Option<Vec<(FileId, Vec<diagnostics::Diagnostic>)>> {
-        let module_index = self.analysis.module_index(project_id).ok()?;
-
-        let file_ids: Vec<FileId> = module_index
-            .iter_own()
-            .filter_map(|(_, _, file_id)| {
-                if let Ok(true) = self.analysis.should_eqwalize(file_id) {
-                    Some(file_id)
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        log::info!(
-            "Calculating eqwalizer diagnostics for {} files",
-            file_ids.len()
-        );
-
-        let project_name = match self.get_project(project_id) {
-            Some(project) => project.name(),
-            None => "undefined".to_string(),
-        };
-
-        let _timer =
-            timeit_with_telemetry!(TelemetryData::EqwalizerProjectDiagnostics { project_name });
-
-        self.analysis
-            .eqwalizer_diagnostics_by_project(project_id, file_ids, max_tasks)
-            .ok()?
     }
 
     pub fn eqwalizer_types(

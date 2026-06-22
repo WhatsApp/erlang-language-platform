@@ -271,23 +271,6 @@
           "markdownDescription": "Whether to report Edoc diagnostics.",
           "type": "boolean"
         },
-        "elp.eqwalizer.all": {
-          "default": false,
-          "markdownDescription": "Whether to report Eqwalizer diagnostics for the whole project and not only for opened files.",
-          "type": "boolean"
-        },
-        "elp.eqwalizer.chunkSize": {
-          "default": 100,
-          "markdownDescription": "Chunk size to use for project-wide eqwalization.",
-          "minimum": 0,
-          "type": "integer"
-        },
-        "elp.eqwalizer.maxTasks": {
-          "default": 32,
-          "markdownDescription": "Maximum number of tasks to run in parallel for project-wide eqwalization.",
-          "minimum": 0,
-          "type": "integer"
-        },
         "elp.highlightDynamic.enable": {
           "default": false,
           "markdownDescription": "If enabled, highlight variables with type `dynamic()` when Eqwalizer results are available.",

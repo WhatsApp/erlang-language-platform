@@ -159,17 +159,11 @@ pub enum Task {
         Spinner,
         Vec<(FileId, Vec<diagnostics::Diagnostic>, Arc<Vec<(Pos, Type)>>)>,
     ),
-    EqwalizerProjectDiagnostics(
-        Spinner,
-        Vec<(ProjectId, Vec<(FileId, Vec<diagnostics::Diagnostic>)>)>,
-    ),
     ErlangServiceDiagnostics(Vec<(FileId, LabeledDiagnostics)>),
     CompileDeps(Spinner),
     Progress(ProgressTask),
     ScheduleCache,
     UpdateCache(Vec<FileId>),
-    ScheduleEqwalizeAll(ProjectId),
-    UpdateEqwalizeAll(ProgressBar, ProjectId, String, Vec<FileId>),
 }
 
 impl fmt::Debug for Event {
@@ -264,7 +258,6 @@ pub struct Server {
     task_pool: TaskHandle,
     project_pool: TaskHandle,
     cache_pool: TaskHandle,
-    eqwalizer_pool: TaskHandle,
     diagnostics: Arc<DiagnosticCollection>,
     eqwalizer_types: Arc<EqwalizerTypes>,
     req_queue: ReqQueue,
@@ -290,10 +283,7 @@ pub struct Server {
     reset_source_roots: bool,
     native_diagnostics_requested: bool,
     eqwalizer_and_erlang_service_diagnostics_requested: bool,
-    eqwalizer_project_diagnostics_requested: bool,
     cache_scheduled: bool,
-    eqwalize_all_scheduled: FxHashSet<ProjectId>,
-    eqwalize_all_completed: bool,
     logger: Logger,
     telemetry_manager: TelemetryManager,
     // We record the highest FileId index seen as a count of the number of files recorded
@@ -321,7 +311,6 @@ impl Server {
         task_pool: TaskHandle,
         project_pool: TaskHandle,
         cache_pool: TaskHandle,
-        eqwalizer_pool: TaskHandle,
         logger: Logger,
         config: Config,
     ) -> Server {
@@ -332,7 +321,6 @@ impl Server {
             task_pool,
             project_pool,
             cache_pool,
-            eqwalizer_pool,
             diagnostics: Arc::new(DiagnosticCollection::default()),
             eqwalizer_types: Arc::new(FxHashMap::default()),
             req_queue: ReqQueue::default(),
@@ -357,10 +345,7 @@ impl Server {
             reset_source_roots: false,
             native_diagnostics_requested: false,
             eqwalizer_and_erlang_service_diagnostics_requested: false,
-            eqwalizer_project_diagnostics_requested: false,
             cache_scheduled: false,
-            eqwalize_all_scheduled: FxHashSet::default(),
-            eqwalize_all_completed: false,
             logger,
             telemetry_manager: TelemetryManager::new(),
             vfs_config_version: 0,
@@ -460,10 +445,6 @@ impl Server {
                 Some(Event::Task(msg.unwrap()))
             }
 
-            recv (self.eqwalizer_pool.receiver) -> msg => {
-                Some(Event::Task(msg.unwrap()))
-            }
-
             // We put vfs loader events last, they run with all
             // available threads, we do not want to starve the
             // other sources.
@@ -524,10 +505,6 @@ impl Server {
                     spinner.end();
                     self.eqwalizer_diagnostics_completed(diags_types)
                 }
-                Task::EqwalizerProjectDiagnostics(spinner, diags) => {
-                    spinner.end();
-                    self.eqwalizer_project_diagnostics_completed(diags)
-                }
                 Task::ErlangServiceDiagnostics(diags) => {
                     self.erlang_service_diagnostics_completed(diags)
                 }
@@ -542,10 +519,6 @@ impl Server {
                 Task::Progress(progress) => self.report_progress(progress),
                 Task::UpdateCache(files) => self.update_cache(files),
                 Task::ScheduleCache => self.schedule_cache(),
-                Task::UpdateEqwalizeAll(spinner, project_id, project_name, files) => {
-                    self.update_eqwalize_all(spinner, project_id, project_name, files)
-                }
-                Task::ScheduleEqwalizeAll(project_id) => self.schedule_eqwalize_all(project_id),
                 Task::ShowMessage(params) => self.show_message(params),
                 Task::ShowMessageRequest(params) => self.show_message_request(params),
             },
@@ -583,10 +556,6 @@ impl Server {
             if mem::take(&mut self.eqwalizer_and_erlang_service_diagnostics_requested) {
                 self.update_eqwalizer_diagnostics();
                 self.update_erlang_service_diagnostics();
-            }
-
-            if mem::take(&mut self.eqwalizer_project_diagnostics_requested) {
-                self.update_eqwalizer_project_diagnostics();
             }
         }
 
@@ -728,9 +697,6 @@ impl Server {
             })?
             .on::<notification::DidOpenTextDocument>(|this, params| {
                 this.eqwalizer_and_erlang_service_diagnostics_requested = true;
-                if this.config.eqwalizer().all {
-                    this.eqwalizer_project_diagnostics_requested = true;
-                }
                 this.native_diagnostics_requested = true;
                 if let Ok(path) = convert::abs_path(&params.text_document.uri) {
                     let vfs_path = VfsPath::from(path.clone());
@@ -819,11 +785,6 @@ impl Server {
 
                     let vfs = this.vfs.read();
                     if let Some((file_id, _)) = vfs.file_id(&path) {
-                        // If project-wide diagnostics are enabled, ensure we don't lose the eqwalizer ones.
-                        if this.config.eqwalizer().all {
-                            Arc::make_mut(&mut this.diagnostics)
-                                .move_eqwalizer_diagnostics_to_project_diagnostics(file_id);
-                        }
                         Arc::make_mut(&mut this.diagnostics)
                             .clear(file_id);
                         if let Ok(line_index) = analysis.line_index(file_id) {
@@ -871,9 +832,6 @@ impl Server {
                         .unwrap_or(false);
                     if opened {
                         this.eqwalizer_and_erlang_service_diagnostics_requested = true;
-                        if this.config.eqwalizer().all {
-                            this.eqwalizer_project_diagnostics_requested = true;
-                        }
                         this.native_diagnostics_requested = true;
                     } else {
                         this.vfs_loader.handle.invalidate(path);
@@ -1136,8 +1094,6 @@ impl Server {
                 // causes us to remove stale squiggles from the UI.
                 // We remove all that are only updated on save
                 Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file.file_id, vec![]);
-                Arc::make_mut(&mut self.diagnostics)
-                    .set_eqwalizer_project(vec![(file.file_id, vec![])]);
                 Arc::make_mut(&mut self.eqwalizer_types).insert(file.file_id, Arc::new(vec![]));
                 Arc::make_mut(&mut self.diagnostics)
                     .set_erlang_service(file.file_id, LabeledDiagnostics::default());
@@ -1256,37 +1212,6 @@ impl Server {
         });
     }
 
-    fn update_eqwalizer_project_diagnostics(&mut self) {
-        if self.status != Status::Running || !self.eqwalize_all_completed {
-            return;
-        }
-
-        log::info!("Recomputing EqWAlizer (project-wide) diagnostics");
-
-        let snapshot = self.snapshot();
-        let spinner = self
-            .progress
-            .begin_spinner("EqWAlizing All (project-wide)".to_string());
-        let max_tasks = self.config.eqwalizer().max_tasks;
-
-        self.eqwalizer_pool.handle.spawn(move || {
-            let diagnostics = snapshot
-                .projects
-                .iter()
-                .enumerate()
-                .filter_map(|(id, _project)| {
-                    let project_id = ProjectId(id as u32);
-                    Some((
-                        project_id,
-                        snapshot.eqwalizer_project_diagnostics(project_id, max_tasks)?,
-                    ))
-                })
-                .collect();
-
-            Task::EqwalizerProjectDiagnostics(spinner, diagnostics)
-        });
-    }
-
     #[allow(clippy::type_complexity)]
     fn eqwalizer_diagnostics_completed(
         &mut self,
@@ -1301,16 +1226,6 @@ impl Server {
         }
         if highlight_dynamic {
             self.refresh_semantic_tokens();
-        }
-    }
-
-    #[allow(clippy::type_complexity)]
-    fn eqwalizer_project_diagnostics_completed(
-        &mut self,
-        diags: Vec<(ProjectId, Vec<(FileId, Vec<diagnostics::Diagnostic>)>)>,
-    ) {
-        for (_project_id, diagnostics) in diags {
-            Arc::make_mut(&mut self.diagnostics).set_eqwalizer_project(diagnostics);
         }
     }
 
@@ -1947,20 +1862,13 @@ impl Server {
     fn update_cache(&mut self, mut files: Vec<FileId>) {
         if files.is_empty() {
             self.cache_scheduled = true;
-            if self.config.eqwalizer().all {
-                for (i, _) in self.snapshot().projects.iter().enumerate() {
-                    let project_id = ProjectId(i as u32);
-                    self.schedule_eqwalize_all(project_id);
-                }
-            }
             return;
         }
         let snapshot = self.snapshot();
-        let eqwalize_all = self.config.eqwalizer().all;
         self.cache_pool.handle.spawn_with_sender(move |sender| {
             while !files.is_empty() {
                 let file_id = files.remove(files.len() - 1);
-                match snapshot.update_cache_for_file(file_id, eqwalize_all) {
+                match snapshot.update_cache_for_file(file_id) {
                     Ok(_) => {}
                     Err(_) => {
                         // Got canceled
@@ -1970,106 +1878,6 @@ impl Server {
                 }
             }
             sender.send(Task::UpdateCache(files)).unwrap();
-        });
-    }
-
-    fn schedule_eqwalize_all(&mut self, project_id: ProjectId) {
-        if self.eqwalize_all_scheduled.contains(&project_id) {
-            return;
-        }
-        let snapshot = self.snapshot();
-        let project_name = match snapshot.get_project(project_id) {
-            Some(project) => project.name(),
-            None => "undefined".to_string(),
-        };
-        let message = format!("Eqwalize All ({project_name})");
-        let bar = self.progress.begin_bar(message, None);
-
-        self.eqwalizer_pool.handle.spawn_with_sender(move |sender| {
-            let mut files = vec![];
-            let module_index = match snapshot.analysis.module_index(project_id) {
-                Ok(module_index) => module_index,
-                //rescheduling canceled
-                Err(_) => {
-                    sender.send(Task::ScheduleEqwalizeAll(project_id)).unwrap();
-                    return;
-                }
-            };
-
-            for (_, _, file_id) in module_index.iter_own() {
-                match snapshot.analysis.should_eqwalize(file_id) {
-                    Ok(true) => {
-                        files.push(file_id);
-                    }
-                    Ok(false) => {}
-                    Err(_) => {
-                        sender.send(Task::ScheduleEqwalizeAll(project_id)).unwrap();
-                        return;
-                    }
-                }
-            }
-            sender
-                .send(Task::UpdateEqwalizeAll(
-                    bar,
-                    project_id,
-                    project_name,
-                    files,
-                ))
-                .unwrap();
-        });
-    }
-
-    fn update_eqwalize_all(
-        &mut self,
-        mut bar: ProgressBar,
-        project_id: ProjectId,
-        project_name: String,
-        mut files: Vec<FileId>,
-    ) {
-        if files.is_empty() {
-            bar.end();
-            self.eqwalize_all_scheduled.insert(project_id);
-            if self.projects.len() == self.eqwalize_all_scheduled.len() {
-                self.eqwalize_all_completed = true;
-            }
-            return;
-        }
-        let snapshot = self.snapshot();
-        let chunk_size = self.config.eqwalizer().chunk_size;
-        let max_tasks = self.config.eqwalizer().max_tasks;
-        self.eqwalizer_pool.handle.spawn_with_sender(move |sender| {
-            let total = files.len();
-            let mut done = 0;
-            while !files.is_empty() {
-                let len = files.len();
-                let file_ids = if chunk_size < len {
-                    files.split_off(len - chunk_size)
-                } else {
-                    std::mem::take(&mut files)
-                };
-                if snapshot
-                    .analysis
-                    .eqwalizer_diagnostics_by_project(project_id, file_ids.clone(), max_tasks)
-                    .is_err()
-                {
-                    //got canceled
-                    for file_id in file_ids {
-                        files.push(file_id);
-                    }
-                    break;
-                } else {
-                    done += file_ids.len();
-                    bar.report(done, total);
-                }
-            }
-            sender
-                .send(Task::UpdateEqwalizeAll(
-                    bar,
-                    project_id,
-                    project_name,
-                    files,
-                ))
-                .unwrap();
         });
     }
 

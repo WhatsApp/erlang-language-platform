@@ -53,12 +53,6 @@ config_data! {
       diagnostics_disabled: FxHashSet<String> = json! { [] },
       /// Update native diagnostics only when the file is saved.
       diagnostics_onSave_enable: bool = json! { false },
-      /// Whether to report Eqwalizer diagnostics for the whole project and not only for opened files.
-      eqwalizer_all: bool = json! { false },
-      /// Maximum number of tasks to run in parallel for project-wide eqwalization.
-      eqwalizer_maxTasks: usize = json! { 32 },
-      /// Chunk size to use for project-wide eqwalization.
-      eqwalizer_chunkSize: usize = json! { 100 },
       /// Whether to highlight disabled code branches.
       highlightDisabledCode_enable: bool = json! { true },
       /// If enabled, highlight variables with type `dynamic()` when Eqwalizer results are available.
@@ -142,13 +136,6 @@ pub struct LensConfig {
     pub logview_links: bool,
     pub scuba_links: bool,
     pub wam_links: bool,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EqwalizerConfig {
-    pub all: bool,
-    pub max_tasks: usize,
-    pub chunk_size: usize,
 }
 
 macro_rules! try_ {
@@ -338,14 +325,6 @@ impl Config {
         }
     }
 
-    pub fn eqwalizer(&self) -> EqwalizerConfig {
-        EqwalizerConfig {
-            all: self.data.eqwalizer_all,
-            max_tasks: self.data.eqwalizer_maxTasks,
-            chunk_size: self.data.eqwalizer_chunkSize,
-        }
-    }
-
     pub fn hover_actions(&self) -> HoverActionsConfig {
         HoverActionsConfig {
             doc_links: self.data.hoverActions_enable && self.data.hoverActions_docLinks_enable,
@@ -395,10 +374,6 @@ impl Config {
         } else {
             BuckQueryConfig::BuildGeneratedCode
         }
-    }
-
-    pub fn set_eqwalizer_all(&mut self, value: bool) {
-        self.data.eqwalizer_all = value;
     }
 
     pub fn set_lens_logview_links(&mut self, value: bool) {
@@ -634,7 +609,7 @@ mod tests {
 
         let s = remove_ws(&schema);
 
-        expect![[r#""elp.buck.quickStart":{"default":false,"markdownDescription":"Whethertousetheexpermintal`buck2targets`quickstartprocess.","type":"boolean"},"elp.diagnostics.disabled":{"default":[],"items":{"type":"string"},"markdownDescription":"ListofELPdiagnosticstodisable.","type":"array","uniqueItems":true},"elp.diagnostics.enableExperimental":{"default":false,"markdownDescription":"WhethertoshowexperimentalELPdiagnosticsthatmight\nhavemorefalsepositivesthanusual.","type":"boolean"},"elp.diagnostics.enableOtp":{"default":false,"markdownDescription":"WhethertoreportdiagnosticsforOTPfiles.","type":"boolean"},"elp.diagnostics.onSave.enable":{"default":false,"markdownDescription":"Updatenativediagnosticsonlywhenthefileissaved.","type":"boolean"},"elp.eqwalizer.all":{"default":false,"markdownDescription":"WhethertoreportEqwalizerdiagnosticsforthewholeprojectandnotonlyforopenedfiles.","type":"boolean"},"elp.eqwalizer.chunkSize":{"default":100,"markdownDescription":"Chunksizetouseforproject-wideeqwalization.","minimum":0,"type":"integer"},"elp.eqwalizer.maxTasks":{"default":32,"markdownDescription":"Maximumnumberoftaskstoruninparallelforproject-wideeqwalization.","minimum":0,"type":"integer"},"elp.highlightDisabledCode.enable":{"default":true,"markdownDescription":"Whethertohighlightdisabledcodebranches.","type":"boolean"},"elp.highlightDynamic.enable":{"default":false,"markdownDescription":"Ifenabled,highlightvariableswithtype`dynamic()`whenEqwalizerresultsareavailable.","type":"boolean"},"elp.hoverActions.docLinks.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActionsoftype`docs`.Onlyapplieswhen\n`#elp.hoverActions.enable#`isset.","type":"boolean"},"elp.hoverActions.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActions.","type":"boolean"},"elp.ifdef.enable":{"default":false,"markdownDescription":"Enableifdef/ifndefconditionevaluation(experimental).\nWhenenabled,preprocessorconditionsareevaluatedandinactiveformsareskipped.","type":"boolean"},"elp.inlayHints.parameterHints.enable":{"default":true,"markdownDescription":"Whethertoshowfunctionparameternameinlayhintsatthecall\nsite.","type":"boolean"},"elp.lens.buck2.mode":{"default":null,"markdownDescription":"Thebuck2modetouseforrunningtestsviathecodelenses.","type":["null","string"]},"elp.lens.debug.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Debug`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.enable":{"default":false,"markdownDescription":"WhethertoshowCodeLensesinErlangfiles.","type":"boolean"},"elp.lens.links.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Link`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.logview.links":{"default":false,"markdownDescription":"WhethertoenableLogViewlenslinks.","type":"boolean"},"elp.lens.run.coverage.enable":{"default":true,"markdownDescription":"Displaycodecoverageinformationwhenrunningtestsviathe\nCodeLenses.Onlyapplieswhen`#elp.lens.enabled`and\n`#elp.lens.run.enable#`areset.","type":"boolean"},"elp.lens.run.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Run`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.run.interactive.enable":{"default":false,"markdownDescription":"Whethertoshowthe`RunInteractive`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.scuba.links":{"default":false,"markdownDescription":"WhethertoenableScubalenslinks.","type":"boolean"},"elp.lens.wam.links":{"default":false,"markdownDescription":"WhethertoenableWAMlenslinks.","type":"boolean"},"elp.log":{"default":"error","markdownDescription":"ConfigureLSP-basedloggingusingenv_loggersyntax.","type":"string"},"elp.signatureHelp.enable":{"default":true,"markdownDescription":"WhethertoshowSignatureHelp.","type":"boolean"},"elp.typesOnHover.enable":{"default":false,"markdownDescription":"Displaytypeswhenhoveringoverexpressions.","type":"boolean"},"#]]
+        expect![[r#""elp.buck.quickStart":{"default":false,"markdownDescription":"Whethertousetheexpermintal`buck2targets`quickstartprocess.","type":"boolean"},"elp.diagnostics.disabled":{"default":[],"items":{"type":"string"},"markdownDescription":"ListofELPdiagnosticstodisable.","type":"array","uniqueItems":true},"elp.diagnostics.enableExperimental":{"default":false,"markdownDescription":"WhethertoshowexperimentalELPdiagnosticsthatmight\nhavemorefalsepositivesthanusual.","type":"boolean"},"elp.diagnostics.enableOtp":{"default":false,"markdownDescription":"WhethertoreportdiagnosticsforOTPfiles.","type":"boolean"},"elp.diagnostics.onSave.enable":{"default":false,"markdownDescription":"Updatenativediagnosticsonlywhenthefileissaved.","type":"boolean"},"elp.highlightDisabledCode.enable":{"default":true,"markdownDescription":"Whethertohighlightdisabledcodebranches.","type":"boolean"},"elp.highlightDynamic.enable":{"default":false,"markdownDescription":"Ifenabled,highlightvariableswithtype`dynamic()`whenEqwalizerresultsareavailable.","type":"boolean"},"elp.hoverActions.docLinks.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActionsoftype`docs`.Onlyapplieswhen\n`#elp.hoverActions.enable#`isset.","type":"boolean"},"elp.hoverActions.enable":{"default":false,"markdownDescription":"WhethertoshowHoverActions.","type":"boolean"},"elp.ifdef.enable":{"default":false,"markdownDescription":"Enableifdef/ifndefconditionevaluation(experimental).\nWhenenabled,preprocessorconditionsareevaluatedandinactiveformsareskipped.","type":"boolean"},"elp.inlayHints.parameterHints.enable":{"default":true,"markdownDescription":"Whethertoshowfunctionparameternameinlayhintsatthecall\nsite.","type":"boolean"},"elp.lens.buck2.mode":{"default":null,"markdownDescription":"Thebuck2modetouseforrunningtestsviathecodelenses.","type":["null","string"]},"elp.lens.debug.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Debug`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.enable":{"default":false,"markdownDescription":"WhethertoshowCodeLensesinErlangfiles.","type":"boolean"},"elp.lens.links.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Link`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.logview.links":{"default":false,"markdownDescription":"WhethertoenableLogViewlenslinks.","type":"boolean"},"elp.lens.run.coverage.enable":{"default":true,"markdownDescription":"Displaycodecoverageinformationwhenrunningtestsviathe\nCodeLenses.Onlyapplieswhen`#elp.lens.enabled`and\n`#elp.lens.run.enable#`areset.","type":"boolean"},"elp.lens.run.enable":{"default":false,"markdownDescription":"Whethertoshowthe`Run`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.run.interactive.enable":{"default":false,"markdownDescription":"Whethertoshowthe`RunInteractive`lenses.Onlyapplieswhen\n`#elp.lens.enable#`isset.","type":"boolean"},"elp.lens.scuba.links":{"default":false,"markdownDescription":"WhethertoenableScubalenslinks.","type":"boolean"},"elp.lens.wam.links":{"default":false,"markdownDescription":"WhethertoenableWAMlenslinks.","type":"boolean"},"elp.log":{"default":"error","markdownDescription":"ConfigureLSP-basedloggingusingenv_loggersyntax.","type":"string"},"elp.signatureHelp.enable":{"default":true,"markdownDescription":"WhethertoshowSignatureHelp.","type":"boolean"},"elp.typesOnHover.enable":{"default":false,"markdownDescription":"Displaytypeswhenhoveringoverexpressions.","type":"boolean"},"#]]
         .assert_eq(s.as_str());
 
         expect![[r#"
@@ -666,23 +641,6 @@ mod tests {
               "default": false,
               "markdownDescription": "Update native diagnostics only when the file is saved.",
               "type": "boolean"
-            },
-            "elp.eqwalizer.all": {
-              "default": false,
-              "markdownDescription": "Whether to report Eqwalizer diagnostics for the whole project and not only for opened files.",
-              "type": "boolean"
-            },
-            "elp.eqwalizer.chunkSize": {
-              "default": 100,
-              "markdownDescription": "Chunk size to use for project-wide eqwalization.",
-              "minimum": 0,
-              "type": "integer"
-            },
-            "elp.eqwalizer.maxTasks": {
-              "default": 32,
-              "markdownDescription": "Maximum number of tasks to run in parallel for project-wide eqwalization.",
-              "minimum": 0,
-              "type": "integer"
             },
             "elp.highlightDisabledCode.enable": {
               "default": true,
