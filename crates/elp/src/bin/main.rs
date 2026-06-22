@@ -1242,7 +1242,14 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn lint_2(buck: bool) {
         simple_snapshot_expect_error(
-            args_vec!["lint", "--module", "app_a", "--diagnostic-filter", "P1700",],
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--module",
+                "app_a",
+                "--diagnostic-filter",
+                "P1700",
+            ],
             "linter",
             resource_file!("linter/parse_elp_lint2.stdout"),
             buck,
@@ -1254,7 +1261,14 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn lint_app(buck: bool) {
         simple_snapshot_expect_error(
-            args_vec!["lint", "--app", "app_a", "--diagnostic-filter", "P1700",],
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--app",
+                "app_a",
+                "--diagnostic-filter",
+                "P1700",
+            ],
             "linter",
             resource_file!("linter/parse_elp_lint_app.stdout"),
             buck,
@@ -1268,6 +1282,7 @@ mod tests {
         simple_snapshot_expect_error(
             args_vec![
                 "lint",
+                "--no-stream",
                 "--application",
                 "app_a",
                 "--diagnostic-filter",
@@ -1286,6 +1301,7 @@ mod tests {
         simple_snapshot(
             args_vec![
                 "lint",
+                "--no-stream",
                 "--module",
                 "suppressed",
                 "--experimental",
@@ -1312,6 +1328,7 @@ mod tests {
             .check_lint_fix(
                 args_vec![
                     "lint",
+                    "--no-stream",
                     "--module",
                     "lint_recursive",
                     "--diagnostic-filter",
@@ -1390,7 +1407,7 @@ mod tests {
             .buck(buck)
             .sorted()
             .check_lint_fix(
-                args_vec!["lint", "--experimental"],
+                args_vec!["lint", "--no-stream", "--experimental"],
                 "linter",
                 resource_file!("linter/parse_elp_lint_config_output.stdout"),
                 None,
@@ -1411,7 +1428,7 @@ mod tests {
             .buck(buck)
             .expect_code(101)
             .check_lint_fix(
-                args_vec!["lint", "--experimental", "--config-file", &config_file_path],
+                args_vec!["lint", "--no-stream", "--experimental", "--config-file", &config_file_path],
                 "linter",
                 resource_file!("linter/parse_elp_lint_custom_config_invalid_output.stdout"),
                 Some(expect![[r#"
@@ -1433,6 +1450,7 @@ mod tests {
             .check_lint_fix(
                 args_vec![
                     "lint",
+                    "--no-stream",
                     "--experimental",
                     "--config-file",
                     project_path("linter/elp_lint_test1.toml")
@@ -1448,6 +1466,7 @@ mod tests {
     fn lint_config_read_by_default() {
         let base = args_vec![
             "lint",
+            "--no-stream",
             "--rebar",
             "--project",
             project_path("linter"),
@@ -1473,6 +1492,7 @@ mod tests {
     fn lint_config_anchored_at_project_root() {
         let (stdout, _stderr, _code) = elp(args_vec![
             "lint",
+            "--no-stream",
             "--rebar",
             "--project",
             project_path("lint_subdir_config/app_a"),
@@ -1500,6 +1520,7 @@ mod tests {
             .check_lint_fix(
                 args_vec![
                     "lint",
+                    "--no-stream",
                     "--experimental",
                     "--config-file",
                     &config_path,
@@ -1525,6 +1546,7 @@ mod tests {
         simple_snapshot_sorted(
             args_vec![
                 "lint",
+                "--no-stream",
                 "--experimental",
                 "--diagnostic-ignore",
                 "W0011",
@@ -1544,6 +1566,7 @@ mod tests {
         simple_snapshot(
             args_vec![
                 "lint",
+                "--no-stream",
                 "--diagnostic-filter",
                 "L1318",
                 "--module",
@@ -1565,7 +1588,7 @@ mod tests {
             .buck(buck)
             .expect_code(101)
             .check_lint_fix(
-                args_vec!["lint", "--experimental"],
+                args_vec!["lint", "--no-stream", "--experimental"],
                 "linter_bad_config",
                 resource_file!("linter/parse_elp_lint_bad_config_output.stdout"),
                 Some(expect![[r#"
@@ -1586,6 +1609,7 @@ mod tests {
         simple_snapshot_expect_error_sorted(
             args_vec![
                 "lint",
+                "--no-stream",
                 "--config-file",
                 project_path("linter/elp_lint_empty.toml")
             ],
@@ -1621,6 +1645,7 @@ mod tests {
         simple_snapshot_expect_error_sorted(
             args_vec![
                 "lint",
+                "--no-stream",
                 "--format",
                 "json",
                 "--config-file",
@@ -1637,7 +1662,7 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn lint_apply_fix_no_diagnostics_enabled(buck: bool) {
         simple_snapshot_expect_stderror(
-            args_vec!["lint", "--apply-fix",],
+            args_vec!["lint", "--no-stream", "--apply-fix",],
             "linter",
             resource_file!("linter/parse_elp_apply_fix_no_lint_output.stdout"),
             buck,
@@ -1659,6 +1684,7 @@ mod tests {
             .check_lint_fix(
                 args_vec![
                     "lint",
+                    "--no-stream",
                     "--config-file",
                     project_path("linter/elp_lint_test2.toml")
                 ],
@@ -1684,6 +1710,7 @@ mod tests {
             .check_lint_fix(
                 args_vec![
                     "lint",
+                    "--no-stream",
                     "--diagnostic-filter",
                     "W0010",
                     "--experimental",
@@ -1712,6 +1739,7 @@ mod tests {
             .check_lint_fix(
                 args_vec![
                     "lint",
+                    "--no-stream",
                     "--module",
                     "lints",
                     "--diagnostic-filter",
@@ -1742,6 +1770,7 @@ mod tests {
             .check_lint_fix(
                 args_vec![
                     "lint",
+                    "--no-stream",
                     "--module",
                     "lints",
                     "--diagnostic-filter",
@@ -1787,6 +1816,7 @@ mod tests {
             .check_lint_fix(
                 args_vec![
                     "lint",
+                    "--no-stream",
                     "--module",
                     "lints",
                     "--diagnostic-filter",
@@ -1814,6 +1844,7 @@ mod tests {
             .check_lint_fix(
                 args_vec![
                     "lint",
+                    "--no-stream",
                     "--module",
                     "app_b",
                     "--diagnostic-filter",
@@ -1843,6 +1874,7 @@ mod tests {
             .check_lint_fix(
                 args_vec![
                     "lint",
+                    "--no-stream",
                     "--module",
                     "spelling",
                     "--diagnostic-filter",
@@ -1865,7 +1897,14 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn lint_errors_on_deprecated_l1500(buck: bool) {
         simple_snapshot_expect_stderror(
-            args_vec!["lint", "--module", "app_a", "--diagnostic-filter", "L1500",],
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--module",
+                "app_a",
+                "--diagnostic-filter",
+                "L1500",
+            ],
             "diagnostics",
             resource_file!("diagnostics/parse_elp_l1500_deprecated.stdout"),
             buck,
@@ -1880,7 +1919,7 @@ mod tests {
         simple_snapshot_expect_error_sorted(
             args_vec![
                 "lint",
-                "--diagnostic-filter"
+                "--no-stream", "--diagnostic-filter"
                 "W0008"
             ],
             "linter",
@@ -1893,7 +1932,7 @@ mod tests {
     #[test]
     fn lint_resolves_generated_includes() {
         simple_snapshot_expect_error_sorted(
-            args_vec!["lint", "--module", "top_includer",],
+            args_vec!["lint", "--no-stream", "--module", "top_includer",],
             "buck_tests_2",
             resource_file!("buck_tests_2/resolves_generated_includes.stdout"),
             true,
@@ -1911,7 +1950,7 @@ mod tests {
             .normalise_urls()
             .first_line_only()
             .run(
-                args_vec!["lint",],
+                args_vec!["lint", "--no-stream",],
                 "buck_bad_config",
                 resource_file!("buck_bad_config/bxl_error_message_oss.stdout"), // @oss-only
                 // @fb-only: resource_file!("buck_bad_config/bxl_error_message.stdout"),
@@ -1924,6 +1963,7 @@ mod tests {
         simple_snapshot_expect_error(
             args_vec![
                 "lint",
+                "--no-stream",
                 "--config-file",
                 project_path("linter/elp_lint_empty.toml"),
                 "--file",
@@ -1947,6 +1987,7 @@ mod tests {
         simple_snapshot_expect_error(
             args_vec![
                 "lint",
+                "--no-stream",
                 "--config-file",
                 project_path("linter/elp_lint_empty.toml"),
                 "--file",
@@ -1967,7 +2008,12 @@ mod tests {
         // Only an unsupported file is selected. The linter should
         // gracefully skip it and NOT fall back to analysing all files.
         simple_snapshot(
-            args_vec!["lint", "--file", project_path("linter/BUCK.ELP")],
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--file",
+                project_path("linter/BUCK.ELP")
+            ],
             "linter",
             resource_file!("linter/select_files_only_unsupported.stdout"),
             buck,
@@ -2014,6 +2060,7 @@ mod tests {
         simple_snapshot(
             args_vec![
                 "lint",
+                "--no-stream",
                 "--config-file",
                 project_path("xref/elp_lint_unavailable_type.toml"),
                 "--module",
@@ -2031,6 +2078,7 @@ mod tests {
         simple_snapshot_sorted(
             args_vec![
                 "lint",
+                "--no-stream",
                 "--diagnostic-filter",
                 "ad-hoc: ssr-match",
                 "--config-file",
@@ -2046,7 +2094,7 @@ mod tests {
     #[test]
     fn lint_dynamic_calls_project() {
         simple_snapshot(
-            args_vec!["lint", "--diagnostic-filter", "W0077"],
+            args_vec!["lint", "--no-stream", "--diagnostic-filter", "W0077"],
             "dynamic_calls",
             resource_file!("dynamic_calls/lint.stdout"),
             true,
@@ -2060,6 +2108,7 @@ mod tests {
         simple_snapshot_expect_stderror(
             args_vec![
                 "lint",
+                "--no-stream",
                 "--config-file",
                 &config_file,
                 "--experimental",

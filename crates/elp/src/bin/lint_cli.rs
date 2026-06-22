@@ -219,47 +219,21 @@ fn canonicalize_or_keep(path: &Path) -> PathBuf {
         .unwrap_or_else(|| path.to_path_buf())
 }
 
-fn do_diagnostics_all(
+fn run_diagnostics_parallel(
     cli: &mut dyn Cli,
     analysis: &Analysis,
-    project_id: &ProjectId,
     config: &DiagnosticsConfig,
     args: &Lint,
     loaded: &LoadResult,
-    module: &Option<String>,
+    modules: Vec<(String, FileId)>,
+    module_filter: &Option<String>,
 ) -> Result<DiagnosticsResult> {
-    let module_index = analysis.module_index(*project_id).unwrap();
-
-    let ignored_apps: FxHashSet<Option<Option<AppName>>> = args
-        .ignore_apps
-        .iter()
-        .map(|name| Some(Some(AppName(name.to_string()))))
-        .collect();
-    let app_name = args.app.as_ref().map(|name| AppName(name.to_string()));
-
-    // Canonicalize the path filter if provided
-    let path_filter: Option<std::path::PathBuf> =
-        args.path.as_ref().map(|p| canonicalize_or_keep(p));
+    // Sort biggest modules first to reduce long-tail in parallel processing
+    let mut modules = modules;
+    sort_by_file_size_descending(analysis, &mut modules, |m| m.1);
 
     // Create a channel for streaming results
     let (tx, rx) = unbounded();
-
-    // Collect modules into an owned vector, pre-filtering by path if specified
-    let mut modules: Vec<_> = module_index
-        .iter_own()
-        .filter_map(|(name, source, file_id)| {
-            if let Some(ref filter_path) = path_filter {
-                let vfs_path = loaded.vfs.file_path(file_id);
-                if !canonicalize_or_keep(vfs_path.as_path()?.as_ref()).starts_with(filter_path) {
-                    return None;
-                }
-            }
-            Some((name.as_str().to_string(), source, file_id))
-        })
-        .collect();
-
-    // Sort biggest modules first to reduce long-tail in parallel processing
-    sort_by_file_size_descending(analysis, &mut modules, |m| m.2);
 
     let pb = cli.progress(modules.len() as u64, "Linting");
     let pb_clone = pb.clone();
@@ -274,19 +248,9 @@ fn do_diagnostics_all(
             .par_bridge()
             .map_with(
                 (analysis_clone, tx, pb_clone),
-                |(db, tx, pb), (module_name, _file_source, file_id)| {
-                    if !otp_file_to_ignore(db, file_id)
-                        && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
-                        && !ignored_apps.contains(&db.file_app_name(file_id).ok())
-                        && (app_name.is_none()
-                            || db.file_app_name(file_id).ok().as_ref() == Some(&app_name))
-                        && let Ok(Some(result)) = do_diagnostics_one(
-                            db,
-                            &config_clone,
-                            file_id,
-                            &module_name,
-                            &args_clone,
-                        )
+                |(db, tx, pb), (module_name, file_id)| {
+                    if let Ok(Some(result)) =
+                        do_diagnostics_one(db, &config_clone, file_id, &module_name, &args_clone)
                     {
                         // Send result through channel
                         let _ = tx.send(result);
@@ -313,7 +277,7 @@ fn do_diagnostics_all(
                 config,
                 args,
                 loaded,
-                module,
+                module_filter,
                 &mut err_in_diag,
                 &mut module_count,
                 &result,
@@ -331,6 +295,60 @@ fn do_diagnostics_all(
     pb.finish();
 
     Ok((results, err_in_diag, any_diagnostics_printed))
+}
+
+fn do_diagnostics_all(
+    cli: &mut dyn Cli,
+    analysis: &Analysis,
+    project_id: &ProjectId,
+    config: &DiagnosticsConfig,
+    args: &Lint,
+    loaded: &LoadResult,
+    module: &Option<String>,
+) -> Result<DiagnosticsResult> {
+    let module_index = analysis.module_index(*project_id).unwrap();
+
+    let ignored_apps: FxHashSet<Option<Option<AppName>>> = args
+        .ignore_apps
+        .iter()
+        .map(|name| Some(Some(AppName(name.to_string()))))
+        .collect();
+    let app_name = args.app.as_ref().map(|name| AppName(name.to_string()));
+
+    // Canonicalize the path filter if provided
+    let path_filter: Option<std::path::PathBuf> =
+        args.path.as_ref().map(|p| canonicalize_or_keep(p));
+
+    // Collect modules into an owned vector, pre-filtering by path, app, etc.
+    let modules: Vec<(String, FileId)> = module_index
+        .iter_own()
+        .filter_map(|(name, _source, file_id)| {
+            if let Some(ref filter_path) = path_filter {
+                let vfs_path = loaded.vfs.file_path(file_id);
+                if !canonicalize_or_keep(vfs_path.as_path()?.as_ref()).starts_with(filter_path) {
+                    return None;
+                }
+            }
+            if otp_file_to_ignore(analysis, file_id) {
+                return None;
+            }
+            if analysis.file_app_type(file_id).ok() == Some(Some(AppType::Dep)) {
+                return None;
+            }
+            if ignored_apps.contains(&analysis.file_app_name(file_id).ok()) {
+                return None;
+            }
+            if let Some(ref app) = app_name {
+                match analysis.file_app_name(file_id).ok() {
+                    Some(Some(file_app)) if &file_app == app => {}
+                    _ => return None,
+                }
+            }
+            Some((name.as_str().to_string(), file_id))
+        })
+        .collect();
+
+    run_diagnostics_parallel(cli, analysis, config, args, loaded, modules, module)
 }
 
 fn do_diagnostics_one(
@@ -448,7 +466,7 @@ pub fn do_codemod(
     args: &Lint,
 ) -> Result<()> {
     let streamed_err_in_diag;
-    let mut any_diagnostics_printed = false;
+    let mut any_diagnostics_printed;
     let mut initial_diags = {
         // We put this in its own block so that analysis is
         // freed before we apply lints. To apply lints
@@ -462,42 +480,33 @@ pub fn do_codemod(
             // User specified --module or --file: only process the resolved
             // targets. If every target was skipped the vec is empty and we
             // intentionally do *not* fall back to a full analysis.
-            let mut all_results = Vec::new();
-            let mut err_in_diag = false;
-            let mut module_count = 0;
-            for (file_id, name) in &files {
-                if let Some(app) = &args.app
-                    && let Ok(Some(file_app)) = analysis.file_app_name(*file_id)
-                    && file_app != AppName(app.to_string())
-                {
-                    panic!("Module {} does not belong to app {}", name.as_str(), app)
-                }
-                let result =
-                    do_diagnostics_one(&analysis, diagnostics_config, *file_id, name, args)?
-                        .map_or(vec![], |x| vec![x]);
-
-                if args.skip_stream_print() {
-                    any_diagnostics_printed = false;
-                } else {
-                    for r in &result {
-                        let printed = print_diagnostic_result(
-                            cli,
-                            &analysis,
-                            diagnostics_config,
-                            args,
-                            loaded,
-                            &args.module,
-                            &mut err_in_diag,
-                            &mut module_count,
-                            r,
-                        )?;
-                        any_diagnostics_printed = any_diagnostics_printed || printed;
+            // Verify app membership to preserve existing behaviour.
+            if let Some(app) = &args.app {
+                let expected_app = AppName(app.to_string());
+                for (file_id, name) in &files {
+                    if let Ok(Some(file_app)) = analysis.file_app_name(*file_id)
+                        && file_app != expected_app
+                    {
+                        panic!("Module {} does not belong to app {}", name.as_str(), app)
                     }
                 }
-                all_results.extend(result);
             }
+            let modules: Vec<(String, FileId)> = files
+                .into_iter()
+                .map(|(file_id, name)| (name.as_str().to_string(), file_id))
+                .collect();
+            let (results, err_in_diag, any_printed) = run_diagnostics_parallel(
+                cli,
+                &analysis,
+                diagnostics_config,
+                args,
+                loaded,
+                modules,
+                &args.module,
+            )?;
             streamed_err_in_diag = err_in_diag;
-            all_results
+            any_diagnostics_printed = any_printed;
+            results
         } else {
             // No specific targets requested: lint all project files.
             let (results, err_in_diag, any_printed) = do_diagnostics_all(
@@ -1628,7 +1637,14 @@ mod tests {
     #[test]
     fn lint_from_fixture() {
         run_lint_command(
-            args_vec!["lint", "--module", "lints", "--diagnostic-filter", "P1700",],
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--module",
+                "lints",
+                "--diagnostic-filter",
+                "P1700",
+            ],
             r#"
             //- /app_a/src/lints.erl app:app_a
               -module(lints).
@@ -1650,7 +1666,14 @@ mod tests {
     #[test]
     fn choose_source_from_diag() {
         run_lint_command(
-            args_vec!["lint", "--module", "lints", "--diagnostic-filter", "L1230",],
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--module",
+                "lints",
+                "--diagnostic-filter",
+                "L1230",
+            ],
             r#"
             //- /app_a/src/lints.erl app:app_a
               -module(lints).
@@ -1671,7 +1694,14 @@ mod tests {
         // Syntax errors should always be reported,
         // even when a different diagnostic filter is specified.
         run_lint_command(
-            args_vec!["lint", "--module", "lints", "--diagnostic-filter", "W0020",],
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--module",
+                "lints",
+                "--diagnostic-filter",
+                "W0020",
+            ],
             r#"
             //- /app_a/src/lints.erl app:app_a
               -module(lints).
@@ -1729,7 +1759,14 @@ mod tests {
         // Note: The fixture creates absolute paths (e.g., /app_a/src/...), so we use
         // a full path that matches the fixture structure.
         run_lint_command(
-            args_vec!["lint", "--path", "/app_a", "--diagnostic-filter", "P1700",],
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--path",
+                "/app_a",
+                "--diagnostic-filter",
+                "P1700",
+            ],
             r#"
             //- /app_a/src/lints.erl app:app_a
               -module(lints).
