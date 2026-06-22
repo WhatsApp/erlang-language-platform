@@ -762,9 +762,10 @@ pub struct Args {
     #[arg(long, global = true, help_heading = "Global options")]
     pub buck_quick_start: bool,
 
-    /// Enable ifdef/ifndef condition evaluation (experimental)
-    #[arg(long, global = true, help_heading = "Global options")]
-    pub ifdef: bool,
+    /// Deprecated: ifdef/ifndef condition evaluation is now enabled by default.
+    /// Pass `--ifdef false` to disable it.
+    #[arg(long, global = true, num_args = 0..=1, default_missing_value = "true", help_heading = "Global options")]
+    pub ifdef: Option<bool>,
 
     /// Use color in output
     #[arg(

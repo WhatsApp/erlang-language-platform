@@ -186,7 +186,18 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
     INIT.call_once(|| setup_static(&args));
     let query_config = args.query_config();
     let use_color = args.should_use_color();
-    let ifdef = args.ifdef;
+    let ifdef = match args.ifdef {
+        // The flag is deprecated now that ifdef/ifndef condition evaluation is
+        // enabled by default. Still honour it so `--ifdef false` can be used as
+        // an escape hatch to restore the legacy behaviour.
+        Some(value) => {
+            cli.info(
+                "Warning: the --ifdef flag is deprecated and will be removed in an upcoming release. ifdef/ifndef condition evaluation is now enabled by default; pass `--ifdef false` to disable it.",
+            )?;
+            value
+        }
+        None => true,
+    };
 
     let Some(mut command) = args.command else {
         let help = args::Args::render_help();

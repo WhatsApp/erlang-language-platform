@@ -73,6 +73,8 @@ Global options:
       --no-log-buffering     
       --no-buck-generated    When using buck, do not invoke a build step for generated files
       --buck-quick-start     Use buck2 targets for first stage project loading
-      --ifdef                Enable ifdef/ifndef condition evaluation (experimental)
+      --ifdef [<IFDEF>]      Deprecated: ifdef/ifndef condition evaluation is now enabled by
+                             default. Pass `--ifdef false` to disable it [possible values: true,
+                             false]
       --color <WHEN>         Use color in output [default: always] [possible values: always, never,
                              auto]
