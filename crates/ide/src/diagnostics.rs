@@ -1907,6 +1907,16 @@ pub fn native_diagnostics(
         is_generated,
         is_test,
     ) {
+        // Forms excluded by conditional compilation are not lowered, so a
+        // suppression annotation inside such a leg can never be matched by a
+        // diagnostic and would otherwise be falsely flagged as redundant.
+        // Computed only when annotations exist to avoid form-list work on the
+        // common annotation-free file.
+        let inactive_ranges = if metadata.elp_annotations_indexed().next().is_some() {
+            redundant_suppression::inactive_form_ranges(db, file_id)
+        } else {
+            Vec::new()
+        };
         redundant_suppression::run(
             &metadata,
             config,
@@ -1914,6 +1924,7 @@ pub fn native_diagnostics(
             &line_index,
             &file_text.text(db),
             &code_reportable,
+            &inactive_ranges,
             &res,
         )
     } else {

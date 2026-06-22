@@ -36,6 +36,7 @@
 
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::LineIndex;
+use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::metadata::Annotation;
 use elp_ide_db::metadata::Metadata;
@@ -44,6 +45,8 @@ use elp_ide_db::text_edit::TextEdit;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
 use fxhash::FxHashSet;
+use hir::PPConditionResult;
+use hir::db::DefDatabase;
 
 use crate::diagnostics::DIAGNOSTIC_WHOLE_FILE_RANGE;
 use crate::diagnostics::Diagnostic;
@@ -95,6 +98,7 @@ pub(crate) fn run(
     line_index: &LineIndex,
     file_text: &str,
     code_reportable: &dyn Fn(&DiagnosticCode) -> bool,
+    inactive_ranges: &[TextRange],
     pre_retain_diagnostics: &[Diagnostic],
 ) -> Vec<Diagnostic> {
     let mut consumed: Consumed = FxHashSet::default();
@@ -109,7 +113,52 @@ pub(crate) fn run(
         line_index,
         file_text,
         code_reportable,
+        inactive_ranges,
     )
+}
+
+/// Source ranges of forms excluded by conditional compilation
+/// (`-ifdef`/`-ifndef`/`-else.`/`-endif`) in `file_id`.
+///
+/// A suppression annotation sitting in (or pointing at) one of these ranges
+/// suppresses code that is never lowered or analysed, so no diagnostic could
+/// ever fire there and the annotation must not be reported as redundant
+/// (W0081). See [`in_inactive_code`].
+///
+/// When `elp.ifdef.enable` is off, [`hir::FormList::is_form_active`] reports
+/// every form as active, so this returns an empty list and W0081 behaviour is
+/// unchanged. Forms with no preprocessor condition are skipped before the
+/// (potentially expensive) condition analysis runs.
+pub(crate) fn inactive_form_ranges(db: &RootDatabase, file_id: FileId) -> Vec<TextRange> {
+    let form_list = db.file_form_list(file_id);
+    form_list
+        .forms()
+        .iter()
+        .filter_map(|&form_idx| {
+            let form = form_list.get(form_idx);
+            let pp_ctx = form.pp_ctx(&form_list)?;
+            // Only forms guarded by a condition can be inactive.
+            pp_ctx.condition?;
+            match form_list.is_form_active(db, file_id, pp_ctx, None) {
+                PPConditionResult::Active => None,
+                // Inactive or Unknown: the body was not analysed, so any
+                // diagnostic this annotation might suppress could not have
+                // fired regardless of suppression.
+                PPConditionResult::Inactive | PPConditionResult::Unknown => {
+                    Some(form_list.form_range(form_idx, db, file_id))
+                }
+            }
+        })
+        .collect()
+}
+
+/// Whether `annotation`'s suppression target lies within conditionally
+/// excluded code (see [`inactive_form_ranges`]). Such annotations are skipped
+/// entirely by the W0081 audit.
+fn in_inactive_code(annotation: &Annotation, inactive_ranges: &[TextRange]) -> bool {
+    inactive_ranges
+        .iter()
+        .any(|range| range.contains(annotation.suppression_range.start()))
 }
 
 /// A "consumption" record: annotation index + the specific code that
@@ -336,6 +385,7 @@ fn compute_diagnostics(
     line_index: &LineIndex,
     file_text: &str,
     code_reportable: &dyn Fn(&DiagnosticCode) -> bool,
+    inactive_ranges: &[TextRange],
 ) -> Vec<Diagnostic> {
     // Termination: `consumed` is insert-only (entries are never removed), and
     // every candidate emitted in this loop carries `DiagnosticCode::
@@ -355,6 +405,12 @@ fn compute_diagnostics(
         );
         candidates = Vec::new();
         for (idx, annotation) in metadata.elp_annotations_indexed() {
+            // An annotation in a conditionally-excluded leg suppresses code
+            // that was never analysed; the absence of a diagnostic there does
+            // not make the suppression redundant.
+            if in_inactive_code(annotation, inactive_ranges) {
+                continue;
+            }
             if annotation.codes.is_empty() {
                 // Codeless: emit one diagnostic per annotation. Codeless
                 // annotations have no codes to enter `consumed`, so they are
@@ -598,6 +654,50 @@ baz() ->
 %%                   ^^^^^ 💡 warning: W0081: Redundant suppression: no `W0006 (statement_has_no_effect)` diagnostic in suppressed range
   Bar = 2,
   Bar.
+"#,
+        );
+    }
+
+    #[test]
+    fn not_redundant_when_in_inactive_ifdef_leg() {
+        // The `-ifdef(NOT_DEFINED)` leg is conditionally excluded, so its body
+        // is never lowered and W0007 cannot fire there. The annotation must
+        // NOT be flagged as redundant just because no diagnostic appeared in
+        // code that was never analysed. Regression test for W0081 firing in
+        // the dead leg of an ifdef (e.g. the `-else.` clause of a TEST guard).
+        check_diagnostics(
+            r#"
+-module(main).
+
+-ifdef(NOT_DEFINED).
+foo() ->
+  % elp:ignore W0007
+  Foo = 1,
+  ok.
+-else.
+foo() -> ok.
+-endif.
+"#,
+        );
+    }
+
+    #[test]
+    fn redundant_when_in_active_ifdef_leg() {
+        // Counterpart to the inactive-leg case: when the leg containing the
+        // annotation IS active and the code below it does not fire W0007, the
+        // annotation is genuinely redundant and must still be flagged.
+        check_diagnostics(
+            r#"
+-module(main).
+
+-ifdef(NOT_DEFINED).
+foo() -> ok.
+-else.
+foo() ->
+  % elp:ignore W0007
+%%             ^^^^^ 💡 warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+  ok.
+-endif.
 "#,
         );
     }
