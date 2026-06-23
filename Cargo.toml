@@ -35,7 +35,7 @@ anyhow = "1.0.102"
 buck-resources = "1"
 byteorder = "1.5"
 clap = { version = "4.6.0", features = ["derive", "env", "string", "unicode", "wrap_help"] }
-clap_complete = "4.6.5"
+clap_complete = { version = "4.6.5", features = ["unstable-dynamic"] }
 codespan-reporting = "0.11.1"
 cov-mark = "2.2.0"
 crossbeam-channel = "0.5.15"
