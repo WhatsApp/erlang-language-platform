@@ -538,76 +538,12 @@ Expression has type:   number()
 Context expected type: #{term() => term()} | maps:iterator()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/custom.erl:675:25
-    │
-675 │ maps_merge_1(M1, M2) -> maps:merge(M1, M2).
-    │                         ^^^^^^^^^^^^^^^^^^
-    │                         │
-    │                         maps:merge(M1, M2).
-Expression has type:   #{'b' | 'a' | 'c' => number() | string() | atom()}
-Context expected type: #{a => string(), b => number(), c => atom()}
-    │                         
-
-Because in the expression's type:
-  Here the type is:     #{'b' | 'a' | 'c' => number() | string() | atom()}
-  Context expects type: #{...} (no default association)
-  The expected map has no default association while the type of the expression has one.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/custom.erl:679:25
-    │
-679 │ maps_merge_2(M1, M2) -> maps:merge(M1, M2).
-    │                         ^^^^^^^^^^^^^^^^^^
-    │                         │
-    │                         maps:merge(M1, M2).
-Expression has type:   #{'b' | 'a' | 'c' => number() | string() | atom()}
-Context expected type: #{a => string(), b => number() | boolean(), c => atom()}
-    │                         
-
-Because in the expression's type:
-  Here the type is:     #{'b' | 'a' | 'c' => number() | string() | atom()}
-  Context expects type: #{...} (no default association)
-  The expected map has no default association while the type of the expression has one.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/custom.erl:683:25
-    │
-683 │ maps_merge_3(M1, M2) -> maps:merge(M1, M2).
-    │                         ^^^^^^^^^^^^^^^^^^
-    │                         │
-    │                         maps:merge(M1, M2).
-Expression has type:   #{'b' | 'a' | 'c' => number() | string() | atom()}
-Context expected type: #{a := string(), b := boolean(), c => atom()}
-    │                         
-
-Because in the expression's type:
-  Here the type is:     #{...}
-  Context expects type: #{a := ..., b := ..., ...}
-  The type of the expression is missing the following required keys: a, b.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:697:44
     │
 697 │ maps_merge_7_neg(M1, M2) -> maps:merge(M1, M2).
     │                                            ^^ M2.
 Expression has type:   number()
-Context expected type: #{dynamic() => dynamic()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/custom.erl:701:25
-    │
-701 │ maps_merge_8(M1, M2) -> maps:merge(M1, M2).
-    │                         ^^^^^^^^^^^^^^^^^^
-    │                         │
-    │                         maps:merge(M1, M2).
-Expression has type:   #{'a' | 'b' => atom() | number()}
-Context expected type: #{a := atom(), b := number()} | #{a := atom()}
-    │                         
-
-Because in the expression's type:
-  Here the type is:     #{...}
-  Context expects type: #{a := ..., b := ..., ...}
-  The type of the expression is missing the following required keys: a, b.
+Context expected type: #{term() => term()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:721:9
@@ -2368,4 +2304,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   number()
 Context expected type: binary()
 
-190 ERRORS
+186 ERRORS
