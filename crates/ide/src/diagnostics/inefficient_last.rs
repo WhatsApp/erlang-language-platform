@@ -12,12 +12,13 @@
 //!
 //! warn on code of the form `hd(lists:reverse(L))` and suggest `lists:last(L)`
 
+use std::sync::LazyLock;
+
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_ssr::Match;
 use hir::Semantic;
-use lazy_static::lazy_static;
 
 use crate::Assist;
 use crate::diagnostics::Category;
@@ -57,8 +58,8 @@ impl SsrPatternsLinter for InefficientLastLinter {
     type Context = PatternKind;
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, PatternKind)> = vec![
+        static PATTERNS: LazyLock<Vec<(String, PatternKind)>> = LazyLock::new(|| {
+            vec![
                 (
                     format!("ssr: hd(lists:reverse({LIST_VAR}))."),
                     PatternKind::Hd,
@@ -71,8 +72,9 @@ impl SsrPatternsLinter for InefficientLastLinter {
                     format!("ssr: [{LAST_ELEM_VAR}|_] = lists:reverse({LIST_VAR})."),
                     PatternKind::Pat,
                 ),
-            ];
-        }
+            ]
+        });
+
         &PATTERNS
     }
 

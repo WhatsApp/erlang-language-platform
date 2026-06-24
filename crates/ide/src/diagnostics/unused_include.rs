@@ -13,6 +13,7 @@
 // Return a warning if nothing is used from an include file
 
 use std::borrow::Cow;
+use std::sync::LazyLock;
 
 use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::SearchScope;
@@ -33,7 +34,6 @@ use hir::Name;
 use hir::Semantic;
 use hir::db::DefDatabase;
 use hir::known;
-use lazy_static::lazy_static;
 
 use crate::Assist;
 use crate::diagnostics::DiagnosticCode;
@@ -43,12 +43,12 @@ use crate::diagnostics::Linter;
 use crate::diagnostics::LinterContext;
 use crate::fix;
 
-lazy_static! {
-    static ref EXCLUDES: FxHashSet<SmolStr> = ["common_test/include/ct.hrl"]
+static EXCLUDES: LazyLock<FxHashSet<SmolStr>> = LazyLock::new(|| {
+    ["common_test/include/ct.hrl"]
         .iter()
         .map(SmolStr::new)
-        .collect();
-}
+        .collect()
+});
 
 pub(crate) struct UnusedIncludeLinter;
 
@@ -304,12 +304,10 @@ fn is_file_used(
     false
 }
 
-lazy_static! {
-    /// Attribute names that can occur in a header file without
-    /// regarding the file as being used.
-    static ref NO_MARK_USED_ATTRIBUTES: FxHashSet<Name> =
-        FxHashSet::from_iter([known::author, known::oncall]);
-}
+/// Attribute names that can occur in a header file without
+/// regarding the file as being used.
+static NO_MARK_USED_ATTRIBUTES: LazyLock<FxHashSet<Name>> =
+    LazyLock::new(|| FxHashSet::from_iter([known::author, known::oncall]));
 
 #[cfg(test)]
 mod tests {

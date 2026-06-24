@@ -13,6 +13,7 @@ use std::collections::BTreeSet;
 use std::fmt;
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::LazyLock;
 
 use anyhow::Result;
 use anyhow::bail;
@@ -76,7 +77,6 @@ use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::fold::Strategy;
 use itertools::Itertools;
-use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
@@ -192,20 +192,16 @@ pub use replace_in_spec::TypeReplacement;
 use self::eqwalizer_assists::add_eqwalizer_assists;
 
 /// Macro to create lazily-evaluated function matches for linters
-/// This centralizes the lazy_static logic to avoid repetition in every linter
+/// This centralizes the lazy static logic to avoid repetition in every linter
 #[macro_export]
 macro_rules! lazy_function_matches {
-    ($($matches:expr),* $(,)?) => {
-        {
-            lazy_static::lazy_static! {
-                static ref MATCHES: Vec<$crate::FunctionMatch> = vec![$($matches),*]
-                    .into_iter()
-                    .flatten()
-                    .collect();
-            }
-            MATCHES.clone()
-        }
-    };
+    ($($matches:expr),* $(,)?) => {{
+        static MATCHES: std::sync::LazyLock<Vec<$crate::FunctionMatch>> = std::sync::LazyLock::new(|| {
+            vec![$($matches),*].into_iter().flatten().collect()
+        });
+
+        MATCHES.clone()
+    }};
 }
 
 pub const DIAGNOSTIC_WHOLE_FILE_RANGE: TextRange = TextRange::empty(TextSize::new(0));
@@ -2390,14 +2386,15 @@ pub fn erlang_service_diagnostics(
     config: &DiagnosticsConfig,
     remove_elp_reported: RemoveElpReported,
 ) -> Vec<(FileId, LabeledDiagnostics)> {
-    lazy_static! {
-        static ref EXTENSIONS: FxHashSet<FileKind> = FxHashSet::from_iter(vec![
+    static EXTENSIONS: LazyLock<FxHashSet<FileKind>> = LazyLock::new(|| {
+        FxHashSet::from_iter(vec![
             FileKind::SrcModule,
             FileKind::Escript,
             FileKind::TestModule,
-            FileKind::Header
-        ]);
-    };
+            FileKind::Header,
+        ])
+    });
+
     let file_kind = db.file_kind(file_id);
     let report_diagnostics = EXTENSIONS.contains(&file_kind);
 
@@ -3287,24 +3284,24 @@ fn erlang_service_label(diagnostic: &Diagnostic) -> Option<DiagnosticLabel> {
 }
 
 pub fn function_undefined_from_message(s: &str) -> Option<String> {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"^function ([^\s]+) undefined$").expect("valid regex");
-    }
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^function ([^\s]+) undefined$").expect("valid regex"));
+
     RE.captures_iter(s).next().map(|c| c[1].to_string())
 }
 
 pub fn type_undefined_from_message(s: &str) -> Option<String> {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"^type ([^\s]+) undefined$").expect("valid regex");
-    }
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^type ([^\s]+) undefined$").expect("valid regex"));
+
     RE.captures_iter(s).next().map(|c| c[1].to_string())
 }
 
 pub fn spec_for_undefined_function_from_message(s: &str) -> Option<String> {
-    lazy_static! {
-        static ref RE: Regex =
-            Regex::new(r"^spec for undefined function ([^\s]+)$").expect("valid regex");
-    }
+    static RE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"^spec for undefined function ([^\s]+)$").expect("valid regex")
+    });
+
     RE.captures_iter(s).next().map(|c| c[1].to_string())
 }
 

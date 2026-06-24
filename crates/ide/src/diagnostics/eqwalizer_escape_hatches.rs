@@ -14,6 +14,8 @@
 //! type checking. While sometimes necessary, excessive use indicates potential
 //! type safety issues that should be addressed.
 
+use std::sync::LazyLock;
+
 use elp_ide_db::LineIndex;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
@@ -25,7 +27,6 @@ use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use lazy_static::lazy_static;
 
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::GenericLinter;
@@ -164,12 +165,13 @@ impl SsrPatternsLinter for UncheckedCastLinter {
     type Context = ();
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, ())> = vec![
+        static PATTERNS: LazyLock<Vec<(String, ())>> = LazyLock::new(|| {
+            vec![
                 ("ssr: ?UNCHECKED_CAST(_@Expr, _@Type).".to_string(), ()),
                 ("ssr: ?DYNAMIC_CAST(_@Expr).".to_string(), ()),
-            ];
-        }
+            ]
+        });
+
         &PATTERNS
     }
 

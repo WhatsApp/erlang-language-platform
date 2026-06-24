@@ -11,6 +11,7 @@
 // Add an assist to an erlang service diagnostic for an undefined macro.
 
 use std::sync::Arc;
+use std::sync::LazyLock;
 
 use elp_ide_completion::get_include_file;
 use elp_ide_db::DiagnosticCode;
@@ -21,7 +22,6 @@ use elp_ide_db::text_edit::TextEdit;
 use fxhash::FxHashSet;
 use hir::MacroDefineIndex;
 use hir::Semantic;
-use lazy_static::lazy_static;
 use regex::Regex;
 
 use super::Diagnostic;
@@ -87,9 +87,9 @@ pub fn macro_undefined_from_message(
     code: &DiagnosticCode,
     s: &str,
 ) -> Option<(String, Option<String>)> {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"^undefined macro '(.*)'$").expect("valid regex");
-    }
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^undefined macro '(.*)'$").expect("valid regex"));
+
     let captures = RE.captures(s)?;
     if RE.captures_len() == 2 {
         let macro_name = captures[1].to_string();

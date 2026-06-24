@@ -15,7 +15,6 @@ elp_syntax.workspace = true
 fxhash.workspace = true
 hir.workspace = true
 itertools.workspace = true
-lazy_static.workspace = true
 log.workspace = true
 regex.workspace = true
 stdx.workspace = true

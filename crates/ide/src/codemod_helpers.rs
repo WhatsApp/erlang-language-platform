@@ -8,6 +8,8 @@
  * above-listed licenses.
  */
 
+use std::sync::LazyLock;
+
 use elp_ide_db::elp_base_db::FileRange;
 use elp_syntax::SmolStr;
 use elp_syntax::SyntaxKind;
@@ -34,7 +36,6 @@ use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::fold::ParentId;
-use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
@@ -511,9 +512,9 @@ impl TryFrom<&str> for MFA {
     type Error = String;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"^([^:]+):([^:]+)\/(\d+)$").expect("valid regex");
-        }
+        static RE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"^([^:]+):([^:]+)\/(\d+)$").expect("valid regex"));
+
         if let Some(captures) = RE.captures(value)
             && captures.len() > 3
         {

@@ -35,6 +35,8 @@
 //! default branch can similarly use either `_` or a named wildcard
 //! such as `_Else`.
 
+use std::sync::LazyLock;
+
 use elp_ide_assists::Assist;
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
@@ -49,7 +51,6 @@ use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use lazy_static::lazy_static;
 
 use crate::codemod_helpers::is_wildcard;
 use crate::diagnostics::Linter;
@@ -78,37 +79,38 @@ impl SsrPatternsLinter for EtsLookupToLookupElementLinter {
     type Context = ();
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, ())> = vec![
+        static PATTERNS: LazyLock<Vec<(String, ())>> = LazyLock::new(|| {
+            vec![
                 (
                     format!(
                         "ssr: case ets:lookup({TAB_VAR},{KEY_VAR}) of
-                            [{{{RESULT_KEY_VAR}, {VAL_VAR}}}] -> {VAL_VAR};
-                            [] -> {DEFAULT_VAR}
-                          end."
+                        [{{{RESULT_KEY_VAR}, {VAL_VAR}}}] -> {VAL_VAR};
+                        [] -> {DEFAULT_VAR}
+                        end."
                     ),
                     (),
                 ),
                 (
                     format!(
                         "ssr: case ets:lookup({TAB_VAR},{KEY_VAR}) of
-                            [] -> {DEFAULT_VAR};
-                            [{{{RESULT_KEY_VAR}, {VAL_VAR}}}] -> {VAL_VAR}
-                          end."
+                        [] -> {DEFAULT_VAR};
+                        [{{{RESULT_KEY_VAR}, {VAL_VAR}}}] -> {VAL_VAR}
+                        end."
                     ),
                     (),
                 ),
                 (
                     format!(
                         "ssr: case ets:lookup({TAB_VAR},{KEY_VAR}) of
-                            [{{{RESULT_KEY_VAR}, {VAL_VAR}}}] -> {VAL_VAR};
-                            {DEFAULT_PAT_VAR} -> {DEFAULT_VAR}
-                          end."
+                        [{{{RESULT_KEY_VAR}, {VAL_VAR}}}] -> {VAL_VAR};
+                        {DEFAULT_PAT_VAR} -> {DEFAULT_VAR}
+                        end."
                     ),
                     (),
                 ),
-            ];
-        }
+            ]
+        });
+
         &PATTERNS
     }
 

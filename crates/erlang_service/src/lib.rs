@@ -20,6 +20,7 @@ use std::process::ChildStdout;
 use std::process::Command;
 use std::process::Stdio;
 use std::sync::Arc;
+use std::sync::LazyLock;
 use std::sync::RwLock;
 use std::time::Duration;
 
@@ -44,7 +45,6 @@ use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use jod_thread::JoinHandle;
-use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use regex::Regex;
 use stdx::JodChild;
@@ -57,10 +57,9 @@ use text_size::TextSize;
 // @fb-only: pub use meta_only::caf;
 pub mod common_test;
 
-lazy_static! {
-    pub static ref ESCRIPT: RwLock<String> =
-        RwLock::new(std::env::var("ELP_ESCRIPT").unwrap_or_else(|_| "escript".to_string()));
-}
+pub static ESCRIPT: LazyLock<RwLock<String>> = LazyLock::new(|| {
+    RwLock::new(std::env::var("ELP_ESCRIPT").unwrap_or_else(|_| "escript".to_string()))
+});
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum DiagnosticLocation {
@@ -482,9 +481,8 @@ impl Connection {
         string_val: &str,
         resolve_include: impl Fn(FileId, IncludeType, &str) -> Option<(String, FileId, Arc<str>)>,
     ) -> Option<(String, FileId, Arc<str>)> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new("([^:]+):([^:]+):(.+)").unwrap();
-        }
+        static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new("([^:]+):([^:]+):(.+)").unwrap());
+
         let captures = RE.captures(string_val)?;
         if captures.len() > 3 {
             let file_id_str = &captures[1];
@@ -498,12 +496,12 @@ impl Connection {
     }
 
     pub fn request_doc(&self, request: DocRequest, unwind: impl Fn()) -> Result<DocResult, String> {
-        lazy_static! {
-            static ref FUNCTION_DOC_REGEX: Regex =
-                Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap();
-            static ref TYPE_DOC_REGEX: Regex =
-                Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap();
-        }
+        static FUNCTION_DOC_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+            Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap()
+        });
+        static TYPE_DOC_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+            Regex::new(r"^(?P<name>\S+) (?P<arity>\d+) (?P<doc>(?s).*)$").unwrap()
+        });
 
         let tag = request.tag();
         let encoded = request.clone().encode();
@@ -864,13 +862,13 @@ fn path_into_list(path: PathBuf) -> eetf::ByteList {
 mod tests {
     use std::fs;
     use std::str;
+    use std::sync::LazyLock;
 
     use elp_base_db::AbsPathBuf;
     use elp_project_model::otp::Otp;
     use expect_test::ExpectFile;
     use expect_test::expect;
     use expect_test::expect_file;
-    use lazy_static::lazy_static;
     #[cfg(not(buck_build))]
     use paths::Utf8PathBuf;
 
@@ -1083,9 +1081,8 @@ mod tests {
     }
 
     fn expect_module_with_opts(path: PathBuf, expected: ExpectFile, options: Vec<CompileOption>) {
-        lazy_static! {
-            static ref CONN: Connection = Connection::start().unwrap();
-        }
+        static CONN: LazyLock<Connection> = LazyLock::new(|| Connection::start().unwrap());
+
         let actual_path = get_fixtures_dir().join(path.to_string_lossy().as_ref());
         let file_text = Arc::from(
             fs::read_to_string(&actual_path).expect("Should have been able to read the file"),
@@ -1111,9 +1108,8 @@ mod tests {
     }
 
     fn expect_module_filtered_error(path: PathBuf, expected: ExpectFile) {
-        lazy_static! {
-            static ref CONN: Connection = Connection::start().unwrap();
-        }
+        static CONN: LazyLock<Connection> = LazyLock::new(|| Connection::start().unwrap());
+
         let actual_path = get_fixtures_dir().join(path.to_string_lossy().as_ref());
         let file_text = Arc::from(
             fs::read_to_string(&actual_path).expect("Should have been able to read the file"),
@@ -1156,9 +1152,8 @@ mod tests {
     }
 
     fn expect_docs(path: PathBuf, expected: ExpectFile) {
-        lazy_static! {
-            static ref CONN: Connection = Connection::start().unwrap();
-        }
+        static CONN: LazyLock<Connection> = LazyLock::new(|| Connection::start().unwrap());
+
         let actual_path = get_fixtures_dir().join(path.to_string_lossy().as_ref());
         let file_text = Arc::from(
             fs::read_to_string(&actual_path).expect("Should have been able to read the file"),
@@ -1186,9 +1181,8 @@ mod tests {
     }
 
     fn expect_ct_info(path: PathBuf, expected: ExpectFile) {
-        lazy_static! {
-            static ref CONN: Connection = Connection::start().unwrap();
-        }
+        static CONN: LazyLock<Connection> = LazyLock::new(|| Connection::start().unwrap());
+
         let file_id = FileId::from_raw(0);
         let actual_path = get_fixtures_dir().join(path.to_string_lossy().as_ref());
         let file_text = Arc::from(

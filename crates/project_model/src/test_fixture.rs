@@ -85,8 +85,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
+use std::sync::LazyLock;
 
-use lazy_static::lazy_static;
 use paths::AbsPath;
 use paths::AbsPathBuf;
 use paths::Utf8Path;
@@ -636,9 +636,8 @@ pub fn extract_annotations(text: &str) -> (Vec<(TextRange, String)>, String) {
     (res, text_without_annotations)
 }
 
-lazy_static! {
-    static ref TOP_OF_FILE_RANGE: TextRange = TextRange::new(0.into(), 0.into());
-}
+static TOP_OF_FILE_RANGE: LazyLock<TextRange> =
+    LazyLock::new(|| TextRange::new(0.into(), 0.into()));
 
 const TOP_OF_FILE_MARKER: &str = "%% <<< ";
 
@@ -670,9 +669,9 @@ pub fn remove_annotations(marker: Option<&str>, text: &str) -> String {
 
 /// Check if the given line contains a `%% ^^^ 💡 some text` annotation
 pub fn contains_annotation(line: &str) -> bool {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"^\s*~?%%( +\^+|[<\^]+| <<<| +\|)\s?💡?.*$").unwrap();
-    }
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^\s*~?%%( +\^+|[<\^]+| <<<| +\|)\s?💡?.*$").unwrap());
+
     RE.is_match(line)
 }
 

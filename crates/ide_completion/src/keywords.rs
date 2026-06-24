@@ -8,16 +8,16 @@
  * above-listed licenses.
  */
 
-use lazy_static::lazy_static;
+use std::sync::LazyLock;
 
 use crate::Completion;
 use crate::Contents;
 use crate::Ctx;
 use crate::DoneFlag;
 
-lazy_static! {
-    // adapted from https://github.com/erlang-ls/erlang_ls d067267b906239c883fed6e0f9e69c4eb94dd580
-    static ref KEYWORDS: Vec<Completion> = [
+// adapted from https://github.com/erlang-ls/erlang_ls d067267b906239c883fed6e0f9e69c4eb94dd580
+static KEYWORDS: LazyLock<Vec<Completion>> = LazyLock::new(|| {
+    [
         "case",
         "after",
         "and",
@@ -50,8 +50,10 @@ lazy_static! {
         "ok",
         "undefined",
         "true",
-        "false"
-    ].iter().map(|label| Completion{
+        "false",
+    ]
+    .iter()
+    .map(|label| Completion {
         label: label.to_string(),
         kind: crate::Kind::Keyword,
         contents: Contents::SameAsLabel,
@@ -59,8 +61,9 @@ lazy_static! {
         sort_text: None,
         deprecated: false,
         additional_edit: None,
-    }).collect();
-}
+    })
+    .collect()
+});
 
 pub(crate) fn add_completions(acc: &mut Vec<Completion>, Ctx { trigger, .. }: &Ctx) -> DoneFlag {
     if trigger.is_some() {

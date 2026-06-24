@@ -13,6 +13,7 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::LazyLock;
 
 use anyhow::Result;
 use anyhow::anyhow;
@@ -24,7 +25,6 @@ use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_syntax::SmolStr;
 use fxhash::FxHashSet;
-use lazy_static::lazy_static;
 use serde::de::DeserializeOwned;
 pub use server::setup::ServerSetup;
 
@@ -140,23 +140,28 @@ pub fn sort_by_file_size_descending<T>(
 /// Our grammar cannot handle it at the moment, so we keep a list of
 /// these modules to skip when doing elp parsing for CI.
 pub fn otp_file_to_ignore(db: &Analysis, file_id: FileId) -> bool {
-    lazy_static! {
-        static ref SET: FxHashSet<SmolStr> =
-            ["ttb",
-                // Not all files in the dependencies compile with ELP,
-                // also using unusual macros. Rather than skip
-                // checking deps, we list the known bad ones.
-                 "jsone", "jsone_decode", "jsone_encode",
-                 "piqirun_props",
-                 "yaws_server", "yaws_appmod_dav", "yaws_runmod_lock",
-                 "jsonrpc",
-                 "redbug_dtop",
-                 ]
-                .iter()
-                // @fb-only: .chain(meta_only::FILES_TO_IGNORE.iter())
-                .map(SmolStr::new)
-                .collect();
-    }
+    static SET: LazyLock<FxHashSet<SmolStr>> = LazyLock::new(|| {
+        [
+            "ttb",
+            // Not all files in the dependencies compile with ELP,
+            // also using unusual macros. Rather than skip
+            // checking deps, we list the known bad ones.
+            "jsone",
+            "jsone_decode",
+            "jsone_encode",
+            "piqirun_props",
+            "yaws_server",
+            "yaws_appmod_dav",
+            "yaws_runmod_lock",
+            "jsonrpc",
+            "redbug_dtop",
+        ]
+        .iter()
+        // @fb-only: .chain(meta_only::FILES_TO_IGNORE.iter())
+        .map(SmolStr::new)
+        .collect()
+    });
+
     if let Some(module_name) = db.module_name(file_id).unwrap() {
         SET.contains(module_name.as_str())
     } else {

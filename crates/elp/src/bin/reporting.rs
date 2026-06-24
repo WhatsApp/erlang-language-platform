@@ -13,6 +13,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::str;
 use std::sync::Arc;
+use std::sync::LazyLock;
 use std::time::Instant;
 
 use anyhow::Context;
@@ -39,7 +40,6 @@ use elp_ide::elp_ide_db::memory_usage::MemoryUsage;
 use elp_ide::elp_ide_db::memory_usage::memory_usage;
 use indicatif::ProgressBar;
 use itertools::Itertools;
-use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use vfs::Vfs;
 
@@ -332,28 +332,26 @@ pub fn get_relative_path<'a>(root: &AbsPath, file: &'a VfsPath) -> &'a Path {
     }
 }
 
-lazy_static! {
-    static ref REPORTING_CONFIG: term::Config = {
-        let mut config = codespan_reporting::term::Config::default();
-        config
-            .styles
-            .primary_label_error
-            .set_fg(Some(Color::Ansi256(9)));
-        config.styles.line_number.set_fg(Some(Color::Ansi256(33)));
-        config.styles.source_border.set_fg(Some(Color::Ansi256(33)));
-        config
-    };
-    static ref GREEN_COLOR_SPEC: ColorSpec = {
-        let mut spec = ColorSpec::default();
-        spec.set_fg(Some(Color::Green));
-        spec
-    };
-    static ref CYAN_COLOR_SPEC: ColorSpec = {
-        let mut spec = ColorSpec::default();
-        spec.set_fg(Some(Color::Cyan));
-        spec
-    };
-}
+static REPORTING_CONFIG: LazyLock<term::Config> = LazyLock::new(|| {
+    let mut config = codespan_reporting::term::Config::default();
+    config
+        .styles
+        .primary_label_error
+        .set_fg(Some(Color::Ansi256(9)));
+    config.styles.line_number.set_fg(Some(Color::Ansi256(33)));
+    config.styles.source_border.set_fg(Some(Color::Ansi256(33)));
+    config
+});
+static GREEN_COLOR_SPEC: LazyLock<ColorSpec> = LazyLock::new(|| {
+    let mut spec = ColorSpec::default();
+    spec.set_fg(Some(Color::Green));
+    spec
+});
+static CYAN_COLOR_SPEC: LazyLock<ColorSpec> = LazyLock::new(|| {
+    let mut spec = ColorSpec::default();
+    spec.set_fg(Some(Color::Cyan));
+    spec
+});
 
 // ---------------------------------------------------------------------
 
@@ -370,12 +368,7 @@ pub(crate) fn dump_stats(cli: &mut dyn Cli, list_modules: bool) {
     writeln!(cli, "{mem_usage}").ok();
 }
 
-lazy_static! {
-    static ref STATS: Mutex<Vec<String>> = {
-        let stats = Vec::new();
-        Mutex::new(stats)
-    };
-}
+static STATS: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 pub(crate) fn add_stat(stat: String) {
     let mut stats = STATS.lock();

@@ -12,6 +12,8 @@
 //!
 //! warn on code of the form `lists:zip(lists:seq(1,length(L)),L)` and suggest `lists:enumerate(L)`
 
+use std::sync::LazyLock;
+
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
@@ -22,7 +24,6 @@ use hir::BasedInteger;
 use hir::Expr;
 use hir::Literal;
 use hir::Semantic;
-use lazy_static::lazy_static;
 
 use crate::Assist;
 use crate::diagnostics::Category;
@@ -60,8 +61,8 @@ impl SsrPatternsLinter for InefficientEnumerateLinter {
     type Context = PatternKind;
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, PatternKind)> = vec![
+        static PATTERNS: LazyLock<Vec<(String, PatternKind)>> = LazyLock::new(|| {
+            vec![
                 (
                     format!(
                         "ssr: lists:zip(lists:seq({INDEX_VAR},length({LIST_VAR})),{LIST_VAR})."
@@ -74,8 +75,9 @@ impl SsrPatternsLinter for InefficientEnumerateLinter {
                     ),
                     PatternKind::ThreeArg,
                 ),
-            ];
-        }
+            ]
+        });
+
         &PATTERNS
     }
 

@@ -13,7 +13,6 @@ crossbeam-channel.workspace = true
 env_filter.workspace = true
 fxhash.workspace = true
 humantime.workspace = true
-lazy_static.workspace = true
 log.workspace = true
 parking_lot.workspace = true
 serde.workspace = true

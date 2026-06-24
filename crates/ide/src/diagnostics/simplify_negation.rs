@@ -31,6 +31,8 @@
 //! end
 //! ```
 
+use std::sync::LazyLock;
+
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::text_edit::TextRange;
@@ -39,7 +41,6 @@ use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use lazy_static::lazy_static;
 
 use crate::Assist;
 use crate::diagnostics::DiagnosticCode;
@@ -79,54 +80,55 @@ impl SsrPatternsLinter for SimplifyNegationLinter {
     type Context = BranchOrder;
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, BranchOrder)> = vec![
+        static PATTERNS: LazyLock<Vec<(String, BranchOrder)>> = LazyLock::new(|| {
+            vec![
                 (
                     format!(
                         "ssr: case not {NEGATED_EXPR_VAR} of
-                            true -> {NEGATIVE_BRANCH_VAR};
-                            false -> {AFFIRMATIVE_BRANCH_VAR}
-                          end."
+                        true -> {NEGATIVE_BRANCH_VAR};
+                        false -> {AFFIRMATIVE_BRANCH_VAR}
+                        end."
                     ),
                     BranchOrder::NegativeBranchFirst,
                 ),
                 (
                     format!(
                         "ssr: case not {NEGATED_EXPR_VAR} of
-                            false -> {AFFIRMATIVE_BRANCH_VAR};
-                            true -> {NEGATIVE_BRANCH_VAR}
-                          end."
+                        false -> {AFFIRMATIVE_BRANCH_VAR};
+                        true -> {NEGATIVE_BRANCH_VAR}
+                        end."
                     ),
                     BranchOrder::AffirmativeBranchFirst,
                 ),
                 (
                     format!(
                         "ssr: case not {NEGATED_EXPR_VAR} of
-                            true -> {NEGATIVE_BRANCH_VAR};
-                            _ -> {AFFIRMATIVE_BRANCH_VAR}
-                          end."
+                        true -> {NEGATIVE_BRANCH_VAR};
+                        _ -> {AFFIRMATIVE_BRANCH_VAR}
+                        end."
                     ),
                     BranchOrder::NegativeBranchFirst,
                 ),
                 (
                     format!(
                         "ssr: case not {NEGATED_EXPR_VAR} of
-                            false -> {AFFIRMATIVE_BRANCH_VAR};
-                            _ -> {NEGATIVE_BRANCH_VAR}
-                          end."
+                        false -> {AFFIRMATIVE_BRANCH_VAR};
+                        _ -> {NEGATIVE_BRANCH_VAR}
+                        end."
                     ),
                     BranchOrder::AffirmativeBranchFirst,
                 ),
                 (
                     format!(
                         "ssr: if not {NEGATED_EXPR_VAR} -> {NEGATIVE_BRANCH_VAR};
-                            true -> {AFFIRMATIVE_BRANCH_VAR}
-                          end."
+                        true -> {AFFIRMATIVE_BRANCH_VAR}
+                        end."
                     ),
                     BranchOrder::NegativeBranchFirst,
                 ),
-            ];
-        }
+            ]
+        });
+
         &PATTERNS
     }
 

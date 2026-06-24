@@ -363,6 +363,7 @@ mod tests {
     use std::path::Path;
     use std::str;
     use std::sync::Arc;
+    use std::sync::LazyLock;
 
     use anyhow::Context;
     use clap::Parser;
@@ -387,7 +388,6 @@ mod tests {
     use expect_test::ExpectFile;
     use expect_test::expect;
     use expect_test::expect_file;
-    use lazy_static::lazy_static;
     use paths::Utf8PathBuf;
     use rayon::prelude::*;
     use regex::Regex;
@@ -3164,9 +3164,8 @@ mod tests {
     }
 
     fn replace_url(s: &str) -> String {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"https[^ ]+").unwrap();
-        }
+        static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"https[^ ]+").unwrap());
+
         if let Some(res) = RE.find(s) {
             s.replace(res.as_str(), "https://[URL]")
         } else {
@@ -3198,9 +3197,8 @@ mod tests {
     }
 
     fn strip_ansi_codes(s: &str) -> String {
-        lazy_static! {
-            static ref ANSI_RE: Regex = Regex::new(r"\x1b\[[0-9;]*m").unwrap();
-        }
+        static ANSI_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\x1b\[[0-9;]*m").unwrap());
+
         ANSI_RE.replace_all(s, "").to_string()
     }
 

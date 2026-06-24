@@ -8,6 +8,8 @@
  * above-listed licenses.
  */
 
+use std::sync::LazyLock;
+
 use ast::AstNode;
 use elp_ide_db::ReferenceClass;
 use elp_ide_db::ReferenceType;
@@ -27,7 +29,6 @@ use hir::Pat;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use lazy_static::lazy_static;
 use regex::Regex;
 
 use crate::AssistContext;
@@ -156,9 +157,9 @@ struct NumberedVar {
 
 impl NumberedVar {
     fn from_var(var_str: &str) -> Option<NumberedVar> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"[0-9]+$").expect("regex should be valid");
-        }
+        static RE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"[0-9]+$").expect("regex should be valid"));
+
         let res = RE.find(var_str)?;
         let number = &var_str[res.start()..res.end()];
         match number.parse::<usize>() {

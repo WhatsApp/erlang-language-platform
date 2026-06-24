@@ -30,7 +30,6 @@ use fxhash::FxBuildHasher;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use indexmap::IndexMap;
-use lazy_static::lazy_static;
 
 use crate::CallbackDef;
 use crate::DefineDef;
@@ -690,9 +689,8 @@ impl DefMap {
     }
 
     pub fn get_erlang_module(&self) -> Option<&Name> {
-        lazy_static! {
-            static ref ERLANG_MODULE: Name = known::erlang;
-        }
+        static ERLANG_MODULE: Name = known::erlang;
+
         Some(&ERLANG_MODULE)
     }
 

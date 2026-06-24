@@ -14,6 +14,8 @@
 //! e.g. maps:put(K, V, M) becomes M#{K => V}
 //!      maps:update(K, V, M) becomes M#{K := V}
 
+use std::sync::LazyLock;
+
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
@@ -23,7 +25,6 @@ use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use lazy_static::lazy_static;
 
 use crate::Assist;
 use crate::diagnostics::Category;
@@ -66,12 +67,13 @@ impl SsrPatternsLinter for MapPutToSyntaxLinter {
     }
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, ())> = vec![(
+        static PATTERNS: LazyLock<Vec<(String, ())>> = LazyLock::new(|| {
+            vec![(
                 format!("ssr: maps:put({KEY_VAR},{VALUE_VAR},{MAP_VAR})."),
                 (),
-            )];
-        }
+            )]
+        });
+
         &PATTERNS
     }
 
@@ -143,12 +145,13 @@ impl SsrPatternsLinter for MapUpdateToSyntaxLinter {
     }
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, ())> = vec![(
+        static PATTERNS: LazyLock<Vec<(String, ())>> = LazyLock::new(|| {
+            vec![(
                 format!("ssr: maps:update({KEY_VAR},{VALUE_VAR},{MAP_VAR})."),
                 (),
-            )];
-        }
+            )]
+        });
+
         &PATTERNS
     }
 

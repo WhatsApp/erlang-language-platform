@@ -17,7 +17,6 @@ elp_base_db.workspace = true
 elp_syntax.workspace = true
 fxhash.workspace = true
 jod-thread.workspace = true
-lazy_static.workspace = true
 log.workspace = true
 parking_lot.workspace = true
 regex.workspace = true

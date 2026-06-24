@@ -32,6 +32,8 @@
 //! end
 //! ```
 
+use std::sync::LazyLock;
+
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
@@ -46,7 +48,6 @@ use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use lazy_static::lazy_static;
 
 use crate::Assist;
 use crate::diagnostics::Linter;
@@ -82,124 +83,125 @@ impl SsrPatternsLinter for MapFindToSyntaxLinter {
     }
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, ())> = vec![
+        static PATTERNS: LazyLock<Vec<(String, ())>> = LazyLock::new(|| {
+            vec![
                 (
                     format!(
                         "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
-                            {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
-                            error -> {NOT_FOUND_BODY_VAR}
-                          end."
+                        {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
+                        error -> {NOT_FOUND_BODY_VAR}
+                        end."
                     ),
                     (),
                 ),
                 (
                     format!(
                         "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
-                            error -> {NOT_FOUND_BODY_VAR};
-                            {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR}
-                          end."
+                        error -> {NOT_FOUND_BODY_VAR};
+                        {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR}
+                        end."
                     ),
                     (),
                 ),
                 (
                     format!(
                         "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
-                            {{ok, {VALUE_VAR}}} when {VALUE_GUARD_VAR} -> {FOUND_BODY_VAR};
-                            error -> {NOT_FOUND_BODY_VAR}
-                          end."
+                        {{ok, {VALUE_VAR}}} when {VALUE_GUARD_VAR} -> {FOUND_BODY_VAR};
+                        error -> {NOT_FOUND_BODY_VAR}
+                        end."
                     ),
                     (),
                 ),
                 (
                     format!(
                         "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
-                            error -> {NOT_FOUND_BODY_VAR};
-                            {{ok, {VALUE_VAR}}} when {VALUE_GUARD_VAR} -> {FOUND_BODY_VAR}
-                          end."
+                        error -> {NOT_FOUND_BODY_VAR};
+                        {{ok, {VALUE_VAR}}} when {VALUE_GUARD_VAR} -> {FOUND_BODY_VAR}
+                        end."
                     ),
                     (),
                 ),
                 (
                     format!(
                         "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
-                            {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
-                            _ -> {NOT_FOUND_BODY_VAR}
-                          end."
+                        {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
+                        _ -> {NOT_FOUND_BODY_VAR}
+                        end."
                     ),
                     (),
                 ),
                 (
                     format!(
                         "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
-                            {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
-                            {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2};
-                            error -> {NOT_FOUND_BODY_VAR}
-                          end."
+                        {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
+                        {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2};
+                        error -> {NOT_FOUND_BODY_VAR}
+                        end."
                     ),
                     (),
                 ),
                 (
                     format!(
                         "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
-                            {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
-                            error -> {NOT_FOUND_BODY_VAR};
-                            {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2}
-                          end."
+                        {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
+                        error -> {NOT_FOUND_BODY_VAR};
+                        {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2}
+                        end."
                     ),
                     (),
                 ),
                 (
                     format!(
                         "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
-                            error -> {NOT_FOUND_BODY_VAR};
-                            {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
-                            {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2}
-                          end."
+                        error -> {NOT_FOUND_BODY_VAR};
+                        {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
+                        {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2}
+                        end."
                     ),
                     (),
                 ),
                 (
                     format!(
                         "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
-                            {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
-                            {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2};
-                            _ -> {NOT_FOUND_BODY_VAR}
-                          end."
+                        {{ok, {VALUE_VAR}}} -> {FOUND_BODY_VAR};
+                        {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2};
+                        _ -> {NOT_FOUND_BODY_VAR}
+                        end."
                     ),
                     (),
                 ),
                 (
                     format!(
                         "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
-                            {{ok, {VALUE_VAR}}} when {VALUE_GUARD_VAR} -> {FOUND_BODY_VAR};
-                            {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2};
-                            _ -> {NOT_FOUND_BODY_VAR}
-                          end."
+                        {{ok, {VALUE_VAR}}} when {VALUE_GUARD_VAR} -> {FOUND_BODY_VAR};
+                        {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2};
+                        _ -> {NOT_FOUND_BODY_VAR}
+                        end."
                     ),
                     (),
                 ),
                 (
                     format!(
                         "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
-                            {{ok, {VALUE_VAR}}} when {VALUE_GUARD_VAR} -> {FOUND_BODY_VAR};
-                            {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2};
-                            error -> {NOT_FOUND_BODY_VAR}
-                          end."
+                        {{ok, {VALUE_VAR}}} when {VALUE_GUARD_VAR} -> {FOUND_BODY_VAR};
+                        {{ok, {VALUE_VAR2}}} -> {FOUND_BODY_VAR2};
+                        error -> {NOT_FOUND_BODY_VAR}
+                        end."
                     ),
                     (),
                 ),
                 (
                     format!(
                         "ssr: case maps:find({KEY_VAR},{MAP_VAR}) of
-                            {{ok, {VALUE_VAR}}} when {VALUE_GUARD_VAR} -> {FOUND_BODY_VAR};
-                            _ -> {NOT_FOUND_BODY_VAR}
-                          end."
+                        {{ok, {VALUE_VAR}}} when {VALUE_GUARD_VAR} -> {FOUND_BODY_VAR};
+                        _ -> {NOT_FOUND_BODY_VAR}
+                        end."
                     ),
                     (),
                 ),
-            ];
-        }
+            ]
+        });
+
         &PATTERNS
     }
 

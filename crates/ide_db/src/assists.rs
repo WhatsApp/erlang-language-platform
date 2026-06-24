@@ -17,11 +17,11 @@
 
 use std::fmt;
 use std::str::FromStr;
+use std::sync::LazyLock;
 
 use elp_syntax::TextRange;
 use elp_syntax::label::Label;
 use fxhash::FxHashMap;
-use lazy_static::lazy_static;
 use serde::Deserialize;
 use serde::Serialize;
 use strum::EnumIter;
@@ -217,16 +217,15 @@ impl AssistContextDiagnosticCode {
     }
 }
 
-lazy_static! {
-    static ref DIAGNOSTIC_CODE_LOOKUPS: FxHashMap<String, AssistContextDiagnosticCode> = {
+static DIAGNOSTIC_CODE_LOOKUPS: LazyLock<FxHashMap<String, AssistContextDiagnosticCode>> =
+    LazyLock::new(|| {
         let mut res = FxHashMap::default();
         for code in AssistContextDiagnosticCode::iter() {
             res.insert(code.as_code(), code.clone());
             res.insert(code.as_label(), code.clone());
         }
         res
-    };
-}
+    });
 
 impl FromStr for AssistContextDiagnosticCode {
     type Err = String;

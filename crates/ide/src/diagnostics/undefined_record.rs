@@ -11,6 +11,7 @@
 // Add an assist to an erlang service diagnostic for an undefined record.
 
 use std::sync::Arc;
+use std::sync::LazyLock;
 
 use elp_ide_completion::get_include_file;
 use elp_ide_db::elp_base_db::FileId;
@@ -20,7 +21,6 @@ use elp_ide_db::text_edit::TextEdit;
 use fxhash::FxHashSet;
 use hir::RecordDefineIndex;
 use hir::Semantic;
-use lazy_static::lazy_static;
 use regex::Regex;
 
 use super::Diagnostic;
@@ -73,9 +73,9 @@ pub(crate) fn add_assist(
 }
 
 fn record_undefined_from_message(s: &str) -> Option<String> {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"^record (\S+) undefined$").expect("valid regex");
-    }
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^record (\S+) undefined$").expect("valid regex"));
+
     let captures = RE.captures(s)?;
     if RE.captures_len() == 2 {
         Some(captures[1].to_string())

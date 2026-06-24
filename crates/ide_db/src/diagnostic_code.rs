@@ -10,9 +10,9 @@
 
 use std::fmt;
 use std::str::FromStr;
+use std::sync::LazyLock;
 
 use fxhash::FxHashMap;
-use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Deserialize;
 use serde::Deserializer;
@@ -400,30 +400,27 @@ impl DiagnosticCode {
     /// Check if the diagnostic label is for an AdHoc one.
     fn is_adhoc(s: &str) -> Option<String> {
         // Looking for something like "ad-hoc: ad-hoc-title-1"
-        lazy_static! {
-            static ref RE: Regex =
-                Regex::new(r"^ad-hoc: ([^\s]+)$").expect("regex should be valid");
-        }
+        static RE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"^ad-hoc: ([^\s]+)$").expect("regex should be valid"));
+
         RE.captures_iter(s).next().map(|c| c[1].to_string())
     }
 
     /// Check if the diagnostic label is for an ErlangService one.
     fn is_erlang_service(s: &str) -> Option<String> {
         // Looing for something like "L0008"
-        lazy_static! {
-            static ref RE: Regex =
-                Regex::new(r"^([A-Z]+[0-9]{4})$").expect("regex should be valid");
-        }
+        static RE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"^([A-Z]+[0-9]{4})$").expect("regex should be valid"));
+
         RE.captures_iter(s).next().map(|c| c[1].to_string())
     }
 
     /// Check if the diagnostic label is for an Eqwalizer one.
     fn is_eqwalizer(s: &str) -> Option<String> {
         // Looking for something like "eqwalizer: unknown_id"
-        lazy_static! {
-            static ref RE: Regex =
-                Regex::new(r"^eqwalizer: ([^\s]+)$").expect("regex should be valid");
-        }
+        static RE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"^eqwalizer: ([^\s]+)$").expect("regex should be valid"));
+
         RE.captures_iter(s).next().map(|c| c[1].to_string())
     }
 
@@ -466,16 +463,14 @@ impl DiagnosticCode {
     }
 }
 
-lazy_static! {
-    static ref DIAGNOSTIC_CODE_LOOKUPS: FxHashMap<String, DiagnosticCode> = {
-        let mut res = FxHashMap::default();
-        for code in DiagnosticCode::iter() {
-            res.insert(code.as_code(), code.clone());
-            res.insert(code.as_label(), code.clone());
-        }
-        res
-    };
-}
+static DIAGNOSTIC_CODE_LOOKUPS: LazyLock<FxHashMap<String, DiagnosticCode>> = LazyLock::new(|| {
+    let mut res = FxHashMap::default();
+    for code in DiagnosticCode::iter() {
+        res.insert(code.as_code(), code.clone());
+        res.insert(code.as_label(), code.clone());
+    }
+    res
+});
 
 impl FromStr for DiagnosticCode {
     type Err = String;

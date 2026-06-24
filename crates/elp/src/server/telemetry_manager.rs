@@ -10,6 +10,7 @@
 
 //! Manage Telemetry data for the server.
 
+use std::sync::LazyLock;
 use std::time::Duration;
 use std::time::Instant;
 use std::time::SystemTime;
@@ -17,7 +18,6 @@ use std::time::SystemTime;
 use elp_log::telemetry;
 use elp_log::telemetry::send_with_duration;
 use fxhash::FxHashMap;
-use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use serde::Serialize;
 
@@ -149,10 +149,8 @@ pub(crate) fn reporter_telemetry_end(token: lsp_types::NumberOrString) {
     }
 }
 
-lazy_static! {
-    static ref TELEMETRY: Mutex<ReporterTelemetryManager> =
-        Mutex::new(ReporterTelemetryManager::default());
-}
+static TELEMETRY: LazyLock<Mutex<ReporterTelemetryManager>> =
+    LazyLock::new(|| Mutex::new(ReporterTelemetryManager::default()));
 
 #[derive(Default, Debug)]
 struct ReporterTelemetryManager {
@@ -240,8 +238,9 @@ impl ReporterTelemetry {
 
 #[cfg(test)]
 mod test {
+    use std::sync::LazyLock;
+
     use expect_test::expect;
-    use lazy_static::lazy_static;
     use lsp_types::NumberOrString;
     use parking_lot::Mutex;
 
@@ -249,10 +248,8 @@ mod test {
 
     #[test]
     fn test_lifecycle() {
-        lazy_static! {
-            static ref TEST_TELEMETRY: Mutex<ReporterTelemetryManager> =
-                Mutex::new(ReporterTelemetryManager::default());
-        }
+        static TEST_TELEMETRY: LazyLock<Mutex<ReporterTelemetryManager>> =
+            LazyLock::new(|| Mutex::new(ReporterTelemetryManager::default()));
 
         let token = NumberOrString::Number(1);
         let message = "Start message".to_string();

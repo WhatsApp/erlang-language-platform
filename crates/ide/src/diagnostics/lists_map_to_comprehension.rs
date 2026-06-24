@@ -14,6 +14,8 @@
 //! Also handles `lists:map(fun action/1, L)`, `lists:map(fun mod:action/1, L)`,
 //! and `lists:map(F, L)` where F is a variable.
 
+use std::sync::LazyLock;
+
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
@@ -23,7 +25,6 @@ use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use lazy_static::lazy_static;
 
 use crate::Assist;
 use crate::diagnostics::Linter;
@@ -71,8 +72,8 @@ impl SsrPatternsLinter for ListsMapToComprehensionLinter {
     }
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, PatternKind)> = vec![
+        static PATTERNS: LazyLock<Vec<(String, PatternKind)>> = LazyLock::new(|| {
+            vec![
                 (
                     format!("ssr: lists:map(fun ({ELEM_VAR}) -> {BODY_VAR} end, {LIST_VAR})."),
                     PatternKind::AnonymousFun,
@@ -89,8 +90,9 @@ impl SsrPatternsLinter for ListsMapToComprehensionLinter {
                     format!("ssr: lists:map({FUN_VAR}, {LIST_VAR})."),
                     PatternKind::FunVar,
                 ),
-            ];
-        }
+            ]
+        });
+
         &PATTERNS
     }
 

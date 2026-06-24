@@ -27,6 +27,8 @@
 // This limitation can be solved by leveraging the Erlang Service in ELP to evaluate
 // those functions before processing them.
 
+use std::sync::LazyLock;
+
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::ModuleName;
 use elp_ide_db::erlang_service::TestDef;
@@ -41,7 +43,6 @@ use hir::Name;
 use hir::NameArity;
 use hir::Semantic;
 use hir::known;
-use lazy_static::lazy_static;
 
 use crate::Runnable;
 use crate::navigation_target::ToNav;
@@ -102,15 +103,13 @@ pub(crate) fn exported_test_ranges(
     res
 }
 
-lazy_static! {
-    static ref KNOWN_FUNCTIONS_ARITY_1: FxHashSet<NameArity> = {
-        let mut res = FxHashSet::default();
-        for name in [known::end_per_suite, known::init_per_suite, known::group] {
-            res.insert(NameArity::new(name.clone(), 1));
-        }
-        res
-    };
-}
+static KNOWN_FUNCTIONS_ARITY_1: LazyLock<FxHashSet<NameArity>> = LazyLock::new(|| {
+    let mut res = FxHashSet::default();
+    for name in [known::end_per_suite, known::init_per_suite, known::group] {
+        res.insert(NameArity::new(name.clone(), 1));
+    }
+    res
+});
 
 // Populate the list of runnables for a Common Test test suite
 pub fn runnables(

@@ -48,7 +48,6 @@ use elp_project_model::buck::BuckQueryConfig;
 use fxhash::FxHashMap;
 use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
-use lazy_static::lazy_static;
 use rayon::prelude::*;
 
 use crate::args::Eqwalize;
@@ -651,12 +650,4 @@ fn set_eqwalizer_config(loaded: &mut LoadResult) {
     if config != *db.eqwalizer_config() {
         db.set_eqwalizer_config(Arc::new(config));
     }
-}
-
-lazy_static! {
-    static ref YELLOW_COLOR_SPEC: ColorSpec = {
-        let mut spec = ColorSpec::default();
-        spec.set_fg(Some(Color::Yellow));
-        spec
-    };
 }

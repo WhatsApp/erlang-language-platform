@@ -12,11 +12,12 @@
 //!
 //! Detect `string:lowercase(binary:encode_hex(_@X))` and suggest `binary:encode_hex(_@X, lowercase)`
 
+use std::sync::LazyLock;
+
 use elp_ide_assists::Assist;
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_project_model::otp::Otp;
-use lazy_static::lazy_static;
 
 use crate::diagnostics::Linter;
 use crate::diagnostics::LinterContext;
@@ -43,12 +44,13 @@ impl SsrPatternsLinter for EncodeHexWithCaseLinter {
     type Context = ();
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, ())> = vec![(
+        static PATTERNS: LazyLock<Vec<(String, ())>> = LazyLock::new(|| {
+            vec![(
                 format!("ssr: string:lowercase(binary:encode_hex({ARG_VAR}))."),
-                ()
-            ),];
-        }
+                (),
+            )]
+        });
+
         &PATTERNS
     }
 

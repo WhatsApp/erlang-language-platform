@@ -18,6 +18,8 @@
 //! The transformation is only valid when the outer variable X appears
 //! exactly once in the body expression, to avoid duplicating computation.
 
+use std::sync::LazyLock;
+
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
@@ -35,7 +37,6 @@ use hir::fold::FoldCtx;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::fold::Strategy;
-use lazy_static::lazy_static;
 
 use crate::Assist;
 use crate::diagnostics::Category;
@@ -71,14 +72,15 @@ impl SsrPatternsLinter for InlineNestedListComprehensionLinter {
     type Context = ();
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, ())> = vec![(
+        static PATTERNS: LazyLock<Vec<(String, ())>> = LazyLock::new(|| {
+            vec![(
                 format!(
                     "ssr: [{BODY_VAR} || {OUTER_VAR} <- [{INNER_EXPR_VAR} || {INNER_VAR} <- {LIST_VAR}]]."
                 ),
                 (),
-            ),];
-        }
+            )]
+        });
+
         &PATTERNS
     }
 

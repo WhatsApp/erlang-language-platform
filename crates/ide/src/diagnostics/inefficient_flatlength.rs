@@ -12,12 +12,13 @@
 //!
 //! warn on code of the form `length(lists:flatten(L))` and suggest `lists:flatlength(L)`
 
+use std::sync::LazyLock;
+
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_ssr::Match;
 use hir::Semantic;
-use lazy_static::lazy_static;
 
 use crate::Assist;
 use crate::diagnostics::Linter;
@@ -46,10 +47,9 @@ impl SsrPatternsLinter for InefficientFlatlengthLinter {
     type Context = ();
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, ())> =
-                vec![(format!("ssr: length(lists:flatten({LIST_ARG_VAR}))."), ()),];
-        }
+        static PATTERNS: LazyLock<Vec<(String, ())>> =
+            LazyLock::new(|| vec![(format!("ssr: length(lists:flatten({LIST_ARG_VAR}))."), ())]);
+
         &PATTERNS
     }
 

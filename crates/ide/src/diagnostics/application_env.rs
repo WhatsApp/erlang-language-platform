@@ -14,6 +14,7 @@
 // The originial motivation and discussion is in T107133234
 
 use std::borrow::Cow;
+use std::sync::LazyLock;
 
 use elp_ide_db::elp_base_db::FileId;
 use hir::AnyExprId;
@@ -21,7 +22,6 @@ use hir::ExprId;
 use hir::FunctionDef;
 use hir::InFunctionClauseBody;
 use hir::Semantic;
-use lazy_static::lazy_static;
 
 use crate::FunctionMatch;
 use crate::codemod_helpers::CheckCallCtx;
@@ -169,8 +169,8 @@ pub(crate) enum BadEnvCallAction {
     },
 }
 
-lazy_static! {
-    static ref BAD_MATCHES: Vec<BadEnvCall> = vec![
+static BAD_MATCHES: LazyLock<Vec<BadEnvCall>> = LazyLock::new(|| {
+    vec![
         BadEnvCall::new(
             "application",
             "get_env",
@@ -181,8 +181,8 @@ lazy_static! {
     ]
     .into_iter()
     .flatten()
-    .collect::<Vec<_>>();
-}
+    .collect::<Vec<_>>()
+});
 
 fn all_function_matches() -> Vec<FunctionMatch> {
     BAD_MATCHES.iter().map(|b| b.mfa.clone()).collect()

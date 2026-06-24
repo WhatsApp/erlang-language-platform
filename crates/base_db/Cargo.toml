@@ -16,7 +16,6 @@ eetf.workspace = true
 elp_project_model.workspace = true
 elp_syntax.workspace = true
 fxhash.workspace = true
-lazy_static.workspace = true
 log.workspace = true
 paths.workspace = true
 ra_ap_query-group-macro.workspace = true

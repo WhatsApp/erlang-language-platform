@@ -12,8 +12,8 @@
 //! Extensions for various expressions live in a sibling `expr_extensions` module.
 
 use std::borrow::Cow;
+use std::sync::LazyLock;
 
-use lazy_static::lazy_static;
 use regex::Regex;
 use rowan::GreenNodeData;
 use rowan::GreenTokenData;
@@ -462,22 +462,32 @@ fn closing_delimiter(open: char) -> char {
 ///  `~"`  : Verbatim for tq, Quoted for single quote
 ///  `~b"` : Verbatim vor tq, Quoted (unescaped) for sq
 fn trim_quotes_and_sigils(s: &str) -> String {
-    lazy_static! {
-        // See https://docs.rs/regex/latest/regex/#example-verbose-mode
-        // And https://docs.rs/regex/latest/regex/#syntax
-        static ref RE: Regex = Regex::new(r#"(?sx) # . match \n, whitespace ignored, allow comments
-              ^~?([bBsS]?) # Optional sigil prefix                              (cap 1)
-              ("+)         # followed by quotes, as a match group to count them (cap 2)
-              (.*)         # The actual string contents we care about           (cap 3)
-              $            # End of string. Do not match quotes, we trim separately
-            "#).expect("regex should be valid");
-        static ref RE_SIGIL_NONQUOTE: Regex = Regex::new(r#"(?sx)
-              ^~([bBsS]?)        # Sigil prefix (~ required, optional sigil char)  (cap 1)
-              ([(\[{</'|`\#])    # Non-quote opening delimiter                     (cap 2)
-              (.*)               # The actual string contents we care about        (cap 3)
-              $                  # End of string
-            "#).unwrap();
-    }
+    // See https://docs.rs/regex/latest/regex/#example-verbose-mode
+    // And https://docs.rs/regex/latest/regex/#syntax
+    static RE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(
+            r#"(?sx) # . match \n, whitespace ignored, allow comments
+            ^~?([bBsS]?) # Optional sigil prefix                              (cap 1)
+            ("+)         # followed by quotes, as a match group to count them (cap 2)
+            (.*)         # The actual string contents we care about           (cap 3)
+            $            # End of string. Do not match quotes, we trim separately
+            "#,
+        )
+        .expect("regex should be valid")
+    });
+
+    static RE_SIGIL_NONQUOTE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(
+            r#"(?sx)
+            ^~([bBsS]?)        # Sigil prefix (~ required, optional sigil char)  (cap 1)
+            ([(\[{</'|`\#])    # Non-quote opening delimiter                     (cap 2)
+            (.*)               # The actual string contents we care about        (cap 3)
+            $                  # End of string
+            "#,
+        )
+        .unwrap()
+    });
+
     let mut quoted = true;
     let trimmed = if let Some(captures) = RE.captures(s) {
         let is_tq = captures[2].starts_with("\"\"\"");

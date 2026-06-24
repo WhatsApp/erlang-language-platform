@@ -9,11 +9,11 @@
  */
 
 use std::fs;
+use std::sync::LazyLock;
 
 use anyhow::Result;
 use dirs;
 use include_dir::Dir;
-use lazy_static::lazy_static;
 use paths::AbsPath;
 use paths::AbsPathBuf;
 use paths::Utf8PathBuf;
@@ -22,14 +22,14 @@ use crate::AppName;
 use crate::AppType;
 use crate::ProjectAppData;
 
-lazy_static! {
-    pub static ref EQWALIZER_SUPPORT: Utf8PathBuf = dirs::cache_dir()
+pub static EQWALIZER_SUPPORT: LazyLock<Utf8PathBuf> = LazyLock::new(|| {
+    dirs::cache_dir()
         .map(|d| Utf8PathBuf::from_path_buf(d).ok())
         .unwrap()
         .expect("Could not get cache dir")
         .join("elp")
-        .join("eqwalizer_support");
-}
+        .join("eqwalizer_support")
+});
 
 pub(crate) fn eqwalizer_suppport_data(otp_root: &AbsPath) -> ProjectAppData {
     let eqwalizer_support = AbsPathBuf::assert(EQWALIZER_SUPPORT.to_path_buf());

@@ -14,6 +14,8 @@
 //! `warn_missing_spec(_all)` in a compile attribute
 //! Add this as a fix.
 
+use std::sync::LazyLock;
+
 use elp_ide_assists::helpers::add_compile_option;
 use elp_ide_assists::helpers::rename_atom_in_compile_attribute;
 use elp_ide_db::DiagnosticCode;
@@ -36,7 +38,6 @@ use hir::Term;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::known;
-use lazy_static::lazy_static;
 
 use super::DIAGNOSTIC_WHOLE_FILE_RANGE;
 use crate::diagnostics::GenericLinter;
@@ -201,22 +202,21 @@ enum Found {
     WarnMissingSpecAll,
 }
 
-lazy_static! {
-    static ref MISSING_SPEC_ALL_OPTIONS: FxHashSet<Name> = {
-        let mut res = FxHashSet::default();
-        for name in [known::warn_missing_spec_all, known::nowarn_missing_spec_all] {
-            res.insert(name);
-        }
-        res
-    };
-    static ref MISSING_SPEC_OPTIONS: FxHashSet<Name> = {
-        let mut res = FxHashSet::default();
-        for name in [known::warn_missing_spec, known::nowarn_missing_spec] {
-            res.insert(name);
-        }
-        res
-    };
-}
+static MISSING_SPEC_ALL_OPTIONS: LazyLock<FxHashSet<Name>> = LazyLock::new(|| {
+    let mut res = FxHashSet::default();
+    for name in [known::warn_missing_spec_all, known::nowarn_missing_spec_all] {
+        res.insert(name);
+    }
+    res
+});
+
+static MISSING_SPEC_OPTIONS: LazyLock<FxHashSet<Name>> = LazyLock::new(|| {
+    let mut res = FxHashSet::default();
+    for name in [known::warn_missing_spec, known::nowarn_missing_spec] {
+        res.insert(name);
+    }
+    res
+});
 
 #[cfg(test)]
 mod tests {

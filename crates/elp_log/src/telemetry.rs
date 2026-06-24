@@ -18,10 +18,10 @@
 //! in this case is very small - just an integer load, comparison and
 //! jump.
 
+use std::sync::LazyLock;
 use std::time::SystemTime;
 
 pub use humantime::format_rfc3339_millis;
-use lazy_static::lazy_static;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -41,9 +41,8 @@ pub struct TelemetryMessage {
 pub type TelemetrySender = crossbeam_channel::Sender<TelemetryMessage>;
 pub type TelemetryReceiver = crossbeam_channel::Receiver<TelemetryMessage>;
 
-lazy_static! {
-    static ref CHANNEL: (TelemetrySender, TelemetryReceiver) = crossbeam_channel::unbounded();
-}
+static CHANNEL: LazyLock<(TelemetrySender, TelemetryReceiver)> =
+    LazyLock::new(crossbeam_channel::unbounded);
 
 pub fn sender() -> &'static TelemetrySender {
     &CHANNEL.0

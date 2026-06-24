@@ -32,6 +32,8 @@
 //! Erlang's `=>` keeps the rightmost value on duplicate keys, matching
 //! `maps:merge/2`'s "second argument wins" behaviour.
 
+use std::sync::LazyLock;
+
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
@@ -45,7 +47,6 @@ use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use lazy_static::lazy_static;
 
 use crate::Assist;
 use crate::diagnostics::Category;
@@ -95,8 +96,8 @@ impl SsrPatternsLinter for SimplifyMapsMergeLinter {
     }
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, MergeContext)> = vec![
+        static PATTERNS: LazyLock<Vec<(String, MergeContext)>> = LazyLock::new(|| {
+            vec![
                 (
                     format!("ssr: maps:merge({MAP_VAR}, #{{}})."),
                     MergeContext::EmptySecondArg,
@@ -109,8 +110,9 @@ impl SsrPatternsLinter for SimplifyMapsMergeLinter {
                     format!("ssr: maps:merge({MAP_VAR}, {MAP_LITERAL_VAR})."),
                     MergeContext::UpdateSyntax,
                 ),
-            ];
-        }
+            ]
+        });
+
         &PATTERNS
     }
 

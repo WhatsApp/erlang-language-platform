@@ -23,7 +23,6 @@ fxhash.workspace = true
 hir.workspace = true
 imara-diff.workspace = true
 itertools.workspace = true
-lazy_static.workspace = true
 log.workspace = true
 rayon.workspace = true
 regex.workspace = true

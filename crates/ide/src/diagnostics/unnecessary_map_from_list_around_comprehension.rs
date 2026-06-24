@@ -12,6 +12,8 @@
 //!
 //! warn on code of the form `maps:from_list([{K,V} || {K,V} <- L])` and suggest `#{K => V || {K, V} <- L]}`
 
+use std::sync::LazyLock;
+
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
@@ -19,7 +21,6 @@ use hir::Semantic;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::fold::Strategy;
-use lazy_static::lazy_static;
 
 use crate::diagnostics::Linter;
 use crate::diagnostics::LinterContext;
@@ -60,8 +61,8 @@ impl SsrPatternsLinter for UnnecessaryMapFromListAroundComprehensionLinter {
     }
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, GeneratorStrictness)> = vec![
+        static PATTERNS: LazyLock<Vec<(String, GeneratorStrictness)>> = LazyLock::new(|| {
+            vec![
                 (
                     format!(
                         "ssr: maps:from_list([{{{KEY_VAR},{VALUE_VAR}}} || {BINDING_VAR} <- {GENERATOR_VAR}, {CONDS_GLOB}])."
@@ -74,8 +75,9 @@ impl SsrPatternsLinter for UnnecessaryMapFromListAroundComprehensionLinter {
                     ),
                     GeneratorStrictness::Strict,
                 ),
-            ];
-        }
+            ]
+        });
+
         &PATTERNS
     }
 

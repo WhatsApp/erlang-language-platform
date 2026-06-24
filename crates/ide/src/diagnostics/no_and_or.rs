@@ -12,6 +12,8 @@
 //!
 //! Detect usages of `and` and `or` operators and suggest using `andalso` and `orelse` instead.
 
+use std::sync::LazyLock;
+
 use elp_ide_assists::Assist;
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::source_change::SourceChangeBuilder;
@@ -19,7 +21,6 @@ use elp_ide_ssr::Match;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxKind;
 use elp_syntax::TextRange;
-use lazy_static::lazy_static;
 
 use crate::diagnostics::Linter;
 use crate::diagnostics::LinterContext;
@@ -48,12 +49,13 @@ impl SsrPatternsLinter for NoAndOrLinter {
     type Context = OperatorKind;
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, OperatorKind)> = vec![
-                (format!("ssr: {LHS} and {RHS}."), OperatorKind::And,),
+        static PATTERNS: LazyLock<Vec<(String, OperatorKind)>> = LazyLock::new(|| {
+            vec![
+                (format!("ssr: {LHS} and {RHS}."), OperatorKind::And),
                 (format!("ssr: {LHS} or {RHS}."), OperatorKind::Or),
-            ];
-        }
+            ]
+        });
+
         &PATTERNS
     }
 

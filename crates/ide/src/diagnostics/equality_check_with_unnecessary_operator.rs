@@ -34,6 +34,7 @@
 use std::cmp::Ordering;
 use std::cmp::max;
 use std::fmt::Debug;
+use std::sync::LazyLock;
 
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
@@ -53,7 +54,6 @@ use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use lazy_static::lazy_static;
 
 use crate::Assist;
 use crate::codemod_helpers::is_wildcard;
@@ -108,98 +108,99 @@ impl SsrPatternsLinter for EqualityCheckWithUnnecessaryOperatorLinter {
     // as we can't be sure that the values with be safe to match otherwise
     // (e.g. floats are not safely matchable)
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, PatternContext)> = vec![
+        static PATTERNS: LazyLock<Vec<(String, PatternContext)>> = LazyLock::new(|| {
+            vec![
                 (
                     format!(
                         "ssr: case {LHS_VAR} =:= {RHS_VAR} of
-                            true -> {SAME_BRANCH_VAR};
-                            false -> {DIFF_BRANCH_VAR}
-                          end."
+                        true -> {SAME_BRANCH_VAR};
+                        false -> {DIFF_BRANCH_VAR}
+                        end."
                     ),
                     PatternContext::Exact,
                 ),
                 (
                     format!(
                         "ssr: case {LHS_VAR} =/= {RHS_VAR} of
-                            true -> {DIFF_BRANCH_VAR};
-                            false -> {SAME_BRANCH_VAR}
-                          end."
+                        true -> {DIFF_BRANCH_VAR};
+                        false -> {SAME_BRANCH_VAR}
+                        end."
                     ),
                     PatternContext::Exact,
                 ),
                 (
                     format!(
                         "ssr: if {LHS_VAR} =/= {RHS_VAR} -> {DIFF_BRANCH_VAR};
-                            true -> {SAME_BRANCH_VAR}
-                          end."
+                        true -> {SAME_BRANCH_VAR}
+                        end."
                     ),
                     PatternContext::Exact,
                 ),
                 (
                     format!(
                         "ssr: if {LHS_VAR} =:= {RHS_VAR} -> {SAME_BRANCH_VAR};
-                            true -> {DIFF_BRANCH_VAR}
-                          end."
+                        true -> {DIFF_BRANCH_VAR}
+                        end."
                     ),
                     PatternContext::Exact,
                 ),
                 (
                     format!(
                         "ssr: case {LHS_VAR} =:= {RHS_VAR} of
-                            false -> {DIFF_BRANCH_VAR};
-                            true -> {SAME_BRANCH_VAR}
-                          end."
+                        false -> {DIFF_BRANCH_VAR};
+                        true -> {SAME_BRANCH_VAR}
+                        end."
                     ),
                     PatternContext::Exact,
                 ),
                 (
                     format!(
                         "ssr: case {LHS_VAR} =/= {RHS_VAR} of
-                            false -> {SAME_BRANCH_VAR};
-                            true -> {DIFF_BRANCH_VAR}
-                          end."
+                        false -> {SAME_BRANCH_VAR};
+                        true -> {DIFF_BRANCH_VAR}
+                        end."
                     ),
                     PatternContext::Exact,
                 ),
                 (
                     format!(
                         "ssr: case {LHS_VAR} =:= {RHS_VAR} of
-                            true -> {SAME_BRANCH_VAR};
-                            {UNDERSCORE_VAR} -> {DIFF_BRANCH_VAR}
-                          end."
+                        true -> {SAME_BRANCH_VAR};
+                        {UNDERSCORE_VAR} -> {DIFF_BRANCH_VAR}
+                        end."
                     ),
                     PatternContext::Wildcard,
                 ),
                 (
                     format!(
                         "ssr: case {LHS_VAR} =/= {RHS_VAR} of
-                            true -> {DIFF_BRANCH_VAR};
-                            {UNDERSCORE_VAR} -> {SAME_BRANCH_VAR}
-                          end."
+                        true -> {DIFF_BRANCH_VAR};
+                        {UNDERSCORE_VAR} -> {SAME_BRANCH_VAR}
+                        end."
                     ),
                     PatternContext::Wildcard,
                 ),
                 (
                     format!(
                         "ssr: case {LHS_VAR} =:= {RHS_VAR} of
-                            false -> {DIFF_BRANCH_VAR};
-                            {UNDERSCORE_VAR} -> {SAME_BRANCH_VAR}
-                          end."
+                        false -> {DIFF_BRANCH_VAR};
+                        {UNDERSCORE_VAR} -> {SAME_BRANCH_VAR}
+                        end."
                     ),
                     PatternContext::Wildcard,
                 ),
                 (
                     format!(
                         "ssr: case {LHS_VAR} =/= {RHS_VAR} of
-                            false -> {SAME_BRANCH_VAR};
-                            {UNDERSCORE_VAR} -> {DIFF_BRANCH_VAR}
-                          end."
+                        false -> {SAME_BRANCH_VAR};
+                        {UNDERSCORE_VAR} -> {DIFF_BRANCH_VAR}
+                        end."
                     ),
                     PatternContext::Wildcard,
                 ),
-            ];
-        }
+            ]
+        });
+
         &PATTERNS
     }
 

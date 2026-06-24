@@ -8,6 +8,8 @@
  * above-listed licenses.
  */
 
+use std::sync::LazyLock;
+
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
@@ -19,7 +21,6 @@ use hir::fold::ParenStrategy;
 use hir::quote::escape_and_quote_atom;
 use hir::quote::escape_and_quote_binary_string;
 use hir::quote::escape_and_quote_string;
-use lazy_static::lazy_static;
 
 use crate::Assist;
 use crate::diagnostics::Linter;
@@ -65,8 +66,8 @@ impl SsrPatternsLinter for CouldBeAStringLiteralLinter {
     type Context = StringRewrite;
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, StringRewrite)> = vec![
+        static PATTERNS: LazyLock<Vec<(String, StringRewrite)>> = LazyLock::new(|| {
+            vec![
                 (
                     format!("ssr: list_to_binary({STRING_VAR})."),
                     StringRewrite {
@@ -95,8 +96,9 @@ impl SsrPatternsLinter for CouldBeAStringLiteralLinter {
                         to: StringKind::Binary,
                     },
                 ),
-            ];
-        }
+            ]
+        });
+
         &PATTERNS
     }
 

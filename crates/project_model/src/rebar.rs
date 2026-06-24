@@ -13,13 +13,13 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::LazyLock;
 use std::sync::OnceLock;
 
 use anyhow::Result;
 use anyhow::anyhow;
 use anyhow::bail;
 use fxhash::FxHashSet;
-use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use paths::AbsPath;
 use paths::AbsPathBuf;
@@ -110,24 +110,23 @@ impl RebarConfig {
         if cfg!(target_os = "windows") {
             // On Windows, we need to run rebar3 via escript
             let rebar3 = rebar3_path.unwrap_or_else(|| {
-                lazy_static! {
-                    static ref REBAR3_PATH: PathBuf = {
-                        let rebar3_name = "rebar3";
-                        env::var("PATH")
-                            .ok()
-                            .and_then(|paths| {
-                                env::split_paths(&paths).find_map(|dir| {
-                                    let candidate = dir.join(rebar3_name);
-                                    if candidate.exists() {
-                                        Some(candidate)
-                                    } else {
-                                        None
-                                    }
-                                })
+                static REBAR3_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
+                    let rebar3_name = "rebar3";
+                    env::var("PATH")
+                        .ok()
+                        .and_then(|paths| {
+                            env::split_paths(&paths).find_map(|dir| {
+                                let candidate = dir.join(rebar3_name);
+                                if candidate.exists() {
+                                    Some(candidate)
+                                } else {
+                                    None
+                                }
                             })
-                            .expect("rebar3 not found in PATH - install and add to PATH")
-                    };
-                }
+                        })
+                        .expect("rebar3 not found in PATH - install and add to PATH")
+                });
+
                 REBAR3_PATH.clone()
             });
 
@@ -156,9 +155,8 @@ impl RebarConfig {
     }
 
     pub fn rebar3_command(&self) -> CommandProxy<'_> {
-        lazy_static! {
-            static ref REBAR_GLOBAL_LOCK: Mutex<()> = Mutex::new(());
-        }
+        static REBAR_GLOBAL_LOCK: Mutex<()> = Mutex::new(());
+
         let guard = REBAR_GLOBAL_LOCK.lock();
 
         let mut cmd = Self::rebar3_command_base();

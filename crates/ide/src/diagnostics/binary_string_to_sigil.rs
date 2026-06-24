@@ -12,6 +12,8 @@
 //!
 //! Warn on code of the form `<<"bar">>` and suggest `~"bar"` (Erlang sigil syntax)
 
+use std::sync::LazyLock;
+
 use elp_ide_assists::Assist;
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
@@ -20,7 +22,6 @@ use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
-use lazy_static::lazy_static;
 
 use crate::diagnostics::Linter;
 use crate::diagnostics::LinterContext;
@@ -53,10 +54,9 @@ impl SsrPatternsLinter for BinaryStringToSigilLinter {
     type Context = ();
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, ())> =
-                vec![(format!("ssr: <<{STRING_CONTENT_VAR}>>."), ()),];
-        }
+        static PATTERNS: LazyLock<Vec<(String, ())>> =
+            LazyLock::new(|| vec![(format!("ssr: <<{STRING_CONTENT_VAR}>>."), ())]);
+
         &PATTERNS
     }
 

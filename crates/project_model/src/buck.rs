@@ -17,6 +17,7 @@ use std::path::PathBuf;
 use std::process;
 use std::process::Command;
 use std::sync::Arc;
+use std::sync::LazyLock;
 
 use anyhow::Result;
 use anyhow::bail;
@@ -27,7 +28,6 @@ use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use indexmap::indexset;
-use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use paths::AbsPath;
 use paths::AbsPathBuf;
@@ -49,13 +49,6 @@ use crate::json;
 use crate::otp::Otp;
 
 pub type TargetFullName = String;
-
-lazy_static! {
-    static ref DIRS: Vec<RelPathBuf> = vec!["src", "test", "include"]
-        .into_iter()
-        .flat_map(|dir| dir.try_into())
-        .collect();
-}
 
 const ERL_EXT: &str = "erl";
 const BUCK_ISOLATION_DIR: &str = "lsp";
@@ -1048,10 +1041,8 @@ impl BuckCellInfo {
     }
 }
 
-lazy_static! {
-    /// Mapping from cell name to absolute path.
-    static ref BUCK_CELL_INFO: Mutex<Option<(BuckCellInfo, Option<AbsPathBuf>)>> = Mutex::new(None);
-}
+/// Mapping from cell name to absolute path.
+static BUCK_CELL_INFO: Mutex<Option<(BuckCellInfo, Option<AbsPathBuf>)>> = Mutex::new(None);
 
 fn set_cell_info(buck_config: &BuckConfig) -> Result<BuckCellInfo> {
     let cell_info = BUCK_CELL_INFO.lock();
@@ -1159,9 +1150,8 @@ pub struct BuckQueryError {
 
 impl BuckQueryError {
     pub fn new(command: String, reason: String, details: String) -> BuckQueryError {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"Buck UI: (http\S+)").unwrap();
-        }
+        static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"Buck UI: (http\S+)").unwrap());
+
         let buck_ui_url = RE
             .captures(&details)
             .and_then(|m| m.get(1))

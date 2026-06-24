@@ -20,6 +20,8 @@
 //! and suggest
 //! maps:from_list(List)
 
+use std::sync::LazyLock;
+
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::source_change::SourceChangeBuilder;
@@ -31,7 +33,6 @@ use hir::AnyExprId;
 use hir::Body;
 use hir::Expr;
 use hir::Semantic;
-use lazy_static::lazy_static;
 
 use crate::Assist;
 use crate::diagnostics::Linter;
@@ -66,8 +67,8 @@ impl SsrPatternsLinter for UnnecessaryFoldToBuildMapLinter {
     type Context = PatternKind;
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, PatternKind)> = vec![
+        static PATTERNS: LazyLock<Vec<(String, PatternKind)>> = LazyLock::new(|| {
+            vec![
                 (
                     format!(
                         "ssr: lists:foldl(fun({{{KEY_VAR},{VALUE_VAR}}}, {ACC_VAR}) -> {ACC_VAR}#{{{KEY_VAR} => {VALUE_VAR}}} end, #{{}}, {LIST_VAR})."
@@ -80,8 +81,9 @@ impl SsrPatternsLinter for UnnecessaryFoldToBuildMapLinter {
                     ),
                     PatternKind::FromKeys,
                 ),
-            ];
-        }
+            ]
+        });
+
         &PATTERNS
     }
 

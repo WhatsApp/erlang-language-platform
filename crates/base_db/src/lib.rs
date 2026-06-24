@@ -11,6 +11,7 @@
 use std::borrow::Cow;
 use std::hash::BuildHasherDefault;
 use std::sync::Arc;
+use std::sync::LazyLock;
 
 use dashmap::DashMap;
 use dashmap::Entry;
@@ -25,7 +26,6 @@ use elp_syntax::TextSize;
 use elp_syntax::ast::SourceFile;
 use fxhash::FxHashMap;
 use fxhash::FxHasher;
-use lazy_static::lazy_static;
 use regex::Regex;
 
 mod change;
@@ -847,14 +847,19 @@ fn generated_status_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Generated
 
 fn generated_status_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> GeneratedStatus {
     let file_id = fid.file_id(db);
-    lazy_static! {
-        // We operate at byte level via a regex (as opposed to use .contains)
-        // to avoid issues with UTF8 character boundaries.
-        // See https://github.com/WhatsApp/erlang-language-platform/issues/24
-        // The format macro is used to avoid marking the whole file as generated.
-        static ref RE_GENERATED: regex::bytes::Regex = regex::bytes::Regex::new(&format!("{}generated", "@")).expect("regex should be valid");
-        static ref RE_PARTIALLY_GENERATED: regex::bytes::Regex = regex::bytes::Regex::new(&format!("{}partially-generated", "@")).expect("regex should be valid");
-    }
+
+    // We operate at byte level via a regex (as opposed to use .contains)
+    // to avoid issues with UTF8 character boundaries.
+    // See https://github.com/WhatsApp/erlang-language-platform/issues/24
+    // The format macro is used to avoid marking the whole file as generated.
+    static RE_GENERATED: LazyLock<regex::bytes::Regex> = LazyLock::new(|| {
+        regex::bytes::Regex::new(&format!("{}generated", "@")).expect("regex should be valid")
+    });
+    static RE_PARTIALLY_GENERATED: LazyLock<regex::bytes::Regex> = LazyLock::new(|| {
+        regex::bytes::Regex::new(&format!("{}partially-generated", "@"))
+            .expect("regex should be valid")
+    });
+
     let contents = db.file_text(file_id).text(db);
     let header = &contents.as_bytes()[0..(2001.min(contents.len()))];
 
@@ -874,12 +879,13 @@ fn manual_section_ranges_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Arc<
 
 fn manual_section_ranges_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Arc<Vec<TextRange>> {
     let file_id = fid.file_id(db);
-    lazy_static! {
-        static ref RE_BEGIN_MANUAL: regex::bytes::Regex =
-            regex::bytes::Regex::new(r"% BEGIN MANUAL SECTION").expect("regex should be valid");
-        static ref RE_END_MANUAL: regex::bytes::Regex =
-            regex::bytes::Regex::new(r"% END MANUAL SECTION").expect("regex should be valid");
-    }
+
+    static RE_BEGIN_MANUAL: LazyLock<regex::bytes::Regex> = LazyLock::new(|| {
+        regex::bytes::Regex::new(r"% BEGIN MANUAL SECTION").expect("regex should be valid")
+    });
+    static RE_END_MANUAL: LazyLock<regex::bytes::Regex> = LazyLock::new(|| {
+        regex::bytes::Regex::new(r"% END MANUAL SECTION").expect("regex should be valid")
+    });
 
     let contents = db.file_text(file_id).text(db);
     let bytes = contents.as_bytes();
@@ -1012,16 +1018,14 @@ pub fn module_name(db: &dyn RootQueryDb, file_id: FileId) -> Option<ModuleName> 
     module_index.module_for_file(file_id).cloned()
 }
 
-lazy_static! {
-static ref IGNORED_SOURCES: Vec<Regex> = {
+static IGNORED_SOURCES: LazyLock<Vec<Regex>> = LazyLock::new(|| {
     let regexes: Vec<Vec<Regex>> = vec![
         vec![Regex::new(r"^.*_SUITE_data/.+$").expect("regex should be valid")],
         //ignore sources goes here
-        // @fb-only: meta_only::ignored_sources_regexes()
+        // @fb-only: meta_only::ignored_sources_regexes(),
     ];
     regexes.into_iter().flatten().collect::<Vec<Regex>>()
-   };
-}
+});
 
 fn file_kind_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> FileKind {
     db.file_kind_interned(InternedFileId::new(db, file_id))

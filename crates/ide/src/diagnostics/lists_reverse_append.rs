@@ -12,10 +12,11 @@
 //!
 //! Detect patterns of the form `lists:reverse(_@L) ++ _@T` and suggest `lists:reverse(_@L, _@T)`
 
+use std::sync::LazyLock;
+
 use elp_ide_assists::Assist;
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::source_change::SourceChangeBuilder;
-use lazy_static::lazy_static;
 
 use crate::diagnostics::Linter;
 use crate::diagnostics::LinterContext;
@@ -38,10 +39,9 @@ impl SsrPatternsLinter for ListsReverseAppendLinter {
     type Context = ();
 
     fn patterns(&self) -> &'static [(String, Self::Context)] {
-        lazy_static! {
-            static ref PATTERNS: Vec<(String, ())> =
-                vec![(format!("ssr: lists:reverse({LIST_VAR}) ++ {TAIL_VAR}."), ()),];
-        }
+        static PATTERNS: LazyLock<Vec<(String, ())>> =
+            LazyLock::new(|| vec![(format!("ssr: lists:reverse({LIST_VAR}) ++ {TAIL_VAR}."), ())]);
+
         &PATTERNS
     }
 
