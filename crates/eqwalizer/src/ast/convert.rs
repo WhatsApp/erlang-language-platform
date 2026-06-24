@@ -1931,6 +1931,10 @@ impl Converter {
                     _ => (),
                 },
                 ("type", [Term::Atom(kind), Term::List(decl)]) if kind.name == "record" => {
+                    if decl.elements.is_empty() {
+                        // OTP 29 predefined `record()` type (any record); a record is a tuple
+                        return Ok(ExtType::tuple_ext_type(pos));
+                    }
                     if let [record_name, field_tys @ ..] = &decl.elements[..] {
                         let record_name = self.convert_atom_lit(record_name)?;
                         if field_tys.is_empty() {
