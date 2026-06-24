@@ -38,11 +38,13 @@ elp-[OS]-[ARCH]-[c]-otp-[OTP_VERSION].tar.gz
 ```
 
 Pick the appropriate version according to your Operating System (OS),
-Architecture (ARCH) and Erlang/OTP version (OTP_VERSION). For example, for my
-Darwin MacBook Pro where I have installed Erlang/OTP 25, I will pick:
+Architecture (ARCH) and Erlang/OTP version (OTP_VERSION). The `OTP_VERSION` in
+the tarball name is the Erlang/OTP version that ELP was _built_ on, not a strict
+requirement on the version you must run it against. For example, for my Darwin
+MacBook Pro where I have installed Erlang/OTP 27, I will pick:
 
 ```
-elp-macos-x86_64-apple-darwin-otp-25.3.tar.gz
+elp-macos-x86_64-apple-darwin-otp-27.3.tar.gz
 ```
 
 :::tip
@@ -53,12 +55,25 @@ Erlang/OTP version? Try
 
 :::
 
+:::note
+
+It is usually fine to run ELP on a _newer_ Erlang/OTP version than the one it was
+built on. Erlang/OTP's
+[compatibility policy](https://www.erlang.org/doc/system/misc.html) guarantees
+that BEAM code compiled on an older release keeps running on later releases —
+typically across at least two major releases. So, if no tarball matches your
+exact Erlang/OTP version, pick the one built on the closest _older_ version. For
+example, with Erlang/OTP 28 installed you can safely use a tarball built on
+Erlang/OTP 27 or 26.
+
+:::
+
 Untar the package and place the `elp` binary in a place visible by your `PATH``.
 For example:
 
 ```
 cd ~/Downloads
-tar -xvzf elp-macos-x86_64-apple-darwin-otp-25.3.tar.gz
+tar -xvzf elp-macos-x86_64-apple-darwin-otp-27.3.tar.gz
 mv elp ~/bin
 export PATH=$PATH:~/bin
 ```
