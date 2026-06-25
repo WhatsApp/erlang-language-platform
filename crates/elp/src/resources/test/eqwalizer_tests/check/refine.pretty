@@ -104,13 +104,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                          ^^^^^^
     │                          │
     │                          {X, Y}.
-Expression has type:   {number(), binary()}
+Expression has type:   {integer(), binary()}
 Context expected type: {none(), none()}
     │                          
 
 Because in the expression's type:
   { 
-    Here the type is:     number()
+    Here the type is:     integer()
     Context expects type: none()
   , binary()}
 
@@ -121,13 +121,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                                ^^^^^^
     │                                │
     │                                {N, A}.
-Expression has type:   {number(), atom()}
+Expression has type:   {integer(), atom()}
 Context expected type: {none(), none()}
     │                                
 
 Because in the expression's type:
   { 
-    Here the type is:     number()
+    Here the type is:     integer()
     Context expects type: none()
   , atom()}
 
@@ -230,7 +230,7 @@ Because in the expression's type:
   { 
     Here the type is:     'my_rec'
     Context expects type: 'not_my_rec'
-  , number(), atom()}
+  , integer(), atom()}
 
 error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
     ┌─ check/src/refine.erl:199:10
@@ -252,15 +252,15 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                            ^
     │                            │
     │                            R.
-Expression has type:   {'my_rec', atom(), number()}
+Expression has type:   {'my_rec', atom(), integer()}
 Context expected type: #my_rec{}
     │                            
 
 Because in the expression's type:
   { 'my_rec', 
     Here the type is:     atom()
-    Context expects type: number()
-  , number()}
+    Context expects type: integer()
+  , integer()}
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/refine.erl:218:1
@@ -324,7 +324,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 250 │ use2_neg(F, X) -> ftt(F, X).
     │                          ^ X.
-Expression has type:   {'my_rec', atom(), number()}
+Expression has type:   {'my_rec', atom(), integer()}
 Context expected type: T
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -334,14 +334,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                       ^
     │                       │
     │                       F.
-Expression has type:   fun(({'my_rec', atom(), number()}) -> 'ok')
+Expression has type:   fun(({'my_rec', atom(), integer()}) -> 'ok')
 Context expected type: fun((T) -> 'ok')
     │                       
 
 Because in the expression's type:
   fun((
     Here the type is:     T
-    Context expects type: {'my_rec', atom(), number()}
+    Context expects type: {'my_rec', atom(), integer()}
   ) -> 'ok')
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -365,7 +365,7 @@ Context expected type: {'my_rec', atom(), dynamic()}
 
 Because in the expression's type:
   { 'my_rec', 
-    Here the type is:     number()
+    Here the type is:     integer()
     Context expects type: atom()
   , atom()}
 
@@ -376,14 +376,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                ^^^^^^^^^^
     │                │
     │                ttt1(X, 1).
-Expression has type:   atom() | number()
-Context expected type: number()
+Expression has type:   atom() | integer()
+Context expected type: integer()
     │                
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: number()
+  Here the type is a union type with some valid candidates: integer()
   However the following candidate: atom()
-  Differs from the expected type:  number()
+  Differs from the expected type:  integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:286:13

@@ -10,7 +10,7 @@ Context expected type: string()
    │   
 
 Because in the expression's type:
-  Here the type is:     [number() | io_lib:chars()]
+  Here the type is:     [integer() | io_lib:chars()]
   Context expects type: string()
 
 1 ERROR

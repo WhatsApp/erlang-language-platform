@@ -39,14 +39,6 @@ Expression has type:   boolean()
 Context expected type: 'ok' | 'not_ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/case_predicates.erl:16:13
-   │
-16 │     _ -> not-ok
-   │             ^^^ - _.
-Expression has type:   number()
-Context expected type: boolean()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/case_predicates.erl:16:14
    │
 16 │     _ -> not-ok
@@ -96,4 +88,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #{dynamic() => dynamic()}
 Context expected type: [dynamic()]
 
-10 ERRORS
+9 ERRORS

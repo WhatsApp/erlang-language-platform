@@ -45,12 +45,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     │     │
     │     set_list([{'a', 5}], [{'a', 5}]).
-Expression has type:   props('a', number())
+Expression has type:   props('a', integer())
 Context expected type: 'wrong_ret'
     │     
 
 Because in the expression's type:
-  Here the type is:     [prop('a', number())]
+  Here the type is:     [prop('a', integer())]
   Context expects type: 'wrong_ret'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -198,7 +198,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                    ^^^^^^^^
     │                    │
     │                    {'a', 123}.
-Expression has type:   {'a', number()}
+Expression has type:   {'a', integer()}
 Context expected type: {K, V}
     │                    
 
@@ -206,6 +206,6 @@ Because in the expression's type:
   { 
     Here the type is:     'a'
     Context expects type: K
-  , number()}
+  , integer()}
 
 16 ERRORS

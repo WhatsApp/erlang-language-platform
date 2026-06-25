@@ -73,48 +73,32 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 117 │ │ │     [1, 2, 3]
 118 │ │ │   ).
     │ ╰─│───^ lists:map(fun, [1, 2, 3]).
-Expression has type:   [number() | 'three']
-Context expected type: [number()]
+Expression has type:   [integer() | 'three' | dynamic()]
+Context expected type: [integer()]
     │   ╰───' 
 
 Because in the expression's type:
   [
-    Here the type is a union type with some valid candidates: number()
+    Here the type is a union type with some valid candidates: integer() | dynamic()
     However the following candidate: 'three'
-    Differs from the expected type:  number()
+    Differs from the expected type:  integer()
   ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_generics.erl:115:9
     │
 115 │         Fib(N - 2) + Fib(N - 1)
-    │         ^^^^^^^^^^
-    │         │
-    │         Fib(_ - _).
-Expression has type:   number() | 'three'
+    │         ^^^^^^^^^^ Fib(_ - _).
+Expression has type:   integer() | 'three' | dynamic()
 Context expected type: number()
-    │         
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: number()
-  However the following candidate: 'three'
-  Differs from the expected type:  number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_generics.erl:115:22
     │
 115 │         Fib(N - 2) + Fib(N - 1)
-    │                      ^^^^^^^^^^
-    │                      │
-    │                      Fib(_ - _).
-Expression has type:   number() | 'three'
+    │                      ^^^^^^^^^^ Fib(_ - _).
+Expression has type:   integer() | 'three' | dynamic()
 Context expected type: number()
-    │                      
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: number()
-  However the following candidate: 'three'
-  Differs from the expected type:  number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_generics.erl:127:13
@@ -122,7 +106,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 127 │         Fib(undefined) + Fib(N - 1)
     │             ^^^^^^^^^ 'undefined'.
 Expression has type:   'undefined'
-Context expected type: number()
+Context expected type: integer()
 
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/dynamic_generics.erl:171:47

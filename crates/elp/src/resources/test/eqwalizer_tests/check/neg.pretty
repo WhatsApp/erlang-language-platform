@@ -44,7 +44,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 27 │ concat1() -> [1] ++ 1.
    │                     ^ 1.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: [term()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

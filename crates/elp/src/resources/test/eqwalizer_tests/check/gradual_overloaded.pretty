@@ -12,7 +12,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 61 │     {Y}.
    │     ^^^ {Y}.
 Expression has type:   {dynamic()}
-Context expected type: number()
+Context expected type: integer()
 
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_overloaded.erl:90:27
@@ -51,14 +51,6 @@ Expression has type:   #r{}
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/gradual_overloaded.erl:120:19
-    │
-120 │         fun(I) -> I + 1 end,
-    │                   ^^^^^ _ + _.
-Expression has type:   number()
-Context expected type: #r{}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_overloaded.erl:128:19
     │
 128 │         fun(I) -> I + 1 end,
@@ -66,12 +58,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   #r{}
 Context expected type: number()
 
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/gradual_overloaded.erl:128:19
-    │
-128 │         fun(I) -> I + 1 end,
-    │                   ^^^^^ _ + _.
-Expression has type:   number()
-Context expected type: #r{}
-
-9 ERRORS
+7 ERRORS

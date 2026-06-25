@@ -12,7 +12,7 @@ Context expected type: foo_map() | #{foo => atom()}
 Because in the expression's type:
   #{ baz =>
     Here the type is:     atom()
-    Context expects type: number()
+    Context expects type: integer()
   , ... }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

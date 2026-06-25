@@ -10,7 +10,7 @@ Context expected type: gb_sets:set(number())
    │     
 
 Because in the expression's type:
-  { number(), 
+  { integer(), 
     { 
       Here the type is:     atom()
       Context expects type: number()

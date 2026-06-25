@@ -44,13 +44,13 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_complex_types.erl:55:25
    │
 55 │   eqwalizer:reveal_type(M1),
-   │                         ^^ #{a := number(), dynamic() => dynamic()}
+   │                         ^^ #{a := integer(), dynamic() => dynamic()}
 
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_complex_types.erl:63:25
    │
 63 │   eqwalizer:reveal_type(M1),
-   │                         ^^ #{a := number(), dynamic() => dynamic()}
+   │                         ^^ #{a := integer(), dynamic() => dynamic()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_complex_types.erl:110:3
@@ -68,13 +68,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │   │
     │   {DM, 'ok'}.
 Expression has type:   {dyn_map(), 'ok'}
-Context expected type: {#{a => 'atom'}, number()}
+Context expected type: {#{a => 'atom'}, integer()}
     │   
 
 Because in the expression's type:
   { dyn_map(), 
     Here the type is:     'ok'
-    Context expects type: number()
+    Context expects type: integer()
   }
 
 8 ERRORS

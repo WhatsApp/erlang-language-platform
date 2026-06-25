@@ -5,13 +5,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │       ^
     │       │
     │       B.
-Expression has type:   number() | binary()
+Expression has type:   integer() | binary()
 Context expected type: binary()
     │       
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: binary()
-  However the following candidate: number()
+  However the following candidate: integer()
   Differs from the expected type:  binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -21,13 +21,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                      ^
     │                      │
     │                      B.
-Expression has type:   number() | binary()
+Expression has type:   integer() | binary()
 Context expected type: binary()
     │                      
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: binary()
-  However the following candidate: number()
+  However the following candidate: integer()
   Differs from the expected type:  binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -37,13 +37,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │       ^
     │       │
     │       A.
-Expression has type:   number() | binary()
+Expression has type:   integer() | binary()
 Context expected type: binary()
     │       
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: binary()
-  However the following candidate: number()
+  However the following candidate: integer()
   Differs from the expected type:  binary()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
@@ -90,7 +90,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 404 │ get_int4_neg({_, I}) -> I.
     │                         ^ I.
 Expression has type:   atom()
-Context expected type: number()
+Context expected type: integer()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ eqwater/src/eqwater.erl:408:1
@@ -110,17 +110,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ eqwater/src/eqwater.erl:415:21
     │
 415 │ get_int6({_, I}) -> I.
-    │                     ^
-    │                     │
-    │                     I.
-Expression has type:   number() | atom()
+    │                     ^ I.
+Expression has type:   integer() | atom()
 Context expected type: number()
-    │                     
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: number()
-  However the following candidate: atom()
-  Differs from the expected type:  number()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ eqwater/src/eqwater.erl:419:1
@@ -134,33 +126,17 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ eqwater/src/eqwater.erl:422:25
     │
 422 │ get_int7_neg({_, I}) -> I.
-    │                         ^
-    │                         │
-    │                         I.
-Expression has type:   number() | atom()
+    │                         ^ I.
+Expression has type:   integer() | atom()
 Context expected type: number()
-    │                         
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: number()
-  However the following candidate: atom()
-  Differs from the expected type:  number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:429:25
     │
 429 │ get_int8_neg({_, I}) -> I.
-    │                         ^
-    │                         │
-    │                         I.
-Expression has type:   number() | atom()
+    │                         ^ I.
+Expression has type:   integer() | atom()
 Context expected type: number()
-    │                         
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: number()
-  However the following candidate: atom()
-  Differs from the expected type:  number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:496:3
@@ -194,14 +170,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                                                  ^
     │                                                  │
     │                                                  A.
-Expression has type:   number() | 'ok'
-Context expected type: number()
+Expression has type:   integer() | 'ok'
+Context expected type: integer()
     │                                                  
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: number()
+  Here the type is a union type with some valid candidates: integer()
   However the following candidate: 'ok'
-  Differs from the expected type:  number()
+  Differs from the expected type:  integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:590:8
@@ -271,17 +247,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ eqwater/src/eqwater.erl:839:27
     │
 839 │ multi_param2_neg(_, Y) -> Y.
-    │                           ^
-    │                           │
-    │                           Y.
+    │                           ^ Y.
 Expression has type:   number() | atom()
 Context expected type: number()
-    │                           
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: number()
-  However the following candidate: atom()
-  Differs from the expected type:  number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ eqwater/src/eqwater.erl:997:31
@@ -312,14 +280,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                    ^
      │                    │
      │                    I.
-Expression has type:   number() | 'undefined'
-Context expected type: number()
+Expression has type:   integer() | 'undefined'
+Context expected type: integer()
      │                    
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: number()
+  Here the type is a union type with some valid candidates: integer()
   However the following candidate: 'undefined'
-  Differs from the expected type:  number()
+  Differs from the expected type:  integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1122:14
@@ -427,17 +395,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      ┌─ eqwater/src/eqwater.erl:1225:14
      │
 1225 │         _ -> Args
-     │              ^^^^
-     │              │
-     │              Args.
+     │              ^^^^ Args.
 Expression has type:   {term(), my_list()} | number()
 Context expected type: number()
-     │              
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: number()
-  However the following candidate: {term(), my_list()}
-  Differs from the expected type:  number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1231:31

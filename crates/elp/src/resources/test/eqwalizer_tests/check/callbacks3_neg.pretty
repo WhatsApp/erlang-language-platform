@@ -20,7 +20,7 @@ Got:      {'noreply', 'ok', 'wrong_atom'}
 Because in the expression's type:
   { 'noreply', 'ok', 
     Here the type is:     'wrong_atom'
-    Context expects type: tuple()/4 | 'hibernate' | tuple()/3 | tuple()/3 | number() | ...
+    Context expects type: tuple()/4 | integer() | 'hibernate' | tuple()/3 | tuple()/3 | ...
     No candidate matches in the expected union.
   }
 

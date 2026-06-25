@@ -22,13 +22,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                     │
    │                     X.
 Expression has type:   #{a => 'b', c => 'd'}
-Context expected type: #{a => 'b', atom() => number()}
+Context expected type: #{a => 'b', atom() => integer()}
    │                     
 
 Because in the expression's type:
   #{ c =>
     Here the type is:     'd'
-    Context expects type: number()
+    Context expects type: integer()
   , ... }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -54,13 +54,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                   ^
    │                   │
    │                   X.
-Expression has type:   #{a => 'b', atom() => number()}
-Context expected type: #{a => 'b', c => 'd', atom() => number()}
+Expression has type:   #{a => 'b', atom() => integer()}
+Context expected type: #{a => 'b', c => 'd', atom() => integer()}
    │                   
 
 Because in the expression's type:
   #{ atom() =>
-    Here the type is:     number()
+    Here the type is:     integer()
     Context expects type: 'd'
   , ... }
   The context introduces a new association c => 'd' which is incompatible with the expression's default association.
@@ -135,14 +135,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 71 │ get_default_neg1(#{a := V}) -> V.
    │                                ^ V.
 Expression has type:   'b'
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/complex_maps.erl:74:34
    │
 74 │ get_default_neg2(#{def := V}) -> V.
    │                                  ^ V.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: 'b'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -150,7 +150,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 77 │ match_required_1_neg(#{b := _V} = M) -> M.
    │                                         ^ M.
-Expression has type:   #{a := number(), b := dynamic(), atom() => dynamic()}
+Expression has type:   #{a := integer(), b := dynamic(), atom() => dynamic()}
 Context expected type: 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

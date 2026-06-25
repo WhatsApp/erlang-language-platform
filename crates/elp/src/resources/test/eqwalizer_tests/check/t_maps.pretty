@@ -5,13 +5,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │     ^^^^^^^^^^^^^^^^^
    │     │
    │     #{..}.
-Expression has type:   #{number() => number()}
-Context expected type: #{number() => atom()}
+Expression has type:   #{integer() => integer()}
+Context expected type: #{integer() => atom()}
    │     
 
 Because in the expression's type:
-  #{ number() =>
-    Here the type is:     number()
+  #{ integer() =>
+    Here the type is:     integer()
     Context expects type: atom()
   , ... }
 
@@ -22,14 +22,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │     ^^^^^^^^^^^^^^^^^^^^
    │     │
    │     #{..}.
-Expression has type:   #{number() => 'zero' | number()}
-Context expected type: #{number() => atom()}
+Expression has type:   #{integer() => 'zero' | integer()}
+Context expected type: #{integer() => atom()}
    │     
 
 Because in the expression's type:
-  #{ number() =>
+  #{ integer() =>
     Here the type is a union type with some valid candidates: 'zero'
-    However the following candidate: number()
+    However the following candidate: integer()
     Differs from the expected type:  atom()
   , ... }
 
@@ -40,7 +40,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │     ^^^^^^^^^^^^^^^^^^^^^^^^
    │     │
    │     #{..}.
-Expression has type:   #{one := 'one', zero := number()}
+Expression has type:   #{one := 'one', zero := integer()}
 Context expected type: #{one => number(), zero := number()}
    │     
 
@@ -153,7 +153,7 @@ Context expected type: #{a() => a()}
 Because in the expression's type:
   #{ map domains are incompatible:
     Here the type is:     number()
-    Context expects type: atom()
+    Context expects type: a()
   , ... }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -266,7 +266,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                   ^^^^^^^^^^^^^^
     │                   │
     │                   ..#{..}.
-Expression has type:   #{a := number(), b := 'hello'}
+Expression has type:   #{a := integer(), b := 'hello'}
 Context expected type: #{a := term()}
     │                   
 
@@ -342,7 +342,7 @@ Because in the expression's type:
   However, the following candidate doesn't match:
   #{ a() =>
     Here the type is:     number()
-    Context expects type: atom()
+    Context expects type: a()
   , ... }
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
@@ -372,7 +372,6 @@ Because in the expression's type:
   { 
     Here the type is:     'a' | 'b'
     Context expects type: number()
-    No candidate of the expression's type matches the expected type.
   , a()}
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)

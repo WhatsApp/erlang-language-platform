@@ -18,7 +18,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 40 │     element(2, Tup).
    │     ^^^^^^^^^^^^^^^ erlang:element(2, Tup).
-Expression has type:   number() | string() | atom()
+Expression has type:   integer() | float() | string() | atom()
 Context expected type: #{dynamic() => dynamic()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -48,9 +48,17 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ check/src/custom.erl:54:5
    │
 54 │     element(N, Tup).
-   │     ^^^^^^^^^^^^^^^ erlang:element(N, Tup).
+   │     ^^^^^^^^^^^^^^^
+   │     │
+   │     erlang:element(N, Tup).
 Expression has type:   atom() | number() | string()
 Context expected type: #{dynamic() => dynamic()}
+   │     
+
+Because in the expression's type:
+  Here the type is:     atom() | integer() | float() | string()
+  Context expects type: #{dynamic() => dynamic()}
+  No candidate of the expression's type matches the expected type.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/custom.erl:58:5
@@ -59,13 +67,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │     ^^^^^^^^^^^^^^^
    │     │
    │     erlang:element(N, Tup).
-Expression has type:   atom() | number()
+Expression has type:   atom() | integer() | float()
 Context expected type: atom()
    │     
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: atom()
-  However the following candidate: number()
+  However the following candidate: integer()
   Differs from the expected type:  atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -83,7 +91,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │     ^^^^^^^^^^^^^^^
    │     │
    │     erlang:element(1, Tup).
-Expression has type:   term() | number()
+Expression has type:   term() | integer() | float()
 Context expected type: atom()
    │     
 
@@ -104,7 +112,7 @@ Context expected type: atom()
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: 'error' | 'foo' | 'ok'
-  However the following candidate: string()
+  However the following candidate: integer()
   Differs from the expected type:  atom()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
@@ -176,13 +184,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^^^^^^^^^^^^^^^
     │     │
     │     maps:get(K, M, 0).
-Expression has type:   number() | atom()
+Expression has type:   integer() | atom()
 Context expected type: atom()
     │     
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: atom()
-  However the following candidate: number()
+  However the following candidate: integer()
   Differs from the expected type:  atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -192,13 +200,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^
     │     │
     │     Res.
-Expression has type:   number() | atom()
+Expression has type:   integer() | atom()
 Context expected type: atom()
     │     
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: atom()
-  However the following candidate: number()
+  However the following candidate: integer()
   Differs from the expected type:  atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -215,9 +223,8 @@ Context expected type: {atom(), number()}
 
 Because in the expression's type:
   { atom(), 
-    Here the type is a union type with some valid candidates: number()
-    However the following candidate: 'undefined'
-    Differs from the expected type:  number()
+    Here the type is:     'undefined' | number()
+    Context expects type: number()
   }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -274,7 +281,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 382 │     maps:filter(F, M).
     │                 ^ F.
 Expression has type:   fun(() -> pid())
-Context expected type: fun((number(), 'a' | 'b') -> boolean())
+Context expected type: fun((integer(), 'a' | 'b') -> boolean())
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:389:17
@@ -284,12 +291,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                 │
     │                 F.
 Expression has type:   fun((fun((T) -> boolean()), [T]) -> [T]) with 1 type parameter
-Context expected type: fun((number(), 'a' | 'b') -> boolean()) with 0 type parameters
+Context expected type: fun((integer(), 'a' | 'b') -> boolean()) with 0 type parameters
     │                 
 
 Because in the expression's type:
   Here the type is:     fun()/2 with 1 type parameter
-  Context expects type: fun((number(), 'a' | 'b') -> boolean()) with 0 type parameters
+  Context expects type: fun()/2 with 0 type parameters
   The number of type parameters doesn't match.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -324,12 +331,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 456 │ │ │         M
 457 │ │ │     ).
     │ ╰─│─────^ maps:map(fun, M).
-Expression has type:   #{number() => pid()}
+Expression has type:   #{integer() => pid()}
 Context expected type: #{number() => boolean()}
     │   ╰─────' 
 
 Because in the expression's type:
-  #{ number() =>
+  #{ integer() =>
     Here the type is:     pid()
     Context expects type: boolean()
   , ... }
@@ -340,7 +347,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 474 │     maps:map(F, M).
     │              ^ F.
 Expression has type:   fun(() -> pid())
-Context expected type: fun((number(), 'a' | 'b') -> term())
+Context expected type: fun((integer(), 'a' | 'b') -> term())
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:481:14
@@ -350,12 +357,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │              │
     │              F.
 Expression has type:   fun((fun((A) -> B), [A]) -> [B]) with 2 type parameters
-Context expected type: fun((number(), 'a' | 'b') -> term()) with 0 type parameters
+Context expected type: fun((integer(), 'a' | 'b') -> term()) with 0 type parameters
     │              
 
 Because in the expression's type:
   Here the type is:     fun((fun((A) -> B), [A]) -> [B]) with 2 type parameters
-  Context expects type: fun((number(), 'a' | 'b') -> term()) with 0 type parameters
+  Context expects type: fun((integer(), 'a' | 'b') -> term()) with 0 type parameters
   The number of type parameters doesn't match.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -406,7 +413,7 @@ Context expected type: [number() | 'a' | 'b']
 Because in the expression's type:
   [
     Here the type is:     [[]]
-    Context expects type: number() | 'a' | 'b'
+    Context expects type: integer() | float() | 'a' | 'b'
     No candidate matches in the expected union.
   ]
 
@@ -499,12 +506,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │         │
     │         folder_bad/3.
 Expression has type:   fun((term(), term(), Acc) -> [Acc]) with 1 type parameter
-Context expected type: fun((number(), 'a', [Acc]) -> [Acc]) with 0 type parameters
+Context expected type: fun((integer(), 'a', [Acc]) -> [Acc]) with 0 type parameters
     │         
 
 Because in the expression's type:
   Here the type is:     fun((term(), term(), Acc) -> [Acc]) with 1 type parameter
-  Context expects type: fun((number(), 'a', [Acc]) -> [Acc]) with 0 type parameters
+  Context expects type: fun((integer(), 'a', [Acc]) -> [Acc]) with 0 type parameters
   The number of type parameters doesn't match.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -518,14 +525,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 646 │ │ │         M
 647 │ │ │     ).
     │ ╰─│─────^ maps:fold(fun, [], M).
-Expression has type:   [number() | binary() | atom()]
-Context expected type: [binary()] | [number()] | [atom()]
+Expression has type:   [integer() | binary() | atom()]
+Context expected type: [binary()] | [integer()] | [atom()]
     │   ╰─────' 
 
 Because in the expression's type:
   [
     Here the type is a union type with some valid candidates: binary()
-    However the following candidate: number()
+    However the following candidate: integer()
     Differs from the expected type:  binary()
   ]
 
@@ -552,13 +559,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
     │         │
     │         erlang:binary_to_list/1.
-Expression has type:   fun((binary()) -> [number()])
-Context expected type: fun((number()) -> boolean() | {'true', term()})
+Expression has type:   fun((binary()) -> [integer()])
+Context expected type: fun((integer()) -> boolean() | {'true', term()})
     │         
 
 Because in the expression's type:
   fun((binary()) ->
-    Here the type is:     [number()]
+    Here the type is:     [integer()]
     Context expects type: 'false' | 'true' | {'true', term()}
     No candidate matches in the expected union.
   )
@@ -960,7 +967,23 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1021 │     lists:keytake(a, non_num, []),
      │                      ^^^^^^^ 'non_num'.
 Expression has type:   'non_num'
-Context expected type: number()
+Context expected type: integer()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1030:5
+     │
+1030 │     lists:sum([1.0, 2, 3]).
+     │     ^^^^^^^^^^^^^^^^^^^^^^ lists:sum([float_lit, 2, 3]).
+Expression has type:   number()
+Context expected type: integer()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1038:5
+     │
+1038 │     lists:sum([a, 1]).
+     │     ^^^^^^^^^^^^^^^^^ lists:sum(['a', 1]).
+Expression has type:   number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1038:15
@@ -969,16 +992,23 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │               ^^^^^^
      │               │
      │               ['a', 1].
-Expression has type:   ['a' | number()]
+Expression has type:   ['a' | integer()]
 Context expected type: [number()]
      │               
 
 Because in the expression's type:
   [
-    Here the type is a union type with some valid candidates: number()
-    However the following candidate: 'a'
-    Differs from the expected type:  number()
+    Here the type is:     'a' | integer()
+    Context expects type: number()
   ]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1042:5
+     │
+1042 │     lists:sum(not_a_list).
+     │     ^^^^^^^^^^^^^^^^^^^^^ lists:sum('not_a_list').
+Expression has type:   number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1042:15
@@ -989,12 +1019,44 @@ Expression has type:   'not_a_list'
 Context expected type: [number()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1050:5
+     │
+1050 │     lists:max([1.0, 2, 3]).
+     │     ^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     lists:max([float_lit, 2, 3]).
+Expression has type:   float() | integer()
+Context expected type: integer()
+     │     
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: integer()
+  However the following candidate: float()
+  Differs from the expected type:  integer()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1062:15
      │
 1062 │     lists:max(not_a_list).
      │               ^^^^^^^^^^ 'not_a_list'.
 Expression has type:   'not_a_list'
 Context expected type: [dynamic()]
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1070:5
+     │
+1070 │     lists:min([1.0, 2, 3]).
+     │     ^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     lists:min([float_lit, 2, 3]).
+Expression has type:   float() | integer()
+Context expected type: integer()
+     │     
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: integer()
+  However the following candidate: float()
+  Differs from the expected type:  integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1082:15
@@ -1034,7 +1096,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1117 │     proplists:get_value(k, L, 3).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ proplists:get_value('k', L, 3).
 Expression has type:   term()
-Context expected type: pid() | number()
+Context expected type: pid() | integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1123:5
@@ -1489,7 +1551,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │
 1416 │     file:consult(some_file).
      │     ^^^^^^^^^^^^^^^^^^^^^^^ file:consult('some_file').
-Expression has type:   {'ok', [dynamic()]} | {'error', {number(), atom(), term()} | 'terminated' | 'badarg' | file:posix() | 'system_limit'}
+Expression has type:   {'ok', [dynamic()]} | {'error', 'terminated' | 'badarg' | {integer(), atom(), term()} | file:posix() | 'system_limit'}
 Context expected type: 'nok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1507,13 +1569,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                      ^^^
      │                      │
      │                      [3].
-Expression has type:   [number()]
+Expression has type:   [integer()]
 Context expected type: [tuple()]
      │                      
 
 Because in the expression's type:
   [
-    Here the type is:     number()
+    Here the type is:     integer()
     Context expects type: tuple()
   ]
 
@@ -1528,15 +1590,15 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1454 │ │ │         [1, 2, 3, 4]
 1455 │ │ │     ).
      │ ╰─│─────^ lists:filtermap(fun, [1, 2, 3, 4]).
-Expression has type:   [string() | number()]
-Context expected type: [number()]
+Expression has type:   [string() | integer()]
+Context expected type: [integer()]
      │   ╰─────' 
 
 Because in the expression's type:
   [
-    Here the type is a union type with some valid candidates: number()
+    Here the type is a union type with some valid candidates: integer()
     However the following candidate: string()
-    Differs from the expected type:  number()
+    Differs from the expected type:  integer()
   ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1544,7 +1606,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │
 1482 │     erlang:min(X, Y).
      │     ^^^^^^^^^^^^^^^^ erlang:min(X, Y).
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: none()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1552,8 +1614,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │
 1497 │     erlang:max(X, Y).
      │     ^^^^^^^^^^^^^^^^ erlang:max(X, Y).
-Expression has type:   atom() | number()
+Expression has type:   atom() | integer()
 Context expected type: none()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+     ┌─ check/src/custom.erl:1514:5
+     │
+1514 │     abs(N).
+     │     ^^^^^^ erlang:abs(N).
+Expression has type:   float()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1523:9
@@ -1569,7 +1639,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1536 │ seq3_4_wip_neg() -> lists:seq(a, 2, 1).
      │                               ^ 'a'.
 Expression has type:   'a'
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1539:30
@@ -1577,7 +1647,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1539 │ seq3_5_neg() -> lists:seq(1, a, 1).
      │                              ^ 'a'.
 Expression has type:   'a'
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1542:33
@@ -1585,7 +1655,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1542 │ seq3_6_neg() -> lists:seq(1, 2, a).
      │                                 ^ 'a'.
 Expression has type:   'a'
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1570:31
@@ -1593,7 +1663,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1570 │ seq2_4_wip_neg() -> lists:seq(a, 2).
      │                               ^ 'a'.
 Expression has type:   'a'
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1573:30
@@ -1601,7 +1671,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1573 │ seq2_5_neg() -> lists:seq(1, a).
      │                              ^ 'a'.
 Expression has type:   'a'
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1622:5
@@ -1612,7 +1682,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1625 │ │         end
 1626 │ │     ).
      │ ╰─────^ timer:tc(fun).
-Expression has type:   {number(), 'err'}
+Expression has type:   {integer(), 'err'}
 Context expected type: pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1652,7 +1722,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │
 1702 │     lists:flatten([], 1).
      │                       ^ 1.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: [term()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1660,7 +1730,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │
 1711 │     lists:flatten(3).
      │                   ^ 3.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: [term()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1804,9 +1874,8 @@ Context expected type: {atom(), number()}
 
 Because in the expression's type:
   { atom(), 
-    Here the type is a union type with some valid candidates: number()
-    However the following candidate: pid()
-    Differs from the expected type:  number()
+    Here the type is:     number() | pid()
+    Context expects type: number()
   }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1973,18 +2042,18 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 2269 │ │ │         Q
 2270 │ │ │     ).
      │ ╰─│─────^ queue:filter(my_filter1/1, Q).
-Expression has type:   queue:queue(atom() | number())
-Context expected type: queue:queue(number())
+Expression has type:   queue:queue(atom() | integer())
+Context expected type: queue:queue(integer())
      │   ╰─────' 
 
 Because in the expression's type:
   { 
     [
-      Here the type is a union type with some valid candidates: number()
+      Here the type is a union type with some valid candidates: integer()
       However the following candidate: atom()
-      Differs from the expected type:  number()
+      Differs from the expected type:  integer()
     ]
-  , [atom() | number()]}
+  , [atom() | integer()]}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:2308:5
@@ -1993,12 +2062,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │     ^^
      │     │
      │     M3.
-Expression has type:   #{count := number(), module := 'foo'} | #{module := 'foo'}
+Expression has type:   #{count := integer(), module := 'foo'} | #{module := 'foo'}
 Context expected type: state1()
      │     
 
 Because in the expression's type:
-  The type is a union type with some valid candidates: #{count := number(), module := 'foo'}
+  The type is a union type with some valid candidates: #{count := integer(), module := 'foo'}
   However, the following candidate doesn't match:
   Here the type is:     #{...}
   Context expects type: #{count := ..., ...}
@@ -2019,8 +2088,8 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │     ^^^^^^^^^^^^^^^^^
      │     │
      │     maps:remove(A, M).
-Expression has type:   #{a => number()}
-Context expected type: #{a := number()}
+Expression has type:   #{a => integer()}
+Context expected type: #{a := integer()}
      │     
 
 Because in the expression's type:
@@ -2158,7 +2227,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                                      │
      │                                      [{'return', 'something'}].
 Expression has type:   [{'return', 'something'}]
-Context expected type: ['notempty_atstart' | 'noteol' | 'notbol' | 'global' | {'match_limit_recursion', number()} | re:compile_option() | {'match_limit', number()} | {'offset', number()} | 'notempty' | {'return', 'iodata' | 'list' | 'binary'} | 'anchored']
+Context expected type: [re:compile_option() | 'notempty_atstart' | 'notbol' | 'global' | {'offset', integer()} | {'match_limit_recursion', integer()} | 'notempty' | {'match_limit', integer()} | 'noteol' | {'return', 'iodata' | 'list' | 'binary'} | 'anchored']
      │                                      
 
 Because in the expression's type:
@@ -2177,15 +2246,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
-Expression has type:   {[number()], [atom()]}
+Expression has type:   {[integer() | float()], [atom()]}
 Context expected type: {[atom()], [number()]}
      │     
 
 Because in the expression's type:
   { 
     [
-      Here the type is:     number()
+      Here the type is:     integer() | float()
       Context expects type: atom()
+      No candidate of the expression's type matches the expected type.
     ]
   , [atom()]}
 
@@ -2196,7 +2266,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
-Expression has type:   {[{term(), number()}], [{term(), atom()}]}
+Expression has type:   {[{term(), integer() | float()}], [{term(), atom()}]}
 Context expected type: {[{term(), atom()}], [{term(), number()}]}
      │     
 
@@ -2204,8 +2274,9 @@ Because in the expression's type:
   { 
     [
       { term(), 
-        Here the type is:     number()
+        Here the type is:     integer() | float()
         Context expects type: atom()
+        No candidate of the expression's type matches the expected type.
       }
     ]
   , [{term(), atom()}]}
@@ -2301,7 +2372,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │
 2828 │             ({foo, bar}, I) -> binary_to_integer(I);
      │                                                  ^ I.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: binary()
 
-186 ERRORS
+192 ERRORS

@@ -76,7 +76,7 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/approx.erl:79:25
    │
 79 │   eqwalizer:reveal_type(Res),
-   │                         ^^^ dynamic(number())
+   │                         ^^^ dynamic(integer())
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
    ┌─ check/src/approx.erl:85:1
@@ -94,6 +94,6 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/approx.erl:90:25
    │
 90 │   eqwalizer:reveal_type(Res),
-   │                         ^^^ dynamic(number())
+   │                         ^^^ dynamic(integer())
 
 11 ERRORS

@@ -43,7 +43,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 198 │ overlap_neg_1(X) when is_atom(X) -> 1;
     │                                     ^ 1.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: {T}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -51,7 +51,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 203 │ overlap_neg_2(X) when is_atom(X) -> 1;
     │                                     ^ 1.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: {T}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -59,7 +59,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 204 │ overlap_neg_2(_X) -> 1.
     │                      ^ 1.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: {T}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -85,14 +85,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                     ^
     │                     │
     │                     X.
-Expression has type:   number() | {}
-Context expected type: number()
+Expression has type:   integer() | {}
+Context expected type: integer()
     │                     
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: number()
+  Here the type is a union type with some valid candidates: integer()
   However the following candidate: {}
-  Differs from the expected type:  number()
+  Differs from the expected type:  integer()
 
 error: unbound_type_var (See https://fb.me/eqwalizer_errors#unbound_type_var)
     ┌─ check/src/overloaded.erl:261:1

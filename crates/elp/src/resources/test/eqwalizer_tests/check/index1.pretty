@@ -3,8 +3,8 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 31 │   _ = X#rec{field = 3},
    │                     ^ 3.
-Expression has type:   number()
-Context expected type: [number()]
+Expression has type:   integer()
+Context expected type: [integer()]
 
 error: undefined_field (See https://fb.me/eqwalizer_errors#undefined_field)
    ┌─ check/src/index1.erl:32:7

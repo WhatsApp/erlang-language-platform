@@ -52,7 +52,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 109 │   fun M:F/A.
     │           ^ A.
 Expression has type:   pid()
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/dynamic_fun.erl:146:24

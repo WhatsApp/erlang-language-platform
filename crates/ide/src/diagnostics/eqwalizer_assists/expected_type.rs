@@ -256,14 +256,14 @@ mod tests {
             //- /play/src/bar5e.erl app:play
             -module(bar5e).
 
-            -spec baz() -> {ok, number()}.
+            -spec baz() -> {ok, integer()}.
             baz() -> 5~3.
               %%     ^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
                 expect![[r#"
             -module(bar5e).
 
-            -spec baz() -> {ok, number()}.
+            -spec baz() -> {ok, integer()}.
             baz() -> {ok, 53}.
          "#]],
             )
@@ -274,20 +274,20 @@ mod tests {
     fn mismatched_tuple_fix_spec() {
         if Otp::supported_by_eqwalizer() {
             check_specific_fix(
-                "Update function spec to return 'number()'",
+                "Update function spec to return 'integer()'",
                 r#"
             //- eqwalizer
             //- /play/src/bar6e.erl app:play
             -module(bar6e).
 
-            -spec baz() -> {ok, number()}.
+            -spec baz() -> {ok, integer()}.
             baz() -> 5~3.
                   %% ^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
                 expect![[r#"
             -module(bar6e).
 
-            -spec baz() -> number().
+            -spec baz() -> integer().
             baz() -> 53.
          "#]],
             )

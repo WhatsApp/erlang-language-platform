@@ -49,7 +49,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 86 │     #foo.name.
    │     ^^^^^^^^^ #foo.name.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -57,7 +57,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 91 │     Index.
    │     ^^^^^ Index.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -66,7 +66,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 104 │     Foo#foo.name.
     │     ^^^^^^^^^^^^ ...#foo.name.
 Expression has type:   atom()
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:109:5
@@ -74,14 +74,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 109 │     Id.
     │     ^^ Id.
 Expression has type:   atom()
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:117:35
     │
 117 │ rec_index_pat_neg(#foo.id = I) -> I.
     │                                   ^ I.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -91,15 +91,15 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^^^^
     │     │
     │     {N, I}.
-Expression has type:   {atom(), number()}
-Context expected type: {number(), atom()}
+Expression has type:   {atom(), integer()}
+Context expected type: {integer(), atom()}
     │     
 
 Because in the expression's type:
   { 
     Here the type is:     atom()
-    Context expects type: number()
-  , number()}
+    Context expects type: integer()
+  , integer()}
 
 error: undefined_field (See https://fb.me/eqwalizer_errors#undefined_field)
     ┌─ check/src/records.erl:144:17
@@ -112,7 +112,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 154 │     when Foo == #foo_def{id = X} -> X.
     │                                     ^ X.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -137,7 +137,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 189 │     #mrec{id1 = 1, name1 = n, _ = ok}.
     │                                   ^^ 'ok'.
 Expression has type:   'ok'
-Context expected type: number()
+Context expected type: integer()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/records.erl:200:1
@@ -164,7 +164,7 @@ Context expected type: int_box()
 Because in the expression's type:
   #any_box{inner ::
     Here the type is:     'ok'
-    Context expects type: number()
+    Context expects type: integer()
   }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -175,13 +175,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     │
     │     #any_box{...}.
 Expression has type:   #any_box{inner :: 'ok'}
-Context expected type: #any_box{inner :: number()}
+Context expected type: #any_box{inner :: integer()}
     │     
 
 Because in the expression's type:
   #any_box{inner ::
     Here the type is:     'ok'
-    Context expects type: number()
+    Context expects type: integer()
   }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -192,12 +192,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                           │
     │                           'a'.
 Expression has type:   'a'
-Context expected type: number() | boolean()
+Context expected type: integer() | boolean()
     │                           
 
 Because in the expression's type:
   Here the type is:     'a'
-  Context expects type: number() | 'false' | 'true'
+  Context expects type: integer() | 'false' | 'true'
   No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -208,12 +208,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                       │
     │                       'a'.
 Expression has type:   'a'
-Context expected type: number() | boolean()
+Context expected type: integer() | boolean()
     │                       
 
 Because in the expression's type:
   Here the type is:     'a'
-  Context expects type: number() | 'false' | 'true'
+  Context expects type: integer() | 'false' | 'true'
   No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -230,7 +230,7 @@ Context expected type: only_int_box()
 Because in the expression's type:
   #int_bool_box{inner ::
     Here the type is:     'true'
-    Context expects type: number()
+    Context expects type: integer()
   }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -241,12 +241,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                            │
     │                            'a'.
 Expression has type:   'a'
-Context expected type: number() | boolean()
+Context expected type: integer() | boolean()
     │                            
 
 Because in the expression's type:
   Here the type is:     'a'
-  Context expects type: number() | 'false' | 'true'
+  Context expects type: integer() | 'false' | 'true'
   No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -256,13 +256,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^^^^^^^^^^^^^^^^^^^^^^^
     │     │
     │     ...#int_bool_box{...}.
-Expression has type:   #int_bool_box{inner :: number()}
+Expression has type:   #int_bool_box{inner :: integer()}
 Context expected type: only_bool_box()
     │     
 
 Because in the expression's type:
   #int_bool_box{inner ::
-    Here the type is:     number()
+    Here the type is:     integer()
     Context expects type: boolean()
   }
 
@@ -278,7 +278,7 @@ Context expected type: #any_box{}
     │     
 
 Because in the expression's type:
-  Here the type is:     #int_bool_box{inner :: number()}
+  Here the type is:     #int_bool_box{inner :: integer()}
   Context expects type: #any_box{}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -287,14 +287,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 319 │     R#any_box.inner.
     │     ^^^^^^^^^^^^^^^ ...#any_box.inner.
 Expression has type:   term()
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:324:5
     │
 324 │     R#int_bool_box.inner.
     │     ^^^^^^^^^^^^^^^^^^^^ ...#int_bool_box.inner.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: boolean()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -311,7 +311,7 @@ Context expected type: #int_bool_box{}
 Because in the expression's type:
   { 'int_bool_box', 
     Here the type is:     'a'
-    Context expects type: number() | 'false' | 'true'
+    Context expects type: integer() | 'false' | 'true'
     No candidate matches in the expected union.
   }
 
@@ -329,7 +329,7 @@ Context expected type: only_int_box()
 Because in the expression's type:
   { 'int_bool_box', 
     Here the type is:     'a'
-    Context expects type: number()
+    Context expects type: integer()
   }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -354,7 +354,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 355 │     inner = true :: integer()
     │             ^^^^ 'true'.
 Expression has type:   'true'
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:366:5
@@ -369,7 +369,7 @@ Context expected type: only_int_box()
 
 Because in the expression's type:
   Here the type is:     #bad_default{}
-  Context expects type: #int_bool_box{inner :: number()}
+  Context expects type: #int_bool_box{inner :: integer()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:372:5
@@ -378,7 +378,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^
     │     │
     │     R.
-Expression has type:   {'int_bool_box', number()}
+Expression has type:   {'int_bool_box', integer()}
 Context expected type: #bad_default{}
     │     
 
@@ -386,7 +386,7 @@ Because in the expression's type:
   { 
     Here the type is:     'int_bool_box'
     Context expects type: 'bad_default'
-  , number()}
+  , integer()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/records.erl:388:31
@@ -396,13 +396,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                               │
     │                               R.
 Expression has type:   #refined_two_fields{}
-Context expected type: #refined_two_fields{inner :: number()}
+Context expected type: #refined_two_fields{inner :: integer()}
     │                               
 
 Because in the expression's type:
   #refined_two_fields{inner ::
     Here the type is:     term()
-    Context expects type: number()
+    Context expects type: integer()
   }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -502,7 +502,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 536 │     Id.
     │     ^^ Id.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

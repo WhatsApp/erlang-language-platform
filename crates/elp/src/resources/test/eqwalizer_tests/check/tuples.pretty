@@ -10,7 +10,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 19 │     Z.
    │     ^ Z.
 Expression has type:   term()
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/tuples.erl:24:31

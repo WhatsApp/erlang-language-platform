@@ -16,6 +16,6 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 21 │   ok.
    │   ^^ 'ok'.
 Expression has type:   'ok'
-Context expected type: number()
+Context expected type: integer()
 
 3 ERRORS

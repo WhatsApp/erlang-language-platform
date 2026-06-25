@@ -65,16 +65,8 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 94 │   file:consult(some_file).
    │   ^^^^^^^^^^^^^^^^^^^^^^^ file:consult('some_file').
-Expression has type:   {'ok', [dynamic()]} | {'error', {number(), atom(), term()} | 'terminated' | 'badarg' | file:posix() | 'system_limit'}
+Expression has type:   {'ok', [dynamic()]} | {'error', 'terminated' | 'badarg' | {integer(), atom(), term()} | file:posix() | 'system_limit'}
 Context expected type: 'nok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_custom.erl:99:3
-   │
-99 │   abs(dynamic()).
-   │   ^^^^^^^^^^^^^^ erlang:abs(dynamic()).
-Expression has type:   number()
-Context expected type: 'anything'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:108:3
@@ -88,17 +80,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ check/src/gradual_custom.erl:108:7
     │
 108 │   abs(N).
-    │       ^
-    │       │
-    │       N.
+    │       ^ N.
 Expression has type:   dynamic() | 'a'
 Context expected type: number()
-    │       
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: dynamic()
-  However the following candidate: 'a'
-  Differs from the expected type:  number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:120:3
@@ -266,87 +250,39 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ check/src/gradual_custom.erl:245:19
     │
 245 │ min3_neg(X, Y) -> min(X, Y).
-    │                   ^^^^^^^^^
-    │                   │
-    │                   erlang:min(X, Y).
+    │                   ^^^^^^^^^ erlang:min(X, Y).
 Expression has type:   number() | 'undefined'
 Context expected type: number()
-    │                   
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: number()
-  However the following candidate: 'undefined'
-  Differs from the expected type:  number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:257:19
     │
 257 │ min5_neg(X, Y) -> min(X, Y).
-    │                   ^^^^^^^^^
-    │                   │
-    │                   erlang:min(X, Y).
+    │                   ^^^^^^^^^ erlang:min(X, Y).
 Expression has type:   number() | atom() | binary()
 Context expected type: number()
-    │                   
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: number()
-  However the following candidate: atom()
-  Differs from the expected type:  number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:263:19
     │
 263 │ min6_neg(X, Y) -> min(X, Y).
-    │                   ^^^^^^^^^
-    │                   │
-    │                   erlang:min(X, Y).
+    │                   ^^^^^^^^^ erlang:min(X, Y).
 Expression has type:   number() | dynamic() | number() | atom() | dynamic()
 Context expected type: number()
-    │                   
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: number() | dynamic()
-  However the following candidate: atom()
-  Differs from the expected type:  number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:269:19
     │
 269 │ min7_neg(X, Y) -> min(X, Y).
-    │                   ^^^^^^^^^
-    │                   │
-    │                   erlang:min(X, Y).
+    │                   ^^^^^^^^^ erlang:min(X, Y).
 Expression has type:   number() | dynamic() | atom() | dynamic()
 Context expected type: number()
-    │                   
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: number() | dynamic()
-  However the following candidate: atom()
-  Differs from the expected type:  number()
 
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
     ┌─ check/src/gradual_custom.erl:277:25
     │
 277 │   eqwalizer:reveal_type(Y),
     │                         ^ dynamic() | {none()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/gradual_custom.erl:278:3
-    │
-278 │   Y.
-    │   ^
-    │   │
-    │   Y.
-Expression has type:   dynamic() | {none()}
-Context expected type: number()
-    │   
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: dynamic()
-  However the following candidate: {none()}
-  Differs from the expected type:  number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:325:13
@@ -388,4 +324,4 @@ Because in the expression's type:
   However the following candidate: 'bar'
   Differs from the expected type:  'foo'
 
-38 ERRORS
+36 ERRORS

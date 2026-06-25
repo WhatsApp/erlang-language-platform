@@ -5,8 +5,8 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                                                     ^
    │                                                     │
    │                                                     M.
-Expression has type:   #{a := number(), b => number()}
-Context expected type: #{a := number(), b := number()}
+Expression has type:   #{a := integer(), b => integer()}
+Context expected type: #{a := integer(), b := integer()}
    │                                                     
 
 Because in the expression's type:
@@ -21,8 +21,8 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                      ^^^^^^^^^^
    │                      │
    │                      ..#{..}.
-Expression has type:   #{a := number(), b => number()}
-Context expected type: #{a := number(), b := number()}
+Expression has type:   #{a := integer(), b => integer()}
+Context expected type: #{a := integer(), b := integer()}
    │                      
 
 Because in the expression's type:
@@ -53,8 +53,8 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                      ^
    │                      │
    │                      M.
-Expression has type:   #{c := number()}
-Context expected type: #{b := number()}
+Expression has type:   #{c := integer()}
+Context expected type: #{b := integer()}
    │                      
 
 Because in the expression's type:

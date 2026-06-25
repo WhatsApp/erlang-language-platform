@@ -1,4 +1,12 @@
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dyn_remote_funs.erl:44:17
+   │
+44 │     fun lists:F/N.
+   │                 ^ N.
+Expression has type:   number()
+Context expected type: integer()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dyn_remote_funs.erl:69:12
    │
 69 │         -> Res;
@@ -20,7 +28,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 85 │ fun M:F/A.
    │         ^ A.
 Expression has type:   atom()
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/dyn_remote_funs.erl:90:1
@@ -36,6 +44,6 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 90 │ fun M:F/A.
    │         ^ A.
 Expression has type:   atom()
-Context expected type: number()
+Context expected type: integer()
 
-5 ERRORS
+6 ERRORS

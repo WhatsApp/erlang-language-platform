@@ -537,10 +537,10 @@ fn declaration_test() {
         doc_foo(Bar) -> [Bar].
     %%  ^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/exported
     %%  ^^^^^^^^^^^^^^^^^^^^^^ doc/-spec doc_foo(integer()) -> [integer()].
-    %%          ^^^ var/Bar :: number()
-    %%          ^^^ doc/Bar :: number()
-    %%                   ^^^ var/Bar :: number()
-    %%                   ^^^ doc/Bar :: number()
+    %%          ^^^ var/Bar :: integer()
+    %%          ^^^ doc/Bar :: integer()
+    %%                   ^^^ var/Bar :: integer()
+    %%                   ^^^ doc/Bar :: integer()
 
         main(A) -> A.
     %%  ^^^^^^^^^^^^^ func/main/1/not_deprecated/not_exported
@@ -561,12 +561,12 @@ fn declaration_types_test() {
     %%  ^^^^^^^^^^^^ func/foo/1/not_deprecated/not_exported
         -spec doc_foo(integer() | atom()) -> [integer()].
         doc_foo(Bar) -> A = foo(Bar), [Bar, A].
-    %%          ^^^ var/Bar :: number() | atom()
-    %%          ^^^ doc/Bar :: number() | atom()
-    %%                          ^^^ var/Bar :: number() | atom()
-    %%                          ^^^ doc/Bar :: number() | atom()
-    %%                                 ^^^ var/Bar :: number() | atom()
-    %%                                 ^^^ doc/Bar :: number() | atom()
+    %%          ^^^ var/Bar :: integer() | atom()
+    %%          ^^^ doc/Bar :: integer() | atom()
+    %%                          ^^^ var/Bar :: integer() | atom()
+    %%                          ^^^ doc/Bar :: integer() | atom()
+    %%                                 ^^^ var/Bar :: integer() | atom()
+    %%                                 ^^^ doc/Bar :: integer() | atom()
     %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/not_exported
     %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doc/-spec doc_foo(integer() | atom()) -> [integer()].
     "#;

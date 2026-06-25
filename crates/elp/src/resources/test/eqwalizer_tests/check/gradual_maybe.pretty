@@ -11,7 +11,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 50 │         _ -> 3
    │              ^ 3.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

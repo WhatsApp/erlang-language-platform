@@ -3,7 +3,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 26 │ atom_neg_1(X) when is_number(X) -> X.
    │                                    ^ X.
-Expression has type:   number()
+Expression has type:   integer() | float()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -52,7 +52,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 74 │ float_neg(X) when is_boolean(X) -> X.
    │                                    ^ X.
 Expression has type:   'false' | 'true'
-Context expected type: number()
+Context expected type: float()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/guards_simple.erl:80:38
@@ -60,14 +60,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 80 │ integer_neg(X) when is_boolean(X) -> X.
    │                                      ^ X.
 Expression has type:   'false' | 'true'
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/guards_simple.erl:86:33
    │
 86 │ pid_neg(X) when is_number(X) -> X.
    │                                 ^ X.
-Expression has type:   number()
+Expression has type:   integer() | float()
 Context expected type: pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

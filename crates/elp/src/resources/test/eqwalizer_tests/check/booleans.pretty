@@ -3,7 +3,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 47 │   1 andalso b().
    │   ^ 1.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: boolean()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

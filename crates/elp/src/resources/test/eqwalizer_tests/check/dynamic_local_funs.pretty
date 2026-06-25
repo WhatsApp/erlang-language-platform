@@ -3,7 +3,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 30 │   lists:foldl(F, 0, L).
    │   ^^^^^^^^^^^^^^^^^^^^ lists:foldl(F, 0, L).
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

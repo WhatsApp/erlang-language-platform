@@ -20,14 +20,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 218 │   select(T, <<>>, 0).
     │   ^^^^^^^^^^^^^^^^^^ select(T, <<..>>, 0).
 Expression has type:   binary()
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/parametricity.erl:218:3
     │
 218 │   select(T, <<>>, 0).
     │   ^^^^^^^^^^^^^^^^^^ select(T, <<..>>, 0).
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -35,7 +35,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 224 │   select(T, 0, 0).
     │   ^^^^^^^^^^^^^^^ select(T, 0, 0).
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

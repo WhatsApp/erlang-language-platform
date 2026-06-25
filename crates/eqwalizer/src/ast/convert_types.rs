@@ -373,8 +373,8 @@ impl TypeConverter {
             }
             ExtType::BuiltinExtType(ty) => Ok(Ok(Type::builtin_type(ty.name.as_str())
                 .ok_or(TypeConversionError::UnknownBuiltin(ty.name.into(), 0))?)),
-            ExtType::IntLitExtType(_) => Ok(Ok(Type::NumberType)),
-            ExtType::UnOpType(_) | ExtType::BinOpType(_) => Ok(Ok(Type::NumberType)),
+            ExtType::IntLitExtType(_) => Ok(Ok(Type::IntegerType)),
+            ExtType::UnOpType(_) | ExtType::BinOpType(_) => Ok(Ok(Type::IntegerType)),
             ExtType::LocalExtType(_) | ExtType::AnyMapExtType(_) | ExtType::AnyListExtType(_) => {
                 Err(TypeConversionError::UnexpectedType)
             }

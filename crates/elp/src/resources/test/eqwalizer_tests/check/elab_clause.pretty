@@ -19,40 +19,24 @@ Context expected type: {atom()} | number()
 
 Because in the expression's type:
   Here the type is:     atom()
-  Context expects type: {atom()} | number()
+  Context expects type: {atom()} | integer() | float()
   No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/elab_clause.erl:76:5
    │
 76 │     Res.
-   │     ^^^
-   │     │
-   │     Res.
-Expression has type:   'error' | 'exit' | 'throw' | number()
+   │     ^^^ Res.
+Expression has type:   'error' | 'exit' | 'throw' | integer()
 Context expected type: number()
-   │     
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: number()
-  However the following candidate: 'error'
-  Differs from the expected type:  number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/elab_clause.erl:86:5
    │
 86 │     Res.
-   │     ^^^
-   │     │
-   │     Res.
-Expression has type:   number() | erlang:stacktrace()
+   │     ^^^ Res.
+Expression has type:   integer() | erlang:stacktrace()
 Context expected type: number()
-   │     
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: number()
-  However the following candidate: [...]
-  Differs from the expected type:  number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/elab_clause.erl:93:17

@@ -3,7 +3,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 83 │     << X || X <- [1, 2, 3] >>.
    │        ^ X.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -11,7 +11,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 86 │     << X || <<X>> <= <<1, 2, 3>> >>.
    │        ^ X.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: binary()
 
 2 ERRORS

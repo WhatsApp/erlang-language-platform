@@ -44,7 +44,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 39 │   T.
    │   ^ T.
 Expression has type:   tuple()
-Context expected type: {number()}
+Context expected type: {integer()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_untyped.erl:44:3
@@ -52,7 +52,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 44 │   T.
    │   ^ T.
 Expression has type:   tuple()
-Context expected type: {number(), number()}
+Context expected type: {integer(), integer()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_untyped.erl:49:3

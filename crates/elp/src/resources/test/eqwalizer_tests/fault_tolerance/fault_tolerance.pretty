@@ -43,7 +43,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 44 │   1;
    │   ^ 1.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -51,7 +51,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 46 │   2;
    │   ^ 2.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -59,7 +59,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 48 │   3;
    │   ^ 3.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -67,7 +67,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 50 │   4.
    │   ^ 4.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -75,7 +75,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 55 │   1;
    │   ^ 1.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -83,7 +83,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 57 │   2;
    │   ^ 2.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -91,7 +91,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 59 │   3;
    │   ^ 3.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -99,7 +99,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 61 │   4;
    │   ^ 4.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -107,7 +107,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 63 │   5;
    │   ^ 5.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -115,7 +115,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 65 │   6;
    │   ^ 6.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -123,7 +123,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 67 │   7;
    │   ^ 7.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -131,7 +131,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 69 │   8;
    │   ^ 8.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -139,7 +139,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 71 │   9;
    │   ^ 9.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -147,7 +147,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 73 │   10.
    │   ^^ 10.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -216,7 +216,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 96 │     X +
    │     ^ X.
-Expression has type:   [number()]
+Expression has type:   [integer()]
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -356,14 +356,6 @@ Expression has type:   term()
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ fault_tolerance/src/fault_tolerance.erl:152:5
-    │
-152 │     Z
-    │     ^ Z.
-Expression has type:   number()
-Context expected type: atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ fault_tolerance/src/fault_tolerance.erl:159:8
     │  
 159 │       [H |
@@ -479,7 +471,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 195 │ │       c => d + 1
 196 │ │     },
     │ ╰─────^ #{..}.
-Expression has type:   #{a := 'b', c := number()}
+Expression has type:   #{a := 'b', c := dynamic()}
 Context expected type: [term()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -503,7 +495,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 204 │     atom_to_binary(Y) ||
     │                    ^ Y.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -559,23 +551,15 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 224 │   M1 + M2.
     │   ^^ M1.
-Expression has type:   #{id := number(), dynamic() => dynamic()}
+Expression has type:   #{id := dynamic(), dynamic() => dynamic()}
 Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ fault_tolerance/src/fault_tolerance.erl:224:3
-    │
-224 │   M1 + M2.
-    │   ^^^^^^^ _ + _.
-Expression has type:   number()
-Context expected type: 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ fault_tolerance/src/fault_tolerance.erl:224:8
     │
 224 │   M1 + M2.
     │        ^^ M2.
-Expression has type:   #{id := number(), dynamic() => dynamic()}
+Expression has type:   #{id := dynamic(), dynamic() => dynamic()}
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -584,7 +568,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 229 │     A:
     │     ^ A.
 Expression has type:   atom()
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ fault_tolerance/src/fault_tolerance.erl:230:5
@@ -592,7 +576,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 230 │     S
     │     ^ S.
 Expression has type:   atom()
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ fault_tolerance/src/fault_tolerance.erl:232:3
@@ -601,14 +585,6 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │   ^ B.
 Expression has type:   binary()
 Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ fault_tolerance/src/fault_tolerance.erl:232:3
-    │
-232 │   B + 1.
-    │   ^^^^^ _ + _.
-Expression has type:   number()
-Context expected type: atom()
 
 error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
     ┌─ fault_tolerance/src/fault_tolerance.erl:237:11
@@ -678,9 +654,17 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ fault_tolerance/src/fault_tolerance.erl:263:3
     │
 263 │   Res.
-    │   ^^^ Res.
-Expression has type:   number() | []
+    │   ^^^
+    │   │
+    │   Res.
+Expression has type:   dynamic() | []
 Context expected type: atom()
+    │   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: dynamic()
+  However the following candidate: []
+  Differs from the expected type:  atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ fault_tolerance/src/fault_tolerance.erl:273:10
@@ -688,14 +672,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 273 │     id = Pid,
     │          ^^^ Pid.
 Expression has type:   pid()
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ fault_tolerance/src/fault_tolerance.erl:274:11
     │
 274 │     pid = Id
     │           ^^ Id.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -711,7 +695,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 281 │     pid = Id
     │           ^^ Id.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -719,7 +703,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 283 │   Res#rec.id.
     │   ^^^^^^^^^^ ...#rec.id.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -728,7 +712,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 288 │     _ = <<>>
     │         ^^^^ <<..>>.
 Expression has type:   binary()
-Context expected type: number()
+Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ fault_tolerance/src/fault_tolerance.erl:288:9
@@ -898,4 +882,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   term()
 Context expected type: number()
 
-107 ERRORS
+104 ERRORS

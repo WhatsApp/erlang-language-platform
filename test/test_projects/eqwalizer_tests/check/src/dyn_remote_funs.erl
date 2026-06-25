@@ -43,24 +43,24 @@ test_04(L, F) ->
 test_05(F, N) ->
     fun lists:F/N.
 
--spec test_06(atom(), atom(), number())
+-spec test_06(atom(), atom(), integer())
         -> fun().
 test_06(M, F, N) ->
     fun M:F/N.
 
--spec test_07(atom(), atom(), number())
+-spec test_07(atom(), atom(), integer())
         -> fun().
 test_07(M, F, N) ->
     Res = fun M:F/N,
     Res.
 
--spec test_08(atom(), atom(), number())
+-spec test_08(atom(), atom(), integer())
         -> fun((none()) -> term()).
 test_08(M, F, N) ->
     Res = fun M:F/N,
     Res.
 
--spec test_09(atom(), atom(), number())
+-spec test_09(atom(), atom(), integer())
         -> fun((none()) -> term()).
 test_09(M, F, N) ->
     Res = fun M:F/N,

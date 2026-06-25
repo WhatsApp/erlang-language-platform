@@ -38,13 +38,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                             ^^^^^^
    │                             │
    │                             [2, 4].
-Expression has type:   [number()]
+Expression has type:   [integer()]
 Context expected type: [A]
    │                             
 
 Because in the expression's type:
   [
-    Here the type is:     number()
+    Here the type is:     integer()
     Context expects type: A
   ]
 
@@ -63,13 +63,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │          ^^^^^^
    │          │
    │          [2, 4].
-Expression has type:   [number()]
+Expression has type:   [integer()]
 Context expected type: [A]
    │          
 
 Because in the expression's type:
   [
-    Here the type is:     number()
+    Here the type is:     integer()
     Context expects type: A
   ]
 
@@ -114,13 +114,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                                 ^^^^^^
    │                                 │
    │                                 [2, 4].
-Expression has type:   [number()]
+Expression has type:   [integer()]
 Context expected type: [A]
    │                                 
 
 Because in the expression's type:
   [
-    Here the type is:     number()
+    Here the type is:     integer()
     Context expects type: A
   ]
 
@@ -139,13 +139,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │              ^^^^^^
    │              │
    │              [2, 4].
-Expression has type:   [number()]
+Expression has type:   [integer()]
 Context expected type: [A]
    │              
 
 Because in the expression's type:
   [
-    Here the type is:     number()
+    Here the type is:     integer()
     Context expects type: A
   ]
 
@@ -211,7 +211,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 99 │     map_att(3).
    │             ^ 3.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: #{a => dynamic()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -463,13 +463,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 323 │ │ │         #{t => 1, u => Pid}
 324 │ │ │     ).
     │ ╰─│─────^ expect_shape(#{..}).
-Expression has type:   {number(), pid()}
+Expression has type:   {integer(), pid()}
 Context expected type: {pid(), number()}
     │   ╰─────' 
 
 Because in the expression's type:
   { 
-    Here the type is:     number()
+    Here the type is:     integer()
     Context expects type: pid()
   , pid()}
 
@@ -504,7 +504,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                ^^^^^^^^^
     │                │
     │                #{..}.
-Expression has type:   #{T => number()}
+Expression has type:   #{T => integer()}
 Context expected type: #{a := dynamic()}
     │                
 
@@ -520,7 +520,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │               ^
     │               │
     │               F.
-Expression has type:   fun((#{a => number()}) -> number())
+Expression has type:   fun((#{a => integer()}) -> integer())
 Context expected type: fun((#{{dynamic()} => dynamic()}) -> dynamic())
     │               
 
@@ -529,7 +529,7 @@ Because in the expression's type:
     Here the type is:     #{{dynamic()} => dynamic()}
     Context expects type: #{...} (no default association)
     The expected map has no default association while the type of the expression has one.
-  ) -> number())
+  ) -> integer())
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/generic_fun_application.erl:471:24
@@ -684,7 +684,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     │         │
     │         #{..}.
-Expression has type:   #{extra := number(), t := pid(), u := number()}
+Expression has type:   #{extra := integer(), t := pid(), u := integer()}
 Context expected type: #{t := dynamic(), u := dynamic()}
     │         
 
@@ -698,7 +698,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 721 │ test_apply2() -> apply2(fun tat/2, 1, 1).
     │                         ^^^^^^^^^ Arg 2 of 'tat/2'.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: 'a'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

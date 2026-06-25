@@ -65,7 +65,8 @@ pub enum Type {
     PidType,
     PortType,
     ReferenceType,
-    NumberType,
+    IntegerType,
+    FloatType,
 }
 impl Type {
     pub const fn atom_lit_type(lit: StringId) -> Type {
@@ -83,11 +84,9 @@ impl Type {
         TYPE.clone()
     }
 
-    pub const CHAR_TYPE: Type = Type::NumberType;
+    pub const CHAR_TYPE: Type = Type::IntegerType;
 
-    pub const BYTE_TYPE: Type = Type::NumberType;
-
-    pub const FLOAT_TYPE: Type = Type::NumberType;
+    pub const BYTE_TYPE: Type = Type::IntegerType;
 
     pub fn undefined() -> Type {
         static TYPE: LazyLock<Type> =
@@ -148,6 +147,7 @@ impl Type {
                 "mfa".into(),
                 "iolist".into(),
                 "iodata".into(),
+                "number".into(),
             ]
         });
         static EMPTY: LazyLock<Vec<StringId>> = LazyLock::new(Vec::new);
@@ -159,7 +159,8 @@ impl Type {
 
     pub fn builtin_type_alias(name: &str) -> Option<RemoteType> {
         match name {
-            "string" | "boolean" | "timeout" | "identifier" | "mfa" | "iolist" | "iodata" => {
+            "string" | "boolean" | "timeout" | "identifier" | "mfa" | "iolist" | "iodata"
+            | "number" => {
                 let id = RemoteId {
                     module: "erlang".into(),
                     name: name.into(),
@@ -187,14 +188,17 @@ impl Type {
                     Type::AtomLitType(AtomLitType {
                         atom: "infinity".into(),
                     }),
-                    Type::NumberType,
+                    Type::IntegerType,
                 ],
             })),
             "identifier" => Some(Type::UnionType(UnionType {
                 tys: vec![Type::PidType, Type::PortType, Type::ReferenceType],
             })),
             "mfa" => Some(Type::TupleType(TupleType {
-                arg_tys: vec![Type::AtomType, Type::AtomType, Type::NumberType],
+                arg_tys: vec![Type::AtomType, Type::AtomType, Type::IntegerType],
+            })),
+            "number" => Some(Type::UnionType(UnionType {
+                tys: vec![Type::IntegerType, Type::FloatType],
             })),
             "iolist" => Some(Type::ListType(ListType {
                 t: Box::new(Type::UnionType(UnionType {
@@ -236,15 +240,15 @@ impl Type {
             }
             "byte" => Some(Type::BYTE_TYPE),
             "char" => Some(Type::CHAR_TYPE),
-            "float" => Some(Type::FLOAT_TYPE),
+            "float" => Some(Type::FloatType),
             "fun" | "function" => Some(Type::AnyFunType),
             "maybe_improper_list" | "nonempty_maybe_improper_list" => {
                 Some(Type::ListType(ListType {
                     t: Box::new(Type::AnyType),
                 }))
             }
-            "pos_integer" | "neg_integer" | "non_neg_integer" | "integer" | "number" | "arity" => {
-                Some(Type::NumberType)
+            "pos_integer" | "neg_integer" | "non_neg_integer" | "integer" | "arity" => {
+                Some(Type::IntegerType)
             }
             "nil" => Some(Type::NilType),
             "none" | "no_return" => Some(Type::NoneType),
@@ -286,7 +290,8 @@ impl Type {
             | Type::PidType
             | Type::PortType
             | Type::ReferenceType
-            | Type::NumberType => Ok(()),
+            | Type::IntegerType
+            | Type::FloatType => Ok(()),
         }
     }
 
@@ -318,7 +323,8 @@ impl fmt::Display for Type {
             Type::PidType => write!(f, "pid()"),
             Type::PortType => write!(f, "port()"),
             Type::ReferenceType => write!(f, "reference()"),
-            Type::NumberType => write!(f, "number()"),
+            Type::IntegerType => write!(f, "integer()"),
+            Type::FloatType => write!(f, "float()"),
             Type::FunType(ty) => write!(
                 f,
                 "fun(({}) -> {})",

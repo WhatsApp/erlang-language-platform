@@ -17,6 +17,6 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/other.erl:59:27
    │
 59 │     eqwalizer:reveal_type(X),
-   │                           ^ number()
+   │                           ^ integer()
 
 2 ERRORS

@@ -113,7 +113,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 236 │   atom_to_binary(Id).
     │                  ^^ Id.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

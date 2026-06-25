@@ -154,8 +154,8 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │             ^
    │             │
    │             M.
-Expression has type:   #{term() => number()}
-Context expected type: #{atom() => number()}
+Expression has type:   #{term() => integer()}
+Context expected type: #{atom() => integer()}
    │             
 
 Because in the expression's type:
@@ -172,13 +172,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │             │
    │             M.
 Expression has type:   #{atom() => term()}
-Context expected type: #{atom() => number()}
+Context expected type: #{atom() => integer()}
    │             
 
 Because in the expression's type:
   #{ atom() =>
     Here the type is:     term()
-    Context expects type: number()
+    Context expects type: integer()
   , ... }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -340,7 +340,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                         │
     │                         pair_swap/1.
 Expression has type:   fun(({A, B}) -> {B, A}) with 2 type parameters
-Context expected type: fun(({atom(), binary()}) -> {binary(), number()}) with 0 type parameters
+Context expected type: fun(({atom(), binary()}) -> {binary(), integer()}) with 0 type parameters
     │                         
 
 Because in the expression's type:

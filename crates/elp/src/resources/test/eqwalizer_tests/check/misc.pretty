@@ -11,7 +11,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 49 │ test04_neg(6 / 3 = Y) -> Y.
    │                          ^ Y.
-Expression has type:   number()
+Expression has type:   float()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -27,7 +27,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 55 │ test06_neg(X) when is_number(X) -> + X.
    │                                    ^^^ + _.
-Expression has type:   number()
+Expression has type:   integer() | float()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -106,9 +106,17 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     ┌─ check/src/misc.erl:109:21
     │
 109 │ test19_neg(X, Y) -> X andalso Y.
-    │                     ^^^^^^^^^^^ _ andalso _.
+    │                     ^^^^^^^^^^^
+    │                     │
+    │                     _ andalso _.
 Expression has type:   'false' | number()
 Context expected type: {number()}
+    │                     
+
+Because in the expression's type:
+  Here the type is:     'false' | integer() | float()
+  Context expects type: {number()}
+  No candidate of the expression's type matches the expected type.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:112:18
@@ -117,13 +125,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                  ^^^^^
     │                  │
     │                  [- _].
-Expression has type:   [number()]
+Expression has type:   [integer()] | [float()]
 Context expected type: [atom()]
     │                  
 
 Because in the expression's type:
   [
-    Here the type is:     number()
+    Here the type is:     integer()
     Context expects type: atom()
   ]
 
@@ -134,13 +142,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                     ^^^^^^^
     │                     │
     │                     [_ / _].
-Expression has type:   [number()]
+Expression has type:   [float()]
 Context expected type: [atom()]
     │                     
 
 Because in the expression's type:
   [
-    Here the type is:     number()
+    Here the type is:     float()
     Context expects type: atom()
   ]
 
@@ -226,7 +234,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 149 │ test30_neg() -> 1.
     │                 ^ 1.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: 'atom'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -348,18 +356,18 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^^^^^^^^^^^^^^^^
     │     │
     │     {[H1 | T1], [H2 | T2]}.
-Expression has type:   {[number() | atom()], [atom() | number()]}
-Context expected type: {[atom()], [number()]}
+Expression has type:   {[integer() | atom()], [atom() | integer()]}
+Context expected type: {[atom()], [integer()]}
     │     
 
 Because in the expression's type:
   { 
     [
       Here the type is a union type with some valid candidates: atom()
-      However the following candidate: number()
+      However the following candidate: integer()
       Differs from the expected type:  atom()
     ]
-  , [atom() | number()]}
+  , [atom() | integer()]}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:461:5
@@ -368,25 +376,25 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^^^^^^^^^^^^^^^^
     │     │
     │     {[H1 | T1], [H2 | T2]}.
-Expression has type:   {[atom() | number()], [atom() | number()]}
-Context expected type: {[atom()] | [number()], [atom()] | [number()]}
+Expression has type:   {[atom() | integer()], [atom() | integer()]}
+Context expected type: {[atom()] | [integer()], [atom()] | [integer()]}
     │     
 
 Because in the expression's type:
   { 
     [
       Here the type is a union type with some valid candidates: atom()
-      However the following candidate: number()
+      However the following candidate: integer()
       Differs from the expected type:  atom()
     ]
-  , [atom() | number()]}
+  , [atom() | integer()]}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:465:12
     │
 465 │     X = [1 | 2],
     │            ^^^^ 2.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: [term()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -452,7 +460,7 @@ Because in the expression's type:
   [
     Here the type is a union type with some valid candidates: atom()
     However the following candidate: binary()
-    Differs from the expected type:  atom() | number()
+    Differs from the expected type:  atom() | integer() | float()
   ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -501,7 +509,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 611 │ ss2_neg("" ++ S) -> S.
     │                     ^ S.
-Expression has type:   [atom() | number()]
+Expression has type:   [atom() | integer()]
 Context expected type: string()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
@@ -570,7 +578,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 671 │     [X, 1, 2, 3 | Y].
     │     ^^^^^^^^^^^^^^^^ [X, 1, 2, 3 | Y].
-Expression has type:   [number() | dynamic()]
+Expression has type:   [integer() | dynamic() | number()]
 Context expected type: pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -586,7 +594,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 676 │     [X, 1, 2, 3 | an_atom].
     │     ^^^^^^^^^^^^^^^^^^^^^^ [X, 1, 2, 3 | 'an_atom'].
-Expression has type:   [number() | dynamic()]
+Expression has type:   [integer() | dynamic() | number()]
 Context expected type: pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -610,7 +618,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 682 │     Res.
     │     ^^^ Res.
-Expression has type:   [number() | dynamic()]
+Expression has type:   [integer() | dynamic() | number()]
 Context expected type: pid()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
@@ -730,13 +738,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^^^^^^^^^^^^^^
     │     │
     │     {'ok', 'lists', float_lit}.
-Expression has type:   {'ok', 'lists', number()}
+Expression has type:   {'ok', 'lists', float()}
 Context expected type: {'ok', atom(), pid()}
     │     
 
 Because in the expression's type:
   { 'ok', 'lists', 
-    Here the type is:     number()
+    Here the type is:     float()
     Context expects type: pid()
   }
 
@@ -753,7 +761,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 875 │     Arity.
     │     ^^^^^ Arity.
-Expression has type:   number()
+Expression has type:   integer()
 Context expected type: pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -817,7 +825,7 @@ Context expected type: atom()
     │     
 
 Because in the expression's type:
-  Here the type is:     {number(), number(), number()}
+  Here the type is:     {integer(), integer(), integer()}
   Context expects type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
