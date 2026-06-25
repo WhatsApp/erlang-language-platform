@@ -1931,6 +1931,12 @@ impl Converter {
                     _ => (),
                 },
                 ("type", [Term::Atom(kind), Term::List(decl)]) if kind.name == "record" => {
+                    if decl.elements.is_empty() {
+                        // TODO(T275607429): Properly handle native records in ELP
+                        // Until native records are properly supported, model it
+                        // as dynamic().
+                        return Ok(ExtType::dynamic_ext_type(pos));
+                    }
                     if let [record_name, field_tys @ ..] = &decl.elements[..] {
                         let record_name = self.convert_atom_lit(record_name)?;
                         if field_tys.is_empty() {
