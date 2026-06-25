@@ -9,6 +9,7 @@
  */
 
 use std::borrow::Cow;
+use std::cell::LazyCell;
 use std::convert::TryInto;
 use std::iter;
 use std::iter::FromIterator;
@@ -44,7 +45,6 @@ use hir::form_list::PPCondition;
 use hir::form_list::PPConditionResult;
 use hir::form_list::PPDirective;
 use memchr::memmem::Finder;
-use once_cell::unsync::Lazy;
 
 use crate::ReferenceType;
 use crate::SymbolClass;
@@ -333,7 +333,7 @@ impl<'a> FindUsages<'a> {
         }
 
         for (text, file_id, search_range) in scope_files(sema, &search_scope) {
-            let tree = Lazy::new(move || sema.parse(file_id).value.syntax().clone());
+            let tree = LazyCell::new(move || sema.parse(file_id).value.syntax().clone());
             // Search for occurrences of the items name
             for offset in match_indices(&text, &finder, search_range) {
                 if let Some(name) = algo::find_node_at_offset::<NameLike>(&tree, offset)
