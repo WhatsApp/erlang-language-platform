@@ -313,8 +313,9 @@ fn do_typecheck(
     ));
     let mut diagnostics = EqwalizerDiagnostics::default();
     loop {
-        db.unwind_if_revision_cancelled();
-        let msg = handle.lock().receive()?;
+        let msg = handle
+            .lock()
+            .receive(&|| db.unwind_if_revision_cancelled())?;
         match msg {
             MsgFromEqWAlizer::EnteringModule { module } => {
                 let module_name = ModuleName::new(&module);
@@ -477,8 +478,7 @@ fn serve_eqwalizer<R>(
     mut on_message: impl FnMut(MsgFromEqWAlizer, &mut IpcHandle) -> Result<ControlFlow<R>>,
 ) -> Result<Completion<R>> {
     loop {
-        db.unwind_if_revision_cancelled();
-        let msg = handle.receive()?;
+        let msg = handle.receive(&|| db.unwind_if_revision_cancelled())?;
         match msg {
             MsgFromEqWAlizer::GetAstBytes { module, format } => {
                 log::debug!(
