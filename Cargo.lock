@@ -739,7 +739,6 @@ dependencies = [
  "elp_base_db",
  "elp_eqwalizer",
  "elp_erlang_service",
- "elp_project_model",
  "elp_syntax",
  "elp_types_db",
  "expect-test",

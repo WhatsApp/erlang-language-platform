@@ -76,7 +76,6 @@ pub fn unexported_type(
 
 #[cfg(test)]
 mod tests {
-    use elp_project_model::otp::Otp;
     use expect_test::expect;
 
     use crate::tests::check_diagnostics;
@@ -84,9 +83,8 @@ mod tests {
 
     #[test]
     fn unexported_type() {
-        if Otp::supported_by_eqwalizer() {
-            check_diagnostics(
-                r#"
+        check_diagnostics(
+            r#"
             //- eqwalizer
             //- /play/src/bar.erl app:play
                 -module(bar).
@@ -100,15 +98,13 @@ mod tests {
                 -type a_type() :: ok.
 
             "#,
-            )
-        }
+        )
     }
 
     #[test]
     fn fix_unexported_type() {
-        if Otp::supported_by_eqwalizer() {
-            check_fix(
-                r#"
+        check_fix(
+            r#"
             //- eqwalizer
             //- /play/src/other.erl app:play
                 -module(other).
@@ -121,14 +117,13 @@ mod tests {
                 %%             ^^^^^^^^^^^^^^ 💡 error: eqwalizer: unknown_id
                 baz() -> ok.
             "#,
-                expect![[r#"
+            expect![[r#"
                     -module(other).
 
                 -export_type([a_type/0]).
                     -type a_type() :: ok.
 
             "#]],
-            )
-        }
+        )
     }
 }

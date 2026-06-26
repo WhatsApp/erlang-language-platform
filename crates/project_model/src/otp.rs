@@ -190,10 +190,6 @@ impl Otp {
             .map(|info| info.otp_release.as_str())
     }
 
-    pub fn supported_by_eqwalizer() -> bool {
-        Self::version().map(|v| v > "25").unwrap_or(true)
-    }
-
     pub fn supports_eep59_doc_attributes() -> bool {
         Self::version().map(|v| v >= "27").unwrap_or(true)
     }

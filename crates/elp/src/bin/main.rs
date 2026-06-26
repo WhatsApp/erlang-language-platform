@@ -507,121 +507,111 @@ mod tests {
     // This function is a simplified/inlined version of eqwalizer_cli::eqwalize_app,
     // with panics in case of failures, and checks eqWAlization results per module.
     pub fn eqwalize_all_snapshots(project: &str, app: &str, buck: bool, config: EqwalizerConfig) {
-        if Otp::supported_by_eqwalizer() {
-            let cli = Fake::default();
-            let project_config = DiscoverConfig::new(!buck, "test");
-            let str_path = project_path(project);
-            let project_path: &Path = Path::new(&str_path);
-            let mut loaded = load::load_project_at(
-                &cli,
-                project_path,
-                project_config,
-                IncludeOtp::Yes,
-                Mode::Cli,
-                &BUCK_QUERY_CONFIG,
-                false,
-            )
-            .with_context(|| format!("Failed to load project at {str_path}"))
+        let cli = Fake::default();
+        let project_config = DiscoverConfig::new(!buck, "test");
+        let str_path = project_path(project);
+        let project_path: &Path = Path::new(&str_path);
+        let mut loaded = load::load_project_at(
+            &cli,
+            project_path,
+            project_config,
+            IncludeOtp::Yes,
+            Mode::Cli,
+            &BUCK_QUERY_CONFIG,
+            false,
+        )
+        .with_context(|| format!("Failed to load project at {str_path}"))
+        .unwrap();
+        loaded
+            .analysis_host
+            .raw_database_mut()
+            .set_eqwalizer_config(Arc::new(config));
+        build::compile_deps(&loaded, &cli)
+            .with_context(|| format!("Failed to compile deps for project {project}"))
             .unwrap();
-            loaded
-                .analysis_host
-                .raw_database_mut()
-                .set_eqwalizer_config(Arc::new(config));
-            build::compile_deps(&loaded, &cli)
-                .with_context(|| format!("Failed to compile deps for project {project}"))
-                .unwrap();
 
-            let analysis = loaded.analysis();
-            let module_index = analysis
-                .module_index(loaded.project_id)
-                .with_context(|| format!("No module index for project {project}"))
-                .unwrap();
-            let file_ids: Vec<FileId> = module_index
-                .iter_own()
-                .filter_map(|(_name, _source, file_id)| {
-                    if analysis.file_app_name(file_id).ok()? == Some(AppName(app.into())) {
-                        Some(file_id)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+        let analysis = loaded.analysis();
+        let module_index = analysis
+            .module_index(loaded.project_id)
+            .with_context(|| format!("No module index for project {project}"))
+            .unwrap();
+        let file_ids: Vec<FileId> = module_index
+            .iter_own()
+            .filter_map(|(_name, _source, file_id)| {
+                if analysis.file_app_name(file_id).ok()? == Some(AppName(app.into())) {
+                    Some(file_id)
+                } else {
+                    None
+                }
+            })
+            .collect();
 
-            let mut file_ids = file_ids;
-            // Sort biggest modules first to reduce long-tail in parallel processing
-            sort_by_file_size_descending(&analysis, &mut file_ids, |id| *id);
+        let mut file_ids = file_ids;
+        // Sort biggest modules first to reduce long-tail in parallel processing
+        sort_by_file_size_descending(&analysis, &mut file_ids, |id| *id);
 
-            let files_count = file_ids.len();
-            let project_id = loaded.project_id;
-            // Use 4 instances for tests, round-robin to balance chunk sizes
-            let chunks = elp_ide::distribute_round_robin(file_ids.clone(), 4.min(files_count));
-            let output = chunks
-                .into_iter()
-                .par_bridge()
-                .map_with(analysis.clone(), move |analysis, chunk| {
-                    analysis
-                        .eqwalizer_diagnostics(project_id, chunk)
-                        .expect("cancelled")
-                })
-                .fold(EqwalizerDiagnostics::default, |acc, output| {
-                    acc.combine((*output).clone())
-                })
-                .reduce(EqwalizerDiagnostics::default, |acc, other| {
-                    acc.combine(other)
-                });
+        let files_count = file_ids.len();
+        let project_id = loaded.project_id;
+        // Use 4 instances for tests, round-robin to balance chunk sizes
+        let chunks = elp_ide::distribute_round_robin(file_ids.clone(), 4.min(files_count));
+        let output = chunks
+            .into_iter()
+            .par_bridge()
+            .map_with(analysis.clone(), move |analysis, chunk| {
+                analysis
+                    .eqwalizer_diagnostics(project_id, chunk)
+                    .expect("cancelled")
+            })
+            .fold(EqwalizerDiagnostics::default, |acc, output| {
+                acc.combine((*output).clone())
+            })
+            .reduce(EqwalizerDiagnostics::default, |acc, other| {
+                acc.combine(other)
+            });
 
-            match output {
-                EqwalizerDiagnostics::Diagnostics {
-                    errors: diagnostics_by_module,
-                    ..
-                } => {
-                    for file_id in file_ids {
-                        let mut cli = Fake::default();
-                        let pretty_reporter =
-                            &mut reporting::PrettyReporter::new(&analysis, &loaded, &mut cli);
-                        let module = module_index.module_for_file(file_id).unwrap();
-                        if let Some(diagnostics) = diagnostics_by_module.get(module.as_str()) {
-                            pretty_reporter
-                                .write_eqwalizer_diagnostics(file_id, diagnostics)
-                                .with_context(|| {
-                                    format!("Failed to write diagnostics for {}", module.as_str())
-                                })
-                                .unwrap();
-                        }
+        match output {
+            EqwalizerDiagnostics::Diagnostics {
+                errors: diagnostics_by_module,
+                ..
+            } => {
+                for file_id in file_ids {
+                    let mut cli = Fake::default();
+                    let pretty_reporter =
+                        &mut reporting::PrettyReporter::new(&analysis, &loaded, &mut cli);
+                    let module = module_index.module_for_file(file_id).unwrap();
+                    if let Some(diagnostics) = diagnostics_by_module.get(module.as_str()) {
                         pretty_reporter
-                            .write_error_count()
+                            .write_eqwalizer_diagnostics(file_id, diagnostics)
                             .with_context(|| {
                                 format!("Failed to write diagnostics for {}", module.as_str())
                             })
                             .unwrap();
+                    }
+                    pretty_reporter
+                        .write_error_count()
+                        .with_context(|| {
+                            format!("Failed to write diagnostics for {}", module.as_str())
+                        })
+                        .unwrap();
 
-                        let exp_path = expect_file!(get_resources_dir().join(format!(
-                            "{}/{}/{}.pretty",
-                            project,
-                            app,
-                            module.as_str(),
-                        )));
-                        let (stdout, _) = cli.to_strings();
+                    let exp_path = expect_file!(get_resources_dir().join(format!(
+                        "{}/{}/{}.pretty",
+                        project,
+                        app,
+                        module.as_str(),
+                    )));
+                    let (stdout, _) = cli.to_strings();
 
-                        let otp_version = Otp::version().expect("MISSING OTP VERSION");
-                        let otp_version_regex =
-                            regex::bytes::Regex::new(&format!("{}OTP([0-9]+)Only", "@")).unwrap();
-                        let contents = analysis.file_text(file_id).unwrap();
-                        let otp_version_capture = otp_version_regex
-                            .captures(&contents.as_bytes()[0..(2001.min(contents.len()))]);
-                        if let Some((_, [otp_version_only])) =
-                            otp_version_capture.map(|cap| cap.extract())
-                        {
-                            if otp_version_only == otp_version.as_bytes() {
-                                assert_normalised_file(
-                                    exp_path,
-                                    &stdout,
-                                    project_path.into(),
-                                    false,
-                                    false,
-                                );
-                            }
-                        } else {
+                    let otp_version = Otp::version().expect("MISSING OTP VERSION");
+                    let otp_version_regex =
+                        regex::bytes::Regex::new(&format!("{}OTP([0-9]+)Only", "@")).unwrap();
+                    let contents = analysis.file_text(file_id).unwrap();
+                    let otp_version_capture = otp_version_regex
+                        .captures(&contents.as_bytes()[0..(2001.min(contents.len()))]);
+                    if let Some((_, [otp_version_only])) =
+                        otp_version_capture.map(|cap| cap.extract())
+                    {
+                        if otp_version_only == otp_version.as_bytes() {
                             assert_normalised_file(
                                 exp_path,
                                 &stdout,
@@ -630,14 +620,22 @@ mod tests {
                                 false,
                             );
                         }
+                    } else {
+                        assert_normalised_file(
+                            exp_path,
+                            &stdout,
+                            project_path.into(),
+                            false,
+                            false,
+                        );
                     }
                 }
-                EqwalizerDiagnostics::NoAst { module } => {
-                    panic!("Could not run tests because module {module} was not found")
-                }
-                EqwalizerDiagnostics::Error(error) => {
-                    panic!("Could not run tests: {error}")
-                }
+            }
+            EqwalizerDiagnostics::NoAst { module } => {
+                panic!("Could not run tests because module {module} was not found")
+            }
+            EqwalizerDiagnostics::Error(error) => {
+                panic!("Could not run tests: {error}")
             }
         }
     }
@@ -658,9 +656,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_diagnostics_match_snapshot_app_a_json(buck: bool) {
-        if Otp::supported_by_eqwalizer() {
-            eqwalize_snapshot_json("standard", "app_a", false, buck, true);
-        }
+        eqwalize_snapshot_json("standard", "app_a", false, buck, true);
     }
 
     #[test_case(false ; "rebar")]
@@ -702,62 +698,54 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_diagnostics_match_snapshot_jsonl(buck: bool) {
-        if Otp::supported_by_eqwalizer() {
-            simple_snapshot(
-                args_vec!["eqwalize-all", "--format", "json"],
-                "standard",
-                resource_file!("standard/eqwalize_all_diagnostics.jsonl"),
-                buck,
-                None,
-            );
-        }
+        simple_snapshot(
+            args_vec!["eqwalize-all", "--format", "json"],
+            "standard",
+            resource_file!("standard/eqwalize_all_diagnostics.jsonl"),
+            buck,
+            None,
+        );
     }
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_diagnostics_match_snapshot_jsonl_gen(buck: bool) {
-        if Otp::supported_by_eqwalizer() {
-            simple_snapshot(
-                args_vec!["eqwalize-all", "--format", "json"],
-                "standard",
-                resource_file!("standard/eqwalize_all_diagnostics_gen.jsonl"),
-                buck,
-                None,
-            );
-        }
+        simple_snapshot(
+            args_vec!["eqwalize-all", "--format", "json"],
+            "standard",
+            resource_file!("standard/eqwalize_all_diagnostics_gen.jsonl"),
+            buck,
+            None,
+        );
     }
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_diagnostics_match_snapshot_pretty(buck: bool) {
-        if Otp::supported_by_eqwalizer() {
-            simple_snapshot(
-                args_vec!["eqwalize-all"],
-                "standard",
-                resource_file!("standard/eqwalize_all_diagnostics.pretty"),
-                buck,
-                None,
-            );
-        }
+        simple_snapshot(
+            args_vec!["eqwalize-all"],
+            "standard",
+            resource_file!("standard/eqwalize_all_diagnostics.pretty"),
+            buck,
+            None,
+        );
     }
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_app_diagnostics_match_snapshot_pretty(buck: bool) {
-        if Otp::supported_by_eqwalizer() {
-            let expected = if buck {
-                resource_file!("standard/eqwalize_app_diagnostics.pretty")
-            } else {
-                resource_file!("standard/eqwalize_app_diagnostics_rebar.pretty")
-            };
-            simple_snapshot(
-                args_vec!["eqwalize-app", "app_a",],
-                "standard",
-                expected,
-                buck,
-                None,
-            );
-        }
+        let expected = if buck {
+            resource_file!("standard/eqwalize_app_diagnostics.pretty")
+        } else {
+            resource_file!("standard/eqwalize_app_diagnostics_rebar.pretty")
+        };
+        simple_snapshot(
+            args_vec!["eqwalize-app", "app_a",],
+            "standard",
+            expected,
+            buck,
+            None,
+        );
     }
 
     #[test]
@@ -780,15 +768,13 @@ mod tests {
             resource_file!("standard/eqwalize_app_diagnostics_gen_rebar.pretty")
         };
 
-        if Otp::supported_by_eqwalizer() {
-            simple_snapshot(
-                args_vec!["eqwalize-app", "app_a",],
-                "standard",
-                expected,
-                buck,
-                None,
-            );
-        }
+        simple_snapshot(
+            args_vec!["eqwalize-app", "app_a",],
+            "standard",
+            expected,
+            buck,
+            None,
+        );
     }
 
     #[test_case(false ; "rebar")]
@@ -2411,168 +2397,153 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_bail_on_error_failure(buck: bool) {
-        if Otp::supported_by_eqwalizer() {
-            simple_snapshot_expect_error(
-                args_vec!["eqwalize-all", "--bail-on-error"],
-                "standard",
-                resource_file!("standard/eqwalize_all_bail_on_error_failure.pretty"),
-                buck,
-                None,
-            );
-        }
+        simple_snapshot_expect_error(
+            args_vec!["eqwalize-all", "--bail-on-error"],
+            "standard",
+            resource_file!("standard/eqwalize_all_bail_on_error_failure.pretty"),
+            buck,
+            None,
+        );
     }
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_bail_on_error_success(buck: bool) {
-        if Otp::supported_by_eqwalizer() {
-            simple_snapshot(
-                args_vec!["eqwalize", "--bail-on-error", "app_a_no_errors"],
-                "standard",
-                resource_file!("standard/eqwalize_all_bail_on_error_success.pretty"),
-                buck,
-                None,
-            );
-        }
+        simple_snapshot(
+            args_vec!["eqwalize", "--bail-on-error", "app_a_no_errors"],
+            "standard",
+            resource_file!("standard/eqwalize_all_bail_on_error_success.pretty"),
+            buck,
+            None,
+        );
     }
 
     #[test]
     fn eqwalize_specific_module_overrides_ignore_modules() {
-        if Otp::supported_by_eqwalizer() {
-            simple_snapshot_expect_error(
-                args_vec!["eqwalize", "--bail-on-error", "app_b"],
-                "eqwalizer_ignore_modules",
-                resource_file!("eqwalizer_ignore_modules/eqwalize_bail_on_error_failure.pretty"),
-                true,
-                None,
-            );
-        }
+        simple_snapshot_expect_error(
+            args_vec!["eqwalize", "--bail-on-error", "app_b"],
+            "eqwalizer_ignore_modules",
+            resource_file!("eqwalizer_ignore_modules/eqwalize_bail_on_error_failure.pretty"),
+            true,
+            None,
+        );
     }
 
     #[test]
     fn eqwalize_all_ignore_modules_success() {
-        if Otp::supported_by_eqwalizer() {
-            simple_snapshot(
-                args_vec!["eqwalize-all", "--bail-on-error"],
-                "eqwalizer_ignore_modules",
-                resource_file!(
-                    "eqwalizer_ignore_modules/eqwalize_all_bail_on_error_success.pretty"
-                ),
-                true,
-                None,
-            );
-        }
+        simple_snapshot(
+            args_vec!["eqwalize-all", "--bail-on-error"],
+            "eqwalizer_ignore_modules",
+            resource_file!("eqwalizer_ignore_modules/eqwalize_all_bail_on_error_success.pretty"),
+            true,
+            None,
+        );
     }
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_with_color_vs_no_color(buck: bool) {
-        if Otp::supported_by_eqwalizer() {
-            // Test with color (default)
-            let (mut args_color, _path) =
-                add_project(args_vec!["eqwalize", "app_a"], "standard", None, None);
-            if !buck {
-                args_color.push("--rebar".into());
-            }
-
-            // Test without color
-            let (mut args_no_color, _) = add_project(
-                args_vec!["--color", "never", "eqwalize", "app_a"],
-                "standard",
-                None,
-                None,
-            );
-            if !buck {
-                args_no_color.push("--rebar".into());
-            }
-
-            let (stdout_color, stderr_color, code_color) = elp(args_color);
-            let (stdout_no_color, stderr_no_color, code_no_color) = elp(args_no_color);
-
-            // Both should have same exit code
-            assert_eq!(code_color, code_no_color);
-
-            // Both should have same stderr behavior
-            if code_color == 0 {
-                assert!(stderr_color.is_empty());
-                assert!(stderr_no_color.is_empty());
-            }
-
-            // The content should be similar but no-color version should not contain ANSI escape codes
-            // ANSI color codes typically start with \x1b[ or \u{1b}[
-            let _has_ansi_color = stdout_color.contains('\x1b');
-            let has_ansi_no_color = stdout_no_color.contains('\x1b');
-
-            // With --color never, there should be no ANSI escape sequences
-            assert!(
-                !has_ansi_no_color,
-                "Output with --color never should not contain ANSI escape codes"
-            );
-
-            // The outputs should be functionally equivalent when ANSI codes are stripped
-            let stripped_color = strip_ansi_codes(&stdout_color);
-            assert_eq!(
-                stripped_color, stdout_no_color,
-                "Content should be identical after stripping ANSI codes"
-            );
+        // Test with color (default)
+        let (mut args_color, _path) =
+            add_project(args_vec!["eqwalize", "app_a"], "standard", None, None);
+        if !buck {
+            args_color.push("--rebar".into());
         }
+
+        // Test without color
+        let (mut args_no_color, _) = add_project(
+            args_vec!["--color", "never", "eqwalize", "app_a"],
+            "standard",
+            None,
+            None,
+        );
+        if !buck {
+            args_no_color.push("--rebar".into());
+        }
+
+        let (stdout_color, stderr_color, code_color) = elp(args_color);
+        let (stdout_no_color, stderr_no_color, code_no_color) = elp(args_no_color);
+
+        // Both should have same exit code
+        assert_eq!(code_color, code_no_color);
+
+        // Both should have same stderr behavior
+        if code_color == 0 {
+            assert!(stderr_color.is_empty());
+            assert!(stderr_no_color.is_empty());
+        }
+
+        // The content should be similar but no-color version should not contain ANSI escape codes
+        // ANSI color codes typically start with \x1b[ or \u{1b}[
+        let _has_ansi_color = stdout_color.contains('\x1b');
+        let has_ansi_no_color = stdout_no_color.contains('\x1b');
+
+        // With --color never, there should be no ANSI escape sequences
+        assert!(
+            !has_ansi_no_color,
+            "Output with --color never should not contain ANSI escape codes"
+        );
+
+        // The outputs should be functionally equivalent when ANSI codes are stripped
+        let stripped_color = strip_ansi_codes(&stdout_color);
+        assert_eq!(
+            stripped_color, stdout_no_color,
+            "Content should be identical after stripping ANSI codes"
+        );
     }
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_with_no_color_env_var(buck: bool) {
-        if Otp::supported_by_eqwalizer() {
-            // Test with NO_COLOR environment variable set
-            unsafe {
-                env::set_var("NO_COLOR", "1");
-            }
-
-            let (mut args_no_color_env, _) =
-                add_project(args_vec!["eqwalize", "app_a"], "standard", None, None);
-            if !buck {
-                args_no_color_env.push("--rebar".into());
-            }
-
-            let (stdout_no_color_env, stderr_no_color_env, code_no_color_env) =
-                elp(args_no_color_env);
-
-            // Clean up environment variable
-            unsafe {
-                env::remove_var("NO_COLOR");
-            }
-
-            // Test with normal color (for comparison)
-            let (mut args_color, _) =
-                add_project(args_vec!["eqwalize", "app_a"], "standard", None, None);
-            if !buck {
-                args_color.push("--rebar".into());
-            }
-
-            let (stdout_color, stderr_color, code_color) = elp(args_color);
-
-            // Both should have same exit code
-            assert_eq!(code_color, code_no_color_env);
-
-            // Both should have same stderr behavior
-            if code_color == 0 {
-                assert!(stderr_color.is_empty());
-                assert!(stderr_no_color_env.is_empty());
-            }
-
-            // The NO_COLOR env var version should not contain ANSI escape codes
-            let has_ansi_no_color_env = stdout_no_color_env.contains('\x1b');
-            assert!(
-                !has_ansi_no_color_env,
-                "Output with NO_COLOR env var should not contain ANSI escape codes"
-            );
-
-            // The outputs should be functionally equivalent when ANSI codes are stripped
-            let stripped_color = strip_ansi_codes(&stdout_color);
-            assert_eq!(
-                stripped_color, stdout_no_color_env,
-                "Content should be identical after stripping ANSI codes"
-            );
+        // Test with NO_COLOR environment variable set
+        unsafe {
+            env::set_var("NO_COLOR", "1");
         }
+
+        let (mut args_no_color_env, _) =
+            add_project(args_vec!["eqwalize", "app_a"], "standard", None, None);
+        if !buck {
+            args_no_color_env.push("--rebar".into());
+        }
+
+        let (stdout_no_color_env, stderr_no_color_env, code_no_color_env) = elp(args_no_color_env);
+
+        // Clean up environment variable
+        unsafe {
+            env::remove_var("NO_COLOR");
+        }
+
+        // Test with normal color (for comparison)
+        let (mut args_color, _) =
+            add_project(args_vec!["eqwalize", "app_a"], "standard", None, None);
+        if !buck {
+            args_color.push("--rebar".into());
+        }
+
+        let (stdout_color, stderr_color, code_color) = elp(args_color);
+
+        // Both should have same exit code
+        assert_eq!(code_color, code_no_color_env);
+
+        // Both should have same stderr behavior
+        if code_color == 0 {
+            assert!(stderr_color.is_empty());
+            assert!(stderr_no_color_env.is_empty());
+        }
+
+        // The NO_COLOR env var version should not contain ANSI escape codes
+        let has_ansi_no_color_env = stdout_no_color_env.contains('\x1b');
+        assert!(
+            !has_ansi_no_color_env,
+            "Output with NO_COLOR env var should not contain ANSI escape codes"
+        );
+
+        // The outputs should be functionally equivalent when ANSI codes are stripped
+        let stripped_color = strip_ansi_codes(&stdout_color);
+        assert_eq!(
+            stripped_color, stdout_no_color_env,
+            "Content should be identical after stripping ANSI codes"
+        );
     }
 
     // -----------------------------------------------------------------

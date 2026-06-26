@@ -30,7 +30,6 @@ use elp_eqwalizer::ast::RemoteId;
 use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
 use elp_eqwalizer::db::EqwalizerErlASTStorage;
 use elp_eqwalizer::ipc::IpcHandle;
-use elp_project_model::otp::Otp;
 use elp_syntax::SmolStr;
 use elp_syntax::ast;
 use elp_types_db::eqwalizer;
@@ -224,9 +223,6 @@ fn is_eqwalizer_enabled_dispatch(db: &dyn EqwalizerDatabase, file_id: FileId) ->
 
 fn is_eqwalizer_enabled_inner(db: &dyn EqwalizerDatabase, fid: InternedFileId) -> bool {
     let file_id = fid.file_id(db);
-    if !Otp::supported_by_eqwalizer() {
-        return false;
-    }
 
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nis_eqwalizer_enabled: {file_id:?}"));

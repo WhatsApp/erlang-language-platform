@@ -930,7 +930,6 @@ mod tests {
     use elp_ide_db::elp_base_db::FileId;
     use elp_ide_db::elp_base_db::RootQueryDb;
     use elp_ide_db::elp_base_db::fixture::WithFixture;
-    use elp_project_model::otp::Otp;
     use elp_syntax::algo::find_node_at_offset;
     use elp_syntax::ast;
     use expect_test::Expect;
@@ -1527,9 +1526,8 @@ mod tests {
 
     #[test]
     fn get_type_atom() {
-        if Otp::supported_by_eqwalizer() {
-            check_type(
-                r#"
+        check_type(
+            r#"
             //- eqwalizer
             //- /play/src/bar1.erl app:play
                 -module(bar1).
@@ -1539,15 +1537,13 @@ mod tests {
             %%             ^^ atom()
                   something_else.
             "#,
-            )
-        }
+        )
     }
 
     #[test]
     fn get_type_custom() {
-        if Otp::supported_by_eqwalizer() {
-            check_type(
-                r#"
+        check_type(
+            r#"
             //- eqwalizer
             //- /play/src/bar2.erl app:play
                 -module(bar2).
@@ -1560,15 +1556,13 @@ mod tests {
                 baz() -> F~F = get_foo().
             %%           ^^ bar2:foo()
             "#,
-            )
-        }
+        )
     }
 
     #[test]
     fn get_type_string() {
-        if Otp::supported_by_eqwalizer() {
-            check_type(
-                r#"
+        check_type(
+            r#"
             //- eqwalizer
             //- /play/src/bar3.erl app:play
                 -module(bar3).
@@ -1579,15 +1573,13 @@ mod tests {
                 baz() -> F~F = get_foo().
             %%           ^^ erlang:string()
             "#,
-            )
-        }
+        )
     }
 
     #[test]
     fn include_file_tracking() {
-        if Otp::supported_by_eqwalizer() {
-            check_type(
-                r#"
+        check_type(
+            r#"
             //- eqwalizer
             //- /play/src/bar4.erl app:play
                 -module(bar4).
@@ -1605,7 +1597,6 @@ mod tests {
             //- /play/src/level2.hrl app:play
             -define(STRING(), string()).
             "#,
-            )
-        }
+        )
     }
 }

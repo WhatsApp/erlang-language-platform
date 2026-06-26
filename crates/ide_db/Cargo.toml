@@ -15,7 +15,6 @@ either.workspace = true
 elp_base_db.workspace = true
 elp_eqwalizer.workspace = true
 elp_erlang_service.workspace = true
-elp_project_model.workspace = true
 elp_syntax.workspace = true
 elp_types_db.workspace = true
 fxhash.workspace = true

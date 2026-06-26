@@ -16,7 +16,6 @@ use elp::cli::Fake;
 use elp_ide::AnalysisHost;
 use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
 use elp_ide::elp_ide_db::elp_base_db::fixture::WithFixture;
-use elp_project_model::otp::Otp;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 use expect_test::expect_file;
 use fxhash::FxHashSet;
@@ -508,8 +507,7 @@ fn line_fact_without_new_line_test() {
 
 #[test]
 fn declaration_test() {
-    if Otp::supported_by_eqwalizer() {
-        let spec = r#"
+    let spec = r#"
     //- eqwalizer
     //- /app_glean/src/glean_module5.erl app:app_glean
         -module(glean_module5).
@@ -545,14 +543,12 @@ fn declaration_test() {
         main(A) -> A.
     %%  ^^^^^^^^^^^^^ func/main/1/not_deprecated/not_exported
     "#;
-        decl_check(spec);
-    }
+    decl_check(spec);
 }
 
 #[test]
 fn declaration_types_test() {
-    if Otp::supported_by_eqwalizer() {
-        let spec = r#"
+    let spec = r#"
     //- eqwalizer
     //- erlang_service
     //- /app_glean/src/glean_module5.erl app:app_glean
@@ -570,8 +566,7 @@ fn declaration_types_test() {
     %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ func/doc_foo/1/not_deprecated/not_exported
     %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doc/-spec doc_foo(integer() | atom()) -> [integer()].
     "#;
-        decl_check(spec);
-    }
+    decl_check(spec);
 }
 
 #[test]

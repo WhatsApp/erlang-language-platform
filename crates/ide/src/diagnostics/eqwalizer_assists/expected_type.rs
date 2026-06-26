@@ -175,7 +175,6 @@ fn get_spec(
 
 #[cfg(test)]
 mod tests {
-    use elp_project_model::otp::Otp;
     use expect_test::expect;
 
     use crate::tests::check_diagnostics;
@@ -183,9 +182,8 @@ mod tests {
 
     #[test]
     fn mismatched_atom() {
-        if Otp::supported_by_eqwalizer() {
-            check_diagnostics(
-                r#"
+        check_diagnostics(
+            r#"
             //- eqwalizer
             //- /play/src/bar2e.erl app:play
                 -module(bar2e).
@@ -194,16 +192,14 @@ mod tests {
                 baz() -> something_else.
                      %%% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
-            )
-        }
+        )
     }
 
     #[test]
     fn mismatched_atom_fix_return() {
-        if Otp::supported_by_eqwalizer() {
-            check_specific_fix(
-                "Update returned value to 'spec_atom'",
-                r#"
+        check_specific_fix(
+            "Update returned value to 'spec_atom'",
+            r#"
             //- eqwalizer
             //- /play/src/bar3e.erl app:play
             -module(bar3e).
@@ -212,22 +208,20 @@ mod tests {
             baz() -> somet~hing_else.
                   %% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
-                expect![[r#"
+            expect![[r#"
             -module(bar3e).
 
             -spec baz() -> spec_atom.
             baz() -> spec_atom.
          "#]],
-            )
-        }
+        )
     }
 
     #[test]
     fn mismatched_atom_fix_spec() {
-        if Otp::supported_by_eqwalizer() {
-            check_specific_fix(
-                "Update function spec to return 'something_else'",
-                r#"
+        check_specific_fix(
+            "Update function spec to return 'something_else'",
+            r#"
             //- eqwalizer
             //- /play/src/bar4e.erl app:play
             -module(bar4e).
@@ -236,22 +230,20 @@ mod tests {
             baz() -> somethin~g_else.
                   %% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
-                expect![[r#"
+            expect![[r#"
             -module(bar4e).
 
             -spec baz() -> something_else.
             baz() -> something_else.
          "#]],
-            )
-        }
+        )
     }
 
     #[test]
     fn mismatched_tuple_fix_return() {
-        if Otp::supported_by_eqwalizer() {
-            check_specific_fix(
-                "Update returned value to '{ok, 53}'",
-                r#"
+        check_specific_fix(
+            "Update returned value to '{ok, 53}'",
+            r#"
             //- eqwalizer
             //- /play/src/bar5e.erl app:play
             -module(bar5e).
@@ -260,22 +252,20 @@ mod tests {
             baz() -> 5~3.
               %%     ^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
-                expect![[r#"
+            expect![[r#"
             -module(bar5e).
 
             -spec baz() -> {ok, integer()}.
             baz() -> {ok, 53}.
          "#]],
-            )
-        }
+        )
     }
 
     #[test]
     fn mismatched_tuple_fix_spec() {
-        if Otp::supported_by_eqwalizer() {
-            check_specific_fix(
-                "Update function spec to return 'integer()'",
-                r#"
+        check_specific_fix(
+            "Update function spec to return 'integer()'",
+            r#"
             //- eqwalizer
             //- /play/src/bar6e.erl app:play
             -module(bar6e).
@@ -284,22 +274,20 @@ mod tests {
             baz() -> 5~3.
                   %% ^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
-                expect![[r#"
+            expect![[r#"
             -module(bar6e).
 
             -spec baz() -> integer().
             baz() -> 53.
          "#]],
-            )
-        }
+        )
     }
 
     #[test]
     fn mismatched_integer_fix_spec() {
-        if Otp::supported_by_eqwalizer() {
-            check_specific_fix(
-                "Update function spec to return 'ok'",
-                r#"
+        check_specific_fix(
+            "Update function spec to return 'ok'",
+            r#"
             //- eqwalizer
             //- /play/src/bar.erl app:play
             -module(bar).
@@ -308,13 +296,12 @@ mod tests {
             foo() -> o~k.
                   %% ^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
-                expect![[r#"
+            expect![[r#"
             -module(bar).
 
             -spec foo() -> ok.
             foo() -> ok.
          "#]],
-            )
-        }
+        )
     }
 }
