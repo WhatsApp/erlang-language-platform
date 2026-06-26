@@ -74,16 +74,6 @@ impl ProgressManager {
         )
     }
 
-    pub fn begin_bar(&mut self, title: String, total: Option<usize>) -> ProgressBar {
-        ProgressBar::begin(
-            self.sender.clone(),
-            self.next_token(),
-            title,
-            total,
-            WithTelemetry::No,
-        )
-    }
-
     pub fn begin_bar_with_telemetry(&mut self, title: String, total: Option<usize>) -> ProgressBar {
         ProgressBar::begin(
             self.sender.clone(),

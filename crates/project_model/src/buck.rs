@@ -31,7 +31,6 @@ use indexmap::indexset;
 use parking_lot::Mutex;
 use paths::AbsPath;
 use paths::AbsPathBuf;
-use paths::RelPathBuf;
 use paths::Utf8PathBuf;
 use regex::Regex;
 use serde::Deserialize;

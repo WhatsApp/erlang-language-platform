@@ -15,8 +15,6 @@ use std::time::SystemTime;
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::bail;
-use codespan_reporting::term::termcolor::Color;
-use codespan_reporting::term::termcolor::ColorSpec;
 use elp::build;
 use elp::build::load;
 use elp::build::types::LoadResult;

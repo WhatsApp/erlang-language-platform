@@ -21,8 +21,8 @@ const EQWALIZER_SUPPORT_DIR: &str = "EQWALIZER_SUPPORT_DIR";
 const CARGO_MANIFEST_DIR: &str = "CARGO_MANIFEST_DIR";
 
 fn main() {
-    let date_format =
-        format_description::parse("build-[year]-[month]-[day]").expect("wrong format");
+    let date_format = format_description::parse_borrowed::<2>("build-[year]-[month]-[day]")
+        .expect("wrong format");
 
     let is_ci = env::var(CI).is_ok();
     let epoch = env::var(SOURCE_DATE_EPOCH);
