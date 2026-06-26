@@ -202,10 +202,6 @@ impl Otp {
         Self::version().map(|v| v < "28").unwrap_or(true)
     }
 
-    pub fn supports_binary_encode_hex_with_case() -> bool {
-        Self::version().map(|v| v >= "26").unwrap_or(true)
-    }
-
     pub fn epp_has_function_arity_bug() -> bool {
         Self::version().map(|v| v < "29").unwrap_or(true)
     }

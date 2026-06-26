@@ -17,7 +17,6 @@ use std::sync::LazyLock;
 use elp_ide_assists::Assist;
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::source_change::SourceChangeBuilder;
-use elp_project_model::otp::Otp;
 
 use crate::diagnostics::Linter;
 use crate::diagnostics::LinterContext;
@@ -33,10 +32,6 @@ impl Linter for EncodeHexWithCaseLinter {
 
     fn description(&self) -> &'static str {
         "Use `binary:encode_hex/2` with a case argument instead of wrapping with `string:lowercase/1`."
-    }
-
-    fn is_enabled(&self) -> bool {
-        Otp::supports_binary_encode_hex_with_case()
     }
 }
 
@@ -82,13 +77,12 @@ static ARG_VAR: &str = "_@X";
 #[cfg(test)]
 mod tests {
 
-    use elp_project_model::otp::Otp;
-    use expect_test::Expect;
     use expect_test::expect;
 
     use crate::diagnostics::Diagnostic;
     use crate::diagnostics::DiagnosticCode;
     use crate::tests;
+    use crate::tests::check_fix;
 
     fn filter(d: &Diagnostic) -> bool {
         d.code == DiagnosticCode::EncodeHexWithCase
@@ -96,16 +90,7 @@ mod tests {
 
     #[track_caller]
     fn check_diagnostics(fixture: &str) {
-        if Otp::supports_binary_encode_hex_with_case() {
-            tests::check_filtered_diagnostics(fixture, &filter)
-        }
-    }
-
-    #[track_caller]
-    fn check_fix(fixture_before: &str, fixture_after: Expect) {
-        if Otp::supports_binary_encode_hex_with_case() {
-            tests::check_fix(fixture_before, fixture_after)
-        }
+        tests::check_filtered_diagnostics(fixture, &filter)
     }
 
     #[test]
