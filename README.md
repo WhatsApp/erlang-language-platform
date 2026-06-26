@@ -2,7 +2,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./logo/elp_final_Full_Logo_White_Text.png">
-  <img alt="ELP logo" src="./logo/elp_final_Full_Logo_Color.png" width="100%">
+  <img alt="ELP logo" src="./logo/elp_final_Full_Logo_Color.png" width="60%">
 </picture>
 
 ## Description
@@ -18,6 +18,15 @@ references, call hierarchy and more for your IDE of choice.
 
 ELP is easily **extensible** and provides a convenient **API to implement
 linters and refactoring tools for Erlang**.
+
+ELP also includes **eqWAlizer**, a type-checker for Erlang. eqWAlizer brings
+static type-checking to Erlang code, helping you catch type errors before they
+reach production. See the [eqWAlizer README](./eqwalizer/README.md) for details.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./eqwalizer/logo/eqWAlizer_final_Full_Logo_White_Text.png">
+  <img alt="eqWAlizer logo" src="./eqwalizer/logo/eqWAlizer_final_Full__Logo_Black_Text.png" width="30%">
+</picture>
 
 ## Terms of Use
 
