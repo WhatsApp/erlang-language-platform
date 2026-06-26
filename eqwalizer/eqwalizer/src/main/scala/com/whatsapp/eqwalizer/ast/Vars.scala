@@ -42,6 +42,8 @@ object Vars {
         gen.toList.flatMap(patVars).toSet ++ fields.flatMap(f => patVars(f.pat)).toSet
       case PatRecordIndex(_, _) =>
         Set.empty
+      case PatNativeRecord(_, fields) =>
+        fields.flatMap(f => patVars(f.pat)).toSet
       case PatMap(kvs) =>
         kvs.flatMap(kv => patVars(kv._2)).toSet
     }
@@ -130,6 +132,12 @@ object Vars {
       exprVars(e)
     case RecordIndex(_, _) =>
       Set.empty
+    case NativeRecordCreate(_, fields) =>
+      fields.flatMap(f => exprVars(f.value)).toSet
+    case NativeRecordUpdate(e, _, fields) =>
+      exprVars(e) ++ fields.flatMap(f => exprVars(f.value))
+    case NativeRecordSelect(e, _, _) =>
+      exprVars(e)
     case MapCreate(kvs) =>
       kvs.flatMap(kv => List(kv._1, kv._2)).flatMap(exprVars).toSet
     case MapUpdate(m, kvs) =>
@@ -206,6 +214,8 @@ final class Vars(pipelineContext: PipelineContext) {
         }
       case PatRecordIndex(_, _) =>
         List.empty
+      case PatNativeRecord(_, fields) =>
+        fields.flatMap(f => patVarsL(f.pat))
       case PatMap(kvs) =>
         kvs.flatMap(kv => patVarsL(kv._2))
     }

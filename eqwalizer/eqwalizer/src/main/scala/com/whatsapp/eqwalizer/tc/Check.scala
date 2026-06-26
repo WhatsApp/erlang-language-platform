@@ -451,6 +451,9 @@ final class Check(pipelineContext: PipelineContext) {
           if (!subtype.subType(indT, resTy))
             diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = indT))
           env
+        case _: NativeRecordCreate | _: NativeRecordUpdate | _: NativeRecordSelect =>
+          // TODO(native records): EEP 79 / OTP 29. Type checking will be added in a follow-up diff.
+          throw new NotImplementedError(s"native records: not yet implemented (at ${expr.pos})")
         case MaybeMatch(mPat, mExp) =>
           val (mType, env1) = elab.elabExpr(mExp, env)
           val (t2, env2) = elabPat.elabPat(mPat, mType, env1)

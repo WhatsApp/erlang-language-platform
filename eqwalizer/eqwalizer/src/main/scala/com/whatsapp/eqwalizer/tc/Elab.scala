@@ -550,6 +550,9 @@ final class Elab(pipelineContext: PipelineContext) {
         }
       case RecordIndex(_, _) =>
         (IntegerType, env)
+      case _: NativeRecordCreate | _: NativeRecordUpdate | _: NativeRecordSelect =>
+        // TODO(native records): EEP 79 / OTP 29. Elab will be added in a follow-up diff.
+        throw new NotImplementedError(s"native records: not yet implemented (at ${expr.pos})")
       case MapCreate(kvs) =>
         var envAcc = env
         val (props, kts) = kvs.partitionMap { case (kExpr, vExpr) =>

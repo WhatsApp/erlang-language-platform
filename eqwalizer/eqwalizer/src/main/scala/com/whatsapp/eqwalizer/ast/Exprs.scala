@@ -72,6 +72,15 @@ object Exprs {
   case class RecordSelect(expr: Expr, recName: String, fieldName: String)(val pos: Pos) extends Expr
   case class RecordIndex(recName: String, fieldName: String)(val pos: Pos) extends Expr
 
+  enum NativeRecordName {
+    case Anon
+    case Qualified(id: RemoteId)
+  }
+  case class NativeRecordCreate(id: RemoteId, fields: List[RecordFieldNamed])(val pos: Pos) extends Expr
+  case class NativeRecordUpdate(expr: Expr, name: NativeRecordName, fields: List[RecordFieldNamed])(val pos: Pos)
+      extends Expr
+  case class NativeRecordSelect(expr: Expr, name: NativeRecordName, fieldName: String)(val pos: Pos) extends Expr
+
   case class MapCreate(kvs: List[(Expr, Expr)])(val pos: Pos) extends Expr
   case class MapUpdate(map: Expr, kvs: List[(Expr, Expr)])(val pos: Pos) extends Expr
 

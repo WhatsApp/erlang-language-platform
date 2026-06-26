@@ -27,6 +27,10 @@ object Pats {
   case class PatRecord(recName: String, fields: List[PatRecordFieldNamed], gen: Option[Pat])(val pos: Pos) extends Pat
   case class PatRecordIndex(recName: String, fieldName: String)(val pos: Pos) extends Pat
 
+  case class PatNativeRecord(name: Exprs.NativeRecordName, fields: List[PatNativeRecordFieldNamed])(val pos: Pos)
+      extends Pat
+  case class PatNativeRecordFieldNamed(name: String, pat: Pat)
+
   case class PatUnOp(op: String, arg: Pat)(val pos: Pos) extends Pat
   case class PatBinOp(op: String, arg1: Pat, arg2: Pat)(val pos: Pos) extends Pat
 

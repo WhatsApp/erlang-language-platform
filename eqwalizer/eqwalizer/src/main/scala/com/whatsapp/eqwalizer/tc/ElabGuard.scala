@@ -145,6 +145,9 @@ final class ElabGuard(pipelineContext: PipelineContext) {
         env
       case TestRecordIndex(_, _) =>
         env
+      case t: TestNativeRecordSelect =>
+        // TODO(native records): EEP 79 / OTP 29. Will be added in a follow-up diff.
+        throw new NotImplementedError(s"native records: not yet implemented (at ${t.pos})")
       case TestRecordSelect(rec, recName, _) =>
         val ty = RecordType(recName)(module)
         elabTestT(rec, ty, env)

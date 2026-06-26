@@ -67,6 +67,10 @@ case class Show(pipelineContext: Option[PipelineContext]) {
               .sorted
               .mkString(s"#${r.name}{", ", ", "}")
         }
+      case NativeRecordType(id) =>
+        s"#${id.module}:${id.name}{}"
+      case AnyNativeRecordType =>
+        "record()"
       case MapType(props, NoneType, _) =>
         props.toList.map(showMapField).sorted.mkString("#{", ", ", "}")
       case MapType(props, kt, vt) if props.isEmpty =>
@@ -165,6 +169,10 @@ case class Show(pipelineContext: Option[PipelineContext]) {
         s"#$n{}"
       case RefinedRecordType(r, _) =>
         s"#${r.name}{}"
+      case NativeRecordType(id) =>
+        s"#${id.module}:${id.name}{}"
+      case AnyNativeRecordType =>
+        "record()"
       case MapType(props, DynamicType, DynamicType) if props.isEmpty =>
         s"map()"
       case MapType(_, _, _) =>
@@ -288,6 +296,20 @@ object Show {
       s"...#$recName.$fieldName"
     case RecordIndex(recName, fieldName) =>
       s"#$recName.$fieldName"
+    case NativeRecordCreate(id, _) =>
+      s"#${id.module}:${id.name}{...}"
+    case NativeRecordUpdate(_, name, _) =>
+      val n = name match {
+        case NativeRecordName.Anon          => "_"
+        case NativeRecordName.Qualified(id) => s"${id.module}:${id.name}"
+      }
+      s"...#$n{...}"
+    case NativeRecordSelect(_, name, fieldName) =>
+      val n = name match {
+        case NativeRecordName.Anon          => "_"
+        case NativeRecordName.Qualified(id) => s"${id.module}:${id.name}"
+      }
+      s"...#$n.$fieldName"
     case MapCreate(_) =>
       "#{..}"
     case MapUpdate(_, _) =>

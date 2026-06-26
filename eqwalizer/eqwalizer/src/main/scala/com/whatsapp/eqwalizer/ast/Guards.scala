@@ -21,6 +21,8 @@ object Guards {
   case class TestRecordCreate(recName: String, fields: List[TestRecordField])(val pos: Pos) extends Test
   case class TestRecordSelect(rec: Test, recName: String, fieldName: String)(val pos: Pos) extends Test
   case class TestRecordIndex(recName: String, fieldName: String)(val pos: Pos) extends Test
+  case class TestNativeRecordSelect(rec: Test, name: Exprs.NativeRecordName, fieldName: String)(val pos: Pos)
+      extends Test
   case class TestMapCreate(kvs: List[(Test, Test)])(val pos: Pos) extends Test
   case class TestMapUpdate(map: Test, kvs: List[(Test, Test)])(val pos: Pos) extends Test
 

@@ -33,6 +33,15 @@ object Forms {
     lazy val fMap: Map[String, RecField] = fields.map(f => f.name -> f).toMap
   }
   case class RecField(name: String, tp: Type, defaultValue: Option[Expr], refinable: Boolean)
+
+  case class NativeRecDecl(
+      name: String,
+      fields: List[NativeRecField],
+      exported: Boolean,
+  ) {
+    lazy val fMap: Map[String, NativeRecField] = fields.map(f => f.name -> f).toMap
+  }
+  case class NativeRecField(name: String, tp: Type, defaultValue: Option[Expr])
   case class TypeDecl(id: Id, params: List[FreeVarType], body: Type)
 
   def load(module: String): List[InternalForm] = {

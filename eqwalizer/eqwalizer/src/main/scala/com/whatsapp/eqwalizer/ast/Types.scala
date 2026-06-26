@@ -48,6 +48,10 @@ object Types {
   case class FreeVarType(n: Int)(val name: String) extends Type
   case class RecordType(name: String)(val module: String) extends Type
   case class RefinedRecordType(recType: RecordType, fields: Map[String, Type]) extends Type
+
+  case class NativeRecordType(id: RemoteId) extends Type
+
+  case object AnyNativeRecordType extends Type
   case class MapType(props: Map[Key, Prop], kType: Type, vType: Type) extends Type
 
   object MapType {
