@@ -55,6 +55,8 @@ pub enum Type {
     FreeVarType(FreeVarType),
     RecordType(RecordType),
     RefinedRecordType(RefinedRecordType),
+    NativeRecordType(NativeRecordType),
+    AnyNativeRecordType,
     MapType(MapType),
     BinaryType,
     AnyType,
@@ -282,6 +284,8 @@ impl Type {
             | Type::AtomType
             | Type::NilType
             | Type::RecordType(_)
+            | Type::NativeRecordType(_)
+            | Type::AnyNativeRecordType
             | Type::BoundVarType(_)
             | Type::FreeVarType(_)
             | Type::BinaryType
@@ -392,6 +396,10 @@ impl fmt::Display for Type {
             ),
             Type::ListType(ty) => write!(f, "[{}]", ty.t),
             Type::RefinedRecordType(ty) => write!(f, "#{}{{}}", ty.rec_type.name.as_str()),
+            Type::AnyNativeRecordType => write!(f, "record()"),
+            Type::NativeRecordType(ty) => {
+                write!(f, "#{}:{}{{}}", ty.id.module, ty.id.name)
+            }
             Type::BoundedDynamicType(ty) => write!(f, "dynamic({})", ty.bound),
         }
     }
@@ -489,6 +497,11 @@ pub struct RefinedRecordType {
     #[serde_as(as = "Vec<(_, _)>")]
     #[serde(default)]
     pub fields: BTreeMap<StringId, Type>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct NativeRecordType {
+    pub id: RemoteId,
 }
 
 #[serde_as]

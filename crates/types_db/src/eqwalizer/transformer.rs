@@ -41,6 +41,9 @@ use super::expr::Match;
 use super::expr::Maybe;
 use super::expr::MaybeElse;
 use super::expr::MaybeMatch;
+use super::expr::NativeRecordCreate;
+use super::expr::NativeRecordSelect;
+use super::expr::NativeRecordUpdate;
 use super::expr::Qualifier;
 use super::expr::Receive;
 use super::expr::ReceiveWithTimeout;
@@ -56,6 +59,8 @@ use super::expr::Tuple;
 use super::expr::UnOp;
 use super::expr::Zip;
 use super::form::ExternalForm;
+use super::form::ExternalNativeRecDecl;
+use super::form::ExternalNativeRecField;
 use super::form::ExternalRecDecl;
 use super::form::ExternalRecField;
 use super::form::FunDecl;
@@ -66,6 +71,7 @@ use super::guard::TestCall;
 use super::guard::TestCons;
 use super::guard::TestMapCreate;
 use super::guard::TestMapUpdate;
+use super::guard::TestNativeRecordSelect;
 use super::guard::TestRecordCreate;
 use super::guard::TestRecordField;
 use super::guard::TestRecordFieldGen;
@@ -80,6 +86,8 @@ use super::pat::PatBinaryElem;
 use super::pat::PatCons;
 use super::pat::PatMap;
 use super::pat::PatMatch;
+use super::pat::PatNativeRecord;
+use super::pat::PatNativeRecordFieldNamed;
 use super::pat::PatRecord;
 use super::pat::PatRecordFieldNamed;
 use super::pat::PatTuple;
@@ -486,6 +494,45 @@ pub fn walk_expr<T, V: Transformer<T>>(transformer: &mut V, e: Expr) -> Result<E
             expr: Box::new(transformer.transform_expr(*r.expr)?),
         })),
         Expr::RecordIndex(r) => Ok(Expr::RecordIndex(r)),
+        Expr::NativeRecordCreate(r) => Ok(Expr::NativeRecordCreate(NativeRecordCreate {
+            pos: r.pos,
+            id: r.id,
+            fields: r
+                .fields
+                .into_iter()
+                .map(|f| {
+                    transformer
+                        .transform_expr(f.value)
+                        .map(|value| RecordFieldNamed {
+                            value,
+                            name: f.name,
+                        })
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+        })),
+        Expr::NativeRecordUpdate(r) => Ok(Expr::NativeRecordUpdate(NativeRecordUpdate {
+            pos: r.pos,
+            name: r.name,
+            expr: Box::new(transformer.transform_expr(*r.expr)?),
+            fields: r
+                .fields
+                .into_iter()
+                .map(|f| {
+                    transformer
+                        .transform_expr(f.value)
+                        .map(|value| RecordFieldNamed {
+                            value,
+                            name: f.name,
+                        })
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+        })),
+        Expr::NativeRecordSelect(r) => Ok(Expr::NativeRecordSelect(NativeRecordSelect {
+            pos: r.pos,
+            name: r.name,
+            field_name: r.field_name,
+            expr: Box::new(transformer.transform_expr(*r.expr)?),
+        })),
         Expr::MapCreate(m) => Ok(Expr::MapCreate(MapCreate {
             pos: m.pos,
             kvs: m
@@ -602,6 +649,19 @@ pub fn walk_pat<T, V: Transformer<T>>(transformer: &mut V, p: Pat) -> Result<Pat
             })?,
         })),
         Pat::PatRecordIndex(r) => Ok(Pat::PatRecordIndex(r)),
+        Pat::PatNativeRecord(r) => Ok(Pat::PatNativeRecord(PatNativeRecord {
+            pos: r.pos,
+            name: r.name,
+            fields: r
+                .fields
+                .into_iter()
+                .map(|f| {
+                    transformer
+                        .transform_pat(f.pat)
+                        .map(|pat| PatNativeRecordFieldNamed { name: f.name, pat })
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+        })),
         Pat::PatUnOp(o) => Ok(Pat::PatUnOp(PatUnOp {
             pos: o.pos,
             op: o.op,
@@ -712,6 +772,14 @@ pub fn walk_test<T, V: Transformer<T>>(transformer: &mut V, t: Test) -> Result<T
             field_name: r.field_name,
         })),
         Test::TestRecordIndex(r) => Ok(Test::TestRecordIndex(r)),
+        Test::TestNativeRecordSelect(r) => {
+            Ok(Test::TestNativeRecordSelect(TestNativeRecordSelect {
+                pos: r.pos,
+                rec: Box::new(transformer.transform_test(*r.rec)?),
+                name: r.name,
+                field_name: r.field_name,
+            }))
+        }
         Test::TestMapCreate(m) => Ok(Test::TestMapCreate(TestMapCreate {
             pos: m.pos,
             kvs: m
@@ -802,5 +870,22 @@ pub fn walk_form<T, V: Transformer<T>>(
                 })
                 .collect::<Result<Vec<_>, _>>()?,
         })),
+        ExternalForm::ExternalNativeRecDecl(decl) => {
+            Ok(ExternalForm::ExternalNativeRecDecl(ExternalNativeRecDecl {
+                pos: decl.pos,
+                name: decl.name,
+                fields: decl
+                    .fields
+                    .into_iter()
+                    .map(|f| {
+                        f.default_value
+                            .map_or(Ok(None), |val| transformer.transform_expr(val).map(Some))
+                            .map(|default_value| ExternalNativeRecField { default_value, ..f })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+            }))
+        }
+        ExternalForm::ExportNativeRecord(e) => Ok(ExternalForm::ExportNativeRecord(e)),
+        ExternalForm::ImportNativeRecord(i) => Ok(ExternalForm::ImportNativeRecord(i)),
     }
 }

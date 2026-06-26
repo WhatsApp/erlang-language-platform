@@ -33,6 +33,7 @@ pub enum Test {
     TestRecordCreate(TestRecordCreate),
     TestRecordSelect(TestRecordSelect),
     TestRecordIndex(TestRecordIndex),
+    TestNativeRecordSelect(TestNativeRecordSelect),
     TestMapCreate(TestMapCreate),
     TestMapUpdate(TestMapUpdate),
     TestUnOp(TestUnOp),
@@ -116,6 +117,15 @@ pub struct TestRecordSelect {
 pub struct TestRecordIndex {
     pub pos: eqwalizer::Pos,
     pub rec_name: StringId,
+    pub field_name: StringId,
+}
+
+/// Native record field selection in a guard test.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct TestNativeRecordSelect {
+    pub pos: eqwalizer::Pos,
+    pub rec: Box<Test>,
+    pub name: crate::eqwalizer::expr::NativeRecordName,
     pub field_name: StringId,
 }
 

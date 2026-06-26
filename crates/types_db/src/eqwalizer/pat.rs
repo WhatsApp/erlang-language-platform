@@ -31,6 +31,7 @@ pub enum Pat {
     PatVar(PatVar),
     PatRecord(PatRecord),
     PatRecordIndex(PatRecordIndex),
+    PatNativeRecord(PatNativeRecord),
     PatUnOp(PatUnOp),
     PatBinOp(PatBinOp),
     PatBinary(PatBinary),
@@ -116,6 +117,21 @@ pub struct PatRecordIndex {
     pub pos: eqwalizer::Pos,
     pub rec_name: StringId,
     pub field_name: StringId,
+}
+
+/// Native record pattern.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct PatNativeRecord {
+    pub pos: eqwalizer::Pos,
+    pub name: expr::NativeRecordName,
+    #[serde(default)]
+    pub fields: Vec<PatNativeRecordFieldNamed>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct PatNativeRecordFieldNamed {
+    pub name: StringId,
+    pub pat: Pat,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

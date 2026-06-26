@@ -39,6 +39,9 @@ pub enum ExternalForm {
     ExternalCallback(ExternalCallback),
     ExternalOptionalCallbacks(ExternalOptionalCallbacks),
     ExternalRecDecl(ExternalRecDecl),
+    ExternalNativeRecDecl(ExternalNativeRecDecl),
+    ExportNativeRecord(ExportNativeRecordAttr),
+    ImportNativeRecord(ImportNativeRecordAttr),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -160,6 +163,24 @@ pub struct RecField {
     pub refinable: bool,
 }
 
+/// EEP 79 native record declaration.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct NativeRecDecl {
+    #[serde(skip_serializing)]
+    pub pos: eqwalizer::Pos,
+    pub name: StringId,
+    #[serde(default)]
+    pub fields: Vec<NativeRecField>,
+    pub exported: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct NativeRecField {
+    pub name: StringId,
+    pub tp: Type,
+    pub default_value: Option<expr::Expr>,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TypeDecl {
     #[serde(skip_serializing)]
@@ -229,6 +250,39 @@ pub struct ExternalRecField {
     pub default_value: Option<expr::Expr>,
 }
 
+/// Unconverted native record declaration with external types.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct ExternalNativeRecDecl {
+    pub pos: eqwalizer::Pos,
+    pub name: StringId,
+    #[serde(default)]
+    pub fields: Vec<ExternalNativeRecField>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct ExternalNativeRecField {
+    pub name: StringId,
+    pub tp: Option<ext_types::ExtType>,
+    pub default_value: Option<expr::Expr>,
+}
+
+/// `-export_record(...)` attribute listing exported native records.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct ExportNativeRecordAttr {
+    pub pos: eqwalizer::Pos,
+    #[serde(default)]
+    pub names: Vec<StringId>,
+}
+
+/// `-import_record(...)` attribute importing native records from a module.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct ImportNativeRecordAttr {
+    pub pos: eqwalizer::Pos,
+    pub module: StringId,
+    #[serde(default)]
+    pub names: Vec<StringId>,
+}
+
 impl TypeDecl {
     pub fn to_bytes(&self) -> Vec<u8> {
         serde_json::to_vec(self).expect("type should be serializable to JSON")
@@ -236,6 +290,12 @@ impl TypeDecl {
 }
 
 impl RecDecl {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        serde_json::to_vec(self).expect("type should be serializable to JSON")
+    }
+}
+
+impl NativeRecDecl {
     pub fn to_bytes(&self) -> Vec<u8> {
         serde_json::to_vec(self).expect("type should be serializable to JSON")
     }

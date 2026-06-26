@@ -721,6 +721,12 @@ impl StubExpander<'_> {
                 | ExternalForm::EqwalizerUnlimitedRefinement(_)
                 | ExternalForm::EqwalizerNowarnFunction(_)
                 | ExternalForm::TypingAttribute(_) => (),
+                // TODO(native records): EEP 79 / OTP 29. Forms are accepted but
+                // not yet processed into the stub. Type checking native records
+                // will be added in a follow-up diff.
+                ExternalForm::ExternalNativeRecDecl(_)
+                | ExternalForm::ExportNativeRecord(_)
+                | ExternalForm::ImportNativeRecord(_) => (),
             }
         }
         self.stub.callbacks = Arc::new(callbacks);

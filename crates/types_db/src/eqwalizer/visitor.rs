@@ -251,6 +251,17 @@ pub fn walk_expr<'a, T, V: Visitor<'a, T>>(visitor: &mut V, e: &'a Expr) -> Resu
         }
         Expr::RecordSelect(r) => visitor.visit_expr(&r.expr),
         Expr::RecordIndex(_) => Ok(()),
+        Expr::NativeRecordCreate(r) => r
+            .fields
+            .iter()
+            .try_for_each(|f| visitor.visit_expr(&f.value)),
+        Expr::NativeRecordUpdate(r) => {
+            visitor.visit_expr(&r.expr)?;
+            r.fields
+                .iter()
+                .try_for_each(|f| visitor.visit_expr(&f.value))
+        }
+        Expr::NativeRecordSelect(r) => visitor.visit_expr(&r.expr),
         Expr::MapCreate(m) => m
             .kvs
             .iter()
@@ -312,6 +323,7 @@ pub fn walk_pat<'a, T, V: Visitor<'a, T>>(visitor: &mut V, p: &'a Pat) -> Result
             r.gen_.as_ref().map_or(Ok(()), |g| visitor.visit_pat(g))
         }
         Pat::PatRecordIndex(_) => Ok(()),
+        Pat::PatNativeRecord(r) => r.fields.iter().try_for_each(|f| visitor.visit_pat(&f.pat)),
         Pat::PatUnOp(o) => visitor.visit_pat(&o.arg),
         Pat::PatBinOp(o) => {
             visitor.visit_pat(&o.arg_1)?;
@@ -361,6 +373,7 @@ pub fn walk_test<'a, T, V: Visitor<'a, T>>(visitor: &mut V, t: &'a Test) -> Resu
             .try_for_each(|f| visitor.visit_test_record_field(f)),
         Test::TestRecordSelect(r) => visitor.visit_test(&r.rec),
         Test::TestRecordIndex(_) => Ok(()),
+        Test::TestNativeRecordSelect(r) => visitor.visit_test(&r.rec),
         Test::TestMapCreate(m) => m
             .kvs
             .iter()
@@ -449,5 +462,16 @@ pub fn walk_form<'a, T, V: Visitor<'a, T>>(
                         .map_or(Ok(()), |val| visitor.visit_expr(val))
                 })
         }),
+        ExternalForm::ExternalNativeRecDecl(decl) => decl.fields.iter().try_for_each(|f| {
+            f.tp.as_ref()
+                .map_or(Ok(()), |ty| visitor.visit_ext_type(ty))
+                .and_then(|()| {
+                    f.default_value
+                        .as_ref()
+                        .map_or(Ok(()), |val| visitor.visit_expr(val))
+                })
+        }),
+        ExternalForm::ExportNativeRecord(_) => Ok(()),
+        ExternalForm::ImportNativeRecord(_) => Ok(()),
     }
 }

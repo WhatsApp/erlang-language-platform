@@ -56,6 +56,9 @@ pub enum Expr {
     RecordUpdate(RecordUpdate),
     RecordSelect(RecordSelect),
     RecordIndex(RecordIndex),
+    NativeRecordCreate(NativeRecordCreate),
+    NativeRecordUpdate(NativeRecordUpdate),
+    NativeRecordSelect(NativeRecordSelect),
     MapCreate(MapCreate),
     MapUpdate(MapUpdate),
     Maybe(Maybe),
@@ -339,6 +342,38 @@ pub struct RecordSelect {
 pub struct RecordIndex {
     pub pos: Pos,
     pub rec_name: StringId,
+    pub field_name: StringId,
+}
+
+/// Name of a native record: anonymous or module-qualified.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub enum NativeRecordName {
+    Anon,
+    Qualified(eqwalizer::RemoteId),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct NativeRecordCreate {
+    pub pos: Pos,
+    pub id: eqwalizer::RemoteId,
+    #[serde(default)]
+    pub fields: Vec<RecordFieldNamed>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct NativeRecordUpdate {
+    pub pos: Pos,
+    pub expr: Box<Expr>,
+    pub name: NativeRecordName,
+    #[serde(default)]
+    pub fields: Vec<RecordFieldNamed>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct NativeRecordSelect {
+    pub pos: Pos,
+    pub expr: Box<Expr>,
+    pub name: NativeRecordName,
     pub field_name: StringId,
 }
 
