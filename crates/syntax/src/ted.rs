@@ -14,7 +14,8 @@
 //! up elements around the edges.
 use std::mem;
 use std::ops::RangeInclusive;
-use std::sync::LazyLock;
+
+use once_cell::sync::Lazy;
 
 use crate::Parse;
 use crate::SourceFile;
@@ -190,8 +191,7 @@ fn ws_between(left: &SyntaxElement, right: &SyntaxElement) -> Option<SyntaxToken
 // ---------------------------------------------------------------------
 // From rust-analyzer make.rs
 
-static SOURCE_FILE: LazyLock<Parse<SourceFile>> =
-    LazyLock::new(|| SourceFile::parse_text("foo() -> ok."));
+static SOURCE_FILE: Lazy<Parse<SourceFile>> = Lazy::new(|| SourceFile::parse_text("foo() -> ok."));
 
 pub fn single_space() -> SyntaxToken {
     SOURCE_FILE

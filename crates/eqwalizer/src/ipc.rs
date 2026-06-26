@@ -179,16 +179,7 @@ pub struct IpcHandle {
 }
 
 const WRITE_TIMEOUT: Duration = Duration::from_mins(4);
-/// How often a blocking receive wakes to check for salsa cancellation
-/// (mirrors `erlang_service::request_reply_handle`).
-const RECV_POLL_TIMEOUT: Duration = Duration::from_millis(100);
-/// Receive ceiling for contexts that never cancel (e.g. CLI), preserving the
-/// historical ~4 min timeout. 4 min / 100 ms = 2400 ticks.
-const MAX_RECV_POLLS: u32 = 2400;
-
-/// Windows caveat: `TimeoutReader` is a no-op pass-through there (see
-/// `win_timeout`), so reads never yield a poll tick — Windows gets no
-/// cancellation relief, unchanged from before this commit.
+const READ_TIMEOUT: Duration = Duration::from_mins(4);
 
 impl IpcHandle {
     fn spawn_cmd(cmd: &mut Command) -> Result<Child> {
@@ -237,7 +228,7 @@ impl IpcHandle {
 
         let _child_for_drop = JodChild(child);
         let writer = BufWriter::new(TimeoutWriter::new(stdin, WRITE_TIMEOUT));
-        let reader = BufReader::new(TimeoutReader::new(stdout, RECV_POLL_TIMEOUT));
+        let reader = BufReader::new(TimeoutReader::new(stdout, READ_TIMEOUT));
 
         Ok(Self {
             writer,
@@ -246,19 +237,15 @@ impl IpcHandle {
         })
     }
 
-    /// Receive a message, waking every `RECV_POLL_TIMEOUT` to call `unwind`,
-    /// which panics with salsa `Cancelled` if the query was cancelled (dropping
-    /// this handle, killing the subprocess and releasing the snapshot).
-    pub fn receive(&mut self, unwind: &dyn Fn()) -> Result<MsgFromEqWAlizer> {
-        let buf = self.receive_line(unwind).context("receiving message")?;
+    pub fn receive(&mut self) -> Result<MsgFromEqWAlizer> {
+        let buf = self.receive_line().context("receiving message")?;
         let deserialized = serde_json::from_str(&buf)
             .with_context(|| format!("parsing for eqwalizer: {buf:?}"))?;
         Ok(deserialized)
     }
 
     pub fn receive_newline(&mut self) -> Result<()> {
-        // Acks return near-instantly; no cancellation check needed.
-        let _ = self.receive_line(&|| {}).context("receiving newline")?;
+        let _ = self.receive_line().context("receiving newline")?;
         Ok(())
     }
 
@@ -286,27 +273,11 @@ impl IpcHandle {
         Ok(())
     }
 
-    fn receive_line(&mut self, unwind: &dyn Fn()) -> Result<String> {
+    fn receive_line(&mut self) -> Result<String> {
         let mut buf = String::new();
-        let mut polls_remaining = MAX_RECV_POLLS;
-        loop {
-            unwind();
-            match self.reader.read_line(&mut buf) {
-                Ok(0) => bail!("eqwalizer stdout closed before a newline (EOF)"),
-                Ok(_) => return Ok(buf),
-                // Timed out with no data; wake to re-check cancellation, then retry.
-                Err(err)
-                    if err.kind() == ErrorKind::TimedOut || err.kind() == ErrorKind::WouldBlock => {
-                }
-                Err(err) => return Err(err).context("failed read_line from eqwalizer stdout"),
-            }
-            polls_remaining -= 1;
-            if polls_remaining == 0 {
-                bail!(
-                    "timed out waiting for a message from eqwalizer (after {}s)",
-                    (MAX_RECV_POLLS as u128 * RECV_POLL_TIMEOUT.as_millis()) / 1000
-                );
-            }
-        }
+        self.reader
+            .read_line(&mut buf)
+            .context("failed read_line from eqwalizer stdout")?;
+        Ok(buf)
     }
 }
