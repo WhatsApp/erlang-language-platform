@@ -25,8 +25,6 @@ pub(crate) fn get_doc_for_token(
 
 #[cfg(test)]
 mod tests {
-    use elp_project_model::otp::Otp;
-
     use crate::fixture;
 
     #[track_caller]
@@ -42,9 +40,8 @@ mod tests {
 
     #[test]
     fn local_type() {
-        if Otp::supports_eep59_doc_attributes() {
-            check(
-                r#"
+        check(
+            r#"
 -module(main).
 -export([main/0]).
 -doc """
@@ -55,7 +52,7 @@ My integer
 -spec main() -> my_in~teger().
 main() -> 42.
 "#,
-                "\
+            "\
 ```erlang
 -type my_integer() :: integer().
 ```
@@ -63,15 +60,13 @@ main() -> 42.
 -----
 
 My integer",
-            );
-        }
+        );
     }
 
     #[test]
     fn remote_type() {
-        if Otp::supports_eep59_doc_attributes() {
-            check(
-                r#"
+        check(
+            r#"
 //- /src/main.erl
 -module(main).
 -export([main/0]).
@@ -86,7 +81,7 @@ My integer
 -export_type([my_integer/0]).
 -type my_integer() :: integer().
 "#,
-                "\
+            "\
 ```erlang
 -type my_integer() :: integer().
 ```
@@ -94,15 +89,13 @@ My integer
 -----
 
 My integer",
-            );
-        }
+        );
     }
 
     #[test]
     fn local_function() {
-        if Otp::supports_eep59_doc_attributes() {
-            check(
-                r#"
+        check(
+            r#"
 -module(main).
 -export([main/0]).
 
@@ -115,7 +108,7 @@ main() -> ok.
 -spec caller() -> ok.
 caller() -> ma~in().
 "#,
-                "\
+            "\
 ```erlang
 -spec main() -> ok.
 ```
@@ -123,15 +116,13 @@ caller() -> ma~in().
 -----
 
 My function",
-            );
-        }
+        );
     }
 
     #[test]
     fn internal_fun() {
-        if Otp::supports_eep59_doc_attributes() {
-            check(
-                r#"
+        check(
+            r#"
 -module(main).
 -export([main/0]).
 
@@ -144,7 +135,7 @@ main() -> ok.
 -spec caller() -> ok.
 caller() -> fun ma~in/0.
 "#,
-                "\
+            "\
 ```erlang
 -spec main() -> ok.
 ```
@@ -152,7 +143,6 @@ caller() -> fun ma~in/0.
 -----
 
 My function",
-            );
-        }
+        );
     }
 }

@@ -27,7 +27,6 @@ text-size.workspace = true
 [dev-dependencies]
 buck-resources.workspace = true
 dunce.workspace = true
-elp_project_model.workspace = true
 expect-test.workspace = true
 paths.workspace = true
 

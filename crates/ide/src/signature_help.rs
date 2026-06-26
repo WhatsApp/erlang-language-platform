@@ -254,7 +254,6 @@ fn get_function_doc(
 mod tests {
 
     use elp_ide_db::elp_base_db::fixture::WithFixture;
-    use elp_project_model::otp::Otp;
     use expect_test::Expect;
     use expect_test::expect;
     use itertools::Itertools;
@@ -691,9 +690,8 @@ main() ->
 
     #[test]
     fn test_fn_signature_doc_eep59() {
-        if Otp::supports_eep59_doc_attributes() {
-            check(
-                r#"
+        check(
+            r#"
 //- expect_parse_errors
 -module(main).
 
@@ -722,48 +720,46 @@ add(This, That, Extra) ->
 main() ->
   main:add(This, ~)
 "#,
-                expect![[r#"
-                    ```erlang
-                    -spec add(integer(), integer()) -> integer().
-                    ```
+            expect![[r#"
+                ```erlang
+                -spec add(integer(), integer()) -> integer().
+                ```
 
-                    -----
+                -----
 
-                    Add This to That
-                    Returns the sum of This and That plus 0
-                    ------
-                    main:add(This, That)
-                             ----  ^^^^
-                    ------
-                    That: The second thing
-                    This: The first thing
-                    ======
-                    ```erlang
-                    -spec add(integer(), integer(), integer()) -> integer().
-                    ```
+                Add This to That
+                Returns the sum of This and That plus 0
+                ------
+                main:add(This, That)
+                         ----  ^^^^
+                ------
+                That: The second thing
+                This: The first thing
+                ======
+                ```erlang
+                -spec add(integer(), integer(), integer()) -> integer().
+                ```
 
-                    -----
+                -----
 
-                    Add This to That, including an extra
-                    Returns the sum of This and That plus the Extra
-                    ------
-                    main:add(This, That, Extra)
-                             ----  ^^^^  -----
-                    ------
-                    Extra: Something more
-                    That: The second thing
-                    This: The first thing
-                    ======
-                "#]],
-            );
-        }
+                Add This to That, including an extra
+                Returns the sum of This and That plus the Extra
+                ------
+                main:add(This, That, Extra)
+                         ----  ^^^^  -----
+                ------
+                Extra: Something more
+                That: The second thing
+                This: The first thing
+                ======
+            "#]],
+        );
     }
 
     #[test]
     fn test_fn_signature_doc_parenthesized_eep59_metadata() {
-        if Otp::supports_eep59_doc_attributes() {
-            check(
-                r#"
+        check(
+            r#"
 //- expect_parse_errors
 -module(main).
 
@@ -783,25 +779,24 @@ add(This, That) ->
 main() ->
   main:add(This, ~)
 "#,
-                expect![[r#"
-                    ```erlang
-                    -spec add(integer(), integer()) -> integer().
-                    ```
+            expect![[r#"
+                ```erlang
+                -spec add(integer(), integer()) -> integer().
+                ```
 
-                    -----
+                -----
 
-                    Add This to That
-                    Returns the sum of This and That plus 0
-                    ------
-                    main:add(This, That)
-                             ----  ^^^^
-                    ------
-                    That: The second thing
-                    This: The first thing
-                    ======
-                "#]],
-            );
-        }
+                Add This to That
+                Returns the sum of This and That plus 0
+                ------
+                main:add(This, That)
+                         ----  ^^^^
+                ------
+                That: The second thing
+                This: The first thing
+                ======
+            "#]],
+        );
     }
 
     #[test]

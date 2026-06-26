@@ -190,14 +190,6 @@ impl Otp {
             .map(|info| info.otp_release.as_str())
     }
 
-    pub fn supports_eep59_doc_attributes() -> bool {
-        Self::version().map(|v| v >= "27").unwrap_or(true)
-    }
-
-    pub fn supports_eep66_sigils() -> bool {
-        Self::version().map(|v| v >= "27").unwrap_or(true)
-    }
-
     pub fn sets_v2_not_default() -> bool {
         Self::version().map(|v| v < "28").unwrap_or(true)
     }

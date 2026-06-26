@@ -1609,20 +1609,18 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_no_stream_produces_output(buck: bool) {
-        if Otp::supports_eep66_sigils() {
-            simple_snapshot_expect_error(
-                args_vec![
-                    "lint",
-                    "--no-stream",
-                    "--config-file",
-                    project_path("linter/elp_lint_empty.toml")
-                ],
-                "diagnostics",
-                resource_file!("diagnostics/lint_no_stream.stdout"),
-                buck,
-                None,
-            );
-        }
+        simple_snapshot_expect_error(
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--config-file",
+                project_path("linter/elp_lint_empty.toml")
+            ],
+            "diagnostics",
+            resource_file!("diagnostics/lint_no_stream.stdout"),
+            buck,
+            None,
+        );
     }
 
     #[test_case(false ; "rebar")]
@@ -2714,15 +2712,13 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn parse_otp27_sigils(buck: bool) {
-        if Otp::supports_eep66_sigils() {
-            simple_snapshot_expect_error(
-                args_vec!["parse-elp", "--module", "otp27_sigils"],
-                "diagnostics",
-                resource_file!("diagnostics/parse_otp27_sigils.jsonl"),
-                buck,
-                None,
-            );
-        }
+        simple_snapshot_expect_error(
+            args_vec!["parse-elp", "--module", "otp27_sigils"],
+            "diagnostics",
+            resource_file!("diagnostics/parse_otp27_sigils.jsonl"),
+            buck,
+            None,
+        );
     }
 
     #[test_case(false ; "rebar")]

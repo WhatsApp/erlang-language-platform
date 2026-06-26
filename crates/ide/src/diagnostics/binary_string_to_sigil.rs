@@ -46,7 +46,6 @@ impl Linter for BinaryStringToSigilLinter {
 
     fn is_enabled(&self) -> bool {
         false
-        // Otp::supports_eep66_sigils()
     }
 }
 
@@ -113,7 +112,6 @@ static STRING_CONTENT_VAR: &str = "_@StringContent";
 #[cfg(test)]
 mod tests {
 
-    use elp_project_model::otp::Otp;
     use expect_test::Expect;
     use expect_test::expect;
 
@@ -128,18 +126,14 @@ mod tests {
 
     #[track_caller]
     fn check_diagnostics(fixture: &str) {
-        if Otp::supports_eep66_sigils() {
-            let config = DiagnosticsConfig::default().enable(DiagnosticCode::BinaryStringToSigil);
-            tests::check_filtered_diagnostics_with_config(config, &vec![], fixture, &filter)
-        }
+        let config = DiagnosticsConfig::default().enable(DiagnosticCode::BinaryStringToSigil);
+        tests::check_filtered_diagnostics_with_config(config, &vec![], fixture, &filter)
     }
 
     #[track_caller]
     fn check_fix(fixture_before: &str, fixture_after: Expect) {
-        if Otp::supports_eep66_sigils() {
-            let config = DiagnosticsConfig::default().enable(DiagnosticCode::BinaryStringToSigil);
-            tests::check_fix_with_config(config, fixture_before, fixture_after)
-        }
+        let config = DiagnosticsConfig::default().enable(DiagnosticCode::BinaryStringToSigil);
+        tests::check_fix_with_config(config, fixture_before, fixture_after)
     }
 
     #[test]

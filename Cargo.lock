@@ -651,7 +651,6 @@ dependencies = [
  "dunce",
  "eetf",
  "elp_base_db",
- "elp_project_model",
  "elp_syntax",
  "expect-test",
  "fxhash",

@@ -19,7 +19,7 @@
 
 run(_Id, [FileName, DocOrigin, AST]) ->
     Docs =
-        case doc_from_eep059_attributes(FileName, DocOrigin, AST, supports_eep059_doc_attributes()) of
+        case doc_from_eep059_attributes(FileName, DocOrigin, AST) of
             {ok, D} ->
                 D;
             {error, _} ->
@@ -27,19 +27,13 @@ run(_Id, [FileName, DocOrigin, AST]) ->
         end,
     {ok, serialize_docs(Docs)}.
 
--spec supports_eep059_doc_attributes() -> boolean().
-supports_eep059_doc_attributes() ->
-    list_to_integer(erlang:system_info(otp_release)) >= 27.
-
--spec doc_from_eep059_attributes(string(), origin(), no_ast | binary(), boolean()) ->
-    {ok, docs()} | {error, not_supported | skipping | no_docs}.
-doc_from_eep059_attributes(_FileName, _DocOrigin, _AST, false) ->
-    {error, not_supported};
-doc_from_eep059_attributes(_FileName, eep48, _AST, _SupportsEEP059DocAttributes) ->
+-spec doc_from_eep059_attributes(string(), origin(), no_ast | binary()) ->
+    {ok, docs()} | {error, skipping | no_docs}.
+doc_from_eep059_attributes(_FileName, eep48, _AST) ->
     {error, skipping};
-doc_from_eep059_attributes(_FileName, _DocOrigin, no_ast, _SupportsEEP059DocAttributes) ->
+doc_from_eep059_attributes(_FileName, _DocOrigin, no_ast) ->
     {error, skipping};
-doc_from_eep059_attributes(FileName, edoc, AST0, _SupportsEEP059DocAttributes) ->
+doc_from_eep059_attributes(FileName, edoc, AST0) ->
     {ok, AST, []} = binary_to_term(AST0),
     % T206726412: By default, the beam_doc module generates docs only for exported functions.
     % While we implement a native solution to handle documentation in ELP,

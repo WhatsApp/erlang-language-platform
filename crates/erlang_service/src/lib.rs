@@ -865,7 +865,6 @@ mod tests {
     use std::sync::LazyLock;
 
     use elp_base_db::AbsPathBuf;
-    use elp_project_model::otp::Otp;
     use expect_test::ExpectFile;
     use expect_test::expect;
     use expect_test::expect_file;
@@ -1016,19 +1015,17 @@ mod tests {
 
     #[test]
     fn edoc_doc_attribute() {
-        expect_eep59_docs(
+        expect_docs(
             "edoc_doc_attribute.erl".into(),
             fixture_file!("edoc_doc_attribute_eep059.expected"),
-            fixture_file!("edoc_doc_attribute.expected"),
         );
     }
 
     #[test]
     fn edoc_doc_attribute_missing_moduledoc() {
-        expect_eep59_docs(
+        expect_docs(
             "edoc_doc_attribute_missing_moduledoc.erl".into(),
             fixture_file!("edoc_doc_attribute_missing_moduledoc_eep059.expected"),
-            fixture_file!("edoc_doc_attribute_missing_moduledoc.expected"),
         );
     }
 
@@ -1137,18 +1134,6 @@ mod tests {
             ast, &response.warnings, &errors
         );
         expected.assert_eq(&actual);
-    }
-
-    fn expect_eep59_docs(
-        path: PathBuf,
-        with_eep59_support: ExpectFile,
-        without_eep59_support: ExpectFile,
-    ) {
-        if Otp::supports_eep59_doc_attributes() {
-            expect_docs(path, with_eep59_support);
-        } else {
-            expect_docs(path, without_eep59_support);
-        }
     }
 
     fn expect_docs(path: PathBuf, expected: ExpectFile) {
