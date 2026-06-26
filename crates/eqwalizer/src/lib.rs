@@ -313,9 +313,7 @@ fn do_typecheck(
     ));
     let mut diagnostics = EqwalizerDiagnostics::default();
     loop {
-        let msg = handle
-            .lock()
-            .receive(&|| db.unwind_if_revision_cancelled())?;
+        let msg = handle.lock().receive(db)?;
         match msg {
             MsgFromEqWAlizer::EnteringModule { module } => {
                 let module_name = ModuleName::new(&module);
@@ -329,7 +327,7 @@ fn do_typecheck(
                     }
                     EqwalizerDiagnostics::Diagnostics { .. } => (),
                 }
-                handle.lock().send(&MsgToEqWAlizer::ELPExitingModule)?;
+                handle.lock().send(&MsgToEqWAlizer::ELPExitingModule, db)?;
             }
             MsgFromEqWAlizer::Done { .. } => {
                 return Ok(diagnostics);
@@ -357,10 +355,10 @@ fn do_typecheck_functions(
     let funs_bytes =
         serde_json::to_vec(&funs).context("serializing FunToCheck list for eqwalizer")?;
     let len: u32 = funs_bytes.len().try_into()?;
-    handle.send(&MsgToEqWAlizer::FunsToCheckReply { len })?;
-    handle.receive_newline()?;
+    handle.send(&MsgToEqWAlizer::FunsToCheckReply { len }, db)?;
+    handle.receive_newline(db)?;
     handle
-        .send_bytes(&funs_bytes)
+        .send_bytes(&funs_bytes, db)
         .context("sending FunToCheck bytes to eqwalizer")?;
 
     // Handle dependency requests until we get FunCheckDone
@@ -392,7 +390,7 @@ fn get_module_diagnostics(
             "no eqWAlizer handle for module {module}"
         )))?;
     let mut handle = handle_mutex.lock();
-    handle.send(&MsgToEqWAlizer::ELPEnteringModule)?;
+    handle.send(&MsgToEqWAlizer::ELPEnteringModule, db)?;
     match serve_eqwalizer(&mut handle, db, project_id, |msg, handle| match msg {
         MsgFromEqWAlizer::ValidateType { ty } => {
             log::debug!("received from eqwalizer: ValidateType");
@@ -410,10 +408,10 @@ fn get_module_diagnostics(
                         .expect("validated type should be JSON serializable");
                     let len = type_bytes.len().try_into()?;
                     let reply = &MsgToEqWAlizer::ValidatedType { len };
-                    handle.send(reply)?;
-                    handle.receive_newline()?;
+                    handle.send(reply, db)?;
+                    handle.receive_newline(db)?;
                     handle
-                        .send_bytes(&type_bytes)
+                        .send_bytes(&type_bytes, db)
                         .with_context(|| "sending to eqwalizer: ValidatedType".to_string())?
                 }
                 Err(invalid) => {
@@ -421,10 +419,10 @@ fn get_module_diagnostics(
                         .expect("validated type should be JSON serializable");
                     let len = invalid_bytes.len().try_into()?;
                     let reply = &MsgToEqWAlizer::InvalidType { len };
-                    handle.send(reply)?;
-                    handle.receive_newline()?;
+                    handle.send(reply, db)?;
+                    handle.receive_newline(db)?;
                     handle
-                        .send_bytes(&invalid_bytes)
+                        .send_bytes(&invalid_bytes, db)
                         .with_context(|| "sending to eqwalizer: InvalidType".to_string())?
                 }
             }
@@ -478,7 +476,7 @@ fn serve_eqwalizer<R>(
     mut on_message: impl FnMut(MsgFromEqWAlizer, &mut IpcHandle) -> Result<ControlFlow<R>>,
 ) -> Result<Completion<R>> {
     loop {
-        let msg = handle.receive(&|| db.unwind_if_revision_cancelled())?;
+        let msg = handle.receive(db)?;
         match msg {
             MsgFromEqWAlizer::GetAstBytes { module, format } => {
                 log::debug!(
@@ -497,9 +495,9 @@ fn serve_eqwalizer<R>(
                     Ok(ast_bytes) => {
                         log::debug!("sending to eqwalizer: GetAstBytesReply for module {module}");
                         let len = ast_bytes.len().try_into()?;
-                        handle.send(&MsgToEqWAlizer::GetAstBytesReply { len })?;
-                        handle.receive_newline()?;
-                        handle.send_bytes(&ast_bytes).with_context(|| {
+                        handle.send(&MsgToEqWAlizer::GetAstBytesReply { len }, db)?;
+                        handle.receive_newline(db)?;
+                        handle.send_bytes(&ast_bytes, db).with_context(|| {
                             format!(
                                 "sending to eqwalizer: bytes for module {module} (format = {format:?})"
                             )
@@ -509,21 +507,21 @@ fn serve_eqwalizer<R>(
                         log::debug!(
                             "module not found, sending to eqwalizer: empty GetAstBytesReply for module {module}"
                         );
-                        handle.send(&MsgToEqWAlizer::GetAstBytesReply { len: 0 })?;
-                        handle.receive_newline()?;
+                        handle.send(&MsgToEqWAlizer::GetAstBytesReply { len: 0 }, db)?;
+                        handle.receive_newline(db)?;
                     }
                     Err(Error::ParseError) => {
                         log::debug!(
                             "parse error, sending to eqwalizer: CannotCompleteRequest for module {module}"
                         );
-                        handle.send(&MsgToEqWAlizer::CannotCompleteRequest)?;
+                        handle.send(&MsgToEqWAlizer::CannotCompleteRequest, db)?;
                         return Ok(Completion::IpcError(EqwalizerDiagnostics::NoAst { module }));
                     }
                     Err(err) => {
                         log::debug!(
                             "error {err} sending to eqwalizer: CannotCompleteRequest for module {module}"
                         );
-                        handle.send(&MsgToEqWAlizer::CannotCompleteRequest)?;
+                        handle.send(&MsgToEqWAlizer::CannotCompleteRequest, db)?;
                         return Ok(Completion::IpcError(EqwalizerDiagnostics::Error(
                             err.to_string(),
                         )));
@@ -532,41 +530,61 @@ fn serve_eqwalizer<R>(
             }
             MsgFromEqWAlizer::GetTypeDecl { module, id } => {
                 let result = db.type_decl_bytes(project_id, ModuleName::new(&module), id);
-                if let Some(diag) = send_bytes(result, handle, module, |len| {
-                    MsgToEqWAlizer::GetTypeDeclReply { len }
-                })? {
+                if let Some(diag) = send_bytes(
+                    result,
+                    handle,
+                    module,
+                    |len| MsgToEqWAlizer::GetTypeDeclReply { len },
+                    db,
+                )? {
                     return Ok(Completion::IpcError(diag));
                 }
             }
             MsgFromEqWAlizer::GetRecDecl { module, id } => {
                 let result = db.rec_decl_bytes(project_id, ModuleName::new(&module), id);
-                if let Some(diag) = send_bytes(result, handle, module, |len| {
-                    MsgToEqWAlizer::GetRecDeclReply { len }
-                })? {
+                if let Some(diag) = send_bytes(
+                    result,
+                    handle,
+                    module,
+                    |len| MsgToEqWAlizer::GetRecDeclReply { len },
+                    db,
+                )? {
                     return Ok(Completion::IpcError(diag));
                 }
             }
             MsgFromEqWAlizer::GetFunSpec { module, id } => {
                 let result = db.fun_spec_bytes(project_id, ModuleName::new(&module), id);
-                if let Some(diag) = send_bytes(result, handle, module, |len| {
-                    MsgToEqWAlizer::GetFunSpecReply { len }
-                })? {
+                if let Some(diag) = send_bytes(
+                    result,
+                    handle,
+                    module,
+                    |len| MsgToEqWAlizer::GetFunSpecReply { len },
+                    db,
+                )? {
                     return Ok(Completion::IpcError(diag));
                 }
             }
             MsgFromEqWAlizer::GetOverloadedFunSpec { module, id } => {
                 let result = db.overloaded_fun_spec_bytes(project_id, ModuleName::new(&module), id);
-                if let Some(diag) = send_bytes(result, handle, module, |len| {
-                    MsgToEqWAlizer::GetOverloadedFunSpecReply { len }
-                })? {
+                if let Some(diag) = send_bytes(
+                    result,
+                    handle,
+                    module,
+                    |len| MsgToEqWAlizer::GetOverloadedFunSpecReply { len },
+                    db,
+                )? {
                     return Ok(Completion::IpcError(diag));
                 }
             }
             MsgFromEqWAlizer::GetCallbacks { module } => {
                 let result = db.callbacks_bytes(project_id, ModuleName::new(&module));
-                if let Some(diag) = send_bytes(result, handle, module, |len| {
-                    MsgToEqWAlizer::GetCallbacksReply { len }
-                })? {
+                if let Some(diag) = send_bytes(
+                    result,
+                    handle,
+                    module,
+                    |len| MsgToEqWAlizer::GetCallbacksReply { len },
+                    db,
+                )? {
                     return Ok(Completion::IpcError(diag));
                 }
             }
@@ -590,31 +608,32 @@ fn send_bytes(
     handle: &mut IpcHandle,
     module: String,
     reply: fn(u32) -> MsgToEqWAlizer,
+    db: &dyn EqwalizerDiagnosticsDatabase,
 ) -> Result<Option<EqwalizerDiagnostics>> {
     match result {
         Ok(Some(ast_bytes)) => {
             let len = ast_bytes.len().try_into()?;
             let msg = reply(len);
-            handle.send(&msg)?;
-            handle.receive_newline()?;
-            handle.send_bytes(&ast_bytes)?;
+            handle.send(&msg, db)?;
+            handle.receive_newline(db)?;
+            handle.send_bytes(&ast_bytes, db)?;
             Ok(None)
         }
         Ok(None) | Err(Error::ModuleNotFound(_)) => {
             let len = 0;
             let msg = reply(len);
-            handle.send(&msg)?;
-            handle.receive_newline()?;
+            handle.send(&msg, db)?;
+            handle.receive_newline(db)?;
             Ok(None)
         }
         Err(Error::ParseError) => {
             let msg = &MsgToEqWAlizer::CannotCompleteRequest;
-            handle.send(msg)?;
+            handle.send(msg, db)?;
             Ok(Some(EqwalizerDiagnostics::NoAst { module }))
         }
         Err(err) => {
             let msg = &MsgToEqWAlizer::CannotCompleteRequest;
-            handle.send(msg)?;
+            handle.send(msg, db)?;
             Ok(Some(EqwalizerDiagnostics::Error(err.to_string())))
         }
     }

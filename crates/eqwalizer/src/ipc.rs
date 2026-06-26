@@ -11,7 +11,6 @@
 use std::fs;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::io::BufWriter;
 use std::io::ErrorKind;
 use std::io::Write;
 use std::process::Child;
@@ -84,6 +83,7 @@ use win_timeout::TimeoutReader;
 use win_timeout::TimeoutWriter;
 
 use crate::ast::Pos;
+use crate::db::EqwalizerDiagnosticsDatabase;
 
 #[derive(Deserialize, Debug)]
 pub enum EqWAlizerASTFormat {
@@ -173,22 +173,21 @@ pub struct FunCheckResult {
 }
 
 pub struct IpcHandle {
-    writer: BufWriter<TimeoutWriter<ChildStdin>>,
+    writer: TimeoutWriter<ChildStdin>,
     reader: BufReader<TimeoutReader<ChildStdout>>,
     _child_for_drop: JodChild,
 }
 
-const WRITE_TIMEOUT: Duration = Duration::from_mins(4);
-/// How often a blocking receive wakes to check for salsa cancellation
+/// How often a blocking receive or send wakes to check for salsa cancellation
 /// (mirrors `erlang_service::request_reply_handle`).
 const RECV_POLL_TIMEOUT: Duration = Duration::from_millis(100);
-/// Receive ceiling for contexts that never cancel (e.g. CLI), preserving the
-/// historical ~4 min timeout. 4 min / 100 ms = 2400 ticks.
+/// Receive/send ceiling for contexts that never cancel (e.g. CLI), preserving
+/// the historical ~4 min timeout. 4 min / 100 ms = 2400 ticks.
 const MAX_RECV_POLLS: u32 = 2400;
 
-/// Windows caveat: `TimeoutReader` is a no-op pass-through there (see
-/// `win_timeout`), so reads never yield a poll tick — Windows gets no
-/// cancellation relief, unchanged from before this commit.
+/// Windows caveat: `TimeoutReader`/`TimeoutWriter` are no-op pass-throughs
+/// there (see `win_timeout`), so reads and writes never yield a poll tick —
+/// Windows gets no cancellation relief, unchanged from before this commit.
 
 impl IpcHandle {
     fn spawn_cmd(cmd: &mut Command) -> Result<Child> {
@@ -236,7 +235,7 @@ impl IpcHandle {
             .context("failed to get stdout for eqwalizer process")?;
 
         let _child_for_drop = JodChild(child);
-        let writer = BufWriter::new(TimeoutWriter::new(stdin, WRITE_TIMEOUT));
+        let writer = TimeoutWriter::new(stdin, RECV_POLL_TIMEOUT);
         let reader = BufReader::new(TimeoutReader::new(stdout, RECV_POLL_TIMEOUT));
 
         Ok(Self {
@@ -246,51 +245,82 @@ impl IpcHandle {
         })
     }
 
-    /// Receive a message, waking every `RECV_POLL_TIMEOUT` to call `unwind`,
-    /// which panics with salsa `Cancelled` if the query was cancelled (dropping
-    /// this handle, killing the subprocess and releasing the snapshot).
-    pub fn receive(&mut self, unwind: &dyn Fn()) -> Result<MsgFromEqWAlizer> {
-        let buf = self.receive_line(unwind).context("receiving message")?;
+    /// Receive a message, waking every `RECV_POLL_TIMEOUT` to check `db` for
+    /// salsa cancellation, which panics with `Cancelled` if the query was
+    /// cancelled (dropping this handle, killing the subprocess and releasing
+    /// the snapshot).
+    pub fn receive(&mut self, db: &dyn EqwalizerDiagnosticsDatabase) -> Result<MsgFromEqWAlizer> {
+        let buf = self.receive_line(db).context("receiving message")?;
         let deserialized = serde_json::from_str(&buf)
             .with_context(|| format!("parsing for eqwalizer: {buf:?}"))?;
         Ok(deserialized)
     }
 
-    pub fn receive_newline(&mut self) -> Result<()> {
-        // Acks return near-instantly; no cancellation check needed.
-        let _ = self.receive_line(&|| {}).context("receiving newline")?;
+    pub fn receive_newline(&mut self, db: &dyn EqwalizerDiagnosticsDatabase) -> Result<()> {
+        let _ = self.receive_line(db).context("receiving newline")?;
         Ok(())
     }
 
-    pub fn send(&mut self, msg: &MsgToEqWAlizer) -> Result<()> {
-        let msg = serde_json::to_string(msg).expect("failed to serialize msg to eqwalizer");
-        writeln!(self.writer, "{msg}").with_context(|| format!("writing message: {msg:?}"))?;
-        self.writer
-            .flush()
-            .with_context(|| format!("flushing message: {msg:?}"))?;
-        Ok(())
+    pub fn send(
+        &mut self,
+        msg: &MsgToEqWAlizer,
+        db: &dyn EqwalizerDiagnosticsDatabase,
+    ) -> Result<()> {
+        let mut msg = serde_json::to_string(msg).expect("failed to serialize msg to eqwalizer");
+        msg.push('\n');
+        self.write_all_cancellable(msg.as_bytes(), db)
+            .with_context(|| format!("writing message: {msg:?}"))
     }
 
-    pub fn send_bytes(&mut self, msg: &[u8]) -> Result<()> {
-        // Don't exceed pipe buffer size on Mac or Linux
-        // https://unix.stackexchange.com/a/11954/147568
-        let chunk_size = 65_536;
-        for (idx, chunk) in msg.chunks(chunk_size).enumerate() {
-            self.writer
-                .write_all(chunk)
-                .with_context(|| format!("writing bytes chunk {} of size {}", idx, chunk.len()))?;
+    pub fn send_bytes(&mut self, msg: &[u8], db: &dyn EqwalizerDiagnosticsDatabase) -> Result<()> {
+        self.write_all_cancellable(msg, db)
+            .with_context(|| format!("writing bytes of size {}", msg.len()))
+    }
+
+    /// Write all of `bytes`, waking every `RECV_POLL_TIMEOUT` to check `db` for
+    /// salsa cancellation, which panics with `Cancelled` if the query was
+    /// cancelled. `TimeoutWriter` yields a poll tick
+    /// (`ErrorKind::TimedOut`/`WouldBlock`) when no buffer space is available,
+    /// and `write` (unlike `write_all`) reports partial progress so we can
+    /// resume from the right offset after a wake.
+    fn write_all_cancellable(
+        &mut self,
+        mut bytes: &[u8],
+        db: &dyn EqwalizerDiagnosticsDatabase,
+    ) -> Result<()> {
+        let mut polls_remaining = MAX_RECV_POLLS;
+        while !bytes.is_empty() {
+            db.unwind_if_revision_cancelled();
+            match self.writer.write(bytes) {
+                Ok(0) => bail!("eqwalizer stdin closed before all bytes were written"),
+                Ok(n) => {
+                    bytes = &bytes[n..];
+                    polls_remaining = MAX_RECV_POLLS;
+                }
+                Err(err) if err.kind() == ErrorKind::Interrupted => {}
+                // No buffer space yet; wake to re-check cancellation, then retry.
+                Err(err)
+                    if err.kind() == ErrorKind::TimedOut || err.kind() == ErrorKind::WouldBlock =>
+                {
+                    polls_remaining -= 1;
+                    if polls_remaining == 0 {
+                        bail!(
+                            "timed out writing to eqwalizer (after {}s)",
+                            (MAX_RECV_POLLS as u128 * RECV_POLL_TIMEOUT.as_millis()) / 1000
+                        );
+                    }
+                }
+                Err(err) => return Err(err).context("failed write to eqwalizer stdin"),
+            }
         }
-        self.writer
-            .flush()
-            .with_context(|| format!("flushing bytes of size {}", msg.len()))?;
         Ok(())
     }
 
-    fn receive_line(&mut self, unwind: &dyn Fn()) -> Result<String> {
+    fn receive_line(&mut self, db: &dyn EqwalizerDiagnosticsDatabase) -> Result<String> {
         let mut buf = String::new();
         let mut polls_remaining = MAX_RECV_POLLS;
         loop {
-            unwind();
+            db.unwind_if_revision_cancelled();
             match self.reader.read_line(&mut buf) {
                 Ok(0) => bail!("eqwalizer stdout closed before a newline (EOF)"),
                 Ok(_) => return Ok(buf),
