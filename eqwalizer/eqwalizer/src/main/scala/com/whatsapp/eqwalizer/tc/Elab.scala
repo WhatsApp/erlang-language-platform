@@ -760,8 +760,27 @@ final class Elab(pipelineContext: PipelineContext) {
     val NativeRecordSelect(recExpr, name, fieldName) = nrSelect
     name match {
       case NativeRecordName.Anon =>
-        val (_, env1) = elabExpr(recExpr, env)
-        (DynamicType, env1)
+        val (recTy, env1) = elabExpr(recExpr, env)
+        val (concretes, anyDyn) = narrow.asNativeRecordTypes(recTy)
+        if (!subtype.gradualSubType(recTy, AnyNativeRecordType)) {
+          diagnosticsInfo.add(
+            ExpectedSubtype(nrSelect.pos, nrSelect.expr, expected = AnyNativeRecordType, got = recTy)
+          )
+        }
+        if (concretes.isEmpty) {
+          (DynamicType, env1)
+        } else {
+          val resolved = concretes.toList.map(nrt => nrt -> util.getNativeRecord(nrt.id.module, nrt.id.name))
+          val fieldTys: List[Type] = resolved.flatMap {
+            case (_, None)       => List(DynamicType)
+            case (_, Some(decl)) => decl.fMap.get(fieldName).map(_.tp).toList
+          }
+          val declaredSomewhere = resolved.exists { case (_, declOpt) => declOpt.exists(_.fMap.contains(fieldName)) }
+          if (!declaredSomewhere && !anyDyn)
+            diagnosticsInfo.add(UndefinedAnonNativeRecordField(nrSelect.pos, fieldName))
+          val resultTys = fieldTys ++ (if (anyDyn) List(DynamicType) else Nil)
+          (if (resultTys.isEmpty) DynamicType else subtype.join(resultTys.toSet), env1)
+        }
       case NativeRecordName.Qualified(id) =>
         util.getNativeRecord(id.module, id.name) match {
           case None =>
@@ -804,14 +823,58 @@ final class Elab(pipelineContext: PipelineContext) {
     val NativeRecordUpdate(recExpr, name, fields) = rUpdate
     name match {
       case NativeRecordName.Anon =>
-        var envAcc = env
-        val (_, e0) = elabExpr(recExpr, envAcc)
-        envAcc = e0
-        for (f <- fields) {
-          val (_, e1) = elabExpr(f.value, envAcc)
-          envAcc = e1
+        val (recTy, env1) = elabExpr(recExpr, env)
+        val (concretes, anyDyn) = narrow.asNativeRecordTypes(recTy)
+        if (!subtype.gradualSubType(recTy, AnyNativeRecordType)) {
+          diagnosticsInfo.add(
+            ExpectedSubtype(rUpdate.pos, rUpdate.expr, expected = AnyNativeRecordType, got = recTy)
+          )
         }
-        (DynamicType, envAcc)
+        if (concretes.isEmpty) {
+          var envAcc = env1
+          for (f <- fields) {
+            val (_, e1) = elabExpr(f.value, envAcc)
+            envAcc = e1
+          }
+          (DynamicType, envAcc)
+        } else {
+          var envAcc = env1
+          val fieldInferred: List[(String, Type, Expr)] = fields.map { f =>
+            val (ty, e1) = elabExpr(f.value, envAcc)
+            envAcc = e1
+            (f.name, ty, f.value)
+          }
+          val declaredFieldNames: Set[String] =
+            concretes.flatMap(nrt => util.getNativeRecord(nrt.id.module, nrt.id.name).toList.flatMap(_.fMap.keys))
+          if (!anyDyn)
+            for ((fName, _, fExpr) <- fieldInferred if !declaredFieldNames.contains(fName))
+              diagnosticsInfo.add(UndefinedAnonNativeRecordField(fExpr.pos, fName))
+          var resultTys: List[Type] = if (anyDyn) List(DynamicType) else Nil
+          for (nrt <- concretes) {
+            util.getNativeRecord(nrt.id.module, nrt.id.name) match {
+              case None =>
+                resultTys ::= DynamicType
+              case Some(decl) =>
+                var allFieldsPresent = true
+                for ((fName, inferredTy, fExpr) <- fieldInferred) {
+                  decl.fMap.get(fName) match {
+                    case None =>
+                      allFieldsPresent = false
+                    case Some(fieldDecl) =>
+                      val expectedFieldTy = fieldDecl.tp
+                      if (!subtype.subType(inferredTy, expectedFieldTy)) {
+                        diagnosticsInfo.add(
+                          ExpectedSubtype(fExpr.pos, fExpr, expected = expectedFieldTy, got = inferredTy)
+                        )
+                      }
+                  }
+                }
+                if (allFieldsPresent) resultTys ::= nrt
+            }
+          }
+          val res = if (resultTys.isEmpty) DynamicType else subtype.join(resultTys.toSet)
+          (res, envAcc)
+        }
       case NativeRecordName.Qualified(id) =>
         util.getNativeRecord(id.module, id.name) match {
           case None =>

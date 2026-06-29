@@ -13,6 +13,7 @@ import com.whatsapp.eqwalizer.ast.Exprs.NativeRecordName
 import com.whatsapp.eqwalizer.tc.TcDiagnostics.{
   UnboundNativeRecord,
   UnboundRecord,
+  UndefinedAnonNativeRecordField,
   UndefinedNativeRecordField,
   UnhandledOp,
 }
@@ -230,12 +231,47 @@ final class ElabPat(pipelineContext: PipelineContext) {
   private def elabPatNativeRecord(pat: PatNativeRecord, t: Type, env: Env): (Type, Env) = {
     pat.name match {
       case NativeRecordName.Anon =>
-        var envAcc = env
-        for (f <- pat.fields) {
-          val (_, e1) = elabPat(f.pat, DynamicType, envAcc)
-          envAcc = e1
+        val (concretes, anyDyn) = narrow.asNativeRecordTypes(t)
+        if (concretes.isEmpty) {
+          var envAcc = env
+          for (f <- pat.fields) {
+            val (_, e1) = elabPat(f.pat, DynamicType, envAcc)
+            envAcc = e1
+          }
+          (if (anyDyn) DynamicType else NoneType, envAcc)
+        } else {
+          val resolved: Map[String, List[Type]] =
+            pat.fields
+              .map(_.name)
+              .distinct
+              .map { fieldName =>
+                fieldName -> concretes.toList.flatMap { nrt =>
+                  util.getNativeRecord(nrt.id.module, nrt.id.name).flatMap { decl =>
+                    decl.fMap.get(fieldName).map { fieldDecl =>
+                      fieldDecl.tp
+                    }
+                  }
+                }
+              }
+              .toMap
+
+          var envAcc = env
+          for (f <- pat.fields) {
+            val fieldTys = resolved.getOrElse(f.name, Nil)
+            val expected =
+              if (fieldTys.isEmpty && anyDyn) DynamicType
+              else if (fieldTys.isEmpty) {
+                diagnosticsInfo.add(
+                  UndefinedAnonNativeRecordField(f.pat.pos, f.name)
+                )
+                DynamicType
+              } else subtype.join(fieldTys.toSet)
+            val (_, e1) = elabPat(f.pat, expected, envAcc)
+            envAcc = e1
+          }
+          val resultTys: Set[Type] = concretes.toSet[Type] ++ (if (anyDyn) Set(DynamicType) else Set.empty)
+          (subtype.join(resultTys), envAcc)
         }
-        (DynamicType, envAcc)
       case NativeRecordName.Qualified(id) =>
         util.getNativeRecord(id.module, id.name) match {
           case None =>

@@ -177,6 +177,30 @@ class Narrow(pipelineContext: PipelineContext) {
       case _ => Set()
     }
 
+  def asNativeRecordTypes(t: Type): (Set[NativeRecordType], Boolean) = {
+    def loop(t: Type): (Set[NativeRecordType], Boolean) = t match {
+      case DynamicType | AnyType | AnyNativeRecordType =>
+        (Set.empty, true)
+      case BoundedDynamicType(bound) =>
+        val (s, _) = loop(bound)
+        (s, true)
+      case FreeVarType(_) =>
+        (Set.empty, true)
+      case nrt: NativeRecordType =>
+        (Set(nrt), false)
+      case UnionType(ts) =>
+        ts.foldLeft((Set.empty[NativeRecordType], false)) { case ((acc, anyAcc), ty) =>
+          val (s, any) = loop(ty)
+          (acc ++ s, anyAcc || any)
+        }
+      case RemoteType(rid, args) =>
+        loop(util.getTypeDeclBody(rid, args))
+      case _ =>
+        (Set.empty, false)
+    }
+    loop(t)
+  }
+
   def asMapOrIterTypes(t: Type): Set[MapType] =
     t match {
       case DynamicType =>

@@ -63,6 +63,12 @@ object TcDiagnostics {
     def errorName = "undefined_field"
     override def erroneousExpr: Option[Expr] = None
   }
+
+  case class UndefinedAnonNativeRecordField(pos: Pos, fieldName: String) extends TypeError {
+    override val msg: String = s"#_{...}: field $fieldName is not defined on any of the possible native records"
+    def errorName = "undefined_anon_native_record_field"
+    override def erroneousExpr: Option[Expr] = None
+  }
   case class UnboundVar(pos: Pos, n: String) extends TypeError {
     override val msg: String = s"Unbound var: ${n}"
     def errorName = "unbound_var"
