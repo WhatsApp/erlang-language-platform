@@ -95,6 +95,7 @@ use elp_types_db::eqwalizer::ext_types::IntLitExtType;
 use elp_types_db::eqwalizer::ext_types::ListExtType;
 use elp_types_db::eqwalizer::ext_types::LocalExtType;
 use elp_types_db::eqwalizer::ext_types::MapExtType;
+use elp_types_db::eqwalizer::ext_types::NativeRecordExtType;
 use elp_types_db::eqwalizer::ext_types::OptBadExtProp;
 use elp_types_db::eqwalizer::ext_types::OptExtProp;
 use elp_types_db::eqwalizer::ext_types::RecordExtType;
@@ -723,6 +724,25 @@ impl Converter {
             name,
             arity: 0,
         })
+    }
+
+    /// Extracts a native record's remote id from a qualified type term.
+    fn native_record_type_id(&self, term: &eetf::Term) -> Option<RemoteId> {
+        if let Term::Tuple(t) = term
+            && let [Term::Atom(kind), _pos, Term::List(parts)] = &t.elements[..]
+            && kind.name == "tuple"
+            && let [m, n] = &parts.elements[..]
+        {
+            let module = self.convert_atom_lit(m).ok()?;
+            let name = self.convert_atom_lit(n).ok()?;
+            Some(RemoteId {
+                module,
+                name,
+                arity: 0,
+            })
+        } else {
+            None
+        }
     }
 
     fn convert_atom_lit(&self, atom: &eetf::Term) -> Result<StringId, ConversionError> {
@@ -2212,6 +2232,12 @@ impl Converter {
                         }));
                     }
                     if let [record_name, field_tys @ ..] = &decl.elements[..] {
+                        if let Some(id) = self.native_record_type_id(record_name) {
+                            return Ok(ExtType::NativeRecordExtType(NativeRecordExtType {
+                                pos,
+                                id,
+                            }));
+                        }
                         let record_name = self.convert_atom_lit(record_name)?;
                         if field_tys.is_empty() {
                             return Ok(ExtType::RecordExtType(RecordExtType {

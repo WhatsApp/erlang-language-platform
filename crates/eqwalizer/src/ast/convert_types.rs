@@ -40,6 +40,7 @@ use elp_types_db::eqwalizer::types::FunType;
 use elp_types_db::eqwalizer::types::Key;
 use elp_types_db::eqwalizer::types::ListType;
 use elp_types_db::eqwalizer::types::MapType;
+use elp_types_db::eqwalizer::types::NativeRecordType;
 use elp_types_db::eqwalizer::types::Prop;
 use elp_types_db::eqwalizer::types::RecordType;
 use elp_types_db::eqwalizer::types::RefinedRecordType;
@@ -375,6 +376,9 @@ impl TypeConverter {
                 name: ty.name,
                 module: self.module,
             }))),
+            ExtType::NativeRecordExtType(ty) => {
+                Ok(Ok(Type::NativeRecordType(NativeRecordType { id: ty.id })))
+            }
             ExtType::RecordRefinedExtType(ty) => {
                 let rec_type = RecordType {
                     name: ty.name,
@@ -470,6 +474,7 @@ impl TypeConverter {
             ExtType::UnionExtType(ty) => self.collect_all_var_names(ty.tys.as_ref()),
             ExtType::LocalExtType(ty) => self.collect_all_var_names(ty.args.as_ref()),
             ExtType::RemoteExtType(ty) => self.collect_all_var_names(ty.args.as_ref()),
+            ExtType::NativeRecordExtType(_) => IndexSet::new(),
             ExtType::RecordRefinedExtType(ty) => ty
                 .refined_fields
                 .iter()

@@ -285,6 +285,27 @@ impl Expander<'_> {
                     }))
                 }
             }
+            ExtType::NativeRecordExtType(ty) => {
+                let module = ModuleName::new(&ty.id.module);
+                match self
+                    .db
+                    .native_rec_decl(self.project_id, module, ty.id.name)
+                    .ok()
+                    .flatten()
+                {
+                    Some(decl) if decl.exported || ty.id.module == self.module => {
+                        Ok(ExtType::NativeRecordExtType(ty))
+                    }
+                    Some(_) => Err(Invalid::NonExportedId(NonExportedId {
+                        pos: ty.pos,
+                        id: ty.id,
+                    })),
+                    None => Err(Invalid::UnknownId(UnknownId {
+                        pos: ty.pos,
+                        id: ty.id,
+                    })),
+                }
+            }
             ExtType::FunExtType(ty) => Ok(ExtType::FunExtType(FunExtType {
                 pos: ty.pos,
                 arg_tys: self.expand_types(ty.arg_tys)?,
@@ -431,6 +452,7 @@ impl Expander<'_> {
                 id: ty.id,
                 args: self.expand_all_constraints(ty.args, sub, stack)?,
             })),
+            ExtType::NativeRecordExtType(ty) => Ok(ExtType::NativeRecordExtType(ty)),
             ExtType::FunExtType(ty) => Ok(ExtType::FunExtType(FunExtType {
                 pos: ty.pos,
                 arg_tys: self.expand_all_constraints(ty.arg_tys, sub, stack)?,

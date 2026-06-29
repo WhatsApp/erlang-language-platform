@@ -34,6 +34,7 @@ pub enum ExtType {
     VarExtType(VarExtType),
     RecordExtType(RecordExtType),
     RecordRefinedExtType(RecordRefinedExtType),
+    NativeRecordExtType(NativeRecordExtType),
     MapExtType(MapExtType),
     AnyMapExtType(AnyMapExtType),
 }
@@ -100,6 +101,7 @@ impl ExtType {
             ExtType::AtomLitExtType(_)
             | ExtType::VarExtType(_)
             | ExtType::RecordExtType(_)
+            | ExtType::NativeRecordExtType(_)
             | ExtType::AnyMapExtType(_)
             | ExtType::LocalExtType(_)
             | ExtType::BuiltinExtType(_)
@@ -143,6 +145,7 @@ impl ExtType {
             ExtType::VarExtType(ty) => &ty.pos,
             ExtType::RecordExtType(ty) => &ty.pos,
             ExtType::RecordRefinedExtType(ty) => &ty.pos,
+            ExtType::NativeRecordExtType(ty) => &ty.pos,
             ExtType::MapExtType(ty) => &ty.pos,
             ExtType::AnyMapExtType(ty) => &ty.pos,
         }
@@ -255,6 +258,13 @@ pub struct VarExtType {
 pub struct RecordExtType {
     pub pos: eqwalizer::Pos,
     pub name: StringId,
+}
+
+/// Native record reference as an external type.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct NativeRecordExtType {
+    pub pos: eqwalizer::Pos,
+    pub id: eqwalizer::RemoteId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
