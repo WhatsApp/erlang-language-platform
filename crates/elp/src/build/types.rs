@@ -124,12 +124,8 @@ impl LoadResult {
             return false;
         }
         let db = self.analysis_host.raw_database_mut();
-        apply_vfs_text_changes(
-            db,
-            &self.vfs,
-            changed_files.values(),
-            &mut self.line_ending_map,
-        );
+        let line_ending_updates = apply_vfs_text_changes(db, &self.vfs, changed_files.values());
+        self.line_ending_map.extend(line_ending_updates);
         if changed_files
             .into_values()
             .any(|f| f.is_created_or_deleted())

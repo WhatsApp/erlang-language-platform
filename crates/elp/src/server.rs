@@ -1061,10 +1061,17 @@ impl Server {
         // sure all calculations see a consistent view of the
         // database.
 
-        // Apply text changes (shared with watchman and CLI)
-        let mut lem = self.line_ending_map.write();
-        crate::reload::apply_vfs_text_changes(raw_database, vfs, changed_files.values(), &mut lem);
-        drop(lem);
+        // Apply text changes (shared with watchman and CLI).
+        //
+        // The first `set_file_text` triggers salsa's cancellation barrier, which blocks
+        // until every outstanding snapshot is dropped. We must NOT hold the
+        // `line_ending_map` write lock across that barrier: a request handler
+        // holding a snapshot can be parked on `line_ending_map.read()` (via
+        // `to_proto::text_document_edit`), which would deadlock. So merge the
+        // line-ending updates under a brief lock taken after the barrier.
+        let line_ending_updates =
+            crate::reload::apply_vfs_text_changes(raw_database, vfs, changed_files.values());
+        self.line_ending_map.write().extend(line_ending_updates);
 
         // Server-specific per-file processing
         let mut highest_file_id: u32 = 0;

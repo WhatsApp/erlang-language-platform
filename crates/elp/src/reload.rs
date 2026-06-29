@@ -24,7 +24,6 @@ use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_project_model::ProjectAppData;
 use elp_project_model::ProjectBuildData;
 use elp_project_model::buck::BuckProject;
-use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use vfs::AbsPathBuf;
 use vfs::ChangedFile;
@@ -213,24 +212,37 @@ fn loader_config(project_apps: &ProjectApps<'_>) -> Vec<loader::Entry> {
     load
 }
 
+/// Apply text changes to the salsa database and return the per-file line-ending
+/// updates for the caller to merge into its line-ending map.
+///
+/// NOTE: this deliberately does NOT take the line-ending map (which in the LSP
+/// server lives behind a `RwLock`). The first `set_file_text` here triggers
+/// salsa's cancellation barrier, which blocks until every outstanding snapshot
+/// is dropped. A request handler holding a snapshot can be parked on
+/// `line_ending_map.read()` (via `to_proto::text_document_edit`), so holding the
+/// map's write lock across this call deadlocks: the write waits for the snapshot
+/// to drop while the handler waits for the lock. By returning the updates, the
+/// caller can merge them under a brief lock taken *after* the barrier. Keep it
+/// that way — do not pass the locked map in here.
 pub fn apply_vfs_text_changes<'a>(
     db: &mut RootDatabase,
     vfs: &Vfs,
     changed_files: impl IntoIterator<Item = &'a ChangedFile>,
-    line_ending_map: &mut FxHashMap<FileId, LineEndings>,
-) {
+) -> Vec<(FileId, LineEndings)> {
+    let mut line_ending_updates = Vec::new();
     for file in changed_files {
         if file.change != vfs::Change::Delete && vfs.exists(file.file_id) {
             if let vfs::Change::Create(v, _) | vfs::Change::Modify(v, _) = &file.change {
                 let document = Document::from_bytes(v);
                 let (text, line_ending) = document.vfs_to_salsa();
                 db.set_file_text(file.file_id, Arc::from(text));
-                line_ending_map.insert(file.file_id, line_ending);
+                line_ending_updates.push((file.file_id, line_ending));
             }
         } else {
             db.set_file_text(file.file_id, Arc::from(""));
         }
     }
+    line_ending_updates
 }
 
 pub fn apply_source_roots(db: &mut RootDatabase, vfs: &Vfs, file_set_config: &FileSetConfig) {

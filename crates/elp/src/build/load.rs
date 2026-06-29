@@ -229,7 +229,7 @@ fn load_database(
     });
 
     let changed_files = vfs.take_changes();
-    apply_vfs_text_changes(db, vfs, changed_files.values(), line_ending_map);
+    line_ending_map.extend(apply_vfs_text_changes(db, vfs, changed_files.values()));
 
     pb.finish();
 
