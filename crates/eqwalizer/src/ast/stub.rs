@@ -15,6 +15,7 @@ use std::sync::Arc;
 use elp_types_db::StringId;
 use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::FunSpec;
+use elp_types_db::eqwalizer::form::NativeRecDecl;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
@@ -39,6 +40,12 @@ pub struct ModuleStub {
     pub overloaded_specs: BTreeMap<Id, Arc<OverloadedFunSpec>>,
     #[serde(skip_serializing)]
     pub records: BTreeMap<StringId, Arc<RecDecl>>,
+    /// Native record declarations defined in this module, keyed by name.
+    #[serde(skip_serializing)]
+    pub native_records: BTreeMap<StringId, Arc<NativeRecDecl>>,
+    /// Maps the short name to the defining module.
+    #[serde(skip_serializing)]
+    pub native_record_imports: BTreeMap<StringId, StringId>,
     #[serde(skip_serializing)]
     pub callbacks: Arc<Vec<Callback>>,
     #[serde(skip_serializing)]
@@ -88,6 +95,20 @@ impl VStub {
 
     pub fn records(&self) -> impl Iterator<Item = &RecDecl> {
         self.stub.records.values().map(|r| r.as_ref())
+    }
+
+    /// Looks up a native record declaration by name.
+    pub fn get_native_record(&self, name: StringId) -> Option<&NativeRecDecl> {
+        self.stub.native_records.get(&name).map(|r| r.as_ref())
+    }
+
+    pub fn native_records(&self) -> impl Iterator<Item = &NativeRecDecl> {
+        self.stub.native_records.values().map(|r| r.as_ref())
+    }
+
+    /// Resolves an imported native record name to its defining module.
+    pub fn resolve_native_record_import(&self, name: StringId) -> Option<StringId> {
+        self.stub.native_record_imports.get(&name).copied()
     }
 
     pub fn specs(&self) -> impl Iterator<Item = &FunSpec> {

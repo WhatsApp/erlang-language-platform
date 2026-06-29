@@ -18,10 +18,14 @@ use elp_types_db::eqwalizer::ext_types::FunExtType;
 use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::ExternalCallback;
 use elp_types_db::eqwalizer::form::ExternalFunSpec;
+use elp_types_db::eqwalizer::form::ExternalNativeRecDecl;
+use elp_types_db::eqwalizer::form::ExternalNativeRecField;
 use elp_types_db::eqwalizer::form::ExternalRecDecl;
 use elp_types_db::eqwalizer::form::ExternalRecField;
 use elp_types_db::eqwalizer::form::ExternalTypeDecl;
 use elp_types_db::eqwalizer::form::FunSpec;
+use elp_types_db::eqwalizer::form::NativeRecDecl;
+use elp_types_db::eqwalizer::form::NativeRecField;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::RecField;
@@ -155,6 +159,29 @@ impl TypeConverter {
         }
     }
 
+    /// Converts an external native record declaration to its typed form.
+    pub fn convert_native_rec_decl(
+        &self,
+        decl: ExternalNativeRecDecl,
+        exported: bool,
+    ) -> Result<Result<NativeRecDecl, Invalid>, TypeConversionError> {
+        let new_context = self.enter_rec_decl();
+        let result = decl
+            .fields
+            .into_iter()
+            .map(|field| new_context.convert_native_rec_field(field))
+            .collect::<Result<Result<Vec<_>, _>, _>>()?;
+        match result {
+            Ok(fields) => Ok(Ok(NativeRecDecl {
+                name: decl.name,
+                fields,
+                exported,
+                pos: decl.pos,
+            })),
+            Err(e) => Ok(Err(e)),
+        }
+    }
+
     fn is_refinable(&self, field: &ExternalRecField) -> bool {
         if let Some(ExtType::RemoteExtType(rt)) = &field.tp {
             rt.id.module == "eqwalizer" && rt.id.name == "refinable" && rt.id.arity == 1
@@ -183,6 +210,28 @@ impl TypeConverter {
             tp,
             default_value: field.default_value,
             refinable,
+        }))
+    }
+
+    /// Converts a single external native record field to its typed form.
+    fn convert_native_rec_field(
+        &self,
+        field: ExternalNativeRecField,
+    ) -> Result<Result<NativeRecField, Invalid>, TypeConversionError> {
+        let tp = {
+            if let Some(typ) = field.tp {
+                match self.convert_type(&FxHashMap::default(), typ)? {
+                    Ok(ty) => ty,
+                    Err(invalid) => return Ok(Err(invalid)),
+                }
+            } else {
+                Type::DynamicType
+            }
+        };
+        Ok(Ok(NativeRecField {
+            name: field.name,
+            tp,
+            default_value: field.default_value,
         }))
     }
 

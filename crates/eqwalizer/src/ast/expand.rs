@@ -42,6 +42,8 @@ use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::ExternalCallback;
 use elp_types_db::eqwalizer::form::ExternalForm;
 use elp_types_db::eqwalizer::form::ExternalFunSpec;
+use elp_types_db::eqwalizer::form::ExternalNativeRecDecl;
+use elp_types_db::eqwalizer::form::ExternalNativeRecField;
 use elp_types_db::eqwalizer::form::ExternalRecDecl;
 use elp_types_db::eqwalizer::form::ExternalRecField;
 use elp_types_db::eqwalizer::form::ExternalTypeDecl;
@@ -217,6 +219,19 @@ impl Expander<'_> {
             .map(|field| self.expand_rec_field(field))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(ExternalRecDecl { fields, ..decl })
+    }
+
+    /// Expands the field types of a native record declaration.
+    fn expand_native_rec_decl(
+        &mut self,
+        decl: ExternalNativeRecDecl,
+    ) -> Result<ExternalNativeRecDecl, Invalid> {
+        let fields = decl
+            .fields
+            .into_iter()
+            .map(|field| self.expand_native_rec_field(field))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(ExternalNativeRecDecl { fields, ..decl })
     }
 
     fn expand_types(&mut self, ts: Vec<ExtType>) -> Result<Vec<ExtType>, Invalid> {
@@ -546,6 +561,20 @@ impl Expander<'_> {
         };
         Ok(ExternalRecField { tp, ..field })
     }
+
+    fn expand_native_rec_field(
+        &mut self,
+        field: ExternalNativeRecField,
+    ) -> Result<ExternalNativeRecField, Invalid> {
+        let tp = {
+            if let Some(tp) = field.tp {
+                Some(self.expand_type(tp)?)
+            } else {
+                None
+            }
+        };
+        Ok(ExternalNativeRecField { tp, ..field })
+    }
 }
 
 pub struct StubExpander<'d> {
@@ -629,6 +658,35 @@ impl StubExpander<'_> {
         Ok(())
     }
 
+    /// Expands, converts, and registers a native record declaration in the stub.
+    fn add_native_record_decl(
+        &mut self,
+        t: ExternalNativeRecDecl,
+        exported: bool,
+    ) -> Result<(), TypeConversionError> {
+        match self.expander.expand_native_rec_decl(t) {
+            Ok(decl) => match self
+                .type_converter
+                .convert_native_rec_decl(decl, exported)?
+            {
+                Ok(decl) => {
+                    self.stub.native_records.insert(decl.name, Arc::new(decl));
+                }
+                Err(invalid) => {
+                    if self.current_file == self.module_file {
+                        self.stub.invalids.push(invalid);
+                    }
+                }
+            },
+            Err(invalid) => {
+                if self.current_file == self.module_file {
+                    self.stub.invalids.push(invalid);
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn add_spec(&mut self, t: ExternalFunSpec) -> Result<(), TypeConversionError> {
         match self.expander.expand_fun_spec(t) {
             Ok(decl) => {
@@ -678,6 +736,20 @@ impl StubExpander<'_> {
     pub fn expand(&mut self, forms: &[ExternalForm]) -> Result<(), TypeConversionError> {
         let mut callbacks: Vec<Callback> = vec![];
         let mut optional_callbacks: BTreeSet<Id> = BTreeSet::default();
+        let mut exported_native_records: BTreeSet<StringId> = BTreeSet::default();
+        for form in forms {
+            match form {
+                ExternalForm::ExportNativeRecord(e) => {
+                    exported_native_records.extend(e.names.iter().copied());
+                }
+                ExternalForm::ImportNativeRecord(i) => {
+                    self.stub
+                        .native_record_imports
+                        .extend(i.names.iter().map(|n| (*n, i.module)));
+                }
+                _ => (),
+            }
+        }
         for form in forms {
             match form {
                 ExternalForm::File(f) => {
@@ -721,12 +793,11 @@ impl StubExpander<'_> {
                 | ExternalForm::EqwalizerUnlimitedRefinement(_)
                 | ExternalForm::EqwalizerNowarnFunction(_)
                 | ExternalForm::TypingAttribute(_) => (),
-                // TODO(native records): EEP 79 / OTP 29. Forms are accepted but
-                // not yet processed into the stub. Type checking native records
-                // will be added in a follow-up diff.
-                ExternalForm::ExternalNativeRecDecl(_)
-                | ExternalForm::ExportNativeRecord(_)
-                | ExternalForm::ImportNativeRecord(_) => (),
+                ExternalForm::ExternalNativeRecDecl(d) => {
+                    let exported = exported_native_records.contains(&d.name);
+                    self.add_native_record_decl(d.clone(), exported)?;
+                }
+                ExternalForm::ExportNativeRecord(_) | ExternalForm::ImportNativeRecord(_) => (),
             }
         }
         self.stub.callbacks = Arc::new(callbacks);
