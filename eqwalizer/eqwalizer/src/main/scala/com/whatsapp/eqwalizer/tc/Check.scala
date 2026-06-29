@@ -451,10 +451,20 @@ final class Check(pipelineContext: PipelineContext) {
           if (!subtype.subType(indT, resTy))
             diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = indT))
           env
-        case _: NativeRecordCreate | _: NativeRecordUpdate | _: NativeRecordSelect =>
+        case _: NativeRecordUpdate =>
           if (!subtype.subType(DynamicType, resTy))
             diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = DynamicType))
           env
+        case nrCreate: NativeRecordCreate =>
+          val (got, env1) = elab.elabNativeRecordCreate(nrCreate, env)
+          if (!subtype.subType(got, resTy))
+            diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = got))
+          env1
+        case nrSelect: NativeRecordSelect =>
+          val (got, env1) = elab.elabNativeRecordSelect(nrSelect, env)
+          if (!subtype.subType(got, resTy))
+            diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = got))
+          env1
         case MaybeMatch(mPat, mExp) =>
           val (mType, env1) = elab.elabExpr(mExp, env)
           val (t2, env2) = elabPat.elabPat(mPat, mType, env1)

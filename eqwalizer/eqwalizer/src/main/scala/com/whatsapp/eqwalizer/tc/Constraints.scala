@@ -134,6 +134,8 @@ class Constraints(pipelineContext: PipelineContext) {
             }
           else
             None
+        case (NativeRecordType(id1), NativeRecordType(id2)) if id1 == id2 =>
+          constrainSeq(ctx, Nil, seen)
         case (TupleType(leftTys), TupleType(rightTys)) if leftTys.size == rightTys.size =>
           constrainSeq(ctx, leftTys.zip(rightTys), seen)
         case (ListType(leftElemTy), ListType(rightElemTy)) =>

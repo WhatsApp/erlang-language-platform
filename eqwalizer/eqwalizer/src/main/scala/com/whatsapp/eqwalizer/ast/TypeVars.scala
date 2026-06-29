@@ -22,6 +22,7 @@ object TypeVars {
         shift = shift + ft.forall
         (newVars, res)
       }
+
   }
 
   enum ElimMode {

@@ -14,6 +14,7 @@ import com.whatsapp.eqwalizer.ast.{Id, RemoteId, Subst}
 class Util(pipelineContext: PipelineContext) {
   private val module = pipelineContext.module
   private var recordCache: Map[(String, String), Option[RecDecl]] = Map.empty
+  private var nativeRecordCache: Map[(String, String), Option[NativeRecDecl]] = Map.empty
 
   def globalFunId(module: String, id: Id): RemoteId = {
     val imports = Db.getImports(module).get
@@ -31,6 +32,16 @@ class Util(pipelineContext: PipelineContext) {
       val recDecl = Db.getRecord(module, name)
       recordCache += ((module, name) -> recDecl)
       recDecl
+    }
+  }
+
+  def getNativeRecord(module: String, name: String): Option[NativeRecDecl] = {
+    if (nativeRecordCache.contains((module, name))) {
+      nativeRecordCache((module, name))
+    } else {
+      val decl = Db.getNativeRecord(module, name)
+      nativeRecordCache += ((module, name) -> decl)
+      decl
     }
   }
 

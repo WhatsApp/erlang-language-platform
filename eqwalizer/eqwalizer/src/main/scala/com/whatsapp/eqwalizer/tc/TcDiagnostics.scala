@@ -73,6 +73,23 @@ object TcDiagnostics {
     def errorName = "unbound_record"
     override def erroneousExpr: Option[Expr] = None
   }
+  case class UnboundNativeRecord(pos: Pos, module: String, name: String) extends TypeError {
+    override val msg: String = s"Unbound native record: #$module:$name{}"
+    def errorName = "unbound_native_record"
+    override def erroneousExpr: Option[Expr] = None
+  }
+  case class UndefinedNativeRecordField(pos: Pos, module: String, name: String, fieldName: String) extends TypeError {
+    override val msg: String = s"#$module:$name{}: field $fieldName is not defined"
+    def errorName = "undefined_native_record_field"
+    override def erroneousExpr: Option[Expr] = None
+  }
+
+  case class MissingRequiredNativeRecordField(pos: Pos, module: String, name: String, fieldName: String)
+      extends TypeError {
+    override val msg: String = s"#$module:$name{}: required field $fieldName has no value and no default"
+    def errorName = "missing_required_native_record_field"
+    override def erroneousExpr: Option[Expr] = None
+  }
   case class NonexistentBehaviour(pos: Pos, name: String) extends TypeError {
     override val msg: String = s"Behaviour does not exist: $name"
     def errorName = "behaviour_does_not_exist"

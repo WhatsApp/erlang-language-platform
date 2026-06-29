@@ -7,6 +7,7 @@
 package com.whatsapp.eqwalizer.tc
 
 import com.whatsapp.eqwalizer.ast.Exprs.*
+import com.whatsapp.eqwalizer.ast.Forms.{NativeRecDecl, NativeRecField}
 import com.whatsapp.eqwalizer.ast.Guards.Guard
 import com.whatsapp.eqwalizer.ast.Pats.{PatMatch, PatVar}
 import com.whatsapp.eqwalizer.ast.Types.*
@@ -550,8 +551,12 @@ final class Elab(pipelineContext: PipelineContext) {
         }
       case RecordIndex(_, _) =>
         (IntegerType, env)
-      case _: NativeRecordCreate | _: NativeRecordUpdate | _: NativeRecordSelect =>
+      case _: NativeRecordUpdate =>
         (DynamicType, env)
+      case rCreate: NativeRecordCreate =>
+        elabNativeRecordCreate(rCreate, env)
+      case nrSelect: NativeRecordSelect =>
+        elabNativeRecordSelect(nrSelect, env)
       case MapCreate(kvs) =>
         var envAcc = env
         val (props, kts) = kvs.partitionMap { case (kExpr, vExpr) =>
@@ -718,6 +723,81 @@ final class Elab(pipelineContext: PipelineContext) {
     }
     if (refinedFields.isEmpty) (recType, envAcc)
     else (RefinedRecordType(recType, refinedFields), envAcc)
+  }
+
+  def elabNativeRecordCreate(rCreate: NativeRecordCreate, env: Env): (Type, Env) = {
+    val NativeRecordCreate(id, fields) = rCreate
+    util.getNativeRecord(id.module, id.name) match {
+      case None =>
+        diagnosticsInfo.add(UnboundNativeRecord(rCreate.pos, id.module, id.name))
+        var envAcc = env
+        for (f <- fields) {
+          val (_, e1) = elabExpr(f.value, envAcc)
+          envAcc = e1
+        }
+        (DynamicType, envAcc)
+      case Some(decl) =>
+        val providedNames = fields.map(_.name).toSet
+        var envAcc = env
+        for (f <- fields) {
+          decl.fMap.get(f.name) match {
+            case None =>
+              diagnosticsInfo.add(UndefinedNativeRecordField(f.value.pos, id.module, id.name, f.name))
+              val (_, e1) = elabExpr(f.value, envAcc)
+              envAcc = e1
+            case Some(fieldDecl) =>
+              envAcc = check.checkExpr(f.value, fieldDecl.tp, envAcc)
+          }
+        }
+        for (field <- decl.fields if !providedNames.contains(field.name) && field.defaultValue.isEmpty) {
+          diagnosticsInfo.add(MissingRequiredNativeRecordField(rCreate.pos, id.module, id.name, field.name))
+        }
+        (NativeRecordType(id), envAcc)
+    }
+  }
+
+  def elabNativeRecordSelect(nrSelect: NativeRecordSelect, env: Env): (Type, Env) = {
+    val NativeRecordSelect(recExpr, name, fieldName) = nrSelect
+    name match {
+      case NativeRecordName.Anon =>
+        val (_, env1) = elabExpr(recExpr, env)
+        (DynamicType, env1)
+      case NativeRecordName.Qualified(id) =>
+        util.getNativeRecord(id.module, id.name) match {
+          case None =>
+            diagnosticsInfo.add(UnboundNativeRecord(nrSelect.pos, id.module, id.name))
+            val (_, env1) = elabExpr(recExpr, env)
+            (DynamicType, env1)
+          case Some(decl) =>
+            val (recTy, env1) = elabExpr(recExpr, env)
+            decl.fMap.get(fieldName) match {
+              case None =>
+                diagnosticsInfo.add(
+                  UndefinedNativeRecordField(nrSelect.pos, id.module, id.name, fieldName)
+                )
+                (DynamicType, env1)
+              case Some(fieldDecl) =>
+                nativeRecordFieldType(fieldDecl, recTy, nrSelect, env1)
+            }
+        }
+    }
+  }
+
+  private def nativeRecordFieldType(
+      fieldDecl: NativeRecField,
+      recTy: Type,
+      nrSelect: NativeRecordSelect,
+      env: Env,
+  ): (Type, Env) = {
+    val expected = nrSelect.name match {
+      case NativeRecordName.Qualified(id) => NativeRecordType(id)
+      case NativeRecordName.Anon          => return (DynamicType, env)
+    }
+    if (!subtype.subType(recTy, expected))
+      diagnosticsInfo.add(
+        ExpectedSubtype(nrSelect.pos, nrSelect.expr, expected = expected, got = recTy)
+      )
+    (fieldDecl.tp, env)
   }
 
   def elabQualifiers(qualifiers: List[Qualifier], env: Env): Env = {
