@@ -191,9 +191,9 @@ const RECV_POLL_TIMEOUT: Duration = Duration::from_millis(100);
 /// the historical ~4 min timeout. 4 min / 100 ms = 2400 ticks.
 const MAX_RECV_POLLS: u32 = 2400;
 
-/// Windows caveat: `TimeoutReader`/`TimeoutWriter` are no-op pass-throughs
-/// there (see `win_timeout`), so reads and writes never yield a poll tick —
-/// Windows gets no cancellation relief, unchanged from before this commit.
+// Windows caveat: `TimeoutReader`/`TimeoutWriter` are no-op pass-throughs
+// there (see `win_timeout`), so reads and writes never yield a poll tick —
+// Windows gets no cancellation relief, unchanged from before this commit.
 
 impl IpcHandle {
     fn spawn_cmd(cmd: &mut Command) -> Result<Child> {
