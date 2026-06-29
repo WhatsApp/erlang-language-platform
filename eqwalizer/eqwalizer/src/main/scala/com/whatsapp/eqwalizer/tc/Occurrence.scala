@@ -8,9 +8,10 @@ package com.whatsapp.eqwalizer.tc
 
 import com.whatsapp.eqwalizer.ast.Guards._
 import com.whatsapp.eqwalizer.ast.Exprs._
-import com.whatsapp.eqwalizer.ast.{Id, Types}
+import com.whatsapp.eqwalizer.ast.{Id, RemoteId, Types}
 import com.whatsapp.eqwalizer.ast.Pats._
 import com.whatsapp.eqwalizer.ast.Types._
+import com.whatsapp.eqwalizer.ast.stub.Db
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
@@ -110,7 +111,7 @@ object Occurrence {
     )
 
   private enum ValueKind {
-    case Atom, Binary, Fun, List, Map, Integer, Float, Pid, Port, Reference, Tuple
+    case Atom, Binary, Fun, List, Map, Integer, Float, Pid, Port, Reference, Tuple, NativeRecord
   }
 
   private def kind(t: Type): Option[ValueKind] = t match {
@@ -136,6 +137,8 @@ object Occurrence {
       Some(ValueKind.Reference)
     case AnyTupleType | TupleType(_) | RecordType(_) | RefinedRecordType(_, _) =>
       Some(ValueKind.Tuple)
+    case NativeRecordType(_) | AnyNativeRecordType =>
+      Some(ValueKind.NativeRecord)
     case _ =>
       None
   }
@@ -469,7 +472,17 @@ final class Occurrence(pipelineContext: PipelineContext) {
         testObj(arg, aMap)
           .map(obj => (Pos(obj, tPos), Neg(obj, tNeg)))
           .getOrElse(Unknown, Unknown)
-      case TestCall(Id("is_record", 2 | 3), arg :: TestAtom(recName) :: _) =>
+      case TestCall(Id("is_record", 3), List(arg, TestAtom(modName), TestAtom(recName))) =>
+        val tp = nativeRecordTypeFor(modName, recName)
+        testObj(arg, aMap)
+          .map(obj => (Pos(obj, tp), Neg(obj, tp)))
+          .getOrElse(Unknown, Unknown)
+      case TestCall(Id("is_record", 2), List(arg, TestAtom(recName))) =>
+        val tp = resolveIsRecord2Name(recName)
+        testObj(arg, aMap)
+          .map(obj => (Pos(obj, tp), Neg(obj, tp)))
+          .getOrElse(Unknown, Unknown)
+      case TestCall(Id("is_record", 3), arg :: TestAtom(recName) :: _) =>
         val tp = RecordType(recName)(module)
         testObj(arg, aMap)
           .map(obj => (Pos(obj, tp), Neg(obj, tp)))
@@ -685,6 +698,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
           if (allFalse) Some(false) else None
         }
 
+      case (NativeRecordType(id1), NativeRecordType(id2)) =>
+        Some(id1 == id2)
       case (AtomLitType(l1), AtomLitType(l2)) =>
         Some(l1 == l2)
 
@@ -1114,4 +1129,16 @@ final class Occurrence(pipelineContext: PipelineContext) {
       case field :: path =>
         FieldObj(field, mkObj(v, path))
     }
+
+  private def nativeRecordTypeFor(modName: String, recName: String): Type =
+    NativeRecordType(RemoteId(modName, recName, 0))
+
+  private def resolveIsRecord2Name(recName: String): Type = {
+    val localNative = Db.getNativeRecord(module, recName).map(_ => module)
+    val importedNative = Db.getNativeRecordImports(module).flatMap(_.get(recName))
+    localNative.orElse(importedNative) match {
+      case Some(definingModule) => nativeRecordTypeFor(definingModule, recName)
+      case None                 => RecordType(recName)(module)
+    }
+  }
 }

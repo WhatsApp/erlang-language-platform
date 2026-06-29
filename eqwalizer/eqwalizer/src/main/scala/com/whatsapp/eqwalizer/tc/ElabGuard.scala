@@ -7,8 +7,9 @@
 package com.whatsapp.eqwalizer.tc
 
 import com.whatsapp.eqwalizer.ast.Guards._
-import com.whatsapp.eqwalizer.ast.Id
+import com.whatsapp.eqwalizer.ast.{Id, RemoteId}
 import com.whatsapp.eqwalizer.ast.Types._
+import com.whatsapp.eqwalizer.ast.stub.Db
 import com.whatsapp.eqwalizer.tc.TcDiagnostics.{UnboundRecord, UndefinedField, UnhandledOp}
 
 final class ElabGuard(pipelineContext: PipelineContext) {
@@ -35,6 +36,7 @@ final class ElabGuard(pipelineContext: PipelineContext) {
     case "is_reference" => ReferenceType
     case "is_map"       => MapType(Map(), AnyType, AnyType)
     case "is_tuple"     => AnyTupleType
+    case "is_record"    => AnyNativeRecordType
   }
 
   private val elabPredicateType21: PartialFunction[(String, Test), Type] = {
@@ -46,7 +48,14 @@ final class ElabGuard(pipelineContext: PipelineContext) {
 
   private val elabPredicateType22: PartialFunction[(String, Test), Type] = {
     case ("is_record", TestAtom(recName)) =>
-      RecordType(recName)(module)
+      val localNative = Db.getNativeRecord(module, recName).map(_ => module)
+      val importedNative = Db.getNativeRecordImports(module).flatMap(_.get(recName))
+      localNative.orElse(importedNative) match {
+        case Some(definingModule) =>
+          NativeRecordType(RemoteId(definingModule, recName, 0))
+        case None =>
+          RecordType(recName)(module)
+      }
     case ("is_function", TestNumber(Some(arity))) =>
       FunType(0, List.fill(arity.intValue)(AnyType), AnyType)
     case ("is_function", _) =>
@@ -86,6 +95,11 @@ final class ElabGuard(pipelineContext: PipelineContext) {
       case TestCall(Id(pred, 2), List(arg1, arg2))
           if upper == trueType && elabPredicateType21.isDefinedAt((pred, arg1)) =>
         elabTestT(arg2, elabPredicateType21(pred, arg1), env)
+      case TestCall(Id("is_record", 3), List(arg1, TestAtom(modName), TestAtom(recName))) if upper == trueType =>
+        val tp = NativeRecordType(RemoteId(modName, recName, 0))
+        elabTestT(arg1, tp, env)
+      case TestCall(Id("is_record", 3), List(arg1, TestAtom(recName), _)) if upper == trueType =>
+        elabTestT(arg1, RecordType(recName)(module), env)
       case TestCall(Id(pred, 3), List(arg1, arg2, _))
           if upper == trueType && elabPredicateType22.isDefinedAt((pred, arg2)) =>
         elabTestT(arg1, elabPredicateType22(pred, arg2), env)

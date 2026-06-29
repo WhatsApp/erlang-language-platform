@@ -55,6 +55,9 @@ object Db {
   def getImports(module: String): Option[Map[Id, String]] =
     getModuleStub(module).map(_.imports)
 
+  def getNativeRecordImports(module: String): Option[Map[String, String]] =
+    getModuleStub(module).map(_.nativeRecordImports)
+
   def getType(module: String, id: Id): Option[TypeDecl] =
     ELPProxy.typeDecl(module, id).map(_._1)
 

@@ -16,6 +16,7 @@ private case class ModuleStub(
     module: String,
     exports: Set[Id],
     imports: Map[Id, String],
+    nativeRecordImports: Map[String, String] = Map.empty,
     invalids: List[Invalid],
 )
 
