@@ -9,7 +9,13 @@ package com.whatsapp.eqwalizer.tc
 import com.whatsapp.eqwalizer.ast.Specifier
 import com.whatsapp.eqwalizer.ast.Pats._
 import com.whatsapp.eqwalizer.ast.Types._
-import com.whatsapp.eqwalizer.tc.TcDiagnostics.{UnboundRecord, UnhandledOp}
+import com.whatsapp.eqwalizer.ast.Exprs.NativeRecordName
+import com.whatsapp.eqwalizer.tc.TcDiagnostics.{
+  UnboundNativeRecord,
+  UnboundRecord,
+  UndefinedNativeRecordField,
+  UnhandledOp,
+}
 
 final class ElabPat(pipelineContext: PipelineContext) {
   private lazy val module = pipelineContext.module
@@ -110,8 +116,8 @@ final class ElabPat(pipelineContext: PipelineContext) {
       case PatRecordIndex(_, _) =>
         val patType = narrow.meet(t, IntegerType)
         (patType, env)
-      case _: PatNativeRecord =>
-        (DynamicType, env)
+      case p: PatNativeRecord =>
+        elabPatNativeRecord(p, t, env)
       case PatRecord(recName, namedFields, genFieldOpt) =>
         val recType = narrow.meet(t, RecordType(recName)(module))
         val recDecl =
@@ -218,6 +224,43 @@ final class ElabPat(pipelineContext: PipelineContext) {
       case ">" | "<" | "/=" | ">=" | "=<" | "=/=" | "=:=" | "==" =>
         (booleanType, env)
       case _ => throw UnhandledOp(binOp.pos, op)
+    }
+  }
+
+  private def elabPatNativeRecord(pat: PatNativeRecord, t: Type, env: Env): (Type, Env) = {
+    pat.name match {
+      case NativeRecordName.Anon =>
+        var envAcc = env
+        for (f <- pat.fields) {
+          val (_, e1) = elabPat(f.pat, DynamicType, envAcc)
+          envAcc = e1
+        }
+        (DynamicType, envAcc)
+      case NativeRecordName.Qualified(id) =>
+        util.getNativeRecord(id.module, id.name) match {
+          case None =>
+            diagnosticsInfo.add(UnboundNativeRecord(pat.pos, id.module, id.name))
+            (DynamicType, env)
+          case Some(decl) =>
+            val refinedType = narrow.meet(t, NativeRecordType(id))
+
+            var envAcc = env
+            for (f <- pat.fields) {
+              decl.fMap.get(f.name) match {
+                case None =>
+                  diagnosticsInfo.add(UndefinedNativeRecordField(f.pat.pos, id.module, id.name, f.name))
+                  val (_, e1) = elabPat(f.pat, DynamicType, envAcc)
+                  envAcc = e1
+                case Some(fieldDecl) =>
+                  val (_, e1) = elabPat(f.pat, fieldDecl.tp, envAcc)
+                  envAcc = e1
+              }
+            }
+            if (subtype.isNoneType(refinedType))
+              (NoneType, envAcc.keys.map(_ -> NoneType).toMap)
+            else
+              (refinedType, envAcc)
+        }
     }
   }
 }

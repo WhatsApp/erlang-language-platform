@@ -451,10 +451,11 @@ final class Check(pipelineContext: PipelineContext) {
           if (!subtype.subType(indT, resTy))
             diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = indT))
           env
-        case _: NativeRecordUpdate =>
-          if (!subtype.subType(DynamicType, resTy))
-            diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = DynamicType))
-          env
+        case nrUpdate: NativeRecordUpdate =>
+          val (got, env1) = elab.elabNativeRecordUpdate(nrUpdate, env)
+          if (!subtype.subType(got, resTy))
+            diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = got))
+          env1
         case nrCreate: NativeRecordCreate =>
           val (got, env1) = elab.elabNativeRecordCreate(nrCreate, env)
           if (!subtype.subType(got, resTy))
