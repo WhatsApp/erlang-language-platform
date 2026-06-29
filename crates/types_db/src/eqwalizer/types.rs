@@ -258,6 +258,7 @@ impl Type {
             "port" => Some(Type::PortType),
             "reference" => Some(Type::ReferenceType),
             "tuple" => Some(Type::AnyTupleType),
+            "record" => Some(Type::AnyNativeRecordType),
             "nonempty_string" => Some(Type::string_type()),
             "dynamic" => Some(Type::DynamicType),
             _ => Type::builtin_type_alias(name).map(Type::RemoteType),

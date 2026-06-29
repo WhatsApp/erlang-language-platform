@@ -113,6 +113,11 @@ class Narrow(pipelineContext: PipelineContext) {
           if (fieldsMeet.values.exists(subtype.isNoneType)) NoneType
           else RefinedRecordType(rt1.recType, fieldsMeet)
 
+        case (NativeRecordType(id1), NativeRecordType(id2)) if id1 == id2 =>
+          t1
+        case (NativeRecordType(_), AnyNativeRecordType) => t1
+        case (AnyNativeRecordType, NativeRecordType(_)) => t2
+
         // "Non-refinable" types. - Using the main type
         case (FreeVarType(_), _)                    => t1
         case (_, FreeVarType(_))                    => t1

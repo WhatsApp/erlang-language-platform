@@ -2204,10 +2204,12 @@ impl Converter {
                 },
                 ("type", [Term::Atom(kind), Term::List(decl)]) if kind.name == "record" => {
                     if decl.elements.is_empty() {
-                        // TODO(T275607429): Properly handle native records in ELP
-                        // Until native records are properly supported, model it
-                        // as dynamic().
-                        return Ok(ExtType::dynamic_ext_type(pos));
+                        // Bare record() is the supertype of all native records;
+                        // resolved via builtin_type -> AnyNativeRecordType.
+                        return Ok(ExtType::BuiltinExtType(BuiltinExtType {
+                            pos,
+                            name: StringId::from(&kind.name),
+                        }));
                     }
                     if let [record_name, field_tys @ ..] = &decl.elements[..] {
                         let record_name = self.convert_atom_lit(record_name)?;

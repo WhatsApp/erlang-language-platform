@@ -110,9 +110,8 @@ final class ElabPat(pipelineContext: PipelineContext) {
       case PatRecordIndex(_, _) =>
         val patType = narrow.meet(t, IntegerType)
         (patType, env)
-      case p: PatNativeRecord =>
-        // TODO(native records): EEP 79 / OTP 29. Will be added in a follow-up diff.
-        throw new NotImplementedError(s"native records: not yet implemented (at ${p.pos})")
+      case _: PatNativeRecord =>
+        (DynamicType, env)
       case PatRecord(recName, namedFields, genFieldOpt) =>
         val recType = narrow.meet(t, RecordType(recName)(module))
         val recDecl =

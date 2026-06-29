@@ -125,6 +125,10 @@ class Subtype(pipelineContext: PipelineContext) {
                 subType(recDecl.fMap(fName).tp, fTy, seen)
             }
         }
+      case (NativeRecordType(_), AnyNativeRecordType) =>
+        true
+      case (NativeRecordType(id1), NativeRecordType(id2)) if id1 == id2 =>
+        true
       case (FunType(_, _, _), AnyFunType) =>
         true
       case (AnyFunType, FunType(_, _, _)) =>
@@ -303,6 +307,10 @@ class Subtype(pipelineContext: PipelineContext) {
                 subTypePol(recDecl.fMap(fName).tp, fTy, seen)
             }
         }
+      case (NativeRecordType(_), AnyNativeRecordType) =>
+        true
+      case (NativeRecordType(id1), NativeRecordType(id2)) if id1 == id2 =>
+        true
       case (FunType(_, _, _), AnyFunType) =>
         true
       case (AnyFunType, FunType(_, _, _)) if p == - =>

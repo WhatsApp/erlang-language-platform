@@ -168,6 +168,7 @@ object Types {
       "reference" -> ReferenceType,
       "term" -> AnyType,
       "tuple" -> AnyTupleType,
+      "record" -> AnyNativeRecordType,
       "arity" -> IntegerType,
       "module" -> AtomType,
       "node" -> AtomType,
