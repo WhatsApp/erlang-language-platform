@@ -64,6 +64,9 @@ object Db {
   def getRecord(module: String, record: String): Option[RecDecl] =
     ELPProxy.recDecl(module, record)
 
+  def getNativeRecord(module: String, record: String): Option[NativeRecDecl] =
+    ELPProxy.nativeRecDecl(module, record)
+
   def getInvalids(module: String): Option[List[Invalid]] =
     getModuleStub(module).map(_.invalids)
 

@@ -126,6 +126,11 @@ pub enum MsgFromEqWAlizer {
         module: String,
         id: StringId,
     },
+    /// Request for a native record declaration by module and name.
+    GetNativeRecDecl {
+        module: String,
+        id: StringId,
+    },
     GetFunSpec {
         module: String,
         id: Id,
@@ -152,6 +157,7 @@ pub enum MsgToEqWAlizer {
     CannotCompleteRequest,
     GetTypeDeclReply { len: u32 },
     GetRecDeclReply { len: u32 },
+    GetNativeRecDeclReply { len: u32 },
     GetFunSpecReply { len: u32 },
     GetOverloadedFunSpecReply { len: u32 },
     GetCallbacksReply { len: u32 },

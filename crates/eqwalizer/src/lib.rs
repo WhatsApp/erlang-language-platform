@@ -552,6 +552,18 @@ fn serve_eqwalizer<R>(
                     return Ok(Completion::IpcError(diag));
                 }
             }
+            MsgFromEqWAlizer::GetNativeRecDecl { module, id } => {
+                let result = db.native_rec_decl_bytes(project_id, ModuleName::new(&module), id);
+                if let Some(diag) = send_bytes(
+                    result,
+                    handle,
+                    module,
+                    |len| MsgToEqWAlizer::GetNativeRecDeclReply { len },
+                    db,
+                )? {
+                    return Ok(Completion::IpcError(diag));
+                }
+            }
             MsgFromEqWAlizer::GetFunSpec { module, id } => {
                 let result = db.fun_spec_bytes(project_id, ModuleName::new(&module), id);
                 if let Some(diag) = send_bytes(

@@ -26,6 +26,7 @@ use elp_types_db::eqwalizer::Id;
 use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::ExternalForm;
 use elp_types_db::eqwalizer::form::FunSpec;
+use elp_types_db::eqwalizer::form::NativeRecDecl;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
@@ -160,6 +161,22 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
 
     #[salsa::invoke_interned(rec_decl_bytes)]
     fn rec_decl_bytes(
+        &self,
+        project_id: ProjectId,
+        module: ModuleName,
+        id: StringId,
+    ) -> Result<Option<Arc<Vec<u8>>>, Error>;
+
+    #[salsa::invoke_interned(native_rec_decl)]
+    fn native_rec_decl(
+        &self,
+        project_id: ProjectId,
+        module: ModuleName,
+        id: StringId,
+    ) -> Result<Option<Arc<NativeRecDecl>>, Error>;
+
+    #[salsa::invoke_interned(native_rec_decl_bytes)]
+    fn native_rec_decl_bytes(
         &self,
         project_id: ProjectId,
         module: ModuleName,
@@ -429,6 +446,27 @@ fn rec_decl_bytes(
     id: StringId,
 ) -> Result<Option<Arc<Vec<u8>>>, Error> {
     db.rec_decl(project_id, module, id)
+        .map(|t| t.map(|t| Arc::new(t.to_bytes())))
+}
+
+/// Looks up a native record declaration from the module's transitive stub.
+fn native_rec_decl(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+    module: ModuleName,
+    id: StringId,
+) -> Result<Option<Arc<NativeRecDecl>>, Error> {
+    let stub = db.transitive_stub(project_id, module)?;
+    Ok(stub.native_records.get(&id).cloned())
+}
+
+fn native_rec_decl_bytes(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+    module: ModuleName,
+    id: StringId,
+) -> Result<Option<Arc<Vec<u8>>>, Error> {
+    db.native_rec_decl(project_id, module, id)
         .map(|t| t.map(|t| Arc::new(t.to_bytes())))
 }
 
