@@ -47,7 +47,7 @@ Context expected type: sets:set('a')
 
 Because in the expression's type:
   Here the type is:     tuple()/3 | 'none' | [...] | [...]
-  Context expects type: #set{} | #{a => []}
+  Context expects type: sets:set_v1('a') | sets:set_v2('a')
   No candidate of the expression's type matches the expected type.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -62,7 +62,7 @@ Context expected type: T
     │             
 
 Because in the expression's type:
-  Here the type is:     #set{} | #{a => []}
+  Here the type is:     sets:set_v1('a') | sets:set_v2('a')
   Context expects type: T
   No candidate of the expression's type matches the expected type.
 
@@ -79,7 +79,7 @@ Context expected type: sets:set('a')
 
 Because in the expression's type:
   Here the type is:     tuple()/3 | 'none' | [...] | [...]
-  Context expects type: #set{} | #{a => []}
+  Context expects type: sets:set_v1('a') | sets:set_v2('a')
   No candidate of the expression's type matches the expected type.
 
 error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
@@ -110,7 +110,7 @@ Context expected type: atom()
     │           
 
 Because in the expression's type:
-  Here the type is:     #set{} | #{a => []}
+  Here the type is:     sets:set_v1('a') | sets:set_v2('a')
   Context expects type: atom()
   No candidate of the expression's type matches the expected type.
 

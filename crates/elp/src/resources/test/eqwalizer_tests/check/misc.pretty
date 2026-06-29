@@ -728,7 +728,7 @@ Context expected type: sets:set()
 
 Because in the expression's type:
   Here the type is:     []
-  Context expects type: #set{} | #{term() => []}
+  Context expects type: sets:set_v1(term()) | sets:set_v2(term())
   No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

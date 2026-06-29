@@ -142,8 +142,11 @@ value_option(Flag, Default, On, OnVal, Off, OffVal, Opts) ->
 	       on_load_anno=erl_anno:new(0)	%Location for on_load
                    :: erl_anno:anno(),
 	       clashes=[],			%Exported functions named as BIFs
-               not_deprecated=[],               %Not considered deprecated
+               not_deprecated=gb_sets:empty()   %Not considered deprecated
+                   :: gb_sets:set(module_or_mfa()),
                not_removed=gb_sets:empty()      %Not considered removed
+                   :: gb_sets:set(module_or_mfa()),
+               not_unsafe=gb_sets:empty()       %Not considered unsafe
                    :: gb_sets:set(module_or_mfa()),
                func=[],                         %Current function
                type_id=[],                      %Current type id
@@ -295,23 +298,28 @@ format_error({obsolete_bool_op, OldOp, NewOp}) ->
     "that e.g. `X > 3 or is_tuple(X)` parses as `X > (3 or is_tuple(X))`. "
     "Compile directive 'nowarn_obsolete_bool_op' can be used to suppress "
     "warnings in selected modules.";
-format_error({deprecated, MFA, String, Rel}) ->
+format_error({deprecated, MFA, Info, Rel}) ->
     io_lib:format("~s is deprecated and will be removed in ~s; ~s",
-		  [format_mfa(MFA), Rel, String]);
-format_error({deprecated, MFA, String}) when is_list(String) ->
-    io_lib:format("~s is deprecated; ~s", [format_mfa(MFA), String]);
-format_error({deprecated_type, {M1, F1, A1}, String, Rel}) ->
+		  [format_mfa(MFA), Rel, format_obsolete(Info)]);
+format_error({deprecated, MFA, Info}) ->
+    io_lib:format("~s is deprecated; ~s", [format_mfa(MFA), format_obsolete(Info)]);
+format_error({unsafe, MFA, Info, Rel}) ->
+    io_lib:format("~s is unsafe and will be removed in ~s; ~s",
+		  [format_mfa(MFA), Rel, format_obsolete(Info)]);
+format_error({unsafe, MFA, Info}) ->
+    io_lib:format("~s is unsafe; ~s", [format_mfa(MFA), format_obsolete(Info)]);
+format_error({deprecated_type, {M1, F1, A1}, Info, Rel}) ->
     io_lib:format("the type ~p:~p~s is deprecated and will be removed in ~s; ~s",
-                  [M1, F1, gen_type_paren(A1), Rel, String]);
-format_error({deprecated_type, {M1, F1, A1}, String}) when is_list(String) ->
+                  [M1, F1, gen_type_paren(A1), Rel, format_obsolete(Info)]);
+format_error({deprecated_type, {M1, F1, A1}, Info}) ->
     io_lib:format("the type ~p:~p~s is deprecated; ~s",
-                  [M1, F1, gen_type_paren(A1), String]);
-format_error({deprecated_callback, {M1, F1, A1}, String, Rel}) ->
+                  [M1, F1, gen_type_paren(A1), format_obsolete(Info)]);
+format_error({deprecated_callback, {M1, F1, A1}, Info, Rel}) ->
     io_lib:format("the callback ~p:~p~s is deprecated and will be removed in ~s; ~s",
-                  [M1, F1, gen_type_paren(A1), Rel, String]);
-format_error({deprecated_callback, {M1, F1, A1}, String}) when is_list(String) ->
+                  [M1, F1, gen_type_paren(A1), Rel, format_obsolete(Info)]);
+format_error({deprecated_callback, {M1, F1, A1}, Info}) ->
     io_lib:format("the callback ~p:~p~s is deprecated; ~s",
-                  [M1, F1, gen_type_paren(A1), String]);
+                  [M1, F1, gen_type_paren(A1), format_obsolete(Info)]);
 format_error(deprecated_catch) ->
     "'catch ...' is deprecated; please use "
     "'try ... catch ... end' instead. "
@@ -320,12 +328,16 @@ format_error(deprecated_catch) ->
 format_error({removed, MFA, ReplacementMFA, Rel}) ->
     io_lib:format("call to ~s will fail, since it was removed in ~s; "
 		  "use ~s", [format_mfa(MFA), Rel, format_mfa(ReplacementMFA)]);
-format_error({removed, MFA, String}) when is_list(String) ->
-    io_lib:format("~s is removed; ~s", [format_mfa(MFA), String]);
-format_error({removed_type, MNA, String}) ->
-    io_lib:format("the type ~s is removed; ~s", [format_mna(MNA), String]);
-format_error({removed_callback, MNA, String}) ->
-    io_lib:format("the callback ~s is removed; ~s", [format_mna(MNA), String]);
+format_error({removed, MFA, Info}) ->
+    io_lib:format("~s is removed; ~s", [format_mfa(MFA), format_obsolete(Info)]);
+format_error({removed_type, MNA, Info}) ->
+    io_lib:format("the type ~s is removed; ~s", [format_mna(MNA), format_obsolete(Info)]);
+format_error({removed_callback, MNA, Info}) ->
+    io_lib:format("the callback ~s is removed; ~s", [format_mna(MNA), format_obsolete(Info)]);
+format_error({invalid_unsafe,D}) ->
+    io_lib:format("badly formed unsafe attribute ~tw", [D]);
+format_error({bad_unsafe,{F,A}}) ->
+    io_lib:format("unsafe function ~tw/~w undefined or not exported", [F,A]);
 format_error({obsolete_guard, {F, A}}) ->
     io_lib:format("~p/~p as a type test is obsolete and will be "
                   "removed in OTP 30; use is_~p/~p instead", [F, A, F, A]);
@@ -591,6 +603,23 @@ format_mf(M, F, ArityString) when is_atom(M), is_atom(F) ->
 format_mna({M, N, A}) when is_integer(A) ->
     atom_to_list(M) ++ ":" ++ atom_to_list(N) ++ gen_type_paren(A).
 
+format_obsolete(undefined) ->
+    "see the documentation for details";
+format_obsolete(next_version) ->
+    "will be removed in the next version. "
+        "See the documentation for details";
+format_obsolete(next_major_release) ->
+    "will be removed in the next major release. "
+        "See the documentation for details";
+format_obsolete(eventually) ->
+    "will be removed in a future release. "
+        "See the documentation for details";
+format_obsolete(possibly) ->
+    "however, it is possible to use it safely under some conditions. "
+        "See the documentation for details";
+format_obsolete(String) when is_list(String) ->
+    String.
+
 format_where(L) when is_integer(L) ->
     io_lib:format("(line ~p)", [L]);
 format_where({L,C}) when is_integer(L), is_integer(C) ->
@@ -753,6 +782,12 @@ start(File, Opts) ->
          {removed,
           bool_option(warn_removed, nowarn_removed,
                       true, Opts)},
+         {unsafe_function,
+          bool_option(warn_unsafe_function, nowarn_unsafe_function,
+                      true, Opts)},
+         {possibly_unsafe_function,
+          bool_option(warn_possibly_unsafe_function, nowarn_possibly_unsafe_function,
+                      false, Opts)},
          {nif_inline,
           bool_option(warn_nif_inline, nowarn_nif_inline,
                       true, Opts)},
@@ -898,8 +933,9 @@ forms(Forms0, St0) ->
     St2 = bif_clashes(Forms, St1),
     St3 = not_deprecated(Forms, St2),
     St4 = not_removed(Forms, St3),
-    St5 = foldl(fun form/2, pre_scan(Forms, St4), Forms),
-    post_traversal_check(Forms, St5).
+    St5 = not_unsafe(Forms, St4),
+    St6 = foldl(fun form/2, pre_scan(Forms, St5), Forms),
+    post_traversal_check(Forms, St6).
 
 pre_scan([{attribute,A,compile,C} | Fs], St) ->
     case is_warn_enabled(export_all, St) andalso
@@ -1150,7 +1186,7 @@ not_deprecated(Forms, #lint{compile=Opts}=St0) ->
     St1 = foldl(fun ({M,Anno}, St2) ->
                         check_module_name(M, Anno, St2)
                 end, St0, MAnno),
-    St1#lint{not_deprecated = ordsets:from_list(Nowarn)}.
+    St1#lint{not_deprecated = gb_sets:from_list(Nowarn)}.
 
 %% not_removed(Forms, State0) -> State
 
@@ -1169,6 +1205,23 @@ not_removed(Forms, #lint{compile=Opts}=St0) ->
                         check_module_name(M, Anno, St2)
                 end, St0, MFAsAnno),
     St1#lint{not_removed = gb_sets:from_list(Nowarn)}.
+
+%% not_unsafe(Forms, State0) -> State
+
+not_unsafe(Forms, #lint{compile=Opts}=St0) ->
+    %% There are no line numbers in St0#lint.compile.
+    MFAsAnno = [{MFA,Anno} ||
+                {attribute, Anno, compile, Args} <- Forms,
+                {nowarn_unsafe_function, MFAs0} <- lists:flatten([Args]),
+                MFA <- lists:flatten([MFAs0])],
+    Nowarn = [MFA ||
+                 {nowarn_unsafe_function, MFAs0} <- Opts,
+                 MFA <- lists:flatten([MFAs0])],
+    MAnno = [{M,Anno} || {{M,_F,_A},Anno} <- MFAsAnno, is_atom(M)],
+    St1 = foldl(fun ({M,Anno}, St2) ->
+                        check_module_name(M, Anno, St2)
+                end, St0, MAnno),
+    St1#lint{not_unsafe = gb_sets:from_list(Nowarn)}.
 
 %% The nowarn_bif_clash directive is not only deprecated, it's actually an error from R14A
 disallowed_compile_flags(Forms, St0) ->
@@ -1214,7 +1267,8 @@ post_traversal_check(Forms, St0) ->
     StG = check_dialyzer_attribute(Forms, StF),
     StH = check_callback_information(StG),
     StI = check_nifs(Forms, StH),
-    check_removed(Forms, StI).
+    StJ = check_removed(Forms, StI),
+    check_unsafe(Forms, StJ).
 
 %% check_deprecated(Forms, State0) -> State
 
@@ -1322,6 +1376,58 @@ removed_fa(F, A, _X, _Mod) ->
 removed_desc([Char | Str]) when is_integer(Char) -> removed_desc(Str);
 removed_desc([]) -> true;
 removed_desc(_) -> false.
+
+%% check_unsafe(Forms, State0) -> State
+
+check_unsafe(Forms, St0) ->
+    Exports = exports(St0),
+    X = ignore_predefined_funcs(gb_sets:to_list(Exports)),
+    #lint{module = Mod} = St0,
+    Bad = [{E,Anno} || {attribute, Anno, unsafe, Us} <- Forms,
+                    D <- lists:flatten([Us]),
+                    E <- unsafe_cat(D, X, Mod)],
+    foldl(fun ({E,Anno}, St1) ->
+                  add_error(Anno, E, St1)
+          end, St0, Bad).
+
+unsafe_cat({F, A, Flg}=D, X, Mod) ->
+    case unsafe_flag(Flg) of
+        false -> [{invalid_unsafe,D}];
+        true -> unsafe_fa(F, A, X, Mod)
+    end;
+unsafe_cat({F, A}, X, Mod) ->
+    unsafe_fa(F, A, X, Mod);
+unsafe_cat(module, _X, _Mod) ->
+    [];
+unsafe_cat(D, _X, _Mod) ->
+    [{invalid_unsafe,D}].
+
+unsafe_fa('_', '_', _X, _Mod) ->
+    [];
+unsafe_fa(F, '_', X, _Mod) when is_atom(F) ->
+    %% Don't use this syntax for built-in functions.
+    case lists:filter(fun({F1,_}) -> F1 =:= F end, X) of
+        [] -> [{bad_unsafe,{F,'_'}}];
+        _ -> []
+    end;
+unsafe_fa(F, A, X, Mod) when is_atom(F), is_integer(A), A >= 0 ->
+    case lists:member({F,A}, X) of
+        true -> [];
+        false ->
+            case erlang:is_builtin(Mod, F, A) of
+                true -> [];
+                false -> [{bad_unsafe,{F,A}}]
+            end
+    end;
+unsafe_fa(F, A, _X, _Mod) ->
+    [{invalid_unsafe,{F,A}}].
+
+unsafe_flag(possibly) -> true;
+unsafe_flag(String) -> unsafe_desc(String).
+
+unsafe_desc([Char | Str]) when is_integer(Char) -> unsafe_desc(Str);
+unsafe_desc([]) -> true;
+unsafe_desc(_) -> false.
 
 %% Ignores functions added by erl_internal:add_predefined_functions/1
 ignore_predefined_funcs([{behaviour_info,1} | Fs]) ->
@@ -4463,35 +4569,47 @@ check_qlc_hrl(Anno, M, F, As, St) ->
 deprecated_function(Anno, M, F, As, St) ->
     Arity = length(As),
     MFA = {M, F, Arity},
-    case otp_internal:obsolete(M, F, Arity) of
-	{deprecated, String} when is_list(String) ->
-            case not is_warn_enabled(deprecated_function, St) orelse
-		ordsets:is_element(MFA, St#lint.not_deprecated) of
-                true ->
-		    St;
-                false ->
-		    add_warning(Anno, {deprecated, MFA, String}, St)
-            end;
-	{deprecated, Replacement, Rel} ->
-            case not is_warn_enabled(deprecated_function, St) orelse
-		ordsets:is_element(MFA, St#lint.not_deprecated) of
-                true ->
-		    St;
-                false ->
-		    add_warning(Anno, {deprecated, MFA, Replacement, Rel}, St)
-            end;
-	{removed, String} when is_list(String) ->
-	    add_removed_warning(Anno, MFA, {removed, MFA, String}, St);
-	{removed, Replacement, Rel} ->
-	    add_removed_warning(Anno, MFA, {removed, MFA, Replacement, Rel}, St);
+    Obsolete = case otp_internal:obsolete(M, F, Arity) of
+                   {deprecated, Info} ->
+                       {deprecated_function,
+                        {deprecated, MFA, Info},
+                        St#lint.not_deprecated};
+                   {deprecated, Replacement, Rel} ->
+                       {deprecated_function,
+                        {deprecated, MFA, Replacement, Rel},
+                        St#lint.not_deprecated};
+                   {unsafe, possibly=Info} ->
+                       {possibly_unsafe_function, {unsafe, MFA, Info},
+                        St#lint.not_unsafe};
+                   {unsafe, Info} ->
+                       {unsafe_function, {unsafe, MFA, Info},
+                        St#lint.not_unsafe};
+                   {unsafe, Replacement, Rel} ->
+                       {unsafe_function,
+                        {unsafe, MFA, Replacement, Rel},
+                        St#lint.not_unsafe};
+                   {removed, Info} ->
+                       {removed,
+                        {removed, MFA, Info},
+                        St#lint.not_removed};
+                   {removed, Replacement, Rel} ->
+                       {removed,
+                        {removed, MFA, Replacement, Rel},
+                        St#lint.not_removed};
+                   no ->
+                      no
+               end,
+    case Obsolete of
+        {Flag, Warning, Filter} ->
+            add_usage_warning(Anno, MFA, Flag, Warning, Filter, St);
         no ->
-	    St
+            St
     end.
 
-add_removed_warning(Anno, {M, _, _}=MFA, Warning, #lint{not_removed=NotRemoved}=St) ->
-    case is_warn_enabled(removed, St) andalso
-        not gb_sets:is_element(M, NotRemoved) andalso
-        not gb_sets:is_element(MFA, NotRemoved) of
+add_usage_warning(Anno, {M,_,_}=MFA, Flag, Warning, Filter, St) ->
+    case (is_warn_enabled(Flag, St) andalso
+          not gb_sets:is_element(M, Filter) andalso
+          not gb_sets:is_element(MFA, Filter)) of
         true ->
             add_warning(Anno, Warning, St);
         false ->
