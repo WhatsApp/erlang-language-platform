@@ -45,6 +45,14 @@ class Util(pipelineContext: PipelineContext) {
     }
   }
 
+  def checkNativeRecordVisibility(id: RemoteId, decl: NativeRecDecl, pos: com.whatsapp.eqwalizer.ast.Pos): Unit = {
+    if (id.module != module && !decl.exported) {
+      pipelineContext.diagnosticsInfo.add(
+        com.whatsapp.eqwalizer.tc.TcDiagnostics.NonExportedNativeRecord(pos, id.module, id.name)
+      )
+    }
+  }
+
   def getRecordArity(module: String, name: String): Option[Int] = {
     getRecord(module, name).map(_.fields.size)
   }

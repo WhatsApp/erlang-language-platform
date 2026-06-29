@@ -240,6 +240,15 @@ final class ElabPat(pipelineContext: PipelineContext) {
           }
           (if (anyDyn) DynamicType else NoneType, envAcc)
         } else {
+          // Anon patterns never name the record, so a fieldless #_{} is a pure
+          // tag match and requires no export. Only gate visibility on fields.
+          if (pat.fields.nonEmpty) {
+            for (nrt <- concretes) {
+              util.getNativeRecord(nrt.id.module, nrt.id.name).foreach { decl =>
+                util.checkNativeRecordVisibility(nrt.id, decl, pat.pos)
+              }
+            }
+          }
           val resolved: Map[String, List[Type]] =
             pat.fields
               .map(_.name)
@@ -278,6 +287,11 @@ final class ElabPat(pipelineContext: PipelineContext) {
             diagnosticsInfo.add(UnboundNativeRecord(pat.pos, id.module, id.name))
             (DynamicType, env)
           case Some(decl) =>
+            // A bare tag match (#mod:rec{} with no field patterns) does not
+            // touch the record's fields, so it does not require the record to
+            // be exported. Only gate visibility when fields are matched.
+            if (pat.fields.nonEmpty)
+              util.checkNativeRecordVisibility(id, decl, pat.pos)
             val refinedType = narrow.meet(t, NativeRecordType(id))
 
             var envAcc = env

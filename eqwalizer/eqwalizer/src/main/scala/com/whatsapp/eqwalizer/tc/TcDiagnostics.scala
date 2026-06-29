@@ -96,6 +96,12 @@ object TcDiagnostics {
     def errorName = "missing_required_native_record_field"
     override def erroneousExpr: Option[Expr] = None
   }
+
+  case class NonExportedNativeRecord(pos: Pos, module: String, name: String) extends TypeError {
+    override val msg: String = s"Native record $module:$name is not exported (no -export_record directive)"
+    def errorName = "non_exported_native_record"
+    override def erroneousExpr: Option[Expr] = None
+  }
   case class NonexistentBehaviour(pos: Pos, name: String) extends TypeError {
     override val msg: String = s"Behaviour does not exist: $name"
     def errorName = "behaviour_does_not_exist"

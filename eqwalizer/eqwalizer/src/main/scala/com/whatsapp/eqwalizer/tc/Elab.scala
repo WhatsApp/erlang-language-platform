@@ -737,6 +737,7 @@ final class Elab(pipelineContext: PipelineContext) {
         }
         (DynamicType, envAcc)
       case Some(decl) =>
+        util.checkNativeRecordVisibility(id, decl, rCreate.pos)
         val providedNames = fields.map(_.name).toSet
         var envAcc = env
         for (f <- fields) {
@@ -771,6 +772,9 @@ final class Elab(pipelineContext: PipelineContext) {
           (DynamicType, env1)
         } else {
           val resolved = concretes.toList.map(nrt => nrt -> util.getNativeRecord(nrt.id.module, nrt.id.name))
+          resolved.foreach { case (nrt, declOpt) =>
+            declOpt.foreach(decl => util.checkNativeRecordVisibility(nrt.id, decl, nrSelect.pos))
+          }
           val fieldTys: List[Type] = resolved.flatMap {
             case (_, None)       => List(DynamicType)
             case (_, Some(decl)) => decl.fMap.get(fieldName).map(_.tp).toList
@@ -788,6 +792,7 @@ final class Elab(pipelineContext: PipelineContext) {
             val (_, env1) = elabExpr(recExpr, env)
             (DynamicType, env1)
           case Some(decl) =>
+            util.checkNativeRecordVisibility(id, decl, nrSelect.pos)
             val (recTy, env1) = elabExpr(recExpr, env)
             decl.fMap.get(fieldName) match {
               case None =>
@@ -855,6 +860,7 @@ final class Elab(pipelineContext: PipelineContext) {
               case None =>
                 resultTys ::= DynamicType
               case Some(decl) =>
+                util.checkNativeRecordVisibility(nrt.id, decl, rUpdate.pos)
                 var allFieldsPresent = true
                 for ((fName, inferredTy, fExpr) <- fieldInferred) {
                   decl.fMap.get(fName) match {
@@ -888,6 +894,7 @@ final class Elab(pipelineContext: PipelineContext) {
             }
             (DynamicType, envAcc)
           case Some(decl) =>
+            util.checkNativeRecordVisibility(id, decl, rUpdate.pos)
             val (recTy, env1) = elabExpr(rUpdate.expr, env)
             val expectedRecTy = NativeRecordType(id)
             if (!subtype.subType(recTy, expectedRecTy))
@@ -907,7 +914,6 @@ final class Elab(pipelineContext: PipelineContext) {
         }
     }
   }
-
   def elabQualifiers(qualifiers: List[Qualifier], env: Env): Env = {
     var envAcc = env
     qualifiers.foreach {
