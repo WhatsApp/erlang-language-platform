@@ -207,10 +207,6 @@ impl ProgressBar {
             send_progress(&self.sender, self.token.clone(), msg);
         }
     }
-
-    pub fn end(self) {
-        // let Drop do the job
-    }
 }
 
 impl Drop for ProgressBar {
