@@ -117,6 +117,8 @@ pub enum ConversionError {
     InvalidRecordRefinedField,
     InvalidType,
     InvalidForms,
+    InvalidNativeRecordField,
+    InvalidNativeRecordFieldExpr,
     UnknownBuiltin(String, usize),
 }
 

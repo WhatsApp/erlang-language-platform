@@ -8,6 +8,7 @@
  * above-listed licenses.
  */
 
+use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::sync::LazyLock;
 
@@ -54,6 +55,10 @@ use elp_types_db::eqwalizer::expr::Match;
 use elp_types_db::eqwalizer::expr::Maybe;
 use elp_types_db::eqwalizer::expr::MaybeElse;
 use elp_types_db::eqwalizer::expr::MaybeMatch;
+use elp_types_db::eqwalizer::expr::NativeRecordCreate;
+use elp_types_db::eqwalizer::expr::NativeRecordName;
+use elp_types_db::eqwalizer::expr::NativeRecordSelect;
+use elp_types_db::eqwalizer::expr::NativeRecordUpdate;
 use elp_types_db::eqwalizer::expr::NilLit;
 use elp_types_db::eqwalizer::expr::Qualifier;
 use elp_types_db::eqwalizer::expr::Receive;
@@ -108,10 +113,13 @@ use elp_types_db::eqwalizer::form::ElpMetadataAttr;
 use elp_types_db::eqwalizer::form::EqwalizerNowarnFunctionAttr;
 use elp_types_db::eqwalizer::form::EqwalizerUnlimitedRefinementAttr;
 use elp_types_db::eqwalizer::form::ExportAttr;
+use elp_types_db::eqwalizer::form::ExportNativeRecordAttr;
 use elp_types_db::eqwalizer::form::ExportTypeAttr;
 use elp_types_db::eqwalizer::form::ExternalCallback;
 use elp_types_db::eqwalizer::form::ExternalForm;
 use elp_types_db::eqwalizer::form::ExternalFunSpec;
+use elp_types_db::eqwalizer::form::ExternalNativeRecDecl;
+use elp_types_db::eqwalizer::form::ExternalNativeRecField;
 use elp_types_db::eqwalizer::form::ExternalOptionalCallbacks;
 use elp_types_db::eqwalizer::form::ExternalRecDecl;
 use elp_types_db::eqwalizer::form::ExternalRecField;
@@ -120,6 +128,7 @@ use elp_types_db::eqwalizer::form::FileAttr;
 use elp_types_db::eqwalizer::form::Fixme;
 use elp_types_db::eqwalizer::form::FunDecl;
 use elp_types_db::eqwalizer::form::ImportAttr;
+use elp_types_db::eqwalizer::form::ImportNativeRecordAttr;
 use elp_types_db::eqwalizer::form::ModuleAttr;
 use elp_types_db::eqwalizer::form::TypingAttribute;
 use elp_types_db::eqwalizer::guard::Guard;
@@ -131,6 +140,7 @@ use elp_types_db::eqwalizer::guard::TestCall;
 use elp_types_db::eqwalizer::guard::TestCons;
 use elp_types_db::eqwalizer::guard::TestMapCreate;
 use elp_types_db::eqwalizer::guard::TestMapUpdate;
+use elp_types_db::eqwalizer::guard::TestNativeRecordSelect;
 use elp_types_db::eqwalizer::guard::TestNil;
 use elp_types_db::eqwalizer::guard::TestNumber;
 use elp_types_db::eqwalizer::guard::TestRecordCreate;
@@ -152,6 +162,8 @@ use elp_types_db::eqwalizer::pat::PatCons;
 use elp_types_db::eqwalizer::pat::PatInt;
 use elp_types_db::eqwalizer::pat::PatMap;
 use elp_types_db::eqwalizer::pat::PatMatch;
+use elp_types_db::eqwalizer::pat::PatNativeRecord;
+use elp_types_db::eqwalizer::pat::PatNativeRecordFieldNamed;
 use elp_types_db::eqwalizer::pat::PatNil;
 use elp_types_db::eqwalizer::pat::PatNumber;
 use elp_types_db::eqwalizer::pat::PatRecord;
@@ -179,6 +191,8 @@ struct Converter {
     from_beam: bool,
     filter_stub: bool,
     current_file: Option<StringId>,
+    /// Maps a short native-record name to its defining module.
+    native_record_names: BTreeMap<StringId, StringId>,
 }
 
 fn get_specifier(name: &str) -> Option<Specifier> {
@@ -289,10 +303,8 @@ impl Converter {
     ) -> Result<Option<ExternalForm>, ConversionError> {
         match (kind.name.as_str(), args) {
             ("module", Term::Atom(name)) => {
-                return Ok(Some(ExternalForm::Module(ModuleAttr {
-                    name: StringId::from(&name.name),
-                    pos,
-                })));
+                let name = StringId::from(&name.name);
+                return Ok(Some(ExternalForm::Module(ModuleAttr { name, pos })));
             }
             ("export", Term::List(ids)) => {
                 return Ok(Some(ExternalForm::Export(ExportAttr {
@@ -328,6 +340,60 @@ impl Converter {
                         pos,
                     })));
                 }
+            }
+            ("native_record", Term::Tuple(rec)) => {
+                if let [Term::Atom(name), Term::List(fields)] = &rec.elements[..] {
+                    return Ok(Some(ExternalForm::ExternalNativeRecDecl(
+                        ExternalNativeRecDecl {
+                            name: StringId::from(&name.name),
+                            fields: fields
+                                .elements
+                                .iter()
+                                .map(|f| self.convert_native_rec_field_form(f))
+                                .collect::<Result<Vec<_>, _>>()?,
+                            pos,
+                        },
+                    )));
+                }
+            }
+            ("export_record", Term::List(names)) => {
+                let names = names
+                    .elements
+                    .iter()
+                    .map(|n| {
+                        if let Term::Atom(a) = n {
+                            Ok(StringId::from(&a.name))
+                        } else {
+                            Err(ConversionError::InvalidForm)
+                        }
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                return Ok(Some(ExternalForm::ExportNativeRecord(
+                    ExportNativeRecordAttr { pos, names },
+                )));
+            }
+            ("import_record", Term::Tuple(imports)) => {
+                if let [Term::Atom(m), Term::List(names)] = &imports.elements[..] {
+                    let names = names
+                        .elements
+                        .iter()
+                        .map(|n| {
+                            if let Term::Atom(a) = n {
+                                Ok(StringId::from(&a.name))
+                            } else {
+                                Err(ConversionError::InvalidForm)
+                            }
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+                    return Ok(Some(ExternalForm::ImportNativeRecord(
+                        ImportNativeRecordAttr {
+                            pos,
+                            module: StringId::from(&m.name),
+                            names,
+                        },
+                    )));
+                }
+                return Ok(None);
             }
             ("file", Term::Tuple(file)) => {
                 if let [Term::ByteList(name), line] = &file.elements[..]
@@ -600,6 +666,65 @@ impl Converter {
         Err(ConversionError::InvalidRecordField)
     }
 
+    /// Converts a raw native record field term to its external form.
+    fn convert_native_rec_field_form(
+        &self,
+        field: &eetf::Term,
+    ) -> Result<ExternalNativeRecField, ConversionError> {
+        if let Term::Tuple(field) = field {
+            match &field.elements[..] {
+                [Term::Atom(kind), _pos, name_lit] if kind.name == "record_field" => {
+                    let name = self.convert_atom_lit(name_lit)?;
+                    return Ok(ExternalNativeRecField {
+                        name,
+                        tp: None,
+                        default_value: None,
+                    });
+                }
+                [Term::Atom(kind), _pos, name_lit, expr] if kind.name == "record_field" => {
+                    let name = self.convert_atom_lit(name_lit)?;
+                    let default_value = self.convert_expr(expr)?;
+                    return Ok(ExternalNativeRecField {
+                        name,
+                        tp: None,
+                        default_value: Some(default_value),
+                    });
+                }
+                [Term::Atom(kind), field, ty] if kind.name == "typed_record_field" => {
+                    let untyped_field = self.convert_native_rec_field_form(field)?;
+                    let tp = self.convert_type(ty)?;
+                    return Ok(ExternalNativeRecField {
+                        tp: Some(tp),
+                        ..untyped_field
+                    });
+                }
+                _ => (),
+            }
+        }
+        Err(ConversionError::InvalidNativeRecordField)
+    }
+
+    /// Builds a remote id from a module-qualified native record reference.
+    fn native_record_id(&self, qual: &[eetf::Term]) -> Result<RemoteId, ConversionError> {
+        let [Term::Atom(module), Term::Atom(name)] = qual else {
+            return Err(ConversionError::InvalidForm);
+        };
+        Ok(RemoteId {
+            module: StringId::from(&module.name),
+            name: StringId::from(&name.name),
+            arity: 0,
+        })
+    }
+
+    /// Resolves a short native record name to its remote id, if known.
+    fn native_record_id_for(&self, name: StringId) -> Option<RemoteId> {
+        self.native_record_names.get(&name).map(|module| RemoteId {
+            module: *module,
+            name,
+            arity: 0,
+        })
+    }
+
     fn convert_atom_lit(&self, atom: &eetf::Term) -> Result<StringId, ConversionError> {
         if let Term::Tuple(data) = atom
             && let [Term::Atom(kind), _, Term::Atom(val)] = &data.elements[..]
@@ -717,6 +842,13 @@ impl Converter {
                     }));
                 }
                 ("record", [Term::Atom(name), Term::List(fields)]) => {
+                    if let Some(id) = self.native_record_id_for(StringId::from(&name.name)) {
+                        return Ok(Expr::NativeRecordCreate(NativeRecordCreate {
+                            pos,
+                            id,
+                            fields: self.convert_native_rec_fields_expr(fields)?,
+                        }));
+                    }
                     return Ok(Expr::RecordCreate(RecordCreate {
                         pos,
                         rec_name: StringId::from(&name.name),
@@ -728,6 +860,14 @@ impl Converter {
                     }));
                 }
                 ("record", [expr, Term::Atom(name), Term::List(fields)]) => {
+                    if let Some(id) = self.native_record_id_for(StringId::from(&name.name)) {
+                        return Ok(Expr::NativeRecordUpdate(NativeRecordUpdate {
+                            pos,
+                            expr: Box::new(self.convert_expr(expr)?),
+                            name: NativeRecordName::Qualified(id),
+                            fields: self.convert_native_rec_fields_expr(fields)?,
+                        }));
+                    }
                     return Ok(Expr::RecordUpdate(RecordUpdate {
                         pos,
                         expr: Box::new(self.convert_expr(expr)?),
@@ -750,10 +890,62 @@ impl Converter {
                     }));
                 }
                 ("record_field", [expr, Term::Atom(name), field]) => {
+                    if let Some(id) = self.native_record_id_for(StringId::from(&name.name)) {
+                        return Ok(Expr::NativeRecordSelect(NativeRecordSelect {
+                            pos,
+                            expr: Box::new(self.convert_expr(expr)?),
+                            name: NativeRecordName::Qualified(id),
+                            field_name: self.convert_atom_lit(field)?,
+                        }));
+                    }
                     return Ok(Expr::RecordSelect(RecordSelect {
                         pos,
                         expr: Box::new(self.convert_expr(expr)?),
                         rec_name: StringId::from(&name.name),
+                        field_name: self.convert_atom_lit(field)?,
+                    }));
+                }
+                ("record", [Term::Tuple(qual), Term::List(fields)]) => {
+                    let id = self.native_record_id(&qual.elements)?;
+                    return Ok(Expr::NativeRecordCreate(NativeRecordCreate {
+                        pos,
+                        id,
+                        fields: self.convert_native_rec_fields_expr(fields)?,
+                    }));
+                }
+                ("record", [expr, Term::Tuple(qual), Term::List(fields)]) => {
+                    let id = self.native_record_id(&qual.elements)?;
+                    return Ok(Expr::NativeRecordUpdate(NativeRecordUpdate {
+                        pos,
+                        expr: Box::new(self.convert_expr(expr)?),
+                        name: NativeRecordName::Qualified(id),
+                        fields: self.convert_native_rec_fields_expr(fields)?,
+                    }));
+                }
+                ("record", [expr, Term::List(anon), Term::List(fields)])
+                    if anon.elements.is_empty() =>
+                {
+                    return Ok(Expr::NativeRecordUpdate(NativeRecordUpdate {
+                        pos,
+                        expr: Box::new(self.convert_expr(expr)?),
+                        name: NativeRecordName::Anon,
+                        fields: self.convert_native_rec_fields_expr(fields)?,
+                    }));
+                }
+                ("record_field", [expr, Term::Tuple(qual), field]) => {
+                    let id = self.native_record_id(&qual.elements)?;
+                    return Ok(Expr::NativeRecordSelect(NativeRecordSelect {
+                        pos,
+                        expr: Box::new(self.convert_expr(expr)?),
+                        name: NativeRecordName::Qualified(id),
+                        field_name: self.convert_atom_lit(field)?,
+                    }));
+                }
+                ("record_field", [expr, Term::List(anon), field]) if anon.elements.is_empty() => {
+                    return Ok(Expr::NativeRecordSelect(NativeRecordSelect {
+                        pos,
+                        expr: Box::new(self.convert_expr(expr)?),
+                        name: NativeRecordName::Anon,
                         field_name: self.convert_atom_lit(field)?,
                     }));
                 }
@@ -1125,6 +1317,21 @@ impl Converter {
         Err(ConversionError::InvalidKV)
     }
 
+    /// Converts native record field expressions to named record fields.
+    fn convert_native_rec_fields_expr(
+        &self,
+        fields: &eetf::List,
+    ) -> Result<Vec<RecordFieldNamed>, ConversionError> {
+        fields
+            .elements
+            .iter()
+            .map(|f| match self.convert_rec_field_expr(f)? {
+                RecordField::RecordFieldNamed(field) => Ok(field),
+                _ => Err(ConversionError::InvalidNativeRecordFieldExpr),
+            })
+            .collect()
+    }
+
     fn convert_rec_field_expr(&self, field: &eetf::Term) -> Result<RecordField, ConversionError> {
         if let Term::Tuple(field) = field
             && let [Term::Atom(atom_field), _, name, exp] = &field.elements[..]
@@ -1275,6 +1482,13 @@ impl Converter {
                     }));
                 }
                 ("record", [Term::Atom(name), Term::List(fields)]) => {
+                    if let Some(id) = self.native_record_id_for(StringId::from(&name.name)) {
+                        return Ok(Pat::PatNativeRecord(PatNativeRecord {
+                            pos,
+                            name: NativeRecordName::Qualified(id),
+                            fields: self.convert_pat_native_rec_fields(fields)?,
+                        }));
+                    }
                     let fields_named = fields
                         .elements
                         .iter()
@@ -1304,6 +1518,21 @@ impl Converter {
                         pos,
                         rec_name: StringId::from(&name.name),
                         field_name: self.convert_atom_lit(field_name)?,
+                    }));
+                }
+                ("record", [Term::Tuple(qual), Term::List(fields)]) => {
+                    let id = self.native_record_id(&qual.elements)?;
+                    return Ok(Pat::PatNativeRecord(PatNativeRecord {
+                        pos,
+                        name: NativeRecordName::Qualified(id),
+                        fields: self.convert_pat_native_rec_fields(fields)?,
+                    }));
+                }
+                ("record", [Term::List(anon), Term::List(fields)]) if anon.elements.is_empty() => {
+                    return Ok(Pat::PatNativeRecord(PatNativeRecord {
+                        pos,
+                        name: NativeRecordName::Anon,
+                        fields: self.convert_pat_native_rec_fields(fields)?,
                     }));
                 }
                 ("map", [Term::List(kvs)]) => {
@@ -1347,6 +1576,24 @@ impl Converter {
             }
         }
         Err(ConversionError::InvalidPatBinaryElem)
+    }
+
+    /// Converts native record field patterns to named pattern fields.
+    fn convert_pat_native_rec_fields(
+        &self,
+        fields: &eetf::List,
+    ) -> Result<Vec<PatNativeRecordFieldNamed>, ConversionError> {
+        fields
+            .elements
+            .iter()
+            .map(|f| match self.convert_pat_record_field(f)? {
+                Some(named) => Ok(PatNativeRecordFieldNamed {
+                    name: named.name,
+                    pat: named.pat,
+                }),
+                None => Err(ConversionError::InvalidNativeRecordField),
+            })
+            .collect()
     }
 
     fn convert_pat_record_field(
@@ -1482,6 +1729,14 @@ impl Converter {
                     }));
                 }
                 ("record_field", [test, Term::Atom(name), field]) => {
+                    if let Some(id) = self.native_record_id_for(StringId::from(&name.name)) {
+                        return Ok(Test::TestNativeRecordSelect(TestNativeRecordSelect {
+                            pos,
+                            rec: Box::new(self.convert_test(test)?),
+                            name: NativeRecordName::Qualified(id),
+                            field_name: self.convert_atom_lit(field)?,
+                        }));
+                    }
                     let field_name = self.convert_atom_lit(field)?;
                     let test = self.convert_test(test)?;
                     return Ok(Test::TestRecordSelect(TestRecordSelect {
@@ -1489,6 +1744,23 @@ impl Converter {
                         rec: Box::new(test),
                         rec_name: StringId::from(&name.name),
                         field_name,
+                    }));
+                }
+                ("record_field", [test, Term::Tuple(qual), field]) => {
+                    let id = self.native_record_id(&qual.elements)?;
+                    return Ok(Test::TestNativeRecordSelect(TestNativeRecordSelect {
+                        pos,
+                        rec: Box::new(self.convert_test(test)?),
+                        name: NativeRecordName::Qualified(id),
+                        field_name: self.convert_atom_lit(field)?,
+                    }));
+                }
+                ("record_field", [test, Term::List(anon), field]) if anon.elements.is_empty() => {
+                    return Ok(Test::TestNativeRecordSelect(TestNativeRecordSelect {
+                        pos,
+                        rec: Box::new(self.convert_test(test)?),
+                        name: NativeRecordName::Anon,
+                        field_name: self.convert_atom_lit(field)?,
                     }));
                 }
                 ("map", [Term::List(kvs)]) => {
@@ -2166,6 +2438,7 @@ pub fn convert_forms(
             from_beam,
             filter_stub,
             current_file: None,
+            native_record_names: BTreeMap::default(),
         };
         let no_auto_imports = forms
             .elements
@@ -2173,11 +2446,13 @@ pub fn convert_forms(
             .flat_map(|f| dummy_converter.extract_no_auto_import(f))
             .flatten()
             .collect();
+        let native_record_names = collect_native_record_names(&forms.elements);
         let converter = &mut Converter {
             no_auto_imports,
             from_beam,
             filter_stub,
             current_file: None,
+            native_record_names,
         };
         return Ok(AST {
             from_beam,
@@ -2192,4 +2467,49 @@ pub fn convert_forms(
         });
     }
     Err(ConversionError::InvalidForms)
+}
+
+/// Extracts the module name from a `-module(...)` attribute form.
+fn extract_module_name(term: &eetf::Term) -> Option<StringId> {
+    if let Term::Tuple(tuple) = term
+        && let [Term::Atom(attr), _, Term::Atom(kind), Term::Atom(name)] = &tuple.elements[..]
+        && attr.name == "attribute"
+        && kind.name == "module"
+    {
+        Some(StringId::from(&name.name))
+    } else {
+        None
+    }
+}
+
+/// Collects native record names mapped to their defining modules from forms.
+fn collect_native_record_names(forms: &[eetf::Term]) -> BTreeMap<StringId, StringId> {
+    let module = forms.iter().find_map(extract_module_name);
+    let mut names = BTreeMap::default();
+    for form in forms {
+        if let Term::Tuple(tuple) = form
+            && let [Term::Atom(attr), _, Term::Atom(kind), args] = &tuple.elements[..]
+            && attr.name == "attribute"
+        {
+            match (kind.name.as_str(), args) {
+                ("native_record", Term::Tuple(rec)) => {
+                    if let (Some(m), [Term::Atom(name), ..]) = (module, &rec.elements[..]) {
+                        names.insert(StringId::from(&name.name), m);
+                    }
+                }
+                ("import_record", Term::Tuple(imp)) => {
+                    if let [Term::Atom(m), Term::List(imported)] = &imp.elements[..] {
+                        let m = StringId::from(&m.name);
+                        for n in &imported.elements {
+                            if let Term::Atom(name) = n {
+                                names.insert(StringId::from(&name.name), m);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    names
 }
