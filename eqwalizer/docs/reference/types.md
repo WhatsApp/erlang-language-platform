@@ -16,9 +16,9 @@ used, ambiguous, or difficult to implement features are often not supported.
 
 ### Numeric types
 
-EqWAlizer does not distinguish between the different numeric types.
-All numeric types (`integer()`, `float()`, integer ranges, `byte()`, etc)
-are all converted into type `number()` before type-checking.
+EqWAlizer distinguishes between `integer()` and `float()` numeric types.
+Integer types (`integer()`, `pos_integer()`, integer ranges, `byte()`, `char()`, etc)
+are all converted into type `integer()` before type-checking.
 
 
 ### Maps
