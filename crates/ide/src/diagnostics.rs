@@ -41,6 +41,7 @@ use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::ProjectId;
 use elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide_db::elp_base_db::VfsPath;
+use elp_ide_db::elp_base_db::path_for_file;
 use elp_ide_db::erlang_service::DiagnosticLocation;
 use elp_ide_db::erlang_service::ParseError;
 use elp_ide_db::metadata::Kind;
@@ -2905,7 +2906,14 @@ fn parse_error_to_diagnostic_info(
 
 fn related_file_id(db: &RootDatabase, file_id: FileId, path: &Path) -> Option<FileId> {
     db.file_project_id(file_id).and_then(|project_id| {
-        let vfs_path = VfsPath::new_real_path(path.to_string_lossy().as_ref().to_string());
+        let path_str = path.to_string_lossy();
+        let vfs_path = if path.is_absolute() {
+            VfsPath::new_real_path(path_str.as_ref().to_string())
+        } else {
+            path_for_file(db, file_id)?
+                .parent()?
+                .join(path_str.as_ref())?
+        };
 
         let project_data = db.project_data(project_id).project_data(db);
         // Search through all source roots in the project to find the file
@@ -3951,6 +3959,33 @@ foo() -> XX 3.0.
 
                //- /src/second.hrl
                    -define(SECOND_MACRO, "Hello from nested header").
+            "#,
+        );
+    }
+
+    #[test]
+    fn erlang_service_relative_error_path_resolution() {
+        // A `-file` attribute inside an included file makes the Erlang service
+        // report the error at a path relative to the referencing file (as happens
+        // for yecc/leex-generated modules, e.g. core_parse referring to
+        // core_parse.yrl). The relative path is resolved against the referencing
+        // file's directory to attach the related info, rather than panicking.
+        check_diagnostics(
+            r#"
+               //- erlang_service
+               //- /src/gen.erl
+                   -module(gen).
+                   -export([foo/0]).
+                   -include("gen.hrl").
+                %% ^^^^^^^^^^^^^^^^^^^^ error: L0000: Issue in included file
+                %%                     | Related info: 2:38-43 L1227: function bar/0 undefined
+
+               //- /src/gen.hrl
+                   -file("gen.yrl", 3).
+                   foo() -> bar().
+
+               //- /src/gen.yrl
+                   nonterminals foo.
             "#,
         );
     }
