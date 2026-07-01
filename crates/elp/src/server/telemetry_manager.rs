@@ -15,6 +15,8 @@ use std::time::Duration;
 use std::time::Instant;
 use std::time::SystemTime;
 
+use elp_ide::elp_ide_db::salsa_telemetry;
+use elp_ide::elp_ide_db::salsa_telemetry::SalsaEventCounts;
 use elp_log::telemetry;
 use elp_log::telemetry::send_with_duration;
 use fxhash::FxHashMap;
@@ -36,6 +38,7 @@ pub(crate) struct TelemetryManager {
     last_periodic_processed: Instant,
     server_started_at: SystemTime,
     operational_state: OperationalState,
+    last_salsa_counts: SalsaEventCounts,
 }
 impl TelemetryManager {
     pub(crate) fn new() -> Self {
@@ -43,6 +46,7 @@ impl TelemetryManager {
             last_periodic_processed: Instant::now(),
             server_started_at: SystemTime::now(),
             operational_state: OperationalState::NotStarted,
+            last_salsa_counts: SalsaEventCounts::default(),
         }
     }
 
@@ -73,7 +77,35 @@ impl TelemetryManager {
                     log::warn!("on_periodic: unable to serialize {mem_usage:?}, err: {err}");
                 }
             };
+
+            self.send_salsa_event_counts();
         }
+    }
+
+    /// Emit the salsa event counts: both the process-lifetime cumulative total
+    /// (`*_total`) and the increment since the previous periodic tick (`*_delta`)
+    /// for each counter. Reuse of interned slots and cross-thread query blocking
+    /// both lengthen the main-loop cancellation wait, so a rising delta here
+    /// alongside `main_loop_db_write_stall` events points at the cause; the
+    /// totals give the absolute scale without having to sum the deltas.
+    fn send_salsa_event_counts(&mut self) {
+        let current = salsa_telemetry::counts();
+        let delta = current.delta_since(&self.last_salsa_counts);
+        self.last_salsa_counts = current;
+
+        let data = serde_json::json!({
+            "did_intern_total": current.did_intern,
+            "did_intern_delta": delta.did_intern,
+            "did_reuse_interned_total": current.did_reuse_interned,
+            "did_reuse_interned_delta": delta.did_reuse_interned,
+            "did_validate_interned_total": current.did_validate_interned,
+            "did_validate_interned_delta": delta.did_validate_interned,
+            "will_block_on_total": current.will_block_on,
+            "will_block_on_delta": delta.will_block_on,
+            "did_set_cancellation_flag_total": current.did_set_cancellation_flag,
+            "did_set_cancellation_flag_delta": delta.did_set_cancellation_flag,
+        });
+        telemetry::send("salsa_event_counts".to_string(), data);
     }
 
     pub(crate) fn operational(&mut self, buck_quick_start: bool) {

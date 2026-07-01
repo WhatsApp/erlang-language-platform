@@ -71,6 +71,7 @@ mod line_index;
 pub mod memory_usage;
 // @fb-only: pub mod meta_only;
 pub mod metadata;
+pub mod salsa_telemetry;
 mod search;
 pub mod text_edit;
 
@@ -126,7 +127,9 @@ pub struct RootDatabase {
 impl Default for RootDatabase {
     fn default() -> Self {
         let mut db = RootDatabase {
-            storage: salsa::Storage::default(),
+            storage: salsa::Storage::new(Some(Box::new(|event| {
+                salsa_telemetry::record_event(&event.kind);
+            }))),
             files: Arc::default(),
             erlang_services: Arc::default(),
             eqwalizer: Eqwalizer::default(),

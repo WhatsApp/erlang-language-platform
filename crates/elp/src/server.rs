@@ -17,6 +17,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
+use std::time::Instant;
 
 use always_assert::always;
 use anyhow::Result;
@@ -138,6 +139,10 @@ const ERLANG_SERVICE_SUPPORTED_EXTENSIONS: &[FileKind] = &[
 const SLOW_DURATION: Duration = Duration::from_millis(300);
 /// If the main loop exceeds this time, log the specific request causing the problem
 const TOO_SLOW_DURATION: Duration = Duration::from_millis(3000);
+/// Applying VFS text changes performs the salsa write that cancels and waits for
+/// all outstanding read snapshots to drop. If that wait exceeds this threshold
+/// the main loop was stalled, so we report it for diagnosis.
+const DB_WRITE_STALL_THRESHOLD: Duration = Duration::from_millis(300);
 const INCLUDE_GENERATED: bool = true;
 
 enum Event {
@@ -1069,9 +1074,19 @@ impl Server {
         // holding a snapshot can be parked on `line_ending_map.read()` (via
         // `to_proto::text_document_edit`), which would deadlock. So merge the
         // line-ending updates under a brief lock taken after the barrier.
+        //
+        // Time the write so main-loop stalls (blocking until every outstanding
+        // read snapshot — e.g. in-flight eqWAlizer/erlang_service diagnostics —
+        // is dropped) are observable in the field.
+        let num_changed_files = changed_files.len();
+        let write_started = Instant::now();
         let line_ending_updates =
             crate::reload::apply_vfs_text_changes(raw_database, vfs, changed_files.values());
         self.line_ending_map.write().extend(line_ending_updates);
+        let write_elapsed = write_started.elapsed();
+        if write_elapsed >= DB_WRITE_STALL_THRESHOLD {
+            report_db_write_stall(write_elapsed, num_changed_files);
+        }
 
         // Server-specific per-file processing
         let mut highest_file_id: u32 = 0;
@@ -1968,4 +1983,25 @@ pub fn is_supported_by_erlang_service(analysis: &Analysis, id: FileId) -> bool {
         Ok(kind) => ERLANG_SERVICE_SUPPORTED_EXTENSIONS.contains(&kind),
         Err(_) => false,
     }
+}
+
+/// Report that the salsa write on the main loop blocked for longer than
+/// [`DB_WRITE_STALL_THRESHOLD`]. The cumulative salsa counters are included so a
+/// stall can be correlated with interned-slot reuse and cross-thread query
+/// blocking.
+fn report_db_write_stall(elapsed: Duration, num_changed_files: usize) {
+    let elapsed_ms = elapsed.as_millis() as u64;
+    log::warn!(
+        "main loop stalled {elapsed_ms}ms on salsa write for {num_changed_files} changed file(s)"
+    );
+    let salsa = elp_ide::elp_ide_db::salsa_telemetry::counts();
+    let data = serde_json::json!({
+        "title": "ELP main loop db write stall",
+        "wait_ms": elapsed_ms,
+        "changed_files": num_changed_files,
+        "salsa_did_reuse_interned": salsa.did_reuse_interned,
+        "salsa_will_block_on": salsa.will_block_on,
+        "salsa_did_set_cancellation_flag": salsa.did_set_cancellation_flag,
+    });
+    telemetry::send("main_loop_db_write_stall".to_string(), data);
 }
