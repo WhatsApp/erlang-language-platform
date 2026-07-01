@@ -1432,7 +1432,7 @@ scan_number([$# | Cs] = Cs0, St, Off, Toks, Ncs0, Us) ->
     try list_to_integer(remove_digit_separators(Ncs, Us)) of
         B when is_integer(B), 2 =< B, B =< 1 + $Z - $A + 10 ->
             Bcs = Ncs ++ [$#],
-            scan_based_int(Cs, St, Off, Toks, B, [], Bcs, no_underscore);
+            scan_based_num(Cs, St, Off, Toks, B, [], Bcs, no_underscore);
         B when is_integer(B) ->
             Len = length(Ncs),
             scan_error({base, B}, Off, Off + Len, Cs0)
@@ -1466,19 +1466,19 @@ remove_digit_separators(Number, with_underscore) ->
             (C >= $a andalso B > 10 andalso C < $a + B - 10)))
 ).
 
-scan_based_int(Cs, #erl_scan{} = St, Off, Toks, {B, NCs, BCs, Us}) when
+scan_based_num(Cs, #erl_scan{} = St, Off, Toks, {B, NCs, BCs, Us}) when
     is_integer(B), 2 =< B, B =< 1 + $Z - $A + 10
 ->
-    scan_based_int(Cs, St, Off, Toks, B, NCs, BCs, Us).
+    scan_based_num(Cs, St, Off, Toks, B, NCs, BCs, Us).
 
-scan_based_int([C | Cs], St, Off, Toks, B, Ncs, Bcs, Us) when
+scan_based_num([C | Cs], St, Off, Toks, B, Ncs, Bcs, Us) when
     ?BASED_DIGIT(C, B)
 ->
-    scan_based_int(Cs, St, Off, Toks, B, [C | Ncs], Bcs, Us);
-scan_based_int([$_, Next | Cs], St, Off, Toks, B, [Prev | _] = Ncs, Bcs, _Us) when
+    scan_based_num(Cs, St, Off, Toks, B, [C | Ncs], Bcs, Us);
+scan_based_num([$_, Next | Cs], St, Off, Toks, B, [Prev | _] = Ncs, Bcs, _Us) when
     ?BASED_DIGIT(Next, B) andalso ?BASED_DIGIT(Prev, B)
 ->
-    scan_based_int(
+    scan_based_num(
         Cs,
         St,
         Off,
@@ -1488,15 +1488,19 @@ scan_based_int([$_, Next | Cs], St, Off, Toks, B, [Prev | _] = Ncs, Bcs, _Us) wh
         Bcs,
         with_underscore
     );
-scan_based_int([$_] = Cs, St, Off, Toks, B, NCs, BCs, Us) ->
-    {more, {Cs, St, Off, Toks, {B, NCs, BCs, Us}, fun scan_based_int/5}};
-scan_based_int([] = Cs, St, Off, Toks, B, NCs, BCs, Us) ->
-    {more, {Cs, St, Off, Toks, {B, NCs, BCs, Us}, fun scan_based_int/5}};
-scan_based_int(Cs, _St, Off, _Toks, _B, [], Bcs, _Us) ->
+scan_based_num([$_] = Cs, St, Off, Toks, B, NCs, BCs, Us) ->
+    {more, {Cs, St, Off, Toks, {B, NCs, BCs, Us}, fun scan_based_num/5}};
+scan_based_num([$., C | Cs], St, Off, Toks, B, Ncs, BCs, Us) when ?BASED_DIGIT(C, B) ->
+    scan_based_fraction(Cs, St, Off, Toks, B, [C, $. | Ncs], BCs, Us);
+scan_based_num([$.] = Cs, St, Off, Toks, B, Ncs, BCs, Us) ->
+    {more, {Cs, St, Off, Toks, {B, Ncs, BCs, Us}, fun scan_based_num/5}};
+scan_based_num([] = Cs, St, Off, Toks, B, NCs, BCs, Us) ->
+    {more, {Cs, St, Off, Toks, {B, NCs, BCs, Us}, fun scan_based_num/5}};
+scan_based_num(Cs, _St, Off, _Toks, _B, [], Bcs, _Us) ->
     %% No actual digits following the base.
     Len = length(Bcs),
     scan_error({illegal, integer}, Off, Off + Len, Cs);
-scan_based_int(Cs, St, Off, Toks, B, Ncs0, [_ | _] = Bcs, Us) ->
+scan_based_num(Cs, St, Off, Toks, B, Ncs0, [_ | _] = Bcs, Us) ->
     Ncs = lists:reverse(Ncs0),
     Len = length(Bcs) + length(Ncs),
     try list_to_integer(remove_digit_separators(Ncs, Us), B) of
@@ -1507,6 +1511,92 @@ scan_based_int(Cs, St, Off, Toks, B, Ncs0, [_ | _] = Bcs, Us) ->
             %% Extremely unlikely to occur in practice.
             scan_error({illegal, integer}, Off, Off + Len, Cs)
     end.
+
+scan_based_fraction(Cs, #erl_scan{} = St, Off, Toks, {B, Ncs, BCs, Us}) ->
+    scan_based_fraction(Cs, St, Off, Toks, B, Ncs, BCs, Us).
+
+scan_based_fraction([C | Cs], St, Off, Toks, B, Ncs, BCs, Us) when ?BASED_DIGIT(C, B) ->
+    scan_based_fraction(Cs, St, Off, Toks, B, [C | Ncs], BCs, Us);
+scan_based_fraction([$_, Next | Cs], St, Off, Toks, B, [Prev | _] = Ncs, BCs, _Us) when
+    ?BASED_DIGIT(Next, B) andalso ?BASED_DIGIT(Prev, B)
+->
+    scan_based_fraction(Cs, St, Off, Toks, B, [Next, $_ | Ncs], BCs, with_underscore);
+scan_based_fraction([$_] = Cs, St, Off, Toks, B, Ncs, BCs, Us) ->
+    {more, {Cs, St, Off, Toks, {B, Ncs, BCs, Us}, fun scan_based_fraction/5}};
+scan_based_fraction([$#, E | Cs], St, Off, Toks, B, Ncs, BCs, Us) when E =:= $e; E =:= $E ->
+    scan_based_exponent_sign(Cs, St, Off, Toks, B, Ncs, BCs, [E, $#], Us);
+scan_based_fraction([$#] = Cs, St, Off, Toks, B, Ncs, BCs, Us) ->
+    {more, {Cs, St, Off, Toks, {B, Ncs, BCs, Us}, fun scan_based_fraction/5}};
+scan_based_fraction([] = Cs, St, Off, Toks, B, Ncs, BCs, Us) ->
+    {more, {Cs, St, Off, Toks, {B, Ncs, BCs, Us}, fun scan_based_fraction/5}};
+scan_based_fraction(Cs, St, Off, Toks, B, Ncs, BCs, Us) ->
+    based_float_end(Cs, St, Off, Toks, B, Ncs, BCs, [], Us).
+
+scan_based_exponent_sign(Cs, #erl_scan{} = St, Off, Toks, {B, Ncs, BCs, ECs, Us}) ->
+    scan_based_exponent_sign(Cs, St, Off, Toks, B, Ncs, BCs, ECs, Us).
+
+scan_based_exponent_sign([C | Cs], St, Off, Toks, B, Ncs, BCs, ECs, Us) when
+    C =:= $+; C =:= $-
+->
+    scan_based_exponent(Cs, St, Off, Toks, B, Ncs, BCs, [C | ECs], Us);
+scan_based_exponent_sign([] = Cs, St, Off, Toks, B, Ncs, BCs, ECs, Us) ->
+    {more, {Cs, St, Off, Toks, {B, Ncs, BCs, ECs, Us}, fun scan_based_exponent_sign/5}};
+scan_based_exponent_sign(Cs, St, Off, Toks, B, Ncs, BCs, ECs, Us) ->
+    scan_based_exponent(Cs, St, Off, Toks, B, Ncs, BCs, ECs, Us).
+
+scan_based_exponent(Cs, #erl_scan{} = St, Off, Toks, {B, Ncs, BCs, ECs, Us}) ->
+    scan_based_exponent(Cs, St, Off, Toks, B, Ncs, BCs, ECs, Us).
+
+scan_based_exponent([C | Cs], St, Off, Toks, B, Ncs, BCs, ECs, Us) when ?DIGIT(C) ->
+    scan_based_exponent(Cs, St, Off, Toks, B, Ncs, BCs, [C | ECs], Us);
+scan_based_exponent([$_, Next | Cs], St, Off, Toks, B, Ncs, BCs, [Prev | _] = ECs, _) when
+    ?DIGIT(Next) andalso ?DIGIT(Prev)
+->
+    scan_based_exponent(Cs, St, Off, Toks, B, Ncs, BCs, [Next, $_ | ECs], with_underscore);
+scan_based_exponent([$_] = Cs, St, Off, Toks, B, Ncs, BCs, ECs, Us) ->
+    {more, {Cs, St, Off, Toks, {B, Ncs, BCs, ECs, Us}, fun scan_based_exponent/5}};
+scan_based_exponent([] = Cs, St, Off, Toks, B, Ncs, BCs, ECs, Us) ->
+    {more, {Cs, St, Off, Toks, {B, Ncs, BCs, ECs, Us}, fun scan_based_exponent/5}};
+scan_based_exponent(Cs, St, Off, Toks, B, Ncs, BCs, ECs, Us) ->
+    based_float_end(Cs, St, Off, Toks, B, Ncs, BCs, ECs, Us).
+
+% Note: the base and exponent parts are always in decimal
+based_float_end(Cs, St, Off, Toks, 10, Ncs0, BCs, ECs0, Us) ->
+    Ncs = lists:reverse(Ncs0),
+    ECs = lists:reverse(ECs0),
+    Tcs = BCs ++ Ncs ++ ECs,
+    Fcs =
+        case ECs of
+            [] -> Ncs ++ ECs;
+            [$# | ECs1] -> Ncs ++ ECs1
+        end,
+    try list_to_float(remove_digit_separators(Fcs, Us)) of
+        F ->
+            tok3(Cs, St, Off, Toks, float, F, length(Tcs))
+    catch
+        _:_ ->
+            scan_error({illegal, float}, Off, Off + length(Tcs), Cs)
+    end;
+based_float_end(Cs, St, Off, Toks, B, Ncs0, BCs, ECs0, Us) when B =/= 10 ->
+    %% there is no general list_to_float(String, Base) available yet
+    Ncs = lists:reverse(Ncs0),
+    ECs = lists:reverse(ECs0),
+    Tcs = BCs ++ Ncs ++ ECs,
+    Exp =
+        case ECs of
+            [] -> 0;
+            [$#, _ | ECs1] -> list_to_integer(remove_digit_separators(ECs1, Us))
+        end,
+    Ncs1 = trim_float_zeros(lists:reverse(trim_float_zeros(remove_digit_separators(Ncs0, Us)))),
+    N = list_to_integer(lists:delete($., Ncs1), B),
+    D = length(Ncs1) - string:chr(Ncs1, $.),
+    F = N * math:pow(B, Exp - D),
+    tok3(Cs, St, Off, Toks, float, F, length(Tcs)).
+
+% don't remove 0 next to `.`
+trim_float_zeros([$0, $. | _] = Cs) -> Cs;
+trim_float_zeros([$0 | Cs]) -> trim_float_zeros(Cs);
+trim_float_zeros(Cs) -> Cs.
 
 scan_fraction(Cs, #erl_scan{} = St, Off, Toks, {Ncs, Us}) ->
     scan_fraction(Cs, St, Off, Toks, Ncs, Us).

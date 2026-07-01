@@ -982,6 +982,14 @@ mod tests {
     }
 
     #[test]
+    fn based_float() {
+        expect_module(
+            "based_float.erl".into(),
+            fixture_file!("based_float.expected"),
+        );
+    }
+
+    #[test]
     fn edoc_scan_errors() {
         expect_docs(
             "edoc_scan_errors.erl".into(),
