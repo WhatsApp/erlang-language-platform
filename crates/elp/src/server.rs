@@ -127,6 +127,7 @@ mod progress;
 mod server_telemetry;
 pub mod setup;
 mod telemetry_manager;
+mod work_registry;
 
 const LOGGER_NAME: &str = "lsp";
 const FILE_WATCH_LOGGER_NAME: &str = "watched_files";
@@ -1176,7 +1177,9 @@ impl Server {
         let opened_documents = self.opened_documents();
         let snapshot = self.snapshot();
         let include_otp = self.config.enable_otp_diagnostics();
+        let work_label = format!("native_diagnostics:{} open files", opened_documents.len());
         self.task_pool.handle.spawn(move || {
+            let _work = work_registry::begin(work_label);
             let diagnostics = opened_documents
                 .into_par_iter()
                 .map_with(snapshot, |snapshot, file_id| {
@@ -1211,7 +1214,12 @@ impl Server {
         let spinner = self.progress.begin_spinner("EqWAlizing".to_string());
 
         let include_otp = self.config.enable_otp_diagnostics();
+        let work_label = format!(
+            "eqwalizer_diagnostics:{} open files",
+            opened_documents.len()
+        );
         self.task_pool.handle.spawn(move || {
+            let _work = work_registry::begin(work_label);
             let diagnostics_types = opened_documents
                 .into_par_iter()
                 .map_with(snapshot, |snapshot, file_id| {
@@ -1265,7 +1273,12 @@ impl Server {
             .filter(|file_id| is_supported_by_erlang_service(&snapshot.analysis, *file_id))
             .collect();
         let diagnostics_config = self.diagnostics_config.clone();
+        let work_label = format!(
+            "erlang_service_diagnostics:{} files",
+            supported_opened_documents.len()
+        );
         self.task_pool.handle.spawn(move || {
+            let _work = work_registry::begin(work_label);
             let diagnostics = supported_opened_documents
                 .into_par_iter()
                 .map_with(snapshot, |snapshot, file_id| {
@@ -1849,6 +1862,7 @@ impl Server {
             .begin_spinner_with_telemetry("ELP compiling dependencies for EqWAlizer".to_string());
 
         self.task_pool.handle.spawn_with_sender(move |sender| {
+            let _work = work_registry::begin("compile_deps");
             snapshot.set_up_projects();
 
             sender.send(Task::CompileDeps(spinner)).unwrap();
@@ -1862,6 +1876,7 @@ impl Server {
         let snapshot = self.snapshot();
 
         self.cache_pool.handle.spawn_with_sender(move |sender| {
+            let _work = work_registry::begin("schedule_cache");
             let mut files = vec![];
             for (i, _) in snapshot.projects.iter().enumerate() {
                 let module_index = match snapshot.analysis.module_index(ProjectId(i as u32)) {
@@ -1888,6 +1903,7 @@ impl Server {
         }
         let snapshot = self.snapshot();
         self.cache_pool.handle.spawn_with_sender(move |sender| {
+            let _work = work_registry::begin("update_cache");
             while !files.is_empty() {
                 let file_id = files.remove(files.len() - 1);
                 match snapshot.update_cache_for_file(file_id) {
@@ -1991,14 +2007,24 @@ pub fn is_supported_by_erlang_service(analysis: &Analysis, id: FileId) -> bool {
 /// blocking.
 fn report_db_write_stall(elapsed: Duration, num_changed_files: usize) {
     let elapsed_ms = elapsed.as_millis() as u64;
+    // Whatever is still registered held a snapshot for (some of) the wait, so it
+    // is what the write was blocked behind. Oldest first.
+    let in_flight = work_registry::in_flight();
+    let in_flight_work: Vec<String> = in_flight
+        .iter()
+        .take(20)
+        .map(|(label, age)| format!("{label} ({}ms)", age.as_millis()))
+        .collect();
     log::warn!(
-        "main loop stalled {elapsed_ms}ms on salsa write for {num_changed_files} changed file(s)"
+        "main loop stalled {elapsed_ms}ms on salsa write for {num_changed_files} changed file(s); in-flight work: {in_flight_work:?}"
     );
     let salsa = elp_ide::elp_ide_db::salsa_telemetry::counts();
     let data = serde_json::json!({
         "title": "ELP main loop db write stall",
         "wait_ms": elapsed_ms,
         "changed_files": num_changed_files,
+        "in_flight_count": in_flight.len(),
+        "in_flight_work": in_flight_work,
         "salsa_did_reuse_interned": salsa.did_reuse_interned,
         "salsa_will_block_on": salsa.will_block_on,
         "salsa_did_set_cancellation_flag": salsa.did_set_cancellation_flag,
