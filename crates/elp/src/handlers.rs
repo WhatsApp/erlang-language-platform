@@ -320,11 +320,11 @@ pub(crate) fn handle_goto_definition(
 
     let nav_info = match snap.analysis.goto_definition(position)? {
         None => {
-            goto_definition_telemetry(&snap, &[], start);
+            goto_definition_telemetry(&snap, position, None, start);
             return Ok(None);
         }
         Some(it) => {
-            goto_definition_telemetry(&snap, &it.info, start);
+            goto_definition_telemetry(&snap, position, Some(&it.info), start);
             it
         }
     };
@@ -336,7 +336,39 @@ pub(crate) fn handle_goto_definition(
     Ok(Some(res))
 }
 
-fn goto_definition_telemetry(snap: &Snapshot, targets: &[NavigationTarget], start: SystemTime) {
+// `targets` is `None` when the request resolved to nothing (`goto_definition`
+// returned `None`), and `Some` (possibly empty) when it classified the token.
+// Distinguishing these — plus the source module and the clicked token — lets us
+// tell legitimate misses (clicking a non-symbol) from stale-index failures.
+fn goto_definition_telemetry(
+    snap: &Snapshot,
+    position: FilePosition,
+    targets: Option<&[NavigationTarget]>,
+    start: SystemTime,
+) {
+    let (token_text, token_kind) = match snap.analysis.token_at_position(position).ok().flatten() {
+        Some((text, kind)) => (text, Some(kind)),
+        None => (None, None),
+    };
+    let source_module = snap
+        .analysis
+        .module_name(position.file_id)
+        .ok()
+        .flatten()
+        .map(|name| name.as_str().to_string());
+    let source_is_generated = snap
+        .analysis
+        .is_generated(position.file_id)
+        .unwrap_or(false);
+
+    let reason = match (targets, &token_kind) {
+        (Some(targets), _) if !targets.is_empty() => "resolved",
+        (Some(_), _) => "classified_no_targets",
+        (None, Some(_)) => "unclassified",
+        (None, None) => "no_token",
+    };
+
+    let targets = targets.unwrap_or(&[]);
     let targets_include_generated = targets
         .iter()
         .any(|tgt| snap.analysis.is_generated(tgt.file_id).unwrap_or(false));
@@ -353,6 +385,11 @@ fn goto_definition_telemetry(snap: &Snapshot, targets: &[NavigationTarget], star
 
     #[derive(serde::Serialize)]
     struct Data {
+        reason: &'static str,
+        source_module: Option<String>,
+        source_is_generated: bool,
+        token_text: Option<String>,
+        token_kind: Option<String>,
         targets_include_generated: bool,
         target_uris: Vec<Uri>,
         target_names: Vec<SmolStr>,
@@ -361,6 +398,11 @@ fn goto_definition_telemetry(snap: &Snapshot, targets: &[NavigationTarget], star
     }
 
     let detail = Data {
+        reason,
+        source_module,
+        source_is_generated,
+        token_text,
+        token_kind,
         targets_include_generated,
         target_uris,
         target_names,

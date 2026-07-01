@@ -632,6 +632,27 @@ impl Analysis {
         self.with_db(|db| goto_definition::goto_definition(db, position))
     }
 
+    /// Returns the best token at `position` as `(text, kind)`, for telemetry
+    /// (e.g. attributing why a goto-definition resolved to nothing). The text of
+    /// string literals is omitted to avoid logging their contents; the syntax
+    /// kind is always returned. `None` means there was no token at `position`.
+    pub fn token_at_position(
+        &self,
+        position: FilePosition,
+    ) -> Cancellable<Option<(Option<String>, String)>> {
+        self.with_db(|db| {
+            let sema = Semantic::new(db);
+            let token = find_best_token(&sema, position)?;
+            let kind = token.value.kind();
+            let text = if kind == SyntaxKind::STRING {
+                None
+            } else {
+                Some(token.value.text().to_string())
+            };
+            Some((text, format!("{kind:?}")))
+        })
+    }
+
     pub fn goto_type_definition(
         &self,
         position: FilePosition,
