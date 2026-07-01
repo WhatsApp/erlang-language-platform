@@ -23,17 +23,24 @@
 //! the turn ends (including on an early `?` return), and [`phase`] refines the
 //! current section, returning a guard that restores the previous phase on drop —
 //! so a phase names its blocker for exactly its scope and does not "stick" to
-//! later work in the turn. The watchdog reports a stall if any one phase stays
-//! active past a threshold, naming the phase so the blocker is identifiable.
+//! later work in the turn. When any one phase stays active past [`STALL_THRESHOLD`]
+//! the watchdog reports it once, naming the phase and attaching everything we have
+//! to identify the blocker: in-flight work units, salsa event counts, and
+//! best-effort main-thread introspection (`/proc`, Linux).
 //!
 //! Robustness note: [`telemetry::send`] only *enqueues* onto a channel that the
 //! (possibly stalled) main loop drains, so for a permanently wedged loop the
-//! telemetry event is not delivered until/unless the loop resumes. The
-//! `log::warn!` is the always-out signal — it goes straight to the logger, not
-//! through the main loop — so it is emitted first and unconditionally.
+//! telemetry event is not delivered until/unless the loop resumes. Logging is
+//! different: a record is delivered to the client by the lsp-server writer
+//! thread (`LspLogger` -> `connection.sender`), not the main loop, so it gets
+//! out even during a stall — but only if it clears the client sink's level
+//! filter, which defaults to `Error`. The stall report therefore logs at `Error`
+//! so it stays visible in the editor while the loop is wedged.
 
 use std::sync::Arc;
 use std::sync::LazyLock;
+#[cfg(target_os = "linux")]
+use std::sync::OnceLock;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
@@ -50,10 +57,11 @@ use super::work_registry;
 /// How often the watchdog wakes to inspect the heartbeat.
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
 
-/// A single main-loop phase active longer than this is reported as a stall.
-/// Set well above any healthy interactive turn; slow startup-indexing turns may
-/// occasionally trip it.
-const STALL_THRESHOLD: Duration = Duration::from_secs(5);
+/// A single main-loop phase active longer than this is reported as a stall. Set
+/// well above any healthy interactive turn — a turn still running after this long
+/// is almost certainly wedged rather than merely slow — so the report is a strong
+/// signal rather than noise from the occasional slow-but-recovering turn.
+const STALL_THRESHOLD: Duration = Duration::from_secs(30);
 
 /// Bumped on every [`arm`]/[`phase`] transition. The watchdog keys its
 /// "report once" de-duplication on this, so a multi-second stall in one phase is
@@ -80,6 +88,9 @@ struct Beat {
 /// the returned guard for the turn; it disarms on drop, so the heartbeat clears
 /// even if the turn exits early via `?`.
 pub(crate) fn arm(turn_label: impl Into<String>) -> TurnGuard {
+    // Runs on the main-loop thread, so this is where its tid is observable for
+    // the watchdog's later `/proc` introspection.
+    capture_main_tid();
     let now = Instant::now();
     let epoch = EPOCH.fetch_add(1, Ordering::Relaxed);
     let label = turn_label.into();
@@ -205,14 +216,28 @@ fn report_stall(beat: &Beat, stuck_for: Duration) {
         .collect();
     let stuck_ms = stuck_for.as_millis() as u64;
     let turn_ms = beat.turn_started.elapsed().as_millis() as u64;
-    // Always-out signal: the logger does not go through the main loop.
-    log::warn!(
-        "main loop watchdog: stalled {stuck_ms}ms in phase '{}' (turn '{}', {turn_ms}ms total); in-flight work: {in_flight_work:?}",
+
+    // What the main-loop thread is doing right now (`/proc`, Linux): the state
+    // char and `wchan` distinguish the failure modes we care about (a lock/salsa
+    // barrier vs a wedged buck2 subprocess).
+    let main_thread = main_thread_state();
+    let main_thread_suffix = main_thread
+        .as_deref()
+        .map(|s| format!("; main thread: {s}"))
+        .unwrap_or_default();
+
+    // Delivery to the client (LspLogger -> connection.sender -> lsp-server writer
+    // thread) is independent of the main loop, so this reaches the editor even
+    // while the loop is wedged — but only if it clears the client sink's level
+    // filter, which defaults to Error.
+    log::error!(
+        "main loop watchdog: stalled {stuck_ms}ms in phase '{}' (turn '{}', {turn_ms}ms total); in-flight work: {in_flight_work:?}{main_thread_suffix}",
         beat.phase_label,
         beat.turn_label,
     );
+
     let salsa = elp_ide::elp_ide_db::salsa_telemetry::counts();
-    let data = serde_json::json!({
+    let mut data = serde_json::json!({
         "title": "ELP main loop watchdog stall",
         "phase": beat.phase_label,
         "turn": beat.turn_label,
@@ -224,5 +249,58 @@ fn report_stall(beat: &Beat, stuck_for: Duration) {
         "salsa_will_block_on": salsa.will_block_on,
         "salsa_did_set_cancellation_flag": salsa.did_set_cancellation_flag,
     });
+    if let Some(main_thread) = main_thread {
+        data["main_thread"] = serde_json::Value::String(main_thread);
+    }
     telemetry::send("main_loop_watchdog_stall".to_string(), data);
 }
+
+/// Best-effort one-line description of what the main-loop thread is doing right
+/// now, from `/proc` — the thread state char (`R`/`S`/`D`/…) and `wchan` (the
+/// kernel routine it is blocked in, e.g. `futex_wait` for a lock/salsa barrier
+/// vs `pipe_read` for a wedged buck2 subprocess). No new dependency; Linux-only.
+#[cfg(target_os = "linux")]
+fn main_thread_state() -> Option<String> {
+    let tid = (*MAIN_TID.get()?)?;
+    let base = format!("/proc/self/task/{tid}");
+    let comm = std::fs::read_to_string(format!("{base}/comm"))
+        .ok()
+        .map(|s| s.trim().to_string());
+    let wchan = std::fs::read_to_string(format!("{base}/wchan"))
+        .ok()
+        .map(|s| s.trim().to_string());
+    // `stat` field 3 is the state char. The `comm` in parens can itself contain
+    // spaces and parens, so parse the fields after the last ')'.
+    let state = std::fs::read_to_string(format!("{base}/stat"))
+        .ok()
+        .and_then(|s| Some(s.rsplit_once(')')?.1.split_whitespace().next()?.to_string()));
+    Some(format!(
+        "state={} wchan={} comm={}",
+        state.as_deref().unwrap_or("?"),
+        wchan.as_deref().filter(|s| !s.is_empty()).unwrap_or("?"),
+        comm.as_deref().unwrap_or("?"),
+    ))
+}
+
+#[cfg(not(target_os = "linux"))]
+fn main_thread_state() -> Option<String> {
+    None
+}
+
+/// The main-loop thread's tid, captured once (on that thread) for `/proc`.
+#[cfg(target_os = "linux")]
+static MAIN_TID: OnceLock<Option<u32>> = OnceLock::new();
+
+#[cfg(target_os = "linux")]
+fn capture_main_tid() {
+    MAIN_TID.get_or_init(|| {
+        // `/proc/thread-self` -> `<pid>/task/<tid>`; the final component is the
+        // calling thread's tid.
+        std::fs::read_link("/proc/thread-self")
+            .ok()
+            .and_then(|p| p.file_name()?.to_str()?.parse::<u32>().ok())
+    });
+}
+
+#[cfg(not(target_os = "linux"))]
+fn capture_main_tid() {}
