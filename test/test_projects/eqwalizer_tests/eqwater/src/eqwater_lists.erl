@@ -60,7 +60,7 @@ occ_list_09([_ | _]) -> ok;
 occ_list_09([]) -> nil;
 occ_list_09(A) -> A.
 
-% Not supported
+
 -spec occ_list_10
     ([term()]) ->
     [].

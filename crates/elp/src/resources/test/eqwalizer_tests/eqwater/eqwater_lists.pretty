@@ -2,19 +2,9 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ eqwater/src/eqwater_lists.erl:31:51
    │
 31 │ occ_list_04_neg(L = [H | _]) when is_binary(H) -> L.
-   │                                                   ^
-   │                                                   │
-   │                                                   L.
-Expression has type:   [binary() | atom()]
+   │                                                   ^ L.
+Expression has type:   [binary() / [binary() | atom()]]
 Context expected type: [binary()]
-   │                                                   
-
-Because in the expression's type:
-  [
-    Here the type is a union type with some valid candidates: binary()
-    However the following candidate: atom()
-    Differs from the expected type:  binary()
-  ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:48:23
@@ -23,15 +13,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                       ^
    │                       │
    │                       L.
-Expression has type:   [term()]
+Expression has type:   [term() / []] | []
 Context expected type: []
    │                       
 
 Because in the expression's type:
-  [
-    Here the type is:     term()
-    Context expects type: none()
-  ]
+  Here the type is a union type with some valid candidates: []
+  However the following candidate: [term() / []]
+  Differs from the expected type:  []
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:54:23
@@ -50,56 +39,20 @@ Because in the expression's type:
   Differs from the expected type:  atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_lists.erl:61:19
-   │
-61 │ occ_list_09(A) -> A.
-   │                   ^
-   │                   │
-   │                   A.
-Expression has type:   atom() | []
-Context expected type: atom()
-   │                   
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: atom()
-  However the following candidate: []
-  Differs from the expected type:  atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_lists.erl:69:19
-   │
-69 │ occ_list_10(L) -> L.
-   │                   ^
-   │                   │
-   │                   L.
-Expression has type:   [term()]
-Context expected type: []
-   │                   
-
-Because in the expression's type:
-  [
-    Here the type is:     term()
-    Context expects type: none()
-  ]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:76:23
    │
 76 │ occ_list_11_neg(L) -> L.
    │                       ^
    │                       │
    │                       L.
-Expression has type:   [atom()] | [binary()]
+Expression has type:   [atom() / []] | [binary() / []] | [binary()]
 Context expected type: [binary()]
    │                       
 
 Because in the expression's type:
-  The type is a union type with some valid candidates: [binary()]
-  However, the following candidate doesn't match:
-  [
-    Here the type is:     atom()
-    Context expects type: binary()
-  ]
+  Here the type is a union type with some valid candidates: [binary()]
+  However the following candidate: [atom() / []]
+  Differs from the expected type:  [binary()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ eqwater/src/eqwater_lists.erl:97:23
@@ -127,4 +80,4 @@ Because in the expression's type:
     Differs from the expected type:  atom()
   ]
 
-8 ERRORS
+6 ERRORS

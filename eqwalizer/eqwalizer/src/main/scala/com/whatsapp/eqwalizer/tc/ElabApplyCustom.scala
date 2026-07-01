@@ -101,6 +101,7 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
       val argTy = coerce(arg, argTys.head, anyListTy)
       def flattenElemTy(ty: Type, seenAliases: Set[RemoteType] = Set()): Type = ty match {
         case ListType(ty)   => flattenElemTy(ty, seenAliases)
+        case ConsType(h, t) => subtype.join(flattenElemTy(h, seenAliases), flattenElemTy(t, seenAliases))
         case NilType        => NoneType
         case UnionType(tys) => subtype.join(tys.map(ty => flattenElemTy(ty, seenAliases)))
         case rt @ RemoteType(rid, args) =>

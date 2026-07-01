@@ -83,6 +83,7 @@ fn he_by_diving(s: &Type, t: &Type) -> bool {
         Type::AnyArityFunType(ft) => is_he(s, &ft.res_ty),
         Type::TupleType(tt) => any_he(s, &tt.arg_tys),
         Type::ListType(lt) => is_he(s, &lt.t),
+        Type::ConsType(ct) => is_he(s, &ct.head_t) || is_he(s, &ct.tail_t),
         Type::UnionType(ut) => any_he(s, &ut.tys),
         Type::RemoteType(rt) => any_he(s, &rt.arg_tys),
         Type::MapType(m) => {
@@ -107,6 +108,10 @@ fn he_by_coupling(s: &Type, t: &Type) -> bool {
         (Type::AnyArityFunType(ft1), Type::AnyArityFunType(ft2)) => is_he(&ft1.res_ty, &ft2.res_ty),
         (Type::ListType(lt1), Type::ListType(lt2)) => is_he(&lt1.t, &lt2.t),
         (Type::ListType(_), _) => false,
+        (Type::ConsType(ct1), Type::ConsType(ct2)) => {
+            is_he(&ct1.head_t, &ct2.head_t) && is_he(&ct1.tail_t, &ct2.tail_t)
+        }
+        (Type::ConsType(_), _) => false,
         (Type::UnionType(ut1), Type::UnionType(ut2)) if ut1.tys.len() == ut2.tys.len() => {
             all_he(&ut1.tys, &ut2.tys)
         }
@@ -236,6 +241,9 @@ impl StubContractivityChecker<'_> {
                 self.with_productive_history(|this| this.all_contractive(tt.arg_tys))
             }
             Type::ListType(lt) => self.with_productive_history(|this| this.is_contractive(*lt.t)),
+            Type::ConsType(ct) => self.with_productive_history(|this| {
+                this.is_contractive(*ct.head_t) && this.is_contractive(*ct.tail_t)
+            }),
             Type::UnionType(ut) => self.all_contractive(ut.tys),
             Type::MapType(mt) => self.with_productive_history(|this| {
                 let prop = mt.props.into_values().map(|prop| prop.tp);

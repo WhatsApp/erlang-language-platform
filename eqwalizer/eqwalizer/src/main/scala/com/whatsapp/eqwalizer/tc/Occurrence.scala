@@ -121,7 +121,7 @@ object Occurrence {
       Some(ValueKind.Binary)
     case AnyFunType | FunType(_, _, _) | AnyArityFunType(_) =>
       Some(ValueKind.Fun)
-    case NilType | ListType(_) =>
+    case NilType | ListType(_) | ConsType(_, _) =>
       Some(ValueKind.List)
     case MapType(_, _, _) =>
       Some(ValueKind.Map)
@@ -803,11 +803,57 @@ final class Occurrence(pipelineContext: PipelineContext) {
         // t2 comes from props
         throw new IllegalStateException(t2.toString)
 
-      case (ListType(_) | NilType, ListType(_) | NilType) =>
+      case (NilType, NilType) =>
         Some(true)
-      case (ListType(_) | NilType, _) =>
+      case (NilType, ConsType(_, _)) =>
         Some(false)
-      case (_, ListType(_) | NilType) =>
+      case (NilType, ListType(_)) =>
+        Some(true)
+      case (ConsType(_, _), NilType) =>
+        Some(false)
+      case (ConsType(h1, tl1), ConsType(h2, tl2)) =>
+        overlap(h1, h2) match {
+          case Some(false) =>
+            Some(false)
+          case Some(true) =>
+            overlap(tl1, tl2)
+          case None =>
+            overlap(tl1, tl2) match {
+              case Some(false) => Some(false)
+              case _           => None
+            }
+        }
+      case (ConsType(h1, tl1), ListType(e2)) =>
+        overlap(h1, e2) match {
+          case Some(false) =>
+            Some(false)
+          case Some(true) =>
+            overlap(tl1, ListType(e2))
+          case None =>
+            overlap(tl1, ListType(e2)) match {
+              case Some(false) => Some(false)
+              case _           => None
+            }
+        }
+      case (ListType(_), NilType) =>
+        Some(true)
+      case (ListType(e1), ConsType(h2, tl2)) =>
+        overlap(e1, h2) match {
+          case Some(false) =>
+            Some(false)
+          case Some(true) =>
+            overlap(ListType(e1), tl2)
+          case None =>
+            overlap(ListType(e1), tl2) match {
+              case Some(false) => Some(false)
+              case _           => None
+            }
+        }
+      case (ListType(_), ListType(_)) =>
+        Some(true)
+      case (ListType(_) | NilType | ConsType(_, _), _) =>
+        Some(false)
+      case (_, ListType(_) | NilType | ConsType(_, _)) =>
         Some(false)
 
       case _ =>
@@ -832,6 +878,16 @@ final class Occurrence(pipelineContext: PipelineContext) {
         BoundedDynamicType(restrict(t, s))
       case (DynamicType, s) =>
         BoundedDynamicType(s)
+      case (ConsType(_, _), NilType) =>
+        NoneType
+      case (NilType, ConsType(_, _)) =>
+        NoneType
+      case (ListType(e), ConsType(h, tl)) =>
+        ConsType_*(restrict(e, h), restrict(ListType(e), tl))
+      case (ConsType(h, tl), ListType(e)) =>
+        ConsType_*(restrict(h, e), restrict(tl, ListType(e)))
+      case (ConsType(h1, tl1), ConsType(h2, tl2)) =>
+        ConsType_*(restrict(h1, h2), restrict(tl1, tl2))
       case (_, _) =>
         t1
     }
@@ -845,6 +901,10 @@ final class Occurrence(pipelineContext: PipelineContext) {
         val body = util.getTypeDeclBody(rid, args)
         val removed = remove(body, t2)
         if (removed == body) t1 else removed
+      case (ListType(e), _) =>
+        val body = UnionType(Set(NilType, ConsType(e, ListType(e))))
+        val removed = remove(body, t2)
+        if (removed == body) t1 else removed
       case (UnionType(ts), s) =>
         UnionType(ts.map(remove(_, s)))
       case (BoundedDynamicType(t), s) =>
@@ -852,6 +912,10 @@ final class Occurrence(pipelineContext: PipelineContext) {
       case (t, _) =>
         t
     }
+
+  private def ConsType_*(headT: Type, tailT: Type): Type =
+    if (subtype.isNoneType(headT) || subtype.isNoneType(tailT)) NoneType
+    else ConsType(headT, tailT)
 
   private def TupleType_*(elems: List[Type]): Type =
     if (elems.exists(subtype.isNoneType))
@@ -959,6 +1023,12 @@ final class Occurrence(pipelineContext: PipelineContext) {
           NoneType
         else
           ListType(lt)
+      case (ConsType(h, tl), ListHead :: path) =>
+        val h1 = update(h, path, pol, s)
+        ConsType_*(h1, tl)
+      case (ConsType(h, tl), ListTail :: path) =>
+        val tl1 = update(tl, path, pol, s)
+        ConsType_*(h, tl1)
       case (_, TupleField(_, None) :: path) if pol == + =>
         update(t, path, pol, AnyTupleType)
       case (_, _) =>
@@ -1118,6 +1188,10 @@ final class Occurrence(pipelineContext: PipelineContext) {
         typePathRef(lt, path)
       case (ListType(lt), ListTail :: path) =>
         typePathRef(ListType(lt), path)
+      case (ConsType(h, _), ListHead :: path) =>
+        typePathRef(h, path)
+      case (ConsType(_, tl), ListTail :: path) =>
+        typePathRef(tl, path)
       case _ =>
         AnyType
     }

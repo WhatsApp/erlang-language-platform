@@ -147,10 +147,17 @@ class Subtype(pipelineContext: PipelineContext) {
         tys1.lazyZip(tys2).forall(subType(_, _, seen))
       case (NilType, ListType(_)) =>
         true
-      case (ListType(ty1), NilType) =>
-        subType(ty1, NoneType, seen)
+      case (ListType(e), NilType) =>
+        subType(e, NoneType, seen)
       case (ListType(et1), ListType(et2)) =>
         subType(et1, et2, seen)
+      case (ListType(e), _) =>
+        val body = UnionType(Set(NilType, ConsType(e, ListType(e))))
+        subType(body, t2, seen + (t1 -> t2))
+      case (ConsType(h1, tl1), ConsType(h2, tl2)) =>
+        subType(h1, h2, seen) && subType(tl1, tl2, seen)
+      case (ConsType(h, tl), ListType(e)) =>
+        subType(h, e, seen) && subType(tl, ListType(e), seen)
       case (ft1: FunType, ft2: FunType) if ft1.argTys.size == ft2.argTys.size =>
         TypeVars.conformForalls(ft1, ft2) match {
           case None =>
@@ -329,10 +336,17 @@ class Subtype(pipelineContext: PipelineContext) {
         tys1.lazyZip(tys2).forall(subTypePol(_, _, seen))
       case (NilType, ListType(_)) =>
         true
-      case (ListType(ty1), NilType) =>
-        subTypePol(ty1, NoneType, seen)
+      case (ListType(e), NilType) =>
+        subTypePol(e, NoneType, seen)
       case (ListType(et1), ListType(et2)) =>
         subTypePol(et1, et2, seen)
+      case (ListType(e), _) =>
+        val body = UnionType(Set(NilType, ConsType(e, ListType(e))))
+        subTypePol(body, t2, seen + ((t1, t2, p)))
+      case (ConsType(h1, t1), ConsType(h2, t2)) =>
+        subTypePol(h1, h2, seen) && subTypePol(t1, t2, seen)
+      case (ConsType(h, t), ListType(e)) =>
+        subTypePol(h, e, seen) && subTypePol(t, ListType(e), seen)
       case (ft1: FunType, ft2: FunType) if ft1.argTys.size == ft2.argTys.size =>
         TypeVars.conformForalls(ft1, ft2) match {
           case None => false

@@ -296,7 +296,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │              ^^^
      │              │
      │              [A].
-Expression has type:   [[atom()]] | [atom()]
+Expression has type:   [[atom(), ...]] | [atom()] | [[]]
 Context expected type: [atom()]
      │              
 
@@ -304,7 +304,7 @@ Because in the expression's type:
   The type is a union type with some valid candidates: [atom()]
   However, the following candidate doesn't match:
   [
-    Here the type is:     [atom()]
+    Here the type is:     [atom(), ...]
     Context expects type: atom()
   ]
 
@@ -315,7 +315,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │               ^^^^
      │               │
      │               [A2].
-Expression has type:   [[atom()]] | [atom()]
+Expression has type:   [[atom(), ...]] | [atom()]
 Context expected type: [atom()]
      │               
 
@@ -323,7 +323,7 @@ Because in the expression's type:
   The type is a union type with some valid candidates: [atom()]
   However, the following candidate doesn't match:
   [
-    Here the type is:     [atom()]
+    Here the type is:     [atom(), ...]
     Context expects type: atom()
   ]
 

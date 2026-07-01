@@ -63,6 +63,34 @@ class Narrow(pipelineContext: PipelineContext) {
             }
             TupleType(elems)
           }
+        case (NilType, ConsType(_, _)) =>
+          NoneType
+        case (ConsType(_, _), NilType) =>
+          NoneType
+        case (ConsType(h1, t1), ConsType(h2, t2)) =>
+          val hMeet = meetAux(h1, h2, seen)
+          if (subtype.isNoneType(hMeet)) NoneType
+          else {
+            val tMeet = meetAux(t1, t2, seen)
+            if (subtype.isNoneType(tMeet)) NoneType
+            else ConsType(hMeet, tMeet)
+          }
+        case (ConsType(h, t), ListType(eT)) =>
+          val hMeet = meetAux(h, eT, seen)
+          if (subtype.isNoneType(hMeet)) NoneType
+          else {
+            val tMeet = meetAux(t, ListType(eT), seen)
+            if (subtype.isNoneType(tMeet)) NoneType
+            else ConsType(hMeet, tMeet)
+          }
+        case (ListType(eT), ConsType(h, t)) =>
+          val hMeet = meetAux(eT, h, seen)
+          if (subtype.isNoneType(hMeet)) NoneType
+          else {
+            val tMeet = meetAux(ListType(eT), t, seen)
+            if (subtype.isNoneType(tMeet)) NoneType
+            else ConsType(hMeet, tMeet)
+          }
         case (ListType(et1), ListType(et2)) =>
           val et = meetAux(et1, et2, seen)
           if (subtype.isNoneType(et)) NilType
@@ -277,6 +305,9 @@ class Narrow(pipelineContext: PipelineContext) {
         List(NoneType)
       case ListType(elemType) =>
         List(elemType)
+      case ConsType(headT, tailT) =>
+        val tailElems = extractListElem(tailT)
+        headT :: tailElems
       case NoneType =>
         List(NoneType)
       case RemoteType(rid, args) =>

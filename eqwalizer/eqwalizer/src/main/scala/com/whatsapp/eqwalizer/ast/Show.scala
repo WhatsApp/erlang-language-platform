@@ -28,6 +28,8 @@ case class Show(pipelineContext: Option[PipelineContext]) {
         s"""[${show(elemType)}]"""
       case NilType =>
         "[]"
+      case ConsType(_, _) =>
+        showCons(tp)
       case UnionType(elemTys) =>
         elemTys.map(show).mkString(" | ")
       case RemoteType(rid, argTys) =>
@@ -120,6 +122,37 @@ case class Show(pipelineContext: Option[PipelineContext]) {
     }
   }
 
+  /** Render a ConsType chain, flattening contiguous ConsType cells into Erlang's
+    * `[h1, h2, ... / tail]` syntax.
+    * We use `/` to disambiguate from `|` (unions).
+    * Examples:
+    *   ConsType(h, NilType)                    -> [h / []]
+    *   ConsType(h, ListType(h))                -> [h, ...]
+    *   ConsType(h1, ConsType(h2, NilType))     -> [h1, h2 / []]
+    *   ConsType(h1, ConsType(h2, ListType(t))) -> [h1, h2 / [t]]
+    *   ConsType(h, other)                      -> [h / other]
+    */
+  private def showCons(t: Type): String = {
+    val heads = scala.collection.mutable.ListBuffer.empty[Type]
+    var cur: Type = t
+    while (cur.isInstanceOf[ConsType]) {
+      val ConsType(h, tl) = cur: @unchecked
+      heads += h
+      cur = tl
+    }
+    val headStr = heads.map(show).mkString(", ")
+    cur match {
+      case NilType =>
+        s"[$headStr / []]"
+      case ListType(elemT) =>
+        // Common case: ConsType(h, ListType(e)) — non-empty list-of-e with known head.
+        if (heads.forall(h => h == elemT)) s"[${show(elemT)}, ...]"
+        else s"[$headStr / [${show(elemT)}]]"
+      case other =>
+        s"[$headStr / ${show(other)}]"
+    }
+  }
+
   def showTruncated(tp: Type): String =
     tp match {
       case AtomLitType(atom) =>
@@ -134,6 +167,8 @@ case class Show(pipelineContext: Option[PipelineContext]) {
         "[...]"
       case NilType =>
         "[]"
+      case ConsType(_, _) =>
+        "[...]"
       case UnionType(argTys) =>
         val argTysTruncated = argTys.toList.take(5).map(showTruncated).mkString(" | ")
         if (argTys.size > 5) s"$argTysTruncated | ..."

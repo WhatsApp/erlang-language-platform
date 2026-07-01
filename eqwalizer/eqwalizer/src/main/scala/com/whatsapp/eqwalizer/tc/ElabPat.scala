@@ -92,10 +92,10 @@ final class ElabPat(pipelineContext: PipelineContext) {
           case Some(ListType(elemType)) =>
             val (hType, env1) = elabPat(hPat, elemType, env)
             val (tType, env2) = elabPat(tPat, ListType(elemType), env1)
-            narrow.asListType(tType) match {
-              case Some(ListType(refinedT)) => (ListType(subtype.join(hType, refinedT)), env2)
-              case None                     => (AnyType, env2)
-            }
+            if (subtype.isNoneType(hType) || subtype.isNoneType(tType))
+              (NoneType, env2)
+            else
+              (ConsType(hType, tType), env2)
         }
       case PatMatch(p1: PatVar, p2) =>
         val (t2, env1) = elabPat(p2, t, env)

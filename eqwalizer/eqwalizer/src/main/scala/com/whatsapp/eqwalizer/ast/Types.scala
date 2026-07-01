@@ -24,6 +24,7 @@ object Types {
   case object AnyTupleType extends Type
   case class TupleType(argTys: List[Type]) extends Type
   case object NilType extends Type
+  case class ConsType(headT: Type, tailT: Type) extends Type
   case class ListType(t: Type) extends Type
 
   /** prefer `Subtype.join` over `UnionType.apply`

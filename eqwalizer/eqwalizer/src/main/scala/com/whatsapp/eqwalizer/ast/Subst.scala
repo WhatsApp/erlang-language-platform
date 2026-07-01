@@ -19,6 +19,7 @@ object Subst {
       case AnyArityFunType(resTy)             => AnyArityFunType(sub(resTy))
       case TupleType(params)                  => TupleType(params.map(sub))
       case ListType(elemT)                    => ListType(sub(elemT))
+      case ConsType(headT, tailT)             => ConsType(sub(headT), sub(tailT))
       case UnionType(params)                  => UnionType(params.map(sub))
       case RemoteType(id, params)             => RemoteType(id, params.map(sub))
       case FreeVarType(n)                     => s.getOrElse(n, t)

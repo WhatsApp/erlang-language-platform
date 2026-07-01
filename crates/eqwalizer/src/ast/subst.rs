@@ -10,6 +10,7 @@
 
 use elp_types_db::eqwalizer::types::AnyArityFunType;
 use elp_types_db::eqwalizer::types::BoundedDynamicType;
+use elp_types_db::eqwalizer::types::ConsType;
 use elp_types_db::eqwalizer::types::FunType;
 use elp_types_db::eqwalizer::types::ListType;
 use elp_types_db::eqwalizer::types::MapType;
@@ -41,6 +42,10 @@ impl Subst<'_> {
             }),
             Type::ListType(lt) => Type::ListType(ListType {
                 t: Box::new(self.apply(*lt.t)),
+            }),
+            Type::ConsType(ct) => Type::ConsType(ConsType {
+                head_t: Box::new(self.apply(*ct.head_t)),
+                tail_t: Box::new(self.apply(*ct.tail_t)),
             }),
             Type::UnionType(ut) => Type::UnionType(UnionType {
                 tys: self.apply_all(ut.tys),

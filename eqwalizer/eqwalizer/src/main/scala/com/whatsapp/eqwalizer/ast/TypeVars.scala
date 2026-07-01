@@ -54,6 +54,7 @@ object TypeVars {
     case RemoteType(_, tys)           => tys
     case MapType(props, kType, vType) => kType :: vType :: props.values.map(_.tp).toList
     case ListType(ty)                 => ty :: Nil
+    case ConsType(headT, tailT)       => headT :: tailT :: Nil
     case RefinedRecordType(_, fields) => fields.toList.map(_._2)
     case BoundedDynamicType(bound)    => bound :: Nil
     case _                            => Nil
@@ -75,6 +76,8 @@ object TypeVars {
       TupleType(params.map(substLevels(shift)))
     case ListType(elemT) =>
       ListType(substLevels(shift)(elemT))
+    case ConsType(headT, tailT) =>
+      ConsType(substLevels(shift)(headT), substLevels(shift)(tailT))
     case UnionType(params) =>
       UnionType(params.map(substLevels(shift)))
     case RemoteType(id, params) =>
@@ -117,6 +120,8 @@ object TypeVars {
         TupleType(params.map(elim))
       case ListType(elemT) =>
         ListType(elim(elemT))
+      case ConsType(headT, tailT) =>
+        ConsType(elim(headT), elim(tailT))
       case UnionType(params) =>
         UnionType(params.map(elim))
       case RemoteType(id, params) =>

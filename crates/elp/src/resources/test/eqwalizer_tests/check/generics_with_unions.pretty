@@ -68,13 +68,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                 ^
     │                 │
     │                 T.
-Expression has type:   [T] | T
+Expression has type:   [T, ...] | T | []
 Context expected type: T
     │                 
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: T
-  However the following candidate: [T]
+  However the following candidate: [T, ...]
   Differs from the expected type:  T
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

@@ -49,6 +49,7 @@ pub enum Type {
     TupleType(TupleType),
     NilType,
     ListType(ListType),
+    ConsType(ConsType),
     UnionType(UnionType),
     RemoteType(RemoteType),
     BoundVarType(BoundVarType),
@@ -276,6 +277,7 @@ impl Type {
                 .and_then(|()| f(&ty.v_type))
                 .and_then(|()| ty.props.iter().try_for_each(|(_, prop)| f(&prop.tp))),
             Type::ListType(ty) => f(&ty.t),
+            Type::ConsType(ty) => f(&ty.head_t).and_then(|()| f(&ty.tail_t)),
             Type::RefinedRecordType(ty) => ty.fields.iter().try_for_each(|(_, ty)| f(ty)),
             Type::BoundedDynamicType(ty) => f(&ty.bound),
             Type::AtomLitType(_)
@@ -396,6 +398,7 @@ impl fmt::Display for Type {
                 ty.v_type
             ),
             Type::ListType(ty) => write!(f, "[{}]", ty.t),
+            Type::ConsType(_) => write!(f, "{}", show_cons(self)),
             Type::RefinedRecordType(ty) => write!(f, "#{}{{}}", ty.rec_type.name.as_str()),
             Type::AnyNativeRecordType => write!(f, "record()"),
             Type::NativeRecordType(ty) => {
@@ -403,6 +406,33 @@ impl fmt::Display for Type {
             }
             Type::BoundedDynamicType(ty) => write!(f, "dynamic({})", ty.bound),
         }
+    }
+}
+
+/// Render a ConsType chain, flattening contiguous cons cells into Erlang's
+/// `[h1, h2, ... / tail]` syntax. Mirrors `Show.showCons` on the Scala side.
+fn show_cons(t: &Type) -> String {
+    let mut heads: Vec<&Type> = Vec::new();
+    let mut cur = t;
+    while let Type::ConsType(c) = cur {
+        heads.push(&c.head_t);
+        cur = &c.tail_t;
+    }
+    let head_str = heads
+        .iter()
+        .map(|h| h.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    match cur {
+        Type::NilType => format!("[{} / []]", head_str),
+        Type::ListType(lt) => {
+            if heads.iter().all(|h| *h == lt.t.as_ref()) {
+                format!("[{}, ...]", lt.t)
+            } else {
+                format!("[{} / [{}]]", head_str, lt.t)
+            }
+        }
+        other => format!("[{} / {}]", head_str, other),
     }
 }
 
@@ -434,6 +464,12 @@ pub struct TupleType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ListType {
     pub t: Box<Type>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct ConsType {
+    pub head_t: Box<Type>,
+    pub tail_t: Box<Type>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

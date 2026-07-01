@@ -140,6 +140,12 @@ class Constraints(pipelineContext: PipelineContext) {
           constrainSeq(ctx, leftTys.zip(rightTys), seen)
         case (ListType(leftElemTy), ListType(rightElemTy)) =>
           constrain(ctx, leftElemTy, rightElemTy, seen)
+        case (ConsType(lh, lt), ConsType(rh, rt)) =>
+          constrainSeq(ctx, List((lh, rh), (lt, rt)), seen)
+        case (ConsType(lh, lt), ListType(rightElemTy)) =>
+          constrainSeq(ctx, List((lh, rightElemTy), (lt, ListType(rightElemTy))), seen)
+        case (NilType, ListType(_)) =>
+          Some(List(Map.empty))
         case (MapType(props1, kT1, vT1), MapType(props2, kT2, vT2)) =>
           val tolerantSubtype = subtype.isDynamicType(kT1) && subtype.isDynamicType(vT1)
           var constraints: List[(Type, Type)] = List()
