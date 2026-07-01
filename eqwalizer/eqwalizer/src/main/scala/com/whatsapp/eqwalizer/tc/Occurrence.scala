@@ -39,13 +39,13 @@ object Occurrence {
         case True   => List()
         case p      => List(p)
       }
-      val (propsUkn, propsNotUkn) = flattenedProps.partition(_ == Unknown)
-      val simplProps =
-        if (propsUkn.isEmpty) propsNotUkn
-        else Unknown :: propsNotUkn
-      if (simplProps.isEmpty) True
-      else if (simplProps.size == 1) simplProps.head
-      else And(simplProps)
+      val (propsUnknown, propsKnown) = flattenedProps.partition(_ == Unknown)
+      val simpleProps =
+        if (propsUnknown.isEmpty) propsKnown
+        else Unknown :: propsKnown
+      if (simpleProps.isEmpty) True
+      else if (simpleProps.size == 1) simpleProps.head
+      else And(simpleProps)
     }
 
   private def or(props: List[Prop]): Prop =
@@ -57,13 +57,13 @@ object Occurrence {
         case False => List()
         case p     => List(p)
       }
-      val (propsUkn, propsNotUkn) = flattenedProps.partition(_ == Unknown)
-      val simplProps =
-        if (propsUkn.isEmpty) propsNotUkn
-        else Unknown :: propsNotUkn
-      if (simplProps.isEmpty) False
-      else if (simplProps.size == 1) simplProps.head
-      else Or(simplProps)
+      val (propsUnknown, propsKnown) = flattenedProps.partition(_ == Unknown)
+      val simpleProps =
+        if (propsUnknown.isEmpty) propsKnown
+        else Unknown :: propsKnown
+      if (simpleProps.isEmpty) False
+      else if (simpleProps.size == 1) simpleProps.head
+      else Or(simpleProps)
     }
 
   private sealed trait Obj
