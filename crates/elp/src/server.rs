@@ -127,6 +127,7 @@ mod progress;
 mod server_telemetry;
 pub mod setup;
 mod telemetry_manager;
+mod watchdog;
 mod work_registry;
 
 const LOGGER_NAME: &str = "lsp";
@@ -404,14 +405,20 @@ impl Server {
             )
         }
 
+        // Observes the per-turn heartbeat below and reports a main-loop stall
+        // even if the turn never returns. Stops when this guard is dropped.
+        let _watchdog = watchdog::spawn();
+
         while let Some(event) = self.next_event() {
             if let Event::Lsp(lsp_server::Message::Notification(notif)) = &event
                 && notif.method == notification::Exit::METHOD
             {
                 return Ok(());
             }
+            let event_label = format!("{event:?}");
             let _timer1 = timeit_exceeds!("main_loop_health", SLOW_DURATION);
-            let _timer2 = timeit_exceeds!(format!("slow_event:{:?}", event), TOO_SLOW_DURATION);
+            let _timer2 = timeit_exceeds!(format!("slow_event:{event_label}"), TOO_SLOW_DURATION);
+            let _turn = watchdog::arm(event_label);
             self.handle_event(event)?;
             self.telemetry_manager
                 .on_periodic(self.mem_docs.read().len(), self.highest_file_id);
@@ -1081,8 +1088,10 @@ impl Server {
         // is dropped) are observable in the field.
         let num_changed_files = changed_files.len();
         let write_started = Instant::now();
-        let line_ending_updates =
-            crate::reload::apply_vfs_text_changes(raw_database, vfs, changed_files.values());
+        let line_ending_updates = {
+            let _phase = watchdog::phase("vfs_salsa_write");
+            crate::reload::apply_vfs_text_changes(raw_database, vfs, changed_files.values())
+        };
         self.line_ending_map.write().extend(line_ending_updates);
         let write_elapsed = write_started.elapsed();
         if write_elapsed >= DB_WRITE_STALL_THRESHOLD {
@@ -1440,6 +1449,7 @@ impl Server {
 
     fn update_configuration(&mut self, config: Config) {
         let _p = tracing::info_span!("Server::update_configuration").entered();
+        let _phase = watchdog::phase("update_configuration");
         let old_config = mem::replace(&mut self.config, Arc::new(config));
 
         self.logger
@@ -1460,7 +1470,10 @@ impl Server {
 
         // Read the lint config file
         let loader = self.project_loader.clone();
-        let loader = loader.lock();
+        let loader = {
+            let _phase = watchdog::phase("update_configuration:project_loader_lock");
+            loader.lock()
+        };
         // The OTP root is added with a project root value of None, skip it
         if let Some((path, _)) = loader.project_roots.iter().find(|(_k, v)| v.is_some()) {
             let path_buf: PathBuf = path.clone().into();
