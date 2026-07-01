@@ -884,7 +884,7 @@ impl Converter {
                         return Ok(Expr::NativeRecordUpdate(NativeRecordUpdate {
                             pos,
                             expr: Box::new(self.convert_expr(expr)?),
-                            name: NativeRecordName::Qualified(id),
+                            name: NativeRecordName::Qualified { id },
                             fields: self.convert_native_rec_fields_expr(fields)?,
                         }));
                     }
@@ -914,7 +914,7 @@ impl Converter {
                         return Ok(Expr::NativeRecordSelect(NativeRecordSelect {
                             pos,
                             expr: Box::new(self.convert_expr(expr)?),
-                            name: NativeRecordName::Qualified(id),
+                            name: NativeRecordName::Qualified { id },
                             field_name: self.convert_atom_lit(field)?,
                         }));
                     }
@@ -938,7 +938,7 @@ impl Converter {
                     return Ok(Expr::NativeRecordUpdate(NativeRecordUpdate {
                         pos,
                         expr: Box::new(self.convert_expr(expr)?),
-                        name: NativeRecordName::Qualified(id),
+                        name: NativeRecordName::Qualified { id },
                         fields: self.convert_native_rec_fields_expr(fields)?,
                     }));
                 }
@@ -957,7 +957,7 @@ impl Converter {
                     return Ok(Expr::NativeRecordSelect(NativeRecordSelect {
                         pos,
                         expr: Box::new(self.convert_expr(expr)?),
-                        name: NativeRecordName::Qualified(id),
+                        name: NativeRecordName::Qualified { id },
                         field_name: self.convert_atom_lit(field)?,
                     }));
                 }
@@ -1505,7 +1505,7 @@ impl Converter {
                     if let Some(id) = self.native_record_id_for(StringId::from(&name.name)) {
                         return Ok(Pat::PatNativeRecord(PatNativeRecord {
                             pos,
-                            name: NativeRecordName::Qualified(id),
+                            name: NativeRecordName::Qualified { id },
                             fields: self.convert_pat_native_rec_fields(fields)?,
                         }));
                     }
@@ -1544,7 +1544,7 @@ impl Converter {
                     let id = self.native_record_id(&qual.elements)?;
                     return Ok(Pat::PatNativeRecord(PatNativeRecord {
                         pos,
-                        name: NativeRecordName::Qualified(id),
+                        name: NativeRecordName::Qualified { id },
                         fields: self.convert_pat_native_rec_fields(fields)?,
                     }));
                 }
@@ -1753,7 +1753,7 @@ impl Converter {
                         return Ok(Test::TestNativeRecordSelect(TestNativeRecordSelect {
                             pos,
                             rec: Box::new(self.convert_test(test)?),
-                            name: NativeRecordName::Qualified(id),
+                            name: NativeRecordName::Qualified { id },
                             field_name: self.convert_atom_lit(field)?,
                         }));
                     }
@@ -1771,7 +1771,7 @@ impl Converter {
                     return Ok(Test::TestNativeRecordSelect(TestNativeRecordSelect {
                         pos,
                         rec: Box::new(self.convert_test(test)?),
-                        name: NativeRecordName::Qualified(id),
+                        name: NativeRecordName::Qualified { id },
                         field_name: self.convert_atom_lit(field)?,
                     }));
                 }

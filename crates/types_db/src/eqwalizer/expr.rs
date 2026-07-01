@@ -349,7 +349,7 @@ pub struct RecordIndex {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum NativeRecordName {
     Anon,
-    Qualified(eqwalizer::RemoteId),
+    Qualified { id: eqwalizer::RemoteId },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
