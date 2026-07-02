@@ -102,7 +102,9 @@ class Util(pipelineContext: PipelineContext) {
     Db
       .getType(remoteId.module, id)
       .map(applyType)
-      .get // A non-defined type should fail during stubs validation
+      // A non-defined type should fail during stubs validation,
+      // but we want to get the details in case if something goes wrong.
+      .getOrElse(sys.error(s"module: $module, typeId: $remoteId"))
   }
 
   def flattenUnions(ty: Type): List[Type] = ty match {
