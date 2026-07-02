@@ -2239,6 +2239,12 @@ impl Converter {
                             }));
                         }
                         let record_name = self.convert_atom_lit(record_name)?;
+                        if let Some(id) = self.native_record_id_for(record_name) {
+                            return Ok(ExtType::NativeRecordExtType(NativeRecordExtType {
+                                pos,
+                                id,
+                            }));
+                        }
                         if field_tys.is_empty() {
                             return Ok(ExtType::RecordExtType(RecordExtType {
                                 pos,
