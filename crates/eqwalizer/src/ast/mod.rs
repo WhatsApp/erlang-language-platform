@@ -18,6 +18,7 @@ use std::path::PathBuf;
 use eetf;
 use eetf::Term;
 use elp_syntax::SmolStr;
+use elp_types_db::StringId;
 use elp_types_db::eqwalizer::AST;
 pub use elp_types_db::eqwalizer::Id;
 pub use elp_types_db::eqwalizer::Pos;
@@ -223,6 +224,24 @@ pub fn type_ids(ast: &AST) -> BTreeMap<Id, Visibility> {
         }
     }
     type_ids
+}
+
+pub fn native_rec_ids(ast: &AST) -> BTreeMap<StringId, Visibility> {
+    let mut native_rec_ids = BTreeMap::default();
+    for form in &ast.forms {
+        match form {
+            ExternalForm::ExportNativeRecord(e) => {
+                for name in &e.names {
+                    native_rec_ids.insert(*name, Visibility::Public);
+                }
+            }
+            ExternalForm::ExternalNativeRecDecl(d) => {
+                native_rec_ids.entry(d.name).or_insert(Visibility::Private);
+            }
+            _ => {}
+        }
+    }
+    native_rec_ids
 }
 
 pub fn to_bytes(ast: &Vec<&ExternalForm>) -> Vec<u8> {

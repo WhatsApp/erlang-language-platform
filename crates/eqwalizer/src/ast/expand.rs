@@ -289,11 +289,13 @@ impl Expander<'_> {
                 let module = ModuleName::new(&ty.id.module);
                 match self
                     .db
-                    .native_rec_decl(self.project_id, module, ty.id.name)
+                    .native_rec_ids(self.project_id, module)
                     .ok()
-                    .flatten()
+                    .and_then(|ids| ids.get(&ty.id.name).copied())
                 {
-                    Some(decl) if decl.exported || ty.id.module == self.module => {
+                    Some(visibility)
+                        if visibility == Visibility::Public || ty.id.module == self.module =>
+                    {
                         Ok(ExtType::NativeRecordExtType(ty))
                     }
                     Some(_) => Err(Invalid::NonExportedId(NonExportedId {

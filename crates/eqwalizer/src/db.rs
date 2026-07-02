@@ -104,6 +104,13 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
         module: ModuleName,
     ) -> Result<Arc<BTreeMap<Id, Visibility>>, Error>;
 
+    #[salsa::invoke_interned(native_rec_ids)]
+    fn native_rec_ids(
+        &self,
+        project_id: ProjectId,
+        module: ModuleName,
+    ) -> Result<Arc<BTreeMap<StringId, Visibility>>, Error>;
+
     #[salsa::invoke_interned(expanded_stub)]
     fn expanded_stub(
         &self,
@@ -319,6 +326,15 @@ fn type_ids(
 ) -> Result<Arc<BTreeMap<Id, Visibility>>, Error> {
     db.converted_stub(project_id, module)
         .map(|ast| Arc::new(ast::type_ids(&ast)))
+}
+
+fn native_rec_ids(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+    module: ModuleName,
+) -> Result<Arc<BTreeMap<StringId, Visibility>>, Error> {
+    db.converted_stub(project_id, module)
+        .map(|ast| Arc::new(ast::native_rec_ids(&ast)))
 }
 
 fn expanded_stub(
