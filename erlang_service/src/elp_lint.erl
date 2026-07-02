@@ -401,6 +401,8 @@ format_error(native_record_illegal_multi_field_init) ->
     "multi-field initialization (assigning to _) is only supported for tuple records";
 format_error({native_record_already_exported,N}) ->
     io_lib:format("native record ~tw already exported", [N]);
+format_error(native_record_field_types) ->
+    "native records do not allow special field types";
 format_error(tuple_record_export) ->
     "tuple records cannot be exported; only native records can";
 format_error(bad_export_record) ->
@@ -3813,8 +3815,16 @@ check_record_types(Anno, {Mod, Name}, Fields, SeenVars, St) ->
             {SeenVars, St}
     end;
 check_record_types(Anno, Name, Fields, SeenVars, St) when is_atom(Name) ->
-    case maps:find(Name, St#lint.records) of
-        {ok,{_A,_,DefFields}} ->
+    case St#lint.records of
+        #{Name := {_A,native,_DefFields}} ->
+            case Fields of
+                [] ->
+                    {SeenVars, St};
+                [Token|_] ->
+                    {SeenVars, add_error(element(2, Token),
+                                         native_record_field_types, St)}
+            end;
+        #{Name := {_A,_,DefFields}} ->
 	    case lists:all(fun({type, _, field_type, _}) -> true;
 			      (_) -> false
 			   end, Fields) of
@@ -3823,7 +3833,7 @@ check_record_types(Anno, Name, Fields, SeenVars, St) when is_atom(Name) ->
 		false ->
 		    {SeenVars, add_error(Anno, {type_syntax, record}, St)}
 	    end;
-        error ->
+        #{} ->
             case St#lint.rec_imports of
                 #{Name := _Mod} ->
                     {SeenVars, St};
