@@ -52,14 +52,17 @@ type_spec spec_fun typed_exprs typed_record_fields field_types field_type
 map_pair_types map_pair_type
 bin_base_type bin_unit_type
 maybe_expr maybe_match_exprs maybe_match
+record_spec typed_record_spec record_name
+reserved_word
 cast_expr.
 
 Terminals
 char integer float atom sigil_prefix string sigil_suffix var
 
 '(' ')' ',' '->' '{' '}' '[' ']' '|' '||' '<-' '<:-' ';' ':' '#' '.' '&&'
+'#_'
 'after' 'begin' 'case' 'try' 'catch' 'end' 'fun' 'if' 'of' 'receive' 'when'
-'maybe' 'else'
+'maybe' 'else' 'cond' 'let'
 'andalso' 'orelse'
 'bnot' 'not'
 '*' '/' 'div' 'rem' 'band' 'and'
@@ -69,7 +72,7 @@ char integer float atom sigil_prefix string sigil_suffix var
 '<<' '>>'
 '!' '=' '::' ':>' '..' '...'
 '?='
-'spec' 'callback' % helper
+'spec' 'callback' 'record' % helper
 dot.
 
 Expect 0.
@@ -104,8 +107,14 @@ form -> function dot : '$1'.
 attribute -> '-' atom attr_val               : build_attribute('$2', element(1, '$3'), ?anno('$1', '$3')).
 attribute -> '-' atom typed_attr_val         : build_typed_attribute('$2', '$3', ?anno('$1', '$3')).
 attribute -> '-' atom '(' typed_attr_val ')' : build_typed_attribute('$2', '$4', ?anno('$1', '$5')).
+
+attribute -> '-' 'record' record_spec        : build_record('$2', '$3', ?anno('$1', '$3')).
+attribute -> '-' 'record' typed_record_spec  : build_record('$2', '$3', ?anno('$1', '$3')).
+attribute -> '-' 'record' '(' typed_record_spec ')' : build_record('$2', '$4', ?anno('$1', '$5')).
+
 attribute -> '-' 'spec' type_spec            : build_type_spec('$2', '$3', ?anno('$1', '$3')).
 attribute -> '-' 'callback' type_spec        : build_type_spec('$2', '$3', ?anno('$1', '$3')).
+attribute -> '-' 'record' type_spec          : build_type_spec('$2', '$3', ?anno('$1', '$3')).
 
 type_spec -> spec_fun type_sigs :
     {type_spec, ?anno('$1', lists:last('$2')), element(1, '$1'), '$2'}.
@@ -117,6 +126,22 @@ spec_fun ->                  atom ':' atom : {{'$1', '$3'}, ?anno('$1', '$3')}.
 
 typed_attr_val -> expr ',' typed_record_fields : {typed_record, ?anno('$1','$3'), '$1', '$3'}.
 typed_attr_val -> expr '::' top_type           : {type_def, ?anno('$1','$3'), '$1', '$3'}.
+
+%% Pretty much like attr_val, but record name must be an atom,
+%% to not allow variable names as record names when there is no leading '#'.
+%% Note: the anno carried as element 2 (ELP-specific) lets the attribute rules
+%% compute their range via ?anno/2; build_record discards it.
+record_spec -> atom : {record, ?anno('$1'), ['$1']}.
+record_spec -> atom ',' exprs: {record, ?anno('$1', lists:last('$3')), ['$1' | '$3']}.
+record_spec -> '(' atom ',' exprs ')': {record, ?anno('$1', '$5'), ['$2' | '$4']}.
+
+%% More record-like record declaration that allows record_name.
+record_spec -> '#' record_name : {native_record, ?anno('$1', '$2'), ['$2']}.
+record_spec -> '#' record_name exprs: {native_record, ?anno('$1', lists:last('$3')), ['$2' | '$3']}.
+record_spec -> '(' '#' record_name exprs ')': {native_record, ?anno('$1', '$5'), ['$3' | '$4']}.
+
+typed_record_spec -> atom ',' typed_record_fields : {typed_record, ?anno('$1','$3'), '$1', '$3'}.
+typed_record_spec -> '#' record_name typed_record_fields : {typed_native_record, ?anno('$1','$3'), '$2', '$3'}.
 
 typed_record_fields -> '{' typed_exprs '}' : {tuple, ?anno('$1','$3'), '$2'}.
 
@@ -174,6 +199,12 @@ type -> '{' top_types '}'                 : {type, ?anno('$1','$3'), tuple, '$2'
 type -> '#' atom '{' '}'                  : {type, ?anno('$1','$4'), record, ['$2']}.
 type -> '#' atom '{' field_types '}'      : {type, ?anno('$1','$5'),
                                              record, ['$2'|'$4']}.
+type -> '#' atom ':' record_name '{' '}'  :
+        Id = {tuple, ?anno('$2','$4'), ['$2','$4']},
+        {type, ?anno('$1','$6'), record, [Id]}.
+type -> '#' atom ':' record_name '{' field_types '}' :
+        Id = {tuple, ?anno('$2','$4'), ['$2','$4']},
+        {type, ?anno('$1','$7'), record, [Id|'$6']}.
 type -> binary_type                       : '$1'.
 type -> integer                           : '$1'.
 type -> char                              : '$1'.
@@ -295,8 +326,13 @@ map_pat_expr -> '#' map_tuple :
 
 record_pat_expr -> '#' atom '.' atom :
 	{record_index,?anno('$1','$4'),element(3, '$2'),'$4'}.
-record_pat_expr -> '#' atom record_tuple :
+record_pat_expr -> '#' record_name record_tuple :
 	{record, ?anno('$1', '$3'), element(3, '$2'), element(1, '$3')}.
+record_pat_expr -> '#' atom ':' record_name record_tuple :
+	Id = {element(3, '$2'), element(3, '$4')},
+	{record, ?anno('$1', '$5'), Id, element(1, '$5')}.
+record_pat_expr -> '#_' record_tuple :
+	{record, ?anno('$1', '$2'), [], element(1, '$2')}.
 
 list -> '[' ']' : {nil,?anno('$1','$2')}.
 list -> '[' expr tail : {cons,?anno('$1','$3'),'$2','$3'}.
@@ -387,22 +423,36 @@ map_field_exact -> map_key ':=' expr :
 
 map_key -> expr : '$1'.
 
-%% N.B. This is called from expr.
-%% N.B. Field names are returned as the complete object, even if they are
-%% always atoms for the moment, this might change in the future.
-
+%% Tuple or native record expressions.
 record_expr -> '#' atom '.' atom :
 	{record_index, ?anno('$1', '$4'), element(3, '$2'), '$4'}.
-record_expr -> '#' atom record_tuple :
+record_expr -> '#' record_name record_tuple :
 	{record, ?anno('$1', '$3'), element(3, '$2'), element(1, '$3')}.
-record_expr -> expr_max '#' atom '.' atom :
+record_expr -> expr_max '#' record_name '.' atom :
 	{record_field, ?anno('$1', '$5'), '$1', element(3, '$3'), '$5'}.
-record_expr -> expr_max '#' atom record_tuple :
+record_expr -> expr_max '#' record_name record_tuple :
 	{record, ?anno('$1', '$4'), '$1', element(3, '$3'), element(1, '$4')}.
-record_expr -> record_expr '#' atom '.' atom :
+record_expr -> record_expr '#' record_name '.' atom :
 	{record_field, ?anno('$1', '$5'), '$1', element(3, '$3'), '$5'}.
-record_expr -> record_expr '#' atom record_tuple :
+record_expr -> record_expr '#' record_name record_tuple :
 	{record, ?anno('$1', '$4'), '$1', element(3, '$3'), element(1, '$4')}.
+
+%% Native record expressions with explicit module name.
+record_expr -> '#' atom ':' record_name record_tuple :
+	Id = {element(3, '$2'), element(3, '$4')},
+	{record, ?anno('$1', '$5'), Id, element(1, '$5')}.
+record_expr -> '#_' record_tuple :
+	{record, ?anno('$1', '$2'), [], element(1, '$2')}.
+record_expr -> expr_max '#' atom ':' record_name '.' atom :
+	Id = {element(3, '$3'), element(3, '$5')},
+	{record_field, ?anno('$1', '$7'), '$1', Id, '$7'}.
+record_expr -> expr_max '#_' '.' atom :
+	{record_field, ?anno('$1', '$4'), '$1', [], '$4'}.
+record_expr -> expr_max '#' atom ':' record_name record_tuple :
+	Id = {element(3, '$3'), element(3, '$5')},
+	{record, ?anno('$1', '$6'), '$1', Id, element(1, '$6')}.
+record_expr -> expr_max '#_' record_tuple :
+	{record, ?anno('$1', '$3'), '$1', [], element(1, '$3')}.
 
 record_tuple -> '{' '}' : {[], ?anno('$1', '$2')}.
 record_tuple -> '{' record_fields '}' : {'$2', ?anno('$1', '$3')}.
@@ -567,6 +617,40 @@ comp_op -> '>' : '$1'.
 comp_op -> '=:=' : '$1'.
 comp_op -> '=/=' : '$1'.
 
+record_name -> atom : '$1'.
+record_name -> var : {atom,?anno('$1'),element(3, '$1')}.
+record_name -> reserved_word : {atom,?anno('$1'),element(1, '$1')}.
+
+reserved_word -> 'after' : '$1'.
+reserved_word -> 'and' : '$1'.
+reserved_word -> 'andalso' : '$1'.
+reserved_word -> 'band' : '$1'.
+reserved_word -> 'begin' : '$1'.
+reserved_word -> 'bnot' : '$1'.
+reserved_word -> 'bor' : '$1'.
+reserved_word -> 'bsl' : '$1'.
+reserved_word -> 'bsr' : '$1'.
+reserved_word -> 'bxor' : '$1'.
+reserved_word -> 'case' : '$1'.
+reserved_word -> 'catch' : '$1'.
+reserved_word -> 'cond' : '$1'.
+reserved_word -> 'div' : '$1'.
+reserved_word -> 'else' : '$1'.
+reserved_word -> 'end' : '$1'.
+reserved_word -> 'fun' : '$1'.
+reserved_word -> 'if' : '$1'.
+reserved_word -> 'let' : '$1'.
+reserved_word -> 'maybe' : '$1'.
+reserved_word -> 'not' : '$1'.
+reserved_word -> 'of' : '$1'.
+reserved_word -> 'or' : '$1'.
+reserved_word -> 'orelse' : '$1'.
+reserved_word -> 'receive' : '$1'.
+reserved_word -> 'rem' : '$1'.
+reserved_word -> 'try' : '$1'.
+reserved_word -> 'when' : '$1'.
+reserved_word -> 'xor' : '$1'.
+
 Header
 "%% This file was automatically generated from the file \"erl_parse.yrl\"."
 "%%"
@@ -612,6 +696,16 @@ Erlang code.
 -export_type([af_binelement/1, af_generator/0, af_zip_generator/0, af_remote_function/0]).
 %% The following type is used by PropEr
 -export_type([af_field_decl/0]).
+%% The following types are used in compiler
+-export_type([
+    af_function_decl/0,
+    af_pattern/0,
+    af_record_decl/0,
+    af_record_field/1,
+    af_record_field_access/1,
+    af_variable/0,
+    record_name/0
+]).
 
 %% Removed functions
 -removed([
@@ -630,10 +724,12 @@ Erlang code.
     | af_behaviour()
     | af_export()
     | af_import()
+    | af_import_record()
     | af_export_type()
     | af_compile()
     | af_file()
     | af_record_decl()
+    | af_native_record_decl()
     | af_type_decl()
     | af_function_spec()
     | af_wild_attribute()
@@ -650,6 +746,8 @@ Erlang code.
 -type af_export() :: {'attribute', anno(), 'export', af_fa_list()}.
 
 -type af_import() :: {'attribute', anno(), 'import', {module(), af_fa_list()}}.
+
+-type af_import_record() :: {'attribute', anno(), 'import_record', {module(), [atom()]}}.
 
 -type af_fa_list() :: [{function_name(), arity()}].
 
@@ -672,6 +770,9 @@ Erlang code.
 -type af_field() ::
     {'record_field', anno(), af_field_name()}
     | {'record_field', anno(), af_field_name(), abstract_expr()}.
+
+-type af_native_record_decl() ::
+    {'attribute', anno(), 'native_record', {NativeRecordName :: atom(), [af_field()]}}.
 
 -type af_type_decl() ::
     {'attribute', anno(), type_attr(), {type_name(), abstract_type(), [af_variable()]}}.
@@ -704,6 +805,8 @@ Erlang code.
     | af_record_update(abstract_expr())
     | af_record_index()
     | af_record_field_access(abstract_expr())
+    | af_native_record_creation()
+    | af_native_record_update()
     | af_map_creation(abstract_expr())
     | af_map_update(abstract_expr())
     | af_catch()
@@ -854,6 +957,7 @@ Erlang code.
     | af_unary_op(af_pattern())
     | af_record_creation(af_pattern())
     | af_record_index()
+    | af_native_record_pattern()
     | af_map_pattern().
 
 -type af_record_index() ::
@@ -863,6 +967,15 @@ Erlang code.
     {'record', anno(), record_name(), [af_record_field(T)]}.
 
 -type af_record_field(T) :: {'record_field', anno(), af_field_name(), T}.
+
+-type af_native_record_creation() ::
+    {'native_record', anno(), {atom(), atom()} | {}, [af_record_field(abstract_expr())]}.
+
+-type af_native_record_update() ::
+    {'native_record_update', anno(), abstract_expr(), {atom(), atom()} | {}, [af_record_field(abstract_expr())]}.
+
+-type af_native_record_pattern() ::
+    {'native_record', anno(), {atom(), atom()} | {}, [af_record_field(af_pattern())]}.
 
 -type af_map_pattern() ::
     {'map', anno(), [af_assoc_exact(af_pattern())]}.
@@ -1149,6 +1262,9 @@ parse_form([{'-', A1}, {atom, A2, spec} | Tokens]) ->
 parse_form([{'-', A1}, {atom, A2, callback} | Tokens]) ->
     NewTokens = [{'-', A1}, {'callback', A2} | Tokens],
     parse(NewTokens);
+parse_form([{'-', A1}, {atom, A2, record} | Tokens]) ->
+    NewTokens = [{'-', A1}, {'record', A2} | Tokens],
+    parse(NewTokens);
 parse_form(Tokens) ->
     parse(Tokens).
 
@@ -1173,6 +1289,7 @@ parse_exprs(Tokens) ->
     | 'nominal'
     | 'opaque'
     | 'record'
+    | 'native_record'
     | 'type'.
 
 build_typed_attribute(
@@ -1208,6 +1325,7 @@ build_typed_attribute({atom, Aa, Attr} = Abstr, _, _Anno) ->
         record -> error_bad_decl(Abstr, record);
         type -> error_bad_decl(Abstr, type);
         nominal -> error_bad_decl(Abstr, nominal);
+        native_record -> error_bad_decl(Abstr, native_record);
         opaque -> error_bad_decl(Abstr, opaque);
         _ -> ret_err(Aa, "bad attribute")
     end.
@@ -1234,6 +1352,23 @@ find_arity_from_specs([Spec | _]) ->
         end,
     {type, _, 'fun', [{type, _, product, Args}, _]} = Fun,
     length(Args).
+
+build_atom({atom, _Aa, _Name} = Atom) -> Atom;
+build_atom({var, Aa, Name}) -> {atom, Aa, Name};
+build_atom({record, Aa}) -> {atom, Aa, record};
+build_atom({ReservedWord, Aa}) -> {atom, Aa, ReservedWord}.
+
+build_record(_, {typed_record, _RAnno, Name0, Tuple}, Anno) ->
+    {atom, _, Name} = build_atom(Name0),
+    {attribute, Anno, record, {Name, record_tuple(Tuple)}};
+build_record(_, {typed_native_record, _RAnno, Name0, Tuple}, Anno) ->
+    {atom, _, Name} = build_atom(Name0),
+    {attribute, Anno, native_record, {Name, record_tuple(Tuple)}};
+build_record(_, {Tag, _RAnno, [Name0, Fs]}, Anno) ->
+    %% Assertion.
+    true = Tag =:= record orelse Tag =:= native_record,
+    {atom, _, Name} = build_atom(Name0),
+    {attribute, Anno, Tag, {Name, record_tuple(Fs)}}.
 
 %% The 'is_subtype(V, T)' syntax is not supported as of Erlang/OTP
 %% 19.0, but is kept for backward compatibility.
@@ -1317,13 +1452,24 @@ build_attribute({atom, _Aa, import}, Val, Anno) ->
         [_, Other | _] ->
             error_bad_decl(Other, import)
     end;
+build_attribute({atom, _Aa, import_record}, Val, Anno) ->
+    case Val of
+        [{atom, _Am, Mod}, StrList] ->
+            {attribute, Anno, import_record, {Mod, native_record_name_list(StrList)}};
+        [_, Other | _] ->
+            error_bad_decl(Other, import_record)
+    end;
 build_attribute({atom, _Aa, record}, Val, Anno) ->
     case Val of
         [{atom, _An, Record}, RecTuple] ->
             {attribute, Anno, record, {Record, record_tuple(RecTuple)}};
+        [{record, _Ar, Record, Fields}] ->
+            {attribute, Anno, native_record, {Record, Fields}};
         [Other | _] ->
             error_bad_decl(Other, record)
     end;
+build_attribute({atom, Aa, native_record}, _Val, _Anno) ->
+    ret_err(Aa, "bad native record definition");
 build_attribute({atom, _Aa, file}, Val, Anno) ->
     case Val of
         [{string, _An, Name}, {integer, _Al, Line}] ->
@@ -1423,6 +1569,13 @@ farity_list({nil, _An}) ->
     [];
 farity_list(Other) ->
     ret_abstr_err(Other, "bad Name/Arity").
+
+native_record_name_list({cons, _Ac, {atom, _Aa, A}, Tail}) ->
+    [A | native_record_name_list(Tail)];
+native_record_name_list({nil, _An}) ->
+    [];
+native_record_name_list(Other) ->
+    ret_abstr_err(Other, "bad native record name").
 
 record_tuple({tuple, _At, Fields}) ->
     record_fields(Fields);
@@ -1985,6 +2138,26 @@ modify_anno1({Tag, A, E1}, Ac, Mf) ->
     {A1, Ac1} = Mf(A, Ac),
     {E11, Ac2} = modify_anno1(E1, Ac1, Mf),
     {{Tag, A1, E11}, Ac2};
+%% Native records: the record name (3rd element of {record,...} and 4th element
+%% of {record,_,_,...}/{record_field,...}) may be an atom, a {Module,Name} tuple,
+%% or [] (anonymous). It must not be traversed as an AST sub-node.
+modify_anno1({record, A, N, Fs}, Ac, Mf) ->
+    {A1, Ac1} = Mf(A, Ac),
+    {Fs1, Ac2} = modify_anno1(Fs, Ac1, Mf),
+    {{record, A1, N, Fs1}, Ac2};
+modify_anno1({record, A, E, N, Fs}, Ac, Mf) ->
+    {A1, Ac1} = Mf(A, Ac),
+    {E1, Ac2} = modify_anno1(E, Ac1, Mf),
+    {Fs1, Ac3} = modify_anno1(Fs, Ac2, Mf),
+    {{record, A1, E1, N, Fs1}, Ac3};
+%% Unlike OTP's erl_parse, we also traverse the field name FN (always an
+%% {atom,Anno,_} node here) so its offset annotation is mapped like every other
+%% node; N above is the record id and is still left untraversed.
+modify_anno1({record_field, A, E, N, FN}, Ac, Mf) ->
+    {A1, Ac1} = Mf(A, Ac),
+    {E1, Ac2} = modify_anno1(E, Ac1, Mf),
+    {FN1, Ac3} = modify_anno1(FN, Ac2, Mf),
+    {{record_field, A1, E1, N, FN1}, Ac3};
 modify_anno1({Tag, A, E1, E2}, Ac, Mf) ->
     {A1, Ac1} = Mf(A, Ac),
     {E11, Ac2} = modify_anno1(E1, Ac1, Mf),

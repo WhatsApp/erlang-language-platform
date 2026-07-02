@@ -443,6 +443,11 @@ scan1([$: | Cs], St, Off, Toks) ->
     tok2(Cs, St, Off, Toks, ':', 1);
 scan1([$| | Cs], St, Off, Toks) ->
     tok2(Cs, St, Off, Toks, '|', 1);
+%% #_ for native records
+scan1("#_" ++ Cs, St, Off, Toks) ->
+    tok2(Cs, St, Off, Toks, '#_', 2);
+scan1("#" = Cs, St, Off, Toks) ->
+    {more, {Cs, St, Off, Toks, [], fun scan/5}};
 scan1([$# | Cs], St, Off, Toks) ->
     tok2(Cs, St, Off, Toks, '#', 1);
 scan1([$/ | Cs], St, Off, Toks) ->
