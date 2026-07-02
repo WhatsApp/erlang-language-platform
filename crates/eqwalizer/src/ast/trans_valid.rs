@@ -30,6 +30,7 @@ use elp_types_db::StringId;
 use elp_types_db::eqwalizer::Pos;
 use elp_types_db::eqwalizer::form::Callback;
 use elp_types_db::eqwalizer::form::FunSpec;
+use elp_types_db::eqwalizer::form::NativeRecDecl;
 use elp_types_db::eqwalizer::form::OverloadedFunSpec;
 use elp_types_db::eqwalizer::form::RecDecl;
 use elp_types_db::eqwalizer::form::TypeDecl;
@@ -53,6 +54,7 @@ use crate::db::EqwalizerDiagnosticsDatabase;
 enum Ref {
     RidRef(RemoteId),
     RecRef(StringId, StringId),
+    NativeRecRef(StringId, StringId),
 }
 
 impl Ref {
@@ -60,6 +62,7 @@ impl Ref {
         match self {
             Ref::RidRef(rid) => rid.module,
             Ref::RecRef(module, _) => *module,
+            Ref::NativeRecRef(module, _) => *module,
         }
     }
 }
@@ -112,6 +115,9 @@ impl TransitiveChecker<'_> {
                 Type::RemoteType(rt) => refs.push(Ref::RidRef(rt.id.clone())),
                 Type::RecordType(rt) => refs.push(Ref::RecRef(module, rt.name)),
                 Type::RefinedRecordType(rt) => refs.push(Ref::RecRef(module, rt.rec_type.name)),
+                Type::NativeRecordType(rt) => {
+                    refs.push(Ref::NativeRecRef(rt.id.module, rt.id.name))
+                }
                 _ => {}
             }
             Ok(())
@@ -137,6 +143,16 @@ impl TransitiveChecker<'_> {
             }
             Ref::RecRef(module, rec_name) => {
                 let rdecl = v_stub.get_record(*rec_name)?;
+                Some(
+                    rdecl
+                        .fields
+                        .iter()
+                        .flat_map(|field| Self::collect_refs_from_type(*module, &field.tp))
+                        .collect(),
+                )
+            }
+            Ref::NativeRecRef(module, rec_name) => {
+                let rdecl = v_stub.get_native_record(*rec_name)?;
                 Some(
                     rdecl
                         .fields
@@ -197,6 +213,10 @@ impl TransitiveChecker<'_> {
 
         for decl in v_stub.records() {
             self.explore_ref(Ref::RecRef(self.module, decl.name));
+        }
+
+        for decl in v_stub.native_records() {
+            self.explore_ref(Ref::NativeRecRef(self.module, decl.name));
         }
 
         self.explore_fun_types(v_stub.specs().map(|s| &s.ty));
@@ -265,6 +285,7 @@ impl TransitiveChecker<'_> {
             .into(),
             Ref::RidRef(rid) => rid.to_string().into(),
             Ref::RecRef(_, name) => format!("#{name}{{}}").into(),
+            Ref::NativeRecRef(module, name) => format!("#{module}:{name}{{}}").into(),
         }
     }
 
@@ -299,6 +320,20 @@ impl TransitiveChecker<'_> {
         if let Some(causes) = self.invalid_reasons.get(&rref) {
             // Replacing all the fields with dynamic type
             if let Some(rec_decl) = stub.records.get_mut(&t.name) {
+                Arc::make_mut(rec_decl)
+                    .fields
+                    .iter_mut()
+                    .for_each(|field| field.tp = Type::DynamicType);
+            }
+            self.push_transitive_invalid(stub, causes, t.pos.clone(), t.name.as_str().into());
+        }
+    }
+
+    fn check_native_record_decl(&self, stub: &mut ModuleStub, t: &NativeRecDecl) {
+        let rref = Ref::NativeRecRef(self.module, t.name);
+        if let Some(causes) = self.invalid_reasons.get(&rref) {
+            // Replacing all the fields with dynamic type
+            if let Some(rec_decl) = stub.native_records.get_mut(&t.name) {
                 Arc::make_mut(rec_decl)
                     .fields
                     .iter_mut()
@@ -458,6 +493,9 @@ impl TransitiveChecker<'_> {
         }
         for decl in v_stub.records() {
             self.check_record_decl(&mut stub_result, decl)
+        }
+        for decl in v_stub.native_records() {
+            self.check_native_record_decl(&mut stub_result, decl)
         }
         for spec in v_stub.specs() {
             self.check_spec(&mut stub_result, spec)
