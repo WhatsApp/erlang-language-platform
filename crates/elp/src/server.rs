@@ -146,6 +146,20 @@ const TOO_SLOW_DURATION: Duration = Duration::from_millis(3000);
 /// the main loop was stalled, so we report it for diagnosis.
 const DB_WRITE_STALL_THRESHOLD: Duration = Duration::from_millis(300);
 const INCLUDE_GENERATED: bool = true;
+/// Log any single outgoing LSP message whose serialized size exceeds this. It sits
+/// well above normal traffic (the largest observed message is a ~20 MB watched-files
+/// registration), so it only fires for pathological messages.
+const LSP_SEND_LOG_THRESHOLD: usize = 64 * 1024 * 1024;
+/// Hard ceiling on a single outgoing LSP message. The VS Code client's Node/V8
+/// JSON-RPC reader cannot build a string longer than `String::kMaxLength`
+/// (`0x1fffffe8` ≈ 512 MiB) and crashes reading a message at/over that size, taking
+/// the connection down (T277792366). Cap well under it so an oversized message
+/// degrades gracefully instead of killing the client.
+const LSP_SEND_HARD_CAP: usize = 256 * 1024 * 1024;
+/// LSP `RequestFailed` (3.17): a valid request the server could not fulfil. Chosen
+/// over `ContentModified` so the client does not auto-retry and immediately
+/// regenerate the same oversized result.
+const LSP_REQUEST_FAILED: i32 = -32803;
 
 enum Event {
     Lsp(lsp_server::Message),
@@ -1597,6 +1611,48 @@ impl Server {
     }
 
     fn send(&self, message: lsp_server::Message) {
+        // Hot path: a cheap size estimate that bails as soon as it crosses the log
+        // threshold (see `estimate_message_len`). Only a pathologically large message
+        // gets past this, and only then do we pay for an exact measurement.
+        if estimate_message_len(&message, LSP_SEND_LOG_THRESHOLD) > LSP_SEND_LOG_THRESHOLD {
+            // Rare path: the message is large, so measure it exactly for an accurate
+            // figure and a precise cap decision (see `oversize_action`).
+            let size = serialized_len(&message);
+            match oversize_action(&message, size) {
+                OversizeAction::Send => {
+                    log::error!(
+                        "[LSPSEND] large outgoing message kind={} detail={} bytes={size}",
+                        lsp_msg_kind(&message),
+                        lsp_msg_for_context(&message)
+                    );
+                }
+                OversizeAction::Drop => {
+                    // Notification (fire-and-forget) or a server-initiated request (we
+                    // cannot answer it ourselves): drop it rather than crash the client.
+                    log::error!(
+                        "[LSPSEND] dropping oversized {} detail={} bytes={size}",
+                        lsp_msg_kind(&message),
+                        lsp_msg_for_context(&message)
+                    );
+                    return;
+                }
+                OversizeAction::ReplaceResponse(id) => {
+                    // The client is blocked waiting on this id; reply with a small
+                    // error so it stops waiting instead of hanging forever.
+                    log::error!(
+                        "[LSPSEND] replacing oversized response id={id} bytes={size} with an error"
+                    );
+                    let err = Response::new_err(
+                        id,
+                        LSP_REQUEST_FAILED,
+                        format!("ELP response too large to send ({size} bytes)"),
+                    );
+                    self.send(err.into());
+                    return;
+                }
+            }
+        }
+
         let _pctx = stdx::panic_context::enter(format!(
             "\nserver::send:msg={}",
             lsp_msg_for_context(&message)
@@ -1989,6 +2045,131 @@ fn lsp_msg_for_context(message: &lsp_server::Message) -> String {
     }
 }
 
+fn lsp_msg_kind(message: &lsp_server::Message) -> &'static str {
+    match message {
+        lsp_server::Message::Request(_) => "request",
+        lsp_server::Message::Response(_) => "response",
+        lsp_server::Message::Notification(_) => "notification",
+    }
+}
+
+/// Serialized JSON byte length of an outgoing message, measured without allocating
+/// the serialized form: the counting sink discards the bytes and only tallies them,
+/// so this is safe to call even on a pathologically large message.
+fn serialized_len(message: &lsp_server::Message) -> usize {
+    #[derive(Default)]
+    struct ByteCounter(usize);
+    impl std::io::Write for ByteCounter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0 += buf.len();
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut counter = ByteCounter::default();
+    // Serializing into the counter cannot fail (the sink never errors and a
+    // `Message` is always serializable), so the result is safe to ignore.
+    let _ = serde_json::to_writer(&mut counter, message);
+    counter.0
+}
+
+/// Cheap, approximate serialized-byte length of an outgoing message that stops
+/// accumulating as soon as the running total exceeds `budget`. This is the hot-path
+/// gate: for the common small message it visits a handful of nodes; for a
+/// pathological one it bails after ~`budget` bytes instead of walking the whole
+/// tree. It avoids the expensive parts of real serialization (number formatting,
+/// string escaping, output) — an exact figure is computed separately (via
+/// `serialized_len`) only once this indicates the message is large.
+fn estimate_message_len(message: &lsp_server::Message, budget: usize) -> usize {
+    // The envelope (jsonrpc / id / method) is small; a fixed allowance covers it.
+    const ENVELOPE: usize = 64;
+    match message {
+        lsp_server::Message::Request(r) => {
+            ENVELOPE + r.method.len() + estimate_json_len(&r.params, budget)
+        }
+        lsp_server::Message::Notification(n) => {
+            ENVELOPE + n.method.len() + estimate_json_len(&n.params, budget)
+        }
+        lsp_server::Message::Response(r) => {
+            let result = r
+                .result
+                .as_ref()
+                .map_or(0, |v| estimate_json_len(v, budget));
+            let error = r.error.as_ref().map_or(0, |e| {
+                e.message.len() + e.data.as_ref().map_or(0, |v| estimate_json_len(v, budget))
+            });
+            ENVELOPE + result + error
+        }
+    }
+}
+
+fn estimate_json_len(value: &serde_json::Value, budget: usize) -> usize {
+    fn go(v: &serde_json::Value, acc: &mut usize, budget: usize) {
+        if *acc > budget {
+            return; // early cutoff
+        }
+        match v {
+            serde_json::Value::Null => *acc += 4,
+            serde_json::Value::Bool(_) => *acc += 5,
+            // Upper bound on any i64/u64/f64 rendering.
+            serde_json::Value::Number(_) => *acc += 24,
+            serde_json::Value::String(s) => *acc += s.len() + 2,
+            serde_json::Value::Array(items) => {
+                *acc += 2;
+                for item in items {
+                    if *acc > budget {
+                        return;
+                    }
+                    *acc += 1; // separator
+                    go(item, acc, budget);
+                }
+            }
+            serde_json::Value::Object(entries) => {
+                *acc += 2;
+                for (key, val) in entries {
+                    if *acc > budget {
+                        return;
+                    }
+                    *acc += key.len() + 4; // "key": plus separator
+                    go(val, acc, budget);
+                }
+            }
+        }
+    }
+    let mut acc = 0;
+    go(value, &mut acc, budget);
+    acc
+}
+
+/// What [`Server::send`] should do with an outgoing message once its exact `size` is
+/// known. Split out from `send` so the (V8 crash-avoiding) policy can be unit tested
+/// without a live connection.
+#[derive(Debug)]
+enum OversizeAction {
+    /// At or under the hard cap: send it unchanged.
+    Send,
+    /// Over the cap and unanswerable from here — a notification (fire-and-forget) or
+    /// a server-initiated request (we cannot answer it ourselves): drop it.
+    Drop,
+    /// Over the cap response: the client is blocked on this id, so answer it with a
+    /// small error carrying the same id instead of leaving it to hang.
+    ReplaceResponse(RequestId),
+}
+
+fn oversize_action(message: &lsp_server::Message, size: usize) -> OversizeAction {
+    if size <= LSP_SEND_HARD_CAP {
+        return OversizeAction::Send;
+    }
+    match message {
+        lsp_server::Message::Notification(_) | lsp_server::Message::Request(_) => {
+            OversizeAction::Drop
+        }
+        lsp_server::Message::Response(resp) => OversizeAction::ReplaceResponse(resp.id.clone()),
+    }
+}
+
 fn parse_id(id: lsp_types::NumberOrString) -> RequestId {
     match id {
         lsp_types::NumberOrString::Number(id) => id.into(),
@@ -2043,4 +2224,81 @@ fn report_db_write_stall(elapsed: Duration, num_changed_files: usize) {
         "salsa_did_set_cancellation_flag": salsa.did_set_cancellation_flag,
     });
     telemetry::send("main_loop_db_write_stall".to_string(), data);
+}
+
+#[cfg(test)]
+mod lsp_send_tests {
+    use super::*;
+
+    #[test]
+    fn serialized_len_matches_exact_serialization() {
+        let msg: lsp_server::Message = Notification::new(
+            "textDocument/publishDiagnostics".to_string(),
+            serde_json::json!({"a": [1, 2, 3], "b": "hello"}),
+        )
+        .into();
+        let exact = serde_json::to_string(&msg).unwrap().len();
+        assert_eq!(
+            serialized_len(&msg),
+            exact,
+            "serialized_len should equal the real serialized byte length"
+        );
+    }
+
+    #[test]
+    fn estimate_json_len_stops_at_budget() {
+        // ~10 MiB of small elements; with an 8 KiB budget the estimator must bail
+        // just past the budget rather than walk the whole value.
+        let arr: Vec<serde_json::Value> = (0..100_000)
+            .map(|_| serde_json::Value::String("y".repeat(100)))
+            .collect();
+        let value = serde_json::Value::Array(arr);
+        let budget = 8 * 1024;
+        let est = estimate_json_len(&value, budget);
+        assert!(
+            est > budget && est < budget + 4096,
+            "estimate {est} should stop just past budget {budget} (early cutoff), not reach ~10 MiB"
+        );
+    }
+
+    #[test]
+    fn oversize_action_depends_on_message_kind() {
+        let under: usize = 10;
+        let over: usize = LSP_SEND_HARD_CAP + 1;
+
+        let notif: lsp_server::Message =
+            Notification::new("window/logMessage".to_string(), serde_json::Value::Null).into();
+        let req: lsp_server::Message = Request::new(
+            RequestId::from(1),
+            "client/registerCapability".to_string(),
+            serde_json::Value::Null,
+        )
+        .into();
+        let resp: lsp_server::Message =
+            Response::new_ok(RequestId::from(7), serde_json::Value::Null).into();
+
+        // At or under the cap: everything is sent unchanged.
+        assert!(matches!(
+            oversize_action(&notif, under),
+            OversizeAction::Send
+        ));
+        assert!(matches!(oversize_action(&req, under), OversizeAction::Send));
+        assert!(matches!(
+            oversize_action(&resp, under),
+            OversizeAction::Send
+        ));
+
+        // Over the cap: notifications and server-initiated requests are dropped...
+        assert!(matches!(
+            oversize_action(&notif, over),
+            OversizeAction::Drop
+        ));
+        assert!(matches!(oversize_action(&req, over), OversizeAction::Drop));
+
+        // ...and a response is replaced with an error carrying the same id.
+        match oversize_action(&resp, over) {
+            OversizeAction::ReplaceResponse(id) => assert_eq!(id, RequestId::from(7)),
+            other => panic!("expected ReplaceResponse, got {other:?}"),
+        }
+    }
 }
