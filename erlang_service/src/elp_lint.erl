@@ -423,6 +423,8 @@ format_error({unused_record,T}) ->
     io_lib:format("record ~tw is unused", [T]);
 format_error({untyped_record,T}) ->
     io_lib:format("record ~tw has field(s) without type information", [T]);
+format_error({native_record_header,T}) ->
+    io_lib:format("record ~tw is defined in a header file", [T]);
 %% --- variables ----
 format_error({unbound_var,V}) ->
     io_lib:format("variable ~w is unbound", [V]);
@@ -855,7 +857,10 @@ start(File, Opts) ->
          {novalue,
           bool_option(warn_novalue, nowarn_novalue, true, Opts)},
          {undefined_field,
-          bool_option(warn_undefined_field, nowarn_undefined_field, true, Opts)}
+          bool_option(warn_undefined_field, nowarn_undefined_field, true, Opts)},
+         {native_record_header,
+          bool_option(warn_native_record_header, nowarn_native_record_header,
+                      true, Opts)}
 	],
     Enabled1 = [Category || {Category,true} <- Enabled0],
     Enabled = ordsets:from_list(Enabled1),
@@ -1310,12 +1315,13 @@ post_traversal_check(Forms, St0) ->
     StD = check_on_load(StC),
     StE = check_export_record(Forms, StD),
     StF = check_unused_records(Forms, StE),
-    StG = check_local_opaque_types(StF),
-    StH = check_dialyzer_attribute(Forms, StG),
-    StI = check_callback_information(StH),
-    StJ = check_nifs(Forms, StI),
-    StK = check_removed(Forms, StJ),
-    check_unsafe(Forms, StK).
+    StG = check_native_records_header(Forms, StF),
+    StH = check_local_opaque_types(StG),
+    StI = check_dialyzer_attribute(Forms, StH),
+    StJ = check_callback_information(StI),
+    StK = check_nifs(Forms, StJ),
+    StL = check_removed(Forms, StK),
+    check_unsafe(Forms, StL).
 
 %% check_deprecated(Forms, State0) -> State
 
@@ -1670,6 +1676,20 @@ check_unused_records(Forms, St0) ->
             foldl(fun ({N,Anno}, St) ->
                           add_warning(Anno, {unused_record, N}, St)
                   end, St1, Unused);
+        _ ->
+            St0
+    end.
+
+check_native_records_header(Forms, #lint{records = Records}=St0) ->
+    AttrFiles = [File || {attribute,_A,file,{File,_Line}} <- Forms],
+    case {is_warn_enabled(native_record_header, St0),AttrFiles} of
+        {true,[FirstFile|_]} ->
+            InHeader = [{Name,Anno} ||
+                {Name, {Anno,native,_Fields}} <- maps:to_list(Records),
+                element(1, loc(Anno, St0)) =/= FirstFile],
+            foldl(fun ({N,Anno}, St) ->
+                          add_warning(Anno, {native_record_header, N}, St)
+                  end, St0, InHeader);
         _ ->
             St0
     end.
