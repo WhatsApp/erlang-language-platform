@@ -389,9 +389,7 @@ format_error({redefine_local_record,R}) ->
     io_lib:format("record ~ts is already defined locally", [format_record_name(R)]);
 format_error({undefined_native_record,T}) ->
     io_lib:format("native record ~tw undefined", [T]);
-format_error({undefined_native_record_field,N,F}) ->
-    io_lib:format("field ~tw not defined in native record ~ts", [F,format_record_name(N)]);
-format_error({no_init_native_record_field,N,F}) ->
+format_error({novalue,N,F}) ->
     io_lib:format("field ~tw is not initialized in native record ~ts", [F,format_record_name(N)]);
 format_error({illegal_native_record_default,N,F}) ->
     io_lib:format("illegal default value for field ~tw in native record ~tw", [F,N]);
@@ -410,7 +408,7 @@ format_error(bad_export_record) ->
 format_error(bad_multi_field_init) ->
     io_lib:format("'_' initializes no omitted fields", []);
 format_error({undefined_field,T,F}) ->
-    io_lib:format("field ~tw undefined in record ~tw", [F,T]);
+    io_lib:format("field ~tw undefined in record ~ts", [F,format_record_name(T)]);
 format_error(native_record_illegal_record_info) ->
     "record_info/2 is only supported for tuple records";
 format_error(illegal_record_info) ->
@@ -851,7 +849,11 @@ start(File, Opts) ->
                       true, Opts)},
          {truncated_integer,
           bool_option(warn_truncated_integer, nowarn_truncated_integer,
-                      true, Opts)}
+                      true, Opts)},
+         {novalue,
+          bool_option(warn_novalue, nowarn_novalue, true, Opts)},
+         {undefined_field,
+          bool_option(warn_undefined_field, nowarn_undefined_field, true, Opts)}
 	],
     Enabled1 = [Category || {Category,true} <- Enabled0],
     Enabled = ordsets:from_list(Enabled1),
@@ -3291,6 +3293,12 @@ check_record(Anno, Name, St, CheckFun) when is_atom(Name) ->
             end
     end.
 
+%% ELP does not emit record/field name suggestions, so this simply
+%% reports the undefined field (the Fields argument is kept for parity
+%% with the OTP signature).
+suggest_field_name(Anno, Error, Name, F, _Fields, St) ->
+    add_error(Anno, {Error, Name, F}, St).
+
 used_record(Name, #lint{usage=Usage}=St) ->
     UsedRecs = gb_sets:add_element(Name, Usage#usage.used_records),
     St#lint{usage = Usage#usage{used_records=UsedRecs}}.
@@ -3300,59 +3308,71 @@ used_record(Name, #lint{usage=Usage}=St) ->
 %% check_fields([ChkField], RecordName, [RecDefField], VarTable, State, CheckFun) ->
 %%      {UpdVarTable,State}.
 
-check_fields(Fs, Flavor, Name, Fields, Vt0, St0, CheckFun) ->
+check_fields(Fs, Flavor, Name, Fields, Vt0, St0, CheckFun, DiagFlavor) ->
     {_SeenFields,Uvt,St1} =
         foldl(fun (Field, {Rfsa,Vta,Sta}) ->
                       {Rfsb,{Vtb,Stb}} = check_field(Field, Flavor, Name, Fields,
-                                                     Vt0, Sta, Rfsa, CheckFun),
+                                                     Vt0, Sta, Rfsa, CheckFun,
+                                                     DiagFlavor),
                       {Vt1, St1} = vtmerge_pat(Vta, Vtb, Stb),
                       {Rfsb, Vt1, St1}
               end, {[],[], St0}, Fs),
     {Uvt,St1}.
 
 check_field({record_field,_Af,_F,Val}, native, _Name, unknown,
-            Vt, St0, Rfs, CheckFun) ->
+            Vt, St0, Rfs, CheckFun, _DiagFlavor) ->
     {Rfs, CheckFun(Val, Vt, St0)};
 check_field({record_field,Af,{atom,Aa,F},Val}, Flavor, Name, Fields,
-            Vt, St0, Rfs, CheckFun) ->
+            Vt, St0, Rfs, CheckFun, DiagFlavor) ->
     case member(F, Rfs) of
         true ->
             {Rfs,{[],add_error(Af, {redefine_field,Name,F}, St0)}};
         false ->
-            {[F|Rfs],
-             case find_field(F, Fields) of
-                 {ok,_} ->
-                     case Flavor of
-                         native ->
-                             case Val of
-                                 {no_value,Anno} ->
-                                     W = {no_init_native_record_field, Name, F},
-                                     {[], add_warning(Anno, W, St0)};
-                                 _ ->
-                                     CheckFun(Val, Vt, St0)
-                             end;
-                         tuple ->
-                             CheckFun(Val, Vt, St0)
-                     end;
-                 error when Flavor =:= native ->
-                     {[],add_warning(Aa, {undefined_native_record_field,Name,F}, St0)};
-                 error ->
-                     {[],add_error(Aa, {undefined_field,Name,F}, St0)}
-             end}
+            check_existing_field(Aa, F, Val, Flavor, Name, Fields, Vt, St0,
+                                 Rfs, CheckFun, DiagFlavor)
     end;
 check_field({record_field,_Af,{var,Aa,'_'=F},Val}, tuple, _Name, _Fields,
-            Vt, St, Rfs, CheckFun) ->
+            Vt, St, Rfs, CheckFun, _DiagFlavor) ->
     %% Multi-field init for tuple records.
     case member(F, Rfs) of
         true -> {Rfs,{[],add_error(Aa, bad_multi_field_init, St)}};
         false -> {[F|Rfs],CheckFun(Val, Vt, St)}
     end;
 check_field({record_field,_Af,{var,Aa,'_'},_Val}, native, _Name, _Fields,
-            _Vt, St, Rfs, _CheckFun) ->
+            _Vt, St, Rfs, _CheckFun, _DiagFlavor) ->
     {Rfs,{[],add_error(Aa, native_record_illegal_multi_field_init, St)}};
 check_field({record_field,_Af,{var,Aa,V},_Val}, _Flavor, Name, _Fields,
-            Vt, St, Rfs, _CheckFun) ->
+            Vt, St, Rfs, _CheckFun, _DiagFlavor) ->
     {Rfs,{Vt,add_error(Aa, {field_name_is_variable,Name,V}, St)}}.
+
+check_existing_field(Aa, F, Val, Flavor, Name, Fields, Vt, St0,
+                     Rfs, CheckFun, DiagFlavor) ->
+    {[F|Rfs],
+     case find_field(F, Fields) of
+         {ok,_} ->
+             case Flavor of
+                 native ->
+                     case Val of
+                         {no_value,Anno} ->
+                             W = {novalue, Name, F},
+                             case DiagFlavor of
+                                 error ->
+                                     {[], add_error(Anno, W, St0)};
+                                 warning ->
+                                     {[], maybe_add_warning(Anno, W, St0)}
+                             end;
+                         _ ->
+                             CheckFun(Val, Vt, St0)
+                     end;
+                 tuple ->
+                     CheckFun(Val, Vt, St0)
+             end;
+         error when Flavor =:= native, DiagFlavor =:= warning ->
+             {[],maybe_add_warning(Aa, {undefined_field,Name,F}, St0)};
+         error ->
+             E = undefined_field,
+             {[], suggest_field_name(Aa, E, Name, F, Fields, St0)}
+     end}.
 
 %% pattern_field(Field, RecordName, [RecDefField], State) ->
 %%      {UpdVarTable,State}.
@@ -3360,8 +3380,11 @@ check_field({record_field,_Af,{var,Aa,V},_Val}, _Flavor, Name, _Fields,
 
 pattern_field({atom,Aa,F}, Name, Fields, St) ->
     case find_field(F, Fields) of
-        {ok,_I} -> {[],St};
-        error -> {[],add_error(Aa, {undefined_field,Name,F}, St)}
+        {ok,_I} ->
+            {[],St};
+        error ->
+            E = undefined_field,
+            {[],suggest_field_name(Aa, E, Name, F, Fields, St)}
     end.
 
 %% pattern_fields([PatField],RecordName,[RecDefField],
@@ -3373,7 +3396,7 @@ pattern_fields(Fs, Name, Fields, Vt0, Old, St0) ->
     {_SeenFields,Uvt,Unew,St1} =
         foldl(fun (Field, {Rfsa,Vta,Newa,Sta}) ->
                       case check_field(Field, tuple, Name, Fields,
-                                       Vt0, Sta, Rfsa, CheckFun) of
+                                       Vt0, Sta, Rfsa, CheckFun, false) of
                           {Rfsb,{Vtb,Stb}} ->
                               {Vt, St1} = vtmerge_pat(Vta, Vtb, Stb),
                               {Rfsb, Vt, [], St1};
@@ -3395,9 +3418,9 @@ record_field({atom,Anno,F}, Flavor, Name, Fields, St) ->
     case find_field(F, Fields) of
         {ok,_I} -> {[],St};
         error when Flavor =:= native ->
-            {[],add_warning(Anno, {undefined_native_record_field,Name,F}, St)};
+            {[],maybe_add_warning(Anno, {undefined_field,Name,F}, St)};
         error ->
-            {[],add_error(Anno, {undefined_field,Name,F}, St)}
+            {[],suggest_field_name(Anno, undefined_field, Name, F, Fields, St)}
     end.
 
 %% init_fields([InitField], InitAnno, RecordName, [DefField], VarTable, State) ->
@@ -3416,17 +3439,25 @@ init_fields(native, Ifs, _Anno, Name, unknown, Vt0, St0) ->
     check_nn_fields(Name, Ifs, Vt0, St0);
 init_fields(Flavor, Ifs, Anno, Name, Dfs, Vt0, St0)
   when Flavor =:= tuple; Flavor =:= native ->
-    {Vt1,St1} = check_fields(Ifs, Flavor, Name, Dfs, Vt0, St0, fun expr/3),
+    DiagFlavor = case Name of
+                     {_, _} -> warning;
+                     _ -> error
+                 end,
+    {Vt1,St1} = check_fields(Ifs, Flavor, Name, Dfs, Vt0, St0,
+                             fun expr/3, DiagFlavor),
     if
         Flavor =:= native, St0#lint.errors =/= St1#lint.errors ->
             %% Don't check for more errors and warnings.
             {Vt1,St1};
         true ->
             Defs = init_fields(Ifs, Anno, Dfs),
-            {_,St2} = check_fields(Defs, Flavor, Name, Dfs, Vt1, St1, fun expr/3),
+            {_,St2} = check_fields(Defs, Flavor, Name, Dfs, Vt1, St1,
+                                   fun expr/3, DiagFlavor),
             case Flavor of
                 native ->
-                    {Vt1,St1#lint{usage = St2#lint.usage, warnings=St2#lint.warnings}};
+                    {Vt1,St1#lint{usage = St2#lint.usage,
+                                  errors=St2#lint.errors,
+                                  warnings=St2#lint.warnings}};
                 tuple ->
                     {Vt1,St1#lint{usage = St2#lint.usage}}
             end
@@ -3434,10 +3465,12 @@ init_fields(Flavor, Ifs, Anno, Name, Dfs, Vt0, St0)
 
 ginit_fields(Ifs, Anno, Name, Dfs, Vt0, St0) ->
     Flavor = tuple,
-    {Vt1,St1} = check_fields(Ifs, Flavor, Name, Dfs, Vt0, St0, fun gexpr/3),
+    {Vt1,St1} = check_fields(Ifs, Flavor, Name, Dfs, Vt0, St0,
+                             fun gexpr/3, error),
     Defs = init_fields(Ifs, Anno, Dfs),
     St2 = St1#lint{errors = []},
-    {_,St3} = check_fields(Defs, Flavor, Name, Dfs, Vt1, St2, fun gexpr/3),
+    {_,St3} = check_fields(Defs, Flavor, Name, Dfs, Vt1, St2,
+                           fun gexpr/3, error),
     #lint{usage = Usage, errors = IllErrors} = St3,
     St4 = St1#lint{usage = Usage, errors = IllErrors ++ St1#lint.errors},
     {Vt1,St4}.
@@ -3452,7 +3485,7 @@ init_fields(Ifs, Anno, Dfs) ->
 %%      {UpdVarTable,State}
 
 update_fields(Ufs, Flavor, Name, Dfs, Vt, St) ->
-    check_fields(Ufs, Flavor, Name, Dfs, Vt, St, fun expr/3).
+    check_fields(Ufs, Flavor, Name, Dfs, Vt, St, fun expr/3, warning).
 
 %% exist_field(FieldName, [Field]) -> boolean().
 %%  Find a record field in a field list.
@@ -3524,7 +3557,8 @@ check_native_record_fields_usage(Name, Fs, St0) ->
                               true ->
                                   St;
                               false ->
-                                  add_warning(Af, {undefined_native_record_field, Name, F}, St)
+                                  E = {undefined_field, Name, F},
+                                  maybe_add_warning(Af, E, St)
                           end
                   end, St0, Fs);
         #{} ->
@@ -3803,7 +3837,9 @@ check_record_types([{type, _, field_type, [{atom, Anno, FName}, Type]}|Left],
     %% Check that the field name is valid
     St1 = case exist_field(FName, DefFields) of
 	      true -> St;
-	      false -> add_error(Anno, {undefined_field, Name, FName}, St)
+	      false ->
+		  E = undefined_field,
+		  suggest_field_name(Anno, E, Name, FName, DefFields, St)
 	  end,
     %% Check for duplicates
     St2 = case ordsets:is_element(FName, SeenFields) of
