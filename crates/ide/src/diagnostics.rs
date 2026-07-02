@@ -3705,6 +3705,237 @@ foo() -> XX 3.0.
         );
     }
 
+    // --- Native records (EEP-79), surfaced via the erlang_service ---
+
+    #[test]
+    fn native_record_parses_and_is_accepted() {
+        check_diagnostics(
+            r#"
+             //- erlang_service
+             //- /src/main.erl
+             -module(main).
+             -export([f/1, g/1, h/1]).
+             -record(#point {x, y}).
+             -record(#if {a}).
+             f(V) -> #point{x = V, y = 0}.
+             g(R) -> R#point.x.
+             h(V) -> #if{a = V}.
+            "#,
+        );
+    }
+
+    #[test]
+    fn native_record_bad_declaration() {
+        check_diagnostics(
+            r#"
+             //- erlang_service
+             //- expect_parse_errors
+             //- /src/main.erl
+             -module(main).
+             -record foo.
+             %%      ^^^ error: P1798: bad record declaration
+            "#,
+        );
+    }
+
+    #[test]
+    fn native_record_tuple_only_syntax_is_rejected() {
+        check_diagnostics(
+            r#"
+             //- erlang_service
+             //- /src/main.erl
+             -module(main).
+             -export([idx/0, info/0, guard/1]).
+             -record(#point {x, y}).
+             idx() -> #point.x.
+             %%       ^^^^^^^^ error: L1343: syntax #point.x is only supported for tuple records
+             info() -> record_info(size, point).
+             %%                    ^^^^ error: L1342: record_info/2 is only supported for tuple records
+             guard(V) when #point{x = V, y = V} =:= V -> ok.
+             %%            ^^^^^^^^^^^^^^^^^^^^ error: L1337: creating a record in a guard is only supported for tuple records
+            "#,
+        );
+    }
+
+    #[test]
+    fn native_import_record_after_function_definition() {
+        check_diagnostics(
+            r#"
+             //- erlang_service
+             //- /src/main.erl
+             -module(main).
+             -export([g/0, f/1]).
+             g() -> ok.
+             -import_record(other, [r]).
+             f(V) -> #r{a = V}.
+            "#,
+        );
+    }
+
+    #[test]
+    fn native_record_local_creation_must_be_complete() {
+        check_diagnostics(
+            r#"
+             //- erlang_service
+             //- /src/main.erl
+             -module(main).
+             -export([missing/0, unknown/0]).
+             -record(#point {x, y}).
+             missing() -> #point{x = 1}.
+             %%           ^^^^^^^^^^^^^ error: L1335: field y is not initialized in native record point
+             unknown() -> #point{z = 1}.
+             %%                  ^ error: L1256: field z undefined in record point
+            "#,
+        );
+    }
+
+    #[test]
+    fn native_record_type_cannot_be_restricted() {
+        check_diagnostics(
+            r#"
+             //- erlang_service
+             //- /src/main.erl
+             -module(main).
+             -export_type([t/0]).
+             -record(#xy {x, y}).
+             -type t() :: #xy{x :: integer()}.
+             %%               ^^^^^^^^^^^^ error: L1339: native records do not allow special field types
+            "#,
+        );
+    }
+
+    #[test]
+    fn native_record_defined_in_header_warns() {
+        check_diagnostics(
+            r#"
+             //- erlang_service
+             //- /src/main.erl
+             -module(main).
+             -export([f/1]).
+             -include("rec.hrl").
+             %%<^^^^^^^^^^^^^^^^^ warning: L0000: Issue in included file
+             %%                 | Related info: 1:0-18 L1345: record h is defined in a header file
+             f(V) -> #h{a = V, b = 0}.
+             //- /src/rec.hrl
+             -record(#h {a, b}).
+            "#,
+        );
+    }
+
+    #[test]
+    fn native_record_export_record_diagnostics() {
+        check_diagnostics(
+            r#"
+             //- erlang_service
+             //- /src/main.erl
+             -module(main).
+             -record(tup, {a}).
+             -export_record([tup]).
+             %%<^^^^^^^^^^^^^^^^^^ error: L1340: tuple records cannot be exported; only native records can
+             -export_record([nope]).
+             %%<^^^^^^^^^^^^^^^^^^^ error: L1334: native record nope undefined
+             -export_record([nope]).
+             %%<^^^^^^^^^^^^^^^^^^^ error: L1344: native record nope already exported
+            "#,
+        );
+    }
+
+    // Pins the (deliberately upstream-faithful) asymmetry in
+    // `check_export_record_2`: a duplicate export of an *existing native*
+    // record does NOT produce `native_record_already_exported`, even though a
+    // duplicate export of a tuple/undefined record does (see
+    // `native_record_export_record_diagnostics`).
+    //
+    // The native success branch recurses with the pre-update `Seen0` rather
+    // than `Seen = sets:add_element(R, Seen0)`, so the native record name is
+    // never added to the seen-set and the second export is treated as fresh.
+    // This matches upstream OTP `erl_lint.erl` `check_export_record_2/5`
+    // verbatim (the native branch passes `Seen0`; the tuple and undefined
+    // branches pass `Seen`) as of OTP HEAD. If this test starts emitting
+    // L1344, the port has diverged from upstream.
+    #[test]
+    fn native_record_duplicate_export_not_flagged() {
+        check_diagnostics(
+            r#"
+             //- erlang_service
+             //- /src/main.erl
+             -module(main).
+             -record(#r {x}).
+             -export_record([r]).
+             -export_record([r]).
+            "#,
+        );
+    }
+
+    // ELP's own (tree-sitter) grammar also rejects the malformed
+    // `-export_record`, so `//- expect_parse_errors` lets the fixture through
+    // to assert the erlang_service lint message.
+    #[test]
+    fn native_record_bad_export_record() {
+        check_diagnostics(
+            r#"
+             //- erlang_service
+             //- expect_parse_errors
+             //- /src/main.erl
+             -module(main).
+             -record(#point {x, y}).
+             %%       ^^^^^ warning: L1260: record point is unused
+             -export_record(point).
+             %%<^^^^^^^^^^^^^^^^^^ error: L1341: badly formed -export_record(); expected a list of record names
+            "#,
+        );
+    }
+
+    #[test]
+    fn native_record_import_redefine_conflicts() {
+        check_diagnostics(
+            r#"
+             //- erlang_service
+             //- /src/redefine_imported.erl
+             -module(redefine_imported).
+             -import_record(other, [r]).
+             -record(#r {x}).
+             %%<^^^^^^^^^^^^ error: L1332: record r already imported from other
+             //- /src/redefine_local.erl
+             -module(redefine_local).
+             -record(#r {x}).
+             %%       ^ warning: L1260: record r is unused
+             -import_record(other, [r]).
+             %%<^^^^^^^^^^^^^^^^^^^^^^^ error: L1333: record r is already defined locally
+            "#,
+        );
+    }
+
+    #[test]
+    fn native_record_default_must_be_constant() {
+        check_diagnostics(
+            r#"
+             //- erlang_service
+             //- /src/main.erl
+             -module(main).
+             -export([f/0]).
+             -record(#p {x = self(), y}).
+             %%          ^ error: L1336: illegal default value for field x in native record p
+             f() -> #p{x = 1, y = 2}.
+            "#,
+        );
+    }
+
+    #[test]
+    fn native_record_multi_field_init_rejected() {
+        check_diagnostics(
+            r#"
+             //- erlang_service
+             //- /src/main.erl
+             -module(main).
+             -export([f/0]).
+             -record(#p {x, y}).
+             f() -> #p{_ = 0}.
+             %%        ^ error: L1338: multi-field initialization (assigning to _) is only supported for tuple records
+            "#,
+        );
+    }
+
     #[test]
     fn check_specific_fix_works() {
         check_specific_fix(

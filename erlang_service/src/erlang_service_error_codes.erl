@@ -325,6 +325,35 @@ make_code(elp_lint, truncated_character) ->
     "L1330";
 make_code(elp_lint, {truncated_integer, _Int, _Bits, _Sign}) ->
     "L1331";
+%% Native records (EEP-79)
+make_code(elp_lint, {redefine_imported_record, _ModName}) ->
+    "L1332";
+make_code(elp_lint, {redefine_local_record, _R}) ->
+    "L1333";
+make_code(elp_lint, {undefined_native_record, _T}) ->
+    "L1334";
+make_code(elp_lint, {novalue, _N, _F}) ->
+    "L1335";
+make_code(elp_lint, {illegal_native_record_default, _N, _F}) ->
+    "L1336";
+make_code(elp_lint, native_record_in_guard) ->
+    "L1337";
+make_code(elp_lint, native_record_illegal_multi_field_init) ->
+    "L1338";
+make_code(elp_lint, native_record_field_types) ->
+    "L1339";
+make_code(elp_lint, tuple_record_export) ->
+    "L1340";
+make_code(elp_lint, bad_export_record) ->
+    "L1341";
+make_code(elp_lint, native_record_illegal_record_info) ->
+    "L1342";
+make_code(elp_lint, {native_record_illegal_record_index, _Name, _F}) ->
+    "L1343";
+make_code(elp_lint, {native_record_already_exported, _N}) ->
+    "L1344";
+make_code(elp_lint, {native_record_header, _T}) ->
+    "L1345";
 make_code(elp_lint, _Other) ->
     "L1399";
 %% stdlib-3.15.2/src/erl_scan.erl
