@@ -1413,7 +1413,7 @@ mod tests {
             diagnostic_filter: Some("W0010".to_string()),
             experimental_diags: true,
             arc_patch: true,
-            ignore_apps: vec!["dep_a".to_string(), "dep_b".to_string()],
+            ignore_app: vec!["dep_a".to_string(), "dep_b".to_string()],
             ..Lint::default()
         };
 
@@ -1429,6 +1429,10 @@ mod tests {
                 "b.erl"
               ],
               "path": "/some/path",
+              "ignore_app": [
+                "dep_a",
+                "dep_b"
+              ],
               "rebar": true,
               "profile": "prod",
               "connect": true,
@@ -1458,11 +1462,7 @@ mod tests {
               "one_shot": false,
               "arc_patch": true,
               "report_system_stats": false,
-              "no_stream": false,
-              "ignore_apps": [
-                "dep_a",
-                "dep_b"
-              ]
+              "no_stream": false
             }"#]]
         .assert_eq(&expected_json);
 

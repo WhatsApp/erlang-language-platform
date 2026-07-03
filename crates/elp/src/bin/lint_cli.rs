@@ -309,7 +309,7 @@ fn do_diagnostics_all(
     let module_index = analysis.module_index(*project_id).unwrap();
 
     let ignored_apps: FxHashSet<Option<Option<AppName>>> = args
-        .ignore_apps
+        .ignore_app
         .iter()
         .map(|name| Some(Some(AppName(name.to_string()))))
         .collect();

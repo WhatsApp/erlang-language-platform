@@ -1,9 +1,6 @@
 Parse files in project and emit diagnostics, optionally apply fixes
 
-Usage: elp lint [OPTIONS] [IGNORED_APPS]...
-
-Arguments:
-  [IGNORED_APPS]...  Rest of args are space separated list of apps to ignore
+Usage: elp lint [OPTIONS]
 
 Options:
       --project <PROJECT>              Path to directory with project, or to a JSON file [default:
@@ -16,6 +13,7 @@ Options:
                                        project. This can be an include file or escript, etc
       --path <PATH>                    Only process files under this path (can be a file or
                                        directory)
+      --ignore-app <APP>               Skip the given application. Can be repeated to skip several
       --rebar                          Run with rebar
       --as <PROFILE>                   Rebar3 profile to pickup [default: test]
       --connect                        Use a persistent daemon for fast turnaround (auto-starts if

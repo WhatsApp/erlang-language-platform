@@ -1347,7 +1347,7 @@ mod tests {
                     "--diagnostic-filter",
                     "W0010",
                     "--experimental",
-                    // ignored apps
+                    "--ignore-app",
                     "app_a",
                 ],
                 "linter",
@@ -1372,8 +1372,9 @@ mod tests {
                     "--diagnostic-filter",
                     "W0010",
                     "--experimental",
-                    // ignored apps
+                    "--ignore-app",
                     "app_b",
+                    "--ignore-app",
                     "app_c",
                 ],
                 "linter",

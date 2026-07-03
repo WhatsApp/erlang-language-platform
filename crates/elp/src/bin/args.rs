@@ -276,6 +276,9 @@ pub struct Lint {
     /// Only process files under this path (can be a file or directory).
     #[arg(long, value_name = "PATH", value_hint = ValueHint::AnyPath)]
     pub path: Option<PathBuf>,
+    /// Skip the given application. Can be repeated to skip several.
+    #[arg(long = "ignore-app", value_name = "APP")]
+    pub ignore_app: Vec<String>,
 
     /// Run with rebar
     #[arg(long)]
@@ -383,10 +386,6 @@ pub struct Lint {
     /// Disable streaming of diagnostics when applying fixes (collect all before printing)
     #[arg(long)]
     pub no_stream: bool,
-
-    /// Rest of args are space separated list of apps to ignore
-    #[arg(value_name = "IGNORED_APPS")]
-    pub ignore_apps: Vec<String>,
 }
 
 /// `elp lint-compare` -- pure data primitive that takes two
