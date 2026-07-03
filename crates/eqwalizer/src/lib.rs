@@ -308,7 +308,7 @@ fn do_typecheck(
     // Never cache the results of this function
     db.report_untracked_read();
     let handle = Arc::new(Mutex::new(
-        IpcHandle::from_command(&mut cmd)
+        IpcHandle::from_command(&mut cmd, db)
             .with_context(|| format!("starting eqWAlizer process: {cmd:?}"))?,
     ));
     let mut diagnostics = EqwalizerDiagnostics::default();
@@ -348,7 +348,7 @@ fn do_typecheck_functions(
     project_id: ProjectId,
     funs: Vec<ipc::FunToCheck>,
 ) -> Result<Vec<ipc::FunCheckResult>> {
-    let mut handle = IpcHandle::from_command(&mut cmd)
+    let mut handle = IpcHandle::from_command(&mut cmd, db)
         .with_context(|| format!("starting eqWAlizer process for ipc-check-funs: {cmd:?}"))?;
 
     // Send the functions to check

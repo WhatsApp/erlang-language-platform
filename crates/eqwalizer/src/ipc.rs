@@ -196,7 +196,7 @@ const MAX_RECV_POLLS: u32 = 2400;
 // Windows gets no cancellation relief, unchanged from before this commit.
 
 impl IpcHandle {
-    fn spawn_cmd(cmd: &mut Command) -> Result<Child> {
+    fn spawn_cmd(cmd: &mut Command, db: &dyn EqwalizerDiagnosticsDatabase) -> Result<Child> {
         // Spawn can fail due to a race condition with the creation/closing of the
         // eqWAlizer executable, so we retry until the file is properly closed.
         // See https://github.com/rust-lang/rust/issues/114554
@@ -205,6 +205,10 @@ impl IpcHandle {
                 Ok(c) => return Ok(c),
                 Err(err) => {
                     if err.kind() == ErrorKind::ExecutableFileBusy {
+                        // Wake to check salsa cancellation before sleeping, so an
+                        // edit can abandon a spawn spinning on a busy executable
+                        // instead of pinning the snapshot uncancellably.
+                        db.unwind_if_revision_cancelled();
                         thread::sleep(Duration::from_millis(10));
                     } else {
                         // Provide extra debugging detail, to track down T198872667
@@ -224,13 +228,13 @@ impl IpcHandle {
         }
     }
 
-    pub fn from_command(cmd: &mut Command) -> Result<Self> {
+    pub fn from_command(cmd: &mut Command, db: &dyn EqwalizerDiagnosticsDatabase) -> Result<Self> {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             // for debugging purposes
             .stderr(Stdio::inherit());
 
-        let mut child = Self::spawn_cmd(cmd)?;
+        let mut child = Self::spawn_cmd(cmd, db)?;
         let stdin = child
             .stdin
             .take()
