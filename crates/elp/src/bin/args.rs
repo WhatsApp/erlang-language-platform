@@ -35,6 +35,7 @@ use strum::AsRefStr;
 
 use crate::build_info_cli::BuildInfo;
 use crate::build_info_cli::ProjectInfo;
+use crate::dialyzer_cli::DialyzeAll;
 use crate::lint_cli::Lint;
 
 #[derive(Clone, Debug, clap::Args)]
@@ -235,9 +236,6 @@ pub struct EqwalizeStats {
     #[arg(long)]
     pub use_cli_severity: bool,
 }
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct DialyzeAll {}
 
 #[derive(Clone, Debug, clap::Args)]
 pub struct GenerateCompletions {

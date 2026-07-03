@@ -14,7 +14,8 @@ use std::process::Stdio;
 use anyhow::Result;
 use elp::cli::Cli;
 
-use crate::args::DialyzeAll;
+#[derive(Clone, Debug, clap::Args)]
+pub struct DialyzeAll {}
 
 pub fn dialyze_all(args: &DialyzeAll, cli: &mut dyn Cli) -> Result<()> {
     do_dialyze_all(args, cli)
