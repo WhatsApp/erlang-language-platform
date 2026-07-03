@@ -258,3 +258,109 @@ impl ReloadManager {
         self.buck_quick_start = buck_quick_start;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::SystemTime;
+
+    use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
+    use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+    use fxhash::FxHashMap;
+    use fxhash::FxHashSet;
+    use paths::Utf8PathBuf;
+
+    use super::ProjectLoader;
+
+    fn abs(path: &str) -> AbsPathBuf {
+        AbsPathBuf::assert(Utf8PathBuf::from(path))
+    }
+
+    // Build a loader with an empty root map directly, so the tests don't depend on
+    // `Otp::find_otp()` (which `ProjectLoader::new` calls and which is environment
+    // sensitive). The child module can reach the private fields.
+    fn empty_loader() -> ProjectLoader {
+        ProjectLoader {
+            project_roots: FxHashMap::default(),
+            start: SystemTime::now(),
+            initialized: false,
+        }
+    }
+
+    fn path_set(items: &[&str]) -> FxHashSet<AbsPathBuf> {
+        items.iter().map(|p| abs(p)).collect()
+    }
+
+    #[test]
+    fn clear_returns_false_for_unknown_paths() {
+        let mut loader = empty_loader();
+        loader.project_roots.insert(abs("/tmp/elp/proj_a"), None);
+
+        let cleared = loader.clear(&path_set(&["/tmp/elp/proj_b"]));
+
+        assert!(!cleared, "clear should return false when no root matches");
+        assert!(
+            loader.project_roots.contains_key(&abs("/tmp/elp/proj_a")),
+            "the unrelated root must remain"
+        );
+    }
+
+    #[test]
+    fn clear_removes_exact_root_and_reports_true() {
+        let mut loader = empty_loader();
+        loader.project_roots.insert(abs("/tmp/elp/proj_a"), None);
+
+        let cleared = loader.clear(&path_set(&["/tmp/elp/proj_a"]));
+
+        assert!(
+            cleared,
+            "clear should return true when the exact root is present"
+        );
+        assert!(
+            !loader.project_roots.contains_key(&abs("/tmp/elp/proj_a")),
+            "the matched root must be removed"
+        );
+    }
+
+    #[test]
+    fn clear_walks_up_to_ancestor_root() {
+        let mut loader = empty_loader();
+        loader.project_roots.insert(abs("/tmp/elp/proj_a"), None);
+
+        // A file deep inside the project resolves to its ancestor root.
+        let cleared = loader.clear(&path_set(&["/tmp/elp/proj_a/src/mod/foo.erl"]));
+
+        assert!(
+            cleared,
+            "clear should walk parent dirs to find the ancestor root"
+        );
+        assert!(
+            !loader.project_roots.contains_key(&abs("/tmp/elp/proj_a")),
+            "the ancestor root must be removed via the parent walk"
+        );
+    }
+
+    #[test]
+    fn load_manifest_if_new_skips_known_root_and_children() {
+        let mut loader = empty_loader();
+        loader.project_roots.insert(abs("/tmp/elp/proj_a"), None);
+
+        // The exact known root is skipped (no reload, no filesystem discovery)...
+        assert!(
+            loader
+                .load_manifest_if_new(abs("/tmp/elp/proj_a").as_ref())
+                .is_none(),
+            "a known root must not be reloaded"
+        );
+        // ...and so is any file beneath it (an ancestor is already known). This is
+        // the intra-batch dedup the reload refactor relies on when it collects
+        // manifests under the lock before releasing it for the buck2 load.
+        assert!(
+            loader
+                .load_manifest_if_new(abs("/tmp/elp/proj_a/src/foo.erl").as_ref())
+                .is_none(),
+            "a child of a known root must not trigger a new load"
+        );
+        // The skipped lookups must not have inserted anything new.
+        assert_eq_expected!(1, loader.project_roots.len());
+    }
+}

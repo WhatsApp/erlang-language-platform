@@ -1482,15 +1482,20 @@ impl Server {
             raw_db.set_ifdef_enabled(self.config.ifdef());
         }
 
-        // Read the lint config file
-        let loader = self.project_loader.clone();
-        let loader = {
+        // Read the lint config file. Take the project-root path under the lock, then
+        // release it before the synchronous file read + apply, so the main loop never
+        // holds project_loader across filesystem I/O (S679438 candidate A).
+        let root_path: Option<PathBuf> = {
             let _phase = watchdog::phase("update_configuration:project_loader_lock");
-            loader.lock()
+            let loader = self.project_loader.lock();
+            // The OTP root is added with a project root value of None, skip it
+            loader
+                .project_roots
+                .iter()
+                .find(|(_k, v)| v.is_some())
+                .map(|(path, _)| path.clone().into())
         };
-        // The OTP root is added with a project root value of None, skip it
-        if let Some((path, _)) = loader.project_roots.iter().find(|(_k, v)| v.is_some()) {
-            let path_buf: PathBuf = path.clone().into();
+        if let Some(path_buf) = root_path {
             if let Ok(lint_config) = read_lint_config_file(&path_buf, &None) {
                 log::warn!("update_configuration: read lint file: {lint_config:?}");
 
@@ -1687,25 +1692,47 @@ impl Server {
             let spinner = self.progress.begin_spinner_with_telemetry(spinner_message);
             self.project_pool.handle.spawn_with_sender({
                 move |sender| {
+                    // Hold project_loader only for the cheap loader ops (clear +
+                    // manifest discovery), then release it before the slow buck2 query
+                    // in load_project_or_fallback (Project::load does not touch the
+                    // loader). Holding it across buck2 wedges the main loop waiting on
+                    // the same lock in update_configuration (S679438); same principle
+                    // as the D110061822 line_ending_map fix.
                     let mut loader = loader.lock();
-                    let mut projects = vec![];
-                    if loader.clear(&paths) {
-                        for path in paths {
-                            let manifest = loader.load_manifest_if_new(&path);
-                            if let Some((elp_config, main, fallback)) = manifest
-                                && let Ok(project) = Server::load_project_or_fallback(
-                                    &path,
-                                    elp_config,
-                                    main,
-                                    fallback,
-                                    &sender,
-                                    &query_config,
-                                    &spinner,
+                    let cleared = loader.clear(&paths);
+                    let manifests: Vec<_> = if cleared {
+                        paths
+                            .into_iter()
+                            .filter_map(|path| {
+                                loader.load_manifest_if_new(&path).map(
+                                    |(elp_config, main, fallback)| {
+                                        (path, elp_config, main, fallback)
+                                    },
                                 )
-                            {
-                                projects.push(project);
-                            }
-                        }
+                            })
+                            .collect()
+                    } else {
+                        Vec::new()
+                    };
+                    drop(loader);
+
+                    let projects: Vec<Project> = manifests
+                        .into_iter()
+                        .filter_map(|(path, elp_config, main, fallback)| {
+                            Server::load_project_or_fallback(
+                                &path,
+                                elp_config,
+                                main,
+                                fallback,
+                                &sender,
+                                &query_config,
+                                &spinner,
+                            )
+                            .ok()
+                        })
+                        .collect();
+
+                    if cleared {
                         log::info!("did reload projects");
                         log::debug!("reloaded projects {:?}", &projects);
                     }
