@@ -15,7 +15,6 @@ use std::fs;
 use std::io::IsTerminal;
 use std::path::PathBuf;
 
-use anyhow::Result;
 use clap::CommandFactory;
 use clap::ValueHint;
 use clap_complete::aot::Shell as CompletionShell;
@@ -23,9 +22,6 @@ use clap_complete::engine::ArgValueCompleter;
 use clap_complete::engine::CompletionCandidate;
 use elp_ide::elp_ide_db::DiagnosticCode;
 use elp_project_model::buck::BuckQueryConfig;
-use hir::fold::MacroStrategy;
-use hir::fold::ParenStrategy;
-use hir::fold::Strategy;
 use itertools::Itertools;
 use serde::Deserialize;
 use serde::Serialize;
@@ -41,6 +37,7 @@ use crate::explain_cli::Explain;
 use crate::lint_cli::Lint;
 use crate::lint_compare::LintCompare;
 use crate::lint_list_cli::LintList;
+use crate::ssr_cli::Ssr;
 
 #[derive(Clone, Debug, clap::Args)]
 pub struct Eqwalize {
@@ -206,86 +203,6 @@ Examples:
 A bare PATTERN is shorthand for `ssr: PATTERN.`. Prefix with `LABEL:ssr: ` to tag matches.
 
 Full syntax guide: https://whatsapp.github.io/erlang-language-platform/docs/structural-search";
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct Ssr {
-    /// Path to directory with project, or to a JSON file
-    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
-    pub project: PathBuf,
-    /// Parse a single module from the project, not the entire project.
-    #[arg(long, value_name = "MODULE", add = ArgValueCompleter::new(module_completer))]
-    pub module: Option<String>,
-    /// Parse a single application from the project, not the entire project.
-    #[arg(long = "app", alias = "application", value_name = "APP")]
-    pub app: Option<String>,
-    /// Parse a single file from the project, not the entire project. This can be an include file or escript, etc.
-    #[arg(long, value_name = "FILE")]
-    pub file: Option<String>,
-
-    /// Run with rebar
-    #[arg(long)]
-    pub rebar: bool,
-    /// Rebar3 profile to pickup
-    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
-    pub profile: String,
-
-    /// Also generate diagnostics for generated files
-    #[arg(long)]
-    pub include_generated: bool,
-    /// Deprecated: has no effect, will be removed in future
-    #[arg(long)]
-    pub include_tests: bool,
-
-    /// Customize the output format (defaults to human-readable)
-    #[arg(long, value_name = "FORMAT")]
-    pub format: Option<Format>,
-
-    /// Macro expansion strategy (default: expand)
-    #[arg(long = "macros", value_name = "STRATEGY")]
-    pub macro_strategy: Option<MacroStrategyArg>,
-
-    /// Explicitly match parentheses. If omitted, they are ignored.
-    #[arg(long = "parens")]
-    pub paren_strategy: bool,
-
-    /// Dump a configuration snippet that can be put in .elp_lint.toml to match the given SSR patterns
-    #[arg(long)]
-    pub dump_config: bool,
-
-    /// Show source code context for matches
-    #[arg(long = "show-source")]
-    pub show_source: bool,
-
-    /// Print NUM lines of leading context, enables --show-source
-    #[arg(short = 'B', long = "before-context", value_name = "NUM")]
-    pub before_context: Option<usize>,
-
-    /// Print NUM lines of trailing context, enables --show-source
-    #[arg(short = 'A', long = "after-context", value_name = "NUM")]
-    pub after_context: Option<usize>,
-
-    /// Print NUM lines of output context, enables --show-source
-    #[arg(short = 'C', long = "context", value_name = "NUM")]
-    pub context: Option<usize>,
-
-    /// Print SEP on line between matches with context, enables --show-source
-    #[arg(long = "group-separator", value_name = "SEP")]
-    pub group_separator: Option<String>,
-
-    /// Do not print separator for matches with context, enables --show-source
-    #[arg(long = "no-group-separator")]
-    pub no_group_separator: bool,
-
-    /// Report system memory usage and other statistics
-    #[arg(long = "report-system-stats")]
-    pub report_system_stats: bool,
-
-    /// SSR specs to use. Each accepts `PATTERN`, `ssr: PATTERN.`, or
-    /// `LABEL:ssr: PATTERN.` forms; the LABEL surfaces as `patternLabel` in
-    /// JSON output.
-    #[arg(value_name = "SSR_SPECS", required = true)]
-    pub ssr_specs: Vec<String>,
-}
 
 #[derive(Clone, Debug, clap::Args)]
 pub struct Shell {
@@ -690,34 +607,6 @@ pub fn generate_completions(shell: CompletionShell, buf: &mut dyn std::io::Write
 }
 
 // --- Impl blocks ---
-
-fn parse_macro_strategy(macro_strategy: Option<MacroStrategyArg>) -> MacroStrategy {
-    match macro_strategy {
-        Some(MacroStrategyArg::NoExpand) => MacroStrategy::DoNotExpand,
-        Some(MacroStrategyArg::Expand) | None => MacroStrategy::Expand,
-        Some(MacroStrategyArg::VisibleExpand) => MacroStrategy::ExpandButIncludeMacroCall,
-    }
-}
-
-impl Ssr {
-    pub fn is_format_normal(&self) -> bool {
-        self.format.is_none()
-    }
-
-    pub fn is_format_json(&self) -> bool {
-        self.format == Some(Format::Json)
-    }
-
-    pub fn parse_strategy(&self) -> Result<Strategy> {
-        let macros = parse_macro_strategy(self.macro_strategy);
-        let parens = if self.paren_strategy {
-            ParenStrategy::VisibleParens
-        } else {
-            ParenStrategy::InvisibleParens
-        };
-        Ok(Strategy { macros, parens })
-    }
-}
 
 #[cfg(test)]
 mod tests {
