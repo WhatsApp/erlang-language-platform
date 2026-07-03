@@ -37,6 +37,7 @@ use crate::build_info_cli::ProjectInfo;
 use crate::dialyzer_cli::DialyzeAll;
 use crate::explain_cli::Explain;
 use crate::lint_cli::Lint;
+use crate::lint_list_cli::LintList;
 
 #[derive(Clone, Debug, clap::Args)]
 pub struct ParseAllElp {
@@ -393,9 +394,6 @@ pub struct Ssr {
     #[arg(value_name = "SSR_SPECS", required = true)]
     pub ssr_specs: Vec<String>,
 }
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct LintList {}
 
 #[derive(Clone, Debug, clap::Args)]
 pub struct Shell {

@@ -12,7 +12,8 @@ use anyhow::Result;
 use elp::cli::Cli;
 use elp_ide::elp_ide_db::DiagnosticCode;
 
-use crate::args::LintList;
+#[derive(Clone, Debug, clap::Args)]
+pub struct LintList {}
 
 pub fn lint_list(_args: &LintList, cli: &mut dyn Cli) -> Result<()> {
     for code in DiagnosticCode::all_diagnostic_codes() {
