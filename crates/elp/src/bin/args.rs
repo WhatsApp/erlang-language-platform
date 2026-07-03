@@ -161,7 +161,7 @@ pub enum Command {
 }
 
 #[derive(Debug, Clone, clap::Parser)]
-#[command(name = "elp")]
+#[command(name = "elp", version = elp::version())]
 pub struct Args {
     // These top-level options are `global = true` so they can be supplied
     // either before or after a subcommand. bpaf parsed them position
@@ -433,5 +433,16 @@ mod tests {
             Some(std::path::Path::new("/path/to/escript"))
         );
         assert!(matches!(args.command, Some(Command::Glean(_))));
+    }
+
+    /// The conventional `--version` flag must print the same string as the
+    /// `version` subcommand (`elp {version}`). clap turns `--version` into a
+    /// `DisplayVersion` error whose rendered text is that output.
+    #[test]
+    fn version_flag_matches_subcommand_output() {
+        let err = Args::try_parse_from(["elp", "--version"])
+            .expect_err("--version should short-circuit parsing");
+        assert_eq!(err.kind(), clap::error::ErrorKind::DisplayVersion);
+        assert_eq!(err.to_string(), format!("elp {}\n", elp::version()));
     }
 }
