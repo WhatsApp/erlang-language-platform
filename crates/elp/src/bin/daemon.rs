@@ -95,13 +95,13 @@ use serde::Serialize;
 
 use crate::args::DaemonCommand;
 use crate::args::DaemonRun;
-use crate::args::Eqwalize;
-use crate::args::EqwalizeAll;
-use crate::args::EqwalizeApp;
-use crate::args::EqwalizeTarget;
 use crate::args::Format;
 use crate::args::Shell;
 use crate::eqwalizer_cli;
+use crate::eqwalizer_cli::Eqwalize;
+use crate::eqwalizer_cli::EqwalizeAll;
+use crate::eqwalizer_cli::EqwalizeApp;
+use crate::eqwalizer_cli::EqwalizeTarget;
 use crate::lint_cli;
 use crate::lint_cli::Lint;
 use crate::reporting;

@@ -32,137 +32,17 @@ use crate::build_info_cli::ProjectInfo;
 use crate::config_stanza::ConfigStanza;
 use crate::dialyzer_cli::DialyzeAll;
 use crate::elp_parse_cli::ParseAllElp;
+use crate::eqwalizer_cli::Eqwalize;
+use crate::eqwalizer_cli::EqwalizeAll;
+use crate::eqwalizer_cli::EqwalizeApp;
+use crate::eqwalizer_cli::EqwalizeStats;
+use crate::eqwalizer_cli::EqwalizeTarget;
 use crate::erlang_service_cli::ParseAll;
 use crate::explain_cli::Explain;
 use crate::lint_cli::Lint;
 use crate::lint_compare::LintCompare;
 use crate::lint_list_cli::LintList;
 use crate::ssr_cli::Ssr;
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct Eqwalize {
-    /// Path to directory with project, or to a JSON file
-    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
-    pub project: PathBuf,
-    /// Rebar3 profile to pickup
-    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
-    pub profile: String,
-    /// Customize the output format (defaults to human-readable)
-    #[arg(long, value_name = "FORMAT")]
-    pub format: Option<Format>,
-    /// Run with rebar
-    #[arg(long)]
-    pub rebar: bool,
-    /// Use a persistent daemon for fast turnaround (auto-starts if needed)
-    #[arg(long)]
-    pub connect: bool,
-    /// Exit with a non-zero status code if any errors are found
-    #[arg(long)]
-    pub bail_on_error: bool,
-    /// Eqwalize specified modules (not files)
-    #[arg(value_name = "MODULES", required = true)]
-    pub modules: Vec<String>,
-}
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct EqwalizeAll {
-    /// Path to directory with project, or to a JSON file
-    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
-    pub project: PathBuf,
-    /// Rebar3 profile to pickup
-    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
-    pub profile: String,
-    /// Customize the output format (defaults to human-readable)
-    #[arg(long, value_name = "FORMAT")]
-    pub format: Option<Format>,
-    /// Run with rebar
-    #[arg(long)]
-    pub rebar: bool,
-    /// Use a persistent daemon for fast turnaround (auto-starts if needed)
-    #[arg(long)]
-    pub connect: bool,
-    /// Also eqwalize opted-in generated modules from project (deprecated)
-    #[arg(long, hide = true)]
-    pub include_generated: bool,
-    /// Exit with a non-zero status code if any errors are found
-    #[arg(long)]
-    pub bail_on_error: bool,
-    /// Print statistics when done
-    #[arg(long)]
-    pub stats: bool,
-    /// When printing statistics, include the list of modules parsed
-    #[arg(long)]
-    pub list_modules: bool,
-}
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct EqwalizeTarget {
-    /// Path to directory with project, or to a JSON file
-    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
-    pub project: PathBuf,
-    /// Customize the output format (defaults to human-readable)
-    #[arg(long, value_name = "FORMAT")]
-    pub format: Option<Format>,
-    /// Also eqwalize opted-in generated modules from application (deprecated)
-    #[arg(long, hide = true)]
-    pub include_generated: bool,
-    /// Use a persistent daemon for fast turnaround (auto-starts if needed)
-    #[arg(long)]
-    pub connect: bool,
-    /// Exit with a non-zero status code if any errors are found
-    #[arg(long)]
-    pub bail_on_error: bool,
-    /// target, like //erl/chatd/...
-    #[arg(value_name = "TARGET")]
-    pub target: String,
-}
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct EqwalizeApp {
-    /// Path to directory with project, or to a JSON file
-    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
-    pub project: PathBuf,
-    /// Rebar3 profile to pickup
-    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
-    pub profile: String,
-    /// Customize the output format (defaults to human-readable)
-    #[arg(long, value_name = "FORMAT")]
-    pub format: Option<Format>,
-    /// Also eqwalize opted-in generated modules from project (deprecated)
-    #[arg(long, hide = true)]
-    pub include_generated: bool,
-    /// Run with rebar
-    #[arg(long)]
-    pub rebar: bool,
-    /// Use a persistent daemon for fast turnaround (auto-starts if needed)
-    #[arg(long)]
-    pub connect: bool,
-    /// Exit with a non-zero status code if any errors are found
-    #[arg(long)]
-    pub bail_on_error: bool,
-    /// app name
-    #[arg(value_name = "APP")]
-    pub app: String,
-}
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct EqwalizeStats {
-    /// Path to directory with project, or to a JSON file
-    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
-    pub project: PathBuf,
-    /// Rebar3 profile to pickup
-    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
-    pub profile: String,
-    /// Run with rebar
-    #[arg(long)]
-    pub rebar: bool,
-    /// Also eqwalize opted-in generated modules from project (deprecated)
-    #[arg(long, hide = true)]
-    pub include_generated: bool,
-    /// If specified, use the provided CLI severity mapping instead of the default one
-    #[arg(long)]
-    pub use_cli_severity: bool,
-}
 
 #[derive(Clone, Debug, clap::Args)]
 pub struct GenerateCompletions {

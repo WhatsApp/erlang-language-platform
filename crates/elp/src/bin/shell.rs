@@ -25,12 +25,12 @@ use elp_project_model::DiscoverConfig;
 use elp_project_model::buck::BuckQueryConfig;
 use rustyline::error::ReadlineError;
 
-use crate::args::Eqwalize;
-use crate::args::EqwalizeAll;
-use crate::args::EqwalizeApp;
-use crate::args::EqwalizeTarget;
 use crate::args::Shell;
 use crate::eqwalizer_cli;
+use crate::eqwalizer_cli::Eqwalize;
+use crate::eqwalizer_cli::EqwalizeAll;
+use crate::eqwalizer_cli::EqwalizeApp;
+use crate::eqwalizer_cli::EqwalizeTarget;
 
 #[derive(Debug, Clone)]
 pub(crate) enum ShellError {
