@@ -10,9 +10,12 @@
 
 use core::option::Option::None;
 use std::io::Write;
+use std::path::PathBuf;
 use std::time::Instant;
 
 use anyhow::Result;
+use clap::ValueHint;
+use clap_complete::engine::ArgValueCompleter;
 use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
@@ -81,7 +84,34 @@ use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use serde::Deserialize;
 
-use crate::args::Glean;
+use crate::args::module_completer;
+
+#[derive(Clone, Debug, clap::Args)]
+pub struct Glean {
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
+    pub project: PathBuf,
+    #[arg(long, value_name = "MODULE", add = ArgValueCompleter::new(module_completer))]
+    pub module: Option<String>,
+    /// Path to a directory where to dump result
+    #[arg(long, value_name = "TO", value_hint = ValueHint::DirPath)]
+    pub to: Option<PathBuf>,
+    /// Deprecated no-op.
+    #[arg(long)]
+    pub schema2: bool,
+    /// Pretty print
+    #[arg(long)]
+    pub pretty: bool,
+    /// Output each fact separately
+    #[arg(long)]
+    pub multi: bool,
+    /// Print indexer metrics as JSON
+    #[arg(long)]
+    pub print_metrics: bool,
+    /// Prefix for every emitted `src.File` path
+    #[arg(long, value_name = "PATH")]
+    pub source_root: Option<String>,
+}
 
 const FACTS_FILE: &str = "facts.json";
 

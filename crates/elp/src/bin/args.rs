@@ -18,7 +18,6 @@ use std::path::PathBuf;
 use clap::CommandFactory;
 use clap::ValueHint;
 use clap_complete::aot::Shell as CompletionShell;
-use clap_complete::engine::ArgValueCompleter;
 use clap_complete::engine::CompletionCandidate;
 use elp_ide::elp_ide_db::DiagnosticCode;
 use elp_project_model::buck::BuckQueryConfig;
@@ -39,6 +38,7 @@ use crate::eqwalizer_cli::EqwalizeStats;
 use crate::eqwalizer_cli::EqwalizeTarget;
 use crate::erlang_service_cli::ParseAll;
 use crate::explain_cli::Explain;
+use crate::glean::Glean;
 use crate::lint_cli::Lint;
 use crate::lint_compare::LintCompare;
 use crate::lint_list_cli::LintList;
@@ -147,33 +147,6 @@ impl Daemon {
             None => DaemonCommand::Run(self.run_args),
         }
     }
-}
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct Glean {
-    /// Path to directory with project, or to a JSON file
-    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
-    pub project: PathBuf,
-    #[arg(long, value_name = "MODULE", add = ArgValueCompleter::new(module_completer))]
-    pub module: Option<String>,
-    /// Path to a directory where to dump result
-    #[arg(long, value_name = "TO", value_hint = ValueHint::DirPath)]
-    pub to: Option<PathBuf>,
-    /// Deprecated no-op.
-    #[arg(long)]
-    pub schema2: bool,
-    /// Pretty print
-    #[arg(long)]
-    pub pretty: bool,
-    /// Output each fact separately
-    #[arg(long)]
-    pub multi: bool,
-    /// Print indexer metrics as JSON
-    #[arg(long)]
-    pub print_metrics: bool,
-    /// Prefix for every emitted `src.File` path
-    #[arg(long, value_name = "PATH")]
-    pub source_root: Option<String>,
 }
 
 #[derive(Clone, Debug, AsRefStr, clap::Subcommand)]
