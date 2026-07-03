@@ -42,6 +42,7 @@ use crate::explain_cli::Explain;
 use crate::lint_cli::Lint;
 use crate::lint_compare::LintCompare;
 use crate::lint_list_cli::LintList;
+use crate::shell::Shell;
 use crate::ssr_cli::Ssr;
 
 #[derive(Clone, Debug, clap::Args)]
@@ -83,16 +84,6 @@ Examples:
 A bare PATTERN is shorthand for `ssr: PATTERN.`. Prefix with `LABEL:ssr: ` to tag matches.
 
 Full syntax guide: https://whatsapp.github.io/erlang-language-platform/docs/structural-search";
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct Shell {
-    /// Path to directory with project, or to a JSON file
-    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
-    pub project: PathBuf,
-    /// Initial command to run on shell startup
-    #[arg(value_name = "INITIAL_COMMAND")]
-    pub command: Vec<String>,
-}
 
 #[derive(Clone, Debug)]
 pub enum DaemonCommand {

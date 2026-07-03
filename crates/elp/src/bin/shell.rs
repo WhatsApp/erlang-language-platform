@@ -10,9 +10,11 @@
 
 use std::fmt;
 use std::ops::ControlFlow;
+use std::path::PathBuf;
 use std::time::SystemTime;
 
 use anyhow::Result;
+use clap::ValueHint;
 use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
@@ -25,12 +27,21 @@ use elp_project_model::DiscoverConfig;
 use elp_project_model::buck::BuckQueryConfig;
 use rustyline::error::ReadlineError;
 
-use crate::args::Shell;
 use crate::eqwalizer_cli;
 use crate::eqwalizer_cli::Eqwalize;
 use crate::eqwalizer_cli::EqwalizeAll;
 use crate::eqwalizer_cli::EqwalizeApp;
 use crate::eqwalizer_cli::EqwalizeTarget;
+
+#[derive(Clone, Debug, clap::Args)]
+pub struct Shell {
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
+    pub project: PathBuf,
+    /// Initial command to run on shell startup
+    #[arg(value_name = "INITIAL_COMMAND")]
+    pub command: Vec<String>,
+}
 
 #[derive(Debug, Clone)]
 pub(crate) enum ShellError {
