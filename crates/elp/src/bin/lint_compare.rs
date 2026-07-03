@@ -55,13 +55,50 @@ use std::fs;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;
+use std::path::PathBuf;
 
 use anyhow::Context;
 use anyhow::Result;
+use clap::ValueHint;
 use elp::arc_types;
 use elp::cli::Cli;
 
-use crate::args::LintCompare;
+/// `elp lint-compare` -- pure data primitive that takes two
+/// `elp lint --format=json` JSONL artifacts and reports the
+/// per-(`name`, `severity`) diagnostic count delta between them.
+///
+/// No project is loaded, no lint is run -- this command operates
+/// purely on the two input files. The expected workflow is:
+///   1. `elp lint --format=json > before.jsonl` (at base revision)
+///   2. `elp lint --format=json > after.jsonl`  (at diff revision)
+///   3. `elp lint-compare --base before.jsonl --diff after.jsonl --report-path report.md`
+///
+/// Step 3 is the same primitive whether the caller is CI comparing
+/// two diff revisions, a developer checking what they changed
+/// locally, or a tool comparing two ELP releases. The compare step
+/// has zero project dependencies (no BUCK, no OTP, no source tree).
+#[derive(Debug, Clone, Default, clap::Args)]
+pub struct LintCompare {
+    /// JSONL artifact for the **base** side of the comparison
+    /// (typically an `elp lint --format=json` run at a prior project
+    /// state). Diagnostics present here but missing on the diff side
+    /// are reported as removed.
+    #[arg(long, value_name = "BASE_JSONL", value_hint = ValueHint::FilePath)]
+    pub base: PathBuf,
+
+    /// JSONL artifact for the **diff** side of the comparison
+    /// (typically an `elp lint --format=json` run at the current
+    /// project state). Diagnostics present here but missing on the
+    /// base side are reported as new.
+    #[arg(long, value_name = "DIFF_JSONL", value_hint = ValueHint::FilePath)]
+    pub diff: PathBuf,
+
+    /// Optional path to write the Markdown comparison report
+    /// (per-(diagnostic, severity) summary table) to.
+    /// When omitted, the report is written to stdout.
+    #[arg(long, value_name = "REPORT_PATH", value_hint = ValueHint::FilePath)]
+    pub report_path: Option<PathBuf>,
+}
 
 // ---------------------------------------------------------------------
 // Error type that the CLI returns when a delta is detected.
