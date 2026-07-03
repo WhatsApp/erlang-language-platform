@@ -10,12 +10,15 @@
 
 use std::fs;
 use std::path::Path;
+use std::path::PathBuf;
 use std::str;
 use std::time::SystemTime;
 
 use anyhow::Context;
 use anyhow::Error;
 use anyhow::Result;
+use clap::ValueHint;
+use clap_complete::engine::ArgValueCompleter;
 use elp::build;
 use elp::build::load;
 use elp::build::types::LoadResult;
@@ -36,11 +39,36 @@ use elp_project_model::buck::BuckQueryConfig;
 use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
 
-use crate::args::ParseAll;
+use crate::args::module_completer;
 use crate::reporting;
 use crate::reporting::ParseDiagnostic;
 use crate::reporting::add_stat;
 use crate::reporting::dump_stats;
+
+#[derive(Clone, Debug, clap::Args)]
+pub struct ParseAll {
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
+    pub project: PathBuf,
+    /// Path to a directory where to dump .etf files
+    #[arg(long)]
+    pub to: PathBuf,
+    /// Rebar3 profile to pickup
+    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
+    pub profile: String,
+    /// Parse a single module from the project, not the entire project
+    #[arg(long, value_name = "MODULE", add = ArgValueCompleter::new(module_completer))]
+    pub module: Option<String>,
+    /// Run with buck
+    #[arg(long)]
+    pub buck: bool,
+    /// Print statistics when done
+    #[arg(long)]
+    pub stats: bool,
+    /// When printing statistics, include the list of modules parsed
+    #[arg(long)]
+    pub list_modules: bool,
+}
 
 pub fn parse_all(
     args: &ParseAll,

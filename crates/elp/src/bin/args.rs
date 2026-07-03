@@ -36,6 +36,7 @@ use crate::build_info_cli::BuildInfo;
 use crate::build_info_cli::ProjectInfo;
 use crate::config_stanza::ConfigStanza;
 use crate::dialyzer_cli::DialyzeAll;
+use crate::erlang_service_cli::ParseAll;
 use crate::explain_cli::Explain;
 use crate::lint_cli::Lint;
 use crate::lint_compare::LintCompare;
@@ -88,31 +89,6 @@ pub struct ParseAllElp {
     /// Minimum severity level to report
     #[arg(long, value_name = "SEVERITY")]
     pub severity: Option<Severity>,
-}
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct ParseAll {
-    /// Path to directory with project, or to a JSON file
-    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
-    pub project: PathBuf,
-    /// Path to a directory where to dump .etf files
-    #[arg(long)]
-    pub to: PathBuf,
-    /// Rebar3 profile to pickup
-    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
-    pub profile: String,
-    /// Parse a single module from the project, not the entire project
-    #[arg(long, value_name = "MODULE", add = ArgValueCompleter::new(module_completer))]
-    pub module: Option<String>,
-    /// Run with buck
-    #[arg(long)]
-    pub buck: bool,
-    /// Print statistics when done
-    #[arg(long)]
-    pub stats: bool,
-    /// When printing statistics, include the list of modules parsed
-    #[arg(long)]
-    pub list_modules: bool,
 }
 
 #[derive(Clone, Debug, clap::Args)]
