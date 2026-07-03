@@ -29,6 +29,7 @@ use strum::AsRefStr;
 use crate::build_info_cli::BuildInfo;
 use crate::build_info_cli::ProjectInfo;
 use crate::config_stanza::ConfigStanza;
+use crate::daemon::Daemon;
 use crate::dialyzer_cli::DialyzeAll;
 use crate::elp_parse_cli::ParseAllElp;
 use crate::eqwalizer_cli::Eqwalize;
@@ -84,70 +85,6 @@ Examples:
 A bare PATTERN is shorthand for `ssr: PATTERN.`. Prefix with `LABEL:ssr: ` to tag matches.
 
 Full syntax guide: https://whatsapp.github.io/erlang-language-platform/docs/structural-search";
-
-#[derive(Clone, Debug)]
-pub enum DaemonCommand {
-    Run(DaemonRun),
-    Stop,
-    Status(DaemonStatus),
-}
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct DaemonRun {
-    /// Path to directory with project, or to a JSON file
-    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
-    pub project: PathBuf,
-    /// Rebar3 profile to pickup
-    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
-    pub profile: String,
-    /// Run with rebar
-    #[arg(long)]
-    pub rebar: bool,
-    /// Detach from parent process and run as daemon (internal use only)
-    #[arg(long, hide = true)]
-    pub daemonize: bool,
-}
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct DaemonStatus {
-    /// Path to directory with project, or to a JSON file
-    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
-    pub project: PathBuf,
-    /// Rebar3 profile to pickup
-    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
-    pub profile: String,
-    /// Run with rebar
-    #[arg(long)]
-    pub rebar: bool,
-}
-
-#[derive(Clone, Debug, clap::Subcommand)]
-pub enum DaemonSubcommand {
-    /// Stop all running daemons
-    Stop,
-    /// Show daemon status for this project
-    Status(DaemonStatus),
-}
-
-#[derive(Clone, Debug, clap::Args)]
-#[command(about = "Manage a persistent ELP daemon for fast turnaround")]
-pub struct Daemon {
-    #[command(subcommand)]
-    pub subcommand: Option<DaemonSubcommand>,
-
-    #[command(flatten)]
-    pub run_args: DaemonRun,
-}
-
-impl Daemon {
-    pub fn into_command(self) -> DaemonCommand {
-        match self.subcommand {
-            Some(DaemonSubcommand::Stop) => DaemonCommand::Stop,
-            Some(DaemonSubcommand::Status(s)) => DaemonCommand::Status(s),
-            None => DaemonCommand::Run(self.run_args),
-        }
-    }
-}
 
 #[derive(Clone, Debug, AsRefStr, clap::Subcommand)]
 #[strum(serialize_all = "kebab-case")]
