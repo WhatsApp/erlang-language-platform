@@ -34,6 +34,7 @@ use strum::AsRefStr;
 
 use crate::build_info_cli::BuildInfo;
 use crate::build_info_cli::ProjectInfo;
+use crate::config_stanza::ConfigStanza;
 use crate::dialyzer_cli::DialyzeAll;
 use crate::explain_cli::Explain;
 use crate::lint_cli::Lint;
@@ -495,9 +496,6 @@ pub struct Glean {
     #[arg(long, value_name = "PATH")]
     pub source_root: Option<String>,
 }
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct ConfigStanza {}
 
 #[derive(Clone, Debug, AsRefStr, clap::Subcommand)]
 #[strum(serialize_all = "kebab-case")]

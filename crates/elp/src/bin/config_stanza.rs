@@ -12,7 +12,8 @@ use anyhow::Result;
 use elp::cli::Cli;
 use elp::config::Config;
 
-use crate::args::ConfigStanza;
+#[derive(Clone, Debug, clap::Args)]
+pub struct ConfigStanza {}
 
 pub fn config_stanza(_args: &ConfigStanza, cli: &mut dyn Cli) -> Result<()> {
     let schema = format!("{:#}", Config::json_schema());
