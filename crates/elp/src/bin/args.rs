@@ -20,7 +20,6 @@ use clap::ArgAction;
 use clap::CommandFactory;
 use clap::ValueHint;
 use clap_complete::aot::Shell as CompletionShell;
-use clap_complete::engine::ArgValueCandidates;
 use clap_complete::engine::ArgValueCompleter;
 use clap_complete::engine::CompletionCandidate;
 use elp_ide::elp_ide_db::DiagnosticCode;
@@ -36,6 +35,7 @@ use strum::AsRefStr;
 use crate::build_info_cli::BuildInfo;
 use crate::build_info_cli::ProjectInfo;
 use crate::dialyzer_cli::DialyzeAll;
+use crate::explain_cli::Explain;
 use crate::lint_cli::Lint;
 
 #[derive(Clone, Debug, clap::Args)]
@@ -392,13 +392,6 @@ pub struct Ssr {
     /// JSON output.
     #[arg(value_name = "SSR_SPECS", required = true)]
     pub ssr_specs: Vec<String>,
-}
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct Explain {
-    /// Error code to explain
-    #[arg(long, value_name = "CODE", add = ArgValueCandidates::new(diagnostic_code_candidates))]
-    pub code: String,
 }
 
 #[derive(Clone, Debug, clap::Args)]

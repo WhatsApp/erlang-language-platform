@@ -9,10 +9,18 @@
  */
 
 use anyhow::Result;
+use clap_complete::engine::ArgValueCandidates;
 use elp::cli::Cli;
 use elp_ide::diagnostics::DiagnosticCode;
 
-use crate::args::Explain;
+use crate::args::diagnostic_code_candidates;
+
+#[derive(Clone, Debug, clap::Args)]
+pub struct Explain {
+    /// Error code to explain
+    #[arg(long, value_name = "CODE", add = ArgValueCandidates::new(diagnostic_code_candidates))]
+    pub code: String,
+}
 
 pub fn explain(args: &Explain, cli: &mut dyn Cli) -> Result<()> {
     if let Some(code) = DiagnosticCode::maybe_from_string(&args.code)
