@@ -18,6 +18,9 @@ use std::time::SystemTime;
 
 use anyhow::Result;
 use anyhow::bail;
+use clap::ArgAction;
+use clap::ValueHint;
+use clap_complete::engine::ArgValueCompleter;
 use elp::build::load;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
@@ -55,9 +58,70 @@ use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
 use vfs::AbsPath;
 
-use crate::args::ParseAllElp;
+use crate::args::Format;
+use crate::args::Severity;
+use crate::args::module_completer;
 use crate::reporting;
 use crate::reporting::print_memory_usage;
+
+#[derive(Clone, Debug, clap::Args)]
+pub struct ParseAllElp {
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::DirPath)]
+    pub project: PathBuf,
+    /// Parse a single module from the project, not the entire project
+    #[arg(long, value_name = "MODULE", add = ArgValueCompleter::new(module_completer))]
+    pub module: Option<String>,
+    /// Parse a single file from the project, not the entire project. \nThis can be an include file or escript, etc.
+    #[arg(long)]
+    pub file: Option<String>,
+    /// Path to a directory where to dump result files
+    #[arg(long, value_name = "TO", value_hint = ValueHint::DirPath)]
+    pub to: Option<PathBuf>,
+    /// Do not print the full diagnostics for a file, just the count
+    #[arg(long = "no-diags", action = ArgAction::SetFalse, default_value_t = true)]
+    pub print_diags: bool,
+    /// Report experimental diagnostics too, if diagnostics are enabled
+    #[arg(long = "experimental")]
+    pub experimental_diags: bool,
+    /// Rebar3 profile to pickup
+    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
+    pub profile: String,
+    /// Report the resolution of include directives for comparison with OTP ones
+    #[arg(long = "dump-includes")]
+    pub dump_include_resolutions: bool,
+    /// Run with rebar
+    #[arg(long)]
+    pub rebar: bool,
+    /// Also process generated modules
+    #[arg(long)]
+    pub include_generated: bool,
+    /// Parse the files serially, not in parallel
+    #[arg(long)]
+    pub serial: bool,
+    /// If specified, use the provided CLI severity mapping instead of the default one
+    #[arg(long)]
+    pub use_cli_severity: bool,
+    /// Customize the output format (defaults to human-readable)
+    #[arg(long, value_name = "FORMAT")]
+    pub format: Option<Format>,
+    /// Report system memory usage and other statistics
+    #[arg(long = "report-system-stats")]
+    pub report_system_stats: bool,
+    /// Minimum severity level to report
+    #[arg(long, value_name = "SEVERITY")]
+    pub severity: Option<Severity>,
+}
+
+impl ParseAllElp {
+    pub fn is_format_normal(&self) -> bool {
+        self.format.is_none()
+    }
+
+    pub fn is_format_json(&self) -> bool {
+        self.format == Some(Format::Json)
+    }
+}
 
 fn arg_severity(severity: crate::args::Severity) -> diagnostics::Severity {
     match severity {
