@@ -37,6 +37,7 @@ pub use common_test::TestDef;
 use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
 use crossbeam_channel::bounded;
+use crossbeam_channel::unbounded;
 use eetf::Term;
 use eetf::pattern;
 use elp_base_db::FileId;
@@ -605,7 +606,7 @@ fn stdio_transport(proc: &mut Child) -> (Sender<Request>, JoinHandle, JoinHandle
 
     let inflight = Arc::new(Mutex::new(FxHashMap::default()));
 
-    let (writer_sender, writer_receiver) = bounded::<Request>(0);
+    let (writer_sender, writer_receiver) = unbounded::<Request>();
     let writer = jod_thread::spawn({
         let inflight = inflight.clone();
         move || match writer_run(writer_receiver, instream, inflight) {
