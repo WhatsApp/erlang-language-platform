@@ -33,6 +33,8 @@ use serde::Deserialize;
 use serde::Serialize;
 use strum::AsRefStr;
 
+use crate::build_info_cli::BuildInfo;
+use crate::build_info_cli::ProjectInfo;
 use crate::lint_cli::Lint;
 
 #[derive(Clone, Debug, clap::Args)]
@@ -236,16 +238,6 @@ pub struct EqwalizeStats {
 
 #[derive(Clone, Debug, clap::Args)]
 pub struct DialyzeAll {}
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct BuildInfo {
-    /// Path to directory with project, or to a JSON file
-    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
-    pub project: PathBuf,
-    /// Path to a (JSON) file to write the build information
-    #[arg(long, value_name = "TO", value_hint = ValueHint::FilePath)]
-    pub to: PathBuf,
-}
 
 #[derive(Clone, Debug, clap::Args)]
 pub struct GenerateCompletions {
@@ -486,22 +478,6 @@ impl Daemon {
             None => DaemonCommand::Run(self.run_args),
         }
     }
-}
-
-#[derive(Clone, Debug, clap::Args)]
-pub struct ProjectInfo {
-    /// Path to directory with project, or to a JSON file
-    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
-    pub project: PathBuf,
-    /// Path to a directory where to dump wa.build_info
-    #[arg(long, value_name = "TO", value_hint = ValueHint::DirPath)]
-    pub to: Option<PathBuf>,
-    /// Include the buck uquery results in the output
-    #[arg(long)]
-    pub buck_query: bool,
-    /// Dump a list of targets and their types
-    #[arg(long)]
-    pub target_types: bool,
 }
 
 #[derive(Clone, Debug, clap::Args)]

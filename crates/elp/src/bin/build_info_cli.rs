@@ -10,8 +10,10 @@
 
 use std::fs::File;
 use std::io::Write;
+use std::path::PathBuf;
 
 use anyhow::Result;
+use clap::ValueHint;
 use elp::build::load;
 use elp::cli::Cli;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
@@ -28,8 +30,31 @@ use elp_project_model::buck::query_buck_targets;
 use elp_project_model::json::JsonConfig;
 use fxhash::FxHashMap;
 
-use crate::args::BuildInfo;
-use crate::args::ProjectInfo;
+#[derive(Clone, Debug, clap::Args)]
+pub struct BuildInfo {
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
+    pub project: PathBuf,
+    /// Path to a (JSON) file to write the build information
+    #[arg(long, value_name = "TO", value_hint = ValueHint::FilePath)]
+    pub to: PathBuf,
+}
+
+#[derive(Clone, Debug, clap::Args)]
+pub struct ProjectInfo {
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
+    pub project: PathBuf,
+    /// Path to a directory where to dump wa.build_info
+    #[arg(long, value_name = "TO", value_hint = ValueHint::DirPath)]
+    pub to: Option<PathBuf>,
+    /// Include the buck uquery results in the output
+    #[arg(long)]
+    pub buck_query: bool,
+    /// Dump a list of targets and their types
+    #[arg(long)]
+    pub target_types: bool,
+}
 
 pub(crate) fn save_build_info(
     args: &BuildInfo,
