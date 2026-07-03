@@ -1424,6 +1424,23 @@ mod tests {
             .expect("bad test");
     }
 
+    #[test]
+    fn lint_project_does_not_exist() {
+        let tmp_dir = make_tmp_dir();
+        let missing = tmp_dir.path().join("does_not_exist");
+        let (stdout, stderr, code) = elp(args_vec![
+            "lint",
+            "--no-stream",
+            "--project",
+            missing.as_path(),
+        ]);
+        assert_eq!(code, 101, "stdout:\n{stdout}\nstderr:\n{stderr}");
+        assert_eq!(
+            stderr,
+            format!("project does not exist at {}\n", missing.display())
+        );
+    }
+
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_custom_config_file_used(buck: bool) {

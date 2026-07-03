@@ -12,9 +12,9 @@ use std::fs::File;
 use std::io::Write;
 
 use anyhow::Result;
+use elp::build::load;
 use elp::cli::Cli;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
-use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_project_model::AppType;
 use elp_project_model::ElpConfig;
 use elp_project_model::IncludeParentDirs;
@@ -36,8 +36,7 @@ pub(crate) fn save_build_info(
     cli: &dyn Cli,
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
-    let root = dunce::canonicalize(&args.project)?;
-    let root = AbsPathBuf::assert_utf8(root);
+    let root = load::canonicalize_project_root(&args.project)?;
     let (elp_config, manifest) = ProjectManifest::discover(&root)?;
     let pb = cli.spinner("Loading build info");
     let project = Project::load(&manifest, &elp_config, query_config, &|message| {
@@ -65,8 +64,7 @@ pub(crate) fn save_project_info(
         ),
         None => Box::new(std::io::stdout()),
     };
-    let root = dunce::canonicalize(&args.project)?;
-    let root = AbsPathBuf::assert_utf8(root);
+    let root = load::canonicalize_project_root(&args.project)?;
     let (manifest, project) = match load_project(&root, cli, query_config) {
         Ok(res) => res,
         Err(err) => {

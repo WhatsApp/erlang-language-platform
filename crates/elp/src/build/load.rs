@@ -13,7 +13,9 @@
 use std::path::Path;
 use std::path::PathBuf;
 
+use anyhow::Context;
 use anyhow::Result;
+use anyhow::bail;
 use crossbeam_channel::Receiver;
 use crossbeam_channel::unbounded;
 use elp_ide::AnalysisHost;
@@ -44,15 +46,26 @@ use crate::reload::ProjectFolders;
 use crate::reload::apply_source_roots;
 use crate::reload::apply_vfs_text_changes;
 
+pub fn canonicalize_project_root(root: &Path) -> Result<AbsPathBuf> {
+    let root = match dunce::canonicalize(root) {
+        Ok(root) => root,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            bail!("project does not exist at {}", root.display());
+        }
+        Err(err) => {
+            return Err(err)
+                .with_context(|| format!("unable to read project at {}", root.display()));
+        }
+    };
+    Ok(AbsPathBuf::assert_utf8(root))
+}
+
 /// Discover the project manifest by walking upward from the given path.
-/// This is the shared discovery logic used by both `load_project_at` and
-/// the daemon's project root discovery.
 pub fn discover_manifest(
     root: &Path,
     conf: &DiscoverConfig,
 ) -> Result<(ElpConfig, ProjectManifest)> {
-    let root = dunce::canonicalize(root)?;
-    let root = AbsPathBuf::assert_utf8(root);
+    let root = canonicalize_project_root(root)?;
     let (elp_config, manifest) = match conf.rebar {
         true => (
             ElpConfig::default(),
