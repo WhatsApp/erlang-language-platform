@@ -11,7 +11,6 @@
 use std::fmt;
 use std::fs;
 use std::path::Path;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::LazyLock;
 
@@ -173,10 +172,9 @@ pub fn otp_file_to_ignore(db: &Analysis, file_id: FileId) -> bool {
 
 pub const LINT_CONFIG_FILE: &str = ".elp_lint.toml";
 
-pub fn read_lint_config_file(project: &Path, config_file: &Option<String>) -> Result<LintConfig> {
-    if let Some(file_name) = config_file {
-        let file_path: PathBuf = file_name.into();
-        match fs::read_to_string(file_path.clone()) {
+pub fn read_lint_config_file(project: &Path, config_file: Option<&Path>) -> Result<LintConfig> {
+    if let Some(file_path) = config_file {
+        match fs::read_to_string(file_path) {
             Ok(content) => match toml::from_str::<LintConfig>(&content) {
                 Ok(config) => return Ok(config),
                 Err(err) => bail!("errors parsing {:?}: {err}", file_path),

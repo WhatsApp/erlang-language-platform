@@ -73,8 +73,8 @@ pub struct ParseAllElp {
     #[arg(long, value_name = "MODULE", add = ArgValueCompleter::new(module_completer))]
     pub module: Option<String>,
     /// Parse a single file from the project, not the entire project. \nThis can be an include file or escript, etc.
-    #[arg(long)]
-    pub file: Option<String>,
+    #[arg(long, value_name = "FILE", value_hint = ValueHint::FilePath)]
+    pub file: Option<PathBuf>,
     /// Path to a directory where to dump result files
     #[arg(long, value_name = "TO", value_hint = ValueHint::DirPath)]
     pub to: Option<PathBuf>,
@@ -199,7 +199,7 @@ pub fn parse_all(
         None => match &args.file {
             Some(file_name) => {
                 if args.is_format_normal() {
-                    writeln!(cli, "file specified: {file_name}")?;
+                    writeln!(cli, "file specified: {}", file_name.display())?;
                 }
                 let path_buf = Utf8PathBuf::from_path_buf(dunce::canonicalize(file_name).unwrap())
                     .expect("UTF8 conversion failed");

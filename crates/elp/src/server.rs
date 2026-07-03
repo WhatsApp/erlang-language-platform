@@ -1496,7 +1496,7 @@ impl Server {
                 .map(|(path, _)| path.clone().into())
         };
         if let Some(path_buf) = root_path {
-            if let Ok(lint_config) = read_lint_config_file(&path_buf, &None) {
+            if let Ok(lint_config) = read_lint_config_file(&path_buf, None) {
                 log::warn!("update_configuration: read lint file: {lint_config:?}");
 
                 // Update dynamic call patterns from lint config

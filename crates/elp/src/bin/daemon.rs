@@ -617,7 +617,7 @@ fn run_daemon_server(args: &DaemonRun, query_config: &BuckQueryConfig, ifdef: bo
 
     // Read .elp_lint.toml (walks up from the project root); missing → default;
     // parse error at spawn → fail fast. Reloaded on watchman events.
-    let lint_config = read_lint_config_file(&root, &None)?;
+    let lint_config = read_lint_config_file(&root, None)?;
     elp::apply_lint_config(&mut loaded.analysis_host, &lint_config);
 
     let mut state = DaemonState {
@@ -780,7 +780,7 @@ fn handle_connection(
         UpdateResult::NeedsLintConfigReload { reason } => {
             cli.info(reason)?;
             // Parse failure → restart rather than carry stale config forward.
-            match read_lint_config_file(ctx.project, &None) {
+            match read_lint_config_file(ctx.project, None) {
                 Ok(new_config) => {
                     state.lint_config = new_config;
                     elp::apply_lint_config(&mut state.loaded.analysis_host, &state.lint_config);
@@ -1459,7 +1459,7 @@ mod tests {
             project: PathBuf::from("/some/project"),
             module: Some("my_mod".to_string()),
             app: Some("my_app".to_string()),
-            file: vec!["a.erl".to_string(), "b.erl".to_string()],
+            file: vec!["a.erl".into(), "b.erl".into()],
             path: Some(PathBuf::from("/some/path")),
             rebar: true,
             profile: "prod".to_string(),
@@ -1593,7 +1593,7 @@ mod tests {
             "--config-file",
             Lint {
                 connect: true,
-                config_file: Some("x.toml".to_string()),
+                config_file: Some("x.toml".into()),
                 ..Lint::default()
             },
         );

@@ -100,8 +100,8 @@ pub struct Lint {
     #[arg(long = "app", alias = "application", value_name = "APP")]
     pub app: Option<String>,
     /// Parse one or more files from the project, not the entire project. This can be an include file or escript, etc.
-    #[arg(long, value_name = "FILE")]
-    pub file: Vec<String>,
+    #[arg(long, value_name = "FILE", value_hint = ValueHint::FilePath)]
+    pub file: Vec<PathBuf>,
     /// Only process files under this path (can be a file or directory).
     #[arg(long, value_name = "PATH", value_hint = ValueHint::AnyPath)]
     pub path: Option<PathBuf>,
@@ -171,7 +171,7 @@ pub struct Lint {
     pub read_config: bool,
     /// Override the lint configuration file (.elp_lint.toml) used.
     #[arg(long, value_name = "CONFIG_FILE", value_hint = ValueHint::FilePath)]
-    pub config_file: Option<String>,
+    pub config_file: Option<PathBuf>,
 
     /// If the diagnostic has an associated fix, apply it. Modifies the original file. Use --to to write to a different directory.
     #[arg(long)]
@@ -282,7 +282,7 @@ pub fn run_lint_command(
     let (elp_config, manifest) = load::discover_manifest(&args.project, &discover_config)?;
     let root = load::project_root_dir(&manifest);
 
-    let lint_config = read_lint_config_file(&root, &args.config_file)?;
+    let lint_config = read_lint_config_file(&root, args.config_file.as_deref())?;
 
     // We load the project after loading config, in case it bails with
     // errors. No point wasting time if the config is wrong.
@@ -581,7 +581,7 @@ fn resolve_target_files(
         user_selected_targets = true;
         for file_name in &args.file {
             if args.is_format_normal() {
-                writeln!(cli, "file specified: {file_name}")?;
+                writeln!(cli, "file specified: {}", file_name.display())?;
             }
             let path_buf = Utf8PathBuf::from_path_buf(dunce::canonicalize(file_name).unwrap())
                 .expect("UTF8 conversion failed");
@@ -594,7 +594,7 @@ fn resolve_target_files(
             {
                 file_ids.push(file_id);
             } else {
-                log::warn!("File not found in VFS, skipping: {file_name}");
+                log::warn!("File not found in VFS, skipping: {}", file_name.display());
             }
         }
     } else {
