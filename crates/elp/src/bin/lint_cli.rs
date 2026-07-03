@@ -72,11 +72,171 @@ use paths::Utf8PathBuf;
 use rayon::prelude::ParallelBridge;
 
 type DiagnosticsResult = (Vec<(String, FileId, DiagnosticCollection)>, bool, bool);
+use clap::ArgAction;
+use clap::ValueHint;
+use clap_complete::engine::ArgValueCandidates;
+use clap_complete::engine::ArgValueCompleter;
 use rayon::prelude::ParallelIterator;
+use serde::Deserialize;
+use serde::Serialize;
 
-use crate::args::Lint;
+use crate::args::Format;
+use crate::args::Severity;
+use crate::args::diagnostic_code_candidates;
+use crate::args::module_completer;
 use crate::reporting;
 use crate::reporting::print_memory_usage;
+
+#[derive(Debug, Clone, Default, clap::Args, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Lint {
+    /// Path to directory with project, or to a JSON file
+    #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
+    pub project: PathBuf,
+    /// Parse a single module from the project, not the entire project.
+    #[arg(long, value_name = "MODULE", add = ArgValueCompleter::new(module_completer))]
+    pub module: Option<String>,
+    /// Parse a single application from the project, not the entire project.
+    #[arg(long = "app", alias = "application", value_name = "APP")]
+    pub app: Option<String>,
+    /// Parse one or more files from the project, not the entire project. This can be an include file or escript, etc.
+    #[arg(long, value_name = "FILE")]
+    pub file: Vec<String>,
+    /// Only process files under this path (can be a file or directory).
+    #[arg(long, value_name = "PATH", value_hint = ValueHint::AnyPath)]
+    pub path: Option<PathBuf>,
+    /// Skip the given application. Can be repeated to skip several.
+    #[arg(long = "ignore-app", value_name = "APP")]
+    pub ignore_app: Vec<String>,
+
+    /// Run with rebar
+    #[arg(long)]
+    pub rebar: bool,
+    /// Rebar3 profile to pickup
+    #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
+    pub profile: String,
+    /// Use a persistent daemon for fast turnaround (auto-starts if needed)
+    #[arg(long)]
+    pub connect: bool,
+
+    /// Also generate diagnostics for generated files
+    #[arg(long)]
+    pub include_generated: bool,
+    /// Deprecated (no-op): Diagnostics for test files are now always included
+    #[arg(long)]
+    pub include_tests: bool,
+
+    /// Do not print the full diagnostics for a file, just the count
+    #[arg(long = "no-diags", action = ArgAction::SetFalse, default_value_t = true)]
+    #[serde(default)]
+    pub print_diags: bool,
+    /// Customize the output format (defaults to human-readable)
+    #[arg(long, value_name = "FORMAT")]
+    pub format: Option<Format>,
+
+    /// Include diagnostics produced by erlc
+    #[arg(long)]
+    pub include_erlc_diagnostics: bool,
+    /// Deprecated (no-op): Common Test diagnostics are now always included
+    #[arg(long)]
+    pub include_ct_diagnostics: bool,
+    /// Deprecated (no-op): EDoc diagnostics have been removed
+    #[arg(long)]
+    pub include_edoc_diagnostics: bool,
+    /// Include Eqwalizer diagnostics
+    #[arg(long)]
+    pub include_eqwalizer_diagnostics: bool,
+    /// Include Suppressed diagnostics (e.g. elp:fixme)
+    #[arg(long)]
+    pub include_suppressed: bool,
+
+    /// If specified, use the provided CLI severity mapping instead of the default one
+    #[arg(long)]
+    pub use_cli_severity: bool,
+    /// Minimum severity level to report
+    #[arg(long, value_name = "SEVERITY")]
+    pub severity: Option<Severity>,
+    /// Ignore the specified diagnostic, by code or label
+    #[arg(long, value_name = "CODE", add = ArgValueCandidates::new(diagnostic_code_candidates))]
+    pub diagnostic_ignore: Option<String>,
+    /// Filter out all reported diagnostics except this one, by code or label
+    #[arg(long, value_name = "CODE", add = ArgValueCandidates::new(diagnostic_code_candidates))]
+    pub diagnostic_filter: Option<String>,
+    /// Report experimental diagnostics too, if diagnostics are enabled
+    #[arg(long = "experimental")]
+    pub experimental_diags: bool,
+
+    /// Deprecated and now a no-op: the project's .elp_lint.toml is read by default. Use --config-file to override the config file.
+    #[arg(long)]
+    pub read_config: bool,
+    /// Override the lint configuration file (.elp_lint.toml) used.
+    #[arg(long, value_name = "CONFIG_FILE", value_hint = ValueHint::FilePath)]
+    pub config_file: Option<String>,
+
+    /// If the diagnostic has an associated fix, apply it. Modifies the original file. Use --to to write to a different directory.
+    #[arg(long)]
+    pub apply_fix: bool,
+    /// Only apply elp:ignore fixes
+    #[arg(long)]
+    pub ignore_fix_only: bool,
+    /// Only apply elp:fixme fixes
+    #[arg(long)]
+    pub fixme_fix_only: bool,
+
+    /// When applying a fix, put the results in this directory path
+    #[arg(long, value_name = "TO", value_hint = ValueHint::DirPath)]
+    pub to: Option<PathBuf>,
+
+    /// If applying fixes, apply any new ones that arise from the
+    /// prior fixes recursively. Limited in scope to the clause of the
+    /// prior change.
+    #[arg(long)]
+    pub recursive: bool,
+    /// After applying a fix step, check that the diagnostics are clear, else roll back
+    #[arg(long)]
+    pub with_check: bool,
+    /// After applying a fix step, check that all eqwalizer project diagnostics are clear, else roll back
+    #[arg(long)]
+    pub check_eqwalize_all: bool,
+    /// Apply to all matching diagnostic occurrences at once, rather
+    /// than one at a time.
+    #[arg(long)]
+    pub one_shot: bool,
+
+    /// When using --format=json, populate original/replacement fields
+    /// with fix information for arc lint auto-fix support
+    #[arg(long)]
+    pub arc_patch: bool,
+
+    /// Report system memory usage and other statistics
+    #[arg(long = "report-system-stats")]
+    pub report_system_stats: bool,
+
+    /// Disable streaming of diagnostics when applying fixes (collect all before printing)
+    #[arg(long)]
+    pub no_stream: bool,
+}
+
+impl Lint {
+    pub fn normalize(&mut self) {
+        if self.arc_patch {
+            self.format = Some(Format::Json);
+        }
+    }
+
+    pub fn is_format_normal(&self) -> bool {
+        self.format.is_none()
+    }
+
+    pub fn is_format_json(&self) -> bool {
+        self.format == Some(Format::Json)
+    }
+
+    /// To prevent flaky test results we allow disabling streaming when applying fixes
+    pub fn skip_stream_print(&self) -> bool {
+        self.apply_fix || self.no_stream
+    }
+}
 
 fn arg_severity(severity: crate::args::Severity) -> diagnostics::Severity {
     match severity {

@@ -100,10 +100,10 @@ use crate::args::EqwalizeAll;
 use crate::args::EqwalizeApp;
 use crate::args::EqwalizeTarget;
 use crate::args::Format;
-use crate::args::Lint;
 use crate::args::Shell;
 use crate::eqwalizer_cli;
 use crate::lint_cli;
+use crate::lint_cli::Lint;
 use crate::reporting;
 use crate::shell::ShellCommand;
 
