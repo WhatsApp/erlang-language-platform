@@ -74,7 +74,7 @@ jemalloc-ctl = { package = "tikv-jemalloc-ctl", version = "0.6.1", features = ["
 jemallocator = { package = "tikv-jemallocator", version = "0.6.1" }
 jod-thread = "1.0.0"
 la-arena = "0.3.1"
-log = { version = "0.4.32", features = ["kv_unstable", "kv_unstable_std"] }
+log = { version = "0.4.33", features = ["kv_unstable", "kv_unstable_std"] }
 lsp-server = "0.7.9"
 lsp-types = "0.97"
 memchr = "2.8.2"
