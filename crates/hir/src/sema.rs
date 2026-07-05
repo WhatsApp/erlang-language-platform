@@ -2317,15 +2317,15 @@ mod tests {
                     [
                         InFile {
                             file_id: FileId(
-                                1,
-                            ),
-                            value: Idx::<Define>(1),
-                        },
-                        InFile {
-                            file_id: FileId(
                                 0,
                             ),
                             value: Idx::<Define>(0),
+                        },
+                        InFile {
+                            file_id: FileId(
+                                1,
+                            ),
+                            value: Idx::<Define>(1),
                         },
                     ],
                 ),
