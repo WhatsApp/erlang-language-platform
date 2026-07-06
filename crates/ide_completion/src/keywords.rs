@@ -18,7 +18,6 @@ use crate::DoneFlag;
 // adapted from https://github.com/erlang-ls/erlang_ls d067267b906239c883fed6e0f9e69c4eb94dd580
 static KEYWORDS: LazyLock<Vec<Completion>> = LazyLock::new(|| {
     [
-        "case",
         "after",
         "and",
         "andalso",
@@ -33,10 +32,12 @@ static KEYWORDS: LazyLock<Vec<Completion>> = LazyLock::new(|| {
         "catch",
         "cond",
         "div",
+        "else",
         "end",
         "fun",
         "if",
         "let",
+        "maybe",
         "not",
         "of",
         "or",
@@ -116,15 +117,16 @@ mod test {
                 {label:bsr, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:bxor, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:case, kind:Keyword, contents:SameAsLabel, position:None}
-                {label:case, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:catch, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:cond, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:div, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:else, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:end, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:false, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:fun, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:if, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:let, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:maybe, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:not, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:of, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:ok, kind:Keyword, contents:SameAsLabel, position:None}
@@ -215,15 +217,16 @@ mod test {
                 {label:bsr, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:bxor, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:case, kind:Keyword, contents:SameAsLabel, position:None}
-                {label:case, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:catch, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:cond, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:div, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:else, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:end, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:false, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:fun, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:if, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:let, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:maybe, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:not, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:of, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:ok, kind:Keyword, contents:SameAsLabel, position:None}
@@ -258,15 +261,16 @@ mod test {
                 {label:bsr, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:bxor, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:case, kind:Keyword, contents:SameAsLabel, position:None}
-                {label:case, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:catch, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:cond, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:div, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:else, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:end, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:false, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:fun, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:if, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:let, kind:Keyword, contents:SameAsLabel, position:None}
+                {label:maybe, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:not, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:of, kind:Keyword, contents:SameAsLabel, position:None}
                 {label:ok, kind:Keyword, contents:SameAsLabel, position:None}
