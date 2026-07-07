@@ -294,15 +294,10 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
         }
         args::Command::Version(_) => writeln!(cli, "elp {}", elp::version())?,
         args::Command::Shell(args) => shell::run_shell(args, cli, &query_config, ifdef)?,
+        #[cfg(unix)]
         args::Command::Daemon(daemon_args) => {
             let cmd = daemon_args.clone().into_command();
-            #[cfg(unix)]
             daemon::daemon_command(&cmd, cli, &query_config, ifdef)?;
-            #[cfg(not(unix))]
-            {
-                let _ = cmd;
-                anyhow::bail!(DAEMON_UNSUPPORTED);
-            }
         }
         args::Command::Explain(args) => explain_cli::explain(args, cli)?,
         args::Command::LintList(args) => lint_list_cli::lint_list(args, cli)?,
@@ -2571,10 +2566,24 @@ mod tests {
         err.to_string()
     }
 
+    // The `daemon` subcommand is Unix-only (see `#[cfg(unix)]` on the `Daemon`
+    // variant in `args.rs`), so the top-level help lists it only on Unix. Pick
+    // the matching snapshot per platform.
     #[test]
     fn help() {
+        #[cfg(unix)]
         let expected = resource_file!("help.stdout");
+        #[cfg(not(unix))]
+        let expected = resource_file!("help_non_unix.stdout");
         expected.assert_eq(&get_help_text(&["--help"]));
+    }
+
+    /// `elp daemon --help`. The `daemon` subcommand exists only on Unix.
+    #[cfg(unix)]
+    #[test]
+    fn daemon_help() {
+        let expected = resource_file!("daemon_help.stdout");
+        expected.assert_eq(&get_help_text(&["daemon", "--help"]));
     }
 
     #[test]

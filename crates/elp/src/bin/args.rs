@@ -29,6 +29,7 @@ use strum::AsRefStr;
 use crate::build_info_cli::BuildInfo;
 use crate::build_info_cli::ProjectInfo;
 use crate::config_stanza::ConfigStanza;
+#[cfg(unix)]
 use crate::daemon::Daemon;
 use crate::dialyzer_cli::DialyzeAll;
 use crate::elp_parse_cli::ParseAllElp;
@@ -141,6 +142,7 @@ pub enum Command {
     #[command(name = "shell")]
     Shell(Shell),
     /// Manage a persistent ELP daemon for fast turnaround
+    #[cfg(unix)]
     #[command(name = "daemon")]
     Daemon(Daemon),
     /// Explain a diagnostic code

@@ -1,13 +1,27 @@
-Usage: (COMMAND ... | [--project PROJECT] [--as PROFILE] [--rebar] [--idle-timeout SECONDS])
+Manage a persistent ELP daemon for fast turnaround
 
-Available options:
-        --project <PROJECT>  Path to directory with project, or to a JSON file (defaults to `.`)
-        --as <PROFILE>  Rebar3 profile to pickup (default is test)
-        --rebar         Run with rebar
-        --idle-timeout <SECONDS>  Idle timeout in seconds before auto-shutdown (default: 1800,
-                        0=never)
-    -h, --help          Prints help information
+Usage: elp daemon [OPTIONS] [COMMAND]
 
-Available commands:
-    stop    Stop all running daemons
-    status  Show daemon status for this project
+Commands:
+  stop    Stop all running daemons
+  status  Show daemon status for this project
+  help    Print this message or the help of the given subcommand(s)
+
+Options:
+      --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
+      --as <PROFILE>       Rebar3 profile to pickup [default: test]
+      --rebar              Run with rebar
+  -h, --help               Print help
+
+Global options:
+      --log-file <LOG_FILE>  
+      --erl <ERL>            
+      --escript <ESCRIPT>    
+      --no-log-buffering     
+      --no-buck-generated    When using buck, do not invoke a build step for generated files
+      --buck-quick-start     Use buck2 targets for first stage project loading
+      --ifdef [<IFDEF>]      Deprecated: ifdef/ifndef condition evaluation is now enabled by
+                             default. Pass `--ifdef false` to disable it [possible values: true,
+                             false]
+      --color <WHEN>         Use color in output [default: always] [possible values: always, never,
+                             auto]
