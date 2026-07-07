@@ -51,6 +51,7 @@ use std::time::Instant;
 
 use elp_base_db::in_flight;
 use elp_log::telemetry;
+use fxhash::FxHashMap;
 use parking_lot::Mutex;
 
 /// How often the watchdog wakes to inspect the heartbeat.
@@ -211,26 +212,39 @@ fn report_stall(beat: &Beat, stuck_for: Duration) {
     let in_flight_work: Vec<String> = in_flight_entries
         .iter()
         .take(20)
-        .map(|(label, age)| format!("{label} ({}ms)", age.as_millis()))
+        .map(|e| format!("{} ({}ms)", e.label, e.age.as_millis()))
         .collect();
     let stuck_ms = stuck_for.as_millis() as u64;
     let turn_ms = beat.turn_started.elapsed().as_millis() as u64;
 
     // What the main-loop thread is doing right now (`/proc`, Linux): the state
     // char and `wchan` distinguish the failure modes we care about (a lock/salsa
-    // barrier vs a wedged buck2 subprocess).
+    // barrier vs a wedged subprocess).
     let main_thread = main_thread_state();
     let main_thread_suffix = main_thread
         .as_deref()
         .map(|s| format!("; main thread: {s}"))
         .unwrap_or_default();
 
+    // The same introspection for the worker thread(s) actually holding the
+    // snapshot the main-thread write is blocked behind — sampled *now*, during
+    // the stall, while the holder is still parked. This is what distinguishes an
+    // on-CPU pure-Rust pin (`state=R`) from one blocked on a lock/salsa barrier
+    // (`futex`) or a subprocess pipe (`pipe_read`) — the last classification the
+    // named-phase chain could not give on its own.
+    let holder_threads = holder_thread_states(&in_flight_entries);
+    let holder_suffix = if holder_threads.is_empty() {
+        String::new()
+    } else {
+        format!("; holder threads: {holder_threads:?}")
+    };
+
     // Delivery to the client (LspLogger -> connection.sender -> lsp-server writer
     // thread) is independent of the main loop, so this reaches the editor even
     // while the loop is wedged — but only if it clears the client sink's level
     // filter, which defaults to Error.
     log::error!(
-        "main loop watchdog: stalled {stuck_ms}ms in phase '{}' (turn '{}', {turn_ms}ms total); in-flight work: {in_flight_work:?}{main_thread_suffix}",
+        "main loop watchdog: stalled {stuck_ms}ms in phase '{}' (turn '{}', {turn_ms}ms total); in-flight work: {in_flight_work:?}{main_thread_suffix}{holder_suffix}",
         beat.phase_label,
         beat.turn_label,
     );
@@ -244,6 +258,7 @@ fn report_stall(beat: &Beat, stuck_for: Duration) {
         "turn_ms": turn_ms,
         "in_flight_count": in_flight_entries.len(),
         "in_flight_work": in_flight_work,
+        "in_flight_threads": holder_threads,
         "salsa_did_reuse_interned": salsa.did_reuse_interned,
         "salsa_will_block_on": salsa.will_block_on,
         "salsa_did_set_cancellation_flag": salsa.did_set_cancellation_flag,
@@ -254,23 +269,22 @@ fn report_stall(beat: &Beat, stuck_for: Duration) {
     telemetry::send("main_loop_watchdog_stall".to_string(), data);
 }
 
-/// Best-effort one-line description of what the main-loop thread is doing right
-/// now, from `/proc` — the thread state char (`R`/`S`/`D`/…) and `wchan` (the
-/// kernel routine it is blocked in, e.g. `futex_wait` for a lock/salsa barrier
-/// vs `pipe_read` for a wedged buck2 subprocess). No new dependency; Linux-only.
+/// Best-effort one-line description of what a thread is doing right now, from
+/// `/proc` — the thread state char (`R`/`S`/`D`/…) and `wchan` (the kernel
+/// routine it is blocked in, e.g. `futex_wait` for a lock/salsa barrier vs
+/// `pipe_read` for a wedged subprocess). No new dependency; Linux-only.
 #[cfg(target_os = "linux")]
-fn main_thread_state() -> Option<String> {
-    let tid = (*MAIN_TID.get()?)?;
-    let base = format!("/proc/self/task/{tid}");
-    let comm = std::fs::read_to_string(format!("{base}/comm"))
+fn thread_state(tid: u32) -> Option<String> {
+    let base = std::path::Path::new("/proc/self/task").join(tid.to_string());
+    let comm = std::fs::read_to_string(base.join("comm"))
         .ok()
         .map(|s| s.trim().to_string());
-    let wchan = std::fs::read_to_string(format!("{base}/wchan"))
+    let wchan = std::fs::read_to_string(base.join("wchan"))
         .ok()
         .map(|s| s.trim().to_string());
     // `stat` field 3 is the state char. The `comm` in parens can itself contain
     // spaces and parens, so parse the fields after the last ')'.
-    let state = std::fs::read_to_string(format!("{base}/stat"))
+    let state = std::fs::read_to_string(base.join("stat"))
         .ok()
         .and_then(|s| Some(s.rsplit_once(')')?.1.split_whitespace().next()?.to_string()));
     Some(format!(
@@ -282,8 +296,49 @@ fn main_thread_state() -> Option<String> {
 }
 
 #[cfg(not(target_os = "linux"))]
-fn main_thread_state() -> Option<String> {
+fn thread_state(_tid: u32) -> Option<String> {
     None
+}
+
+/// `/proc` state of the main-loop thread (see [`thread_state`]).
+fn main_thread_state() -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        thread_state((*MAIN_TID.get()?)?)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        None
+    }
+}
+
+/// `/proc` state of the worker thread(s) holding an outstanding snapshot — the
+/// threads the main-loop write is actually blocked behind. `entries` is
+/// oldest-first, and the guards on one holder thread are a nested stack, so the
+/// *last* entry seen for a tid is its deepest (most specific) phase; we pair that
+/// label with the thread's live kernel state. Deduped by tid — the nested
+/// `request:… -> … -> native:linters` guards share one thread and one `/proc`
+/// read.
+fn holder_thread_states(entries: &[in_flight::InFlight]) -> Vec<String> {
+    // tid -> deepest phase label seen for it; `order` records first-appearance
+    // (oldest-first) so the output keeps that order without a linear scan.
+    let mut deepest: FxHashMap<u32, String> = FxHashMap::default();
+    let mut order: Vec<u32> = Vec::new();
+    for entry in entries {
+        let Some(tid) = entry.tid else { continue };
+        if deepest.insert(tid, entry.label.clone()).is_none() {
+            order.push(tid);
+        }
+    }
+    order
+        .into_iter()
+        .take(20)
+        .map(|tid| {
+            let label = &deepest[&tid];
+            let state = thread_state(tid).unwrap_or_else(|| "?".to_string());
+            format!("{label} [tid {tid}]: {state}")
+        })
+        .collect()
 }
 
 /// The main-loop thread's tid, captured once (on that thread) for `/proc`.

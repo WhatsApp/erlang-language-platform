@@ -59,6 +59,20 @@ static REGISTRY: LazyLock<Mutex<FxHashMap<u64, Entry>>> =
 struct Entry {
     label: String,
     started_at: Instant,
+    /// OS thread id of the thread that registered this work — captured here
+    /// because that thread is the one holding the snapshot, so the stall
+    /// reporter can introspect *its* kernel state (`/proc`), not just the main
+    /// loop's, to tell an on-CPU pure-Rust pin from a blocked one. `None` off
+    /// Linux.
+    tid: Option<u32>,
+}
+
+/// A snapshot of one in-flight entry: its label, how long it has been held, and
+/// the OS thread id holding it (for `/proc` introspection; `None` off Linux).
+pub struct InFlight {
+    pub label: String,
+    pub age: Duration,
+    pub tid: Option<u32>,
 }
 
 /// RAII handle for a registered unit of work. Deregisters on drop, so normal
@@ -90,21 +104,40 @@ pub fn begin(label: impl Into<String>) -> InFlightGuard {
             Entry {
                 label: label.into(),
                 started_at: Instant::now(),
+                tid: current_tid(),
             },
         );
     InFlightGuard { id }
 }
 
-/// Everything currently in flight as `(label, age)`, oldest first. Cheap: the
-/// map holds at most a handful of entries. This is what the stall reporters dump.
-pub fn in_flight() -> Vec<(String, Duration)> {
+/// Everything currently in flight, oldest first. Cheap: the map holds at most a
+/// handful of entries. This is what the stall reporters dump.
+pub fn in_flight() -> Vec<InFlight> {
     let now = Instant::now();
-    let mut entries: Vec<(String, Duration)> = REGISTRY
+    let mut entries: Vec<InFlight> = REGISTRY
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .values()
-        .map(|e| (e.label.clone(), now.saturating_duration_since(e.started_at)))
+        .map(|e| InFlight {
+            label: e.label.clone(),
+            age: now.saturating_duration_since(e.started_at),
+            tid: e.tid,
+        })
         .collect();
-    entries.sort_by_key(|(_, age)| std::cmp::Reverse(*age));
+    entries.sort_by_key(|e| std::cmp::Reverse(e.age));
     entries
+}
+
+/// The calling thread's OS thread id, via `/proc/thread-self` (`<pid>/task/<tid>`
+/// — the final component is the tid). Linux-only; `None` elsewhere.
+#[cfg(target_os = "linux")]
+fn current_tid() -> Option<u32> {
+    std::fs::read_link("/proc/thread-self")
+        .ok()
+        .and_then(|p| p.file_name()?.to_str()?.parse::<u32>().ok())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn current_tid() -> Option<u32> {
+    None
 }

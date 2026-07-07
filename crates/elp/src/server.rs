@@ -2234,7 +2234,7 @@ fn report_db_write_stall(elapsed: Duration, num_changed_files: usize) {
     let in_flight_work: Vec<String> = in_flight_entries
         .iter()
         .take(20)
-        .map(|(label, age)| format!("{label} ({}ms)", age.as_millis()))
+        .map(|e| format!("{} ({}ms)", e.label, e.age.as_millis()))
         .collect();
     log::warn!(
         "main loop stalled {elapsed_ms}ms on salsa write for {num_changed_files} changed file(s); in-flight work: {in_flight_work:?}"
