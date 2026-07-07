@@ -27,6 +27,7 @@ use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
 use crossbeam_channel::select_biased;
 use dispatch::NotificationDispatcher;
+use elp_base_db::in_flight;
 use elp_eqwalizer::ast::Pos;
 use elp_eqwalizer::types::Type;
 use elp_ide::Analysis;
@@ -128,7 +129,6 @@ mod server_telemetry;
 pub mod setup;
 mod telemetry_manager;
 mod watchdog;
-mod work_registry;
 
 const LOGGER_NAME: &str = "lsp";
 const FILE_WATCH_LOGGER_NAME: &str = "watched_files";
@@ -1202,7 +1202,7 @@ impl Server {
         let include_otp = self.config.enable_otp_diagnostics();
         let work_label = format!("native_diagnostics:{} open files", opened_documents.len());
         self.task_pool.handle.spawn(move || {
-            let _work = work_registry::begin(work_label);
+            let _work = in_flight::begin(work_label);
             let diagnostics = opened_documents
                 .into_par_iter()
                 .map_with(snapshot, |snapshot, file_id| {
@@ -1242,7 +1242,7 @@ impl Server {
             opened_documents.len()
         );
         self.task_pool.handle.spawn(move || {
-            let _work = work_registry::begin(work_label);
+            let _work = in_flight::begin(work_label);
             let diagnostics_types = opened_documents
                 .into_par_iter()
                 .map_with(snapshot, |snapshot, file_id| {
@@ -1301,7 +1301,7 @@ impl Server {
             supported_opened_documents.len()
         );
         self.task_pool.handle.spawn(move || {
-            let _work = work_registry::begin(work_label);
+            let _work = in_flight::begin(work_label);
             let diagnostics = supported_opened_documents
                 .into_par_iter()
                 .map_with(snapshot, |snapshot, file_id| {
@@ -1958,7 +1958,7 @@ impl Server {
             .begin_spinner_with_telemetry("ELP compiling dependencies for EqWAlizer".to_string());
 
         self.task_pool.handle.spawn_with_sender(move |sender| {
-            let _work = work_registry::begin("compile_deps");
+            let _work = in_flight::begin("compile_deps");
             snapshot.set_up_projects();
 
             sender.send(Task::CompileDeps(spinner)).unwrap();
@@ -1972,7 +1972,7 @@ impl Server {
         let snapshot = self.snapshot();
 
         self.cache_pool.handle.spawn_with_sender(move |sender| {
-            let _work = work_registry::begin("schedule_cache");
+            let _work = in_flight::begin("schedule_cache");
             let mut files = vec![];
             for (i, _) in snapshot.projects.iter().enumerate() {
                 let module_index = match snapshot.analysis.module_index(ProjectId(i as u32)) {
@@ -1999,7 +1999,7 @@ impl Server {
         }
         let snapshot = self.snapshot();
         self.cache_pool.handle.spawn_with_sender(move |sender| {
-            let _work = work_registry::begin("update_cache");
+            let _work = in_flight::begin("update_cache");
             while !files.is_empty() {
                 let file_id = files.remove(files.len() - 1);
                 match snapshot.update_cache_for_file(file_id) {
@@ -2230,8 +2230,8 @@ fn report_db_write_stall(elapsed: Duration, num_changed_files: usize) {
     let elapsed_ms = elapsed.as_millis() as u64;
     // Whatever is still registered held a snapshot for (some of) the wait, so it
     // is what the write was blocked behind. Oldest first.
-    let in_flight = work_registry::in_flight();
-    let in_flight_work: Vec<String> = in_flight
+    let in_flight_entries = in_flight::in_flight();
+    let in_flight_work: Vec<String> = in_flight_entries
         .iter()
         .take(20)
         .map(|(label, age)| format!("{label} ({}ms)", age.as_millis()))
@@ -2244,7 +2244,7 @@ fn report_db_write_stall(elapsed: Duration, num_changed_files: usize) {
         "title": "ELP main loop db write stall",
         "wait_ms": elapsed_ms,
         "changed_files": num_changed_files,
-        "in_flight_count": in_flight.len(),
+        "in_flight_count": in_flight_entries.len(),
         "in_flight_work": in_flight_work,
         "salsa_did_reuse_interned": salsa.did_reuse_interned,
         "salsa_will_block_on": salsa.will_block_on,

@@ -21,6 +21,7 @@ clap_complete.workspace = true
 codespan-reporting.workspace = true
 crossbeam-channel.workspace = true
 dunce.workspace = true
+elp_base_db.workspace = true
 elp_eqwalizer.workspace = true
 elp_ide.workspace = true
 elp_ide_db.workspace = true

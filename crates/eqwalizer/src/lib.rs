@@ -26,6 +26,7 @@ use ast::Error;
 use ast::Pos;
 use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
+use elp_base_db::in_flight;
 use elp_base_db::limit_logged_string;
 pub use elp_types_db::eqwalizer::EqwalizerDiagnostic;
 use elp_types_db::eqwalizer::types::Type;
@@ -305,6 +306,7 @@ fn do_typecheck(
     db: &dyn EqwalizerDiagnosticsDatabase,
     project_id: ProjectId,
 ) -> Result<EqwalizerDiagnostics, anyhow::Error> {
+    let _guard = in_flight::begin("eqwalizer:typecheck");
     // Never cache the results of this function
     db.report_untracked_read();
     let handle = Arc::new(Mutex::new(
@@ -348,6 +350,7 @@ fn do_typecheck_functions(
     project_id: ProjectId,
     funs: Vec<ipc::FunToCheck>,
 ) -> Result<Vec<ipc::FunCheckResult>> {
+    let _guard = in_flight::begin("eqwalizer:typecheck_functions");
     let mut handle = IpcHandle::from_command(&mut cmd, db)
         .with_context(|| format!("starting eqWAlizer process for ipc-check-funs: {cmd:?}"))?;
 
@@ -384,6 +387,7 @@ fn get_module_diagnostics(
     project_id: ProjectId,
     module: String,
 ) -> Result<EqwalizerDiagnostics, anyhow::Error> {
+    let _guard = in_flight::begin(format!("eqwalizer:module:{module}"));
     let handle_mutex = db
         .module_ipc_handle(ModuleName::new(&module))
         .ok_or(anyhow::Error::msg(format!(

@@ -41,6 +41,7 @@ use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::ProjectId;
 use elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide_db::elp_base_db::VfsPath;
+use elp_ide_db::elp_base_db::in_flight;
 use elp_ide_db::elp_base_db::path_for_file;
 use elp_ide_db::erlang_service::DiagnosticLocation;
 use elp_ide_db::erlang_service::ParseError;
@@ -1819,15 +1820,25 @@ pub fn native_diagnostics(
     let labeled_syntax_errors = if report_diagnostics {
         let sema = Semantic::new(db);
 
-        adhoc_semantic_diagnostics
-            .iter()
-            .for_each(|f| f(&mut res, &sema, file_id, file_kind));
-        if let Some(lints) = config.ad_hoc_lints() {
-            lints.get_diagnostics(&mut res, &sema, file_id);
+        {
+            let _guard = in_flight::begin("native:adhoc_semantic");
+            adhoc_semantic_diagnostics
+                .iter()
+                .for_each(|f| f(&mut res, &sema, file_id, file_kind));
         }
-        let linter_ctx = LinterContext::new(&sema, file_id, db);
-        diagnostics_from_linters(&mut res, &linter_ctx, config, trigger, linters());
+        {
+            let _guard = in_flight::begin("native:ad_hoc_lints");
+            if let Some(lints) = config.ad_hoc_lints() {
+                lints.get_diagnostics(&mut res, &sema, file_id);
+            }
+        }
+        {
+            let _guard = in_flight::begin("native:linters");
+            let linter_ctx = LinterContext::new(&sema, file_id, db);
+            diagnostics_from_linters(&mut res, &linter_ctx, config, trigger, linters());
+        }
 
+        let _guard = in_flight::begin("native:syntax_errors");
         let parse_diagnostics = parse.errors().iter().take(128).map(|err| {
             let (code, message) = match err {
                 elp_syntax::SyntaxError::Error(_) => {
@@ -1904,6 +1915,7 @@ pub fn native_diagnostics(
         is_generated,
         is_test,
     ) {
+        let _guard = in_flight::begin("native:redundant_suppression");
         // Forms excluded by conditional compilation are not lowered, so a
         // suppression annotation inside such a leg can never be matched by a
         // diagnostic and would otherwise be falsely flagged as redundant.

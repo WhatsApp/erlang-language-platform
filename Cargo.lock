@@ -550,6 +550,7 @@ dependencies = [
  "crossbeam-channel",
  "daemonize",
  "dunce",
+ "elp_base_db",
  "elp_eqwalizer",
  "elp_ide",
  "elp_ide_db",

@@ -38,6 +38,7 @@ mod module_index;
 // Public API
 
 pub mod fixture;
+pub mod in_flight;
 // @fb-only: mod meta_only;
 pub mod test_utils;
 pub use change::Change;

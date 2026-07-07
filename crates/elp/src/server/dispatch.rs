@@ -14,6 +14,7 @@ use std::panic;
 use anyhow::Result;
 use anyhow::bail;
 use crossbeam_channel::Sender;
+use elp_base_db::in_flight;
 use elp_ide::is_cancelled;
 use lsp_server::ExtractError;
 use lsp_server::RequestId;
@@ -88,7 +89,7 @@ impl<'a> RequestDispatcher<'a> {
             let world = self.server.snapshot();
 
             move |sender| {
-                let _work = super::work_registry::begin(format!("request:{}", R::METHOD));
+                let _work = in_flight::begin(format!("request:{}", R::METHOD));
                 let _pctx =
                     stdx::panic_context::enter(format!("\nrequest: {} {:#?}", R::METHOD, params));
                 let error_bomb = ErrorBomb::new(sender.clone(), id.clone());

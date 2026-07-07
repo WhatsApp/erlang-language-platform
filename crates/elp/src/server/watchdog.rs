@@ -49,10 +49,9 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 use std::time::Instant;
 
+use elp_base_db::in_flight;
 use elp_log::telemetry;
 use parking_lot::Mutex;
-
-use super::work_registry;
 
 /// How often the watchdog wakes to inspect the heartbeat.
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -208,8 +207,8 @@ fn run(stop: &AtomicBool) {
 fn report_stall(beat: &Beat, stuck_for: Duration) {
     // Whatever still holds a snapshot has held it for (some of) the stall, so it
     // is a candidate blocker. Oldest first.
-    let in_flight = work_registry::in_flight();
-    let in_flight_work: Vec<String> = in_flight
+    let in_flight_entries = in_flight::in_flight();
+    let in_flight_work: Vec<String> = in_flight_entries
         .iter()
         .take(20)
         .map(|(label, age)| format!("{label} ({}ms)", age.as_millis()))
@@ -243,7 +242,7 @@ fn report_stall(beat: &Beat, stuck_for: Duration) {
         "turn": beat.turn_label,
         "stuck_ms": stuck_ms,
         "turn_ms": turn_ms,
-        "in_flight_count": in_flight.len(),
+        "in_flight_count": in_flight_entries.len(),
         "in_flight_work": in_flight_work,
         "salsa_did_reuse_interned": salsa.did_reuse_interned,
         "salsa_will_block_on": salsa.will_block_on,

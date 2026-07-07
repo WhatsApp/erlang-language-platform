@@ -58,6 +58,8 @@ use text_size::TextSize;
 // @fb-only: pub use meta_only::caf;
 pub mod common_test;
 
+use elp_base_db::in_flight;
+
 pub static ESCRIPT: LazyLock<RwLock<String>> = LazyLock::new(|| {
     RwLock::new(std::env::var("ELP_ESCRIPT").unwrap_or_else(|_| "escript".to_string()))
 });
@@ -370,6 +372,8 @@ impl Connection {
         handle_callback: impl Fn(Payload) -> Result<Vec<u8>>,
     ) -> Response {
         let (sender, receiver) = bounded::<Response>(0);
+        let _in_flight =
+            in_flight::begin(format!("erlang_service:{}", String::from_utf8_lossy(tag)));
         self.sender
             .send((tag, request, RequestType::Sender(sender)))
             .expect("failed sending request to parse server");
@@ -382,7 +386,14 @@ impl Connection {
         loop {
             match receiver.recv_timeout(Duration::from_millis(100)) {
                 Ok(Response::Callback(payload, id)) => {
-                    match handle_callback(payload) {
+                    let callback_result = {
+                        let _in_callback = in_flight::begin(format!(
+                            "erlang_service:{}:in_callback",
+                            String::from_utf8_lossy(tag)
+                        ));
+                        handle_callback(payload)
+                    };
+                    match callback_result {
                         Ok(buf) => {
                             let request =
                                 (b"REP", buf, RequestType::CallbackReply(id, ReplyStatus::Ok));
