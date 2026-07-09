@@ -169,14 +169,9 @@ fn check_function(
                     clauses,
                     cb.item_id,
                 ),
-                AnyExpr::Expr(Expr::Match { lhs, rhs }) => build_match_rewrite(
-                    sema,
-                    def_fb.in_clause(clause_id),
-                    file_id,
-                    *lhs,
-                    *rhs,
-                    cb.item_id,
-                ),
+                AnyExpr::Expr(Expr::Match { lhs, rhs }) => {
+                    build_match_rewrite(sema, def_fb.in_clause(clause_id), file_id, *lhs, *rhs)
+                }
                 _ => None,
             };
             if let Some((diagnostic_range, edits)) = rewrite {
@@ -204,6 +199,7 @@ fn build_case_rewrite(
     if !is_safe_key(in_clause, key_id) {
         return None;
     }
+    let diagnostic_range = maps_find_target_range(in_clause, file_id, scrutinee)?;
 
     // Classify every clause; an unrecognised clause declines the whole rewrite.
     let mut shapes = Vec::with_capacity(clauses.len());
@@ -280,14 +276,14 @@ fn build_case_rewrite(
             sema, in_clause, file_id, scrutinee, map_range, &map_text, &shapes, &key_text,
         )
     {
-        return Some((full_range, edits));
+        return Some((diagnostic_range, edits));
     }
 
     // Fallback: the terminal clause is not last, so the clauses must be
     // reordered, which means regenerating the whole skeleton -- and that cannot
     // preserve comments, so it declines when the `case` contains one.
     let regenerated = regenerate_case(sema, file_id, full_range, &shapes, &key_text, &map_text)?;
-    Some((full_range, vec![(full_range, regenerated)]))
+    Some((diagnostic_range, vec![(full_range, regenerated)]))
 }
 
 /// Rewrite the scrutinee (`maps:find(K, M)` -> `M`) and each clause pattern
@@ -463,7 +459,6 @@ fn build_match_rewrite(
     file_id: FileId,
     lhs: PatId,
     rhs: ExprId,
-    match_id: AnyExprId,
 ) -> Option<(TextRange, Edits)> {
     let value_pat = ok_tuple_value(in_clause, lhs)?;
     // A `Pat = Pat` alias value doesn't splice cleanly into a map value slot.
@@ -474,12 +469,7 @@ fn build_match_rewrite(
     if !is_safe_key(in_clause, key_id) {
         return None;
     }
-
-    let full = in_clause.range_for_any(match_id)?;
-    if full.file_id != file_id {
-        return None;
-    }
-    let full_range = full.range;
+    let diagnostic_range = maps_find_target_range(in_clause, file_id, rhs)?;
 
     let lhs_range = in_clause.range_for_pat(lhs)?;
     if lhs_range.file_id != file_id {
@@ -515,7 +505,7 @@ fn build_match_rewrite(
         (lhs_range.range, format!("#{{{key_text} := {value_text}}}")),
         (rhs_range.range, map_text),
     ];
-    Some((full_range, edits))
+    Some((diagnostic_range, edits))
 }
 
 /// If `pat` is `{ok, ValuePat}`, return the `ValuePat` id.
@@ -543,6 +533,30 @@ fn maps_find_args(
         && atom_named(in_clause, *name, &known::find)
     {
         Some((args[0], args[1]))
+    } else {
+        None
+    }
+}
+
+/// The range spanning just the `maps:find` module-and-function part of the
+/// call, used as the diagnostic range so the warning highlights only the
+/// offending call rather than the whole surrounding `case`/match expression.
+fn maps_find_target_range(
+    in_clause: &InFunctionClauseBody<&FunctionDef>,
+    file_id: FileId,
+    call: ExprId,
+) -> Option<TextRange> {
+    if let Expr::Call {
+        target: CallTarget::Remote { module, name, .. },
+        ..
+    } = &in_clause[call]
+    {
+        let module_range = in_clause.range_for_expr(*module)?;
+        let name_range = in_clause.range_for_expr(*name)?;
+        if module_range.file_id != file_id || name_range.file_id != file_id {
+            return None;
+        }
+        Some(module_range.range.cover(name_range.range))
     } else {
         None
     }
@@ -1096,7 +1110,7 @@ mod tests {
          fn(Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(my_key,M) of {ok, V} -> Found; error -> NotFound end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%      ^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
             "#,
         )
     }
@@ -1111,7 +1125,7 @@ mod tests {
          fn(Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find({key_a,key_b},M) of {ok, V} -> Found; error -> NotFound end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%      ^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
             "#,
         )
     }
@@ -1126,7 +1140,7 @@ mod tests {
          fn(K, Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(K,M) of {ok, V} -> Found; error -> NotFound end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%      ^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
             "#,
         )
     }
@@ -1141,7 +1155,7 @@ mod tests {
          fn(K, Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(K,M) of {ok, V} -> Found; _ -> NotFound end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%      ^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
             "#,
         )
     }
@@ -1156,7 +1170,7 @@ mod tests {
          fn(M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(k, M) of {ok, V} -> X = g(V), {ok, X}; error -> none end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%      ^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
 
          g(X) -> X.
             "#,
@@ -1173,7 +1187,7 @@ mod tests {
          fn(M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(k, M) of {ok, a} -> 1; {ok, b} -> 2; {ok, _} -> 3; error -> 0 end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%      ^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
             "#,
         )
     }
@@ -1188,7 +1202,7 @@ mod tests {
          fn(M) ->
             % elp:ignore W0017 (undefined_function)
             {ok, V} = maps:find(k, M), V.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%           ^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
             "#,
         )
     }
