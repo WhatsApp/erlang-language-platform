@@ -102,7 +102,10 @@ impl SsrPatternsLinter for ListsMapToComprehensionLinter {
         matched: &Match,
         ctx: &LinterContext,
     ) -> Option<bool> {
-        if let Some(comments) = matched.comments(ctx.sema)
+        // A comment inside a placeholder is spliced verbatim into the fix, so
+        // only decline when a comment sits in the surrounding syntax the fix
+        // rewrites away.
+        if let Some(comments) = matched.comments_outside_placeholders(ctx.sema)
             && !comments.is_empty()
         {
             return None;
@@ -429,6 +432,45 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(L) -> lists:map(fun mod:action/2, L).
+            "#,
+        )
+    }
+
+    #[test]
+    fn fixes_lists_map_preserving_comment_in_body() {
+        // The comment is inside the fun body (a placeholder), spliced verbatim
+        // into the comprehension, so it is preserved.
+        check_fix(
+            r#"
+         //- /src/lists_map_to_comprehension.erl
+         -module(lists_map_to_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(L) -> lists:m~ap(fun ({K, V}) -> {V, % keep me
+                                             K} end, L).
+         "#,
+            expect![[r#"
+                -module(lists_map_to_comprehension).
+
+                % elp:ignore W0017 (undefined_function)
+                fn(L) -> [{V, % keep me
+                                                    K} || {K, V} <:- L].
+   "#]],
+        )
+    }
+
+    #[test]
+    fn ignores_lists_map_with_comment_in_structure() {
+        // The comment is attached to the `lists:map(...)` wrapper the fix
+        // discards, outside every placeholder, so it would be lost -- decline.
+        check_diagnostics(
+            r#"
+         //- /src/lists_map_to_comprehension.erl
+         -module(lists_map_to_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(L) -> lists:map( % keep me
+                            fun (X) -> X + 1 end, L).
             "#,
         )
     }

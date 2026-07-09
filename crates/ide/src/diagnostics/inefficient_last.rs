@@ -84,7 +84,10 @@ impl SsrPatternsLinter for InefficientLastLinter {
         matched: &Match,
         ctx: &LinterContext,
     ) -> Option<bool> {
-        if let Some(comments) = matched.comments(ctx.sema)
+        // A comment inside a placeholder is spliced verbatim into the fix, so
+        // only decline when a comment sits in the surrounding syntax the fix
+        // rewrites away.
+        if let Some(comments) = matched.comments_outside_placeholders(ctx.sema)
             && !comments.is_empty()
         {
             return None;
@@ -279,6 +282,45 @@ mod tests {
          % elp:ignore W0017 (undefined_function)
          fn(List) -> lists:last(List).
             "#]],
+        )
+    }
+
+    #[test]
+    fn fixes_inefficient_last_preserving_comment_in_arg() {
+        // The comment is inside the list argument (a placeholder), spliced
+        // verbatim into the fix, so it is preserved.
+        check_fix(
+            r#"
+         //- /src/inefficient_last.erl
+         -module(inefficient_last).
+
+         % elp:ignore W0017 (undefined_function)
+         fn() -> hd(lists:re~verse([a, % keep me
+                                    b])).
+         "#,
+            expect![[r#"
+                -module(inefficient_last).
+
+                % elp:ignore W0017 (undefined_function)
+                fn() -> lists:last([a, % keep me
+                                           b]).
+   "#]],
+        )
+    }
+
+    #[test]
+    fn ignores_inefficient_last_with_comment_in_structure() {
+        // The comment is attached to the `hd(...)` wrapper the fix discards,
+        // outside every placeholder, so it would be lost -- decline.
+        check_diagnostics(
+            r#"
+         //- /src/inefficient_last.erl
+         -module(inefficient_last).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(List) -> hd( % keep me
+                        lists:reverse(List)).
+            "#,
         )
     }
 }

@@ -87,11 +87,13 @@ impl SsrPatternsLinter for UnnecessaryMapToListInComprehensionLinter {
         matched: &elp_ide_ssr::Match,
         ctx: &LinterContext,
     ) -> Option<bool> {
-        if let Some(comments) = matched.comments(ctx.sema) {
-            // Avoid clobbering comments in the original source code
-            if !comments.is_empty() {
-                return None;
-            }
+        // A comment inside a placeholder is spliced verbatim into the fix, so
+        // only decline when a comment sits in the surrounding syntax the fix
+        // rewrites away.
+        if let Some(comments) = matched.comments_outside_placeholders(ctx.sema)
+            && !comments.is_empty()
+        {
+            return None;
         }
         Some(true)
     }
@@ -341,6 +343,45 @@ mod tests {
          % elp:ignore W0017 (undefined_function)
          fn(Map) -> [K + V + 1 || K := V <:- Map, V > 7, K < 10, (V + K) =:= 12].
             "#]],
+        )
+    }
+
+    #[test]
+    fn fixes_unnecessary_maps_to_list_preserving_comment_in_body() {
+        // The comment is inside the comprehension body (a placeholder), spliced
+        // verbatim into the fix, so it is preserved.
+        check_fix(
+            r#"
+         //- /src/unnecessary_maps_to_list_in_comprehension.erl
+         -module(unnecessary_maps_to_list_in_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(Map) -> [{K, % keep me
+                      V} || {K,V} <- maps:to_~list(Map)].
+         "#,
+            expect![[r#"
+                -module(unnecessary_maps_to_list_in_comprehension).
+
+                % elp:ignore W0017 (undefined_function)
+                fn(Map) -> [{K, % keep me
+                             V} || K := V <- Map].
+   "#]],
+        )
+    }
+
+    #[test]
+    fn ignores_unnecessary_maps_to_list_with_comment_in_structure() {
+        // The comment is attached to the `maps:to_list(...)` wrapper the fix
+        // discards, outside every placeholder, so it would be lost -- decline.
+        check_diagnostics(
+            r#"
+         //- /src/unnecessary_maps_to_list_in_comprehension.erl
+         -module(unnecessary_maps_to_list_in_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(Map) -> [K + V + 1 || {K,V} <- maps:to_list( % keep me
+                                                         Map)].
+            "#,
         )
     }
 }

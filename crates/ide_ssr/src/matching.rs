@@ -17,6 +17,7 @@ use std::cell::Cell;
 use std::iter;
 
 use elp_ide_db::elp_base_db::FileRange;
+use elp_syntax::AstNode;
 use elp_syntax::TextRange;
 use elp_syntax::ast;
 use elp_syntax::ast::ArithOp;
@@ -258,6 +259,38 @@ impl Match {
             SubId::AnyExprId(any_expr_id) => sema.any_expr_comments(&body_map, any_expr_id),
             _ => None,
         }
+    }
+
+    /// Like [`Self::comments`], but only comments that fall OUTSIDE every
+    /// placeholder's matched range. A fix substitutes each placeholder with its
+    /// verbatim source text, so a comment inside a placeholder is carried over;
+    /// only a comment attached to the fixed template syntax the fix rewrites or
+    /// discards would be lost. A linter can gate on this instead of `comments`
+    /// to keep firing, and preserve the comment, when it sits inside a
+    /// placeholder rather than declining on any comment at all.
+    ///
+    /// Only sound for a fix that splices EVERY placeholder that could carry a
+    /// comment. A fix that DISCARDS a matched placeholder, or re-renders its
+    /// content instead of splicing it verbatim, must keep using [`Self::comments`]
+    /// because a comment inside such a placeholder would still be dropped.
+    pub fn comments_outside_placeholders(&self, sema: &Semantic) -> Option<Vec<ast::Comment>> {
+        let comments = self.comments(sema)?;
+        let placeholder_ranges: Vec<TextRange> = self
+            .placeholder_values
+            .values()
+            .map(|pm| pm.range())
+            .collect();
+        Some(
+            comments
+                .into_iter()
+                .filter(|comment| {
+                    let range = comment.syntax().text_range();
+                    !placeholder_ranges
+                        .iter()
+                        .any(|placeholder| placeholder.contains_range(range))
+                })
+                .collect(),
+        )
     }
 
     /// Every binding for every placeholder, as `(name, source text, source

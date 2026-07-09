@@ -149,7 +149,10 @@ impl SsrPatternsLinter for SimplifyNegationLinter {
         matched: &Match,
         ctx: &LinterContext,
     ) -> Option<Vec<Assist>> {
-        if let Some(comments) = matched.comments(ctx.sema)
+        // A comment inside a placeholder is spliced verbatim into the fix, so
+        // only withhold the fix when a comment sits in the surrounding syntax
+        // the fix rewrites away.
+        if let Some(comments) = matched.comments_outside_placeholders(ctx.sema)
             && !comments.is_empty()
         {
             return None;
@@ -370,6 +373,29 @@ mod tests {
                 fn(A, TrueBranch, FalseBranch) ->
                    case A of false -> FalseBranch; true -> TrueBranch end.
                 "#]],
+        )
+    }
+
+    #[test]
+    fn rewrites_negation_preserving_comment_in_branch_body() {
+        // The comment is inside a branch body (a placeholder), spliced verbatim
+        // into the rewrite, so the fix is still offered and preserves it.
+        check_fix(
+            r#"
+         //- /src/simplify_negation.erl
+         -module(simplify_negation).
+
+         fn(A, TrueBranch, Y) ->
+            case not ~A of true -> TrueBranch; false -> {ok, % keep me
+                                                        Y} end.
+         "#,
+            expect![[r#"
+                -module(simplify_negation).
+
+                fn(A, TrueBranch, Y) ->
+                   case A of false -> TrueBranch; true -> {ok, % keep me
+                                                               Y} end.
+            "#]],
         )
     }
 }

@@ -59,7 +59,10 @@ impl SsrPatternsLinter for InefficientFlatlengthLinter {
         matched: &Match,
         ctx: &LinterContext,
     ) -> Option<bool> {
-        if let Some(comments) = matched.comments(ctx.sema)
+        // A comment inside a placeholder is spliced verbatim into the fix, so
+        // only decline when a comment sits in the surrounding syntax the fix
+        // rewrites.
+        if let Some(comments) = matched.comments_outside_placeholders(ctx.sema)
             && !comments.is_empty()
         {
             return None;
@@ -163,6 +166,45 @@ mod tests {
          % elp:ignore W0017 (undefined_function)
          fn(NestedList) -> lists:flatlength(NestedList).
             "#]],
+        )
+    }
+
+    #[test]
+    fn fixes_inefficient_flatlength_preserving_comment_in_arg() {
+        // The comment is inside the list argument (an SSR placeholder), which
+        // is spliced verbatim into the fix, so it is preserved.
+        check_fix(
+            r#"
+         //- /src/inefficient_flatlength.erl
+         -module(inefficient_flatlength).
+
+         % elp:ignore W0017 (undefined_function)
+         fn() -> len~gth(lists:flatten([a, % keep me
+                                        b])).
+            "#,
+            expect![[r#"
+         -module(inefficient_flatlength).
+
+         % elp:ignore W0017 (undefined_function)
+         fn() -> lists:flatlength([a, % keep me
+                                        b]).
+            "#]],
+        )
+    }
+
+    #[test]
+    fn ignores_inefficient_flatlength_with_comment_in_structure() {
+        // The comment is attached to the `lists:flatten(...)` call the fix
+        // discards, not to a placeholder, so it would be lost -- decline.
+        check_diagnostics(
+            r#"
+         //- /src/inefficient_flatlength.erl
+         -module(inefficient_flatlength).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(NestedList) -> length(lists:flatten( % keep me
+                                                NestedList)).
+            "#,
         )
     }
 }

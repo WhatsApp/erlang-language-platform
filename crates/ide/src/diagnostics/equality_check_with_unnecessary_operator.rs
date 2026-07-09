@@ -210,7 +210,10 @@ impl SsrPatternsLinter for EqualityCheckWithUnnecessaryOperatorLinter {
         matched: &Match,
         ctx: &LinterContext,
     ) -> Option<bool> {
-        if let Some(comments) = matched.comments(ctx.sema)
+        // A comment inside a placeholder is spliced verbatim into the fix, so
+        // only decline when a comment sits in the surrounding syntax the fix
+        // rewrites away (e.g. on the `true`/`false` arms).
+        if let Some(comments) = matched.comments_outside_placeholders(ctx.sema)
             && !comments.is_empty()
         {
             return None;
@@ -1676,6 +1679,32 @@ mod tests {
                     Diff
             end.
             "#,
+        )
+    }
+
+    #[test]
+    fn preserves_comment_inside_operand_pattern() {
+        // The comment is inside the `{x, y}` operand (a placeholder) that
+        // becomes the case pattern, spliced verbatim, so the fix now fires and
+        // preserves it.
+        check_fix(
+            r#"
+         //- /src/equality_op.erl
+         -module(equality_op).
+
+         fn(A, Same, Diff) ->
+            case A =~:= {x,
+                         % keep me
+                         y} of true -> Same; false -> Diff end.
+         "#,
+            expect![[r#"
+                -module(equality_op).
+
+                fn(A, Same, Diff) ->
+                   case A of {x,
+                                % keep me
+                                y} -> Same; _ -> Diff end.
+   "#]],
         )
     }
 

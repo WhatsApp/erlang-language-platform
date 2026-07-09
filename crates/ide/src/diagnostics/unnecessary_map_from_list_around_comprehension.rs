@@ -87,11 +87,13 @@ impl SsrPatternsLinter for UnnecessaryMapFromListAroundComprehensionLinter {
         matched: &elp_ide_ssr::Match,
         ctx: &LinterContext,
     ) -> Option<bool> {
-        if let Some(comments) = matched.comments(ctx.sema) {
-            // Avoid clobbering comments in the original source code
-            if !comments.is_empty() {
-                return None;
-            }
+        // A comment inside a placeholder is spliced verbatim into the fix, so
+        // only decline when a comment sits in the surrounding syntax the fix
+        // rewrites away.
+        if let Some(comments) = matched.comments_outside_placeholders(ctx.sema)
+            && !comments.is_empty()
+        {
+            return None;
         }
         Some(true)
     }
@@ -279,6 +281,45 @@ mod tests {
          % elp:ignore W0017 (undefined_function)
          fn(List) -> #{ K + 1 => V + 2 || {K,V} <:- List, V > 8 }.
             "#]],
+        )
+    }
+
+    #[test]
+    fn fixes_unnecessary_maps_from_list_preserving_comment_in_generator() {
+        // The comment is inside the generator expression (a placeholder),
+        // spliced verbatim into the fix, so it is preserved.
+        check_fix(
+            r#"
+         //- /src/unnecessary_maps_from_list_around_comprehension.erl
+         -module(unnecessary_maps_from_list_around_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn() -> maps:from_l~ist([{K, V} || {K,V} <- [{1, 2}, % keep me
+                                                      {3, 4}]]).
+         "#,
+            expect![[r#"
+                -module(unnecessary_maps_from_list_around_comprehension).
+
+                % elp:ignore W0017 (undefined_function)
+                fn() -> #{ K => V || {K,V} <- [{1, 2}, % keep me
+                                                             {3, 4}] }.
+   "#]],
+        )
+    }
+
+    #[test]
+    fn ignores_unnecessary_maps_from_list_with_comment_in_structure() {
+        // The comment is attached to the `maps:from_list(...)` wrapper the fix
+        // discards, outside every placeholder, so it would be lost -- decline.
+        check_diagnostics(
+            r#"
+         //- /src/unnecessary_maps_from_list_around_comprehension.erl
+         -module(unnecessary_maps_from_list_around_comprehension).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(List) -> maps:from_list( % keep me
+                                    [{K, V} || {K,V} <- List]).
+            "#,
         )
     }
 }

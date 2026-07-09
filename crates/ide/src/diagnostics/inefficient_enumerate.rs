@@ -87,7 +87,10 @@ impl SsrPatternsLinter for InefficientEnumerateLinter {
         matched: &Match,
         ctx: &LinterContext,
     ) -> Option<bool> {
-        if let Some(comments) = matched.comments(ctx.sema)
+        // A comment inside a placeholder is spliced verbatim into the fix, so
+        // only decline when a comment sits in the surrounding syntax the fix
+        // rewrites away.
+        if let Some(comments) = matched.comments_outside_placeholders(ctx.sema)
             && !comments.is_empty()
         {
             return None;
@@ -323,6 +326,46 @@ mod tests {
          % elp:ignore W0017 (undefined_function)
          fn(N, Step, List) -> lists:enumerate(N, Step, List).
             "#]],
+        )
+    }
+
+    #[test]
+    fn fixes_inefficient_enumerate_preserving_comment_in_index() {
+        // The comment is inside the index argument (a placeholder), spliced
+        // verbatim into the fix, so it is preserved.
+        check_fix(
+            r#"
+         //- /src/inefficient_enumerate.erl
+         -module(inefficient_enumerate).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(N, List) -> lists:z~ip(lists:seq(N + % keep me
+                                             1, length(List)), List).
+         "#,
+            expect![[r#"
+                -module(inefficient_enumerate).
+
+                % elp:ignore W0017 (undefined_function)
+                fn(N, List) -> lists:enumerate(N + % keep me
+                                                    1, List).
+   "#]],
+        )
+    }
+
+    #[test]
+    fn ignores_inefficient_enumerate_with_comment_in_structure() {
+        // The comment is attached to the `lists:zip(...)` scaffolding the fix
+        // discards, outside every placeholder, so it would be lost, so decline
+        // to fire.
+        check_diagnostics(
+            r#"
+         //- /src/inefficient_enumerate.erl
+         -module(inefficient_enumerate).
+
+         % elp:ignore W0017 (undefined_function)
+         fn(List) -> lists:zip( % keep me
+                               lists:seq(1, length(List)), List).
+            "#,
         )
     }
 }
