@@ -224,6 +224,16 @@ fn loader_config(project_apps: &ProjectApps<'_>) -> Vec<loader::Entry> {
 /// to drop while the handler waits for the lock. By returning the updates, the
 /// caller can merge them under a brief lock taken *after* the barrier. Keep it
 /// that way — do not pass the locked map in here.
+///
+/// NOTE 2: callers that run concurrently with snapshot-holding request handlers
+/// (i.e. the LSP server) MUST drain outstanding snapshots first, via
+/// `RootDatabase::request_cancellation`, before calling this. Each
+/// `set_file_text` below holds a `base_db::Files` DashMap shard write guard
+/// (from `entry(file_id)`) across the salsa input mutation; if that mutation is
+/// the one that triggers the cancellation barrier, it blocks under the shard
+/// guard and a handler reading `file_text` for a colliding shard deadlocks.
+/// Draining first moves the blocking wait out from under the shard guard.
+/// (CLI/one-shot callers with no concurrent handlers are unaffected.)
 pub fn apply_vfs_text_changes<'a>(
     db: &mut RootDatabase,
     vfs: &Vfs,

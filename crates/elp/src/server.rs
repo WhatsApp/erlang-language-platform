@@ -1083,34 +1083,39 @@ impl Server {
 
         let raw_database = self.analysis_host.raw_database_mut();
 
-        // The writes to salsa as these changes are applied below will
-        // trigger Cancellation any pending processing.  This makes
-        // sure all calculations see a consistent view of the
-        // database.
-
-        // Apply text changes (shared with watchman and CLI).
+        // Drain outstanding snapshots up-front, BEFORE the file-content writes
+        // below. This is the salsa cancellation barrier, and it does not hold
+        // any salsa shard locks.
         //
-        // The first `set_file_text` triggers salsa's cancellation barrier, which blocks
-        // until every outstanding snapshot is dropped. We must NOT hold the
-        // `line_ending_map` write lock across that barrier: a request handler
-        // holding a snapshot can be parked on `line_ending_map.read()` (via
-        // `to_proto::text_document_edit`), which would deadlock. So merge the
-        // line-ending updates under a brief lock taken after the barrier.
+        // This must be done before mutating salsa files, as that does hold a shard
+        // lock while triggering cancellation, which can deadlock any salsa reads of
+        // the files in that shard.
         //
-        // Time the write so main-loop stalls (blocking until every outstanding
+        // Time the drain so main-loop stalls (blocking until every outstanding
         // read snapshot — e.g. in-flight eqWAlizer/erlang_service diagnostics —
-        // is dropped) are observable in the field.
+        // is dropped) remain observable in the field.
         let num_changed_files = changed_files.len();
         let write_started = Instant::now();
+        {
+            let _phase = watchdog::phase("vfs_salsa_cancellation");
+            raw_database.request_cancellation();
+        }
+        let write_elapsed = write_started.elapsed();
+        if write_elapsed >= DB_WRITE_STALL_THRESHOLD {
+            report_db_write_stall(write_elapsed, num_changed_files);
+        }
+
+        // Apply text changes (shared with watchman and CLI). Snapshots have been
+        // drained above, so these writes no longer block here. Keep the
+        // `line_ending_map` write *after* the salsa writes: were the drain above
+        // ever removed, holding that write across the barrier would deadlock a
+        // handler parked on `line_ending_map.read()` (via
+        // `to_proto::text_document_edit`).
         let line_ending_updates = {
             let _phase = watchdog::phase("vfs_salsa_write");
             crate::reload::apply_vfs_text_changes(raw_database, vfs, changed_files.values())
         };
         self.line_ending_map.write().extend(line_ending_updates);
-        let write_elapsed = write_started.elapsed();
-        if write_elapsed >= DB_WRITE_STALL_THRESHOLD {
-            report_db_write_stall(write_elapsed, num_changed_files);
-        }
 
         // Server-specific per-file processing
         let mut highest_file_id: u32 = 0;
