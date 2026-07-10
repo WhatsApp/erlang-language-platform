@@ -14,7 +14,7 @@ object Subst {
     def sub(ty: Type): Type = subst(s, ty)
     t match {
       case MapType(props, kTy, vTy) =>
-        MapType(props.map { case (key, prop) => (key, Prop(prop.req, sub(prop.tp))) }, sub(kTy), sub(vTy))
+        MapType(props.map { case (key, prop) => (key, MapProp(prop.req, sub(prop.tp))) }, sub(kTy), sub(vTy))
       case FunType(n, args, resType)          => FunType(n, args.map(subst(s, _)), subst(s, resType))
       case AnyArityFunType(resTy)             => AnyArityFunType(sub(resTy))
       case TupleType(params)                  => TupleType(params.map(sub))

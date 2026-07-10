@@ -113,7 +113,7 @@ case class Show(pipelineContext: Option[PipelineContext]) {
       (show(t1), show(t2))
   }
 
-  private def showMapField(field: (Key, Prop)): String = {
+  private def showMapField(field: (Key, MapProp)): String = {
     val (key, prop) = field
     if (prop.req) {
       s"$key := ${show(prop.tp)}"

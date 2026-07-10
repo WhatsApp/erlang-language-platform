@@ -923,9 +923,9 @@ final class Occurrence(pipelineContext: PipelineContext) {
     else
       TupleType(elems)
 
-  private def MapType_*(props: Map[Types.Key, Types.Prop], kTy: Type, vTy: Type): Type = {
-    val hasPropEmpty = props.values.exists { case Prop(req, tp) => req && subtype.isNoneType(tp) }
-    val propsNonEmpty = props.filter { case (_, Prop(req, tp)) => req || !subtype.isNoneType(tp) }
+  private def MapType_*(props: Map[Types.Key, Types.MapProp], kTy: Type, vTy: Type): Type = {
+    val hasPropEmpty = props.values.exists { case MapProp(req, tp) => req && subtype.isNoneType(tp) }
+    val propsNonEmpty = props.filter { case (_, MapProp(req, tp)) => req || !subtype.isNoneType(tp) }
     if (hasPropEmpty)
       NoneType
     else
@@ -1003,8 +1003,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
       case (MapType(props, kTy, vTy), MapField(field) :: path) =>
         if (props.contains(field) || (subtype.subType(Key.asType(field), kTy) && pol == +)) {
           val refinedProps = props.updatedWith(field) {
-            case Some(Prop(req, tp)) => Some(Prop((pol == +) || req, update(tp, path, pol, s)))
-            case None                => Some(Prop(req = true, update(vTy, path, pol, s)))
+            case Some(MapProp(req, tp)) => Some(MapProp((pol == +) || req, update(tp, path, pol, s)))
+            case None                   => Some(MapProp(req = true, update(vTy, path, pol, s)))
           }
           MapType_*(refinedProps, kTy, vTy)
         } else {

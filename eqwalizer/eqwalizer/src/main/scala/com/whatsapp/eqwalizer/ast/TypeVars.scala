@@ -84,7 +84,7 @@ object TypeVars {
       RemoteType(id, params.map(substLevels(shift)))
     case MapType(props, kt, vt) =>
       MapType(
-        props.map { case (key, Prop(req, tp)) => (key, Prop(req, substLevels(shift)(tp))) },
+        props.map { case (key, MapProp(req, tp)) => (key, MapProp(req, substLevels(shift)(tp))) },
         substLevels(shift)(kt),
         substLevels(shift)(vt),
       )
@@ -139,7 +139,7 @@ object TypeVars {
       case vt: FreeVarType =>
         vt
       case MapType(props, kt, vt) =>
-        MapType(props.map { case (key, Prop(req, tp)) => (key, Prop(req, elim(tp))) }, elim(kt), elim(vt))
+        MapType(props.map { case (key, MapProp(req, tp)) => (key, MapProp(req, elim(tp))) }, elim(kt), elim(vt))
       case BoundedDynamicType(bound) =>
         BoundedDynamicType(elim(bound))
       case _ =>

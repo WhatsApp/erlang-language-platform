@@ -53,12 +53,12 @@ object Types {
   case class NativeRecordType(id: RemoteId) extends Type
 
   case object AnyNativeRecordType extends Type
-  case class MapType(props: Map[Key, Prop], kType: Type, vType: Type) extends Type
+  case class MapType(props: Map[Key, MapProp], kType: Type, vType: Type) extends Type
 
   object MapType {
-    def apply(props: Map[Key, Prop], kType: Type, vType: Type): MapType = {
+    def apply(props: Map[Key, MapProp], kType: Type, vType: Type): MapType = {
       Key.fromType(kType) match {
-        case Some(key) => new MapType(props + (key -> Prop(req = false, vType)), NoneType, NoneType)
+        case Some(key) => new MapType(props + (key -> MapProp(req = false, vType)), NoneType, NoneType)
         case None =>
           if (kType == NoneType) new MapType(props, NoneType, NoneType)
           else new MapType(props, kType, vType)
@@ -74,7 +74,7 @@ object Types {
     override def toString: String = name
   }
 
-  case class Prop(req: Boolean, tp: Type)
+  case class MapProp(req: Boolean, tp: Type)
 
   case object BinaryType extends Type
   case object AnyType extends Type

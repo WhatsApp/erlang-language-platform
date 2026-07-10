@@ -49,7 +49,7 @@ use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
 use elp_types_db::eqwalizer::invalid_diagnostics::NonProductiveRecursiveTypeAlias;
 use elp_types_db::eqwalizer::types::Key;
-use elp_types_db::eqwalizer::types::Prop;
+use elp_types_db::eqwalizer::types::MapProp;
 use elp_types_db::eqwalizer::types::RemoteType;
 use elp_types_db::eqwalizer::types::Type;
 use fxhash::FxHashMap;
@@ -152,7 +152,7 @@ fn he_by_coupling(s: &Type, t: &Type) -> bool {
     }
 }
 
-fn all_he_prop(s: &BTreeMap<Key, Prop>, t: &BTreeMap<Key, Prop>) -> bool {
+fn all_he_prop(s: &BTreeMap<Key, MapProp>, t: &BTreeMap<Key, MapProp>) -> bool {
     for ((k1, p1), (k2, p2)) in s.iter().zip(t.iter()) {
         if (k1 != k2) || !he_prop(p1, p2) {
             return false;
@@ -161,7 +161,7 @@ fn all_he_prop(s: &BTreeMap<Key, Prop>, t: &BTreeMap<Key, Prop>) -> bool {
     true
 }
 
-fn he_prop(s: &Prop, t: &Prop) -> bool {
+fn he_prop(s: &MapProp, t: &MapProp) -> bool {
     s.req == t.req && is_he(&s.tp, &t.tp)
 }
 

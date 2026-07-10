@@ -39,9 +39,9 @@ use elp_types_db::eqwalizer::types::FreeVarType;
 use elp_types_db::eqwalizer::types::FunType;
 use elp_types_db::eqwalizer::types::Key;
 use elp_types_db::eqwalizer::types::ListType;
+use elp_types_db::eqwalizer::types::MapProp;
 use elp_types_db::eqwalizer::types::MapType;
 use elp_types_db::eqwalizer::types::NativeRecordType;
-use elp_types_db::eqwalizer::types::Prop;
 use elp_types_db::eqwalizer::types::RecordType;
 use elp_types_db::eqwalizer::types::RefinedRecordType;
 use elp_types_db::eqwalizer::types::RemoteType;
@@ -396,7 +396,7 @@ impl TypeConverter {
                     .map(|fields| Type::RefinedRecordType(RefinedRecordType { rec_type, fields })))
             }
             ExtType::MapExtType(ty) => {
-                let mut props: BTreeMap<Key, Prop> = BTreeMap::default();
+                let mut props: BTreeMap<Key, MapProp> = BTreeMap::default();
                 let mut k_type = Type::NoneType;
                 let mut v_type = Type::NoneType;
                 // .rev() so that the leftmost association takes precedence in the props list
@@ -438,7 +438,7 @@ impl TypeConverter {
         &self,
         sub: &FxHashMap<StringId, BIndex>,
         prop: ExtProp,
-    ) -> Result<Result<(Key, Prop), Invalid>, TypeConversionError> {
+    ) -> Result<Result<(Key, MapProp), Invalid>, TypeConversionError> {
         let req = prop.required();
         let (key, tp) = prop.to_pair();
         let converted_key = match self.convert_type(sub, key)?.map(Key::from_type) {
@@ -452,7 +452,7 @@ impl TypeConverter {
         };
         Ok(Ok((
             converted_key,
-            Prop {
+            MapProp {
                 req,
                 tp: converted_tp,
             },

@@ -175,8 +175,8 @@ class Subtype(pipelineContext: PipelineContext) {
       case (MapType(props1, kT1, vT1), MapType(props2, kT2, vT2)) =>
         boundary {
           val tolerantSubtype = isDynamicType(kT1) && isDynamicType(vT1)
-          val reqKeys1 = props1.collect { case (k, Prop(true, _)) => k }.toSet
-          val reqKeys2 = props2.collect { case (k, Prop(true, _)) => k }.toSet
+          val reqKeys1 = props1.collect { case (k, MapProp(true, _)) => k }.toSet
+          val reqKeys2 = props2.collect { case (k, MapProp(true, _)) => k }.toSet
           // Verify that all required keys of M2 are also required keys in M1
           if (!tolerantSubtype && !reqKeys2.subsetOf(reqKeys1)) return false
           // Check subtype of props in M1 to either the corresponding prop in M2, or its default association
@@ -358,8 +358,8 @@ class Subtype(pipelineContext: PipelineContext) {
       case (MapType(props1, kT1, vT1), MapType(props2, kT2, vT2)) =>
         boundary {
           val tolerantSubtype = isDynamicType(kT1) && isDynamicType(vT1) && p == -
-          val reqKeys1 = props1.collect { case (k, Prop(true, _)) => k }.toSet
-          val reqKeys2 = props2.collect { case (k, Prop(true, _)) => k }.toSet
+          val reqKeys1 = props1.collect { case (k, MapProp(true, _)) => k }.toSet
+          val reqKeys2 = props2.collect { case (k, MapProp(true, _)) => k }.toSet
           // Verify that all required keys of M2 are also required keys in M1
           if (!tolerantSubtype && !reqKeys2.subsetOf(reqKeys1)) return false
           // Check subtype of props in M1 to either the corresponding prop in M2, or its default association

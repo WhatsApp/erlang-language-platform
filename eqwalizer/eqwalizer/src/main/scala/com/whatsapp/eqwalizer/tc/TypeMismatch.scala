@@ -460,8 +460,8 @@ class TypeMismatch(pipelineContext: PipelineContext) {
             if (allKeys.isEmpty) 80
             else 40 + 40 * commonKeys.size / allKeys.size
           // Required keys don't match
-          val reqKeys1 = props1.collect { case (k, Prop(true, _)) => k }.toSet
-          val reqKeys2 = props2.collect { case (k, Prop(true, _)) => k }.toSet
+          val reqKeys1 = props1.collect { case (k, MapProp(true, _)) => k }.toSet
+          val reqKeys2 = props2.collect { case (k, MapProp(true, _)) => k }.toSet
           if (!tolerantSubtype && !reqKeys2.subsetOf(reqKeys1)) {
             val missingReqKeys = reqKeys2.removedAll(reqKeys1)
             return Details(Some(t1, t2, MissingReqKeys(missingReqKeys)), score)
@@ -472,8 +472,8 @@ class TypeMismatch(pipelineContext: PipelineContext) {
               case Some(prop2) =>
                 findMismatch(prop1.tp, prop2.tp, seen).mismatch match {
                   case Some((prop1Ty, prop2Ty, mismatch)) =>
-                    val newTy1 = MapType(props1.updated(key1, Prop(prop1.req, prop1Ty)), kT1, vT1)
-                    val newTy2 = MapType(props2.updated(key1, Prop(prop2.req, prop2Ty)), kT2, vT2)
+                    val newTy1 = MapType(props1.updated(key1, MapProp(prop1.req, prop1Ty)), kT1, vT1)
+                    val newTy2 = MapType(props2.updated(key1, MapProp(prop2.req, prop2Ty)), kT2, vT2)
                     boundary.break(Details(Some(newTy1, newTy2, MapPropMismatch(key1, mismatch)), score))
                   case None =>
                 }
@@ -491,7 +491,7 @@ class TypeMismatch(pipelineContext: PipelineContext) {
                       val newTy2 = MapType(props2, newKT2, vT2)
                       boundary.break(Details(Some(t1, newTy2, MapKeyMismatch(key1, mismatch)), score))
                     case (_, Some((newProp1Ty, newVT2, mismatch))) =>
-                      val newTy1 = MapType(props1.updated(key1, Prop(prop1.req, newProp1Ty)), kT1, vT1)
+                      val newTy1 = MapType(props1.updated(key1, MapProp(prop1.req, newProp1Ty)), kT1, vT1)
                       val newTy2 = MapType(props2, kT2, newVT2)
                       boundary.break(Details(Some(newTy1, newTy2, MapPropMismatch(key1, mismatch)), score))
                     case (_, _) =>
@@ -527,7 +527,7 @@ class TypeMismatch(pipelineContext: PipelineContext) {
             mismatchVal match {
               case Some((newVT1, newProp2Ty, mismatch)) =>
                 val newTy1 = MapType(props1, kT1, newVT1)
-                val newTy2 = MapType(props2.updated(key2, Prop(prop2.req, newProp2Ty)), kT2, vT2)
+                val newTy2 = MapType(props2.updated(key2, MapProp(prop2.req, newProp2Ty)), kT2, vT2)
                 boundary.break(Details(Some(newTy1, newTy2, MapPropMismatch(key2, mismatch)), score))
               case _ =>
             }

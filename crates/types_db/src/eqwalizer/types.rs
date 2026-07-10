@@ -546,7 +546,7 @@ pub struct NativeRecordType {
 pub struct MapType {
     #[serde_as(as = "Vec<(_, _)>")]
     #[serde(default)]
-    pub props: BTreeMap<Key, Prop>,
+    pub props: BTreeMap<Key, MapProp>,
     pub k_type: Box<Type>,
     pub v_type: Box<Type>,
 }
@@ -631,12 +631,12 @@ impl Key {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Prop {
+pub struct MapProp {
     pub req: bool,
     pub tp: Type,
 }
 
-impl fmt::Display for Prop {
+impl fmt::Display for MapProp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.req {
             write!(f, ":= {}", self.tp)

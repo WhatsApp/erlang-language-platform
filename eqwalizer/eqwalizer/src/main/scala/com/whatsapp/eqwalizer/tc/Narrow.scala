@@ -109,7 +109,7 @@ class Narrow(pipelineContext: PipelineContext) {
           AnyArityFunType(meetAux(resTy1, resTy2, seen))
         case (MapType(props1, kT1, vT1), MapType(props2, kT2, vT2)) =>
           boundary {
-            var props: Map[Key, Prop] = Map()
+            var props: Map[Key, MapProp] = Map()
             val keys = props1.keySet ++ props2.keySet
             for (key <- keys) {
               val prop1 = props1.get(key)
@@ -125,7 +125,7 @@ class Narrow(pipelineContext: PipelineContext) {
               if (req && subtype.isNoneType(meetType)) {
                 boundary.break(NoneType)
               }
-              props += (key -> Prop(req, meetType))
+              props += (key -> MapProp(req, meetType))
             }
             MapType(props, meetAux(kT1, kT2, seen), meetAux(vT1, vT2, seen))
           }
@@ -169,8 +169,8 @@ class Narrow(pipelineContext: PipelineContext) {
   private def dynamicMap(t: MapType): MapType = {
     val MapType(props, kType, vType) = t
     MapType(
-      props.map { case (key, Prop(req, tp)) =>
-        (key, Prop(req, boundedDynamic(tp)))
+      props.map { case (key, MapProp(req, tp)) =>
+        (key, MapProp(req, boundedDynamic(tp)))
       },
       boundedDynamic(kType),
       boundedDynamic(vType),
@@ -279,16 +279,16 @@ class Narrow(pipelineContext: PipelineContext) {
 
   def withRequiredProp(k: Key, t: MapType): Option[MapType] =
     t.props.get(k) match {
-      case Some(Prop(_, tp)) => Some(t.copy(props = t.props.updated(k, Prop(req = true, tp))))
+      case Some(MapProp(_, tp)) => Some(t.copy(props = t.props.updated(k, MapProp(req = true, tp))))
       case None if subtype.subType(Key.asType(k), t.kType) =>
-        Some(t.copy(props = t.props.updated(k, Prop(req = true, t.vType))))
+        Some(t.copy(props = t.props.updated(k, MapProp(req = true, t.vType))))
       case _ => None
     }
 
   def selectKeys(reqKeyT: Type, optKeyT: Type, mapT: MapType): Type = {
     val selectProps = mapT.props.collect {
-      case (key, Prop(true, tp)) if subtype.subType(Key.asType(key), reqKeyT) => (key, Prop(req = true, tp))
-      case (key, Prop(_, tp)) if subtype.subType(Key.asType(key), optKeyT)    => (key, Prop(req = false, tp))
+      case (key, MapProp(true, tp)) if subtype.subType(Key.asType(key), reqKeyT) => (key, MapProp(req = true, tp))
+      case (key, MapProp(_, tp)) if subtype.subType(Key.asType(key), optKeyT)    => (key, MapProp(req = false, tp))
     }
     MapType(selectProps, meet(mapT.kType, optKeyT), mapT.vType)
   }
@@ -590,12 +590,12 @@ class Narrow(pipelineContext: PipelineContext) {
   def adjustMapType(mapType: MapType, keyT: Type, valT: Type): MapType =
     asKeys(keyT) match {
       case Some(keys) if keys.size == 1 =>
-        MapType(mapType.props.updated(keys.head, Prop(req = true, valT)), mapType.kType, mapType.vType)
+        MapType(mapType.props.updated(keys.head, MapProp(req = true, valT)), mapType.kType, mapType.vType)
       case Some(keys) =>
         keys.foldLeft(mapType) { case (mapType, key) =>
           val props = mapType.props.updatedWith(key) {
-            case Some(prop) => Some(Prop(prop.req, subtype.join(valT, prop.tp)))
-            case None       => Some(Prop(req = false, valT))
+            case Some(prop) => Some(MapProp(prop.req, subtype.join(valT, prop.tp)))
+            case None       => Some(MapProp(req = false, valT))
           }
           MapType(props, mapType.kType, mapType.vType)
         }
@@ -607,7 +607,7 @@ class Narrow(pipelineContext: PipelineContext) {
 
   def setAllFieldsOptional(mapType: MapType, newValTy: Option[Type] = None): Type =
     MapType(
-      mapType.props.map { case (key, Prop(_, tp)) => (key, Prop(req = false, newValTy.getOrElse(tp))) },
+      mapType.props.map { case (key, MapProp(_, tp)) => (key, MapProp(req = false, newValTy.getOrElse(tp))) },
       mapType.kType,
       newValTy.getOrElse(mapType.vType),
     )
@@ -661,11 +661,11 @@ class Narrow(pipelineContext: PipelineContext) {
   private def mergeMaps(s1: MapType, s2: MapType, inOrder: Boolean): MapType = {
     MapType(
       (s1.props.keySet ++ s2.props.keySet).map { key =>
-        val prop1 = s1.props.getOrElse(key, Prop(req = false, NoneType))
-        val prop2 = s2.props.getOrElse(key, Prop(req = false, NoneType))
+        val prop1 = s1.props.getOrElse(key, MapProp(req = false, NoneType))
+        val prop2 = s2.props.getOrElse(key, MapProp(req = false, NoneType))
         val req = (inOrder && (prop1.req || prop2.req)) || (prop1.req && prop2.req)
         val tp = if (inOrder && prop2.req) prop2.tp else subtype.join(prop1.tp, prop2.tp)
-        key -> Prop(req, tp)
+        key -> MapProp(req, tp)
       }.toMap,
       subtype.join(s1.kType, s2.kType),
       subtype.join(s1.vType, s2.vType),

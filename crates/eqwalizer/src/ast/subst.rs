@@ -13,8 +13,8 @@ use elp_types_db::eqwalizer::types::BoundedDynamicType;
 use elp_types_db::eqwalizer::types::ConsType;
 use elp_types_db::eqwalizer::types::FunType;
 use elp_types_db::eqwalizer::types::ListType;
+use elp_types_db::eqwalizer::types::MapProp;
 use elp_types_db::eqwalizer::types::MapType;
-use elp_types_db::eqwalizer::types::Prop;
 use elp_types_db::eqwalizer::types::RefinedRecordType;
 use elp_types_db::eqwalizer::types::RemoteType;
 use elp_types_db::eqwalizer::types::TupleType;
@@ -68,7 +68,7 @@ impl Subst<'_> {
                     .map(|(k, p)| {
                         (
                             k,
-                            Prop {
+                            MapProp {
                                 req: p.req,
                                 tp: self.apply(p.tp),
                             },

@@ -463,8 +463,8 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
         val expFunTy = FunType(0, List(keyTy, valTy), AnyType)
         def mapValueType(resValTy: Type, argMapTy: MapType): Type = {
           MapType(
-            argMapTy.props.map { case (key, Prop(req, _)) =>
-              (key, Prop(req, resValTy))
+            argMapTy.props.map { case (key, MapProp(req, _)) =>
+              (key, MapProp(req, resValTy))
             },
             argMapTy.kType,
             resValTy,
@@ -474,7 +474,7 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
           MapType(
             argMapTy.props.map { case (key, prop) =>
               val resTy = elabLambda2(lambda, asType(key), prop.tp, env)
-              (key, Prop(prop.req, resTy))
+              (key, MapProp(prop.req, resTy))
             },
             argMapTy.kType,
             elabLambda2(lambda, argMapTy.kType, argMapTy.vType, env),
@@ -626,8 +626,8 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
           val props = keysToKeep.flatMap { key =>
             mapTy.props.get(key) match {
               case Some(vProp)                                           => Some(key -> vProp)
-              case None if mapTy.kType == DynamicType                    => Some(key -> Prop(true, mapTy.vType))
-              case None if subtype.subType(Key.asType(key), mapTy.kType) => Some(key -> Prop(false, mapTy.vType))
+              case None if mapTy.kType == DynamicType                    => Some(key -> MapProp(true, mapTy.vType))
+              case None if subtype.subType(Key.asType(key), mapTy.kType) => Some(key -> MapProp(false, mapTy.vType))
               case None                                                  => None
             }
           }

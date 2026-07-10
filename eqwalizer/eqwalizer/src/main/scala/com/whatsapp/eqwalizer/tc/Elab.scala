@@ -564,7 +564,7 @@ final class Elab(pipelineContext: PipelineContext) {
             case Some(key) =>
               val (valT, env1) = elabExpr(vExpr, envAcc)
               envAcc = env1
-              Left(key -> Prop(req = true, valT))
+              Left(key -> MapProp(req = true, valT))
             case None =>
               val (keyT, env1) = elabExpr(kExpr, envAcc)
               val (valT, env2) = elabExpr(vExpr, env1)
