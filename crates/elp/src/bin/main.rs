@@ -2562,7 +2562,10 @@ mod tests {
     fn get_help_text(args: &[&str]) -> String {
         let mut full_args = vec!["elp"];
         full_args.extend_from_slice(args);
-        let err = args::Args::try_parse_from(full_args).unwrap_err();
+        let err = args::Args::command()
+            .term_width(100)
+            .try_get_matches_from(full_args)
+            .unwrap_err();
         err.to_string()
     }
 
