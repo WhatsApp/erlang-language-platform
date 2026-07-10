@@ -189,9 +189,10 @@ final class Occurrence(pipelineContext: PipelineContext) {
       if (linearVars(clause)) {
         val aMap = Map.empty[Name, Obj]
         val (testPos, testNeg) = guardsProps(clause.guards, aMap)
+        val localClauseProps = testPos.toList
         val clauseProps =
-          if (accumulateNegProps) combine(testPos.toList, propsAcc)
-          else testPos.toList
+          if (accumulateNegProps) combine(localClauseProps, propsAcc)
+          else localClauseProps
         val clauseEnv = batchSelect(env, clauseProps, aMap)
         clauseEnvs.addOne(clauseEnv)
         if (accumulateNegProps) {
@@ -238,9 +239,10 @@ final class Occurrence(pipelineContext: PipelineContext) {
           }
         val aMap = aliases(x, Nil, pat, env).toMap
         val (testPos, testNeg) = guardsProps(clause.guards, aMap)
+        val localClauseProps = patPos.toList ++ testPos
         val clauseProps =
-          if (accumulateNegProps) combine(patPos.toList ++ testPos, propsAcc)
-          else patPos.toList ++ testPos
+          if (accumulateNegProps) combine(localClauseProps, propsAcc)
+          else localClauseProps
         val clauseEnv = batchSelect(env1, clauseProps, aMap ++ eMap)
         clauseEnvs.addOne(clauseEnv)
         if (accumulateNegProps) {
@@ -285,9 +287,10 @@ final class Occurrence(pipelineContext: PipelineContext) {
           patNeg.foreach(allNeg.addOne)
         }
         val (testPos, testNeg) = guardsProps(clause.guards, aMap)
+        val localClauseProps = (allPos ++ testPos).toList
         val clauseProps =
-          if (accumulateNegProps) combine((allPos ++ testPos).toList, propsAcc)
-          else (allPos ++ testPos).toList
+          if (accumulateNegProps) combine(localClauseProps, propsAcc)
+          else localClauseProps
         val clauseEnv = batchSelect(env1, clauseProps, aMap)
         clauseEnvs.addOne(clauseEnv)
         if (accumulateNegProps) {
