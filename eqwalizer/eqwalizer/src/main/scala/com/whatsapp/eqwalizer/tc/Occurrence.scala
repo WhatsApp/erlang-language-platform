@@ -20,15 +20,6 @@ import scala.util.boundary
 object Occurrence {
   private val nType = UnionType(Set(IntegerType, FloatType))
 
-  private sealed trait Prop
-  private case object Unknown extends Prop
-  private case object True extends Prop
-  private case object False extends Prop
-  private case class Pos(obj: Obj, t: Type) extends Prop
-  private case class Neg(obj: Obj, t: Type) extends Prop
-  private case class And(props: List[Prop]) extends Prop
-  private case class Or(props: List[Prop]) extends Prop
-
   /** Prefer these functions to And.apply and Or.apply */
   private def and(props: List[Prop]): Prop =
     if (props.isEmpty) True
@@ -65,17 +56,6 @@ object Occurrence {
       else if (simpleProps.size == 1) simpleProps.head
       else Or(simpleProps)
     }
-
-  private sealed trait Obj
-  private case class VarObj(v: String) extends Obj
-  private case class FieldObj(field: Field, obj: Obj) extends Obj
-
-  private sealed trait Field
-  private case class TupleField(index: Int, arity: Option[Int]) extends Field
-  private case class RecordField(field: String, recName: String) extends Field
-  private case class MapField(field: Key) extends Field
-  private case object ListHead extends Field
-  private case object ListTail extends Field
 
   private type PropEnv = List[Prop]
   private type AMap = Map[String, Obj]
