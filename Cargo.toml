@@ -74,7 +74,7 @@ la-arena = "0.3.1"
 log = { version = "0.4.33", features = ["kv_unstable", "kv_unstable_std"] }
 lsp-server = "0.7.9"
 lsp-types = "0.97"
-memchr = "2.8.2"
+memchr = "2.8.3"
 num-derive = "0.4.2"
 num-traits = { version = "0.2.19", default-features = false }
 parking_lot = { version = "0.12.1", features = ["arc_lock", "send_guard"] }
