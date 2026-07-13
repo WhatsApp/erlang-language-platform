@@ -21,7 +21,7 @@ object Pats {
   case class PatCons(h: Pat, t: Pat)(val pos: Pos) extends Pat
 
   case class PatInt()(val pos: Pos) extends Pat
-  case class PatNumber()(val pos: Pos) extends Pat
+  case class PatFloat()(val pos: Pos) extends Pat
   case class PatAtom(s: String)(val pos: Pos) extends Pat
   case class PatVar(n: String)(val pos: Pos) extends Pat
   case class PatRecord(recName: String, fields: List[PatRecordFieldNamed], gen: Option[Pat])(val pos: Pos) extends Pat

@@ -55,8 +55,8 @@ final class ElabPat(pipelineContext: PipelineContext) {
       case PatInt() =>
         val patType = narrow.meet(t, IntegerType)
         (patType, env)
-      case PatNumber() =>
-        val patType = narrow.meet(t, numberType)
+      case PatFloat() =>
+        val patType = narrow.meet(t, FloatType)
         (patType, env)
       case PatString() =>
         val patType = narrow.meet(t, stringType)

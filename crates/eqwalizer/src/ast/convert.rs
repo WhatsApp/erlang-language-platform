@@ -161,13 +161,13 @@ use elp_types_db::eqwalizer::pat::PatBinOp;
 use elp_types_db::eqwalizer::pat::PatBinary;
 use elp_types_db::eqwalizer::pat::PatBinaryElem;
 use elp_types_db::eqwalizer::pat::PatCons;
+use elp_types_db::eqwalizer::pat::PatFloat;
 use elp_types_db::eqwalizer::pat::PatInt;
 use elp_types_db::eqwalizer::pat::PatMap;
 use elp_types_db::eqwalizer::pat::PatMatch;
 use elp_types_db::eqwalizer::pat::PatNativeRecord;
 use elp_types_db::eqwalizer::pat::PatNativeRecordFieldNamed;
 use elp_types_db::eqwalizer::pat::PatNil;
-use elp_types_db::eqwalizer::pat::PatNumber;
 use elp_types_db::eqwalizer::pat::PatRecord;
 use elp_types_db::eqwalizer::pat::PatRecordFieldNamed;
 use elp_types_db::eqwalizer::pat::PatRecordIndex;
@@ -1466,7 +1466,7 @@ impl Converter {
                     }));
                 }
                 ("float", [_]) => {
-                    return Ok(Pat::PatNumber(PatNumber { pos }));
+                    return Ok(Pat::PatFloat(PatFloat { pos }));
                 }
                 ("char" | "integer", [Term::BigInteger(_)]) => {
                     return Ok(Pat::PatInt(PatInt { pos }));

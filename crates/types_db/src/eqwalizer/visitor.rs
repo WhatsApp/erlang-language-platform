@@ -313,7 +313,7 @@ pub fn walk_pat<'a, T, V: Visitor<'a, T>>(visitor: &mut V, p: &'a Pat) -> Result
             visitor.visit_pat(&c.t)
         }
         Pat::PatInt(_) => Ok(()),
-        Pat::PatNumber(_) => Ok(()),
+        Pat::PatFloat(_) => Ok(()),
         Pat::PatAtom(_) => Ok(()),
         Pat::PatVar(_) => Ok(()),
         Pat::PatRecord(r) => {

@@ -498,9 +498,9 @@ final class Occurrence(pipelineContext: PipelineContext) {
         val pos = Pos(obj, AtomLitType(s))
         val neg = Neg(obj, AtomLitType(s))
         Some(pos, neg)
-      case PatNumber() =>
+      case PatFloat() =>
         val obj = mkObj(x, path)
-        val pos = Pos(obj, nType)
+        val pos = Pos(obj, FloatType)
         Some(pos, Unknown)
       case PatInt() =>
         val obj = mkObj(x, path)

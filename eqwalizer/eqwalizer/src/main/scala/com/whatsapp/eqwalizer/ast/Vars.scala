@@ -26,7 +26,7 @@ object Vars {
         Set.empty
       case PatCons(h, t) =>
         patVars(h) ++ patVars(t)
-      case PatNumber() | PatInt() =>
+      case PatInt() | PatFloat() =>
         Set.empty
       case PatAtom(_) =>
         Set.empty
@@ -188,7 +188,7 @@ final class Vars(pipelineContext: PipelineContext) {
         List.empty
       case PatCons(h, t) =>
         patVarsL(h) ++ patVarsL(t)
-      case PatNumber() | PatInt() =>
+      case PatInt() | PatFloat() =>
         List.empty
       case PatAtom(_) =>
         List.empty

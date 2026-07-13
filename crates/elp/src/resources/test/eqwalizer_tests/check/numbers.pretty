@@ -35,7 +35,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 64 │   X.
    │   ^ X.
-Expression has type:   number()
+Expression has type:   float()
 Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

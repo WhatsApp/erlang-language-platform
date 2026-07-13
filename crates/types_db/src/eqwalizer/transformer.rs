@@ -629,7 +629,7 @@ pub fn walk_pat<T, V: Transformer<T>>(transformer: &mut V, p: Pat) -> Result<Pat
             t: Box::new(transformer.transform_pat(*c.t)?),
         })),
         Pat::PatInt(i) => Ok(Pat::PatInt(i)),
-        Pat::PatNumber(n) => Ok(Pat::PatNumber(n)),
+        Pat::PatFloat(f) => Ok(Pat::PatFloat(f)),
         Pat::PatAtom(a) => Ok(Pat::PatAtom(a)),
         Pat::PatVar(v) => Ok(Pat::PatVar(v)),
         Pat::PatRecord(r) => Ok(Pat::PatRecord(PatRecord {

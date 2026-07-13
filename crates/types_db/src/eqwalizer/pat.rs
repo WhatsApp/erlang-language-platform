@@ -26,7 +26,7 @@ pub enum Pat {
     PatNil(PatNil),
     PatCons(PatCons),
     PatInt(PatInt),
-    PatNumber(PatNumber),
+    PatFloat(PatFloat),
     PatAtom(PatAtom),
     PatVar(PatVar),
     PatRecord(PatRecord),
@@ -86,7 +86,7 @@ pub struct PatInt {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct PatNumber {
+pub struct PatFloat {
     pub pos: eqwalizer::Pos,
 }
 
