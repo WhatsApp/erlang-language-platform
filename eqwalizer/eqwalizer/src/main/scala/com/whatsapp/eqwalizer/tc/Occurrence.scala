@@ -267,24 +267,17 @@ final class Occurrence(pipelineContext: PipelineContext) {
     val vars = argTys.map(_ => genVar())
     val env1 = env ++ vars.zip(argTys).toMap
 
-    var clausesWithAliases = clauses.map { clause =>
-      var aMap: AMap = Map.empty
-      for ((x, pat) <- vars.zip(clause.pats)) {
-        aMap = aMap ++ aliases(x, Nil, pat, env).toMap
-      }
-      (clause, aMap)
-    }
-    while (clausesWithAliases.nonEmpty) {
-      val (clause, aMap) = clausesWithAliases.head
-      clausesWithAliases = clausesWithAliases.tail
+    for (clause <- clauses) {
       if (linearVars(clause)) {
         val pats = clause.pats
         val allPos = ListBuffer.empty[Prop]
         val allNeg = ListBuffer.empty[Prop]
+        var aMap: AMap = Map.empty
         for ((x, pat) <- vars.zip(pats)) {
           val (patPos, patNeg) = patProps(x, Nil, pat, env).unzip
           patPos.foreach(allPos.addOne)
           patNeg.foreach(allNeg.addOne)
+          aMap = aMap ++ aliases(x, Nil, pat, env).toMap
         }
         val (testPos, testNeg) = guardsProps(clause.guards, aMap)
         val localClauseProps = (allPos ++ testPos).toList
