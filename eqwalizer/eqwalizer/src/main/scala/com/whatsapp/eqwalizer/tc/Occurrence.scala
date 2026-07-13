@@ -1020,9 +1020,9 @@ final class Occurrence(pipelineContext: PipelineContext) {
         case Some(obj) =>
           val id = objId(obj)
           val path = objPath(obj)
-          refinedEnvs.map(chooseType(_, id, typeEnv)).map(typePathRef(_, path))
+          refinedEnvs.map(_(id)).map(typePathRef(_, path))
         case None =>
-          refinedEnvs.map(chooseType(_, name, typeEnv))
+          refinedEnvs.map(_(name))
       }
       val t = ts match {
         case List(t1) => t1
@@ -1059,9 +1059,9 @@ final class Occurrence(pipelineContext: PipelineContext) {
       case Unknown :: props =>
         applyProps(props, envs)
       case Pos(x, t) :: props =>
-        applyProps(props, keepBestEnvs(envs.map(updateTypeEnv(_, +, x, t))))
+        applyProps(props, keepBestEnvs(envs.flatMap(updateTypeEnv(_, +, x, t))))
       case Neg(x, t) :: props =>
-        applyProps(props, keepBestEnvs(envs.map(updateTypeEnv(_, -, x, t))))
+        applyProps(props, keepBestEnvs(envs.flatMap(updateTypeEnv(_, -, x, t))))
       case And(ps) :: props =>
         applyProps(ps ++ props, envs)
       case Or(ps) :: props =>
@@ -1069,20 +1069,14 @@ final class Occurrence(pipelineContext: PipelineContext) {
         keepBestEnvs(ps.flatMap((p: Prop) => applyProps(List(p), envs2)))
     }
 
-  private def chooseType(typeEnv: Env, x: String, originalEnv: Env): Type = {
-    // The second isNoneType check is there to reduce unwanted noise when none() is not introduced by refining
-    if (typeEnv.exists { case (s, t) => subtype.isNoneType(t) && !subtype.isNoneType(originalEnv(s)) }) NoneType
-    else typeEnv(x)
-  }
-
-  private def updateTypeEnv(typeEnv: Env, pol: Polarity, obj: Obj, t: Type): Env = {
+  private def updateTypeEnv(typeEnv: Env, pol: Polarity, obj: Obj, t: Type): Option[Env] = {
     val x = objId(obj)
     typeEnv.get(x) match {
       case None =>
-        typeEnv
+        Some(typeEnv)
       case Some(old) =>
         val s = update(old, objPath(obj), pol, t)
-        typeEnv.updated(x, s)
+        if (subtype.isNoneType(s)) None else Some(typeEnv.updated(x, s))
     }
   }
 
