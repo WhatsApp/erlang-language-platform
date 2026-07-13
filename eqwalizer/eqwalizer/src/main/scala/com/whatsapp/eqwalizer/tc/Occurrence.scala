@@ -1041,7 +1041,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
   }
 
   private def envSubtype(env1: Env, env2: Env): Boolean =
-    env1.forall { case (k1, t1) => env2.contains(k1) && subtype.gradualSubType(t1, env2(k1)) }
+    env1.forall { case (k, t1) => env2.get(k).exists(subtype.gradualSubType(t1, _)) }
 
   /** Removes redundant environments from a list
     * by keeping only the less precise ones for subtyping */
