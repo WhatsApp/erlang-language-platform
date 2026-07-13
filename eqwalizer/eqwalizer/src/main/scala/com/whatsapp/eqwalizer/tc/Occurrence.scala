@@ -325,7 +325,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
     def isRedundant(p: Prop): Boolean = {
       p match {
         case Neg(obj, t) =>
-          posTypes.exists { case (obj2, t2) => obj == obj2 && overlap(t, t2).contains(false) }
+          posTypes.exists { case (obj2, t2) => obj == obj2 && overlap(t, t2).isFalse }
         case Or(ps) =>
           ps.exists(isRedundant)
         case _ =>
