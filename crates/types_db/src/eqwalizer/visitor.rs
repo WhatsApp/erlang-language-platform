@@ -358,7 +358,8 @@ pub fn walk_test<'a, T, V: Visitor<'a, T>>(visitor: &mut V, t: &'a Test) -> Resu
     match t {
         Test::TestVar(_) => Ok(()),
         Test::TestAtom(_) => Ok(()),
-        Test::TestNumber(_) => Ok(()),
+        Test::TestInteger(_) => Ok(()),
+        Test::TestFloat(_) => Ok(()),
         Test::TestTuple(t) => t.elems.iter().try_for_each(|t| visitor.visit_test(t)),
         Test::TestString(_) => Ok(()),
         Test::TestNil(_) => Ok(()),

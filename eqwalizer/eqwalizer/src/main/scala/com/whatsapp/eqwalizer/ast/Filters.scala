@@ -80,7 +80,7 @@ object Filters {
       case AtomLit(s) =>
         Some(TestAtom(s)(expr.pos))
       case IntLit(optI) =>
-        Some(TestNumber(optI)(expr.pos))
+        Some(TestInteger(optI)(expr.pos))
       case RemoteCall(RemoteId("erlang", f, arity), args) if isPredicateFun(f, arity) =>
         for {
           argsT <- asTests(args)

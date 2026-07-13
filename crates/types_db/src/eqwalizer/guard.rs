@@ -24,7 +24,8 @@ pub struct Guard {
 pub enum Test {
     TestVar(TestVar),
     TestAtom(TestAtom),
-    TestNumber(TestNumber),
+    TestInteger(TestInteger),
+    TestFloat(TestFloat),
     TestTuple(TestTuple),
     TestString(TestString),
     TestNil(TestNil),
@@ -60,9 +61,14 @@ pub struct TestAtom {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct TestNumber {
+pub struct TestInteger {
     pub pos: eqwalizer::Pos,
     pub lit: Option<i32>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct TestFloat {
+    pub pos: eqwalizer::Pos,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

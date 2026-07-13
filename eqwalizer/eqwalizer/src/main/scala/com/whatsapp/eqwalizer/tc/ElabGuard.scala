@@ -56,7 +56,7 @@ final class ElabGuard(pipelineContext: PipelineContext) {
         case None =>
           RecordType(recName)(module)
       }
-    case ("is_function", TestNumber(Some(arity))) =>
+    case ("is_function", TestInteger(Some(arity))) =>
       FunType(0, List.fill(arity.intValue)(AnyType), AnyType)
     case ("is_function", _) =>
       AnyFunType
@@ -119,7 +119,7 @@ final class ElabGuard(pipelineContext: PipelineContext) {
         subtype.joinEnvs(List(envTrue2, envFalse2))
       case TestAtom(_) =>
         env
-      case TestNumber(_) =>
+      case TestInteger(_) | TestFloat() =>
         env
       case TestTuple(elems) =>
         var envAcc: Env = env
@@ -220,10 +220,10 @@ final class ElabGuard(pipelineContext: PipelineContext) {
 
   private object NumTest {
     def unapply(test: Test): Boolean = test match {
-      case TestNumber(_)                => true
-      case TestUnOp("+", TestNumber(_)) => true
-      case TestUnOp("-", TestNumber(_)) => true
-      case _                            => false
+      case TestInteger(_) | TestFloat()                => true
+      case TestUnOp("+", TestInteger(_) | TestFloat()) => true
+      case TestUnOp("-", TestInteger(_) | TestFloat()) => true
+      case _                                           => false
     }
   }
 
@@ -271,7 +271,7 @@ final class ElabGuard(pipelineContext: PipelineContext) {
           case None =>
             env
         }
-      case TestBinOp("=:=" | "==", TestCall(Id("element", 2), List(TestNumber(Some(i)), TestVar(v))), TestAtom(a))
+      case TestBinOp("=:=" | "==", TestCall(Id("element", 2), List(TestInteger(Some(i)), TestVar(v))), TestAtom(a))
           if upper == trueType =>
         env.get(v) match {
           case Some(ty) =>
@@ -279,7 +279,7 @@ final class ElabGuard(pipelineContext: PipelineContext) {
           case None =>
             env
         }
-      case TestBinOp("=:=" | "==", TestAtom(a), TestCall(Id("element", 2), List(TestNumber(Some(i)), TestVar(v))))
+      case TestBinOp("=:=" | "==", TestAtom(a), TestCall(Id("element", 2), List(TestInteger(Some(i)), TestVar(v))))
           if upper == trueType =>
         env.get(v) match {
           case Some(ty) =>

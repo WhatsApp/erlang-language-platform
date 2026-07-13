@@ -12,7 +12,8 @@ object Guards {
   sealed trait Test { val pos: Pos }
   case class TestVar(v: String)(val pos: Pos) extends Test
   case class TestAtom(s: String)(val pos: Pos) extends Test
-  case class TestNumber(lit: Option[Int])(val pos: Pos) extends Test
+  case class TestInteger(lit: Option[Int])(val pos: Pos) extends Test
+  case class TestFloat()(val pos: Pos) extends Test
   case class TestTuple(elems: List[Test])(val pos: Pos) extends Test
   case class TestString()(val pos: Pos) extends Test
   case class TestNil()(val pos: Pos) extends Test

@@ -139,11 +139,12 @@ use elp_types_db::eqwalizer::guard::TestBinOp;
 use elp_types_db::eqwalizer::guard::TestBinaryLit;
 use elp_types_db::eqwalizer::guard::TestCall;
 use elp_types_db::eqwalizer::guard::TestCons;
+use elp_types_db::eqwalizer::guard::TestFloat;
+use elp_types_db::eqwalizer::guard::TestInteger;
 use elp_types_db::eqwalizer::guard::TestMapCreate;
 use elp_types_db::eqwalizer::guard::TestMapUpdate;
 use elp_types_db::eqwalizer::guard::TestNativeRecordSelect;
 use elp_types_db::eqwalizer::guard::TestNil;
-use elp_types_db::eqwalizer::guard::TestNumber;
 use elp_types_db::eqwalizer::guard::TestRecordCreate;
 use elp_types_db::eqwalizer::guard::TestRecordField;
 use elp_types_db::eqwalizer::guard::TestRecordFieldGen;
@@ -1845,13 +1846,13 @@ impl Converter {
                     }));
                 }
                 ("float", [_]) => {
-                    return Ok(Test::TestNumber(TestNumber { pos, lit: None }));
+                    return Ok(Test::TestFloat(TestFloat { pos }));
                 }
                 ("char" | "integer", [Term::BigInteger(_)]) => {
-                    return Ok(Test::TestNumber(TestNumber { pos, lit: None }));
+                    return Ok(Test::TestInteger(TestInteger { pos, lit: None }));
                 }
                 ("char" | "integer", [Term::FixInteger(v)]) => {
-                    return Ok(Test::TestNumber(TestNumber {
+                    return Ok(Test::TestInteger(TestInteger {
                         pos,
                         lit: Some(v.value),
                     }));

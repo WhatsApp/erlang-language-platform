@@ -731,7 +731,8 @@ pub fn walk_test<T, V: Transformer<T>>(transformer: &mut V, t: Test) -> Result<T
     match t {
         Test::TestVar(v) => Ok(Test::TestVar(v)),
         Test::TestAtom(a) => Ok(Test::TestAtom(a)),
-        Test::TestNumber(n) => Ok(Test::TestNumber(n)),
+        Test::TestInteger(i) => Ok(Test::TestInteger(i)),
+        Test::TestFloat(f) => Ok(Test::TestFloat(f)),
         Test::TestTuple(t) => Ok(Test::TestTuple(TestTuple {
             pos: t.pos,
             elems: t

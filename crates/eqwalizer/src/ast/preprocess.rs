@@ -26,7 +26,7 @@ use elp_types_db::eqwalizer::guard::Test;
 use elp_types_db::eqwalizer::guard::TestAtom;
 use elp_types_db::eqwalizer::guard::TestBinOp;
 use elp_types_db::eqwalizer::guard::TestCall;
-use elp_types_db::eqwalizer::guard::TestNumber;
+use elp_types_db::eqwalizer::guard::TestInteger;
 use elp_types_db::eqwalizer::guard::TestTuple;
 use elp_types_db::eqwalizer::guard::TestUnOp;
 use elp_types_db::eqwalizer::guard::TestVar;
@@ -88,7 +88,7 @@ fn as_test(expr: Expr) -> Option<Test> {
             s: atom.s,
             pos: atom.pos,
         })),
-        Expr::IntLit(lit) => Some(Test::TestNumber(TestNumber {
+        Expr::IntLit(lit) => Some(Test::TestInteger(TestInteger {
             pos: lit.pos,
             lit: lit.value,
         })),

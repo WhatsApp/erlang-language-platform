@@ -400,7 +400,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
         testObj(rec, aMap).map(FieldObj(RecordField(fieldName, recName), _))
       case TestCall(Id("hd", 1), List(arg)) =>
         testObj(arg, aMap).map(FieldObj(ListHead, _))
-      case TestCall(Id("element", 2), List(TestNumber(Some(index)), arg)) =>
+      case TestCall(Id("element", 2), List(TestInteger(Some(index)), arg)) =>
         testObj(arg, aMap).map(FieldObj(TupleField(index, None), _))
       case _ =>
         None
@@ -417,10 +417,10 @@ final class Occurrence(pipelineContext: PipelineContext) {
         .map(_.reverse)
     }
     test match {
-      case TestAtom(s)         => (Some(AtomLitType(s)), Some(AtomLitType(s)))
-      case TestBinaryLit()     => (Some(BinaryType), None)
-      case TestNumber(Some(_)) => (Some(IntegerType), None)
-      case TestNumber(_)       => (Some(nType), None)
+      case TestAtom(s)     => (Some(AtomLitType(s)), Some(AtomLitType(s)))
+      case TestBinaryLit() => (Some(BinaryType), None)
+      case TestInteger(_)  => (Some(IntegerType), None)
+      case TestFloat()     => (Some(FloatType), None)
       case TestTuple(tests) =>
         val (pos, neg) = tests.map(cmpTypes).unzip
         (unzipOpt(pos).map(TupleType(_)), unzipOpt(neg).map(TupleType(_)))
@@ -442,7 +442,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
         testObj(arg, aMap)
           .map(obj => (Pos(obj, tp), Neg(obj, tp)))
           .getOrElse(Unknown, Unknown)
-      case TestCall(Id("is_function", 2), List(arg, TestNumber(Some(arity)))) =>
+      case TestCall(Id("is_function", 2), List(arg, TestInteger(Some(arity)))) =>
         val tPos = FunType(0, List.fill(arity.intValue)(AnyType), AnyType)
         val tNeg = FunType(0, List.fill(arity.intValue)(NoneType), AnyType)
         testObj(arg, aMap)
