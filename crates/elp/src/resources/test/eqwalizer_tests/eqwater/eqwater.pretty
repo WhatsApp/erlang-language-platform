@@ -455,4 +455,17 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   fun((term(), term()) -> term())
 Context expected type: 'ok'
 
-38 ERRORS
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+     ┌─ eqwater/src/eqwater.erl:1316:1
+     │
+1316 │ dynamic_dead_code_1(true) -> ok;
+     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+     ┌─ eqwater/src/eqwater.erl:1325:1
+     │  
+1325 │ ╭ dynamic_dead_code_2(test_decode_group_invite_errors, _Config) ->
+1326 │ │     bar;
+     │ ╰───────^ Clause is not covered by spec
+
+40 ERRORS

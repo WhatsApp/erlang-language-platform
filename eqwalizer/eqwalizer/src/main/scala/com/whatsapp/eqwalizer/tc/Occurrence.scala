@@ -308,7 +308,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
           false
       }
     }
-    props.filter(!isRedundant(_)) ++ posProps
+    posProps ++ props.filter(!isRedundant(_))
   }
 
   private def aliases(x: String, path: Path, pat: Pat, env: Env): List[(Name, Obj)] =
