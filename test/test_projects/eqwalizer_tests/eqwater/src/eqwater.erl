@@ -1308,3 +1308,21 @@ negate_fun(F) -> F.
 -spec negate_fun_neg(F :: fun((number(), number()) -> term()) | ok) -> ok.
 negate_fun_neg(F) when is_function(F, 2) -> F;
 negate_fun_neg(F) -> F.
+
+-spec dynamic_dead_code_1(dynamic()) -> ok.
+dynamic_dead_code_1(A) when is_atom(A) -> ok;
+dynamic_dead_code_1(B) when is_binary(B) -> ok;
+% this branch is already covered!
+dynamic_dead_code_1(true) -> ok;
+dynamic_dead_code_1({_}) -> ok.
+
+dynamic_dead_code_2(TestCase, _Config) when
+    TestCase =:= test_decode_group_invite;
+    TestCase =:= test_decode_group_invite_errors
+->
+    foo;
+% this branch is already covered!
+dynamic_dead_code_2(test_decode_group_invite_errors, _Config) ->
+    bar;
+dynamic_dead_code_2(_TestCase, _Config) ->
+    ok.
