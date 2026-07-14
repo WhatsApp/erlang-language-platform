@@ -296,7 +296,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │              ^^^
      │              │
      │              [A].
-Expression has type:   [[atom(), ...]] | [atom()] | [[]]
+Expression has type:   [[atom(), ...]] | [[]] | [atom()]
 Context expected type: [atom()]
      │              
 

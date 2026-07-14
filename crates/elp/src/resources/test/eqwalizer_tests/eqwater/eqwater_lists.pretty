@@ -29,7 +29,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                       ^
    │                       │
    │                       A.
-Expression has type:   atom() | []
+Expression has type:   [] | atom()
 Context expected type: atom()
    │                       
 

@@ -21,41 +21,29 @@ object Occurrence {
   private val nType = UnionType(Set(IntegerType, FloatType))
 
   /** Prefer these functions to And.apply and Or.apply */
-  private def and(props: List[Prop]): Prop =
+  private def and(props0: List[Prop]): Prop = {
+    val props = props0.flatMap {
+      case And(l) => l
+      case True   => List()
+      case p      => List(p)
+    }.distinct
     if (props.isEmpty) True
     else if (props.contains(False)) False
-    else {
-      val flattenedProps = props.flatMap {
-        case And(l) => l
-        case True   => List()
-        case p      => List(p)
-      }
-      val (propsUnknown, propsKnown) = flattenedProps.partition(_ == Unknown)
-      val simpleProps =
-        if (propsUnknown.isEmpty) propsKnown
-        else Unknown :: propsKnown
-      if (simpleProps.isEmpty) True
-      else if (simpleProps.size == 1) simpleProps.head
-      else And(simpleProps)
-    }
+    else if (props.size == 1) props.head
+    else And(props)
+  }
 
-  private def or(props: List[Prop]): Prop =
+  private def or(props0: List[Prop]): Prop = {
+    val props = props0.flatMap {
+      case Or(l) => l
+      case False => List()
+      case p     => List(p)
+    }.distinct
     if (props.isEmpty) False
     else if (props.contains(True)) True
-    else {
-      val flattenedProps = props.flatMap {
-        case Or(l) => l
-        case False => List()
-        case p     => List(p)
-      }
-      val (propsUnknown, propsKnown) = flattenedProps.partition(_ == Unknown)
-      val simpleProps =
-        if (propsUnknown.isEmpty) propsKnown
-        else Unknown :: propsKnown
-      if (simpleProps.isEmpty) False
-      else if (simpleProps.size == 1) simpleProps.head
-      else Or(simpleProps)
-    }
+    else if (props.size == 1) props.head
+    else Or(props)
+  }
 
   private type PropEnv = List[Prop]
   private type AMap = Map[String, Obj]
@@ -590,12 +578,12 @@ final class Occurrence(pipelineContext: PipelineContext) {
         Some(pos, neg)
       case PatCons(hpat, tpat) =>
         val obj = mkObj(x, path)
-        val posThis = And(List(Pos(obj, ListType(AnyType)), Neg(obj, NilType)))
-        val negThis = Or(List(Neg(obj, ListType(AnyType)), Pos(obj, NilType)))
+        val posThis = and(List(Pos(obj, ListType(AnyType)), Neg(obj, NilType)))
+        val negThis = or(List(Neg(obj, ListType(AnyType)), Pos(obj, NilType)))
         val (posThat, negThat) =
           List(patProps(x, path :+ ListHead, hpat, env), patProps(x, path :+ ListTail, tpat, env)).flatten.unzip
-        val pos = And(posThis :: posThat)
-        val neg = Or(List(negThis, And(List(posThis, Or(negThat)))))
+        val pos = and(posThis :: posThat)
+        val neg = or(List(negThis, and(List(posThis, or(negThat)))))
         Some(pos, neg)
       case PatBinary(_) =>
         val obj = mkObj(x, path)
