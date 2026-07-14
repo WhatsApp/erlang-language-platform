@@ -92,7 +92,6 @@ use lsp_types::request;
 use lsp_types::request::Request as _;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
-use parking_lot::RwLockWriteGuard;
 use rayon::prelude::*;
 use serde::Serialize;
 use telemetry_manager::TelemetryManager;
@@ -645,31 +644,25 @@ impl Server {
         let request_timer = timeit!("handle req {}#{}", req.method, req.id);
         self.register_request(&req, request_timer);
 
-        match self.status {
-            Status::Initialising | Status::Loading(_)
-                if req.method != request::Shutdown::METHOD && !req.method.starts_with("elp/")
-                // We can process document symbols while loading.
-                && !(self.status != Status::Initialising
-                    && req.method == request::DocumentSymbolRequest::METHOD) =>
-            {
-                let id = req.id.clone();
-                self.send_response(Response::new_err(
-                    id,
-                    ErrorCode::ContentModified as i32,
-                    "elp is still loading".to_string(),
-                ));
-                return Ok(());
-            }
-            Status::ShuttingDown => {
-                self.send_response(Response::new_err(
-                    req.id.clone(),
-                    ErrorCode::InvalidRequest as i32,
-                    "shutdown already requested".to_string(),
-                ));
+        if self.status == Status::ShuttingDown {
+            self.send_response(Response::new_err(
+                req.id.clone(),
+                ErrorCode::InvalidRequest as i32,
+                "shutdown already requested".to_string(),
+            ));
+            return Ok(());
+        }
 
-                return Ok(());
-            }
-            _ => {}
+        if self.status != Status::Running
+            && req.method != request::Shutdown::METHOD
+            && !req.method.starts_with("elp/")
+        {
+            self.send_response(Response::new_err(
+                req.id.clone(),
+                ErrorCode::ContentModified as i32,
+                "elp is still loading".to_string(),
+            ));
+            return Ok(());
         }
 
         RequestDispatcher::new(self, req)
@@ -1008,15 +1001,10 @@ impl Server {
                     };
                     self.show_message(params);
                 }
-                self.transition(Status::Running);
-                self.telemetry_manager
-                    .operational(self.config.buck_quick_start());
+                // Don't transition to Running yet – wait until VFS changes are
+                // applied to salsa DB in process_changes_to_vfs_store, otherwise
+                // client requests get empty or cancelled results.
                 self.initial_load_status = InitialLoading::DoneButVfsChanges;
-                self.schedule_compile_deps();
-                self.schedule_cache();
-                // Not all clients send config in the `initialize` message, request it
-                self.refresh_config();
-                self.refresh_lens();
                 if !self.unresolved_app_id_paths.is_empty() {
                     log::warn!(
                         "Loading finished with {} unresolved app ID paths",
@@ -1055,14 +1043,17 @@ impl Server {
         // already deleted it, and we will get a panic trying to call
         // `vfs.file_contents()` for it.
         // The protection takes two forms
-        // 1. Make sure we lock vfs for the duration of processing the
-        //    changes, so we are not victim of a delete we have not yet
-        //    been notified of.
+        // 1. `take_changes()` hands back the file content as an owned
+        //    snapshot inside each change, so we process from that
+        //    rather than re-reading the (possibly already-deleted)
+        //    live vfs.
         // 2. Make sure that the file actually has content when we try
-        //    to process it.
+        //    to process it (the `vfs.exists()` checks below).
 
-        let mut guard = self.vfs.write();
-        let mut changed_files = guard.take_changes();
+        let mut changed_files = {
+            let mut guard = self.vfs.write();
+            guard.take_changes()
+        };
         let docs = mem::take(&mut self.newly_opened_documents);
         for change in docs {
             match changed_files.entry(change.file_id) {
@@ -1073,123 +1064,177 @@ impl Server {
             }
         }
 
-        if changed_files.is_empty() && !self.reset_source_roots {
+        let no_file_work = changed_files.is_empty() && !self.reset_source_roots;
+        if no_file_work && self.initial_load_status != InitialLoading::DoneButVfsChanges {
             return (false, 0);
         }
 
-        // downgrade to read lock to allow more readers while we are processing the changes
-        let guard = RwLockWriteGuard::downgrade_to_upgradable(guard);
-        let vfs: &Vfs = &guard;
-
-        let raw_database = self.analysis_host.raw_database_mut();
-
-        // Drain outstanding snapshots up-front, BEFORE the file-content writes
-        // below. This is the salsa cancellation barrier, and it does not hold
-        // any salsa shard locks.
-        //
-        // This must be done before mutating salsa files, as that does hold a shard
-        // lock while triggering cancellation, which can deadlock any salsa reads of
-        // the files in that shard.
-        //
-        // Time the drain so main-loop stalls (blocking until every outstanding
-        // read snapshot — e.g. in-flight eqWAlizer/erlang_service diagnostics —
-        // is dropped) remain observable in the field.
-        let num_changed_files = changed_files.len();
-        let write_started = Instant::now();
-        {
-            let _phase = watchdog::phase("vfs_salsa_cancellation");
-            raw_database.request_cancellation();
-        }
-        let write_elapsed = write_started.elapsed();
-        if write_elapsed >= DB_WRITE_STALL_THRESHOLD {
-            report_db_write_stall(write_elapsed, num_changed_files);
-        }
-
-        // Apply text changes (shared with watchman and CLI). Snapshots have been
-        // drained above, so these writes no longer block here. Keep the
-        // `line_ending_map` write *after* the salsa writes: were the drain above
-        // ever removed, holding that write across the barrier would deadlock a
-        // handler parked on `line_ending_map.read()` (via
-        // `to_proto::text_document_edit`).
-        let line_ending_updates = {
-            let _phase = watchdog::phase("vfs_salsa_write");
-            crate::reload::apply_vfs_text_changes(raw_database, vfs, changed_files.values())
-        };
-        self.line_ending_map.write().extend(line_ending_updates);
-
-        // Server-specific per-file processing
+        // We still fall through here with no file changes when waiting to
+        // transition from DoneButVfsChanges to Done (finished below). T279355670
+        let changed;
         let mut highest_file_id: u32 = 0;
-        for (_, file) in &changed_files {
-            highest_file_id = highest_file_id.max(file.file_id.index());
-            let file_exists = vfs.exists(file.file_id);
+        if no_file_work {
+            changed = false;
+        } else {
+            // Acquire a shared read lock while processing changes: the block
+            // below only reads the vfs (all mutation goes to salsa via
+            // `set_file_text`).
+            //
+            // Releasing the write lock above (after `take_changes()`) and
+            // reacquiring a read lock here is safe against a concurrent writer
+            // mutating the vfs in between: every vfs write happens on this
+            // server main loop, only while processing an event, in one of the
+            // `&mut self` methods `on_notification` (DidOpen/DidChange),
+            // `on_loader_loaded`, or here in `process_changes_to_vfs_store`.
+            // Background work only ever holds read-only `Snapshot` clones of
+            // the vfs Arc, never a write lock. Since we are currently executing
+            // one of those main-loop methods, no other writer can run, so the
+            // live vfs observed below matches the snapshot from `take_changes()`.
+            let guard = self.vfs.read();
+            let vfs: &Vfs = &guard;
 
-            if file.change != vfs::Change::Delete && file_exists {
-                if self.initial_load_status == InitialLoading::Done
-                    && let vfs::Change::Create(_, _) = &file.change
-                    && let Some(path) = vfs.file_path(file.file_id).as_path()
-                    && (path.extension() == Some("hrl") || path.extension() == Some("erl"))
-                {
-                    self.reload_manager.lock().add(path.to_path_buf());
-                }
+            let raw_database = self.analysis_host.raw_database_mut();
 
-                if let Some(path) = vfs.file_path(file.file_id).as_path()
-                    && let Some(app_data_id) = self.unresolved_app_id_paths.get(&path.to_path_buf())
-                {
-                    set_app_data_id_by_file(raw_database, file.file_id, *app_data_id);
-                    // This is not really necessary, but we do it
-                    // to be able to check that we resolve them
-                    // all eventually
-                    Arc::make_mut(&mut self.unresolved_app_id_paths).remove(&path.to_path_buf());
-                }
-
-                // causes us to remove stale squiggles from the UI.
-                // We remove all that are only updated on save
-                Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file.file_id, vec![]);
-                Arc::make_mut(&mut self.eqwalizer_types).insert(file.file_id, Arc::new(vec![]));
-                Arc::make_mut(&mut self.diagnostics)
-                    .set_erlang_service(file.file_id, LabeledDiagnostics::default());
+            // Drain outstanding snapshots up-front, BEFORE the file-content writes
+            // below. This is the salsa cancellation barrier, and it does not hold
+            // any salsa shard locks.
+            //
+            // This must be done before mutating salsa files, as that does hold a shard
+            // lock while triggering cancellation, which can deadlock any salsa reads of
+            // the files in that shard.
+            //
+            // Time the drain so main-loop stalls (blocking until every outstanding
+            // read snapshot — e.g. in-flight eqWAlizer/erlang_service diagnostics —
+            // is dropped) remain observable in the field.
+            let num_changed_files = changed_files.len();
+            let write_started = Instant::now();
+            {
+                let _phase = watchdog::phase("vfs_salsa_cancellation");
+                raw_database.request_cancellation();
             }
+            let write_elapsed = write_started.elapsed();
+            if write_elapsed >= DB_WRITE_STALL_THRESHOLD {
+                report_db_write_stall(write_elapsed, num_changed_files);
+            }
+
+            // Apply text changes (shared with watchman and CLI). Snapshots have been
+            // drained above, so these writes no longer block here. Keep the
+            // `line_ending_map` write *after* the salsa writes: were the drain above
+            // ever removed, holding that write across the barrier would deadlock a
+            // handler parked on `line_ending_map.read()` (via
+            // `to_proto::text_document_edit`).
+            let line_ending_updates = {
+                let _phase = watchdog::phase("vfs_salsa_write");
+                crate::reload::apply_vfs_text_changes(raw_database, vfs, changed_files.values())
+            };
+            self.line_ending_map.write().extend(line_ending_updates);
+
+            // Server-specific per-file processing
+            for (_, file) in &changed_files {
+                highest_file_id = highest_file_id.max(file.file_id.index());
+                let file_exists = vfs.exists(file.file_id);
+
+                if file.change != vfs::Change::Delete && file_exists {
+                    if self.initial_load_status == InitialLoading::Done
+                        && let vfs::Change::Create(_, _) = &file.change
+                        && let Some(path) = vfs.file_path(file.file_id).as_path()
+                        && (path.extension() == Some("hrl") || path.extension() == Some("erl"))
+                    {
+                        self.reload_manager.lock().add(path.to_path_buf());
+                    }
+
+                    if let Some(path) = vfs.file_path(file.file_id).as_path()
+                        && let Some(app_data_id) =
+                            self.unresolved_app_id_paths.get(&path.to_path_buf())
+                    {
+                        set_app_data_id_by_file(raw_database, file.file_id, *app_data_id);
+                        // This is not really necessary, but we do it
+                        // to be able to check that we resolve them
+                        // all eventually
+                        Arc::make_mut(&mut self.unresolved_app_id_paths)
+                            .remove(&path.to_path_buf());
+                    }
+
+                    // causes us to remove stale squiggles from the UI.
+                    // We remove all that are only updated on save
+                    Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file.file_id, vec![]);
+                    Arc::make_mut(&mut self.eqwalizer_types).insert(file.file_id, Arc::new(vec![]));
+                    Arc::make_mut(&mut self.diagnostics)
+                        .set_erlang_service(file.file_id, LabeledDiagnostics::default());
+                }
+            }
+
+            if self.update_app_data_ids {
+                // We process the changes for files opened before project
+                // discovery is complete, so cannot update their app_data_id (for
+                // Buck projects). When the information *is* available, update
+                // any missing ones.
+                let mut app_data_index: Arc<AppDataIndex> = raw_database.app_index();
+                let mut paths_to_remove = vec![];
+                self.unresolved_app_id_paths
+                    .iter()
+                    .for_each(|(path, app_data_id)| {
+                        let vfs_path = VfsPath::from(path.clone());
+                        if let Some((file_id, _)) = vfs.file_id(&vfs_path) {
+                            paths_to_remove.push(path.clone());
+                            Arc::make_mut(&mut app_data_index)
+                                .map
+                                .insert(file_id, *app_data_id);
+                        }
+                    });
+                raw_database.set_app_index(app_data_index);
+                for remove in paths_to_remove {
+                    Arc::make_mut(&mut self.unresolved_app_id_paths).remove(&remove);
+                }
+                self.update_app_data_ids = false;
+            }
+
+            if self.reset_source_roots
+                || changed_files
+                    .into_values()
+                    .any(|file| file.is_created_or_deleted())
+            {
+                crate::reload::apply_source_roots(raw_database, vfs, &self.file_set_config);
+                self.reset_source_roots = false;
+            }
+
+            changed = true;
         }
+
+        // The loaded VFS changes (if any) are now applied to the salsa DB.
+        // Finish the initial-load handshake; on first completion this promotes
+        // the server to Running, deferred to here so requests are only served
+        // once the DB is consistent, otherwise any requests will be cancelled
+        // by the vfs updates above.
         if self.initial_load_status == InitialLoading::DoneButVfsChanges {
             self.initial_load_status = InitialLoading::Done;
-        }
-
-        if self.update_app_data_ids {
-            // We process the changes for files opened before project
-            // discovery is complete, so cannot update their app_data_id (for
-            // Buck projects). When the information *is* available, update
-            // any missing ones.
-            let vfs = self.vfs.read();
-            let mut app_data_index: Arc<AppDataIndex> = raw_database.app_index();
-            let mut paths_to_remove = vec![];
-            self.unresolved_app_id_paths
-                .iter()
-                .for_each(|(path, app_data_id)| {
-                    let vfs_path = VfsPath::from(path.clone());
-                    if let Some((file_id, _)) = vfs.file_id(&vfs_path) {
-                        paths_to_remove.push(path.clone());
-                        Arc::make_mut(&mut app_data_index)
-                            .map
-                            .insert(file_id, *app_data_id);
-                    }
-                });
-            raw_database.set_app_index(app_data_index);
-            for remove in paths_to_remove {
-                Arc::make_mut(&mut self.unresolved_app_id_paths).remove(&remove);
+            if self.status != Status::Running {
+                self.transition(Status::Running);
+                // Advertise dynamic capabilities (e.g. document symbols) only
+                // now that we are Running: requests against them are rejected
+                // until then, so registering earlier makes the client ask while
+                // still loading and never retry.
+                if !self.dynamic_registrations_done {
+                    self.register_dynamic_now_operational();
+                    self.dynamic_registrations_done = true;
+                }
+                self.telemetry_manager
+                    .operational(self.config.buck_quick_start());
+                // Request an initial diagnostics pass now that we are Running.
+                // The caller consumes these flags on this same tick, so
+                // diagnostics fire immediately instead of waiting for the next
+                // file change/save or for `CompileDeps` to complete.
+                self.native_diagnostics_requested = true;
+                self.eqwalizer_and_erlang_service_diagnostics_requested = true;
+                self.schedule_compile_deps();
+                self.schedule_cache();
+                // Not all clients send config in the `initialize` message, request it
+                self.refresh_config();
+                self.refresh_lens();
             }
-            self.update_app_data_ids = false;
         }
 
-        if self.reset_source_roots
-            || changed_files
-                .into_values()
-                .any(|file| file.is_created_or_deleted())
-        {
-            crate::reload::apply_source_roots(raw_database, vfs, &self.file_set_config);
-            self.reset_source_roots = false;
-        }
-
-        (true, highest_file_id)
+        (changed, highest_file_id)
     }
 
     fn opened_documents(&self) -> Vec<FileId> {
@@ -1910,10 +1955,6 @@ impl Server {
             self.show_message(params);
         }
 
-        if !self.dynamic_registrations_done {
-            self.register_dynamic_now_operational();
-            self.dynamic_registrations_done = true;
-        }
         Ok(true)
     }
 
