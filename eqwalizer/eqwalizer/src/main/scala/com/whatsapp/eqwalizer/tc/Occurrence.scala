@@ -503,9 +503,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
           patProps(x, path :+ TupleField(i, Some(arity)), elem, env)
         }.unzip
         val pos = and(posThis :: posThat)
-        val neg =
-          if (negThat.isEmpty) negThis
-          else or(List(negThis, and(List(posThis, or(negThat)))))
+        val neg = or(List(negThis, and(List(posThis, or(negThat)))))
         Some(pos, neg)
       case PatRecord(recName, fields, gen) =>
         val obj = mkObj(x, path)
@@ -529,9 +527,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
             }
         }
         val pos = and(posThis :: posThat)
-        val neg =
-          if (negThat.isEmpty) negThis
-          else or(List(negThis, and(List(posThis, or(negThat)))))
+        val neg = or(List(negThis, and(List(posThis, or(negThat)))))
         Some(pos, neg)
       case PatMatch(PatVar(alias), pat1) =>
         env.get(alias) match {
@@ -566,9 +562,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
             (Pos(objField, AnyType), Neg(objField, AnyType))
           }.unzip
           val pos = and(posThis :: posFields ::: posThat)
-          val neg =
-            if (negThat.isEmpty && negFields.isEmpty) negThis
-            else or(List(negThis, and(List(posThis, or(negThat ::: negFields)))))
+          val neg = or(List(negThis, and(List(posThis, or(negThat ::: negFields)))))
           Some(pos, neg)
         }
       case PatNil() =>
