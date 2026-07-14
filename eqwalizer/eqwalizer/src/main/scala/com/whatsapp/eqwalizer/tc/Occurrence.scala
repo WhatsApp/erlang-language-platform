@@ -258,17 +258,17 @@ final class Occurrence(pipelineContext: PipelineContext) {
     for (clause <- clauses) {
       if (linearVars(clause)) {
         val pats = clause.pats
-        val allPos = ListBuffer.empty[Prop]
-        val allNeg = ListBuffer.empty[Prop]
+        val patsPos = ListBuffer.empty[Prop]
+        val patsNeg = ListBuffer.empty[Prop]
         var aMap: AMap = Map.empty
         for ((x, pat) <- vars.zip(pats)) {
           val (patPos, patNeg) = patProps(x, Nil, pat, env).unzip
-          patPos.foreach(allPos.addOne)
-          patNeg.foreach(allNeg.addOne)
+          patPos.foreach(patsPos.addOne)
+          patNeg.foreach(patsNeg.addOne)
           aMap = aMap ++ aliases(x, Nil, pat, env).toMap
         }
         val (testPos, testNeg) = guardsProps(clause.guards, aMap)
-        val localClauseProps = (allPos ++ testPos).toList
+        val localClauseProps = (patsPos ++ testPos).toList
         val clauseProps =
           if (accumulateNegProps) combine(localClauseProps, propsAcc)
           else localClauseProps
@@ -276,7 +276,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
         clauseEnvs.addOne(clauseEnv)
         if (accumulateNegProps) {
           propsAcc = {
-            val allNeg1 = allNeg.toList ++ testNeg
+            val allNeg1 = patsNeg.toList ++ testNeg
             allNeg1 match {
               case Nil            => propsAcc
               case propNeg :: Nil => propsAcc :+ propNeg
