@@ -217,17 +217,17 @@ use_handle_res_2() ->
 overlap_1([T]) -> T;
 overlap_1(T) -> T.
 
--spec overlap_2(T | [T]) -> T.
-overlap_2(T) -> T;
-overlap_2([T]) -> T.
+-spec overlap_2_neg(T | [T]) -> T.
+overlap_2_neg(T) -> T;
+overlap_2_neg([T]) -> T.
 
 -spec use_overlap_1() -> ok.
 use_overlap_1() ->
     overlap_1([ok]).
 
--spec use_overlap_2() -> [ok].
-use_overlap_2() ->
-    overlap_2([ok]).
+-spec use_overlap_2_neg() -> [ok].
+use_overlap_2_neg() ->
+    overlap_2_neg([ok]).
 
 -spec trick(A, A | {B}) -> B.
 trick(_, {B}) -> B.

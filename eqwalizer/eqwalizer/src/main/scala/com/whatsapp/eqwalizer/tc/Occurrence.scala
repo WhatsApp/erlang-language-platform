@@ -184,10 +184,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
         val clauseEnv = batchSelect(env, clauseProps, aMap)
         clauseEnvs.addOne(clauseEnv)
         if (accumulateNegProps) {
-          propsAcc = testNeg match {
-            case None          => propsAcc
-            case Some(propNeg) => propsAcc :+ propNeg
-          }
+          propsAcc = propsAcc :+ or(testNeg.toList)
         }
       } else {
         clauseEnvs.addOne(env)
@@ -234,11 +231,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
         val clauseEnv = batchSelect(env1, clauseProps, aMap ++ eMap)
         clauseEnvs.addOne(clauseEnv)
         if (accumulateNegProps) {
-          propsAcc = patNeg.toList ++ testNeg match {
-            case Nil            => propsAcc
-            case propNeg :: Nil => propsAcc :+ propNeg
-            case propsNeg       => propsAcc :+ or(propsNeg)
-          }
+          val clauseNeg = patNeg.toList ++ testNeg
+          propsAcc = propsAcc :+ or(clauseNeg)
         }
       } else {
         clauseEnvs.addOne(env)
@@ -275,14 +269,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
         val clauseEnv = batchSelect(env1, clauseProps, aMap)
         clauseEnvs.addOne(clauseEnv)
         if (accumulateNegProps) {
-          propsAcc = {
-            val allNeg1 = patsNeg.toList ++ testNeg
-            allNeg1 match {
-              case Nil            => propsAcc
-              case propNeg :: Nil => propsAcc :+ propNeg
-              case propsNeg       => propsAcc :+ or(propsNeg)
-            }
-          }
+          val clauseNeg = (patsNeg ++ testNeg).toList
+          propsAcc = propsAcc :+ or(clauseNeg)
         }
       } else {
         clauseEnvs.addOne(env)
