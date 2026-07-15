@@ -586,6 +586,7 @@ impl Server {
         }
 
         if let Some(diagnostic_changes) = Arc::make_mut(&mut self.diagnostics).take_changes() {
+            let _phase = watchdog::phase("publish_diagnostics");
             log::info!("changed diagnostics: {diagnostic_changes:?}");
 
             let snapshot = self.snapshot();
@@ -1395,14 +1396,17 @@ impl Server {
             }
         }
 
-        let raw_db = self.analysis_host.raw_database_mut();
-        raw_db.clear_erlang_services();
-        raw_db.set_ifdef_enabled(self.config.ifdef());
-
         let project_apps = ProjectApps::new(&projects, IncludeOtp::Yes);
         spinner.report("Gathering file paths".to_string());
         let folders = ProjectFolders::new(&project_apps);
-        let apply_data = project_apps.app_structure().apply(raw_db, &|_path| None);
+
+        let raw_db = self.analysis_host.raw_database_mut();
+        let apply_data = {
+            let _phase = watchdog::phase("switch_workspaces:salsa_apply");
+            raw_db.clear_erlang_services();
+            raw_db.set_ifdef_enabled(self.config.ifdef());
+            project_apps.app_structure().apply(raw_db, &|_path| None)
+        };
         // We will set the FileId -> AppDataIndex structure when the file
         // loads
         self.unresolved_app_id_paths = Arc::new(apply_data.unresolved_app_id_paths);
@@ -1457,7 +1461,10 @@ impl Server {
             version: 0,
         };
         spinner.report("Starting file loader".to_string());
-        self.vfs_loader.handle.set_config(vfs_loader_config);
+        {
+            let _phase = watchdog::phase("switch_workspaces:vfs_loader_config");
+            self.vfs_loader.handle.set_config(vfs_loader_config);
+        }
 
         self.projects = Arc::new(projects);
         self.project_loader.lock().load_completed();
