@@ -1401,8 +1401,17 @@ impl Server {
         let folders = ProjectFolders::new(&project_apps);
 
         let raw_db = self.analysis_host.raw_database_mut();
+        // Drain outstanding read snapshots up-front, BEFORE the salsa input writes
+        // below. The first `set_*` inside `apply` is itself a cancellation barrier
+        // (it blocks until every outstanding snapshot drops); doing the drain here
+        // explicitly keeps it attributed to its own phase and bounded — the same
+        // idiom as `process_changes_to_vfs_store`.
+        {
+            let _phase = watchdog::phase("switch_workspaces:salsa_cancellation");
+            raw_db.request_cancellation();
+        }
         let apply_data = {
-            let _phase = watchdog::phase("switch_workspaces:salsa_apply");
+            let _phase = watchdog::phase("switch_workspaces:salsa_write");
             raw_db.clear_erlang_services();
             raw_db.set_ifdef_enabled(self.config.ifdef());
             project_apps.app_structure().apply(raw_db, &|_path| None)
