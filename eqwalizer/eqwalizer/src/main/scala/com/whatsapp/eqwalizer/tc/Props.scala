@@ -9,13 +9,14 @@ package com.whatsapp.eqwalizer.tc
 import com.whatsapp.eqwalizer.ast.Types.{Key, Type}
 
 sealed trait Prop
-case object Unknown extends Prop
-case object True extends Prop
-case object False extends Prop
-case class Pos(obj: Obj, t: Type) extends Prop
-case class Neg(obj: Obj, t: Type) extends Prop
-case class And(props: List[Prop]) extends Prop
-case class Or(props: List[Prop]) extends Prop
+sealed trait SProp extends Prop
+case object Unknown extends SProp
+case object True extends SProp
+case object False extends SProp
+case class Pos(obj: Obj, t: Type) extends SProp
+case class Neg(obj: Obj, t: Type) extends SProp
+case class And(props: List[SProp | Or]) extends Prop
+case class Or(props: List[SProp | And]) extends Prop
 
 sealed trait Obj
 case class VarObj(v: String) extends Obj

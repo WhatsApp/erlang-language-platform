@@ -20,25 +20,29 @@ import scala.util.boundary
 object Occurrence {
   private val nType = UnionType(Set(IntegerType, FloatType))
 
+  private def flattenAnd(p: Prop): List[SProp | Or] = p match {
+    case And(l)          => l.flatMap(flattenAnd)
+    case True            => List()
+    case p: (SProp | Or) => List(p)
+  }
+
   /** Prefer these functions to And.apply and Or.apply */
   private def and(props0: List[Prop]): Prop = {
-    val props = props0.flatMap {
-      case And(l) => l
-      case True   => List()
-      case p      => List(p)
-    }.distinct
+    val props = props0.flatMap(flattenAnd).distinct
     if (props.isEmpty) True
     else if (props.contains(False)) False
     else if (props.size == 1) props.head
     else And(props)
   }
 
+  private def flattenOr(p: Prop): List[SProp | And] = p match {
+    case Or(l)            => l.flatMap(flattenOr)
+    case False            => List()
+    case p: (SProp | And) => List(p)
+  }
+
   private def or(props0: List[Prop]): Prop = {
-    val props = props0.flatMap {
-      case Or(l) => l
-      case False => List()
-      case p     => List(p)
-    }.distinct
+    val props = props0.flatMap(flattenOr).distinct
     if (props.isEmpty) False
     else if (props.contains(True)) True
     else if (props.size == 1) props.head
