@@ -6,18 +6,21 @@
 
 package com.whatsapp.eqwalizer.tc
 
-import com.whatsapp.eqwalizer.ast.Guards._
-import com.whatsapp.eqwalizer.ast.Exprs._
+import com.whatsapp.eqwalizer.ast.Guards.*
+import com.whatsapp.eqwalizer.ast.Exprs.*
 import com.whatsapp.eqwalizer.ast.{Id, RemoteId, Types}
-import com.whatsapp.eqwalizer.ast.Pats._
-import com.whatsapp.eqwalizer.ast.Types._
+import com.whatsapp.eqwalizer.ast.Pats.*
+import com.whatsapp.eqwalizer.ast.Types.*
 import com.whatsapp.eqwalizer.ast.stub.Db
+import com.whatsapp.eqwalizer.tc
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 import scala.util.boundary
 
 object Occurrence {
+  // Atomic Proposition
+  type AProp = Pos | Neg
   private val nType = UnionType(Set(IntegerType, FloatType))
 
   private def flattenAnd(p: Prop): List[SProp | Or] = p match {
@@ -288,30 +291,35 @@ final class Occurrence(pipelineContext: PipelineContext) {
     batchSelect(env, List(relevantProp), Map.empty)
   }
 
-  /** Combines the propositions from `posProps` and `props` into a single list,
-    * taking the positive statements from `posProps` to filter out redundant
-    * negative statements from `props`.
-    */
-  private def combine(posProps: List[Prop], props: List[Prop]): List[Prop] = {
-    def collectPos(p: Prop): List[(Obj, Type)] = {
-      p match {
-        case Pos(obj, t) => List((obj, t))
-        case And(ps)     => ps.flatMap(collectPos)
-        case _           => List()
-      }
+  private def collectAtomic(p: Prop): List[AProp] =
+    p match {
+      case aProp: AProp => List(aProp)
+      case And(ps)      => ps.flatMap(collectAtomic)
+      case _            => List()
     }
-    val posTypes: List[(Obj, Type)] = posProps.flatMap(collectPos)
-    def isRedundant(p: Prop): Boolean = {
+
+  private def implies(p: AProp, q: AProp): Boolean = (p, q) match {
+    case (Pos(o1, t1), Pos(o2, t2)) if o1 == o2 => subtype.gradualSubType(t1, t2)
+    case (Neg(o1, t1), Neg(o2, t2)) if o1 == o2 => subtype.gradualSubType(t2, t1)
+    case (Pos(o1, t1), Neg(o2, t2)) if o1 == o2 => overlap(t1, t2).isFalse
+    case _                                      => false
+  }
+
+  // Combines the propositions from `props` and `acc` into a single list,
+  // the propositions in `acc` are simplified wrt atomic propositions in `props`.
+  private def combine(props: List[Prop], acc: List[Prop]): List[Prop] = {
+    val atomicProps: List[AProp] = props.flatMap(collectAtomic)
+    def isImplied(p: AProp): Boolean =
+      atomicProps.exists(implies(_, p))
+    def reduceImplied(p: Prop): Prop =
       p match {
-        case Neg(obj, t) =>
-          posTypes.exists { case (obj2, t2) => obj == obj2 && overlap(t, t2).isFalse }
-        case Or(ps) =>
-          ps.exists(isRedundant)
-        case _ =>
-          false
+        case Or(ps)                   => or(ps.map(reduceImplied))
+        case And(ps)                  => and(ps.map(reduceImplied))
+        case a: AProp if isImplied(a) => True
+        case p                        => p
       }
-    }
-    posProps ++ props.filter(!isRedundant(_))
+    val acc1 = acc.map(reduceImplied)
+    props ++ acc1
   }
 
   private def aliases(x: String, path: Path, pat: Pat, env: Env): List[(Name, Obj)] =
