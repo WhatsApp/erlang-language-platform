@@ -49,7 +49,6 @@ object Occurrence {
     else Or(props)
   }
 
-  private type PropEnv = List[Prop]
   private type AMap = Map[String, Obj]
 
   private implicit class MaybeOps(maybe: Option[Boolean]) {
@@ -985,8 +984,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
         t
     }
 
-  private def batchSelect(typeEnv: Env, propEnv: PropEnv, aMap: AMap): Env = {
-    val refinedEnvs = applyProps(propEnv, List(typeEnv))
+  private def batchSelect(typeEnv: Env, props: List[Prop], aMap: AMap): Env = {
+    val refinedEnvs = applyProps(props, List(typeEnv))
     var result: Env = Map.empty
     val names = typeEnv.keySet ++ aMap.keySet
     for (name <- names) {
