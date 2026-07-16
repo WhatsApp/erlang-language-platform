@@ -571,15 +571,12 @@ final class Occurrence(pipelineContext: PipelineContext) {
               case None      => boundary.break(Some(posThis, Unknown))
             }
           }
-          val (posThat, negThat) = fields.flatMap { case (field, pat) =>
-            patProps(x, path :+ MapField(field), pat, env)
-          }.unzip
-          val (posFields, negFields) = fields.map { case (field, _) =>
+          val (posThat, negThat) = fields.map { case (field, pat) =>
             val objField = mkObj(x, path :+ MapField(field))
-            (Pos(objField, AnyType), Neg(objField, AnyType))
+            patProps(x, path :+ MapField(field), pat, env).getOrElse((Pos(objField, AnyType), Neg(objField, AnyType)))
           }.unzip
-          val pos = and(posThis :: posFields ::: posThat)
-          val neg = or(List(negThis, and(List(posThis, or(negThat ::: negFields)))))
+          val pos = and(posThis :: posThat)
+          val neg = or(List(negThis, and(List(posThis, or(negThat)))))
           Some(pos, neg)
         }
       case PatNil() =>
