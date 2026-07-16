@@ -305,12 +305,21 @@ final class Occurrence(pipelineContext: PipelineContext) {
     case _                                      => false
   }
 
+  private def contradicts(p: AProp, q: AProp): Boolean = (p, q) match {
+    case (Pos(o1, t1), Neg(o2, t2)) if o1 == o2 => subtype.gradualSubType(t1, t2)
+    case (Neg(o1, t1), Pos(o2, t2)) if o1 == o2 => subtype.gradualSubType(t2, t1)
+    case (Pos(o1, t1), Pos(o2, t2)) if o1 == o2 => overlap(t1, t2).isFalse
+    case _                                      => false
+  }
+
   // Combines the propositions from `props` and `acc` into a single list,
   // the propositions in `acc` are simplified wrt atomic propositions in `props`.
   private def combine(props: List[Prop], acc: List[Prop]): List[Prop] = {
     val atomicProps: List[AProp] = props.flatMap(collectAtomic)
     def isImplied(p: AProp): Boolean =
       atomicProps.exists(implies(_, p))
+    def isContra(p: AProp): Boolean =
+      atomicProps.exists(contradicts(_, p))
     def reduceImplied(p: Prop): Prop =
       p match {
         case Or(ps)                   => or(ps.map(reduceImplied))
@@ -318,8 +327,17 @@ final class Occurrence(pipelineContext: PipelineContext) {
         case a: AProp if isImplied(a) => True
         case p                        => p
       }
+    def reduceContras(p: Prop): Prop =
+      p match {
+        case Or(ps)                  => or(ps.map(reduceContras))
+        case And(ps)                 => and(ps.map(reduceContras))
+        case a: AProp if isContra(a) => False
+        case p                       => p
+      }
     val acc1 = acc.map(reduceImplied)
-    props ++ acc1
+    val acc2 = acc1.map(reduceContras)
+    if (acc2.contains(False)) List(False)
+    else props ++ acc2
   }
 
   private def aliases(x: String, path: Path, pat: Pat, env: Env): List[(Name, Obj)] =
