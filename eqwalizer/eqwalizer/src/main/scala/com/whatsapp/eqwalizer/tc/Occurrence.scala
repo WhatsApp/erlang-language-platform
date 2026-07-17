@@ -414,6 +414,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
       case TestBinaryLit() => (Some(BinaryType), None)
       case TestInteger(_)  => (Some(IntegerType), None)
       case TestFloat()     => (Some(FloatType), None)
+      case TestString()    => (Some(ListType(charType)), None)
       case TestTuple(tests) =>
         val (pos, neg) = tests.map(cmpTypes).unzip
         (unzipOpt(pos).map(TupleType(_)), unzipOpt(neg).map(TupleType(_)))
