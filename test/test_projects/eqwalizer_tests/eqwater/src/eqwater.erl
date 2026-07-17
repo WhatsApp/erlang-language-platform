@@ -1326,3 +1326,14 @@ dynamic_dead_code_2(test_decode_group_invite_errors, _Config) ->
     bar;
 dynamic_dead_code_2(_TestCase, _Config) ->
     ok.
+
+-spec overload
+  (atom() | binary(), ShouldSquashAtom :: true) -> binary();
+  (atom() | binary(), ShouldSquashAtom :: false) -> atom() | binary().
+overload(AB, ShouldSquashAtom) ->
+  case AB of
+    _ when ShouldSquashAtom ->
+      ~"squashed";
+    _ ->
+      AB
+  end.
