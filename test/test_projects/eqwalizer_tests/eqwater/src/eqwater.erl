@@ -1250,11 +1250,11 @@ non_linear_3({_, a}) -> b;
 non_linear_3({A, A}) -> b;
 non_linear_3({_, B}) -> B.
 
--spec non_linear_neg_1
+-spec non_linear_4
     ({atom(), a | b}) -> b.
-non_linear_neg_1({A, A}) -> b;
-non_linear_neg_1({_, a}) -> b;
-non_linear_neg_1({B, B}) -> B.
+non_linear_4({A, A}) -> b;
+non_linear_4({_, a}) -> b;
+non_linear_4({B, B}) -> B.
 
 -spec andalso_throw_1
     (a | b) -> b.

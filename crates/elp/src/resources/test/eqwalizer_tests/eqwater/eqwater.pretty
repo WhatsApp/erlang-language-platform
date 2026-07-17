@@ -408,22 +408,6 @@ Expression has type:   tuple()
 Context expected type: 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1257:29
-     │
-1257 │ non_linear_neg_1({B, B}) -> B.
-     │                             ^
-     │                             │
-     │                             B.
-Expression has type:   'a' | 'b'
-Context expected type: 'b'
-     │                             
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: 'b'
-  However the following candidate: 'a'
-  Differs from the expected type:  'b'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ eqwater/src/eqwater.erl:1269:5
      │
 1269 │     V.
@@ -468,4 +452,4 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
 1326 │ │     bar;
      │ ╰───────^ Clause is not covered by spec
 
-40 ERRORS
+39 ERRORS

@@ -38,12 +38,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                ^
    │                │
    │                F.
-Expression has type:   fun((B | A) -> A)
+Expression has type:   fun((A | B) -> A)
 Context expected type: fun((A | B) -> none())
    │                
 
 Because in the expression's type:
-  fun((B | A) ->
+  fun((A | B) ->
     Here the type is:     A
     Context expects type: none()
   )
@@ -55,12 +55,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                ^
    │                │
    │                F.
-Expression has type:   fun((atom() | A) -> A)
+Expression has type:   fun((A | atom()) -> A)
 Context expected type: fun((A | atom()) -> none())
    │                
 
 Because in the expression's type:
-  fun((atom() | A) ->
+  fun((A | atom()) ->
     Here the type is:     A
     Context expects type: none()
   )
@@ -136,52 +136,16 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 139 │ refine_alist1_neg(X, X) -> X.
     │                            ^ X.
-Expression has type:   ['a' | 'b']
+Expression has type:   ['a']
 Context expected type: pid()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:144:24
-    │
-144 │ refine_alist2(X, X) -> X.
-    │                        ^
-    │                        │
-    │                        X.
-Expression has type:   ['a' | 'b']
-Context expected type: ['a']
-    │                        
-
-Because in the expression's type:
-  [
-    Here the type is a union type with some valid candidates: 'a'
-    However the following candidate: 'b'
-    Differs from the expected type:  'a'
-  ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:151:28
     │
 151 │ refine_tlist1_neg(X, X) -> X.
     │                            ^ X.
-Expression has type:   ['a' | 'b']
+Expression has type:   ['a']
 Context expected type: pid()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/refine.erl:156:24
-    │
-156 │ refine_tlist2(X, X) -> X.
-    │                        ^
-    │                        │
-    │                        X.
-Expression has type:   ['a' | 'b']
-Context expected type: ['a']
-    │                        
-
-Because in the expression's type:
-  [
-    Here the type is a union type with some valid candidates: 'a'
-    However the following candidate: 'b'
-    Differs from the expected type:  'a'
-  ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/refine.erl:166:5
@@ -437,4 +401,4 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
 386 │     eqwalizer:reveal_type(A),
     │                           ^ alias()
 
-39 ERRORS
+37 ERRORS

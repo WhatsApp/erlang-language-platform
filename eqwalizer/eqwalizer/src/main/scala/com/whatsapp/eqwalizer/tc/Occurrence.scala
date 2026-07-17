@@ -217,27 +217,23 @@ final class Occurrence(pipelineContext: PipelineContext) {
     var propsAcc = List.empty[Prop]
     val clauseEnvs = ListBuffer.empty[Env]
     for (clause <- c.clauses) {
-      if (linearVars(clause)) {
-        val pat = clause.pats.head
-        val (patPos, patNeg) =
-          pat match {
-            case PatVar(`x`) => (None, None)
-            case _           => patProps(x, Nil, pat, env).unzip
-          }
-        val aMap = aliases(x, Nil, pat, env).toMap
-        val (testPos, testNeg) = guardsProps(clause.guards, aMap)
-        val localClauseProps = patPos.toList ++ testPos
-        val clauseProps =
-          if (accumulateNegProps) combine(localClauseProps, propsAcc)
-          else localClauseProps
-        val clauseEnv = batchSelect(env1, clauseProps, aMap ++ eMap)
-        clauseEnvs.addOne(clauseEnv)
-        if (accumulateNegProps) {
-          val clauseNeg = patNeg.toList ++ testNeg
-          propsAcc = propsAcc :+ or(clauseNeg)
+      val pat = clause.pats.head
+      val (patPos, patNeg) =
+        pat match {
+          case PatVar(`x`) => (None, None)
+          case _           => patProps(x, Nil, pat, env).unzip
         }
-      } else {
-        clauseEnvs.addOne(env)
+      val aMap = aliases(x, Nil, pat, env).toMap
+      val (testPos, testNeg) = guardsProps(clause.guards, aMap)
+      val localClauseProps = patPos.toList ++ testPos
+      val clauseProps =
+        if (accumulateNegProps) combine(localClauseProps, propsAcc)
+        else localClauseProps
+      val clauseEnv = batchSelect(env1, clauseProps, aMap ++ eMap)
+      clauseEnvs.addOne(clauseEnv)
+      if (accumulateNegProps && linearVars(clause)) {
+        val clauseNeg = patNeg.toList ++ testNeg
+        propsAcc = propsAcc :+ or(clauseNeg)
       }
     }
     clauseEnvs.toList
@@ -252,30 +248,26 @@ final class Occurrence(pipelineContext: PipelineContext) {
     val env1 = env ++ vars.zip(argTys).toMap
 
     for (clause <- clauses) {
-      if (linearVars(clause)) {
-        val pats = clause.pats
-        val patsPos = ListBuffer.empty[Prop]
-        val patsNeg = ListBuffer.empty[Prop]
-        var aMap: AMap = Map.empty
-        for ((x, pat) <- vars.zip(pats)) {
-          val (patPos, patNeg) = patProps(x, Nil, pat, env).unzip
-          patPos.foreach(patsPos.addOne)
-          patNeg.foreach(patsNeg.addOne)
-          aMap = aMap ++ aliases(x, Nil, pat, env).toMap
-        }
-        val (testPos, testNeg) = guardsProps(clause.guards, aMap)
-        val localClauseProps = (patsPos ++ testPos).toList
-        val clauseProps =
-          if (accumulateNegProps) combine(localClauseProps, propsAcc)
-          else localClauseProps
-        val clauseEnv = batchSelect(env1, clauseProps, aMap)
-        clauseEnvs.addOne(clauseEnv)
-        if (accumulateNegProps) {
-          val clauseNeg = (patsNeg ++ testNeg).toList
-          propsAcc = propsAcc :+ or(clauseNeg)
-        }
-      } else {
-        clauseEnvs.addOne(env)
+      val pats = clause.pats
+      val patsPos = ListBuffer.empty[Prop]
+      val patsNeg = ListBuffer.empty[Prop]
+      var aMap: AMap = Map.empty
+      for ((x, pat) <- vars.zip(pats)) {
+        val (patPos, patNeg) = patProps(x, Nil, pat, env).unzip
+        patPos.foreach(patsPos.addOne)
+        patNeg.foreach(patsNeg.addOne)
+        aMap = aMap ++ aliases(x, Nil, pat, env).toMap
+      }
+      val (testPos, testNeg) = guardsProps(clause.guards, aMap)
+      val localClauseProps = (patsPos ++ testPos).toList
+      val clauseProps =
+        if (accumulateNegProps) combine(localClauseProps, propsAcc)
+        else localClauseProps
+      val clauseEnv = batchSelect(env1, clauseProps, aMap)
+      clauseEnvs.addOne(clauseEnv)
+      if (accumulateNegProps && linearVars(clause)) {
+        val clauseNeg = (patsNeg ++ testNeg).toList
+        propsAcc = propsAcc :+ or(clauseNeg)
       }
     }
     clauseEnvs.toList

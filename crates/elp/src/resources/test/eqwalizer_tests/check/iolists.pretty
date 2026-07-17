@@ -6,56 +6,20 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
    │ ╰────────────────────────────────────^ Clause is not covered by spec
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/iolists.erl:50:18
-   │
-50 │ refine5(X, X) -> X.
-   │                  ^
-   │                  │
-   │                  X.
-Expression has type:   [atom() | binary()]
-Context expected type: [binary()]
-   │                  
-
-Because in the expression's type:
-  [
-    Here the type is a union type with some valid candidates: binary()
-    However the following candidate: atom()
-    Differs from the expected type:  binary()
-  ]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/iolists.erl:55:22
    │
 55 │ refine6_neg(X, X) -> X.
    │                      ^
    │                      │
    │                      X.
-Expression has type:   [atom() | binary()]
+Expression has type:   [binary()]
 Context expected type: [atom()]
    │                      
 
 Because in the expression's type:
   [
-    Here the type is a union type with some valid candidates: atom()
-    However the following candidate: binary()
-    Differs from the expected type:  atom()
-  ]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/iolists.erl:60:27
-   │
-60 │ refine_to_empty1(X, X) -> X.
-   │                           ^
-   │                           │
-   │                           X.
-Expression has type:   [atom()]
-Context expected type: []
-   │                           
-
-Because in the expression's type:
-  [
-    Here the type is:     atom()
-    Context expects type: none()
+    Here the type is:     binary()
+    Context expects type: atom()
   ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -66,4 +30,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   iolist()
 Context expected type: 'wrong_ret'
 
-5 ERRORS
+3 ERRORS
