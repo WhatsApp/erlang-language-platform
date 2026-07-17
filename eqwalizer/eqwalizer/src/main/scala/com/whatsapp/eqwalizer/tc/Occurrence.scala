@@ -428,6 +428,14 @@ final class Occurrence(pipelineContext: PipelineContext) {
     (pos, neg)
   }
 
+  // Equality narrowing is symmetric in operand order: refine whichever side is a
+  // tracked object against the other side's value (e.g. both `X =:= a` and `a =:= X`).
+  private def eqProps(test1: Test, test2: Test, aMap: Map[Name, Obj]): (Prop, Prop) =
+    testObj(test1, aMap)
+      .map(cmpProps(_, test2))
+      .orElse(testObj(test2, aMap).map(cmpProps(_, test1)))
+      .getOrElse((Unknown, Unknown))
+
   private def testProps(test: Test, aMap: Map[Name, Obj]): (Prop, Prop) = {
     test match {
       case TestCall(Id(pred, 1), List(arg)) if unary_predicates.isDefinedAt(pred) =>
@@ -466,15 +474,10 @@ final class Occurrence(pipelineContext: PipelineContext) {
         val (pos1, neg1) = testProps(test1, aMap)
         val (pos2, neg2) = testProps(test2, aMap)
         (or(List(pos1, pos2)), and(List(neg1, neg2)))
-      case TestBinOp("==" | "=:=", lhs, cmp) =>
-        testObj(lhs, aMap)
-          .map(cmpProps(_, cmp))
-          .getOrElse((Unknown, Unknown))
-      case TestBinOp("=/=" | "/=", lhs, cmp) =>
-        testObj(lhs, aMap)
-          .map(cmpProps(_, cmp))
-          .getOrElse((Unknown, Unknown))
-          .swap
+      case TestBinOp("==" | "=:=", test1, test2) =>
+        eqProps(test1, test2, aMap)
+      case TestBinOp("=/=" | "/=", test1, test2) =>
+        eqProps(test1, test2, aMap).swap
       case _ =>
         (Unknown, Unknown)
     }
