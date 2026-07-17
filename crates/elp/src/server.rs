@@ -32,6 +32,7 @@ use elp_eqwalizer::ast::Pos;
 use elp_eqwalizer::types::Type;
 use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
+use elp_ide::Cancellable;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::DiagnosticsTrigger;
@@ -1252,20 +1253,22 @@ impl Server {
         let snapshot = self.snapshot();
         let include_otp = self.config.enable_otp_diagnostics();
         let work_label = format!("native_diagnostics:{} open files", opened_documents.len());
-        self.task_pool.handle.spawn(move || {
+        self.task_pool.handle.spawn_with_sender(move |sender| {
             let _work = in_flight::begin(work_label);
-            let diagnostics = opened_documents
+            match opened_documents
                 .into_par_iter()
                 .map_with(snapshot, |snapshot, file_id| {
-                    (
-                        file_id,
-                        snapshot.native_diagnostics(file_id, include_otp, &trigger),
-                    )
+                    let diags = snapshot.native_diagnostics(file_id, include_otp, &trigger)?;
+                    Ok(diags.map(|diags| (file_id, diags)))
                 })
-                .filter_map(|(file_id, diags)| Some((file_id, diags?)))
-                .collect();
-
-            Task::NativeDiagnostics(diagnostics)
+                .collect::<Cancellable<Vec<Option<_>>>>()
+            {
+                Ok(diagnostics) => {
+                    let diagnostics = diagnostics.into_iter().flatten().collect();
+                    sender.send(Task::NativeDiagnostics(diagnostics)).unwrap();
+                }
+                Err(_cancelled) => log::info!("Native diagnostics computation cancelled"),
+            }
         });
     }
 
@@ -1292,27 +1295,34 @@ impl Server {
             "eqwalizer_diagnostics:{} open files",
             opened_documents.len()
         );
-        self.task_pool.handle.spawn(move || {
+        self.task_pool.handle.spawn_with_sender(move |sender| {
             let _work = in_flight::begin(work_label);
-            let diagnostics_types = opened_documents
+            match opened_documents
                 .into_par_iter()
                 .map_with(snapshot, |snapshot, file_id| {
                     let diags = snapshot
-                        .eqwalizer_diagnostics(file_id, include_otp)
+                        .eqwalizer_diagnostics(file_id, include_otp)?
                         .unwrap_or_default();
                     let types = snapshot
-                        .eqwalizer_types(file_id, include_otp)
+                        .eqwalizer_types(file_id, include_otp)?
                         .unwrap_or_default();
                     if diags.is_empty() && types.is_empty() {
-                        None
+                        Ok(None)
                     } else {
-                        Some((file_id, diags, types))
+                        Ok(Some((file_id, diags, types)))
                     }
                 })
-                .flatten()
-                .collect();
-
-            Task::EqwalizerDiagnostics(spinner, diagnostics_types)
+                .collect::<Cancellable<Vec<Option<_>>>>()
+            {
+                Ok(diagnostics_types) => {
+                    let diagnostics_types = diagnostics_types.into_iter().flatten().collect();
+                    sender
+                        .send(Task::EqwalizerDiagnostics(spinner, diagnostics_types))
+                        .unwrap();
+                }
+                // `spinner` is dropped here, ending the progress report.
+                Err(_cancelled) => log::info!("EqWAlizer diagnostics computation cancelled"),
+            }
         });
     }
 
@@ -1351,18 +1361,23 @@ impl Server {
             "erlang_service_diagnostics:{} files",
             supported_opened_documents.len()
         );
-        self.task_pool.handle.spawn(move || {
+        self.task_pool.handle.spawn_with_sender(move |sender| {
             let _work = in_flight::begin(work_label);
-            let diagnostics = supported_opened_documents
+            match supported_opened_documents
                 .into_par_iter()
                 .map_with(snapshot, |snapshot, file_id| {
                     snapshot.erlang_service_diagnostics(file_id, &diagnostics_config)
                 })
-                .flatten()
-                .flatten()
-                .collect();
-
-            Task::ErlangServiceDiagnostics(diagnostics)
+                .collect::<Cancellable<Vec<Option<Vec<_>>>>>()
+            {
+                Ok(diagnostics) => {
+                    let diagnostics = diagnostics.into_iter().flatten().flatten().collect();
+                    sender
+                        .send(Task::ErlangServiceDiagnostics(diagnostics))
+                        .unwrap();
+                }
+                Err(_cancelled) => log::info!("Erlang Service diagnostics computation cancelled"),
+            }
         });
     }
 

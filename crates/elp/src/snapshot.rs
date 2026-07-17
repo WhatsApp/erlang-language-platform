@@ -16,6 +16,7 @@ use anyhow::Result;
 use elp_eqwalizer::ast::Pos;
 use elp_eqwalizer::types::Type;
 use elp_ide::Analysis;
+use elp_ide::Cancellable;
 use elp_ide::diagnostics;
 use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::DiagnosticsTrigger;
@@ -186,9 +187,9 @@ impl Snapshot {
         file_id: FileId,
         include_otp: bool,
         trigger: &DiagnosticsTrigger,
-    ) -> Option<LabeledDiagnostics> {
+    ) -> Cancellable<Option<LabeledDiagnostics>> {
         if !include_otp && self.is_otp(file_id) {
-            return None;
+            return Ok(None);
         }
 
         let file_uri = self.file_id_to_uri(file_id);
@@ -196,44 +197,44 @@ impl Snapshot {
 
         self.analysis
             .native_diagnostics(&self.diagnostics_config.clone(), trigger, &vec![], file_id)
-            .ok()
+            .map(Some)
     }
 
     pub fn eqwalizer_diagnostics(
         &self,
         file_id: FileId,
         include_otp: bool,
-    ) -> Option<Vec<diagnostics::Diagnostic>> {
+    ) -> Cancellable<Option<Vec<diagnostics::Diagnostic>>> {
         if !include_otp && self.is_otp(file_id) {
-            return None;
+            return Ok(None);
         }
 
         let file_uri = self.file_id_to_uri(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_uri });
-        self.analysis.eqwalizer_diagnostics_for_file(file_id).ok()?
+        self.analysis.eqwalizer_diagnostics_for_file(file_id)
     }
 
     pub fn eqwalizer_types(
         &self,
         file_id: FileId,
         include_otp: bool,
-    ) -> Option<Arc<Vec<(Pos, Type)>>> {
+    ) -> Cancellable<Option<Arc<Vec<(Pos, Type)>>>> {
         if !include_otp && self.is_otp(file_id) {
-            return None;
+            return Ok(None);
         }
 
         let file_uri = self.file_id_to_uri(file_id);
         let _timer = timeit_with_telemetry!(TelemetryData::EqwalizerDiagnostics { file_uri });
-        self.analysis.types_for_file(file_id).ok()?
+        self.analysis.types_for_file(file_id)
     }
 
     pub fn erlang_service_diagnostics(
         &self,
         file_id: FileId,
         config: &DiagnosticsConfig,
-    ) -> Option<Vec<(FileId, LabeledDiagnostics)>> {
+    ) -> Cancellable<Option<Vec<(FileId, LabeledDiagnostics)>>> {
         if !config.include_otp && self.is_otp(file_id) {
-            return None;
+            return Ok(None);
         }
 
         let file_uri = self.file_id_to_uri(file_id);
@@ -241,17 +242,17 @@ impl Snapshot {
             file_uri: file_uri.clone()
         });
 
-        let diags = &*self
-            .analysis
-            .erlang_service_diagnostics(file_id, config, RemoveElpReported::Yes)
-            .ok()?;
+        let diags =
+            &*self
+                .analysis
+                .erlang_service_diagnostics(file_id, config, RemoveElpReported::Yes)?;
 
-        Some(
+        Ok(Some(
             diags
                 .iter()
                 .map(|(file_id, ds)| (*file_id, ds.clone()))
                 .collect(),
-        )
+        ))
     }
 
     pub fn get_project(&self, project_id: ProjectId) -> Option<Project> {
