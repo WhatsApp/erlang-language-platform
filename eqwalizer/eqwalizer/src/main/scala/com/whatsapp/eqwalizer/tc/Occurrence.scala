@@ -439,6 +439,11 @@ final class Occurrence(pipelineContext: PipelineContext) {
 
   private def testProps(test: Test, aMap: Map[Name, Obj]): (Prop, Prop) = {
     test match {
+      case TestVar(_) =>
+        // A bare variable guard succeeds iff the variable is `true`.
+        testObj(test, aMap)
+          .map(obj => (Pos(obj, trueType), Neg(obj, trueType)))
+          .getOrElse(Unknown, Unknown)
       case TestCall(Id(pred, 1), List(arg)) if unary_predicates.isDefinedAt(pred) =>
         val tp = unary_predicates(pred)
         testObj(arg, aMap)
