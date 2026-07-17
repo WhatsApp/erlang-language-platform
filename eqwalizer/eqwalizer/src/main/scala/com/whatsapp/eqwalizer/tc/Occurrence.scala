@@ -180,20 +180,16 @@ final class Occurrence(pipelineContext: PipelineContext) {
     val clauseEnvs = ListBuffer.empty[Env]
     val accumulateNegProps = isEnabled(i.clauses)
     for (clause <- i.clauses) {
-      if (linearVars(clause)) {
-        val aMap = Map.empty[Name, Obj]
-        val (testPos, testNeg) = guardsProps(clause.guards, aMap)
-        val localClauseProps = testPos.toList
-        val clauseProps =
-          if (accumulateNegProps) combine(localClauseProps, propsAcc)
-          else localClauseProps
-        val clauseEnv = batchSelect(env, clauseProps, aMap)
-        clauseEnvs.addOne(clauseEnv)
-        if (accumulateNegProps) {
-          propsAcc = propsAcc :+ or(testNeg.toList)
-        }
-      } else {
-        clauseEnvs.addOne(env)
+      val aMap = Map.empty[Name, Obj]
+      val (testPos, testNeg) = guardsProps(clause.guards, aMap)
+      val localClauseProps = testPos.toList
+      val clauseProps =
+        if (accumulateNegProps) combine(localClauseProps, propsAcc)
+        else localClauseProps
+      val clauseEnv = batchSelect(env, clauseProps, aMap)
+      clauseEnvs.addOne(clauseEnv)
+      if (accumulateNegProps) {
+        propsAcc = propsAcc :+ or(testNeg.toList)
       }
     }
     clauseEnvs.toList
