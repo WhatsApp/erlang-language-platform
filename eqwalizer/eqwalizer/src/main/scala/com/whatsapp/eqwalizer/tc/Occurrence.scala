@@ -470,6 +470,11 @@ final class Occurrence(pipelineContext: PipelineContext) {
         testObj(arg, aMap)
           .map(obj => (Pos(obj, tp), Neg(obj, tp)))
           .getOrElse(Unknown, Unknown)
+      case TestCall(Id("is_map_key", 2), List(keyArg, mapArg)) =>
+        // `is_map_key(K, M)` implies M is a map
+        // we don't try to be super-precise here yet when handling the key
+        val pos = testObj(mapArg, aMap).map(Pos(_, MapType(Map(), AnyType, AnyType)))
+        (pos.getOrElse(Unknown), Unknown)
       case TestUnOp("not", test) =>
         testProps(test, aMap).swap
       case TestBinOp("and" | "andalso", test1, test2) =>
