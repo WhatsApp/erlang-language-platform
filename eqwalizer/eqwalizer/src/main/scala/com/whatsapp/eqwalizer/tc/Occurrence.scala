@@ -1003,6 +1003,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
       case (ConsType(h, tl), ListTail :: path) =>
         val tl1 = update(tl, path, pol, s)
         ConsType_*(h, tl1)
+      case (TupleType(ts), TupleField(index, None) :: path) if index >= 1 && index <= ts.size =>
+        TupleType_*(ts.updated(index - 1, update(ts(index - 1), path, pol, s)))
       case (_, TupleField(_, None) :: path) if pol == + =>
         update(t, path, pol, AnyTupleType)
       case (_, _) =>
