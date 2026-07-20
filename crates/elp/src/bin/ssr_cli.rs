@@ -238,7 +238,7 @@ pub fn run_ssr_command(
 
     // Build the diagnostics config
     let diagnostics_config = DiagnosticsConfig::default()
-        .configure_diagnostics(&lint_config, &Some("ad-hoc: ssr-match".to_string()), &None)?
+        .configure_diagnostics(&lint_config, &["ad-hoc: ssr-match".to_string()], &[])?
         .set_include_generated(args.include_generated)
         .set_experimental(false)
         .set_use_cli_severity(false);

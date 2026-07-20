@@ -727,10 +727,13 @@ fn should_run(
     is_generated: bool,
     is_test: bool,
 ) -> bool {
-    if let Some(filter) = &config.diagnostic_filter
-        && *filter != linter.id()
+    if !config.diagnostic_filter.is_empty()
+        && !config.diagnostic_filter.contains(&linter.id())
         && !config.recursive
-        && !filter.requires_all_linters_to_run()
+        && !config
+            .diagnostic_filter
+            .iter()
+            .any(|filter| filter.requires_all_linters_to_run())
     {
         return false;
     }
@@ -1278,7 +1281,7 @@ pub struct DiagnosticsConfig {
     pub disabled: FxHashSet<DiagnosticCode>,
     pub enabled: EnabledDiagnostics,
     pub lint_config: Option<LintConfig>,
-    pub diagnostic_filter: Option<DiagnosticCode>,
+    pub diagnostic_filter: FxHashSet<DiagnosticCode>,
     pub include_generated: bool,
     pub include_suppressed: bool,
     pub include_otp: bool,
@@ -1297,7 +1300,7 @@ impl Default for DiagnosticsConfig {
             disabled: FxHashSet::default(),
             enabled: EnabledDiagnostics::new(),
             lint_config: None,
-            diagnostic_filter: None,
+            diagnostic_filter: FxHashSet::default(),
             include_generated: false,
             include_suppressed: false,
             include_otp: false,
@@ -1313,48 +1316,43 @@ impl DiagnosticsConfig {
     pub fn configure_diagnostics(
         mut self,
         lint_config: &LintConfig,
-        diagnostic_filter: &Option<String>,
-        diagnostic_ignore: &Option<String>,
+        diagnostic_filter: &[String],
+        diagnostic_ignore: &[String],
     ) -> Result<DiagnosticsConfig> {
-        let mut allowed_diagnostics: FxHashSet<DiagnosticCode> = FxHashSet::default();
         let mut disabled_diagnostics: FxHashSet<DiagnosticCode> = FxHashSet::default();
+        let mut filter_codes: FxHashSet<DiagnosticCode> = FxHashSet::default();
 
-        if let Some(diagnostic_ignore) = diagnostic_ignore {
+        for diagnostic_ignore in diagnostic_ignore {
             let diagnostic_ignore = DiagnosticCode::from(diagnostic_ignore.as_str());
-            // Make sure we do not mask the one we explicitly asked for
-            allowed_diagnostics.remove(&diagnostic_ignore);
             disabled_diagnostics.insert(diagnostic_ignore);
         }
 
-        if let Some(diagnostic_filter) = diagnostic_filter {
+        for diagnostic_filter in diagnostic_filter {
             // We have replaced L1500 with W0020. Generate an error if we get L1500.
             if diagnostic_filter == "L1500" {
                 bail!("Code L1500 has been superseded by W0020");
             }
 
-            let diagnostic_filter = DiagnosticCode::from(diagnostic_filter.as_str());
-            // Make sure we do not mask the one we explicitly asked for
-            disabled_diagnostics.remove(&diagnostic_filter);
-            allowed_diagnostics.insert(diagnostic_filter.clone());
+            filter_codes.insert(DiagnosticCode::from(diagnostic_filter.as_str()));
         }
 
-        // Make sure the enabled ones win out over disabled if a lint appears in both
-        disabled_diagnostics.retain(|d| !allowed_diagnostics.contains(d));
-
+        // When a code is both filtered for (`--diagnostic-filter`) and ignored
+        // (`--diagnostic-ignore`), the ignore wins: it stays in `disabled`, which
+        // `code_reportable` checks before the filter/enabled state, so the code is
+        // dropped. The filter set still restricts which other codes are reported.
         self.disabled = disabled_diagnostics;
-        if allowed_diagnostics.is_empty() {
+        if filter_codes.is_empty() {
             self.enabled = EnabledDiagnostics::enable_all();
         } else {
-            self.enabled = EnabledDiagnostics::from_set(allowed_diagnostics);
+            self.enabled = EnabledDiagnostics::from_set(filter_codes.clone());
         }
         self.lint_config = Some(lint_config.clone());
 
-        // If a diagnostic_filter is specified, enable the corresponding linter in lint_config
-        if let Some(diagnostic_filter) = diagnostic_filter {
-            let diagnostic_filter_code = DiagnosticCode::from(diagnostic_filter.as_str());
-            self.diagnostic_filter = Some(diagnostic_filter_code.clone());
-            self.set_linter_enabled(diagnostic_filter_code, true);
+        // For each requested filter code, enable the corresponding linter in lint_config
+        for diagnostic_filter_code in &filter_codes {
+            self.set_linter_enabled(diagnostic_filter_code.clone(), true);
         }
+        self.diagnostic_filter = filter_codes;
 
         self.request_erlang_service_diagnostics = self.request_erlang_service_diagnostics();
         Ok(self)
@@ -1876,10 +1874,13 @@ pub fn native_diagnostics(
         if config.disabled.contains(code) {
             return false;
         }
-        if let Some(filter) = &config.diagnostic_filter
-            && filter != code
+        if !config.diagnostic_filter.is_empty()
+            && !config.diagnostic_filter.contains(code)
             && !config.recursive
-            && !filter.requires_all_linters_to_run()
+            && !config
+                .diagnostic_filter
+                .iter()
+                .any(|filter| filter.requires_all_linters_to_run())
         {
             return false;
         }
@@ -4305,7 +4306,7 @@ foo() -> XX 3.0.
         );
 
         let config = DiagnosticsConfig::default()
-            .configure_diagnostics(&lint_config, &Some("no_garbage_collect".to_string()), &None)
+            .configure_diagnostics(&lint_config, &["no_garbage_collect".to_string()], &[])
             .unwrap();
         check_diagnostics_with_config(
             config,
@@ -4344,7 +4345,7 @@ foo() -> XX 3.0.
         );
 
         let config = DiagnosticsConfig::default()
-            .configure_diagnostics(&lint_config, &Some("no_garbage_collect".to_string()), &None)
+            .configure_diagnostics(&lint_config, &["no_garbage_collect".to_string()], &[])
             .unwrap();
         check_diagnostics_with_config(
             config,
@@ -4382,7 +4383,7 @@ foo() -> XX 3.0.
         );
 
         let config = DiagnosticsConfig::default()
-            .configure_diagnostics(&lint_config, &Some("no_garbage_collect".to_string()), &None)
+            .configure_diagnostics(&lint_config, &["no_garbage_collect".to_string()], &[])
             .unwrap()
             .set_include_generated(true);
         check_diagnostics_with_config(
@@ -4421,7 +4422,7 @@ foo() -> XX 3.0.
         );
 
         let config = DiagnosticsConfig::default()
-            .configure_diagnostics(&lint_config, &Some("no_garbage_collect".to_string()), &None)
+            .configure_diagnostics(&lint_config, &["no_garbage_collect".to_string()], &[])
             .unwrap();
         check_diagnostics_with_config(
             config,
@@ -4462,7 +4463,7 @@ foo() -> XX 3.0.
         );
 
         let config = DiagnosticsConfig::default()
-            .configure_diagnostics(&lint_config, &Some("no_garbage_collect".to_string()), &None)
+            .configure_diagnostics(&lint_config, &["no_garbage_collect".to_string()], &[])
             .unwrap();
         check_diagnostics_with_config(
             config,
@@ -4474,6 +4475,52 @@ foo() -> XX 3.0.
             warning() ->
                 erlang:garbage_collect().
             %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
+            //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+            -module(erlang).
+            -export([garbage_collect/0]).
+            garbage_collect() -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_diagnostic_ignore_wins_over_filter_and_config_enable() {
+        // A code that is disabled in the lint config, force-enabled by
+        // `--diagnostic-filter`, and also `--diagnostic-ignore`d must stay
+        // suppressed: the ignore keeps it in `disabled`, which `code_reportable`
+        // checks before the filter/enabled state. Absence of an annotation on the
+        // `garbage_collect()` call asserts W0047 is not reported.
+        let mut lint_config = LintConfig::default();
+        lint_config.linters.insert(
+            DiagnosticCode::NoGarbageCollect,
+            LinterConfig {
+                is_enabled: Some(false),
+                severity: None,
+                include_tests: None,
+                include_generated: None,
+                experimental: None,
+                exclude_apps: None,
+                runs_on_save_only: None,
+                config: None,
+            },
+        );
+
+        let config = DiagnosticsConfig::default()
+            .configure_diagnostics(
+                &lint_config,
+                &["no_garbage_collect".to_string()],
+                &["no_garbage_collect".to_string()],
+            )
+            .unwrap();
+        check_diagnostics_with_config(
+            config,
+            r#"
+            //- /src/main.erl
+            -module(main).
+            -export([warning/0]).
+
+            warning() ->
+                erlang:garbage_collect().
             //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
             -module(erlang).
             -export([garbage_collect/0]).
@@ -4500,7 +4547,7 @@ foo() -> XX 3.0.
         );
 
         let config = DiagnosticsConfig::default()
-            .configure_diagnostics(&lint_config, &Some("no_garbage_collect".to_string()), &None)
+            .configure_diagnostics(&lint_config, &["no_garbage_collect".to_string()], &[])
             .unwrap();
         check_diagnostics_with_config(
             config,

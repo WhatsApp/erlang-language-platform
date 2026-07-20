@@ -156,12 +156,12 @@ pub struct Lint {
     /// Minimum severity level to report
     #[arg(long, value_name = "SEVERITY")]
     pub severity: Option<Severity>,
-    /// Ignore the specified diagnostic, by code or label
+    /// Ignore the specified diagnostic, by code or label. Can be repeated to ignore several diagnostics
     #[arg(long, value_name = "CODE", add = ArgValueCandidates::new(diagnostic_code_candidates))]
-    pub diagnostic_ignore: Option<String>,
-    /// Filter out all reported diagnostics except this one, by code or label
+    pub diagnostic_ignore: Vec<String>,
+    /// Filter out all reported diagnostics except the specified one(s), by code or label. Can be repeated to keep several diagnostics
     #[arg(long, value_name = "CODE", add = ArgValueCandidates::new(diagnostic_code_candidates))]
-    pub diagnostic_filter: Option<String>,
+    pub diagnostic_filter: Vec<String>,
     /// Report experimental diagnostics too, if diagnostics are enabled
     #[arg(long = "experimental")]
     pub experimental_diags: bool,
@@ -710,7 +710,7 @@ pub fn do_codemod(
 
     // Handle apply_fix case separately since it needs to filter diagnostics anyway
     if args.apply_fix {
-        if diagnostics_config.diagnostic_filter.is_none() {
+        if diagnostics_config.diagnostic_filter.is_empty() {
             bail!(
                 "We cannot apply fixes if all diagnostics enabled. Perhaps provide --diagnostic-filter"
             );
@@ -1907,6 +1907,223 @@ mod tests {
                 module specified: lints
                 Diagnostics reported:
                 app_a/src/lints.erl:3:16-3:21::[Warning] [W0081] Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+            "#]],
+            expect![""],
+        );
+    }
+
+    // The following tests share one fixture and differ only in which
+    // `--diagnostic-filter` / `--diagnostic-ignore` flags are passed, to show
+    // the 0 / 1 / many cases for each (plus their intersection). The fixture
+    // emits several distinct diagnostic codes so the filtered output can be
+    // compared against the unfiltered baseline.
+    const DIAGNOSTIC_CODES_FIXTURE: &str = r#"
+        //- /app_a/src/lints.erl app:app_a
+          -module(lints).
+          -export([head_mismatch/1]).
+
+          -define(UNUSED, 1).
+
+          head_mismatch(X) -> X;
+          head_mismatcX(0) -> 0.
+
+          unused_fun() -> ok.
+      "#;
+
+    #[test]
+    fn diagnostic_filter_absent_reports_all_codes() {
+        // No `--diagnostic-filter`: every enabled diagnostic is reported.
+        run_lint_command(
+            args_vec!["lint", "--no-stream", "--module", "lints"],
+            DIAGNOSTIC_CODES_FIXTURE,
+            expect![[r#"
+                module specified: lints
+                Diagnostics reported:
+                app_a/src/lints.erl:4:11-4:17::[Warning] [W0002] Unused macro (UNUSED)
+                app_a/src/lints.erl:6:24-6:25::[Warning] [W0018] Unexpected ';'
+                app_a/src/lints.erl:7:3-7:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+                        6:3-6:16: Mismatched clause name
+                app_a/src/lints.erl:9:3-9:13::[Warning] [L1230] function unused_fun/0 is unused
+                app_a/src/lints.erl:2:12-2:27::[Error] [L1227] function head_mismatch/1 undefined
+            "#]],
+            expect![""],
+        );
+    }
+
+    #[test]
+    fn diagnostic_filter_single_keeps_only_that_code() {
+        // A single `--diagnostic-filter` keeps only that one code.
+        run_lint_command(
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--module",
+                "lints",
+                "--diagnostic-filter",
+                "P1700",
+            ],
+            DIAGNOSTIC_CODES_FIXTURE,
+            expect![[r#"
+                module specified: lints
+                Diagnostics reported:
+                app_a/src/lints.erl:7:3-7:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+                        6:3-6:16: Mismatched clause name
+            "#]],
+            expect![""],
+        );
+    }
+
+    #[test]
+    fn diagnostic_filter_multiple_keeps_each_listed_code() {
+        // Repeating `--diagnostic-filter` keeps the union of the listed codes
+        // (here P1700 and L1230) while still dropping everything else.
+        run_lint_command(
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--module",
+                "lints",
+                "--diagnostic-filter",
+                "P1700",
+                "--diagnostic-filter",
+                "L1230",
+            ],
+            DIAGNOSTIC_CODES_FIXTURE,
+            expect![[r#"
+                module specified: lints
+                Diagnostics reported:
+                app_a/src/lints.erl:7:3-7:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+                        6:3-6:16: Mismatched clause name
+                app_a/src/lints.erl:9:3-9:13::[Warning] [L1230] function unused_fun/0 is unused
+            "#]],
+            expect![""],
+        );
+    }
+
+    #[test]
+    fn diagnostic_ignore_absent_reports_all_codes() {
+        // No `--diagnostic-ignore`: every enabled diagnostic is reported.
+        run_lint_command(
+            args_vec!["lint", "--no-stream", "--module", "lints"],
+            DIAGNOSTIC_CODES_FIXTURE,
+            expect![[r#"
+                module specified: lints
+                Diagnostics reported:
+                app_a/src/lints.erl:4:11-4:17::[Warning] [W0002] Unused macro (UNUSED)
+                app_a/src/lints.erl:6:24-6:25::[Warning] [W0018] Unexpected ';'
+                app_a/src/lints.erl:7:3-7:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+                        6:3-6:16: Mismatched clause name
+                app_a/src/lints.erl:9:3-9:13::[Warning] [L1230] function unused_fun/0 is unused
+                app_a/src/lints.erl:2:12-2:27::[Error] [L1227] function head_mismatch/1 undefined
+            "#]],
+            expect![""],
+        );
+    }
+
+    #[test]
+    fn diagnostic_ignore_single_drops_only_that_code() {
+        // A single `--diagnostic-ignore` drops only that code; the rest remain.
+        run_lint_command(
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--module",
+                "lints",
+                "--diagnostic-ignore",
+                "L1230",
+            ],
+            DIAGNOSTIC_CODES_FIXTURE,
+            expect![[r#"
+                module specified: lints
+                Diagnostics reported:
+                app_a/src/lints.erl:4:11-4:17::[Warning] [W0002] Unused macro (UNUSED)
+                app_a/src/lints.erl:6:24-6:25::[Warning] [W0018] Unexpected ';'
+                app_a/src/lints.erl:7:3-7:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+                        6:3-6:16: Mismatched clause name
+                app_a/src/lints.erl:2:12-2:27::[Error] [L1227] function head_mismatch/1 undefined
+            "#]],
+            expect![""],
+        );
+    }
+
+    #[test]
+    fn diagnostic_ignore_multiple_drops_each_listed_code() {
+        // Repeating `--diagnostic-ignore` drops each listed code (here L1230 and
+        // W0002) while leaving every other diagnostic in the report.
+        run_lint_command(
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--module",
+                "lints",
+                "--diagnostic-ignore",
+                "L1230",
+                "--diagnostic-ignore",
+                "W0002",
+            ],
+            DIAGNOSTIC_CODES_FIXTURE,
+            expect![[r#"
+                module specified: lints
+                Diagnostics reported:
+                app_a/src/lints.erl:6:24-6:25::[Warning] [W0018] Unexpected ';'
+                app_a/src/lints.erl:7:3-7:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+                        6:3-6:16: Mismatched clause name
+                app_a/src/lints.erl:2:12-2:27::[Error] [L1227] function head_mismatch/1 undefined
+            "#]],
+            expect![""],
+        );
+    }
+
+    #[test]
+    fn diagnostic_filter_and_ignore_intersection_ignore_wins() {
+        // When a code is in BOTH --diagnostic-filter and --diagnostic-ignore, the
+        // ignore wins and the code is dropped even though it was filtered for. Here
+        // L1230 is both filtered-for and ignored, so it is dropped while the other
+        // filtered code P1700 is still reported.
+        run_lint_command(
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--module",
+                "lints",
+                "--diagnostic-filter",
+                "P1700",
+                "--diagnostic-filter",
+                "L1230",
+                "--diagnostic-ignore",
+                "L1230",
+            ],
+            DIAGNOSTIC_CODES_FIXTURE,
+            expect![[r#"
+                module specified: lints
+                Diagnostics reported:
+                app_a/src/lints.erl:7:3-7:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+                        6:3-6:16: Mismatched clause name
+            "#]],
+            expect![""],
+        );
+    }
+
+    #[test]
+    fn diagnostic_filter_then_ignore_same_code_reports_nothing() {
+        // The ignore winning does not void the filter: filtering for only L1230 and
+        // then ignoring L1230 leaves nothing to report (the filter still restricts
+        // to L1230, and the ignore then drops it).
+        run_lint_command(
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--module",
+                "lints",
+                "--diagnostic-filter",
+                "L1230",
+                "--diagnostic-ignore",
+                "L1230",
+            ],
+            DIAGNOSTIC_CODES_FIXTURE,
+            expect![[r#"
+                module specified: lints
+                No diagnostics reported
             "#]],
             expect![""],
         );

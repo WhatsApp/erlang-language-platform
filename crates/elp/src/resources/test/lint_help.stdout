@@ -34,9 +34,11 @@ Options:
                                        of the default one
       --severity <SEVERITY>            Minimum severity level to report [possible values: error,
                                        warning, weak_warning, information]
-      --diagnostic-ignore <CODE>       Ignore the specified diagnostic, by code or label
-      --diagnostic-filter <CODE>       Filter out all reported diagnostics except this one, by code
-                                       or label
+      --diagnostic-ignore <CODE>       Ignore the specified diagnostic, by code or label. Can be
+                                       repeated to ignore several diagnostics
+      --diagnostic-filter <CODE>       Filter out all reported diagnostics except the specified
+                                       one(s), by code or label. Can be repeated to keep several
+                                       diagnostics
       --experimental                   Report experimental diagnostics too, if diagnostics are
                                        enabled
       --read-config                    Deprecated and now a no-op: the project's .elp_lint.toml is

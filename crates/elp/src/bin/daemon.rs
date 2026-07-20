@@ -1472,8 +1472,8 @@ mod tests {
             include_suppressed: true,
             use_cli_severity: true,
             severity: Some(Severity::Warning),
-            diagnostic_ignore: Some("W0001".to_string()),
-            diagnostic_filter: Some("W0010".to_string()),
+            diagnostic_ignore: vec!["W0001".to_string()],
+            diagnostic_filter: vec!["W0010".to_string()],
             experimental_diags: true,
             arc_patch: true,
             ignore_app: vec!["dep_a".to_string(), "dep_b".to_string()],
@@ -1510,8 +1510,12 @@ mod tests {
               "include_suppressed": true,
               "use_cli_severity": true,
               "severity": "warning",
-              "diagnostic_ignore": "W0001",
-              "diagnostic_filter": "W0010",
+              "diagnostic_ignore": [
+                "W0001"
+              ],
+              "diagnostic_filter": [
+                "W0010"
+              ],
               "experimental_diags": true,
               "read_config": false,
               "config_file": null,

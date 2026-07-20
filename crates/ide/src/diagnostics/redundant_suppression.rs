@@ -864,7 +864,7 @@ test() ->
             .disable(DiagnosticCode::BoundVarInLhs)
             .disable(DiagnosticCode::HirUnresolvedInclude);
         let config = DiagnosticsConfig {
-            diagnostic_filter: Some(DiagnosticCode::RedundantSuppression),
+            diagnostic_filter: [DiagnosticCode::RedundantSuppression].into_iter().collect(),
             ..config
         };
         check_diagnostics_with_config(

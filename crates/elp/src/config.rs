@@ -281,7 +281,7 @@ impl Config {
         include_generated: bool,
     ) -> DiagnosticsConfig {
         let mut config = DiagnosticsConfig::default()
-            .configure_diagnostics(&lint_config, &None, &None)
+            .configure_diagnostics(&lint_config, &[], &[])
             .unwrap_or(DiagnosticsConfig::default())
             .set_experimental(self.data.diagnostics_enableExperimental)
             .set_include_otp(self.data.diagnostics_enableOtp)
