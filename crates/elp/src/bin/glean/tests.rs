@@ -108,6 +108,7 @@ fn serialization_test() {
         file_declarations: vec![decl],
         xrefs: vec![xref],
         thrift_annotations: vec![],
+        thrift_generated_files: FxHashSet::default(),
     };
     let mut map = FxHashMap::default();
     map.insert(FACTS_FILE.to_string(), facts);

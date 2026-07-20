@@ -318,6 +318,7 @@ pub mod known {
         warn_missing_spec,
         // Attribute names
         author,
+        codegen_source,
         compile,
         doc,
         moduledoc,
