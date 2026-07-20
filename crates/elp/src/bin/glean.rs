@@ -1188,7 +1188,17 @@ impl GleanIndexer {
         vars: FxHashMap<&Location, &String>,
     ) -> Vec<parser::VarDecl> {
         let mut result = vec![];
-        if !db.file_kind(file_id).is_module() || !db.is_eqwalizer_enabled(file_id) {
+        // A duplicate module name resolves to a single canonical `FileId` in the
+        // module index; the shadow copies (test fixtures, generated `.erl`, buck
+        // build copies) are absent from it. eqwalizer keys off the module index,
+        // so typechecking such a file finds no module and is pure wasted work.
+        if !db.file_kind(file_id).is_module()
+            || !db.is_eqwalizer_enabled(file_id)
+            || db
+                .module_index(project_id)
+                .module_for_file(file_id)
+                .is_none()
+        {
             return result;
         }
         let module_diagnostics = db.eqwalizer_diagnostics_by_project(project_id, vec![file_id]);
