@@ -939,12 +939,11 @@ final class Occurrence(pipelineContext: PipelineContext) {
         val t1 = update(t, path, pol, s)
         TupleType_*(ts.updated(pos, t1))
       case (rt: RecordType, RecordField(fieldName, recName) :: path) if rt.name == recName =>
-        util.getRecord(rt.module, rt.name) match {
-          case Some(recDecl) =>
-            val t = recDecl.fMap(fieldName).tp
-            val t1 = update(t, path, pol, s)
+        util.getRecord(rt.module, rt.name).flatMap(_.fMap.get(fieldName)) match {
+          case Some(field) =>
+            val t1 = update(field.tp, path, pol, s)
             refineRecord(rt, fieldName, t1)
-          case _ => rt
+          case None => rt
         }
       case (rt: RecordType, TupleField(_, Some(arity)) :: _) =>
         util.getRecord(rt.module, rt.name) match {
@@ -959,10 +958,9 @@ final class Occurrence(pipelineContext: PipelineContext) {
           val t1 = update(t, path, pol, s)
           refineRecord(rt, fieldName, t1)
         } else {
-          util.getRecord(rt.recType.module, rt.recType.name) match {
-            case Some(recDecl) =>
-              val t = recDecl.fMap(fieldName).tp
-              val t1 = update(t, path, pol, s)
+          util.getRecord(rt.recType.module, rt.recType.name).flatMap(_.fMap.get(fieldName)) match {
+            case Some(field) =>
+              val t1 = update(field.tp, path, pol, s)
               refineRecord(rt, fieldName, t1)
             case None => rt
           }
@@ -1106,7 +1104,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
       case (DynamicType, RecordField(fieldName, recName) :: path1) =>
         util
           .getRecord(module, recName)
-          .map(_.fMap(fieldName).tp)
+          .flatMap(_.fMap.get(fieldName))
+          .map(_.tp)
           .map(typePathRef(_, path1))
           .getOrElse(DynamicType)
       case (BoundedDynamicType(bound), _) =>
@@ -1118,7 +1117,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
       case (rTy: RecordType, RecordField(fieldName, recName) :: path1) if rTy.name == recName =>
         util
           .getRecord(rTy.module, rTy.name)
-          .map(_.fMap(fieldName).tp)
+          .flatMap(_.fMap.get(fieldName))
+          .map(_.tp)
           .map(typePathRef(_, path1))
           .getOrElse(AnyType)
       case (rTy: RecordType, TupleField(index, Some(arity)) :: path1) =>
@@ -1134,7 +1134,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
         } else {
           util
             .getRecord(rTy.recType.module, rTy.recType.name)
-            .map(_.fMap(fieldName).tp)
+            .flatMap(_.fMap.get(fieldName))
+            .map(_.tp)
             .map(typePathRef(_, path1))
             .getOrElse(AnyType)
         }
