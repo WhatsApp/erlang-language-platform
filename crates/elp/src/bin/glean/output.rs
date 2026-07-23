@@ -54,9 +54,9 @@ pub(crate) struct IndexedFacts {
     pub(crate) xrefs: Vec<parser::XRefFile>,
     /// Per-file thrift markers: (byte offset just past the marker, thrift decl).
     pub(crate) thrift_annotations: Vec<(GleanFileId, Vec<(u32, glean::ThriftDeclaration)>)>,
-    /// File IDs whose `src.File` was redirected to a `.thrift` path.
-    /// Location facts for these files are dropped in `into_glean_facts`.
-    pub(crate) thrift_generated_files: FxHashSet<GleanFileId>,
+    /// File IDs treated as generated. Their location facts are dropped in
+    /// `into_glean_facts`.
+    pub(crate) generated_files: FxHashSet<GleanFileId>,
 }
 
 impl IndexedFacts {
@@ -66,17 +66,10 @@ impl IndexedFacts {
         decl: parser::FileDeclaration,
         xref: parser::XRefFile,
         module_fact: Option<parser::ModuleFact>,
-        thrift_generated: bool,
+        is_generated: bool,
     ) -> Self {
         let mut facts = Self::default();
-        facts.add(
-            file_fact,
-            line_fact,
-            decl,
-            xref,
-            module_fact,
-            thrift_generated,
-        );
+        facts.add(file_fact, line_fact, decl, xref, module_fact, is_generated);
         facts
     }
 
@@ -87,11 +80,10 @@ impl IndexedFacts {
         decl: parser::FileDeclaration,
         xref: parser::XRefFile,
         module_fact: Option<parser::ModuleFact>,
-        thrift_generated: bool,
+        is_generated: bool,
     ) {
-        if thrift_generated {
-            self.thrift_generated_files
-                .insert(file_fact.file_id.clone());
+        if is_generated {
+            self.generated_files.insert(file_fact.file_id.clone());
         }
         self.file_facts.push(file_fact);
         self.file_line_facts.push(line_fact);
@@ -122,7 +114,7 @@ impl IndexedFacts {
         let mut known_files: FxHashSet<GleanFileId> =
             self.file_facts.iter().map(|f| f.file_id.clone()).collect();
         let mut extra_file_facts: Vec<glean::FileFact> = vec![];
-        let thrift_generated_files = mem::take(&mut self.thrift_generated_files);
+        let generated_files = mem::take(&mut self.generated_files);
 
         let mut func_decls: Vec<Key<glean::FuncDecl>> = vec![];
         let mut macro_decls: Vec<Key<glean::MacroDecl>> = vec![];
@@ -357,7 +349,7 @@ impl IndexedFacts {
         // Reflects raw parser xrefs, not emitted `glean::XRef` entries.
         let mut xref_count = 0usize;
         for xref_file in xref_files {
-            if !thrift_generated_files.contains(&xref_file.file_id) {
+            if !generated_files.contains(&xref_file.file_id) {
                 xref_count += xref_file.xrefs.len();
             }
             let mut file_typed: Vec<glean::XRef> = vec![];
@@ -789,16 +781,16 @@ impl IndexedFacts {
             }
         }
 
-        // Drop file-scoped facts for thrift-generated files before computing counts.
-        decl_locations.retain(|d| !thrift_generated_files.contains(&d.key.file_id));
-        var_locations.retain(|v| !thrift_generated_files.contains(&v.key.file_id));
-        macro_usage_locations.retain(|m| !thrift_generated_files.contains(&m.key.file_id));
-        comments.retain(|c| !thrift_generated_files.contains(&c.key.file_id));
-        typed_xrefs.retain(|x| !thrift_generated_files.contains(&x.key.file_id));
-        var_xrefs.retain(|v| !thrift_generated_files.contains(&v.key.file_id));
-        file_decls_list.retain(|f| !thrift_generated_files.contains(&f.key.file_id));
+        // Drop file-scoped facts for generated files before computing counts.
+        decl_locations.retain(|d| !generated_files.contains(&d.key.file_id));
+        var_locations.retain(|v| !generated_files.contains(&v.key.file_id));
+        macro_usage_locations.retain(|m| !generated_files.contains(&m.key.file_id));
+        comments.retain(|c| !generated_files.contains(&c.key.file_id));
+        typed_xrefs.retain(|x| !generated_files.contains(&x.key.file_id));
+        var_xrefs.retain(|v| !generated_files.contains(&v.key.file_id));
+        file_decls_list.retain(|f| !generated_files.contains(&f.key.file_id));
 
-        // xref_count / doc_count exclude thrift-generated files;
+        // xref_count / doc_count exclude generated files;
         // entity counts include them (kept as bridge targets).
         let counts = FactCounts {
             file_count: self.file_facts.len(),

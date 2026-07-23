@@ -138,8 +138,9 @@ struct IndexedFileFacts {
     xref: parser::XRefFile,
     module_fact: Option<parser::ModuleFact>,
     thrift_markers: Vec<(u32, glean::ThriftDeclaration)>,
-    /// True iff `file.file_path` was redirected to the thrift source.
-    thrift_generated: bool,
+    /// True iff the file is buck-out with a known generator; its
+    /// `src.File` has been redirected and downstream drops its location facts.
+    is_generated: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -406,7 +407,7 @@ impl GleanIndexer {
                         xref,
                         module_fact,
                         thrift_markers,
-                        thrift_generated,
+                        is_generated,
                     }) => {
                         let mut facts = IndexedFacts::new(
                             file,
@@ -414,7 +415,7 @@ impl GleanIndexer {
                             declaration,
                             xref,
                             module_fact,
-                            thrift_generated,
+                            is_generated,
                         );
                         facts.add_thrift_annotations(file_id.into(), thrift_markers);
                         let mut result = FxHashMap::default();
@@ -469,7 +470,7 @@ impl GleanIndexer {
                             xref,
                             module_fact,
                             thrift_markers,
-                            thrift_generated,
+                            is_generated,
                         } = indexed;
                         let file_id = file.file_id.clone();
                         let mut facts = IndexedFacts::new(
@@ -478,7 +479,7 @@ impl GleanIndexer {
                             declaration,
                             xref,
                             module_fact,
-                            thrift_generated,
+                            is_generated,
                         );
                         facts.add_thrift_annotations(file_id, thrift_markers);
                         facts
@@ -498,10 +499,10 @@ impl GleanIndexer {
                             xref,
                             module_fact,
                             thrift_markers,
-                            thrift_generated,
+                            is_generated,
                         } = indexed;
                         let file_id = file.file_id.clone();
-                        acc.add(file, line, declaration, xref, module_fact, thrift_generated);
+                        acc.add(file, line, declaration, xref, module_fact, is_generated);
                         acc.add_thrift_annotations(file_id, thrift_markers);
                         acc
                     });
@@ -551,18 +552,20 @@ impl GleanIndexer {
         let sema = Semantic::new(db);
         let source = db.file_text(file_id);
         let source = source.text(db);
-        // For thrift-generated modules, `src.File` points at the `.thrift`
-        // source instead of the `buck-out` generated `.erl`.
-        let codegen_source = codegen_source_path(&sema, file_id, &source);
-        let has_codegen_source = codegen_source.is_some();
+        // If the file self-declares a generator (e.g. `-codegen_source(...)`)
+        // and lives under `buck-out/`, `file_fact` redirects `src.File` to
+        // the generator source and flags the file as generated for downstream
+        // location-fact filtering.
+        let generated = generated_from(&sema, file_id, &source);
+        let is_thrift_generated = matches!(generated, Some(GeneratedFrom::Thrift(_)));
 
-        let (file_fact, thrift_generated) = Self::file_fact(
+        let (file_fact, is_generated) = Self::file_fact(
             db,
             file_id,
             path,
             project_id,
             source_root,
-            codegen_source.as_deref(),
+            generated.as_ref(),
         )?;
         let line_fact = Self::line_fact(db, file_id);
         let mut xrefs = Self::xrefs(db, file_id, module_index);
@@ -578,14 +581,14 @@ impl GleanIndexer {
                 }
                 // Thrift `.hrl` headers have no `-module`; index them so field
                 // markers can resolve to their record fields.
-                Some((_, Some("hrl"))) if has_codegen_source => {
+                Some((_, Some("hrl"))) if is_thrift_generated => {
                     path_to_module_name(path).map(|name| ModuleName::new(&name))
                 }
                 _ => None,
             })
             .map(|module| Self::module_fact(db, file_id, &module, project_id));
 
-        let thrift_markers = if has_codegen_source {
+        let thrift_markers = if is_thrift_generated {
             parse_thrift_markers(&source)
         } else {
             vec![]
@@ -597,7 +600,7 @@ impl GleanIndexer {
             xref: xrefs,
             module_fact,
             thrift_markers,
-            thrift_generated,
+            is_generated,
         })
     }
 
@@ -860,32 +863,29 @@ impl GleanIndexer {
         }
     }
 
-    /// Returns the FileFact and whether `src.File` was redirected to the
-    /// thrift source.
+    /// Returns the FileFact and whether the file is treated as generated.
+    /// Callers use the flag to drop file-scoped location facts; the type of
+    /// generator determines where `src.File` is redirected to.
     fn file_fact(
         db: &RootDatabase,
         file_id: FileId,
         path: &VfsPath,
         project_id: ProjectId,
         source_root: Option<&str>,
-        codegen_source: Option<&str>,
+        generated_from: Option<&GeneratedFrom>,
     ) -> Option<(glean::FileFact, bool)> {
         let project_data = db.project_data(project_id).project_data(db);
         let root = project_data.root_dir.as_path();
         let file_path = path.as_path()?;
         let file_path = file_path.strip_prefix(root)?;
-        // Only redirect buck-out generated files; checked-in codegen keeps its real path.
-        if let Some(thrift_path) = codegen_source
-            && file_path.as_str().starts_with("buck-out/")
-        {
-            return Some((
-                glean::FileFact::new(file_id, apply_source_root(thrift_path, source_root)),
-                true,
-            ));
-        }
+        // Only treat buck-out files as generated; checked-in codegen keeps its real path.
+        let (src_path, is_generated) = match generated_from {
+            Some(g) if file_path.as_str().starts_with("buck-out/") => (g.redirect_path(), true),
+            _ => (file_path.as_str(), false),
+        };
         Some((
-            glean::FileFact::new(file_id, apply_source_root(file_path.as_str(), source_root)),
-            false,
+            glean::FileFact::new(file_id, apply_source_root(src_path, source_root)),
+            is_generated,
         ))
     }
 
@@ -1772,20 +1772,35 @@ fn parse_thrift_markers(source: &str) -> Vec<(u32, glean::ThriftDeclaration)> {
     markers
 }
 
-/// Returns the `.thrift` path from a `-codegen_source(...)` attribute
-/// (`.erl`, resolved via FormList) or `% @codegen_source` comment (`.hrl`,
-/// scanned from source since comments aren't in the FormList), if present.
-fn codegen_source_path(sema: &Semantic, file_id: FileId, source: &str) -> Option<String> {
+/// The source a generated file was produced from.
+enum GeneratedFrom {
+    Thrift(String),
+}
+
+impl GeneratedFrom {
+    /// Path used to redirect this file's `src.File` fact.
+    fn redirect_path(&self) -> &str {
+        match self {
+            GeneratedFrom::Thrift(p) => p,
+        }
+    }
+}
+
+/// Detects whether an Erlang source file is generated, and if so from what.
+/// Reads the `-codegen_source(...)` attribute (`.erl`, resolved via FormList)
+/// or `% @codegen_source` comment (`.hrl`, scanned from source since
+/// comments aren't in the FormList).
+fn generated_from(sema: &Semantic, file_id: FileId, source: &str) -> Option<GeneratedFrom> {
     if let Some(path) = sema.attribute_value_as_string(file_id, hir::known::codegen_source)
         && path.ends_with(".thrift")
     {
-        return Some(path);
+        return Some(GeneratedFrom::Thrift(path));
     }
     for line in source.lines() {
         if let Some(path) = line.trim().strip_prefix("% @codegen_source ")
             && path.ends_with(".thrift")
         {
-            return Some(path.to_string());
+            return Some(GeneratedFrom::Thrift(path.to_string()));
         }
     }
     None
