@@ -97,7 +97,36 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y crossbuild-essential-arm64
-      - name: Install Buck2
+      # buck2's prebuilt -gnu binaries are now built on a very recent Ubuntu and
+      # link against glibc 2.38/2.39, which the ubuntu-22.04 runners (glibc 2.35)
+      # do not provide. Install the statically-linked musl build instead, which
+      # has no glibc dependency. The test projects use buck2's bundled prelude
+      # (see test/test_projects/.buckconfig), so no prelude checkout is needed.
+      - name: Install Buck2 (Linux, static musl build)
+        if: matrix.os == 'linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.target }}" in
+            x86_64-unknown-linux-gnu)  buck2_target=x86_64-unknown-linux-musl ;;
+            aarch64-unknown-linux-gnu) buck2_target=aarch64-unknown-linux-musl ;;
+            *) echo "unexpected buck2 target: ${{ matrix.target }}" >&2; exit 1 ;;
+          esac
+          mkdir -p "$HOME/.buck2-bin"
+          curl --location --silent --show-error --fail --retry 5 \
+            "https://github.com/facebook/buck2/releases/download/latest/buck2-${buck2_target}.zst" \
+            -o "$HOME/.buck2-bin/buck2.zst"
+          zstd -d "$HOME/.buck2-bin/buck2.zst" -o "$HOME/.buck2-bin/buck2"
+          chmod +x "$HOME/.buck2-bin/buck2"
+          echo "$HOME/.buck2-bin" >> "$GITHUB_PATH"
+      - name: Verify Buck2 (Linux)
+        if: matrix.os == 'linux'
+        shell: bash
+        run: buck2 --version
+      # macOS/Windows prebuilt buck2 binaries have no glibc issue, so use the
+      # upstream action there.
+      - name: Install Buck2 (macOS/Windows)
+        if: matrix.os != 'linux'
         uses: dtolnay/install-buck2@latest
       # The arm64 runner image (since ~2026-05-31) reports ImageOS=ubuntu22-arm64,
       # which erlef/setup-beam's OS map does not recognise (it only knows ubuntu22 /
