@@ -6,7 +6,6 @@ Options:
       --project <PROJECT>   Path to directory with project, or to a JSON file [default: .]
       --module <MODULE>     
       --to <TO>             Path to a directory where to dump result
-      --schema2             Deprecated no-op
       --pretty              Pretty print
       --multi               Output each fact separately
       --print-metrics       Print indexer metrics as JSON

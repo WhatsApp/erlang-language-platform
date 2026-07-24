@@ -96,9 +96,6 @@ pub struct Glean {
     /// Path to a directory where to dump result
     #[arg(long, value_name = "TO", value_hint = ValueHint::DirPath)]
     pub to: Option<PathBuf>,
-    /// Deprecated no-op.
-    #[arg(long)]
-    pub schema2: bool,
     /// Pretty print
     #[arg(long)]
     pub pretty: bool,
@@ -240,9 +237,6 @@ fn write_results(
     cli: &mut dyn Cli,
     args: &Glean,
 ) -> Result<(u64, FactCounts)> {
-    if args.schema2 {
-        eprintln!("elp-glean: --schema2 is deprecated and now a no-op");
-    }
     let IndexResult {
         facts,
         module_index,

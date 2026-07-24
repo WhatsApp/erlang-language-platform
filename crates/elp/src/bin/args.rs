@@ -413,7 +413,6 @@ mod tests {
         let args = Args::try_parse_from([
             "elp",
             "glean",
-            "--schema2",
             "--multi",
             "--project",
             "/some/project",

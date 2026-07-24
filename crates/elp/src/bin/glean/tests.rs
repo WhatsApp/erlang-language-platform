@@ -116,7 +116,6 @@ fn serialization_test() {
         project: PathBuf::default(),
         module: None,
         to: None,
-        schema2: false,
         pretty: false,
         multi: false,
         print_metrics: false,
@@ -390,52 +389,6 @@ fn erlang_to_thrift_field_bridge_test() {
     );
     assert_eq!(field["to"]["field"]["key"]["kind"], 0);
     assert_eq!(field["to"]["field"]["key"]["name"]["key"], "x");
-}
-
-#[test]
-fn schema2_flag_is_noop_test() {
-    let spec = r#"
-    //- /glean/app_glean/src/glean_module1.erl
-    -module(glean_module1).
-    -export([hello/1]).
-    hello(X) -> X.
-    "#;
-    let (facts, _, _, _, module_index) = facts_with_annotations(spec);
-    let build_result = |facts| {
-        let mut map = FxHashMap::default();
-        map.insert(FACTS_FILE.to_string(), facts);
-        IndexResult {
-            facts: map,
-            module_index: module_index.clone(),
-            app_index: FxHashMap::default(),
-            app_infos: vec![],
-            errored_paths: vec![],
-        }
-    };
-    let args = Glean {
-        project: PathBuf::default(),
-        module: None,
-        to: None,
-        schema2: false,
-        pretty: false,
-        multi: false,
-        print_metrics: false,
-        source_root: None,
-    };
-
-    let mut cli_without_flag = Fake::default();
-    write_results(build_result(facts.clone()), &mut cli_without_flag, &args).expect("success");
-    let (without_flag_out, _) = cli_without_flag.to_strings();
-
-    let mut cli_with_flag = Fake::default();
-    let args_with_schema2 = Glean {
-        schema2: true,
-        ..args.clone()
-    };
-    write_results(build_result(facts), &mut cli_with_flag, &args_with_schema2).expect("success");
-    let (with_flag_out, _) = cli_with_flag.to_strings();
-
-    assert_eq!(without_flag_out, with_flag_out);
 }
 
 #[test]
