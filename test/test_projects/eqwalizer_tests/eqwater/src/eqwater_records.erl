@@ -113,3 +113,11 @@ normalize_neg2(
     {R2 = #rec2{id = I},
      R1 = #rec1{id = I}}) -> {R1, R2};
 normalize_neg2(Pair) -> Pair.
+
+-record(rec, {f1 :: atom() | binary(), f2 :: atom() | binary()}).
+
+-spec extract1(rec1:rec() | rec2:rec()) -> atom().
+extract1(#rec{f1 = F1}) -> F1.
+
+-spec extract2(rec1:rec() | rec2:rec()) -> binary().
+extract2(#rec{f2 = F2}) -> F2.

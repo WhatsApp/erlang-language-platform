@@ -91,4 +91,36 @@ Because in the expression's type:
     Context expects type: #rec1{}
   , #rec1{}}
 
-6 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater_records.erl:120:28
+    │
+120 │ extract1(#rec{f1 = F1}) -> F1.
+    │                            ^^
+    │                            │
+    │                            F1.
+Expression has type:   atom() | binary()
+Context expected type: atom()
+    │                            
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: atom()
+  However the following candidate: binary()
+  Differs from the expected type:  atom()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ eqwater/src/eqwater_records.erl:123:28
+    │
+123 │ extract2(#rec{f2 = F2}) -> F2.
+    │                            ^^
+    │                            │
+    │                            F2.
+Expression has type:   atom() | binary()
+Context expected type: binary()
+    │                            
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: binary()
+  However the following candidate: atom()
+  Differs from the expected type:  binary()
+
+8 ERRORS
