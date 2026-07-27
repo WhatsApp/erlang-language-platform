@@ -194,9 +194,9 @@ impl<'a> IncludeCtx<'a> {
                         .map(|d| d.name.clone());
                     log::warn!(
                         "include mapping does not resolve to FileId: app:{:?}, path:{}, p:{:?}",
-                        &name,
-                        &path,
-                        &p
+                        name,
+                        path,
+                        p
                     );
                     None
                 }

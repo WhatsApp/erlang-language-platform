@@ -98,7 +98,7 @@ pub fn replace_in_spec(
 
                                 let diag_label = format!(
                                     "Replace '{}' with '{}'",
-                                    &action_from.label(),
+                                    action_from.label(),
                                     action_to
                                 );
 

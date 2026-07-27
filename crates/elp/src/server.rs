@@ -877,7 +877,7 @@ impl Server {
                         let opened = convert::vfs_path(&change.uri)
                             .map(|vfs_path| this.mem_docs.read().contains(&vfs_path))
                             .unwrap_or(false);
-                        log::info!(target: FILE_WATCH_LOGGER_NAME, "DidChangeWatchedFiles:{}:{}", &opened, &path);
+                        log::info!(target: FILE_WATCH_LOGGER_NAME, "DidChangeWatchedFiles:{}:{}", opened, path);
                         // We process config changes here, because we do not register to receive
                         // DidSaveTextDocument notifiactions for these kinds of files
                         if this.should_reload_project_for_path(&path, change) {
@@ -1023,7 +1023,7 @@ impl Server {
             let path = VfsPath::from(path);
             let opened = self.mem_docs.read().contains(&path);
             if changed {
-                log::info!(target: FILE_WATCH_LOGGER_NAME, "VFS change:{}:{}", &opened, &path);
+                log::info!(target: FILE_WATCH_LOGGER_NAME, "VFS change:{}:{}", opened, path);
             }
             if !opened {
                 // This call will add the file to the changed_files,
@@ -1816,7 +1816,7 @@ impl Server {
 
                     if cleared {
                         log::info!("did reload projects");
-                        log::debug!("reloaded projects {:?}", &projects);
+                        log::debug!("reloaded projects {:?}", projects);
                     }
                     sender.send(Task::FetchProject(spinner, projects)).unwrap();
                 }

@@ -166,7 +166,7 @@ fn field_name_to_completion_with_equals(field_name: Name) -> Completion {
     Completion {
         label: field_name.to_string(),
         kind: Kind::RecordField,
-        contents: Contents::String(format!("{} = ", &field_name)),
+        contents: Contents::String(format!("{} = ", field_name)),
         position: None,
         sort_text: None,
         deprecated: false,

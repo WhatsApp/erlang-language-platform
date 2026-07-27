@@ -544,7 +544,7 @@ impl<'de> Deserialize<'de> for BuckTargetType {
             "prelude//rules.bzl:erlang_app" => Ok(BuckTargetType::App),
             "prelude//rules.bzl:erlang_test" => Ok(BuckTargetType::Test),
             other => {
-                log::info!("Ignoring buck target type: {}", &other);
+                log::info!("Ignoring buck target type: {}", other);
                 Ok(BuckTargetType::Other(other.to_string()))
             }
         }
@@ -604,9 +604,9 @@ pub struct BuckTargetBare {
 impl BuckTargetBare {
     fn target_full_name(&self) -> String {
         if let Some(name) = &self.app_name {
-            format!("{}:{}", &self.buck_package, &name)
+            format!("{}:{}", self.buck_package, name)
         } else {
-            format!("{}:{}", &self.buck_package, &self.name)
+            format!("{}:{}", self.buck_package, self.name)
         }
     }
 

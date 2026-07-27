@@ -65,7 +65,7 @@ fn default_src_dirs() -> Vec<String> {
 impl JsonProjectAppData {
     pub fn to_project_app_data(&self, root_path: &AbsPath, is_dep: bool) -> Result<ProjectAppData> {
         let dir = canonicalize(root_path.join(&self.dir))
-            .with_context(|| format!("Checking dir: {}", &self.dir))?;
+            .with_context(|| format!("Checking dir: {}", self.dir))?;
         let ebin = match &self.ebin {
             Some(ebin) => Some(
                 canonicalize(dir.join(ebin))

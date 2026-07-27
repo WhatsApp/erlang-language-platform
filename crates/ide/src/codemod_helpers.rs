@@ -1491,7 +1491,7 @@ mod tests {
         let host = AnalysisHost { db };
         let sema = Semantic::new(&host.db);
         if expected.len() != 1 {
-            panic!("Expected exactly one annotation, got {:?}", &expected);
+            panic!("Expected exactly one annotation, got {:?}", expected);
         }
 
         let analysis = host.analysis();

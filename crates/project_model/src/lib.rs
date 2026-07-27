@@ -300,8 +300,7 @@ impl ProjectManifest {
         } else {
             path.parent().map(|path| path.to_path_buf())
         };
-        let root_path =
-            root_path.unwrap_or_else(|| panic!("Error getting parent from {:?}", &path));
+        let root_path = root_path.unwrap_or_else(|| panic!("Error getting parent from {:?}", path));
         let name = AppName(
             root_path
                 .file_name()

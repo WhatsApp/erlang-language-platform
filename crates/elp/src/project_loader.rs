@@ -75,7 +75,7 @@ impl ProjectLoader {
         match manifest {
             Ok(manifest) => {
                 if let Some(root) = manifest.root().parent() {
-                    log::info!("Opening new project with root {:?}", &root);
+                    log::info!("Opening new project with root {:?}", root);
                     self.project_roots
                         .insert(root.to_path_buf(), Some(manifest.clone()));
                 }

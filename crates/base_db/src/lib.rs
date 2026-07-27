@@ -1115,7 +1115,7 @@ pub fn to_quoted_string(input: &str) -> Cow<'_, str> {
     if is_valid_atom(input) {
         Cow::Borrowed(input)
     } else {
-        Cow::Owned(format!("'{}'", &input))
+        Cow::Owned(format!("'{}'", input))
     }
 }
 

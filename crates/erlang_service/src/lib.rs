@@ -263,7 +263,7 @@ impl Response {
                 let err = String::from_utf8_lossy(&payload);
                 Err(anyhow!("erlang service failed with: {}", err))
             }
-            Response::Callback(_, _) => panic!("unhandled callback response: {:?}", &self),
+            Response::Callback(_, _) => panic!("unhandled callback response: {:?}", self),
         }
     }
 
@@ -1115,7 +1115,7 @@ mod tests {
         let ast = str::from_utf8(&response.ast).unwrap();
         let actual = format!(
             "AST\n{}\n\nWARNINGS\n{:#?}\n\nERRORS\n{:#?}\n",
-            ast, &response.warnings, &response.errors
+            ast, response.warnings, response.errors
         );
         expected.assert_eq(&actual);
     }
@@ -1151,7 +1151,7 @@ mod tests {
             .collect::<Vec<ParseError>>();
         let actual = format!(
             "AST\n{}\n\nWARNINGS\n{:#?}\n\nERRORS\n{:#?}\n",
-            ast, &response.warnings, &errors
+            ast, response.warnings, errors
         );
         expected.assert_eq(&actual);
     }
@@ -1180,7 +1180,7 @@ mod tests {
         let response = CONN.request_doc(request, || ()).unwrap();
         let actual = format!(
             "MODULE_DOC\n{}\n\nFUNCTION_DOCS\n{:#?}\n\n\n",
-            &response.module_doc, &response.function_docs
+            response.module_doc, response.function_docs
         );
         expected.assert_eq(&actual);
     }
@@ -1210,7 +1210,7 @@ mod tests {
             Ok(response) => {
                 format!(
                     "CT_INFO_ALL\n{}\n\nCT_INFO_GROUPS\n{}",
-                    &response.all, &response.groups
+                    response.all, response.groups
                 )
             }
             Err(err) => err.to_string(),

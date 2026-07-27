@@ -124,7 +124,7 @@ where
             self.after_hunk_len,
         )
         .expect("write to string");
-        write!(&mut self.dst, "{}", &self.buffer).expect("write to string");
+        write!(&mut self.dst, "{}", self.buffer).expect("write to string");
         self.buffer.clear();
         self.before_hunk_len = 0;
         self.after_hunk_len = 0

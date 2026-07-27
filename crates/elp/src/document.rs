@@ -79,11 +79,11 @@ impl Document {
                         } else {
                             log::warn!(
                                 "discarding invalid document change char boundary: {:?}",
-                                &change
+                                change
                             );
                         }
                     } else {
-                        log::warn!("discarding invalid document change range: {:?}", &change);
+                        log::warn!("discarding invalid document change range: {:?}", change);
                     }
                 }
                 None => {

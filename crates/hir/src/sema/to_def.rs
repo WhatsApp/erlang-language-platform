@@ -291,6 +291,10 @@ impl ToDef for ast::RecordFieldName {
 impl ToDef for ast::RecordField {
     type Def = DefinitionOrReference<RecordFieldDef, RecordFieldDef>;
 
+    #[expect(
+        clippy::question_mark,
+        reason = "false positive on the match_ast! dispatch: the RecordDecl arm does real work before its early return, it is not a plain `?`"
+    )]
     fn to_def(sema: &Semantic<'_>, ast: InFile<&Self>) -> Option<Self::Def> {
         let (idx, expr) = match_ast! {
             match (ast.value.syntax().parent()?) {
@@ -353,13 +357,9 @@ impl ToDef for ast::MacroCallExpr {
                     let expr_id = body_map.expr_id(InFile::new(ast.file_id, &expr))?;
                     match &body[expr_id] {
                         Expr::Call { target, args } => {
-                            if let Some(call) =
-                                target.resolve_call(args.len() as u32, sema, ast.file_id, &body)
-                            {
-                                return Some(MacroCallDef::Call(CallDef::Function(call)));
-                            } else {
-                                return None;
-                            }
+                            let call =
+                                target.resolve_call(args.len() as u32, sema, ast.file_id, &body)?;
+                            return Some(MacroCallDef::Call(CallDef::Function(call)));
                         }
                         _ => return None,
                     }

@@ -73,7 +73,7 @@ impl fmt::Display for Completion {
         let include = match &self.additional_edit {
             Some((file_pos, include)) => format!(
                 ", include:{:?}:{:?}",
-                &file_pos.offset,
+                file_pos.offset,
                 include.as_attribute().trim_end()
             ),
             None => "".to_string(),

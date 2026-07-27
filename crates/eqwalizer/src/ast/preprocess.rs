@@ -121,11 +121,8 @@ fn as_test(expr: Expr) -> Option<Test> {
 fn as_tests(exprs: Vec<Expr>) -> Option<Vec<Test>> {
     let mut exprs_test = vec![];
     for expr in exprs {
-        if let Some(test) = as_test(expr) {
-            exprs_test.push(test);
-        } else {
-            return None;
-        }
+        let test = as_test(expr)?;
+        exprs_test.push(test);
     }
     Some(exprs_test)
 }

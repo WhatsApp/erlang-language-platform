@@ -121,7 +121,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
                     let replaced_text = format!(
                         "{}{}{}",
                         &comp_text[..rel_start],
-                        &var_name,
+                        var_name,
                         &comp_text[rel_end..]
                     );
 

@@ -216,7 +216,7 @@ impl IpcHandle {
                         let attr = fs::metadata(command_str);
                         let error_str = format!(
                             "err: {}, command_str: {:?}, cmd: {:?}, meta_data: {:?}",
-                            err, command_str, cmd, &attr
+                            err, command_str, cmd, attr
                         );
                         // Show up in error log
                         log::error!("{}", limit_logged_string(&error_str));

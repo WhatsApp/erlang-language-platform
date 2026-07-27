@@ -116,7 +116,7 @@ pub fn replace_call_site_if_args_match(
             ) {
                 Some(diag.with_fixes(Some(vec![fix(
                     "replace_call_site",
-                    &format!("Replace call to '{:?}' {}", &mfa_str, extra.1),
+                    &format!("Replace call to '{:?}' {}", mfa_str, extra.1),
                     SourceChange::from_text_edit(file_id, edit),
                     range,
                 )])))
@@ -133,7 +133,7 @@ pub fn adhoc_diagnostic(mfa: &MFA, extra_info: &str, range: TextRange) -> Option
     let sep = if extra_info.is_empty() { "" } else { " " };
     let diag = Diagnostic::new(
         DiagnosticCode::AdHoc(mfa_str.clone()),
-        format!("'{}' called{}{}", &mfa_str, &sep, &extra_info),
+        format!("'{}' called{}{}", mfa_str, sep, extra_info),
         range,
     )
     .with_severity(Severity::WeakWarning)

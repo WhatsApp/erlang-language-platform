@@ -262,7 +262,7 @@ pub(crate) mod tests {
                                 find_new_file_id(&fixture_after, &dst).unwrap_or_else(|| {
                                     panic!(
                                         "Fixture after:could not find file created as '{}'",
-                                        &dst.path
+                                        dst.path
                                     )
                                 });
                             new_file_id = *new_file.1;
@@ -275,7 +275,7 @@ pub(crate) mod tests {
                                 find_new_file_id(&fixture_after, &dst).unwrap_or_else(|| {
                                     panic!(
                                         "Fixture after:could not find file renamed to '{}'",
-                                        &dst.path
+                                        dst.path
                                     )
                                 });
                             new_file_id = *new_file.1;
@@ -297,7 +297,7 @@ pub(crate) mod tests {
                         find_new_file_id(&fixture_after, &anchored_dst).unwrap_or_else(|| {
                             panic!(
                                 "Fixture after:could not find file created as '{}'",
-                                &anchored_dst.path
+                                anchored_dst.path
                             )
                         });
 

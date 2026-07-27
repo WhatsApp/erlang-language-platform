@@ -314,7 +314,7 @@ mod test {
             for seg in &mut new.segments {
                 seg.1 = 0;
             }
-            let expected = format!("{:#?}\n", &new.segments);
+            let expected = format!("{:#?}\n", new.segments);
             expect![[r#"
                 [
                     (

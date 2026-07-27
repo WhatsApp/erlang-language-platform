@@ -19,7 +19,6 @@ use elp_syntax::SyntaxToken;
 use elp_syntax::TextSize;
 use elp_syntax::ast;
 use elp_syntax::ast::ExprMax;
-use elp_syntax::match_ast;
 use hir::FunctionDef;
 use hir::InFile;
 use hir::NameArity;
@@ -41,14 +40,7 @@ pub(crate) fn atom_value(parsed: &InFile<SourceFile>, offset: TextSize) -> Optio
     )?);
 
     let parent = token.value.parent()?;
-    match_ast! {
-        match parent {
-            ast::Atom(a) => {
-                a.text()
-            },
-            _ => None
-        }
-    }
+    ast::Atom::cast(parent)?.text()
 }
 
 pub(crate) fn format_call(name: &str, arity: u32) -> Contents {

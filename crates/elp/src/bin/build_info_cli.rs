@@ -108,7 +108,7 @@ pub(crate) fn save_project_info(
         if let Ok(targets) = &buck_targets_query {
             writer.write_all(format!("{:#?}\n", sort_buck_targets(targets)).as_bytes())?;
         } else {
-            writer.write_all(format!("{:#?}\n", &buck_targets_query).as_bytes())?;
+            writer.write_all(format!("{:#?}\n", buck_targets_query).as_bytes())?;
         }
     } else if args.target_types {
         writer.write_all(b"================target types================\n")?;
@@ -117,11 +117,11 @@ pub(crate) fn save_project_info(
         }
     } else {
         writer.write_all(b"================manifest================\n")?;
-        writer.write_all(format!("{:#?}\n", &manifest).as_bytes())?;
+        writer.write_all(format!("{:#?}\n", manifest).as_bytes())?;
         writer.write_all(b"================project_build_data================\n")?;
-        writer.write_all(format!("{:#?}\n", &project.project_build_data).as_bytes())?;
+        writer.write_all(format!("{:#?}\n", project.project_build_data).as_bytes())?;
         writer.write_all(b"================project_app_data================\n")?;
-        writer.write_all(format!("{:#?}\n", &project.project_apps).as_bytes())?;
+        writer.write_all(format!("{:#?}\n", project.project_apps).as_bytes())?;
     }
     Ok(())
 }

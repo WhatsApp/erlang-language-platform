@@ -483,15 +483,8 @@ impl Doc {
                     docdb.to_doc(token.with_value(&call)),
                 _ => {
                     // Parent is nothing structured, it must be a raw atom or var literal
-                    match_ast! {
-                        match wrapper {
-                            ast::Atom(atom) =>
-                                docdb.to_doc(token.with_value(&atom)),
-                            _ => {
-                                None
-                            }
-                        }
-                    }
+                    let atom = ast::Atom::cast(wrapper)?;
+                    docdb.to_doc(token.with_value(&atom))
                 }
             }
         }

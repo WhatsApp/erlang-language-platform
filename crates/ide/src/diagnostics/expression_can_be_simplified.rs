@@ -117,7 +117,7 @@ impl GenericLinter for ExpressionCanBeSimplifiedLinter {
     fn match_description(&self, context: &Self::Context) -> Cow<'_, str> {
         Cow::Owned(format!(
             "Can be simplified to `{}`.",
-            &context.replacement_str
+            context.replacement_str
         ))
     }
 
@@ -133,7 +133,7 @@ impl GenericLinter for ExpressionCanBeSimplifiedLinter {
         let replacement = changes.finish();
         Some(vec![fix(
             "simplify_expression",
-            format!("Replace by `{}`", &context.replacement_str).as_str(),
+            format!("Replace by `{}`", context.replacement_str).as_str(),
             replacement,
             range,
         )])

@@ -235,7 +235,7 @@ impl EdocHeader {
                 let mut description = String::new();
                 for line in &param.lines {
                     if let Some(content) = line.to_markdown() {
-                        description.push_str(&format!("{} ", &content.trim()));
+                        description.push_str(&format!("{} ", content.trim()));
                     }
                 }
                 res.push_str(&format!(
@@ -392,8 +392,8 @@ impl Tag {
         }
         ensure_non_empty(&convert_link_macros(&format!(
             "{}{}",
-            &head,
-            &trim_indent(&res)
+            head,
+            trim_indent(&res)
         )))
     }
 }

@@ -138,7 +138,7 @@ pub(crate) fn make_function_name(ctx: &AssistContext<'_>) -> String {
     let mut counter = 0;
     while names_in_scope.contains(&name) {
         counter += 1;
-        name = format!("{}{}", &default_name, counter)
+        name = format!("{}{}", default_name, counter)
     }
 
     name

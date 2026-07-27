@@ -490,7 +490,7 @@ main() ->
             });
 
         let deletions = diff.deletions.iter().format_with("\n", |v, f| {
-            f(&format!("Line {}: {}", line_number(v), &fmt_syntax(v)))
+            f(&format!("Line {}: {}", line_number(v), fmt_syntax(v)))
         });
 
         let actual = format!(

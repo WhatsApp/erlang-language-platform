@@ -67,7 +67,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
             let delete_range = delete_definition.then(|| extend_delete_range(match_expr.syntax()));
 
             let init_str = rhs.syntax().text().to_string();
-            let init_in_paren = format!("({})", &init_str);
+            let init_in_paren = format!("({})", init_str);
             if let Some(range) = delete_range {
                 builder.delete(range);
             }

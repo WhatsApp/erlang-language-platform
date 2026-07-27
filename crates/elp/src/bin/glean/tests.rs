@@ -1157,7 +1157,7 @@ pub(crate) fn xref_check(spec: &str) {
                 .unwrap_or_else(|| {
                     panic!(
                         "Got computed value {:?}, annotations {:?}",
-                        &tuple, &annotations
+                        tuple, annotations
                     )
                 });
             annotations.remove(idx);
@@ -1197,7 +1197,7 @@ fn var_xref_check(spec: &str) {
                     .unwrap_or_else(|| {
                         panic!(
                             "Got computed value {:?}, annotations {:?}",
-                            &tuple, &annotations
+                            tuple, annotations
                         )
                     });
                 annotations.remove(idx);
@@ -1229,7 +1229,7 @@ fn decl_check(spec: &str) {
                         .iter()
                         .position(|a| a.1 == label)
                         .unwrap_or_else(|| {
-                            panic!("Expected to find header {:?} in {:?}", &label, &annotations)
+                            panic!("Expected to find header {:?} in {:?}", label, annotations)
                         });
                     annotations.remove(idx);
                 } else {
@@ -1239,7 +1239,7 @@ fn decl_check(spec: &str) {
                         .iter()
                         .position(|a| a == &tuple)
                         .unwrap_or_else(|| {
-                            panic!("Expected to find {:?} in {:?}", &tuple, &annotations)
+                            panic!("Expected to find {:?} in {:?}", tuple, annotations)
                         });
                     annotations.remove(idx);
                 }

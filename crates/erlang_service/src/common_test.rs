@@ -48,10 +48,8 @@ pub fn all(term: &Term) -> Result<FxHashSet<TestDef>, ConversionError> {
     match term {
         Term::List(list) => {
             for td in &list.elements {
-                match parse_test_definition(td) {
-                    Ok(td) => res.insert(td),
-                    Err(err) => return Err(err),
-                };
+                let td = parse_test_definition(td)?;
+                res.insert(td);
             }
         }
         _ => return Err(ConversionError::InvalidAllCallback),
