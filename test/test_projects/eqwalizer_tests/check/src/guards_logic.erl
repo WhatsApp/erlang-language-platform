@@ -83,7 +83,7 @@ test16(X) when true and is_list(X) ->
   X.
 
 -spec test17(atom(), atom()) -> boolean().
-test17(X, Y) when X and Y == false -> Y.
+test17(X, Y) when (X and Y) == false -> Y.
 
 -spec test18(atom(), atom()) -> boolean().
 test18(X, Y) when X or Y -> Y.
