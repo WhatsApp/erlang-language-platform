@@ -29,7 +29,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │     ^^^
    │     │
    │     Key.
-Expression has type:   term() | 'undefined'
+Expression has type:   'undefined' | term()
 Context expected type: atom()
    │     
 
@@ -45,7 +45,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │     ^^^
    │     │
    │     Key.
-Expression has type:   term() | 'undefined'
+Expression has type:   'undefined' | term()
 Context expected type: atom()
    │     
 

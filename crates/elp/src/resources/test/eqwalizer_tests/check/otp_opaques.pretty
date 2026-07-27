@@ -46,7 +46,7 @@ Context expected type: sets:set('a')
    │                 
 
 Because in the expression's type:
-  Here the type is:     tuple()/3 | 'none' | [...] | [...]
+  Here the type is:     'none' | [...] | tuple()/3
   Context expects type: sets:set_v1('a') | sets:set_v2('a')
   No candidate of the expression's type matches the expected type.
 
@@ -78,7 +78,7 @@ Context expected type: sets:set('a')
     │           
 
 Because in the expression's type:
-  Here the type is:     tuple()/3 | 'none' | [...] | [...]
+  Here the type is:     'none' | [...] | tuple()/3
   Context expects type: sets:set_v1('a') | sets:set_v2('a')
   No candidate of the expression's type matches the expected type.
 

@@ -68,7 +68,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                 ^
     │                 │
     │                 T.
-Expression has type:   [T, ...] | T | []
+Expression has type:   T | [T, ...] | []
 Context expected type: T
     │                 
 

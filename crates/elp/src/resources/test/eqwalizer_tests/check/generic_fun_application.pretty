@@ -447,7 +447,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^
     │     │
     │     X.
-Expression has type:   atom() | T
+Expression has type:   T | atom()
 Context expected type: atom()
     │     
 
@@ -734,7 +734,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                        ^^^^^
     │                        │
     │                        Props.
-Expression has type:   {'error', term()} | [{atom(), binary()}]
+Expression has type:   [{atom(), binary()}] | {'error', term()}
 Context expected type: [{dynamic(), dynamic()}]
     │                        
 

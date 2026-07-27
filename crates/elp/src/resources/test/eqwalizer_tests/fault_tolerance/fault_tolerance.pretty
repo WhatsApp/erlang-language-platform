@@ -617,7 +617,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │   ^^^
     │   │
     │   Res.
-Expression has type:   dynamic() | []
+Expression has type:   [] | dynamic()
 Context expected type: atom()
     │   
 
@@ -657,7 +657,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │   ^^^
     │   │
     │   Res.
-Expression has type:   dynamic() | []
+Expression has type:   [] | dynamic()
 Context expected type: atom()
     │   
 

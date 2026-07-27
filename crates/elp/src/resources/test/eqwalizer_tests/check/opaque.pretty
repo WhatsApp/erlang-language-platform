@@ -68,7 +68,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                  ^
     │                  │
     │                  X.
-Expression has type:   misc:o() | 'a'
+Expression has type:   'a' | misc:o()
 Context expected type: misc:o()
     │                  
 
@@ -84,7 +84,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                  ^
     │                  │
     │                  X.
-Expression has type:   misc:o() | 'a'
+Expression has type:   'a' | misc:o()
 Context expected type: misc:o()
     │                  
 

@@ -316,7 +316,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^
     │     │
     │     Res.
-Expression has type:   [binary() | 'undefined']
+Expression has type:   ['undefined' | binary()]
 Context expected type: [binary()]
     │     
 

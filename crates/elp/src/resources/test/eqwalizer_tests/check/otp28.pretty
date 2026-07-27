@@ -11,7 +11,7 @@ Context expected type: foo()
 
 Because in the expression's type:
   Here the type is:     'warning'
-  Context expects type: 'ok' | 'error'
+  Context expects type: 'error' | 'ok'
   No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

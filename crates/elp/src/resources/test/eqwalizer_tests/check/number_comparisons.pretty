@@ -21,7 +21,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │   ^
     │   │
     │   X.
-Expression has type:   integer() | float()
+Expression has type:   float() | integer()
 Context expected type: integer()
     │   
 

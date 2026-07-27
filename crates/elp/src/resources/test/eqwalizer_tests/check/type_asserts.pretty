@@ -13,7 +13,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │   ^^^
    │   │
    │   Arg.
-Expression has type:   string() | binary()
+Expression has type:   binary() | string()
 Context expected type: binary()
    │   
 
@@ -119,8 +119,8 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 132 │ │ │         Acc#{K => V#{kc => vc}}
 133 │ │ │     end
     │ ╰─│───────^ case ....
-Expression has type:   #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}}
-Context expected type: #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kb := 'vb'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}} | #{dynamic() => #{kc := 'vc'} | #{ka := 'va'} | #{ka := 'va', kc := 'vc'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'}}
+Expression has type:   #{dynamic() => #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'} | #{kc := 'vc'}}
+Context expected type: #{dynamic() => #{ka := 'va', kb := 'vb'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va'} | #{kb := 'vb'} | #{kc := 'vc'}} | #{dynamic() => #{ka := 'va', kb := 'vb'} | #{ka := 'va'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'} | #{kc := 'vc'}} | #{dynamic() => #{ka := 'va', kc := 'vc'} | #{ka := 'va'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'} | #{kc := 'vc'}}
     │   ╰───────' 
 
 Because in the expression's type:

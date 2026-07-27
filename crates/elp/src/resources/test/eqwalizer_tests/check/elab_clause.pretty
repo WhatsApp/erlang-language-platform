@@ -14,12 +14,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │     │
    │     Res.
 Expression has type:   atom() | {number()}
-Context expected type: {atom()} | number()
+Context expected type: number() | {atom()}
    │     
 
 Because in the expression's type:
   Here the type is:     atom()
-  Context expects type: {atom()} | integer() | float()
+  Context expects type: float() | integer() | {atom()}
   No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -35,7 +35,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 86 │     Res.
    │     ^^^ Res.
-Expression has type:   integer() | erlang:stacktrace()
+Expression has type:   erlang:stacktrace() | integer()
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

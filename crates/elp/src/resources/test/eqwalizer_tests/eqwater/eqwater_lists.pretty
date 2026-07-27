@@ -3,7 +3,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 31 │ occ_list_04_neg(L = [H | _]) when is_binary(H) -> L.
    │                                                   ^ L.
-Expression has type:   [binary() / [binary() | atom()]]
+Expression has type:   [binary() / [atom() | binary()]]
 Context expected type: [binary()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -13,7 +13,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                       ^
    │                       │
    │                       L.
-Expression has type:   [term() / []] | []
+Expression has type:   [] | [term() / []]
 Context expected type: []
    │                       
 

@@ -148,7 +148,7 @@ error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
 108 │     (F)(a).
     │     ^^^ F.
 Expected fun type with arity 1
-Got: fun(('a') -> 'b') | 'z'
+Got: 'z' | fun(('a') -> 'b')
 
 error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
     ┌─ check/src/dynamic_calls.erl:114:11
@@ -156,7 +156,7 @@ error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
 114 │     Res = (F)(a),
     │           ^^^ F.
 Expected fun type with arity 1
-Got: fun(('a') -> 'b') | 'z'
+Got: 'z' | fun(('a') -> 'b')
 
 error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
     ┌─ check/src/dynamic_calls.erl:138:5

@@ -77,7 +77,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                             ^
    │                             │
    │                             V.
-Expression has type:   'ok' | 'err'
+Expression has type:   'err' | 'ok'
 Context expected type: 'ok'
    │                             
 

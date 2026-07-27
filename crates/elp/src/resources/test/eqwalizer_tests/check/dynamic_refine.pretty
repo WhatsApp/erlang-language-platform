@@ -59,7 +59,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 153 │   {Mixed}.
     │   ^^^^^^^ {Mixed}.
-Expression has type:   {dynamic() | binary()}
+Expression has type:   {binary() | dynamic()}
 Context expected type: 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -67,7 +67,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 168 │   {Mixed2}.
     │   ^^^^^^^^ {Mixed2}.
-Expression has type:   {binary() | atom() | dynamic()}
+Expression has type:   {atom() | binary() | dynamic()}
 Context expected type: 'ok'
 
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
@@ -91,7 +91,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                            ^
     │                            │
     │                            D.
-Expression has type:   dynamic() | 'error'
+Expression has type:   'error' | dynamic()
 Context expected type: 'ok'
     │                            
 
@@ -123,7 +123,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                                ^
     │                                │
     │                                X.
-Expression has type:   dyn_alias() | 'err'
+Expression has type:   'err' | dyn_alias()
 Context expected type: 'ok'
     │                                
 

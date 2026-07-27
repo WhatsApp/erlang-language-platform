@@ -5,7 +5,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                     ^
    │                     │
    │                     V.
-Expression has type:   dyn('a') | 'b'
+Expression has type:   'b' | dyn('a')
 Context expected type: 'c'
    │                     
 

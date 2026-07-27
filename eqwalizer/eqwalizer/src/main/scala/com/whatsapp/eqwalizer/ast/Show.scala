@@ -31,7 +31,7 @@ case class Show(pipelineContext: Option[PipelineContext]) {
       case ConsType(_, _) =>
         showCons(tp)
       case UnionType(elemTys) =>
-        elemTys.map(show).mkString(" | ")
+        elemTys.map(show).toList.sorted.mkString(" | ")
       case RemoteType(rid, argTys) =>
         val prefix = showRid(rid)
         s"$prefix${argTys.map(show).mkString("(", ", ", ")")}"
@@ -170,8 +170,9 @@ case class Show(pipelineContext: Option[PipelineContext]) {
       case ConsType(_, _) =>
         "[...]"
       case UnionType(argTys) =>
-        val argTysTruncated = argTys.toList.take(5).map(showTruncated).mkString(" | ")
-        if (argTys.size > 5) s"$argTysTruncated | ..."
+        val strTruncated = argTys.map(showTruncated).toList
+        val argTysTruncated = strTruncated.sorted.take(5).mkString(" | ")
+        if (strTruncated.size > 5) s"$argTysTruncated | ..."
         else argTysTruncated
       case RemoteType(rid, argTys) =>
         if (argTys.isEmpty)

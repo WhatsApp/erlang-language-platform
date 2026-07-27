@@ -57,7 +57,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 110 │   generic(DM, S).
     │   ^^^^^^^^^^^^^^ generic(DM, S).
-Expression has type:   dyn_map() | #{a => atom()}
+Expression has type:   #{a => atom()} | dyn_map()
 Context expected type: 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

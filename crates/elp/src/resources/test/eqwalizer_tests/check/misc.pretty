@@ -27,7 +27,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 55 │ test06_neg(X) when is_number(X) -> + X.
    │                                    ^^^ + _.
-Expression has type:   integer() | float()
+Expression has type:   float() | integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -114,7 +114,7 @@ Context expected type: {number()}
     │                     
 
 Because in the expression's type:
-  Here the type is:     'false' | integer() | float()
+  Here the type is:     'false' | float() | integer()
   Context expects type: {number()}
   No candidate of the expression's type matches the expected type.
 
@@ -125,7 +125,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                  ^^^^^
     │                  │
     │                  [- _].
-Expression has type:   [integer()] | [float()]
+Expression has type:   [float()] | [integer()]
 Context expected type: [atom()]
     │                  
 
@@ -218,13 +218,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                 ^^^^^^^^^^^^^
     │                 │
     │                 ['true', 'false'].
-Expression has type:   ['true' | 'false']
+Expression has type:   ['false' | 'true']
 Context expected type: []
     │                 
 
 Because in the expression's type:
   [
-    Here the type is:     'true' | 'false'
+    Here the type is:     'false' | 'true'
     Context expects type: none()
     No candidate of the expression's type matches the expected type.
   ]
@@ -356,7 +356,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^^^^^^^^^^^^^^^^
     │     │
     │     {[H1 | T1], [H2 | T2]}.
-Expression has type:   {[integer() | atom()], [atom() | integer()]}
+Expression has type:   {[atom() | integer()], [atom() | integer()]}
 Context expected type: {[atom()], [integer()]}
     │     
 
@@ -460,7 +460,7 @@ Because in the expression's type:
   [
     Here the type is a union type with some valid candidates: atom()
     However the following candidate: binary()
-    Differs from the expected type:  atom() | integer() | float()
+    Differs from the expected type:  atom() | float() | integer()
   ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -578,7 +578,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 671 │     [X, 1, 2, 3 | Y].
     │     ^^^^^^^^^^^^^^^^ [X, 1, 2, 3 | Y].
-Expression has type:   [integer() | dynamic() | number()]
+Expression has type:   [dynamic() | integer() | number()]
 Context expected type: pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -594,7 +594,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 676 │     [X, 1, 2, 3 | an_atom].
     │     ^^^^^^^^^^^^^^^^^^^^^^ [X, 1, 2, 3 | 'an_atom'].
-Expression has type:   [integer() | dynamic() | number()]
+Expression has type:   [dynamic() | integer() | number()]
 Context expected type: pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -618,7 +618,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 682 │     Res.
     │     ^^^ Res.
-Expression has type:   [integer() | dynamic() | number()]
+Expression has type:   [dynamic() | integer() | number()]
 Context expected type: pid()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
@@ -678,9 +678,9 @@ Context expected type: v1_op()
     │     
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: 'stuff1' | 'v0_op2' | 'stuff2' | 'v0_op1' | 'v1_op2' | ...
+  Here the type is a union type with some valid candidates: 'stuff1' | 'stuff2' | 'v0_op1' | 'v0_op2' | 'v1_op1' | ...
   However the following candidate: 'v2_op'
-  Differs from the expected type:  'stuff1' | 'v0_op2' | 'stuff2' | 'v0_op1' | 'v1_op2' | ...
+  Differs from the expected type:  'stuff1' | 'stuff2' | 'v0_op1' | 'v0_op2' | 'v1_op1' | ...
 
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/misc.erl:760:1
@@ -802,14 +802,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^^^^^^^^^^
     │     │
     │     MyPriorities.
-Expression has type:   ['MM' | 'MS' | 'EE' | 'MA' | 'GE']
+Expression has type:   ['EE' | 'GE' | 'MA' | 'MM' | 'MS']
 Context expected type: [erlang:priority_level()]
     │     
 
 Because in the expression's type:
   [
-    Here the type is:     'MM' | 'MS' | 'EE' | 'MA' | 'GE'
-    Context expects type: 'low' | 'normal' | 'high' | 'max'
+    Here the type is:     'EE' | 'GE' | 'MA' | 'MM' | 'MS'
+    Context expects type: 'high' | 'low' | 'max' | 'normal'
     No candidate of the expression's type matches the expected type.
   ]
 

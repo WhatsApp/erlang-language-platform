@@ -248,7 +248,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^^^^^^^^^^^^^
     │     │
     │     ..#{..}.
-Expression has type:   #{K1 | V2 => V1 | K2}
+Expression has type:   #{K1 | V2 => K2 | V1}
 Context expected type: kv(K1 | K2, V1 | V2)
     │     
 
@@ -333,12 +333,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                         ^
     │                         │
     │                         M.
-Expression has type:   #{a() => n()} | #{n() => a()} | #{id => 'id' | 'no_id'}
+Expression has type:   #{a() => n()} | #{id => 'id' | 'no_id'} | #{n() => a()}
 Context expected type: #{a() | n() => a()}
     │                         
 
 Because in the expression's type:
-  The type is a union type with some valid candidates: #{n() => a()} | #{id => 'id' | 'no_id'}
+  The type is a union type with some valid candidates: #{id => 'id' | 'no_id'} | #{n() => a()}
   However, the following candidate doesn't match:
   #{ a() =>
     Here the type is:     number()
@@ -427,7 +427,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     │     │
     │     maps:update_with('a', F, 'a', Map).
-Expression has type:   #{a => 'b' | 'c' | 'a'}
+Expression has type:   #{a => 'a' | 'c' | 'b'}
 Context expected type: #{a => 'b' | 'c'}
     │     
 
@@ -462,14 +462,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     │
     │     X.
 Expression has type:   gen_shape('a' | 'b')
-Context expected type: 'a' | #{item := 'a' | #{item := 'a' | gen_shape('a')}}
+Context expected type: #{item := #{item := 'a' | gen_shape('a')} | 'a'} | 'a'
     │     
 
 Because in the expression's type:
   #{ item =>
     Here the type is a union type with some valid candidates: 'a'
     However the following candidate: 'b'
-    Differs from the expected type:  'a' | #{item := 'a' | gen_shape('a')}
+    Differs from the expected type:  #{item := 'a' | gen_shape('a')} | 'a'
   , ... }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

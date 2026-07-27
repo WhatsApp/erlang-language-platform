@@ -5,7 +5,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                     ^
    │                     │
    │                     F.
-Expression has type:   'f0' | fun((atom()) -> pid()) | 'f1'
+Expression has type:   'f0' | 'f1' | fun((atom()) -> pid())
 Context expected type: fun()
    │                     
 

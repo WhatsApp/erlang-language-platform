@@ -26,7 +26,7 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_custom.erl:30:27
    │
 30 │     eqwalizer:reveal_type(element(N, Tup)).
-   │                           ^^^^^^^^^^^^^^^ dynamic(number() | atom())
+   │                           ^^^^^^^^^^^^^^^ dynamic(atom() | number())
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/gradual_custom.erl:43:3
@@ -49,7 +49,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 73 │   lists:flatten(In).
    │   ^^^^^^^^^^^^^^^^^ lists:flatten(In).
-Expression has type:   ['b' | 'c' | 'a']
+Expression has type:   ['a' | 'b' | 'c']
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -57,7 +57,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 85 │   lists:flatten(In, Tail).
    │   ^^^^^^^^^^^^^^^^^^^^^^^ lists:flatten(In, Tail).
-Expression has type:   ['b' | 'a' | 'y' | 'z' | 'c' | 'x']
+Expression has type:   ['a' | 'b' | 'c' | 'x' | 'y' | 'z']
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -65,7 +65,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 94 │   file:consult(some_file).
    │   ^^^^^^^^^^^^^^^^^^^^^^^ file:consult('some_file').
-Expression has type:   {'ok', [dynamic()]} | {'error', 'terminated' | 'badarg' | {integer(), atom(), term()} | file:posix() | 'system_limit'}
+Expression has type:   {'error', 'badarg' | 'system_limit' | 'terminated' | file:posix() | {integer(), atom(), term()}} | {'ok', [dynamic()]}
 Context expected type: 'nok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -81,7 +81,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 108 │   abs(N).
     │       ^ N.
-Expression has type:   dynamic() | 'a'
+Expression has type:   'a' | dynamic()
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -176,7 +176,7 @@ Context expected type: 'ok'
     │   
 
 Because in the expression's type:
-  Here the type is:     string() | binary()
+  Here the type is:     binary() | string()
   Context expects type: 'ok'
   No candidate of the expression's type matches the expected type.
 
@@ -198,7 +198,7 @@ Context expected type: 'ok'
     │   
 
 Because in the expression's type:
-  Here the type is:     string() | binary()
+  Here the type is:     binary() | string()
   Context expects type: 'ok'
   No candidate of the expression's type matches the expected type.
 
@@ -220,7 +220,7 @@ Context expected type: 'ok'
     │   
 
 Because in the expression's type:
-  Here the type is:     string() | binary()
+  Here the type is:     binary() | string()
   Context expects type: 'ok'
   No candidate of the expression's type matches the expected type.
 
@@ -242,7 +242,7 @@ Context expected type: 'ok'
     │   
 
 Because in the expression's type:
-  Here the type is:     string() | binary()
+  Here the type is:     binary() | string()
   Context expects type: 'ok'
   No candidate of the expression's type matches the expected type.
 
@@ -251,7 +251,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 245 │ min3_neg(X, Y) -> min(X, Y).
     │                   ^^^^^^^^^ erlang:min(X, Y).
-Expression has type:   number() | 'undefined'
+Expression has type:   'undefined' | number()
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -259,7 +259,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 257 │ min5_neg(X, Y) -> min(X, Y).
     │                   ^^^^^^^^^ erlang:min(X, Y).
-Expression has type:   number() | atom() | binary()
+Expression has type:   atom() | binary() | number()
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -267,7 +267,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 263 │ min6_neg(X, Y) -> min(X, Y).
     │                   ^^^^^^^^^ erlang:min(X, Y).
-Expression has type:   number() | dynamic() | number() | atom() | dynamic()
+Expression has type:   atom() | dynamic() | number() | dynamic() | number()
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -275,7 +275,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 269 │ min7_neg(X, Y) -> min(X, Y).
     │                   ^^^^^^^^^ erlang:min(X, Y).
-Expression has type:   number() | dynamic() | atom() | dynamic()
+Expression has type:   atom() | dynamic() | dynamic() | number()
 Context expected type: number()
 
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
@@ -291,14 +291,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │             ^^^^
     │             │
     │             Atom.
-Expression has type:   'bar' | 'undefined' | 'foo'
-Context expected type: 'foo' | 'bar' | binary()
+Expression has type:   'bar' | 'foo' | 'undefined'
+Context expected type: 'bar' | 'foo' | binary()
     │             
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: 'bar' | 'foo'
   However the following candidate: 'undefined'
-  Differs from the expected type:  'foo' | 'bar' | binary()
+  Differs from the expected type:  'bar' | 'foo' | binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/gradual_custom.erl:340:13
@@ -315,7 +315,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
     │   │
     │   parse_atom(Bin, ['foo', 'bar']).
-Expression has type:   'foo' | 'bar'
+Expression has type:   'bar' | 'foo'
 Context expected type: 'foo'
     │   
 

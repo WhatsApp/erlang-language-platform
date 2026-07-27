@@ -19,7 +19,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 58 │         {err, A} ?= T,
    │                     ^ T.
-Expression has type:   {'ok', atom()} | {'err', term()}
+Expression has type:   {'err', term()} | {'ok', atom()}
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -27,7 +27,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 67 │         {ok, A} ?= T,
    │                    ^ T.
-Expression has type:   {'ok', atom()} | {'err', term()}
+Expression has type:   {'err', term()} | {'ok', atom()}
 Context expected type: 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

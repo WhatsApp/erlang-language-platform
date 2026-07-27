@@ -18,7 +18,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 40 │     element(2, Tup).
    │     ^^^^^^^^^^^^^^^ erlang:element(2, Tup).
-Expression has type:   integer() | float() | string() | atom()
+Expression has type:   atom() | float() | integer() | string()
 Context expected type: #{dynamic() => dynamic()}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -28,7 +28,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                ^^^
    │                │
    │                Tup.
-Expression has type:   {atom(), string()} | [dynamic()]
+Expression has type:   [dynamic()] | {atom(), string()}
 Context expected type: tuple()
    │                
 
@@ -56,7 +56,7 @@ Context expected type: #{dynamic() => dynamic()}
    │     
 
 Because in the expression's type:
-  Here the type is:     atom() | integer() | float() | string()
+  Here the type is:     atom() | float() | integer() | string()
   Context expects type: #{dynamic() => dynamic()}
   No candidate of the expression's type matches the expected type.
 
@@ -67,7 +67,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │     ^^^^^^^^^^^^^^^
    │     │
    │     erlang:element(N, Tup).
-Expression has type:   atom() | integer() | float()
+Expression has type:   atom() | float() | integer()
 Context expected type: atom()
    │     
 
@@ -91,7 +91,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │     ^^^^^^^^^^^^^^^
    │     │
    │     erlang:element(1, Tup).
-Expression has type:   term() | integer() | float()
+Expression has type:   float() | integer() | term()
 Context expected type: atom()
    │     
 
@@ -106,7 +106,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │     ^^^^^^^^^^^^^^^
    │     │
    │     erlang:element(N, Rec).
-Expression has type:   'foo' | 'ok' | 'error' | number() | string()
+Expression has type:   'error' | 'ok' | 'foo' | number() | string()
 Context expected type: atom()
    │     
 
@@ -184,7 +184,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^^^^^^^^^^^^^^^
     │     │
     │     maps:get(K, M, 0).
-Expression has type:   integer() | atom()
+Expression has type:   atom() | integer()
 Context expected type: atom()
     │     
 
@@ -200,7 +200,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^
     │     │
     │     Res.
-Expression has type:   integer() | atom()
+Expression has type:   atom() | integer()
 Context expected type: atom()
     │     
 
@@ -250,12 +250,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                           ^^^^^^^^^^^^^^^^^^^^^^^^^
     │                           │
     │                           maps:get(V, M, 'undefined').
-Expression has type:   'undefined' | 'a_v' | 'c_v'
+Expression has type:   'a_v' | 'c_v' | 'undefined'
 Context expected type: 'a_v' | 'b_v' | 'undefined'
     │                           
 
 Because in the expression's type:
-  Here the type is a union type with some valid candidates: 'undefined' | 'a_v'
+  Here the type is a union type with some valid candidates: 'a_v' | 'undefined'
   However the following candidate: 'c_v'
   Differs from the expected type:  'a_v' | 'b_v' | 'undefined'
 
@@ -264,7 +264,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 309 │     Res.
     │     ^^^ Res.
-Expression has type:   {'value', #{}} | 'false'
+Expression has type:   'false' | {'value', #{}}
 Context expected type: 'nok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -407,13 +407,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 548 │ │ │     ).
     │ ╰─│─────^ maps:fold(fun, [], M).
 Expression has type:   [[[]]]
-Context expected type: [number() | 'a' | 'b']
+Context expected type: ['a' | 'b' | number()]
     │   ╰─────' 
 
 Because in the expression's type:
   [
     Here the type is:     [[]]
-    Context expects type: integer() | float() | 'a' | 'b'
+    Context expects type: 'a' | 'b' | float() | integer()
     No candidate matches in the expected union.
   ]
 
@@ -525,8 +525,8 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 646 │ │ │         M
 647 │ │ │     ).
     │ ╰─│─────^ maps:fold(fun, [], M).
-Expression has type:   [integer() | binary() | atom()]
-Context expected type: [binary()] | [integer()] | [atom()]
+Expression has type:   [atom() | binary() | integer()]
+Context expected type: [atom()] | [binary()] | [integer()]
     │   ╰─────' 
 
 Because in the expression's type:
@@ -601,7 +601,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                 ^^^
     │                 │
     │                 Res.
-Expression has type:   {'true', 'a'} | 'wrong_ret'
+Expression has type:   'wrong_ret' | {'true', 'a'}
 Context expected type: boolean() | {'true', term()}
     │                 
 
@@ -618,7 +618,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                    │
     │                    'wrong_ret'.
 Expression has type:   'wrong_ret'
-Context expected type: boolean() | [dynamic()]
+Context expected type: [dynamic()] | boolean()
     │                    
 
 Because in the expression's type:
@@ -634,7 +634,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                    │
     │                    {'true', 'a'}.
 Expression has type:   {'true', 'a'}
-Context expected type: boolean() | [dynamic()]
+Context expected type: [dynamic()] | boolean()
     │                    
 
 Because in the expression's type:
@@ -674,7 +674,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                    │
     │                    {'true', 'a'}.
 Expression has type:   {'true', 'a'}
-Context expected type: boolean() | [dynamic()]
+Context expected type: [dynamic()] | boolean()
     │                    
 
 Because in the expression's type:
@@ -689,8 +689,8 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                 ^^^
     │                 │
     │                 Res.
-Expression has type:   ['a'] | 'wrong_ret'
-Context expected type: boolean() | [dynamic()]
+Expression has type:   'wrong_ret' | ['a']
+Context expected type: [dynamic()] | boolean()
     │                 
 
 Because in the expression's type:
@@ -706,7 +706,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │         │
     │         erlang:list_to_atom/1.
 Expression has type:   fun((string()) -> atom())
-Context expected type: fun((dynamic()) -> boolean() | [dynamic()])
+Context expected type: fun((dynamic()) -> [dynamic()] | boolean())
     │         
 
 Because in the expression's type:
@@ -724,13 +724,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │         │
     │         erlang:atom_to_list/1.
 Expression has type:   fun((atom()) -> string())
-Context expected type: fun((Item) -> boolean() | [Item])
+Context expected type: fun((Item) -> [Item] | boolean())
     │         
 
 Because in the expression's type:
   fun((atom()) ->
     Here the type is:     string()
-    Context expects type: boolean() | [Item]
+    Context expects type: [Item] | boolean()
   )
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -761,13 +761,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │         │
     │         erlang:atom_to_list/1.
 Expression has type:   fun((atom()) -> string())
-Context expected type: fun((Item) -> boolean() | [Item])
+Context expected type: fun((Item) -> [Item] | boolean())
     │         
 
 Because in the expression's type:
   fun((atom()) ->
     Here the type is:     string()
-    Context expects type: boolean() | [Item]
+    Context expects type: [Item] | boolean()
   )
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -798,13 +798,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │         │
     │         erlang:atom_to_list/1.
 Expression has type:   fun((atom()) -> string())
-Context expected type: fun((Item) -> boolean() | [Item])
+Context expected type: fun((Item) -> [Item] | boolean())
     │         
 
 Because in the expression's type:
   fun((atom()) ->
     Here the type is:     string()
-    Context expects type: boolean() | [Item]
+    Context expects type: [Item] | boolean()
   )
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -845,13 +845,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │         │
     │         erlang:atom_to_list/1.
 Expression has type:   fun((atom()) -> string())
-Context expected type: fun((Item) -> boolean() | [Item])
+Context expected type: fun((Item) -> [Item] | boolean())
     │         
 
 Because in the expression's type:
   fun((atom()) ->
     Here the type is:     string()
-    Context expects type: boolean() | [Item]
+    Context expects type: [Item] | boolean()
   )
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -863,7 +863,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 958 │ │         non_tuple
 959 │ │     ).
     │ ╰─────^ lists:keystore('a', 1, [{'foo', 'b'}, {'c', 'd'}], 'non_tuple').
-Expression has type:   [{'foo', 'b'} | {'c', 'd'} | dynamic()]
+Expression has type:   [dynamic() | {'c', 'd'} | {'foo', 'b'}]
 Context expected type: 'nok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1072,7 +1072,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1100 │     proplists:get_value(k, L).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^ proplists:get_value('k', L).
 Expression has type:   term()
-Context expected type: pid() | 'undefined'
+Context expected type: 'undefined' | pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1106:5
@@ -1080,7 +1080,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1106 │     proplists:get_value(k, L).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^ proplists:get_value('k', L).
 Expression has type:   term()
-Context expected type: pid() | 'undefined' | 'v'
+Context expected type: 'undefined' | 'v' | pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1111:5
@@ -1096,7 +1096,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1117 │     proplists:get_value(k, L, 3).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ proplists:get_value('k', L, 3).
 Expression has type:   term()
-Context expected type: pid() | integer()
+Context expected type: integer() | pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1123:5
@@ -1104,7 +1104,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1123 │     proplists:get_value(k, L, my_default).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ proplists:get_value('k', L, 'my_default').
 Expression has type:   term()
-Context expected type: 'v1' | 'v2' | 'my_default'
+Context expected type: 'my_default' | 'v1' | 'v2'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1129:5
@@ -1162,13 +1162,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │     │
      │     proplists:get_all_values('k', L).
 Expression has type:   [term()]
-Context expected type: [pid() | 'default']
+Context expected type: ['default' | pid()]
      │     
 
 Because in the expression's type:
   [
     Here the type is:     term()
-    Context expects type: pid() | 'default'
+    Context expects type: 'default' | pid()
     No candidate matches in the expected union.
   ]
 
@@ -1180,13 +1180,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │     │
      │     proplists:get_all_values('k', L).
 Expression has type:   [term()]
-Context expected type: [pid() | 'default' | 'v']
+Context expected type: ['default' | 'v' | pid()]
      │     
 
 Because in the expression's type:
   [
     Here the type is:     term()
-    Context expects type: pid() | 'default' | 'v'
+    Context expects type: 'default' | 'v' | pid()
     No candidate matches in the expected union.
   ]
 
@@ -1512,7 +1512,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1324 │     proplists:to_map(b).
      │                      ^ 'b'.
 Expression has type:   'b'
-Context expected type: [atom() | {term(), term()} | term()]
+Context expected type: [atom() | term() | {term(), term()}]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1358:24
@@ -1544,14 +1544,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1373 │     proplists:get_value(a, [a], b).
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ proplists:get_value('a', ['a'], 'b').
 Expression has type:   term()
-Context expected type: 'true' | 'b'
+Context expected type: 'b' | 'true'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1416:5
      │
 1416 │     file:consult(some_file).
      │     ^^^^^^^^^^^^^^^^^^^^^^^ file:consult('some_file').
-Expression has type:   {'ok', [dynamic()]} | {'error', 'terminated' | 'badarg' | {integer(), atom(), term()} | file:posix() | 'system_limit'}
+Expression has type:   {'error', 'badarg' | 'system_limit' | 'terminated' | file:posix() | {integer(), atom(), term()}} | {'ok', [dynamic()]}
 Context expected type: 'nok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1590,7 +1590,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 1454 │ │ │         [1, 2, 3, 4]
 1455 │ │ │     ).
      │ ╰─│─────^ lists:filtermap(fun, [1, 2, 3, 4]).
-Expression has type:   [string() | integer()]
+Expression has type:   [integer() | string()]
 Context expected type: [integer()]
      │   ╰─────' 
 
@@ -1890,7 +1890,7 @@ Context expected type: file:filename()
      │     
 
 Because in the expression's type:
-  Here the type is:     string() | binary()
+  Here the type is:     binary() | string()
   Context expects type: string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1905,7 +1905,7 @@ Context expected type: file:filename()
      │     
 
 Because in the expression's type:
-  Here the type is:     string() | binary()
+  Here the type is:     binary() | string()
   Context expects type: string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1920,7 +1920,7 @@ Context expected type: file:filename()
      │     
 
 Because in the expression's type:
-  Here the type is:     string() | binary()
+  Here the type is:     binary() | string()
   Context expects type: string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1954,7 +1954,7 @@ Because in the expression's type:
   [
     Here the type is a union type with some valid candidates: binary()
     However the following candidate: pid()
-    Differs from the expected type:  string() | atom() | file:deep_list() | binary()
+    Differs from the expected type:  atom() | binary() | file:deep_list() | string()
   ]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1969,7 +1969,7 @@ Context expected type: file:filename()
      │     
 
 Because in the expression's type:
-  Here the type is:     string() | binary()
+  Here the type is:     binary() | string()
   Context expects type: string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1984,7 +1984,7 @@ Context expected type: file:filename()
      │     
 
 Because in the expression's type:
-  Here the type is:     string() | binary()
+  Here the type is:     binary() | string()
   Context expects type: string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1999,7 +1999,7 @@ Context expected type: file:filename()
      │     
 
 Because in the expression's type:
-  Here the type is:     string() | binary()
+  Here the type is:     binary() | string()
   Context expects type: string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -2031,7 +2031,7 @@ Context expected type: file:name_all()
 
 Because in the expression's type:
   Here the type is:     pid()
-  Context expects type: string() | atom() | file:deep_list() | binary()
+  Context expects type: atom() | binary() | file:deep_list() | string()
   No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -2208,7 +2208,7 @@ Context expected type: iodata() | unicode:charlist()
 
 Because in the expression's type:
   Here the type is:     atom()
-  Context expects type: iolist() | binary()
+  Context expects type: binary() | iolist()
   No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -2227,14 +2227,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                                      │
      │                                      [{'return', 'something'}].
 Expression has type:   [{'return', 'something'}]
-Context expected type: [re:compile_option() | 'notempty_atstart' | 'notbol' | 'global' | {'offset', integer()} | {'match_limit_recursion', integer()} | 'notempty' | {'match_limit', integer()} | 'noteol' | {'return', 'iodata' | 'list' | 'binary'} | 'anchored']
+Context expected type: ['anchored' | 'global' | 'notbol' | 'notempty' | 'notempty_atstart' | 'noteol' | re:compile_option() | {'match_limit', integer()} | {'match_limit_recursion', integer()} | {'offset', integer()} | {'return', 'binary' | 'iodata' | 'list'}]
      │                                      
 
 Because in the expression's type:
   [
     { 'return', 
       Here the type is:     'something'
-      Context expects type: 'iodata' | 'list' | 'binary'
+      Context expects type: 'binary' | 'iodata' | 'list'
       No candidate matches in the expected union.
     }
   ]
@@ -2246,14 +2246,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
-Expression has type:   {[integer() | float()], [atom()]}
+Expression has type:   {[float() | integer()], [atom()]}
 Context expected type: {[atom()], [number()]}
      │     
 
 Because in the expression's type:
   { 
     [
-      Here the type is:     integer() | float()
+      Here the type is:     float() | integer()
       Context expects type: atom()
       No candidate of the expression's type matches the expected type.
     ]
@@ -2266,7 +2266,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
-Expression has type:   {[{term(), integer() | float()}], [{term(), atom()}]}
+Expression has type:   {[{term(), float() | integer()}], [{term(), atom()}]}
 Context expected type: {[{term(), atom()}], [{term(), number()}]}
      │     
 
@@ -2274,7 +2274,7 @@ Because in the expression's type:
   { 
     [
       { term(), 
-        Here the type is:     integer() | float()
+        Here the type is:     float() | integer()
         Context expects type: atom()
         No candidate of the expression's type matches the expected type.
       }
@@ -2288,7 +2288,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
-Expression has type:   {[{'ok', atom()}], [{'ok', atom()} | {'error', term()}]}
+Expression has type:   {[{'ok', atom()}], [{'error', term()} | {'ok', atom()}]}
 Context expected type: {[{'ok', atom()}], [{'error', term()}]}
      │     
 

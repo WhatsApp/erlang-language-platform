@@ -419,7 +419,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │   ^^^^^
     │   │
     │   _ * _.
-Expression has type:   integer() | float()
+Expression has type:   float() | integer()
 Context expected type: integer()
     │   
 

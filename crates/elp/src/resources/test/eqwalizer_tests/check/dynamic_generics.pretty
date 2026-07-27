@@ -73,13 +73,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 117 │ │ │     [1, 2, 3]
 118 │ │ │   ).
     │ ╰─│───^ lists:map(fun, [1, 2, 3]).
-Expression has type:   [integer() | 'three' | dynamic()]
+Expression has type:   ['three' | dynamic() | integer()]
 Context expected type: [integer()]
     │   ╰───' 
 
 Because in the expression's type:
   [
-    Here the type is a union type with some valid candidates: integer() | dynamic()
+    Here the type is a union type with some valid candidates: dynamic() | integer()
     However the following candidate: 'three'
     Differs from the expected type:  integer()
   ]
@@ -89,7 +89,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 115 │         Fib(N - 2) + Fib(N - 1)
     │         ^^^^^^^^^^ Fib(_ - _).
-Expression has type:   integer() | 'three' | dynamic()
+Expression has type:   'three' | dynamic() | integer()
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -97,7 +97,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 115 │         Fib(N - 2) + Fib(N - 1)
     │                      ^^^^^^^^^^ Fib(_ - _).
-Expression has type:   integer() | 'three' | dynamic()
+Expression has type:   'three' | dynamic() | integer()
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

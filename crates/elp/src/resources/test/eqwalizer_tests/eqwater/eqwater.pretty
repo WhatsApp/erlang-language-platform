@@ -5,7 +5,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │       ^
     │       │
     │       B.
-Expression has type:   integer() | binary()
+Expression has type:   binary() | integer()
 Context expected type: binary()
     │       
 
@@ -21,7 +21,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                      ^
     │                      │
     │                      B.
-Expression has type:   integer() | binary()
+Expression has type:   binary() | integer()
 Context expected type: binary()
     │                      
 
@@ -37,7 +37,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │       ^
     │       │
     │       A.
-Expression has type:   integer() | binary()
+Expression has type:   binary() | integer()
 Context expected type: binary()
     │       
 
@@ -111,7 +111,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 415 │ get_int6({_, I}) -> I.
     │                     ^ I.
-Expression has type:   integer() | atom()
+Expression has type:   atom() | integer()
 Context expected type: number()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
@@ -127,7 +127,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 422 │ get_int7_neg({_, I}) -> I.
     │                         ^ I.
-Expression has type:   integer() | atom()
+Expression has type:   atom() | integer()
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -135,7 +135,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 429 │ get_int8_neg({_, I}) -> I.
     │                         ^ I.
-Expression has type:   integer() | atom()
+Expression has type:   atom() | integer()
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -170,7 +170,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                                                  ^
     │                                                  │
     │                                                  A.
-Expression has type:   integer() | 'ok'
+Expression has type:   'ok' | integer()
 Context expected type: integer()
     │                                                  
 
@@ -234,7 +234,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                 ^
     │                 │
     │                 A.
-Expression has type:   tuple() | atom()
+Expression has type:   atom() | tuple()
 Context expected type: atom()
     │                 
 
@@ -248,7 +248,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 839 │ multi_param2_neg(_, Y) -> Y.
     │                           ^ Y.
-Expression has type:   number() | atom()
+Expression has type:   atom() | number()
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -256,7 +256,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 997 │ occ42_neg({F, S} = {_, _}) -> F.
     │                               ^ F.
-Expression has type:   string() | 'undefined'
+Expression has type:   'undefined' | string()
 Context expected type: string()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -264,7 +264,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │
 1004 │ occ43_neg({F, S} = {_, _}) -> F.
      │                               ^ F.
-Expression has type:   string() | 'undefined'
+Expression has type:   'undefined' | string()
 Context expected type: string()
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
@@ -280,7 +280,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                    ^
      │                    │
      │                    I.
-Expression has type:   integer() | 'undefined'
+Expression has type:   'undefined' | integer()
 Context expected type: integer()
      │                    
 
@@ -296,7 +296,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │              ^^^
      │              │
      │              [A].
-Expression has type:   [[atom(), ...]] | [[]] | [atom()]
+Expression has type:   [[]] | [[atom(), ...]] | [atom()]
 Context expected type: [atom()]
      │              
 
@@ -350,7 +350,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │       ^
      │       │
      │       Y.
-Expression has type:   binary() | atom()
+Expression has type:   atom() | binary()
 Context expected type: binary()
      │       
 
@@ -382,7 +382,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │                              ^
      │                              │
      │                              V.
-Expression has type:   binary() | 'ok'
+Expression has type:   'ok' | binary()
 Context expected type: 'ok'
      │                              
 
@@ -396,7 +396,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │
 1225 │         _ -> Args
      │              ^^^^ Args.
-Expression has type:   {term(), my_list()} | number()
+Expression has type:   number() | {term(), my_list()}
 Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

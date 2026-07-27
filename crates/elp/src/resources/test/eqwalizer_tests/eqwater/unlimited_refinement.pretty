@@ -19,7 +19,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 94 │         V -> V
    │              ^ V.
-Expression has type:   {'ok7' | 'ok2' | 'ok6' | 'ok1' | 'ok5' | 'ok8' | 'ok4' | 'ok9' | 'ok3', map3() | map5() | map2() | map9() | map1() | map7() | map6() | map8() | map4()}
+Expression has type:   {'ok1' | 'ok2' | 'ok3' | 'ok4' | 'ok5' | 'ok6' | 'ok7' | 'ok8' | 'ok9', map1() | map2() | map3() | map4() | map5() | map6() | map7() | map8() | map9()}
 Context expected type: 'ok'
 
 2 ERRORS

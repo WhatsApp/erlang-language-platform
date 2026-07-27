@@ -6,7 +6,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                      │
    │                      M.
 Expression has type:   #{bar := atom(), baz := atom()}
-Context expected type: foo_map() | #{foo => atom()}
+Context expected type: #{foo => atom()} | foo_map()
    │                      
 
 Because in the expression's type:

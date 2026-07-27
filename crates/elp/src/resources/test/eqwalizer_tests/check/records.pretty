@@ -192,12 +192,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                           │
     │                           'a'.
 Expression has type:   'a'
-Context expected type: integer() | boolean()
+Context expected type: boolean() | integer()
     │                           
 
 Because in the expression's type:
   Here the type is:     'a'
-  Context expects type: integer() | 'false' | 'true'
+  Context expects type: 'false' | 'true' | integer()
   No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -208,12 +208,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                       │
     │                       'a'.
 Expression has type:   'a'
-Context expected type: integer() | boolean()
+Context expected type: boolean() | integer()
     │                       
 
 Because in the expression's type:
   Here the type is:     'a'
-  Context expects type: integer() | 'false' | 'true'
+  Context expects type: 'false' | 'true' | integer()
   No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -241,12 +241,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                            │
     │                            'a'.
 Expression has type:   'a'
-Context expected type: integer() | boolean()
+Context expected type: boolean() | integer()
     │                            
 
 Because in the expression's type:
   Here the type is:     'a'
-  Context expects type: integer() | 'false' | 'true'
+  Context expects type: 'false' | 'true' | integer()
   No candidate matches in the expected union.
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -311,7 +311,7 @@ Context expected type: #int_bool_box{}
 Because in the expression's type:
   { 'int_bool_box', 
     Here the type is:     'a'
-    Context expects type: integer() | 'false' | 'true'
+    Context expects type: 'false' | 'true' | integer()
     No candidate matches in the expected union.
   }
 
@@ -339,7 +339,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^^^^^^^^^^^^^^^^^^
     │     │
     │     ...#int_bool_box.inner.
-Expression has type:   boolean() | 'true'
+Expression has type:   'true' | boolean()
 Context expected type: 'true'
     │     
 
