@@ -1743,6 +1743,7 @@ impl Server {
             "\nserver::send:msg={}",
             lsp_msg_for_context(&message)
         ));
+        let _phase = watchdog::phase(watchdog::LSP_SEND_PHASE);
         match self.connection.sender.send(message) {
             Ok(_) => {}
             Err(err) => {

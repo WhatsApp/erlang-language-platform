@@ -54,6 +54,8 @@ use elp_log::telemetry;
 use fxhash::FxHashMap;
 use parking_lot::Mutex;
 
+use super::FILE_WATCH_LOGGER_NAME;
+
 /// How often the watchdog wakes to inspect the heartbeat.
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
 
@@ -62,6 +64,8 @@ const POLL_INTERVAL: Duration = Duration::from_millis(500);
 /// is almost certainly wedged rather than merely slow — so the report is a strong
 /// signal rather than noise from the occasional slow-but-recovering turn.
 const STALL_THRESHOLD: Duration = Duration::from_secs(30);
+
+pub(crate) const LSP_SEND_PHASE: &str = "lsp_send";
 
 /// Bumped on every [`arm`]/[`phase`] transition. The watchdog keys its
 /// "report once" de-duplication on this, so a multi-second stall in one phase is
@@ -200,7 +204,11 @@ fn run(stop: &AtomicBool) {
         let stuck_for = beat.phase_started.elapsed();
         if stuck_for >= STALL_THRESHOLD && reported_epoch != Some(beat.epoch) {
             reported_epoch = Some(beat.epoch);
-            report_stall(&beat, stuck_for);
+            if beat.phase_label == LSP_SEND_PHASE {
+                report_client_wedge(&beat, stuck_for);
+            } else {
+                report_stall(&beat, stuck_for);
+            }
         }
     }
 }
@@ -267,6 +275,49 @@ fn report_stall(beat: &Beat, stuck_for: Duration) {
         data["main_thread"] = serde_json::Value::String(main_thread);
     }
     telemetry::send("main_loop_watchdog_stall".to_string(), data);
+}
+
+/// Report a stall in the [`LSP_SEND_PHASE`]: the main loop is parked on the
+/// client's stdio writer because the client stopped reading. This is not a
+/// main-loop pathology and is a false positive for [`report_stall`]. The
+/// client transport is the very thing that is wedged, so neither client-routed
+/// logging (`LspLogger` -> `connection.sender`) nor the telemetry drain (serviced
+/// by the parked main loop) can get out while it lasts.
+/// Record it to the on-disk file-watch log — the one sink independent of the
+/// client — and also emit a distinct, benign telemetry event, which will be
+/// delivered if the loop resumes  and keeps client-wedge
+/// frequency visible without polluting the main-loop stall signal.
+fn report_client_wedge(beat: &Beat, stuck_for: Duration) {
+    let stuck_ms = stuck_for.as_millis() as u64;
+    let turn_ms = beat.turn_started.elapsed().as_millis() as u64;
+
+    // What the main-loop thread is doing right now (`/proc`, Linux): a client
+    // wedge shows it parked in the stdout write (e.g. `state=S wchan=pipe_write`),
+    // which confirms the diagnosis rather than a server-side blocker.
+    let main_thread = main_thread_state();
+    let main_thread_suffix = main_thread
+        .as_deref()
+        .map(|s| format!("; main thread: {s}"))
+        .unwrap_or_default();
+
+    log::warn!(
+        target: FILE_WATCH_LOGGER_NAME,
+        "main loop watchdog: LSP client wedge — parked {stuck_ms}ms in phase '{}' (turn '{}', {turn_ms}ms total); client stopped reading stdout, not a server stall{main_thread_suffix}",
+        beat.phase_label,
+        beat.turn_label,
+    );
+
+    let mut data = serde_json::json!({
+        "title": "ELP LSP client wedge",
+        "phase": beat.phase_label,
+        "turn": beat.turn_label,
+        "stuck_ms": stuck_ms,
+        "turn_ms": turn_ms,
+    });
+    if let Some(main_thread) = main_thread {
+        data["main_thread"] = serde_json::Value::String(main_thread);
+    }
+    telemetry::send("lsp_send_client_wedge".to_string(), data);
 }
 
 /// Best-effort one-line description of what a thread is doing right now, from
