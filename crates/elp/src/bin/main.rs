@@ -485,11 +485,11 @@ mod tests {
         let (stdout, stderr, code) = elp(args);
         match code {
             0 => {
-                assert_normalised_file(exp_path, &stdout, path, false, false);
+                assert_normalised_file(exp_path, &stdout, &path, false, false);
                 assert!(stderr.is_empty());
             }
             _ => {
-                assert_normalised_file(exp_path, &stderr, path, false, false);
+                assert_normalised_file(exp_path, &stderr, &path, false, false);
                 assert!(stdout.is_empty());
             }
         }
@@ -600,22 +600,10 @@ mod tests {
                         otp_version_capture.map(|cap| cap.extract())
                     {
                         if otp_version_only == otp_version.as_bytes() {
-                            assert_normalised_file(
-                                exp_path,
-                                &stdout,
-                                project_path.clone(),
-                                false,
-                                false,
-                            );
+                            assert_normalised_file(exp_path, &stdout, &project_path, false, false);
                         }
                     } else {
-                        assert_normalised_file(
-                            exp_path,
-                            &stdout,
-                            project_path.clone(),
-                            false,
-                            false,
-                        );
+                        assert_normalised_file(exp_path, &stdout, &project_path, false, false);
                     }
                 }
             }
@@ -2959,7 +2947,7 @@ mod tests {
             assert_normalised_file(
                 expected,
                 &output,
-                path,
+                &path,
                 snapshot.normalise_urls,
                 snapshot.first_line_only,
             );
@@ -3044,7 +3032,7 @@ mod tests {
             assert_normalised_file(
                 expected,
                 &output,
-                path,
+                &path,
                 self.normalise_urls,
                 self.first_line_only,
             );
@@ -3132,7 +3120,7 @@ mod tests {
     fn assert_normalised_file(
         expected: ExpectFile,
         actual: &str,
-        project_path: PathBuf,
+        project_path: &Path,
         normalise_urls: bool,
         first_line_only: bool,
     ) {
