@@ -843,7 +843,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
       case (t, s) if subtype.gradualSubType(s, t) =>
         s
       case (UnionType(ts), s) =>
-        UnionType(ts.map(restrict(_, s)))
+        subtype.join(ts.map(restrict(_, s)))
       case (RemoteType(rid, args), _) =>
         val body = util.getTypeDeclBody(rid, args)
         val restricted = restrict(body, t2)
@@ -880,7 +880,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
         val removed = remove(body, t2)
         if (removed == body) t1 else removed
       case (UnionType(ts), s) =>
-        UnionType(ts.map(remove(_, s)))
+        subtype.join(ts.map(remove(_, s)))
       case (BoundedDynamicType(t), s) =>
         BoundedDynamicType(remove(t, s))
       case (t, _) =>
@@ -931,7 +931,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
         val body = util.getTypeDeclBody(rid, args)
         update(body, path, pol, s)
       case (UnionType(ts), _) =>
-        UnionType(ts.map(update(_, path, pol, s)))
+        subtype.join(ts.map(update(_, path, pol, s)))
       case (BoundedDynamicType(t), _) =>
         BoundedDynamicType(update(t, path, pol, s))
       case (TupleType(ts), TupleField(pos, Some(arity)) :: path) if ts.size == arity =>
@@ -1111,7 +1111,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
       case (BoundedDynamicType(bound), _) =>
         BoundedDynamicType(typePathRef(bound, path))
       case (UnionType(ts), _) =>
-        UnionType(ts.map(typePathRef(_, path)))
+        subtype.join(ts.map(typePathRef(_, path)))
       case (TupleType(ts), TupleField(index, Some(arity)) :: path1) if ts.size == arity =>
         typePathRef(ts(index), path1)
       case (rTy: RecordType, RecordField(fieldName, recName) :: path1) if rTy.name == recName =>
