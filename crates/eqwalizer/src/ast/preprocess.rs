@@ -170,26 +170,43 @@ impl Preprocessor {
         }
     }
 
-    fn preprocess_lists_partition_arg_fun(&mut self, location: &Pos, expr: Expr) -> Expr {
+    fn fresh_pat_var(&mut self, pos: &Pos) -> Pat {
+        Pat::PatVar(PatVar {
+            pos: pos.clone(),
+            n: self.fresh_var(),
+        })
+    }
+
+    fn preprocess_predicate_arg_fun(
+        &mut self,
+        location: &Pos,
+        expected_arity: u32,
+        expr: Expr,
+    ) -> Expr {
         match expr {
             Expr::RemoteFun(rfun)
-                if PREDICATES.contains(&rfun.id.clone().into()) && rfun.id.arity == 1 =>
+                if expected_arity == 1
+                    && rfun.id.arity == 1
+                    && PREDICATES.contains(&rfun.id.clone().into()) =>
             {
                 Expr::Lambda(self.eta_expand_unary_predicate(location, rfun.id.name))
             }
             Expr::Lambda(lambda) if lambda.clauses.len() == 1 => {
                 let clause = &lambda.clauses[0];
-                if let [body] = &clause.body.exprs[..]
-                    && let [pat] = &clause.pats[..]
+                if clause.pats.len() == expected_arity as usize
+                    && let [body] = &clause.body.exprs[..]
                     && let Some(test) = as_test(body.clone())
                 {
+                    let false_pats: Vec<Pat> = (0..expected_arity)
+                        .map(|_| self.fresh_pat_var(&clause.pos))
+                        .collect();
                     return Expr::Lambda(Lambda {
                         pos: lambda.pos.clone(),
                         name: lambda.name,
                         clauses: vec![
                             Clause {
                                 pos: clause.pos.clone(),
-                                pats: vec![pat.clone()],
+                                pats: clause.pats.clone(),
                                 guards: vec![Guard { tests: vec![test] }],
                                 body: Body {
                                     exprs: vec![Expr::atom_true(clause.pos.clone())],
@@ -197,10 +214,7 @@ impl Preprocessor {
                             },
                             Clause {
                                 pos: clause.pos.clone(),
-                                pats: vec![Pat::PatVar(PatVar {
-                                    pos: clause.pos.clone(),
-                                    n: self.fresh_var(),
-                                })],
+                                pats: false_pats,
                                 guards: vec![],
                                 body: Body {
                                     exprs: vec![Expr::atom_false(clause.pos.clone())],
@@ -228,19 +242,21 @@ impl Transformer<()> for Preprocessor {
                         arity: 2,
                     },
                 args,
-            }) if module == "lists" && name == "partition" => {
-                let [arg_fun, arg_list] = args
-                    .try_into()
-                    .expect("lists:partition/2 has exactly 2 args");
-                let arg_trans = self.preprocess_lists_partition_arg_fun(&location, arg_fun);
+            }) if (module == "lists" && name == "partition")
+                || (module == "maps" && name == "filter") =>
+            {
+                let expected_arity = if module == "lists" { 1 } else { 2 };
+                let [arg_fun, arg_collection] = args.try_into().expect("call has exactly 2 args");
+                let arg_trans =
+                    self.preprocess_predicate_arg_fun(&location, expected_arity, arg_fun);
                 Ok(Expr::RemoteCall(RemoteCall {
                     pos: location,
                     id: RemoteId {
-                        module: "lists".into(),
-                        name: "partition".into(),
+                        module,
+                        name,
                         arity: 2,
                     },
-                    args: vec![arg_trans, arg_list],
+                    args: vec![arg_trans, arg_collection],
                 }))
             }
             e => transformer::walk_expr(self, e),

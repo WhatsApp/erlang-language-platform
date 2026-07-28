@@ -324,112 +324,21 @@ Expression has type:   'non_kv'
 Context expected type: #{term() => term()} | maps:iterator()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/custom.erl:436:5
-    │
-436 │     maps:filter(fun(_K, V) -> is_atom(V) end, M).
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    │     │
-    │     maps:filter(fun, M).
-Expression has type:   #{K => atom() | number()}
-Context expected type: #{K => atom()}
-    │     
-
-Because in the expression's type:
-  #{ K =>
-    Here the type is a union type with some valid candidates: atom()
-    However the following candidate: integer()
-    Differs from the expected type:  atom()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:440:5
     │
 440 │     maps:filter(fun(_K, V) -> is_number(V) end, M).
     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     │     │
     │     maps:filter(fun, M).
-Expression has type:   #{K => atom() | number()}
+Expression has type:   #{K => float() | integer()}
 Context expected type: #{K => atom()}
     │     
 
 Because in the expression's type:
   #{ K =>
-    Here the type is a union type with some valid candidates: atom()
-    However the following candidate: integer()
-    Differs from the expected type:  atom()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/custom.erl:444:5
-    │
-444 │     maps:filter(fun(_, V) -> V =/= undefined end, M).
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    │     │
-    │     maps:filter(fun, M).
-Expression has type:   #{K => 'undefined' | binary()}
-Context expected type: #{K => binary()}
-    │     
-
-Because in the expression's type:
-  #{ K =>
-    Here the type is a union type with some valid candidates: binary()
-    However the following candidate: 'undefined'
-    Differs from the expected type:  binary()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/custom.erl:449:5
-    │
-449 │     maps:filter(fun(_, {ok, _}) -> true; (_, _) -> false end, M).
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    │     │
-    │     maps:filter(fun, M).
-Expression has type:   #{K => {'error', term()} | {'ok', atom()}}
-Context expected type: #{K => {'ok', atom()}}
-    │     
-
-Because in the expression's type:
-  #{ K =>
-    { 
-      Here the type is:     'error'
-      Context expects type: 'ok'
-    , term()}
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/custom.erl:454:5
-    │
-454 │     maps:filter(fun(_, V) -> V =/= undefined end, I).
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    │     │
-    │     maps:filter(fun, I).
-Expression has type:   #{K => 'undefined' | binary()}
-Context expected type: #{K => binary()}
-    │     
-
-Because in the expression's type:
-  #{ K =>
-    Here the type is a union type with some valid candidates: binary()
-    However the following candidate: 'undefined'
-    Differs from the expected type:  binary()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/custom.erl:469:5
-    │
-469 │     maps:filter(fun(_, V) -> is_atom(V) end, M).
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    │     │
-    │     maps:filter(fun, M).
-Expression has type:   #{a => atom() | integer(), b => binary()}
-Context expected type: #{a => atom()}
-    │     
-
-Because in the expression's type:
-  #{ a =>
-    Here the type is a union type with some valid candidates: atom()
-    However the following candidate: integer()
-    Differs from the expected type:  atom()
+    Here the type is:     float() | integer()
+    Context expects type: atom()
+    No candidate of the expression's type matches the expected type.
   , ... }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -2484,4 +2393,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   integer()
 Context expected type: binary()
 
-198 ERRORS
+193 ERRORS

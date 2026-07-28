@@ -267,13 +267,38 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
         val keyTy = mapTys.map(narrow.getKeyType).join()
         val valTy = mapTys.map(narrow.getValType).join()
         val expFunTy = FunType(0, List(keyTy, valTy), booleanType)
-        funArg match {
+        val narrowedV: Option[Type] = funArg match {
+          case lambda: Lambda
+              if Predicates.booleanReturnClauses(lambda.clauses) && lambda.clauses.forall(_.pats.size == 2) =>
+            check.checkLambda(lambda, expFunTy, env)
+            val (trueClause, falseClause) = Predicates.getTrueFalseReturnClauses(lambda.clauses)
+            val lamEnv = lambda.name.map(name => env.updated(name, expFunTy)).getOrElse(env)
+            val List(trueEnv, _) =
+              occurrence.clausesEnvs(List(trueClause, falseClause), List(keyTy, valTy), lamEnv)
+            val (nv, _) = elabPat.elabPat(trueClause.pats(1), valTy, trueEnv)
+            Some(nv)
           case lambda: Lambda =>
             check.checkLambda(lambda, expFunTy, env)
+            None
           case _ =>
             coerce(funArg, funArgTy, expFunTy)
+            None
         }
-        (mapTys.map(narrow.setAllFieldsOptional(_)).join(), env1)
+        val resultTy: Type = narrowedV match {
+          case Some(nv) =>
+            mapTys
+              .map { m =>
+                MapType_*(
+                  m.props.map { case (k, MapProp(_, tp)) => (k, MapProp(req = false, narrow.meet(tp, nv))) },
+                  m.kType,
+                  narrow.meet(m.vType, nv),
+                )
+              }
+              .join()
+          case None =>
+            mapTys.map(narrow.setAllFieldsOptional(_)).join()
+        }
+        (resultTy, env1)
       },
       RemoteId("maps", "find", 2) -> { (args, argTys, _, env1, _) =>
         val List(key, map) = args
