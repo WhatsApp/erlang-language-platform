@@ -416,22 +416,6 @@ class Subtype(pipelineContext: PipelineContext) {
   def isDynamicType(t: Type): Boolean =
     subType(t, NoneType) && subType(AnyType, t)
 
-  def isAnyType(t: Type): Boolean =
-    isAnyType(t, Set.empty)
-
-  private def isAnyType(t: Type, seen: Set[Type]): Boolean =
-    seen(t) || (t match {
-      case AnyType =>
-        true
-      case UnionType(ts) =>
-        ts.exists(isAnyType(_, seen))
-      case RemoteType(rid, args) =>
-        val body = util.getTypeDeclBody(rid, args)
-        isAnyType(body, seen + t)
-      case _ =>
-        false
-    })
-
   private def containsType(t1: Type, t2: Type): Boolean = {
     t2 match {
       case AnyType       => true
