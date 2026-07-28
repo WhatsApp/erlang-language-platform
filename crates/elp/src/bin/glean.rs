@@ -34,6 +34,7 @@ use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
+use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::elp_base_db::path_for_file;
 use elp_project_model::AppType;
@@ -312,14 +313,7 @@ impl GleanIndexer {
     fn index(&self, config: IndexConfig) -> Result<IndexResult> {
         let ctx = self.analysis.with_db(|db| {
             let project_id = self.project_id;
-            let files = Self::project_files(db, project_id);
-            // glean module index, which fake headers as modules with name header.hrl
-            let mut module_index: FxHashMap<GleanFileId, String> = files
-                .iter()
-                .filter_map(|(file_id, path)| {
-                    path_to_module_name(path).map(|name| ((*file_id).into(), name))
-                })
-                .collect();
+            let indexed_files = Self::indexed_source_files(db, project_id);
             // Collect OTP source roots.
             let project_data = db.project_data(project_id).project_data(db);
             let otp_source_roots: Vec<_> = project_data
@@ -331,6 +325,9 @@ impl GleanIndexer {
                         .clone()
                 })
                 .unwrap_or_default();
+            // Module targets used by xrefs must include dependency apps as well as
+            // the current app and OTP; remote calls routinely resolve into deps.
+            let xref_target_modules = Self::xref_target_modules(db, project_id, &otp_source_roots);
             // app index: file_id → OTP application name
             let (app_index, app_infos) = {
                 let project_data = db.project_data(project_id).project_data(db);
@@ -367,17 +364,6 @@ impl GleanIndexer {
                 }
                 (index, infos)
             };
-            // Extend module_index with OTP files for xrefs to OTP functions
-            for &source_root_id in &otp_source_roots {
-                let source_root = db.source_root(source_root_id).source_root(db);
-                for file_id in source_root.iter() {
-                    if let Some(path) = source_root.path_for_file(&file_id)
-                        && let Some(name) = path_to_module_name(path)
-                    {
-                        module_index.insert(file_id.into(), name);
-                    }
-                }
-            }
             let (facts, errored) = if let Some(module) = &self.module {
                 let index = db.module_index(self.project_id);
                 let file_id = index
@@ -391,7 +377,7 @@ impl GleanIndexer {
                     file_id,
                     path,
                     project_id,
-                    &module_index,
+                    &xref_target_modules,
                     config.source_root.as_deref(),
                 ) {
                     Some(IndexedFileFacts {
@@ -421,10 +407,12 @@ impl GleanIndexer {
             } else {
                 let errored = std::sync::Mutex::new(Vec::new());
                 // Sort biggest files first to reduce long-tail in parallel processing
-                let mut files = files;
-                elp_ide::sort_by_size_descending(&mut files, |f| db.file_text(f.0).text(db).len());
+                let mut indexed_files = indexed_files;
+                elp_ide::sort_by_size_descending(&mut indexed_files, |f| {
+                    db.file_text(f.0).text(db).len()
+                });
                 let source_root = config.source_root.clone();
-                let results: Vec<_> = files
+                let results: Vec<_> = indexed_files
                     .into_par_iter()
                     .map_with(self.analysis.clone(), |analysis, (file_id, path)| {
                         let source_root = source_root.as_deref();
@@ -435,7 +423,7 @@ impl GleanIndexer {
                                     file_id,
                                     &path,
                                     project_id,
-                                    &module_index,
+                                    &xref_target_modules,
                                     source_root,
                                 )
                             })
@@ -507,7 +495,7 @@ impl GleanIndexer {
             };
             IndexResult {
                 facts,
-                module_index,
+                module_index: xref_target_modules,
                 app_index,
                 app_infos,
                 errored_paths: errored,
@@ -516,7 +504,7 @@ impl GleanIndexer {
         Ok(ctx)
     }
 
-    fn project_files(db: &RootDatabase, project_id: ProjectId) -> Vec<(FileId, VfsPath)> {
+    fn indexed_source_files(db: &RootDatabase, project_id: ProjectId) -> Vec<(FileId, VfsPath)> {
         let project_data = db.project_data(project_id).project_data(db);
         let mut files = vec![];
         for &source_root_id in &project_data.source_roots {
@@ -532,6 +520,30 @@ impl GleanIndexer {
             }
         }
         files
+    }
+
+    fn xref_target_modules(
+        db: &RootDatabase,
+        project_id: ProjectId,
+        otp_source_roots: &[SourceRootId],
+    ) -> FxHashMap<GleanFileId, String> {
+        let project_data = db.project_data(project_id).project_data(db);
+        let mut modules = FxHashMap::default();
+        for &source_root_id in project_data
+            .source_roots
+            .iter()
+            .chain(otp_source_roots.iter())
+        {
+            let source_root = db.source_root(source_root_id).source_root(db);
+            for file_id in source_root.iter() {
+                if let Some(path) = source_root.path_for_file(&file_id)
+                    && let Some(name) = path_to_module_name(path)
+                {
+                    modules.insert(file_id.into(), name);
+                }
+            }
+        }
+        modules
     }
 
     fn index_file(

@@ -14,10 +14,16 @@ use std::path::PathBuf;
 
 use elp::cli::Fake;
 use elp_ide::AnalysisHost;
+use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
+use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+use elp_ide::elp_ide_db::elp_base_db::fixture::ChangeFixture;
 use elp_ide::elp_ide_db::elp_base_db::fixture::WithFixture;
+use elp_project_model::AppName;
+use elp_project_model::AppType;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 use expect_test::expect_file;
+use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 
 use super::types::glean;
@@ -389,6 +395,77 @@ fn erlang_to_thrift_field_bridge_test() {
     );
     assert_eq!(field["to"]["field"]["key"]["kind"], 0);
     assert_eq!(field["to"]["field"]["key"]["name"]["key"], "x");
+}
+
+#[test]
+fn xref_call_to_generated_dep_module_test() {
+    let spec = r#"
+    //- /app_a/src/caller.erl app:app_a buck_target:cell//app_a:lib deps:dep_app
+    -module(caller).
+    send(Client, Request, Options) ->
+        trpc_dep_service:call(Client, Request, Options).
+
+    //- /dep_app/src/trpc_dep_service.erl app:dep_app buck_target:cell//dep_app:lib
+    -module(trpc_dep_service).
+    -codegen_source("dep/service.thrift").
+    call(Client, Request, Options) ->
+        {Client, Request, Options}.
+    "#;
+
+    let (fixture, mut change, mut project) = ChangeFixture::parse_detail(spec);
+    for app in &mut project.project_apps {
+        if app.name == AppName("dep_app".to_string()) {
+            app.app_type = AppType::Dep;
+        }
+    }
+
+    let projects = [project];
+    let project_apps = ProjectApps::new(&projects, IncludeOtp::Yes);
+    change.set_app_structure(project_apps.app_structure());
+
+    let mut db = RootDatabase::default();
+    db.set_ifdef_enabled(true);
+    change.apply(&mut db, &|path| fixture.resolve_file_id(path));
+    fixture.validate(&db);
+
+    let host = AnalysisHost::new(db);
+    let glean = GleanIndexer {
+        project_id: ProjectId(0),
+        analysis: host.analysis(),
+        module: None,
+    };
+    let IndexResult { facts, .. } = glean.index(IndexConfig::default()).expect("success");
+    let facts = facts.into_values().next().unwrap();
+
+    let mut file_names: FxHashMap<GleanFileId, String> = FxHashMap::default();
+    let db = host.raw_database();
+    for file_id in &fixture.files {
+        let file_id = *file_id;
+        let source_root_id = db.file_source_root(file_id).source_root_id(db);
+        let source_root = db.source_root(source_root_id).source_root(db);
+        let path = source_root.path_for_file(&file_id).unwrap();
+        let (name, ext) = path.name_and_extension().unwrap();
+        file_names.insert(file_id.into(), format!("{}.{}", name, ext.unwrap()));
+    }
+
+    let mut xref_labels = vec![];
+    for xref_fact in &facts.xrefs {
+        for xref in &xref_fact.xrefs {
+            let Some(file_name) = file_names.get(xref.target.file_id()) else {
+                continue;
+            };
+            let label = xref.target.to_string();
+            if label.is_empty() {
+                continue;
+            }
+            xref_labels.push(format!("{file_name}/{label}"));
+        }
+    }
+
+    assert!(
+        xref_labels.contains(&"trpc_dep_service.erl/func/call/3".to_string()),
+        "Expected dep generated module xref, got: {xref_labels:?}"
+    );
 }
 
 #[test]
