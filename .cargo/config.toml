@@ -18,3 +18,5 @@ lto = "thin"
 # See https://github.com/rust-lang/cargo/issues/3946
 [env]
 CARGO_WORKSPACE_DIR = {value = "", relative = true}
+# Directory the expect-test snapshots are read from.
+ELP_RESOURCE_DIR = {value = "crates/elp/src/resources/test", relative = true}

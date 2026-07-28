@@ -10,56 +10,38 @@
 
 use std::path::PathBuf;
 
-// @fb-only: #[rustfmt::skip]
-// @fb-only: #[cfg(buck_build)]
-// @fb-only: pub fn get_resources_dir() -> PathBuf { crate::meta_only::get_resources_dir() }
+use expect_test::ExpectFile;
+use expect_test::expect_file;
 
-#[cfg(not(buck_build))]
-pub fn get_resources_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("src")
-        .join("resources")
-        .join("test")
+// Snapshot dir from `ELP_RESOURCE_DIR`, set by both the Buck and cargo pipelines.
+// The `expect[update]` value is repo-relative, so absolutize it against CWD.
+pub fn resource_dir() -> PathBuf {
+    let dir = PathBuf::from(std::env::var("ELP_RESOURCE_DIR").expect("ELP_RESOURCE_DIR not set"));
+    if dir.is_absolute() {
+        dir
+    } else {
+        std::env::current_dir().unwrap().join(dir)
+    }
 }
 
-pub fn project_path(project: &str) -> String {
+pub fn resource_file(name: &str) -> ExpectFile {
+    expect_file!(resource_dir().join(name))
+}
+
+pub fn project_path(project: &str) -> PathBuf {
     #[cfg(buck_build)]
-    {
-        let project_path = buck_resources::get("whatsapp/elp/crates/elp/test_projects")
-            .unwrap()
-            .join("test")
-            .join("test_projects")
-            .join(project);
-        let canonical = dunce::canonicalize(&project_path).unwrap_or_else(|_| {
-            panic!(
-                "Failed to canonicalize project path: {}",
-                project_path.display()
-            )
-        });
-        canonical.to_string_lossy().to_string()
-    }
+    let test_projects = buck_resources::get("whatsapp/elp/crates/elp/test_projects")
+        .unwrap()
+        .join("test/test_projects");
 
     #[cfg(not(buck_build))]
-    {
-        let project_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../test/test_projects")
-            .join(project);
-        dunce::canonicalize(&project_path)
-            .unwrap_or_else(|_| {
-                panic!(
-                    "Failed to canonicalize project path: {}",
-                    project_path.display()
-                )
-            })
-            .to_string_lossy()
-            .to_string()
-    }
-}
+    let test_projects = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../test/test_projects");
 
-macro_rules! resource_file {
-    ($filename:expr) => {
-        expect_file!(crate::test_utils::get_resources_dir().join($filename))
-    };
+    let project_path = test_projects.join(project);
+    dunce::canonicalize(&project_path).unwrap_or_else(|_| {
+        panic!(
+            "Failed to canonicalize project path: {}",
+            project_path.display()
+        )
+    })
 }
-
-pub(crate) use resource_file;

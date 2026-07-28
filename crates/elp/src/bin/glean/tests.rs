@@ -22,7 +22,6 @@ use elp_ide::elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_project_model::AppName;
 use elp_project_model::AppType;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
-use expect_test::expect_file;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 
@@ -140,7 +139,7 @@ fn serialization_test() {
     };
     write_results(result, &mut cli, &args).expect("success");
     let (out, err) = cli.to_strings();
-    let expected = resource_file!("glean/serialization_test.out");
+    let expected = resource_file("glean/serialization_test.out");
     assert_eq!(expected.data().trim(), &out);
     assert_eq!(err, "")
 }
