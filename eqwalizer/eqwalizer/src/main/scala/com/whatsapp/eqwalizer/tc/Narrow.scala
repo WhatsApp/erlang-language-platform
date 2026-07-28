@@ -58,44 +58,25 @@ class Narrow(pipelineContext: PipelineContext) {
         case (UnionType(ty1s), _) => subtype.join(ty1s.map(meetAux(_, t2, seen)))
         case (_, UnionType(ty2s)) =>
           subtype.join(ty2s.map(meetAux(t1, _, seen)))
-
         case (TupleType(elems1), TupleType(elems2)) if elems1.size == elems2.size =>
-          boundary {
-            val elems = elems1.lazyZip(elems2).map { (a, b) =>
-              val t = meetAux(a, b, seen)
-              if Subtype.isNoneType(t) then boundary.break(NoneType)
-              t
-            }
-            TupleType(elems)
-          }
+          val elems = elems1.zip(elems2).map { (a, b) => meetAux(a, b, seen) }
+          TupleType_*(elems)
         case (NilType, ConsType(_, _)) =>
           NoneType
         case (ConsType(_, _), NilType) =>
           NoneType
         case (ConsType(h1, t1), ConsType(h2, t2)) =>
           val hMeet = meetAux(h1, h2, seen)
-          if (Subtype.isNoneType(hMeet)) NoneType
-          else {
-            val tMeet = meetAux(t1, t2, seen)
-            if (Subtype.isNoneType(tMeet)) NoneType
-            else ConsType(hMeet, tMeet)
-          }
+          val tMeet = meetAux(t1, t2, seen)
+          ConsType_*(hMeet, tMeet)
         case (ConsType(h, t), ListType(eT)) =>
           val hMeet = meetAux(h, eT, seen)
-          if (Subtype.isNoneType(hMeet)) NoneType
-          else {
-            val tMeet = meetAux(t, ListType(eT), seen)
-            if (Subtype.isNoneType(tMeet)) NoneType
-            else ConsType(hMeet, tMeet)
-          }
+          val tMeet = meetAux(t, ListType(eT), seen)
+          ConsType_*(hMeet, tMeet)
         case (ListType(eT), ConsType(h, t)) =>
           val hMeet = meetAux(eT, h, seen)
-          if (Subtype.isNoneType(hMeet)) NoneType
-          else {
-            val tMeet = meetAux(ListType(eT), t, seen)
-            if (Subtype.isNoneType(tMeet)) NoneType
-            else ConsType(hMeet, tMeet)
-          }
+          val tMeet = meetAux(ListType(eT), t, seen)
+          ConsType_*(hMeet, tMeet)
         case (ListType(et1), ListType(et2)) =>
           val et = meetAux(et1, et2, seen)
           if (Subtype.isNoneType(et)) NilType
@@ -127,12 +108,9 @@ class Narrow(pipelineContext: PipelineContext) {
               val propT2 = prop2.map(_.tp).getOrElse(vT2)
               val req = prop1.exists(_.req) || prop2.exists(_.req)
               val meetType = meetAux(propT1, propT2, seen)
-              if (req && Subtype.isNoneType(meetType)) {
-                boundary.break(NoneType)
-              }
               props += (key -> MapProp(req, meetType))
             }
-            MapType(props, meetAux(kT1, kT2, seen), meetAux(vT1, vT2, seen))
+            MapType_*(props, meetAux(kT1, kT2, seen), meetAux(vT1, vT2, seen))
           }
         case (rt: RefinedRecordType, t: RecordType) if t == rt.recType => rt
         case (t: RecordType, rt: RefinedRecordType) if t == rt.recType => rt
