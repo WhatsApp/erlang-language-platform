@@ -589,7 +589,7 @@ class Narrow(pipelineContext: PipelineContext) {
     }
 
   def setAllFieldsOptional(mapType: MapType, newValTy: Option[Type] = None): Type =
-    MapType(
+    MapType_*(
       mapType.props.map { case (key, MapProp(_, tp)) => (key, MapProp(req = false, newValTy.getOrElse(tp))) },
       mapType.kType,
       newValTy.getOrElse(mapType.vType),
