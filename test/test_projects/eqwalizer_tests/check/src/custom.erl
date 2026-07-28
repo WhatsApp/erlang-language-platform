@@ -431,6 +431,43 @@ maps_filter_2_10_neg() ->
 map_filter_empty(Pred) ->
     maps:filter(Pred, #{}).
 
+-spec maps_filter_pred(#{K => atom() | number()}) -> #{K => atom()}.
+maps_filter_pred(M) ->
+    maps:filter(fun(_K, V) -> is_atom(V) end, M).
+
+-spec maps_filter_pred_neg(#{K => atom() | number()}) -> #{K => atom()}.
+maps_filter_pred_neg(M) ->
+    maps:filter(fun(_K, V) -> is_number(V) end, M).
+
+-spec maps_filter_neq_undefined(#{K => undefined | binary()}) -> #{K => binary()}.
+maps_filter_neq_undefined(M) ->
+    maps:filter(fun(_, V) -> V =/= undefined end, M).
+
+-spec maps_filter_result(#{K => {ok, atom()} | {error, term()}})
+    -> #{K => {ok, atom()}}.
+maps_filter_result(M) ->
+    maps:filter(fun(_, {ok, _}) -> true; (_, _) -> false end, M).
+
+-spec maps_filter_iter_narrow(#{K => undefined | binary()}) -> #{K => binary()}.
+maps_filter_iter_narrow(M) ->
+    I = maps:iterator(M),
+    maps:filter(fun(_, V) -> V =/= undefined end, I).
+
+-spec maps_filter_no_narrowing(#{K => atom() | number()})
+    -> #{K => atom() | number()}.
+maps_filter_no_narrowing(M) ->
+    maps:filter(fun(_K, _V) -> true end, M).
+
+-spec maps_filter_closed_no_widen() -> #{a => atom(), b => integer()}.
+maps_filter_closed_no_widen() ->
+    M = #{a => x, b => 42},
+    maps:filter(fun(_, V) -> V =/= undefined end, M).
+
+-spec maps_filter_closed_disjoint(#{a => atom() | integer(), b => binary()})
+    -> #{a => atom()}.
+maps_filter_closed_disjoint(M) ->
+    maps:filter(fun(_, V) -> is_atom(V) end, M).
+
 -spec maps_map_2_1()
         -> #{number() => boolean()}.
 maps_map_2_1() ->
@@ -2480,6 +2517,18 @@ maps_filtermap_7_neg(M) ->
         fun (_, V) -> {true, atom_to_binary(V)} end,
         M
     ).
+
+%% maps:filtermap/2 whose predicate drops every entry: each value narrows to
+%% none(), so the associations must be eliminated, leaving #{} rather than
+%% #{a => none(), b => none()}.
+-spec maps_filtermap_none_dropped(#{a => atom(), b => integer()}) -> #{}.
+maps_filtermap_none_dropped(M) ->
+    maps:filtermap(fun(_, _) -> false end, M).
+
+%% Contrast: entries survive with the transformed value type; nothing is dropped.
+-spec maps_filtermap_none_kept(#{a => integer(), b => integer()}) -> #{atom() => integer()}.
+maps_filtermap_none_kept(M) ->
+    maps:filtermap(fun(_, V) -> {true, V} end, M).
 
 -spec re_replace_1(iodata()) -> string().
 re_replace_1(Subj) ->
