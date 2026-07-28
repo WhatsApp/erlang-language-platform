@@ -23,7 +23,7 @@ final class CustomReturn(pipelineContext: PipelineContext) {
     },
     RemoteId("erlang", "min", 2) -> { (_, argTys, resTy) =>
       val List(argTy1, argTy2) = argTys
-      if (subtype.isNoneType(argTy1) || subtype.isNoneType(argTy2))
+      if (Subtype.isNoneType(argTy1) || Subtype.isNoneType(argTy2))
         resTy
       else if (
         subtype.gradualSubType(argTy1, IntegerType) &&

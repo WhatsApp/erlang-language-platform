@@ -58,7 +58,7 @@ final class Elab(pipelineContext: PipelineContext) {
     }
     val (_, env3) = elabPat.elabPats(clause.pats, argTys, env2)
     val env4 = elabGuard.elabGuards(clause.guards, env3)
-    if (checkReachability && env4.exists { case (_, ty) => subtype.isNoneType(ty) })
+    if (checkReachability && env4.exists { case (_, ty) => Subtype.isNoneType(ty) })
       return (NoneType, util.exitScope(env0, env4, exportedVars))
     val (eType, env5) = elabBody(clause.body, env4)
     val env6 = util.exitScope(env0, env5, exportedVars)

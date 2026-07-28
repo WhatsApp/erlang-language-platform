@@ -75,7 +75,7 @@ final class ElabPat(pipelineContext: PipelineContext) {
               envAcc = env1
               patType
             }
-            if (patTypes.exists(subtype.isNoneType)) (NoneType, envAcc.keys.map(_ -> NoneType).toMap)
+            if (patTypes.exists(Subtype.isNoneType)) (NoneType, envAcc.keys.map(_ -> NoneType).toMap)
             else (TupleType(patTypes), envAcc)
           }
         val (tys, envs) = tyEnvPairs.unzip
@@ -92,7 +92,7 @@ final class ElabPat(pipelineContext: PipelineContext) {
           case Some(ListType(elemType)) =>
             val (hType, env1) = elabPat(hPat, elemType, env)
             val (tType, env2) = elabPat(tPat, ListType(elemType), env1)
-            if (subtype.isNoneType(hType) || subtype.isNoneType(tType))
+            if (Subtype.isNoneType(hType) || Subtype.isNoneType(tType))
               (NoneType, env2)
             else
               (ConsType(hType, tType), env2)
@@ -149,7 +149,7 @@ final class ElabPat(pipelineContext: PipelineContext) {
             }
           case None =>
         }
-        if (refinedFields.values.exists(subtype.isNoneType) || subtype.isNoneType(recType))
+        if (refinedFields.values.exists(Subtype.isNoneType) || Subtype.isNoneType(recType))
           (NoneType, envAcc.keys.map(_ -> NoneType).toMap)
         else
           (RefinedRecordType(RecordType(recName)(module), refinedFields), envAcc)
@@ -306,7 +306,7 @@ final class ElabPat(pipelineContext: PipelineContext) {
                   envAcc = e1
               }
             }
-            if (subtype.isNoneType(refinedType))
+            if (Subtype.isNoneType(refinedType))
               (NoneType, envAcc.keys.map(_ -> NoneType).toMap)
             else
               (refinedType, envAcc)

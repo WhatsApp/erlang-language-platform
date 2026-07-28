@@ -32,7 +32,7 @@ class CheckCallback(pipelineContext: PipelineContext) {
               val cbArgTy = cbArgTys(index)
               val approxMeet = narrow.meet(implArgTy, cbArgTy)
               val hasOverlap =
-                subtype.isNoneType(implArgTy) || subtype.isNoneType(cbArgTy) || !subtype.isNoneType(approxMeet)
+                Subtype.isNoneType(implArgTy) || Subtype.isNoneType(cbArgTy) || !Subtype.isNoneType(approxMeet)
               hasOverlap
             }
           }

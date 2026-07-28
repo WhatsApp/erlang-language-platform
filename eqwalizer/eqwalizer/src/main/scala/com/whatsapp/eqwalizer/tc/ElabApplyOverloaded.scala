@@ -56,7 +56,7 @@ class ElabApplyOverloaded(pipelineContext: PipelineContext) {
 
   private def mayOverlap(t1: Type, t2: Type): Boolean = {
     val approxMeet = narrow.meet(t1, t2)
-    !subtype.isNoneType(approxMeet)
+    !Subtype.isNoneType(approxMeet)
   }
 
   private def selectFunTypes(depFunSpec: OverloadedFunSpec, argTys: List[Type]): List[FunType] =

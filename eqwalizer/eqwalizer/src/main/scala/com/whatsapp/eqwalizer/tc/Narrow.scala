@@ -8,7 +8,8 @@ package com.whatsapp.eqwalizer.tc
 
 import com.whatsapp.eqwalizer.ast.Forms.RecDecl
 import com.whatsapp.eqwalizer.ast.{RemoteId, TypeVars}
-import com.whatsapp.eqwalizer.ast.Types._
+import com.whatsapp.eqwalizer.ast.Types.*
+
 import scala.util.boundary
 
 class Narrow(pipelineContext: PipelineContext) {
@@ -29,13 +30,17 @@ class Narrow(pipelineContext: PipelineContext) {
         case (RemoteType(rid, args), _) =>
           val body = util.getTypeDeclBody(rid, args)
           val met = meetAux(body, t2, seen)
-          if (met == body) t1 else met
+          if (Subtype.isNoneType(met)) NoneType
+          else if (met == body) t1
+          else met
         case (_, RemoteType(rid, args)) =>
           if (seen(rid)) t1
           else {
             val body = util.getTypeDeclBody(rid, args)
             val met = meetAux(t1, body, seen + rid)
-            if (met == body) t2 else met
+            if (Subtype.isNoneType(met)) NoneType
+            else if (met == body) t2
+            else met
           }
         case (BoundedDynamicType(b1), DynamicType) =>
           BoundedDynamicType(b1)
@@ -58,7 +63,7 @@ class Narrow(pipelineContext: PipelineContext) {
           boundary {
             val elems = elems1.lazyZip(elems2).map { (a, b) =>
               val t = meetAux(a, b, seen)
-              if subtype.isNoneType(t) then boundary.break(NoneType)
+              if Subtype.isNoneType(t) then boundary.break(NoneType)
               t
             }
             TupleType(elems)
@@ -69,31 +74,31 @@ class Narrow(pipelineContext: PipelineContext) {
           NoneType
         case (ConsType(h1, t1), ConsType(h2, t2)) =>
           val hMeet = meetAux(h1, h2, seen)
-          if (subtype.isNoneType(hMeet)) NoneType
+          if (Subtype.isNoneType(hMeet)) NoneType
           else {
             val tMeet = meetAux(t1, t2, seen)
-            if (subtype.isNoneType(tMeet)) NoneType
+            if (Subtype.isNoneType(tMeet)) NoneType
             else ConsType(hMeet, tMeet)
           }
         case (ConsType(h, t), ListType(eT)) =>
           val hMeet = meetAux(h, eT, seen)
-          if (subtype.isNoneType(hMeet)) NoneType
+          if (Subtype.isNoneType(hMeet)) NoneType
           else {
             val tMeet = meetAux(t, ListType(eT), seen)
-            if (subtype.isNoneType(tMeet)) NoneType
+            if (Subtype.isNoneType(tMeet)) NoneType
             else ConsType(hMeet, tMeet)
           }
         case (ListType(eT), ConsType(h, t)) =>
           val hMeet = meetAux(eT, h, seen)
-          if (subtype.isNoneType(hMeet)) NoneType
+          if (Subtype.isNoneType(hMeet)) NoneType
           else {
             val tMeet = meetAux(ListType(eT), t, seen)
-            if (subtype.isNoneType(tMeet)) NoneType
+            if (Subtype.isNoneType(tMeet)) NoneType
             else ConsType(hMeet, tMeet)
           }
         case (ListType(et1), ListType(et2)) =>
           val et = meetAux(et1, et2, seen)
-          if (subtype.isNoneType(et)) NilType
+          if (Subtype.isNoneType(et)) NilType
           else ListType(et)
         case (ft1: FunType, ft2: FunType) if ft1.argTys.size == ft2.argTys.size =>
           TypeVars.conformForalls(ft1, ft2) match {
@@ -122,7 +127,7 @@ class Narrow(pipelineContext: PipelineContext) {
               val propT2 = prop2.map(_.tp).getOrElse(vT2)
               val req = prop1.exists(_.req) || prop2.exists(_.req)
               val meetType = meetAux(propT1, propT2, seen)
-              if (req && subtype.isNoneType(meetType)) {
+              if (req && Subtype.isNoneType(meetType)) {
                 boundary.break(NoneType)
               }
               props += (key -> MapProp(req, meetType))
@@ -138,7 +143,7 @@ class Narrow(pipelineContext: PipelineContext) {
             val t2 = rt2.fields.getOrElse(fieldName, AnyType)
             fieldName -> meet(t1, t2)
           }.toMap
-          if (fieldsMeet.values.exists(subtype.isNoneType)) NoneType
+          if (fieldsMeet.values.exists(Subtype.isNoneType)) NoneType
           else RefinedRecordType(rt1.recType, fieldsMeet)
 
         case (NativeRecordType(id1), NativeRecordType(id2)) if id1 == id2 =>

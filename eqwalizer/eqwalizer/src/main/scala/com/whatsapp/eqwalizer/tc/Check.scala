@@ -118,7 +118,7 @@ final class Check(pipelineContext: PipelineContext) {
     }
     val (_, env3) = elabPat.elabPats(clause.pats, argTys, env2)
     val env4 = elabGuard.elabGuards(clause.guards, env3)
-    val hasEmptyType = env4.exists { case (_, ty) => subtype.isNoneType(ty) }
+    val hasEmptyType = env4.exists { case (_, ty) => Subtype.isNoneType(ty) }
     if (hasEmptyType && checkCoverage && (fullCoverage || !occurrence.clauseCovered(clause, argTys))) {
       diagnosticsInfo.add(ClauseNotCovered(clause.pos))
     }
@@ -138,7 +138,7 @@ final class Check(pipelineContext: PipelineContext) {
       elabGuard.elabGuards(clause.guards, env1)
     }
     val (patTys, env3) = elabPat.elabPats(clause.pats, argTys, env2)
-    val reachable = !patTys.exists(subtype.isNoneType)
+    val reachable = !patTys.exists(Subtype.isNoneType)
     if (reachable) {
       // elabGuard twice for the same reasons as above, see D43679406
       val env4 = elabGuard.elabGuards(clause.guards, env3)

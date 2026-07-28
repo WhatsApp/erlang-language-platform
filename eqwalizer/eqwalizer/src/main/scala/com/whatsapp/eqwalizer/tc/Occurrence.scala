@@ -170,7 +170,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
     if (!hasComplexPattern)
       return true
     val env = clausesEnvs(List(clause), argTys, Map()).head
-    !env.exists { case (_, ty) => subtype.isNoneType(ty) }
+    !env.exists { case (_, ty) => Subtype.isNoneType(ty) }
   }
 
   // These are specialized methods to upgrade environments/context
@@ -888,18 +888,18 @@ final class Occurrence(pipelineContext: PipelineContext) {
     }
 
   private def ConsType_*(headT: Type, tailT: Type): Type =
-    if (subtype.isNoneType(headT) || subtype.isNoneType(tailT)) NoneType
+    if (Subtype.isNoneType(headT) || Subtype.isNoneType(tailT)) NoneType
     else ConsType(headT, tailT)
 
   private def TupleType_*(elems: List[Type]): Type =
-    if (elems.exists(subtype.isNoneType))
+    if (elems.exists(Subtype.isNoneType))
       NoneType
     else
       TupleType(elems)
 
   private def MapType_*(props: Map[Types.Key, Types.MapProp], kTy: Type, vTy: Type): Type = {
-    val hasPropEmpty = props.values.exists { case MapProp(req, tp) => req && subtype.isNoneType(tp) }
-    val propsNonEmpty = props.filter { case (_, MapProp(req, tp)) => req || !subtype.isNoneType(tp) }
+    val hasPropEmpty = props.values.exists { case MapProp(req, tp) => req && Subtype.isNoneType(tp) }
+    val propsNonEmpty = props.filter { case (_, MapProp(req, tp)) => req || !Subtype.isNoneType(tp) }
     if (hasPropEmpty)
       NoneType
     else
@@ -907,7 +907,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
   }
 
   private def refineRecord(t: Type, field: String, refined: Type): Type = {
-    if (subtype.isNoneType(refined)) {
+    if (Subtype.isNoneType(refined)) {
       NoneType
     } else {
       t match {
@@ -986,12 +986,12 @@ final class Occurrence(pipelineContext: PipelineContext) {
           }
         }
       case (ListType(lt), ListHead :: path) =>
-        if (subtype.isNoneType(update(lt, path, pol, s)))
+        if (Subtype.isNoneType(update(lt, path, pol, s)))
           NoneType
         else
           ListType(lt)
       case (ListType(lt), ListTail :: path) =>
-        if (subtype.isNoneType(update(ListType(lt), path, pol, s)))
+        if (Subtype.isNoneType(update(ListType(lt), path, pol, s)))
           NoneType
         else
           ListType(lt)
@@ -1074,7 +1074,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
         Some(typeEnv)
       case Some(old) =>
         val s = update(old, objPath(obj), pol, t)
-        if (subtype.isNoneType(s)) None else Some(typeEnv.updated(x, s))
+        if (Subtype.isNoneType(s)) None else Some(typeEnv.updated(x, s))
     }
   }
 

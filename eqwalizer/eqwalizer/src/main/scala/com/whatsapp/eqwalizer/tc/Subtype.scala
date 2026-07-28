@@ -12,6 +12,20 @@ import com.whatsapp.eqwalizer.ast.Types.*
 
 import scala.util.boundary
 
+object Subtype {
+  def isNoneType(t: Type): Boolean =
+    t match {
+      case NoneType =>
+        true
+      case UnionType(ts) =>
+        ts.forall(isNoneType)
+      case BoundedDynamicType(bound) =>
+        isNoneType(bound)
+      case _ =>
+        false
+    }
+}
+
 class Subtype(pipelineContext: PipelineContext) {
   private val util = pipelineContext.util
   private lazy val instantiate = pipelineContext.instantiate
@@ -401,24 +415,6 @@ class Subtype(pipelineContext: PipelineContext) {
 
   def isDynamicType(t: Type): Boolean =
     subType(t, NoneType) && subType(AnyType, t)
-
-  def isNoneType(t: Type): Boolean =
-    isNoneType(t, Set.empty)
-
-  private def isNoneType(t: Type, seen: Set[Type]): Boolean =
-    seen(t) || (t match {
-      case NoneType =>
-        true
-      case UnionType(ts) =>
-        ts.forall(isNoneType(_, seen))
-      case RemoteType(rid, args) =>
-        val body = util.getTypeDeclBody(rid, args)
-        isNoneType(body, seen + t)
-      case BoundedDynamicType(bound) =>
-        isNoneType(bound, seen)
-      case _ =>
-        false
-    })
 
   def isAnyType(t: Type): Boolean =
     isAnyType(t, Set.empty)
