@@ -887,25 +887,6 @@ final class Occurrence(pipelineContext: PipelineContext) {
         t
     }
 
-  private def ConsType_*(headT: Type, tailT: Type): Type =
-    if (Subtype.isNoneType(headT) || Subtype.isNoneType(tailT)) NoneType
-    else ConsType(headT, tailT)
-
-  private def TupleType_*(elems: List[Type]): Type =
-    if (elems.exists(Subtype.isNoneType))
-      NoneType
-    else
-      TupleType(elems)
-
-  private def MapType_*(props: Map[Types.Key, Types.MapProp], kTy: Type, vTy: Type): Type = {
-    val hasPropEmpty = props.values.exists { case MapProp(req, tp) => req && Subtype.isNoneType(tp) }
-    val propsNonEmpty = props.filter { case (_, MapProp(req, tp)) => req || !Subtype.isNoneType(tp) }
-    if (hasPropEmpty)
-      NoneType
-    else
-      MapType(propsNonEmpty, kTy, vTy)
-  }
-
   private def refineRecord(t: Type, field: String, refined: Type): Type = {
     if (Subtype.isNoneType(refined)) {
       NoneType

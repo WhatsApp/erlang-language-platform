@@ -9,8 +9,9 @@ package com.whatsapp.eqwalizer.ast
 import com.whatsapp.eqwalizer.ast.Exprs.{AtomLit, Expr, Tuple}
 import com.whatsapp.eqwalizer.ast.Forms.RecDecl
 import com.whatsapp.eqwalizer.ast.Guards.{Test, TestAtom, TestTuple}
-import com.github.plokhotnyuk.jsoniter_scala.macros._
+import com.github.plokhotnyuk.jsoniter_scala.macros.*
 import com.github.plokhotnyuk.jsoniter_scala.core.*
+import com.whatsapp.eqwalizer.tc.Subtype
 
 import scala.util.boundary
 
@@ -87,6 +88,26 @@ object Types {
   case object ReferenceType extends Type
   case object IntegerType extends Type
   case object FloatType extends Type
+
+  // AType_* - none() type aware constructors
+  def ConsType_*(headT: Type, tailT: Type): Type =
+    if (Subtype.isNoneType(headT) || Subtype.isNoneType(tailT)) NoneType
+    else ConsType(headT, tailT)
+
+  def TupleType_*(elems: List[Type]): Type =
+    if (elems.exists(Subtype.isNoneType))
+      NoneType
+    else
+      TupleType(elems)
+
+  def MapType_*(props: Map[Types.Key, Types.MapProp], kTy: Type, vTy: Type): Type = {
+    val hasPropEmpty = props.values.exists { case MapProp(req, tp) => req && Subtype.isNoneType(tp) }
+    val propsNonEmpty = props.filter { case (_, MapProp(req, tp)) => req || !Subtype.isNoneType(tp) }
+    if (hasPropEmpty)
+      NoneType
+    else
+      MapType(propsNonEmpty, kTy, vTy)
+  }
 
   private val ioListRid = RemoteId("erlang", "iolist", 0)
 
