@@ -36,11 +36,14 @@ object Types {
     def apply(tys: Set[Type]): Type = {
       // unions with NoneType are meaningless, we can remove them early
       val types = tys - NoneType
-      types.size match {
-        case 0 => NoneType
-        case 1 => types.head
-        case _ => new UnionType(types)
-      }
+      if (types.contains(AnyType))
+        AnyType
+      else
+        types.size match {
+          case 0 => NoneType
+          case 1 => types.head
+          case _ => new UnionType(types)
+        }
     }
   }
 
