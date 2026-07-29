@@ -22,11 +22,11 @@
     "@docusaurus/core": "3.10.0",
     "@docusaurus/preset-classic": "3.10.0",
     "@mdx-js/react": "^3.0.0",
-    "brace-expansion": ">=5.0.6",
+    "brace-expansion": "^5.0.7",
     "clsx": "^2.0.0",
     "cookie": ">=0.7.0",
     "docusaurus-plugin-internaldocs-fb": "^1.18.4",
-    "dompurify": ">=3.4.0",
+    "dompurify": "^3.4.12",
     "estree-util-value-to-estree": ">=3.3.3",
     "glob": ">=10.5.0",
     "katex": ">=0.16.21",
@@ -36,7 +36,7 @@
     "qs": ">=6.15.2",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
-    "webpack-dev-server": ">=5.2.4"
+    "webpack-dev-server": "^5.2.6"
   },
   "browserslist": {
     "production": [
@@ -64,16 +64,19 @@
     "react-live": ">=3.2.0",
     "jackspeak": "2.1.1",
     "katex": ">=0.16.21",
-    "dompurify": ">=3.4.0",
+    "dompurify": "^3.4.12",
     "prismjs": ">=0.30.0",
+    "postcss": "^8.5.18",
+    "body-parser": "^2.3.0",
+    "@babel/core": "^7.29.6",
     "@babel/helpers": ">=7.26.10",
     "@babel/runtime": ">=7.26.10",
     "@babel/runtime-corejs3": ">=7.26.10",
     "image-size": ">=1.2.1",
     "estree-util-value-to-estree": ">=3.3.3",
-    "http-proxy-middleware": ">=2.0.9",
-    "brace-expansion": ">=5.0.6",
-    "webpack-dev-server": ">=5.2.4",
+    "http-proxy-middleware": "^3.0.7",
+    "brace-expansion": "^5.0.7",
+    "webpack-dev-server": "^5.2.6",
     "on-headers": ">=1.1.0",
     "mermaid": ">=11.15.0",
     "glob": ">=10.5.0",
@@ -88,8 +91,12 @@
     "serialize-javascript": ">=7.0.5",
     "uuid": ">=14.0.0",
     "follow-redirects": ">=1.16.0",
-    "shell-quote": "^1.8.4",
-    "fast-uri": "^3.1.2",
-    "ws": ">=8.20.1"
+    "shell-quote": "^1.9.0",
+    "fast-uri": "^3.1.4",
+    "ws": ">=8.20.1",
+    "websocket-driver": "^0.7.5",
+    "svgo": "^3.3.4",
+    "joi": "^17.13.4",
+    "launch-editor": "^2.14.1"
   }
 }
