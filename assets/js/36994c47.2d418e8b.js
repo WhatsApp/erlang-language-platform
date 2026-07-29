@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunk_whatsapp_elp_website=globalThis.webpackChunk_whatsapp_elp_website||[]).push([[9858],{45516(e){e.exports=JSON.parse('{"name":"docusaurus-plugin-content-blog","id":"default"}')}}]);

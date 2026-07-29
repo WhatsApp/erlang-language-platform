@@ -1,1 +1,0 @@
-"use strict";(globalThis.webpackChunkstaticdocs_starter=globalThis.webpackChunkstaticdocs_starter||[]).push([[2954],{32740(s){s.exports=JSON.parse('{"name":"docusaurus-plugin-content-docs","id":"eqwalizer"}')}}]);

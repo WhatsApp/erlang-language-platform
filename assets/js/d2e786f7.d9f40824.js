@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunk_whatsapp_elp_website=globalThis.webpackChunk_whatsapp_elp_website||[]).push([[2954],{32740(e){e.exports=JSON.parse('{"name":"docusaurus-plugin-content-docs","id":"eqwalizer"}')}}]);

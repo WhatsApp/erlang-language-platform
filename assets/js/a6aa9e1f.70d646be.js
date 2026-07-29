@@ -1,1 +1,0 @@
-(globalThis.webpackChunkstaticdocs_starter=globalThis.webpackChunkstaticdocs_starter||[]).push([[7643],{66590(){}}]);

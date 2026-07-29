@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunk_whatsapp_elp_website=globalThis.webpackChunk_whatsapp_elp_website||[]).push([[3651],{46886(a){a.exports=JSON.parse('{"metadata":{"permalink":"/erlang-language-platform/blog","page":1,"postsPerPage":10,"totalPages":1,"totalCount":0,"blogDescription":"Blog","blogTitle":"Blog"}}')}}]);
