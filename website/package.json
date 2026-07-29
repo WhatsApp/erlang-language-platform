@@ -1,6 +1,6 @@
 {
-  "name": "staticdocs-starter",
-  "version": "0.0.0",
+  "name": "@whatsapp/elp-website",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
