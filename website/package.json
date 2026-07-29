@@ -89,7 +89,7 @@
     "uuid": ">=14.0.0",
     "follow-redirects": ">=1.16.0",
     "shell-quote": "^1.8.4",
-    "fast-uri": "^3.1.2",
+    "fast-uri": "^3.1.4",
     "ws": ">=8.20.1"
   }
 }
