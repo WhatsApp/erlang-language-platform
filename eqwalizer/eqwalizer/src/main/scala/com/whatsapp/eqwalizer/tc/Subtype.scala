@@ -636,14 +636,16 @@ class Subtype(pipelineContext: PipelineContext) {
 
   private def overlap(t1: Type, t2: Type, seen: Set[(Type, Type)]): Option[Boolean] =
     (t1, t2) match {
+      case (NoneType, _) =>
+        Some(false)
+      case (_, NoneType) =>
+        Some(false)
       case (_, _) if t1 == t2 || seen.contains(t1, t2) || seen.contains(t2, t1) =>
         Some(true)
       case (AnyType, _) =>
         Some(true)
       case (_, AnyType) =>
         Some(true)
-      case (NoneType, _) =>
-        Some(false)
 
       case (DynamicType, _) =>
         Some(true)
