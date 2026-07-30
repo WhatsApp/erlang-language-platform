@@ -657,6 +657,8 @@ class Subtype(pipelineContext: PipelineContext) {
 
       case (FreeVarType(_), _) =>
         Some(true)
+      case (_, FreeVarType(_)) =>
+        Some(true)
 
       // Unions
       case (UnionType(ts), _) =>
