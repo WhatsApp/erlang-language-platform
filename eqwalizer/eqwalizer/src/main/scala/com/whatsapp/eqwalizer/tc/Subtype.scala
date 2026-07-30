@@ -752,11 +752,37 @@ class Subtype(pipelineContext: PipelineContext) {
         Some(true)
       case (RefinedRecordType(_, _), AnyTupleType) =>
         Some(true)
+      case (AnyTupleType, RefinedRecordType(_, _)) =>
+        Some(true)
       case (AnyTupleType, RecordType(_)) =>
         Some(true)
       case (RecordType(n1), RecordType(n2)) =>
         Some(n1 == n2)
+      case (RefinedRecordType(t1, fields1), RefinedRecordType(t2, fields2)) =>
+        if (t1.name != t2.name) Some(false)
+        else
+          boundary {
+            val fNames = fields1.keySet ++ fields2.keySet
+            var allTrue = true
+            for (fN <- fNames)
+              (fields1.get(fN), fields2.get(fN)) match {
+                case (Some(f1), Some(f2)) =>
+                  overlap(f1, f2) match {
+                    case Some(false) =>
+                      boundary.break(Some(false))
+                    case Some(true) =>
+                      ()
+                    case None =>
+                      allTrue = false
+                  }
+                case _ =>
+                  ()
+              }
+            if (allTrue) Some(true) else None
+          }
       case (RefinedRecordType(t, _), RecordType(n)) =>
+        Some(n == t.name)
+      case (RecordType(n), RefinedRecordType(t, _)) =>
         Some(n == t.name)
       case (r: RecordType, TupleType(elems)) =>
         util.getRecordArity(r.module, r.name) match {
@@ -779,6 +805,13 @@ class Subtype(pipelineContext: PipelineContext) {
           case _ =>
             Some(false)
         }
+      case (TupleType(elems), RefinedRecordType(t, _)) =>
+        util.getRecordArity(t.module, t.name) match {
+          case Some(arity) if arity + 1 == elems.size =>
+            overlap(elems.head, AtomLitType(t.name))
+          case _ =>
+            Some(false)
+        }
       case (TupleType(_), _) =>
         Some(false)
       case (_, TupleType(_)) =>
@@ -787,10 +820,6 @@ class Subtype(pipelineContext: PipelineContext) {
         Some(false)
       case (_, AnyTupleType) =>
         Some(false)
-
-      case (_, RefinedRecordType(_, _)) =>
-        // t2 comes from props
-        throw new IllegalStateException(t2.toString)
 
       case (NilType, NilType) =>
         Some(true)
