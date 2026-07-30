@@ -553,7 +553,7 @@ fn read_node_types() -> Result<Vec<NodeType>> {
     println!(
         "node_types {:?} {:?} {:?}",
         language,
-        language.version(),
+        language.abi_version(),
         language.node_kind_count()
     );
 
