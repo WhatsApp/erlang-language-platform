@@ -632,8 +632,11 @@ class Subtype(pipelineContext: PipelineContext) {
     }
 
   def overlap(t1: Type, t2: Type): Option[Boolean] =
+    overlap(t1, t2, Set.empty)
+
+  private def overlap(t1: Type, t2: Type, seen: Set[(Type, Type)]): Option[Boolean] =
     (t1, t2) match {
-      case (_, _) if t1 == t2 =>
+      case (_, _) if t1 == t2 || seen.contains(t1, t2) || seen.contains(t2, t1) =>
         Some(true)
       case (AnyType, _) =>
         Some(true)
@@ -648,9 +651,9 @@ class Subtype(pipelineContext: PipelineContext) {
         Some(true)
 
       case (BoundedDynamicType(bound), _) =>
-        overlap(bound, t2)
+        overlap(bound, t2, seen)
       case (_, BoundedDynamicType(bound)) =>
-        overlap(t1, bound)
+        overlap(t1, bound, seen)
 
       case (FreeVarType(_), _) =>
         Some(true)
@@ -660,7 +663,7 @@ class Subtype(pipelineContext: PipelineContext) {
         boundary {
           var allFalse = true
           for (t1 <- ts) {
-            overlap(t1, t2) match {
+            overlap(t1, t2, seen) match {
               case Some(true) =>
                 boundary.break(Some(true))
               case None =>
@@ -675,7 +678,7 @@ class Subtype(pipelineContext: PipelineContext) {
         boundary {
           var allFalse = true
           for (t2 <- ts) {
-            overlap(t1, t2) match {
+            overlap(t1, t2, seen) match {
               case Some(true) =>
                 boundary.break(Some(true))
               case None =>
@@ -694,10 +697,10 @@ class Subtype(pipelineContext: PipelineContext) {
 
       case (RemoteType(rid, args), _) =>
         val body = util.getTypeDeclBody(rid, args)
-        overlap(body, t2)
-      // t2 is generated from "predicates" - they are always without aliases
-      case (_, RemoteType(_, _)) =>
-        throw new IllegalStateException(t2.toString)
+        overlap(body, t2, seen + (t1 -> t2))
+      case (_, RemoteType(rid, args)) =>
+        val body = util.getTypeDeclBody(rid, args)
+        overlap(t1, body, seen + (t1 -> t2))
 
       // funs
       case (FunType(_, ins1, _), FunType(_, ins2, _)) =>
@@ -733,7 +736,7 @@ class Subtype(pipelineContext: PipelineContext) {
           boundary {
             var allTrue = true
             for ((t1, t2) <- ts1.lazyZip(ts2)) {
-              overlap(t1, t2) match {
+              overlap(t1, t2, seen) match {
                 case Some(false) =>
                   boundary.break(Some(false))
                 case Some(true) =>
@@ -767,7 +770,7 @@ class Subtype(pipelineContext: PipelineContext) {
             for (fN <- fNames)
               (fields1.get(fN), fields2.get(fN)) match {
                 case (Some(f1), Some(f2)) =>
-                  overlap(f1, f2) match {
+                  overlap(f1, f2, seen) match {
                     case Some(false) =>
                       boundary.break(Some(false))
                     case Some(true) =>
@@ -787,28 +790,28 @@ class Subtype(pipelineContext: PipelineContext) {
       case (r: RecordType, TupleType(elems)) =>
         util.getRecordArity(r.module, r.name) match {
           case Some(arity) if arity + 1 == elems.size =>
-            overlap(AtomLitType(r.name), elems.head)
+            overlap(AtomLitType(r.name), elems.head, seen)
           case _ =>
             Some(false)
         }
       case (TupleType(elems), r: RecordType) =>
         util.getRecordArity(r.module, r.name) match {
           case Some(arity) if arity + 1 == elems.size =>
-            overlap(elems.head, AtomLitType(r.name))
+            overlap(elems.head, AtomLitType(r.name), seen)
           case _ =>
             Some(false)
         }
       case (RefinedRecordType(t, _), TupleType(elems)) =>
         util.getRecordArity(t.module, t.name) match {
           case Some(arity) if arity + 1 == elems.size =>
-            overlap(AtomLitType(t.name), elems.head)
+            overlap(AtomLitType(t.name), elems.head, seen)
           case _ =>
             Some(false)
         }
       case (TupleType(elems), RefinedRecordType(t, _)) =>
         util.getRecordArity(t.module, t.name) match {
           case Some(arity) if arity + 1 == elems.size =>
-            overlap(elems.head, AtomLitType(t.name))
+            overlap(elems.head, AtomLitType(t.name), seen)
           case _ =>
             Some(false)
         }
@@ -830,25 +833,25 @@ class Subtype(pipelineContext: PipelineContext) {
       case (ConsType(_, _), NilType) =>
         Some(false)
       case (ConsType(h1, tl1), ConsType(h2, tl2)) =>
-        overlap(h1, h2) match {
+        overlap(h1, h2, seen) match {
           case Some(false) =>
             Some(false)
           case Some(true) =>
-            overlap(tl1, tl2)
+            overlap(tl1, tl2, seen)
           case None =>
-            overlap(tl1, tl2) match {
+            overlap(tl1, tl2, seen) match {
               case Some(false) => Some(false)
               case _           => None
             }
         }
       case (ConsType(h1, tl1), ListType(e2)) =>
-        overlap(h1, e2) match {
+        overlap(h1, e2, seen) match {
           case Some(false) =>
             Some(false)
           case Some(true) =>
-            overlap(tl1, ListType(e2))
+            overlap(tl1, ListType(e2), seen)
           case None =>
-            overlap(tl1, ListType(e2)) match {
+            overlap(tl1, ListType(e2), seen) match {
               case Some(false) => Some(false)
               case _           => None
             }
@@ -856,13 +859,13 @@ class Subtype(pipelineContext: PipelineContext) {
       case (ListType(_), NilType) =>
         Some(true)
       case (ListType(e1), ConsType(h2, tl2)) =>
-        overlap(e1, h2) match {
+        overlap(e1, h2, seen) match {
           case Some(false) =>
             Some(false)
           case Some(true) =>
-            overlap(ListType(e1), tl2)
+            overlap(ListType(e1), tl2, seen)
           case None =>
-            overlap(ListType(e1), tl2) match {
+            overlap(ListType(e1), tl2, seen) match {
               case Some(false) => Some(false)
               case _           => None
             }
