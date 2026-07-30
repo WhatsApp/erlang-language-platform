@@ -397,6 +397,113 @@ fn erlang_to_thrift_field_bridge_test() {
 }
 
 #[test]
+fn erlang_to_thrift_bridge_range_test() {
+    // One function marker covers multi-arity, async, and -callback (all
+    // function-kind); a -record in the same range is skipped. A following
+    // struct marker owns both -type and -record.
+    let spec = r#"
+    //- /glean/app_glean/src/trpc_svc.erl
+    -module(trpc_svc).
+    -codegen_source("foo/foo.thrift").
+
+    %% Glean {"file": "foo/foo.thrift", "kind": "function", "service": "Svc", "name": "call"}
+    -spec call(client(), integer()) -> ok.
+    call(_Client, _Arg) -> ok.
+
+    -spec call(client(), integer(), options()) -> ok.
+    call(_Client, _Arg, _Opts) -> ok.
+
+    -spec async_call(client(), integer()) -> ok.
+    async_call(_Client, _Arg) -> ok.
+
+    -callback call(client(), integer()) -> ok.
+
+    -record(local, {x :: integer()}).
+
+    %% Glean {"file": "foo/foo.thrift", "kind": "struct", "name": "Point"}
+    -type point() :: #{x => integer()}.
+
+    -record(point, {x :: integer()}).
+    "#;
+    let (facts, _, _, _, module_index) = facts_with_annotations(spec);
+    let app_index = FxHashMap::default();
+    let (glean_facts, _) = facts.into_glean_facts(&module_index, &app_index);
+
+    let bridges: Vec<_> = glean_facts
+        .iter()
+        .filter_map(|f| match f {
+            glean::Fact::ErlangToThrift { facts } => Some(facts),
+            _ => None,
+        })
+        .flatten()
+        .map(|t| serde_json::to_value(t).unwrap())
+        .collect();
+
+    // Total pins the count so a stray bridge to a third `to`-kind fails loudly.
+    assert_eq_expected!(6, bridges.len());
+
+    let from_kinds: Vec<Vec<&str>> = ["function_", "named"]
+        .iter()
+        .map(|to_kind| {
+            bridges
+                .iter()
+                .filter(|b| b["key"]["to"].get(to_kind).is_some())
+                .filter_map(|b| {
+                    b["key"]["from"]
+                        .as_object()?
+                        .keys()
+                        .next()
+                        .map(String::as_str)
+                })
+                .collect()
+        })
+        .collect();
+
+    // Function marker: call/2, call/3, async_call/2, -callback call/2 — four
+    // bridges. -record(local) is in-range but skipped by kind_matches.
+    let mut fn_from: Vec<&str> = from_kinds[0].clone();
+    fn_from.sort();
+    assert_eq_expected!(vec!["callback_", "func", "func", "func"], fn_from);
+
+    // Struct marker: -type point() and -record(point) — both are valid struct
+    // reprs.
+    let mut struct_from: Vec<&str> = from_kinds[1].clone();
+    struct_from.sort();
+    assert_eq_expected!(vec!["record_", "type_"], struct_from);
+}
+
+#[test]
+fn erlang_to_thrift_bridge_empty_range_test() {
+    // Marker followed only by wrong-kind decls must not bridge anything.
+    let spec = r#"
+    //- /glean/app_glean/src/empty_range.erl
+    -module(empty_range).
+    -codegen_source("foo/foo.thrift").
+
+    %% Glean {"file": "foo/foo.thrift", "kind": "function", "service": "Svc", "name": "no_match"}
+    -type unrelated() :: integer().
+    -record(other, {x :: integer()}).
+    "#;
+    let (facts, _, _, _, module_index) = facts_with_annotations(spec);
+    let app_index = FxHashMap::default();
+    let (glean_facts, _) = facts.into_glean_facts(&module_index, &app_index);
+
+    let bridges: Vec<_> = glean_facts
+        .iter()
+        .filter_map(|f| match f {
+            glean::Fact::ErlangToThrift { facts } => Some(facts),
+            _ => None,
+        })
+        .flatten()
+        .collect();
+    assert!(
+        bridges.is_empty(),
+        "no bridges expected when only wrong-kind decls follow the marker; got {} bridges",
+        bridges.len()
+    );
+}
+
+#[test]
 fn xref_call_to_generated_dep_module_test() {
     let spec = r#"
     //- /app_a/src/caller.erl app:app_a buck_target:cell//app_a:lib deps:dep_app

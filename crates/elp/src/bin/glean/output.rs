@@ -22,6 +22,23 @@ use super::types::Location;
 use super::types::glean;
 use super::types::parser;
 
+/// Maps a `glean::ThriftDeclaration` variant to the `glean::Declaration`
+/// variants that may correspond to it. Structs and exceptions can be
+/// represented as `-type` (map-repr) or `-record` (record-repr); RPC
+/// functions include client wrappers and `-callback` specs.
+fn kind_matches(thrift: &glean::ThriftDeclaration, erlang: &glean::Declaration) -> bool {
+    use glean::Declaration as E;
+    use glean::ThriftDeclaration as T;
+    match (thrift, erlang) {
+        (T::Service(_), E::Module(_)) => true,
+        (T::Function(_), E::Func(_) | E::Callback(_)) => true,
+        (T::Constant(_), E::Func(_)) => true,
+        (T::Named(_) | T::Exception(_), E::Type(_) | E::Record(_)) => true,
+        (T::Field(_), E::RecordField(_)) => true,
+        _ => false,
+    }
+}
+
 #[derive(Debug, Default)]
 pub(crate) struct FactCounts {
     pub(crate) file_count: usize,
@@ -742,17 +759,27 @@ impl IndexedFacts {
                 let Some(file_decls) = decls_by_file.get(&file_id) else {
                     continue;
                 };
+                debug_assert!(
+                    annotations.windows(2).all(|w| w[0].0 <= w[1].0),
+                    "thrift markers must be offset-sorted"
+                );
                 let mut self_xrefs: Vec<glean::XRef> = vec![];
-                for (marker_end, to) in annotations {
-                    // Each marker annotates the declaration that immediately follows it.
-                    let from = file_decls
-                        .get(file_decls.partition_point(|d| d.key.span.start < marker_end))
-                        .map(|d| (d.key.declaration.clone(), d.key.span.clone()));
-                    if let Some((decl, span)) = from {
+                const PAST_EOF: u32 = u32::MAX;
+                for (i, (marker_end, to)) in annotations.iter().enumerate() {
+                    let range_end = annotations
+                        .get(i + 1)
+                        .map(|(next, _)| *next)
+                        .unwrap_or(PAST_EOF);
+                    let start = file_decls.partition_point(|d| d.key.span.start < *marker_end);
+                    let end = file_decls.partition_point(|d| d.key.span.start < range_end);
+                    for d in &file_decls[start..end] {
+                        if !kind_matches(to, &d.key.declaration) {
+                            continue;
+                        }
                         erlang_to_thrift.push(
                             glean::ErlangToThrift {
-                                from: decl.clone(),
-                                to,
+                                from: d.key.declaration.clone(),
+                                to: to.clone(),
                             }
                             .into(),
                         );
@@ -761,8 +788,8 @@ impl IndexedFacts {
                         // the file-scoped facts — codemarkup falls back to the bridge
                         // via ErlangEntityIdl / ErlangEntityLocation.
                         self_xrefs.push(glean::XRef {
-                            target: decl,
-                            source: span,
+                            target: d.key.declaration.clone(),
+                            source: d.key.span.clone(),
                         });
                     }
                 }
