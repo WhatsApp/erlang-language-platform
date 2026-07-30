@@ -83,39 +83,6 @@ object Occurrence {
       "is_map" -> MapType(Map(), AnyType, AnyType),
       "is_tuple" -> AnyTupleType,
     )
-
-  private enum ValueKind {
-    case Atom, Binary, Fun, List, Map, Integer, Float, Pid, Port, Reference, Tuple, NativeRecord
-  }
-
-  private def kind(t: Type): Option[ValueKind] = t match {
-    case AtomLitType(_) | AtomType =>
-      Some(ValueKind.Atom)
-    case BinaryType =>
-      Some(ValueKind.Binary)
-    case AnyFunType | FunType(_, _, _) | AnyArityFunType(_) =>
-      Some(ValueKind.Fun)
-    case NilType | ListType(_) | ConsType(_, _) =>
-      Some(ValueKind.List)
-    case MapType(_, _, _) =>
-      Some(ValueKind.Map)
-    case IntegerType =>
-      Some(ValueKind.Integer)
-    case FloatType =>
-      Some(ValueKind.Float)
-    case PidType =>
-      Some(ValueKind.Pid)
-    case PortType =>
-      Some(ValueKind.Port)
-    case ReferenceType =>
-      Some(ValueKind.Reference)
-    case AnyTupleType | TupleType(_) | RecordType(_) | RefinedRecordType(_, _) =>
-      Some(ValueKind.Tuple)
-    case NativeRecordType(_) | AnyNativeRecordType =>
-      Some(ValueKind.NativeRecord)
-    case _ =>
-      None
-  }
 }
 
 // The main logic of occurrence typing.
@@ -289,14 +256,14 @@ final class Occurrence(pipelineContext: PipelineContext) {
   private def implies(p: AProp, q: AProp): Boolean = (p, q) match {
     case (Pos(o1, t1), Pos(o2, t2)) if o1 == o2 => subtype.gradualSubType(t1, t2)
     case (Neg(o1, t1), Neg(o2, t2)) if o1 == o2 => subtype.gradualSubType(t2, t1)
-    case (Pos(o1, t1), Neg(o2, t2)) if o1 == o2 => overlap(t1, t2).isFalse
+    case (Pos(o1, t1), Neg(o2, t2)) if o1 == o2 => subtype.overlap(t1, t2).isFalse
     case _                                      => false
   }
 
   private def contradicts(p: AProp, q: AProp): Boolean = (p, q) match {
     case (Pos(o1, t1), Neg(o2, t2)) if o1 == o2 => subtype.gradualSubType(t1, t2)
     case (Neg(o1, t1), Pos(o2, t2)) if o1 == o2 => subtype.gradualSubType(t2, t1)
-    case (Pos(o1, t1), Pos(o2, t2)) if o1 == o2 => overlap(t1, t2).isFalse
+    case (Pos(o1, t1), Pos(o2, t2)) if o1 == o2 => subtype.overlap(t1, t2).isFalse
     case _                                      => false
   }
 
@@ -605,238 +572,9 @@ final class Occurrence(pipelineContext: PipelineContext) {
     }
   }
 
-  private def simpleOverlap(t1: Type, t2: Type): Option[Boolean] =
-    (kind(t1), kind(t2)) match {
-      case (Some(k1), Some(k2)) =>
-        Some(k1 == k2)
-      case (_, _) =>
-        if (subtype.subType(t1, t2) || subtype.subType(t2, t1))
-          Some(true)
-        else
-          None
-    }
-
-  private def overlap(t1: Type, t2: Type): Option[Boolean] =
-    (t1, t2) match {
-      case (_, _) if t1 == t2 =>
-        Some(true)
-      case (AnyType, _) =>
-        Some(true)
-      case (_, AnyType) =>
-        Some(true)
-      case (NoneType, _) =>
-        Some(false)
-
-      case (DynamicType, _) =>
-        Some(true)
-      case (_, DynamicType) =>
-        Some(true)
-
-      case (BoundedDynamicType(bound), _) =>
-        overlap(bound, t2)
-      case (_, BoundedDynamicType(bound)) =>
-        overlap(t1, bound)
-
-      case (FreeVarType(_), _) =>
-        Some(true)
-
-      // Unions
-      case (UnionType(ts), _) =>
-        boundary {
-          var allFalse = true
-          for (t1 <- ts) {
-            overlap(t1, t2) match {
-              case Some(true) =>
-                boundary.break(Some(true))
-              case None =>
-                allFalse = false
-              case Some(false) =>
-                ()
-            }
-          }
-          if (allFalse) Some(false) else None
-        }
-      case (_, UnionType(ts)) =>
-        boundary {
-          var allFalse = true
-          for (t2 <- ts) {
-            overlap(t1, t2) match {
-              case Some(true) =>
-                boundary.break(Some(true))
-              case None =>
-                allFalse = false
-              case Some(false) =>
-                ()
-            }
-          }
-          if (allFalse) Some(false) else None
-        }
-
-      case (NativeRecordType(id1), NativeRecordType(id2)) =>
-        Some(id1 == id2)
-      case (AtomLitType(l1), AtomLitType(l2)) =>
-        Some(l1 == l2)
-
-      case (RemoteType(rid, args), _) =>
-        val body = util.getTypeDeclBody(rid, args)
-        overlap(body, t2)
-      // t2 is generated from "predicates" - they are always without aliases
-      case (_, RemoteType(_, _)) =>
-        throw new IllegalStateException(t2.toString)
-
-      // funs
-      case (FunType(_, ins1, _), FunType(_, ins2, _)) =>
-        if (ins1.size != ins2.size)
-          Some(false)
-        else
-          None
-      case (FunType(_, _, _), AnyFunType) =>
-        Some(true)
-      case (AnyFunType, FunType(_, _, _)) =>
-        Some(true)
-      case (AnyArityFunType(_), AnyFunType) =>
-        Some(true)
-      case (AnyFunType, AnyArityFunType(_)) =>
-        Some(true)
-      case (AnyArityFunType(_), FunType(_, _, _)) =>
-        None
-      case (FunType(_, _, _), AnyArityFunType(_)) =>
-        None
-      case (FunType(_, _, _), _) =>
-        Some(false)
-      case (_, FunType(_, _, _)) =>
-        Some(false)
-      case (AnyFunType, _) =>
-        Some(false)
-      case (_, AnyFunType) =>
-        Some(false)
-
-      // tuples and records
-      case (TupleType(ts1), TupleType(ts2)) =>
-        if (ts1.size != ts2.size) Some(false)
-        else
-          boundary {
-            var allTrue = true
-            for ((t1, t2) <- ts1.lazyZip(ts2)) {
-              overlap(t1, t2) match {
-                case Some(false) =>
-                  boundary.break(Some(false))
-                case Some(true) =>
-                  ()
-                case None =>
-                  allTrue = false
-              }
-            }
-            if (allTrue) Some(true) else None
-          }
-      case (TupleType(_), AnyTupleType) =>
-        Some(true)
-      case (AnyTupleType, TupleType(_)) =>
-        Some(true)
-      case (RecordType(_), AnyTupleType) =>
-        Some(true)
-      case (RefinedRecordType(_, _), AnyTupleType) =>
-        Some(true)
-      case (AnyTupleType, RecordType(_)) =>
-        Some(true)
-      case (RecordType(n1), RecordType(n2)) =>
-        Some(n1 == n2)
-      case (RefinedRecordType(t, _), RecordType(n)) =>
-        Some(n == t.name)
-      case (r: RecordType, TupleType(elems)) =>
-        util.getRecordArity(r.module, r.name) match {
-          case Some(arity) if arity + 1 == elems.size =>
-            overlap(AtomLitType(r.name), elems.head)
-          case _ =>
-            Some(false)
-        }
-      case (TupleType(elems), r: RecordType) =>
-        util.getRecordArity(r.module, r.name) match {
-          case Some(arity) if arity + 1 == elems.size =>
-            overlap(elems.head, AtomLitType(r.name))
-          case _ =>
-            Some(false)
-        }
-      case (RefinedRecordType(t, _), TupleType(elems)) =>
-        util.getRecordArity(t.module, t.name) match {
-          case Some(arity) if arity + 1 == elems.size =>
-            overlap(AtomLitType(t.name), elems.head)
-          case _ =>
-            Some(false)
-        }
-      case (TupleType(_), _) =>
-        Some(false)
-      case (_, TupleType(_)) =>
-        Some(false)
-      case (AnyTupleType, _) =>
-        Some(false)
-      case (_, AnyTupleType) =>
-        Some(false)
-
-      case (_, RefinedRecordType(_, _)) =>
-        // t2 comes from props
-        throw new IllegalStateException(t2.toString)
-
-      case (NilType, NilType) =>
-        Some(true)
-      case (NilType, ConsType(_, _)) =>
-        Some(false)
-      case (NilType, ListType(_)) =>
-        Some(true)
-      case (ConsType(_, _), NilType) =>
-        Some(false)
-      case (ConsType(h1, tl1), ConsType(h2, tl2)) =>
-        overlap(h1, h2) match {
-          case Some(false) =>
-            Some(false)
-          case Some(true) =>
-            overlap(tl1, tl2)
-          case None =>
-            overlap(tl1, tl2) match {
-              case Some(false) => Some(false)
-              case _           => None
-            }
-        }
-      case (ConsType(h1, tl1), ListType(e2)) =>
-        overlap(h1, e2) match {
-          case Some(false) =>
-            Some(false)
-          case Some(true) =>
-            overlap(tl1, ListType(e2))
-          case None =>
-            overlap(tl1, ListType(e2)) match {
-              case Some(false) => Some(false)
-              case _           => None
-            }
-        }
-      case (ListType(_), NilType) =>
-        Some(true)
-      case (ListType(e1), ConsType(h2, tl2)) =>
-        overlap(e1, h2) match {
-          case Some(false) =>
-            Some(false)
-          case Some(true) =>
-            overlap(ListType(e1), tl2)
-          case None =>
-            overlap(ListType(e1), tl2) match {
-              case Some(false) => Some(false)
-              case _           => None
-            }
-        }
-      case (ListType(_), ListType(_)) =>
-        Some(true)
-      case (ListType(_) | NilType | ConsType(_, _), _) =>
-        Some(false)
-      case (_, ListType(_) | NilType | ConsType(_, _)) =>
-        Some(false)
-
-      case _ =>
-        simpleOverlap(t1, t2)
-    }
-
   private def restrict(t1: Type, t2: Type): Type = {
     (t1, t2) match {
-      case (t, s) if overlap(t, s).isFalse =>
+      case (t, s) if subtype.overlap(t, s).isFalse =>
         NoneType
       case (t, s) if subtype.gradualSubType(t, s) =>
         t
