@@ -55,7 +55,8 @@ class Narrow(pipelineContext: PipelineContext) {
         case (_, BoundedDynamicType(b2)) =>
           BoundedDynamicType(meetAux(t1, b2, seen))
         // Composed "refinable" types - refining component by component
-        case (UnionType(ty1s), _) => subtype.join(ty1s.map(meetAux(_, t2, seen)))
+        case (UnionType(ty1s), _) =>
+          subtype.join(ty1s.map(meetAux(_, t2, seen)))
         case (_, UnionType(ty2s)) =>
           subtype.join(ty2s.map(meetAux(t1, _, seen)))
         case (TupleType(elems1), TupleType(elems2)) if elems1.size == elems2.size =>
