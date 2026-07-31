@@ -724,13 +724,13 @@ mod tests {
         );
     }
 
-    #[test]
-    fn eqwalize_target_diagnostics_match_snapshot_pretty() {
+    #[test_case(true  ; "buck")]
+    fn eqwalize_target_diagnostics_match_snapshot_pretty(buck: bool) {
         simple_snapshot(
             args_vec!["eqwalize-target", "//standard:app_a",],
             "standard",
             resource_file("standard/eqwalize_target_diagnostics.pretty"),
-            true,
+            buck,
             None,
         );
     }
