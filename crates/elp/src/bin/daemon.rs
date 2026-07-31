@@ -1785,7 +1785,7 @@ mod tests {
             return;
         }
 
-        let project = PathBuf::from(crate::test_utils::project_path("standard"));
+        let project = crate::test_utils::project_path("standard");
         let profile = format!("test-daemon-stop-{}", process::id());
 
         let query_config = BuckQueryConfig::BuildGeneratedCode;
