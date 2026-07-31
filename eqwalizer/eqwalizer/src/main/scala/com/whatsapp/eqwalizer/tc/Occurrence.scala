@@ -422,6 +422,12 @@ final class Occurrence(pipelineContext: PipelineContext) {
         testObj(arg, aMap)
           .map(obj => (Pos(obj, tPos), Neg(obj, tNeg)))
           .getOrElse(Unknown, Unknown)
+      case TestCall(Id("is_function", 2), List(arg, _)) =>
+        // Non-literal arity: narrow to any fun; the arity is unknown so there is
+        // no precise negative.
+        testObj(arg, aMap)
+          .map(obj => (Pos(obj, AnyFunType), Unknown))
+          .getOrElse(Unknown, Unknown)
       case TestCall(Id("is_record", 3), List(arg, TestAtom(modName), TestAtom(recName))) =>
         val tp = nativeRecordTypeFor(modName, recName)
         testObj(arg, aMap)
@@ -612,6 +618,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
         ConsType_*(restrict(h, e), restrict(tl, ListType(e)))
       case (ConsType(h1, tl1), ConsType(h2, tl2)) =>
         ConsType_*(restrict(h1, h2), restrict(tl1, tl2))
+      case (_: FunType, _: FunType) =>
+        narrow.meet(t1, t2)
       case (_, _) =>
         t1
     }
