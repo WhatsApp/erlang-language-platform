@@ -438,9 +438,21 @@ final class Occurrence(pipelineContext: PipelineContext) {
           .map(obj => (Pos(obj, tp), Neg(obj, tp)))
           .getOrElse(Unknown, Unknown)
       case TestCall(Id("is_map_key", 2), List(keyArg, mapArg)) =>
-        // `is_map_key(K, M)` implies M is a map
-        // we don't try to be super-precise here yet when handling the key
-        val pos = testObj(mapArg, aMap).map(Pos(_, MapType(Map(), AnyType, AnyType)))
+        val mapKT = mapArg match {
+          case TestMapCreate(kvs) if kvs.nonEmpty =>
+            val keys = kvs.map { case (k, _) => Key.fromTest(k) }
+            Option.when(keys.forall(_.isDefined))(UnionType(keys.flatten.map(Key.asType).toSet))
+          case _ =>
+            None
+        }
+        val pos = mapKT match {
+          // is_map_key(K, #{k1 => .., k2 => ....}) -> K :: k1 | k2 | ...
+          case Some(keyTy) =>
+            testObj(keyArg, aMap).map(Pos(_, keyTy))
+          // `is_map_key(K, M)` -> M :: #{term() => term()}
+          case None =>
+            testObj(mapArg, aMap).map(Pos(_, MapType(Map(), AnyType, AnyType)))
+        }
         (pos.getOrElse(Unknown), Unknown)
       case TestUnOp("not", test) =>
         testProps(test, aMap).swap
