@@ -23,7 +23,8 @@ class Narrow(pipelineContext: PipelineContext) {
     meetAux(t1, t2, Set.empty)
 
   private def meetAux(t1: Type, t2: Type, seen: Set[RemoteId]): Type =
-    if (subtype.gradualSubType(t1, t2)) t1
+    if (subtype.overlap(t1, t2).contains(false)) NoneType
+    else if (subtype.gradualSubType(t1, t2)) t1
     else if (subtype.gradualSubType(t2, t1)) t2
     else
       (t1, t2) match {
