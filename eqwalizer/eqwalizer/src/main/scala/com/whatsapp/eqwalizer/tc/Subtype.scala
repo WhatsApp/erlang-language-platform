@@ -881,8 +881,30 @@ class Subtype(pipelineContext: PipelineContext) {
       case (_, ListType(_) | NilType | ConsType(_, _)) =>
         Some(false)
 
+      case (mt1 @ MapType(props1, kT1, vT1), mt2 @ MapType(props2, kT2, vT2)) =>
+        // Checking that maps overlap in required associations.
+        boundary {
+          val reqKeys =
+            props1.collect { case (k, MapProp(true, _)) => k }.toSet ++
+              props2.collect { case (k, MapProp(true, _)) => k }
+          var allTrue = true
+          for (key <- reqKeys)
+            overlap(mapValueType(key, mt1), mapValueType(key, mt2), seen) match {
+              case Some(false) => boundary.break(Some(false))
+              case Some(true)  => ()
+              case None        => allTrue = false
+            }
+          if (allTrue) Some(true) else None
+        }
+
       case _ =>
         simpleOverlap(t1, t2)
+    }
+
+  private def mapValueType(key: Key, mt: MapType): Type =
+    mt.props.get(key) match {
+      case Some(prop) => prop.tp
+      case None       => if (subType(Key.asType(key), mt.kType)) mt.vType else NoneType
     }
 
 }
