@@ -22,23 +22,26 @@ class Narrow(pipelineContext: PipelineContext) {
   def meet(t1: Type, t2: Type): Type =
     meetAux(t1, t2, Set.empty)
 
-  private def meetAux(t1: Type, t2: Type, seen: Set[RemoteId]): Type =
+  private def meetAux(t1: Type, t2: Type, seen: Set[(Type, Type)]): Type =
     if (subtype.overlap(t1, t2).contains(false)) NoneType
     else if (subtype.gradualSubType(t1, t2)) t1
     else if (subtype.gradualSubType(t2, t1)) t2
     else
       (t1, t2) match {
         case (RemoteType(rid, args), _) =>
-          val body = util.getTypeDeclBody(rid, args)
-          val met = meetAux(body, t2, seen)
-          if (Subtype.isNoneType(met)) NoneType
-          else if (met == body) t1
-          else met
-        case (_, RemoteType(rid, args)) =>
-          if (seen(rid)) t1
+          if (seen(t1 -> t2) || seen(t2 -> t1)) t1
           else {
             val body = util.getTypeDeclBody(rid, args)
-            val met = meetAux(t1, body, seen + rid)
+            val met = meetAux(body, t2, seen + (t1 -> t2))
+            if (Subtype.isNoneType(met)) NoneType
+            else if (met == body) t1
+            else met
+          }
+        case (_, RemoteType(rid, args)) =>
+          if (seen(t1 -> t2) || seen(t2 -> t1)) t1
+          else {
+            val body = util.getTypeDeclBody(rid, args)
+            val met = meetAux(t1, body, seen + (t1 -> t2))
             if (Subtype.isNoneType(met)) NoneType
             else if (met == body) t2
             else met
