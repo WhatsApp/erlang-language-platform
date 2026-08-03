@@ -105,7 +105,11 @@ pub(crate) fn exported_test_ranges(
 
 static KNOWN_FUNCTIONS_ARITY_1: LazyLock<FxHashSet<NameArity>> = LazyLock::new(|| {
     let mut res = FxHashSet::default();
-    for name in [known::end_per_suite, known::init_per_suite, known::group] {
+    for name in [
+        known::end_per_suite.clone(),
+        known::init_per_suite.clone(),
+        known::group.clone(),
+    ] {
         res.insert(NameArity::new(name.clone(), 1));
     }
     res

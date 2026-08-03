@@ -48,7 +48,6 @@ use crate::ExprId;
 use crate::FunctionClauseBody;
 use crate::FunctionClauseId;
 use crate::InFile;
-use crate::Name;
 use crate::PatId;
 use crate::Var;
 use crate::db::DefDatabase;
@@ -192,7 +191,7 @@ impl FunctionScopes {
     ) -> Arc<FunctionScopes> {
         let function_id = fid.value(db);
         let function_body = db.function_body(function_id);
-        let anonymous_var = Var::new(&Name::ANONYMOUS);
+        let anonymous_var = Var::new(&crate::ANONYMOUS);
         let clause_scopes = function_body
             .clauses
             .iter()
@@ -217,7 +216,7 @@ impl FunctionScopes {
     ) -> Arc<ExprScopes> {
         let function_clause_id = fid.value(db);
         let function_clause_body = db.function_clause_body(function_clause_id);
-        let anonymous_var = Var::new(&Name::ANONYMOUS);
+        let anonymous_var = Var::new(&crate::ANONYMOUS);
         Arc::new(ExprScopes::for_clause(&function_clause_body, anonymous_var))
     }
 

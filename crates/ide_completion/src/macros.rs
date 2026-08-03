@@ -75,7 +75,7 @@ pub(crate) fn add_completions(
             known_macros.extend(user_defined);
             acc.extend(known_macros);
 
-            let built_in = BUILT_IN;
+            let built_in = &*BUILT_IN;
             let predefined = built_in
                 .iter()
                 .filter(|name| name.starts_with(&prefix))
@@ -184,16 +184,18 @@ fn built_in_macro_name_to_completion(name: &Name) -> Completion {
     }
 }
 
-const BUILT_IN: [Name; 8] = [
-    known::FILE,
-    known::FUNCTION_NAME,
-    known::FUNCTION_ARITY,
-    known::LINE,
-    known::MODULE,
-    known::MODULE_STRING,
-    known::MACHINE,
-    known::OTP_RELEASE,
-];
+static BUILT_IN: std::sync::LazyLock<Vec<Name>> = std::sync::LazyLock::new(|| {
+    vec![
+        known::FILE.clone(),
+        known::FUNCTION_NAME.clone(),
+        known::FUNCTION_ARITY.clone(),
+        known::LINE.clone(),
+        known::MODULE.clone(),
+        known::MODULE_STRING.clone(),
+        known::MACHINE.clone(),
+        known::OTP_RELEASE.clone(),
+    ]
+});
 
 // TODO: should this be done in the resolve step? Or, cached in the table
 // First make it work.

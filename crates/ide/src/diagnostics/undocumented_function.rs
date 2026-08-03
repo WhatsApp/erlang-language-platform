@@ -102,7 +102,7 @@ fn is_hidden_moduledoc(
 }
 
 fn is_hidden_or_false(atom: &Atom) -> bool {
-    atom.as_name() == known::hidden || atom.as_name() == known::false_name
+    atom.as_name() == *known::hidden || atom.as_name() == *known::false_name
 }
 
 fn function_should_be_checked(

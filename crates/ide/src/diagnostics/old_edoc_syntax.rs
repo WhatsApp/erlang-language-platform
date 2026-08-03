@@ -205,7 +205,7 @@ fn author_tags_insert_offset(sema: &Semantic, file_id: FileId) -> Option<TextSiz
     Some(
         form_list
             .attributes()
-            .skip_while(|(_idx, attr)| attr.name != known::author)
+            .skip_while(|(_idx, attr)| attr.name != *known::author)
             .map(|(_idx, attr)| attr)
             .last()?
             .form_id
@@ -221,7 +221,7 @@ fn existing_authors(sema: &Semantic, file_id: FileId) -> FxHashSet<String> {
     form_list
         .attributes()
         .filter_map(|(_idx, attr)| {
-            if attr.name == known::author {
+            if attr.name == *known::author {
                 author_name(sema, file_id, attr).map(|author| normalize(&author))
             } else {
                 None

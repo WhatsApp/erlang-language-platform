@@ -46,7 +46,7 @@ impl GenericLinter for NoDialyzerAttributeLinter {
         let mut res = Vec::new();
         let form_list = sema.db.file_form_list(file_id);
         form_list.attributes().for_each(|(_idx, attr)| {
-            if attr.name == known::dialyzer
+            if attr.name == *known::dialyzer
                 && let Some(range) = attr.name_range(sema.db, file_id)
             {
                 res.push(GenericLinterMatchContext {

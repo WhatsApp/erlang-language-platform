@@ -521,19 +521,19 @@ fn call_target_to_node_kind(
 }
 
 fn bif_name_to_node_kind(name: &Name) -> Option<NodeKind> {
-    if *name == known::is_atom {
+    if *name == *known::is_atom {
         Some(NodeKind::Atom)
-    } else if *name == known::is_integer {
+    } else if *name == *known::is_integer {
         Some(NodeKind::Integer)
-    } else if *name == known::is_function {
+    } else if *name == *known::is_function {
         Some(NodeKind::Fun)
-    } else if *name == known::is_list {
+    } else if *name == *known::is_list {
         Some(NodeKind::List)
-    } else if *name == known::is_tuple {
+    } else if *name == *known::is_tuple {
         Some(NodeKind::Tuple)
-    } else if *name == known::is_map {
+    } else if *name == *known::is_map {
         Some(NodeKind::Map)
-    } else if *name == known::is_binary {
+    } else if *name == *known::is_binary {
         Some(NodeKind::Binary)
     } else {
         None
@@ -541,9 +541,9 @@ fn bif_name_to_node_kind(name: &Name) -> Option<NodeKind> {
 }
 
 fn ssr_predicate_to_node_kind(name: &Name) -> Option<NodeKind> {
-    if *name == known::is_var {
+    if *name == *known::is_var {
         Some(NodeKind::Var)
-    } else if *name == known::is_call {
+    } else if *name == *known::is_call {
         Some(NodeKind::Call)
     } else {
         bif_name_to_node_kind(name)

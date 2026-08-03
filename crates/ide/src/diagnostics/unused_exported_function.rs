@@ -94,13 +94,13 @@ impl GenericLinter for UnusedExportedFunctionLinter {
         let self_scope = SearchScope::single_file(file_id, None);
 
         for name_arity in def_map.get_exported_functions() {
-            if *name_arity.name() == known::module_info
+            if *name_arity.name() == *known::module_info
                 && (name_arity.arity() == 0 || name_arity.arity() == 1)
             {
                 continue;
             }
 
-            if *name_arity.name() == known::start_link {
+            if *name_arity.name() == *known::start_link {
                 continue;
             }
 

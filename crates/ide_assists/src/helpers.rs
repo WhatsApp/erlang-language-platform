@@ -532,7 +532,7 @@ pub fn add_suite_0_option<'a>(
     let source = sema.parse(file_id).value;
     let form_list = sema.form_list(file_id);
     let def_map = sema.def_map(file_id);
-    let name_arity = NameArity::new(known::suite, 0);
+    let name_arity = NameArity::new(known::suite.clone(), 0);
     if let Some(fun) = def_map.get_function(&name_arity) {
         add_to_suite_0(sema, file_id, fun, &source, key, value, builder);
     } else {
@@ -621,9 +621,9 @@ fn add_to_suite_0(
 }
 
 fn export_suite_0(sema: &Semantic, file_id: FileId, builder: &mut SourceChangeBuilder) {
-    let name_arity = NameArity::new(known::suite, 0);
+    let name_arity = NameArity::new(known::suite.clone(), 0);
     ExportBuilder::new(sema, file_id, ExportForm::Functions, &[name_arity], builder)
-        .group_with(NameArity::new(known::all, 0))
+        .group_with(NameArity::new(known::all.clone(), 0))
         .export_list_pos(ExportListPosition::First)
         .finish();
 }
@@ -813,7 +813,7 @@ pub fn last_significant_attribute_range(
 
 pub fn last_significant_attribute(form_list: &FormList) -> Option<&Attribute> {
     static SIGNIFICANT_ATTRIBUTES: LazyLock<FxHashSet<Name>> =
-        LazyLock::new(|| FxHashSet::from_iter([known::author, known::oncall]));
+        LazyLock::new(|| FxHashSet::from_iter([known::author.clone(), known::oncall.clone()]));
 
     form_list
         .attributes()

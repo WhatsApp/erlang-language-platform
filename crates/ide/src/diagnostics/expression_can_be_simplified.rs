@@ -212,7 +212,7 @@ fn simplify_binary_op(
 
         // andalso
         (lhs, BinaryOp::LogicOp(LogicOp::And { lazy: true }), _rhs)
-            if is_literal_atom(lhs, known::true_name) =>
+            if is_literal_atom(lhs, known::true_name.clone()) =>
         {
             let rhs_str = to_string(&rhs_id, sema, clause_id, def_fb)?;
             Some(rhs_str.to_string())
@@ -220,7 +220,7 @@ fn simplify_binary_op(
 
         // orelse
         (lhs, BinaryOp::LogicOp(LogicOp::Or { lazy: true }), _rhs)
-            if is_literal_atom(lhs, known::false_name) =>
+            if is_literal_atom(lhs, known::false_name.clone()) =>
         {
             let rhs_str = to_string(&rhs_id, sema, clause_id, def_fb)?;
             Some(rhs_str.to_string())
@@ -244,10 +244,10 @@ fn simplify_unary_op(
         // ==== BOOLEAN OPS ====
 
         // not
-        (expr, UnaryOp::Not) if is_literal_atom(expr, known::true_name) => {
+        (expr, UnaryOp::Not) if is_literal_atom(expr, known::true_name.clone()) => {
             Some("false".to_string())
         }
-        (expr, UnaryOp::Not) if is_literal_atom(expr, known::false_name) => {
+        (expr, UnaryOp::Not) if is_literal_atom(expr, known::false_name.clone()) => {
             Some("true".to_string())
         }
 

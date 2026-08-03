@@ -324,13 +324,13 @@ impl DefMap {
                             match_ast! {
                                 match n {
                                     ast::Atom(a) => {
-                                        if a.as_name() == known::export_all {
+                                        if a.as_name() == *known::export_all {
                                             def_map.export_all = true;
                                         }
-                                        if a.as_name() == known::parse_transform {
+                                        if a.as_name() == *known::parse_transform {
                                             def_map.parse_transform = true;
                                         }
-                                        if a.as_name() == known::no_auto_import {
+                                        if a.as_name() == *known::no_auto_import {
                                             Self::def_map_no_auto_import(&mut def_map, &a);
                                         }
                                     },
@@ -689,9 +689,7 @@ impl DefMap {
     }
 
     pub fn get_erlang_module(&self) -> Option<&Name> {
-        static ERLANG_MODULE: Name = known::erlang;
-
-        Some(&ERLANG_MODULE)
+        Some(&*known::erlang)
     }
 
     pub fn get_functions_in_scope(&self) -> impl Iterator<Item = (&NameArity, Option<&Name>)> {

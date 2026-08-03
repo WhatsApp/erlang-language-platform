@@ -512,7 +512,7 @@ fn build_match_rewrite(
 fn ok_tuple_value(in_clause: &InFunctionClauseBody<&FunctionDef>, pat: PatId) -> Option<PatId> {
     if let Pat::Tuple { pats } = &in_clause[pat]
         && pats.len() == 2
-        && matches!(&in_clause[pats[0]], Pat::Literal(Literal::Atom(atom)) if atom.as_name() == known::ok)
+        && matches!(&in_clause[pats[0]], Pat::Literal(Literal::Atom(atom)) if atom.as_name() == *known::ok)
     {
         Some(pats[1])
     } else {
@@ -627,7 +627,7 @@ fn classify_clause(
     let pat_span = pat_range.range;
     match &in_clause[pat] {
         Pat::Tuple { pats } if pats.len() == 2 => match &in_clause[pats[0]] {
-            Pat::Literal(Literal::Atom(atom)) if atom.as_name() == known::ok => {
+            Pat::Literal(Literal::Atom(atom)) if atom.as_name() == *known::ok => {
                 let value_pat = pats[1];
                 // A `Pat = Pat` alias value doesn't splice cleanly into a map
                 // value position; leave those to a future enhancement.
@@ -655,7 +655,7 @@ fn classify_clause(
             _ => None,
         },
         Pat::Literal(Literal::Atom(atom))
-            if atom.as_name() == known::error && guards.is_empty() =>
+            if atom.as_name() == *known::error && guards.is_empty() =>
         {
             Some(ClauseShape::Terminal {
                 pat_span,

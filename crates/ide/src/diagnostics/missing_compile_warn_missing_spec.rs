@@ -204,7 +204,10 @@ enum Found {
 
 static MISSING_SPEC_ALL_OPTIONS: LazyLock<FxHashSet<Name>> = LazyLock::new(|| {
     let mut res = FxHashSet::default();
-    for name in [known::warn_missing_spec_all, known::nowarn_missing_spec_all] {
+    for name in [
+        known::warn_missing_spec_all.clone(),
+        known::nowarn_missing_spec_all.clone(),
+    ] {
         res.insert(name);
     }
     res
@@ -212,7 +215,10 @@ static MISSING_SPEC_ALL_OPTIONS: LazyLock<FxHashSet<Name>> = LazyLock::new(|| {
 
 static MISSING_SPEC_OPTIONS: LazyLock<FxHashSet<Name>> = LazyLock::new(|| {
     let mut res = FxHashSet::default();
-    for name in [known::warn_missing_spec, known::nowarn_missing_spec] {
+    for name in [
+        known::warn_missing_spec.clone(),
+        known::nowarn_missing_spec.clone(),
+    ] {
         res.insert(name);
     }
     res

@@ -165,9 +165,9 @@ fn evaluate(expr: &ConditionExpr, defined_macros: &BTreeSet<MacroName>) -> Optio
         ConditionExpr::LiteralBool(b) => Some(ConditionValue::Bool(*b)),
         ConditionExpr::Integer(i) => Some(ConditionValue::Integer(*i)),
         ConditionExpr::Atom(name) => {
-            if name == &known::true_name {
+            if name == &*known::true_name {
                 Some(ConditionValue::Bool(true))
-            } else if name == &known::false_name {
+            } else if name == &*known::false_name {
                 Some(ConditionValue::Bool(false))
             } else {
                 Some(ConditionValue::Atom(name.clone()))
@@ -653,13 +653,13 @@ fn is_defined_call(target: &CallTarget<ExprId>, body: &Body) -> bool {
         CallTarget::Local { name } => {
             // Access the raw expression
             if let Expr::Literal(Literal::Atom(atom)) = &body.exprs[*name] {
-                return atom.as_name() == known::defined;
+                return atom.as_name() == *known::defined;
             }
             // Check through macro expansion
             if let Expr::MacroCall { expansion, .. } = &body.exprs[*name]
                 && let Expr::Literal(Literal::Atom(atom)) = &body.exprs[*expansion]
             {
-                return atom.as_name() == known::defined;
+                return atom.as_name() == *known::defined;
             }
             false
         }

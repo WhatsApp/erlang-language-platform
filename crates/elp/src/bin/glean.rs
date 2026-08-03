@@ -635,7 +635,7 @@ impl GleanIndexer {
         let sema = Semantic::new(db);
         let form_list = sema.form_list(file_id);
 
-        let oncall = sema.attribute_value_as_string(file_id, hir::known::oncall);
+        let oncall = sema.attribute_value_as_string(file_id, hir::known::oncall.clone());
 
         let behaviours: Vec<String> = form_list
             .behaviour_attributes()
@@ -774,7 +774,7 @@ impl GleanIndexer {
 
         let on_load_fns: Vec<String> = form_list
             .attributes()
-            .filter(|(_, attr)| attr.name == hir::known::on_load)
+            .filter(|(_, attr)| attr.name == *hir::known::on_load)
             .flat_map(|(_, attr)| {
                 let attr_ast = attr.form_id.get(&source.tree());
                 attr_ast.value().into_iter().flat_map(|value| {
@@ -788,7 +788,7 @@ impl GleanIndexer {
 
         let nif_fns: Vec<(String, u32)> = form_list
             .attributes()
-            .filter(|(_, attr)| attr.name == hir::known::nifs)
+            .filter(|(_, attr)| attr.name == *hir::known::nifs)
             .flat_map(|(_, attr)| {
                 let attr_ast = attr.form_id.get(&source.tree());
                 let text = attr_ast
@@ -1797,7 +1797,7 @@ impl GeneratedFrom {
 /// or `% @codegen_source` comment (`.hrl`, scanned from source since
 /// comments aren't in the FormList).
 fn generated_from(sema: &Semantic, file_id: FileId, source: &str) -> Option<GeneratedFrom> {
-    if let Some(path) = sema.attribute_value_as_string(file_id, hir::known::codegen_source)
+    if let Some(path) = sema.attribute_value_as_string(file_id, hir::known::codegen_source.clone())
         && path.ends_with(".thrift")
     {
         return Some(GeneratedFrom::Thrift(path));

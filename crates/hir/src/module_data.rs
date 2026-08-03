@@ -121,7 +121,7 @@ impl Module {
 
     pub fn name(&self, db: &dyn DefDatabase) -> Name {
         let attr = self.module_attribute(db);
-        attr.map_or(Name::MISSING, |attr| attr.name)
+        attr.map_or_else(|| crate::MISSING.clone(), |attr| attr.name)
     }
 
     pub fn is_in_otp(&self, db: &dyn DefDatabase) -> bool {
@@ -163,9 +163,9 @@ impl FunctionClauseDef {
         let source = self.source(db);
         let name = self.function_clause.name.name();
         let args = match source.clause() {
-            None => Name::MISSING.to_string(),
+            None => crate::MISSING.to_string(),
             Some(FunctionOrMacroClause::FunctionClause(clause)) => match clause.args() {
-                None => Name::MISSING.to_string(),
+                None => crate::MISSING.to_string(),
                 Some(args) => args.to_string(),
             },
             Some(FunctionOrMacroClause::MacroCallExpr(expr)) => expr.syntax().text().to_string(),
@@ -402,7 +402,7 @@ fn expr_as_map(expr: Expr) -> Option<MapExpr> {
 
 fn is_params_key(expr: Expr) -> bool {
     match expr {
-        ast::Expr::ExprMax(ast::ExprMax::Atom(atom)) => atom.as_name() == known::params,
+        ast::Expr::ExprMax(ast::ExprMax::Atom(atom)) => atom.as_name() == *known::params,
         _ => false,
     }
 }

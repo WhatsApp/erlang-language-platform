@@ -257,7 +257,7 @@ impl MacroCallName {
         match self {
             MacroCallName::Var(var) => var.as_name(),
             MacroCallName::Atom(atom) => atom.as_name(),
-            MacroCallName::Missing => Name::MISSING,
+            MacroCallName::Missing => crate::MISSING.clone(),
         }
     }
 }
@@ -731,7 +731,7 @@ impl CallTarget<ExprId> {
                 } else {
                     // We may have the erlang module, inserted while lowering
                     let module_atom = &in_clause[*module].as_atom()?;
-                    if module_atom.as_name() == known::erlang {
+                    if module_atom.as_name() == *known::erlang {
                         Some(name_range)
                     } else {
                         None

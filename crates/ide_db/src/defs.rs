@@ -592,11 +592,11 @@ fn from_macro_dynamic_call(
 
 fn named_is_record(body: &hir::Body, module: Option<&ExprId>, name: &ExprId) -> Option<()> {
     if let Some(module) = module
-        && body.get_atom_name(module)? != known::erlang
+        && body.get_atom_name(module)? != *known::erlang
     {
         return None;
     }
-    if body.get_atom_name(name)? != known::is_record {
+    if body.get_atom_name(name)? != *known::is_record {
         return None;
     }
     Some(())
@@ -638,7 +638,7 @@ pub fn from_supervisor_child_spec(
         ast::Expr::ExprMax(ast::ExprMax::Atom(a)) => a,
         _ => return None,
     };
-    if key_atom.as_name() != known::start {
+    if key_atom.as_name() != *known::start {
         return None;
     }
 
@@ -649,15 +649,17 @@ pub fn from_supervisor_child_spec(
         .syntax()
         .ancestors()
         .find_map(ast::MapExpr::cast)?;
-    const CHILD_SPEC_KEYS: &[Name] = &[
-        known::id,
-        known::start,
-        known::restart,
-        known::significant,
-        known::shutdown,
-        known::type_name,
-        known::modules,
-    ];
+    static CHILD_SPEC_KEYS: std::sync::LazyLock<Vec<Name>> = std::sync::LazyLock::new(|| {
+        vec![
+            known::id.clone(),
+            known::start.clone(),
+            known::restart.clone(),
+            known::significant.clone(),
+            known::shutdown.clone(),
+            known::type_name.clone(),
+            known::modules.clone(),
+        ]
+    });
     let mut has_id_key = false;
     for field in map_expr.fields() {
         match field.key() {
@@ -666,7 +668,7 @@ pub fn from_supervisor_child_spec(
                 if !CHILD_SPEC_KEYS.contains(&name) {
                     return None;
                 }
-                if name == known::id {
+                if name == *known::id {
                     has_id_key = true;
                 }
             }

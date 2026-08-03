@@ -35,15 +35,6 @@ impl fmt::Display for Name {
 }
 
 impl Name {
-    /// A fake name for things missing in the source code.
-    ///
-    /// Ideally, we want a `gensym` semantics for missing names -- each missing
-    /// name is equal only to itself. It's not clear how to implement this in
-    /// salsa though, so we punt on that bit for a moment.
-    pub const MISSING: Self = Self::new_inline("[missing name]");
-    /// Ditto for anonymous vars
-    pub const ANONYMOUS: Self = Self::new_inline("_");
-
     /// Note: this is private to make creating name from random string hard.
     const fn new(text: SmolStr) -> Name {
         Name(text)
@@ -69,7 +60,7 @@ impl Name {
     }
 
     pub fn to_quoted_string(&self) -> Cow<'_, str> {
-        if self == &Self::MISSING {
+        if self == &*MISSING {
             Cow::Borrowed(self.as_str())
         } else {
             to_quoted_string(self.as_str())
@@ -110,6 +101,21 @@ impl<'a> PartialEq<&'a str> for Name {
         self.0 == *other
     }
 }
+
+/// Sentinel `Name` for things missing in the source code.
+///
+/// A module-level `LazyLock`, on the same principle as [`known`]: a future
+/// `Name(Ustr)` cannot be built in a `const` context, and Rust has no associated
+/// `static`, so this cannot live on `impl Name`. Interned once, then shared.
+///
+/// Ideally missing names would have `gensym` semantics (each equal only to
+/// itself), but that is hard to express in salsa, so we punt for now.
+pub static MISSING: std::sync::LazyLock<Name> =
+    std::sync::LazyLock::new(|| Name::new_inline("[missing name]"));
+
+/// Sentinel `Name` for anonymous vars (`_`). See [`MISSING`].
+pub static ANONYMOUS: std::sync::LazyLock<Name> =
+    std::sync::LazyLock::new(|| Name::new_inline("_"));
 
 /// `NameArity` is a wrapper around `Name` with arity attached,
 /// this is used frequently in Erlang for identifying various language elements
@@ -222,12 +228,16 @@ pub fn erlang_funs() -> &'static HashSet<NameArity> {
 }
 
 pub mod known {
+    // Each known name is a lazily-interned `Name` rather than a `const`: a
+    // future `Name(Ustr)` cannot be constructed in a `const` context, so these
+    // are `LazyLock`s (interned once on first use). Call sites deref them
+    // (`*known::foo`, `&*known::foo`, `known::foo.clone()`).
     macro_rules! known_names {
         ($($ident:ident),* $(,)?) => {
             $(
                 #[allow(bad_style)]
-                pub const $ident: super::Name =
-                    super::Name::new_inline(stringify!($ident));
+                pub static $ident: std::sync::LazyLock<super::Name> =
+                    std::sync::LazyLock::new(|| super::Name::new_inline(stringify!($ident)));
             )*
         };
     }
@@ -356,9 +366,12 @@ pub mod known {
     );
 
     #[allow(bad_style)]
-    pub const true_name: super::Name = super::Name::new_inline("true");
+    pub static true_name: std::sync::LazyLock<super::Name> =
+        std::sync::LazyLock::new(|| super::Name::new_inline("true"));
     #[allow(bad_style)]
-    pub const false_name: super::Name = super::Name::new_inline("false");
+    pub static false_name: std::sync::LazyLock<super::Name> =
+        std::sync::LazyLock::new(|| super::Name::new_inline("false"));
     #[allow(bad_style)]
-    pub const type_name: super::Name = super::Name::new_inline("type");
+    pub static type_name: std::sync::LazyLock<super::Name> =
+        std::sync::LazyLock::new(|| super::Name::new_inline("type"));
 }

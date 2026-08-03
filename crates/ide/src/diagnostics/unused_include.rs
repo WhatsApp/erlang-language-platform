@@ -307,7 +307,7 @@ fn is_file_used(
 /// Attribute names that can occur in a header file without
 /// regarding the file as being used.
 static NO_MARK_USED_ATTRIBUTES: LazyLock<FxHashSet<Name>> =
-    LazyLock::new(|| FxHashSet::from_iter([known::author, known::oncall]));
+    LazyLock::new(|| FxHashSet::from_iter([known::author.clone(), known::oncall.clone()]));
 
 #[cfg(test)]
 mod tests {

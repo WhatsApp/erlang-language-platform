@@ -584,7 +584,7 @@ impl<'a> Ctx<'a> {
         let from = import
             .module()
             .map(|name| self.resolve_name(&name))
-            .unwrap_or(Name::MISSING);
+            .unwrap_or_else(|| crate::MISSING.clone());
         let entries = self.lower_fa_entries(import.funs());
         let pp_ctx = self.current_pp_ctx();
         let form_id = self.id_map.get_id(import);
@@ -604,7 +604,7 @@ impl<'a> Ctx<'a> {
         let from = import_record
             .module()
             .map(|name| self.resolve_name(&name))
-            .unwrap_or(Name::MISSING);
+            .unwrap_or_else(|| crate::MISSING.clone());
         let record_names = import_record
             .records()
             .into_iter()
@@ -859,9 +859,9 @@ impl<'a> Ctx<'a> {
         let pp_ctx = self.current_pp_ctx();
         let name = self.resolve_name(&attribute.name()?.name()?);
         // SmolStr does not impl PartialEq, can't match on `Name`
-        if name == known::moduledoc {
+        if name == *known::moduledoc {
             self.lower_moduledoc_attribute(attribute, pp_ctx)
-        } else if name == known::doc {
+        } else if name == *known::doc {
             self.lower_doc_attribute(attribute, pp_ctx)
         } else {
             let form_id = self.id_map.get_id(attribute);
@@ -938,13 +938,13 @@ impl<'a> Ctx<'a> {
             ast::Name::Atom(atom) => atom.as_name(),
             ast::Name::Var(var) => {
                 self.add_diagnostic(var.syntax(), DiagnosticMessage::VarNameOutsideMacro);
-                Name::MISSING
+                crate::MISSING.clone()
             }
             ast::Name::MacroCallExpr(macro_call) => {
                 let exp_ctx = MacroExpCtx::new(&self.data, self.db);
                 exp_ctx
                     .expand_atom(macro_call, self.source_file)
-                    .unwrap_or(Name::MISSING)
+                    .unwrap_or_else(|| crate::MISSING.clone())
             }
         }
     }
