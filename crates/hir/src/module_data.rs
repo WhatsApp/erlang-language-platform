@@ -121,7 +121,7 @@ impl Module {
 
     pub fn name(&self, db: &dyn DefDatabase) -> Name {
         let attr = self.module_attribute(db);
-        attr.map_or_else(|| crate::MISSING.clone(), |attr| attr.name)
+        attr.map_or_else(|| *crate::MISSING, |attr| attr.name)
     }
 
     pub fn is_in_otp(&self, db: &dyn DefDatabase) -> bool {

@@ -186,14 +186,14 @@ fn built_in_macro_name_to_completion(name: &Name) -> Completion {
 
 static BUILT_IN: std::sync::LazyLock<Vec<Name>> = std::sync::LazyLock::new(|| {
     vec![
-        known::FILE.clone(),
-        known::FUNCTION_NAME.clone(),
-        known::FUNCTION_ARITY.clone(),
-        known::LINE.clone(),
-        known::MODULE.clone(),
-        known::MODULE_STRING.clone(),
-        known::MACHINE.clone(),
-        known::OTP_RELEASE.clone(),
+        *known::FILE,
+        *known::FUNCTION_NAME,
+        *known::FUNCTION_ARITY,
+        *known::LINE,
+        *known::MODULE,
+        *known::MODULE_STRING,
+        *known::MACHINE,
+        *known::OTP_RELEASE,
     ]
 });
 

@@ -651,13 +651,13 @@ pub fn from_supervisor_child_spec(
         .find_map(ast::MapExpr::cast)?;
     static CHILD_SPEC_KEYS: std::sync::LazyLock<Vec<Name>> = std::sync::LazyLock::new(|| {
         vec![
-            known::id.clone(),
-            known::start.clone(),
-            known::restart.clone(),
-            known::significant.clone(),
-            known::shutdown.clone(),
-            known::type_name.clone(),
-            known::modules.clone(),
+            *known::id,
+            *known::start,
+            *known::restart,
+            *known::significant,
+            *known::shutdown,
+            *known::type_name,
+            *known::modules,
         ]
     });
     let mut has_id_key = false;

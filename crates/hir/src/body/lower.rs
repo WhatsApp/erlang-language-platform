@@ -172,7 +172,7 @@ impl<'a> Ctx<'a> {
         Self {
             db,
             macro_stack: vec![MacroStackEntry {
-                name: MacroName::new(crate::MISSING.clone(), None),
+                name: MacroName::new(*crate::MISSING, None),
                 file_id: origin.file_id(),
                 var_map: FxHashMap::default(),
                 parent_id: 0,

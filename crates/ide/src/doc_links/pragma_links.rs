@@ -32,7 +32,7 @@ pub(crate) fn links(res: &mut Vec<DocLink>, node: &SyntaxNode, position: &FilePo
             res.push(DocLink { title, uri });
         } else if let Some(attr) =
             algo::find_node_at_offset::<ast::WildAttribute>(node, position.offset)
-            && is_wild_attribute_named(&attr, known::dialyzer.clone()) == Some(true)
+            && is_wild_attribute_named(&attr, *known::dialyzer) == Some(true)
         {
             let uri = format!("{DIALYZER_BASE_URL}{atom_text}");
             let title = format!("Dialyzer option ({atom_text})");

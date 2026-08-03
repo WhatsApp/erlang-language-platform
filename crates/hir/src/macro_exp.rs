@@ -77,16 +77,16 @@ impl BuiltInMacro {
 
     pub fn name(&self) -> MacroName {
         let name = match self {
-            BuiltInMacro::FILE => &*known::FILE,
-            BuiltInMacro::FUNCTION_NAME => &*known::FUNCTION_NAME,
-            BuiltInMacro::FUNCTION_ARITY => &*known::FUNCTION_ARITY,
-            BuiltInMacro::LINE => &*known::LINE,
-            BuiltInMacro::MODULE => &*known::MODULE,
-            BuiltInMacro::MODULE_STRING => &*known::MODULE_STRING,
-            BuiltInMacro::MACHINE => &*known::MACHINE,
-            BuiltInMacro::OTP_RELEASE => &*known::OTP_RELEASE,
+            BuiltInMacro::FILE => *known::FILE,
+            BuiltInMacro::FUNCTION_NAME => *known::FUNCTION_NAME,
+            BuiltInMacro::FUNCTION_ARITY => *known::FUNCTION_ARITY,
+            BuiltInMacro::LINE => *known::LINE,
+            BuiltInMacro::MODULE => *known::MODULE,
+            BuiltInMacro::MODULE_STRING => *known::MODULE_STRING,
+            BuiltInMacro::MACHINE => *known::MACHINE,
+            BuiltInMacro::OTP_RELEASE => *known::OTP_RELEASE,
         };
-        MacroName::new(name.clone(), None)
+        MacroName::new(name, None)
     }
 }
 

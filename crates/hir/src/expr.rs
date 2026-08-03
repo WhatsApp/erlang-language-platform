@@ -257,7 +257,7 @@ impl MacroCallName {
         match self {
             MacroCallName::Var(var) => var.as_name(),
             MacroCallName::Atom(atom) => atom.as_name(),
-            MacroCallName::Missing => crate::MISSING.clone(),
+            MacroCallName::Missing => *crate::MISSING,
         }
     }
 }

@@ -94,8 +94,8 @@ impl MacroEnvironment {
     #[cfg(test)]
     pub fn with_test_macros() -> Self {
         let mut env = Self::new();
-        env.define(MacroName::new(known::TEST.clone(), None));
-        env.define(MacroName::new(known::DEBUG.clone(), None));
+        env.define(MacroName::new(*known::TEST, None));
+        env.define(MacroName::new(*known::DEBUG, None));
         env
     }
 }

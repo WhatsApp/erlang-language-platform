@@ -78,8 +78,8 @@ impl GenericLinter for MeckMissingNoLinkLinter {
         sema.def_map_local(file_id)
             .get_functions()
             .for_each(|(_arity, def)| {
-                if def.name == NameArity::new(known::init_per_suite.clone(), 1)
-                    || def.name == NameArity::new(known::init_per_group.clone(), 2)
+                if def.name == NameArity::new(*known::init_per_suite, 1)
+                    || def.name == NameArity::new(*known::init_per_group, 2)
                 {
                     find_matches(&mut results, sema, def)
                 }

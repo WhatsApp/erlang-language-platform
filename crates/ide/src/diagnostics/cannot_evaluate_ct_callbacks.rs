@@ -60,8 +60,8 @@ impl GenericLinter for CannotEvaluateCTCallbacksLinter {
 
         let def_map = ctx.sema.db.def_map(ctx.file_id);
         let results: Vec<_> = [
-            NameArity::new(known::all.clone(), 0),
-            NameArity::new(known::groups.clone(), 0),
+            NameArity::new(*known::all, 0),
+            NameArity::new(*known::groups, 0),
         ]
         .into_iter()
         .filter_map(|name| {

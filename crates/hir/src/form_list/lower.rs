@@ -584,7 +584,7 @@ impl<'a> Ctx<'a> {
         let from = import
             .module()
             .map(|name| self.resolve_name(&name))
-            .unwrap_or_else(|| crate::MISSING.clone());
+            .unwrap_or_else(|| *crate::MISSING);
         let entries = self.lower_fa_entries(import.funs());
         let pp_ctx = self.current_pp_ctx();
         let form_id = self.id_map.get_id(import);
@@ -604,7 +604,7 @@ impl<'a> Ctx<'a> {
         let from = import_record
             .module()
             .map(|name| self.resolve_name(&name))
-            .unwrap_or_else(|| crate::MISSING.clone());
+            .unwrap_or_else(|| *crate::MISSING);
         let record_names = import_record
             .records()
             .into_iter()
@@ -938,13 +938,13 @@ impl<'a> Ctx<'a> {
             ast::Name::Atom(atom) => atom.as_name(),
             ast::Name::Var(var) => {
                 self.add_diagnostic(var.syntax(), DiagnosticMessage::VarNameOutsideMacro);
-                crate::MISSING.clone()
+                *crate::MISSING
             }
             ast::Name::MacroCallExpr(macro_call) => {
                 let exp_ctx = MacroExpCtx::new(&self.data, self.db);
                 exp_ctx
                     .expand_atom(macro_call, self.source_file)
-                    .unwrap_or_else(|| crate::MISSING.clone())
+                    .unwrap_or_else(|| *crate::MISSING)
             }
         }
     }

@@ -29,7 +29,7 @@ use ustr::Ustr;
 // The derived `PartialOrd` / `Ord` delegate to `Ustr`, which compares by string
 // *content* (`as_str()`), so ordering is identical to the previous `SmolStr`
 // behaviour.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Name(Ustr);
 
 impl fmt::Display for Name {
@@ -131,7 +131,7 @@ pub static ANONYMOUS: std::sync::LazyLock<Name> =
 
 /// `NameArity` is a wrapper around `Name` with arity attached,
 /// this is used frequently in Erlang for identifying various language elements
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct NameArity(Name, u32);
 
 impl fmt::Display for NameArity {
@@ -160,7 +160,7 @@ impl NameArity {
 
 /// `MacroName` is a wrapper around `Name` with optional arity attached,
 /// this is used in Erlang for identifying macros
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct MacroName(Name, Option<u32>);
 
 impl fmt::Display for MacroName {

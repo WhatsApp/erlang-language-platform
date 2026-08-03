@@ -42,38 +42,38 @@ use crate::fix;
 /// These are also valid when paired with function references.
 static MODULE_LEVEL_OPTIONS: std::sync::LazyLock<Vec<Name>> = std::sync::LazyLock::new(|| {
     vec![
-        known::error_handling.clone(),
-        known::extra_return.clone(),
-        known::missing_return.clone(),
-        known::no_behaviours.clone(),
-        known::no_contracts.clone(),
-        known::no_extra_return.clone(),
-        known::no_fail_call.clone(),
-        known::no_fun_app.clone(),
-        known::no_improper_lists.clone(),
-        known::no_match.clone(),
-        known::no_missing_calls.clone(),
-        known::no_missing_return.clone(),
-        known::no_opaque.clone(),
-        known::no_opaque_union.clone(),
-        known::no_return.clone(),
-        known::no_undefined_callbacks.clone(),
-        known::no_underspecs.clone(),
-        known::no_unknown.clone(),
-        known::no_unused.clone(),
-        known::opaque_union.clone(),
-        known::overspecs.clone(),
-        known::race_conditions.clone(),
-        known::specdiffs.clone(),
-        known::underspecs.clone(),
-        known::unknown.clone(),
-        known::unmatched_returns.clone(),
+        *known::error_handling,
+        *known::extra_return,
+        *known::missing_return,
+        *known::no_behaviours,
+        *known::no_contracts,
+        *known::no_extra_return,
+        *known::no_fail_call,
+        *known::no_fun_app,
+        *known::no_improper_lists,
+        *known::no_match,
+        *known::no_missing_calls,
+        *known::no_missing_return,
+        *known::no_opaque,
+        *known::no_opaque_union,
+        *known::no_return,
+        *known::no_undefined_callbacks,
+        *known::no_underspecs,
+        *known::no_unknown,
+        *known::no_unused,
+        *known::opaque_union,
+        *known::overspecs,
+        *known::race_conditions,
+        *known::specdiffs,
+        *known::underspecs,
+        *known::unknown,
+        *known::unmatched_returns,
     ]
 });
 
 /// Options that are only valid when paired with function references.
 static FUNCTION_ONLY_OPTIONS: std::sync::LazyLock<Vec<Name>> =
-    std::sync::LazyLock::new(|| vec![known::nowarn_function.clone()]);
+    std::sync::LazyLock::new(|| vec![*known::nowarn_function]);
 
 fn is_valid_function_option(name: &Name) -> bool {
     MODULE_LEVEL_OPTIONS.contains(name) || FUNCTION_ONLY_OPTIONS.contains(name)

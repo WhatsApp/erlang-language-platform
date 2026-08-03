@@ -635,7 +635,7 @@ impl GleanIndexer {
         let sema = Semantic::new(db);
         let form_list = sema.form_list(file_id);
 
-        let oncall = sema.attribute_value_as_string(file_id, hir::known::oncall.clone());
+        let oncall = sema.attribute_value_as_string(file_id, *hir::known::oncall);
 
         let behaviours: Vec<String> = form_list
             .behaviour_attributes()
@@ -1797,7 +1797,7 @@ impl GeneratedFrom {
 /// or `% @codegen_source` comment (`.hrl`, scanned from source since
 /// comments aren't in the FormList).
 fn generated_from(sema: &Semantic, file_id: FileId, source: &str) -> Option<GeneratedFrom> {
-    if let Some(path) = sema.attribute_value_as_string(file_id, hir::known::codegen_source.clone())
+    if let Some(path) = sema.attribute_value_as_string(file_id, *hir::known::codegen_source)
         && path.ends_with(".thrift")
     {
         return Some(GeneratedFrom::Thrift(path));
