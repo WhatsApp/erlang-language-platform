@@ -619,7 +619,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
       case (ConsType(h1, tl1), ConsType(h2, tl2)) =>
         ConsType_*(restrict(h1, h2), restrict(tl1, tl2))
       case (_: FunType, _: FunType) =>
-        narrow.meet(t1, t2)
+        subtype.meet(t1, t2)
       case (_, _) =>
         t1
     }

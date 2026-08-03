@@ -44,22 +44,22 @@ final class ElabPat(pipelineContext: PipelineContext) {
         (t, env)
       case PatVar(v) =>
         val patType = env.get(v) match {
-          case Some(vt) => narrow.meet(t, vt)
+          case Some(vt) => subtype.meet(t, vt)
           case None     => t
         }
         typeInfo.add(pat.pos, patType)
         (patType, env + (v -> patType))
       case PatAtom(s) =>
-        val patType = narrow.meet(t, AtomLitType(s))
+        val patType = subtype.meet(t, AtomLitType(s))
         (patType, env)
       case PatInt() =>
-        val patType = narrow.meet(t, IntegerType)
+        val patType = subtype.meet(t, IntegerType)
         (patType, env)
       case PatFloat() =>
-        val patType = narrow.meet(t, FloatType)
+        val patType = subtype.meet(t, FloatType)
         (patType, env)
       case PatString() =>
-        val patType = narrow.meet(t, stringType)
+        val patType = subtype.meet(t, stringType)
         (patType, env)
       case PatTuple(elems) =>
         val arity = elems.size
@@ -81,7 +81,7 @@ final class ElabPat(pipelineContext: PipelineContext) {
         val (tys, envs) = tyEnvPairs.unzip
         (subtype.join(tys), subtype.joinEnvs(envs))
       case PatNil() =>
-        val patType = narrow.meet(t, NilType)
+        val patType = subtype.meet(t, NilType)
         (patType, env)
       case PatCons(hPat, tPat) =>
         narrow.asListType(t) match {
@@ -108,19 +108,19 @@ final class ElabPat(pipelineContext: PipelineContext) {
       case binOp: PatBinOp =>
         elabBinOp(binOp, t, env)
       case PatBinary(elems) =>
-        val patType = narrow.meet(t, BinaryType)
+        val patType = subtype.meet(t, BinaryType)
         var envAcc = env
         for { elem <- elems } {
           envAcc = elabBinaryElem(elem, envAcc)
         }
         (patType, envAcc)
       case PatRecordIndex(_, _) =>
-        val patType = narrow.meet(t, IntegerType)
+        val patType = subtype.meet(t, IntegerType)
         (patType, env)
       case p: PatNativeRecord =>
         elabPatNativeRecord(p, t, env)
       case PatRecord(recName, namedFields, genFieldOpt) =>
-        val recType = narrow.meet(t, RecordType(recName)(module))
+        val recType = subtype.meet(t, RecordType(recName)(module))
         val recDecl =
           util.getRecord(module, recName) match {
             case Some(recDecl) => recDecl
@@ -292,7 +292,7 @@ final class ElabPat(pipelineContext: PipelineContext) {
             // be exported. Only gate visibility when fields are matched.
             if (pat.fields.nonEmpty)
               util.checkNativeRecordVisibility(id, decl, pat.pos)
-            val refinedType = narrow.meet(t, NativeRecordType(id))
+            val refinedType = subtype.meet(t, NativeRecordType(id))
 
             var envAcc = env
             for (f <- pat.fields) {

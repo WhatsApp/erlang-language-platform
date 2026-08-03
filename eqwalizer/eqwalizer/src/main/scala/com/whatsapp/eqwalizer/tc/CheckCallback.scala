@@ -13,7 +13,6 @@ import com.whatsapp.eqwalizer.tc.TcDiagnostics._
 
 class CheckCallback(pipelineContext: PipelineContext) {
   private lazy val subtype = pipelineContext.subtype
-  private lazy val narrow = pipelineContext.narrow
   private implicit val pipelineCtx: PipelineContext = pipelineContext
 
   def checkImpl(module: String, b: Behaviour, cb: Callback, isOptional: Boolean): Option[TypeError] =
@@ -30,7 +29,7 @@ class CheckCallback(pipelineContext: PipelineContext) {
           val badParamOpt = impl.argTys.zipWithIndex.find { case (implArgTy, index) =>
             !cb.tys.exists { case FunType(_, cbArgTys, _) =>
               val cbArgTy = cbArgTys(index)
-              val approxMeet = narrow.meet(implArgTy, cbArgTy)
+              val approxMeet = subtype.meet(implArgTy, cbArgTy)
               val hasOverlap =
                 Subtype.isNoneType(implArgTy) || Subtype.isNoneType(cbArgTy) || !Subtype.isNoneType(approxMeet)
               hasOverlap

@@ -79,7 +79,7 @@ final class ElabGuard(pipelineContext: PipelineContext) {
       case TestVar(v) =>
         val testType = env.get(v) match {
           case Some(vt) =>
-            narrow.meet(vt, upper)
+            subtype.meet(vt, upper)
           case None => upper
         }
         typeInfo.add(test.pos, testType)
@@ -232,42 +232,42 @@ final class ElabGuard(pipelineContext: PipelineContext) {
       case TestBinOp("=:=" | "==", TestVar(v), NumTest()) if upper == trueType =>
         env.get(v) match {
           case Some(ty) =>
-            env + (v -> narrow.meet(ty, numberType))
+            env + (v -> subtype.meet(ty, numberType))
           case None =>
             env
         }
       case TestBinOp("=:=" | "==", NumTest(), TestVar(v)) if upper == trueType =>
         env.get(v) match {
           case Some(ty) =>
-            env + (v -> narrow.meet(ty, numberType))
+            env + (v -> subtype.meet(ty, numberType))
           case None =>
             env
         }
       case TestBinOp("=:=" | "==", TestVar(v), TestString()) if upper == trueType =>
         env.get(v) match {
           case Some(ty) =>
-            env + (v -> narrow.meet(ty, stringType))
+            env + (v -> subtype.meet(ty, stringType))
           case None =>
             env
         }
       case TestBinOp("=:=" | "==", TestString(), TestVar(v)) if upper == trueType =>
         env.get(v) match {
           case Some(ty) =>
-            env + (v -> narrow.meet(ty, stringType))
+            env + (v -> subtype.meet(ty, stringType))
           case None =>
             env
         }
       case TestBinOp("=:=" | "==", TestVar(v), TestAtom(a)) if upper == trueType =>
         env.get(v) match {
           case Some(ty) =>
-            env + (v -> narrow.meet(ty, AtomLitType(a)))
+            env + (v -> subtype.meet(ty, AtomLitType(a)))
           case None =>
             env
         }
       case TestBinOp("=:=" | "==", TestAtom(a), TestVar(v)) if upper == trueType =>
         env.get(v) match {
           case Some(ty) =>
-            env + (v -> narrow.meet(ty, AtomLitType(a)))
+            env + (v -> subtype.meet(ty, AtomLitType(a)))
           case None =>
             env
         }

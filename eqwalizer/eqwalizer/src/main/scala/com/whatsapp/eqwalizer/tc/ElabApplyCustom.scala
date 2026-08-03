@@ -289,9 +289,9 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
             mapTys
               .map { m =>
                 MapType_*(
-                  m.props.map { case (k, MapProp(_, tp)) => (k, MapProp(req = false, narrow.meet(tp, nv))) },
+                  m.props.map { case (k, MapProp(_, tp)) => (k, MapProp(req = false, subtype.meet(tp, nv))) },
                   m.kType,
-                  narrow.meet(m.vType, nv),
+                  subtype.meet(m.vType, nv),
                 )
               }
               .join()
