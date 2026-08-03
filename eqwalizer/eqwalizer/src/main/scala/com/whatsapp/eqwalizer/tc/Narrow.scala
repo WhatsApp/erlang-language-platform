@@ -128,6 +128,14 @@ class Narrow(pipelineContext: PipelineContext) {
           }.toMap
           if (fieldsMeet.values.exists(Subtype.isNoneType)) NoneType
           else RefinedRecordType(rt1.recType, fieldsMeet)
+        case (r: RecordType, tt: TupleType) if overlapRecordTag(r, tt) =>
+          meetRecordTuple(RefinedRecordType(r, Map()), tt, seen)
+        case (tt: TupleType, r: RecordType) if overlapRecordTag(r, tt) =>
+          meetRecordTuple(RefinedRecordType(r, Map()), tt, seen)
+        case (rt: RefinedRecordType, tt: TupleType) if overlapRecordTag(rt.recType, tt) =>
+          meetRecordTuple(rt, tt, seen)
+        case (tt: TupleType, rt: RefinedRecordType) if overlapRecordTag(rt.recType, tt) =>
+          meetRecordTuple(rt, tt, seen)
 
         case (NativeRecordType(id1), NativeRecordType(id2)) if id1 == id2 =>
           t1
@@ -147,6 +155,28 @@ class Narrow(pipelineContext: PipelineContext) {
         case (_, _) =>
           NoneType
       }
+
+  private def overlapRecordTag(rt: RecordType, tt: TupleType): Boolean =
+    tt.argTys.headOption.exists(subtype.subType(AtomLitType(rt.name), _))
+
+  private def meetRecordTuple(rt: RefinedRecordType, tt: TupleType, seen: Set[(Type, Type)]): Type =
+    util.getRecord(rt.recType.module, rt.recType.name) match {
+      case Some(recDecl) =>
+        if (recDecl.fields.size + 1 == tt.argTys.size) {
+          val fieldsMeet = recDecl.fields.lazyZip(tt.argTys.tail).map { (field, elemT) =>
+            field.name -> meetAux(rt.fields.getOrElse(field.name, field.tp), elemT, seen)
+          }
+          if (fieldsMeet.exists((_, t) => Subtype.isNoneType(t))) NoneType
+          else {
+            // keeping only the fields which are narrower than the declared ones
+            val fields = fieldsMeet.filter((name, t) => !subtype.gradualSubType(recDecl.fMap(name).tp, t)).toMap
+            if (fields.isEmpty) rt.recType else RefinedRecordType(rt.recType, fields)
+          }
+        } else NoneType
+      case _ =>
+        // Falling back to use the tuple type if something is wrong with resolving record declaration.
+        tt
+    }
 
   def asListType(t: Type): Option[ListType] =
     extractListElem(t) match {
