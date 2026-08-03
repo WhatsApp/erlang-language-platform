@@ -590,41 +590,6 @@ final class Occurrence(pipelineContext: PipelineContext) {
     }
   }
 
-  private def restrict(t1: Type, t2: Type): Type = {
-    (t1, t2) match {
-      case (t, s) if subtype.overlap(t, s).isFalse =>
-        NoneType
-      case (t, s) if subtype.gradualSubType(t, s) =>
-        t
-      case (t, s) if subtype.gradualSubType(s, t) =>
-        s
-      case (UnionType(ts), s) =>
-        subtype.join(ts.map(restrict(_, s)))
-      case (RemoteType(rid, args), _) =>
-        val body = util.getTypeDeclBody(rid, args)
-        val restricted = restrict(body, t2)
-        if (restricted == body) t1 else restricted
-      case (BoundedDynamicType(t), s) =>
-        BoundedDynamicType(restrict(t, s))
-      case (DynamicType, s) =>
-        BoundedDynamicType(s)
-      case (ConsType(_, _), NilType) =>
-        NoneType
-      case (NilType, ConsType(_, _)) =>
-        NoneType
-      case (ListType(e), ConsType(h, tl)) =>
-        ConsType_*(restrict(e, h), restrict(ListType(e), tl))
-      case (ConsType(h, tl), ListType(e)) =>
-        ConsType_*(restrict(h, e), restrict(tl, ListType(e)))
-      case (ConsType(h1, tl1), ConsType(h2, tl2)) =>
-        ConsType_*(restrict(h1, h2), restrict(tl1, tl2))
-      case (_: FunType, _: FunType) =>
-        subtype.meet(t1, t2)
-      case (_, _) =>
-        t1
-    }
-  }
-
   def remove(t1: Type, t2: Type): Type =
     (t1, t2) match {
       case (t, s) if subtype.gradualSubType(t, s) =>
@@ -663,7 +628,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
     (t, path) match {
       case (_, Nil) =>
         pol match {
-          case + => restrict(t, s)
+          case + => subtype.meet(t, s)
           case - => remove(t, s)
         }
       case (RemoteType(rid, args), _) =>
