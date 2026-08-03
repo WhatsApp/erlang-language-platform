@@ -22,41 +22,55 @@ use elp_base_db::to_quoted_string;
 use elp_syntax::SmolStr;
 use elp_syntax::ast;
 use elp_syntax::unescape;
+use ustr::Ustr;
 
 /// `Name` is a wrapper around string, in Erlang abstract forms represented
-/// as raw atoms, which is used in hir for both references and declarations
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Name(SmolStr);
+/// as raw atoms, which is used in hir for both references and declarations.
+// The derived `PartialOrd` / `Ord` delegate to `Ustr`, which compares by string
+// *content* (`as_str()`), so ordering is identical to the previous `SmolStr`
+// behaviour.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Name(Ustr);
 
 impl fmt::Display for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
+        fmt::Display::fmt(self.as_str(), f)
+    }
+}
+
+// Hashing is by string *content*, not by `Ustr`'s stored hash: the latter is
+// seeded per-process from the OS RNG (ahash is built with `runtime-rng`), so
+// deriving `Hash` would make iteration order of the `Name`-keyed `FxHashMap`s
+// vary between runs. Mirrors `Atom` / `Var` in `intern.rs`.
+impl std::hash::Hash for Name {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.as_str().hash(state);
     }
 }
 
 impl Name {
     /// Note: this is private to make creating name from random string hard.
-    const fn new(text: SmolStr) -> Name {
-        Name(text)
+    fn new(text: &str) -> Name {
+        Name(Ustr::from(text))
     }
 
     /// Note: The one time it's okay to make a Name from an arbitrary string
     ///       is when reading it from the wire when talking to erlang_service
     pub fn from_erlang_service(text: &str) -> Name {
-        Name(SmolStr::new(text))
+        Name::new(text)
     }
 
-    /// Shortcut to create inline plain text name
-    const fn new_inline(text: &str) -> Name {
-        Name::new(SmolStr::new_inline(text))
+    /// Shortcut to create a plain text name.
+    fn new_inline(text: &str) -> Name {
+        Name::new(text)
     }
 
     pub fn raw(&self) -> SmolStr {
-        self.0.clone()
+        SmolStr::new(self.0.as_str())
     }
 
     pub fn as_str(&self) -> &str {
-        &self.0
+        self.0.as_str()
     }
 
     pub fn to_quoted_string(&self) -> Cow<'_, str> {
@@ -72,13 +86,11 @@ impl Name {
     /// This replicates the atom normalisation done in the Erlang parser
     fn resolve(raw_text: &str) -> Name {
         let escaped = unescape::unescape_string(raw_text).unwrap_or(Cow::Borrowed(raw_text));
-        Name::new(escaped.into())
+        Name::new(&escaped)
     }
 
     pub(super) fn arg(argument_index_starting_from_one: usize) -> Name {
-        Self::new(SmolStr::new(format!(
-            "Arg{argument_index_starting_from_one}"
-        )))
+        Self::new(&format!("Arg{argument_index_starting_from_one}"))
     }
 }
 
@@ -86,19 +98,19 @@ impl Deref for Name {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        self.0.as_str()
     }
 }
 
 impl PartialEq<str> for Name {
     fn eq(&self, other: &str) -> bool {
-        self.0 == other
+        self.as_str() == other
     }
 }
 
 impl<'a> PartialEq<&'a str> for Name {
     fn eq(&self, other: &&'a str) -> bool {
-        self.0 == *other
+        self.as_str() == *other
     }
 }
 
@@ -202,7 +214,7 @@ impl AsName for ast::Atom {
 
 impl AsName for ast::Var {
     fn as_name(&self) -> Name {
-        Name::new(self.text().as_str().into())
+        Name::new(self.text().as_str())
     }
 }
 
