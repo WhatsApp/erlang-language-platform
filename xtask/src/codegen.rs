@@ -598,7 +598,7 @@ fn read_node_types() -> Result<Vec<NodeType>> {
     //          grammar, it will not be assigned a SymbolId, which is indicated
     //          by the `id_for_node_kind` call returning `u16::MAX`
     //       3) should be Enum: children: multiple type, multiple:False, required True
-    //       4) `node-types.json` carries a trailing `{"@generated": true}`
+    //       4) `node-types.json` carries a trailing `{"AT-generated": true}`
     //          marker object. It has no `type`, so it deserialises as a leaf
     //          with an empty nodetype, for which `id_for_node_kind` returns 0.
     //          Symbol 0 is tree-sitter's end-of-input sentinel and never a real
