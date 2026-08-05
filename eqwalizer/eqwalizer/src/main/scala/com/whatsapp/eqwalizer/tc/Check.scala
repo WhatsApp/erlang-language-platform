@@ -82,9 +82,8 @@ final class Check(pipelineContext: PipelineContext) {
       expr match {
         case MaybeMatch(Pats.PatAtom("true"), mExp) if Filters.asTest(mExp).isDefined =>
           val test = Filters.asTest(mExp).get
-          val env1 = elabGuard.elabGuards(List(Guard(List(test))), env)
+          envAcc = elabGuard.elabGuards(List(Guard(List(test))), envAcc)
           lastTy = trueType
-          envAcc = env1
         case MaybeMatch(mPat, mExp) =>
           val (mType, env1) = elab.elabExprAndCheck(mExp, envAcc, resTy)
           val (patTy, env2) = elabPat.elabPat(mPat, mType, env1)
