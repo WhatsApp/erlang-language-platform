@@ -51,7 +51,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 130 │         true -> Y
     │                 ^ Y.
-Expression has type:   float() | integer()
+Expression has type:   number()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

@@ -27,7 +27,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 55 │ test06_neg(X) when is_number(X) -> + X.
    │                                    ^^^ + _.
-Expression has type:   float() | integer()
+Expression has type:   number()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

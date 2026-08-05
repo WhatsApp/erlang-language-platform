@@ -3,7 +3,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 26 │ atom_neg_1(X) when is_number(X) -> X.
    │                                    ^ X.
-Expression has type:   float() | integer()
+Expression has type:   number()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -67,7 +67,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 86 │ pid_neg(X) when is_number(X) -> X.
    │                                 ^ X.
-Expression has type:   float() | integer()
+Expression has type:   number()
 Context expected type: pid()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

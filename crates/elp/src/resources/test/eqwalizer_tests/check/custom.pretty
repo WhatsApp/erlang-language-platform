@@ -323,15 +323,14 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     │     │
     │     maps:filter(fun, M).
-Expression has type:   #{K => float() | integer()}
+Expression has type:   #{K => number()}
 Context expected type: #{K => atom()}
     │     
 
 Because in the expression's type:
   #{ K =>
-    Here the type is:     float() | integer()
+    Here the type is:     number()
     Context expects type: atom()
-    No candidate of the expression's type matches the expected type.
   , ... }
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -2257,16 +2256,15 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
-Expression has type:   {[float() | integer()], [atom()]}
+Expression has type:   {[number()], [atom()]}
 Context expected type: {[atom()], [number()]}
      │     
 
 Because in the expression's type:
   { 
     [
-      Here the type is:     float() | integer()
+      Here the type is:     number()
       Context expects type: atom()
-      No candidate of the expression's type matches the expected type.
     ]
   , [atom()]}
 
@@ -2277,7 +2275,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      │     │
      │     lists:partition(fun, L).
-Expression has type:   {[{term(), float() | integer()}], [{term(), atom()}]}
+Expression has type:   {[{term(), number()}], [{term(), atom()}]}
 Context expected type: {[{term(), atom()}], [{term(), number()}]}
      │     
 
@@ -2285,9 +2283,8 @@ Because in the expression's type:
   { 
     [
       { term(), 
-        Here the type is:     float() | integer()
+        Here the type is:     number()
         Context expects type: atom()
-        No candidate of the expression's type matches the expected type.
       }
     ]
   , [{term(), atom()}]}

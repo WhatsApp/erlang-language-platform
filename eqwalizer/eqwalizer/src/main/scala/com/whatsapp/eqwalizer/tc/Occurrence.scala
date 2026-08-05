@@ -21,7 +21,6 @@ import scala.util.boundary
 object Occurrence {
   // Atomic Proposition
   type AProp = Pos | Neg
-  private val nType = UnionType(Set(IntegerType, FloatType))
 
   private def flattenAnd(p: Prop): List[SProp | Or] = p match {
     case And(l)          => l.flatMap(flattenAnd)
@@ -76,7 +75,7 @@ object Occurrence {
       "is_function" -> AnyFunType,
       "is_integer" -> IntegerType,
       "is_list" -> ListType(AnyType),
-      "is_number" -> nType,
+      "is_number" -> numberType,
       "is_pid" -> PidType,
       "is_port" -> PortType,
       "is_reference" -> ReferenceType,
