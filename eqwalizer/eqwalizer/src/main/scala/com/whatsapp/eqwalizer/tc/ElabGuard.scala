@@ -10,7 +10,7 @@ import com.whatsapp.eqwalizer.ast.Guards._
 import com.whatsapp.eqwalizer.ast.{Id, RemoteId}
 import com.whatsapp.eqwalizer.ast.Types._
 import com.whatsapp.eqwalizer.ast.stub.Db
-import com.whatsapp.eqwalizer.tc.TcDiagnostics.{UnboundRecord, UndefinedField, UnhandledOp}
+import com.whatsapp.eqwalizer.tc.TcDiagnostics.{UnboundRecord, UnhandledOp}
 
 final class ElabGuard(pipelineContext: PipelineContext) {
   private lazy val module = pipelineContext.module
@@ -175,17 +175,6 @@ final class ElabGuard(pipelineContext: PipelineContext) {
         val namedFields = fields.collect { case f: TestRecordFieldNamed => f }
         val optGenField = fields.collectFirst { case f: TestRecordFieldGen => f }
         val genFields = recDecl.fMap.keySet -- namedFields.map(_.name)
-        val undefinedFields =
-          optGenField match {
-            case Some(_) => Set.empty
-            case None    => genFields
-          }
-        for (uField <- undefinedFields) {
-          val fieldDecl = recDecl.fMap(uField)
-          if (fieldDecl.defaultValue.isEmpty && !subtype.subType(undefined, fieldDecl.tp)) {
-            diagnosticsInfo.add(UndefinedField(test.pos, recName, uField))
-          }
-        }
         var envAcc = env
         for (field <- namedFields) {
           val fieldDecl = recDecl.fMap(field.name)
