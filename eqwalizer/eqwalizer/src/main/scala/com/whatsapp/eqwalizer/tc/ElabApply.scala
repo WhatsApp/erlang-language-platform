@@ -12,7 +12,7 @@ import com.whatsapp.eqwalizer.ast.Subst.Subst
 import com.whatsapp.eqwalizer.ast.{Pos, Subst, TypeVars, Variance}
 import com.whatsapp.eqwalizer.ast.Types.*
 import com.whatsapp.eqwalizer.tc.TcDiagnostics.{AmbiguousLambda, ExpectedSubtype}
-import com.whatsapp.eqwalizer.tc.Constraints.{CMap, Ctx}
+import com.whatsapp.eqwalizer.tc.Constraints.{CMap, Constraint, Ctx}
 
 class ElabApply(pipelineContext: PipelineContext) {
   private lazy val check = pipelineContext.check
@@ -149,8 +149,8 @@ class ElabApply(pipelineContext: PipelineContext) {
         } yield (cs2, subst2)
     }
 
-    // in the end we take the first solution if it exists
-    val (subst3, lambdasSuccess) = elabLambdasRes match {
+    // in the end we take the first minimal solution if it exists
+    val (subst3, lambdasSuccess) = minimalSolutions(elabLambdasRes) match {
       case (_, subst3) :: _ => (subst3, true)
       case Nil              => (toSolve.map(_ -> DynamicType).toMap, false)
     }
@@ -241,5 +241,18 @@ class ElabApply(pipelineContext: PipelineContext) {
           .map(_._1)
       subtype.join(clauseTys)
     }
+  }
+
+  // partial ordering of solutions
+  private def leq(m1: CMap, m2: CMap): Boolean =
+    (m1 != m2) && (m1.keySet ++ m2.keySet).forall { v =>
+      val c1 = m1.getOrElse(v, Constraint(DynamicType, AnyType))
+      val c2 = m2.getOrElse(v, Constraint(DynamicType, AnyType))
+      subtype.gradualSubType(c1.lower, c2.lower) && subtype.gradualSubType(c2.upper, c1.upper)
+    }
+
+  private def minimalSolutions[A](solutions: List[(CMap, A)]): List[(CMap, A)] = {
+    def lessSpecific(m1: CMap): Boolean = solutions.exists { case (m2, _) => leq(m2, m1) && !leq(m1, m2) }
+    solutions.filterNot { case (m, _) => lessSpecific(m) }
   }
 }
