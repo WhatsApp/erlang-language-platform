@@ -1,0 +1,25 @@
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/dynamic_constraints.erl:19:25
+   │
+19 │   eqwalizer:reveal_type(cons(ok, L)).
+   │                         ^^^^^^^^^^^ ['ok']
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/dynamic_constraints.erl:32:25
+   │
+32 │   eqwalizer:reveal_type(expect(E)).
+   │                         ^^^^^^^^^ atom()
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/dynamic_constraints.erl:53:25
+   │
+53 │   eqwalizer:reveal_type(set(b, 3, KVs)).
+   │                         ^^^^^^^^^^^^^^ kvs('b', integer())
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ check/src/dynamic_constraints.erl:60:5
+   │
+60 │     maps:from_list(set(b, 3, KVs))
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ #{b => integer()}
+
+4 ERRORS
