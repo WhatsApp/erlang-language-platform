@@ -2889,3 +2889,15 @@ maps_map_2_13(M) ->
         (ka, va) -> va2;
         (_K, V) -> V
     end, M).
+
+-spec maps_merge_9(#{b => integer(), dynamic() => dynamic()}) ->
+    #{a => integer(), b => integer()}.
+maps_merge_9(M) -> maps:merge(#{a => 1, b => 2}, M).
+
+-spec maps_merge_10(#{b => integer(), dynamic() => dynamic() | integer()}) ->
+    #{a => integer(), b => integer()}.
+maps_merge_10(M) -> maps:merge(#{a => 1, b => 2}, M).
+
+-spec maps_merge_11(#{b | dynamic() => integer() | dynamic()}) ->
+    #{a => integer(), b => integer()}.
+maps_merge_11(M) -> maps:merge(#{a => 1, b => 2}, M).
