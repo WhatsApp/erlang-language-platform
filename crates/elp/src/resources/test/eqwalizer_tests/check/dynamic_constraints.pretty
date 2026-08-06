@@ -2,7 +2,7 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/dynamic_constraints.erl:19:25
    │
 19 │   eqwalizer:reveal_type(cons(ok, L)).
-   │                         ^^^^^^^^^^^ ['ok']
+   │                         ^^^^^^^^^^^ ['ok' | dynamic()]
 
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/dynamic_constraints.erl:32:25
@@ -14,12 +14,29 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/dynamic_constraints.erl:53:25
    │
 53 │   eqwalizer:reveal_type(set(b, 3, KVs)).
-   │                         ^^^^^^^^^^^^^^ kvs('b', integer())
+   │                         ^^^^^^^^^^^^^^ kvs('b' | dynamic(), dynamic() | integer())
 
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/dynamic_constraints.erl:60:5
    │
 60 │     maps:from_list(set(b, 3, KVs))
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ #{b => integer()}
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ #{'b' | dynamic() => dynamic() | integer()}
 
-4 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dynamic_constraints.erl:67:3
+   │    
+67 │ ╭ ╭   maps:merge(
+68 │ │ │     #{a => 1, b => 2},
+69 │ │ │     maps:from_list(set(b, 3, KVs))
+70 │ │ │   ).
+   │ ╰─│───^ maps:merge(#{..}, maps:from_list(set('b', 3, KVs))).
+Expression has type:   #{a := integer(), b := integer(), 'b' | dynamic() => dynamic() | integer()}
+Context expected type: #{a := number(), b := number()}
+   │   ╰───' 
+
+Because in the expression's type:
+  Here the type is:     #{'b' | dynamic() => dynamic() | integer()}
+  Context expects type: #{...} (no default association)
+  The expected map has no default association while the type of the expression has one.
+
+5 ERRORS

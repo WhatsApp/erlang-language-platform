@@ -45,7 +45,9 @@ class Constraints(pipelineContext: PipelineContext) {
     val Ctx(toSolve, varsToElim) = ctx
 
     if (seen((lower, upper))) Some(List(Map.empty))
-    else if (subtype.subType(lower, upper)) Some(List(Map.empty))
+    else if (subtype.gradualSubType(lower, upper)) Some(List(Map.empty))
+    else if (TypeVars.freeVars(upper).intersect(toSolve).isEmpty && subtype.subType(lower, upper))
+      Some(List(Map.empty))
     else
       (lower, upper) match {
         case (FreeVarType(n), _) if toSolve(n) =>
@@ -87,6 +89,10 @@ class Constraints(pipelineContext: PipelineContext) {
           constrain(st, ft11.resTy, ft2.resTy, seen)
         case (ft1: AnyArityFunType, ft2: AnyArityFunType) =>
           constrain(ctx, ft1.resTy, ft2.resTy, seen)
+        case (AnyFunType, ft2: FunType) if ft2.forall == 0 =>
+          constrain(ctx, DynamicType, ft2.resTy, seen)
+        case (AnyFunType, ft2: AnyArityFunType) =>
+          constrain(ctx, DynamicType, ft2.resTy, seen)
         case (UnionType(tys), _) =>
           constrainSeq(ctx, tys.map((_, upper)), seen)
         case (_, UnionType(tys)) =>
