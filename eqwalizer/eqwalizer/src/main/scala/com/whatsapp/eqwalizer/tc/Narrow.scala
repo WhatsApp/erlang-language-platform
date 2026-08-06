@@ -456,7 +456,13 @@ class Narrow(pipelineContext: PipelineContext) {
       case None if subtype.isDynamicType(mapType.kType) && subtype.isDynamicType(mapType.vType) =>
         mapType
       case None =>
-        MapType(mapType.props, subtype.join(mapType.kType, keyT), subtype.join(mapType.vType, valT))
+        val props = mapType.props.map { case (key, prop) =>
+          if (subtype.overlap(Key.asType(key), keyT) != Some(false))
+            (key, MapProp(prop.req, subtype.join(prop.tp, valT)))
+          else
+            (key, prop)
+        }
+        MapType(props, subtype.join(mapType.kType, keyT), subtype.join(mapType.vType, valT))
     }
 
   def setAllFieldsOptional(mapType: MapType, newValTy: Option[Type] = None): Type =

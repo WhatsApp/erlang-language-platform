@@ -1,1 +1,33 @@
-NO ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/maps_tests.erl:11:17
+   │
+11 │ put_1_neg(K) -> maps:get(a, maps:put(K, <<"boom">>, #{a => 1})).
+   │                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   │                 │
+   │                 maps:get('a', maps:put(K, <<..>>, #{..})).
+Expression has type:   binary() | integer()
+Context expected type: integer()
+   │                 
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: integer()
+  However the following candidate: binary()
+  Differs from the expected type:  integer()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/maps_tests.erl:14:35
+   │
+14 │ update_1_neg(K) -> M = #{a => 1}, maps:get(a, M#{K => <<"boom">>}).
+   │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   │                                   │
+   │                                   maps:get('a', ..#{..}).
+Expression has type:   binary() | integer()
+Context expected type: integer()
+   │                                   
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: integer()
+  However the following candidate: binary()
+  Differs from the expected type:  integer()
+
+2 ERRORS
