@@ -24,11 +24,11 @@ After implementing `Linter` + a specialized trait (`FunctionCallLinter`, `SsrPat
 
 `FxHashMap`/`FxHashSet` are used project-wide. Do not introduce `std::collections::HashMap`.
 
-### Use `known` module constants for atom comparison
+### Use `known` module statics for atom comparison
 
 ```rust
-// Correct
-if db.lookup_atom(*atom) == known::erlang { ... }
+// Correct (known entries are `LazyLock<Name>`, so deref with `*`)
+if db.lookup_atom(*atom) == *known::erlang { ... }
 
 // Wrong — do not use .as_str() string comparisons
 if db.lookup_atom(*atom).as_str() == "erlang" { ... }
