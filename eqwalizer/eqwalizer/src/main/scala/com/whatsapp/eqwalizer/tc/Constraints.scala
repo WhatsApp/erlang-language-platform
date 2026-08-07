@@ -58,8 +58,6 @@ class Constraints(pipelineContext: PipelineContext) {
           assert(TypeVars.freeVars(lower).intersect(toSolve).isEmpty)
           val constraint = Constraint(TypeVars.promote(lower, varsToElim), AnyType)
           Some(List(Map(n -> constraint)))
-        case (FreeVarType(n1), FreeVarType(n2)) if n1 == n2 && !toSolve(n1) =>
-          Some(List(Map.empty))
         case (DynamicType, _) =>
           val solveFor = TypeVars.freeVars(upper).intersect(toSolve)
           Some(List(solveFor.map(n => (n, Constraint(DynamicType, AnyType))).toMap))
@@ -149,8 +147,6 @@ class Constraints(pipelineContext: PipelineContext) {
           constrainSeq(ctx, List((lh, rh), (lt, rt)), seen)
         case (ConsType(lh, lt), ListType(rightElemTy)) =>
           constrainSeq(ctx, List((lh, rightElemTy), (lt, ListType(rightElemTy))), seen)
-        case (NilType, ListType(_)) =>
-          Some(List(Map.empty))
         case (MapType(props1, kT1, vT1), MapType(props2, kT2, vT2)) =>
           val tolerantSubtype = subtype.isDynamicType(kT1) && subtype.isDynamicType(vT1)
           var constraints: List[(Type, Type)] = List()
