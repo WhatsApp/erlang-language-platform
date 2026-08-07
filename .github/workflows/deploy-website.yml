@@ -9,6 +9,11 @@ on:
     branches:
       - main
 
+# Restrict the default GITHUB_TOKEN. actions-gh-pages pushes the built site to
+# the gh-pages branch, so contents: write is required.
+permissions:
+  contents: write
+
 jobs:
   deploy-website:
     name: Deploy Website to GitHub Pages
