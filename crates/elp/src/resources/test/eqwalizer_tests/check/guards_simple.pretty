@@ -51,7 +51,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 74 │ float_neg(X) when is_boolean(X) -> X.
    │                                    ^ X.
-Expression has type:   'false' | 'true'
+Expression has type:   boolean()
 Context expected type: float()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -59,7 +59,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 80 │ integer_neg(X) when is_boolean(X) -> X.
    │                                      ^ X.
-Expression has type:   'false' | 'true'
+Expression has type:   boolean()
 Context expected type: integer()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

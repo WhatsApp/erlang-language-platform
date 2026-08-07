@@ -70,7 +70,7 @@ object Occurrence {
       "is_atom" -> AtomType,
       "is_binary" -> BinaryType,
       "is_bitstring" -> BinaryType,
-      "is_boolean" -> UnionType(Set(falseType, trueType)),
+      "is_boolean" -> booleanType,
       "is_float" -> FloatType,
       "is_function" -> AnyFunType,
       "is_integer" -> IntegerType,
