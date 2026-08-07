@@ -7,6 +7,10 @@ on:
   release:
     types: [published]
 
+# Restrict the default GITHUB_TOKEN. Jobs needing more override this below.
+permissions:
+  contents: read
+
 jobs:
   edb:
     runs-on: ubuntu-latest
@@ -27,6 +31,9 @@ jobs:
           otp-version: ${{ matrix.otp-version}}
 
   ci:
+    # Release runs attach binaries and the .vsix to the GitHub release.
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:

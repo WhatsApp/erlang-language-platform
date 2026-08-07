@@ -9,6 +9,10 @@ on:
     branches:
       - main
 
+# Restrict the default GITHUB_TOKEN: this workflow only builds the website.
+permissions:
+  contents: read
+
 jobs:
   build-website:
     name: Build Website
