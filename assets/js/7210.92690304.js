@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunk_whatsapp_elp_website=globalThis.webpackChunk_whatsapp_elp_website||[]).push([[7210],{17210(e,a,s){s.d(a,{createRadarServices:()=>p.f});var p=s(97899);s(51400)}}]);
