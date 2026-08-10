@@ -31,6 +31,7 @@ jobs:
           otp-version: ${{ matrix.otp-version}}
 
   ci:
+    name: ci (${{ matrix.platform-arch }}, ${{ matrix.otp-version }})
     # Release runs attach binaries and the .vsix to the GitHub release.
     permissions:
       contents: write
@@ -38,20 +39,12 @@ jobs:
       fail-fast: false
       matrix:
         platform-arch: [ubuntu-22.04-x64, ubuntu-22.04-arm, macos-15-x64, macos-latest-arm, windows-2022-x64]
-        otp-version: [27.3, 28.5, 29.0]
+        otp-version: [27.3]
         include:
           - otp-version: 27.3
             brew-otp-version: 27
             vscode-publish: true
             choco-otp-version: 27.3.4
-          - otp-version: 28.5
-            brew-otp-version: 28
-            vscode-publish: false
-            choco-otp-version: 28.5.0
-          - otp-version: 29.0
-            brew-otp-version: 29
-            vscode-publish: false
-            choco-otp-version: 29.0.2
           - platform-arch: ubuntu-22.04-x64
             platform: ubuntu-22.04
             os: linux
@@ -77,6 +70,29 @@ jobs:
             os: windows
             target: x86_64-pc-windows-msvc
             vscode-target: win32-x64
+          # Extra OTP coverage, Linux x86_64 only. These entries conflict with
+          # the otp-version above, so GitHub cannot merge them into an existing
+          # combination and appends them as new ones instead. A new combination
+          # does *not* inherit keys from the other `include` entries, so each
+          # one has to be spelled out in full.
+          - platform-arch: ubuntu-22.04-x64
+            platform: ubuntu-22.04
+            os: linux
+            target: x86_64-unknown-linux-gnu
+            vscode-target: linux-x64
+            otp-version: 28.5
+            brew-otp-version: 28
+            vscode-publish: false
+            choco-otp-version: 28.5.0
+          - platform-arch: ubuntu-22.04-x64
+            platform: ubuntu-22.04
+            os: linux
+            target: x86_64-unknown-linux-gnu
+            vscode-target: linux-x64
+            otp-version: 29.0
+            brew-otp-version: 29
+            vscode-publish: false
+            choco-otp-version: 29.0.2
     runs-on: ${{ matrix.platform }}
     needs: edb
     steps:
