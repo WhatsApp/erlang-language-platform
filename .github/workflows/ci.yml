@@ -218,28 +218,24 @@ jobs:
         with:
           name: eqwalizer-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}
           path: .\eqwalizer\eqwalizer\eqwalizer.exe
-      - name: Make elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz (No Windows)
+      # The tarball is named after the release asset it becomes: the upload
+      # action names each asset after the file's basename.
+      - name: Make elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.tar.gz (No Windows)
         if: matrix.os != 'windows'
-        run: 'tar -zcvf elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz -C target/${{ matrix.target}}/release/ elp'
-      - name: Make elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz (Windows Only)
+        run: 'tar -zcvf elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.tar.gz -C target/${{ matrix.target}}/release/ elp'
+      - name: Make elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.tar.gz (Windows Only)
         if: matrix.os == 'windows'
-        run: 'tar -zcvf elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz -C target\${{ matrix.target}}\release elp.exe'
-      - env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        id: get_release_url
-        name: Get release url
+        run: 'tar -zcvf elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.tar.gz -C target\${{ matrix.target}}\release elp.exe'
+      # `overwrite_files` (the default) replaces an asset that is already
+      # attached, so re-running a release workflow does not die here the way
+      # actions/upload-release-asset did with a 422 Validation Failed.
+      - name: Upload release elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.tar.gz
         if: ${{ github.event_name == 'release' }}
-        uses: "bruceadams/get-release@v1.3.2"
-      - env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        name: Upload release elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
-        if: ${{ github.event_name == 'release' }}
-        uses: "actions/upload-release-asset@v1.0.2"
+        uses: "softprops/action-gh-release@v2"
         with:
-          asset_content_type: application/octet-stream
-          asset_name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.tar.gz
-          asset_path: elp-${{ matrix.os }}-otp-${{ matrix.otp-version }}.tar.gz
-          upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
+          tag_name: ${{ github.event.release.tag_name }}
+          files: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.tar.gz
+          fail_on_unmatched_files: true
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -309,26 +305,21 @@ jobs:
         with:
           name: elp-${{ matrix.os}}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.vsix
           path: editors\code\erlang-language-platform.vsix
-      - env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        name: Upload Extension Package (No Windows)
-        if: ${{ github.event_name == 'release' && matrix.os != 'windows' }}
-        uses: "actions/upload-release-asset@v1.0.2"
+      # The asset is named after the file's basename, and
+      # erlang-language-platform.vsix keeps its name for the vsce/ovsx publish
+      # steps below, so copy it to the asset name rather than renaming it.
+      - name: Copy Extension Package to its release asset name
+        if: ${{ github.event_name == 'release' }}
+        working-directory: editors/code
+        shell: bash
+        run: 'cp erlang-language-platform.vsix elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.vsix'
+      - name: Upload Extension Package
+        if: ${{ github.event_name == 'release' }}
+        uses: "softprops/action-gh-release@v2"
         with:
-          asset_content_type: application/octet-stream
-          asset_name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.vsix
-          asset_path: editors/code/erlang-language-platform.vsix
-          upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
-      - env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        name: Upload Extension Package (Windows Only)
-        if: ${{ github.event_name == 'release' && matrix.os == 'windows' }}
-        uses: "actions/upload-release-asset@v1.0.2"
-        with:
-          asset_content_type: application/octet-stream
-          asset_name: elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.vsix
-          asset_path: editors\code\erlang-language-platform.vsix
-          upload_url: "${{ steps.get_release_url.outputs.upload_url }}"
+          tag_name: ${{ github.event.release.tag_name }}
+          files: editors/code/elp-${{ matrix.os }}-${{ matrix.target }}-otp-${{ matrix.otp-version }}.vsix
+          fail_on_unmatched_files: true
       - name: Publish extension to marketplace
         working-directory: editors/code
         if: ${{ github.event_name == 'release' && matrix.vscode-publish && matrix.os != 'windows' }}
