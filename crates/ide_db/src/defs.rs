@@ -578,10 +578,6 @@ fn from_macro_dynamic_call(
     let expr_id = body_map.expr_id(InFile::new(token.file_id, &ast_expr))?;
 
     let (target, args) = match &body[expr_id] {
-        Expr::MacroCall { expansion, .. } => match &body[*expansion] {
-            Expr::Call { target, args } => Some((target, args.as_slice())),
-            _ => None,
-        },
         Expr::Call { target, args } => Some((target, args.as_slice())),
         _ => None,
     }?;
