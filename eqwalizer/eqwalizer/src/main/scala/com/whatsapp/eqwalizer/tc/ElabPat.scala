@@ -188,13 +188,9 @@ final class ElabPat(pipelineContext: PipelineContext) {
   private def elabUnOp(pat: PatUnOp, t: Type, env: Env): (Type, Env) = {
     val PatUnOp(op, arg) = pat
     op match {
-      case "bnot" =>
-        val (_, env1) = elabPat(arg, IntegerType, env)
-        (IntegerType, env1)
-      case "+" | "-" =>
-        val (_, env1) = elabPat(arg, numberType, env)
-        (numberType, env1)
-      case _ => throw UnhandledOp(pat.pos, op)
+      case "bnot"    => (IntegerType, env)
+      case "+" | "-" => (numberType, env)
+      case _         => throw UnhandledOp(pat.pos, op)
     }
   }
 
@@ -202,17 +198,11 @@ final class ElabPat(pipelineContext: PipelineContext) {
     val PatBinOp(op, arg1, arg2) = binOp
     op match {
       case "div" | "rem" | "band" | "bor" | "bxor" | "bsl" | "bsr" =>
-        val (_, env1) = elabPat(arg1, IntegerType, env)
-        val (_, env2) = elabPat(arg2, IntegerType, env1)
-        (IntegerType, env2)
+        (IntegerType, env)
       case "/" =>
-        val (_, env1) = elabPat(arg1, numberType, env)
-        val (_, env2) = elabPat(arg2, numberType, env1)
-        (FloatType, env2)
+        (FloatType, env)
       case "*" | "-" | "+" =>
-        val (_, env1) = elabPat(arg1, numberType, env)
-        val (_, env2) = elabPat(arg2, numberType, env1)
-        (numberType, env2)
+        (numberType, env)
       case "++" =>
         val asListT = narrow.asListType(t).getOrElse(NoneType)
         val (arg1Ty, env1) = elabPat(arg1, asListT, env)
