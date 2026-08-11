@@ -167,7 +167,7 @@ final class ElabPat(pipelineContext: PipelineContext) {
             case _ =>
               val keyTy = subtype.join(mapTypes.map(narrow.getKeyType))
               val valTy = subtype.join(mapTypes.map(narrow.getValType))
-              val env1 = pipelineContext.elabGuard.elabTestT(keyTest, keyTy, envAcc)
+              val env1 = pipelineContext.occurrence.valueEnv(keyTest, keyTy, envAcc)
               val (_, env2) = elabPat(valPat, valTy, env1)
               envAcc = env2
           }

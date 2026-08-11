@@ -143,9 +143,9 @@ rec_guard1(Foo)
 rec_guard2_neg(Foo)
     when Foo == #foo{} -> ok.
 
--spec rec_guard3_pos(term(), term())
+-spec rec_guard3_neg(term(), term())
     -> number().
-rec_guard3_pos(Foo, X)
+rec_guard3_neg(Foo, X)
     when Foo == #foo_def{id = X} -> X.
 
 -spec rec_guard4_neg(term(), term())

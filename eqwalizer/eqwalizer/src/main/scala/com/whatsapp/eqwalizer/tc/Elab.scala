@@ -19,7 +19,6 @@ final class Elab(pipelineContext: PipelineContext) {
   private lazy val module = pipelineContext.module
   private lazy val check = pipelineContext.check
   private lazy val elabPat = pipelineContext.elabPat
-  private lazy val elabGuard = pipelineContext.elabGuard
   private lazy val elabApply = pipelineContext.elabApply
   private lazy val elabApplyCustom = pipelineContext.elabApplyCustom
   private lazy val elabApplyOverloaded = pipelineContext.elabApplyOverloaded
@@ -52,12 +51,12 @@ final class Elab(pipelineContext: PipelineContext) {
   ): (Type, Env) = {
     val patVars = Vars.clausePatVars(clause)
     val env1 = util.enterScope(env0, patVars)
-    // see D29637051 for why we elabGuard twice
-    val env2 = typeInfo.withoutTypeCollection {
-      elabGuard.elabGuards(clause.guards, env1)
-    }
+    // Refine guards before patterns (so refinements feed pattern elaboration)
+    // and again after (so leaves keep their post-pattern types).
+    val env2 = occurrence.refineGuards(clause.guards, env1)
     val (_, env3) = elabPat.elabPats(clause.pats, argTys, env2)
-    val env4 = elabGuard.elabGuards(clause.guards, env3)
+    val env4 = occurrence.refineGuards(clause.guards, env3)
+    occurrence.annotateGuards(clause.guards, env4)
     if (checkReachability && env4.exists { case (_, ty) => Subtype.isNoneType(ty) })
       return (NoneType, util.exitScope(env0, env4, exportedVars))
     val (eType, env5) = elabBody(clause.body, env4)
@@ -87,7 +86,7 @@ final class Elab(pipelineContext: PipelineContext) {
       expr match {
         case MaybeMatch(Pats.PatAtom("true"), mExp) if Filters.asTest(mExp).isDefined =>
           val test = Filters.asTest(mExp).get
-          envAcc = elabGuard.elabGuards(List(Guard(List(test))), envAcc)
+          envAcc = occurrence.testEnv(test, envAcc, result = true)
           tyAcc = subtype.join(tyAcc, booleanType)
           lastTy = trueType
         case MaybeMatch(mPat, mExp) =>
@@ -316,7 +315,7 @@ final class Elab(pipelineContext: PipelineContext) {
         (subtype.join(ts), subtype.joinEnvs(envs))
       case Match(Pats.PatAtom("true"), mExp) if Filters.asTest(mExp).isDefined =>
         val test = Filters.asTest(mExp).get
-        val env1 = elabGuard.elabGuards(List(Guard(List(test))), env)
+        val env1 = occurrence.testEnv(test, env, result = true)
         (AtomLitType("true"), env1)
       case Match(mPat1, m @ Match(mPat2, mExp)) =>
         elabExpr(Match(PatMatch(mPat1, mPat2)(m.pos), mExp)(expr.pos), env)
@@ -345,7 +344,7 @@ final class Elab(pipelineContext: PipelineContext) {
       case BinOp("orelse", testArg, RemoteCall(RemoteId("erlang", "throw" | "error" | "exit", _), _))
           if Filters.asTest(testArg).isDefined =>
         val test = Filters.asTest(testArg).get
-        val env1 = elabGuard.elabGuards(List(Guard(List(test))), env)
+        val env1 = occurrence.testEnv(test, env, result = true)
         (AtomLitType("true"), env1)
       case BinOp(
             "orelse",
@@ -409,7 +408,7 @@ final class Elab(pipelineContext: PipelineContext) {
               case None =>
                 env1
               case Some(test) =>
-                val env11 = elabGuard.elabGuards(List(Guard(List(test))), env1)
+                val env11 = occurrence.testEnv(test, env1, result = true)
                 env11
             }
             val t1False = subtype.subType(t1, falseType) && !subtype.subType(t1, trueType)
@@ -957,12 +956,12 @@ final class Elab(pipelineContext: PipelineContext) {
         envAcc = elabExpr(m, envAcc)._2
         val fExpr = BinOp(op, Var(v)(pv.pos), exp2)(binOp.pos)
         Filters.asTest(fExpr).foreach { test =>
-          envAcc = elabGuard.elabGuards(List(Guard(List(test))), envAcc)
+          envAcc = occurrence.testEnv(test, envAcc, result = true)
         }
         envAcc = elabExpr(fExpr, envAcc)._2
       case Filter(fExpr) =>
         Filters.asTest(fExpr).foreach { test =>
-          envAcc = elabGuard.elabGuards(List(Guard(List(test))), envAcc)
+          envAcc = occurrence.testEnv(test, envAcc, result = true)
         }
         envAcc = elabExpr(fExpr, envAcc)._2
     }

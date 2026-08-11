@@ -14,4 +14,89 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   integer()
 Context expected type: binary()
 
-2 ERRORS
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ debug/src/expr1.erl:173:1
+    │
+173 │ tuple_guard(X, Y) when {X, Y} -> Y.
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ debug/src/expr1.erl:175:1
+    │
+175 │ nil_guard(_X, Y) when [] -> Y.
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ debug/src/expr1.erl:177:1
+    │
+177 │ cons_guard(X, Y) when [X | Y] -> Y.
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ debug/src/expr1.erl:179:1
+    │
+179 │ bin_guard(_X, Y) when <<>> -> Y.
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ debug/src/expr1.erl:181:1
+    │
+181 │ unop_guard(X, Y) when -X -> Y.
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ debug/src/expr1.erl:183:1
+    │
+183 │ binop_guard(X, Y) when X + Y -> Y.
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ debug/src/expr1.erl:185:1
+    │  
+185 │ ╭ record_guard(_X, Y)
+186 │ │     when #test_rec{} -> Y.
+    │ ╰─────────────────────────^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ debug/src/expr1.erl:188:1
+    │  
+188 │ ╭ record_index_guard(_X, Y)
+189 │ │     when #test_rec.id -> Y.
+    │ ╰──────────────────────────^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ debug/src/expr1.erl:194:1
+    │  
+194 │ ╭ map_guard(_X)
+195 │ │     when #{} -> ok.
+    │ ╰──────────────────^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ debug/src/expr1.erl:197:1
+    │  
+197 │ ╭ map_update_guard(X)
+198 │ │     when X#{id := 3} -> ok.
+    │ ╰──────────────────────────^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ debug/src/expr1.erl:206:1
+    │  
+206 │ ╭ atom_guard(_X)
+207 │ │     when ok -> ok.
+    │ ╰─────────────────^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ debug/src/expr1.erl:209:1
+    │  
+209 │ ╭ string_guard(_X)
+210 │ │     when "string" -> ok.
+    │ ╰───────────────────────^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ debug/src/expr1.erl:212:1
+    │  
+212 │ ╭ lit_guard(_X)
+213 │ │     when $c -> ok.
+    │ ╰─────────────────^ Clause is not covered by spec
+
+15 ERRORS

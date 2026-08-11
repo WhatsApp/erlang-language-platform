@@ -38,8 +38,6 @@ package object tc {
       new ElabApplyCustom(this)
     val elabApplyOverloaded: ElabApplyOverloaded =
       new ElabApplyOverloaded(this)
-    val elabGuard: ElabGuard =
-      new ElabGuard(this)
     val elabPat: ElabPat =
       new ElabPat(this)
     val occurrence: Occurrence =
