@@ -133,8 +133,8 @@ pub struct PreprocessorSnapshot {
 ///
 /// This struct is cached by Salsa and intentionally kept small. The large
 /// per-env and per-condition macro definition snapshots live in
-/// `PreprocessorMacroDefs`, which is computed on demand via
-/// `compute_file_macro_defs` and NOT cached by Salsa.
+/// `PreprocessorMacroDefs`, behind the separate `file_macro_defs` query, so
+/// callers needing only the analysis never materialize them.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PreprocessorAnalysis {
     condition_results: FxHashMap<PPConditionId, PPConditionResult>,
@@ -145,12 +145,11 @@ pub struct PreprocessorAnalysis {
     include_envs: FxHashMap<IncludeAttributeId, Arc<MacroEnvironment>>,
 }
 
-/// Point-in-time macro definition snapshots, computed on demand.
+/// Point-in-time macro definition snapshots for a file.
 ///
 /// This struct holds the large per-env and per-condition macro definition
-/// maps that are expensive to keep in Salsa cache. It is produced by
-/// `compute_file_macro_defs` which re-runs the preprocessor pass and
-/// is NOT cached by Salsa, so memory is freed once the caller drops it.
+/// maps, Salsa-cached via `file_macro_defs` and keyed on
+/// `(InternedFileId, MacroEnvironment)`.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PreprocessorMacroDefs {
     /// Snapshot of macro definitions at each ConditionEnvId point.
@@ -438,28 +437,60 @@ pub fn file_preprocessor_analysis_inner(
         .0
 }
 
-/// Compute point-in-time macro definition snapshots for a file.
+/// Untracked entry point for the `file_macro_defs` query, as for the
+/// `file_preprocessor_analysis*` pairs above.
 ///
-/// This re-runs the preprocessor pass to collect the `env_macro_defs` and
-/// `condition_macro_defs` maps. The result is NOT cached by Salsa, so
-/// memory is freed once the caller drops it. Sub-queries (parse, form_list,
-/// include resolution) are already Salsa-cached, so the re-run is fast.
-pub fn compute_file_macro_defs(
+/// `FileId` is a plain `u32` newtype from `vfs`, not a Salsa struct, so it
+/// cannot be the first non-`db` argument of a tracked query. The memoized query
+/// therefore keys on `InternedFileId` (a `#[salsa::interned]` wrapper, see its
+/// docs in `elp_base_db`) and this `#[salsa::transparent]` dispatch fn does the
+/// interning, so callers keep the ergonomic `FileId` API. Interning here is
+/// purely to satisfy that constraint — it carries no extra meaning.
+///
+/// Always call `db.file_macro_defs(..)`, never the `_interned` sibling
+/// directly, so the interning stays in one place.
+pub fn file_macro_defs_dispatch(
     db: &dyn DefDatabase,
     file_id: FileId,
     env: Arc<MacroEnvironment>,
-) -> PreprocessorMacroDefs {
+) -> Arc<PreprocessorMacroDefs> {
+    db.file_macro_defs_interned(elp_base_db::InternedFileId::new(db, file_id), env)
+}
+
+/// Runs the preprocessor pass a second time, with `compute_macro_defs = true`,
+/// and keeps only the snapshots.
+///
+/// Repeat calls for a file are free: both consumers (body lowering and
+/// condition-body lowering) key on `db.project_macro_environment(file_id)`,
+/// which yields one canonical env per file, so the `(file, env)` cache holds a
+/// single entry per file rather than one per includer.
+///
+/// Because the same impl also backs `file_preprocessor_analysis`, a file that
+/// needs both runs the pass once per query. Folding the two into a single query
+/// so one pass serves both is tempting, but was measured to be a bad trade:
+/// many files are analysed without ever asking for the snapshots, and taking
+/// them clones the whole `define_attr_macros` map — including macros inherited
+/// from transitively included headers — once per unique `ConditionEnvId`.
+/// Making that unconditional multiplied peak memory several-fold over a large
+/// codebase and bought no CPU back, since both queries are already cached per
+/// file. `compute_macro_defs` is load-bearing; keep the gate.
+pub fn file_macro_defs_inner(
+    db: &dyn DefDatabase,
+    fid: elp_base_db::InternedFileId,
+    env: Arc<MacroEnvironment>,
+) -> Arc<PreprocessorMacroDefs> {
+    let file_id = fid.file_id(db);
     let (_analysis, macro_defs, _diagnostics) =
         file_preprocessor_analysis_impl(db, file_id, &env, true);
-    macro_defs
+    Arc::new(macro_defs)
 }
 
 /// Core implementation of preprocessor analysis, shared between the
-/// Salsa-cached query and `compute_file_macro_defs`.
+/// `file_preprocessor_analysis*` and `file_macro_defs` queries.
 ///
 /// When `compute_macro_defs` is false, skips the expensive per-env and
-/// per-condition macro snapshot work (used by the Salsa query path).
-/// When true, populates `PreprocessorMacroDefs` (used by on-demand callers).
+/// per-condition macro snapshot work (the `file_preprocessor_analysis*` path).
+/// When true, populates `PreprocessorMacroDefs` (the `file_macro_defs` path).
 fn file_preprocessor_analysis_impl(
     db: &dyn DefDatabase,
     file_id: FileId,
@@ -815,6 +846,16 @@ pub(crate) fn recover_cycle(
     Arc::new(PreprocessorAnalysis::new())
 }
 
+pub(crate) fn recover_cycle_macro_defs(
+    _db: &dyn DefDatabase,
+    _id: salsa::Id,
+    _fid: elp_base_db::InternedFileId,
+    _env: Arc<MacroEnvironment>,
+) -> Arc<PreprocessorMacroDefs> {
+    // On cycle, return empty snapshots
+    Arc::new(PreprocessorMacroDefs::default())
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
@@ -833,7 +874,6 @@ mod tests {
     use crate::preprocessor::MacroEnvironment;
     use crate::preprocessor::PreprocessorState;
     use crate::preprocessor::collect_defined_names;
-    use crate::preprocessor::compute_file_macro_defs;
     use crate::test_db::TestDB;
 
     fn name(s: &str) -> Name {
@@ -1774,7 +1814,7 @@ foo() -> prod.
 
         let env = db.project_macro_environment(file_id);
         let analysis = db.file_preprocessor_analysis(file_id, Arc::clone(&env));
-        let macro_defs_result = compute_file_macro_defs(&db, file_id, env);
+        let macro_defs_result = db.file_macro_defs(file_id, env);
         let form_list = db.file_form_list(file_id);
 
         let if_cond_id = find_if_condition_id(&form_list);
@@ -1832,7 +1872,7 @@ my_func() ->
 
         let env = db.project_macro_environment(file_id);
         let analysis = db.file_preprocessor_analysis(file_id, Arc::clone(&env));
-        let macro_defs_result = compute_file_macro_defs(&db, file_id, env);
+        let macro_defs_result = db.file_macro_defs(file_id, env);
 
         // env_macro_defs should exist
         assert!(
@@ -1876,7 +1916,7 @@ my_func() ->
         );
 
         let env = db.project_macro_environment(file_id);
-        let macro_defs_result = compute_file_macro_defs(&db, file_id, env);
+        let macro_defs_result = db.file_macro_defs(file_id, env);
         let form_list = db.file_form_list(file_id);
 
         let if_cond_id = find_if_condition_id(&form_list);
@@ -1954,7 +1994,7 @@ my_func() ->
         );
 
         let env = db.project_macro_environment(file_id);
-        let macro_defs_result = compute_file_macro_defs(&db, file_id, env);
+        let macro_defs_result = db.file_macro_defs(file_id, env);
         let form_list = db.file_form_list(file_id);
 
         let if_cond_id = find_if_condition_id(&form_list);

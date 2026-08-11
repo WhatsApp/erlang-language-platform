@@ -62,6 +62,7 @@ use crate::preprocessor;
 use crate::preprocessor::ConditionDiagnosticsMap;
 use crate::preprocessor::MacroEnvironment;
 use crate::preprocessor::PreprocessorAnalysis;
+use crate::preprocessor::PreprocessorMacroDefs;
 
 #[ra_ap_query_group_macro::query_group]
 pub trait DefDatabase:
@@ -365,6 +366,25 @@ pub trait DefDatabase:
         fid: InternedFileId,
         env: Arc<MacroEnvironment>,
     ) -> Arc<PreprocessorAnalysis>;
+
+    /// Point-in-time macro definition snapshots for a file, keyed on its macro
+    /// environment. Collects the `env_macro_defs` and `condition_macro_defs`
+    /// maps by running the preprocessor pass with `compute_macro_defs = true`.
+    #[salsa::transparent]
+    #[salsa::invoke(preprocessor::file_macro_defs_dispatch)]
+    fn file_macro_defs(
+        &self,
+        file_id: FileId,
+        env: Arc<MacroEnvironment>,
+    ) -> Arc<PreprocessorMacroDefs>;
+
+    #[salsa::cycle(cycle_result = preprocessor::recover_cycle_macro_defs)]
+    #[salsa::invoke(preprocessor::file_macro_defs_inner)]
+    fn file_macro_defs_interned(
+        &self,
+        fid: InternedFileId,
+        env: Arc<MacroEnvironment>,
+    ) -> Arc<PreprocessorMacroDefs>;
 
     // Helper query to run the recursive resolution algorithm
     #[salsa::transparent]

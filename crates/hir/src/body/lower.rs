@@ -92,7 +92,6 @@ use crate::known;
 use crate::macro_exp;
 use crate::macro_exp::BuiltInMacro;
 use crate::name::AsName;
-use crate::preprocessor::compute_file_macro_defs;
 
 #[derive(Debug, Clone)]
 pub(crate) struct MacroStackEntry {
@@ -259,8 +258,6 @@ impl<'a> Ctx<'a> {
     /// ConditionEnvIds properly differentiate points in the file (a new
     /// ID is allocated at each -define/-undef/-include). When disabled,
     /// all forms share the root env and we fall back to db.resolve_macro().
-    // Groundwork: used in the next commit (2/n macro-state).
-    #[allow(dead_code)]
     pub(crate) fn set_macro_defs_from_preprocessor(
         &mut self,
         file_id: FileId,
@@ -270,7 +267,7 @@ impl<'a> Ctx<'a> {
         if !env.ifdef {
             return;
         }
-        let macro_defs = compute_file_macro_defs(self.db, file_id, env);
+        let macro_defs = self.db.file_macro_defs(file_id, env);
         if let Some(defs) = macro_defs.macro_defs_for_env(env_id) {
             self.local_macro_defs = Some(Arc::clone(defs));
         }

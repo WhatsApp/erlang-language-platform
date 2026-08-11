@@ -171,7 +171,6 @@ pub use name::known;
 pub use preprocessor::MacroEnvironment;
 pub use preprocessor::PreprocessorAnalysis;
 pub use preprocessor::PreprocessorMacroDefs;
-pub use preprocessor::compute_file_macro_defs;
 pub use sema::AtomDef;
 pub use sema::CallDef;
 pub use sema::DefinitionOrReference;

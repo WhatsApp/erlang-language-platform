@@ -82,7 +82,6 @@ use crate::fold::ParentId;
 use crate::fold::VisibleMacros;
 use crate::fold::default_fold_body;
 use crate::fold::fold_body;
-use crate::preprocessor::compute_file_macro_defs;
 
 mod lower;
 mod pretty;
@@ -968,11 +967,9 @@ impl ConditionBody {
         // This gives us the same macro state the preprocessor used, so we
         // resolve user-defined macros correctly instead of falling back to
         // db.resolve_macro() which has no branch awareness.
-        // Uses compute_file_macro_defs (not Salsa-cached) to avoid keeping
-        // the large macro snapshots in memory across all files.
         let macro_defs = if db.ifdef_enabled() {
             let env = db.project_macro_environment(cond_id.file_id);
-            let defs = compute_file_macro_defs(db, cond_id.file_id, env);
+            let defs = db.file_macro_defs(cond_id.file_id, env);
             defs.condition_macro_defs(cond_id.value).cloned()
         } else {
             None
