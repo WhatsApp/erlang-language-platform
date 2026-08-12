@@ -182,8 +182,14 @@ bare keys cannot contain `:`, so it must be quoted:
 
 ```toml
 [linters."ad-hoc:banned_config_key"]
-exclude_apps = ["my_app"]
+severity = "error"
+include_tests = false
+exclude_apps = ["legacy_app"]
 ```
+
+`enabled`, `severity`, `include_tests`, `include_generated`, `experimental` and
+`exclude_apps` all apply. Ad-hoc lints run on test modules by default, so
+`include_tests = false` is the way to keep one out of test code.
 
 ## [dynamic_calls]
 

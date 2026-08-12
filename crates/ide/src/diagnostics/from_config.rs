@@ -25,6 +25,7 @@ use serde::Serialize;
 
 use super::Diagnostic;
 use super::DiagnosticExtra;
+use super::DiagnosticsConfig;
 use super::PlaceholderBinding;
 use super::Severity;
 use super::TypeReplacement;
@@ -40,10 +41,16 @@ pub struct LintsFromConfig {
 }
 
 impl LintsFromConfig {
-    pub fn get_diagnostics(&self, acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
+    pub fn get_diagnostics(
+        &self,
+        acc: &mut Vec<Diagnostic>,
+        sema: &Semantic,
+        file_id: FileId,
+        config: &DiagnosticsConfig,
+    ) {
         self.lints
             .iter()
-            .for_each(|l| l.get_diagnostics(acc, sema, file_id));
+            .for_each(|l| l.get_diagnostics(acc, sema, file_id, config));
     }
 }
 
@@ -56,11 +63,20 @@ pub enum Lint {
 }
 
 impl Lint {
-    pub fn get_diagnostics(&self, acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
+    pub fn get_diagnostics(
+        &self,
+        acc: &mut Vec<Diagnostic>,
+        sema: &Semantic,
+        file_id: FileId,
+        config: &DiagnosticsConfig,
+    ) {
         match self {
+            // `ReplaceCall` and `ReplaceInSpec` do not consult the per-linter
+            // config yet; only `LintMatchSsr` can be named, and an unnamed lint
+            // has nothing to key a `[linters.<code>]` section on.
             Lint::ReplaceCall(l) => l.get_diagnostics(acc, sema, file_id),
             Lint::ReplaceInSpec(l) => l.get_diagnostics(acc, sema, file_id),
-            Lint::LintMatchSsr(l) => l.get_diagnostics(acc, sema, file_id),
+            Lint::LintMatchSsr(l) => l.get_diagnostics(acc, sema, file_id, config),
         }
     }
 }
@@ -455,14 +471,79 @@ impl MatchSsr {
         )
     }
 
-    pub fn get_diagnostics(&self, acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
+    /// Mirrors the `[linters.<code>]` handling that `should_run` applies to
+    /// compiled linters. The defaults are the current behaviour of ad-hoc
+    /// lints, so a config that sets none of these changes nothing.
+    fn should_run(&self, config: &DiagnosticsConfig, sema: &Semantic, file_id: FileId) -> bool {
+        let code = self.code();
+        let lint_config = config.lint_config.as_ref();
+
+        let is_enabled = lint_config
+            .and_then(|c| c.get_is_enabled_override(&code))
+            .unwrap_or(true);
+        if !is_enabled {
+            return false;
+        }
+
+        // Each dimension is checked directly rather than through
+        // `DiagnosticConditions::enabled`, whose generated rule ANDs the
+        // per-linter setting with the global `--include-generated`. Ad-hoc lints
+        // ran on every file before this, so borrowing that rule would silently
+        // stop existing ones reporting on generated code. Only an explicit
+        // `include_generated = false` does that here, which is the deliberate
+        // difference from compiled linters.
+        let is_generated = sema.db.generated_status(file_id).is_generated();
+        let include_generated = lint_config
+            .and_then(|c| c.get_include_generated_override(&code))
+            .unwrap_or(true);
+        if is_generated && !include_generated {
+            return false;
+        }
+
+        let is_test = sema
+            .db
+            .is_test_suite_or_test_helper(file_id)
+            .unwrap_or(false);
+        let include_tests = lint_config
+            .and_then(|c| c.get_include_tests_override(&code))
+            .unwrap_or(true);
+        if is_test && !include_tests {
+            return false;
+        }
+
+        let experimental = lint_config
+            .and_then(|c| c.get_experimental_override(&code))
+            .unwrap_or(false);
+        if experimental && !config.experimental {
+            return false;
+        }
+
+        true
+    }
+
+    pub fn get_diagnostics(
+        &self,
+        acc: &mut Vec<Diagnostic>,
+        sema: &Semantic,
+        file_id: FileId,
+        config: &DiagnosticsConfig,
+    ) {
+        if !self.should_run(config, sema, file_id) {
+            return;
+        }
+
         let strategy = self.strategy.unwrap_or(Strategy {
             macros: MacroStrategy::Expand,
             parens: ParenStrategy::InvisibleParens,
         });
 
         let code = self.code();
-        let severity = self.severity.unwrap_or(Severity::WeakWarning);
+        let severity = config
+            .lint_config
+            .as_ref()
+            .and_then(|c| c.get_severity_override(&code))
+            .or(self.severity)
+            .unwrap_or(Severity::WeakWarning);
 
         for pattern in &self.patterns {
             let scope = SsrSearchScope::WholeFile(file_id);
@@ -520,7 +601,9 @@ fn collect_placeholder_bindings(
 
 #[cfg(test)]
 mod tests {
+    use elp_ide_db::DiagnosticCode;
     use elp_ide_db::RootDatabase;
+    use elp_ide_db::elp_base_db::FileId;
     use elp_ide_db::elp_base_db::fixture::WithFixture;
     use expect_test::expect;
     use hir::Semantic;
@@ -528,7 +611,9 @@ mod tests {
     use hir::fold::MacroStrategy;
     use hir::fold::ParenStrategy;
 
+    use super::Diagnostic;
     use super::DiagnosticExtra;
+    use super::DiagnosticsConfig;
     use super::Lint;
     use super::LintsFromConfig;
     use super::MatchSsr;
@@ -541,6 +626,7 @@ mod tests {
     use crate::codemod_helpers::FunctionMatch;
     use crate::codemod_helpers::MFA;
     use crate::diagnostics::LintConfig;
+    use crate::diagnostics::LinterConfig;
     use crate::diagnostics::TypeReplacement;
     use crate::diagnostics::replace_call::Replacement;
 
@@ -577,6 +663,21 @@ patterns = [
             [Lint::LintMatchSsr(match_ssr)] => match_ssr,
             other => panic!("expected exactly one SSR lint, got {other:?}"),
         }
+    }
+
+    fn diagnostics_for(lint: &MatchSsr, sema: &Semantic, file_id: FileId) -> Vec<Diagnostic> {
+        diagnostics_for_with(lint, sema, file_id, &DiagnosticsConfig::default())
+    }
+
+    fn diagnostics_for_with(
+        lint: &MatchSsr,
+        sema: &Semantic,
+        file_id: FileId,
+        config: &DiagnosticsConfig,
+    ) -> Vec<Diagnostic> {
+        let mut acc = Vec::new();
+        lint.get_diagnostics(&mut acc, sema, file_id, config);
+        acc
     }
 
     /// The singular (`ssr_pattern`) spelling, which most tests below exercise.
@@ -1347,8 +1448,7 @@ patterns = [
         let (db, file_id) = RootDatabase::with_single_file("t() -> X = 1, {X, X}.");
         let sema = Semantic::new(&db);
         let lint = MatchSsr::from_pattern("ssr: {_@A, _@A}.");
-        let mut acc = Vec::new();
-        lint.get_diagnostics(&mut acc, &sema, file_id);
+        let acc = diagnostics_for(&lint, &sema, file_id);
         assert_eq_expected!(1, acc.len());
         let Some(DiagnosticExtra::Ssr { placeholders, .. }) = &acc[0].extra else {
             panic!("expected DiagnosticExtra::Ssr, got {:?}", acc[0].extra);
@@ -1410,8 +1510,7 @@ patterns = [
         lint.name = Some("my_lint".to_string());
         lint.description = Some("Found something".to_string());
 
-        let mut acc = Vec::new();
-        lint.get_diagnostics(&mut acc, &sema, file_id);
+        let acc = diagnostics_for(&lint, &sema, file_id);
 
         assert_eq_expected!(2, acc.len());
         for diag in &acc {
@@ -1442,8 +1541,7 @@ patterns = [
         }]);
         lint.description = Some("generic".to_string());
 
-        let mut acc = Vec::new();
-        lint.get_diagnostics(&mut acc, &sema, file_id);
+        let acc = diagnostics_for(&lint, &sema, file_id);
         assert_eq_expected!(1, acc.len());
         assert_eq_expected!("specific", acc[0].message);
     }
@@ -1455,8 +1553,7 @@ patterns = [
         use elp_ide_db::elp_base_db::assert_eq_expected;
         let (db, file_id) = RootDatabase::with_single_file("t() -> ok.");
         let sema = Semantic::new(&db);
-        let mut acc = Vec::new();
-        MatchSsr::from_pattern("ssr: ok.").get_diagnostics(&mut acc, &sema, file_id);
+        let acc = diagnostics_for(&MatchSsr::from_pattern("ssr: ok."), &sema, file_id);
         assert_eq_expected!(1, acc.len());
         assert_eq_expected!("ad-hoc:ssr-match", acc[0].code.as_code());
     }
@@ -1551,8 +1648,7 @@ patterns = [
         lint.name = Some("my_lint".to_string());
         lint.doc = Some("docs/my_lint.md".to_string());
 
-        let mut acc = Vec::new();
-        lint.get_diagnostics(&mut acc, &sema, file_id);
+        let acc = diagnostics_for(&lint, &sema, file_id);
         assert_eq_expected!(1, acc.len());
         assert_eq_expected!(Some("docs/my_lint.md"), acc[0].doc_path_override.as_deref());
     }
@@ -1564,8 +1660,7 @@ patterns = [
         use elp_ide_db::elp_base_db::assert_eq_expected;
         let (db, file_id) = RootDatabase::with_single_file("t() -> ok.");
         let sema = Semantic::new(&db);
-        let mut acc = Vec::new();
-        MatchSsr::from_pattern("ssr: ok.").get_diagnostics(&mut acc, &sema, file_id);
+        let acc = diagnostics_for(&MatchSsr::from_pattern("ssr: ok."), &sema, file_id);
         assert_eq_expected!(1, acc.len());
         assert_eq_expected!(None, acc[0].doc_path_override.as_deref());
     }
@@ -1588,6 +1683,161 @@ patterns = [
             ssr = "ssr: ok."
         "#]]
         .assert_eq(&toml::to_string::<MatchSsr>(&lint).unwrap());
+    }
+
+    fn named_lint(name: &str, ssr: &str) -> MatchSsr {
+        let mut lint = MatchSsr::from_pattern(ssr);
+        lint.name = Some(name.to_string());
+        lint
+    }
+
+    /// Build a config carrying one `[linters.<code>]` section for `name`.
+    fn config_for(name: &str, linter_config: LinterConfig) -> DiagnosticsConfig {
+        let mut lint_config = LintConfig::default();
+        lint_config
+            .linters
+            .insert(DiagnosticCode::AdHoc(name.to_string()), linter_config);
+        DiagnosticsConfig::default()
+            .configure_diagnostics(&lint_config, &[], &[])
+            .unwrap()
+    }
+
+    #[test]
+    fn linter_config_can_disable_a_named_lint() {
+        use elp_ide_db::elp_base_db::assert_eq_expected;
+        let (db, file_id) = RootDatabase::with_single_file("t() -> ok.");
+        let sema = Semantic::new(&db);
+        let lint = named_lint("my_lint", "ssr: ok.");
+
+        assert_eq_expected!(1, diagnostics_for(&lint, &sema, file_id).len());
+
+        let config = config_for(
+            "my_lint",
+            LinterConfig {
+                is_enabled: Some(false),
+                ..Default::default()
+            },
+        );
+        assert_eq_expected!(
+            0,
+            diagnostics_for_with(&lint, &sema, file_id, &config).len()
+        );
+    }
+
+    /// Ad-hoc lints ran on generated files before per-linter config existed, and
+    /// still do. Compiled linters additionally require the global
+    /// `--include-generated`; borrowing that here would silently stop existing
+    /// lints reporting, so only an explicit `include_generated = false` does.
+    #[test]
+    fn generated_files_are_still_linted_unless_configured_off() {
+        use elp_ide_db::elp_base_db::assert_eq_expected;
+        // `generated_status` scans the file for the marker, so it has to be in
+        // the fixture's own text. Built with `format!` so this source file is
+        // not itself taken for generated, as elsewhere in the codebase.
+        let fixture = format!(
+            "
+//- /src/main.erl
+t() -> ok.
+//- /src/main_generated.erl
+%% {}generated
+t() -> ok.
+",
+            "@"
+        );
+        let (db, files, _) = RootDatabase::with_many_files(&fixture);
+        let sema = Semantic::new(&db);
+        let lint = named_lint("my_lint", "ssr: ok.");
+        // Guard against the assertions below passing vacuously.
+        assert!(
+            sema.db.generated_status(files[1]).is_generated(),
+            "fixture is not actually marked generated"
+        );
+
+        // Default config: `include_generated` is false on it, exactly as during
+        // a plain `elp lint` run without `--include-generated`.
+        let counts: Vec<_> = files
+            .iter()
+            .map(|file_id| diagnostics_for(&lint, &sema, *file_id).len())
+            .collect();
+        let expected = vec![1, 1];
+        assert_eq_expected!(expected, counts);
+
+        let config = config_for(
+            "my_lint",
+            LinterConfig {
+                include_generated: Some(false),
+                ..Default::default()
+            },
+        );
+        let counts: Vec<_> = files
+            .iter()
+            .map(|file_id| diagnostics_for_with(&lint, &sema, *file_id, &config).len())
+            .collect();
+        // src still reported, the generated module is not.
+        let expected = vec![1, 0];
+        assert_eq_expected!(expected, counts);
+    }
+
+    #[test]
+    fn linter_config_can_override_severity() {
+        use elp_ide_db::elp_base_db::assert_eq_expected;
+        let (db, file_id) = RootDatabase::with_single_file("t() -> ok.");
+        let sema = Semantic::new(&db);
+        let lint = named_lint("my_lint", "ssr: ok.");
+
+        // Without an override the lint's own severity applies.
+        assert_eq_expected!(
+            Severity::WeakWarning,
+            diagnostics_for(&lint, &sema, file_id)[0].severity
+        );
+
+        let config = config_for(
+            "my_lint",
+            LinterConfig {
+                severity: Some(Severity::Error),
+                ..Default::default()
+            },
+        );
+        assert_eq_expected!(
+            Severity::Error,
+            diagnostics_for_with(&lint, &sema, file_id, &config)[0].severity
+        );
+    }
+
+    /// Ad-hoc lints run on test modules by default, as they always have. Only an
+    /// explicit `include_tests = false` changes that.
+    #[test]
+    fn linter_config_can_exclude_test_modules() {
+        use elp_ide_db::elp_base_db::assert_eq_expected;
+        let (db, files, _) = RootDatabase::with_many_files(
+            r#"
+//- /src/main.erl
+t() -> ok.
+//- /test/main_SUITE.erl extra:test
+t() -> ok.
+"#,
+        );
+        let sema = Semantic::new(&db);
+        let lint = named_lint("my_lint", "ssr: ok.");
+
+        for file_id in &files {
+            assert_eq_expected!(1, diagnostics_for(&lint, &sema, *file_id).len());
+        }
+
+        let config = config_for(
+            "my_lint",
+            LinterConfig {
+                include_tests: Some(false),
+                ..Default::default()
+            },
+        );
+        let counts: Vec<_> = files
+            .iter()
+            .map(|file_id| diagnostics_for_with(&lint, &sema, *file_id, &config).len())
+            .collect();
+        // src still reported, the suite is not.
+        let expected = vec![1, 0];
+        assert_eq_expected!(expected, counts);
     }
 
     /// Every way a `LintMatchSsr` entry is rejected, as one table rather than a
@@ -1703,8 +1953,7 @@ patterns = [
         let lint = MatchSsr::from_patterns(vec![
             SsrPattern::new("ssr: ok.").with_label(Some("ok_literal".to_string())),
         ]);
-        let mut acc = Vec::new();
-        lint.get_diagnostics(&mut acc, &sema, file_id);
+        let acc = diagnostics_for(&lint, &sema, file_id);
         assert_eq_expected!(1, acc.len());
         let Some(DiagnosticExtra::Ssr { pattern_label, .. }) = &acc[0].extra else {
             panic!("expected DiagnosticExtra::Ssr, got {:?}", acc[0].extra);

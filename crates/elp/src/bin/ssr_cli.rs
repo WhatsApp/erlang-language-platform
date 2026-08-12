@@ -550,7 +550,7 @@ fn do_parse_one(
         let sema = Semantic::new(database);
         let mut diags = Vec::new();
         if let Some(lints) = config.ad_hoc_lints() {
-            lints.get_diagnostics(&mut diags, &sema, file_id);
+            lints.get_diagnostics(&mut diags, &sema, file_id, config);
         }
         diags
     })?;

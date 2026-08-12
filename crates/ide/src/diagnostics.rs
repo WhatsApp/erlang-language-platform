@@ -1839,7 +1839,7 @@ pub fn native_diagnostics(
         {
             let _guard = in_flight::begin("native:ad_hoc_lints");
             if let Some(lints) = config.ad_hoc_lints() {
-                lints.get_diagnostics(&mut res, &sema, file_id);
+                lints.get_diagnostics(&mut res, &sema, file_id, config);
             }
         }
         {
