@@ -34,6 +34,7 @@ use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LintConfig;
 use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::diagnostics::MatchSsr;
+use elp_ide::elp_ide_db::DiagnosticCode;
 use elp_ide::elp_ide_db::LineCol;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
@@ -236,9 +237,11 @@ pub fn run_ssr_command(
         lint_config.ad_hoc_lints.lints.push(ssr_lint);
     }
 
-    // Build the diagnostics config
+    // Build the diagnostics config. Derive the filter from the code itself so
+    // it cannot drift from `DiagnosticCode::as_code`.
+    let ssr_match_code = DiagnosticCode::AdHoc("ssr-match".to_string()).as_code();
     let diagnostics_config = DiagnosticsConfig::default()
-        .configure_diagnostics(&lint_config, &["ad-hoc: ssr-match".to_string()], &[])?
+        .configure_diagnostics(&lint_config, &[ssr_match_code], &[])?
         .set_include_generated(args.include_generated)
         .set_experimental(false)
         .set_use_cli_severity(false);

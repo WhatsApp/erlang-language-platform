@@ -1,6 +1,6 @@
 Diagnostics reported:
-app_a/src/app_a.erl:13:5-13:20::[WeakWarning] [ad-hoc: app_a:baz/2] 'app_a:baz/2' called
-app_a/src/app_a.erl:14:5-14:34::[WeakWarning] [ad-hoc: app_b:application_env_error/0] 'app_b:application_env_error/0' called
+app_a/src/app_a.erl:13:5-13:20::[WeakWarning] [ad-hoc:app_a:baz/2] 'app_a:baz/2' called
+app_a/src/app_a.erl:14:5-14:34::[WeakWarning] [ad-hoc:app_b:application_env_error/0] 'app_b:application_env_error/0' called
 app_a/src/app_a.erl:9:6-9:7::[Warning] [W0010] this variable is unused
 app_a/src/app_a_unused_param.erl:5:5-5:6::[Warning] [W0010] this variable is unused
 app_b/src/app_b_unused_param.erl:5:5-5:6::[Warning] [W0010] this variable is unused

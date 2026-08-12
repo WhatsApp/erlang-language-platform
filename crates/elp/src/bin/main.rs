@@ -1507,7 +1507,7 @@ mod tests {
                     "app_b",
                     "--apply-fix",
                     "--diagnostic-filter",
-                    "ad-hoc: application:get_env/2",
+                    "ad-hoc:application:get_env/2",
                     "--one-shot",
                     "--to",
                     tmp_path,
@@ -2049,6 +2049,10 @@ mod tests {
         )
     }
 
+    /// Deliberately passes the legacy spaced `ad-hoc: <name>` spelling to
+    /// `--diagnostic-filter`. `as_code` emits `ad-hoc:<name>` without the space,
+    /// but `is_adhoc` still accepts the spaced form so existing invocations do
+    /// not break. Keep one test on the old spelling to cover that.
     #[test]
     fn lint_ssr_from_config() {
         simple_snapshot_sorted(
@@ -2089,7 +2093,7 @@ mod tests {
                 &config_file,
                 "--experimental",
                 "--diagnostic-filter",
-                "ad-hoc: ssr-match",
+                "ad-hoc:ssr-match",
             ],
             "linter",
             resource_file("linter/ssr_ad_hoc_parse_fail.stdout"),

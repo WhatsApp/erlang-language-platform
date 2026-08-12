@@ -1069,6 +1069,28 @@ mod tests {
 
     /// Regression: `{_@A, _@A}` previously panicked through the singular
     /// `placeholder_text` accessor. Verify one binding per occurrence.
+    /// The point of the `ad-hoc:<name>` code spelling: a suppression comment can
+    /// name it. Exercised through the full diagnostics path, because it is the
+    /// post-pass in `native_diagnostics` that applies suppression — the unit
+    /// helpers here call `get_diagnostics` directly and never reach it.
+    #[test]
+    fn an_ignore_comment_suppresses_an_ad_hoc_lint() {
+        let lints = LintsFromConfig {
+            lints: vec![Lint::LintMatchSsr(MatchSsr::from_pattern("ssr: ok."))],
+        };
+        crate::tests::check_diagnostics_with_config(
+            crate::diagnostics::DiagnosticsConfig::default().set_lints_from_config(&lints),
+            r#"
+            //- /src/main.erl
+            -module(main).
+            f() -> ok.
+            %%     ^^ weak: ad-hoc:ssr-match: SSR pattern matched: ssr: ok.
+            %% elp:ignore ad-hoc:ssr-match
+            g() -> ok.
+            "#,
+        );
+    }
+
     #[test]
     fn ssr_diagnostic_handles_repeated_placeholder() {
         use elp_ide_db::elp_base_db::assert_eq_expected;

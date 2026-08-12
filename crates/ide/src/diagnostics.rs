@@ -3443,7 +3443,7 @@ foo() -> XX 3.0.
 
             do_foo() ->
               X = foo:bar(),
-            %%    ^^^^^^^^^ 💡 weak: ad-hoc: foo:bar/0: 'foo:bar/0' called
+            %%    ^^^^^^^^^ 💡 weak: ad-hoc:foo:bar/0: 'foo:bar/0' called
               X.
             //- /src/foo.erl
             -module(foo).

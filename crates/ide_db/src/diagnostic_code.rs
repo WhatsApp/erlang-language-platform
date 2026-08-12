@@ -310,7 +310,7 @@ impl DiagnosticCode {
         match self {
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => format!("eqwalizer: {c}"),
-            DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
+            DiagnosticCode::AdHoc(c) => format!("ad-hoc:{c}"),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_code(),
             _ => self
                 .get_str(CODE_PROP)
@@ -323,7 +323,7 @@ impl DiagnosticCode {
         match self {
             DiagnosticCode::ErlangService(c) => c.to_string(),
             DiagnosticCode::Eqwalizer(c) => c.to_string(),
-            DiagnosticCode::AdHoc(c) => format!("ad-hoc: {c}"),
+            DiagnosticCode::AdHoc(c) => format!("ad-hoc:{c}"),
             // @fb-only: DiagnosticCode::MetaOnly(c) => c.as_label(),
             _ => self.as_ref().to_string(),
         }
@@ -399,9 +399,13 @@ impl DiagnosticCode {
 
     /// Check if the diagnostic label is for an AdHoc one.
     fn is_adhoc(s: &str) -> Option<String> {
-        // Looking for something like "ad-hoc: ad-hoc-title-1"
+        // Looking for something like "ad-hoc:ad-hoc-title-1". The space after the
+        // colon is optional: `as_code` no longer emits one, so that a code survives
+        // the whitespace split `elp_ide_db::metadata` applies to `% elp:ignore`
+        // comments, while the spaced spelling stays accepted so existing
+        // `--diagnostic-filter 'ad-hoc: <name>'` invocations keep working.
         static RE: LazyLock<Regex> =
-            LazyLock::new(|| Regex::new(r"^ad-hoc: ([^\s]+)$").expect("regex should be valid"));
+            LazyLock::new(|| Regex::new(r"^ad-hoc:\s?([^\s]+)$").expect("regex should be valid"));
 
         RE.captures_iter(s).next().map(|c| c[1].to_string())
     }
@@ -500,6 +504,7 @@ impl fmt::Display for DiagnosticCode {
 
 #[cfg(test)]
 mod tests {
+    use elp_base_db::assert_eq_expected;
     use expect_test::expect;
     #[cfg(not(buck_build))]
     use paths::Utf8PathBuf;
@@ -570,6 +575,32 @@ mod tests {
             ]
         "#]]
         .assert_debug_eq(&codes);
+    }
+
+    /// `as_code` emits `ad-hoc:<name>` without a space so that the code is a
+    /// single whitespace-delimited token, which is what makes
+    /// `% elp:ignore ad-hoc:<name>` resolvable. The legacy spaced spelling stays
+    /// parseable so existing `--diagnostic-filter 'ad-hoc: <name>'` invocations
+    /// keep working.
+    #[test]
+    fn adhoc_code_has_no_space_and_legacy_spelling_still_parses() {
+        assert_eq_expected!(
+            "ad-hoc:my-lint",
+            DiagnosticCode::AdHoc("my-lint".to_string()).as_code()
+        );
+        assert_eq_expected!(
+            "ad-hoc:my-lint",
+            DiagnosticCode::AdHoc("my-lint".to_string()).as_label()
+        );
+        let expected = Some(DiagnosticCode::AdHoc("my-lint".to_string()));
+        assert_eq_expected!(
+            expected,
+            DiagnosticCode::maybe_from_string("ad-hoc:my-lint")
+        );
+        assert_eq_expected!(
+            expected,
+            DiagnosticCode::maybe_from_string("ad-hoc: my-lint")
+        );
     }
 
     #[test]
