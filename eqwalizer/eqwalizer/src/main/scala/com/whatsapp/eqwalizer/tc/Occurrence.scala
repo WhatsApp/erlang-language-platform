@@ -210,12 +210,13 @@ final class Occurrence(pipelineContext: PipelineContext) {
     val clauseEnvs = ListBuffer.empty[Env]
     for (clause <- c.clauses) {
       val pat = clause.pats.head
+      val (props, aliases) = patProps(x, Nil, pat, env)
       val (patPos, patNeg) =
         pat match {
           case PatVar(`x`) => (None, None)
-          case _           => patProps(x, Nil, pat, env).unzip
+          case _           => props.unzip
         }
-      val aMap = aliases(x, Nil, pat, env).toMap
+      val aMap = aliases.toMap
       val (testPos, testNeg) = guardsProps(clause.guards, aMap)
       val localClauseProps = patPos.toList ++ testPos
       val clauseProps =
@@ -245,10 +246,11 @@ final class Occurrence(pipelineContext: PipelineContext) {
       val patsNeg = ListBuffer.empty[Prop]
       var aMap: AMap = Map.empty
       for ((x, pat) <- vars.zip(pats)) {
-        val (patPos, patNeg) = patProps(x, Nil, pat, env).unzip
+        val (props, aliases) = patProps(x, Nil, pat, env)
+        val (patPos, patNeg) = props.unzip
         patPos.foreach(patsPos.addOne)
         patNeg.foreach(patsNeg.addOne)
-        aMap = aMap ++ aliases(x, Nil, pat, env).toMap
+        aMap = aMap ++ aliases
       }
       val (testPos, testNeg) = guardsProps(clause.guards, aMap)
       val localClauseProps = (patsPos ++ testPos).toList
@@ -383,49 +385,6 @@ final class Occurrence(pipelineContext: PipelineContext) {
     if (acc2.contains(False)) List(False)
     else props ++ acc2
   }
-
-  private def aliases(x: String, path: Path, pat: Pat, env: Env): List[(Name, Obj)] =
-    pat match {
-      case PatVar(v) if !env.contains(v) =>
-        val obj = mkObj(x, path)
-        List(v -> obj)
-      case PatTuple(elems) =>
-        val arity = elems.size
-        elems.zipWithIndex.flatMap { case (elem, i) =>
-          val pathI = path ++ List(TupleField(i, Some(arity)))
-          aliases(x, pathI, elem, env)
-        }
-      case PatRecord(recName, fields, gen) =>
-        val fieldsAliases =
-          fields.flatMap(field => aliases(x, path ++ List(RecordField(field.name, recName)), field.pat, env))
-        gen match {
-          case None => fieldsAliases
-          case Some(genPat) =>
-            val recDecl = util.getRecord(module, recName)
-            recDecl match {
-              case None => fieldsAliases
-              case Some(recDecl) =>
-                val genAliases =
-                  recDecl.fields
-                    .filter(fDecl => !fields.exists(f => f.name == fDecl._1))
-                    .flatMap(fDecl => aliases(x, path ++ List(RecordField(fDecl._1, recName)), genPat, env))
-                genAliases ++ fieldsAliases
-            }
-        }
-      case PatMatch(pat1, pat2) =>
-        aliases(x, path, pat1, env) ++ aliases(x, path, pat2, env)
-      case PatMap(pats) =>
-        pats.flatMap { case (patKey, patR) =>
-          Key.fromTest(patKey).map { key =>
-            val pathI = path ++ List(MapField(key))
-            aliases(x, pathI, patR, env)
-          }
-        }.flatten
-      case PatCons(hpat, tpat) =>
-        aliases(x, path ++ List(ListHead), hpat, env) ++ aliases(x, path ++ List(ListTail), tpat, env)
-      case _ =>
-        Nil
-    }
 
   private def guardsProps(guards: List[Guard], aMap: Map[Name, Obj]): (Option[Prop], Option[Prop]) =
     // the same as connecting via OR
@@ -780,110 +739,93 @@ final class Occurrence(pipelineContext: PipelineContext) {
     }
   }
 
-  private def patProps(x: String, path: Path, pat: Pat, env: Env): Option[(Prop, Prop)] = {
+  private type PatInfo = (Option[(Prop, Prop)], List[(Name, Obj)])
+
+  private def patNode(posThis: Prop, negThis: Prop, subs: List[PatInfo]): PatInfo = {
+    val (posThat, negThat) = subs.flatMap(_._1).unzip
+    val pos = and(posThis :: posThat)
+    val neg = or(List(negThis, and(List(posThis, or(negThat)))))
+    (Some(pos, neg), subs.flatMap(_._2))
+  }
+
+  private def patProps(x: String, path: Path, pat: Pat, env: Env): PatInfo = {
     pat match {
       case PatWild() =>
-        None
+        (None, Nil)
       case PatVar(v) =>
-        env.get(v) map { _ => (Unknown, Unknown) }
+        if (env.contains(v)) (Some(Unknown, Unknown), Nil)
+        else (None, List(v -> mkObj(x, path)))
       case PatAtom(s) =>
         val obj = mkObj(x, path)
-        val pos = Pos(obj, AtomLitType(s))
-        val neg = Neg(obj, AtomLitType(s))
-        Some(pos, neg)
+        (Some(Pos(obj, AtomLitType(s)), Neg(obj, AtomLitType(s))), Nil)
       case PatFloat() =>
-        val obj = mkObj(x, path)
-        val pos = Pos(obj, FloatType)
-        Some(pos, Unknown)
+        (Some(Pos(mkObj(x, path), FloatType), Unknown), Nil)
       case PatInt() =>
-        val obj = mkObj(x, path)
-        val pos = Pos(obj, IntegerType)
-        Some(pos, Unknown)
+        (Some(Pos(mkObj(x, path), IntegerType), Unknown), Nil)
       case PatTuple(elems) =>
-        val arity = elems.size
         val obj = mkObj(x, path)
-        val posThis = Pos(obj, TupleType(List.fill(arity)(AnyType)))
-        val negThis = Neg(obj, TupleType(List.fill(arity)(AnyType)))
-        val (posThat, negThat) = elems.zipWithIndex.flatMap { case (elem, i) =>
+        val arity = elems.size
+        val tupleTy = TupleType(List.fill(arity)(AnyType))
+        val elemsInfo = elems.zipWithIndex.map { case (elem, i) =>
           patProps(x, path :+ TupleField(i, Some(arity)), elem, env)
-        }.unzip
-        val pos = and(posThis :: posThat)
-        val neg = or(List(negThis, and(List(posThis, or(negThat)))))
-        Some(pos, neg)
+        }
+        patNode(Pos(obj, tupleTy), Neg(obj, tupleTy), elemsInfo)
       case PatRecord(recName, fields, gen) =>
         val obj = mkObj(x, path)
-        val posThis = Pos(obj, RecordType(recName)(module))
-        val negThis = Neg(obj, RecordType(recName)(module))
-        val (posNamed, negNamed) =
-          fields.flatMap(field => patProps(x, path :+ RecordField(field.name, recName), field.pat, env)).unzip
-        val (posThat, negThat) = gen match {
-          case None => (posNamed, negNamed)
-          case Some(genPat) =>
-            val recDecl = util.getRecord(module, recName)
-            recDecl match {
-              case None => (posNamed, negNamed)
-              case Some(recDecl) =>
-                val (posGen, negGen) =
-                  recDecl.fields
-                    .filter(fDecl => !fields.exists(f => f.name == fDecl._1))
-                    .flatMap(fDecl => patProps(x, path :+ RecordField(fDecl._1, recName), genPat, env))
-                    .unzip
-                (posNamed ++ posGen, negNamed ++ negGen)
-            }
+        val recTy = RecordType(recName)(module)
+        val namedInfo =
+          fields.map(field => patProps(x, path :+ RecordField(field.name, recName), field.pat, env))
+        lazy val rec = util.getRecord(module, recName)
+        // `_ = GenPat` applies to every field not mentioned explicitly
+        val genInfo = gen.toList.flatMap { genPat =>
+          rec.toList.flatMap {
+            _.fields
+              .filter(fDecl => !fields.exists(f => f.name == fDecl.name))
+              .map(fDecl => patProps(x, path :+ RecordField(fDecl.name, recName), genPat, env))
+          }
         }
-        val pos = and(posThis :: posThat)
-        val neg = or(List(negThis, and(List(posThis, or(negThat)))))
-        Some(pos, neg)
-      case PatMatch(PatVar(alias), pat1) =>
-        env.get(alias) match {
-          case Some(_) =>
-            Some(Unknown, Unknown)
-          case None =>
-            patProps(x, path, pat1, env)
+        patNode(Pos(obj, recTy), Neg(obj, recTy), genInfo ++ namedInfo)
+      case PatMatch(pat1, pat2) =>
+        val (props1, aliases1) = patProps(x, path, pat1, env)
+        val (props2, aliases2) = patProps(x, path, pat2, env)
+        // at most one side can be informative (the other is then a variable or
+        // a wildcard); two informative sides are beyond our precision
+        val props = (props1, props2) match {
+          case (None, props) => props
+          case (props, None) => props
+          case _             => Some(Unknown, Unknown)
         }
-      case PatMatch(pat1, PatVar(alias)) =>
-        env.get(alias) match {
-          case Some(_) =>
-            Some(Unknown, Unknown)
-          case None =>
-            patProps(x, path, pat1, env)
-        }
+        (props, aliases1 ++ aliases2)
       case PatMap(pats) =>
         val obj = mkObj(x, path)
-        val posThis = Pos(obj, MapType(Map(), AnyType, AnyType))
-        val negThis = Neg(obj, MapType(Map(), AnyType, AnyType))
-        val fields = pats.map { case (patK, patV) => Key.fromTest(patK).map(_ -> patV) }
-        val (posThat, negThat) = fields.map {
-          case Some(field, pat) =>
-            val objField = mkObj(x, path :+ MapField(field))
-            patProps(x, path :+ MapField(field), pat, env).getOrElse((Pos(objField, AnyType), Neg(objField, AnyType)))
-          case None =>
-            (Unknown, Unknown)
-        }.unzip
-        val pos = and(posThis :: posThat)
-        val neg = or(List(negThis, and(List(posThis, or(negThat)))))
-        Some(pos, neg)
+        val mapTy = MapType(Map(), AnyType, AnyType)
+        val assocsInfo = pats.map { case (patK, patV) =>
+          Key.fromTest(patK) match {
+            case Some(key) =>
+              val keyPath = path :+ MapField(key)
+              val (props, aliases) = patProps(x, keyPath, patV, env)
+              // the key is required even when its value pattern constrains nothing
+              val objKey = mkObj(x, keyPath)
+              (props.orElse(Some(Pos(objKey, AnyType), Neg(objKey, AnyType))), aliases)
+            case None =>
+              (Some(Unknown, Unknown), Nil)
+          }
+        }
+        patNode(Pos(obj, mapTy), Neg(obj, mapTy), assocsInfo)
       case PatNil() =>
         val obj = mkObj(x, path)
-        val pos = Pos(obj, NilType)
-        val neg = Neg(obj, NilType)
-        Some(pos, neg)
+        (Some(Pos(obj, NilType), Neg(obj, NilType)), Nil)
       case PatCons(hpat, tpat) =>
         val obj = mkObj(x, path)
         val posThis = and(List(Pos(obj, ListType(AnyType)), Neg(obj, NilType)))
         val negThis = or(List(Neg(obj, ListType(AnyType)), Pos(obj, NilType)))
-        val (posThat, negThat) =
-          List(patProps(x, path :+ ListHead, hpat, env), patProps(x, path :+ ListTail, tpat, env)).flatten.unzip
-        val pos = and(posThis :: posThat)
-        val neg = or(List(negThis, and(List(posThis, or(negThat)))))
-        Some(pos, neg)
+        val hInfo = patProps(x, path :+ ListHead, hpat, env)
+        val tInfo = patProps(x, path :+ ListTail, tpat, env)
+        patNode(posThis, negThis, List(hInfo, tInfo))
       case PatBinary(_) =>
-        val obj = mkObj(x, path)
-        val pos = Pos(obj, BinaryType)
-        val neg = Unknown
-        Some(pos, neg)
+        (Some(Pos(mkObj(x, path), BinaryType), Unknown), Nil)
       case _ =>
-        Some(Unknown, Unknown)
+        (Some(Unknown, Unknown), Nil)
     }
   }
 
