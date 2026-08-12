@@ -230,6 +230,10 @@ pub struct Diagnostic {
     pub related_info: Option<Vec<RelatedInformation>>,
     pub code: DiagnosticCode,
     pub code_doc_uri: Option<String>,
+    /// Documentation path to report instead of the one derived from `code`.
+    /// Config-declared lints have no entry in the error index, so they supply
+    /// their own, pointing at wherever the project documents them.
+    pub doc_path_override: Option<String>,
     /// Producer-specific data; see `DiagnosticExtra`.
     pub extra: Option<DiagnosticExtra>,
 }
@@ -270,12 +274,18 @@ impl Diagnostic {
             fixes: None,
             related_info: None,
             code_doc_uri: code.as_uri(),
+            doc_path_override: None,
             extra: None,
         }
     }
 
     pub(crate) fn with_extra(mut self, extra: DiagnosticExtra) -> Diagnostic {
         self.extra = Some(extra);
+        self
+    }
+
+    pub(crate) fn with_doc_path_override(mut self, doc_path: Option<String>) -> Diagnostic {
+        self.doc_path_override = doc_path;
         self
     }
 
@@ -1788,6 +1798,7 @@ pub fn eqwalizer_to_diagnostic(
         fixes: None,
         related_info: None,
         code_doc_uri: Some(d.uri.clone()),
+        doc_path_override: None,
         extra: None,
     };
     add_eqwalizer_assists(sema, file_id, d, &mut diagnostic);
@@ -3589,6 +3600,7 @@ foo() -> XX 3.0.
                     related_info: None,
                     code: "L1227".into(),
                     code_doc_uri: None,
+                    doc_path_override: None,
                     extra: None,
                 },
                 Diagnostic {
@@ -3602,6 +3614,7 @@ foo() -> XX 3.0.
                     related_info: None,
                     code: "L1227".into(),
                     code_doc_uri: None,
+                    doc_path_override: None,
                     extra: None,
                 },
                 Diagnostic {
@@ -3615,6 +3628,7 @@ foo() -> XX 3.0.
                     related_info: None,
                     code: "L1308".into(),
                     code_doc_uri: None,
+                    doc_path_override: None,
                     extra: None,
                 },
             ],
@@ -3632,6 +3646,7 @@ foo() -> XX 3.0.
                 related_info: None,
                 code: "P1711".into(),
                 code_doc_uri: None,
+                doc_path_override: None,
                 extra: None,
             }],
         )]);

@@ -262,7 +262,11 @@ pub fn ide_to_arc_diagnostic(
         None => message,
     };
     let severity = diagnostic.severity(use_cli_severity);
-    let doc_path = diagnostic.code.as_doc_path();
+    // A config-declared lint documents itself; only fall back to the error index.
+    let doc_path = diagnostic
+        .doc_path_override
+        .clone()
+        .or_else(|| diagnostic.code.as_doc_path());
     let mut arc = arc_types::Diagnostic::new(
         path,
         line_num,

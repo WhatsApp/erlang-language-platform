@@ -176,6 +176,10 @@ pub struct MatchSsr {
     pub name: Option<String>,
     /// Default message for every pattern that does not carry its own.
     pub description: Option<String>,
+    /// Where this lint is documented, surfaced as `docPath` in JSON output.
+    /// A config-declared lint has no error-index page, so a consumer that wants
+    /// to explain or act on a match needs the project to point at its own doc.
+    pub doc: Option<String>,
     pub patterns: Vec<SsrPattern>,
     pub strategy: Option<Strategy>,
     pub severity: Option<Severity>,
@@ -189,10 +193,10 @@ impl Serialize for MatchSsr {
         use serde::ser::SerializeStruct;
 
         // The most either branch can emit: singular is ssr_pattern + message +
-        // pattern_label, multi is name + description + patterns, and both add
-        // severity + the two strategies. Text formats ignore this hint, but some
-        // binary ones rely on it.
-        let mut state = serializer.serialize_struct("MatchSsr", 6)?;
+        // pattern_label, multi is name + description + doc + patterns, and both
+        // add severity + the two strategies. Text formats ignore this hint, but
+        // some binary ones rely on it.
+        let mut state = serializer.serialize_struct("MatchSsr", 7)?;
         // Emit the singular spelling whenever the lint is expressible in it, so
         // that `elp search --dump-config` output stays as it was.
         if self.is_singular() {
@@ -210,6 +214,9 @@ impl Serialize for MatchSsr {
             }
             if let Some(ref description) = self.description {
                 state.serialize_field("description", description)?;
+            }
+            if let Some(ref doc) = self.doc {
+                state.serialize_field("doc", doc)?;
             }
             state.serialize_field("patterns", &self.patterns)?;
         }
@@ -262,6 +269,8 @@ impl<'de> Deserialize<'de> for MatchSsr {
             name: Option<String>,
             #[serde(default)]
             description: Option<String>,
+            #[serde(default)]
+            doc: Option<String>,
             #[serde(default)]
             ssr_pattern: Option<String>,
             #[serde(default)]
@@ -360,6 +369,7 @@ impl<'de> Deserialize<'de> for MatchSsr {
         Ok(MatchSsr {
             name: helper.name,
             description: helper.description,
+            doc: helper.doc,
             patterns,
             strategy,
             severity: helper.severity,
@@ -420,6 +430,7 @@ impl MatchSsr {
         Self {
             name: None,
             description: None,
+            doc: None,
             patterns,
             strategy: None,
             severity: None,
@@ -429,7 +440,10 @@ impl MatchSsr {
     /// Whether this lint round-trips through the singular `ssr_pattern`
     /// spelling.
     fn is_singular(&self) -> bool {
-        self.name.is_none() && self.description.is_none() && self.patterns.len() == 1
+        self.name.is_none()
+            && self.description.is_none()
+            && self.doc.is_none()
+            && self.patterns.len() == 1
     }
 
     /// The code every match of this lint reports under.
@@ -469,6 +483,7 @@ impl MatchSsr {
 
                 let diag = Diagnostic::new(code.clone(), message, matched.range.range)
                     .with_severity(severity)
+                    .with_doc_path_override(self.doc.clone())
                     .with_extra(extra);
                 acc.push(diag);
             }
@@ -521,11 +536,48 @@ mod tests {
     use super::ReplaceCallAction;
     use super::ReplaceInSpec;
     use super::ReplaceInSpecAction;
+    use super::Severity;
     use super::SsrPattern;
     use crate::codemod_helpers::FunctionMatch;
     use crate::codemod_helpers::MFA;
+    use crate::diagnostics::LintConfig;
     use crate::diagnostics::TypeReplacement;
     use crate::diagnostics::replace_call::Replacement;
+
+    /// The two `[[ad_hoc_lints.lints]]` examples in
+    /// `website/docs/get-started/configure-project/elp-lint-toml.md`, verbatim.
+    /// Keep the two copies in step: these are the configs users write against,
+    /// and nothing else would notice the documented form drifting from the
+    /// accepted one.
+    const DOCUMENTED_SINGLE_PATTERN: &str = r#"
+[[ad_hoc_lints.lints]]
+type = "LintMatchSsr"
+ssr_pattern = "ssr: lists:reverse(lists:reverse(_@List))."
+message = "Double reversal is a no-op"
+severity = "warning"
+"#;
+
+    const DOCUMENTED_NAMED_LINT: &str = r#"
+[[ad_hoc_lints.lints]]
+type = "LintMatchSsr"
+name = "banned_config_key"
+description = "This configuration key is no longer supported"
+doc = "docs/lints/banned_config_key.md"
+severity = "warning"
+patterns = [
+  { ssr = "ssr: legacy_timeout.", label = "legacy_timeout_atom" },
+  { ssr = 'ssr: <<"legacy_timeout">>.', label = "legacy_timeout_binary" },
+  { ssr = "ssr: retry_forever.", label = "retry_forever_atom",
+    message = "Unbounded retries are not allowed" },
+]
+"#;
+
+    fn only_ssr_lint(config: &LintConfig) -> &MatchSsr {
+        match &config.ad_hoc_lints.lints[..] {
+            [Lint::LintMatchSsr(match_ssr)] => match_ssr,
+            other => panic!("expected exactly one SSR lint, got {other:?}"),
+        }
+    }
 
     /// The singular (`ssr_pattern`) spelling, which most tests below exercise.
     fn match_ssr(ssr: &str, message: Option<&str>) -> MatchSsr {
@@ -929,6 +981,7 @@ mod tests {
             MatchSsr {
                 name: None,
                 description: None,
+                doc: None,
                 patterns: [
                     SsrPattern {
                         ssr: "ssr: _@A = 10.",
@@ -1054,6 +1107,7 @@ mod tests {
                         MatchSsr {
                             name: None,
                             description: None,
+                            doc: None,
                             patterns: [
                                 SsrPattern {
                                     ssr: "ssr: _@A = 10.",
@@ -1236,6 +1290,7 @@ mod tests {
                         MatchSsr {
                             name: None,
                             description: None,
+                            doc: None,
                             patterns: [
                                 SsrPattern {
                                     ssr: "ssr: _@A = 10.",
@@ -1406,8 +1461,135 @@ mod tests {
         assert_eq_expected!("ad-hoc:ssr-match", acc[0].code.as_code());
     }
 
-    /// The tag of the `Lint` enum must still reach the variant, which
-    /// `deny_unknown_fields` could plausibly have broken.
+    /// The documented single-pattern config parses, and means what the prose
+    /// beside it says: no name, so the shared code.
+    #[test]
+    fn documented_single_pattern_config_parses() {
+        use elp_ide_db::elp_base_db::assert_eq_expected;
+        let config: LintConfig = toml::from_str(DOCUMENTED_SINGLE_PATTERN).unwrap();
+        let lint = only_ssr_lint(&config);
+
+        assert_eq_expected!(None, lint.name.as_deref());
+        assert_eq_expected!("ad-hoc:ssr-match", lint.code().as_code());
+        assert_eq_expected!(1, lint.patterns.len());
+        assert_eq_expected!(
+            Some("Double reversal is a no-op"),
+            lint.patterns[0].message.as_deref()
+        );
+        assert_eq_expected!(Some(Severity::Warning), lint.severity);
+    }
+
+    /// The documented named config parses, means what the prose says, and
+    /// survives a write/read round-trip — `elp search --dump-config` emits these
+    /// files, so the written form has to be one the reader accepts.
+    #[test]
+    fn documented_named_config_parses_and_round_trips() {
+        use elp_ide_db::elp_base_db::assert_eq_expected;
+        let config: LintConfig = toml::from_str(DOCUMENTED_NAMED_LINT).unwrap();
+        let lint = only_ssr_lint(&config);
+
+        assert_eq_expected!(Some("banned_config_key"), lint.name.as_deref());
+        assert_eq_expected!("ad-hoc:banned_config_key", lint.code().as_code());
+        assert_eq_expected!(
+            Some("This configuration key is no longer supported"),
+            lint.description.as_deref()
+        );
+        assert_eq_expected!(Some("docs/lints/banned_config_key.md"), lint.doc.as_deref());
+        assert_eq_expected!(Some(Severity::Warning), lint.severity);
+
+        let labels: Vec<_> = lint
+            .patterns
+            .iter()
+            .map(|pattern| pattern.label.as_deref())
+            .collect();
+        let expected_labels = vec![
+            Some("legacy_timeout_atom"),
+            Some("legacy_timeout_binary"),
+            Some("retry_forever_atom"),
+        ];
+        assert_eq_expected!(expected_labels, labels);
+        // Only the third carries its own message; the rest fall back to `description`.
+        assert_eq_expected!(
+            Some("Unbounded retries are not allowed"),
+            lint.patterns[2].message.as_deref()
+        );
+
+        // Writing it back produces something the reader accepts, unchanged.
+        let written = toml::to_string(&lint).unwrap();
+        let reread: MatchSsr = toml::from_str(&written).unwrap();
+        assert_eq_expected!(written, toml::to_string(&reread).unwrap());
+        expect![[r#"
+            name = "banned_config_key"
+            description = "This configuration key is no longer supported"
+            doc = "docs/lints/banned_config_key.md"
+            severity = "warning"
+
+            [[patterns]]
+            ssr = "ssr: legacy_timeout."
+            label = "legacy_timeout_atom"
+
+            [[patterns]]
+            ssr = 'ssr: <<"legacy_timeout">>.'
+            label = "legacy_timeout_binary"
+
+            [[patterns]]
+            ssr = "ssr: retry_forever."
+            label = "retry_forever_atom"
+            message = "Unbounded retries are not allowed"
+        "#]]
+        .assert_eq(&written);
+    }
+
+    /// `doc` reaches the diagnostic, which is what lets a consumer of the JSON
+    /// output find the project's own documentation for a config-declared lint.
+    #[test]
+    fn ssr_doc_reaches_the_diagnostic() {
+        use elp_ide_db::elp_base_db::assert_eq_expected;
+        let (db, file_id) = RootDatabase::with_single_file("t() -> ok.");
+        let sema = Semantic::new(&db);
+        let mut lint = MatchSsr::from_pattern("ssr: ok.");
+        lint.name = Some("my_lint".to_string());
+        lint.doc = Some("docs/my_lint.md".to_string());
+
+        let mut acc = Vec::new();
+        lint.get_diagnostics(&mut acc, &sema, file_id);
+        assert_eq_expected!(1, acc.len());
+        assert_eq_expected!(Some("docs/my_lint.md"), acc[0].doc_path_override.as_deref());
+    }
+
+    /// Without `doc` there is no override, so the error-index path derived from
+    /// the code is used (which is `None` for ad-hoc codes).
+    #[test]
+    fn ssr_without_doc_has_no_override() {
+        use elp_ide_db::elp_base_db::assert_eq_expected;
+        let (db, file_id) = RootDatabase::with_single_file("t() -> ok.");
+        let sema = Semantic::new(&db);
+        let mut acc = Vec::new();
+        MatchSsr::from_pattern("ssr: ok.").get_diagnostics(&mut acc, &sema, file_id);
+        assert_eq_expected!(1, acc.len());
+        assert_eq_expected!(None, acc[0].doc_path_override.as_deref());
+    }
+
+    /// `doc` alone is enough to leave the singular spelling, otherwise it would
+    /// be silently dropped on serialization.
+    #[test]
+    fn serde_match_ssr_doc_round_trips() {
+        let lint: MatchSsr = toml::from_str(
+            r#"
+              doc = "docs/my_lint.md"
+              ssr_pattern = "ssr: ok."
+             "#,
+        )
+        .unwrap();
+        expect![[r#"
+            doc = "docs/my_lint.md"
+
+            [[patterns]]
+            ssr = "ssr: ok."
+        "#]]
+        .assert_eq(&toml::to_string::<MatchSsr>(&lint).unwrap());
+    }
+
     /// Every way a `LintMatchSsr` entry is rejected, as one table rather than a
     /// test apiece: each case is a config and a phrase its error must carry.
     /// Rejection is the whole point of this validation, so the cases are the
@@ -1492,6 +1674,8 @@ mod tests {
         }
     }
 
+    /// The tag of the `Lint` enum must still reach the variant, which
+    /// `deny_unknown_fields` could plausibly have broken.
     #[test]
     fn serde_lint_tag_survives_deny_unknown_fields() {
         let lints: LintsFromConfig = toml::from_str(
