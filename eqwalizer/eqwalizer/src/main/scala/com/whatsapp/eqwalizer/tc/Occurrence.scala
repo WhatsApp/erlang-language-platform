@@ -16,7 +16,6 @@ import com.whatsapp.eqwalizer.tc
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
-import scala.util.boundary
 
 object Occurrence {
   // Atomic Proposition
@@ -850,24 +849,20 @@ final class Occurrence(pipelineContext: PipelineContext) {
             patProps(x, path, pat1, env)
         }
       case PatMap(pats) =>
-        boundary {
-          val obj = mkObj(x, path)
-          val posThis = Pos(obj, MapType(Map(), AnyType, AnyType))
-          val negThis = Neg(obj, MapType(Map(), AnyType, AnyType))
-          val fields = pats.map { case (patK, patV) =>
-            Key.fromTest(patK) match {
-              case Some(key) => (key, patV)
-              case None      => boundary.break(Some(posThis, Unknown))
-            }
-          }
-          val (posThat, negThat) = fields.map { case (field, pat) =>
+        val obj = mkObj(x, path)
+        val posThis = Pos(obj, MapType(Map(), AnyType, AnyType))
+        val negThis = Neg(obj, MapType(Map(), AnyType, AnyType))
+        val fields = pats.map { case (patK, patV) => Key.fromTest(patK).map(_ -> patV) }
+        val (posThat, negThat) = fields.map {
+          case Some(field, pat) =>
             val objField = mkObj(x, path :+ MapField(field))
             patProps(x, path :+ MapField(field), pat, env).getOrElse((Pos(objField, AnyType), Neg(objField, AnyType)))
-          }.unzip
-          val pos = and(posThis :: posThat)
-          val neg = or(List(negThis, and(List(posThis, or(negThat)))))
-          Some(pos, neg)
-        }
+          case None =>
+            (Unknown, Unknown)
+        }.unzip
+        val pos = and(posThis :: posThat)
+        val neg = or(List(negThis, and(List(posThis, or(negThat)))))
+        Some(pos, neg)
       case PatNil() =>
         val obj = mkObj(x, path)
         val pos = Pos(obj, NilType)
