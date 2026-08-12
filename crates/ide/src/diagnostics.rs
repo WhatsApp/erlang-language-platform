@@ -188,6 +188,7 @@ pub use from_config::LintsFromConfig;
 pub use from_config::MatchSsr;
 pub use from_config::ReplaceCall;
 pub use from_config::ReplaceCallAction;
+pub use from_config::SsrPattern;
 pub use replace_call::Replacement;
 pub use replace_in_spec::TypeReplacement;
 

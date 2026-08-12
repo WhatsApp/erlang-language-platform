@@ -100,6 +100,89 @@ enabled = true
 runs_on_save_only = true
 ```
 
+## [ad_hoc_lints]
+
+Lints defined in the config file itself, rather than compiled into ELP. Each entry
+under `[[ad_hoc_lints.lints]]` has a `type`; this section covers `LintMatchSsr`,
+which matches [structural search](../../structural-search.md) patterns.
+
+### A single pattern
+
+The shortest form takes one pattern and reports under the shared
+`ad-hoc:ssr-match` code:
+
+```toml
+[[ad_hoc_lints.lints]]
+type = "LintMatchSsr"
+ssr_pattern = "ssr: lists:reverse(lists:reverse(_@List))."
+message = "Double reversal is a no-op"
+severity = "warning"
+```
+
+`elp search --dump-config` emits this form.
+
+### A named lint with several patterns
+
+Give the lint a `name` and list its `patterns` to report every match under a
+code of its own, `ad-hoc:<name>`:
+
+```toml
+[[ad_hoc_lints.lints]]
+type = "LintMatchSsr"
+name = "banned_config_key"
+description = "This configuration key is no longer supported"
+severity = "warning"
+patterns = [
+  { ssr = "ssr: legacy_timeout.", label = "legacy_timeout_atom" },
+  { ssr = 'ssr: <<"legacy_timeout">>.', label = "legacy_timeout_binary" },
+  { ssr = "ssr: retry_forever.", label = "retry_forever_atom",
+    message = "Unbounded retries are not allowed" },
+]
+```
+
+A name is required to make the lint individually addressable. Without one, every
+SSR lint in the config shares `ad-hoc:ssr-match` and cannot be filtered,
+suppressed, or configured apart from the others.
+
+### Available keys
+
+| Key | Type | Description |
+| --- | ---- | ----------- |
+| `name` | String | Makes the diagnostic code `ad-hoc:<name>`. ASCII letters, digits, `_` and `-` only; must not collide with an existing code or label. |
+| `description` | String | Default message for every pattern that has no `message` of its own. |
+| `ssr_pattern` | String | A single pattern. Mutually exclusive with `patterns`. |
+| `patterns` | Array | One or more `{ ssr, label, message }` tables. Mutually exclusive with `ssr_pattern`. |
+| `message` | String | Message for the single-pattern form. Use `description` with `patterns`. |
+| `pattern_label` | String | Label for the single-pattern form. Use `label` per pattern with `patterns`. |
+| `severity` | String | `error`, `warning`, `weak`, or `info`. Defaults to `weak`. |
+| `macro_strategy` | String | `expand` (default), `no-expand`, or `visible-expand`. |
+| `paren_strategy` | String | `invisible` (default) or `visible`. |
+
+`label` surfaces as `patternLabel` in `--format json` output, alongside the
+`placeholders` bound by the match — useful when one lint has several patterns and
+the consumer needs to know which one fired.
+
+### Referring to a named lint
+
+The diagnostic code is `ad-hoc:<name>` — with no space, so that it survives the
+whitespace split applied to suppression comments:
+
+```erlang
+% elp:ignore ad-hoc:banned_config_key
+```
+
+```bash
+elp lint --diagnostic-filter 'ad-hoc:banned_config_key'
+```
+
+The same spelling is the key for a [`[linters.<linter>]`](#linters) section. TOML
+bare keys cannot contain `:`, so it must be quoted:
+
+```toml
+[linters."ad-hoc:banned_config_key"]
+exclude_apps = ["my_app"]
+```
+
 ## [dynamic_calls]
 
 Through the `dynamic_calls` section, you can teach ELP about additional dynamic call patterns in your codebase. This helps find-references resolve calls made through custom wrappers that forward to `Module:Function(Args)` at runtime, and helps rename track module name arguments in library calls.

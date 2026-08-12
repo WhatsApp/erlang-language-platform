@@ -34,6 +34,7 @@ use elp_ide::diagnostics::DiagnosticsConfig;
 use elp_ide::diagnostics::LintConfig;
 use elp_ide::diagnostics::LintsFromConfig;
 use elp_ide::diagnostics::MatchSsr;
+use elp_ide::diagnostics::SsrPattern;
 use elp_ide::elp_ide_db::DiagnosticCode;
 use elp_ide::elp_ide_db::LineCol;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
@@ -227,13 +228,11 @@ pub fn run_ssr_command(
         } else {
             None
         };
-        let ssr_lint = diagnostics::Lint::LintMatchSsr(MatchSsr {
-            ssr_pattern: normalized_pattern,
-            message: None,
-            strategy: Some(strategy),
-            severity,
-            pattern_label: label,
-        });
+        let mut match_ssr =
+            MatchSsr::from_patterns(vec![SsrPattern::new(normalized_pattern).with_label(label)]);
+        match_ssr.strategy = Some(strategy);
+        match_ssr.severity = severity;
+        let ssr_lint = diagnostics::Lint::LintMatchSsr(match_ssr);
         lint_config.ad_hoc_lints.lints.push(ssr_lint);
     }
 

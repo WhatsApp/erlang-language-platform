@@ -128,15 +128,57 @@ impl ReplaceInSpec {
 
 // ---------------------------------------------------------------------
 
-#[derive(Debug, Clone)]
-pub struct MatchSsr {
-    pub ssr_pattern: String,
-    pub message: Option<String>,
-    pub strategy: Option<Strategy>,
-    pub severity: Option<Severity>,
+/// One SSR pattern belonging to a [`MatchSsr`] lint.
+///
+/// Unknown keys are rejected: every field here is optional bar `ssr`, so a
+/// misspelt `label` would otherwise be dropped in silence, taking the
+/// `patternLabel` its consumers key on with it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SsrPattern {
+    pub ssr: String,
     /// Optional label, surfaced as `patternLabel` in JSON output. Set via
     /// CLI `LABEL:ssr: PATTERN.` syntax or directly in `.elp_lint.toml`.
-    pub pattern_label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    /// Overrides the lint's `description` for matches of this pattern.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+impl SsrPattern {
+    pub fn new(ssr: impl Into<String>) -> Self {
+        Self {
+            ssr: ssr.into(),
+            label: None,
+            message: None,
+        }
+    }
+
+    pub fn with_label(mut self, label: Option<String>) -> Self {
+        self.label = label;
+        self
+    }
+}
+
+/// A lint made of one or more SSR patterns sharing a diagnostic code.
+///
+/// Two spellings deserialize into this. The singular one takes `ssr_pattern`
+/// (plus optional `message` / `pattern_label`) and reports under the generic
+/// `ad-hoc:ssr-match` code. The multi-pattern one takes `name` and a `patterns`
+/// list, and reports every match under `ad-hoc:<name>` — which is what makes the
+/// lint addressable by `--diagnostic-filter`, `% elp:ignore` and
+/// `[linters."ad-hoc:<name>"]`.
+#[derive(Debug, Clone)]
+pub struct MatchSsr {
+    /// When set, the diagnostic code is `ad-hoc:<name>` rather than the shared
+    /// `ad-hoc:ssr-match`.
+    pub name: Option<String>,
+    /// Default message for every pattern that does not carry its own.
+    pub description: Option<String>,
+    pub patterns: Vec<SsrPattern>,
+    pub strategy: Option<Strategy>,
+    pub severity: Option<Severity>,
 }
 
 impl Serialize for MatchSsr {
@@ -146,13 +188,30 @@ impl Serialize for MatchSsr {
     {
         use serde::ser::SerializeStruct;
 
+        // The most either branch can emit: singular is ssr_pattern + message +
+        // pattern_label, multi is name + description + patterns, and both add
+        // severity + the two strategies. Text formats ignore this hint, but some
+        // binary ones rely on it.
         let mut state = serializer.serialize_struct("MatchSsr", 6)?;
-        state.serialize_field("ssr_pattern", &self.ssr_pattern)?;
-        if let Some(ref message) = self.message {
-            state.serialize_field("message", message)?;
-        }
-        if let Some(ref pattern_label) = self.pattern_label {
-            state.serialize_field("pattern_label", pattern_label)?;
+        // Emit the singular spelling whenever the lint is expressible in it, so
+        // that `elp search --dump-config` output stays as it was.
+        if self.is_singular() {
+            let pattern = &self.patterns[0];
+            state.serialize_field("ssr_pattern", &pattern.ssr)?;
+            if let Some(ref message) = pattern.message {
+                state.serialize_field("message", message)?;
+            }
+            if let Some(ref pattern_label) = pattern.label {
+                state.serialize_field("pattern_label", pattern_label)?;
+            }
+        } else {
+            if let Some(ref name) = self.name {
+                state.serialize_field("name", name)?;
+            }
+            if let Some(ref description) = self.description {
+                state.serialize_field("description", description)?;
+            }
+            state.serialize_field("patterns", &self.patterns)?;
         }
         if let Some(ref severity) = self.severity {
             state.serialize_field("severity", severity)?;
@@ -191,9 +250,22 @@ impl<'de> Deserialize<'de> for MatchSsr {
     {
         use serde::de::Error;
 
+        // Every key below is optional, so without this a misspelt one is
+        // dropped in silence: `nmae = "..."` would leave the lint unnamed and
+        // reporting under the shared code, losing the addressability that
+        // naming it was for. `LintConfig` denies unknown fields for the same
+        // reason.
         #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
         struct MatchSsrHelper {
-            ssr_pattern: String,
+            #[serde(default)]
+            name: Option<String>,
+            #[serde(default)]
+            description: Option<String>,
+            #[serde(default)]
+            ssr_pattern: Option<String>,
+            #[serde(default)]
+            patterns: Option<Vec<SsrPattern>>,
             #[serde(default)]
             message: Option<String>,
             #[serde(default)]
@@ -208,15 +280,52 @@ impl<'de> Deserialize<'de> for MatchSsr {
 
         let helper = MatchSsrHelper::deserialize(deserializer)?;
 
-        // Validate the SSR pattern by trying to parse it
+        let patterns = match (helper.ssr_pattern, helper.patterns) {
+            (Some(_), Some(_)) => {
+                return Err(D::Error::custom(
+                    "specify either 'ssr_pattern' or 'patterns', not both",
+                ));
+            }
+            (None, None) => {
+                return Err(D::Error::custom("missing 'ssr_pattern' or 'patterns'"));
+            }
+            (Some(ssr), None) => vec![SsrPattern {
+                ssr,
+                label: helper.pattern_label,
+                message: helper.message,
+            }],
+            (None, Some(patterns)) => {
+                // `message` and `pattern_label` are per-pattern in this spelling;
+                // silently ignoring a top-level one would lose the author's intent.
+                if helper.message.is_some() {
+                    return Err(D::Error::custom(
+                        "'message' cannot be used with 'patterns'; set it per pattern, or use 'description' for the whole lint",
+                    ));
+                }
+                if helper.pattern_label.is_some() {
+                    return Err(D::Error::custom(
+                        "'pattern_label' cannot be used with 'patterns'; set 'label' per pattern",
+                    ));
+                }
+                if patterns.is_empty() {
+                    return Err(D::Error::custom("'patterns' must not be empty"));
+                }
+                patterns
+            }
+        };
+
+        if let Some(name) = &helper.name {
+            validate_lint_name::<D>(name)?;
+        }
+
+        // Validate the SSR patterns by trying to parse them.
         // Use a minimal database for validation
         let db = RootDatabase::default();
-        SsrRule::parse_str(&db, &helper.ssr_pattern).map_err(|e| {
-            D::Error::custom(format!(
-                "invalid SSR pattern '{}': {}",
-                helper.ssr_pattern, e
-            ))
-        })?;
+        for pattern in &patterns {
+            SsrRule::parse_str(&db, &pattern.ssr).map_err(|e| {
+                D::Error::custom(format!("invalid SSR pattern '{}': {}", pattern.ssr, e))
+            })?;
+        }
 
         // Parse strategy from strings if provided
         let strategy = if helper.macro_strategy.is_some() || helper.paren_strategy.is_some() {
@@ -249,25 +358,87 @@ impl<'de> Deserialize<'de> for MatchSsr {
         };
 
         Ok(MatchSsr {
-            ssr_pattern: helper.ssr_pattern,
-            message: helper.message,
+            name: helper.name,
+            description: helper.description,
+            patterns,
             strategy,
             severity: helper.severity,
-            pattern_label: helper.pattern_label,
         })
     }
 }
 
+/// A lint name becomes the `<name>` in the `ad-hoc:<name>` diagnostic code, so
+/// it must be a single whitespace-free token (otherwise `% elp:ignore` could
+/// never reference it) and must not shadow an existing code or label, since
+/// `DiagnosticCode` resolution is a flat namespace.
+fn validate_lint_name<'de, D>(name: &str) -> Result<(), D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error;
+
+    if name.is_empty() {
+        return Err(D::Error::custom("lint 'name' must not be empty"));
+    }
+    if !name
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    {
+        return Err(D::Error::custom(format!(
+            "invalid lint name '{name}': only ASCII letters, digits, '_' and '-' are allowed"
+        )));
+    }
+    if DiagnosticCode::maybe_from_string(name).is_some() {
+        return Err(D::Error::custom(format!(
+            "lint name '{name}' collides with an existing diagnostic code or label"
+        )));
+    }
+    // `maybe_from_string` cannot catch this one: the shared code is recognised
+    // through the `ad-hoc:` prefix, so the bare name resolves to nothing. Taking
+    // it would make the lint indistinguishable from every unnamed one, which is
+    // exactly what naming it was meant to prevent.
+    if name == UNNAMED_SSR_CODE {
+        return Err(D::Error::custom(format!(
+            "lint name '{name}' is reserved: it is the code unnamed SSR lints \
+             already report under"
+        )));
+    }
+    Ok(())
+}
+
+/// The code an SSR lint reports under when it has no `name`. Shared between
+/// `code()` and name validation so the two cannot drift apart.
+const UNNAMED_SSR_CODE: &str = "ssr-match";
+
 impl MatchSsr {
     /// MatchSsr from just a pattern; other fields default.
     pub fn from_pattern(ssr_pattern: impl Into<String>) -> Self {
+        Self::from_patterns(vec![SsrPattern::new(ssr_pattern)])
+    }
+
+    pub fn from_patterns(patterns: Vec<SsrPattern>) -> Self {
         Self {
-            ssr_pattern: ssr_pattern.into(),
-            message: None,
+            name: None,
+            description: None,
+            patterns,
             strategy: None,
             severity: None,
-            pattern_label: None,
         }
+    }
+
+    /// Whether this lint round-trips through the singular `ssr_pattern`
+    /// spelling.
+    fn is_singular(&self) -> bool {
+        self.name.is_none() && self.description.is_none() && self.patterns.len() == 1
+    }
+
+    /// The code every match of this lint reports under.
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode::AdHoc(
+            self.name
+                .clone()
+                .unwrap_or_else(|| UNNAMED_SSR_CODE.to_string()),
+        )
     }
 
     pub fn get_diagnostics(&self, acc: &mut Vec<Diagnostic>, sema: &Semantic, file_id: FileId) {
@@ -276,30 +447,31 @@ impl MatchSsr {
             parens: ParenStrategy::InvisibleParens,
         });
 
-        let scope = SsrSearchScope::WholeFile(file_id);
-        let matches = match_pattern(sema, strategy, &self.ssr_pattern, scope).in_file(file_id);
+        let code = self.code();
+        let severity = self.severity.unwrap_or(Severity::WeakWarning);
 
-        for matched in matches.matches {
-            let message = self
-                .message
-                .clone()
-                .unwrap_or_else(|| format!("SSR pattern matched: {}", self.ssr_pattern));
+        for pattern in &self.patterns {
+            let scope = SsrSearchScope::WholeFile(file_id);
+            let matches = match_pattern(sema, strategy, &pattern.ssr, scope).in_file(file_id);
 
-            let placeholders = collect_placeholder_bindings(sema, &matched);
-            let extra = DiagnosticExtra::Ssr {
-                pattern_label: self.pattern_label.clone(),
-                placeholders,
-            };
+            for matched in matches.matches {
+                let message = pattern
+                    .message
+                    .clone()
+                    .or_else(|| self.description.clone())
+                    .unwrap_or_else(|| format!("SSR pattern matched: {}", pattern.ssr));
 
-            let severity = self.severity.unwrap_or(Severity::WeakWarning);
-            let diag = Diagnostic::new(
-                DiagnosticCode::AdHoc("ssr-match".to_string()),
-                message,
-                matched.range.range,
-            )
-            .with_severity(severity)
-            .with_extra(extra);
-            acc.push(diag);
+                let placeholders = collect_placeholder_bindings(sema, &matched);
+                let extra = DiagnosticExtra::Ssr {
+                    pattern_label: pattern.label.clone(),
+                    placeholders,
+                };
+
+                let diag = Diagnostic::new(code.clone(), message, matched.range.range)
+                    .with_severity(severity)
+                    .with_extra(extra);
+                acc.push(diag);
+            }
         }
     }
 }
@@ -349,10 +521,32 @@ mod tests {
     use super::ReplaceCallAction;
     use super::ReplaceInSpec;
     use super::ReplaceInSpecAction;
+    use super::SsrPattern;
     use crate::codemod_helpers::FunctionMatch;
     use crate::codemod_helpers::MFA;
     use crate::diagnostics::TypeReplacement;
     use crate::diagnostics::replace_call::Replacement;
+
+    /// The singular (`ssr_pattern`) spelling, which most tests below exercise.
+    fn match_ssr(ssr: &str, message: Option<&str>) -> MatchSsr {
+        MatchSsr::from_patterns(vec![SsrPattern {
+            ssr: ssr.to_string(),
+            label: None,
+            message: message.map(str::to_string),
+        }])
+    }
+
+    fn match_ssr_with(
+        ssr: &str,
+        message: Option<&str>,
+        strategy: Option<Strategy>,
+        severity: Option<crate::diagnostics::Severity>,
+    ) -> MatchSsr {
+        let mut lint = match_ssr(ssr, message);
+        lint.strategy = strategy;
+        lint.severity = severity;
+        lint
+    }
 
     #[test]
     fn serde_serialize_function_match_mfa() {
@@ -711,14 +905,9 @@ mod tests {
 
     #[test]
     fn serde_serialize_match_ssr() {
-        let result = toml::to_string::<MatchSsr>(&MatchSsr {
-            ssr_pattern: "ssr: _@A = 10.".to_string(),
-            message: Some("Found pattern".to_string()),
-            strategy: None,
-            severity: None,
-            pattern_label: None,
-        })
-        .unwrap();
+        let result =
+            toml::to_string::<MatchSsr>(&match_ssr("ssr: _@A = 10.", Some("Found pattern")))
+                .unwrap();
         expect![[r#"
             ssr_pattern = "ssr: _@A = 10."
             message = "Found pattern"
@@ -738,13 +927,19 @@ mod tests {
 
         expect![[r#"
             MatchSsr {
-                ssr_pattern: "ssr: _@A = 10.",
-                message: Some(
-                    "Found pattern",
-                ),
+                name: None,
+                description: None,
+                patterns: [
+                    SsrPattern {
+                        ssr: "ssr: _@A = 10.",
+                        label: None,
+                        message: Some(
+                            "Found pattern",
+                        ),
+                    },
+                ],
                 strategy: None,
                 severity: None,
-                pattern_label: None,
             }
         "#]]
         .assert_debug_eq(&match_ssr);
@@ -755,13 +950,11 @@ mod tests {
     #[test]
     fn serde_match_ssr_pattern_label_round_trips() {
         use elp_ide_db::elp_base_db::assert_eq_expected;
-        let with_label = MatchSsr {
-            ssr_pattern: "ssr: _@A = 10.".to_string(),
+        let with_label = MatchSsr::from_patterns(vec![SsrPattern {
+            ssr: "ssr: _@A = 10.".to_string(),
+            label: Some("my_label".to_string()),
             message: Some("Found pattern".to_string()),
-            strategy: None,
-            severity: None,
-            pattern_label: Some("my_label".to_string()),
-        };
+        }]);
         let serialized = toml::to_string::<MatchSsr>(&with_label).unwrap();
         expect![[r#"
             ssr_pattern = "ssr: _@A = 10."
@@ -771,19 +964,16 @@ mod tests {
         .assert_eq(&serialized);
 
         let round_tripped: MatchSsr = toml::from_str(&serialized).unwrap();
-        assert_eq_expected!(Some("my_label"), round_tripped.pattern_label.as_deref());
+        assert_eq_expected!(Some("my_label"), round_tripped.patterns[0].label.as_deref());
     }
 
     #[test]
     fn serde_serialize_lint_match_ssr() {
         let result = toml::to_string::<LintsFromConfig>(&LintsFromConfig {
-            lints: vec![Lint::LintMatchSsr(MatchSsr {
-                ssr_pattern: "ssr: _@A = 10.".to_string(),
-                message: Some("Found pattern".to_string()),
-                strategy: None,
-                severity: None,
-                pattern_label: None,
-            })],
+            lints: vec![Lint::LintMatchSsr(match_ssr(
+                "ssr: _@A = 10.",
+                Some("Found pattern"),
+            ))],
         })
         .unwrap();
         expect![[r#"
@@ -798,16 +988,15 @@ mod tests {
     #[test]
     fn serde_serialize_lint_match_ssr_with_strategy() {
         let result = toml::to_string::<LintsFromConfig>(&LintsFromConfig {
-            lints: vec![Lint::LintMatchSsr(MatchSsr {
-                ssr_pattern: "ssr: _@A = 10.".to_string(),
-                message: Some("Found pattern".to_string()),
-                strategy: Some(Strategy {
+            lints: vec![Lint::LintMatchSsr(match_ssr_with(
+                "ssr: _@A = 10.",
+                Some("Found pattern"),
+                Some(Strategy {
                     macros: MacroStrategy::Expand,
                     parens: ParenStrategy::InvisibleParens,
                 }),
-                severity: None,
-                pattern_label: None,
-            })],
+                None,
+            ))],
         })
         .unwrap();
         expect![[r#"
@@ -822,16 +1011,15 @@ mod tests {
     #[test]
     fn serde_serialize_lint_match_ssr_with_non_default_strategy() {
         let result = toml::to_string::<LintsFromConfig>(&LintsFromConfig {
-            lints: vec![Lint::LintMatchSsr(MatchSsr {
-                ssr_pattern: "ssr: _@A = 10.".to_string(),
-                message: Some("Found pattern".to_string()),
-                strategy: Some(Strategy {
+            lints: vec![Lint::LintMatchSsr(match_ssr_with(
+                "ssr: _@A = 10.",
+                Some("Found pattern"),
+                Some(Strategy {
                     macros: MacroStrategy::DoNotExpand,
                     parens: ParenStrategy::VisibleParens,
                 }),
-                severity: None,
-                pattern_label: None,
-            })],
+                None,
+            ))],
         })
         .unwrap();
         expect![[r#"
@@ -864,10 +1052,17 @@ mod tests {
                 lints: [
                     LintMatchSsr(
                         MatchSsr {
-                            ssr_pattern: "ssr: _@A = 10.",
-                            message: Some(
-                                "Found pattern",
-                            ),
+                            name: None,
+                            description: None,
+                            patterns: [
+                                SsrPattern {
+                                    ssr: "ssr: _@A = 10.",
+                                    label: None,
+                                    message: Some(
+                                        "Found pattern",
+                                    ),
+                                },
+                            ],
                             strategy: Some(
                                 Strategy {
                                     macros: ExpandButIncludeMacroCall,
@@ -875,7 +1070,6 @@ mod tests {
                                 },
                             ),
                             severity: None,
-                            pattern_label: None,
                         },
                     ),
                 ],
@@ -887,13 +1081,12 @@ mod tests {
     #[test]
     fn serde_serialize_match_ssr_with_severity_error() {
         use crate::diagnostics::Severity;
-        let result = toml::to_string::<MatchSsr>(&MatchSsr {
-            ssr_pattern: "ssr: _@A = 10.".to_string(),
-            message: Some("Found pattern".to_string()),
-            strategy: None,
-            severity: Some(Severity::Error),
-            pattern_label: None,
-        })
+        let result = toml::to_string::<MatchSsr>(&match_ssr_with(
+            "ssr: _@A = 10.",
+            Some("Found pattern"),
+            None,
+            Some(Severity::Error),
+        ))
         .unwrap();
         expect![[r#"
             ssr_pattern = "ssr: _@A = 10."
@@ -906,13 +1099,12 @@ mod tests {
     #[test]
     fn serde_serialize_match_ssr_with_severity_warning() {
         use crate::diagnostics::Severity;
-        let result = toml::to_string::<MatchSsr>(&MatchSsr {
-            ssr_pattern: "ssr: _@A = 10.".to_string(),
-            message: Some("Found pattern".to_string()),
-            strategy: None,
-            severity: Some(Severity::Warning),
-            pattern_label: None,
-        })
+        let result = toml::to_string::<MatchSsr>(&match_ssr_with(
+            "ssr: _@A = 10.",
+            Some("Found pattern"),
+            None,
+            Some(Severity::Warning),
+        ))
         .unwrap();
         expect![[r#"
             ssr_pattern = "ssr: _@A = 10."
@@ -925,13 +1117,12 @@ mod tests {
     #[test]
     fn serde_serialize_match_ssr_with_severity_weak() {
         use crate::diagnostics::Severity;
-        let result = toml::to_string::<MatchSsr>(&MatchSsr {
-            ssr_pattern: "ssr: _@A = 10.".to_string(),
-            message: Some("Found pattern".to_string()),
-            strategy: None,
-            severity: Some(Severity::WeakWarning),
-            pattern_label: None,
-        })
+        let result = toml::to_string::<MatchSsr>(&match_ssr_with(
+            "ssr: _@A = 10.",
+            Some("Found pattern"),
+            None,
+            Some(Severity::WeakWarning),
+        ))
         .unwrap();
         expect![[r#"
             ssr_pattern = "ssr: _@A = 10."
@@ -944,13 +1135,12 @@ mod tests {
     #[test]
     fn serde_serialize_match_ssr_with_severity_info() {
         use crate::diagnostics::Severity;
-        let result = toml::to_string::<MatchSsr>(&MatchSsr {
-            ssr_pattern: "ssr: _@A = 10.".to_string(),
-            message: Some("Found pattern".to_string()),
-            strategy: None,
-            severity: Some(Severity::Information),
-            pattern_label: None,
-        })
+        let result = toml::to_string::<MatchSsr>(&match_ssr_with(
+            "ssr: _@A = 10.",
+            Some("Found pattern"),
+            None,
+            Some(Severity::Information),
+        ))
         .unwrap();
         expect![[r#"
             ssr_pattern = "ssr: _@A = 10."
@@ -1001,16 +1191,15 @@ mod tests {
     fn serde_serialize_lint_match_ssr_with_severity_and_strategy() {
         use crate::diagnostics::Severity;
         let result = toml::to_string::<LintsFromConfig>(&LintsFromConfig {
-            lints: vec![Lint::LintMatchSsr(MatchSsr {
-                ssr_pattern: "ssr: _@A = 10.".to_string(),
-                message: Some("Found pattern".to_string()),
-                strategy: Some(Strategy {
+            lints: vec![Lint::LintMatchSsr(match_ssr_with(
+                "ssr: _@A = 10.",
+                Some("Found pattern"),
+                Some(Strategy {
                     macros: MacroStrategy::DoNotExpand,
                     parens: ParenStrategy::VisibleParens,
                 }),
-                severity: Some(Severity::Error),
-                pattern_label: None,
-            })],
+                Some(Severity::Error),
+            ))],
         })
         .unwrap();
         expect![[r#"
@@ -1045,10 +1234,17 @@ mod tests {
                 lints: [
                     LintMatchSsr(
                         MatchSsr {
-                            ssr_pattern: "ssr: _@A = 10.",
-                            message: Some(
-                                "Found pattern",
-                            ),
+                            name: None,
+                            description: None,
+                            patterns: [
+                                SsrPattern {
+                                    ssr: "ssr: _@A = 10.",
+                                    label: None,
+                                    message: Some(
+                                        "Found pattern",
+                                    ),
+                                },
+                            ],
                             strategy: Some(
                                 Strategy {
                                     macros: DoNotExpand,
@@ -1058,7 +1254,6 @@ mod tests {
                             severity: Some(
                                 Error,
                             ),
-                            pattern_label: None,
                         },
                     ),
                 ],
@@ -1108,13 +1303,222 @@ mod tests {
         assert!(placeholders.iter().all(|b| b.name == "A" && b.text == "X"));
     }
 
+    /// The multi-pattern spelling round-trips, and does not collapse back into
+    /// the singular one.
+    #[test]
+    fn serde_match_ssr_named_multi_pattern_round_trips() {
+        let lints: LintsFromConfig = toml::from_str(
+            r#"
+              [[lints]]
+              type = "LintMatchSsr"
+              name = "my_lint"
+              description = "Found something"
+              severity = "warning"
+              patterns = [
+                { ssr = "ssr: legacy_timeout.", label = "atom" },
+                { ssr = "ssr: <<\"legacy_timeout\">>.", label = "binary", message = "as a binary" },
+              ]
+             "#,
+        )
+        .unwrap();
+
+        expect![[r#"
+            [[lints]]
+            type = "LintMatchSsr"
+            name = "my_lint"
+            description = "Found something"
+            severity = "warning"
+
+            [[lints.patterns]]
+            ssr = "ssr: legacy_timeout."
+            label = "atom"
+
+            [[lints.patterns]]
+            ssr = 'ssr: <<"legacy_timeout">>.'
+            label = "binary"
+            message = "as a binary"
+        "#]]
+        .assert_eq(&toml::to_string::<LintsFromConfig>(&lints).unwrap());
+    }
+
+    /// Every pattern of a named lint reports under `ad-hoc:<name>`, and each
+    /// carries its own label.
+    #[test]
+    fn ssr_named_lint_reports_all_patterns_under_one_code() {
+        use elp_ide_db::elp_base_db::assert_eq_expected;
+        let (db, file_id) = RootDatabase::with_single_file("t() -> {foo, bar}.");
+        let sema = Semantic::new(&db);
+        let mut lint = MatchSsr::from_patterns(vec![
+            SsrPattern::new("ssr: foo.").with_label(Some("first".to_string())),
+            SsrPattern::new("ssr: bar.").with_label(Some("second".to_string())),
+        ]);
+        lint.name = Some("my_lint".to_string());
+        lint.description = Some("Found something".to_string());
+
+        let mut acc = Vec::new();
+        lint.get_diagnostics(&mut acc, &sema, file_id);
+
+        assert_eq_expected!(2, acc.len());
+        for diag in &acc {
+            assert_eq_expected!("ad-hoc:my_lint", diag.code.as_code());
+            assert_eq_expected!("Found something", diag.message);
+        }
+        let labels: Vec<_> = acc
+            .iter()
+            .filter_map(|d| match &d.extra {
+                Some(DiagnosticExtra::Ssr { pattern_label, .. }) => pattern_label.clone(),
+                _ => None,
+            })
+            .collect();
+        let expected = vec!["first".to_string(), "second".to_string()];
+        assert_eq_expected!(expected, labels);
+    }
+
+    /// A per-pattern `message` wins over the lint-wide `description`.
+    #[test]
+    fn ssr_pattern_message_overrides_description() {
+        use elp_ide_db::elp_base_db::assert_eq_expected;
+        let (db, file_id) = RootDatabase::with_single_file("t() -> ok.");
+        let sema = Semantic::new(&db);
+        let mut lint = MatchSsr::from_patterns(vec![SsrPattern {
+            ssr: "ssr: ok.".to_string(),
+            label: None,
+            message: Some("specific".to_string()),
+        }]);
+        lint.description = Some("generic".to_string());
+
+        let mut acc = Vec::new();
+        lint.get_diagnostics(&mut acc, &sema, file_id);
+        assert_eq_expected!(1, acc.len());
+        assert_eq_expected!("specific", acc[0].message);
+    }
+
+    /// An unnamed lint keeps reporting under the shared `ad-hoc:ssr-match`
+    /// code, so existing configs are unaffected.
+    #[test]
+    fn ssr_unnamed_lint_keeps_shared_code() {
+        use elp_ide_db::elp_base_db::assert_eq_expected;
+        let (db, file_id) = RootDatabase::with_single_file("t() -> ok.");
+        let sema = Semantic::new(&db);
+        let mut acc = Vec::new();
+        MatchSsr::from_pattern("ssr: ok.").get_diagnostics(&mut acc, &sema, file_id);
+        assert_eq_expected!(1, acc.len());
+        assert_eq_expected!("ad-hoc:ssr-match", acc[0].code.as_code());
+    }
+
+    /// The tag of the `Lint` enum must still reach the variant, which
+    /// `deny_unknown_fields` could plausibly have broken.
+    /// Every way a `LintMatchSsr` entry is rejected, as one table rather than a
+    /// test apiece: each case is a config and a phrase its error must carry.
+    /// Rejection is the whole point of this validation, so the cases are the
+    /// interesting part and a list of them reads better than nine near-identical
+    /// functions.
+    #[test]
+    fn serde_match_ssr_rejects_invalid_configs() {
+        for (case, config, expected_error) in [
+            (
+                "both spellings at once",
+                "ssr_pattern = 'ssr: ok.'\npatterns = [{ ssr = 'ssr: ok.' }]",
+                "specify either 'ssr_pattern' or 'patterns', not both",
+            ),
+            (
+                "neither spelling",
+                "name = 'my_lint'",
+                "missing 'ssr_pattern' or 'patterns'",
+            ),
+            (
+                "empty patterns",
+                "patterns = []",
+                "'patterns' must not be empty",
+            ),
+            (
+                "top-level message beside patterns",
+                "message = 'oops'\npatterns = [{ ssr = 'ssr: ok.' }]",
+                "'message' cannot be used with 'patterns'",
+            ),
+            (
+                "top-level pattern_label beside patterns",
+                "pattern_label = 'oops'\npatterns = [{ ssr = 'ssr: ok.' }]",
+                "'pattern_label' cannot be used with 'patterns'",
+            ),
+            (
+                "misspelt name",
+                "nmae = 'my_lint'\nssr_pattern = 'ssr: ok.'",
+                "unknown field `nmae`",
+            ),
+            (
+                "misspelt description",
+                "descripton = 'oops'\nssr_pattern = 'ssr: ok.'",
+                "unknown field `descripton`",
+            ),
+            (
+                "misspelt label within a pattern",
+                "name = 'my_lint'\npatterns = [{ ssr = 'ssr: ok.', lable = 'oops' }]",
+                "unknown field `lable`",
+            ),
+            (
+                "empty name",
+                "name = ''\nssr_pattern = 'ssr: ok.'",
+                "must not be empty",
+            ),
+            (
+                "name with whitespace",
+                "name = 'my lint'\nssr_pattern = 'ssr: ok.'",
+                "invalid lint name",
+            ),
+            (
+                "name colliding with a built-in code",
+                "name = 'no_catch'\nssr_pattern = 'ssr: ok.'",
+                "collides with an existing diagnostic code",
+            ),
+            (
+                "name taking the code unnamed lints use",
+                "name = 'ssr-match'\nssr_pattern = 'ssr: ok.'",
+                "is reserved",
+            ),
+            (
+                "unparseable pattern, named so it can be found",
+                "name = 'my_lint'\npatterns = [{ ssr = 'ssr: ok.' }, { ssr = 'ssr: {_@@A, _@@B}.' }]",
+                "invalid SSR pattern 'ssr: {_@@A, _@@B}.'",
+            ),
+        ] {
+            let err = toml::from_str::<MatchSsr>(config)
+                .expect_err(case)
+                .to_string();
+            assert!(
+                err.contains(expected_error),
+                "{case}: expected an error containing {expected_error:?}, got: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn serde_lint_tag_survives_deny_unknown_fields() {
+        let lints: LintsFromConfig = toml::from_str(
+            r#"
+              [[lints]]
+              type = "LintMatchSsr"
+              name = "my_lint"
+              ssr_pattern = "ssr: ok."
+             "#,
+        )
+        .unwrap();
+        match &lints.lints[0] {
+            Lint::LintMatchSsr(match_ssr) => {
+                assert_eq!(match_ssr.name.as_deref(), Some("my_lint"))
+            }
+            other => panic!("expected LintMatchSsr, got {other:?}"),
+        }
+    }
+
     #[test]
     fn ssr_diagnostic_propagates_pattern_label() {
         use elp_ide_db::elp_base_db::assert_eq_expected;
         let (db, file_id) = RootDatabase::with_single_file("t() -> ok.");
         let sema = Semantic::new(&db);
-        let mut lint = MatchSsr::from_pattern("ssr: ok.");
-        lint.pattern_label = Some("ok_literal".to_string());
+        let lint = MatchSsr::from_patterns(vec![
+            SsrPattern::new("ssr: ok.").with_label(Some("ok_literal".to_string())),
+        ]);
         let mut acc = Vec::new();
         lint.get_diagnostics(&mut acc, &sema, file_id);
         assert_eq_expected!(1, acc.len());
