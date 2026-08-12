@@ -52,19 +52,17 @@ final class Elab(pipelineContext: PipelineContext) {
     val patVars = Vars.clausePatVars(clause)
     val env1 = util.enterScope(env0, patVars)
     // Refine guards before patterns (so refinements feed pattern elaboration)
-    // and again after (so leaves keep their post-pattern types).
     val env2 = occurrence.refineGuards(clause.guards, env1)
     val (_, env3) = elabPat.elabPats(clause.pats, argTys, env2)
-    val env4 = occurrence.refineGuards(clause.guards, env3)
-    occurrence.annotateGuards(clause.guards, env4)
-    if (checkReachability && env4.exists { case (_, ty) => Subtype.isNoneType(ty) })
-      return (NoneType, util.exitScope(env0, env4, exportedVars))
-    val (eType, env5) = elabBody(clause.body, env4)
-    val env6 = util.exitScope(env0, env5, exportedVars)
+    occurrence.annotateGuards(clause.guards, env3)
+    if (checkReachability && env3.exists { case (_, ty) => Subtype.isNoneType(ty) })
+      return (NoneType, util.exitScope(env0, env3, exportedVars))
+    val (eType, env4) = elabBody(clause.body, env3)
+    val env5 = util.exitScope(env0, env4, exportedVars)
     if (subtype.gradualSubType(eType, NoneType))
-      (NoneType, env6.map { case (name, _) => name -> NoneType })
+      (NoneType, env5.map { case (name, _) => name -> NoneType })
     else
-      (eType, env6)
+      (eType, env5)
   }
 
   def elabExprs(exprs: List[Expr], env: Env): (List[Type], Env) = {

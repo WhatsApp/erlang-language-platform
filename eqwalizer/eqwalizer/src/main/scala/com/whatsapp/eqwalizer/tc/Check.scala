@@ -109,18 +109,16 @@ final class Check(pipelineContext: PipelineContext) {
   ): Env = {
     val patVars = Vars.clausePatVars(clause)
     val env1 = util.enterScope(env0, patVars)
-    // Refine guards before patterns (so refinements feed pattern elaboration)
-    // and again after (so leaves keep their post-pattern types).
+    // Refine guards before patterns (so refinements feed pattern elaboration).
     val env2 = occurrence.refineGuards(clause.guards, env1)
     val (_, env3) = elabPat.elabPats(clause.pats, argTys, env2)
-    val env4 = occurrence.refineGuards(clause.guards, env3)
-    occurrence.annotateGuards(clause.guards, env4)
-    val hasEmptyType = env4.exists { case (_, ty) => Subtype.isNoneType(ty) }
+    occurrence.annotateGuards(clause.guards, env3)
+    val hasEmptyType = env3.exists { case (_, ty) => Subtype.isNoneType(ty) }
     if (hasEmptyType && checkCoverage && (fullCoverage || !occurrence.clauseCovered(clause, argTys))) {
       diagnosticsInfo.add(ClauseNotCovered(clause.pos))
     }
-    val env5 = checkBody(clause.body, resTy, env4)
-    util.exitScope(env0, env5, exportedVars)
+    val env4 = checkBody(clause.body, resTy, env3)
+    util.exitScope(env0, env4, exportedVars)
   }
 
   private def checkClauseOverloadedClause(
@@ -135,9 +133,8 @@ final class Check(pipelineContext: PipelineContext) {
     val (patTys, env3) = elabPat.elabPats(clause.pats, argTys, env2)
     val reachable = !patTys.exists(Subtype.isNoneType)
     if (reachable) {
-      val env4 = occurrence.refineGuards(clause.guards, env3)
-      occurrence.annotateGuards(clause.guards, env4)
-      checkBody(clause.body, resTy, env4)
+      occurrence.annotateGuards(clause.guards, env3)
+      checkBody(clause.body, resTy, env3)
     }
   }
 
