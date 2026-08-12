@@ -210,19 +210,19 @@ final class Occurrence(pipelineContext: PipelineContext) {
     val clauseEnvs = ListBuffer.empty[Env]
     for (clause <- c.clauses) {
       val pat = clause.pats.head
-      val (props, aliases) = patProps(x, Nil, pat, env)
+      val info = patProps(x, Nil, pat, env)
       val (patPos, patNeg) =
         pat match {
           case PatVar(`x`) => (None, None)
-          case _           => props.unzip
+          case _           => info.props.unzip
         }
-      val aMap = aliases.toMap
+      val aMap = info.aliases.toMap
       val (testPos, testNeg) = guardsProps(clause.guards, aMap)
       val localClauseProps = patPos.toList ++ testPos
       val clauseProps =
         if (accumulateNegProps) combine(localClauseProps, propsAcc)
         else localClauseProps
-      val clauseEnv = batchSelect(env1, clauseProps, aMap ++ eMap)
+      val clauseEnv = batchSelect(bindSeeds(env1, info.seeds), clauseProps, aMap ++ eMap)
       clauseEnvs.addOne(clauseEnv)
       if (accumulateNegProps && linearVars(clause)) {
         val clauseNeg = patNeg.toList ++ testNeg
@@ -245,19 +245,21 @@ final class Occurrence(pipelineContext: PipelineContext) {
       val patsPos = ListBuffer.empty[Prop]
       val patsNeg = ListBuffer.empty[Prop]
       var aMap: AMap = Map.empty
+      val seeds = ListBuffer.empty[(Name, Obj)]
       for ((x, pat) <- vars.zip(pats)) {
-        val (props, aliases) = patProps(x, Nil, pat, env)
-        val (patPos, patNeg) = props.unzip
+        val info = patProps(x, Nil, pat, env)
+        val (patPos, patNeg) = info.props.unzip
         patPos.foreach(patsPos.addOne)
         patNeg.foreach(patsNeg.addOne)
-        aMap = aMap ++ aliases
+        aMap = aMap ++ info.aliases
+        seeds.addAll(info.seeds)
       }
       val (testPos, testNeg) = guardsProps(clause.guards, aMap)
       val localClauseProps = (patsPos ++ testPos).toList
       val clauseProps =
         if (accumulateNegProps) combine(localClauseProps, propsAcc)
         else localClauseProps
-      val clauseEnv = batchSelect(env1, clauseProps, aMap)
+      val clauseEnv = batchSelect(bindSeeds(env1, seeds.toList), clauseProps, aMap)
       clauseEnvs.addOne(clauseEnv)
       if (accumulateNegProps && linearVars(clause)) {
         val clauseNeg = (patsNeg ++ testNeg).toList
@@ -739,29 +741,48 @@ final class Occurrence(pipelineContext: PipelineContext) {
     }
   }
 
-  private type PatInfo = (Option[(Prop, Prop)], List[(Name, Obj)])
+  // What a pattern says about the value it matches:
+  //   - props   - how the scrutinee is refined when the pattern matches
+  //               (positive) and when it does not (negative), if anything
+  //               is known
+  //   - aliases - the variables the pattern binds, each paired with the
+  //               position it matches
+  //   - seeds   - fresh variables standing for values that no position
+  //               addresses (see the `PatMap` case), each paired with the
+  //               object it takes its type from. Ordered outside-in, so a
+  //               seed nested inside another one comes after it.
+  private case class PatInfo(props: Option[(Prop, Prop)], aliases: List[(Name, Obj)], seeds: List[(Name, Obj)])
+
+  private object PatInfo {
+    // A pattern that neither refines nor binds anything
+    val trivial: PatInfo = PatInfo(None, Nil, Nil)
+    // A pattern whose effect is beyond our precision
+    val inexpressible: PatInfo = PatInfo(Some(Unknown, Unknown), Nil, Nil)
+    // A pattern that binds nothing and refines only the value it matches
+    def leaf(pos: Prop, neg: Prop): PatInfo = PatInfo(Some(pos, neg), Nil, Nil)
+  }
 
   private def patNode(posThis: Prop, negThis: Prop, subs: List[PatInfo]): PatInfo = {
-    val (posThat, negThat) = subs.flatMap(_._1).unzip
+    val (posThat, negThat) = subs.flatMap(_.props).unzip
     val pos = and(posThis :: posThat)
     val neg = or(List(negThis, and(List(posThis, or(negThat)))))
-    (Some(pos, neg), subs.flatMap(_._2))
+    PatInfo(Some(pos, neg), subs.flatMap(_.aliases), subs.flatMap(_.seeds))
   }
 
   private def patProps(x: String, path: Path, pat: Pat, env: Env): PatInfo = {
     pat match {
       case PatWild() =>
-        (None, Nil)
+        PatInfo.trivial
       case PatVar(v) =>
-        if (env.contains(v)) (Some(Unknown, Unknown), Nil)
-        else (None, List(v -> mkObj(x, path)))
+        if (env.contains(v)) PatInfo.inexpressible
+        else PatInfo(None, List(v -> mkObj(x, path)), Nil)
       case PatAtom(s) =>
         val obj = mkObj(x, path)
-        (Some(Pos(obj, AtomLitType(s)), Neg(obj, AtomLitType(s))), Nil)
+        PatInfo.leaf(Pos(obj, AtomLitType(s)), Neg(obj, AtomLitType(s)))
       case PatFloat() =>
-        (Some(Pos(mkObj(x, path), FloatType), Unknown), Nil)
+        PatInfo.leaf(Pos(mkObj(x, path), FloatType), Unknown)
       case PatInt() =>
-        (Some(Pos(mkObj(x, path), IntegerType), Unknown), Nil)
+        PatInfo.leaf(Pos(mkObj(x, path), IntegerType), Unknown)
       case PatTuple(elems) =>
         val obj = mkObj(x, path)
         val arity = elems.size
@@ -786,16 +807,16 @@ final class Occurrence(pipelineContext: PipelineContext) {
         }
         patNode(Pos(obj, recTy), Neg(obj, recTy), genInfo ++ namedInfo)
       case PatMatch(pat1, pat2) =>
-        val (props1, aliases1) = patProps(x, path, pat1, env)
-        val (props2, aliases2) = patProps(x, path, pat2, env)
+        val info1 = patProps(x, path, pat1, env)
+        val info2 = patProps(x, path, pat2, env)
         // at most one side can be informative (the other is then a variable or
         // a wildcard); two informative sides are beyond our precision
-        val props = (props1, props2) match {
+        val props = (info1.props, info2.props) match {
           case (None, props) => props
           case (props, None) => props
           case _             => Some(Unknown, Unknown)
         }
-        (props, aliases1 ++ aliases2)
+        PatInfo(props, info1.aliases ++ info2.aliases, info1.seeds ++ info2.seeds)
       case PatMap(pats) =>
         val obj = mkObj(x, path)
         val mapTy = MapType(Map(), AnyType, AnyType)
@@ -803,18 +824,22 @@ final class Occurrence(pipelineContext: PipelineContext) {
           Key.fromTest(patK) match {
             case Some(key) =>
               val keyPath = path :+ MapField(key)
-              val (props, aliases) = patProps(x, keyPath, patV, env)
+              val info = patProps(x, keyPath, patV, env)
               // the key is required even when its value pattern constrains nothing
               val objKey = mkObj(x, keyPath)
-              (props.orElse(Some(Pos(objKey, AnyType), Neg(objKey, AnyType))), aliases)
+              info.copy(props = info.props.orElse(Some(Pos(objKey, AnyType), Neg(objKey, AnyType))))
             case None =>
-              (Some(Unknown, Unknown), Nil)
+              val v = genVar()
+              val info = patProps(v, Nil, patV, env)
+              val seed = v -> mkObj(x, path :+ AnyMapField)
+              val pos = info.props.map(_._1).getOrElse(True)
+              PatInfo(Some(pos, Unknown), info.aliases, seed :: info.seeds)
           }
         }
         patNode(Pos(obj, mapTy), Neg(obj, mapTy), assocsInfo)
       case PatNil() =>
         val obj = mkObj(x, path)
-        (Some(Pos(obj, NilType), Neg(obj, NilType)), Nil)
+        PatInfo.leaf(Pos(obj, NilType), Neg(obj, NilType))
       case PatCons(hpat, tpat) =>
         val obj = mkObj(x, path)
         val posThis = and(List(Pos(obj, ListType(AnyType)), Neg(obj, NilType)))
@@ -823,11 +848,19 @@ final class Occurrence(pipelineContext: PipelineContext) {
         val tInfo = patProps(x, path :+ ListTail, tpat, env)
         patNode(posThis, negThis, List(hInfo, tInfo))
       case PatBinary(_) =>
-        (Some(Pos(mkObj(x, path), BinaryType), Unknown), Nil)
+        PatInfo.leaf(Pos(mkObj(x, path), BinaryType), Unknown)
       case _ =>
-        (Some(Unknown, Unknown), Nil)
+        PatInfo.inexpressible
     }
   }
+
+  // Binds each fresh variable of `seeds` to the type of the value it stands
+  // for. Seeds come outside-in, so one nested inside another resolves against
+  // the variable that has just been bound.
+  private def bindSeeds(env: Env, seeds: List[(Name, Obj)]): Env =
+    seeds.foldLeft(env) { case (env, (v, obj)) =>
+      env + (v -> typePathRef(env(objId(obj)), objPath(obj)))
+    }
 
   def remove(t1: Type, t2: Type): Type =
     (t1, t2) match {
@@ -1095,6 +1128,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
           .map(_.tp)
           .getOrElse(vTy)
         typePathRef(ty, path1)
+      case (mTy: MapType, AnyMapField :: path1) =>
+        typePathRef(narrow.getValType(mTy), path1)
       case (RemoteType(rid, args), path) =>
         val body = util.getTypeDeclBody(rid, args)
         typePathRef(body, path)

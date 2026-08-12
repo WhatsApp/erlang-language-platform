@@ -26,5 +26,6 @@ sealed trait Field
 case class TupleField(index: Int, arity: Option[Int]) extends Field
 case class RecordField(field: String, recName: String) extends Field
 case class MapField(field: Key) extends Field
+case object AnyMapField extends Field
 case object ListHead extends Field
 case object ListTail extends Field
