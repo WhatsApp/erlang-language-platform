@@ -131,6 +131,7 @@ code of its own, `ad-hoc:<name>`:
 type = "LintMatchSsr"
 name = "banned_config_key"
 description = "This configuration key is no longer supported"
+doc = "docs/lints/banned_config_key.md"
 severity = "warning"
 patterns = [
   { ssr = "ssr: legacy_timeout.", label = "legacy_timeout_atom" },
@@ -150,6 +151,7 @@ suppressed, or configured apart from the others.
 | --- | ---- | ----------- |
 | `name` | String | Makes the diagnostic code `ad-hoc:<name>`. ASCII letters, digits, `_` and `-` only; must not collide with an existing code or label. |
 | `description` | String | Default message for every pattern that has no `message` of its own. |
+| `doc` | String | Path to the project's documentation for this lint, reported as `docPath` in `--format json` output. A config-declared lint has no error-index page, so this is the only way a consumer can find out how to act on a match. |
 | `ssr_pattern` | String | A single pattern. Mutually exclusive with `patterns`. |
 | `patterns` | Array | One or more `{ ssr, label, message }` tables. Mutually exclusive with `ssr_pattern`. |
 | `message` | String | Message for the single-pattern form. Use `description` with `patterns`. |
