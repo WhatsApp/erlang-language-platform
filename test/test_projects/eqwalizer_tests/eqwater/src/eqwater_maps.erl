@@ -69,3 +69,100 @@ map_occ_foreach_neg(M) ->
     (_, #{a := err}) -> ok;
     (_, #{a := V}) -> is_ok(V)
   end, M).
+
+%% Values selected by a key that is not a compile-time literal.
+%% Such a key addresses no position in the map type, but the value
+%% pattern still binds variables, and guards still refine them.
+
+-record(frag, {index :: undefined | integer()}).
+-record(job, {part :: undefined | binary()}).
+-type replica() :: full | witness.
+
+-spec map_occ_var_key_01(atom(), #{atom() => undefined | integer()})
+    -> integer().
+map_occ_var_key_01(K, M) ->
+  case M of
+    #{K := V} when V =/= undefined -> V;
+    _ -> 0
+  end.
+
+-spec map_occ_var_key_02(atom(), #{atom() => integer() | binary()})
+    -> integer().
+map_occ_var_key_02(K, M) ->
+  case M of
+    #{K := V} when is_integer(V) -> V;
+    _ -> 0
+  end.
+
+-spec map_occ_var_key_03(atom(), #{atom() => #frag{}}) -> integer().
+map_occ_var_key_03(K, Frags) ->
+  case Frags of
+    #{K := #frag{index = Idx}} when Idx =/= undefined -> Idx;
+    _ -> 0
+  end.
+
+-spec map_occ_var_key_04(atom(), #{atom() => #frag{}})
+    -> {integer(), #frag{}}.
+map_occ_var_key_04(K, Frags) ->
+  case Frags of
+    #{K := #frag{index = Idx} = Frag} when Idx =/= undefined -> {Idx, Frag};
+    _ -> {0, #frag{index = 0}}
+  end.
+
+-spec map_occ_var_key_05
+    (atom(), #{atom() => false | indeterminate | replica()})
+    -> replica().
+map_occ_var_key_05(K, M) ->
+  case M of
+    #{K := T} when T =/= false, T =/= indeterminate -> T;
+    _ -> full
+  end.
+
+-spec map_occ_var_key_06
+    (#{atom() => undefined | integer()}, #{atom() => term()})
+    -> [integer()].
+map_occ_var_key_06(M, Keys) ->
+  maps:fold(
+    fun(K, _, Acc) ->
+      case M of
+        #{K := V} when V =/= undefined -> [V | Acc];
+        _ -> Acc
+      end
+    end,
+    [],
+    Keys
+  ).
+
+-spec map_occ_var_key_07(atom())
+    -> fun((#{atom() => undefined | integer()}) -> integer()).
+map_occ_var_key_07(K) ->
+  fun
+    (#{K := V}) when V =/= undefined -> V;
+    (_) -> 0
+  end.
+
+-spec map_occ_var_key_08(atom(), #{atom() => #frag{}})
+    -> #{{atom(), integer()} => #frag{}}.
+map_occ_var_key_08(K, Frags) ->
+  case Frags of
+    #{K := #frag{index = Idx} = Frag} when Idx =/= undefined ->
+      #{{K, Idx} => Frag};
+    _ -> #{}
+  end.
+
+-spec map_occ_var_key_09
+    (atom(), #{atom() => undefined | {atom(), integer()}})
+    -> atom().
+map_occ_var_key_09(K, M) ->
+  case M of
+    #{K := P} when P =/= undefined -> element(1, P);
+    _ -> undefined
+  end.
+
+-spec map_occ_var_key_10(atom(), #{atom() => #job{}}) -> binary().
+map_occ_var_key_10(K, Jobs) ->
+  case Jobs of
+    #{K := #job{part = undefined}} -> <<>>;
+    #{K := #job{part = P}} when P =/= undefined -> P;
+    _ -> <<>>
+  end.
