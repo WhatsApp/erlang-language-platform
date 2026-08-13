@@ -319,9 +319,12 @@ mod tests {
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix;
 
+    // The `-type` declarations in these header fixtures are incidental; keep the
+    // tests focused on W0020.
     #[track_caller]
     pub(crate) fn check_diagnostics(fixture: &str) {
         let config = DiagnosticsConfig::default()
+            .disable(DiagnosticCode::AvoidTypeDefsInHeader)
             .disable(DiagnosticCode::UndefinedFunction)
             .disable(DiagnosticCode::UnspecificInclude)
             .disable(DiagnosticCode::NoDialyzerAttribute);

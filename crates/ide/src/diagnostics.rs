@@ -95,6 +95,7 @@ use crate::codemod_helpers::find_call_in_function_with_matchers;
 mod application_env;
 mod atoms_exhaustion;
 mod avoid_any_type;
+mod avoid_type_defs_in_header;
 mod bad_dialyzer_attribute;
 mod binary_string_to_sigil;
 mod boolean_precedence;
@@ -2082,6 +2083,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &cannot_evaluate_ct_callbacks::LINTER,
     &unreachable_test::LINTER,
     &avoid_any_type::LINTER,
+    &avoid_type_defs_in_header::LINTER,
 ];
 
 /// Unified registry for all types of linters, initialized once and reused.
