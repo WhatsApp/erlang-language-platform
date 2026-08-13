@@ -46,11 +46,20 @@ assert_eq_expected!(expected_range, actual_range);
 
 ### Snapshot updates: use `UPDATE_EXPECT=1`, never manually edit
 
+Do NOT manually edit `expect![[...]]` strings.
+
+Updating expectations is expensive, so do it only once you expect a snapshot to
+change, and scope it to the failing test, or at most its crate:
+
 ```bash
-UPDATE_EXPECT=1 cargo test -p <crate_name> -- <test_name>
+UPDATE_EXPECT=1 cargo test -p <crate_name> -- <test_name>   # preferred
+UPDATE_EXPECT=1 cargo test -p <crate_name>                  # acceptable
 ```
 
-Do NOT manually edit `expect![[...]]` strings.
+Run the tests normally first and update only the snapshots the failures name. An
+update run records whatever the test produced, so a test failing for an unrelated
+reason has that failure written in as its new expectation. Diff the snapshot files
+afterwards and revert anything you did not mean to change.
 
 ### Crate names ≠ directory names
 
