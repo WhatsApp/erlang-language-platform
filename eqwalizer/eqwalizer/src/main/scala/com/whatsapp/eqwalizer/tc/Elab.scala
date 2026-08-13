@@ -454,7 +454,11 @@ final class Elab(pipelineContext: PipelineContext) {
       case TryCatchExpr(tryBody, catchClauses, afterBody) =>
         val (tryT, _) = elabBody(tryBody, env)
         val stackType = clsExnStackTypeDynamic
-        val (catchTs, _) = catchClauses.map(elabClause(_, List(stackType), env, Set.empty)).unzip
+        val catchEnvs = occurrence.clausesEnvs(catchClauses, List(stackType), env)
+        val (catchTs, _) = catchClauses
+          .lazyZip(catchEnvs)
+          .map((clause, occEnv) => elabClause(clause, List(stackType), occEnv, Set.empty))
+          .unzip
         val env1 = afterBody match {
           case Some(block) => elabBody(block, env)._2
           case None        => env
@@ -469,7 +473,11 @@ final class Elab(pipelineContext: PipelineContext) {
             .lazyZip(tryEnvs)
             .map((clause, occEnv) => elabClause(clause, List(tryT), occEnv, Set.empty))
             .unzip
-        val (catchTs, _) = catchClauses.map(elabClause(_, List(stackType), env, Set.empty)).unzip
+        val catchEnvs = occurrence.clausesEnvs(catchClauses, List(stackType), env)
+        val (catchTs, _) = catchClauses
+          .lazyZip(catchEnvs)
+          .map((clause, occEnv) => elabClause(clause, List(stackType), occEnv, Set.empty))
+          .unzip
         val env1 = afterBody match {
           case Some(block) => elabBody(block, env)._2
           case None        => env
@@ -478,7 +486,11 @@ final class Elab(pipelineContext: PipelineContext) {
       case Receive(clauses) =>
         val effVars = Vars.clausesVars(clauses)
         val argType = DynamicType
-        val (ts, envs) = clauses.map(elabClause(_, List(argType), env, effVars)).unzip
+        val clauseEnvs = occurrence.clausesEnvs(clauses, List(argType), env)
+        val (ts, envs) = clauses
+          .lazyZip(clauseEnvs)
+          .map((clause, occEnv) => elabClause(clause, List(argType), occEnv, effVars))
+          .unzip
         (subtype.join(ts), subtype.joinEnvs(envs))
       case ReceiveWithTimeout(List(), timeout, timeoutBlock) =>
         val env1 = check.checkExpr(timeout, builtinTypes("timeout"), env)
@@ -486,7 +498,11 @@ final class Elab(pipelineContext: PipelineContext) {
       case ReceiveWithTimeout(clauses, timeout, timeoutBlock) =>
         val effVars = Vars.clausesAndBlockVars(clauses, timeoutBlock)
         val argType = DynamicType
-        val (ts, envs) = clauses.map(elabClause(_, List(argType), env, effVars)).unzip
+        val clauseEnvs = occurrence.clausesEnvs(clauses, List(argType), env)
+        val (ts, envs) = clauses
+          .lazyZip(clauseEnvs)
+          .map((clause, occEnv) => elabClause(clause, List(argType), occEnv, effVars))
+          .unzip
         val env1 = check.checkExpr(timeout, builtinTypes("timeout"), env)
         val (timeoutT, timeoutEnv) = elabBody(timeoutBlock, env1)
         (subtype.join(timeoutT :: ts), subtype.joinEnvs(timeoutEnv :: envs))

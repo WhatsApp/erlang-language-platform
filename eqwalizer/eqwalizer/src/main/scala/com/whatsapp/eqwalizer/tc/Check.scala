@@ -339,7 +339,10 @@ final class Check(pipelineContext: PipelineContext) {
         case TryCatchExpr(tryBody, catchClauses, afterBody) =>
           checkBody(tryBody, resTy, env)
           val stackType = clsExnStackTypeDynamic
-          catchClauses.map(checkClause(_, List(stackType), resTy, env, Set.empty))
+          val catchEnvs = occurrence.clausesEnvs(catchClauses, List(stackType), env)
+          catchClauses
+            .lazyZip(catchEnvs)
+            .map((clause, occEnv) => checkClause(clause, List(stackType), resTy, occEnv, Set.empty))
           afterBody match {
             case Some(block) => elab.elabBody(block, env)._2
             case None        => env
@@ -351,7 +354,10 @@ final class Check(pipelineContext: PipelineContext) {
           tryClauses
             .lazyZip(tryEnvs)
             .map((clause, occEnv) => checkClause(clause, List(tryBodyT), resTy, occEnv, Set.empty))
-          catchClauses.map(checkClause(_, List(stackType), resTy, env, Set.empty))
+          val catchEnvs = occurrence.clausesEnvs(catchClauses, List(stackType), env)
+          catchClauses
+            .lazyZip(catchEnvs)
+            .map((clause, occEnv) => checkClause(clause, List(stackType), resTy, occEnv, Set.empty))
           afterBody match {
             case Some(block) => elab.elabBody(block, env)._2
             case None        => env
@@ -359,7 +365,10 @@ final class Check(pipelineContext: PipelineContext) {
         case Receive(clauses) =>
           val effVars = Vars.clausesVars(clauses)
           val argType = DynamicType
-          val envs1 = clauses.map(checkClause(_, List(argType), resTy, env, effVars))
+          val clauseEnvs = occurrence.clausesEnvs(clauses, List(argType), env)
+          val envs1 = clauses
+            .lazyZip(clauseEnvs)
+            .map((clause, occEnv) => checkClause(clause, List(argType), resTy, occEnv, effVars))
           subtype.joinEnvs(envs1)
         case ReceiveWithTimeout(List(), timeout, timeoutBlock) =>
           val env1 = checkExpr(timeout, builtinTypes("timeout"), env)
@@ -367,7 +376,10 @@ final class Check(pipelineContext: PipelineContext) {
         case ReceiveWithTimeout(clauses, timeout, timeoutBlock) =>
           val effVars = Vars.clausesAndBlockVars(clauses, timeoutBlock)
           val argType = DynamicType
-          val envs1 = clauses.map(checkClause(_, List(argType), resTy, env, effVars))
+          val clauseEnvs = occurrence.clausesEnvs(clauses, List(argType), env)
+          val envs1 = clauses
+            .lazyZip(clauseEnvs)
+            .map((clause, occEnv) => checkClause(clause, List(argType), resTy, occEnv, effVars))
           val tEnv1 = checkExpr(timeout, builtinTypes("timeout"), env)
           val tEnv2 = checkBody(timeoutBlock, resTy, tEnv1)
           val tEnv3 = util.exitScope(env, tEnv2, effVars)
