@@ -19,6 +19,7 @@ use anyhow::bail;
 use clap::ValueHint;
 use elp::build;
 use elp::build::load;
+use elp::build::load::FileOrder;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
@@ -210,6 +211,7 @@ pub fn eqwalize_module(
         Mode::Cli,
         query_config,
         ifdef,
+        FileOrder::AsLoaded,
     )?;
     build::compile_deps(&loaded, cli)?;
     telemetry::report_elapsed_time("eqwalize operational", start_time);
@@ -286,6 +288,7 @@ pub fn eqwalize_all(
         Mode::Cli,
         query_config,
         ifdef,
+        FileOrder::AsLoaded,
     )?;
     build::compile_deps(&loaded, cli)?;
     telemetry::report_elapsed_time("eqwalize-all operational", start_time);
@@ -371,6 +374,7 @@ pub fn eqwalize_app(
         Mode::Cli,
         query_config,
         ifdef,
+        FileOrder::AsLoaded,
     )?;
     build::compile_deps(&loaded, cli)?;
     telemetry::report_elapsed_time("eqwalize-app operational", start_time);
@@ -445,6 +449,7 @@ pub fn eqwalize_target(
         Mode::Cli,
         query_config,
         ifdef,
+        FileOrder::AsLoaded,
     )?;
 
     telemetry::report_elapsed_time("eqwalize-target operational", start_time);
@@ -552,6 +557,7 @@ pub fn eqwalize_stats(
         Mode::Cli,
         query_config,
         ifdef,
+        FileOrder::AsLoaded,
     )?;
     build::compile_deps(&loaded, cli)?;
     let analysis = &loaded.analysis();

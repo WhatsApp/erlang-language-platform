@@ -22,6 +22,7 @@ use clap::ArgAction;
 use clap::ValueHint;
 use clap_complete::engine::ArgValueCompleter;
 use elp::build::load;
+use elp::build::load::FileOrder;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
@@ -179,6 +180,7 @@ pub fn parse_all(
         Mode::Cli,
         query_config,
         ifdef,
+        FileOrder::AsLoaded,
     )?;
 
     if let Some(to) = &args.to {

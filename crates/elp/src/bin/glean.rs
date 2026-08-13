@@ -17,6 +17,7 @@ use anyhow::Result;
 use clap::ValueHint;
 use clap_complete::engine::ArgValueCompleter;
 use elp::build::load;
+use elp::build::load::FileOrder;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp_eqwalizer::EqwalizerDiagnostics;
@@ -292,6 +293,9 @@ impl GleanIndexer {
         ifdef: bool,
     ) -> Result<(Self, LoadResult)> {
         let config = DiscoverConfig::buck();
+        // `FileOrder::ByPath` so that the `src.File` ids, and everything that
+        // references them, come out the same on every run: two dumps over the
+        // same tree are then directly comparable.
         let loaded = load::load_project_at(
             cli,
             &args.project,
@@ -300,6 +304,7 @@ impl GleanIndexer {
             elp_eqwalizer::Mode::Server,
             query_config,
             ifdef,
+            FileOrder::ByPath,
         )?;
         let analysis = loaded.analysis();
         let indexer = Self {

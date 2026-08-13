@@ -364,6 +364,7 @@ mod tests {
     use clap::Parser;
     use elp::build;
     use elp::build::load;
+    use elp::build::load::FileOrder;
     use elp::cli::Fake;
     use elp::sort_by_file_size_descending;
     use elp_eqwalizer::EqwalizerConfig;
@@ -511,6 +512,7 @@ mod tests {
             Mode::Cli,
             &BUCK_QUERY_CONFIG,
             false,
+            FileOrder::AsLoaded,
         )
         .with_context(|| format!("Failed to load project at {}", project_path.display()))
         .unwrap();

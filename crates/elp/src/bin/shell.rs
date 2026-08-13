@@ -16,6 +16,7 @@ use std::time::SystemTime;
 use anyhow::Result;
 use clap::ValueHint;
 use elp::build::load;
+use elp::build::load::FileOrder;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::watchman::UpdateResult;
@@ -230,6 +231,7 @@ pub fn run_shell(
         Mode::Shell,
         query_config,
         ifdef,
+        FileOrder::AsLoaded,
     )?;
     watchman.set_project_dirs(&loaded);
     telemetry::report_elapsed_time("shell operational", start_time);
@@ -263,6 +265,7 @@ pub fn run_shell(
                             Mode::Shell,
                             query_config,
                             ifdef,
+                            FileOrder::AsLoaded,
                         )?;
                         watchman.set_project_dirs(&loaded);
                     }

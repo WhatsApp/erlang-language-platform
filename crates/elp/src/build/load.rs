@@ -96,6 +96,26 @@ pub fn project_root_dir(manifest: &ProjectManifest) -> PathBuf {
     root.to_path_buf()
 }
 
+/// The order in which loaded files are interned into the VFS, which is the
+/// order their `FileId`s are allocated in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FileOrder {
+    /// Intern each file as the loader delivers it. The loader reads its
+    /// directory chunks in parallel, so which `FileId` a given path gets
+    /// varies from run to run.
+    AsLoaded,
+    /// Buffer the loaded files and intern them in path order, so a given path
+    /// always gets the same `FileId` and the run is reproducible. Costs one
+    /// sort of the file list, and interning waits for the loader to finish
+    /// rather than overlapping it -- only worth asking for when the output is
+    /// compared across runs.
+    ByPath,
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "mirrors the existing load entry points; grouping them into a config struct is a separate cleanup"
+)]
 pub fn load_project_at(
     cli: &dyn Cli,
     root: &Path,
@@ -104,6 +124,7 @@ pub fn load_project_at(
     eqwalizer_mode: elp_eqwalizer::Mode,
     query_config: &BuckQueryConfig,
     ifdef: bool,
+    file_order: FileOrder,
 ) -> Result<LoadResult> {
     let (elp_config, manifest) = discover_manifest(root, &conf)?;
     load_project_from_manifest(
@@ -114,12 +135,17 @@ pub fn load_project_at(
         eqwalizer_mode,
         query_config,
         ifdef,
+        file_order,
     )
 }
 
 /// Load a project from an already-discovered manifest.
 /// Use this when the manifest has been discovered separately (e.g., by the daemon
 /// to avoid redundant discovery).
+#[expect(
+    clippy::too_many_arguments,
+    reason = "mirrors the existing load entry points; grouping them into a config struct is a separate cleanup"
+)]
 pub fn load_project_from_manifest(
     cli: &dyn Cli,
     manifest: &ProjectManifest,
@@ -128,6 +154,7 @@ pub fn load_project_from_manifest(
     eqwalizer_mode: elp_eqwalizer::Mode,
     query_config: &BuckQueryConfig,
     ifdef: bool,
+    file_order: FileOrder,
 ) -> Result<LoadResult> {
     crate::ensure_rayon_pool();
     log::info!("Loading project: {manifest:?}");
@@ -137,7 +164,7 @@ pub fn load_project_from_manifest(
     })?;
     pb.finish();
 
-    load_project(cli, project, include_otp, eqwalizer_mode, ifdef)
+    load_project(cli, project, include_otp, eqwalizer_mode, ifdef, file_order)
 }
 
 fn load_project(
@@ -146,6 +173,7 @@ fn load_project(
     include_otp: IncludeOtp,
     eqwalizer_mode: elp_eqwalizer::Mode,
     ifdef: bool,
+    file_order: FileOrder,
 ) -> Result<LoadResult> {
     let project_id = ProjectId(0);
     let (sender, receiver) = unbounded();
@@ -176,6 +204,7 @@ fn load_project(
         &receiver,
         eqwalizer_mode,
         ifdef,
+        file_order,
     )?;
     Ok(LoadResult::new(
         analysis_host,
@@ -197,6 +226,7 @@ fn load_database(
     receiver: &Receiver<loader::Message>,
     eqwalizer_mode: elp_eqwalizer::Mode,
     ifdef: bool,
+    file_order: FileOrder,
 ) -> Result<AnalysisHost> {
     let mut analysis_host = AnalysisHost::default();
 
@@ -207,6 +237,8 @@ fn load_database(
 
     let pb = cli.simple_progress(0, "Loading applications");
 
+    // Stays empty, and unallocated, under `FileOrder::AsLoaded`.
+    let mut deferred: Vec<(AbsPathBuf, Option<Vec<u8>>)> = Vec::new();
     for task in receiver {
         match task {
             loader::Message::Progress {
@@ -224,11 +256,32 @@ fn load_database(
                 }
             }
             loader::Message::Loaded { files } | loader::Message::Changed { files } => {
-                for (path, contents) in files {
-                    vfs.set_file_contents(path.into(), contents);
+                match file_order {
+                    FileOrder::AsLoaded => {
+                        for (path, contents) in files {
+                            vfs.set_file_contents(path.into(), contents);
+                        }
+                    }
+                    FileOrder::ByPath => deferred.extend(files),
                 }
             }
         }
+    }
+
+    // `FileId` is the path's insertion index into the VFS, and the loader reads
+    // its directory chunks with rayon, so interning in arrival order gives a
+    // given path a different `FileId` on every run. Anything keyed on `FileId`
+    // then varies too — the `src.File` ids in an `elp glean` dump, iteration of
+    // an `FxHashSet<FileId>`, the tiebreak of a stable sort over
+    // `SourceRoot::iter()`. Interning in path order makes those reproducible,
+    // at the cost of a sort and of waiting for the loader to finish before
+    // interning anything, which is why the caller has to ask for it.
+    //
+    // A stable sort, so that a path loaded and then changed keeps its arrival
+    // order and the later contents still win.
+    deferred.sort_by(|(a, _), (b, _)| a.cmp(b));
+    for (path, contents) in deferred {
+        vfs.set_file_contents(path.into(), contents);
     }
 
     pb.finish();

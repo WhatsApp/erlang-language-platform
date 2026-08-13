@@ -20,6 +20,7 @@ use clap::ValueHint;
 use clap_complete::engine::ArgValueCompleter;
 use crossbeam_channel::unbounded;
 use elp::build::load;
+use elp::build::load::FileOrder;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
@@ -532,6 +533,7 @@ fn load_project(
         Mode::Server,
         query_config,
         ifdef,
+        FileOrder::AsLoaded,
     )
 }
 fn do_parse_one(

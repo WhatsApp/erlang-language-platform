@@ -75,6 +75,7 @@ use clap::ValueHint;
 use codespan_reporting::term::termcolor::ColorSpec;
 use codespan_reporting::term::termcolor::WriteColor;
 use elp::build::load;
+use elp::build::load::FileOrder;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::read_lint_config_file;
@@ -612,6 +613,7 @@ fn run_daemon_server(args: &DaemonRun, query_config: &BuckQueryConfig, ifdef: bo
         Mode::Shell,
         query_config,
         ifdef,
+        FileOrder::AsLoaded,
     )?;
     watchman.set_project_dirs(&loaded);
 
@@ -768,6 +770,7 @@ fn handle_connection(
                 Mode::Shell,
                 ctx.query_config,
                 ctx.ifdef,
+                FileOrder::AsLoaded,
             )?;
             state.watchman.set_project_dirs(&state.loaded);
             // Fresh analysis_host loses the lint config; re-apply.

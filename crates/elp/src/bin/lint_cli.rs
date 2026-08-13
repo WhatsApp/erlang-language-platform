@@ -23,6 +23,7 @@ use anyhow::Result;
 use anyhow::bail;
 use crossbeam_channel::unbounded;
 use elp::build::load;
+use elp::build::load::FileOrder;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
@@ -366,6 +367,7 @@ fn load_project(
         Mode::Server,
         query_config,
         ifdef,
+        FileOrder::AsLoaded,
     )?;
 
     elp::apply_lint_config(&mut loaded.analysis_host, lint_config);
