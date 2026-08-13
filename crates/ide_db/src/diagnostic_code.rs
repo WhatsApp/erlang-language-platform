@@ -209,6 +209,8 @@ pub enum DiagnosticCode {
     SimplifyMapsMerge,
     #[strum(props(code = "W0081"))]
     RedundantSuppression,
+    #[strum(props(code = "W0082"))]
+    AvoidAnyType,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),

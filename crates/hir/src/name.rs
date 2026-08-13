@@ -274,6 +274,7 @@ pub mod known {
         TEST,
         DEBUG,
         // known atoms
+        any,
         apply,
         behaviour_info,
         behavior_info,
