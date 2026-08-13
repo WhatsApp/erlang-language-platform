@@ -36,7 +36,7 @@
 //   `#{_@@K => _}`    — bind keys, don't-care values
 //   `#{_ => _@@V}`    — don't-care keys, bind values
 //   `#{_@@_ => _}`    — absorb extras
-// Globs are not allowed in records or `when`-clause guards. When the
+// Globs are not allowed in records or `where`-clause guards. When the
 // same glob name appears in two sequences, both bindings must be
 // element-wise equivalent. Globs are matching-only today (no
 // template-side support).
@@ -244,19 +244,19 @@ pub fn is_placeholder_a_var_from_sema_and_match(
 #[derive(Debug)]
 pub struct SsrRule {
     parsed_rule: Arc<SsrBody>,
-    /// `when`-clause conditions in Erlang-guard disjunctive normal form.
+    /// `where`-clause conditions in Erlang-guard disjunctive normal form.
     /// Outer `Vec` is `;`-separated alternatives (OR); inner map gathers
     /// `,`-separated conjuncts (AND) keyed by placeholder. Empty outer
-    /// `Vec` means the rule had no `when` clause — match unconditionally.
+    /// `Vec` means the rule had no `where` clause — match unconditionally.
     conditions: Vec<Conjunction>,
 }
 
-/// One AND-group of conditions in a `when` clause — i.e. one
+/// One AND-group of conditions in a `where` clause — i.e. one
 /// `;`-separated alternative. Multiple conditions on the same
 /// placeholder within a `Conjunction` are AND-ed at match time.
 pub(crate) type Conjunction = FxHashMap<SsrPlaceholder, Vec<Condition>>;
 
-/// A possible condition extracted from the ssr rule `when` clause.
+/// A possible condition extracted from the ssr rule `where` clause.
 ///
 /// `Literal` comes from `_@X == lit` (and `=:=`, `/=`, `=/=`) forms.
 /// `Kind` comes from `is_<kind>(_@X)` BIF calls and the SSR-only
@@ -270,7 +270,7 @@ pub enum Condition {
     Kind(NodeKind),
 }
 
-/// HIR node kinds usable in `when is_<kind>(_@X)` guard clauses. The
+/// HIR node kinds usable in `where is_<kind>(_@X)` guard clauses. The
 /// snake_case spellings double as the Erlang BIF names — except for
 /// `Var` and `Call`, which have no native BIF and are SSR-only
 /// extension predicates spelled `is_var` / `is_call` (local calls,
@@ -360,13 +360,13 @@ impl SsrRule {
         body: &FoldBody,
         source_map: &BodySourceMap,
     ) -> Result<Vec<Conjunction>, SsrError> {
-        // `when G1, G2 ; G3, G4` parses as `(G1 ∧ G2) ∨ (G3 ∧ G4)`; the
+        // `where G1, G2 ; G3, G4` parses as `(G1 ∧ G2) ∨ (G3 ∧ G4)`; the
         // HIR mirrors that with `Vec<Vec<ExprId>>` — outer over `;`,
         // inner over `,`. We preserve the structure 1-1 as a DNF of
         // per-placeholder condition maps.
         let mut alternatives: Vec<Conjunction> = Vec::new();
         let mut error = None;
-        if let Some(w) = ssr_body.when.as_ref() {
+        if let Some(w) = ssr_body.where_clause.as_ref() {
             for conds in w {
                 let mut conjunction: Conjunction = FxHashMap::default();
                 for cond in conds {
@@ -395,7 +395,7 @@ fn extract_condition(
     }
 }
 
-/// Try to extract a `(placeholder, condition)` pair from a single `when`
+/// Try to extract a `(placeholder, condition)` pair from a single `where`
 /// clause expression. Returns `None` if the expression doesn't refer to a
 /// placeholder; sets `*error` if the expression refers to a placeholder
 /// but is shaped wrongly.

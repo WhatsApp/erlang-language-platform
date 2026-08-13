@@ -212,7 +212,7 @@ pub(crate) fn print_ssr(db: &dyn InternDatabase, ssr: &super::SsrBody) -> String
     let mut printer = Printer::new(db, &ssr.body);
     let template = &ssr.template.as_ref().map(|idx| &ssr.body[idx.expr]);
     printer
-        .print_ssr(&ssr.body[ssr.pattern.expr], *template, &ssr.when)
+        .print_ssr(&ssr.body[ssr.pattern.expr], *template, &ssr.where_clause)
         .expect("write should succeed");
     printer.result()
 }
@@ -1029,16 +1029,16 @@ impl<'a> Printer<'a> {
         &mut self,
         lhs: &Expr,
         rhs: Option<&Expr>,
-        when: &Option<Vec<Vec<ExprId>>>,
+        where_clause: &Option<Vec<Vec<ExprId>>>,
     ) -> fmt::Result {
         self.print_expr(lhs)?;
         rhs.map(|rhs| {
             write!(self, " ==>> ")?;
             self.print_expr(rhs)
         });
-        if let Some(when) = when {
-            writeln!(self, "\nwhen")?;
-            self.print_ssr_guards(when)?;
+        if let Some(where_clause) = where_clause {
+            writeln!(self, "\nwhere")?;
+            self.print_ssr_guards(where_clause)?;
         };
         Ok(())
     }

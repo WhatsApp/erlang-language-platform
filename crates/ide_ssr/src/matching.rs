@@ -754,21 +754,21 @@ impl<'a> Matcher<'a> {
         // checks that we didn't want to do on the first pass.
         self.attempt_match_node(&mut Phase::Second(&mut the_match), self.pattern, code)?;
 
-        // Evaluate the `when` clause now that every placeholder has a
+        // Evaluate the `where` clause now that every placeholder has a
         // binding. Must run after Phase::Second because OR (`;`)
         // semantics can only be decided once all conjuncts in *some*
         // alternative are knowable.
-        self.check_when_disjunction(&the_match)?;
+        self.check_where_disjunction(&the_match)?;
 
         Ok(the_match)
     }
 
-    /// Evaluate the rule's `when` clause against the recorded bindings.
+    /// Evaluate the rule's `where` clause against the recorded bindings.
     /// The clause is in DNF: `Vec<Conjunction>` outer is `;` (OR),
     /// inner-map AND-groups per placeholder. Match succeeds if the rule
-    /// has no `when` clause, or if at least one alternative passes all
+    /// has no `where` clause, or if at least one alternative passes all
     /// its conjuncts. Last failure reason is returned for debugging.
-    fn check_when_disjunction(&self, the_match: &Match) -> Result<(), MatchFailed> {
+    fn check_where_disjunction(&self, the_match: &Match) -> Result<(), MatchFailed> {
         if self.rule.conditions.is_empty() {
             return Ok(());
         }
@@ -779,7 +779,7 @@ impl<'a> Matcher<'a> {
                 Err(e) => last_err = Some(e),
             }
         }
-        Err(last_err.unwrap_or_else(|| match_error!("when clause: no alternative matched")))
+        Err(last_err.unwrap_or_else(|| match_error!("where clause: no alternative matched")))
     }
 
     fn check_conjunction(
@@ -807,7 +807,7 @@ impl<'a> Matcher<'a> {
                 let Some(pm) = the_match.placeholder_values.get(subid) else {
                     continue;
                 };
-                // `when`-clause conditions target single-element
+                // `where`-clause conditions target single-element
                 // placeholders today; globs are rejected during pattern
                 // compilation by a later commit, so this branch is
                 // unreachable for well-formed rules.
@@ -890,8 +890,8 @@ impl<'a> Matcher<'a> {
                 return Ok(false);
             }
             if let Phase::Second(matches_out) = phase {
-                // `when`-clause conditions are evaluated after the whole
-                // pattern binds, in `check_when_disjunction`, because OR
+                // `where`-clause conditions are evaluated after the whole
+                // pattern binds, in `check_where_disjunction`, because OR
                 // (`;`) semantics need every binding in hand before any
                 // alternative can be ruled in.
                 if let Some(original_range) = self.get_code_range(code) {
@@ -2434,7 +2434,7 @@ where
 /// two globs per sequence are permitted — two globs allow matching an
 /// element at an arbitrary position within a list with possibly-empty
 /// prefix and suffix (lazy-first semantics). Globs are forbidden
-/// inside `when` clauses entirely. Any violation surfaces as an
+/// inside `where` clauses entirely. Any violation surfaces as an
 /// `SsrError` so the rule fails to parse rather than silently
 /// producing wrong matches.
 pub(crate) fn validate_glob_usage(
@@ -2551,8 +2551,8 @@ pub(crate) fn validate_glob_usage(
     validate_map_glob_entries(pattern_body, cache)?;
 
     // Reject any glob anywhere in `where` clauses.
-    if let Some(when) = &ssr_body.when {
-        for conjunction in when {
+    if let Some(where_clause) = &ssr_body.where_clause {
+        for conjunction in where_clause {
             for guard_expr_id in conjunction {
                 let found =
                     FoldCtx::fold_expr(strategy, body, *guard_expr_id, false, &mut |acc, ctx| {

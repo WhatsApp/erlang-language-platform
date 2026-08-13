@@ -72,7 +72,7 @@ fn parser_basic_query() {
                         op
                             ArithOp(Add),
                     }
-                when
+                where
             }
         "#]],
     );
@@ -99,7 +99,7 @@ fn parser_basic_query_with_placeholder() {
                         op
                             ArithOp(Add),
                     }
-                when
+                where
             }
         "#]],
     );
@@ -129,7 +129,7 @@ fn parser_basic_query_with_cond() {
                         op
                             ArithOp(Add),
                     }
-                when
+                where
                     guard
                         Expr<6>:Expr::BinaryOp {
                             lhs
@@ -1972,7 +1972,7 @@ fn ssr_glob_in_binary_op_rejected() {
 }
 
 #[test]
-fn ssr_glob_in_when_clause_rejected() {
+fn ssr_glob_in_where_clause_rejected() {
     expect![[r#"
         "Parse error: glob placeholder not allowed in `where` clause"
     "#]]
@@ -2012,7 +2012,7 @@ fn ssr_glob_valid_in_tuple_parses() {
                         }
                 rhs
                     Expr<3>:Literal(Atom('ok'))
-                when
+                where
             }
         "#]],
     );
@@ -2039,7 +2039,7 @@ fn ssr_glob_valid_in_call_args_parses() {
                         Pat<2>:Pat::Missing
                 rhs
                     Expr<3>:Literal(Atom('ok'))
-                when
+                where
             }
         "#]],
     );
@@ -2957,7 +2957,7 @@ fn ssr_glob_get_placeholder_match_panics_on_glob() {
 }
 
 #[test]
-fn ssr_invalid_when_condition_not_literal() {
+fn ssr_invalid_where_condition_not_literal() {
     expect![[r#"
         "Parse error: Invalid `where` RHS, expecting a literal"
     "#]]
@@ -2965,7 +2965,7 @@ fn ssr_invalid_when_condition_not_literal() {
 }
 
 #[test]
-fn ssr_invalid_when_condition_not_compop() {
+fn ssr_invalid_where_condition_not_compop() {
     expect![[r#"
         "Parse error: Invalid `where` condition"
     "#]]
@@ -2973,7 +2973,7 @@ fn ssr_invalid_when_condition_not_compop() {
 }
 
 #[test]
-fn ssr_invalid_when_guard_erlang_prefix_rejected() {
+fn ssr_invalid_where_guard_erlang_prefix_rejected() {
     // Only the local-call form (`is_atom(_@X)`) is supported. The
     // qualified form `erlang:is_atom(_@X)` is rejected because SSR's
     // match semantics for qualified calls differ from Erlang's.
@@ -2986,7 +2986,7 @@ fn ssr_invalid_when_guard_erlang_prefix_rejected() {
 }
 
 #[test]
-fn ssr_invalid_when_guard_unsupported_predicate() {
+fn ssr_invalid_where_guard_unsupported_predicate() {
     // `is_float/1` is a legal Erlang guard BIF but not one SSR
     // recognises. Surface an error instead of silently dropping the
     // condition (previously this would compile but match anything).
@@ -3657,7 +3657,7 @@ fn ssr_native_record_anon_in_pat_does_not_match_qualified() {
 }
 
 // ---------------------------------------------------------------------
-// Per-placeholder kind constraints via `when is_<kind>(_@X)`.
+// Per-placeholder kind constraints via `where is_<kind>(_@X)`.
 //
 // Recognised guard predicates: standard Erlang BIFs
 // `is_atom/is_integer/is_function/is_list/is_tuple/is_map/is_binary`,
@@ -3801,7 +3801,7 @@ fn ssr_kind_constraint_multi_placeholder_and() {
 
 /// `Kind` and `Literal` conditions on different placeholders AND together.
 #[test]
-fn ssr_kind_constraint_ands_with_when_literal_diff_placeholders() {
+fn ssr_kind_constraint_ands_with_where_literal_diff_placeholders() {
     assert_matches(
         "ssr: f(_@A, _@B) where is_tuple(_@A), _@B == foo.",
         "fn() -> f({x}, foo).",
@@ -3818,7 +3818,7 @@ fn ssr_kind_constraint_ands_with_when_literal_diff_placeholders() {
 /// must pass. Regression for a former `insert`-based bug that would
 /// drop one of the two conditions.
 #[test]
-fn ssr_kind_constraint_ands_with_when_literal_same_placeholder() {
+fn ssr_kind_constraint_ands_with_where_literal_same_placeholder() {
     assert_matches(
         "ssr: f(_@A) where is_atom(_@A), _@A == foo.",
         "fn() -> f(foo).",

@@ -594,7 +594,7 @@ impl<'a> Ctx<'a> {
                 pat: self.lower_pat(&rhs_ast),
             })
         });
-        let when = ssr.r#where().map(|w| self.lower_guards(w.guard()));
+        let where_clause = ssr.r#where().map(|w| self.lower_guards(w.guard()));
         let (body, source_map) = self.finish();
         Some((
             SsrBody {
@@ -605,7 +605,7 @@ impl<'a> Ctx<'a> {
                     pat: lhs_pat,
                 },
                 template: rhs,
-                when,
+                where_clause,
             },
             source_map,
         ))

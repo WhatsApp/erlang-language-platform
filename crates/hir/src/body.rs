@@ -286,7 +286,10 @@ pub struct SsrBody {
     pub body: Arc<Body>,
     pub pattern: SsrPatternIds,
     pub template: Option<SsrPatternIds>,
-    pub when: Option<Vec<Vec<ExprId>>>,
+    /// The rule's `where` clause, lowered as Erlang guards: outer
+    /// `Vec` over `;` alternatives, inner over `,` conjuncts. Named
+    /// `where_clause` because `where` is a Rust keyword.
+    pub where_clause: Option<Vec<Vec<ExprId>>>,
 }
 
 /// We lower a SSR pattern and template as both an Expr and a Pat, as

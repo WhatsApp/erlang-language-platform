@@ -343,8 +343,8 @@ pub(crate) fn print_ssr(body: &SsrBody) -> String {
                 this.print_expr(&pattern.expr);
             }
         });
-        this.print_labelled("when", false, &mut |this| {
-            if let Some(expr) = &body.when {
+        this.print_labelled("where", false, &mut |this| {
+            if let Some(expr) = &body.where_clause {
                 this.print_guards(expr);
             }
         });
