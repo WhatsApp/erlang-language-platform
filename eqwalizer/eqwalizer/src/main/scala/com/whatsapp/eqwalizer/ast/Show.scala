@@ -12,7 +12,7 @@ import com.whatsapp.eqwalizer.tc.PipelineContext
 
 import scala.annotation.tailrec
 
-case class Show(pipelineContext: Option[PipelineContext]) {
+case class Show(pipelineContext: PipelineContext) {
 
   def show(tp: Type): String =
     tp match {
@@ -60,7 +60,7 @@ case class Show(pipelineContext: Option[PipelineContext]) {
       case RecordType(n) =>
         s"#$n{}"
       case RefinedRecordType(r, fields) =>
-        pipelineContext.flatMap(_.util.getRecord(r.module, r.name)) match {
+        pipelineContext.util.getRecord(r.module, r.name) match {
           case None => s"#${r.name}{}"
           case Some(recDecl) =>
             fields.toList
@@ -223,27 +223,26 @@ case class Show(pipelineContext: Option[PipelineContext]) {
         "dynamic(...)"
     }
 
-  private def showRid(rid: RemoteId, forceShowModule: Boolean = false): String = {
-    pipelineContext match {
-      case Some(ctx)
-          if !forceShowModule &&
-            ((rid.module == "erlang" && builtinTypes.contains(rid.name)) ||
-              rid.module == ctx.module ||
-              (rid == RemoteId("eqwalizer", "dynamic", 0)) ||
-              (rid == RemoteId("eqwalizer", "dynamic", 1))) =>
-        rid.name
-      case _ => s"${rid.module}:${rid.name}"
-    }
-  }
+  private def showRid(rid: RemoteId, forceShowModule: Boolean = false): String =
+    if (
+      !forceShowModule &&
+      ((rid.module == "erlang" && builtinTypes.contains(rid.name)) ||
+        rid.module == pipelineContext.module ||
+        (rid == RemoteId("eqwalizer", "dynamic", 0)) ||
+        (rid == RemoteId("eqwalizer", "dynamic", 1)))
+    )
+      rid.name
+    else
+      s"${rid.module}:${rid.name}"
 }
 
 object Show {
 
   def show(tp: Type)(implicit pipelineContext: PipelineContext): String =
-    Show(Some(pipelineContext)).show(tp)
+    Show(pipelineContext).show(tp)
 
   def showNotSubtype(t1: Type, t2: Type)(implicit pipelineContext: PipelineContext): (String, String) =
-    Show(Some(pipelineContext)).showNotSubtype(t1, t2)
+    Show(pipelineContext).showNotSubtype(t1, t2)
 
   @tailrec
   private def foldCons(cons: Expr, soFar: List[Expr]): (List[Expr], Option[Expr]) = cons match {

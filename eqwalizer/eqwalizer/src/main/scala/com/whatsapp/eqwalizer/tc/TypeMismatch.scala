@@ -61,7 +61,7 @@ class TypeMismatch(pipelineContext: PipelineContext) {
   import TypeMismatch._
   private lazy val util = pipelineContext.util
   private lazy val subtype = pipelineContext.subtype
-  private lazy val show = new Show(Some(pipelineContext))
+  private lazy val show = new Show(pipelineContext)
 
   def explain(t1: Type, t2: Type): Option[String] = {
     findMismatch(t1, t2, Set()).mismatch match {
