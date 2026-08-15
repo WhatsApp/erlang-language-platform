@@ -103,7 +103,7 @@ strum = { version = "0.28.0", features = ["derive"] }
 tempfile = "3.27.0"
 test-case = "3.3.1"
 text-size = "1.1.1"
-thiserror = "2.0.19"
+thiserror = "2.0.20"
 threadpool = "1.8.1"
 time = { version = "0.3.55", features = ["formatting"] }
 timeout-readwrite = "0.3.3"
