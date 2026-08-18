@@ -2566,7 +2566,7 @@ fn ssr_glob_match_map_rest_keys_only() {
         "f() -> #{tag => error, reason => timeout, code => 42}.",
         &[(
             "#{tag => error, reason => timeout, code => 42}",
-            &[("_@@_", &["code", "reason"])],
+            &[("_@@_", &["reason", "code"])],
         )],
     );
 }
@@ -2593,8 +2593,8 @@ fn ssr_glob_match_map_rest_keys_and_values() {
         &[(
             "#{tag => error, reason => timeout, code => 42}",
             &[
-                ("_@@Keys", &["code", "reason"]),
-                ("_@@Vals", &["42", "timeout"]),
+                ("_@@Keys", &["reason", "code"]),
+                ("_@@Vals", &["timeout", "42"]),
             ],
         )],
     );
@@ -2647,8 +2647,8 @@ fn ssr_glob_match_map_values_only() {
         &[(
             "#{tag => error, reason => timeout, code => 42}",
             &[
-                ("_@@Vals", &["42", "timeout"]),
-                ("_@@_", &["code", "reason"]),
+                ("_@@Vals", &["timeout", "42"]),
+                ("_@@_", &["reason", "code"]),
             ],
         )],
     );
@@ -2670,6 +2670,41 @@ fn ssr_glob_match_map_no_match_missing_fixed_key() {
         "f() -> #{reason => timeout}.",
         &[],
     );
+}
+
+#[test]
+fn ssr_map_duplicate_keys_are_distinct_entries() {
+    // A repeated key is two entries, not one: each occurrence has its
+    // own `ExprId`. A glob on its own absorbs both.
+    assert_matches(
+        "ssr: #{_@@Keys => _@@Vals}.",
+        "f() -> #{a => 1, a => 2}.",
+        &[(
+            "#{a => 1, a => 2}",
+            &[("_@@Keys", &["a", "a"]), ("_@@Vals", &["1", "2"])],
+        )],
+    );
+    // A literal entry takes the first occurrence with a matching key,
+    // and the glob absorbs the rest.
+    assert_matches(
+        "ssr: #{a => 1, _@@Keys => _@@Vals}.",
+        "f() -> #{a => 1, a => 2}.",
+        &[(
+            "#{a => 1, a => 2}",
+            &[("_@@Keys", &["a"]), ("_@@Vals", &["2"])],
+        )],
+    );
+    // The literal commits on the key alone, so a value that only the
+    // second occurrence satisfies does not match: `a => 2` takes the
+    // `a => 1` entry, then `1` fails against `2`.
+    assert_matches(
+        "ssr: #{a => 2, _@@Keys => _@@Vals}.",
+        "f() -> #{a => 1, a => 2}.",
+        &[],
+    );
+    // Without a glob the second entry is unmatched, so the whole map
+    // fails.
+    assert_matches("ssr: #{a => 1}.", "f() -> #{a => 1, a => 2}.", &[]);
 }
 
 #[test]
@@ -2702,7 +2737,7 @@ fn ssr_glob_match_map_bare_underscore_key_with_glob_value() {
         "f() -> #{tag => error, reason => timeout, code => 42}.",
         &[(
             "#{tag => error, reason => timeout, code => 42}",
-            &[("_@@Vals", &["42", "timeout"])],
+            &[("_@@Vals", &["timeout", "42"])],
         )],
     );
 }
@@ -2714,7 +2749,7 @@ fn ssr_glob_match_map_bare_underscore_key_with_glob_value_named_last() {
         "f() -> #{tag => error, reason => timeout, code => 42}.",
         &[(
             "#{tag => error, reason => timeout, code => 42}",
-            &[("_@@Vals", &["42", "timeout"])],
+            &[("_@@Vals", &["timeout", "42"])],
         )],
     );
 }

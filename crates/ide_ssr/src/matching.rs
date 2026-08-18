@@ -1454,7 +1454,8 @@ impl<'a> Matcher<'a> {
             }
         }
 
-        let mut code_keys: Vec<(&SubId, &Vec<SubId>)> = code_it.children.iter().collect();
+        let mut code_keys: Vec<(&SubId, &Vec<SubId>)> =
+            code_it.children.iter().map(|(k, v)| (k, v)).collect();
         // Note: this is potentially n^2 in the number of fields
         for p in non_placeholders {
             if let Ok(index) = self.attempt_match_vec(phase, &p, &code_keys) {
@@ -1988,7 +1989,13 @@ pub struct PatternList {
 #[derive(Debug, Clone, Default)]
 pub struct PatternMap {
     prefix: PatternList,
-    children: FxHashMap<SubId, Vec<SubId>>,
+    /// Key/value entries in source order. Deliberately a `Vec`, not a
+    /// map: matching assigns pattern entries to code entries in order
+    /// and keeps the first assignment that works, so the iteration
+    /// order is part of the observable behaviour. Duplicate keys
+    /// (`#{a => 1, a => 2}`) are distinct entries, each occurrence
+    /// having its own `ExprId`.
+    children: Vec<(SubId, Vec<SubId>)>,
 }
 
 impl From<Vec<SubId>> for PatternList {
@@ -2044,12 +2051,12 @@ impl PatternIterator {
                     fields,
                     default_field,
                 } => {
-                    let mut children: FxHashMap<SubId, Vec<SubId>> = fields
+                    let mut children: Vec<(SubId, Vec<SubId>)> = fields
                         .iter()
                         .map(|(name, val)| (name.expr_id.into(), vec![(*val).into()]))
                         .collect();
                     if let Some(df) = default_field {
-                        children.insert(SubId::Constant("_".to_string()), vec![(*df).into()]);
+                        children.push((SubId::Constant("_".to_string()), vec![(*df).into()]));
                     }
                     PatternIterator::as_pattern_map(vec![name.expr_id.into()], children)
                 }
@@ -2073,7 +2080,7 @@ impl PatternIterator {
                     (*expr).into(),
                 ]),
                 Expr::NativeRecord { name, fields } => {
-                    let children: FxHashMap<SubId, Vec<SubId>> = fields
+                    let children: Vec<(SubId, Vec<SubId>)> = fields
                         .iter()
                         .map(|(name, val)| (name.expr_id.into(), vec![(*val).into()]))
                         .collect();
@@ -2100,14 +2107,14 @@ impl PatternIterator {
                     PatternIterator::as_pattern_list(prefix)
                 }
                 Expr::Map { fields } => {
-                    let children: FxHashMap<SubId, Vec<SubId>> = fields
+                    let children: Vec<(SubId, Vec<SubId>)> = fields
                         .iter()
                         .map(|(name, val)| ((*name).into(), vec![(*val).into()]))
                         .collect();
                     PatternIterator::as_pattern_map(vec![], children)
                 }
                 Expr::MapUpdate { expr, fields } => {
-                    let children: FxHashMap<SubId, Vec<SubId>> = fields
+                    let children: Vec<(SubId, Vec<SubId>)> = fields
                         .iter()
                         .map(|(name, op, val)| ((*name).into(), vec![(*op).into(), (*val).into()]))
                         .collect();
@@ -2292,12 +2299,12 @@ impl PatternIterator {
                     fields,
                     default_field,
                 } => {
-                    let mut children: FxHashMap<SubId, Vec<SubId>> = fields
+                    let mut children: Vec<(SubId, Vec<SubId>)> = fields
                         .iter()
                         .map(|(name, val)| (name.expr_id.into(), vec![(*val).into()]))
                         .collect();
                     if let Some(df) = default_field {
-                        children.insert(SubId::Constant("_".to_string()), vec![(*df).into()]);
+                        children.push((SubId::Constant("_".to_string()), vec![(*df).into()]));
                     }
                     PatternIterator::as_pattern_map(vec![name.expr_id.into()], children)
                 }
@@ -2306,14 +2313,14 @@ impl PatternIterator {
                     field.expr_id.into(),
                 ]),
                 Pat::NativeRecord { name, fields } => {
-                    let children: FxHashMap<SubId, Vec<SubId>> = fields
+                    let children: Vec<(SubId, Vec<SubId>)> = fields
                         .iter()
                         .map(|(name, val)| (name.expr_id.into(), vec![(*val).into()]))
                         .collect();
                     PatternIterator::as_pattern_map(native_record_name_to_subids(name), children)
                 }
                 Pat::Map { fields } => {
-                    let children: FxHashMap<SubId, Vec<SubId>> = fields
+                    let children: Vec<(SubId, Vec<SubId>)> = fields
                         .iter()
                         .map(|(name, val)| ((*name).into(), vec![(*val).into()]))
                         .collect();
@@ -2344,10 +2351,7 @@ impl PatternIterator {
         PatternIterator::List(PatternList { children, idx: 0 })
     }
 
-    fn as_pattern_map(
-        prefix: Vec<SubId>,
-        children: FxHashMap<SubId, Vec<SubId>>,
-    ) -> PatternIterator {
+    fn as_pattern_map(prefix: Vec<SubId>, children: Vec<(SubId, Vec<SubId>)>) -> PatternIterator {
         PatternIterator::Map(PatternMap {
             prefix: PatternList {
                 children: prefix,

@@ -41,6 +41,18 @@
 // element-wise equivalent. Globs are matching-only today (no
 // template-side support).
 //
+// Map and record entries are unordered in Erlang, but SSR visits them
+// in source order — a node yields at most one match, never one per
+// possible assignment. Literal (non-placeholder) key entries are
+// assigned first, then placeholder-key entries in source order over
+// the entries that remain. In both passes a pattern entry commits to
+// the first candidate whose *key* matches; if that entry's value then
+// fails to match, the map match fails rather than retrying a later
+// entry. So a placeholder key (`#{_@K => _@V, _@@Rest => _}`) takes
+// the first *unclaimed* entry irrespective of any further constraints
+// on it (e.g. a `where` guard), and a repeated key
+// (`#{a => 1, a => 2}`) is two entries, not one.
+//
 // ```erlang
 // // ssr: {a, _@@Rest} matches {a, b, c, d}; Rest binds to [b, c, d]
 // // ssr: foo(_@@Args) matches foo(1, 2, 3); Args binds to [1, 2, 3]
