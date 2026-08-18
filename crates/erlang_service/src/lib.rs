@@ -42,6 +42,8 @@ use eetf::Term;
 use eetf::pattern;
 use elp_base_db::FileId;
 use elp_base_db::ModuleName;
+use elp_project_model::otp::DEFAULT_PORT_LIMIT;
+use elp_project_model::otp::configure_erl_env;
 use elp_syntax::SmolStr;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -336,6 +338,8 @@ impl Connection {
 
         let mut cmd = Command::new(&escript_path);
         cmd.arg(&erlang_service_path);
+
+        configure_erl_env(&mut cmd, DEFAULT_PORT_LIMIT);
 
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())

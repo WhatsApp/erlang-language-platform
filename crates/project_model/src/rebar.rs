@@ -32,6 +32,8 @@ use crate::AppType;
 use crate::CommandProxy;
 use crate::ProjectAppData;
 use crate::ProjectModelError;
+use crate::otp::DEFAULT_PORT_LIMIT;
+use crate::otp::configure_erl_env;
 
 pub const REQUIRED_REBAR3_VERSION: &str = ">=3.24.0";
 
@@ -107,7 +109,7 @@ impl RebarConfig {
         let rebar3_path = get_rebar3_path();
         let escript_path = get_escript_path();
 
-        if cfg!(target_os = "windows") {
+        let mut cmd = if cfg!(target_os = "windows") {
             // On Windows, we need to run rebar3 via escript
             let rebar3 = rebar3_path.unwrap_or_else(|| {
                 static REBAR3_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
@@ -151,7 +153,10 @@ impl RebarConfig {
                 cmd.env("PATH", path_env);
             }
             cmd
-        }
+        };
+
+        configure_erl_env(&mut cmd, DEFAULT_PORT_LIMIT);
+        cmd
     }
 
     pub fn rebar3_command(&self) -> CommandProxy<'_> {
@@ -174,7 +179,19 @@ impl RebarConfig {
     }
 }
 
-fn rebar3_version(config: &RebarConfig) -> Result<String> {
+/// The `rebar3 version` output. The rebar3 binary is the same for all configs
+/// (resolved by `rebar3_command_base()`), so the result is cached
+/// process-globally — starting rebar3 costs a full Erlang VM startup.
+pub(crate) fn rebar3_version(config: &RebarConfig) -> Result<String> {
+    static VERSION: OnceLock<Result<String, String>> = OnceLock::new();
+
+    VERSION
+        .get_or_init(|| rebar3_version_impl(config).map_err(|err| err.to_string()))
+        .clone()
+        .map_err(|err| anyhow!("{err}"))
+}
+
+fn rebar3_version_impl(config: &RebarConfig) -> Result<String> {
     let mut cmd = config.rebar3_command();
     cmd.arg("version");
     let output = cmd.output()?;
@@ -203,9 +220,8 @@ fn rebar3_version(config: &RebarConfig) -> Result<String> {
 }
 
 fn check_version(config: &RebarConfig) -> Result<bool> {
-    // The rebar3 binary is the same for all configs (resolved by
-    // rebar3_command_base()), so the version check result is process-global.
-    // Cache it to avoid spawning a subprocess for every RebarConfig construction.
+    // `rebar3_version` is itself cached, but parsing and comparing the version
+    // is repeated for every RebarConfig construction without this.
     static VERSION_CHECKED: OnceLock<Result<bool, String>> = OnceLock::new();
 
     let result =

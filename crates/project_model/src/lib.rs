@@ -61,6 +61,7 @@ use crate::otp::Otp;
 use crate::rebar::Profile;
 use crate::rebar::RebarConfig;
 use crate::rebar::RebarProject;
+use crate::rebar::rebar3_version;
 
 pub mod buck;
 pub mod eqwalizer_support;
@@ -1108,14 +1109,12 @@ impl Project {
                         "load project from rebar config {}",
                         rebar_setting.config_file
                     );
-                    let rebar_version = {
-                        let mut cmd = RebarConfig::rebar3_command_base();
-                        cmd.arg("version");
-                        utf8_stdout(&mut cmd)?
-                    };
-
                     let loaded =
                         Project::load_rebar_build_info(rebar_setting).with_context(|| {
+                            // Only queried when the load fails, and cached, so
+                            // the happy path does not pay for an Erlang VM.
+                            let rebar_version = rebar3_version(rebar_setting)
+                                .unwrap_or_else(|err| format!("unknown rebar3 version: {err}"));
                             format!(
                                 "Failed to read rebar build info for config file {}, {}",
                                 rebar_setting.config_file, rebar_version

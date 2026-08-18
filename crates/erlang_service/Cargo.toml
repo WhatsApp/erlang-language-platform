@@ -14,6 +14,7 @@ byteorder.workspace = true
 crossbeam-channel.workspace = true
 eetf.workspace = true
 elp_base_db.workspace = true
+elp_project_model.workspace = true
 elp_syntax.workspace = true
 fxhash.workspace = true
 jod-thread.workspace = true

@@ -80,6 +80,35 @@ struct ErlSystemInfo {
 /// this token.
 const ERL_FIELD_SEP: &str = "|ELP-SEP|";
 
+/// Cap on the port table for the Erlang VMs we start, unless the caller knows
+/// it needs fewer.
+pub const DEFAULT_PORT_LIMIT: u32 = 65536;
+
+/// Prepare a command that starts an Erlang VM, replacing the ambient
+/// `ERL_*FLAGS` with a `+Q` of our own choosing.
+///
+/// The port table is preallocated at startup and defaults to the process file
+/// descriptor limit, so on a host with a generous `ulimit -n` even a VM that
+/// opens no ports pays for it. `+Q` has to travel via `ERL_FLAGS` rather than
+/// argv because most of the VMs we start are escripts, where argv belongs to
+/// the script rather than to the emulator.
+///
+/// Taking over `ERL_FLAGS` also fixes the reverse problem: `ERL_FLAGS` and
+/// `ERL_ZFLAGS` are applied *after* the command line, and after an escript's
+/// `%%!` emu args, so an ambient `+P`/`+Q` silently overrides whatever we ask
+/// for — enough to take a trivial VM from tens of MB resident to over 2GB.
+/// `ERL_AFLAGS` is applied first and so loses to our own flags, but is cleared
+/// too so the VMs we start are not perturbed by the environment.
+pub fn configure_erl_env(cmd: &mut Command, port_limit: u32) -> &mut Command {
+    cmd.env_remove("ERL_AFLAGS")
+        .env_remove("ERL_ZFLAGS")
+        .env("ERL_FLAGS", format!("+Q {port_limit}"))
+}
+
+/// The probe opens no ports and spawns no processes, so both tables can sit at
+/// the minimum the emulator accepts.
+const PROBE_TABLE_LIMIT: u32 = 1024;
+
 /// Run `erl` once to collect the OTP root dir, release, and system version.
 fn query_erl_system_info() -> Result<ErlSystemInfo> {
     let _timer = timeit!("query erl system info");
@@ -88,11 +117,16 @@ fn query_erl_system_info() -> Result<ErlSystemInfo> {
         sep = ERL_FIELD_SEP
     );
     let erl = ERL.read().unwrap();
-    let output = Command::new(&*erl)
+    let mut cmd = Command::new(&*erl);
+    let output = configure_erl_env(&mut cmd, PROBE_TABLE_LIMIT)
         // Speed up startup on loaded machines: a single scheduler, no async
         // threads, and minimal code loading.
         .arg("+S1")
         .arg("+A0")
+        // The probe spawns no processes, so pin the process table to the
+        // minimum rather than paying for the default of 1M entries.
+        .arg("+P")
+        .arg(PROBE_TABLE_LIMIT.to_string())
         .arg("-mode")
         .arg("minimal")
         .arg("-noshell")
