@@ -1,0 +1,3 @@
+file specified: {project_path}/app_a/include/shared.hrl
+Diagnostics reported:
+app_a/include/shared.hrl:3:7-3:17::[Warning] [W0083] Type definitions should live in modules, not header files.

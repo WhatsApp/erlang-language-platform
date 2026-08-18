@@ -34,6 +34,10 @@ app_a/src/app_a.erl:67:9-67:25::[Warning] [L1260] record all_configs_file is unu
 app_a/src/app_a.erl:71:1-71:2::[Warning] [L1230] function k/0 is unused
 app_a/src/app_a.erl:74:1-74:2::[Warning] [L1230] function l/1 is unused
 app_a/src/app_a.erl:77:1-77:2::[Warning] [L1230] function m/0 is unused
+app_a/include/broken_diagnostics.hrl:1:2-1:7::[Error] [W0013] misspelled attribute, saw 'defin' but expected 'define'
+app_a/include/broken_diagnostics.hrl:1:8-1:15::[Error] [P1702] bad attribute
+app_a/include/broken_diagnostics.hrl:3:6-3:15::[Error] [P1702] bad attribute
+app_a/include/diagnostics.hrl:1:7-1:19::[Warning] [W0083] Type definitions should live in modules, not header files.
 app_a/test/app_a_SUITE.erl:2:23-2:40::[Warning] [W0054] Do not suppress compiler warnings at module level.
 app_a/src/broken_parse_trans.erl:10:21-10:22::[Error] [L1256] field b undefined in record a
 app_a/src/broken_parse_trans.erl:10:32-10:33::[Error] [L1262] variable 'B' is unbound

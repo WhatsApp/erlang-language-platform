@@ -1286,7 +1286,10 @@ mod tests {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
         let expected_dir = Path::new("lint/lint_recursive");
-        let files = [("app_a/src/lint_recursive.erl", "lint_recursive.erl")];
+        let files = [(
+            "app_a/src/lint_recursive.erl",
+            "app_a/src/lint_recursive.erl",
+        )];
         LintFixSettings::new(tmp_path, expected_dir, &files)
             .buck(buck)
             .check_lint_fix(
@@ -1495,7 +1498,7 @@ mod tests {
         let tmp_path = tmp_dir.path();
         let config_path = project_path("linter/elp_lint_adhoc.toml");
         let expected_dir = Path::new("lint/from_config");
-        let files = [("app_b/src/app_b.erl", "app_b.erl")];
+        let files = [("app_b/src/app_b.erl", "app_b/src/app_b.erl")];
         LintFixSettings::new(tmp_path, expected_dir, &files)
             .buck(buck)
             .check_lint_fix(
@@ -1711,7 +1714,7 @@ mod tests {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
         let expected_dir = Path::new("lint/head_mismatch");
-        let files = [("app_a/src/lints.erl", "lints.erl")];
+        let files = [("app_a/src/lints.erl", "app_a/src/lints.erl")];
         LintFixSettings::new(tmp_path, expected_dir, &files)
             .buck(buck)
             .expect_code(101)
@@ -1742,7 +1745,7 @@ mod tests {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
         let expected_dir = Path::new("lint/head_mismatch");
-        let files = [("app_a/src/lints.erl", "lints.erl")];
+        let files = [("app_a/src/lints.erl", "app_a/src/lints.erl")];
         LintFixSettings::new(tmp_path, expected_dir, &files)
             .buck(buck)
             .expect_code(101)
@@ -1816,7 +1819,7 @@ mod tests {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
         let expected_dir = Path::new("lint/ignore_app_env");
-        let files = [("app_b/src/app_b.erl", "app_b.erl")];
+        let files = [("app_b/src/app_b.erl", "app_b/src/app_b.erl")];
         LintFixSettings::new(tmp_path, expected_dir, &files)
             .buck(buck)
             .check_lint_fix(
@@ -1845,7 +1848,7 @@ mod tests {
         let tmp_dir = make_tmp_dir();
         let tmp_path = tmp_dir.path();
         let expected_dir = Path::new("lint/ignore_app_env");
-        let files = [("app_a/src/spelling.erl", "spelling.erl")];
+        let files = [("app_a/src/spelling.erl", "app_a/src/spelling.erl")];
         LintFixSettings::new(tmp_path, expected_dir, &files)
             .buck(buck)
             .expect_code(101)
@@ -1962,10 +1965,64 @@ mod tests {
         // Like lint_select_files, but one of the --file arguments is a
         // BUCK file that won't be in the VFS.  The linter should
         // gracefully skip it and still process the valid Erlang file.
-        simple_snapshot_expect_error(
+        SnapshotSettings::default()
+            .buck(buck)
+            .expect_error()
+            .expect_stderr(expect![[r#"
+                File not found in project, skipping: {project_path}/BUCK.ELP
+                Errors found
+            "#]])
+            .run(
+                args_vec![
+                    "lint",
+                    "--no-stream",
+                    "--config-file",
+                    project_path("linter/elp_lint_empty.toml"),
+                    "--file",
+                    project_path("linter/app_a/src/app_a.erl"),
+                    "--file",
+                    project_path("linter/BUCK.ELP")
+                ],
+                "linter",
+                resource_file("linter/select_files_skip_unsupported.stdout"),
+            );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_select_files_only_unsupported(buck: bool) {
+        // Only an unsupported file is selected. The linter should
+        // gracefully skip it and NOT fall back to analysing all files.
+        SnapshotSettings::default()
+            .buck(buck)
+            .expect_stderr(expect![[r#"
+                File not found in project, skipping: {project_path}/BUCK.ELP
+            "#]])
+            .run(
+                args_vec![
+                    "lint",
+                    "--no-stream",
+                    "--file",
+                    project_path("linter/BUCK.ELP")
+                ],
+                "linter",
+                resource_file("linter/select_files_only_unsupported.stdout"),
+            );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_select_files_skip_unsupported_json(buck: bool) {
+        // Consumers of `--format json` parse stdout one JSON document per
+        // line, so the notice about the skipped file must go to stderr. Assert
+        // it by parsing, not by snapshot: a snapshot would happily record a
+        // plain-text line as the new expectation.
+        let (mut args, path) = add_project(
             args_vec![
                 "lint",
                 "--no-stream",
+                "--format",
+                "json",
                 "--config-file",
                 project_path("linter/elp_lint_empty.toml"),
                 "--file",
@@ -1974,7 +2031,40 @@ mod tests {
                 project_path("linter/BUCK.ELP")
             ],
             "linter",
-            resource_file("linter/select_files_skip_unsupported.stdout"),
+            None,
+            None,
+        );
+        if !buck {
+            args.push("--rebar".into());
+        }
+
+        let (stdout, stderr, code) = elp(args);
+
+        assert_eq!(code, 101, "stdout:\n{stdout}\nstderr:\n{stderr}");
+        for line in stdout.lines() {
+            serde_json::from_str::<serde_json::Value>(line)
+                .unwrap_or_else(|err| panic!("stdout line is not JSON: {line}\n{err}"));
+        }
+        let project_path = path.to_str().expect("project_path");
+        expect![[r#"
+            File not found in project, skipping: {project_path}/BUCK.ELP
+            Errors found
+        "#]]
+        .assert_eq(&stderr.replace(project_path, "{project_path}"));
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_headers(buck: bool) {
+        // Header files are not in the module index, so they are enumerated
+        // from the include file index. `app_a/include/shared.hrl` and
+        // `app_b/include/shared.hrl` share a basename and must be reported
+        // separately. `app_a/include/orphan.hrl` is included by no module and
+        // is still linted.
+        simple_snapshot(
+            args_vec!["lint", "--no-stream", "--diagnostic-filter", "W0083"],
+            "lint_headers",
+            resource_file("lint_headers/headers.stdout"),
             buck,
             None,
         );
@@ -1982,21 +2072,142 @@ mod tests {
 
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
-    fn lint_select_files_only_unsupported(buck: bool) {
-        // Only an unsupported file is selected. The linter should
-        // gracefully skip it and NOT fall back to analysing all files.
+    fn lint_select_files_header(buck: bool) {
+        // A header named by `--file` is linted, as the help for the flag
+        // promises. Previously it was dropped for having no module name.
         simple_snapshot(
             args_vec![
                 "lint",
                 "--no-stream",
+                "--diagnostic-filter",
+                "W0083",
                 "--file",
-                project_path("linter/BUCK.ELP")
+                project_path("lint_headers/app_a/include/shared.hrl")
             ],
-            "linter",
-            resource_file("linter/select_files_only_unsupported.stdout"),
+            "lint_headers",
+            resource_file("lint_headers/select_files_header.stdout"),
             buck,
             None,
         );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_select_files_orphan_header(buck: bool) {
+        // `--file` is respected even when nothing includes the header.
+        simple_snapshot(
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--diagnostic-filter",
+                "W0083",
+                "--file",
+                project_path("lint_headers/app_a/include/orphan.hrl")
+            ],
+            "lint_headers",
+            resource_file("lint_headers/select_files_orphan_header.stdout"),
+            buck,
+            None,
+        );
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_applies_fix_to_dir_for_headers(buck: bool) {
+        // `--to` mirrors the project layout. Naming the outputs after the
+        // report label would give `<to>/app_a/include/shared.hrl.erl`, whose
+        // parent does not exist; naming them after the basename would have the
+        // two `shared.hrl` clobber each other at `<to>/shared.hrl`, with the
+        // winner decided by iteration order.
+        let tmp_dir = make_tmp_dir();
+        let tmp_path = tmp_dir.path();
+        let expected_dir = Path::new("lint/lint_headers");
+        let files = [
+            ("app_a/include/shared.hrl", "app_a/include/shared.hrl"),
+            ("app_b/include/shared.hrl", "app_b/include/shared.hrl"),
+            ("app_a/include/orphan.hrl", "app_a/include/orphan.hrl"),
+        ];
+        LintFixSettings::new(tmp_path, expected_dir, &files)
+            .buck(buck)
+            .sorted()
+            .check_lint_fix(
+                args_vec![
+                    "lint",
+                    "--no-stream",
+                    "--diagnostic-filter",
+                    "W0083",
+                    "--to",
+                    tmp_path,
+                    "--apply-fix",
+                    "--ignore-fix-only",
+                ],
+                "lint_headers",
+                resource_file("lint_headers/apply_fix_to_dir_headers.stdout"),
+                None,
+            )
+            .expect("Bad test");
+    }
+
+    #[test_case(false ; "rebar")]
+    #[test_case(true  ; "buck")]
+    fn lint_apply_fix_reports_every_unwritable_file(buck: bool) {
+        // Occupying `<to>/app_a` with a regular file makes both of app_a's
+        // headers unwritable while app_b's stays fine. Every file must still be
+        // attempted — aborting on the first error would drop app_b's fix, and
+        // which fixes survived would depend on iteration order — and both
+        // failures must be named, on stderr rather than in the JSON stream.
+        let tmp_dir = make_tmp_dir();
+        let tmp_path = tmp_dir.path();
+        fs::write(tmp_path.join("app_a"), "").expect("could not occupy app_a");
+
+        let (mut args, _project) = add_project(
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--format",
+                "json",
+                "--diagnostic-filter",
+                "W0083",
+                "--to",
+                tmp_path,
+                "--apply-fix",
+                "--ignore-fix-only",
+            ],
+            "lint_headers",
+            None,
+            None,
+        );
+        if !buck {
+            args.push("--rebar".into());
+        }
+
+        let (stdout, stderr, code) = elp(args);
+
+        assert_eq!(code, 101, "stdout:\n{stdout}\nstderr:\n{stderr}");
+        for line in stdout.lines() {
+            serde_json::from_str::<serde_json::Value>(line)
+                .unwrap_or_else(|err| panic!("stdout line is not JSON: {line}\n{err}"));
+        }
+        assert!(
+            tmp_path.join("app_b/include/shared.hrl").exists(),
+            "app_b's fix was cancelled by app_a's failure\nstderr:\n{stderr}"
+        );
+        // The trailing cause of each failure is the OS error text, which is not
+        // worth pinning down, so match on the paths rather than snapshot it.
+        let stderr = stderr.replace(tmp_path.to_str().expect("tmp_path"), "{to}");
+        assert!(
+            stderr.starts_with("Apply fix failed: 2 of 3 fixed files could not be written:\n"),
+            "stderr:\n{stderr}"
+        );
+        for path in [
+            "could not write {to}/app_a/include/orphan.hrl",
+            "could not write {to}/app_a/include/shared.hrl",
+        ] {
+            assert!(
+                stderr.contains(path),
+                "missing `{path}` in stderr:\n{stderr}"
+            );
+        }
     }
 
     #[test]
@@ -2859,6 +3070,7 @@ mod tests {
         expected_code: i32,
         sorted: bool,
         check_stderr: bool,
+        expected_stderr: Option<Expect>,
         normalise_urls: bool,
         first_line_only: bool,
     }
@@ -3005,6 +3217,15 @@ mod tests {
             self
         }
 
+        /// Snapshot stderr *in addition to* stdout, unlike [`check_stderr`],
+        /// which snapshots it instead.
+        ///
+        /// [`check_stderr`]: SnapshotSettings::check_stderr
+        fn expect_stderr(mut self, expected: Expect) -> Self {
+            self.expected_stderr = Some(expected);
+            self
+        }
+
         fn normalise_urls(mut self) -> Self {
             self.normalise_urls = true;
             self
@@ -3028,6 +3249,11 @@ mod tests {
                 self.expected_code
             );
 
+            if let Some(expected_stderr) = &self.expected_stderr {
+                let project_path = path.to_str().expect("project_path");
+                expected_stderr.assert_eq(&stderr.replace(project_path, "{project_path}"));
+            }
+
             let output = if self.check_stderr { &stderr } else { &stdout };
             let output = if self.sorted {
                 sort_lines(output)
@@ -3043,7 +3269,7 @@ mod tests {
                 self.first_line_only,
             );
 
-            if self.expected_code == 0 && !self.check_stderr {
+            if self.expected_code == 0 && !self.check_stderr && self.expected_stderr.is_none() {
                 assert!(
                     stderr.is_empty(),
                     "expected stderr to be empty, got:\n{stderr}"

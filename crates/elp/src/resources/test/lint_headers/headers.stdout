@@ -1,0 +1,4 @@
+Diagnostics reported:
+app_a/include/orphan.hrl:2:7-2:18::[Warning] [W0083] Type definitions should live in modules, not header files.
+app_a/include/shared.hrl:3:7-3:17::[Warning] [W0083] Type definitions should live in modules, not header files.
+app_b/include/shared.hrl:3:7-3:17::[Warning] [W0083] Type definitions should live in modules, not header files.

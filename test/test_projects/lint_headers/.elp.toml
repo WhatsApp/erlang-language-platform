@@ -1,0 +1,5 @@
+[buck]
+enabled = true
+build_deps = false
+included_targets = [ "root//lint_headers/..." ]
+source_root = "lint_headers"

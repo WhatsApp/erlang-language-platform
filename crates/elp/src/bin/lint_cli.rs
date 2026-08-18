@@ -19,6 +19,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::SystemTime;
 
+use anyhow::Context;
 use anyhow::Result;
 use anyhow::bail;
 use crossbeam_channel::unbounded;
@@ -51,7 +52,6 @@ use elp_ide::elp_ide_db::elp_base_db::Change;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FilePosition;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
-use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
@@ -481,36 +481,66 @@ fn do_diagnostics_all(
     let path_filter: Option<std::path::PathBuf> =
         args.path.as_ref().map(|p| canonicalize_or_keep(p));
 
+    let should_lint = |file_id: FileId| -> bool {
+        if let Some(ref filter_path) = path_filter {
+            match loaded.vfs.file_path(file_id).as_path() {
+                Some(path) => {
+                    if !canonicalize_or_keep(path.as_ref()).starts_with(filter_path) {
+                        return false;
+                    }
+                }
+                None => return false,
+            }
+        }
+        if otp_file_to_ignore(analysis, file_id) {
+            return false;
+        }
+        if analysis.file_app_type(file_id).ok() == Some(Some(AppType::Dep)) {
+            return false;
+        }
+        if ignored_apps.contains(&analysis.file_app_name(file_id).ok()) {
+            return false;
+        }
+        if let Some(ref app) = app_name {
+            match analysis.file_app_name(file_id).ok() {
+                Some(Some(file_app)) if &file_app == app => {}
+                _ => return false,
+            }
+        }
+        true
+    };
+
     // Collect modules into an owned vector, pre-filtering by path, app, etc.
     let modules: Vec<(String, FileId)> = module_index
         .iter_own()
-        .filter_map(|(name, _source, file_id)| {
-            if let Some(ref filter_path) = path_filter {
-                let vfs_path = loaded.vfs.file_path(file_id);
-                if !canonicalize_or_keep(vfs_path.as_path()?.as_ref()).starts_with(filter_path) {
-                    return None;
-                }
-            }
-            if otp_file_to_ignore(analysis, file_id) {
-                return None;
-            }
-            if analysis.file_app_type(file_id).ok() == Some(Some(AppType::Dep)) {
-                return None;
-            }
-            if ignored_apps.contains(&analysis.file_app_name(file_id).ok()) {
-                return None;
-            }
-            if let Some(ref app) = app_name {
-                match analysis.file_app_name(file_id).ok() {
-                    Some(Some(file_app)) if &file_app == app => {}
-                    _ => return None,
-                }
-            }
-            Some((name.as_str().to_string(), file_id))
+        .filter(|&(_name, _source, file_id)| should_lint(file_id))
+        .map(|(name, _source, file_id)| (name.as_str().to_string(), file_id))
+        .collect();
+
+    // Header files have no module index entry, so enumerate them from the
+    // include file index. Unlike `iter_own()` above, that index spans OTP and
+    // the dependencies too, hence the explicit `AppType::App`. Collected by
+    // `FileId` so a header reachable under two paths is still linted once.
+    let headers: FxHashSet<FileId> = analysis
+        .include_file_index(*project_id)
+        .unwrap()
+        .path_to_file_id
+        .values()
+        .copied()
+        .filter(|file_id| {
+            analysis.file_app_type(*file_id).ok() == Some(Some(AppType::App))
+                && should_lint(*file_id)
         })
         .collect();
 
-    run_diagnostics_parallel(cli, analysis, config, args, loaded, modules, module)
+    let mut files = modules;
+    files.extend(
+        headers
+            .into_iter()
+            .map(|file_id| (file_label(analysis, loaded, file_id), file_id)),
+    );
+
+    run_diagnostics_parallel(cli, analysis, config, args, loaded, files, module)
 }
 
 fn do_diagnostics_one(
@@ -556,7 +586,24 @@ fn do_diagnostics_one(
 
 // ---------------------------------------------------------------------
 
-/// Resolve user-specified targets (`--module` or `--file`) to file IDs.
+/// The label a file is reported under. Modules are identified by their module
+/// name, anything else — a header file, in particular — by its path relative
+/// to the project root, since header basenames are not unique across a project.
+fn file_label(analysis: &Analysis, loaded: &LoadResult, file_id: FileId) -> String {
+    if let Ok(Some(name)) = analysis.module_name(file_id) {
+        return name.as_str().to_string();
+    }
+    let vfs_path = loaded.vfs.file_path(file_id);
+    match analysis.project_data(file_id) {
+        Ok(Some(project_data)) => reporting::get_relative_path(&project_data.root_dir, vfs_path)
+            .to_string_lossy()
+            .to_string(),
+        _ => vfs_path.to_string(),
+    }
+}
+
+/// Resolve user-specified targets (`--module` or `--file`) to file IDs,
+/// paired with the label to report them under.
 ///
 /// Returns `None` when no specific targets were requested (i.e. lint all),
 /// or `Some(files)` when the user expressed intent to select files — even
@@ -566,7 +613,7 @@ fn resolve_target_files(
     loaded: &LoadResult,
     args: &Lint,
     cli: &mut dyn Cli,
-) -> Result<Option<Vec<(FileId, ModuleName)>>> {
+) -> Result<Option<Vec<(FileId, String)>>> {
     let mut file_ids: Vec<FileId> = vec![];
     let user_selected_targets;
     if let Some(module) = &args.module {
@@ -596,23 +643,24 @@ fn resolve_target_files(
             {
                 file_ids.push(file_id);
             } else {
-                log::warn!("File not found in VFS, skipping: {}", file_name.display());
+                // Do not let this pass silently: an unlinted file is otherwise
+                // indistinguishable from a file with no diagnostics. It goes to
+                // `info` rather than stdout so that `--format json` emits only
+                // JSON on stdout, for the benefit of the callers parsing it.
+                cli.info(&format!(
+                    "File not found in project, skipping: {}",
+                    file_name.display()
+                ))?;
             }
         }
     } else {
         user_selected_targets = false;
     }
 
-    let mut resolved = Vec::new();
-    for file_id in file_ids {
-        match analysis.module_name(file_id) {
-            Ok(Some(name)) => resolved.push((file_id, name)),
-            Ok(None) => {
-                log::warn!("Could not get module name for {file_id:?}, skipping");
-            }
-            Err(e) => return Err(e.into()),
-        }
-    }
+    let resolved = file_ids
+        .into_iter()
+        .map(|file_id| (file_id, file_label(analysis, loaded, file_id)))
+        .collect();
 
     if user_selected_targets {
         Ok(Some(resolved))
@@ -649,13 +697,13 @@ pub fn do_codemod(
                     if let Ok(Some(file_app)) = analysis.file_app_name(*file_id)
                         && file_app != expected_app
                     {
-                        panic!("Module {} does not belong to app {}", name.as_str(), app)
+                        panic!("Module {name} does not belong to app {app}")
                     }
                 }
             }
             let modules: Vec<(String, FileId)> = files
                 .into_iter()
-                .map(|(file_id, name)| (name.as_str().to_string(), file_id))
+                .map(|(file_id, name)| (name, file_id))
                 .collect();
             let (results, err_in_diag, any_printed) = run_diagnostics_parallel(
                 cli,
@@ -785,7 +833,9 @@ pub fn do_codemod(
             match lints.apply_relevant_fixes(args.is_format_normal(), cli) {
                 Ok(_) => {}
                 Err(err) => {
-                    writeln!(cli, "Apply fix failed: {err:#}").ok();
+                    // Reported via `info`, i.e. stderr, to keep stdout a pure
+                    // stream of JSON documents under `--format json`.
+                    cli.info(&format!("Apply fix failed: {err:#}")).ok();
                 }
             };
 
@@ -1214,7 +1264,7 @@ struct Lints<'a> {
     cfg: &'a DiagnosticsConfig,
     vfs: &'a mut Vfs,
     args: &'a Lint,
-    changed_files: &'a mut FxHashSet<(FileId, String)>,
+    changed_files: &'a mut FxHashSet<FileId>,
     diags: FxHashMap<FileId, (String, Vec<diagnostics::Diagnostic>)>,
     changed_forms: FxHashSet<InFile<FormIdx>>,
 }
@@ -1237,7 +1287,7 @@ impl<'a> Lints<'a> {
         cfg: &'a DiagnosticsConfig,
         vfs: &'a mut Vfs,
         args: &'a Lint,
-        changed_files: &'a mut FxHashSet<(FileId, String)>,
+        changed_files: &'a mut FxHashSet<FileId>,
         diags: Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>,
     ) -> Lints<'a> {
         let diags_by_file_id = diagnostics_by_file_id(&diags);
@@ -1318,7 +1368,7 @@ impl<'a> Lints<'a> {
                         if (self.args.with_check || self.args.check_eqwalize_all) && err_in_diags {
                             bail!("Applying change introduces an error diagnostic");
                         } else {
-                            self.changed_files.insert((file_id, name.clone()));
+                            self.changed_files.insert(file_id);
                             let changed_forms = {
                                 let analysis = self.analysis_host.analysis();
                                 changes
@@ -1375,9 +1425,24 @@ impl<'a> Lints<'a> {
                 break;
             }
         }
-        self.changed_files.iter().for_each(|(file_id, name)| {
-            self.write_fix_result(*file_id, name);
-        });
+        // Every file is attempted: one unwritable path must not cancel the
+        // fixes for the others, which iteration order would pick arbitrarily.
+        // Sorted so the report does not depend on that order either.
+        let failures = self
+            .changed_files
+            .iter()
+            .filter_map(|file_id| self.write_fix_result(*file_id).err())
+            .map(|err| format!("{err:#}"))
+            .sorted()
+            .collect::<Vec<_>>();
+        if !failures.is_empty() {
+            bail!(
+                "{} of {} fixed files could not be written:\n  {}",
+                failures.len(),
+                self.changed_files.len(),
+                failures.join("\n  ")
+            );
+        }
         Ok(())
     }
 
@@ -1581,21 +1646,50 @@ impl<'a> Lints<'a> {
         })
     }
 
-    fn write_fix_result(&self, file_id: FileId, name: &String) -> Option<()> {
-        let file_text = self.analysis_host.analysis().file_text(file_id).ok()?;
-        if let Some(to) = &self.args.to {
-            // --to takes priority: write to specified directory
-            let to_path = to.join(format!("{name}.erl"));
-            let mut output = File::create(to_path).ok()?;
-            write!(output, "{file_text}").ok()?;
-        } else {
+    fn write_fix_result(&self, file_id: FileId) -> Result<()> {
+        let file_text = self.analysis_host.analysis().file_text(file_id)?;
+        let vfs_path = self.vfs.file_path(file_id);
+        let file_path = vfs_path
+            .as_path()
+            .with_context(|| format!("Not an on-disk file, cannot write fix: {vfs_path}"))?;
+        let to_path = match &self.args.to {
+            // --to takes priority: mirror the project layout under the given
+            // directory. Writing every file under its bare name would let two
+            // apps holding a header of the same name clobber each other, with
+            // the winner decided by iteration order.
+            Some(to) => {
+                let project_data = self.analysis_host.analysis().project_data(file_id)?;
+                let relative = project_data
+                    .as_ref()
+                    .map(|project_data| {
+                        reporting::get_relative_path(&project_data.root_dir, vfs_path)
+                    })
+                    // Outside any project root `get_relative_path` hands back
+                    // the absolute path, and joining that would escape `to`.
+                    .filter(|relative| relative.is_relative());
+                match relative {
+                    Some(relative) => to.join(relative),
+                    None => to.join(
+                        file_path
+                            .file_name()
+                            .with_context(|| format!("Path has no file name: {file_path}"))?,
+                    ),
+                }
+            }
             // Default: write in-place
-            let file_path = self.vfs.file_path(file_id);
-            let to_path = file_path.as_path()?;
-            let mut output = File::create(to_path).ok()?;
-            write!(output, "{file_text}").ok()?;
+            None => PathBuf::from(file_path.as_os_str()),
         };
-        Some(())
+        let write = || -> Result<()> {
+            if let Some(parent) = to_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            let mut output = File::create(&to_path)?;
+            write!(output, "{file_text}")?;
+            Ok(())
+        };
+        // One context for the whole write, so a failure names the file it was
+        // for: `apply_relevant_fixes` reports these together.
+        write().with_context(|| format!("could not write {}", to_path.display()))
     }
 }
 

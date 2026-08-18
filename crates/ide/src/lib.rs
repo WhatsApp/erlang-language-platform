@@ -45,6 +45,7 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
+use elp_ide_db::elp_base_db::IncludeFileIndex;
 use elp_ide_db::elp_base_db::ModuleIndex;
 use elp_ide_db::elp_base_db::ModuleName;
 use elp_ide_db::elp_base_db::ProjectData;
@@ -437,6 +438,12 @@ impl Analysis {
 
     pub fn module_index(&self, project_id: ProjectId) -> Cancellable<Arc<ModuleIndex>> {
         self.with_db(|db| db.module_index(project_id))
+    }
+
+    /// The header files of a project. They have no `ModuleIndex` entry, so this
+    /// is the only way to enumerate them.
+    pub fn include_file_index(&self, project_id: ProjectId) -> Cancellable<Arc<IncludeFileIndex>> {
+        self.with_db(|db| db.include_file_index(project_id))
     }
 
     pub fn module_file_id(
