@@ -46,30 +46,74 @@ impl std::ops::Sub for MemoryUsage {
 }
 
 impl MemoryUsage {
+    /// All-zero reading, used when the allocator cannot be queried.
+    const UNKNOWN: MemoryUsage = MemoryUsage {
+        allocated: Bytes(0),
+        active: Bytes(0),
+        resident: Bytes(0),
+    };
+
     pub fn now() -> MemoryUsage {
-        // Use jemalloc stats when the jemalloc feature is enabled.
-        // For Cargo/OSS builds, jemalloc is a default feature.
-        // For Buck builds, the jemalloc feature is enabled when sanitizers are not used.
-        #[cfg(all(
-            feature = "jemalloc",
-            not(any(target_env = "msvc", target_os = "openbsd"))
-        ))]
-        {
-            jemalloc_ctl::epoch::advance().unwrap();
-            MemoryUsage {
-                allocated: Bytes(jemalloc_ctl::stats::allocated::read().unwrap() as isize),
-                active: Bytes(jemalloc_ctl::stats::active::read().unwrap() as isize),
-                resident: Bytes(jemalloc_ctl::stats::resident::read().unwrap() as isize),
-            }
+        imp::now().unwrap_or(Self::UNKNOWN)
+    }
+}
+
+/// Buck builds link jemalloc through the allocator that the build system
+/// selects, so the statistics are read back over `malloc_stats_print`. That
+/// symbol is weak: when the binary ends up on another allocator — under a
+/// sanitizer, say — the call reports nothing rather than failing, so there is
+/// nothing to gate at build time.
+#[cfg(buck_build)]
+mod imp {
+    use serde_json::Value;
+
+    use super::Bytes;
+    use super::MemoryUsage;
+
+    fn stat(stats: &Value, name: &str) -> Option<Bytes> {
+        let bytes = stats["jemalloc"]["stats"][name].as_u64()?;
+        Some(Bytes(bytes as isize))
+    }
+
+    pub(super) fn now() -> Option<MemoryUsage> {
+        if !memory::is_using_jemalloc() {
+            return None;
         }
-        #[cfg(any(not(feature = "jemalloc"), target_env = "msvc", target_os = "openbsd"))]
-        {
-            MemoryUsage {
-                allocated: Bytes(0),
-                active: Bytes(0),
-                resident: Bytes(0),
-            }
-        }
+
+        // `J` selects JSON; the remaining flags drop the per-arena, bin and
+        // extent sections we do not read. Refreshing the statistics epoch is
+        // part of the call.
+        let stats = allocator_stats::malloc_stats("Jmdablxg").ok()?;
+        let stats: Value = serde_json::from_str(&stats).ok()?;
+
+        Some(MemoryUsage {
+            allocated: stat(&stats, "allocated")?,
+            active: stat(&stats, "active")?,
+            resident: stat(&stats, "resident")?,
+        })
+    }
+}
+
+/// Cargo builds install jemalloc as the Rust global allocator, so the
+/// statistics come from the matching `jemalloc-ctl` bindings instead.
+#[cfg(not(buck_build))]
+mod imp {
+    use super::Bytes;
+    use super::MemoryUsage;
+
+    #[cfg(not(any(target_env = "msvc", target_os = "openbsd")))]
+    pub(super) fn now() -> Option<MemoryUsage> {
+        jemalloc_ctl::epoch::advance().ok()?;
+        Some(MemoryUsage {
+            allocated: Bytes(jemalloc_ctl::stats::allocated::read().ok()? as isize),
+            active: Bytes(jemalloc_ctl::stats::active::read().ok()? as isize),
+            resident: Bytes(jemalloc_ctl::stats::resident::read().ok()? as isize),
+        })
+    }
+
+    #[cfg(any(target_env = "msvc", target_os = "openbsd"))]
+    pub(super) fn now() -> Option<MemoryUsage> {
+        None
     }
 }
 

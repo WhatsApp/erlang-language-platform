@@ -66,15 +66,10 @@ test-case.workspace = true
 time.workspace = true
 
 [target.'cfg(not(any(target_env = "msvc", target_os = "openbsd")))'.dependencies]
-jemalloc-ctl = { workspace = true, optional = true }
-jemallocator = { workspace = true, optional = true }
+tikv-jemallocator.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 daemonize.workspace = true
-
-[features]
-default = ["jemalloc"]
-jemalloc = ["dep:jemalloc-ctl", "dep:jemallocator", "elp_ide_db/jemalloc"]
 
 [lints]
 workspace = true

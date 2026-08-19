@@ -31,6 +31,7 @@ rustc-hash.workspace = true
 salsa.workspace = true
 salsa-macros.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 stdx.workspace = true
 strum.workspace = true
 text-size.workspace = true
@@ -43,10 +44,7 @@ expect-test.workspace = true
 toml.workspace = true
 
 [target.'cfg(not(any(target_env = "msvc", target_os = "openbsd")))'.dependencies]
-jemalloc-ctl = { workspace = true, optional = true }
-
-[features]
-jemalloc = ["dep:jemalloc-ctl"]
+jemalloc-ctl.workspace = true
 
 [lints]
 workspace = true

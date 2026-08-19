@@ -53,22 +53,15 @@ mod ssr_cli;
 #[cfg(test)]
 mod test_utils;
 
-// Use jemalloc as the global allocator when the jemalloc feature is enabled.
-// For Cargo/OSS builds, jemalloc is a default feature.
-// For Buck builds, the allocator is controlled via the BUCK file's `allocator` setting,
-// and this binary does not get the jemalloc feature, so the #[global_allocator] is not set.
-#[cfg(all(
-    feature = "jemalloc",
-    not(any(target_env = "msvc", target_os = "openbsd"))
-))]
-use jemallocator::Jemalloc;
+// Cargo builds install jemalloc here. Buck builds get their allocator from
+// `fbcode.default_allocator`, which interposes `malloc` for the whole binary,
+// so setting one from Rust as well would link a second copy of jemalloc.
+#[cfg(all(not(buck_build), not(any(target_env = "msvc", target_os = "openbsd"))))]
+use tikv_jemallocator::Jemalloc;
 
 use crate::args::Args;
 
-#[cfg(all(
-    feature = "jemalloc",
-    not(any(target_env = "msvc", target_os = "openbsd"))
-))]
+#[cfg(all(not(buck_build), not(any(target_env = "msvc", target_os = "openbsd"))))]
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
