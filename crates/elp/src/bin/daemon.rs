@@ -539,7 +539,6 @@ struct DaemonContext<'a> {
     manifest: &'a ProjectManifest,
     elp_config: &'a ElpConfig,
     query_config: &'a BuckQueryConfig,
-    ifdef: bool,
 }
 
 /// Mutable per-daemon state that survives across requests.
@@ -553,16 +552,15 @@ pub fn daemon_command(
     cmd: &DaemonCommand,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    ifdef: bool,
 ) -> Result<()> {
     match cmd {
-        DaemonCommand::Run(args) => run_daemon_server(args, query_config, ifdef),
+        DaemonCommand::Run(args) => run_daemon_server(args, query_config),
         DaemonCommand::Stop => stop_all_daemons(cli),
         DaemonCommand::Status(args) => show_status(&args.project, &args.profile, args.rebar, cli),
     }
 }
 
-fn run_daemon_server(args: &DaemonRun, query_config: &BuckQueryConfig, ifdef: bool) -> Result<()> {
+fn run_daemon_server(args: &DaemonRun, query_config: &BuckQueryConfig) -> Result<()> {
     let start_time = SystemTime::now();
     let start_instant = Instant::now();
 
@@ -612,7 +610,6 @@ fn run_daemon_server(args: &DaemonRun, query_config: &BuckQueryConfig, ifdef: bo
         IncludeOtp::Yes,
         Mode::Shell,
         query_config,
-        ifdef,
         FileOrder::AsLoaded,
     )?;
     watchman.set_project_dirs(&loaded);
@@ -632,7 +629,6 @@ fn run_daemon_server(args: &DaemonRun, query_config: &BuckQueryConfig, ifdef: bo
         manifest: &manifest,
         elp_config: &elp_config,
         query_config,
-        ifdef,
     };
 
     telemetry::report_elapsed_time("daemon operational", start_time);
@@ -769,7 +765,6 @@ fn handle_connection(
                 IncludeOtp::Yes,
                 Mode::Shell,
                 ctx.query_config,
-                ctx.ifdef,
                 FileOrder::AsLoaded,
             )?;
             state.watchman.set_project_dirs(&state.loaded);
@@ -1804,7 +1799,6 @@ mod tests {
                     daemonize: false,
                 },
                 &query_config,
-                false,
             )
         });
 

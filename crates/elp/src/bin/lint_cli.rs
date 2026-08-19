@@ -271,7 +271,6 @@ pub fn run_lint_command(
     args: &Lint,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    ifdef: bool,
 ) -> Result<()> {
     let start_time = SystemTime::now();
     let memory_start = MemoryUsage::now();
@@ -287,14 +286,7 @@ pub fn run_lint_command(
 
     // We load the project after loading config, in case it bails with
     // errors. No point wasting time if the config is wrong.
-    let mut loaded = load_project(
-        &manifest,
-        &elp_config,
-        cli,
-        query_config,
-        ifdef,
-        &lint_config,
-    )?;
+    let mut loaded = load_project(&manifest, &elp_config, cli, query_config, &lint_config)?;
 
     telemetry::report_elapsed_time("lint operational", start_time);
 
@@ -356,7 +348,6 @@ fn load_project(
     elp_config: &ElpConfig,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    ifdef: bool,
     lint_config: &LintConfig,
 ) -> Result<LoadResult> {
     let mut loaded = load::load_project_from_manifest(
@@ -366,7 +357,6 @@ fn load_project(
         IncludeOtp::Yes,
         Mode::Server,
         query_config,
-        ifdef,
         FileOrder::AsLoaded,
     )?;
 

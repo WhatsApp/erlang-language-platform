@@ -253,20 +253,12 @@ impl<'a> Ctx<'a> {
     /// Set local macro defs from the preprocessor analysis for a given form's
     /// ConditionEnvId. This gives body lowering the correct point-in-file macro
     /// state, matching the behavior of lower_condition_body.
-    ///
-    /// Only effective when `ifdef` is enabled, since that is when
-    /// ConditionEnvIds properly differentiate points in the file (a new
-    /// ID is allocated at each -define/-undef/-include). When disabled,
-    /// all forms share the root env and we fall back to db.resolve_macro().
     pub(crate) fn set_macro_defs_from_preprocessor(
         &mut self,
         file_id: FileId,
         env_id: ConditionEnvId,
     ) {
         let env = self.db.project_macro_environment(file_id);
-        if !env.ifdef {
-            return;
-        }
         let macro_defs = self.db.file_macro_defs(file_id, env);
         if let Some(defs) = macro_defs.macro_defs_for_env(env_id) {
             self.local_macro_defs = Some(Arc::clone(defs));

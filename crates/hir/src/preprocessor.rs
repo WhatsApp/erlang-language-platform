@@ -51,10 +51,6 @@ pub struct MacroEnvironment {
     /// typically via project configuration.
     pub externally_defined: BTreeSet<MacroName>,
     pub module_name: Option<Name>,
-    /// When true, enables ifdef/ifndef condition evaluation (experimental).
-    /// When false, all forms are treated as active (legacy behavior).
-    /// Default: false (disabled - matches legacy behavior)
-    pub ifdef: bool,
     /// The originating app's `AppDataId` for include resolution.
     /// Used to resolve cross-app `include_lib` directives using the
     /// originating app's dependency graph instead of the current file's.
@@ -80,11 +76,6 @@ impl MacroEnvironment {
     /// Get the module name for this environment.
     pub fn module_name(&self) -> Option<&Name> {
         self.module_name.as_ref()
-    }
-
-    /// Set whether ifdef/ifndef condition evaluation is enabled.
-    pub fn set_ifdef(&mut self, value: bool) {
-        self.ifdef = value;
     }
 
     /// Create an environment with common test macros defined.
@@ -515,10 +506,7 @@ fn file_preprocessor_analysis_impl(
         // Snapshot macro state for each unique ConditionEnvId.
         // This must happen BEFORE processing the form, so directive forms
         // get the state from before their own effect.
-        // Only snapshot when ifdef is enabled — these snapshots are only
-        // consumed by ifdef-aware code paths.
-        if env.ifdef
-            && compute_macro_defs
+        if compute_macro_defs
             && let Some(pp_ctx) = form_list.get(form_idx).pp_ctx(&form_list)
             && recorded_envs.insert(pp_ctx.env)
         {
@@ -534,59 +522,51 @@ fn file_preprocessor_analysis_impl(
 
         // Process the form based on its type
         match form_idx {
-            FormIdx::PPCondition(cond_id)
-                // When ifdef is disabled, skip all condition processing.
-                // state.is_active() stays true, so all directives
-                // (defines, undefs, includes) are processed unconditionally.
-                // condition_results remains empty — is_condition_active()
-                // defaults to Active for missing entries.
-                if env.ifdef => {
-                    let processed =
-                        process_pp_condition(db, file_id, &form_list, cond_id, &mut state);
+            FormIdx::PPCondition(cond_id) => {
+                let processed = process_pp_condition(db, file_id, &form_list, cond_id, &mut state);
 
-                    // Snapshot macro defs for -if/-elif conditions so that
-                    // downstream Salsa queries can resolve user macros with
-                    // the correct point-in-time state.
-                    // Only consumed by condition_body_with_source_query when
-                    // ifdef is active.
-                    // Trim to only the macros actually referenced by the
-                    // condition — `referenced_macros` is empty for other
-                    // condition types, so the match gate prevents storing
-                    // empty snapshots for `-ifdef`/`-ifndef`/`-else`/`-endif`.
-                    if compute_macro_defs
-                        && matches!(
-                            &form_list[cond_id],
-                            crate::form_list::PPCondition::If { .. }
-                                | crate::form_list::PPCondition::Elif { .. }
-                        )
-                    {
-                        let trimmed: FxHashMap<_, _> = state
-                            .define_attr_macros
-                            .iter()
-                            .filter(|(name, _)| processed.referenced_macros.contains(name.name()))
-                            .map(|(k, v)| (k.clone(), *v))
-                            .collect();
-                        // Only store non-empty snapshots to reduce memory usage
-                        if !trimmed.is_empty() {
-                            macro_defs
-                                .condition_macro_defs
-                                .insert(cond_id, Arc::new(trimmed));
-                        }
+                // Snapshot macro defs for -if/-elif conditions so that
+                // downstream Salsa queries can resolve user macros with
+                // the correct point-in-time state.
+                // Only consumed by condition_body_with_source_query.
+                // Trim to only the macros actually referenced by the
+                // condition — `referenced_macros` is empty for other
+                // condition types, so the match gate prevents storing
+                // empty snapshots for `-ifdef`/`-ifndef`/`-else`/`-endif`.
+                if compute_macro_defs
+                    && matches!(
+                        &form_list[cond_id],
+                        crate::form_list::PPCondition::If { .. }
+                            | crate::form_list::PPCondition::Elif { .. }
+                    )
+                {
+                    let trimmed: FxHashMap<_, _> = state
+                        .define_attr_macros
+                        .iter()
+                        .filter(|(name, _)| processed.referenced_macros.contains(name.name()))
+                        .map(|(k, v)| (k.clone(), *v))
+                        .collect();
+                    // Only store non-empty snapshots to reduce memory usage
+                    if !trimmed.is_empty() {
+                        macro_defs
+                            .condition_macro_defs
+                            .insert(cond_id, Arc::new(trimmed));
                     }
-                    // Record diagnostics if any
-                    if !processed.diagnostics.is_empty() {
-                        diagnostics_map.insert(cond_id, processed.diagnostics);
-                    }
-                    // Record the condition result after processing
-                    let result = if state.is_current_unknown() {
-                        PPConditionResult::Unknown
-                    } else if state.is_active() {
-                        PPConditionResult::Active
-                    } else {
-                        PPConditionResult::Inactive
-                    };
-                    analysis.condition_results.insert(cond_id, result);
                 }
+                // Record diagnostics if any
+                if !processed.diagnostics.is_empty() {
+                    diagnostics_map.insert(cond_id, processed.diagnostics);
+                }
+                // Record the condition result after processing
+                let result = if state.is_current_unknown() {
+                    PPConditionResult::Unknown
+                } else if state.is_active() {
+                    PPConditionResult::Active
+                } else {
+                    PPConditionResult::Inactive
+                };
+                analysis.condition_results.insert(cond_id, result);
+            }
             FormIdx::PPDirective(directive_id) => {
                 process_pp_directive(
                     db,
@@ -795,7 +775,6 @@ fn process_pp_directive(
                     let mut include_env = MacroEnvironment::new();
                     include_env.externally_defined = state.defined_macros().clone();
                     include_env.orig_app_data_id = env.orig_app_data_id;
-                    include_env.ifdef = env.ifdef;
                     if let Some(module_name) = env.module_name() {
                         include_env.set_module_name(module_name.clone());
                     } else if let Some(module_name) = state.module_name() {
@@ -861,7 +840,6 @@ mod tests {
     use std::collections::BTreeSet;
     use std::sync::Arc;
 
-    use elp_base_db::RootQueryDb;
     use elp_base_db::assert_eq_expected;
     use elp_base_db::fixture::WithFixture;
 
@@ -1646,96 +1624,9 @@ guarded() -> from_app_c.
         );
     }
 
-    // ========================================================================
-    // Tests for skipping condition processing when ifdef=false
-    // ========================================================================
-
     #[test]
-    fn test_ifdef_false_skips_condition_processing() {
-        // When ifdef=false, condition_results should be empty
-        // (no condition processing happens) and all defines should
-        // be visible regardless of ifdef guards.
-        let (mut db, file_id) = TestDB::with_single_file(
-            r#"
--module(test).
--ifdef(UNDEFINED_MACRO).
--define(GUARDED_DEFINE, 1).
--endif.
--define(NORMAL_DEFINE, 2).
-"#,
-        );
-
-        // Run with ifdef=false
-        db.set_ifdef_enabled(false);
-        let env = db.project_macro_environment(file_id);
-        assert!(!env.ifdef);
-
-        let analysis = db.file_preprocessor_analysis(file_id, env);
-
-        // condition_results should be empty — no condition processing
-        let final_state = analysis
-            .final_state
-            .as_ref()
-            .expect("should have final state");
-
-        // Both defines should be visible: the ifdef guard was not evaluated
-        assert!(
-            final_state
-                .define_attr_macros
-                .contains_key(&macro_name("GUARDED_DEFINE")),
-            "GUARDED_DEFINE should be visible when ifdef=false (guard not evaluated)"
-        );
-        assert!(
-            final_state
-                .define_attr_macros
-                .contains_key(&macro_name("NORMAL_DEFINE")),
-            "NORMAL_DEFINE should always be visible"
-        );
-    }
-
-    #[test]
-    fn test_ifdef_false_no_condition_results() {
-        // Verify that condition_results map is empty when ifdef=false
-        let (mut db, file_id) = TestDB::with_single_file(
-            r#"
--module(test).
--ifdef(TEST).
-foo() -> test.
--else.
-foo() -> prod.
--endif.
-"#,
-        );
-
-        db.set_ifdef_enabled(false);
-        let env = db.project_macro_environment(file_id);
-        let (analysis, diagnostics) = db.file_preprocessor_analysis_with_diagnostics(file_id, env);
-
-        // No condition results should be recorded
-        let form_list = db.file_form_list(file_id);
-        for &form_idx in form_list.forms() {
-            if let FormIdx::PPCondition(cond_id) = form_idx {
-                // is_condition_active defaults to Active for missing entries
-                assert_eq!(
-                    analysis.is_condition_active(cond_id),
-                    PPConditionResult::Active,
-                    "All conditions should default to Active when ifdef=false"
-                );
-            }
-        }
-
-        // No diagnostics should be generated
-        assert!(
-            diagnostics.is_empty(),
-            "No condition diagnostics when ifdef=false"
-        );
-    }
-
-    #[test]
-    fn test_ifdef_false_undef_still_works() {
-        // Verify that -undef still removes macros when ifdef=false
-        // (directives are still processed, only conditions are skipped)
-        let (mut db, file_id) = TestDB::with_single_file(
+    fn test_undef_removes_macro() {
+        let (db, file_id) = TestDB::with_single_file(
             r#"
 -module(test).
 -define(TEMP, 1).
@@ -1743,7 +1634,6 @@ foo() -> prod.
 "#,
         );
 
-        db.set_ifdef_enabled(false);
         let env = db.project_macro_environment(file_id);
         let analysis = db.file_preprocessor_analysis(file_id, env);
 
@@ -1754,13 +1644,12 @@ foo() -> prod.
 
         assert!(
             !final_state.defined.contains(&macro_name("TEMP")),
-            "TEMP should be undefined after -undef even when ifdef=false"
+            "TEMP should be undefined after -undef"
         );
     }
 
     #[test]
-    fn test_ifdef_true_still_evaluates_conditions() {
-        // Sanity check: ifdef=true should still evaluate conditions normally
+    fn test_evaluates_conditions() {
         let (db, file_id) = TestDB::with_single_file(
             r#"
 -module(test).
@@ -1771,10 +1660,7 @@ foo() -> prod.
 "#,
         );
 
-        // ifdef=true is the default for test fixtures
         let env = db.project_macro_environment(file_id);
-        assert!(env.ifdef);
-
         let analysis = db.file_preprocessor_analysis(file_id, env);
 
         let final_state = analysis
@@ -1787,7 +1673,7 @@ foo() -> prod.
             !final_state
                 .define_attr_macros
                 .contains_key(&macro_name("GUARDED_DEFINE")),
-            "GUARDED_DEFINE should be hidden when ifdef=true and guard is false"
+            "GUARDED_DEFINE should be hidden because its guard is false"
         );
         assert!(
             final_state

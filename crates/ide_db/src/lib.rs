@@ -137,7 +137,6 @@ impl Default for RootDatabase {
             ipc_handles: Arc::default(),
         };
         db.set_eqwalizer_config(Arc::new(EqwalizerConfig::default()));
-        db.set_ifdef_enabled(false); // Disabled by default (experimental feature)
         db.set_extra_dynamic_call_patterns(Arc::new(FxHashMap::default()));
         db
     }

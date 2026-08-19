@@ -71,12 +71,7 @@ pub struct ParseAll {
     pub list_modules: bool,
 }
 
-pub fn parse_all(
-    args: &ParseAll,
-    cli: &mut dyn Cli,
-    query_config: &BuckQueryConfig,
-    ifdef: bool,
-) -> Result<()> {
+pub fn parse_all(args: &ParseAll, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
     let start_time = SystemTime::now();
     let config = DiscoverConfig::new(!args.buck, &args.profile);
     let loaded = load::load_project_at(
@@ -86,7 +81,6 @@ pub fn parse_all(
         IncludeOtp::Yes,
         Mode::Cli,
         query_config,
-        ifdef,
         FileOrder::AsLoaded,
     )?;
     build::compile_deps(&loaded, cli)?;

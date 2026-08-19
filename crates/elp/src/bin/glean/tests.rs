@@ -530,7 +530,6 @@ fn xref_call_to_generated_dep_module_test() {
     change.set_app_structure(project_apps.app_structure());
 
     let mut db = RootDatabase::default();
-    db.set_ifdef_enabled(true);
     change.apply(&mut db, &|path| fixture.resolve_file_id(path));
     fixture.validate(&db);
 

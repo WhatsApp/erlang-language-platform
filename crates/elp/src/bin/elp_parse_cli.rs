@@ -163,7 +163,6 @@ pub fn parse_all(
     args: &ParseAllElp,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    ifdef: bool,
 ) -> Result<()> {
     log::info!("Loading project at: {:?}", args.project);
 
@@ -179,7 +178,6 @@ pub fn parse_all(
         IncludeOtp::Yes,
         Mode::Cli,
         query_config,
-        ifdef,
         FileOrder::AsLoaded,
     )?;
 

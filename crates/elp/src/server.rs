@@ -1428,7 +1428,6 @@ impl Server {
         let apply_data = {
             let _phase = watchdog::phase("switch_workspaces:salsa_write");
             raw_db.clear_erlang_services();
-            raw_db.set_ifdef_enabled(self.config.ifdef());
             project_apps.app_structure().apply(raw_db, &|_path| None)
         };
         // We will set the FileId -> AppDataIndex structure when the file
@@ -1555,12 +1554,6 @@ impl Server {
             self.reload_manager
                 .lock()
                 .set_buck_quickstart(self.config.buck_quick_start());
-        }
-
-        // Update ifdef setting in the database
-        {
-            let raw_db = self.analysis_host.raw_database_mut();
-            raw_db.set_ifdef_enabled(self.config.ifdef());
         }
 
         // Read the lint config file. Take the project-root path under the lock, then

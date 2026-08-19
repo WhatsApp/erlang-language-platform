@@ -233,9 +233,6 @@ pub fn project_macro_environment_inner(
     let file_id = fid.file_id(db);
     let mut env = MacroEnvironment::new();
 
-    // Set ifdef from database configuration
-    env.set_ifdef(db.ifdef_enabled());
-
     // Add externally defined macros (includes ELP_ERLANG_SERVICE)
     for name in db.file_external_defines(file_id).iter() {
         env.define(MacroName::new(name.clone(), None));

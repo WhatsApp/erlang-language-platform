@@ -199,7 +199,6 @@ pub fn eqwalize_module(
     args: &Eqwalize,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    ifdef: bool,
 ) -> Result<()> {
     let start_time = SystemTime::now();
     let config = DiscoverConfig::new(args.rebar, &args.profile);
@@ -210,7 +209,6 @@ pub fn eqwalize_module(
         IncludeOtp::Yes,
         Mode::Cli,
         query_config,
-        ifdef,
         FileOrder::AsLoaded,
     )?;
     build::compile_deps(&loaded, cli)?;
@@ -274,7 +272,6 @@ pub fn eqwalize_all(
     args: &EqwalizeAll,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    ifdef: bool,
 ) -> Result<()> {
     let start_time = SystemTime::now();
     // Hack to avoid hint appearing in tests
@@ -287,7 +284,6 @@ pub fn eqwalize_all(
         IncludeOtp::Yes,
         Mode::Cli,
         query_config,
-        ifdef,
         FileOrder::AsLoaded,
     )?;
     build::compile_deps(&loaded, cli)?;
@@ -362,7 +358,6 @@ pub fn eqwalize_app(
     args: &EqwalizeApp,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    ifdef: bool,
 ) -> Result<()> {
     let start_time = SystemTime::now();
     let config = DiscoverConfig::new(args.rebar, &args.profile);
@@ -373,7 +368,6 @@ pub fn eqwalize_app(
         IncludeOtp::Yes,
         Mode::Cli,
         query_config,
-        ifdef,
         FileOrder::AsLoaded,
     )?;
     build::compile_deps(&loaded, cli)?;
@@ -437,7 +431,6 @@ pub fn eqwalize_target(
     args: &EqwalizeTarget,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    ifdef: bool,
 ) -> Result<()> {
     let start_time = SystemTime::now();
     let config = DiscoverConfig::buck();
@@ -448,7 +441,6 @@ pub fn eqwalize_target(
         IncludeOtp::Yes,
         Mode::Cli,
         query_config,
-        ifdef,
         FileOrder::AsLoaded,
     )?;
 
@@ -546,7 +538,6 @@ pub fn eqwalize_stats(
     args: &EqwalizeStats,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    ifdef: bool,
 ) -> Result<()> {
     let config = DiscoverConfig::new(args.rebar, &args.profile);
     let loaded = load::load_project_at(
@@ -556,7 +547,6 @@ pub fn eqwalize_stats(
         IncludeOtp::Yes,
         Mode::Cli,
         query_config,
-        ifdef,
         FileOrder::AsLoaded,
     )?;
     build::compile_deps(&loaded, cli)?;

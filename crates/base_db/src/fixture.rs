@@ -81,8 +81,6 @@ pub trait WithFixture: Default + SourceDatabase + 'static {
     fn with_fixture(fixture_str: &str) -> (Self, ChangeFixture) {
         let (fixture, change) = ChangeFixture::parse(fixture_str);
         let mut db = Self::default();
-        // Enable ifdef for tests by default
-        db.set_ifdef_enabled(true);
         change.apply(&mut db, &|path| fixture.resolve_file_id(path));
         let patterns: Vec<crate::DynamicCallPatternInput> = fixture
             .dynamic_call_patterns

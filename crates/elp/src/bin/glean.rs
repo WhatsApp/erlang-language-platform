@@ -162,14 +162,9 @@ pub struct GleanIndexer {
     module: Option<String>,
 }
 
-pub fn index(
-    args: &Glean,
-    cli: &mut dyn Cli,
-    query_config: &BuckQueryConfig,
-    ifdef: bool,
-) -> Result<()> {
+pub fn index(args: &Glean, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
     let start = Instant::now();
-    let result = index_inner(args, cli, query_config, ifdef);
+    let result = index_inner(args, cli, query_config);
     let duration_ms = start.elapsed().as_millis() as u64;
 
     match result {
@@ -218,9 +213,8 @@ fn index_inner(
     args: &Glean,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-    ifdef: bool,
 ) -> Result<(IndexerMetrics, Vec<String>)> {
-    let (indexer, _loaded) = GleanIndexer::new(args, cli, query_config, ifdef)?;
+    let (indexer, _loaded) = GleanIndexer::new(args, cli, query_config)?;
     let config = IndexConfig {
         multi: args.multi,
         source_root: args.source_root.clone(),
@@ -290,7 +284,6 @@ impl GleanIndexer {
         args: &Glean,
         cli: &mut dyn Cli,
         query_config: &BuckQueryConfig,
-        ifdef: bool,
     ) -> Result<(Self, LoadResult)> {
         let config = DiscoverConfig::buck();
         // `FileOrder::ByPath` so that the `src.File` ids, and everything that
@@ -303,7 +296,6 @@ impl GleanIndexer {
             IncludeOtp::Yes,
             elp_eqwalizer::Mode::Server,
             query_config,
-            ifdef,
             FileOrder::ByPath,
         )?;
         let analysis = loaded.analysis();

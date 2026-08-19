@@ -179,19 +179,6 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
     INIT.call_once(|| setup_static(&args));
     let query_config = args.query_config();
     let use_color = args.should_use_color();
-    let ifdef = match args.ifdef {
-        // The flag is deprecated now that ifdef/ifndef condition evaluation is
-        // enabled by default. Still honour it so `--ifdef false` can be used as
-        // an escape hatch to restore the legacy behaviour.
-        Some(value) => {
-            cli.info(
-                "Warning: the --ifdef flag is deprecated and will be removed in an upcoming release. ifdef/ifndef condition evaluation is now enabled by default; pass `--ifdef false` to disable it.",
-            )?;
-            value
-        }
-        None => true,
-    };
-
     let Some(mut command) = args.command else {
         let help = args::Args::render_help();
         writeln!(cli, "{help}")?;
@@ -202,12 +189,8 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
     command.normalize();
     match &command {
         args::Command::RunServer(_) => run_server(logger)?,
-        args::Command::ParseAll(args) => {
-            erlang_service_cli::parse_all(args, cli, &query_config, ifdef)?
-        }
-        args::Command::ParseAllElp(args) => {
-            elp_parse_cli::parse_all(args, cli, &query_config, ifdef)?
-        }
+        args::Command::ParseAll(args) => erlang_service_cli::parse_all(args, cli, &query_config)?,
+        args::Command::ParseAllElp(args) => elp_parse_cli::parse_all(args, cli, &query_config)?,
         args::Command::Eqwalize(eqwalize_args) if eqwalize_args.connect => {
             #[cfg(unix)]
             daemon::connect_eqwalize(eqwalize_args, cli)?;
@@ -217,9 +200,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
                 anyhow::bail!(DAEMON_UNSUPPORTED);
             }
         }
-        args::Command::Eqwalize(args) => {
-            eqwalizer_cli::eqwalize_module(args, cli, &query_config, ifdef)?
-        }
+        args::Command::Eqwalize(args) => eqwalizer_cli::eqwalize_module(args, cli, &query_config)?,
         args::Command::EqwalizeAll(eqwalize_all_args) if eqwalize_all_args.connect => {
             #[cfg(unix)]
             daemon::connect_eqwalize_all(eqwalize_all_args, cli)?;
@@ -229,9 +210,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
                 anyhow::bail!(DAEMON_UNSUPPORTED);
             }
         }
-        args::Command::EqwalizeAll(args) => {
-            eqwalizer_cli::eqwalize_all(args, cli, &query_config, ifdef)?
-        }
+        args::Command::EqwalizeAll(args) => eqwalizer_cli::eqwalize_all(args, cli, &query_config)?,
         args::Command::DialyzeAll(args) => dialyzer_cli::dialyze_all(args, cli)?,
         args::Command::EqwalizeApp(eqwalize_app_args) if eqwalize_app_args.connect => {
             #[cfg(unix)]
@@ -242,11 +221,9 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
                 anyhow::bail!(DAEMON_UNSUPPORTED);
             }
         }
-        args::Command::EqwalizeApp(args) => {
-            eqwalizer_cli::eqwalize_app(args, cli, &query_config, ifdef)?
-        }
+        args::Command::EqwalizeApp(args) => eqwalizer_cli::eqwalize_app(args, cli, &query_config)?,
         args::Command::EqwalizeStats(args) => {
-            eqwalizer_cli::eqwalize_stats(args, cli, &query_config, ifdef)?
+            eqwalizer_cli::eqwalize_stats(args, cli, &query_config)?
         }
         args::Command::EqwalizeTarget(eqwalize_target_args) if eqwalize_target_args.connect => {
             #[cfg(unix)]
@@ -258,7 +235,7 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
             }
         }
         args::Command::EqwalizeTarget(args) => {
-            eqwalizer_cli::eqwalize_target(args, cli, &query_config, ifdef)?
+            eqwalizer_cli::eqwalize_target(args, cli, &query_config)?
         }
         args::Command::BuildInfo(args) => {
             build_info_cli::save_build_info(args, cli, &query_config)?
@@ -275,10 +252,10 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
                 anyhow::bail!(DAEMON_UNSUPPORTED);
             }
         }
-        args::Command::Lint(args) => lint_cli::run_lint_command(args, cli, &query_config, ifdef)?,
+        args::Command::Lint(args) => lint_cli::run_lint_command(args, cli, &query_config)?,
         args::Command::LintCompare(args) => lint_compare::run_lint_compare_command(args, cli)?,
         args::Command::Search(ssr_args) | args::Command::Ssr(ssr_args) => {
-            ssr_cli::run_ssr_command(ssr_args, cli, &query_config, use_color, ifdef)?
+            ssr_cli::run_ssr_command(ssr_args, cli, &query_config, use_color)?
         }
         args::Command::GenerateCompletions(completion_args) => {
             let mut buf = Vec::new();
@@ -286,15 +263,15 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
             cli.write_all(&buf)?;
         }
         args::Command::Version(_) => writeln!(cli, "elp {}", elp::version())?,
-        args::Command::Shell(args) => shell::run_shell(args, cli, &query_config, ifdef)?,
+        args::Command::Shell(args) => shell::run_shell(args, cli, &query_config)?,
         #[cfg(unix)]
         args::Command::Daemon(daemon_args) => {
             let cmd = daemon_args.clone().into_command();
-            daemon::daemon_command(&cmd, cli, &query_config, ifdef)?;
+            daemon::daemon_command(&cmd, cli, &query_config)?;
         }
         args::Command::Explain(args) => explain_cli::explain(args, cli)?,
         args::Command::LintList(args) => lint_list_cli::lint_list(args, cli)?,
-        args::Command::Glean(args) => glean::index(args, cli, &query_config, ifdef)?,
+        args::Command::Glean(args) => glean::index(args, cli, &query_config)?,
         args::Command::ConfigStanza(args) => config_stanza::config_stanza(args, cli)?,
     }
 
@@ -504,7 +481,6 @@ mod tests {
             IncludeOtp::Yes,
             Mode::Cli,
             &BUCK_QUERY_CONFIG,
-            false,
             FileOrder::AsLoaded,
         )
         .with_context(|| format!("Failed to load project at {}", project_path.display()))

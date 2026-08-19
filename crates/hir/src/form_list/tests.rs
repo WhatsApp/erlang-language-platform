@@ -960,7 +960,6 @@ foo() -> ok.
 
     // Second inclusion: GUARD predefined in env, ifndef is inactive
     let mut env = MacroEnvironment::new();
-    env.set_ifdef(true);
     env.define(MacroName::new(Name::from_erlang_service("GUARD"), None));
     let env = Arc::new(env);
 

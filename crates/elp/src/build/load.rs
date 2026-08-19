@@ -25,7 +25,6 @@ use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
-use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::loader::Handle;
@@ -112,10 +111,6 @@ pub enum FileOrder {
     ByPath,
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "mirrors the existing load entry points; grouping them into a config struct is a separate cleanup"
-)]
 pub fn load_project_at(
     cli: &dyn Cli,
     root: &Path,
@@ -123,7 +118,6 @@ pub fn load_project_at(
     include_otp: IncludeOtp,
     eqwalizer_mode: elp_eqwalizer::Mode,
     query_config: &BuckQueryConfig,
-    ifdef: bool,
     file_order: FileOrder,
 ) -> Result<LoadResult> {
     let (elp_config, manifest) = discover_manifest(root, &conf)?;
@@ -134,7 +128,6 @@ pub fn load_project_at(
         include_otp,
         eqwalizer_mode,
         query_config,
-        ifdef,
         file_order,
     )
 }
@@ -142,10 +135,6 @@ pub fn load_project_at(
 /// Load a project from an already-discovered manifest.
 /// Use this when the manifest has been discovered separately (e.g., by the daemon
 /// to avoid redundant discovery).
-#[expect(
-    clippy::too_many_arguments,
-    reason = "mirrors the existing load entry points; grouping them into a config struct is a separate cleanup"
-)]
 pub fn load_project_from_manifest(
     cli: &dyn Cli,
     manifest: &ProjectManifest,
@@ -153,7 +142,6 @@ pub fn load_project_from_manifest(
     include_otp: IncludeOtp,
     eqwalizer_mode: elp_eqwalizer::Mode,
     query_config: &BuckQueryConfig,
-    ifdef: bool,
     file_order: FileOrder,
 ) -> Result<LoadResult> {
     crate::ensure_rayon_pool();
@@ -164,7 +152,7 @@ pub fn load_project_from_manifest(
     })?;
     pb.finish();
 
-    load_project(cli, project, include_otp, eqwalizer_mode, ifdef, file_order)
+    load_project(cli, project, include_otp, eqwalizer_mode, file_order)
 }
 
 fn load_project(
@@ -172,7 +160,6 @@ fn load_project(
     project: Project,
     include_otp: IncludeOtp,
     eqwalizer_mode: elp_eqwalizer::Mode,
-    ifdef: bool,
     file_order: FileOrder,
 ) -> Result<LoadResult> {
     let project_id = ProjectId(0);
@@ -203,7 +190,6 @@ fn load_project(
         &mut line_ending_map,
         &receiver,
         eqwalizer_mode,
-        ifdef,
         file_order,
     )?;
     Ok(LoadResult::new(
@@ -225,7 +211,6 @@ fn load_database(
     line_ending_map: &mut FxHashMap<FileId, LineEndings>,
     receiver: &Receiver<loader::Message>,
     eqwalizer_mode: elp_eqwalizer::Mode,
-    ifdef: bool,
     file_order: FileOrder,
 ) -> Result<AnalysisHost> {
     let mut analysis_host = AnalysisHost::default();
@@ -233,7 +218,6 @@ fn load_database(
     let db = analysis_host.raw_database_mut();
 
     db.set_eqwalizer_mode(eqwalizer_mode);
-    db.set_ifdef_enabled(ifdef);
 
     let pb = cli.simple_progress(0, "Loading applications");
 

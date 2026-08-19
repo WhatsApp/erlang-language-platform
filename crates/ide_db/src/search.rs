@@ -253,16 +253,14 @@ impl<'a> FindUsages<'a> {
     }
 
     pub fn at_least_one(&self) -> bool {
-        // Fast path: when ifdef condition evaluation is enabled, finding any
-        // usage of a `-define` macro can be answered from preprocessor data
-        // collected during form-list lowering, avoiding a project-wide text
-        // search whose cost grows pathologically with short macro names.
-        // Only applies to the natural search scope (file + included files);
-        // when a custom scope or direct_only is requested, fall back to the
-        // text-based search.
+        // Fast path: finding any usage of a `-define` macro can be answered
+        // from preprocessor data collected during form-list lowering, avoiding
+        // a project-wide text search whose cost grows pathologically with short
+        // macro names. Only applies to the natural search scope (file +
+        // included files); when a custom scope or direct_only is requested,
+        // fall back to the text-based search.
         if !self.direct_only
             && self.scope.is_none()
-            && self.sema.db.ifdef_enabled()
             && let SymbolDefinition::Define(def) = &self.def
             && let Some(found) = define_has_usage_via_preprocessor(self.sema, def)
         {

@@ -213,12 +213,7 @@ ELP shell automatically keeps state in between eqWAlizer commands to cut down on
 Type \x1b[0;33mhelp\x1b[0m to see available commands (eqwalize, eqwalize-all, ...).\n
 ";
 
-pub fn run_shell(
-    shell: &Shell,
-    cli: &mut dyn Cli,
-    query_config: &BuckQueryConfig,
-    ifdef: bool,
-) -> Result<()> {
+pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
     let start_time = SystemTime::now();
 
     let mut watchman = Watchman::new(&shell.project)?;
@@ -230,7 +225,6 @@ pub fn run_shell(
         IncludeOtp::Yes,
         Mode::Shell,
         query_config,
-        ifdef,
         FileOrder::AsLoaded,
     )?;
     watchman.set_project_dirs(&loaded);
@@ -264,7 +258,6 @@ pub fn run_shell(
                             IncludeOtp::Yes,
                             Mode::Shell,
                             query_config,
-                            ifdef,
                             FileOrder::AsLoaded,
                         )?;
                         watchman.set_project_dirs(&loaded);

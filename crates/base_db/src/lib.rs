@@ -442,12 +442,6 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
         path: SmolStr,
     ) -> Option<FileId>;
 
-    /// Whether ifdef/ifndef condition evaluation is enabled (experimental).
-    /// When true, preprocessor conditions are evaluated and inactive forms are skipped.
-    /// When false (default), all forms are treated as active (legacy behavior).
-    #[salsa::input]
-    fn ifdef_enabled(&self) -> bool;
-
     /// Extra dynamic call patterns from `.elp_lint.toml` configuration.
     /// These patterns extend the built-in OTP patterns for find-references
     /// on dynamic calls (e.g., `apply/3`, `rpc:call/4`).

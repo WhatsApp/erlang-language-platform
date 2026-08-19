@@ -970,13 +970,9 @@ impl ConditionBody {
         // This gives us the same macro state the preprocessor used, so we
         // resolve user-defined macros correctly instead of falling back to
         // db.resolve_macro() which has no branch awareness.
-        let macro_defs = if db.ifdef_enabled() {
-            let env = db.project_macro_environment(cond_id.file_id);
-            let defs = db.file_macro_defs(cond_id.file_id, env);
-            defs.condition_macro_defs(cond_id.value).cloned()
-        } else {
-            None
-        };
+        let env = db.project_macro_environment(cond_id.file_id);
+        let defs = db.file_macro_defs(cond_id.file_id, env);
+        let macro_defs = defs.condition_macro_defs(cond_id.value).cloned();
 
         let (body, source_map, root_expr) = lower_condition_body(
             db,

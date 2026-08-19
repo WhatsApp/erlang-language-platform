@@ -125,10 +125,8 @@ pub(crate) fn run(
 /// ever fire there and the annotation must not be reported as redundant
 /// (W0081). See [`in_inactive_code`].
 ///
-/// When `elp.ifdef.enable` is off, [`hir::FormList::is_form_active`] reports
-/// every form as active, so this returns an empty list and W0081 behaviour is
-/// unchanged. Forms with no preprocessor condition are skipped before the
-/// (potentially expensive) condition analysis runs.
+/// Forms with no preprocessor condition are skipped before the (potentially
+/// expensive) condition analysis runs.
 pub(crate) fn inactive_form_ranges(db: &RootDatabase, file_id: FileId) -> Vec<TextRange> {
     let form_list = db.file_form_list(file_id);
     form_list
