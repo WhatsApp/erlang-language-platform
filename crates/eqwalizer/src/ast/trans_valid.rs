@@ -164,6 +164,21 @@ impl TransitiveChecker<'_> {
         }
     }
 
+    /// Whether a record declaration was found invalid while expanding its
+    /// fields. Such a record is kept in the stub (with the offending fields
+    /// made dynamic), so — unlike a declaration that is missing altogether —
+    /// its invalidity has to be looked up explicitly, and its remaining
+    /// dependencies still have to be explored.
+    fn is_invalid_record(&self, rref: &Ref) -> bool {
+        match rref {
+            Ref::RecRef(module, rec_name) => self
+                .db
+                .contractive_stub(self.project_id, ModuleName::new(module.as_str()))
+                .is_ok_and(|v_stub| v_stub.is_invalid_record(*rec_name)),
+            _ => false,
+        }
+    }
+
     /// Explore a ref and all its transitive dependencies, building the
     /// dependency graph. Uses an iterative worklist to avoid stack overflow.
     fn explore_ref(&mut self, initial: Ref) {
@@ -173,6 +188,9 @@ impl TransitiveChecker<'_> {
                 continue;
             }
             let source_node = self.get_or_create_node(rref.clone());
+            if self.is_invalid_record(&rref) {
+                self.directly_invalid.insert(source_node);
+            }
             match self.resolve_deps(&rref) {
                 Some(deps) => {
                     for dep in deps {
@@ -316,8 +334,16 @@ impl TransitiveChecker<'_> {
     }
 
     fn check_record_decl(&self, stub: &mut ModuleStub, t: &RecDecl) {
-        let rref = Ref::RecRef(self.module, t.name);
-        if let Some(causes) = self.invalid_reasons.get(&rref) {
+        // The causes are collected from the fields rather than from the record
+        // itself: a record invalid at expansion time is its own root cause, and
+        // its offending fields are already reported and made dynamic there.
+        let mut causes: BTreeSet<Ref> = t
+            .fields
+            .iter()
+            .flat_map(|field| self.collect_root_causes_from_type(&field.tp))
+            .collect();
+        causes.remove(&Ref::RecRef(self.module, t.name));
+        if !causes.is_empty() {
             // Replacing all the fields with dynamic type
             if let Some(rec_decl) = stub.records.get_mut(&t.name) {
                 Arc::make_mut(rec_decl)
@@ -325,7 +351,7 @@ impl TransitiveChecker<'_> {
                     .iter_mut()
                     .for_each(|field| field.tp = Type::DynamicType);
             }
-            self.push_transitive_invalid(stub, causes, t.pos.clone(), t.name.as_str().into());
+            self.push_transitive_invalid(stub, &causes, t.pos.clone(), t.name.as_str().into());
         }
     }
 

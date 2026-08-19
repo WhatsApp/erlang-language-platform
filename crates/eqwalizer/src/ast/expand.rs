@@ -212,13 +212,19 @@ impl Expander<'_> {
         }
     }
 
-    fn expand_rec_decl(&mut self, decl: ExternalRecDecl) -> Result<ExternalRecDecl, Invalid> {
+    /// Expands the field types of a record declaration, returning the
+    /// diagnostics produced by the fields whose type could not be expanded.
+    fn expand_rec_decl(&mut self, decl: ExternalRecDecl) -> (ExternalRecDecl, Vec<Invalid>) {
+        let mut invalids = vec![];
         let fields = decl
             .fields
             .into_iter()
-            .map(|field| self.expand_rec_field(field))
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(ExternalRecDecl { fields, ..decl })
+            .map(|field| {
+                let tp = self.expand_rec_field_type(field.tp, &mut invalids);
+                ExternalRecField { tp, ..field }
+            })
+            .collect();
+        (ExternalRecDecl { fields, ..decl }, invalids)
     }
 
     /// Expands the field types of a native record declaration.
@@ -575,15 +581,22 @@ impl Expander<'_> {
         })
     }
 
-    fn expand_rec_field(&mut self, field: ExternalRecField) -> Result<ExternalRecField, Invalid> {
-        let tp = {
-            if let Some(tp) = field.tp {
-                Some(self.expand_type(tp)?)
-            } else {
-                None
+    /// Expands the type of a record field. A field whose type is invalid is
+    /// made dynamic, rather than invalidating the whole record declaration.
+    fn expand_rec_field_type(
+        &mut self,
+        tp: Option<ExtType>,
+        invalids: &mut Vec<Invalid>,
+    ) -> Option<ExtType> {
+        let tp = tp?;
+        let pos = tp.pos().clone();
+        match self.expand_type(tp) {
+            Ok(tp) => Some(tp),
+            Err(invalid) => {
+                invalids.push(invalid);
+                Some(ExtType::dynamic_ext_type(pos))
             }
-        };
-        Ok(ExternalRecField { tp, ..field })
+        }
     }
 
     fn expand_native_rec_field(
@@ -662,17 +675,19 @@ impl StubExpander<'_> {
     }
 
     fn add_record_decl(&mut self, t: ExternalRecDecl) -> Result<(), TypeConversionError> {
-        match self.expander.expand_rec_decl(t) {
-            Ok(decl) => match self.type_converter.convert_rec_decl(decl)? {
-                Ok(decl) => {
-                    self.stub.records.insert(decl.name, Arc::new(decl));
+        let (decl, invalids) = self.expander.expand_rec_decl(t);
+        if !invalids.is_empty() {
+            self.stub.invalid_records.insert(decl.name);
+            invalids.into_iter().for_each(|invalid| {
+                if self.current_file == self.module_file {
+                    self.stub.invalids.push(invalid);
                 }
-                Err(invalid) => {
-                    if self.current_file == self.module_file {
-                        self.stub.invalids.push(invalid);
-                    }
-                }
-            },
+            });
+        }
+        match self.type_converter.convert_rec_decl(decl)? {
+            Ok(decl) => {
+                self.stub.records.insert(decl.name, Arc::new(decl));
+            }
             Err(invalid) => {
                 if self.current_file == self.module_file {
                     self.stub.invalids.push(invalid);

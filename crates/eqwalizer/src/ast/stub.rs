@@ -40,6 +40,10 @@ pub struct ModuleStub {
     pub overloaded_specs: BTreeMap<Id, Arc<OverloadedFunSpec>>,
     #[serde(skip_serializing)]
     pub records: BTreeMap<StringId, Arc<RecDecl>>,
+    /// Records with a field whose type is invalid. Such records are kept, with
+    /// the offending fields made dynamic, but referring to them is an error.
+    #[serde(skip_serializing)]
+    pub invalid_records: BTreeSet<StringId>,
     /// Native record declarations defined in this module, keyed by name.
     #[serde(skip_serializing)]
     pub native_records: BTreeMap<StringId, Arc<NativeRecDecl>>,
@@ -91,6 +95,13 @@ impl VStub {
 
     pub fn get_record(&self, name: StringId) -> Option<&RecDecl> {
         self.stub.records.get(&name).map(|r| r.as_ref())
+    }
+
+    /// Unlike invalid types, invalid records are kept in the stub (with their
+    /// offending fields made dynamic), so their invalidity has to be looked up
+    /// explicitly rather than inferred from their absence.
+    pub fn is_invalid_record(&self, name: StringId) -> bool {
+        self.stub.invalid_records.contains(&name)
     }
 
     pub fn records(&self) -> impl Iterator<Item = &RecDecl> {

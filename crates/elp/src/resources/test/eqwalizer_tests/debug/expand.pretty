@@ -81,12 +81,6 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
 69 │ -spec mk_bad_rec() -> #bad_rec{}.
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mk_bad_rec/0 (transitively) references type with invalid definition: #bad_rec{}
 
-error: unbound_record (See https://fb.me/eqwalizer_errors#unbound_record)
-   ┌─ debug/src/expand.erl:70:17
-   │
-70 │ mk_bad_rec() -> #bad_rec{}.
-   │                 ^^^^^^^^^^ Unbound rec: bad_rec
-
 error: ty_var_with_multiple_constraints (See https://fb.me/eqwalizer_errors#ty_var_with_multiple_constraints)
    ┌─ debug/src/expand.erl:72:23
    │  
@@ -95,4 +89,4 @@ error: ty_var_with_multiple_constraints (See https://fb.me/eqwalizer_errors#ty_v
 73 │ │   when Thing :: pid(), Thing :: atom().
    │ ╰────────────────────────────────────^ Type variable 'Thing' is constrained multiple times, please remove the extra constraints
 
-15 ERRORS
+14 ERRORS
