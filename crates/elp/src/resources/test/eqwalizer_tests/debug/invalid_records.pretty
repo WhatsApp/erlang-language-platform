@@ -1,0 +1,188 @@
+error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
+   ┌─ debug/src/invalid_records.erl:24:18
+   │
+24 │     bad_field :: unknown:t()
+   │                  ^^^^^^^^^^^ Unknown id: unknown:t/0
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+   ┌─ debug/src/invalid_records.erl:27:1
+   │
+27 │ -callback cb_uses_bad(#bad{}) -> ok.
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cb_uses_bad/1 (transitively) references type with invalid definition: #bad{}
+
+error: unbound_record (See https://fb.me/eqwalizer_errors#unbound_record)
+   ┌─ debug/src/invalid_records.erl:31:9
+   │  
+31 │       R = #bad{
+   │ ╭─────────^
+32 │ │         ok_field = a,
+33 │ │         bad_field = 42
+34 │ │     },
+   │ ╰─────^ Unbound rec: bad
+
+error: unbound_record (See https://fb.me/eqwalizer_errors#unbound_record)
+   ┌─ debug/src/invalid_records.erl:36:9
+   │
+36 │         R#bad.ok_field
+   │         ^^^^^^^^^^^^^^ Unbound rec: bad
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ debug/src/invalid_records.erl:36:9
+   │
+36 │         R#bad.ok_field
+   │         ^^^^^^^^^^^^^^ dynamic()
+
+error: unbound_record (See https://fb.me/eqwalizer_errors#unbound_record)
+   ┌─ debug/src/invalid_records.erl:39:9
+   │
+39 │         R#bad.bad_field
+   │         ^^^^^^^^^^^^^^^ Unbound rec: bad
+
+error: unbound_record (See https://fb.me/eqwalizer_errors#unbound_record)
+   ┌─ debug/src/invalid_records.erl:45:9
+   │
+45 │     _ = #bad{ok_field = 42},
+   │         ^^^^^^^^^^^^^^^^^^^ Unbound rec: bad
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+   ┌─ debug/src/invalid_records.erl:48:1
+   │
+48 │ -spec spec_uses_bad(#bad{}) -> ok.
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ spec_uses_bad/1 (transitively) references type with invalid definition: #bad{}
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+   ┌─ debug/src/invalid_records.erl:51:1
+   │  
+51 │ ╭ -spec overloaded_uses_bad
+52 │ │     (#bad{}) -> ok;
+53 │ │     (atom()) -> ok.
+   │ ╰──────────────────^ overloaded_uses_bad/1 (transitively) references type with invalid definition: #bad{}
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+   ┌─ debug/src/invalid_records.erl:56:1
+   │
+56 │ -type alias_of_bad() :: #bad{}.
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ alias_of_bad/0 (transitively) references type with invalid definition: #bad{}
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+   ┌─ debug/src/invalid_records.erl:58:1
+   │  
+58 │ ╭ -spec uses_alias_of_bad
+59 │ │     (alias_of_bad()) -> ok.
+   │ ╰──────────────────────────^ uses_alias_of_bad/1 (transitively) references type with invalid definition: #bad{}
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+   ┌─ debug/src/invalid_records.erl:62:1
+   │  
+62 │ ╭ -type refines_bad() ::
+63 │ │     #bad{ok_field :: 'a'}.
+   │ ╰─────────────────────────^ refines_bad/0 (transitively) references type with invalid definition: #bad{}
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+   ┌─ debug/src/invalid_records.erl:67:1
+   │  
+67 │ ╭ -record(wraps_bad, {
+68 │ │     inner :: #bad{},
+69 │ │     other :: atom()
+70 │ │ }).
+   │ ╰──^ wraps_bad (transitively) references type with invalid definition: #bad{}
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ debug/src/invalid_records.erl:76:9
+   │
+76 │         R#wraps_bad.other
+   │         ^^^^^^^^^^^^^^^^^ dynamic()
+
+error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
+   ┌─ debug/src/invalid_records.erl:84:18
+   │
+84 │     bad_field :: unknown:t(),
+   │                  ^^^^^^^^^^^ Unknown id: unknown:t/0
+
+error: unbound_record (See https://fb.me/eqwalizer_errors#unbound_record)
+   ┌─ debug/src/invalid_records.erl:91:9
+   │
+91 │     R = #bad_and_wraps_bad{other = 42},
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Unbound rec: bad_and_wraps_bad
+
+error: unbound_record (See https://fb.me/eqwalizer_errors#unbound_record)
+   ┌─ debug/src/invalid_records.erl:93:9
+   │
+93 │         R#bad_and_wraps_bad.other
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^ Unbound rec: bad_and_wraps_bad
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ debug/src/invalid_records.erl:93:9
+   │
+93 │         R#bad_and_wraps_bad.other
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^ dynamic()
+
+error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
+    ┌─ debug/src/invalid_records.erl:100:18
+    │
+100 │     bad_field :: unknown:t(),
+    │                  ^^^^^^^^^^^ Unknown id: unknown:t/0
+
+error: unbound_record (See https://fb.me/eqwalizer_errors#unbound_record)
+    ┌─ debug/src/invalid_records.erl:106:9
+    │
+106 │     R = #self_ref{next = undefined},
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Unbound rec: self_ref
+
+error: unbound_record (See https://fb.me/eqwalizer_errors#unbound_record)
+    ┌─ debug/src/invalid_records.erl:108:9
+    │
+108 │         R#self_ref.next
+    │         ^^^^^^^^^^^^^^^ Unbound rec: self_ref
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+    ┌─ debug/src/invalid_records.erl:108:9
+    │
+108 │         R#self_ref.next
+    │         ^^^^^^^^^^^^^^^ dynamic()
+
+error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
+    ┌─ debug/src/invalid_records.erl:115:18
+    │
+115 │     bad_field :: unknown:t(),
+    │                  ^^^^^^^^^^^ Unknown id: unknown:t/0
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+    ┌─ debug/src/invalid_records.erl:118:1
+    │  
+118 │ ╭ -type cyclic_next() ::
+119 │ │     #cyclic{} | undefined.
+    │ ╰─────────────────────────^ cyclic_next/0 (transitively) references type with invalid definition: #cyclic{}
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+    ┌─ debug/src/invalid_records.erl:123:1
+    │  
+123 │ ╭ -spec spec_uses_hdr_bad
+124 │ │     (#hdr_bad{}) -> ok.
+    │ ╰──────────────────────^ spec_uses_hdr_bad/1 (transitively) references type with invalid definition: #hdr_bad{}
+
+error: unbound_record (See https://fb.me/eqwalizer_errors#unbound_record)
+    ┌─ debug/src/invalid_records.erl:129:9
+    │
+129 │     R = #hdr_bad{ok_field = a},
+    │         ^^^^^^^^^^^^^^^^^^^^^^ Unbound rec: hdr_bad
+
+error: unbound_record (See https://fb.me/eqwalizer_errors#unbound_record)
+    ┌─ debug/src/invalid_records.erl:131:9
+    │
+131 │         R#hdr_bad.ok_field
+    │         ^^^^^^^^^^^^^^^^^^ Unbound rec: hdr_bad
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+    ┌─ debug/src/invalid_records.erl:131:9
+    │
+131 │         R#hdr_bad.ok_field
+    │         ^^^^^^^^^^^^^^^^^^ dynamic()
+
+error: unbound_record (See https://fb.me/eqwalizer_errors#unbound_record)
+    ┌─ debug/src/invalid_records.erl:134:9
+    │
+134 │         R#hdr_bad.bad_field
+    │         ^^^^^^^^^^^^^^^^^^^ Unbound rec: hdr_bad
+
+29 ERRORS

@@ -1,0 +1,45 @@
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+   ┌─ debug/src/invalid_records_user.erl:13:1
+   │  
+13 │ ╭ -spec uses_remote_alias
+14 │ │     (invalid_records:alias_of_bad()) -> ok.
+   │ ╰──────────────────────────────────────────^ uses_remote_alias/1 (transitively) references type with invalid definition: #bad{}
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+   ┌─ debug/src/invalid_records_user.erl:17:1
+   │  
+17 │ ╭ -spec uses_remote_refined
+18 │ │     (invalid_records:refines_bad()) -> ok.
+   │ ╰─────────────────────────────────────────^ uses_remote_refined/1 (transitively) references type with invalid definition: #bad{}
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+   ┌─ debug/src/invalid_records_user.erl:21:1
+   │  
+21 │ ╭ -type local_alias() ::
+22 │ │     invalid_records:alias_of_bad().
+   │ ╰──────────────────────────────────^ local_alias/0 (transitively) references type with invalid definition: #bad{}
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+   ┌─ debug/src/invalid_records_user.erl:24:1
+   │  
+24 │ ╭ -spec uses_local_alias
+25 │ │     (local_alias()) -> ok.
+   │ ╰─────────────────────────^ uses_local_alias/1 (transitively) references type with invalid definition: #bad{}
+
+error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+   ┌─ debug/src/invalid_records_user.erl:28:1
+   │  
+28 │ ╭ -record(wraps_remote, {
+29 │ │     inner ::
+30 │ │         invalid_records:alias_of_bad(),
+31 │ │     other :: atom()
+32 │ │ }).
+   │ ╰──^ wraps_remote (transitively) references type with invalid definition: #bad{}
+
+error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+   ┌─ debug/src/invalid_records_user.erl:38:9
+   │
+38 │         R#wraps_remote.other
+   │         ^^^^^^^^^^^^^^^^^^^^ dynamic()
+
+6 ERRORS
