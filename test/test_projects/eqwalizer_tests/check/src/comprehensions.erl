@@ -315,7 +315,7 @@ test46() ->
 test47() ->
     Res = [
         Rec || Rec <- gen2(),
-        is_record(Rec, rec1, 2)
+        is_record(Rec, rec1, 3)
     ],
     Res.
 

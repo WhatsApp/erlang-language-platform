@@ -9,7 +9,7 @@ Context expected type: #rec1{}
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/type_predicates.erl:107:35
     │
-107 │     when is_record(R, rec2, 1) -> R.
+107 │     when is_record(R, rec2, 2) -> R.
     │                                   ^ R.
 Expression has type:   #rec2{}
 Context expected type: #rec1{}
