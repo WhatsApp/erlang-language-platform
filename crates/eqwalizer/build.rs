@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn main() {
-    let source_directory = Path::new("../../../eqwalizer/eqwalizer");
+    let source_directory = Path::new("../../eqwalizer/eqwalizer");
     let tools_dir = source_directory.join("tools");
     let out_dir = env::var_os("OUT_DIR").expect("OUT_DIR env var set by Cargo");
     let eqwalizer_out_dir = Path::new("../../../../../buck-out/eqwalizer/scala-3.6.4");

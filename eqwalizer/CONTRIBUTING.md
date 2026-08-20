@@ -32,4 +32,5 @@ clear and has sufficient instructions to be able to reproduce the issue.
 ## License
 
 By contributing to eqWAlizer, you agree that your contributions will be
-licensed under the [LICENSE](LICENSE) in the root directory of this source tree.
+licensed under the [APACHE2](../LICENSE-APACHE) and [MIT](../LICENSE-MIT) licenses in the root
+directory of this source tree.
