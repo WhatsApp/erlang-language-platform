@@ -358,7 +358,7 @@ impl Server {
             projects: Arc::new(vec![]),
             project_loader: Arc::new(Mutex::new(ProjectLoader::new())),
             initial_load_status: InitialLoading::Initial,
-            reload_manager: Arc::new(Mutex::new(ReloadManager::new(config.buck_quick_start()))),
+            reload_manager: Arc::new(Mutex::new(ReloadManager::new())),
             dynamic_registrations_done: false,
             unresolved_app_id_paths: Arc::new(FxHashMap::default()),
             generated_app_inputs: Arc::new(FxHashMap::default()),
@@ -1220,8 +1220,7 @@ impl Server {
                     self.register_dynamic_now_operational();
                     self.dynamic_registrations_done = true;
                 }
-                self.telemetry_manager
-                    .operational(self.config.buck_quick_start());
+                self.telemetry_manager.operational();
                 // Request an initial diagnostics pass now that we are Running.
                 // The caller consumes these flags on this same tick, so
                 // diagnostics fire immediately instead of waiting for the next
@@ -1544,17 +1543,11 @@ impl Server {
     fn update_configuration(&mut self, config: Config) {
         let _p = tracing::info_span!("Server::update_configuration").entered();
         let _phase = watchdog::phase("update_configuration");
-        let old_config = mem::replace(&mut self.config, Arc::new(config));
+        self.config = Arc::new(config);
 
         self.logger
             .reconfigure(LOGGER_NAME, self.config.log_filter());
         self.logger.reconfigure("default", self.config.log_filter());
-
-        if old_config.buck_quick_start() != self.config.buck_quick_start() {
-            self.reload_manager
-                .lock()
-                .set_buck_quickstart(self.config.buck_quick_start());
-        }
 
         // Read the lint config file. Take the project-root path under the lock, then
         // release it before the synchronous file read + apply, so the main loop never
@@ -1929,7 +1922,7 @@ impl Server {
         }
         let path = path.to_path_buf();
         let loader = self.project_loader.clone();
-        let query_config = self.config.buck_query();
+        let query_config = BuckQueryConfig::BuckTargetsOnly;
         let spinner = self
             .progress
             .begin_spinner_with_telemetry("ELP loading project config".to_string());

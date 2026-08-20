@@ -108,19 +108,11 @@ impl TelemetryManager {
         telemetry::send("salsa_event_counts".to_string(), data);
     }
 
-    pub(crate) fn operational(&mut self, buck_quick_start: bool) {
-        let title = if buck_quick_start {
-            match self.operational_state {
-                OperationalState::NotStarted => "ELP operational (quick start)",
-                OperationalState::Started => "ELP operational (fully)",
-                OperationalState::Restarted => return,
-            }
-        } else {
-            match self.operational_state {
-                OperationalState::NotStarted => "ELP operational",
-                OperationalState::Started => return,
-                OperationalState::Restarted => return,
-            }
+    pub(crate) fn operational(&mut self) {
+        let title = match self.operational_state {
+            OperationalState::NotStarted => "ELP operational (quick start)",
+            OperationalState::Started => "ELP operational (fully)",
+            OperationalState::Restarted => return,
         };
 
         let duration = self

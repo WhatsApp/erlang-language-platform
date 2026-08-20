@@ -183,7 +183,7 @@ pub struct Args {
     #[arg(long, global = true, help_heading = "Global options")]
     pub no_buck_generated: bool,
 
-    /// Use buck2 targets for first stage project loading
+    /// Deprecated (no-op): buck project loading always builds generated code
     #[arg(long, global = true, help_heading = "Global options")]
     pub buck_quick_start: bool,
 
@@ -214,9 +214,7 @@ pub struct Args {
 
 impl Args {
     pub fn query_config(&self) -> BuckQueryConfig {
-        if self.buck_quick_start {
-            BuckQueryConfig::BuckTargetsOnly
-        } else if self.no_buck_generated {
+        if self.no_buck_generated {
             BuckQueryConfig::NoBuildGeneratedCode
         } else {
             BuckQueryConfig::BuildGeneratedCode

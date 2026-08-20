@@ -177,6 +177,11 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
     setup_cli_telemetry(&args);
 
     INIT.call_once(|| setup_static(&args));
+    if args.buck_quick_start {
+        cli.info(
+            "Warning: the --buck-quick-start flag is deprecated and will be removed in an upcoming release. Buck project loading always builds generated code, use --no-buck-generated to skip that step.",
+        )?;
+    }
     let query_config = args.query_config();
     let use_color = args.should_use_color();
     let Some(mut command) = args.command else {
@@ -344,6 +349,7 @@ mod tests {
     use elp_ide::elp_ide_db::diagnostic_code::BASE_URL;
     use elp_ide::elp_ide_db::elp_base_db::FileId;
     use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
+    use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
     use elp_project_model::AppName;
     use elp_project_model::DiscoverConfig;
     use elp_project_model::buck::BuckConfig;
@@ -393,6 +399,21 @@ mod tests {
 
     fn make_tmp_dir() -> TempDir {
         TempDir::new().expect("Could not create temporary directory")
+    }
+
+    #[test]
+    fn buck_quick_start_is_a_deprecated_no_op() {
+        let (stdout, stderr, code) = elp(args_vec!["--buck-quick-start", "version"]);
+
+        assert_eq_expected!(0, code);
+        assert!(
+            stdout.starts_with("elp "),
+            "the command must still run, got stdout: {stdout}"
+        );
+        assert!(
+            stderr.contains("--buck-quick-start flag is deprecated"),
+            "the flag must warn on stderr, got: {stderr}"
+        );
     }
 
     #[test]
