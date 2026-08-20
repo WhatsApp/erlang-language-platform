@@ -94,6 +94,7 @@ use crate::codemod_helpers::find_call_in_function_with_matchers;
 
 mod application_env;
 mod atoms_exhaustion;
+mod attribute_order;
 mod avoid_any_type;
 mod avoid_type_defs_in_header;
 mod bad_dialyzer_attribute;
@@ -2035,6 +2036,7 @@ const SSR_PATTERN_LINTERS: &[&dyn SsrPatternsDiagnostics] = &[
 
 /// Generic linters
 const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
+    &attribute_order::LINTER,
     &unused_macro::LINTER,
     &missing_compile_warn_missing_spec::LINTER,
     &undocumented_module::LINTER,
