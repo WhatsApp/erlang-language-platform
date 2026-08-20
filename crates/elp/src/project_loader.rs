@@ -195,16 +195,21 @@ impl ReloadManager {
     /// but only after `switch_workspace_ok` has returned true.
     pub fn set_reload_done(&mut self, a_file_per_project: FxHashSet<AbsPathBuf>) {
         match &self.buck_generated {
+            // We already have changed files from another source, so
+            // need to repeat this step. Do not change state.
+            BuckGenerated::NoLoadDone if !self.changed_files.is_empty() => {}
+            // No buck project, so there is no `elp.bxl` stage to run. Advance
+            // anyway: `NoLoadDone` makes `ok_to_switch_workspace` skip the
+            // changed-files check, and a workspace that never leaves it would
+            // lose that check for the whole session.
+            BuckGenerated::NoLoadDone if a_file_per_project.is_empty() => {
+                self.buck_generated = BuckGenerated::Generated;
+            }
             BuckGenerated::NoLoadDone => {
-                if self.changed_files.is_empty() && !a_file_per_project.is_empty() {
-                    // We have done the initial "buck targets" query on at least one Project,
-                    // move on to doing `elp.bxl`
-                    self.buck_generated = BuckGenerated::NoGenerated;
-                    self.changed_files = a_file_per_project;
-                } else {
-                    // We already have changed files from another source, so
-                    // need to repeat this step. Do not change state.
-                }
+                // We have done the initial "buck targets" query on at least one Project,
+                // move on to doing `elp.bxl`
+                self.buck_generated = BuckGenerated::NoGenerated;
+                self.changed_files = a_file_per_project;
             }
             BuckGenerated::NoGenerated => {
                 self.buck_generated = BuckGenerated::Generated;
@@ -252,7 +257,10 @@ mod tests {
     use fxhash::FxHashSet;
     use paths::Utf8PathBuf;
 
+    use super::BuckGenerated;
+    use super::BuckQueryConfig;
     use super::ProjectLoader;
+    use super::ReloadManager;
 
     fn abs(path: &str) -> AbsPathBuf {
         AbsPathBuf::assert(Utf8PathBuf::from(path))
@@ -345,5 +353,60 @@ mod tests {
         );
         // The skipped lookups must not have inserted anything new.
         assert_eq_expected!(1, loader.project_roots.len());
+    }
+
+    #[test]
+    fn buck_workspace_runs_both_load_stages() {
+        let mut manager = ReloadManager::new();
+
+        // Stage 1 is the bare `buck targets` query...
+        assert_eq_expected!(BuckQueryConfig::BuckTargetsOnly, manager.get_query_config());
+        assert!(
+            manager.ok_to_switch_workspace(),
+            "the project must be activated as soon as stage 1 lands"
+        );
+
+        // ...and completing it queues a file per project to drive stage 2.
+        manager.set_reload_done(path_set(&["/tmp/elp/proj_a/src"]));
+        assert_eq_expected!(BuckGenerated::NoGenerated, manager.buck_generated);
+        assert_eq_expected!(
+            BuckQueryConfig::BuildGeneratedCode,
+            manager.get_query_config()
+        );
+
+        manager.set_reload_done(FxHashSet::default());
+        assert_eq_expected!(BuckGenerated::Generated, manager.buck_generated);
+    }
+
+    #[test]
+    fn non_buck_workspace_keeps_the_changed_files_guard() {
+        let mut manager = ReloadManager::new();
+
+        // No buck project, so the load reports no file to generate for. There is
+        // no stage 2 to wait for, so the state machine must still reach its end
+        // state.
+        manager.set_reload_done(FxHashSet::default());
+        assert_eq_expected!(BuckGenerated::Generated, manager.buck_generated);
+
+        // Which is what keeps the guard alive: a queued config change must hold
+        // off the workspace switch until the reload that it triggers is done.
+        manager.add(abs("/tmp/elp/proj_a/rebar.config"));
+        assert!(
+            !manager.ok_to_switch_workspace(),
+            "a queued changed file must block the switch"
+        );
+    }
+
+    #[test]
+    fn changed_files_during_the_first_load_repeat_it() {
+        let mut manager = ReloadManager::new();
+
+        // A change that arrives while stage 1 is in flight invalidates it, so the
+        // state must not advance and the next query is stage 1 again.
+        manager.add(abs("/tmp/elp/proj_a/BUCK"));
+        manager.set_reload_done(path_set(&["/tmp/elp/proj_a/src"]));
+
+        assert_eq_expected!(BuckGenerated::NoLoadDone, manager.buck_generated);
+        assert_eq_expected!(BuckQueryConfig::BuckTargetsOnly, manager.get_query_config());
     }
 }
