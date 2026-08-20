@@ -14,7 +14,7 @@ Global options:
       --erl <ERL>            
       --escript <ESCRIPT>    
       --no-log-buffering     
-      --no-buck-generated    When using buck, do not invoke a build step for generated files
+      --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
       --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
       --color <WHEN>         Use color in output [default: always] [possible values: always, never,
                              auto]

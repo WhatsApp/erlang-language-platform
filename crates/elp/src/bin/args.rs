@@ -20,7 +20,6 @@ use clap::ValueHint;
 use clap_complete::aot::Shell as CompletionShell;
 use clap_complete::engine::CompletionCandidate;
 use elp_ide::elp_ide_db::DiagnosticCode;
-use elp_project_model::buck::BuckQueryConfig;
 use itertools::Itertools;
 use serde::Deserialize;
 use serde::Serialize;
@@ -179,7 +178,7 @@ pub struct Args {
     #[arg(long, global = true, help_heading = "Global options")]
     pub no_log_buffering: bool,
 
-    /// When using buck, do not invoke a build step for generated files.
+    /// Deprecated (no-op): buck project loading always builds generated code
     #[arg(long, global = true, help_heading = "Global options")]
     pub no_buck_generated: bool,
 
@@ -213,14 +212,6 @@ pub struct Args {
 }
 
 impl Args {
-    pub fn query_config(&self) -> BuckQueryConfig {
-        if self.no_buck_generated {
-            BuckQueryConfig::NoBuildGeneratedCode
-        } else {
-            BuckQueryConfig::BuildGeneratedCode
-        }
-    }
-
     /// Determine if color should be used based on the --color argument
     pub fn should_use_color(&self) -> bool {
         match self.color {

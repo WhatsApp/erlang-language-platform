@@ -762,9 +762,6 @@ fn load_buck_targets_bxl(
         BuckQueryConfig::BuildGeneratedCode => {
             report_progress("Querying and generating buck targets")
         }
-        BuckQueryConfig::NoBuildGeneratedCode => {
-            report_progress("Querying buck targets without codegen")
-        }
         BuckQueryConfig::BuckTargetsOnly => report_progress("Querying buck targets, phase 1"),
     }
 
@@ -933,7 +930,6 @@ fn find_root(buck_config: &BuckConfig) -> Result<AbsPathBuf> {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum BuckQueryConfig {
     BuildGeneratedCode,
-    NoBuildGeneratedCode,
     /// Instead of using elp.bxl, use `buck2 targets`.
     BuckTargetsOnly,
 }
@@ -942,7 +938,6 @@ impl fmt::Display for BuckQueryConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             BuckQueryConfig::BuildGeneratedCode => write!(f, "BuildGeneratedCode"),
-            BuckQueryConfig::NoBuildGeneratedCode => write!(f, "NoBuildGeneratedCode"),
             BuckQueryConfig::BuckTargetsOnly => write!(f, "BuckTargetsOnly"),
         }
     }
@@ -977,34 +972,24 @@ pub fn query_buck_targets(
 ) -> Result<FxHashMap<String, BuckTarget>> {
     let _timer = timeit!("load buck targets");
     let result = match query_config {
-        BuckQueryConfig::BuildGeneratedCode | BuckQueryConfig::NoBuildGeneratedCode => {
-            query_buck_targets_bxl(buck_config, query_config)?
-        }
+        BuckQueryConfig::BuildGeneratedCode => query_buck_targets_bxl(buck_config)?,
         BuckQueryConfig::BuckTargetsOnly => query_buck_targets_bare(buck_config)?,
     };
     Ok(result)
 }
 
-fn query_buck_targets_bxl(
-    buck_config: &BuckConfig,
-    build: &BuckQueryConfig,
-) -> Result<FxHashMap<String, BuckTarget>> {
+fn query_buck_targets_bxl(buck_config: &BuckConfig) -> Result<FxHashMap<String, BuckTarget>> {
     let mut targets = Vec::default();
     for target in &buck_config.included_targets {
         targets.push("--included_targets");
         targets.push(target);
     }
-    let build_args = if build == &BuckQueryConfig::BuildGeneratedCode {
-        vec!["--build_generated_code", "true"]
-    } else {
-        vec![]
-    };
     let mut command = buck_config.buck_command();
     command
         .arg("bxl")
         .arg("prelude//erlang/elp.bxl:elp_config")
         .arg("--")
-        .args(build_args)
+        .args(["--build_generated_code", "true"])
         .args(targets);
     let output = run_buck_command(command)?;
     let string = String::from_utf8(output.stdout)?;

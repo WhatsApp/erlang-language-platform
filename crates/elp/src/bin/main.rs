@@ -25,6 +25,7 @@ use elp_ide::erlang_service::ESCRIPT;
 use elp_log::FileLogger;
 use elp_log::Logger;
 use elp_log::timeit;
+use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::eqwalizer_support;
 use elp_project_model::otp::ERL;
 use include_dir::Dir;
@@ -177,12 +178,18 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
     setup_cli_telemetry(&args);
 
     INIT.call_once(|| setup_static(&args));
-    if args.buck_quick_start {
-        cli.info(
-            "Warning: the --buck-quick-start flag is deprecated and will be removed in an upcoming release. Buck project loading always builds generated code, use --no-buck-generated to skip that step.",
-        )?;
+    for flag in [
+        args.buck_quick_start.then_some("--buck-quick-start"),
+        args.no_buck_generated.then_some("--no-buck-generated"),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        cli.info(&format!(
+            "Warning: the {flag} flag is deprecated and will be removed in an upcoming release. Buck project loading always builds generated code."
+        ))?;
     }
-    let query_config = args.query_config();
+    let query_config = BuckQueryConfig::BuildGeneratedCode;
     let use_color = args.should_use_color();
     let Some(mut command) = args.command else {
         let help = args::Args::render_help();
@@ -401,9 +408,10 @@ mod tests {
         TempDir::new().expect("Could not create temporary directory")
     }
 
-    #[test]
-    fn buck_quick_start_is_a_deprecated_no_op() {
-        let (stdout, stderr, code) = elp(args_vec!["--buck-quick-start", "version"]);
+    #[test_case("--buck-quick-start" ; "buck_quick_start")]
+    #[test_case("--no-buck-generated" ; "no_buck_generated")]
+    fn deprecated_no_op_flag(flag: &str) {
+        let (stdout, stderr, code) = elp(args_vec![flag, "version"]);
 
         assert_eq_expected!(0, code);
         assert!(
@@ -411,8 +419,19 @@ mod tests {
             "the command must still run, got stdout: {stdout}"
         );
         assert!(
-            stderr.contains("--buck-quick-start flag is deprecated"),
+            stderr.contains(&format!("{flag} flag is deprecated")),
             "the flag must warn on stderr, got: {stderr}"
+        );
+    }
+
+    #[test]
+    fn no_deprecation_warning_without_the_flags() {
+        let (_stdout, stderr, code) = elp(args_vec!["version"]);
+
+        assert_eq_expected!(0, code);
+        assert!(
+            stderr.is_empty(),
+            "an invocation without the deprecated flags must be quiet, got: {stderr}"
         );
     }
 
