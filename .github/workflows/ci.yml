@@ -82,8 +82,6 @@ jobs:
     steps:
       - name: Checkout erlang-language-platform
         uses: "actions/checkout@v4"
-        with:
-          submodules: true
       - name: Set up GraalVM
         uses: graalvm/setup-graalvm@v1
         with:

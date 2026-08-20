@@ -57,4 +57,7 @@ including:
 
 ## License
 
-eqWAlizer is [Apache licensed](./LICENSE).
+eqWAlizer is dual-licensed
+
+- [Apache](../LICENSE-APACHE).
+- [MIT](../LICENSE-MIT).

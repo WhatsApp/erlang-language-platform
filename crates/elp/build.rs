@@ -44,7 +44,7 @@ fn main() {
         .expect("CARGO_MANIFEST_DIR should be set automatically by cargo");
     let eqwalizer_support_dir = match eqwalizer_dir {
         Ok(eqwalizer_support_dir) => format!("{eqwalizer_support_dir}/../eqwalizer_support"),
-        Err(_) => format!("{cargo_manifest_dir}/../../../eqwalizer/eqwalizer_support"),
+        Err(_) => format!("{cargo_manifest_dir}/../../eqwalizer/eqwalizer_support"),
     };
 
     println!("cargo:rerun-if-changed=build.rs");

@@ -15,16 +15,13 @@ import * as path from 'path';
 
 const {fbContent} = require('docusaurus-plugin-internaldocs-fb/internal');
 
-// Eqwalizer docs paths (relative to website directory)
-const EQWALIZER_DOCS_PATH_INTERNAL = '../../eqwalizer/docs';
-const EQWALIZER_DOCS_PATH_EXTERNAL = '../eqwalizer/docs';
+// Eqwalizer docs path (relative to website directory)
+const EQWALIZER_DOCS_PATH = '../eqwalizer/docs';
 
 // Check if eqwalizer docs exist
-const eqwalizerDocsPath = fbContent({
-  internal: path.resolve(__dirname, EQWALIZER_DOCS_PATH_INTERNAL),
-  external: path.resolve(__dirname, EQWALIZER_DOCS_PATH_EXTERNAL),
-});
-const eqwalizerDocsExist = fs.existsSync(eqwalizerDocsPath);
+const eqwalizerDocsExist = fs.existsSync(
+  path.resolve(__dirname, EQWALIZER_DOCS_PATH),
+);
 
 // With JSDoc @type annotations, IDEs can provide config autocompletion
 /** @type {import('@docusaurus/types').DocusaurusConfig} */
@@ -69,10 +66,7 @@ const eqwalizerDocsExist = fs.existsSync(eqwalizerDocsPath);
             '@docusaurus/plugin-content-docs',
             {
               id: 'eqwalizer',
-              path: fbContent({
-                internal: EQWALIZER_DOCS_PATH_INTERNAL,
-                external: EQWALIZER_DOCS_PATH_EXTERNAL,
-              }),
+              path: EQWALIZER_DOCS_PATH,
               routeBasePath: 'docs/eqwalizer',
               sidebarPath: require.resolve('./sidebarsEqwalizer.js'),
               editUrl: undefined,
