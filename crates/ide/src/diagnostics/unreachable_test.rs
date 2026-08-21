@@ -134,6 +134,42 @@ mod tests {
     }
 
     #[test]
+    fn test_unreachable_test_duplicate_module_name() {
+        // Only one of these files wins the module index. The other must still have its
+        // own all/0 honoured, rather than every test it exports being reported.
+        // W0045 is what should flag the duplication, so keep it out of the way here.
+        let config = DiagnosticsConfig::default()
+            .set_experimental(true)
+            .disable(DiagnosticCode::CannotEvaluateCTCallbacks)
+            .disable(DiagnosticCode::DuplicateModule);
+        check_diagnostics_with_config(
+            config,
+            r#"
+//- /app_a/test/dup_SUITE.erl app:app_a extra:test
+   -module(dup_SUITE).
+   -export([all/0]).
+   -export([a/1, b/1]).
+   all() -> [a].
+   a(_Config) ->
+     ok.
+   b(_Config) ->
+%% ^ 💡 error: W0008: Unreachable test (b/1)
+     ok.
+//- /app_b/test/dup_SUITE.erl app:app_b extra:test
+   -module(dup_SUITE).
+   -export([all/0]).
+   -export([c/1, d/1]).
+   all() -> [c].
+   c(_Config) ->
+     ok.
+   d(_Config) ->
+%% ^ 💡 error: W0008: Unreachable test (d/1)
+     ok.
+            "#,
+        );
+    }
+
+    #[test]
     fn test_unreachable_test_init_end() {
         check_diagnostics(
             r#"

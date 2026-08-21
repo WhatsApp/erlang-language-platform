@@ -111,6 +111,18 @@ static KNOWN_FUNCTIONS_ARITY_1: LazyLock<FxHashSet<NameArity>> = LazyLock::new(|
     res
 });
 
+// The module index keeps a single file per module name, so `Semantic::module_name`
+// yields `None` for every file but one when a name is declared more than once. Fall
+// back to the `-module()` attribute: without it a discarded file has no runnables at
+// all, and every test it exports looks unreachable.
+fn declared_module_name(sema: &Semantic, file_id: FileId) -> Option<ModuleName> {
+    if let Some(module_name) = sema.module_name(file_id) {
+        return Some(module_name);
+    }
+    let name = sema.module_attribute_name(file_id)?;
+    Some(ModuleName::new(name.text()?.as_str()))
+}
+
 // Populate the list of runnables for a Common Test test suite
 pub fn runnables(
     sema: &Semantic,
@@ -119,7 +131,7 @@ pub fn runnables(
     groups: &FxHashMap<SmolStr, GroupDef>,
 ) -> Result<Vec<Runnable>, ()> {
     let mut res = Vec::new();
-    if let Some(module_name) = sema.module_name(file_id)
+    if let Some(module_name) = declared_module_name(sema, file_id)
         && is_suite(&module_name)
     {
         // Add a runnable for the entire test suite
@@ -244,6 +256,9 @@ fn runnable(
 
 // Return a runnable for the given test suite
 fn suite_to_runnable(sema: &Semantic, file_id: FileId) -> Option<Runnable> {
+    // Deliberately not `declared_module_name`: the nav target below resolves the name
+    // through the module index, which would point at the other file when the name is
+    // duplicated. Better to offer no suite runnable than one that navigates elsewhere.
     let suite = sema.module_name(file_id)?.to_string();
     let module = sema.resolve_module_name(file_id, suite.as_str())?;
     let nav = module.to_nav(sema.db);
@@ -257,7 +272,7 @@ fn suite_to_runnable(sema: &Semantic, file_id: FileId) -> Option<Runnable> {
 fn def_to_runnable(sema: &Semantic, def: &FunctionDef, group: GroupName) -> Option<Runnable> {
     let nav = def.to_nav(sema.db);
     let app_name = sema.db.file_app_name(def.file.file_id)?;
-    let suite = sema.module_name(def.file.file_id)?.to_string();
+    let suite = declared_module_name(sema, def.file.file_id)?.to_string();
     let case = def.name.name().to_string();
     let name = def.name.clone();
     let kind = RunnableKind::Test {
