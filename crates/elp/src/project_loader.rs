@@ -127,6 +127,11 @@ impl ProjectLoader {
 pub enum BuckGenerated {
     /// Initial value
     NoLoadDone,
+    /// After a load that reported no buck project. There is no `elp.bxl`
+    /// stage to run for what has been loaded so far, but a buck project
+    /// discovered later in the session still needs one, so this is not an
+    /// end state.
+    NoBuckProject,
     /// After first load (buck targets)
     NoGenerated,
     /// After second load (elp.bxl)
@@ -186,6 +191,7 @@ impl ReloadManager {
     pub fn get_query_config(&self) -> BuckQueryConfig {
         match self.buck_generated {
             BuckGenerated::NoLoadDone => BuckQueryConfig::BuckTargetsOnly,
+            BuckGenerated::NoBuckProject => BuckQueryConfig::BuckTargetsOnly,
             BuckGenerated::NoGenerated => BuckQueryConfig::BuildGeneratedCode,
             BuckGenerated::Generated => BuckQueryConfig::BuildGeneratedCode,
         }
@@ -198,18 +204,21 @@ impl ReloadManager {
             // We already have changed files from another source, so
             // need to repeat this step. Do not change state.
             BuckGenerated::NoLoadDone if !self.changed_files.is_empty() => {}
-            // No buck project, so there is no `elp.bxl` stage to run. Advance
-            // anyway: `NoLoadDone` makes `ok_to_switch_workspace` skip the
-            // changed-files check, and a workspace that never leaves it would
-            // lose that check for the whole session.
-            BuckGenerated::NoLoadDone if a_file_per_project.is_empty() => {
-                self.buck_generated = BuckGenerated::Generated;
+            // This load saw no buck project, so it has no `elp.bxl` stage to
+            // run. Move out of `NoLoadDone` anyway: that state makes
+            // `ok_to_switch_workspace` skip the changed-files check, and a
+            // workspace that never leaves it would lose the check for the
+            // whole session.
+            BuckGenerated::NoLoadDone | BuckGenerated::NoBuckProject
+                if a_file_per_project.is_empty() =>
+            {
+                self.buck_generated = BuckGenerated::NoBuckProject;
             }
-            BuckGenerated::NoLoadDone => {
+            BuckGenerated::NoLoadDone | BuckGenerated::NoBuckProject => {
                 // We have done the initial "buck targets" query on at least one Project,
                 // move on to doing `elp.bxl`
                 self.buck_generated = BuckGenerated::NoGenerated;
-                self.changed_files = a_file_per_project;
+                self.changed_files.extend(a_file_per_project);
             }
             BuckGenerated::NoGenerated => {
                 self.buck_generated = BuckGenerated::Generated;
@@ -383,10 +392,9 @@ mod tests {
         let mut manager = ReloadManager::new();
 
         // No buck project, so the load reports no file to generate for. There is
-        // no stage 2 to wait for, so the state machine must still reach its end
-        // state.
+        // no stage 2 to wait for, so the state machine must leave `NoLoadDone`.
         manager.set_reload_done(FxHashSet::default());
-        assert_eq_expected!(BuckGenerated::Generated, manager.buck_generated);
+        assert_eq_expected!(BuckGenerated::NoBuckProject, manager.buck_generated);
 
         // Which is what keeps the guard alive: a queued config change must hold
         // off the workspace switch until the reload that it triggers is done.
@@ -395,6 +403,42 @@ mod tests {
             !manager.ok_to_switch_workspace(),
             "a queued changed file must block the switch"
         );
+    }
+
+    #[test]
+    fn a_buck_project_found_after_a_non_buck_load_still_runs_stage_2() {
+        let mut manager = ReloadManager::new();
+
+        // The first project opened in the session is not a buck one.
+        manager.set_reload_done(FxHashSet::default());
+        assert_eq_expected!(BuckGenerated::NoBuckProject, manager.buck_generated);
+
+        // Opening a file in a buck project later in the session loads it via its
+        // own stage 1, so `NoBuckProject` must not be an end state: the queued
+        // file has to survive to drive `elp.bxl` for it.
+        manager.set_reload_done(path_set(&["/tmp/elp/proj_b/src"]));
+        assert_eq_expected!(BuckGenerated::NoGenerated, manager.buck_generated);
+        assert_eq_expected!(
+            BuckQueryConfig::BuildGeneratedCode,
+            manager.get_query_config()
+        );
+        let expected_queued = path_set(&["/tmp/elp/proj_b/src"]);
+        assert_eq_expected!(expected_queued, manager.changed_files);
+
+        manager.set_reload_done(FxHashSet::default());
+        assert_eq_expected!(BuckGenerated::Generated, manager.buck_generated);
+    }
+
+    #[test]
+    fn repeated_non_buck_loads_stay_in_no_buck_project() {
+        let mut manager = ReloadManager::new();
+
+        manager.set_reload_done(FxHashSet::default());
+        manager.set_reload_done(FxHashSet::default());
+
+        // Still the stage 1 query, since no buck project has been seen yet.
+        assert_eq_expected!(BuckGenerated::NoBuckProject, manager.buck_generated);
+        assert_eq_expected!(BuckQueryConfig::BuckTargetsOnly, manager.get_query_config());
     }
 
     #[test]
