@@ -9,11 +9,13 @@
  */
 
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::path::Path;
 
 use anyhow::Context;
 use anyhow::Result;
+use anyhow::bail;
 use proc_macro2::Ident;
 use proc_macro2::TokenStream;
 use quote::format_ident;
@@ -121,6 +123,15 @@ impl Field {
             }
         }
     }
+
+    /// The AST type a field resolves by casting to. `Field::Token` has none:
+    /// it is matched on token kind, so it cannot be confused with a node.
+    fn cast_ty(&self) -> Option<String> {
+        match self {
+            Field::Node { ty, .. } | Field::Multiple { ty, .. } => Some(ty.to_string()),
+            Field::Token { .. } => None,
+        }
+    }
 }
 
 /// Accessors written by hand in `crates/syntax/src/ast/node_ext.rs` rather than
@@ -145,6 +156,88 @@ const HAND_WRITTEN_FIELDS: &[(&str, &str)] = &[
 
 fn is_hand_written(nodetype: &str, field: &Field) -> bool {
     HAND_WRITTEN_FIELDS.contains(&(nodetype, field.name().as_str()))
+}
+
+/// The concrete node kinds a field's type can cast from, flattening nested
+/// enums the way `AstNode::can_cast` does.
+fn cast_kinds(ty: &str, enums_by_ty: &HashMap<String, &Enum>, kinds: &mut BTreeSet<String>) {
+    match enums_by_ty.get(ty) {
+        None => {
+            kinds.insert(ty.to_string());
+        }
+        Some(en) => {
+            for variant in &en.variants {
+                let variant_ty = variant.mapped_nodetype();
+                // Guard against an enum reachable from itself
+                if variant_ty != ty {
+                    cast_kinds(&variant_ty, enums_by_ty, kinds);
+                }
+            }
+        }
+    }
+}
+
+/// Reject a node whose list-valued field can capture a sibling field's child.
+///
+/// A generated `Field::Multiple` accessor returns every child that casts to the
+/// element type, with nothing to distinguish which tree-sitter field a given
+/// child belongs to — the rowan tree keeps only a `SyntaxKind`. So if the
+/// element type overlaps another field's type, the two accessors silently steal
+/// from each other. That is what made `CaseExpr::clauses()` return a
+/// `MacroCallExpr` scrutinee as though it were a case clause.
+///
+/// Overlap between two single-valued fields is fine: those resolve by position
+/// (`support::child(nth)`), which is well defined.
+///
+/// The codegen cannot repair an overlap on its own — doing so needs the
+/// delimiting token, and `node-types.json` records field types and cardinality
+/// but not token order. So it fails instead, and the accessor is written by hand
+/// and listed in [`HAND_WRITTEN_FIELDS`].
+fn check_field_overlaps(
+    node_types: &[NodeType],
+    enums_by_ty: &HashMap<String, &Enum>,
+) -> Result<()> {
+    for node_type in node_types {
+        let NodeType::Node(_, node) = node_type else {
+            continue;
+        };
+        for (idx, field) in node.fields.iter().enumerate() {
+            if !matches!(field, Field::Multiple { .. }) || is_hand_written(&node.nodetype, field) {
+                continue;
+            }
+            let Some(ty) = field.cast_ty() else { continue };
+            let mut kinds = BTreeSet::new();
+            cast_kinds(&ty, enums_by_ty, &mut kinds);
+
+            for (other_idx, other) in node.fields.iter().enumerate() {
+                if idx == other_idx || is_hand_written(&node.nodetype, other) {
+                    continue;
+                }
+                let Some(other_ty) = other.cast_ty() else {
+                    continue;
+                };
+                let mut other_kinds = BTreeSet::new();
+                cast_kinds(&other_ty, enums_by_ty, &mut other_kinds);
+
+                let shared: Vec<_> = kinds.intersection(&other_kinds).cloned().collect();
+                if !shared.is_empty() {
+                    bail!(
+                        "`{}`: field `{}` ({}) and field `{}` ({}) both cast from {}, \
+                         so the generated accessors would capture each other's children. \
+                         Write one of them by hand in crates/syntax/src/ast/node_ext.rs \
+                         and add it to HAND_WRITTEN_FIELDS.",
+                        node.nodetype,
+                        field.name(),
+                        ty,
+                        other.name(),
+                        other_ty,
+                        shared.join(", "),
+                    );
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 impl NodeType {
@@ -315,6 +408,19 @@ fn generate_ast(node_types: &[NodeType]) -> Result<String> {
             _ => None,
         })
         .collect();
+
+    // Keyed by generated type name rather than raw nodetype, to match `Field`
+    let enums_by_ty: HashMap<String, &Enum> = enums
+        .values()
+        .map(|en| {
+            let ty = RawType {
+                nodetype: en.nodetype.clone(),
+                named: en.named,
+            };
+            (ty.mapped_nodetype(), *en)
+        })
+        .collect();
+    check_field_overlaps(node_types, &enums_by_ty)?;
 
     let defs = node_types.iter().filter_map(|node| match node {
         NodeType::Keyword(_, _) => None,
@@ -997,4 +1103,176 @@ fn build_fields(fields: &BTreeMap<String, RawField>) -> Vec<Field> {
     }
 
     mapped
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn node(nodetype: &str, fields: Vec<Field>) -> NodeType {
+        NodeType::Node(
+            SymbolId(0),
+            Node {
+                nodetype: nodetype.to_string(),
+                named: true,
+                fields,
+            },
+        )
+    }
+
+    fn single(name: &str, ty: &str) -> Field {
+        Field::Node {
+            name: format_ident!("{}", name),
+            ty: format_ident!("{}", ty),
+            nth: 0,
+        }
+    }
+
+    fn multiple(name: &str, ty: &str) -> Field {
+        Field::Multiple {
+            name: format_ident!("{}", name),
+            ty: format_ident!("{}", ty),
+        }
+    }
+
+    fn token(name: &str, kind: &str) -> Field {
+        Field::Token {
+            name: format_ident!("{}", name),
+            kind: format_ident!("{}", kind),
+            nth: 0,
+        }
+    }
+
+    fn sum(nodetype: &str, variants: &[&str]) -> Enum {
+        Enum {
+            nodetype: nodetype.to_string(),
+            named: true,
+            variants: variants
+                .iter()
+                .map(|nodetype| RawType {
+                    nodetype: nodetype.to_string(),
+                    named: true,
+                })
+                .collect(),
+        }
+    }
+
+    fn by_ty(enums: &[Enum]) -> HashMap<String, &Enum> {
+        enums
+            .iter()
+            .map(|en| {
+                let ty = RawType {
+                    nodetype: en.nodetype.clone(),
+                    named: en.named,
+                };
+                (ty.mapped_nodetype(), en)
+            })
+            .collect()
+    }
+
+    /// `_expr` and `_cr_clause_or_macro` as the real grammar has them: both
+    /// reach `macro_call_expr`.
+    fn overlapping_enums() -> Vec<Enum> {
+        vec![
+            sum("expr", &["macro_call_expr", "var"]),
+            sum("cr_clause_or_macro", &["cr_clause", "macro_call_expr"]),
+        ]
+    }
+
+    #[test]
+    fn list_field_overlapping_a_sibling_is_rejected() {
+        let enums = overlapping_enums();
+        let node_types = vec![node(
+            "not_a_real_node",
+            vec![
+                single("expr", "Expr"),
+                multiple("clauses", "CrClauseOrMacro"),
+            ],
+        )];
+
+        let err = check_field_overlaps(&node_types, &by_ty(&enums))
+            .expect_err("overlapping fields should be rejected")
+            .to_string();
+
+        assert!(err.contains("not_a_real_node"), "{err}");
+        assert!(err.contains("`clauses`"), "{err}");
+        assert!(err.contains("`expr`"), "{err}");
+        assert!(err.contains("MacroCallExpr"), "{err}");
+    }
+
+    #[test]
+    fn nested_enums_are_flattened() {
+        // The overlap is only visible after following `_expr` into `_expr_max`,
+        // the way `AstNode::can_cast` does.
+        let enums = vec![
+            sum("expr", &["expr_max"]),
+            sum("expr_max", &["macro_call_expr", "var"]),
+            sum("cr_clause_or_macro", &["cr_clause", "macro_call_expr"]),
+        ];
+        let node_types = vec![node(
+            "not_a_real_node",
+            vec![
+                single("expr", "Expr"),
+                multiple("clauses", "CrClauseOrMacro"),
+            ],
+        )];
+
+        assert!(check_field_overlaps(&node_types, &by_ty(&enums)).is_err());
+    }
+
+    #[test]
+    fn hand_written_fields_are_exempt() {
+        // Also pins that `case_expr`'s real overlap is covered by the list.
+        let enums = overlapping_enums();
+        let node_types = vec![node(
+            "case_expr",
+            vec![
+                single("expr", "Expr"),
+                multiple("clauses", "CrClauseOrMacro"),
+            ],
+        )];
+
+        assert!(check_field_overlaps(&node_types, &by_ty(&enums)).is_ok());
+    }
+
+    #[test]
+    fn single_valued_fields_may_overlap() {
+        // `match_expr`'s `lhs` and `rhs` are both `_expr`. Those resolve by
+        // position, which is well defined.
+        let enums = overlapping_enums();
+        let node_types = vec![node(
+            "match_expr",
+            vec![single("lhs", "Expr"), single("rhs", "Expr")],
+        )];
+
+        assert!(check_field_overlaps(&node_types, &by_ty(&enums)).is_ok());
+    }
+
+    #[test]
+    fn token_fields_never_overlap() {
+        let enums = overlapping_enums();
+        let node_types = vec![node(
+            "not_a_real_node",
+            vec![
+                token("of", "ANON_OF"),
+                multiple("clauses", "CrClauseOrMacro"),
+            ],
+        )];
+
+        assert!(check_field_overlaps(&node_types, &by_ty(&enums)).is_ok());
+    }
+
+    #[test]
+    fn disjoint_field_types_are_allowed() {
+        let enums = overlapping_enums();
+        let node_types = vec![node(
+            "not_a_real_node",
+            vec![
+                single("name", "Atom"),
+                multiple("clauses", "CrClauseOrMacro"),
+            ],
+        )];
+
+        assert!(check_field_overlaps(&node_types, &by_ty(&enums)).is_ok());
+    }
 }
