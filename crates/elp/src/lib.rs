@@ -251,6 +251,7 @@ mod tests {
             linters: FxHashMap::default(),
             erlang_service: ErlangServiceConfig::default(),
             dynamic_calls: Default::default(),
+            attribute_order: Default::default(),
         };
         expect![[r#"
             [erlang_service]
@@ -288,6 +289,9 @@ mod tests {
 
             [dynamic_calls]
             patterns = []
+
+            [attribute_order]
+            order = []
         "#]]
         .assert_eq(&toml::to_string::<LintConfig>(&lint_config).unwrap());
     }

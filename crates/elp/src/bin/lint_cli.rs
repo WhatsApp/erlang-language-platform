@@ -1774,6 +1774,7 @@ mod tests {
                 warnings_as_errors: true,
             },
             dynamic_calls: Default::default(),
+            attribute_order: Default::default(),
         })
         .unwrap();
 
@@ -1797,6 +1798,9 @@ mod tests {
 
             [dynamic_calls]
             patterns = []
+
+            [attribute_order]
+            order = []
         "#]]
         .assert_eq(&result);
     }
@@ -1842,9 +1846,42 @@ mod tests {
                 dynamic_calls: DynamicCallsConfig {
                     patterns: [],
                 },
+                attribute_order: AttributeOrderConfig {
+                    order: [],
+                },
             }
         "#]]
         .assert_debug_eq(&lint_config);
+    }
+
+    #[test]
+    fn deserialize_attribute_order_config() {
+        let lint_config: LintConfig = toml::from_str(
+            r#"[attribute_order]
+               order = ["module", "oncall", ["include", "include_lib"], "define"]
+             "#,
+        )
+        .unwrap();
+        expect![[r#"
+            [
+                Single(
+                    "module",
+                ),
+                Single(
+                    "oncall",
+                ),
+                Group(
+                    [
+                        "include",
+                        "include_lib",
+                    ],
+                ),
+                Single(
+                    "define",
+                ),
+            ]
+        "#]]
+        .assert_debug_eq(&lint_config.attribute_order.order);
     }
 
     // ---------------------------------

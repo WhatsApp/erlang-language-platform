@@ -14,6 +14,7 @@ use std::fmt;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::LazyLock;
+use std::sync::OnceLock;
 
 use anyhow::Result;
 use anyhow::bail;
@@ -1082,11 +1083,26 @@ pub(crate) struct LinterContext<'a> {
     pub sema: &'a Semantic<'a>,
     pub file_id: FileId,
     db: &'a RootDatabase,
+    lint_config: Option<&'a LintConfig>,
 }
 
 impl<'a> LinterContext<'a> {
-    pub(crate) fn new(sema: &'a Semantic<'a>, file_id: FileId, db: &'a RootDatabase) -> Self {
-        Self { sema, file_id, db }
+    pub(crate) fn new(
+        sema: &'a Semantic<'a>,
+        file_id: FileId,
+        db: &'a RootDatabase,
+        lint_config: Option<&'a LintConfig>,
+    ) -> Self {
+        Self {
+            sema,
+            file_id,
+            db,
+            lint_config,
+        }
+    }
+
+    pub(crate) fn lint_config(&self) -> Option<&LintConfig> {
+        self.lint_config
     }
 
     pub(crate) fn ct_info(&self) -> Arc<CommonTestInfo> {
@@ -1485,6 +1501,10 @@ impl LintConfig {
                 .or_insert(other_linter_config);
         }
 
+        if !other.attribute_order.order.is_empty() {
+            self.attribute_order = other.attribute_order;
+        }
+
         self
     }
 
@@ -1564,6 +1584,66 @@ pub struct LintConfig {
     pub linters: FxHashMap<DiagnosticCode, LinterConfig>,
     #[serde(default)]
     pub dynamic_calls: DynamicCallsConfig,
+    #[serde(default)]
+    pub attribute_order: AttributeOrderConfig,
+}
+
+/// Configuration for the `attribute_order` (W0084) linter. Kept as a dedicated
+/// top-level section rather than a field on `LinterConfig`, which is shared by
+/// every linter.
+#[derive(Deserialize, Serialize, Default, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct AttributeOrderConfig {
+    /// Ordered ranks of attribute names. Empty means the linter is a no-op.
+    #[serde(default)]
+    pub order: Vec<OrderEntry>,
+    /// Map from attribute name to its rank in `order`, derived from `order` on
+    /// first use and cached so the linter doesn't rebuild it for every file it
+    /// checks.
+    #[serde(skip)]
+    rank_of: OnceLock<FxHashMap<String, usize>>,
+}
+
+impl AttributeOrderConfig {
+    /// Map from attribute name to its rank in `order`; members of a group share
+    /// the group's rank. Built once on first access and cached.
+    pub(crate) fn rank_of(&self) -> &FxHashMap<String, usize> {
+        self.rank_of.get_or_init(|| {
+            let mut rank_of = FxHashMap::default();
+            for (rank, entry) in self.order.iter().enumerate() {
+                match entry {
+                    OrderEntry::Single(name) => {
+                        rank_of.insert(name.clone(), rank);
+                    }
+                    OrderEntry::Group(names) => {
+                        for name in names {
+                            rank_of.insert(name.clone(), rank);
+                        }
+                    }
+                }
+            }
+            rank_of
+        })
+    }
+}
+
+// `rank_of` is a derived cache, so it's omitted from the debug representation.
+impl fmt::Debug for AttributeOrderConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AttributeOrderConfig")
+            .field("order", &self.order)
+            .finish()
+    }
+}
+
+/// A single rank in the attribute order: either one attribute name, or a group
+/// of interchangeable names that share the rank (any order among them is
+/// accepted).
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum OrderEntry {
+    Single(String),
+    Group(Vec<String>),
 }
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
@@ -1847,7 +1927,7 @@ pub fn native_diagnostics(
         }
         {
             let _guard = in_flight::begin("native:linters");
-            let linter_ctx = LinterContext::new(&sema, file_id, db);
+            let linter_ctx = LinterContext::new(&sema, file_id, db, config.lint_config.as_ref());
             diagnostics_from_linters(&mut res, &linter_ctx, config, trigger, linters());
         }
 
