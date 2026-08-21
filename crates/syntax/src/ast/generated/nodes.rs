@@ -903,9 +903,6 @@ pub struct CaseExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl CaseExpr {
-    pub fn clauses(&self) -> AstChildren<CrClauseOrMacro> {
-        support::children(&self.syntax)
-    }
     pub fn expr(&self) -> Option<Expr> {
         support::child(&self.syntax, 0usize)
     }
@@ -4646,14 +4643,7 @@ impl std::fmt::Display for MatchExpr {
 pub struct MaybeExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl MaybeExpr {
-    pub fn clauses(&self) -> AstChildren<CrClauseOrMacro> {
-        support::children(&self.syntax)
-    }
-    pub fn exprs(&self) -> AstChildren<Expr> {
-        support::children(&self.syntax)
-    }
-}
+impl MaybeExpr {}
 #[doc = r" Via NodeType::Node 2 struct"]
 impl AstNode for MaybeExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
@@ -6792,12 +6782,6 @@ pub struct TryExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl TryExpr {
-    pub fn clauses(&self) -> AstChildren<CrClauseOrMacro> {
-        support::children(&self.syntax)
-    }
-    pub fn exprs(&self) -> AstChildren<Expr> {
-        support::children(&self.syntax)
-    }
     pub fn catch(&self) -> AstChildren<CatchClause> {
         support::children(&self.syntax)
     }

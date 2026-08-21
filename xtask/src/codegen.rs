@@ -113,6 +113,40 @@ enum Field {
     },
 }
 
+impl Field {
+    fn name(&self) -> String {
+        match self {
+            Field::Node { name, .. } | Field::Multiple { name, .. } | Field::Token { name, .. } => {
+                name.to_string()
+            }
+        }
+    }
+}
+
+/// Accessors written by hand in `crates/syntax/src/ast/node_ext.rs` rather than
+/// generated here, listed as `(nodetype, field)`.
+///
+/// Generated accessors resolve a field by casting: `Field::Node` takes the nth
+/// child that casts to the field's type, `Field::Multiple` takes every child
+/// that does. The rowan tree records only a `SyntaxKind`, so tree-sitter's
+/// field names are not available to narrow that down. The approximation only
+/// holds while no two fields of a node have overlapping types — `case_expr`
+/// breaks it, because `CrClauseOrMacro` covers `MacroCallExpr`, which is also
+/// an `Expr`, so a macro used as the scrutinee is returned as a phantom clause.
+///
+/// These accessors split on the keyword separating the two fields instead.
+const HAND_WRITTEN_FIELDS: &[(&str, &str)] = &[
+    ("case_expr", "clauses"),
+    ("try_expr", "clauses"),
+    ("try_expr", "exprs"),
+    ("maybe_expr", "clauses"),
+    ("maybe_expr", "exprs"),
+];
+
+fn is_hand_written(nodetype: &str, field: &Field) -> bool {
+    HAND_WRITTEN_FIELDS.contains(&(nodetype, field.name().as_str()))
+}
+
 impl NodeType {
     fn id(&self) -> SymbolId {
         match self {
@@ -394,7 +428,8 @@ fn generate_ast(node_types: &[NodeType]) -> Result<String> {
             let kind = node.kind()?;
             let name = node.ty();
 
-            let methods = node1.fields.iter().map(|field| {
+            let nodetype = node1.nodetype.as_str();
+            let methods = node1.fields.iter().filter(|field| !is_hand_written(nodetype, field)).map(|field| {
                 match field {
                     Field::Multiple { name, ty } => {
                         quote!{

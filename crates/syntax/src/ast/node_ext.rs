@@ -34,6 +34,7 @@ use super::PpDefine;
 use super::UnaryOp;
 use super::generated::nodes;
 use super::operators::GeneratorOp;
+use crate::SyntaxKind;
 use crate::SyntaxKind::*;
 use crate::SyntaxToken;
 use crate::ast::AstNode;
@@ -394,6 +395,78 @@ fn detail_range(detail: &super::IncludeDetail) -> TextRange {
     match detail {
         super::IncludeDetail::String(str) => str.syntax().text_range(),
         super::IncludeDetail::MacroCallExpr(mc) => mc.syntax().text_range(),
+    }
+}
+
+// ---------------------------------------------------------------------
+// Field accessors that have to split on a keyword
+// ---------------------------------------------------------------------
+
+// Generated field accessors resolve a field by casting: a list-valued one
+// returns every child that casts to the element type. The rowan tree records
+// only a `SyntaxKind`, so tree-sitter's field names are not available to narrow
+// that down, and the approximation holds only while no two fields of a node
+// have overlapping types.
+//
+// `case Scrutinee of Clauses end` breaks it. `CrClauseOrMacro` covers
+// `MacroCallExpr`, which is also an `Expr`, so `case ?MACRO(...) of ... end`
+// would return the scrutinee as a phantom clause on top of the real ones.
+// `try Exprs of Clauses catch ... end` and `maybe Exprs else Clauses end` have
+// the same overlap, in both directions. Each splits its children on the keyword
+// that separates the two fields.
+//
+// Generation of these accessors is suppressed by `HAND_WRITTEN_FIELDS` in
+// `xtask/src/codegen.rs`, which also fails the build if a new node picks up an
+// overlap of this shape.
+
+fn children_before<N: AstNode>(
+    syntax: &SyntaxNode,
+    keyword: SyntaxKind,
+) -> impl Iterator<Item = N> + use<N> {
+    syntax
+        .children_with_tokens()
+        .take_while(move |child| child.kind() != keyword)
+        .filter_map(|child| child.into_node())
+        .filter_map(N::cast)
+}
+
+/// Yields nothing when the keyword is absent, which is what the keyword-less
+/// forms — `try Exprs catch ... end`, `maybe Exprs end` — need.
+fn children_after<N: AstNode>(
+    syntax: &SyntaxNode,
+    keyword: SyntaxKind,
+) -> impl Iterator<Item = N> + use<N> {
+    syntax
+        .children_with_tokens()
+        .skip_while(move |child| child.kind() != keyword)
+        .skip(1)
+        .filter_map(|child| child.into_node())
+        .filter_map(N::cast)
+}
+
+impl nodes::CaseExpr {
+    pub fn clauses(&self) -> impl Iterator<Item = nodes::CrClauseOrMacro> + use<> {
+        children_after(&self.syntax, ANON_OF)
+    }
+}
+
+impl nodes::TryExpr {
+    pub fn exprs(&self) -> impl Iterator<Item = nodes::Expr> + use<> {
+        children_before(&self.syntax, ANON_OF)
+    }
+
+    pub fn clauses(&self) -> impl Iterator<Item = nodes::CrClauseOrMacro> + use<> {
+        children_after(&self.syntax, ANON_OF)
+    }
+}
+
+impl nodes::MaybeExpr {
+    pub fn exprs(&self) -> impl Iterator<Item = nodes::Expr> + use<> {
+        children_before(&self.syntax, ANON_ELSE)
+    }
+
+    pub fn clauses(&self) -> impl Iterator<Item = nodes::CrClauseOrMacro> + use<> {
+        children_after(&self.syntax, ANON_ELSE)
     }
 }
 
@@ -1305,5 +1378,98 @@ flush
               one line
               """"#,
         ));
+    }
+
+    // ---------------------------------------------------------------------
+    // Keyword-splitting field accessors
+    // ---------------------------------------------------------------------
+
+    // `CrClauseOrMacro` covers `MacroCallExpr`, which is also an `Expr`, so a
+    // cast-based accessor cannot tell a macro used as the body of a `case`,
+    // `try` or `maybe` from one used as its clause list. These pin the split on
+    // the separating keyword, in both directions.
+
+    fn texts<N: AstNode>(nodes: impl Iterator<Item = N>) -> Vec<String> {
+        nodes.map(|node| node.syntax().text().to_string()).collect()
+    }
+
+    fn parse_case(arg: &str) -> nodes::CaseExpr {
+        match parse_expr(arg) {
+            ast::Expr::ExprMax(nodes::ExprMax::CaseExpr(case)) => case,
+            got => panic!("expected case expr, got: {got:?}"),
+        }
+    }
+
+    fn parse_try(arg: &str) -> nodes::TryExpr {
+        match parse_expr(arg) {
+            ast::Expr::ExprMax(nodes::ExprMax::TryExpr(try_expr)) => try_expr,
+            got => panic!("expected try expr, got: {got:?}"),
+        }
+    }
+
+    fn parse_maybe(arg: &str) -> nodes::MaybeExpr {
+        match parse_expr(arg) {
+            ast::Expr::ExprMax(nodes::ExprMax::MaybeExpr(maybe)) => maybe,
+            got => panic!("expected maybe expr, got: {got:?}"),
+        }
+    }
+
+    #[test]
+    fn test_case_clauses_exclude_macro_scrutinee() {
+        let case = parse_case("case ?M(a, b) of true -> ok; _ -> [] end");
+        assert_eq!(
+            "?M(a, b)",
+            case.expr()
+                .expect("no scrutinee parsed")
+                .syntax()
+                .text()
+                .to_string()
+        );
+        assert_eq!(vec!["true -> ok", "_ -> []"], texts(case.clauses()));
+    }
+
+    #[test]
+    fn test_case_clauses_include_macro_clauses() {
+        // The converse: here the macro really is the clause list, so it must
+        // still be returned.
+        let case = parse_case("case X of ?CLAUSES end");
+        assert_eq!(vec!["?CLAUSES"], texts(case.clauses()));
+    }
+
+    #[test]
+    fn test_try_splits_body_from_clauses() {
+        let try_expr = parse_try("try ?M(a, b) of true -> ok catch _:_ -> error end");
+        assert_eq!(vec!["?M(a, b)"], texts(try_expr.exprs()));
+        assert_eq!(vec!["true -> ok"], texts(try_expr.clauses()));
+    }
+
+    #[test]
+    fn test_try_without_of_has_no_clauses() {
+        let try_expr = parse_try("try ?M(a, b) catch _:_ -> error end");
+        assert_eq!(vec!["?M(a, b)"], texts(try_expr.exprs()));
+        assert!(
+            try_expr.clauses().next().is_none(),
+            "a `try` with no `of` has no clauses"
+        );
+    }
+
+    #[test]
+    fn test_maybe_splits_body_from_clauses() {
+        let maybe = parse_maybe("maybe ?M(a, b), {ok, V} ?= f(), V else _ -> error end");
+        assert_eq!(
+            vec!["?M(a, b)", "{ok, V} ?= f()", "V"],
+            texts(maybe.exprs())
+        );
+        assert_eq!(vec!["_ -> error"], texts(maybe.clauses()));
+    }
+
+    #[test]
+    fn test_maybe_without_else_has_no_clauses() {
+        let maybe = parse_maybe("maybe ?M(a, b) end");
+        assert_eq!(vec!["?M(a, b)"], texts(maybe.exprs()));
+        assert!(
+            maybe.clauses().next().is_none(),
+            "a `maybe` with no `else` has no clauses"
+        );
     }
 }
