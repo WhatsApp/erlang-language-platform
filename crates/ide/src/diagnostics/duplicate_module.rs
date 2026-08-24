@@ -32,10 +32,6 @@ impl Linter for DuplicateModuleLinter {
     fn description(&self) -> &'static str {
         "A module with this name exists elsewhere"
     }
-
-    fn should_process_test_files(&self) -> bool {
-        false // Allow duplication in test fixtures
-    }
 }
 
 impl GenericLinter for DuplicateModuleLinter {
@@ -84,6 +80,22 @@ mod test {
              //- /src/sub/dup_mod.erl
              -module(dup_mod).
                   %% ^^^^^^^ 💡 warning: W0045: A module with this name exists elsewhere
+            "#,
+        )
+    }
+
+    #[test]
+    fn duplicate_test_modules() {
+        // Common Test suites collide in the module index like anything else, and the
+        // file that loses the collision is the one whose analysis silently degrades.
+        check_diagnostics(
+            r#"
+             //- /app_a/test/dup_SUITE.erl app:app_a extra:test
+             -module(dup_SUITE).
+                  %% ^^^^^^^^^ 💡 warning: W0045: A module with this name exists elsewhere
+             //- /app_b/test/dup_SUITE.erl app:app_b extra:test
+             -module(dup_SUITE).
+                  %% ^^^^^^^^^ 💡 warning: W0045: A module with this name exists elsewhere
             "#,
         )
     }
