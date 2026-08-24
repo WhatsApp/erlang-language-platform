@@ -9,6 +9,9 @@
 
 -export([run/2]).
 
+%% Placeholder module name bound to `?MODULE` when a header is analysed on its own.
+-define(HEADER_MODULE, 'ELP_HEADER').
+
 run(Id, [FileName, FileId, Options0, FileText, PostProcess, Deterministic]) ->
     Options = parse_options(FileName, Options0, Deterministic),
     case extract_forms(Id, FileName, FileId, FileText, Options) of
@@ -331,10 +334,22 @@ extract_forms(Id, FileName, FileId, FileText, Options) ->
         ".erl" ->
             elp_epp:parse_file(Id, FileName, FileId, FileText, Options);
         ".hrl" ->
-            elp_epp:parse_file(Id, FileName, FileId, FileText, Options);
+            elp_epp:parse_file(Id, FileName, FileId, FileText, hrl_options(Options));
         ".escript" ->
             Forms = elp_escript:extract(Id, FileName, FileId, FileText),
             {ok, Forms};
         _Ext ->
             {error, "Skipping diagnostics due to extension"}
     end.
+
+%% A header is analysed on its own, with no enclosing `-module` attribute, so nothing binds
+%% `?MODULE` and any use of it is reported as an undefined macro. Bind a placeholder so it
+%% expands instead.
+-spec hrl_options([term()]) -> [term()].
+hrl_options(Options) ->
+    Macros = [
+        {'MODULE', ?HEADER_MODULE, redefine},
+        {'MODULE_STRING', atom_to_list(?HEADER_MODULE), redefine}
+        | proplists:get_value(macros, Options, [])
+    ],
+    [{macros, Macros} | proplists:delete(macros, Options)].
