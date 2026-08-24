@@ -64,17 +64,10 @@ use crate::expr::MaybeExpr;
 /// Choose the appropriate `FoldBody` to ensure macros and parens are
 /// visible or not according to the chosen strategy.
 pub fn fold_body(strategy: Strategy, body: &Body) -> FoldBody<'_> {
-    match strategy.macros {
-        MacroStrategy::DoNotExpand | MacroStrategy::ExpandButIncludeMacroCall => FoldBody {
-            body,
-            macros: VisibleMacros::Yes,
-            parens: strategy.parens,
-        },
-        MacroStrategy::Expand => FoldBody {
-            body,
-            macros: VisibleMacros::No,
-            parens: strategy.parens,
-        },
+    FoldBody {
+        body,
+        macros: strategy.macros,
+        parens: strategy.parens,
     }
 }
 
@@ -474,6 +467,10 @@ pub enum ParenStrategy {
     InvisibleParens,
 }
 
+/// The projection of a `MacroStrategy` that the `FoldBody` `Index` instances
+/// need: whether a `*::MacroCall` is surfaced or looked through. Two strategies
+/// map to `Yes`, so this is deliberately narrower than `MacroStrategy` — derive
+/// it with `FoldBody::visible_macros` rather than storing it.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum VisibleMacros {
     Yes,

@@ -55,8 +55,8 @@ use crate::def_map::FunctionDefId;
 use crate::expr::BinaryOp as SyntaxBinaryOp;
 use crate::expr::ClauseId;
 use crate::expr::MaybeExpr;
+use crate::fold::MacroStrategy;
 use crate::fold::ParenStrategy;
-use crate::fold::VisibleMacros;
 
 pub type ScopeId = Idx<ScopeData>;
 
@@ -410,9 +410,11 @@ fn compute_expr_scopes(
     vt: &mut VarTable,
 ) {
     scopes.set_scope_expr(expr, *scope);
+    // `ExpandButIncludeMacroCall`: the `Expr::MacroCall` arm below scopes the
+    // expansion *and* the arguments.
     match &(FoldBody {
         body,
-        macros: VisibleMacros::Yes,
+        macros: MacroStrategy::ExpandButIncludeMacroCall,
         parens: ParenStrategy::InvisibleParens,
     })[expr]
     {

@@ -104,11 +104,22 @@ pub struct Body {
 #[derive(Debug, PartialEq, Eq)]
 pub struct FoldBody<'a> {
     pub body: &'a Body,
-    pub macros: VisibleMacros,
+    pub macros: MacroStrategy,
     pub parens: ParenStrategy,
 }
 
 impl FoldBody<'_> {
+    /// Whether the `Index` instances surface `*::MacroCall` nodes or look
+    /// through them to the expansion.
+    pub fn visible_macros(&self) -> VisibleMacros {
+        match self.macros {
+            MacroStrategy::DoNotExpand | MacroStrategy::ExpandButIncludeMacroCall => {
+                VisibleMacros::Yes
+            }
+            MacroStrategy::Expand => VisibleMacros::No,
+        }
+    }
+
     /// Equivalent to `Body::get_any`, but uses the `FoldBody` `Index` instances
     pub fn get_any(&self, id: AnyExprId) -> AnyExprRef<'_> {
         match id {
@@ -1262,7 +1273,7 @@ impl Index<ExprId> for FoldBody<'_> {
                 ParenStrategy::VisibleParens => &self.body.exprs[index],
                 ParenStrategy::InvisibleParens => self.index(*expr),
             },
-            expr @ Expr::MacroCall { expansion, .. } => match self.macros {
+            expr @ Expr::MacroCall { expansion, .. } => match self.visible_macros() {
                 VisibleMacros::Yes => expr,
                 VisibleMacros::No => self.index(*expansion),
             },
@@ -1310,7 +1321,7 @@ impl Index<PatId> for FoldBody<'_> {
                 ParenStrategy::VisibleParens => &self.body.pats[index],
                 ParenStrategy::InvisibleParens => self.index(*pat),
             },
-            pat @ Pat::MacroCall { expansion, .. } => match self.macros {
+            pat @ Pat::MacroCall { expansion, .. } => match self.visible_macros() {
                 VisibleMacros::Yes => pat,
                 VisibleMacros::No => self.index(*expansion),
             },
@@ -1358,7 +1369,7 @@ impl Index<TypeExprId> for FoldBody<'_> {
                 ParenStrategy::VisibleParens => &self.body.type_exprs[index],
                 ParenStrategy::InvisibleParens => self.index(*ty),
             },
-            type_expr @ TypeExpr::MacroCall { expansion, .. } => match self.macros {
+            type_expr @ TypeExpr::MacroCall { expansion, .. } => match self.visible_macros() {
                 VisibleMacros::Yes => type_expr,
                 VisibleMacros::No => self.index(*expansion),
             },
@@ -1401,7 +1412,7 @@ impl Index<TermId> for FoldBody<'_> {
     fn index(&self, index: TermId) -> &Self::Output {
         // Do not "look through" macro expansion
         match &self.body.terms[index] {
-            term @ Term::MacroCall { expansion, .. } => match self.macros {
+            term @ Term::MacroCall { expansion, .. } => match self.visible_macros() {
                 VisibleMacros::Yes => term,
                 VisibleMacros::No => self.index(*expansion),
             },
