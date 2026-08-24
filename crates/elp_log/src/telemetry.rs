@@ -19,6 +19,7 @@
 //! jump.
 
 use std::sync::LazyLock;
+use std::time::Duration;
 use std::time::SystemTime;
 
 pub use humantime::format_rfc3339_millis;
@@ -69,8 +70,8 @@ pub fn build_message(
     TelemetryMessage {
         // Note: the "type" field is required, otherwise the telemetry
         // mapper in the vscode extension will not route the message
-        // to chronicle, and hence scuba. The value is mapped to the
-        //"extras.eventName" field.
+        // through the ingestion pipeline to the telemetry database.
+        // The value is mapped to the "extras.eventName" field.
         typ,
         duration_ms,
         start_time,
@@ -101,6 +102,10 @@ pub fn send_with_duration(
     start_time: SystemTime,
 ) {
     do_send(typ, data, Some(duration), Some(start_time));
+}
+
+pub fn duration_ms(duration: Duration) -> DurationMs {
+    DurationMs::try_from(duration.as_millis()).unwrap_or(DurationMs::MAX)
 }
 
 pub fn report_elapsed_time(what: &str, start_time: SystemTime) {

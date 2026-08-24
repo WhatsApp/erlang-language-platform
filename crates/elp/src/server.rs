@@ -18,6 +18,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
+use std::time::SystemTime;
 
 use always_assert::always;
 use anyhow::Result;
@@ -1110,13 +1111,14 @@ impl Server {
             // is dropped) remain observable in the field.
             let num_changed_files = changed_files.len();
             let write_started = Instant::now();
+            let write_started_wall = SystemTime::now();
             {
                 let _phase = watchdog::phase("vfs_salsa_cancellation");
                 raw_database.request_cancellation();
             }
             let write_elapsed = write_started.elapsed();
             if write_elapsed >= DB_WRITE_STALL_THRESHOLD {
-                report_db_write_stall(write_elapsed, num_changed_files);
+                report_db_write_stall(write_elapsed, write_started_wall, num_changed_files);
             }
 
             // Apply text changes (shared with watchman and CLI). Snapshots have been
@@ -2289,8 +2291,10 @@ pub fn is_supported_by_erlang_service(analysis: &Analysis, id: FileId) -> bool {
 /// Report that the salsa write on the main loop blocked for longer than
 /// [`DB_WRITE_STALL_THRESHOLD`]. The cumulative salsa counters are included so a
 /// stall can be correlated with interned-slot reuse and cross-thread query
-/// blocking.
-fn report_db_write_stall(elapsed: Duration, num_changed_files: usize) {
+/// blocking. `started_at` is the wall clock when the write began, so the reported
+/// interval survives any lag between sending the event and the recorded row landing
+/// in a database.
+fn report_db_write_stall(elapsed: Duration, started_at: SystemTime, num_changed_files: usize) {
     let elapsed_ms = elapsed.as_millis() as u64;
     // Whatever is still registered held a snapshot for (some of) the wait, so it
     // is what the write was blocked behind. Oldest first.
@@ -2314,7 +2318,12 @@ fn report_db_write_stall(elapsed: Duration, num_changed_files: usize) {
         "salsa_will_block_on": salsa.will_block_on,
         "salsa_did_set_cancellation_flag": salsa.did_set_cancellation_flag,
     });
-    telemetry::send("main_loop_db_write_stall".to_string(), data);
+    telemetry::send_with_duration(
+        "main_loop_db_write_stall".to_string(),
+        data,
+        telemetry::duration_ms(elapsed),
+        started_at,
+    );
 }
 
 #[cfg(test)]

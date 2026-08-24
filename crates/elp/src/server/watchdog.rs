@@ -28,9 +28,14 @@
 //! to identify the blocker: in-flight work units, salsa event counts, and
 //! best-effort main-thread introspection (`/proc`, Linux).
 //!
-//! Robustness note: [`telemetry::send`] only *enqueues* onto a channel that the
-//! (possibly stalled) main loop drains, so for a permanently wedged loop the
-//! telemetry event is not delivered until/unless the loop resumes. Logging is
+//! Robustness note: [`telemetry::send_with_duration`] only *enqueues* onto a
+//! channel that the (possibly stalled) main loop drains, so for a permanently
+//! wedged loop the telemetry event is not delivered until/unless the loop
+//! resumes. Both reports therefore carry their own wall-clock origin
+//! (`start_time`, plus a `turn_started` field), matching the rest of the
+//! server's telemetry: a telemetry database row timestamp records ingestion, which for
+//! these events lags the stall by the length of the stall itself and, during a
+//! network outage, by longer still. Logging is
 //! different: a record is delivered to the client by the lsp-server writer
 //! thread (`LspLogger` -> `connection.sender`), not the main loop, so it gets
 //! out even during a stall — but only if it clears the client sink's level
@@ -48,9 +53,11 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
 use std::time::Instant;
+use std::time::SystemTime;
 
 use elp_base_db::in_flight;
 use elp_log::telemetry;
+use elp_log::telemetry::format_rfc3339_millis;
 use fxhash::FxHashMap;
 use parking_lot::Mutex;
 
@@ -84,7 +91,9 @@ struct Beat {
     /// `turn_label` until a [`phase`] refines it.
     phase_label: String,
     turn_started: Instant,
+    turn_started_wall: SystemTime,
     phase_started: Instant,
+    phase_started_wall: SystemTime,
     epoch: u64,
 }
 
@@ -96,13 +105,16 @@ pub(crate) fn arm(turn_label: impl Into<String>) -> TurnGuard {
     // the watchdog's later `/proc` introspection.
     capture_main_tid();
     let now = Instant::now();
+    let now_wall = SystemTime::now();
     let epoch = EPOCH.fetch_add(1, Ordering::Relaxed);
     let label = turn_label.into();
     *CURRENT.lock() = Some(Beat {
         phase_label: label.clone(),
         turn_label: label,
         turn_started: now,
+        turn_started_wall: now_wall,
         phase_started: now,
+        phase_started_wall: now_wall,
         epoch,
     });
     TurnGuard
@@ -127,34 +139,49 @@ impl Drop for TurnGuard {
 /// before the loop begins).
 pub(crate) fn phase(phase_label: impl Into<String>) -> PhaseGuard {
     let now = Instant::now();
+    let now_wall = SystemTime::now();
     let epoch = EPOCH.fetch_add(1, Ordering::Relaxed);
     let prev = CURRENT.lock().as_mut().map(|beat| {
-        let prev = (beat.phase_label.clone(), beat.phase_started, beat.epoch);
+        let prev = PrevPhase {
+            label: beat.phase_label.clone(),
+            started: beat.phase_started,
+            started_wall: beat.phase_started_wall,
+            epoch: beat.epoch,
+        };
         beat.phase_label = phase_label.into();
         beat.phase_started = now;
+        beat.phase_started_wall = now_wall;
         beat.epoch = epoch;
         prev
     });
     PhaseGuard { prev }
 }
 
-/// Restores the enclosing phase on drop (see [`phase`]). Carries the previous
-/// `(label, phase_started, epoch)` so the restored phase keeps its original stall
-/// clock and de-duplication identity.
+/// The enclosing phase, saved so it can be restored with its original stall
+/// clock and de-duplication identity (see [`PhaseGuard`]).
+struct PrevPhase {
+    label: String,
+    started: Instant,
+    started_wall: SystemTime,
+    epoch: u64,
+}
+
+/// Restores the enclosing phase on drop (see [`phase`]).
 #[must_use = "the phase reverts as soon as this guard is dropped"]
 pub(crate) struct PhaseGuard {
-    prev: Option<(String, Instant, u64)>,
+    prev: Option<PrevPhase>,
 }
 
 impl Drop for PhaseGuard {
     fn drop(&mut self) {
-        let Some((label, started, epoch)) = self.prev.take() else {
+        let Some(prev) = self.prev.take() else {
             return;
         };
         if let Some(beat) = CURRENT.lock().as_mut() {
-            beat.phase_label = label;
-            beat.phase_started = started;
-            beat.epoch = epoch;
+            beat.phase_label = prev.label;
+            beat.phase_started = prev.started;
+            beat.phase_started_wall = prev.started_wall;
+            beat.epoch = prev.epoch;
         }
     }
 }
@@ -264,6 +291,7 @@ fn report_stall(beat: &Beat, stuck_for: Duration) {
         "turn": beat.turn_label,
         "stuck_ms": stuck_ms,
         "turn_ms": turn_ms,
+        "turn_started": format_rfc3339_millis(beat.turn_started_wall).to_string(),
         "in_flight_count": in_flight_entries.len(),
         "in_flight_work": in_flight_work,
         "in_flight_threads": holder_threads,
@@ -274,7 +302,12 @@ fn report_stall(beat: &Beat, stuck_for: Duration) {
     if let Some(main_thread) = main_thread {
         data["main_thread"] = serde_json::Value::String(main_thread);
     }
-    telemetry::send("main_loop_watchdog_stall".to_string(), data);
+    telemetry::send_with_duration(
+        "main_loop_watchdog_stall".to_string(),
+        data,
+        telemetry::duration_ms(stuck_for),
+        beat.phase_started_wall,
+    );
 }
 
 /// Report a stall in the [`LSP_SEND_PHASE`]: the main loop is parked on the
@@ -313,11 +346,17 @@ fn report_client_wedge(beat: &Beat, stuck_for: Duration) {
         "turn": beat.turn_label,
         "stuck_ms": stuck_ms,
         "turn_ms": turn_ms,
+        "turn_started": format_rfc3339_millis(beat.turn_started_wall).to_string(),
     });
     if let Some(main_thread) = main_thread {
         data["main_thread"] = serde_json::Value::String(main_thread);
     }
-    telemetry::send("lsp_send_client_wedge".to_string(), data);
+    telemetry::send_with_duration(
+        "lsp_send_client_wedge".to_string(),
+        data,
+        telemetry::duration_ms(stuck_for),
+        beat.phase_started_wall,
+    );
 }
 
 /// Best-effort one-line description of what a thread is doing right now, from
