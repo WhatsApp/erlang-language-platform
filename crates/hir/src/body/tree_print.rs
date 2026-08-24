@@ -10,6 +10,15 @@
 
 //! Print a representation of the HIR AST for a given entry point into
 //! the Body.
+//!
+//! What is printed is the tree *as a fold with the given `Strategy` sees it*,
+//! not the raw arena — making a fold's traversal inspectable is the point of
+//! the module. So a node the fold looks through does not appear, and every
+//! node is labelled with the id the fold visits it under. Those are two
+//! separate claims: under `InvisibleParens` an `Expr::Paren` is both absent
+//! *and* replaced by the inner expression under the inner expression's own id,
+//! whereas a `*::MacroCall` under `Expand` shows its expansion but keeps the
+//! macro call's id, because that is the id the fold reports it against.
 
 use std::fmt;
 use std::fmt::Write as _;
@@ -498,6 +507,24 @@ impl<'a> Printer<'a> {
     }
 
     fn print_expr(&mut self, expr_id: &ExprId) {
+        // Mirror `do_fold_expr`: under `InvisibleParens` the fold descends
+        // straight into the inner expression and never visits the `Paren`, so
+        // the inner expression reports at its own source position rather than
+        // the wrapper's. Recursing the same way here — rather than printing the
+        // `Paren` under a corrected id — keeps the printed traversal and the
+        // fold's traversal the same shape, which is the whole claim the module
+        // makes.
+        //
+        // Only descents qualify. A `*::MacroCall` under `Expand` is deliberately
+        // not handled here: `Index` looks through it, but the fold has no
+        // matching descent and reports the expansion under the macro call's own
+        // id, so descending here would introduce the very mismatch this removes.
+        if self.body.parens == ParenStrategy::InvisibleParens
+            && let Expr::Paren { expr: inner } = &self.body.body.exprs[*expr_id]
+        {
+            let inner = *inner;
+            return self.print_expr(&inner);
+        }
         self.current = Some(AnyExprId::Expr(*expr_id));
         if self.include_id {
             write!(self, "Expr<{}>:", expr_id.into_raw().into_u32()).ok();
@@ -893,6 +920,13 @@ impl<'a> Printer<'a> {
     }
 
     fn print_pat(&mut self, pat: &PatId) {
+        // See `print_expr` — symmetric `Paren` descent on the `Pat` side.
+        if self.body.parens == ParenStrategy::InvisibleParens
+            && let Pat::Paren { pat: inner } = &self.body.body.pats[*pat]
+        {
+            let inner = *inner;
+            return self.print_pat(&inner);
+        }
         self.current = Some(AnyExprId::Pat(*pat));
         if self.include_id {
             write!(self, "Pat<{}>:", pat.into_raw().into_u32()).ok();
@@ -1137,6 +1171,13 @@ impl<'a> Printer<'a> {
     }
 
     fn print_type(&mut self, ty: &TypeExprId) {
+        // See `print_expr` — symmetric `Paren` descent on the `TypeExpr` side.
+        if self.body.parens == ParenStrategy::InvisibleParens
+            && let TypeExpr::Paren { ty: inner } = &self.body.body.type_exprs[*ty]
+        {
+            let inner = *inner;
+            return self.print_type(&inner);
+        }
         self.current = Some(AnyExprId::TypeExpr(*ty));
         match &self.body[*ty] {
             TypeExpr::AnnType { var, ty } => {
@@ -3517,10 +3558,10 @@ mod tests {
                 function: foo/1
                 Clause {
                     pats
-                        Pat<2>:Pat::Var(A),
+                        Pat<0>:Pat::Var(A),
                     guards
                     exprs
-                        Expr<3>:Literal(Integer(3)),
+                        Expr<1>:Literal(Integer(3)),
                 }.
             "#]],
         );
@@ -3569,7 +3610,7 @@ mod tests {
                     guards
                     exprs
                         Expr<4>:Expr::Tuple {
-                            Expr<3>:Literal(Integer(3)),
+                            Expr<1>:Literal(Integer(3)),
                         },
                 }.
             "#]],
@@ -3708,7 +3749,7 @@ mod tests {
             "#,
             expect![[r#"
                 -if(
-                    Expr<1>:Literal(Atom('true'))
+                    Expr<0>:Literal(Atom('true'))
                 ).
                 -endif.
             "#]],
@@ -3724,7 +3765,7 @@ mod tests {
             "#,
             expect![[r#"
                 -if(
-                    Expr<5>:Expr::BinaryOp {
+                    Expr<4>:Expr::BinaryOp {
                         lhs
                             Expr<2>:Expr::BinaryOp {
                                 lhs
@@ -3755,11 +3796,11 @@ mod tests {
             "#,
             expect![[r#"
                 -if(
-                    Expr<1>:Literal(Atom('false'))
+                    Expr<0>:Literal(Atom('false'))
                 ).
 
                 -elif(
-                    Expr<1>:Literal(Atom('true'))
+                    Expr<0>:Literal(Atom('true'))
                 ).
                 -endif.
             "#]],

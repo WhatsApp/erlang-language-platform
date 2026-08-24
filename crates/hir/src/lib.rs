@@ -527,7 +527,7 @@ mod tests {
 
         expect![[r#"
 
-            Expr<3>:Expr::BinaryOp {
+            Expr<2>:Expr::BinaryOp {
                 lhs
                     Expr<0>:Literal(Integer(1))
                 rhs
