@@ -50,6 +50,7 @@ use crate::db::DefDatabase;
 use crate::form_list::DeprecatedAttribute;
 use crate::form_list::DeprecatedDesc;
 use crate::form_list::DeprecatedFa;
+use crate::form_list::FormList;
 use crate::form_list::ModuleDocAttributeId;
 use crate::form_list::ModuleDocMetadataAttributeId;
 use crate::form_list::PPConditionResult;
@@ -89,6 +90,13 @@ pub struct DefMap {
     macros: FxHashMap<MacroName, DefineDef>,
     export_all: bool,
     no_auto_imports: NoAutoImports,
+    /// Whether any active form here affects compilation by its presence alone,
+    /// rather than by defining something a caller might refer to: a module,
+    /// export, import, behaviour, callback, compile option, or an attribute
+    /// other than the purely informational `-author` / `-oncall`. A file
+    /// carrying one is worth including even though nothing names anything in
+    /// it.
+    pub has_effectful_form: bool,
     pub parse_transform: bool,
     pub moduledoc: FxHashSet<ModuleDoc>,
     pub moduledoc_metadata: FxHashSet<ModuleDocMetadata>,
@@ -227,6 +235,9 @@ impl DefMap {
                 if is_inactive {
                     continue;
                 }
+            }
+            if form_is_effectful(&form_list, form) {
+                def_map.has_effectful_form = true;
             }
             match form {
                 FormIdx::FunctionClause(idx) => {
@@ -742,6 +753,7 @@ impl DefMap {
 
     fn merge(&mut self, other: &Self) {
         self.included.extend(other.included.iter().cloned());
+        self.has_effectful_form |= other.has_effectful_form;
         self.function_clauses.extend(
             other
                 .function_clauses
@@ -1036,6 +1048,7 @@ impl DefMap {
             macros,
             export_all: _,
             no_auto_imports,
+            has_effectful_form: _,
             parse_transform: _,
             optional_callbacks,
             function_by_function_id: function_by_form_id,
@@ -1066,6 +1079,44 @@ impl DefMap {
         behaviours.shrink_to_fit();
         moduledoc.shrink_to_fit();
         moduledoc_metadata.shrink_to_fit();
+    }
+}
+
+/// Whether `form` affects compilation by being present, independently of
+/// anything referring to what it declares. See [`DefMap::has_effectful_form`].
+fn form_is_effectful(form_list: &FormList, form: FormIdx) -> bool {
+    match form {
+        // TODO: judge `-import` by usage rather than presence, once
+        // find-usages handles it.
+        FormIdx::Import(_) => true,
+        FormIdx::ModuleAttribute(_)
+        | FormIdx::Export(_)
+        | FormIdx::TypeExport(_)
+        | FormIdx::Behaviour(_)
+        | FormIdx::Callback(_)
+        | FormIdx::OptionalCallbacks(_)
+        | FormIdx::CompileOption(_)
+        | FormIdx::DeprecatedAttribute(_)
+        | FormIdx::FeatureAttribute(_)
+        | FormIdx::ImportRecord(_)
+        | FormIdx::ExportRecord(_) => true,
+        // `-author` and `-oncall` say nothing about whether the file is
+        // needed; any other attribute may.
+        FormIdx::Attribute(idx) => {
+            let name = &form_list[idx].name;
+            name != &*known::author && name != &*known::oncall
+        }
+        FormIdx::ModuleDocAttribute(_)
+        | FormIdx::ModuleDocMetadataAttribute(_)
+        | FormIdx::DocAttribute(_)
+        | FormIdx::DocMetadataAttribute(_)
+        | FormIdx::FunctionClause(_)
+        | FormIdx::PPDirective(_)
+        | FormIdx::PPCondition(_)
+        | FormIdx::TypeAlias(_)
+        | FormIdx::Spec(_)
+        | FormIdx::Record(_)
+        | FormIdx::SsrDefinition(_) => false,
     }
 }
 
