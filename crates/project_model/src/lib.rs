@@ -575,6 +575,11 @@ pub struct DaemonConfig {
     /// Seconds of inactivity before the daemon shuts itself down. `0` means
     /// never. When unset, the built-in default applies.
     pub idle_timeout_secs: Option<u64>,
+    /// Seconds a client waits for a freshly spawned daemon to accept
+    /// connections before giving up. `0` means wait forever. When unset, the
+    /// built-in default applies. Large projects with a cold cache need more
+    /// than the default.
+    pub startup_timeout_secs: Option<u64>,
 }
 
 impl ElpConfig {
@@ -1294,6 +1299,7 @@ mod tests {
                         },
                         daemon: DaemonConfig {
                             idle_timeout_secs: None,
+                            startup_timeout_secs: None,
                         },
                     },
                     Rebar(
@@ -1365,6 +1371,7 @@ mod tests {
                         },
                         daemon: DaemonConfig {
                             idle_timeout_secs: None,
+                            startup_timeout_secs: None,
                         },
                     },
                     Json(
@@ -1481,6 +1488,7 @@ mod tests {
                         },
                         daemon: DaemonConfig {
                             idle_timeout_secs: None,
+                            startup_timeout_secs: None,
                         },
                     },
                     JsonConfig {
@@ -1644,6 +1652,7 @@ mod tests {
                         },
                         daemon: DaemonConfig {
                             idle_timeout_secs: None,
+                            startup_timeout_secs: None,
                         },
                     },
                     NoManifest(
@@ -1691,45 +1700,46 @@ mod tests {
             &to_abs_path_buf(&dir.path().join("root/app_a/src/app.erl")).unwrap(),
         );
         expect![[r#"
-                Ok(
-                    (
-                        ElpConfig {
-                            config_path: Some(
-                                AbsPathBuf(
-                                    "TMPDIR/root/.elp.toml",
-                                ),
+            Ok(
+                (
+                    ElpConfig {
+                        config_path: Some(
+                            AbsPathBuf(
+                                "TMPDIR/root/.elp.toml",
                             ),
-                            build_info: None,
-                            buck: None,
-                            eqwalizer: EqwalizerConfig {
-                                enable_all: true,
-                                max_tasks: 4,
-                                ignore_modules: [],
-                                ignore_modules_compiled_patterns: [],
-                            },
-                            rebar: ElpRebarConfig {
-                                profile: "test",
-                            },
-                            otp: OtpConfig {
-                                exclude_apps: [],
-                            },
-                            daemon: DaemonConfig {
-                                idle_timeout_secs: None,
-                            },
-                        },
-                        Rebar(
-                            RebarConfig {
-                                config_file: AbsPathBuf(
-                                    "TMPDIR/root/rebar.config",
-                                ),
-                                profile: Profile(
-                                    "test",
-                                ),
-                            },
                         ),
+                        build_info: None,
+                        buck: None,
+                        eqwalizer: EqwalizerConfig {
+                            enable_all: true,
+                            max_tasks: 4,
+                            ignore_modules: [],
+                            ignore_modules_compiled_patterns: [],
+                        },
+                        rebar: ElpRebarConfig {
+                            profile: "test",
+                        },
+                        otp: OtpConfig {
+                            exclude_apps: [],
+                        },
+                        daemon: DaemonConfig {
+                            idle_timeout_secs: None,
+                            startup_timeout_secs: None,
+                        },
+                    },
+                    Rebar(
+                        RebarConfig {
+                            config_file: AbsPathBuf(
+                                "TMPDIR/root/rebar.config",
+                            ),
+                            profile: Profile(
+                                "test",
+                            ),
+                        },
                     ),
-                )
-            "#]]
+                ),
+            )
+        "#]]
         .assert_eq(&debug_normalise_temp_dir(dir, &discovered));
     }
 
@@ -1749,55 +1759,56 @@ mod tests {
             &to_abs_path_buf(&dir.path().join("root/app_a/src/app.erl")).unwrap(),
         );
         expect![[r#"
-                Ok(
-                    (
-                        ElpConfig {
-                            config_path: Some(
-                                AbsPathBuf(
-                                    "TMPDIR/root/.elp.toml",
-                                ),
+            Ok(
+                (
+                    ElpConfig {
+                        config_path: Some(
+                            AbsPathBuf(
+                                "TMPDIR/root/.elp.toml",
                             ),
-                            build_info: None,
-                            buck: None,
-                            eqwalizer: EqwalizerConfig {
-                                enable_all: true,
-                                max_tasks: 4,
-                                ignore_modules: [],
-                                ignore_modules_compiled_patterns: [],
-                            },
-                            rebar: ElpRebarConfig {
-                                profile: "test",
-                            },
-                            otp: OtpConfig {
-                                exclude_apps: [],
-                            },
-                            daemon: DaemonConfig {
-                                idle_timeout_secs: None,
-                            },
+                        ),
+                        build_info: None,
+                        buck: None,
+                        eqwalizer: EqwalizerConfig {
+                            enable_all: true,
+                            max_tasks: 4,
+                            ignore_modules: [],
+                            ignore_modules_compiled_patterns: [],
                         },
-                        NoManifest(
-                            NoManifestConfig {
-                                root_path: AbsPathBuf(
+                        rebar: ElpRebarConfig {
+                            profile: "test",
+                        },
+                        otp: OtpConfig {
+                            exclude_apps: [],
+                        },
+                        daemon: DaemonConfig {
+                            idle_timeout_secs: None,
+                            startup_timeout_secs: None,
+                        },
+                    },
+                    NoManifest(
+                        NoManifestConfig {
+                            root_path: AbsPathBuf(
+                                "TMPDIR/root",
+                            ),
+                            config_path: AbsPathBuf(
+                                "TMPDIR/root/.static",
+                            ),
+                            name: AppName(
+                                "root",
+                            ),
+                            abs_src_dirs: [
+                                AbsPathBuf(
                                     "TMPDIR/root",
                                 ),
-                                config_path: AbsPathBuf(
-                                    "TMPDIR/root/.static",
-                                ),
-                                name: AppName(
-                                    "root",
-                                ),
-                                abs_src_dirs: [
-                                    AbsPathBuf(
-                                        "TMPDIR/root",
-                                    ),
-                                ],
-                                include_dirs: [],
-                                extra_src_dirs: [],
-                            },
-                        ),
+                            ],
+                            include_dirs: [],
+                            extra_src_dirs: [],
+                        },
                     ),
-                )
-            "#]]
+                ),
+            )
+        "#]]
         .assert_eq(&debug_normalise_temp_dir(dir, &discovered));
     }
 
@@ -1969,6 +1980,7 @@ mod tests {
                     },
                     daemon: DaemonConfig {
                         idle_timeout_secs: None,
+                        startup_timeout_secs: None,
                     },
                 }
             "#]]
@@ -2125,6 +2137,7 @@ mod tests {
                 },
                 daemon: DaemonConfig {
                     idle_timeout_secs: None,
+                    startup_timeout_secs: None,
                 },
             }
         "#]]
@@ -2304,6 +2317,7 @@ mod tests {
                     },
                     daemon: DaemonConfig {
                         idle_timeout_secs: None,
+                        startup_timeout_secs: None,
                     },
                 }
             "#]]
@@ -2376,6 +2390,7 @@ mod tests {
                 },
                 daemon: DaemonConfig {
                     idle_timeout_secs: None,
+                    startup_timeout_secs: None,
                 },
             }
         "#]]

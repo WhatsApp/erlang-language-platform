@@ -35,6 +35,10 @@ profile = "test"
 
 [otp]
 exclude_apps = ["megaco", "eunit"]
+
+[daemon]
+idle_timeout_secs = 3600
+startup_timeout_secs = 240
 ```
 
 ## Configuration Sections
@@ -160,3 +164,12 @@ Example usage:
 [otp]
 exclude_apps = ["diameter", "megaco"]
 ```
+
+### \[daemon\] {#daemon}
+
+Configure the ELP daemon lifecycle.
+
+| Key                  | Type    | Description                                                                                                                               | Default |
+| -------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| idle_timeout_secs    | Integer | Seconds of inactivity before the daemon shuts itself down. Set to `0` to keep the daemon running indefinitely.                            | 3600    |
+| startup_timeout_secs | Integer | Seconds a client waits for a freshly spawned daemon to accept connections before giving up. Set to `0` to wait indefinitely for startup. | 120     |

@@ -193,6 +193,23 @@ fn effective_idle_timeout(config: Option<u64>) -> Option<Duration> {
     }
 }
 
+/// Default for `[daemon].startup_timeout_secs` when the project's `.elp.toml`
+/// doesn't set one. Loading a large project from a cold cache can exceed this,
+/// which is why it is configurable.
+const DEFAULT_STARTUP_TIMEOUT_SECS: u64 = 120;
+
+/// Resolve how long a client waits for a freshly spawned daemon to accept
+/// connections. Returns `None` when the user explicitly set `0` ("wait
+/// forever").
+fn effective_startup_timeout(config: Option<u64>) -> Option<Duration> {
+    let seconds = config.unwrap_or(DEFAULT_STARTUP_TIMEOUT_SECS);
+    if seconds == 0 {
+        None
+    } else {
+        Some(Duration::from_secs(seconds))
+    }
+}
+
 fn daemon_id(canonical_root: &Path, profile: &str) -> String {
     let mut hasher = DefaultHasher::new();
     canonical_root.hash(&mut hasher);
@@ -893,15 +910,16 @@ fn connect_and_run(
     cli: &mut dyn Cli,
 ) -> Result<()> {
     let conf = DiscoverConfig::new(rebar, profile);
-    let (_elp_config, manifest) = load::discover_manifest(project, &conf)?;
+    let (elp_config, manifest) = load::discover_manifest(project, &conf)?;
     let root = load::project_root_dir(&manifest);
     let dir = daemon_dir(&root, profile);
     let sock = dir.join("daemon.sock");
+    let startup_timeout = effective_startup_timeout(elp_config.daemon.startup_timeout_secs);
 
     // Try to connect, auto-start if needed
     let mut stream = match UnixStream::connect(&sock) {
         Ok(s) => s,
-        Err(_) => start_daemon(&dir, &sock, project, profile, rebar, cli)?,
+        Err(_) => start_daemon(&dir, &sock, project, profile, rebar, startup_timeout, cli)?,
     };
 
     // Check for version mismatch; if the daemon is from a different build, restart it
@@ -926,7 +944,7 @@ fn connect_and_run(
         }
         cleanup_stale_in_dir(&dir);
 
-        stream = start_daemon(&dir, &sock, project, profile, rebar, cli)?;
+        stream = start_daemon(&dir, &sock, project, profile, rebar, startup_timeout, cli)?;
     }
 
     // Send command
@@ -1006,6 +1024,7 @@ fn start_daemon(
     project: &Path,
     profile: &str,
     rebar: bool,
+    startup_timeout: Option<Duration>,
     cli: &mut dyn Cli,
 ) -> Result<UnixStream> {
     cleanup_stale_in_dir(dir);
@@ -1046,9 +1065,13 @@ fn start_daemon(
             ))?;
             return Ok(s);
         }
-        if start.elapsed() > Duration::from_secs(120) {
+        if let Some(timeout) = startup_timeout
+            && start.elapsed() > timeout
+        {
             bail!(
-                "Daemon failed to start within 120s. Check {}",
+                "Daemon failed to start within {}s. Raise `[daemon].startup_timeout_secs` \
+                 in .elp.toml if the project needs longer, and check {}",
+                timeout.as_secs(),
                 log.display()
             );
         }
@@ -1440,6 +1463,32 @@ mod tests {
 
         let expected: Option<Duration> = None;
         assert_eq_expected!(expected, effective_idle_timeout(Some(0)));
+    }
+
+    // -- effective_startup_timeout --
+
+    #[test]
+    fn effective_startup_timeout_uses_default_when_unset() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        let expected = Some(Duration::from_secs(DEFAULT_STARTUP_TIMEOUT_SECS));
+        assert_eq_expected!(expected, effective_startup_timeout(None));
+    }
+
+    #[test]
+    fn effective_startup_timeout_honours_config() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        let expected = Some(Duration::from_secs(240));
+        assert_eq_expected!(expected, effective_startup_timeout(Some(240)));
+    }
+
+    #[test]
+    fn effective_startup_timeout_zero_means_wait_forever() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        let expected: Option<Duration> = None;
+        assert_eq_expected!(expected, effective_startup_timeout(Some(0)));
     }
 
     // -- Lint payload + validation --
