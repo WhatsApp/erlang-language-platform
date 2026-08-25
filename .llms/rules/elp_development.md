@@ -38,11 +38,28 @@ Add missing atoms to `known_names!` in `crates/hir/src/name.rs` (alphabetical wi
 
 ### Use `assert_eq_expected!`, not `assert_eq!`
 
-First argument must be a constant or named `expected` or start with `expected`:
+The macro labels its failure output `expected:` / `actual:`, so the first
+argument must be the expectation: a literal, a constant, or a binding named
+`expected` or starting with `expected_`.
 ```rust
 use elp_base_db::assert_eq_expected;
 assert_eq_expected!(expected_range, actual_range);
 ```
+
+**Exception — symmetric comparisons.** When the assertion is that two observed
+values agree and neither one is an expectation, `assert_eq_expected!` would
+label an arbitrary side `expected:` and mislead whoever reads the failure. Use
+plain `assert_eq!` with a message stating what the equality means:
+```rust
+// Both sides are computed from the body; the claim is that they coincide.
+assert_eq!(
+    segments[0].file_id, segments[1].file_id,
+    "both segments should come from the same file"
+);
+```
+
+Do not introduce an `expected_`-named binding for an observed value just to
+move it left — that makes the test read as if it checks something it does not.
 
 ### Snapshot updates: use `UPDATE_EXPECT=1`, never manually edit
 
