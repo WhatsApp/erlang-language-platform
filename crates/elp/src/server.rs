@@ -78,7 +78,6 @@ use lsp_server::Notification;
 use lsp_server::Request;
 use lsp_server::RequestId;
 use lsp_server::Response;
-use lsp_server::ResponseKind;
 use lsp_types::FileChangeType;
 use lsp_types::FileEvent;
 use lsp_types::MessageActionItem;
@@ -1518,11 +1517,11 @@ impl Server {
             |this, mut resp| {
                 log::debug!("config update response: '{resp:?}");
 
-                match &mut resp.response_kind {
-                    ResponseKind::Err { error } => {
+                match &mut resp.response_result {
+                    Err(error) => {
                         log::error!("failed to fetch the server settings: {error:?}")
                     }
-                    ResponseKind::Ok { result: configs } => {
+                    Ok(configs) => {
                         if let Some(json) = configs.get_mut(0) {
                             // Note that json can be null according to the spec if the client can't
                             // provide a configuration. This is handled in Config::update below.
@@ -1619,7 +1618,7 @@ impl Server {
 
     fn show_message_request(&mut self, params: ShowMessageRequestParams) {
         self.send_request::<request::ShowMessageRequest>(params, |this, resp| {
-            if let ResponseKind::Ok { result } = resp.response_kind
+            if let Ok(result) = resp.response_result
                 && let Ok(hm) = serde_json::from_value::<HashMap<String, String>>(result)
                 && let Some(uri) = hm.get("URL")
                 && let Ok(uri) = Uri::from_str(uri)
@@ -2003,7 +2002,7 @@ impl Server {
                     registrations: vec![register_document_symbols],
                 },
                 |_, rsp| {
-                    if let ResponseKind::Err { .. } = rsp.response_kind {
+                    if rsp.response_result.is_err() {
                         log::warn!("Dynamic registration failed, got {rsp:?}");
                     }
                     Ok(())
@@ -2183,9 +2182,9 @@ fn estimate_message_len(message: &lsp_server::Message, budget: usize) -> usize {
         }
         lsp_server::Message::Response(r) => {
             ENVELOPE
-                + match &r.response_kind {
-                    ResponseKind::Ok { result } => estimate_json_len(result, budget),
-                    ResponseKind::Err { error } => {
+                + match &r.response_result {
+                    Ok(result) => estimate_json_len(result, budget),
+                    Err(error) => {
                         error.message.len()
                             + error
                                 .data
