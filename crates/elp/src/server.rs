@@ -78,7 +78,7 @@ use lsp_server::Notification;
 use lsp_server::Request;
 use lsp_server::RequestId;
 use lsp_server::Response;
-use lsp_types;
+use lsp_server::ResponseKind;
 use lsp_types::FileChangeType;
 use lsp_types::FileEvent;
 use lsp_types::MessageActionItem;
@@ -1515,15 +1515,14 @@ impl Server {
                     section: Some("elp".to_string()),
                 }],
             },
-            |this, resp| {
+            |this, mut resp| {
                 log::debug!("config update response: '{resp:?}");
-                let lsp_server::Response { error, result, .. } = resp;
 
-                match (error, result) {
-                    (Some(err), _) => {
-                        log::error!("failed to fetch the server settings: {err:?}")
+                match &mut resp.response_kind {
+                    ResponseKind::Err { error } => {
+                        log::error!("failed to fetch the server settings: {error:?}")
                     }
-                    (None, Some(mut configs)) => {
+                    ResponseKind::Ok { result: configs } => {
                         if let Some(json) = configs.get_mut(0) {
                             // Note that json can be null according to the spec if the client can't
                             // provide a configuration. This is handled in Config::update below.
@@ -1531,9 +1530,6 @@ impl Server {
                             config.update(json.take());
                             this.update_configuration(config);
                         }
-                    }
-                    (None, None) => {
-                        log::error!("received empty server settings response from the client")
                     }
                 }
 
@@ -1623,8 +1619,8 @@ impl Server {
 
     fn show_message_request(&mut self, params: ShowMessageRequestParams) {
         self.send_request::<request::ShowMessageRequest>(params, |this, resp| {
-            if let Some(res) = resp.result
-                && let Ok(hm) = serde_json::from_value::<HashMap<String, String>>(res)
+            if let ResponseKind::Ok { result } = resp.response_kind
+                && let Ok(hm) = serde_json::from_value::<HashMap<String, String>>(result)
                 && let Some(uri) = hm.get("URL")
                 && let Ok(uri) = Uri::from_str(uri)
             {
@@ -2007,7 +2003,7 @@ impl Server {
                     registrations: vec![register_document_symbols],
                 },
                 |_, rsp| {
-                    if rsp.error.is_some() {
+                    if let ResponseKind::Err { .. } = rsp.response_kind {
                         log::warn!("Dynamic registration failed, got {rsp:?}");
                     }
                     Ok(())
@@ -2186,14 +2182,17 @@ fn estimate_message_len(message: &lsp_server::Message, budget: usize) -> usize {
             ENVELOPE + n.method.len() + estimate_json_len(&n.params, budget)
         }
         lsp_server::Message::Response(r) => {
-            let result = r
-                .result
-                .as_ref()
-                .map_or(0, |v| estimate_json_len(v, budget));
-            let error = r.error.as_ref().map_or(0, |e| {
-                e.message.len() + e.data.as_ref().map_or(0, |v| estimate_json_len(v, budget))
-            });
-            ENVELOPE + result + error
+            ENVELOPE
+                + match &r.response_kind {
+                    ResponseKind::Ok { result } => estimate_json_len(result, budget),
+                    ResponseKind::Err { error } => {
+                        error.message.len()
+                            + error
+                                .data
+                                .as_ref()
+                                .map_or(0, |v| estimate_json_len(v, budget))
+                    }
+                }
         }
     }
 }
