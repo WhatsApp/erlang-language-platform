@@ -190,7 +190,7 @@ mod tests {
 
                 -spec baz() -> spec_atom.
                 baz() -> something_else.
-                     %%% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
+                     %%  ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
             "#,
         )
     }

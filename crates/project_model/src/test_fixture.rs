@@ -552,6 +552,15 @@ pub fn extract_annotations(text: &str) -> (Vec<(TextRange, String)>, String) {
                      The offending line: {line:?}"
             );
         }
+        assert!(
+            !is_misprefixed_annotation(line),
+            "Annotation line {idx} must start with exactly `%%`.\n\
+             This one is read as an annotation, because the prefix is split on the \
+             first `%%`, but it is not recognised as one to strip, so it stays in \
+             the file under test and every annotation below it is reported \
+             shifted by its length.\n\
+             The offending line: {line:?}"
+        );
         let mut this_line_annotations = Vec::new();
         let line_length = if let Some((prefix, suffix)) = line.split_once("%%") {
             let ss_len = TextSize::of("%%");
@@ -665,6 +674,19 @@ pub fn remove_annotations(marker: Option<&str>, text: &str) -> String {
     } else {
         lines.join("\n")
     }
+}
+
+/// Check if the given line would be an annotation but for carrying more than
+/// two leading `%`.
+///
+/// [`extract_annotations`] splits on the first `%%` and so reads such a line as
+/// an annotation, while [`contains_annotation`] does not match it and leaves it
+/// in the file. Rejecting it keeps the two in agreement.
+fn is_misprefixed_annotation(line: &str) -> bool {
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^\s*~?%%%+( +\^+|[<\^]+| <<<| +\|)").unwrap());
+
+    RE.is_match(line)
 }
 
 /// Check if the given line contains a `%% ^^^ 💡 some text` annotation
@@ -1297,6 +1319,18 @@ meaning_of_life() ->
             ]
         "#]]
         .assert_debug_eq(&res);
+    }
+
+    #[test]
+    #[should_panic(expected = "Annotation line 2 must start with exactly `%%`")]
+    fn extract_annotations_rejects_extra_percent() {
+        extract_annotations(&stdx::trim_indent(
+            r#"
+            -module(main).
+            foo(Unused) -> ok.
+            %%% ^^^^^^ warning: W0010: unused
+            "#,
+        ));
     }
 
     #[test]
