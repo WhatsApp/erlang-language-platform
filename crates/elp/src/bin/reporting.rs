@@ -22,6 +22,8 @@ use codespan_reporting::diagnostic::Diagnostic as ReportingDiagnostic;
 use codespan_reporting::diagnostic::Label;
 use codespan_reporting::files::SimpleFiles;
 use codespan_reporting::term;
+use codespan_reporting::term::Styles;
+use codespan_reporting::term::StylesWriter;
 use codespan_reporting::term::termcolor::Color;
 use codespan_reporting::term::termcolor::ColorSpec;
 use codespan_reporting::term::termcolor::WriteColor;
@@ -139,7 +141,13 @@ impl Reporter for PrettyReporter<'_> {
                 .with_message(code)
                 .with_labels(labels);
 
-            term::emit(&mut self.cli, &REPORTING_CONFIG, &reporting_files, &d).unwrap();
+            term::emit_to_write_style(
+                &mut StylesWriter::new(&mut self.cli, &REPORTING_STYLE),
+                &REPORTING_CONFIG,
+                &reporting_files,
+                &d,
+            )
+            .unwrap();
         }
         self.error_count += diagnostics.len();
         Ok(())
@@ -154,7 +162,13 @@ impl Reporter for PrettyReporter<'_> {
             let d: ReportingDiagnostic<usize> = ReportingDiagnostic::error()
                 .with_message("parse_error")
                 .with_labels(vec![label]);
-            term::emit(&mut self.cli, &REPORTING_CONFIG, &reporting_files, &d).unwrap();
+            term::emit_to_write_style(
+                &mut StylesWriter::new(&mut self.cli, &REPORTING_STYLE),
+                &REPORTING_CONFIG,
+                &reporting_files,
+                &d,
+            )
+            .unwrap();
         }
         Ok(())
     }
@@ -165,7 +179,13 @@ impl Reporter for PrettyReporter<'_> {
         let d: ReportingDiagnostic<usize> = ReportingDiagnostic::note()
             .with_message("advice")
             .with_labels(vec![label]);
-        term::emit(&mut self.cli, &REPORTING_CONFIG, &reporting_files, &d).unwrap();
+        term::emit_to_write_style(
+            &mut StylesWriter::new(&mut self.cli, &REPORTING_STYLE),
+            &REPORTING_CONFIG,
+            &reporting_files,
+            &d,
+        )
+        .unwrap();
         Ok(())
     }
 
@@ -332,15 +352,14 @@ pub fn get_relative_path<'a>(root: &AbsPath, file: &'a VfsPath) -> &'a Path {
     }
 }
 
-static REPORTING_CONFIG: LazyLock<term::Config> = LazyLock::new(|| {
-    let mut config = codespan_reporting::term::Config::default();
-    config
-        .styles
-        .primary_label_error
-        .set_fg(Some(Color::Ansi256(9)));
-    config.styles.line_number.set_fg(Some(Color::Ansi256(33)));
-    config.styles.source_border.set_fg(Some(Color::Ansi256(33)));
-    config
+static REPORTING_CONFIG: LazyLock<term::Config> =
+    LazyLock::new(codespan_reporting::term::Config::default);
+static REPORTING_STYLE: LazyLock<Styles> = LazyLock::new(|| {
+    let mut styles = Styles::default();
+    styles.primary_label_error.set_fg(Some(Color::Ansi256(9)));
+    styles.line_number.set_fg(Some(Color::Ansi256(33)));
+    styles.source_border.set_fg(Some(Color::Ansi256(33)));
+    styles
 });
 static GREEN_COLOR_SPEC: LazyLock<ColorSpec> = LazyLock::new(|| {
     let mut spec = ColorSpec::default();
