@@ -141,9 +141,6 @@ pub struct Lint {
     /// Deprecated (no-op): Common Test diagnostics are now always included
     #[arg(long)]
     pub include_ct_diagnostics: bool,
-    /// Deprecated (no-op): EDoc diagnostics have been removed
-    #[arg(long)]
-    pub include_edoc_diagnostics: bool,
     /// Include Eqwalizer diagnostics
     #[arg(long)]
     pub include_eqwalizer_diagnostics: bool,
@@ -316,11 +313,6 @@ pub fn do_lint(
     if args.include_ct_diagnostics && args.is_format_normal() {
         cli.info(
             "Warning: the --include-ct-diagnostics flag is deprecated and will be removed in an upcoming release. Common Test diagnostics are now always included.",
-        )?;
-    }
-    if args.include_edoc_diagnostics && args.is_format_normal() {
-        cli.info(
-            "Warning: the --include-edoc-diagnostics flag is deprecated and will be removed in an upcoming release. EDoc diagnostics have been removed.",
         )?;
     }
     if args.include_tests && args.is_format_normal() {

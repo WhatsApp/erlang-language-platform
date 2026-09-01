@@ -1552,7 +1552,6 @@ mod tests {
               "format": "json",
               "include_erlc_diagnostics": true,
               "include_ct_diagnostics": false,
-              "include_edoc_diagnostics": false,
               "include_eqwalizer_diagnostics": true,
               "include_suppressed": true,
               "use_cli_severity": true,
