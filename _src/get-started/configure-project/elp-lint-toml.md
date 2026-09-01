@@ -73,7 +73,7 @@ and must be opted into explicitly; see for example
 | include_tests      | Boolean          | If `true`, run the linter on test modules as well.                                                                |
 | include_generated  | Boolean          | If `true`, run the linter on generated modules as well.                                                           |
 | experimental       | Boolean          | Override the linter's experimental flag. If `true`, the linter only runs when the `--experimental` flag is passed; if `false`, it runs unconditionally even if it is experimental by default. |
-| exclude_apps       | Array of Strings | List of application names for which this linter should be skipped.                                                |
+| exclude_apps       | Array of Strings | List of application name [glob patterns](https://docs.rs/glob/latest/glob/struct.Pattern.html) for which this linter should be skipped. A pattern with no metacharacter matches that application name exactly. |
 | runs_on_save_only  | Boolean          | If `true`, the linter only runs when a file is saved (rather than on every keystroke). Useful for expensive linters. |
 
 ### Examples
@@ -91,6 +91,37 @@ Skip a linter for a set of applications:
 [linters.no_persistent_term]
 exclude_apps = ["my_app", "another_app"]
 ```
+
+Entries are glob patterns, so a wildcard can cover a family of applications.
+This matters when the build system splits one source tree across several
+applications: Buck gives every Common Test suite its own application named
+after the suite module, so excluding `my_app` alone leaves the suites under
+`my_app/test/` reported. A trailing `*` covers both:
+
+```toml
+[linters.no_persistent_term]
+exclude_apps = ["my_app*"]
+```
+
+:::caution
+
+`*`, `?`, `[` and `]` are glob metacharacters, so an application name that
+contains one is no longer compared as plain text. The effect depends on the
+character:
+
+- `*` and `?` widen the match. `my_app?` still matches an application literally
+  called `my_app?`, but also matches `my_appX` — so the linter is skipped for
+  more applications than before, not fewer.
+- A balanced `[...]` becomes a character class and stops matching the literal
+  name: `my_[ab]` matches `my_a` and `my_b`, but no longer `my_[ab]`.
+- An unbalanced `[` is not a valid pattern at all, and is reported as an error
+  when the configuration is loaded.
+
+Application names do not normally contain these characters. If one does, escape
+it by wrapping each metacharacter in a bracket pair — `my_[ab]` is written as
+`my_[[]ab[]]`.
+
+:::
 
 Enable a linter only on save:
 
