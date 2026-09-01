@@ -69,6 +69,8 @@ use elp_syntax::label::Label;
 use elp_types_db::TypedSemantic;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
+use glob::Pattern;
+use glob::PatternError;
 use hir::FormIdx;
 use hir::InFile;
 use hir::IncludeAttributeId;
@@ -711,14 +713,14 @@ fn should_process_app(
     diagnostic_code: &DiagnosticCode,
 ) -> bool {
     let app = match app_name {
-        Some(app) => app.to_string(),
+        Some(app) => app.as_str(),
         None => return true,
     };
 
     if let Some(lint_config) = config.lint_config.as_ref()
         && let Some(linter_config) = lint_config.linters.get(diagnostic_code)
         && let Some(ref excluded) = linter_config.exclude_apps
-        && excluded.contains(&app)
+        && excluded.iter().any(|pattern| pattern.matches(app))
     {
         return false;
     }
@@ -1537,7 +1539,7 @@ impl LintConfig {
     pub fn get_exclude_apps_override(
         &self,
         diagnostic_code: &DiagnosticCode,
-    ) -> Option<Vec<String>> {
+    ) -> Option<Vec<AppPattern>> {
         self.linters
             .get(diagnostic_code)
             .and_then(|c| c.exclude_apps.clone())
@@ -1721,6 +1723,60 @@ impl LinterTraitConfig {
     }
 }
 
+/// A glob pattern matched against application names, used by `exclude_apps`.
+///
+/// A pattern with no metacharacter matches that name and nothing else, so plain
+/// application names behave as they always have. Wildcards matter for build
+/// systems that split one source directory across several applications: Buck
+/// gives every Common Test suite its own application named after the suite
+/// module, so `my_app*` is the way to cover `my_app` together with its
+/// `my_app_..._SUITE` siblings.
+///
+/// `*`, `?`, `[` and `]` are metacharacters, which is a behaviour change from
+/// the exact string comparison this replaced. An entry containing `*` or `?`
+/// still matches its own literal name but now matches others too; a balanced
+/// `[...]` becomes a character class and stops matching the literal name; an
+/// unbalanced `[` is not a valid pattern and is rejected when the config is
+/// parsed. No application name Buck can produce contains these characters, so
+/// this is unreachable in practice; where it is not, [`Pattern::escape`]
+/// converts a literal name into the equivalent pattern.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppPattern(Pattern);
+
+impl AppPattern {
+    pub fn try_new(pattern: &str) -> Result<Self, PatternError> {
+        Pattern::new(pattern).map(Self)
+    }
+
+    pub fn matches(&self, app_name: &str) -> bool {
+        self.0.matches(app_name)
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl<'de> Deserialize<'de> for AppPattern {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        AppPattern::try_new(&s)
+            .map_err(|err| serde::de::Error::custom(format!("Invalid app pattern '{s}': {err}")))
+    }
+}
+
+impl Serialize for AppPattern {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
 /// Configuration for a specific linter that allows overriding default settings
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct LinterConfig {
@@ -1730,7 +1786,7 @@ pub struct LinterConfig {
     pub include_tests: Option<bool>,
     pub include_generated: Option<bool>,
     pub experimental: Option<bool>,
-    pub exclude_apps: Option<Vec<String>>,
+    pub exclude_apps: Option<Vec<AppPattern>>,
     pub runs_on_save_only: Option<bool>,
     #[serde(flatten)]
     pub config: Option<LinterTraitConfig>,
@@ -3430,6 +3486,7 @@ pub fn spec_for_undefined_function_from_message(s: &str) -> Option<String> {
 // cargo test --package elp_ide --lib
 #[cfg(test)]
 mod tests {
+    use elp_ide_db::elp_base_db::assert_eq_expected;
     use expect_test::expect;
 
     use super::*;
@@ -4642,7 +4699,7 @@ foo() -> XX 3.0.
                 include_tests: None,
                 include_generated: None,
                 experimental: None,
-                exclude_apps: Some(vec!["my_app".to_string()]),
+                exclude_apps: Some(vec![AppPattern::try_new("my_app").unwrap()]),
                 runs_on_save_only: None,
                 config: None,
             },
@@ -4666,6 +4723,188 @@ foo() -> XX 3.0.
             garbage_collect() -> ok.
             "#,
         );
+    }
+
+    fn exclude_apps_config(patterns: &[&str]) -> DiagnosticsConfig {
+        let mut lint_config = LintConfig::default();
+        lint_config.linters.insert(
+            DiagnosticCode::NoGarbageCollect,
+            LinterConfig {
+                exclude_apps: Some(
+                    patterns
+                        .iter()
+                        .map(|p| AppPattern::try_new(p).unwrap())
+                        .collect(),
+                ),
+                ..Default::default()
+            },
+        );
+        DiagnosticsConfig::default()
+            .configure_diagnostics(&lint_config, &["no_garbage_collect".to_string()], &[])
+            .unwrap()
+    }
+
+    // A wildcard covers an application and the sibling applications sharing
+    // its prefix. Buck gives each Common Test suite its own application, so
+    // `my_app` alone would leave `my_app_x_SUITE` reported.
+    #[test]
+    fn test_linter_exclude_apps_wildcard() {
+        check_diagnostics_with_config(
+            exclude_apps_config(&["my_app*"]),
+            r#"
+            //- /src/main.erl app:my_app
+            -module(main).
+            -export([warning/0]).
+
+            warning() ->
+                erlang:garbage_collect().
+            //- /test/my_app_x_SUITE.erl app:my_app_x_SUITE
+            -module(my_app_x_SUITE).
+            -export([warning/0]).
+
+            warning() ->
+                erlang:garbage_collect().
+            //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+            -module(erlang).
+            -export([garbage_collect/0]).
+            garbage_collect() -> ok.
+            "#,
+        );
+    }
+
+    // Without a wildcard the name still matches exactly and nothing else, so
+    // pre-existing configurations keep their meaning.
+    #[test]
+    fn test_linter_exclude_apps_exact_name_does_not_match_prefix() {
+        check_diagnostics_with_config(
+            exclude_apps_config(&["my_app"]),
+            r#"
+            //- /src/main.erl app:my_app
+            -module(main).
+            -export([warning/0]).
+
+            warning() ->
+                erlang:garbage_collect().
+            //- /test/my_app_x_SUITE.erl app:my_app_x_SUITE
+            -module(my_app_x_SUITE).
+            -export([warning/0]).
+
+            warning() ->
+                erlang:garbage_collect().
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
+            //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+            -module(erlang).
+            -export([garbage_collect/0]).
+            garbage_collect() -> ok.
+            "#,
+        );
+    }
+
+    // A wildcard that does not cover the application leaves it reported.
+    #[test]
+    fn test_linter_exclude_apps_non_matching_wildcard() {
+        check_diagnostics_with_config(
+            exclude_apps_config(&["other_app*"]),
+            r#"
+            //- /src/main.erl app:my_app
+            -module(main).
+            -export([warning/0]).
+
+            warning() ->
+                erlang:garbage_collect().
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
+            //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+            -module(erlang).
+            -export([garbage_collect/0]).
+            garbage_collect() -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_app_pattern_matches() {
+        let exact = AppPattern::try_new("my_app").unwrap();
+        assert!(exact.matches("my_app"));
+        assert!(!exact.matches("my_app_x_SUITE"));
+        assert!(!exact.matches("your_app"));
+
+        let prefix = AppPattern::try_new("my_app*").unwrap();
+        assert!(prefix.matches("my_app"));
+        assert!(prefix.matches("my_app_x_SUITE"));
+        assert!(!prefix.matches("your_app"));
+
+        let infix = AppPattern::try_new("*_SUITE").unwrap();
+        assert!(infix.matches("my_app_x_SUITE"));
+        assert!(!infix.matches("my_app"));
+    }
+
+    // `*`, `?`, `[` and `]` are glob metacharacters, so an entry containing one
+    // no longer means what the previous exact string comparison meant. The
+    // three outcomes differ, and only one of them stops the literal name from
+    // matching, so pin each down along with the escape hatch.
+    #[test]
+    fn test_app_pattern_metacharacter_semantics() {
+        // `?` and `*` widen: the literal name still matches, but so do others,
+        // which over-excludes rather than under-excludes.
+        let question = AppPattern::try_new("my_app?").unwrap();
+        assert!(question.matches("my_app?"));
+        assert!(question.matches("my_appX"));
+        assert!(!question.matches("my_app"));
+
+        let star = AppPattern::try_new("my_app*").unwrap();
+        assert!(star.matches("my_app*"));
+        assert!(star.matches("my_app_x_SUITE"));
+
+        // A balanced bracket pair is a character class, and is the one case
+        // where the literal name stops matching.
+        let class = AppPattern::try_new("my_[ab]").unwrap();
+        assert!(class.matches("my_a"));
+        assert!(class.matches("my_b"));
+        assert!(!class.matches("my_[ab]"));
+
+        // An unbalanced bracket is not a valid glob, so it is rejected at parse
+        // time instead of being compared as text.
+        assert!(AppPattern::try_new("my_app[").is_err());
+
+        // `Pattern::escape` turns any literal name back into a pattern matching
+        // exactly it. The spelling is asserted because it is what the
+        // `.elp_lint.toml` documentation tells users to write by hand.
+        let expected_escaped = "my_[[]ab[]]";
+        assert_eq_expected!(expected_escaped, Pattern::escape("my_[ab]"));
+        let escaped = AppPattern::try_new(expected_escaped).unwrap();
+        assert!(escaped.matches("my_[ab]"));
+        assert!(!escaped.matches("my_a"));
+    }
+
+    #[test]
+    fn test_app_pattern_deserialize_reports_invalid_glob() {
+        let toml = r#"
+            [linters.no_garbage_collect]
+            exclude_apps = ["my_app[", "other_app"]
+        "#;
+        let err = toml::from_str::<LintConfig>(toml).unwrap_err();
+        assert!(
+            err.to_string().contains("Invalid app pattern 'my_app['"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn test_app_pattern_round_trips_through_serde() {
+        let toml = r#"
+            [linters.no_garbage_collect]
+            exclude_apps = ["my_app*", "other_app"]
+        "#;
+        let config: LintConfig = toml::from_str(toml).unwrap();
+        let patterns = config
+            .get_exclude_apps_override(&DiagnosticCode::NoGarbageCollect)
+            .unwrap();
+        let expected_patterns = vec!["my_app*", "other_app"];
+        assert_eq_expected!(
+            expected_patterns,
+            patterns.iter().map(|p| p.as_str()).collect::<Vec<_>>()
+        );
+        assert!(toml::to_string(&config).unwrap().contains("my_app*"));
     }
 
     #[test]

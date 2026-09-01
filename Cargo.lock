@@ -681,6 +681,7 @@ dependencies = [
  "elp_types_db",
  "expect-test",
  "fxhash",
+ "glob",
  "hir",
  "imara-diff",
  "itertools 0.15.0",
