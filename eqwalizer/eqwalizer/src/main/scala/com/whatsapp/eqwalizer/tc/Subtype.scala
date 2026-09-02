@@ -12,6 +12,7 @@ package com.whatsapp.eqwalizer.tc
 
 import com.whatsapp.eqwalizer.ast.TypeVars
 import com.whatsapp.eqwalizer.ast.Types.*
+import com.whatsapp.eqwalizer.tc.Subtype.CType
 
 import scala.util.boundary
 
@@ -32,33 +33,36 @@ object Subtype {
     case Atom, Binary, Fun, List, Map, Integer, Float, Pid, Port, Reference, Tuple, NativeRecord
   }
 
-  private def kind(t: Type): Option[ValueKind] = t match {
+  type CType = AtomLitType | AtomType.type | BinaryType.type | AnyFunType.type | FunType | AnyArityFunType |
+    NilType.type | ListType | ConsType | MapType | IntegerType.type | FloatType.type | PidType.type | PortType.type |
+    ReferenceType.type | AnyTupleType.type | TupleType | RecordType | RefinedRecordType | NativeRecordType |
+    AnyNativeRecordType.type
+
+  private def kind(t: CType): ValueKind = t match {
     case AtomLitType(_) | AtomType =>
-      Some(ValueKind.Atom)
+      ValueKind.Atom
     case BinaryType =>
-      Some(ValueKind.Binary)
+      ValueKind.Binary
     case AnyFunType | FunType(_, _, _) | AnyArityFunType(_) =>
-      Some(ValueKind.Fun)
+      ValueKind.Fun
     case NilType | ListType(_) | ConsType(_, _) =>
-      Some(ValueKind.List)
+      ValueKind.List
     case MapType(_, _, _) =>
-      Some(ValueKind.Map)
+      ValueKind.Map
     case IntegerType =>
-      Some(ValueKind.Integer)
+      ValueKind.Integer
     case FloatType =>
-      Some(ValueKind.Float)
+      ValueKind.Float
     case PidType =>
-      Some(ValueKind.Pid)
+      ValueKind.Pid
     case PortType =>
-      Some(ValueKind.Port)
+      ValueKind.Port
     case ReferenceType =>
-      Some(ValueKind.Reference)
+      ValueKind.Reference
     case AnyTupleType | TupleType(_) | RecordType(_) | RefinedRecordType(_, _) =>
-      Some(ValueKind.Tuple)
+      ValueKind.Tuple
     case NativeRecordType(_) | AnyNativeRecordType =>
-      Some(ValueKind.NativeRecord)
-    case _ =>
-      None
+      ValueKind.NativeRecord
   }
 }
 
@@ -624,11 +628,8 @@ class Subtype(pipelineContext: PipelineContext) {
     }
   }
 
-  private def mayOverlapSimple(t1: Type, t2: Type): Boolean =
-    (Subtype.kind(t1), Subtype.kind(t2)) match {
-      case (Some(k1), Some(k2)) => k1 == k2
-      case (_, _)               => true
-    }
+  private def mayOverlapSimple(t1: CType, t2: CType): Boolean =
+    Subtype.kind(t1) == Subtype.kind(t2)
 
   def mayOverlap(t1: Type, t2: Type): Boolean =
     mayOverlap(t1, t2, Set.empty)
@@ -659,6 +660,11 @@ class Subtype(pipelineContext: PipelineContext) {
       case (FreeVarType(_), _) =>
         true
       case (_, FreeVarType(_)) =>
+        true
+
+      case (BoundVarType(_), _) =>
+        true
+      case (_, BoundVarType(_)) =>
         true
 
       // Unions
@@ -833,8 +839,8 @@ class Subtype(pipelineContext: PipelineContext) {
           true
         }
 
-      case _ =>
-        mayOverlapSimple(t1, t2)
+      case (ct1: CType, ct2: CType) =>
+        mayOverlapSimple(ct1, ct2)
     }
 
   private def mapValueType(key: Key, mt: MapType): Type =
