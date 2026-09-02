@@ -588,10 +588,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
         typeTest(arg, nativeRecordTypeFor(modName, recName), aMap)
       case TestCall(Id("is_record", 2), List(arg, TestAtom(recName))) =>
         typeTest(arg, resolveIsRecord2Name(recName), aMap)
-      case TestCall(Id("is_record", 3), arg :: TestAtom(recName) :: rest) =>
-        val base = typeTest(arg, RecordType(recName)(module), aMap)
-        val litArity = rest.forall { case TestInteger(Some(_)) => true; case _ => false }
-        if (litArity) base else base.copy(th = Unknown)
+      case TestCall(Id("is_record", 3), arg :: TestAtom(recName) :: TestInteger(Some(_)) :: Nil) =>
+        typeTest(arg, RecordType(recName)(module), aMap)
       case TestCall(Id("is_map_key", 2), List(keyArg, mapArg)) =>
         val tpKey = testProps(keyArg, aMap)
         val tpMap = testProps(mapArg, aMap)
