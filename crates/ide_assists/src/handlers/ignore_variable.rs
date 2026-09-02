@@ -72,7 +72,7 @@ mod tests {
 -export([meaning_of_life/0]).
 meaning_of_life() ->
     Th~oughts = thinking(),
- %% ^^^^^^^^^ 💡 L1268: variable 'Thoughts' is unused
+ %% ^^^^^^^^^ L1268: variable 'Thoughts' is unused
     42.
 "#,
             expect![[r#"
@@ -106,11 +106,11 @@ meaning_of_life() ->
             "Prefix the variable name with an underscore: `_Thoughts`",
             r#"
 -module(my_module).
-     %% ^^^^^^^^^ 💡 X12345: Module name does not match file name
+     %% ^^^^^^^^^ X12345: Module name does not match file name
 -export([meaning_of_life/0]).
 meaning_of_life() ->
     Th~oughts = thinking(),
- %% ^^^^^^^^^ 💡 L1268: variable 'Thoughts' is unused
+ %% ^^^^^^^^^ L1268: variable 'Thoughts' is unused
     42.
 "#,
             expect![[r#"

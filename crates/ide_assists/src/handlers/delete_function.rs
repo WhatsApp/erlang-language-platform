@@ -26,7 +26,7 @@ use crate::helpers::ranges_for_delete_function;
 // -module(life).
 //
 // heavy_calculations(X) -> X.
-// %% ^^^^^^^^^^^^^^^ 💡 L1230: Function heavy_calculations/1 is unused
+// %% ^^^^^^^^^^^^^^^ L1230: Function heavy_calculations/1 is unused
 //
 // meaning() ->
 //   42.
@@ -82,7 +82,7 @@ mod tests {
  -module(life).
 
  heavy_cal~culations(X) ->
- %% ^^^^^^^^^^^^^^^^ 💡 L1230: Function heavy_calculations/1 is unused
+ %% ^^^^^^^^^^^^^^^^ L1230: Function heavy_calculations/1 is unused
    X.
 
  meaning() ->
@@ -106,7 +106,7 @@ mod tests {
  -module(life).
 
  heavy_cal~culations(0) ->
- %% ^^^^^^^^^^^^^^^^ 💡 L1230: Function heavy_calculations/1 is unused
+ %% ^^^^^^^^^^^^^^^^ L1230: Function heavy_calculations/1 is unused
    0;
  heavy_calculations(X) ->
    X.
@@ -133,7 +133,7 @@ mod tests {
 
  -spec heavy_calculations(any()) -> any().
  heavy_cal~culations(X) ->
- %% ^^^^^^^^^^^^^^^^ 💡 L1230: Function heavy_calculations/1 is unused
+ %% ^^^^^^^^^^^^^^^^ L1230: Function heavy_calculations/1 is unused
    X.
 
  meaning() ->
@@ -157,7 +157,7 @@ mod tests {
  -module(life).
 
  heavy_cal~culations(X) ->
- %% ^^^^^^^^^^^^^^^^ 💡 L1230: Function heavy_calculations/1 is unused
+ %% ^^^^^^^^^^^^^^^^ L1230: Function heavy_calculations/1 is unused
    X.
 
  meaning() ->
@@ -183,7 +183,7 @@ mod tests {
 
  %% @doc some docs
  heavy_cal~culations(X) ->
- %% ^^^^^^^^^^^^^^^^ 💡 L1230: Function heavy_calculations/1 is unused
+ %% ^^^^^^^^^^^^^^^^ L1230: Function heavy_calculations/1 is unused
    X.
 
  meaning() ->
@@ -211,7 +211,7 @@ mod tests {
  %% Continue the tag, then a gap
 
  heavy_cal~culations(X) ->
- %% ^^^^^^^^^^^^^^^^ 💡 L1230: Function heavy_calculations/1 is unused
+ %% ^^^^^^^^^^^^^^^^ L1230: Function heavy_calculations/1 is unused
    X.
 
  meaning() ->
@@ -238,7 +238,7 @@ mod tests {
  %% This is not part of the edoc
  %% @doc some docs
  heavy_cal~culations(X) ->
- %% ^^^^^^^^^^^^^^^^ 💡 L1230: Function heavy_calculations/1 is unused
+ %% ^^^^^^^^^^^^^^^^ L1230: Function heavy_calculations/1 is unused
    X.
 
  meaning() ->
@@ -268,7 +268,7 @@ mod tests {
  -type client2() :: #client2{}.
  %% The above type does not stop this being part of the edoc
  heavy_cal~culations(X) ->
- %% ^^^^^^^^^^^^^^^^ 💡 L1230: Function heavy_calculations/1 is unused
+ %% ^^^^^^^^^^^^^^^^ L1230: Function heavy_calculations/1 is unused
    X.
 
  meaning() ->

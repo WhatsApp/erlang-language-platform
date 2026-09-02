@@ -113,7 +113,7 @@ mod tests {
  -module(life).
 
  heavy_calculations(X) -> fo~o(X).
- %%                       ^^^^^^ 💡 L1227: function foo/1 undefined
+ %%                       ^^^^^^ L1227: function foo/1 undefined
 "#,
             expect![[r#"
                 -module(life).
@@ -137,7 +137,7 @@ mod tests {
  -module(life).
 
  heavy_calculations(X) -> life:f~oo(X, X+1).
- %%                       ^^^^^^^^^^^ 💡 L1227: function life:foo/2 undefined
+ %%                       ^^^^^^^^^^^ L1227: function life:foo/2 undefined
 "#,
             expect![[r#"
                 -module(life).
@@ -160,7 +160,7 @@ mod tests {
  -module(life).
 
  heavy_calculations(X) -> other:f~oo(X, X+1).
- %%                       ^^^^^^^^^^^^ 💡 L1227: function other:foo/2 undefined
+ %%                       ^^^^^^^^^^^^ L1227: function other:foo/2 undefined
 "#,
         )
     }
@@ -174,7 +174,7 @@ mod tests {
  -module(life).
 
  heavy_calculations(X) -> ?MODULE:fo~o().
- %%                       ^^^^^^^^^^^^^ 💡 L1227: function life:foo/0 undefined
+ %%                       ^^^^^^^^^^^^^ L1227: function life:foo/0 undefined
 "#,
             expect![[r#"
                 -module(life).

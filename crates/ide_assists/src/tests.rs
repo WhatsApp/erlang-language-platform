@@ -143,9 +143,10 @@ fn check(
     let context_diagnostics = fixture.annotations_by_file_id(&file_id);
     let mut diagnostics = vec![];
     for (range, text) in &context_diagnostics {
-        if let Some((code_and_bulb, message)) = text.split_once(':')
-            && let Some(code_string) = code_and_bulb.strip_prefix("💡 ")
-            && let Ok(code) = AssistContextDiagnosticCode::from_str(code_string)
+        if let Some((code_string, message)) = text.split_once(':')
+            && let Ok(code) = AssistContextDiagnosticCode::from_str(
+                code_string.strip_prefix("💡").unwrap_or(code_string).trim(),
+            )
         {
             let d = AssistContextDiagnostic::new(code, message.trim().to_string(), *range);
             diagnostics.push(d)
