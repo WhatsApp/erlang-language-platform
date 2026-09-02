@@ -669,22 +669,9 @@ class Subtype(pipelineContext: PipelineContext) {
 
       // Unions
       case (UnionType(ts), _) =>
-        boundary {
-          for (t1 <- ts) {
-            if (mayOverlap(t1, t2, seen))
-              boundary.break(true)
-          }
-          false
-        }
+        ts.exists(mayOverlap(_, t2, seen))
       case (_, UnionType(ts)) =>
-        boundary {
-          for (t2 <- ts) {
-            if (mayOverlap(t1, t2, seen)) {
-              boundary.break(true)
-            }
-          }
-          false
-        }
+        ts.exists(mayOverlap(t1, _, seen))
 
       case (NativeRecordType(id1), NativeRecordType(id2)) =>
         id1 == id2
@@ -724,15 +711,7 @@ class Subtype(pipelineContext: PipelineContext) {
 
       // tuples and records
       case (TupleType(ts1), TupleType(ts2)) =>
-        if (ts1.size != ts2.size) false
-        else
-          boundary {
-            for ((t1, t2) <- ts1.lazyZip(ts2)) {
-              if (!mayOverlap(t1, t2, seen))
-                boundary.break(false)
-            }
-            true
-          }
+        ts1.size == ts2.size && ts1.lazyZip(ts2).forall(mayOverlap(_, _, seen))
       case (TupleType(_), AnyTupleType) =>
         true
       case (AnyTupleType, TupleType(_)) =>
@@ -748,21 +727,9 @@ class Subtype(pipelineContext: PipelineContext) {
       case (RecordType(n1), RecordType(n2)) =>
         n1 == n2
       case (RefinedRecordType(t1, fields1), RefinedRecordType(t2, fields2)) =>
-        if (t1.name != t2.name) false
-        else
-          boundary {
-            val fNames = fields1.keySet ++ fields2.keySet
-            for (fN <- fNames)
-              (fields1.get(fN), fields2.get(fN)) match {
-                case (Some(f1), Some(f2)) =>
-                  if (!mayOverlap(f1, f2, seen)) {
-                    boundary.break(false)
-                  }
-                case _ =>
-                  ()
-              }
-            true
-          }
+        // Only the fields refined in both records can make them disjoint.
+        t1.name == t2.name &&
+        fields1.keySet.intersect(fields2.keySet).forall(fN => mayOverlap(fields1(fN), fields2(fN), seen))
       case (RefinedRecordType(t, _), RecordType(n)) =>
         n == t.name
       case (RecordType(n), RefinedRecordType(t, _)) =>
@@ -829,15 +796,10 @@ class Subtype(pipelineContext: PipelineContext) {
 
       case (mt1 @ MapType(props1, kT1, vT1), mt2 @ MapType(props2, kT2, vT2)) =>
         // Checking that maps overlap in required associations.
-        boundary {
-          val reqKeys =
-            props1.collect { case (k, MapProp(true, _)) => k }.toSet ++
-              props2.collect { case (k, MapProp(true, _)) => k }
-          for (key <- reqKeys)
-            if (!mayOverlap(mapValueType(key, mt1), mapValueType(key, mt2), seen))
-              boundary.break(false)
-          true
-        }
+        val reqKeys =
+          props1.collect { case (k, MapProp(true, _)) => k }.toSet ++
+            props2.collect { case (k, MapProp(true, _)) => k }
+        reqKeys.forall(key => mayOverlap(mapValueType(key, mt1), mapValueType(key, mt2), seen))
 
       case (ct1: CType, ct2: CType) =>
         mayOverlapSimple(ct1, ct2)
