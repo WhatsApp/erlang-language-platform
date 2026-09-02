@@ -412,8 +412,11 @@ mod tests {
                 foo() ->
                   F = fun(X) ->
                     my_is_integer(X) a~nd X > 0 end,
-                %%                   ^^^ 💡 warning: W0025: Consider using the short-circuit expression 'andalso' instead of 'and'.
+                %%                   ^^^ warning: W0025: Consider using the short-circuit expression 'andalso' instead of 'and'.
                 %%                     | Or add parentheses to avoid potential ambiguity.
+                %%                     | 💡 Replace 'and' with 'andalso'
+                %%                     | 💡 Add parens to RHS
+                %%                     | 💡 <suppression>
                   F.
 
                 my_is_integer(_X) -> true.

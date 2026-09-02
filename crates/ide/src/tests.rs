@@ -14,16 +14,22 @@
 use elp_ide_assists::Assist;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::assists::GroupLabel;
+use elp_ide_db::elp_base_db::CURSOR_MARKER;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
+use elp_ide_db::elp_base_db::RangeOrOffset;
 use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::elp_base_db::assert_eq_expected;
+use elp_ide_db::elp_base_db::fixture::ChangeFixture;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::remove_annotations;
 use elp_ide_db::elp_base_db::render_annotations;
 use elp_ide_db::text_edit::TextRange;
+use elp_project_model::test_fixture::FixtureWithProjectMeta;
+use elp_project_model::test_fixture::patch_fixture_literal;
 use elp_project_model::test_fixture::trim_indent;
+use elp_project_model::test_fixture::update_fixtures_requested;
 use expect_test::Expect;
 use itertools::Itertools;
 
@@ -208,9 +214,13 @@ pub(crate) fn check_specific_fix_with_config_and_adhoc(
     );
     let diagnostics = diagnostics.diagnostics_for(file_id);
 
-    let expected = fixture.annotations_by_file_id(&file_id);
     let actual = convert_diagnostics_to_annotations(diagnostics.clone());
-    assert_annotations_eq(&analysis, file_id, &expected, &actual);
+    assert_fixture_annotations(
+        &analysis,
+        fixture_before,
+        fixture.files.len(),
+        &[FileAnnotations::new(&fixture, file_id, actual)],
+    );
 
     let fix: Assist = if let Some(label) = assist_label {
         let fixes: Vec<_> = diagnostics
@@ -355,31 +365,221 @@ pub(crate) fn convert_diagnostics_to_annotations(
     actual
 }
 
-/// Compare the annotations the fixture declares against the ones the
-/// diagnostics produce. On a mismatch, show the fixture as it would read with
-/// the actual annotations, so it can be copied back into the test.
-#[track_caller]
-fn assert_annotations_eq(
-    analysis: &Analysis,
+thread_local! {
+    /// Set while a test is deliberately provoking an annotation mismatch, so
+    /// that an update run reports it rather than "repairing" the fixture.
+    static SUPPRESS_FIXTURE_UPDATE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Run `f` with in-place fixture rewriting disabled.
+fn without_fixture_updates<R>(f: impl FnOnce() -> R) -> R {
+    SUPPRESS_FIXTURE_UPDATE.with(|flag| flag.set(true));
+    let res = f();
+    SUPPRESS_FIXTURE_UPDATE.with(|flag| flag.set(false));
+    res
+}
+
+/// The annotations one file of a fixture declares, and the ones its
+/// diagnostics actually produced.
+pub(crate) struct FileAnnotations {
     file_id: FileId,
-    expected: &Vec<(TextRange, String)>,
-    actual: &Vec<(TextRange, String)>,
+    /// Position of this file's section in the fixture.
+    index: usize,
+    /// Where this file's cursor marker sits, if it has one. The database text
+    /// has the marker stripped, so it has to be put back before the fixture is
+    /// rewritten -- otherwise the update would silently delete it.
+    cursor: Option<RangeOrOffset>,
+    expected: Vec<(TextRange, String)>,
+    actual: Vec<(TextRange, String)>,
+}
+
+impl FileAnnotations {
+    fn new(fixture: &ChangeFixture, file_id: FileId, actual: Vec<(TextRange, String)>) -> Self {
+        let cursor = fixture
+            .file_position
+            .and_then(|(cursor_file, pos)| (cursor_file == file_id).then_some(pos));
+        let index = fixture
+            .files
+            .iter()
+            .position(|candidate| *candidate == file_id)
+            .expect("file is part of the fixture");
+        FileAnnotations {
+            file_id,
+            index,
+            cursor,
+            expected: fixture.annotations_by_file_id(&file_id),
+            actual,
+        }
+    }
+
+    /// The file as the fixture spells it: database text with the cursor marker
+    /// put back. `None` when the marker cannot be reinstated, which stops the
+    /// fixture being rewritten at all.
+    fn fixture_text(&self, analysis: &Analysis) -> Option<String> {
+        let mut text = analysis
+            .db
+            .file_text(self.file_id)
+            .text(&analysis.db)
+            .to_string();
+        match self.cursor {
+            None => Some(text),
+            Some(RangeOrOffset::Offset(offset)) => {
+                text.insert_str(u32::from(offset) as usize, CURSOR_MARKER);
+                Some(text)
+            }
+            // A `$0`-delimited range needs two markers; not worth supporting
+            // until a fixture actually uses one.
+            Some(RangeOrOffset::Range(_)) => None,
+        }
+    }
+}
+
+/// Compare the annotations every file of `elp_fixture` declares against the
+/// ones its diagnostics produce.
+///
+/// Under `UPDATE_EXPECT` a mismatch rewrites the fixture in place instead of
+/// failing. The rewrite only happens once the new fixture has been parsed back
+/// and confirmed to yield exactly the annotations the diagnostics produced, so
+/// a fixture is never left saying something the harness cannot reproduce.
+#[track_caller]
+fn assert_fixture_annotations(
+    analysis: &Analysis,
+    elp_fixture: &str,
+    sections: usize,
+    files: &[FileAnnotations],
 ) {
-    if expected == actual {
+    if files.iter().all(|f| f.expected == f.actual) {
         return;
     }
-    let text = analysis
-        .db
-        .file_text(file_id)
-        .text(&analysis.db)
-        .to_string();
-    match render_annotations(&text, actual) {
-        Some(rendered) => panic!(
-            "assertion failed\n  expected: {expected:?}\n  actual  : {actual:?}\n\n\
-             fixture with actual annotations:\n{rendered}"
-        ),
-        None => assert_eq_expected!(expected, actual),
+
+    // Each step can decline; say which one did, so a fixture the harness
+    // cannot rewrite is a lead rather than a mystery.
+    // Only the files that were checked get re-rendered; the rest of the
+    // fixture's sections are carried over untouched. `check_specific_fix` looks
+    // at one file of a fixture that may well have several.
+    let mut rendered: Vec<Option<String>> = vec![None; sections];
+    let mut renderable = true;
+    for file in files {
+        match file
+            .fixture_text(analysis)
+            .and_then(|text| render_annotations(&text, &file.actual))
+        {
+            Some(text) if file.index < sections => rendered[file.index] = Some(text),
+            _ => renderable = false,
+        }
     }
+
+    let updated = match renderable {
+        false => Err("the annotations cannot be expressed in the caret syntax"),
+        true => match splice_fixture_files(elp_fixture, &rendered) {
+            None => Err("the fixture's file sections could not be reassembled"),
+            Some(updated) => {
+                if fixture_yields(&updated, analysis, files) {
+                    Ok(updated)
+                } else {
+                    Err("re-parsing the rewritten fixture did not reproduce it exactly")
+                }
+            }
+        },
+    };
+
+    if let Ok(updated) = &updated
+        && update_fixtures_requested()
+        && !SUPPRESS_FIXTURE_UPDATE.with(|flag| flag.get())
+    {
+        let caller = std::panic::Location::caller();
+        match patch_fixture_literal(caller, elp_fixture, updated) {
+            Ok(true) => return,
+            Ok(false) => panic!(
+                "UPDATE_EXPECT: could not find the fixture literal at {caller}.\n\
+                 The updated fixture is:\n{updated}"
+            ),
+            Err(err) => panic!("UPDATE_EXPECT: could not rewrite {caller}: {err}"),
+        }
+    }
+
+    let expected = files.iter().map(|f| &f.expected).collect_vec();
+    let actual = files.iter().map(|f| &f.actual).collect_vec();
+    match updated {
+        Ok(updated) => panic!(
+            "assertion failed\n  expected: {expected:?}\n  actual  : {actual:?}\n\n\
+             re-run with `-m fbcode//whatsapp/elp:expect[update]` to apply:\n{updated}"
+        ),
+        Err(reason) => panic!(
+            "assertion failed\n  expected: {expected:?}\n  actual  : {actual:?}\n\n\
+             cannot rewrite this fixture: {reason}"
+        ),
+    }
+}
+
+/// Rebuild `elp_fixture`, replacing each file section for which `rendered`
+/// supplies a body and copying the rest through unchanged.
+///
+/// Sections are delimited by `//- /path` marker lines. The optional
+/// `//- erlang_service`-style meta lines that may precede them are not file
+/// markers and are copied through. A fixture with no marker at all is a single
+/// implicit file.
+fn splice_fixture_files(elp_fixture: &str, rendered: &[Option<String>]) -> Option<String> {
+    let trimmed = trim_indent(elp_fixture);
+    let mut prelude = String::new();
+    let mut sections: Vec<(String, String)> = Vec::new();
+
+    for line in trimmed.split_inclusive('\n') {
+        if line.starts_with("//- /") {
+            sections.push((line.to_string(), String::new()));
+        } else if sections.is_empty() && line.starts_with("//-") {
+            prelude.push_str(line);
+        } else {
+            if sections.is_empty() {
+                sections.push((String::new(), String::new()));
+            }
+            sections.last_mut()?.1.push_str(line);
+        }
+    }
+
+    if sections.len() != rendered.len() {
+        return None;
+    }
+
+    let mut res = prelude;
+    for ((marker, body), replacement) in sections.iter().zip(rendered) {
+        // A rendered section need not end in a newline, but the marker that
+        // follows it has to start its own line.
+        if !res.is_empty() && !res.ends_with('\n') {
+            res.push('\n');
+        }
+        res.push_str(marker);
+        res.push_str(replacement.as_deref().unwrap_or(body));
+    }
+    Some(res)
+}
+
+/// Does re-parsing `fixture` reproduce every file's contents, cursor and
+/// annotations exactly?
+///
+/// The annotations are the point of the exercise, but checking the text and
+/// cursor too is what makes the rewrite safe: it catches a render that lost the
+/// cursor marker, or a splice that put a section back in the wrong place.
+fn fixture_yields(fixture: &str, analysis: &Analysis, files: &[FileAnnotations]) -> bool {
+    // `parse` panics rather than erroring on a fixture it cannot make sense of,
+    // and a rendered fixture is exactly the sort of thing that might not parse.
+    // Treat that as "do not rewrite", not as a test failure.
+    let Ok(parsed) = std::panic::catch_unwind(|| FixtureWithProjectMeta::parse(fixture)) else {
+        return false;
+    };
+    files.iter().all(|file| {
+        let Some(parsed) = parsed.fixture.get(file.index) else {
+            return false;
+        };
+        let mut annotations = parsed.annotations.clone();
+        annotations.sort_by_key(|(range, _)| range.start());
+        let db_text = analysis
+            .db
+            .file_text(file.file_id)
+            .text(&analysis.db)
+            .to_string();
+        annotations == file.actual && parsed.marker_pos == file.cursor && parsed.text == db_text
+    })
 }
 
 fn is_suppression(fix: &Assist) -> bool {
@@ -415,21 +615,27 @@ pub(crate) fn check_diagnostics_with_config_and_ad_hoc(
     let (db, fixture) = RootDatabase::with_fixture(elp_fixture);
     let host = AnalysisHost { db };
     let analysis = host.analysis();
-    for file_id in &fixture.files {
-        let file_id = *file_id;
-        let diagnostics = fixture::diagnostics_for(
-            &analysis,
-            file_id,
-            &config,
-            adhoc_semantic_diagnostics,
-            &fixture.diagnostics_enabled,
-        );
-        let diagnostics = diagnostics.diagnostics_for(file_id);
-
-        let expected = fixture.annotations_by_file_id(&file_id);
-        let actual = convert_diagnostics_to_annotations(diagnostics);
-        assert_annotations_eq(&analysis, file_id, &expected, &actual);
-    }
+    let files = fixture
+        .files
+        .iter()
+        .map(|file_id| {
+            let file_id = *file_id;
+            let diagnostics = fixture::diagnostics_for(
+                &analysis,
+                file_id,
+                &config,
+                adhoc_semantic_diagnostics,
+                &fixture.diagnostics_enabled,
+            );
+            let diagnostics = diagnostics.diagnostics_for(file_id);
+            FileAnnotations::new(
+                &fixture,
+                file_id,
+                convert_diagnostics_to_annotations(diagnostics),
+            )
+        })
+        .collect_vec();
+    assert_fixture_annotations(&analysis, elp_fixture, fixture.files.len(), &files);
 }
 
 #[track_caller]
@@ -448,24 +654,31 @@ pub(crate) fn check_filtered_diagnostics_with_config(
     let (db, fixture) = RootDatabase::with_fixture(elp_fixture);
     let host = AnalysisHost { db };
     let analysis = host.analysis();
-    for file_id in &fixture.files {
-        let file_id = *file_id;
-        let diagnostics = fixture::diagnostics_for(
-            &analysis,
-            file_id,
-            &config,
-            adhoc_semantic_diagnostics,
-            &fixture.diagnostics_enabled,
-        );
-        let diagnostics = diagnostics
-            .diagnostics_for(file_id)
-            .into_iter()
-            .filter(|d| filter(d) || d.code == DiagnosticCode::SyntaxError)
-            .collect();
-        let expected = fixture.annotations_by_file_id(&file_id);
-        let actual = convert_diagnostics_to_annotations(diagnostics);
-        assert_annotations_eq(&analysis, file_id, &expected, &actual);
-    }
+    let files = fixture
+        .files
+        .iter()
+        .map(|file_id| {
+            let file_id = *file_id;
+            let diagnostics = fixture::diagnostics_for(
+                &analysis,
+                file_id,
+                &config,
+                adhoc_semantic_diagnostics,
+                &fixture.diagnostics_enabled,
+            );
+            let diagnostics = diagnostics
+                .diagnostics_for(file_id)
+                .into_iter()
+                .filter(|d| filter(d) || d.code == DiagnosticCode::SyntaxError)
+                .collect();
+            FileAnnotations::new(
+                &fixture,
+                file_id,
+                convert_diagnostics_to_annotations(diagnostics),
+            )
+        })
+        .collect_vec();
+    assert_fixture_annotations(&analysis, elp_fixture, fixture.files.len(), &files);
 }
 
 #[track_caller]
@@ -477,22 +690,28 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
     let (db, fixture) = RootDatabase::with_fixture(elp_fixture);
     let host = AnalysisHost { db };
     let analysis = host.analysis();
-    for file_id in &fixture.files {
-        let file_id = *file_id;
-        let diagnostics = diagnostics::native_diagnostics(
-            &analysis.db,
-            &config,
-            &DiagnosticsTrigger::Cli,
-            &vec![],
-            file_id,
-        );
-        let diagnostics =
-            diagnostics::attach_related_diagnostics(file_id, diagnostics, extra_diags.clone());
-
-        let expected = fixture.annotations_by_file_id(&file_id);
-        let actual = convert_diagnostics_to_annotations(diagnostics);
-        assert_annotations_eq(&analysis, file_id, &expected, &actual);
-    }
+    let files = fixture
+        .files
+        .iter()
+        .map(|file_id| {
+            let file_id = *file_id;
+            let diagnostics = diagnostics::native_diagnostics(
+                &analysis.db,
+                &config,
+                &DiagnosticsTrigger::Cli,
+                &vec![],
+                file_id,
+            );
+            let diagnostics =
+                diagnostics::attach_related_diagnostics(file_id, diagnostics, extra_diags.clone());
+            FileAnnotations::new(
+                &fixture,
+                file_id,
+                convert_diagnostics_to_annotations(diagnostics),
+            )
+        })
+        .collect_vec();
+    assert_fixture_annotations(&analysis, elp_fixture, fixture.files.len(), &files);
 }
 
 #[track_caller]
@@ -658,10 +877,11 @@ mod test {
         check_filtered_diagnostics(
             r#"
             //- expect_parse_errors
-            %%<^^^^^^^^^^^^ 💡 error: L1201: no module definition
             foo() ->
+            %%<^^^^^^^^^^^^ error: L1201: no module definition
+            %%            | 💡 <suppression>
                bug bug.
-                %% ^^^^ error: P1711: Syntax Error
+            %%     ^^^^ error: P1711: Syntax Error
 
             "#,
             &filter,
@@ -673,17 +893,19 @@ mod test {
         // Test that uses a mismatched diagnostic annotation to verify
         // the new error message format shows "expected:" and "actual:" labels
 
-        let result = std::panic::catch_unwind(|| {
-            // This fixture has a wrong diagnostic annotation - it expects W9999
-            // but the actual diagnostic will be MissingModule (L1201)
-            check_filtered_diagnostics(
-                r#"
+        let result = super::without_fixture_updates(|| {
+            std::panic::catch_unwind(|| {
+                // This fixture has a wrong diagnostic annotation - it expects W9999
+                // but the actual diagnostic will be MissingModule (L1201)
+                check_filtered_diagnostics(
+                    r#"
                 //- expect_parse_errors
                 %%<^^^^^^^^^^^^ error: W9999: wrong diagnostic
                 foo() -> ok.
                 "#,
-                &filter,
-            )
+                    &filter,
+                )
+            })
         });
 
         // The test should panic due to mismatch
@@ -704,8 +926,15 @@ mod test {
 
         expect![[r#"
             assertion failed
-              expected: [(0..15, "error: W9999: wrong diagnostic")]
-              actual  : [(0..12, "💡 error: L1201: no module definition")]"#]]
+              expected: [[(0..15, "error: W9999: wrong diagnostic")]]
+              actual  : [[(0..12, "error: L1201: no module definition\n💡 <suppression>")]]
+
+            re-run with `-m fbcode//whatsapp/elp:expect[update]` to apply:
+            //- expect_parse_errors
+            foo() -> ok.
+            %%<^^^^^^^^^ error: L1201: no module definition
+            %%         | 💡 <suppression>
+        "#]]
         .assert_eq(&message);
     }
 }

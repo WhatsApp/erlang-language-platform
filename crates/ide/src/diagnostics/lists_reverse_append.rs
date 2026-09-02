@@ -121,7 +121,9 @@ mod tests {
 
         process(Items, Acc) ->
             lists:reverse(Items) ++ Acc.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0056: Use `lists:reverse/2` instead of `lists:reverse/1 ++ Tail` for better performance.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0056: Use `lists:reverse/2` instead of `lists:reverse/1 ++ Tail` for better performance.
+        %%                            | 💡 Use lists:reverse/2
+        %%                            | 💡 <suppression>
            "#,
         )
     }
@@ -188,7 +190,9 @@ mod tests {
         -module(test).
         -include_lib("assert/include/assert.hrl").
         f(L, T) -> ?assert(lists:reverse(L) ++ T).
-        %%                 ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0056: Use `lists:reverse/2` instead of `lists:reverse/1 ++ Tail` for better performance.
+        %%                 ^^^^^^^^^^^^^^^^^^^^^ warning: W0056: Use `lists:reverse/2` instead of `lists:reverse/1 ++ Tail` for better performance.
+        %%                                     | 💡 Use lists:reverse/2
+        %%                                     | 💡 <suppression>
            "#,
         )
     }

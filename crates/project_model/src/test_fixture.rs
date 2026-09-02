@@ -830,6 +830,152 @@ fn fixture_lines(text: &str) -> Vec<FixtureLine<'_>> {
     res
 }
 
+// ---------------------------------------------------------------------
+
+/// Whether the harness should rewrite fixtures in place rather than fail.
+///
+/// Matches `expect-test`: the variable counts as set the moment it exists,
+/// even when empty.
+pub fn update_fixtures_requested() -> bool {
+    std::env::var_os("UPDATE_EXPECT").is_some()
+}
+
+/// Rewrites the fixture literal containing `original` at `caller`'s call site
+/// so that it reads `new_fixture`, preserving the literal's indentation and its
+/// leading and trailing whitespace.
+///
+/// The literal is located by matching its contents against `original`, not by
+/// taking the first literal at or after `caller`, so it does not matter which
+/// argument position the fixture occupies, nor whether earlier arguments happen
+/// to contain string literals of their own.
+///
+/// Returns `false` when the literal cannot be found, leaving the file alone.
+pub fn patch_fixture_literal(
+    caller: &std::panic::Location<'_>,
+    original: &str,
+    new_fixture: &str,
+) -> std::io::Result<bool> {
+    let path = workspace_path(caller.file());
+    // Each test runs in its own process, so the fixtures of one source file are
+    // rewritten concurrently. Reading under an exclusive lock means every
+    // rewrite starts from the previous one's result; otherwise two writers can
+    // both start from the same text and the second silently drops the first.
+    let lock = File::open(&path)?;
+    lock.lock()?;
+    let source = fs::read_to_string(&path)?;
+    let Some((body_start, body_end)) =
+        find_fixture_literal(&source, caller.line() as usize, original)
+    else {
+        return Ok(false);
+    };
+
+    let body = &source[body_start..body_end];
+    let indent = common_indent(body);
+    // Fixtures conventionally open with a newline before the first line of
+    // content, and close with the indentation of the terminating `"#`.
+    let lead_end = body.find('\n').map_or(0, |idx| idx + 1);
+    let trail_start = body.rfind('\n').map_or(body.len(), |idx| idx + 1);
+
+    let mut lines: Vec<&str> = new_fixture.split('\n').collect();
+    // `trim_indent` keeps the closing run only when it is longer than the
+    // indentation it strips, so the rendered text may or may not still carry
+    // it. Fall back to the run the fixture had.
+    let last = lines.pop().unwrap_or_default();
+
+    let mut patched = String::new();
+    patched.push_str(&source[..body_start]);
+    patched.push_str(&body[..lead_end]);
+    for line in lines {
+        if !line.is_empty() {
+            patched.push_str(&indent);
+        }
+        patched.push_str(line);
+        patched.push('\n');
+    }
+    if last.is_empty() {
+        patched.push_str(&body[trail_start..]);
+    } else {
+        patched.push_str(&indent);
+        patched.push_str(last);
+    }
+    patched.push_str(&source[body_end..]);
+
+    fs::write(&path, patched)?;
+    Ok(true)
+}
+
+/// Byte range of the body of the first raw string literal at or after `line`
+/// whose contents match `original` once indentation is stripped.
+fn find_fixture_literal(source: &str, line: usize, original: &str) -> Option<(usize, usize)> {
+    let want = trim_indent(original);
+    let bytes = source.as_bytes();
+    let mut idx = line_offset(source, line);
+
+    while idx < bytes.len() {
+        if bytes[idx] == b'r' && (idx == 0 || !is_ident_byte(bytes[idx - 1])) {
+            let mut cursor = idx + 1;
+            while cursor < bytes.len() && bytes[cursor] == b'#' {
+                cursor += 1;
+            }
+            if cursor < bytes.len() && bytes[cursor] == b'"' {
+                let hashes = cursor - (idx + 1);
+                let body_start = cursor + 1;
+                let close = format!("\"{}", "#".repeat(hashes));
+                if let Some(rel_end) = source[body_start..].find(&close) {
+                    let body_end = body_start + rel_end;
+                    if trim_indent(&source[body_start..body_end]) == want {
+                        return Some((body_start, body_end));
+                    }
+                    idx = body_end + close.len();
+                    continue;
+                }
+            }
+        }
+        idx += 1;
+    }
+    None
+}
+
+fn is_ident_byte(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || byte == b'_'
+}
+
+/// Byte offset of the start of 1-based `line`.
+fn line_offset(source: &str, line: usize) -> usize {
+    source
+        .split_inclusive('\n')
+        .take(line.saturating_sub(1))
+        .map(str::len)
+        .sum()
+}
+
+/// The indentation `trim_indent` would strip from `text`.
+fn common_indent(text: &str) -> String {
+    let width = text
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| line.len() - line.trim_start().len())
+        .min()
+        .unwrap_or(0);
+    " ".repeat(width)
+}
+
+fn workspace_path(file: &str) -> Utf8PathBuf {
+    let path = Utf8Path::new(file);
+    if path.is_absolute() {
+        return path.to_path_buf();
+    }
+    // Mirrors `expect-test`. Buck sets `CARGO_WORKSPACE_DIR` to the empty
+    // string, leaving the path relative to the test's working directory.
+    match std::env::var("CARGO_WORKSPACE_DIR") {
+        Ok(root) => Utf8Path::new(&root).join(path),
+        Err(_) => match std::env::var("CARGO_MANIFEST_DIR") {
+            Ok(manifest) => Utf8Path::new(&manifest).join(path),
+            Err(_) => path.to_path_buf(),
+        },
+    }
+}
+
 static TOP_OF_FILE_RANGE: LazyLock<TextRange> =
     LazyLock::new(|| TextRange::new(0.into(), 0.into()));
 
