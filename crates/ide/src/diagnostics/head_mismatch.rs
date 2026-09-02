@@ -433,8 +433,9 @@ mod tests {
     -module(main).
     foo(0) -> 1;
     boo(1) -> 2.
- %% ^^^ 💡 error: P1700: head mismatch 'boo' vs 'foo'
+ %% ^^^ error: P1700: head mismatch 'boo' vs 'foo'
  %%   | Related info: 0:21-24 Mismatched clause name
+ %%   | 💡 Fix head mismatch
             "#,
         );
         check_fix(
@@ -490,8 +491,9 @@ mod tests {
             r#"
     -module(main).
     foo(0) -> 1;
- %% ^^^ 💡 error: P1700: head mismatch 'foo' vs 'boo'
+ %% ^^^ error: P1700: head mismatch 'foo' vs 'boo'
  %%   | Related info: 0:37-40 Mismatched clause name
+ %%   | 💡 Fix head mismatch
     boo(1) -> 2;
     boo(2) -> 3.
             "#,
@@ -559,8 +561,9 @@ mod tests {
        F = fun
            (0) -> ok;
            A(N) -> ok
-        %% ^ 💡 error: P1700: head mismatch 'A' vs ''
-        %% | Related info: 0:44-53 Mismatched clause name
+   %%      ^ error: P1700: head mismatch 'A' vs ''
+   %%      | Related info: 0:44-53 Mismatched clause name
+   %%      | 💡 Fix head mismatch
        end,
        F().
             "#,
@@ -603,8 +606,9 @@ mod tests {
     -include("helpers.hrl").
     foo(0) -> ?HELPER;
     boo(1) -> 2.
- %% ^^^ 💡 error: P1700: head mismatch 'boo' vs 'foo'
- %%   | Related info: 1:52-55 Mismatched clause name
+%%  ^^^ error: P1700: head mismatch 'boo' vs 'foo'
+%%    | Related info: 1:52-55 Mismatched clause name
+%%    | 💡 Fix head mismatch
             "#,
         );
     }

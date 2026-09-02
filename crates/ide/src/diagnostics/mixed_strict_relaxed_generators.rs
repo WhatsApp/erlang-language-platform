@@ -162,7 +162,8 @@ mod tests {
             //- /src/test.erl
             -module(test).
             test() -> [Y || Y <- [a] && Y <:- [b]].
-            %%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%                                   | 💡 <suppression>
             "#,
         )
     }
@@ -174,7 +175,8 @@ mod tests {
             //- /src/test.erl
             -module(test).
             test() -> [Y || Y <:- [a] && Y <- [b]].
-            %%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%                                   | 💡 <suppression>
             "#,
         )
     }
@@ -186,7 +188,8 @@ mod tests {
             //- /src/test.erl
             -module(test).
             test() -> [X || X <- [1] && Y <:- [2] && Z <- [3]].
-            %%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%                                               | 💡 <suppression>
             "#,
         )
     }
@@ -224,7 +227,8 @@ mod tests {
             //- /src/test.erl
             -module(test).
             test() -> << <<X, Y>> || <<X>> <= <<1,2>> && <<Y>> <:= <<3,4>> >>.
-            %%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%                                                              | 💡 <suppression>
             "#,
         )
     }
@@ -262,7 +266,8 @@ mod tests {
             //- /src/test.erl
             -module(test).
             test(M1, M2) -> [{K1, K2} || K1 := _V1 <- M1 && K2 := _V2 <:- M2].
-            %%              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%                                                              | 💡 <suppression>
             "#,
         )
     }
@@ -274,7 +279,8 @@ mod tests {
             //- /src/test.erl
             -module(test).
             test(M1, M2) -> #{K1 => K2 || K1 := _V1 <- M1 && K2 := _V2 <:- M2}.
-            %%              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%                                                               | 💡 <suppression>
             "#,
         )
     }
@@ -301,7 +307,8 @@ mod tests {
             //- /src/test.erl
             -module(test).
             test(Map) -> [{X, K} || X <:- [1,2] && K := _V <- Map].
-            %%           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%                                                   | 💡 <suppression>
             "#,
         )
     }
@@ -313,7 +320,8 @@ mod tests {
             //- /src/test.erl
             -module(test).
             test(Map) -> [{X, K} || X <- [1,2] && K := _V <:- Map].
-            %%           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%                                                   | 💡 <suppression>
             "#,
         )
     }
@@ -325,7 +333,8 @@ mod tests {
             //- /src/test.erl
             -module(test).
             test() -> [{X, Y} || X <- [1,2] && <<Y>> <:= <<3,4>>].
-            %%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%                                                  | 💡 <suppression>
             "#,
         )
     }
@@ -348,7 +357,8 @@ mod tests {
             //- /src/test.erl
             -module(test).
             test(M) -> [{X, Y, K} || X <- [1] && <<Y>> <:= <<2>> && K := _V <- M].
-            %%         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%                                                                  | 💡 <suppression>
             "#,
         )
     }
@@ -401,7 +411,8 @@ mod tests {
             //- /src/test.erl
             -module(test).
             test() -> [[Y || Y <- [a] && Y <:- [b]] || _ <- [1]].
-            %%         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0063: Mixing strict and relaxed generators in a zip generator can cause unexpected behavior.
+            %%                                    | 💡 <suppression>
             "#,
         )
     }

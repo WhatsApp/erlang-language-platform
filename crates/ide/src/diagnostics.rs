@@ -3598,7 +3598,8 @@ foo() -> XX 3.0.
 
             do_foo() ->
               X = foo:bar(),
-            %%    ^^^^^^^^^ 💡 weak: ad-hoc:foo:bar/0: 'foo:bar/0' called
+            %%    ^^^^^^^^^ weak: ad-hoc:foo:bar/0: 'foo:bar/0' called
+            %%            | 💡 Replace call to '"foo:bar/0"' with ok
               X.
             //- /src/foo.erl
             -module(foo).
@@ -3652,7 +3653,8 @@ foo() -> XX 3.0.
         check_diagnostics(
             r#"
   baz(1)->4.
-%%^^^^^^^^^^ 💡 error: L1201: no module definition
+%%^^^^^^^^^^ error: L1201: no module definition
+%%         | 💡 <suppression>
   foo(2)->3.
 "#,
         );
@@ -3679,10 +3681,12 @@ foo() -> XX 3.0.
         check_diagnostics(
             r#"
  %% elp:ignore L1201
-%%             ^^^^^ 💡 warning: W0081: Redundant suppression: no `L1201 (missing_module)` diagnostic in suppressed range
+%%             ^^^^^ warning: W0081: Redundant suppression: no `L1201 (missing_module)` diagnostic in suppressed range
+%%                 | 💡 Delete redundant suppression
 
   baz(1)->4.
-%%^^^^^^^^^^ 💡 error: L1201: no module definition
+%%^^^^^^^^^^ error: L1201: no module definition
+%%         | 💡 <suppression>
   foo(2)->3.
 "#,
         );
@@ -3696,7 +3700,9 @@ foo() -> XX 3.0.
 
              baz()->
                Foo = 1,
-             %%^^^ 💡 warning: W0007: match is redundant
+             %%^^^ warning: W0007: match is redundant
+             %%  | 💡 Remove match
+             %%  | 💡 <suppression>
                % elp:ignore W0007
                Bar = 2,
                ok.
@@ -3716,12 +3722,17 @@ foo() -> XX 3.0.
 
              baz()->
                Foo = 1,
-             %%^^^ 💡 warning: W0007: match is redundant
+             %%^^^ warning: W0007: match is redundant
+             %%  | 💡 Remove match
+             %%  | 💡 <suppression>
                % elp:ignore W0007
-             %%             ^^^^^ 💡 warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+             %%             ^^^^^ warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+             %%                 | 💡 Delete redundant suppression
 
                Bar = 2,
-             %%^^^ 💡 warning: W0007: match is redundant
+             %%^^^ warning: W0007: match is redundant
+             %%  | 💡 Remove match
+             %%  | 💡 <suppression>
                ok.
              "#,
         );
@@ -4117,7 +4128,9 @@ foo() -> XX 3.0.
 
              baz()->
                Fo~o = 1.
-             %%^^^ 💡 warning: W0007: match is redundant
+             %%^^^ warning: W0007: match is redundant
+             %%  | 💡 Remove match
+             %%  | 💡 <suppression>
              "#,
             expect![[r#"
              -module(main).
@@ -4138,7 +4151,9 @@ foo() -> XX 3.0.
 
              baz()->
                Fo~o = 1.
-             %%^^^^^^^ 💡 warning: match is redundant
+             %%^^^ warning: W0007: match is redundant
+             %%  | 💡 Remove match
+             %%  | 💡 <suppression>
              "#,
             expect![[r#"
              -module(main).
@@ -4160,7 +4175,9 @@ foo() -> XX 3.0.
 
                 -spec baz() -> ok.
                 baz() -> something_else.
-                %%       ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
+            %%           ^^^^^^^^^^^^^^ error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
+            %%                        | 💡 Update returned value to 'ok'
+            %%                        | 💡 Update function spec to return 'something_else'
             "#,
         );
     }
@@ -4477,7 +4494,8 @@ foo() -> XX 3.0.
             -spec error() -> ok.
             error() ->
                 erlang:garbage_collect().
-            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 error: W0047: Avoid forcing garbage collection.
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ error: W0047: Avoid forcing garbage collection.
+            %%                       | 💡 <suppression>
             //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
             -module(erlang).
             -export([garbage_collect/0]).
@@ -4515,7 +4533,8 @@ foo() -> XX 3.0.
 
             warning() ->
                 erlang:garbage_collect().
-            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ warning: W0047: Avoid forcing garbage collection.
+            %%                       | 💡 <suppression>
             //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
             -module(erlang).
             -export([garbage_collect/0]).
@@ -4554,7 +4573,8 @@ foo() -> XX 3.0.
 
             warning() ->
                 erlang:garbage_collect().
-            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ warning: W0047: Avoid forcing garbage collection.
+            %%                       | 💡 <suppression>
             //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
             -module(erlang).
             -export([garbage_collect/0]).
@@ -4633,7 +4653,8 @@ foo() -> XX 3.0.
 
             warning() ->
                 erlang:garbage_collect().
-            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ warning: W0047: Avoid forcing garbage collection.
+            %%                       | 💡 <suppression>
             //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
             -module(erlang).
             -export([garbage_collect/0]).
@@ -4791,7 +4812,8 @@ foo() -> XX 3.0.
 
             warning() ->
                 erlang:garbage_collect().
-            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ warning: W0047: Avoid forcing garbage collection.
+            %%                       | 💡 <suppression>
             //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
             -module(erlang).
             -export([garbage_collect/0]).
@@ -4812,7 +4834,8 @@ foo() -> XX 3.0.
 
             warning() ->
                 erlang:garbage_collect().
-            %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ warning: W0047: Avoid forcing garbage collection.
+            %%                       | 💡 <suppression>
             //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
             -module(erlang).
             -export([garbage_collect/0]).
@@ -5106,7 +5129,9 @@ foo() -> ?UNDEFINED_MACRO.
             %% Manual section - diagnostics SHOULD be reported
             manual_fun() ->
                 0 + 123.
-             %% ^^^^^^^ 💡 warning: W0019: Can be simplified to `123`.
+             %% ^^^^^^^ warning: W0019: Can be simplified to `123`.
+             %%        | 💡 Replace by `123`
+             %%        | 💡 <suppression>
 
             % END MANUAL SECTION
 
@@ -5147,7 +5172,9 @@ foo() -> ?UNDEFINED_MACRO.
             %% Manual section - diagnostics reported WITH fixes (💡)
             manual_fun() ->
                 0 + 123.
-             %% ^^^^^^^ 💡 warning: W0019: Can be simplified to `123`.
+             %% ^^^^^^^ warning: W0019: Can be simplified to `123`.
+             %%        | 💡 Replace by `123`
+             %%        | 💡 <suppression>
 
             % END MANUAL SECTION
 

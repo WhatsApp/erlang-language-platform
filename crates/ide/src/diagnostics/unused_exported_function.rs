@@ -256,7 +256,9 @@ mod tests {
 -export([foo/0]).
 
    foo() -> ok.
-%% ^^^ 💡 warning: W0077: Exported function foo/0 is not used anywhere else in the codebase.
+%% ^^^ warning: W0077: Exported function foo/0 is not used anywhere else in the codebase.
+%%   | 💡 Remove unused function foo/0
+%%   | 💡 <suppression>
             "#,
         );
     }
@@ -349,9 +351,13 @@ module_info(_) -> [].
 -compile([export_all]).
 
    foo() -> ok.
-%% ^^^ 💡 warning: W0077: Exported function foo/0 is not used anywhere else in the codebase.
+%% ^^^ warning: W0077: Exported function foo/0 is not used anywhere else in the codebase.
+%%   | 💡 Remove unused function foo/0
+%%   | 💡 <suppression>
    bar() -> ok.
-%% ^^^ 💡 warning: W0077: Exported function bar/0 is not used anywhere else in the codebase.
+%% ^^^ warning: W0077: Exported function bar/0 is not used anywhere else in the codebase.
+%%   | 💡 Remove unused function bar/0
+%%   | 💡 <suppression>
             "#,
         );
     }
@@ -403,7 +409,9 @@ my_test(_Config) -> ok.
 -export([helper/0]).
 
    helper() -> ok.
-%% ^^^^^^ 💡 warning: W0077: Exported function helper/0 is not used anywhere else in the codebase.
+%% ^^^^^^ warning: W0077: Exported function helper/0 is not used anywhere else in the codebase.
+%%      | 💡 Remove unused function helper/0
+%%      | 💡 <suppression>
             "#,
         );
     }

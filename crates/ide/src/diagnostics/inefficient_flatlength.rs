@@ -126,7 +126,9 @@ mod tests {
          -module(inefficient_flatlength).
 
          fn(NestedList) -> length(lists:flatten(NestedList)).
-         %%                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0028: Unnecessary intermediate flat-list allocated.
+         %%                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0028: Unnecessary intermediate flat-list allocated.
+         %%                                                | 💡 Rewrite to use lists:flatlength/1
+         %%                                                | 💡 <suppression>
             "#,
         )
     }

@@ -139,7 +139,8 @@ mod tests {
             r#"
 //- /include/main.hrl
 -define(MY_MACRO, #my_record{}).
-%%                ^^^^^^^^^^ 💡 warning: W0015: Record 'my_record' not defined in this context
+%%                ^^^^^^^^^^ warning: W0015: Record 'my_record' not defined in this context
+%%                         | 💡 <suppression>
             "#,
         )
     }
@@ -174,7 +175,8 @@ mod tests {
             r#"
 //- /include/main.hrl
 -define(MY_MACRO(Record), Record#my_record.my_field).
-%%                              ^^^^^^^^^^ 💡 warning: W0015: Record 'my_record' not defined in this context
+%%                              ^^^^^^^^^^ warning: W0015: Record 'my_record' not defined in this context
+%%                                       | 💡 <suppression>
             "#,
         )
     }
@@ -185,7 +187,8 @@ mod tests {
             r#"
 //- /include/main.hrl
 -define(MY_MACRO, #my_record.my_field).
-%%                ^^^^^^^^^^ 💡 warning: W0015: Record 'my_record' not defined in this context
+%%                ^^^^^^^^^^ warning: W0015: Record 'my_record' not defined in this context
+%%                         | 💡 <suppression>
             "#,
         )
     }
@@ -196,7 +199,8 @@ mod tests {
             r#"
 //- /include/main.hrl
 -define(MY_MACRO(Record), Record#my_record{my_field = 42}).
-%%                              ^^^^^^^^^^ 💡 warning: W0015: Record 'my_record' not defined in this context
+%%                              ^^^^^^^^^^ warning: W0015: Record 'my_record' not defined in this context
+%%                                       | 💡 <suppression>
             "#,
         )
     }

@@ -476,7 +476,8 @@ mod tests {
 -module(main).
 
 % elp:ignore W0007
-%%           ^^^^^ 💡 warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%           ^^^^^ warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%               | 💡 Delete redundant suppression
 test() ->
   ok.
 "#,
@@ -509,7 +510,8 @@ baz() ->
 -module(main).
 
 % elp:ignore trivial_match
-%%           ^^^^^^^^^^^^^ 💡 warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%           ^^^^^^^^^^^^^ warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%                       | 💡 Delete redundant suppression
 test() ->
   ok.
 "#,
@@ -545,8 +547,10 @@ baz() ->
 
 baz() ->
   % elp:ignore W0007 statement_has_no_effect
-%%             ^^^^^ 💡 warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
-%%                   ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0081: Redundant suppression: no `W0006 (statement_has_no_effect)` diagnostic in suppressed range
+%%             ^^^^^ warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%                 | 💡 Delete redundant suppression
+%%                   ^^^^^^^^^^^^^^^^^^^^^^^ warning: W0081: Redundant suppression: no `W0006 (statement_has_no_effect)` diagnostic in suppressed range
+%%                                         | 💡 Delete redundant suppression
   Bar = 2,
   Bar.
 "#,
@@ -563,7 +567,8 @@ baz() ->
 -module(main).
 
 % elp:ignore
-%%<^^^^^^^^^ 💡 warning: W0081: Redundant suppression: this annotation does not suppress any diagnostic.
+%%<^^^^^^^^^ warning: W0081: Redundant suppression: this annotation does not suppress any diagnostic.
+%%         | 💡 Delete redundant suppression
 test() ->
   ok.
 "#,
@@ -580,9 +585,12 @@ test() ->
 
 baz() ->
   % elp:ignore W0007
-%%             ^^^^^ 💡 warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%             ^^^^^ warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%                 | 💡 Delete redundant suppression
   ok,
-%%^^ 💡 warning: W0006: this statement has no effect
+%%^^ warning: W0006: this statement has no effect
+%% | 💡 Remove redundant statement
+%% | 💡 <suppression>
   Bar = 2,
   Bar.
 "#,
@@ -596,7 +604,8 @@ baz() ->
 -module(main).
 
 % elp:fixme W0007
-%%          ^^^^^ 💡 warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%          ^^^^^ warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%              | 💡 Delete redundant suppression
 test() ->
   ok.
 "#,
@@ -630,7 +639,8 @@ test() ->
 
 baz() ->
   % elp:ignore W0007 W0006
-%%             ^^^^^ 💡 warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%             ^^^^^ warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%                 | 💡 Remove redundant code `W0007`
   ok,
   Bar = 2,
   Bar.
@@ -648,8 +658,10 @@ baz() ->
 
 baz() ->
   % elp:ignore W0007 W0006
-%%             ^^^^^ 💡 warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
-%%                   ^^^^^ 💡 warning: W0081: Redundant suppression: no `W0006 (statement_has_no_effect)` diagnostic in suppressed range
+%%             ^^^^^ warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%                 | 💡 Delete redundant suppression
+%%                   ^^^^^ warning: W0081: Redundant suppression: no `W0006 (statement_has_no_effect)` diagnostic in suppressed range
+%%                       | 💡 Delete redundant suppression
   Bar = 2,
   Bar.
 "#,
@@ -693,7 +705,8 @@ foo() -> ok.
 -else.
 foo() ->
   % elp:ignore W0007
-%%             ^^^^^ 💡 warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%             ^^^^^ warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%                 | 💡 Delete redundant suppression
   ok.
 -endif.
 "#,
@@ -871,7 +884,8 @@ test() ->
 -module(main).
 
 % elp:ignore W0007
-%%           ^^^^^ 💡 warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%           ^^^^^ warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%               | 💡 Delete redundant suppression
 test() ->
   ok.
 "#,

@@ -177,7 +177,9 @@ mod tests {
     ok.
   main() ->
     not_ok_to_use().
-%%  ^^^^^^^^^^^^^ 💡 warning: W0016: Function 'not_ok_to_use/0' is deprecated.
+%%  ^^^^^^^^^^^^^ warning: W0016: Function 'not_ok_to_use/0' is deprecated.
+%%              | 💡 Add xref ignore for all calls to this function
+%%              | 💡 <suppression>
             "#,
         )
     }
@@ -197,7 +199,9 @@ mod tests {
 
   main() ->
     b:not_ok_to_use().
-%%  ^^^^^^^^^^^^^^^ 💡 warning: W0016: Function 'not_ok_to_use/0' is deprecated.
+%%  ^^^^^^^^^^^^^^^ warning: W0016: Function 'not_ok_to_use/0' is deprecated.
+%%                | 💡 Add xref ignore for all calls to this function
+%%                | 💡 <suppression>
             "#,
         )
     }
@@ -211,9 +215,13 @@ mod tests {
   -deprecated({do, 0}).
   main() ->
     do(),
-%%  ^^ 💡 warning: W0016: Function 'do/0' is deprecated.
+%%  ^^ warning: W0016: Function 'do/0' is deprecated.
+%%   | 💡 Add xref ignore for all calls to this function
+%%   | 💡 <suppression>
     ?LAZY(do()).
-%%  ^^^^^^^^^^^ 💡 warning: W0016: Function 'do/0' is deprecated.
+%%  ^^^^^^^^^^^ warning: W0016: Function 'do/0' is deprecated.
+%%            | 💡 Add xref ignore for all calls to this function
+%%            | 💡 <suppression>
   do() ->
     ok.
             "#,
@@ -235,8 +243,10 @@ mod tests {
 
   main() ->
     b:not_ok_to_use().
-%%  ^^^^^^^^^^^^^^^ 💡 warning: W0016: Function 'not_ok_to_use/0' is deprecated.
+%%  ^^^^^^^^^^^^^^^ warning: W0016: Function 'not_ok_to_use/0' is deprecated.
 %%                | Cause I said so.
+%%                | 💡 Add xref ignore for all calls to this function
+%%                | 💡 <suppression>
             "#,
         )
     }

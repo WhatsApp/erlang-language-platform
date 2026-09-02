@@ -125,7 +125,8 @@ mod tests {
              tt(X) ->
                  A = #my_rec{field1 = 4, field2 = 2},
                  {my_rec, Field1, _} = X,
-              %%  ^^^^^^ 💡 warning: W0027: Matching record 'my_rec' as a tuple.
+             %%   ^^^^^^ warning: W0027: Matching record 'my_rec' as a tuple.
+             %%        | 💡 <suppression>
                  {A, Field1}.
             "#,
         );
@@ -154,7 +155,8 @@ mod tests {
 
              -record(my_rec, {field1, field2}).
              tt({my_rec, Field1, _}) ->
-              %% ^^^^^^ 💡 warning: W0027: Matching record 'my_rec' as a tuple.
+             %%  ^^^^^^ warning: W0027: Matching record 'my_rec' as a tuple.
+             %%       | 💡 <suppression>
                  A = #my_rec{field1 = 4, field2 = 2},
                  {A, Field1}.
             "#,

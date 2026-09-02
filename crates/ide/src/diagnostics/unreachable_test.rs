@@ -127,7 +127,8 @@ mod tests {
    a(_Config) ->
      ok.
    b(_Config) ->
-%% ^ 💡 error: W0008: Unreachable test (b/1)
+%% ^ error: W0008: Unreachable test (b/1)
+%% | 💡 <suppression>
      ok.
             "#,
         );
@@ -153,7 +154,8 @@ mod tests {
    a(_Config) ->
      ok.
    b(_Config) ->
-%% ^ 💡 error: W0008: Unreachable test (b/1)
+%% ^ error: W0008: Unreachable test (b/1)
+%% | 💡 <suppression>
      ok.
 //- /app_b/test/dup_SUITE.erl app:app_b extra:test
    -module(dup_SUITE).
@@ -163,7 +165,8 @@ mod tests {
    c(_Config) ->
      ok.
    d(_Config) ->
-%% ^ 💡 error: W0008: Unreachable test (d/1)
+%% ^ error: W0008: Unreachable test (d/1)
+%% | 💡 <suppression>
      ok.
             "#,
         );
@@ -184,7 +187,8 @@ mod tests {
    a(_Config) ->
      ok.
    b(_Config) ->
-%% ^ 💡 error: W0008: Unreachable test (b/1)
+%% ^ error: W0008: Unreachable test (b/1)
+%% | 💡 <suppression>
      ok.
             "#,
         );
@@ -206,7 +210,8 @@ mod tests {
    a(_Config) ->
      ok.
    b(_Config) ->
-%% ^ 💡 error: W0008: Unreachable test (b/1)
+%% ^ error: W0008: Unreachable test (b/1)
+%% | 💡 <suppression>
      ok.
             "#,
         );
@@ -227,7 +232,8 @@ mod tests {
    b(_Config) ->
      ok.
    c(_Config) ->
-%% ^ 💡 error: W0008: Unreachable test (c/1)
+%% ^ error: W0008: Unreachable test (c/1)
+%% | 💡 <suppression>
      ok.
             "#,
         );
@@ -248,7 +254,8 @@ mod tests {
    b(_Config) ->
      ok.
    c(_Config) ->
-%% ^ 💡 error: W0008: Unreachable test (c/1)
+%% ^ error: W0008: Unreachable test (c/1)
+%% | 💡 <suppression>
      ok.
             "#,
         );
@@ -266,10 +273,12 @@ mod tests {
     a(_Config) ->
       ok.
     b(_Config) ->
- %% ^ 💡 error: W0008: Unreachable test (b/1)
+%%  ^ error: W0008: Unreachable test (b/1)
+%%  | 💡 <suppression>
       ok.
     c(_Config) ->
- %% ^ 💡 error: W0008: Unreachable test (c/1)
+%%  ^ error: W0008: Unreachable test (c/1)
+%%  | 💡 <suppression>
       ok.
      "#,
         );
@@ -324,7 +333,8 @@ c(_Config) ->
    a(_Config) ->
      ok.
    b(_Config) ->
-%% ^ 💡 error: W0008: Unreachable test (b/1)
+%% ^ error: W0008: Unreachable test (b/1)
+%% | 💡 <suppression>
      ok.
 //- /my_app/src/my_behaviour.erl
 -module(my_behaviour).

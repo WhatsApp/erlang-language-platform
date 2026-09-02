@@ -264,7 +264,8 @@ mod tests {
     -module(main).
     -compile(warn_missing_spec_all).
     -oncall("an_oncall").
-%%  ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0084: `-oncall` must appear before `-compile`.
+%%  ^^^^^^^^^^^^^^^^^^^^^ warning: W0084: `-oncall` must appear before `-compile`.
+%%                      | 💡 <suppression>
 "#,
         )
     }
@@ -277,7 +278,8 @@ mod tests {
     -module(main).
     -export([foo/0]).
     -behaviour(gen_server).
-%%  ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0084: `-behaviour` must appear before `-export`.
+%%  ^^^^^^^^^^^^^^^^^^^^^^^ warning: W0084: `-behaviour` must appear before `-export`.
+%%                        | 💡 <suppression>
     foo() -> ok.
 "#,
         )
@@ -291,7 +293,8 @@ mod tests {
     -module(main).
     -define(BAZ, 1).
     -include("header.hrl").
-%%  ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0084: `-include` must appear before `-define`.
+%%  ^^^^^^^^^^^^^^^^^^^^^^^ warning: W0084: `-include` must appear before `-define`.
+%%                        | 💡 <suppression>
 //- /src/header.hrl
 "#,
         )
@@ -376,7 +379,8 @@ mod tests {
     -export([foo/0]).
     -include("header.hrl").
     -oncall("an_oncall").
-%%  ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0084: `-oncall` must appear before `-export`.
+%%  ^^^^^^^^^^^^^^^^^^^^^ warning: W0084: `-oncall` must appear before `-export`.
+%%                      | 💡 <suppression>
     foo() -> ok.
 //- /src/header.hrl
 "#,
@@ -410,7 +414,8 @@ mod tests {
     -module(main).
     -export([foo/0]).
     -my_attr(something).
-%%  ^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0084: `-my_attr` must appear before `-export`.
+%%  ^^^^^^^^^^^^^^^^^^^^ warning: W0084: `-my_attr` must appear before `-export`.
+%%                     | 💡 <suppression>
     foo() -> ok.
 "#,
             &filter,
@@ -429,7 +434,8 @@ mod tests {
     -module(main).
     -export([foo/0]).
     -import(lists, [map/2]).
-%%  ^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0084: `-import` must appear before `-export`.
+%%  ^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0084: `-import` must appear before `-export`.
+%%                         | 💡 <suppression>
     foo() -> ok.
 "#,
             &filter,

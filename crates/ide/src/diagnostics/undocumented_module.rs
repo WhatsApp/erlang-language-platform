@@ -132,7 +132,9 @@ mod tests {
         check_diagnostics(
             r#"
      -module(main).
-          %% ^^^^ 💡 weak: W0046: The module is not documented.
+     %%      ^^^^ weak: W0046: The module is not documented.
+     %%         | 💡 Add `-moduledoc false.` attribute
+     %%         | 💡 <suppression>
          "#,
         )
     }
@@ -177,7 +179,9 @@ mod tests {
         check_diagnostics(
             r#"
      % @doc
-    %% ^^^^ 💡 warning: W0038: EDoc style comments are deprecated. Please use Markdown instead.
+    %% ^^^^ warning: W0038: EDoc style comments are deprecated. Please use Markdown instead.
+    %%    | 💡 Convert to Markdown
+    %%    | 💡 <suppression>
      % This is a module
      -module(main).
          "#,

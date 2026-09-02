@@ -53,7 +53,8 @@ mod tests {
 
   error() ->
       erlang:garbage_collect().
-  %%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
+  %%  ^^^^^^^^^^^^^^^^^^^^^^ warning: W0047: Avoid forcing garbage collection.
+  %%                       | 💡 <suppression>
   //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
   -module(erlang).
   -export([garbage_collect/0]).
@@ -72,7 +73,8 @@ mod tests {
 
   error() ->
       garbage_collect().
-  %%  ^^^^^^^^^^^^^^^ 💡 warning: W0047: Avoid forcing garbage collection.
+  %%  ^^^^^^^^^^^^^^^ warning: W0047: Avoid forcing garbage collection.
+  %%                | 💡 <suppression>
   //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
   -module(erlang).
   -export([garbage_collect/0]).

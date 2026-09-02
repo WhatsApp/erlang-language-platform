@@ -102,7 +102,9 @@ mod tests {
 
         hex(X) ->
             string:lowercase(binary:encode_hex(X)).
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0072: Use `binary:encode_hex/2` with a case argument instead of wrapping with `string:lowercase/1`.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0072: Use `binary:encode_hex/2` with a case argument instead of wrapping with `string:lowercase/1`.
+        %%                                       | 💡 Use binary:encode_hex/2 with case argument
+        %%                                       | 💡 <suppression>
            "#,
         )
     }
@@ -116,7 +118,9 @@ mod tests {
 
         hex(Data) ->
             string:lowercase(binary:encode_hex(crypto:hash(sha256, Data))).
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0072: Use `binary:encode_hex/2` with a case argument instead of wrapping with `string:lowercase/1`.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0072: Use `binary:encode_hex/2` with a case argument instead of wrapping with `string:lowercase/1`.
+        %%                                                               | 💡 Use binary:encode_hex/2 with case argument
+        %%                                                               | 💡 <suppression>
            "#,
         )
     }
@@ -197,7 +201,9 @@ mod tests {
         -module(test).
         -include_lib("assert/include/assert.hrl").
         f(X) -> ?assert(string:lowercase(binary:encode_hex(X))).
-        %%              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0072: Use `binary:encode_hex/2` with a case argument instead of wrapping with `string:lowercase/1`.
+        %%              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0072: Use `binary:encode_hex/2` with a case argument instead of wrapping with `string:lowercase/1`.
+        %%                                                   | 💡 Use binary:encode_hex/2 with case argument
+        %%                                                   | 💡 <suppression>
            "#,
         )
     }

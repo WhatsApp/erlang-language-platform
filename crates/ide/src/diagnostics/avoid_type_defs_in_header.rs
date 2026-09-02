@@ -82,9 +82,11 @@ mod tests {
             r#"
             //- /src/main.hrl
             -type my_type() :: term().
-            %%    ^^^^^^^ 💡 warning: W0083: Type definitions should live in modules, not header files.
+            %%    ^^^^^^^ warning: W0083: Type definitions should live in modules, not header files.
+            %%          | 💡 <suppression>
             -opaque my_opaque() :: term().
-            %%      ^^^^^^^^^ 💡 warning: W0083: Type definitions should live in modules, not header files.
+            %%      ^^^^^^^^^ warning: W0083: Type definitions should live in modules, not header files.
+            %%              | 💡 <suppression>
             -record(my_record, {field :: term()}).
             -define(MY_MACRO, 42).
             "#,
@@ -117,7 +119,8 @@ mod tests {
             test() -> ok.
             //- /src/types.hrl
             -type my_type() :: term().
-            %%    ^^^^^^^ 💡 warning: W0083: Type definitions should live in modules, not header files.
+            %%    ^^^^^^^ warning: W0083: Type definitions should live in modules, not header files.
+            %%          | 💡 <suppression>
             "#,
         )
     }

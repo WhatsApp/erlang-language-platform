@@ -236,8 +236,12 @@ mod tests {
             -export([test/1]).
 
             -spec test(any()) -> any().
-            %%         ^^^ 💡 warning: W0082: Prefer `term()` over `any()`.
-            %%                   ^^^ 💡 warning: W0082: Prefer `term()` over `any()`.
+            %%         ^^^ warning: W0082: Prefer `term()` over `any()`.
+            %%           | 💡 Replace `any()` with `term()`
+            %%           | 💡 <suppression>
+            %%                   ^^^ warning: W0082: Prefer `term()` over `any()`.
+            %%                     | 💡 Replace `any()` with `term()`
+            %%                     | 💡 <suppression>
             test(X) -> X.
             "#,
         )
@@ -251,11 +255,17 @@ mod tests {
             -module(main).
 
             -type my_type() :: any().
-            %%                 ^^^ 💡 warning: W0082: Prefer `term()` over `any()`.
+            %%                 ^^^ warning: W0082: Prefer `term()` over `any()`.
+            %%                   | 💡 Replace `any()` with `term()`
+            %%                   | 💡 <suppression>
             -opaque my_opaque() :: {ok, any()} | error.
-            %%                          ^^^ 💡 warning: W0082: Prefer `term()` over `any()`.
+            %%                          ^^^ warning: W0082: Prefer `term()` over `any()`.
+            %%                            | 💡 Replace `any()` with `term()`
+            %%                            | 💡 <suppression>
             -record(my_record, {field :: any()}).
-            %%                           ^^^ 💡 warning: W0082: Prefer `term()` over `any()`.
+            %%                           ^^^ warning: W0082: Prefer `term()` over `any()`.
+            %%                             | 💡 Replace `any()` with `term()`
+            %%                             | 💡 <suppression>
             "#,
         )
     }
@@ -268,7 +278,9 @@ mod tests {
             -module(main).
 
             -callback handle(any()) -> ok.
-            %%               ^^^ 💡 warning: W0082: Prefer `term()` over `any()`.
+            %%               ^^^ warning: W0082: Prefer `term()` over `any()`.
+            %%                 | 💡 Replace `any()` with `term()`
+            %%                 | 💡 <suppression>
             "#,
         )
     }
@@ -279,7 +291,9 @@ mod tests {
             r#"
             //- /src/main.hrl
             -record(my_record, {field :: any()}).
-            %%                           ^^^ 💡 warning: W0082: Prefer `term()` over `any()`.
+            %%                           ^^^ warning: W0082: Prefer `term()` over `any()`.
+            %%                             | 💡 Replace `any()` with `term()`
+            %%                             | 💡 <suppression>
             "#,
         )
     }
@@ -310,8 +324,10 @@ mod tests {
             -module(main).
             -define(T, any()).
             -spec test(?T) -> ?T.
-            %%         ^^ 💡 warning: W0082: Prefer `term()` over `any()`.
-            %%                ^^ 💡 warning: W0082: Prefer `term()` over `any()`.
+            %%         ^^ warning: W0082: Prefer `term()` over `any()`.
+            %%          | 💡 <suppression>
+            %%                ^^ warning: W0082: Prefer `term()` over `any()`.
+            %%                 | 💡 <suppression>
             test(X) -> X.
             "#,
         )
@@ -325,8 +341,10 @@ mod tests {
             -module(main).
             -include("defs.hrl").
             -spec test(?T) -> ?T.
-            %%         ^^ 💡 warning: W0082: Prefer `term()` over `any()`.
-            %%                ^^ 💡 warning: W0082: Prefer `term()` over `any()`.
+            %%         ^^ warning: W0082: Prefer `term()` over `any()`.
+            %%          | 💡 <suppression>
+            %%                ^^ warning: W0082: Prefer `term()` over `any()`.
+            %%                 | 💡 <suppression>
             test(X) -> X.
             //- /src/defs.hrl
             -define(T, any()).
@@ -344,7 +362,8 @@ mod tests {
             -module(main).
             -define(PAIR, {any(), any()}).
             -spec test() -> ?PAIR.
-            %%              ^^^^^ 💡 warning: W0082: Prefer `term()` over `any()`.
+            %%              ^^^^^ warning: W0082: Prefer `term()` over `any()`.
+            %%                  | 💡 <suppression>
             test() -> {ok, ok}.
             "#,
         )
@@ -359,7 +378,9 @@ mod tests {
             -module(main).
             -define(WRAP(X), X).
             -spec test(?WRAP(any())) -> ok.
-            %%               ^^^ 💡 warning: W0082: Prefer `term()` over `any()`.
+            %%               ^^^ warning: W0082: Prefer `term()` over `any()`.
+            %%                 | 💡 Replace `any()` with `term()`
+            %%                 | 💡 <suppression>
             test(_) -> ok.
             "#,
         )

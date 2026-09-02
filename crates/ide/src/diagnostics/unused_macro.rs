@@ -144,7 +144,9 @@ mod tests {
             r#"
 -module(main).
 -define(MEANING_OF_LIFE, 42).
-    %%  ^^^^^^^^^^^^^^^ 💡 warning: W0002: Unused macro (MEANING_OF_LIFE)
+%%      ^^^^^^^^^^^^^^^ warning: W0002: Unused macro (MEANING_OF_LIFE)
+%%                    | 💡 Delete unused macro (MEANING_OF_LIFE)
+%%                    | 💡 <suppression>
             "#,
         );
         check_fix(
@@ -187,9 +189,13 @@ main() ->
 -module(main).
 -define(USED_MACRO, used_macro).
 -define(UNUSED_MACRO, unused_macro).
-     %% ^^^^^^^^^^^^ 💡 warning: W0002: Unused macro (UNUSED_MACRO)
+%%      ^^^^^^^^^^^^ warning: W0002: Unused macro (UNUSED_MACRO)
+%%                 | 💡 Delete unused macro (UNUSED_MACRO)
+%%                 | 💡 <suppression>
 -define(UNUSED_MACRO_WITH_ARG(C), C).
-     %% ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0002: Unused macro (UNUSED_MACRO_WITH_ARG/1)
+%%      ^^^^^^^^^^^^^^^^^^^^^ warning: W0002: Unused macro (UNUSED_MACRO_WITH_ARG/1)
+%%                          | 💡 Delete unused macro (UNUSED_MACRO_WITH_ARG/1)
+%%                          | 💡 <suppression>
 
 main() ->
   ?MOD:foo(),
@@ -255,7 +261,9 @@ main() -> ok.
 -module(main).
 -define(FOO, foo_no_args).
 -define(FOO(X), X).
-     %% ^^^ 💡 warning: W0002: Unused macro (FOO/1)
+%%      ^^^ warning: W0002: Unused macro (FOO/1)
+%%        | 💡 Delete unused macro (FOO/1)
+%%        | 💡 <suppression>
 main() ->
   ?FOO.
             "#,
@@ -279,7 +287,9 @@ main() ->
 -module(main).
 -include("main.hrl").
 -define(FOO, foo_no_args).
-     %% ^^^ 💡 warning: W0002: Unused macro (FOO)
+%%      ^^^ warning: W0002: Unused macro (FOO)
+%%        | 💡 Delete unused macro (FOO)
+%%        | 💡 <suppression>
 main() ->
   ?FOO(x).
             "#,
@@ -321,7 +331,9 @@ main() ->
 -module(foo).
 -include("foo.hrl").
 -define(BAR, 42).
-     %% ^^^ 💡 warning: W0002: Unused macro (BAR)
+%%      ^^^ warning: W0002: Unused macro (BAR)
+%%        | 💡 Delete unused macro (BAR)
+%%        | 💡 <suppression>
 main() ->
   ?A.
         "#,

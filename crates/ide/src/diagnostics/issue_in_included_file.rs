@@ -168,8 +168,9 @@ mod tests {
 //- /src/main.erl
 -module(main).
 -include("header.hrl").
-%%       ^^^^^^^^^^^^ 💡 warning: W0062: issue in included file: function call 'some_function' is not supported in preprocessor conditions
-%%                    | Related info: 0:3-20 function call 'some_function' is not supported in preprocessor conditions
+%%       ^^^^^^^^^^^^ warning: W0062: issue in included file: function call 'some_function' is not supported in preprocessor conditions
+%%                  | Related info: 0:3-20 function call 'some_function' is not supported in preprocessor conditions
+%%                  | 💡 <suppression>
 
 foo() -> ok.
 "#,
@@ -194,8 +195,9 @@ foo() -> ok.
 //- /src/main.erl
 -module(main).
 -include("header.hrl").
-%%       ^^^^^^^^^^^^ 💡 warning: W0062: issue in included file: the 'xor' operator is not supported in preprocessor conditions
-%%                    | Related info: 0:3-19 the 'xor' operator is not supported in preprocessor conditions
+%%       ^^^^^^^^^^^^ warning: W0062: issue in included file: the 'xor' operator is not supported in preprocessor conditions
+%%                  | Related info: 0:3-19 the 'xor' operator is not supported in preprocessor conditions
+%%                  | 💡 <suppression>
 
 foo() -> ok.
 "#,
@@ -220,8 +222,9 @@ foo() -> ok.
 //- /src/main.erl
 -module(main).
 -include("header.hrl").
-%%       ^^^^^^^^^^^^ 💡 warning: W0062: issue in included file: undefined macro 'UNDEFINED_MACRO' in preprocessor condition
-%%                    | Related info: 0:3-21 undefined macro 'UNDEFINED_MACRO' in preprocessor condition
+%%       ^^^^^^^^^^^^ warning: W0062: issue in included file: undefined macro 'UNDEFINED_MACRO' in preprocessor condition
+%%                  | Related info: 0:3-21 undefined macro 'UNDEFINED_MACRO' in preprocessor condition
+%%                  | 💡 <suppression>
 
 foo() -> ok.
 "#,
@@ -248,8 +251,9 @@ foo() -> ok.
 //- /src/main.erl
 -module(main).
 -include("header.hrl").
-%%       ^^^^^^^^^^^^ 💡 warning: W0062: issue in included file: function call 'some_function' is not supported in preprocessor conditions
-%%                    | Related info: 0:42-59 function call 'some_function' is not supported in preprocessor conditions
+%%       ^^^^^^^^^^^^ warning: W0062: issue in included file: function call 'some_function' is not supported in preprocessor conditions
+%%                  | Related info: 0:42-59 function call 'some_function' is not supported in preprocessor conditions
+%%                  | 💡 <suppression>
 
 foo() -> ok.
 "#,

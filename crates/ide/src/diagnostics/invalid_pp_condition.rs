@@ -125,7 +125,8 @@ mod tests {
 -module(main).
 
 -if(some_function()).
-%% ^^^^^^^^^^^^^^^^^ 💡 warning: W0061: function call 'some_function' is not supported in preprocessor conditions
+%% ^^^^^^^^^^^^^^^^^ warning: W0061: function call 'some_function' is not supported in preprocessor conditions
+%%                 | 💡 <suppression>
 -define(FOO, 1).
 -endif.
 
@@ -146,7 +147,8 @@ foo() -> ok.
 -module(main).
 
 -if(true xor false).
-%% ^^^^^^^^^^^^^^^^ 💡 warning: W0061: the 'xor' operator is not supported in preprocessor conditions
+%% ^^^^^^^^^^^^^^^^ warning: W0061: the 'xor' operator is not supported in preprocessor conditions
+%%                | 💡 <suppression>
 -define(FOO, 1).
 -endif.
 
@@ -167,7 +169,8 @@ foo() -> ok.
 -module(main).
 
 -if([1] ++ [2]).
-%% ^^^^^^^^^^^^ 💡 warning: W0061: list operations and send are not supported in preprocessor conditions
+%% ^^^^^^^^^^^^ warning: W0061: list operations and send are not supported in preprocessor conditions
+%%            | 💡 <suppression>
 -define(FOO, 1).
 -endif.
 
@@ -188,7 +191,8 @@ foo() -> ok.
 -module(main).
 
 -if(?UNDEFINED_MACRO).
-%% ^^^^^^^^^^^^^^^^^^ 💡 warning: W0061: undefined macro 'UNDEFINED_MACRO' in preprocessor condition
+%% ^^^^^^^^^^^^^^^^^^ warning: W0061: undefined macro 'UNDEFINED_MACRO' in preprocessor condition
+%%                  | 💡 <suppression>
 -define(FOO, 1).
 -endif.
 
@@ -209,7 +213,8 @@ foo() -> ok.
 -module(main).
 
 -if({1, 2}).
-%% ^^^^^^^^ 💡 warning: W0061: unsupported expression in preprocessor condition
+%% ^^^^^^^^ warning: W0061: unsupported expression in preprocessor condition
+%%        | 💡 <suppression>
 -define(FOO, 1).
 -endif.
 
@@ -230,7 +235,8 @@ foo() -> ok.
 -module(main).
 
 -if(defined(FOO, BAR)).
-%% ^^^^^^^^^^^^^^^^^^^ 💡 warning: W0061: defined() requires exactly one argument
+%% ^^^^^^^^^^^^^^^^^^^ warning: W0061: defined() requires exactly one argument
+%%                   | 💡 <suppression>
 -define(FOO, 1).
 -endif.
 
@@ -251,7 +257,8 @@ foo() -> ok.
 -module(main).
 
 -if(defined(123)).
-%% ^^^^^^^^^^^^^^ 💡 warning: W0061: defined() argument must be an atom or macro name
+%% ^^^^^^^^^^^^^^ warning: W0061: defined() argument must be an atom or macro name
+%%              | 💡 <suppression>
 -define(FOO, 1).
 -endif.
 
@@ -274,7 +281,8 @@ foo() -> ok.
 -ifdef(SOME_MACRO).
 -define(FOO, 1).
 -elif(some_function()).
-%%   ^^^^^^^^^^^^^^^^^ 💡 warning: W0061: function call 'some_function' is not supported in preprocessor conditions
+%%   ^^^^^^^^^^^^^^^^^ warning: W0061: function call 'some_function' is not supported in preprocessor conditions
+%%                   | 💡 <suppression>
 -define(FOO, 2).
 -endif.
 
@@ -295,7 +303,8 @@ foo() -> ok.
 -module(main).
 
 -if(lists:member(1, [1,2,3])).
-%% ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0061: function call 'lists:member' is not supported in preprocessor conditions
+%% ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0061: function call 'lists:member' is not supported in preprocessor conditions
+%%                          | 💡 <suppression>
 -define(FOO, 1).
 -endif.
 

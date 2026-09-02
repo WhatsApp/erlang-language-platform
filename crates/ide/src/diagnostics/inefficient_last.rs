@@ -182,7 +182,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(List) -> hd(lists:reverse(List)).
-         %%          ^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0029: Unnecessary intermediate reverse list allocated.
+         %%          ^^^^^^^^^^^^^^^^^^^^^^^ warning: W0029: Unnecessary intermediate reverse list allocated.
+         %%                                | 💡 Rewrite to use lists:last/1
+         %%                                | 💡 <suppression>
             "#,
         )
     }
@@ -215,7 +217,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(List) -> [LastElem|_] = lists:reverse(List), LastElem.
-         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0029: Unnecessary intermediate reverse list allocated.
+         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0029: Unnecessary intermediate reverse list allocated.
+         %%                                           | 💡 Rewrite to use lists:last/1
+         %%                                           | 💡 <suppression>
             "#,
         )
     }
@@ -261,7 +265,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(List) -> lists:nth(1, lists:reverse(List)).
-         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0029: Unnecessary intermediate reverse list allocated.
+         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0029: Unnecessary intermediate reverse list allocated.
+         %%                                          | 💡 Rewrite to use lists:last/1
+         %%                                          | 💡 <suppression>
             "#,
         )
     }

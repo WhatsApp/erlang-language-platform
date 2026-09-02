@@ -142,7 +142,9 @@ mod tests {
   main() ->
     dependency:exists(),
     dependency:private().
-%%  ^^^^^^^^^^^^^^^^^^ 💡 warning: W0026: Function 'dependency:private/0' is not exported.
+%%  ^^^^^^^^^^^^^^^^^^ warning: W0026: Function 'dependency:private/0' is not exported.
+%%                   | 💡 Export the function `private/0`
+%%                   | 💡 <suppression>
   exists() -> ok.
 //- /src/dependency.erl
   -module(dependency).
@@ -161,9 +163,13 @@ mod tests {
   -module(main).
   main() ->
     ?MODULE:private(),
-%%  ^^^^^^^^^^^^^^^ 💡 warning: W0026: Function 'main:private/0' is not exported.
+%%  ^^^^^^^^^^^^^^^ warning: W0026: Function 'main:private/0' is not exported.
+%%                | 💡 Export the function `private/0`
+%%                | 💡 <suppression>
     main:private().
-%%  ^^^^^^^^^^^^ 💡 warning: W0026: Function 'main:private/0' is not exported.
+%%  ^^^^^^^^^^^^ warning: W0026: Function 'main:private/0' is not exported.
+%%             | 💡 Export the function `private/0`
+%%             | 💡 <suppression>
 
   private() -> ok.
             "#,
@@ -179,7 +185,9 @@ mod tests {
 -include("header.hrl").
 
 foo() -> main:bar().
-%%       ^^^^^^^^ 💡 warning: W0026: Function 'main:bar/0' is not exported.
+%%       ^^^^^^^^ warning: W0026: Function 'main:bar/0' is not exported.
+%%              | 💡 Export the function `bar/0`
+%%              | 💡 <suppression>
 
 //- /src/header.hrl
   bar() -> ok.

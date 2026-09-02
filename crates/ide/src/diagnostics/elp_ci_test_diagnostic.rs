@@ -157,7 +157,8 @@ mod tests {
 
 go() ->
     elp_ci:provoke_diagnostic("hello from CI", warning).
-%%  ^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0079: CI test diagnostic (Warning): hello from CI
+%%  ^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0079: CI test diagnostic (Warning): hello from CI
+%%                          | 💡 <suppression>
             "#,
         );
     }
@@ -173,7 +174,8 @@ go() ->
 
 go() ->
     elp_ci:provoke_diagnostic("boom", error).
-%%  ^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: W0079: CI test diagnostic (Error): boom
+%%  ^^^^^^^^^^^^^^^^^^^^^^^^^ error: W0079: CI test diagnostic (Error): boom
+%%                          | 💡 <suppression>
             "#,
         );
     }
@@ -189,7 +191,8 @@ go() ->
 
 go() ->
     elp_ci:provoke_diagnostic("fyi", notice).
-%%  ^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0079: CI test diagnostic (Notice): fyi
+%%  ^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0079: CI test diagnostic (Notice): fyi
+%%                          | 💡 <suppression>
             "#,
         );
     }

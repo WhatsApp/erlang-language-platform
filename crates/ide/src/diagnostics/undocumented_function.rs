@@ -166,7 +166,8 @@ mod tests {
     -module(main).
     -export([main/0]).
     main() ->
- %% ^^^^ 💡 weak: W0040: The function is non-trivial, exported, but not documented.
+ %% ^^^^ weak: W0040: The function is non-trivial, exported, but not documented.
+ %%    | 💡 <suppression>
       [ok,
        ok,
        ok,
@@ -183,7 +184,8 @@ mod tests {
     -module(main).
     -export([main/0]).
     main() ->
- %% ^^^^ 💡 weak: W0040: The function is non-trivial, exported, but not documented.
+ %% ^^^^ weak: W0040: The function is non-trivial, exported, but not documented.
+ %%    | 💡 <suppression>
       [ok,
        ok,
        ok,
@@ -353,7 +355,8 @@ mod tests {
     -export([handle_call/1]).
 
     main() ->
-    %%<^ 💡 weak: W0040: The function is non-trivial, exported, but not documented.
+    %%<^ weak: W0040: The function is non-trivial, exported, but not documented.
+    %% | 💡 <suppression>
       [ok,
        ok,
        ok,
@@ -385,7 +388,8 @@ mod tests {
       ok.
 
     complex() ->
-    %%<^^^^ 💡 weak: W0040: The function is non-trivial, exported, but not documented.
+    %%<^^^^ weak: W0040: The function is non-trivial, exported, but not documented.
+    %%    | 💡 <suppression>
       [ok,
        ok,
        ok,
@@ -406,7 +410,8 @@ mod tests {
       ok.
 
     complex(a) ->
-    %%<^^^^ 💡 weak: W0040: The function is non-trivial, exported, but not documented.
+    %%<^^^^ weak: W0040: The function is non-trivial, exported, but not documented.
+    %%    | 💡 <suppression>
       [ok];
     complex(b) ->
       [ok,

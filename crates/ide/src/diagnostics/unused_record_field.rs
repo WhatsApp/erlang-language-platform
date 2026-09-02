@@ -141,7 +141,9 @@ mod tests {
 
 -record(used_field, {field_a, field_b = 42}).
 -record(unused_field, {field_c, field_d}).
-                             %% ^^^^^^^ 💡 warning: W0003: Unused record field (unused_field.field_d)
+%%                              ^^^^^^^ warning: W0003: Unused record field (unused_field.field_d)
+%%                                    | 💡 Remove unused record field (unused_field.field_d)
+%%                                    | 💡 <suppression>
 
 main(#used_field{field_a = A, field_b = B}) ->
     {A, B};
@@ -161,7 +163,9 @@ main(R) ->
 
 -record(used_field, {field_a, field_b = 42}).
 -record(unused_field, {field_c :: atom(), field_d :: number()}).
-                                       %% ^^^^^^^ 💡 warning: W0003: Unused record field (unused_field.field_d)
+%%                                        ^^^^^^^ warning: W0003: Unused record field (unused_field.field_d)
+%%                                              | 💡 Remove unused record field (unused_field.field_d)
+%%                                              | 💡 <suppression>
 
 main(#used_field{field_a = A, field_b = B}) ->
     {A, B};
@@ -232,7 +236,9 @@ test(_Config) ->
 -module(my_test_helper).
 -export([make/0]).
 -record(my_rec, {field_a, field_b}).
-                       %% ^^^^^^^ 💡 warning: W0003: Unused record field (my_rec.field_b)
+%%                        ^^^^^^^ warning: W0003: Unused record field (my_rec.field_b)
+%%                              | 💡 Remove unused record field (my_rec.field_b)
+%%                              | 💡 <suppression>
 make() ->
     R = #my_rec{field_a = 1},
     R#my_rec.field_a.
@@ -261,9 +267,13 @@ main(#used_field{field_a = A}) ->
             r#"
 -module(main).
 -record(a, {a1, a2}).
-             %% ^^ 💡 warning: W0003: Unused record field (a.a2)
+%%              ^^ warning: W0003: Unused record field (a.a2)
+%%               | 💡 Remove unused record field (a.a2)
+%%               | 💡 <suppression>
 -record(b, {b1, b2}).
-         %% ^^ 💡 warning: W0003: Unused record field (b.b1)
+%%          ^^ warning: W0003: Unused record field (b.b1)
+%%           | 💡 Remove unused record field (b.b1)
+%%           | 💡 <suppression>
 main(#a{a1 = #b{b2 = B2}} = A) ->
     {A, B2}.
         "#,

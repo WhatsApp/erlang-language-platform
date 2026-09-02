@@ -126,7 +126,8 @@ test() ->
     One = 1,
 
     Result = One = Zero,
-%%  ^^^^^^^^^^^^^^^^^^^ 💡 error: W0005: Possible mutable variable bug
+%%  ^^^^^^^^^^^^^^^^^^^ error: W0005: Possible mutable variable bug
+%%                    | 💡 <suppression>
 
     Result.
 "#,
@@ -152,8 +153,12 @@ push_eligible(ProductPlatform, _Pu) ->
     false;
 push_eligible(_ProductPlatform, Pu) ->
     AppVersion = ABUserInfo = Pu,
-%%  ^^^^^^^^^^ 💡 warning: W0007: match is redundant
-%%               ^^^^^^^^^^ 💡 warning: W0007: match is redundant
+%%  ^^^^^^^^^^ warning: W0007: match is redundant
+%%           | 💡 Remove match
+%%           | 💡 <suppression>
+%%               ^^^^^^^^^^ warning: W0007: match is redundant
+%%                        | 💡 Remove match
+%%                        | 💡 <suppression>
     false.
 
 "#,

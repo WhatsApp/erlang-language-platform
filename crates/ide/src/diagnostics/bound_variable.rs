@@ -109,7 +109,8 @@ mod test {
              foo() ->
                  AA = bar(),
                  AA = bar().
-              %% ^^ 💡 warning: W0060: Match on a bound variable
+             %%  ^^ warning: W0060: Match on a bound variable
+             %%   | 💡 <suppression>
 
             "#,
         )

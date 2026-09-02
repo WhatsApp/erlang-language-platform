@@ -72,7 +72,8 @@ mod tests {
             r#"
     -module(main).
     -dialyzer({nowarn_function, foo/0}).
- %% ^^^^^^^^^ 💡 warning: W0048: Avoid using the -dialyzer attribute.
+ %% ^^^^^^^^^ warning: W0048: Avoid using the -dialyzer attribute.
+ %%         | 💡 <suppression>
 
     foo() -> ok.
               "#,

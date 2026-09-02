@@ -207,7 +207,8 @@ mod tests {
   main() ->
     _T0 = erlang:monotonic_time(milliseconds),
     _T2 = erlang:monitonic_time(milliseconds),
-%%        ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0017: Function 'erlang:monitonic_time/1' is undefined.
+%%        ^^^^^^^^^^^^^^^^^^^^^ warning: W0017: Function 'erlang:monitonic_time/1' is undefined.
+%%                            | 💡 <suppression>
     exists().
 
   exists() -> ok.
@@ -228,7 +229,8 @@ mod tests {
   main() ->
     dependency:exists(),
     dependency:not_exists().
-%%  ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0017: Function 'dependency:not_exists/0' is undefined.
+%%  ^^^^^^^^^^^^^^^^^^^^^ warning: W0017: Function 'dependency:not_exists/0' is undefined.
+%%                      | 💡 <suppression>
   exists() -> ok.
 //- /src/dependency.erl
   -module(dependency).
@@ -251,9 +253,11 @@ mod tests {
     main:behaviour_info(callbacks),
     hascallback:behaviour_info(callbacks),
     nocallback:behaviour_info(callbacks),
-%%  ^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0017: Function 'nocallback:behaviour_info/1' is undefined.
+%%  ^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0017: Function 'nocallback:behaviour_info/1' is undefined.
+%%                          | 💡 <suppression>
     nonexisting:behaviour_info(callbacks),
-%%  ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0017: Function 'nonexisting:behaviour_info/1' is undefined.
+%%  ^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0017: Function 'nonexisting:behaviour_info/1' is undefined.
+%%                           | 💡 <suppression>
 
     behaviour_info(callbacks).
 //- /src/hascallback.erl
@@ -294,7 +298,8 @@ mod tests {
   main() ->
     dependency:exists(),
     dependency:module_info(a, b).
-%%  ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0017: Function 'dependency:module_info/2' is undefined.
+%%  ^^^^^^^^^^^^^^^^^^^^^^ warning: W0017: Function 'dependency:module_info/2' is undefined.
+%%                       | 💡 <suppression>
   exists() -> ok.
 //- /src/dependency.erl
   -module(dependency).
@@ -313,9 +318,11 @@ mod tests {
   -module(main).
   main() ->
     erlang:get_stacktrace(),
-%%  ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0017: Function 'erlang:get_stacktrace/0' is undefined.
+%%  ^^^^^^^^^^^^^^^^^^^^^ warning: W0017: Function 'erlang:get_stacktrace/0' is undefined.
+%%                      | 💡 <suppression>
     dependency:get_stacktrace().
-%%  ^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0017: Function 'dependency:get_stacktrace/0' is undefined.
+%%  ^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0017: Function 'dependency:get_stacktrace/0' is undefined.
+%%                          | 💡 <suppression>
             "#,
         )
     }
@@ -329,7 +336,8 @@ mod tests {
   -define(MY_MACRO, fun() -> dep:exists(), dep:not_exists() end).
   main() ->
     ?MY_MACRO().
-%%  ^^^^^^^^^^^ 💡 warning: W0017: Function 'dep:not_exists/0' is undefined.
+%%  ^^^^^^^^^^^ warning: W0017: Function 'dep:not_exists/0' is undefined.
+%%            | 💡 <suppression>
   exists() -> ok.
 //- /src/dep.erl
   -module(dep).
@@ -399,9 +407,11 @@ exists() -> ok.
   main() ->
     {fun dependency:exists/0,
     fun dependency:not_exists/1,
-%%      ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0017: Function 'dependency:not_exists/1' is undefined.
+%%      ^^^^^^^^^^^^^^^^^^^^^ warning: W0017: Function 'dependency:not_exists/1' is undefined.
+%%                          | 💡 <suppression>
     fun dependency:module_info/2}.
-%%      ^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0017: Function 'dependency:module_info/2' is undefined.
+%%      ^^^^^^^^^^^^^^^^^^^^^^ warning: W0017: Function 'dependency:module_info/2' is undefined.
+%%                           | 💡 <suppression>
   exists() -> ok.
 //- /src/dependency.erl
   -module(dependency).

@@ -319,7 +319,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(M, K, V) -> maps:merge(M#{x => 1}, #{K => V}).
-         %%             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0080: Consider using map update syntax instead
+         %%             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0080: Consider using map update syntax instead
+         %%                                             | 💡 Rewrite to use map update syntax
+         %%                                             | 💡 <suppression>
             "#,
         )
     }
@@ -555,7 +557,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(K, V, Map) -> maps:merge(Map, #{K => V}).
-         %%               ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0080: Consider using map update syntax instead
+         %%               ^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0080: Consider using map update syntax instead
+         %%                                        | 💡 Rewrite to use map update syntax
+         %%                                        | 💡 <suppression>
             "#,
         )
     }
@@ -569,7 +573,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(Map) -> maps:merge(Map, #{}).
-         %%         ^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0080: Merging with an empty map is a no-op
+         %%         ^^^^^^^^^^^^^^^^^^^^ weak: W0080: Merging with an empty map is a no-op
+         %%                            | 💡 Drop redundant merge with empty map
+         %%                            | 💡 <suppression>
             "#,
         )
     }
@@ -583,7 +589,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(Map) -> maps:merge(#{}, Map).
-         %%         ^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0080: Merging with an empty map is a no-op
+         %%         ^^^^^^^^^^^^^^^^^^^^ weak: W0080: Merging with an empty map is a no-op
+         %%                            | 💡 Drop redundant merge with empty map
+         %%                            | 💡 <suppression>
             "#,
         )
     }
@@ -599,7 +607,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn() -> maps:merge(#{}, #{}).
-         %%      ^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0080: Merging with an empty map is a no-op
+         %%      ^^^^^^^^^^^^^^^^^^^^ weak: W0080: Merging with an empty map is a no-op
+         %%                         | 💡 Drop redundant merge with empty map
+         %%                         | 💡 <suppression>
             "#,
         )
     }

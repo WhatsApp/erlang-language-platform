@@ -144,7 +144,9 @@ mod tests {
          -module(binary_string_to_sigil).
 
          fn() -> <<"hello">>.
-         %%      ^^^^^^^^^^^ 💡 weak: W0051: Binary string can be written using sigil syntax.
+         %%      ^^^^^^^^^^^ weak: W0051: Binary string can be written using sigil syntax.
+         %%                | 💡 Convert to sigil syntax
+         %%                | 💡 <suppression>
             "#,
         )
     }
@@ -256,7 +258,9 @@ mod tests {
          -include_lib("assert/include/assert.hrl").
          fn(Bar) ->
              ?assertMatch(#{key := <<"foo">>}, Bar).
-         %%                        ^^^^^^^^^ 💡 weak: W0051: Binary string can be written using sigil syntax.
+         %%                        ^^^^^^^^^ weak: W0051: Binary string can be written using sigil syntax.
+         %%                                | 💡 Convert to sigil syntax
+         %%                                | 💡 <suppression>
             "#,
         )
     }

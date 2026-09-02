@@ -126,7 +126,9 @@ mod tests {
             r#"
 //- /src/foo.erl
 -module(bar).
-%%      ^^^ 💡 error: W0001: Module name (bar) does not match file name (foo)
+%%      ^^^ error: W0001: Module name (bar) does not match file name (foo)
+%%        | 💡 Rename module to: foo
+%%        | 💡 <suppression>
 "#,
         );
         check_fix(

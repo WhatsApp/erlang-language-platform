@@ -103,7 +103,8 @@ mod tests {
             -export([foo/0]).
 
             foo() -> #my_record{}.
-            %%       ^^^^^^^^^^^^ 💡 error: L1252: record my_record undefined
+            %%       ^^^^^^^^^^^^ error: L1252: record my_record undefined
+            %%                  | 💡 Add required include for record 'my_record'
             //- /another-app/include/inc.hrl app:another include_path:/another-app/include
             -record(my_record, {field1, field2}).
            "#,
@@ -145,7 +146,9 @@ mod tests {
             -export([foo/0]).
 
             foo() -> #my_re~cord{}.
-            %%       ^^^^^^^^^^^^ 💡 error: L1252: record my_record undefined
+            %%       ^^^^^^^^^^^^ error: L1252: record my_record undefined
+            %%                  | 💡 Add required include for record 'my_record' (app_b)
+            %%                  | 💡 Add required include for record 'my_record' (app_a)
 
             //- /app_a/include/inc.hrl app:app_a include_path:/app_a/include
             -record(my_record, {field1, field2}).
@@ -175,7 +178,9 @@ mod tests {
             -export([foo/0]).
 
             foo() -> #my_re~cord{}.
-            %%       ^^^^^^^^^^^^ 💡 error: L1252: record my_record undefined
+            %%       ^^^^^^^^^^^^ error: L1252: record my_record undefined
+            %%                  | 💡 Add required include for record 'my_record' (app_b)
+            %%                  | 💡 Add required include for record 'my_record' (app_a)
 
             //- /app_a/include/inc.hrl app:app_a include_path:/app_a/include
             -record(my_record, {field1, field2}).

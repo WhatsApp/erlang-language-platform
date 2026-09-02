@@ -214,7 +214,9 @@ mod tests {
          //- /app_a/src/unspecific_include.erl app:app_a include_path:/app_b/include
            -module(unspecific_include).
            -include("some_header_from_app_a.hrl").
-           %%       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0037: Include missing application and sub-directory.
+         %%         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0037: Include missing application and sub-directory.
+         %%                                    | 💡 Replace include path with: app_b/include/some_header_from_app_a.hrl
+         %%                                    | 💡 <suppression>
 
          //- /app_b/include/some_header_from_app_a.hrl include_path:/app_b/include app:app_b
            -define(A,3).

@@ -204,7 +204,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(L) -> lists:map(fun (X) -> X + 1 end, L).
-         %%       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0066: lists:map/2 call can be replaced with a list comprehension.
+         %%       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0066: lists:map/2 call can be replaced with a list comprehension.
+         %%                                        | 💡 Rewrite lists:map/2 as a list comprehension
+         %%                                        | 💡 <suppression>
             "#,
         )
     }
@@ -320,7 +322,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(L) -> lists:map(fun action/1, L).
-         %%       ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0066: lists:map/2 call can be replaced with a list comprehension.
+         %%       ^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0066: lists:map/2 call can be replaced with a list comprehension.
+         %%                                | 💡 Rewrite lists:map/2 as a list comprehension
+         %%                                | 💡 <suppression>
             "#,
         )
     }
@@ -353,7 +357,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(L) -> lists:map(fun mod:action/1, L).
-         %%       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0066: lists:map/2 call can be replaced with a list comprehension.
+         %%       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0066: lists:map/2 call can be replaced with a list comprehension.
+         %%                                    | 💡 Rewrite lists:map/2 as a list comprehension
+         %%                                    | 💡 <suppression>
             "#,
         )
     }
@@ -386,7 +392,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(F, L) -> lists:map(F, L).
-         %%          ^^^^^^^^^^^^^^^ 💡 weak: W0066: lists:map/2 call can be replaced with a list comprehension.
+         %%          ^^^^^^^^^^^^^^^ weak: W0066: lists:map/2 call can be replaced with a list comprehension.
+         %%                        | 💡 Rewrite lists:map/2 as a list comprehension
+         %%                        | 💡 <suppression>
             "#,
         )
     }

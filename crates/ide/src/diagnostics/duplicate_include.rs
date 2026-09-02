@@ -210,7 +210,9 @@ mod tests {
   -module(foo).
   -include("foo.hrl").
   -include("foo.hrl").
-%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0078: Duplicate include: foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^ warning: W0078: Duplicate include: foo.hrl
+%%                   | 💡 Remove duplicate include
+%%                   | 💡 <suppression>
   foo() -> ?FOO.
         "#,
         );
@@ -257,7 +259,9 @@ mod tests {
   -module(foo).
   -include_lib("myapp/include/foo.hrl").
   -include_lib("myapp/include/foo.hrl").
-%%^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0078: Duplicate include: myapp/include/foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0078: Duplicate include: myapp/include/foo.hrl
+%%                                     | 💡 Remove duplicate include
+%%                                     | 💡 <suppression>
   foo() -> ?FOO.
         "#,
         );
@@ -274,7 +278,9 @@ mod tests {
   -module(foo).
   -include("foo.hrl").
   -include_lib("myapp/include/foo.hrl").
-%%^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0078: Duplicate include: myapp/include/foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0078: Duplicate include: myapp/include/foo.hrl
+%%                                     | 💡 Remove duplicate include
+%%                                     | 💡 <suppression>
   foo() -> ?FOO.
         "#,
         );
@@ -290,7 +296,9 @@ mod tests {
 //- /src/foo.erl app:myapp include_path:/otherapp/include
   -module(foo).
   -include("foo.hrl").
-%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0078: Duplicate include: foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^ warning: W0078: Duplicate include: foo.hrl
+%%                   | 💡 Remove duplicate include
+%%                   | 💡 <suppression>
   -include_lib("otherapp/include/foo.hrl").
   foo() -> ?FOO.
         "#,
@@ -307,9 +315,13 @@ mod tests {
   -module(foo).
   -include("foo.hrl").
   -include("foo.hrl").
-%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0078: Duplicate include: foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^ warning: W0078: Duplicate include: foo.hrl
+%%                   | 💡 Remove duplicate include
+%%                   | 💡 <suppression>
   -include("foo.hrl").
-%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0078: Duplicate include: foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^ warning: W0078: Duplicate include: foo.hrl
+%%                   | 💡 Remove duplicate include
+%%                   | 💡 <suppression>
   foo() -> ?FOO.
         "#,
         );

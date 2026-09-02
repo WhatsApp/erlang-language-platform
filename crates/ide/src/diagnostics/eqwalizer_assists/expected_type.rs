@@ -190,7 +190,9 @@ mod tests {
 
                 -spec baz() -> spec_atom.
                 baz() -> something_else.
-                     %%  ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
+            %%           ^^^^^^^^^^^^^^ error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
+            %%                        | 💡 Update returned value to 'spec_atom'
+            %%                        | 💡 Update function spec to return 'something_else'
             "#,
         )
     }
@@ -206,7 +208,9 @@ mod tests {
 
             -spec baz() -> spec_atom.
             baz() -> somet~hing_else.
-                  %% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
+            %%       ^^^^^^^^^^^^^^ error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
+            %%                    | 💡 Update returned value to 'spec_atom'
+            %%                    | 💡 Update function spec to return 'something_else'
             "#,
             expect![[r#"
             -module(bar3e).
@@ -228,7 +232,9 @@ mod tests {
 
             -spec baz() -> spec_atom.
             baz() -> somethin~g_else.
-                  %% ^^^^^^^^^^^^^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
+            %%       ^^^^^^^^^^^^^^ error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
+            %%                    | 💡 Update returned value to 'spec_atom'
+            %%                    | 💡 Update function spec to return 'something_else'
             "#,
             expect![[r#"
             -module(bar4e).
@@ -250,7 +256,9 @@ mod tests {
 
             -spec baz() -> {ok, integer()}.
             baz() -> 5~3.
-              %%     ^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
+            %%       ^^ error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
+            %%        | 💡 Update returned value to '{ok, 53}'
+            %%        | 💡 Update function spec to return 'integer()'
             "#,
             expect![[r#"
             -module(bar5e).
@@ -272,7 +280,9 @@ mod tests {
 
             -spec baz() -> {ok, integer()}.
             baz() -> 5~3.
-                  %% ^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
+            %%       ^^ error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
+            %%        | 💡 Update returned value to '{ok, 53}'
+            %%        | 💡 Update function spec to return 'integer()'
             "#,
             expect![[r#"
             -module(bar6e).
@@ -294,7 +304,8 @@ mod tests {
 
             -spec foo() -> integer().
             foo() -> o~k.
-                  %% ^^ 💡 error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
+            %%       ^^ error: eqwalizer: incompatible_types: eqwalizer: incompatible_types
+            %%        | 💡 Update function spec to return 'ok'
             "#,
             expect![[r#"
             -module(bar).

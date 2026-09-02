@@ -199,7 +199,9 @@ mod tests {
             r#"
     -module(main).
     -dyalizer({nowarn_function, f/0}).
- %%  ^^^^^^^^ 💡 error: W0013: misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
+ %%  ^^^^^^^^ error: W0013: misspelled attribute, saw 'dyalizer' but expected 'dialyzer'
+ %%         | 💡 Change to 'dialyzer'
+ %%         | 💡 <suppression>
             "#,
         );
         check_fix(
@@ -271,7 +273,9 @@ mod tests {
             r#"
     -module(main).
     -module_doc """
-%%   ^^^^^^^^^^ 💡 error: W0013: misspelled attribute, saw 'module_doc' but expected 'moduledoc'
+%%   ^^^^^^^^^^ error: W0013: misspelled attribute, saw 'module_doc' but expected 'moduledoc'
+%%            | 💡 Change to 'moduledoc'
+%%            | 💡 <suppression>
     Hola
     """.
             "#,
@@ -284,7 +288,9 @@ mod tests {
             r#"
     -module(main).
     -docs """
-%%   ^^^^ 💡 error: W0013: misspelled attribute, saw 'docs' but expected 'doc'
+%%   ^^^^ error: W0013: misspelled attribute, saw 'docs' but expected 'doc'
+%%      | 💡 Change to 'doc'
+%%      | 💡 <suppression>
     Hola
     """.
     foo() -> ok.

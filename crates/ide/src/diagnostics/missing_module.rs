@@ -109,7 +109,8 @@ foo(2)->?baz.
   -file("foo.erl",1).
   -define(baz,4).
   foo(2)->?baz.
-%%^^^^^^^^^^^^^💡 error: L1201: no module definition
+%%^^^^^^^^^^^^^ error: L1201: no module definition
+%%            | 💡 <suppression>
 "#,
         );
     }
@@ -119,7 +120,8 @@ foo(2)->?baz.
         check_diagnostics(
             r#"
   baz(1)->4.
-%%^^^^^^^^^^💡 error: L1201: no module definition
+%%^^^^^^^^^^ error: L1201: no module definition
+%%         | 💡 <suppression>
   foo(2)->3.
 "#,
         );

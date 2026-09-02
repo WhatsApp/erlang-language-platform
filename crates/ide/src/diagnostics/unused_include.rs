@@ -303,7 +303,9 @@ mod tests {
 //- /src/foo.erl
   -module(foo).
   -include("foo.hrl").
-%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0020: Unused file: foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^ warning: W0020: Unused file: foo.hrl
+%%                   | 💡 Remove unused include
+%%                   | 💡 <suppression>
         "#,
         );
     }
@@ -331,7 +333,9 @@ mod tests {
 //- /src/foo.erl
   -module(foo).
   -include("foo.hrl").
-%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0020: Unused file: foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^ warning: W0020: Unused file: foo.hrl
+%%                   | 💡 Remove unused include
+%%                   | 💡 <suppression>
         "#,
         );
     }
@@ -376,7 +380,9 @@ mod tests {
 //- /src/foo.erl
   -module(foo).
   -include("foo.hrl").
-%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0020: Unused file: foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^ warning: W0020: Unused file: foo.hrl
+%%                   | 💡 Remove unused include
+%%                   | 💡 <suppression>
         "#,
         );
     }
@@ -405,7 +411,9 @@ mod tests {
 //- /src/foo.erl
   -module(foo).
   -include("foo.hrl").
-%%^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0020: Unused file: foo.hrl
+%%^^^^^^^^^^^^^^^^^^^^ warning: W0020: Unused file: foo.hrl
+%%                   | 💡 Remove unused include
+%%                   | 💡 <suppression>
         "#,
         );
     }
@@ -545,7 +553,9 @@ foo() -> ?MACRO.
 -module(main).
 -include("outer.hrl").
   -include("spare.hrl").
-%%^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0020: Unused file: spare.hrl
+%%^^^^^^^^^^^^^^^^^^^^^^ warning: W0020: Unused file: spare.hrl
+%%                     | 💡 Remove unused include
+%%                     | 💡 <suppression>
 
 foo() -> ?MACRO.
 
@@ -603,7 +613,9 @@ foo(X) -> {?FEATURE, X#r.a}.
 //- /src/main.erl
 -module(main).
   -include("feature.hrl").
-%%^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0020: Unused file: feature.hrl
+%%^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0020: Unused file: feature.hrl
+%%                       | 💡 Remove unused include
+%%                       | 💡 <suppression>
 -include("cond.hrl").
 
 foo(X) -> X#r.a.
@@ -632,7 +644,9 @@ foo(X) -> X#r.a.
 -module(main).
 -include("direct.hrl").
   -include("outer.hrl").
-%%^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0020: Unused file: outer.hrl
+%%^^^^^^^^^^^^^^^^^^^^^^ warning: W0020: Unused file: outer.hrl
+%%                     | 💡 Remove unused include
+%%                     | 💡 <suppression>
 
 foo(X) -> X#rec.field.
 
@@ -661,7 +675,9 @@ foo(X) -> X#rec.field.
 -module(main).
 -include("outer.hrl").
   -include("direct.hrl").
-%%^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0020: Unused file: direct.hrl
+%%^^^^^^^^^^^^^^^^^^^^^^^ warning: W0020: Unused file: direct.hrl
+%%                      | 💡 Remove unused include
+%%                      | 💡 <suppression>
 
 foo(X) -> X#rec.field.
 
@@ -718,7 +734,9 @@ foo(X) -> X#rec.field.
 //- /src/main.erl
 -module(main).
   -include("a.hrl").
-%%^^^^^^^^^^^^^^^^^^ 💡 warning: W0020: Unused file: a.hrl
+%%^^^^^^^^^^^^^^^^^^ warning: W0020: Unused file: a.hrl
+%%                 | 💡 Remove unused include
+%%                 | 💡 <suppression>
 -include("b.hrl").
 
 foo() -> ?X.
@@ -894,7 +912,9 @@ foo() -> ok.
 //- /src/header.hrl
 %% The following shows up as a wild attribute, which we regard as being used.
    -defin e(X, 1).
-%%  ^^^^^ 💡 error: W0013: misspelled attribute, saw 'defin' but expected 'define'
+%%  ^^^^^ error: W0013: misspelled attribute, saw 'defin' but expected 'define'
+%%      | 💡 Change to 'define'
+%%      | 💡 <suppression>
 
 -def ine(Y, 2).
 "#,
@@ -908,7 +928,9 @@ foo() -> ok.
 //- /src/main.erl
 -module(main).
   -include("header.hrl").
-%%^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0020: Unused file: header.hrl
+%%^^^^^^^^^^^^^^^^^^^^^^^ warning: W0020: Unused file: header.hrl
+%%                      | 💡 Remove unused include
+%%                      | 💡 <suppression>
 
 foo() -> ok.
 

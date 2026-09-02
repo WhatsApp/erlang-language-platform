@@ -117,7 +117,8 @@ mod tests {
             r#"
             -module(main).
             -include("nonexistent.hrl").
-            %%       ^^^^^^^^^^^^^^^^^ 💡 warning: W0058: can't find include file "nonexistent.hrl"
+            %%       ^^^^^^^^^^^^^^^^^ warning: W0058: can't find include file "nonexistent.hrl"
+            %%                       | 💡 <suppression>
             "#,
         );
     }
@@ -130,7 +131,8 @@ mod tests {
             r#"
             -module(main).
             -include_lib("some_app/include/nonexistent.hrl").
-            %%           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0058: can't find include lib "some_app/include/nonexistent.hrl"
+            %%           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0058: can't find include lib "some_app/include/nonexistent.hrl"
+            %%                                            | 💡 <suppression>
             "#,
         );
     }

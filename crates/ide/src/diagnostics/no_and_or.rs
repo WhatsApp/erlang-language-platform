@@ -145,7 +145,9 @@ mod tests {
 
          test_and(A, B) ->
              A and B.
-         %%    ^^^ 💡 warning: W0069: Use `andalso` instead of `and`. OTP 29 will warn for `and` usage.
+         %%    ^^^ warning: W0069: Use `andalso` instead of `and`. OTP 29 will warn for `and` usage.
+         %%      | 💡 Replace `and` with `andalso`
+         %%      | 💡 <suppression>
             "#,
         )
     }
@@ -159,7 +161,9 @@ mod tests {
 
          test_or(A, B) ->
              A or B.
-          %%   ^^ 💡 warning: W0069: Use `orelse` instead of `or`. OTP 29 will warn for `or` usage.
+         %%    ^^ warning: W0069: Use `orelse` instead of `or`. OTP 29 will warn for `or` usage.
+         %%     | 💡 Replace `or` with `orelse`
+         %%     | 💡 <suppression>
             "#,
         )
     }
@@ -173,7 +177,9 @@ mod tests {
 
          test_complex(A, B, C) ->
              (A > 0) and (B < 10) andalso C.
-         %%          ^^^ 💡 warning: W0069: Use `andalso` instead of `and`. OTP 29 will warn for `and` usage.
+         %%          ^^^ warning: W0069: Use `andalso` instead of `and`. OTP 29 will warn for `and` usage.
+         %%            | 💡 Replace `and` with `andalso`
+         %%            | 💡 <suppression>
             "#,
         )
     }
@@ -187,7 +193,9 @@ mod tests {
 
          test_complex(A, B, C) ->
              (A > 0) or (B < 10) orelse C.
-          %%         ^^ 💡 warning: W0069: Use `orelse` instead of `or`. OTP 29 will warn for `or` usage.
+         %%          ^^ warning: W0069: Use `orelse` instead of `or`. OTP 29 will warn for `or` usage.
+         %%           | 💡 Replace `or` with `orelse`
+         %%           | 💡 <suppression>
             "#,
         )
     }
@@ -303,9 +311,13 @@ mod tests {
 
          test_multiple(A, B, C) ->
              X = A and B,
-         %%        ^^^ 💡 warning: W0069: Use `andalso` instead of `and`. OTP 29 will warn for `and` usage.
+         %%        ^^^ warning: W0069: Use `andalso` instead of `and`. OTP 29 will warn for `and` usage.
+         %%          | 💡 Replace `and` with `andalso`
+         %%          | 💡 <suppression>
              Y = B or C,
-         %%        ^^ 💡 warning: W0069: Use `orelse` instead of `or`. OTP 29 will warn for `or` usage.
+         %%        ^^ warning: W0069: Use `orelse` instead of `or`. OTP 29 will warn for `or` usage.
+         %%         | 💡 Replace `or` with `orelse`
+         %%         | 💡 <suppression>
              X andalso Y.
             "#,
         )
@@ -329,7 +341,9 @@ mod tests {
          -include_lib("assert/include/assert.hrl").
          f(A, B) ->
              ?assert((A >= 0) or (B =< 2)).
-         %%                   ^^ 💡 warning: W0069: Use `orelse` instead of `or`. OTP 29 will warn for `or` usage.
+         %%                   ^^ warning: W0069: Use `orelse` instead of `or`. OTP 29 will warn for `or` usage.
+         %%                    | 💡 Replace `or` with `orelse`
+         %%                    | 💡 <suppression>
             "#,
         )
     }

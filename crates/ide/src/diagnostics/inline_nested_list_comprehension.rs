@@ -321,7 +321,9 @@ mod tests {
          % elp:ignore W0017 (undefined_function)
          foo(List) ->
              [f(X) || X <- [g(Y) || Y <- List]].
-         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0070: Nested list comprehension can be inlined to avoid intermediate list allocation.
+         %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0070: Nested list comprehension can be inlined to avoid intermediate list allocation.
+         %%                                   | 💡 Inline nested list comprehension
+         %%                                   | 💡 <suppression>
             "#,
         );
     }

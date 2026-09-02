@@ -569,7 +569,8 @@ mod tests {
             //- /src/main.erl
             -module(main).
             -dialyzer(noworn_funkshun).
-            %%        ^^^^^^^^^^^^^^^ 💡 error: W0076: invalid dialyzer option 'noworn_funkshun'
+            %%        ^^^^^^^^^^^^^^^ error: W0076: invalid dialyzer option 'noworn_funkshun'
+            %%                      | 💡 <suppression>
             "#,
         );
     }
@@ -581,7 +582,9 @@ mod tests {
             //- /src/main.erl
             -module(main).
             -dialyzer(no_retrn).
-            %%        ^^^^^^^^ 💡 error: W0076: invalid dialyzer option 'no_retrn', did you mean 'no_return'?
+            %%        ^^^^^^^^ error: W0076: invalid dialyzer option 'no_retrn', did you mean 'no_return'?
+            %%               | 💡 Change to 'no_return'
+            %%               | 💡 <suppression>
             "#,
         );
     }
@@ -593,7 +596,8 @@ mod tests {
             //- /src/main.erl
             -module(main).
             -dialyzer([no_return, bad_option]).
-            %%                    ^^^^^^^^^^ 💡 error: W0076: invalid dialyzer option 'bad_option'
+            %%                    ^^^^^^^^^^ error: W0076: invalid dialyzer option 'bad_option'
+            %%                             | 💡 <suppression>
             "#,
         );
     }
@@ -605,7 +609,9 @@ mod tests {
             //- /src/main.erl
             -module(main).
             -dialyzer({no_retrn, foo/0}).
-            %%         ^^^^^^^^ 💡 error: W0076: invalid dialyzer option 'no_retrn', did you mean 'no_return'?
+            %%         ^^^^^^^^ error: W0076: invalid dialyzer option 'no_retrn', did you mean 'no_return'?
+            %%                | 💡 Change to 'no_return'
+            %%                | 💡 <suppression>
             foo() -> ok.
             "#,
         );
@@ -618,7 +624,8 @@ mod tests {
             //- /src/main.erl
             -module(main).
             -dialyzer(nowarn_function).
-            %%        ^^^^^^^^^^^^^^^ 💡 error: W0076: invalid dialyzer option 'nowarn_function'
+            %%        ^^^^^^^^^^^^^^^ error: W0076: invalid dialyzer option 'nowarn_function'
+            %%                      | 💡 <suppression>
             "#,
         );
     }
@@ -634,7 +641,8 @@ mod tests {
             //- /src/main.erl
             -module(main).
             -dialyzer({nowarn_function, nonexistent/0}).
-            %%                          ^^^^^^^^^^^^^ 💡 error: W0076: function nonexistent/0 is not defined in this module
+            %%                          ^^^^^^^^^^^^^ error: W0076: function nonexistent/0 is not defined in this module
+            %%                                      | 💡 <suppression>
             "#,
         );
     }
@@ -646,7 +654,8 @@ mod tests {
             //- /src/main.erl
             -module(main).
             -dialyzer({nowarn_function, [foo/0, missing/1]}).
-            %%                                  ^^^^^^^^^ 💡 error: W0076: function missing/1 is not defined in this module
+            %%                                  ^^^^^^^^^ error: W0076: function missing/1 is not defined in this module
+            %%                                          | 💡 <suppression>
             foo() -> ok.
             "#,
         );
@@ -663,7 +672,8 @@ mod tests {
             //- /src/main.erl
             -module(main).
             -dialyzer(42).
-            %%        ^^ 💡 error: W0076: malformed dialyzer attribute value
+            %%        ^^ error: W0076: malformed dialyzer attribute value
+            %%         | 💡 <suppression>
             "#,
         );
     }

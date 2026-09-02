@@ -100,7 +100,8 @@ mod tests {
    -export([all/0]).
    -export([a/1, b/1, c/1]).
    all() -> my_external_helper:all().
-%% ^^^ 💡 warning: W0021: Could not evaluate function. No code lenses for tests will be available.
+%% ^^^ warning: W0021: Could not evaluate function. No code lenses for tests will be available.
+%%   | 💡 <suppression>
    a(_Config) ->
      ok.
    b(_Config) ->
@@ -120,9 +121,11 @@ mod tests {
    -export([all/0, groups/0]).
    -export([a/1, b/1, c/1]).
    all() -> [a].
-%% ^^^ 💡 warning: W0021: Could not evaluate function. No code lenses for tests will be available.
+%% ^^^ warning: W0021: Could not evaluate function. No code lenses for tests will be available.
+%%   | 💡 <suppression>
    groups() -> my_external_helper:groups().
-%% ^^^^^^ 💡 warning: W0021: Could not evaluate function. No code lenses for tests will be available.
+%% ^^^^^^ warning: W0021: Could not evaluate function. No code lenses for tests will be available.
+%%      | 💡 <suppression>
    a(_Config) ->
      ok.
    b(_Config) ->

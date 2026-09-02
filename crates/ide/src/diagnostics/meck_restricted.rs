@@ -138,14 +138,18 @@ mod tests {
 
             test() ->
                 meck:expect(module1, function1, 1, ok),
-            %%  ^^^^^^^^^^^ 💡 error: W0068: Mocking 'module1' is almost always the wrong approach
+            %%  ^^^^^^^^^^^ error: W0068: Mocking 'module1' is almost always the wrong approach
+            %%            | 💡 <suppression>
                 meck:expect(module1, function2, fun(_) -> ok end),
-            %%  ^^^^^^^^^^^ 💡 error: W0068: Mocking 'module1' is almost always the wrong approach
+            %%  ^^^^^^^^^^^ error: W0068: Mocking 'module1' is almost always the wrong approach
+            %%            | 💡 <suppression>
 
                 meck:expect(module2, function1, 3, true),
-            %%  ^^^^^^^^^^^ 💡 error: W0068: Mocking 'module2' is almost always the wrong approach
+            %%  ^^^^^^^^^^^ error: W0068: Mocking 'module2' is almost always the wrong approach
+            %%            | 💡 <suppression>
                 meck:expect(module2, function2, fun(_, _, _) -> false end),
-            %%  ^^^^^^^^^^^ 💡 error: W0068: Mocking 'module2' is almost always the wrong approach
+            %%  ^^^^^^^^^^^ error: W0068: Mocking 'module2' is almost always the wrong approach
+            %%            | 💡 <suppression>
 
                 ok.
             "#,
@@ -162,14 +166,18 @@ mod tests {
 
             test() ->
                 meck:new(module1, [passthrough]),
-            %%  ^^^^^^^^ 💡 error: W0068: Mocking 'module1' is almost always the wrong approach
+            %%  ^^^^^^^^ error: W0068: Mocking 'module1' is almost always the wrong approach
+            %%         | 💡 <suppression>
                 meck:new(module1, [passthrough, no_link]),
-            %%  ^^^^^^^^ 💡 error: W0068: Mocking 'module1' is almost always the wrong approach
+            %%  ^^^^^^^^ error: W0068: Mocking 'module1' is almost always the wrong approach
+            %%         | 💡 <suppression>
 
                 meck:new(module2, [passthrough]),
-            %%  ^^^^^^^^ 💡 error: W0068: Mocking 'module2' is almost always the wrong approach
+            %%  ^^^^^^^^ error: W0068: Mocking 'module2' is almost always the wrong approach
+            %%         | 💡 <suppression>
                 meck:new(module2, [passthrough, no_link]),
-            %%  ^^^^^^^^ 💡 error: W0068: Mocking 'module2' is almost always the wrong approach
+            %%  ^^^^^^^^ error: W0068: Mocking 'module2' is almost always the wrong approach
+            %%         | 💡 <suppression>
 
                 ok.
             "#,
@@ -186,15 +194,20 @@ mod tests {
 
             test() ->
                 meck:new([module1], [passthrough]),
-            %%  ^^^^^^^^ 💡 error: W0068: Mocking 'module1' is almost always the wrong approach
+            %%  ^^^^^^^^ error: W0068: Mocking 'module1' is almost always the wrong approach
+            %%         | 💡 <suppression>
                 meck:new([other, module1], [passthrough]),
-            %%  ^^^^^^^^ 💡 error: W0068: Mocking 'module1' is almost always the wrong approach
+            %%  ^^^^^^^^ error: W0068: Mocking 'module1' is almost always the wrong approach
+            %%         | 💡 <suppression>
                 meck:new([module2, module1, another], [passthrough]),
-            %%  ^^^^^^^^ 💡 error: W0068: Mocking 'module2', 'module1' is almost always the wrong approach
+            %%  ^^^^^^^^ error: W0068: Mocking 'module2', 'module1' is almost always the wrong approach
+            %%         | 💡 <suppression>
                 meck:new([module2, another], [passthrough]),
-            %%  ^^^^^^^^ 💡 error: W0068: Mocking 'module2' is almost always the wrong approach
+            %%  ^^^^^^^^ error: W0068: Mocking 'module2' is almost always the wrong approach
+            %%         | 💡 <suppression>
                 meck:new([foo, module2, bar], [passthrough]),
-            %%  ^^^^^^^^ 💡 error: W0068: Mocking 'module2' is almost always the wrong approach
+            %%  ^^^^^^^^ error: W0068: Mocking 'module2' is almost always the wrong approach
+            %%         | 💡 <suppression>
 
                 ok.
             "#,

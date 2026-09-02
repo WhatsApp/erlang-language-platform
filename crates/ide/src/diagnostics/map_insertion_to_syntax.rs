@@ -271,7 +271,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(K, V, Map) -> maps:put(K, V, Map).
-         %%               ^^^^^^^^^^^^^^^^^^^💡 weak: W0030: Consider using map syntax rather than a function call.
+         %%               ^^^^^^^^^^^^^^^^^^^ weak: W0030: Consider using map syntax rather than a function call.
+         %%                                 | 💡 Rewrite to use map put syntax
+         %%                                 | 💡 <suppression>
             "#,
         )
     }
@@ -285,7 +287,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(K, V, Map) -> maps:update(K, V, Map).
-         %%               ^^^^^^^^^^^^^^^^^^^^^^💡 weak: W0031: Consider using map syntax rather than a function call.
+         %%               ^^^^^^^^^^^^^^^^^^^^^^ weak: W0031: Consider using map syntax rather than a function call.
+         %%                                    | 💡 Rewrite to use map update syntax
+         %%                                    | 💡 <suppression>
             "#,
         )
     }

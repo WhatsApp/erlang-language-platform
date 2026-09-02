@@ -232,7 +232,9 @@ mod tests {
 
         check_list(List) ->
             case length(List) of 0 -> empty; _ -> non_empty end.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%                                                    | 💡 Pattern match on list structure instead
+        %%                                                    | 💡 <suppression>
            "#,
         )
     }
@@ -313,7 +315,9 @@ mod tests {
 
         check_list(List) ->
             case length(List) =:= 0 of true -> empty; false -> non_empty end.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%                                                                 | 💡 Pattern match on list structure instead
+        %%                                                                 | 💡 <suppression>
            "#,
         )
     }
@@ -327,7 +331,9 @@ mod tests {
 
         check_list(List) ->
             case length(List) =:= 0 of true -> empty; _ -> non_empty end.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%                                                             | 💡 Pattern match on list structure instead
+        %%                                                             | 💡 <suppression>
            "#,
         )
     }
@@ -382,7 +388,9 @@ mod tests {
 
         check_list(List) ->
             case length(List) =/= 0 of true -> non_empty; false -> empty end.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%                                                                 | 💡 Pattern match on list structure instead
+        %%                                                                 | 💡 <suppression>
            "#,
         )
     }
@@ -437,7 +445,9 @@ mod tests {
 
         check_list(List) ->
             case length(List) > 0 of true -> non_empty; false -> empty end.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%                                                               | 💡 Pattern match on list structure instead
+        %%                                                               | 💡 <suppression>
            "#,
         )
     }
@@ -492,7 +502,9 @@ mod tests {
 
         check_list(List) ->
             case length(List) >= 1 of true -> non_empty; false -> empty end.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%                                                                | 💡 Pattern match on list structure instead
+        %%                                                                | 💡 <suppression>
            "#,
         )
     }
@@ -556,7 +568,9 @@ mod tests {
         -include_lib("assert/include/assert.hrl").
         f(List) ->
             ?assert_result(case length(List) > 0 of true -> ok; false -> err end).
-        %%                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%                                                                     | 💡 Pattern match on list structure instead
+        %%                                                                     | 💡 <suppression>
            "#,
         )
     }
@@ -572,7 +586,9 @@ mod tests {
 
         check_list(List) ->
             case 0 =:= length(List) of true -> empty; false -> non_empty end.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%                                                                 | 💡 Pattern match on list structure instead
+        %%                                                                 | 💡 <suppression>
            "#,
         )
     }
@@ -586,7 +602,9 @@ mod tests {
 
         check_list(List) ->
             case 0 =:= length(List) of true -> empty; _ -> non_empty end.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%                                                             | 💡 Pattern match on list structure instead
+        %%                                                             | 💡 <suppression>
            "#,
         )
     }
@@ -619,7 +637,9 @@ mod tests {
 
         check_list(List) ->
             case 0 =/= length(List) of true -> non_empty; false -> empty end.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%                                                                 | 💡 Pattern match on list structure instead
+        %%                                                                 | 💡 <suppression>
            "#,
         )
     }
@@ -652,7 +672,9 @@ mod tests {
 
         check_list(List) ->
             case 0 < length(List) of true -> non_empty; false -> empty end.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%                                                               | 💡 Pattern match on list structure instead
+        %%                                                               | 💡 <suppression>
            "#,
         )
     }
@@ -685,7 +707,9 @@ mod tests {
 
         check_list(List) ->
             case 1 =< length(List) of true -> non_empty; false -> empty end.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0065: Use pattern matching on the list directly instead of checking length.
+        %%                                                                | 💡 Pattern match on list structure instead
+        %%                                                                | 💡 <suppression>
            "#,
         )
     }

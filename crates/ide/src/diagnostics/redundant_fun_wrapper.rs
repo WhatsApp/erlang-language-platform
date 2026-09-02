@@ -378,7 +378,9 @@ mod tests {
             foo(X) -> X.
             use_fun(L) ->
                 lists:map(fun(X) -> foo(X) end, L).
-            %%            ^^^^^^^^^^^^^^^^^^^^ 💡 information: W0071: A reference to `fun foo/1` can be taken directly.
+            %%            ^^^^^^^^^^^^^^^^^^^^ information: W0071: A reference to `fun foo/1` can be taken directly.
+            %%                               | 💡 Replace with `fun foo/1`
+            %%                               | 💡 <suppression>
             "#,
         )
     }
@@ -394,7 +396,9 @@ mod tests {
             add(X, Y) -> X + Y.
             use_fun(L) ->
                 lists:foldl(fun(X, Y) -> add(X, Y) end, 0, L).
-            %%              ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 information: W0071: A reference to `fun add/2` can be taken directly.
+            %%              ^^^^^^^^^^^^^^^^^^^^^^^^^^ information: W0071: A reference to `fun add/2` can be taken directly.
+            %%                                       | 💡 Replace with `fun add/2`
+            %%                                       | 💡 <suppression>
             "#,
         )
     }
@@ -409,7 +413,9 @@ mod tests {
 
             use_fun(L) ->
                 lists:map(fun(X) -> erlang:abs(X) end, L).
-            %%            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 information: W0071: A reference to `fun erlang:abs/1` can be taken directly.
+            %%            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ information: W0071: A reference to `fun erlang:abs/1` can be taken directly.
+            %%                                      | 💡 Replace with `fun erlang:abs/1`
+            %%                                      | 💡 <suppression>
             "#,
         )
     }
@@ -424,7 +430,9 @@ mod tests {
 
             use_fun(L) ->
                 lists:foldl(fun(X, Y) -> erlang:max(X, Y) end, 0, L).
-            %%              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 information: W0071: A reference to `fun erlang:max/2` can be taken directly.
+            %%              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ information: W0071: A reference to `fun erlang:max/2` can be taken directly.
+            %%                                              | 💡 Replace with `fun erlang:max/2`
+            %%                                              | 💡 <suppression>
             "#,
         )
     }
@@ -439,7 +447,9 @@ mod tests {
 
             use_fun(F, L) ->
                 lists:map(fun(X) -> F(X) end, L).
-            %%            ^^^^^^^^^^^^^^^^^^ 💡 information: W0071: Redundant wrapper around `F` can be removed.
+            %%            ^^^^^^^^^^^^^^^^^^ information: W0071: Redundant wrapper around `F` can be removed.
+            %%                             | 💡 Replace with `F`
+            %%                             | 💡 <suppression>
             "#,
         )
     }
@@ -454,7 +464,9 @@ mod tests {
 
             use_fun(F, L) ->
                 lists:map(fun(X) -> (F(X)) end, L).
-            %%            ^^^^^^^^^^^^^^^^^^^^ 💡 information: W0071: Redundant wrapper around `F` can be removed.
+            %%            ^^^^^^^^^^^^^^^^^^^^ information: W0071: Redundant wrapper around `F` can be removed.
+            %%                               | 💡 Replace with `F`
+            %%                               | 💡 <suppression>
             "#,
         )
     }
@@ -469,7 +481,9 @@ mod tests {
 
             use_fun(F, L) ->
                 lists:foldl(fun(Rec, Acc) -> F(Rec, Acc) end, [], L).
-            %%              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 information: W0071: Redundant wrapper around `F` can be removed.
+            %%              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ information: W0071: Redundant wrapper around `F` can be removed.
+            %%                                             | 💡 Replace with `F`
+            %%                                             | 💡 <suppression>
             "#,
         )
     }
@@ -593,7 +607,9 @@ mod tests {
             foo(_X) -> ok.
             use_fun(L) ->
                 lists:map(fun(_X) -> foo(_X) end, L).
-            %%            ^^^^^^^^^^^^^^^^^^^^^^ 💡 information: W0071: A reference to `fun foo/1` can be taken directly.
+            %%            ^^^^^^^^^^^^^^^^^^^^^^ information: W0071: A reference to `fun foo/1` can be taken directly.
+            %%                                 | 💡 Replace with `fun foo/1`
+            %%                                 | 💡 <suppression>
             "#,
         )
     }

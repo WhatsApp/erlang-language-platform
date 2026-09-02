@@ -75,11 +75,13 @@ mod test {
             r#"
              //- /src/dup_mod.erl
              -module(dup_mod).
-                  %% ^^^^^^^ 💡 warning: W0045: A module with this name exists elsewhere
+             %%      ^^^^^^^ warning: W0045: A module with this name exists elsewhere
+             %%            | 💡 <suppression>
 
              //- /src/sub/dup_mod.erl
              -module(dup_mod).
-                  %% ^^^^^^^ 💡 warning: W0045: A module with this name exists elsewhere
+             %%      ^^^^^^^ warning: W0045: A module with this name exists elsewhere
+             %%            | 💡 <suppression>
             "#,
         )
     }
@@ -92,10 +94,12 @@ mod test {
             r#"
              //- /app_a/test/dup_SUITE.erl app:app_a extra:test
              -module(dup_SUITE).
-                  %% ^^^^^^^^^ 💡 warning: W0045: A module with this name exists elsewhere
+             %%      ^^^^^^^^^ warning: W0045: A module with this name exists elsewhere
+             %%              | 💡 <suppression>
              //- /app_b/test/dup_SUITE.erl app:app_b extra:test
              -module(dup_SUITE).
-                  %% ^^^^^^^^^ 💡 warning: W0045: A module with this name exists elsewhere
+             %%      ^^^^^^^^^ warning: W0045: A module with this name exists elsewhere
+             %%              | 💡 <suppression>
             "#,
         )
     }

@@ -1110,7 +1110,9 @@ mod tests {
          fn(Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(my_key,M) of {ok, V} -> Found; error -> NotFound end.
-         %%      ^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%      ^^^^^^^^^ warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%              | 💡 Rewrite to use map query syntax
+         %%              | 💡 <suppression>
             "#,
         )
     }
@@ -1125,7 +1127,9 @@ mod tests {
          fn(Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find({key_a,key_b},M) of {ok, V} -> Found; error -> NotFound end.
-         %%      ^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%      ^^^^^^^^^ warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%              | 💡 Rewrite to use map query syntax
+         %%              | 💡 <suppression>
             "#,
         )
     }
@@ -1140,7 +1144,9 @@ mod tests {
          fn(K, Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(K,M) of {ok, V} -> Found; error -> NotFound end.
-         %%      ^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%      ^^^^^^^^^ warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%              | 💡 Rewrite to use map query syntax
+         %%              | 💡 <suppression>
             "#,
         )
     }
@@ -1155,7 +1161,9 @@ mod tests {
          fn(K, Found, NotFound, M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(K,M) of {ok, V} -> Found; _ -> NotFound end.
-         %%      ^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%      ^^^^^^^^^ warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%              | 💡 Rewrite to use map query syntax
+         %%              | 💡 <suppression>
             "#,
         )
     }
@@ -1170,7 +1178,9 @@ mod tests {
          fn(M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(k, M) of {ok, V} -> X = g(V), {ok, X}; error -> none end.
-         %%      ^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%      ^^^^^^^^^ warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%              | 💡 Rewrite to use map query syntax
+         %%              | 💡 <suppression>
 
          g(X) -> X.
             "#,
@@ -1187,7 +1197,9 @@ mod tests {
          fn(M) ->
             % elp:ignore W0017 (undefined_function)
             case maps:find(k, M) of {ok, a} -> 1; {ok, b} -> 2; {ok, _} -> 3; error -> 0 end.
-         %%      ^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%      ^^^^^^^^^ warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%              | 💡 Rewrite to use map query syntax
+         %%              | 💡 <suppression>
             "#,
         )
     }
@@ -1202,7 +1214,9 @@ mod tests {
          fn(M) ->
             % elp:ignore W0017 (undefined_function)
             {ok, V} = maps:find(k, M), V.
-         %%           ^^^^^^^^^💡 warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%           ^^^^^^^^^ warning: W0032: Unnecessary allocation of result tuple when the key is found.
+         %%                   | 💡 Rewrite to use map query syntax
+         %%                   | 💡 <suppression>
             "#,
         )
     }

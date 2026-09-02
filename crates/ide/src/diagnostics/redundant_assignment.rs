@@ -240,10 +240,14 @@ mod tests {
             do_foo() ->
                 X = 42,
                 Y = X,
-            %%  ^^^^^ 💡 weak: W0009: assignment is redundant
+            %%  ^^^^^ weak: W0009: assignment is redundant
+            %%      | 💡 Use right-hand of assignment everywhere
+            %%      | 💡 <suppression>
                 bar(Y),
                 Z = Y,
-            %%  ^^^^^ 💡 weak: W0009: assignment is redundant
+            %%  ^^^^^ weak: W0009: assignment is redundant
+            %%      | 💡 Use right-hand of assignment everywhere
+            %%      | 💡 <suppression>
                 g(Z),
                 case Y of
                   [A] -> C = A;

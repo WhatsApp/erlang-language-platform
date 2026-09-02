@@ -278,7 +278,9 @@ mod tests {
 
          read(Tab, Key) ->
             case ets:lookup(Tab, Key) of [{_, V}] -> V; _ -> undefined end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 weak: W0064: Can be rewritten using `ets:lookup_element/4` for improved performance.
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0064: Can be rewritten using `ets:lookup_element/4` for improved performance.
+         %%                                                              | 💡 Rewrite to use ets:lookup_element/4
+         %%                                                              | 💡 <suppression>
 
          //- /src/ets.erl
          -module(ets).
@@ -298,7 +300,9 @@ mod tests {
 
          read(Tab, Key) ->
             case ets:lookup(Tab, Key) of [{_, V}] -> V; [] -> undefined end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 weak: W0064: Can be rewritten using `ets:lookup_element/4` for improved performance.
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0064: Can be rewritten using `ets:lookup_element/4` for improved performance.
+         %%                                                               | 💡 Rewrite to use ets:lookup_element/4
+         %%                                                               | 💡 <suppression>
 
          //- /src/ets.erl
          -module(ets).
@@ -318,7 +322,9 @@ mod tests {
 
          read(Tab, Key) ->
             case ets:lookup(Tab, Key) of [] -> undefined; [{_K, V}] -> V end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 weak: W0064: Can be rewritten using `ets:lookup_element/4` for improved performance.
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0064: Can be rewritten using `ets:lookup_element/4` for improved performance.
+         %%                                                                | 💡 Rewrite to use ets:lookup_element/4
+         %%                                                                | 💡 <suppression>
 
          //- /src/ets.erl
          -module(ets).
@@ -338,7 +344,9 @@ mod tests {
 
          read(Tab, Key) ->
             case ets:lookup(Tab, Key) of [{Key, V}] -> V; _ -> undefined end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 weak: W0064: Can be rewritten using `ets:lookup_element/4` for improved performance.
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0064: Can be rewritten using `ets:lookup_element/4` for improved performance.
+         %%                                                                | 💡 Rewrite to use ets:lookup_element/4
+         %%                                                                | 💡 <suppression>
 
          //- /src/ets.erl
          -module(ets).
@@ -358,7 +366,9 @@ mod tests {
 
          cache_lookup(Key) ->
             case ets:lookup(my_cache, Key) of [{_, Value}] -> Value; _ -> {error, not_present} end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 weak: W0064: Can be rewritten using `ets:lookup_element/4` for improved performance.
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0064: Can be rewritten using `ets:lookup_element/4` for improved performance.
+         %%                                                                                      | 💡 Rewrite to use ets:lookup_element/4
+         %%                                                                                      | 💡 <suppression>
 
          //- /src/ets.erl
          -module(ets).
@@ -378,7 +388,9 @@ mod tests {
 
          read(Tab, Key, Default) ->
             case ets:lookup(Tab, Key) of [{_, V}] -> V; _ -> Default end.
-         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^💡 weak: W0064: Can be rewritten using `ets:lookup_element/4` for improved performance.
+         %% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0064: Can be rewritten using `ets:lookup_element/4` for improved performance.
+         %%                                                            | 💡 Rewrite to use ets:lookup_element/4
+         %%                                                            | 💡 <suppression>
 
          //- /src/ets.erl
          -module(ets).

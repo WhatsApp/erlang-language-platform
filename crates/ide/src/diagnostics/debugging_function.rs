@@ -114,9 +114,13 @@ mod tests {
 
 error() ->
     redbug:start("io:format/2->return", []),
-%%  ^^^^^^^^^^^^ 💡 weak: W0041: Debugging functions should only be used during local debugging and usages should not be checked in.
+%%  ^^^^^^^^^^^^ weak: W0041: Debugging functions should only be used during local debugging and usages should not be checked in.
+%%             | 💡 Remove invocation
+%%             | 💡 <suppression>
     redbug:stop().
-%%  ^^^^^^^^^^^ 💡 weak: W0041: Debugging functions should only be used during local debugging and usages should not be checked in.
+%%  ^^^^^^^^^^^ weak: W0041: Debugging functions should only be used during local debugging and usages should not be checked in.
+%%            | 💡 Remove invocation
+%%            | 💡 <suppression>
 
 noerror() ->
     redbug(),
@@ -160,7 +164,9 @@ redbug(_) ->
 
 main() ->
     re~dbug:start("io:format/2->return", []).
-%%  ^^^^^^^^^^^^ 💡 weak: W0041: Debugging functions should only be used during local debugging and usages should not be checked in.
+%%  ^^^^^^^^^^^^ weak: W0041: Debugging functions should only be used during local debugging and usages should not be checked in.
+%%             | 💡 Remove invocation
+%%             | 💡 <suppression>
 //- /src/redbug.erl
 -module(redbug).
 -export([start/2]).
@@ -192,7 +198,9 @@ main() ->
 
 main() ->
     re~dbug:start("io:format/2->return", []),
-%%  ^^^^^^^^^^^^ 💡 weak: W0041: Debugging functions should only be used during local debugging and usages should not be checked in.
+%%  ^^^^^^^^^^^^ weak: W0041: Debugging functions should only be used during local debugging and usages should not be checked in.
+%%             | 💡 Remove invocation
+%%             | 💡 <suppression>
     ok.
 //- /src/redbug.erl
 -module(redbug).

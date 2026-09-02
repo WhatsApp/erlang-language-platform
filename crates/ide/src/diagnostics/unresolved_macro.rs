@@ -135,7 +135,8 @@ mod tests {
             r#"
             -module(main).
             foo() -> ?UNDEFINED_MACRO.
-            %%       ^^^^^^^^^^^^^^^^ 💡 warning: W0057: undefined macro 'UNDEFINED_MACRO'
+            %%       ^^^^^^^^^^^^^^^^ warning: W0057: undefined macro 'UNDEFINED_MACRO'
+            %%                      | 💡 <suppression>
             "#,
         );
     }
@@ -150,7 +151,8 @@ mod tests {
             r#"
             -module(main).
             foo(X) -> ?UNDEFINED_MACRO(X, Y).
-            %%        ^^^^^^^^^^^^^^^^ 💡 warning: W0057: undefined macro 'UNDEFINED_MACRO/2'
+            %%        ^^^^^^^^^^^^^^^^ warning: W0057: undefined macro 'UNDEFINED_MACRO/2'
+            %%                       | 💡 <suppression>
             "#,
         );
     }

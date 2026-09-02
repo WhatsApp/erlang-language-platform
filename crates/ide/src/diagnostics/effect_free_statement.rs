@@ -264,10 +264,14 @@ mod tests {
             test_foo(_Config) ->
                 do_something(),
                 ok,
-            %%  ^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^ warning: W0006: this statement has no effect
+            %%   | 💡 Remove redundant statement
+            %%   | 💡 <suppression>
                 do_something_else(),
                 bar,
-            %%  ^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^ warning: W0006: this statement has no effect
+            %%    | 💡 Remove redundant statement
+            %%    | 💡 <suppression>
                 ok.
             do_something() -> ok.
             "#,
@@ -282,7 +286,9 @@ mod tests {
             test_foo(_Config) ->
                 X = 42,
                 X,
-            %%  ^ 💡 warning: W0006: this statement has no effect
+            %%  ^ warning: W0006: this statement has no effect
+            %%  | 💡 Remove redundant statement
+            %%  | 💡 <suppression>
                 ok.
             "#,
         );
@@ -296,16 +302,26 @@ mod tests {
             test_foo(_Config) ->
                 do_something(),
                 42,
-            %%  ^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^ warning: W0006: this statement has no effect
+            %%   | 💡 Remove redundant statement
+            %%   | 💡 <suppression>
                 41.9999,
-            %%  ^^^^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^^^ warning: W0006: this statement has no effect
+            %%        | 💡 Remove redundant statement
+            %%        | 💡 <suppression>
                 do_something_else(),
                 "foo",
-            %%  ^^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^ warning: W0006: this statement has no effect
+            %%      | 💡 Remove redundant statement
+            %%      | 💡 <suppression>
                 <<"foo">>,
-            %%  ^^^^^^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^^^^^ warning: W0006: this statement has no effect
+            %%          | 💡 Remove redundant statement
+            %%          | 💡 <suppression>
                 'A',
-            %%  ^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^ warning: W0006: this statement has no effect
+            %%    | 💡 Remove redundant statement
+            %%    | 💡 <suppression>
                 ok.
             do_something() -> 42.
             "#,
@@ -321,13 +337,19 @@ mod tests {
             test_foo(_Config) ->
                 do_something(),
                 fun() -> do_something() end,
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0006: this statement has no effect
+            %%                            | 💡 Remove redundant statement
+            %%                            | 💡 <suppression>
                 F = fun() -> do_something() end,
                 F(),
                 fun do_something/0,
-            %%  ^^^^^^^^^^^^^^^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^ warning: W0006: this statement has no effect
+            %%                   | 💡 Remove redundant statement
+            %%                   | 💡 <suppression>
                 fun erlang:length/1,
-            %%  ^^^^^^^^^^^^^^^^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^ warning: W0006: this statement has no effect
+            %%                    | 💡 Remove redundant statement
+            %%                    | 💡 <suppression>
                 ok.
             do_something() -> 42.
             //- /src/erlang.erl
@@ -346,7 +368,9 @@ mod tests {
             test_foo(_Config) ->
                 (do_something()),
                 (blah),
-            %%  ^^^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^^ warning: W0006: this statement has no effect
+            %%       | 💡 Remove redundant statement
+            %%       | 💡 <suppression>
                 ok.
             do_something() -> (abc).
             "#,
@@ -361,13 +385,21 @@ mod tests {
             test_foo(_Config) ->
                 do_something(),
                 begin abc, blah, ("foo") end,
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0006: this statement has no effect
-            %%        ^^^ 💡 warning: W0006: this statement has no effect
-            %%             ^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0006: this statement has no effect
+            %%                             | 💡 Remove redundant statement
+            %%                             | 💡 <suppression>
+            %%        ^^^ warning: W0006: this statement has no effect
+            %%          | 💡 Remove redundant statement
+            %%          | 💡 <suppression>
+            %%             ^^^^ warning: W0006: this statement has no effect
+            %%                | 💡 Remove redundant statement
+            %%                | 💡 <suppression>
                 begin
                   do_something(),
                   blah,
-              %%  ^^^^ 💡 warning: W0006: this statement has no effect
+            %%    ^^^^ warning: W0006: this statement has no effect
+            %%       | 💡 Remove redundant statement
+            %%       | 💡 <suppression>
                   ok
                 end,
                 ok.
@@ -384,10 +416,14 @@ mod tests {
             test_foo(_Config) ->
                 do_something(),
                 [42, blah, ("foo")],
-            %%  ^^^^^^^^^^^^^^^^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^ warning: W0006: this statement has no effect
+            %%                    | 💡 Remove redundant statement
+            %%                    | 💡 <suppression>
                 [42, do_something(), blah],
                 [],
-            %%  ^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^ warning: W0006: this statement has no effect
+            %%   | 💡 Remove redundant statement
+            %%   | 💡 <suppression>
                 ok.
             do_something() -> [].
             "#,
@@ -402,10 +438,14 @@ mod tests {
             test_foo(_Config) ->
                 do_something(),
                 {42, [blah], {"foo"}},
-            %%  ^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^^^ warning: W0006: this statement has no effect
+            %%                      | 💡 Remove redundant statement
+            %%                      | 💡 <suppression>
                 {42, do_something(), blah},
                 {},
-            %%  ^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^ warning: W0006: this statement has no effect
+            %%   | 💡 Remove redundant statement
+            %%   | 💡 <suppression>
                 ok.
             do_something() -> [].
             "#,
@@ -421,11 +461,15 @@ mod tests {
             test_foo(P) ->
                 do_something(),
                 #person{name="Bob", age=42},
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0006: this statement has no effect
+            %%                            | 💡 Remove redundant statement
+            %%                            | 💡 <suppression>
                 #person{name=get_name(), age=42},
                 P#person{name="Alice"},
                 #person.name,
-            %%  ^^^^^^^^^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^^^^^^^^ warning: W0006: this statement has no effect
+            %%             | 💡 Remove redundant statement
+            %%             | 💡 <suppression>
                 P#person.name,
                 ok.
             get_name() -> "bob".
@@ -441,7 +485,9 @@ mod tests {
             test_foo(P) ->
                 do_something(),
                 #{name => "Bob", age => 42},
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0006: this statement has no effect
+            %%                            | 💡 Remove redundant statement
+            %%                            | 💡 <suppression>
                 #{name => get_name(), age => 42},
                 #{get_key() => "Bob", age => 42},
                 P#{name=>"Alice"},
@@ -460,10 +506,16 @@ mod tests {
             test_foo(_P) ->
                 catch do_something(),
                 catch ok,
-            %%  ^^^^^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^^^^ warning: W0006: this statement has no effect
+            %%         | 💡 Remove redundant statement
+            %%         | 💡 <suppression>
                 try does, nothing catch _ -> do_stuff() end,
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0006: this statement has no effect
-                %%  ^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0006: this statement has no effect
+            %%                                            | 💡 Remove redundant statement
+            %%                                            | 💡 <suppression>
+            %%      ^^^^ warning: W0006: this statement has no effect
+            %%         | 💡 Remove redundant statement
+            %%         | 💡 <suppression>
                 try
                     does_nothing
                 of _ -> ok
@@ -475,20 +527,34 @@ mod tests {
                     ok
                 end,
                 try does, nothing after blah, ok end,
-            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0006: this statement has no effect
-                %%  ^^^^ 💡 warning: W0006: this statement has no effect
-                                    %%  ^^^^ 💡 warning: W0006: this statement has no effect
+            %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0006: this statement has no effect
+            %%                                     | 💡 Remove redundant statement
+            %%                                     | 💡 <suppression>
+            %%      ^^^^ warning: W0006: this statement has no effect
+            %%         | 💡 Remove redundant statement
+            %%         | 💡 <suppression>
+            %%                          ^^^^ warning: W0006: this statement has no effect
+            %%                             | 💡 Remove redundant statement
+            %%                             | 💡 <suppression>
                 try
                     does, nothing
-                %%  ^^^^ 💡 warning: W0006: this statement has no effect
+            %%      ^^^^ warning: W0006: this statement has no effect
+            %%         | 💡 Remove redundant statement
+            %%         | 💡 <suppression>
                 of _ -> foo, bar
-                    %%  ^^^ 💡 warning: W0006: this statement has no effect
+            %%          ^^^ warning: W0006: this statement has no effect
+            %%            | 💡 Remove redundant statement
+            %%            | 💡 <suppression>
                 catch
                   _ -> 42, not_ok
-                   %%  ^^ 💡 warning: W0006: this statement has no effect
+            %%         ^^ warning: W0006: this statement has no effect
+            %%          | 💡 Remove redundant statement
+            %%          | 💡 <suppression>
                 after
                   [1,2,3],
-              %%  ^^^^^^^ 💡 warning: W0006: this statement has no effect
+            %%    ^^^^^^^ warning: W0006: this statement has no effect
+            %%          | 💡 Remove redundant statement
+            %%          | 💡 <suppression>
                   ok
                 end,
                 ok.
@@ -511,7 +577,9 @@ mod tests {
 
             blah() ->
                  noop,
-             %%  ^^^^ 💡 warning: W0006: this statement has no effect
+%%               ^^^^ warning: W0006: this statement has no effect
+%%                  | 💡 Remove redundant statement
+%%                  | 💡 <suppression>
                  do_something(),
                  ?included_noop(42),
                  do_something(),
@@ -560,7 +628,9 @@ mod tests {
             test() ->
                 maybe
                     a,
-                %%  ^ 💡 warning: W0006: this statement has no effect
+            %%      ^ warning: W0006: this statement has no effect
+            %%      | 💡 Remove redundant statement
+            %%      | 💡 <suppression>
                     b,
                     {ok, AA} ?= ok_a(),
                     {ok, BB} ?= ok_b(),

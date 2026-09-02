@@ -264,7 +264,9 @@ mod tests {
          -module(main).
 
          fn() -> list_to_binary("foo").
-         %%      ^^^^^^^^^^^^^^^^^^^^^ 💡 information: W0055: Could be rewritten as a binary string literal.
+         %%      ^^^^^^^^^^^^^^^^^^^^^ information: W0055: Could be rewritten as a binary string literal.
+         %%                          | 💡 Rewrite as a binary string literal
+         %%                          | 💡 <suppression>
 
          //- /src/erlang.erl
          -module(erlang).
@@ -305,7 +307,9 @@ mod tests {
          -module(main).
 
          fn() -> erlang:list_to_binary("foo").
-         %%      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 information: W0055: Could be rewritten as a binary string literal.
+         %%      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ information: W0055: Could be rewritten as a binary string literal.
+         %%                                 | 💡 Rewrite as a binary string literal
+         %%                                 | 💡 <suppression>
 
          //- /src/erlang.erl
          -module(erlang).
@@ -346,7 +350,9 @@ mod tests {
          -module(main).
 
          fn() -> list_to_atom("foo").
-         %%      ^^^^^^^^^^^^^^^^^^^ 💡 information: W0055: Could be rewritten as an atom literal.
+         %%      ^^^^^^^^^^^^^^^^^^^ information: W0055: Could be rewritten as an atom literal.
+         %%                        | 💡 Rewrite as an atom literal
+         %%                        | 💡 <suppression>
 
          //- /src/erlang.erl
          -module(erlang).
@@ -387,7 +393,9 @@ mod tests {
          -module(main).
 
          fn() -> erlang:list_to_atom("foo").
-         %%      ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 information: W0055: Could be rewritten as an atom literal.
+         %%      ^^^^^^^^^^^^^^^^^^^^^^^^^^ information: W0055: Could be rewritten as an atom literal.
+         %%                               | 💡 Rewrite as an atom literal
+         %%                               | 💡 <suppression>
 
          //- /src/erlang.erl
          -module(erlang).
@@ -428,7 +436,9 @@ mod tests {
          -module(main).
 
          fn() -> atom_to_binary(foo).
-         %%      ^^^^^^^^^^^^^^^^^^^ 💡 information: W0055: Could be rewritten as a binary string literal.
+         %%      ^^^^^^^^^^^^^^^^^^^ information: W0055: Could be rewritten as a binary string literal.
+         %%                        | 💡 Rewrite as a binary string literal
+         %%                        | 💡 <suppression>
 
          //- /src/erlang.erl
          -module(erlang).
@@ -469,7 +479,9 @@ mod tests {
          -module(main).
 
          fn() -> erlang:atom_to_binary(foo).
-         %%      ^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 information: W0055: Could be rewritten as a binary string literal.
+         %%      ^^^^^^^^^^^^^^^^^^^^^^^^^^ information: W0055: Could be rewritten as a binary string literal.
+         %%                               | 💡 Rewrite as a binary string literal
+         %%                               | 💡 <suppression>
 
          //- /src/erlang.erl
          -module(erlang).
@@ -510,7 +522,9 @@ mod tests {
          -module(main).
 
          fn() -> atom_to_list(foo).
-         %%      ^^^^^^^^^^^^^^^^^ 💡 information: W0055: Could be rewritten as a string literal.
+         %%      ^^^^^^^^^^^^^^^^^ information: W0055: Could be rewritten as a string literal.
+         %%                      | 💡 Rewrite as a string literal
+         %%                      | 💡 <suppression>
 
          //- /src/erlang.erl
          -module(erlang).
@@ -551,7 +565,9 @@ mod tests {
          -module(main).
 
          fn() -> erlang:atom_to_list(foo).
-         %%      ^^^^^^^^^^^^^^^^^^^^^^^^ 💡 information: W0055: Could be rewritten as a string literal.
+         %%      ^^^^^^^^^^^^^^^^^^^^^^^^ information: W0055: Could be rewritten as a string literal.
+         %%                             | 💡 Rewrite as a string literal
+         %%                             | 💡 <suppression>
 
          //- /src/erlang.erl
          -module(erlang).

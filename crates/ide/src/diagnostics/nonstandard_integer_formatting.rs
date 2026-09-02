@@ -295,7 +295,9 @@ mod tests {
          -module(integer_literal_format).
 
          fn() -> {val, 10000}.
-         %%            ^^^^^ 💡 information: W0043: Non-standard integer formatting.
+         %%            ^^^^^ information: W0043: Non-standard integer formatting.
+         %%                | 💡 Reformat integer to 10_000
+         %%                | 💡 <suppression>
             "#,
         )
     }
@@ -325,7 +327,9 @@ mod tests {
          -module(integer_literal_format).
 
          fn() -> {val, 16#4865316F774F6C64}.
-         %%            ^^^^^^^^^^^^^^^^^^^ 💡 information: W0043: Non-standard integer formatting.
+         %%            ^^^^^^^^^^^^^^^^^^^ information: W0043: Non-standard integer formatting.
+         %%                              | 💡 Reformat integer
+         %%                              | 💡 <suppression>
             "#,
         )
     }
@@ -355,7 +359,9 @@ mod tests {
          -module(integer_literal_format).
 
          fn() -> {val, 2#1011011110010001}.
-         %%            ^^^^^^^^^^^^^^^^^^ 💡 information: W0043: Non-standard integer formatting.
+         %%            ^^^^^^^^^^^^^^^^^^ information: W0043: Non-standard integer formatting.
+         %%                             | 💡 Reformat integer
+         %%                             | 💡 <suppression>
             "#,
         )
     }
@@ -385,7 +391,9 @@ mod tests {
          -module(integer_literal_format).
 
          fn() -> {val, -10000}.
-         %%             ^^^^^ 💡 information: W0043: Non-standard integer formatting.
+         %%             ^^^^^ information: W0043: Non-standard integer formatting.
+         %%                 | 💡 Reformat integer to 10_000
+         %%                 | 💡 <suppression>
             "#,
         )
     }
@@ -445,7 +453,9 @@ mod tests {
          -module(integer_literal_format).
 
          fn() -> {val, -16#4865316F774F6C64}.
-         %%             ^^^^^^^^^^^^^^^^^^^ 💡 information: W0043: Non-standard integer formatting.
+         %%             ^^^^^^^^^^^^^^^^^^^ information: W0043: Non-standard integer formatting.
+         %%                               | 💡 Reformat integer
+         %%                               | 💡 <suppression>
             "#,
         )
     }
@@ -475,7 +485,9 @@ mod tests {
          -module(integer_literal_format).
 
          fn() -> {val, -2#1011011110010001}.
-         %%             ^^^^^^^^^^^^^^^^^^ 💡 information: W0043: Non-standard integer formatting.
+         %%             ^^^^^^^^^^^^^^^^^^ information: W0043: Non-standard integer formatting.
+         %%                              | 💡 Reformat integer
+         %%                              | 💡 <suppression>
             "#,
         )
     }
@@ -522,7 +534,9 @@ mod tests {
          -module(integer_literal_format).
 
          fn() -> {val, 16#4865316F7_74F6_C64}.
-         %%            ^^^^^^^^^^^^^^^^^^^^^ 💡 information: W0043: Non-standard integer formatting.
+         %%            ^^^^^^^^^^^^^^^^^^^^^ information: W0043: Non-standard integer formatting.
+         %%                                | 💡 Reformat integer
+         %%                                | 💡 <suppression>
             "#,
         )
     }
@@ -552,7 +566,9 @@ mod tests {
          -module(integer_literal_format).
 
          fn() -> {val, 2#1011011_110010001}.
-         %%            ^^^^^^^^^^^^^^^^^^^ 💡 information: W0043: Non-standard integer formatting.
+         %%            ^^^^^^^^^^^^^^^^^^^ information: W0043: Non-standard integer formatting.
+         %%                              | 💡 Reformat integer
+         %%                              | 💡 <suppression>
             "#,
         )
     }
@@ -582,7 +598,9 @@ mod tests {
          -module(integer_literal_format).
 
          fn() -> {val, -1000_0}.
-         %%             ^^^^^^ 💡 information: W0043: Non-standard integer formatting.
+         %%             ^^^^^^ information: W0043: Non-standard integer formatting.
+         %%                  | 💡 Reformat integer to 10_000
+         %%                  | 💡 <suppression>
             "#,
         )
     }
@@ -612,7 +630,9 @@ mod tests {
          -module(integer_literal_format).
 
          fn() -> {val, -16#4865316F7_74F6C64}.
-         %%             ^^^^^^^^^^^^^^^^^^^^ 💡 information: W0043: Non-standard integer formatting.
+         %%             ^^^^^^^^^^^^^^^^^^^^ information: W0043: Non-standard integer formatting.
+         %%                                | 💡 Reformat integer
+         %%                                | 💡 <suppression>
             "#,
         )
     }
@@ -642,7 +662,9 @@ mod tests {
          -module(integer_literal_format).
 
          fn() -> {val, -2#101_1011110010001}.
-         %%             ^^^^^^^^^^^^^^^^^^^ 💡 information: W0043: Non-standard integer formatting.
+         %%             ^^^^^^^^^^^^^^^^^^^ information: W0043: Non-standard integer formatting.
+         %%                               | 💡 Reformat integer
+         %%                               | 💡 <suppression>
             "#,
         )
     }
@@ -672,7 +694,9 @@ mod tests {
          -module(integer_literal_format).
 
          fn() -> {val, +10000}.
-         %%             ^^^^^ 💡 information: W0043: Non-standard integer formatting.
+         %%             ^^^^^ information: W0043: Non-standard integer formatting.
+         %%                 | 💡 Reformat integer to 10_000
+         %%                 | 💡 <suppression>
             "#,
         )
     }
@@ -702,7 +726,9 @@ mod tests {
          -module(integer_literal_format).
 
          fn() -> {val, -  10000}.
-         %%               ^^^^^ 💡 information: W0043: Non-standard integer formatting.
+         %%               ^^^^^ information: W0043: Non-standard integer formatting.
+         %%                   | 💡 Reformat integer to 10_000
+         %%                   | 💡 <suppression>
             "#,
         )
     }

@@ -204,7 +204,8 @@ mod tests {
 -spec test(atom()) -> ok.
 test(A) ->
   % eqwalizer:fixme
-%%^^^^^^^^^^^^^^^^^ 💡 warning: W0073: Avoid `eqwalizer:fixme`: this comment suppresses eqwalizer type errors on the following line. Fix the underlying type issue instead of suppressing it.
+%%^^^^^^^^^^^^^^^^^ warning: W0073: Avoid `eqwalizer:fixme`: this comment suppresses eqwalizer type errors on the following line. Fix the underlying type issue instead of suppressing it.
+%%                | 💡 <suppression>
   _ = A + 1,
   ok.
 "#,
@@ -220,7 +221,8 @@ test(A) ->
 -export([test/0]).
 
 % eqwalizer:ignore
-%%<^^^^^^^^^^^^^^^ 💡 warning: W0074: Avoid `eqwalizer:ignore`: this comment suppresses eqwalizer type errors on the following line. Fix the underlying type issue instead of suppressing it.
+%%<^^^^^^^^^^^^^^^ warning: W0074: Avoid `eqwalizer:ignore`: this comment suppresses eqwalizer type errors on the following line. Fix the underlying type issue instead of suppressing it.
+%%               | 💡 <suppression>
 -type loop() :: loop().
 
 -spec test() -> ok.
@@ -244,7 +246,8 @@ test() -> ok.
 -spec test(atom()) -> ok.
 test(A) ->
   ?UNCHECKED_CAST(A, ok).
-%%^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST`: these bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
+%%^^^^^^^^^^^^^^^^^^^^^^ warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST`: these bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
+%%                     | 💡 <suppression>
 "#,
         )
     }
@@ -265,7 +268,8 @@ test(A) ->
 //- /include/eqwalizer.hrl
 -define(UNCHECKED_CAST(Expr, _Type), Expr).
 -define(MY_CAST(Expr), ?UNCHECKED_CAST(Expr, binary())).
-%%                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST`: these bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
+%%                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST`: these bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
+%%                                                   | 💡 <suppression>
 
 //- /src/main.erl
 -module(main).
@@ -294,7 +298,8 @@ test(A) ->
 -spec test(atom()) -> ok.
 test(A) ->
   ?DYNAMIC_CAST(A).
-%%^^^^^^^^^^^^^^^^ 💡 warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST`: these bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
+%%^^^^^^^^^^^^^^^^ warning: W0075: Avoid `?UNCHECKED_CAST` / `?DYNAMIC_CAST`: these bypass eqwalizer type checking by asserting a value has a specific type without verification. Fix the underlying type issue, or use `?CHECKED_CAST` as a type-safe alternative.
+%%               | 💡 <suppression>
 "#,
         )
     }

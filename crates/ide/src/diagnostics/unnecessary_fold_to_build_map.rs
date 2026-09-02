@@ -265,7 +265,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(List) -> lists:foldl(fun(K, Acc) -> Acc#{K => []} end, #{}, List).
-         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0035: Unnecessary explicit fold to construct map from keys.
+         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0035: Unnecessary explicit fold to construct map from keys.
+         %%                                                                 | 💡 Rewrite to use maps:from_keys/2
+         %%                                                                 | 💡 <suppression>
             "#,
         )
     }
@@ -279,7 +281,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(List) -> lists:foldl(fun({K,V}, Acc) -> Acc#{K => V} end, #{}, List).
-         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0035: Unnecessary explicit fold to construct map from list.
+         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0035: Unnecessary explicit fold to construct map from list.
+         %%                                                                    | 💡 Rewrite to use maps:from_list/1
+         %%                                                                    | 💡 <suppression>
             "#,
         )
     }

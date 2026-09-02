@@ -318,30 +318,44 @@ mod tests {
   -module(main).
   list_ops(X) ->
     f([] ++ [1]),
-   %% ^^^^^^^^^ 💡 warning: W0019: Can be simplified to `[1]`.
+  %%  ^^^^^^^^^ warning: W0019: Can be simplified to `[1]`.
+  %%          | 💡 Replace by `[1]`
+  %%          | 💡 <suppression>
     f([2] ++ [1]),
     f(X ++ [1]),
     ok.
 
   arith_ops(X) ->
     f(0 + 42),
-   %% ^^^^^^ 💡 warning: W0019: Can be simplified to `42`.
+  %%  ^^^^^^ warning: W0019: Can be simplified to `42`.
+  %%       | 💡 Replace by `42`
+  %%       | 💡 <suppression>
     f(40 + 2),
     f(X + 42),
     ok.
 
   short_circuit_boolean_ops(X) ->
     f(true andalso X),
-   %% ^^^^^^^^^^^^^^ 💡 warning: W0019: Can be simplified to `X`.
+  %%  ^^^^^^^^^^^^^^ warning: W0019: Can be simplified to `X`.
+  %%               | 💡 Replace by `X`
+  %%               | 💡 <suppression>
     f(false orelse X),
-   %% ^^^^^^^^^^^^^^ 💡 warning: W0019: Can be simplified to `X`.
+  %%  ^^^^^^^^^^^^^^ warning: W0019: Can be simplified to `X`.
+  %%               | 💡 Replace by `X`
+  %%               | 💡 <suppression>
     f(not false),
-   %% ^^^^^^^^^ 💡 warning: W0019: Can be simplified to `true`.
+  %%  ^^^^^^^^^ warning: W0019: Can be simplified to `true`.
+  %%          | 💡 Replace by `true`
+  %%          | 💡 <suppression>
     f(not true),
-   %% ^^^^^^^^ 💡 warning: W0019: Can be simplified to `false`.
+  %%  ^^^^^^^^ warning: W0019: Can be simplified to `false`.
+  %%         | 💡 Replace by `false`
+  %%         | 💡 <suppression>
 
       true andalso X,
-   %% ^^^^^^^^^^^^^^ 💡 warning: W0019: Can be simplified to `X`.
+  %%  ^^^^^^^^^^^^^^ warning: W0019: Can be simplified to `X`.
+  %%               | 💡 Replace by `X`
+  %%               | 💡 <suppression>
     ok.
 
 

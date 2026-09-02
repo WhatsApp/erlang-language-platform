@@ -180,7 +180,9 @@ mod tests {
 
 select_all() ->
     ets:fun2ms(fun({K, V}) -> {K, V} end).
-%%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0067: Call to `ets:fun2ms/1` requires inclusion of `ms_transform.hrl`
+%%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0067: Call to `ets:fun2ms/1` requires inclusion of `ms_transform.hrl`
+%%                                      | 💡 Add `-include_lib("stdlib/include/ms_transform.hrl").`
+%%                                      | 💡 <suppression>
 "#,
         );
     }
@@ -267,10 +269,14 @@ select_all() ->
 
 select_all() ->
     MS1 = ets:fun2ms(fun({K, _V}) -> {K, true} end),
-%%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0067: Call to `ets:fun2ms/1` requires inclusion of `ms_transform.hrl`
+%%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0067: Call to `ets:fun2ms/1` requires inclusion of `ms_transform.hrl`
+%%                                                | 💡 Add `-include_lib("stdlib/include/ms_transform.hrl").`
+%%                                                | 💡 <suppression>
 
     MS2 = ets:fun2ms(fun({K, V}) -> {ok, {K, V}} end),
-%%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0067: Call to `ets:fun2ms/1` requires inclusion of `ms_transform.hrl`
+%%        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0067: Call to `ets:fun2ms/1` requires inclusion of `ms_transform.hrl`
+%%                                                  | 💡 Add `-include_lib("stdlib/include/ms_transform.hrl").`
+%%                                                  | 💡 <suppression>
     {MS1, MS2}.
 "#,
         );

@@ -124,7 +124,8 @@ mod tests {
 
               catcher(X,Y) ->
               case catch X/Y of
-              %%   ^^^^^ 💡 warning: W0052: Avoid `catch`.
+              %%   ^^^^^ warning: W0052: Avoid `catch`.
+              %%       | 💡 <suppression>
                 {'EXIT', {badarith,_}} -> "uh oh";
                 N -> N
               end.

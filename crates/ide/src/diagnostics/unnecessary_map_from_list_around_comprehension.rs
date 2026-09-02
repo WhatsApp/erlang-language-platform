@@ -189,7 +189,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(List) -> maps:from_list([{K + 1, V + 2} || {K,V} <- List]).
-         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0036: Unnecessary intermediate list allocated.
+         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0036: Unnecessary intermediate list allocated.
+         %%                                                          | 💡 Rewrite to construct the map directly from the comprehension
+         %%                                                          | 💡 <suppression>
             "#,
         )
     }
@@ -203,7 +205,9 @@ mod tests {
 
          % elp:ignore W0017 (undefined_function)
          fn(List) -> maps:from_list([{element(1, Pair) + 1, element(2, Pair) + 2} || Pair <- List]).
-         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: W0036: Unnecessary intermediate list allocated.
+         %%          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: W0036: Unnecessary intermediate list allocated.
+         %%                                                                                       | 💡 Rewrite to construct the map directly from the comprehension
+         %%                                                                                       | 💡 <suppression>
             "#,
         )
     }
