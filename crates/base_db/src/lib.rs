@@ -49,6 +49,7 @@ pub use elp_project_model::test_fixture::CURSOR_MARKER;
 pub use elp_project_model::test_fixture::RangeOrOffset;
 pub use elp_project_model::test_fixture::extract_offset;
 pub use elp_project_model::test_fixture::remove_annotations;
+pub use elp_project_model::test_fixture::render_annotations;
 pub use include::IncludeCtx;
 pub use include::generated_file_include_lib;
 pub use input::AppData;

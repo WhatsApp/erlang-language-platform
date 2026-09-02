@@ -105,7 +105,9 @@ mod tests {
 
         reverse_and_append(List, Tail) ->
             lists:reverse(List) ++ Tail.
-        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warning: W0056: Use `lists:reverse/2` instead of `lists:reverse/1 ++ Tail` for better performance.
+        %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0056: Use `lists:reverse/2` instead of `lists:reverse/1 ++ Tail` for better performance.
+        %%                            | 💡 Use lists:reverse/2
+        %%                            | 💡 <suppression>
            "#,
         )
     }

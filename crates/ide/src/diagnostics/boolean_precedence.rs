@@ -381,8 +381,11 @@ mod tests {
             -module(main).
             foo(S,P) ->
                 (S or P > 3).
-          %%       ^^ 💡 warning: W0025: Consider using the short-circuit expression 'orelse' instead of 'or'.
+          %%       ^^ warning: W0025: Consider using the short-circuit expression 'orelse' instead of 'or'.
           %%        | Or add parentheses to avoid potential ambiguity.
+          %%        | 💡 Replace 'or' with 'orelse'
+          %%        | 💡 Add parens to RHS
+          %%        | 💡 <suppression>
                       "#,
         )
     }

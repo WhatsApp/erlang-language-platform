@@ -13,6 +13,7 @@
 
 use elp_ide_assists::Assist;
 use elp_ide_db::RootDatabase;
+use elp_ide_db::assists::GroupLabel;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
@@ -20,6 +21,7 @@ use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::elp_base_db::assert_eq_expected;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::remove_annotations;
+use elp_ide_db::elp_base_db::render_annotations;
 use elp_ide_db::text_edit::TextRange;
 use elp_project_model::test_fixture::trim_indent;
 use expect_test::Expect;
@@ -208,7 +210,7 @@ pub(crate) fn check_specific_fix_with_config_and_adhoc(
 
     let expected = fixture.annotations_by_file_id(&file_id);
     let actual = convert_diagnostics_to_annotations(diagnostics.clone());
-    assert_eq_expected!(expected, actual);
+    assert_annotations_eq(&analysis, file_id, &expected, &actual);
 
     let fix: Assist = if let Some(label) = assist_label {
         let fixes: Vec<_> = diagnostics
@@ -299,7 +301,6 @@ pub(crate) fn convert_diagnostics_to_annotations(
             let mut annotation = String::new();
             if let Some(fixes) = &d.fixes {
                 assert!(!fixes.is_empty());
-                annotation.push_str("💡 ")
             }
             annotation.push_str(match d.severity {
                 Severity::Error => "error",
@@ -328,11 +329,69 @@ pub(crate) fn convert_diagnostics_to_annotations(
                 }
             }
 
+            // Append the offered fixes. Their wording is usually tailored to
+            // the specific occurrence, so it is worth pinning down. The
+            // suppression pair every suppressible diagnostic carries is the
+            // same everywhere, so it collapses to one line.
+            if let Some(fixes) = &d.fixes {
+                let (suppression, tailored): (Vec<_>, Vec<_>) =
+                    fixes.iter().partition(|fix| is_suppression(fix));
+                for fix in tailored {
+                    annotation.push_str(&format!("\n💡 {}", fix.label));
+                }
+                if is_default_suppression_pair(&suppression) {
+                    annotation.push_str("\n💡 <suppression>");
+                } else {
+                    for fix in suppression {
+                        annotation.push_str(&format!("\n💡 {}", fix.label));
+                    }
+                }
+            }
+
             (d.range, annotation)
         })
         .collect::<Vec<_>>();
     actual.sort_by_key(|(range, _)| range.start());
     actual
+}
+
+/// Compare the annotations the fixture declares against the ones the
+/// diagnostics produce. On a mismatch, show the fixture as it would read with
+/// the actual annotations, so it can be copied back into the test.
+#[track_caller]
+fn assert_annotations_eq(
+    analysis: &Analysis,
+    file_id: FileId,
+    expected: &Vec<(TextRange, String)>,
+    actual: &Vec<(TextRange, String)>,
+) {
+    if expected == actual {
+        return;
+    }
+    let text = analysis
+        .db
+        .file_text(file_id)
+        .text(&analysis.db)
+        .to_string();
+    match render_annotations(&text, actual) {
+        Some(rendered) => panic!(
+            "assertion failed\n  expected: {expected:?}\n  actual  : {actual:?}\n\n\
+             fixture with actual annotations:\n{rendered}"
+        ),
+        None => assert_eq_expected!(expected, actual),
+    }
+}
+
+fn is_suppression(fix: &Assist) -> bool {
+    fix.group == Some(GroupLabel::ignore()) || fix.group == Some(GroupLabel::fixme())
+}
+
+/// The `ignore` + `fixme` pair that `with_default_suppression_fixes` attaches
+/// to every suppressible diagnostic.
+fn is_default_suppression_pair(fixes: &[&Assist]) -> bool {
+    fixes.len() == 2
+        && fixes[0].group == Some(GroupLabel::ignore())
+        && fixes[1].group == Some(GroupLabel::fixme())
 }
 
 fn convert_diagnostic_message(d: &Diagnostic) -> String {
@@ -369,7 +428,7 @@ pub(crate) fn check_diagnostics_with_config_and_ad_hoc(
 
         let expected = fixture.annotations_by_file_id(&file_id);
         let actual = convert_diagnostics_to_annotations(diagnostics);
-        assert_eq_expected!(expected, actual);
+        assert_annotations_eq(&analysis, file_id, &expected, &actual);
     }
 }
 
@@ -405,7 +464,7 @@ pub(crate) fn check_filtered_diagnostics_with_config(
             .collect();
         let expected = fixture.annotations_by_file_id(&file_id);
         let actual = convert_diagnostics_to_annotations(diagnostics);
-        assert_eq_expected!(expected, actual);
+        assert_annotations_eq(&analysis, file_id, &expected, &actual);
     }
 }
 
@@ -432,7 +491,7 @@ pub(crate) fn check_diagnostics_with_config_and_extra(
 
         let expected = fixture.annotations_by_file_id(&file_id);
         let actual = convert_diagnostics_to_annotations(diagnostics);
-        assert_eq_expected!(expected, actual);
+        assert_annotations_eq(&analysis, file_id, &expected, &actual);
     }
 }
 

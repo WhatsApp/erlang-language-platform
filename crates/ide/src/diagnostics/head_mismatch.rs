@@ -459,8 +459,9 @@ mod tests {
             food(0) ->
                 ok;
             fooX(_X) ->
-         %% ^^^^ 💡 error: P1700: head mismatch 'fooX' vs 'food'
+         %% ^^^^ error: P1700: head mismatch 'fooX' vs 'food'
          %%    | Related info: 0:21-25 Mismatched clause name
+         %%    | 💡 Fix head mismatch
                 no.
 
             bar() ->

@@ -645,6 +645,191 @@ pub fn extract_annotations(text: &str) -> (Vec<(TextRange, String)>, String) {
     (res, text_without_annotations)
 }
 
+// ---------------------------------------------------------------------
+
+/// Renders `annotations` back into `text` as `%% ^^^ ...` comment lines,
+/// inverting [`extract_annotations`].
+///
+/// `text` is a fixture body whose annotation lines have already been stripped,
+/// still carrying the cursor marker. The ranges in `annotations` are the ones
+/// [`extract_annotations`] produces for that body.
+///
+/// Returns `None` when an annotation cannot be expressed in the caret syntax,
+/// for example a range spanning several lines, or one starting in the two
+/// columns the leading `%%` occupies. Callers should leave the fixture alone in
+/// that case rather than write a lossy approximation. Note that rendering is
+/// only ever *proposed*: callers are expected to feed the result back through
+/// [`extract_annotations`] and confirm it round-trips before using it.
+pub fn render_annotations(text: &str, annotations: &[(TextRange, String)]) -> Option<String> {
+    let lines = fixture_lines(text);
+    let whole_file_range = TextRange::up_to(TextSize::of(&remove_annotations(None, text)));
+
+    let mut top_of_file = None;
+    let mut by_line: Vec<Vec<String>> = vec![Vec::new(); lines.len()];
+
+    for (range, content) in annotations {
+        if range.is_empty() && range.start() == TextSize::new(0) {
+            if top_of_file.is_some() {
+                return None;
+            }
+            top_of_file = Some(content);
+            continue;
+        }
+
+        let (idx, rendered) = if *range == whole_file_range && !lines.is_empty() {
+            (0, render_whole_file_annotation(content))
+        } else {
+            let idx = lines.iter().position(|line| {
+                line.start <= range.start() && range.start() < line.start + line.len
+            })?;
+            (
+                idx,
+                render_caret_annotation(*range, lines[idx].start, content)?,
+            )
+        };
+        by_line[idx].push(rendered);
+    }
+
+    let mut res = String::new();
+    if let Some(content) = top_of_file {
+        // Unlike an annotation line, `%% <<< text` counts towards the line
+        // offsets `extract_annotations` accumulates, so inserting one would
+        // shift every other annotation in the file.
+        if annotations.len() > 1 {
+            return None;
+        }
+        let mut content_lines = content.split('\n');
+        if let Some(first) = content_lines.next() {
+            res.push_str(TOP_OF_FILE_MARKER);
+            res.push_str(first);
+            res.push('\n');
+        }
+        for line in content_lines {
+            res.push_str("%%    | ");
+            res.push_str(line);
+            res.push('\n');
+        }
+    }
+    for (idx, line) in lines.iter().enumerate() {
+        res.push_str(line.text);
+        if by_line[idx].is_empty() {
+            continue;
+        }
+        if !line.text.ends_with('\n') {
+            res.push('\n');
+        }
+        for annotation in &by_line[idx] {
+            res.push_str(annotation);
+            res.push('\n');
+        }
+    }
+    // Annotations are whole lines, so the result must still end the way `text`
+    // did. Getting this wrong runs the closing `"#` onto an annotation line.
+    if !text.ends_with('\n') && res.ends_with('\n') {
+        res.pop();
+    }
+    Some(res)
+}
+
+/// A `%%  ^^^^ text` annotation, plus a `%%     | text` line per extra line of
+/// `content`.
+fn render_caret_annotation(
+    range: TextRange,
+    line_start: TextSize,
+    content: &str,
+) -> Option<String> {
+    let prefix = "%%";
+    let column = u32::from(range.start().checked_sub(line_start)?) as usize;
+    let mut res = String::new();
+
+    // Column just past the caret run, which is the offset the extractor
+    // records for this annotation.
+    let caret_end = if column >= prefix.len() {
+        let carets = usize::max(u32::from(range.len()) as usize, 1);
+        res.push_str(prefix);
+        res.push_str(&" ".repeat(column - prefix.len()));
+        res.push_str(&"^".repeat(carets));
+        column + carets
+    } else {
+        // No room for `%%` ahead of the carets, so anchor at the left margin
+        // with the `%%<^^^` form. The extractor reads that as starting at the
+        // line, and spanning the `<`, the carets and the `%%` itself, so the
+        // run is three shorter than the range.
+        if column != 0 {
+            return None;
+        }
+        let carets = (u32::from(range.len()) as usize).checked_sub("%%<".len())?;
+        // `%%<` alone has no caret for the extractor to find, so it would read
+        // back as an ordinary comment and stay in the file under test.
+        if carets == 0 {
+            return None;
+        }
+        res.push_str("%%<");
+        res.push_str(&"^".repeat(carets));
+        carets + "%%<".len()
+    };
+
+    let mut content_lines = content.split('\n');
+    if let Some(first) = content_lines.next() {
+        res.push(' ');
+        res.push_str(first);
+    }
+    // A continuation binds to the annotation whose end offset is one past the
+    // `|`, so line the marker up just inside the end of the caret run.
+    let continuation_column = usize::max(caret_end.saturating_sub(1), prefix.len());
+    for line in content_lines {
+        res.push('\n');
+        res.push_str(prefix);
+        res.push_str(&" ".repeat(continuation_column - prefix.len()));
+        res.push_str("| ");
+        res.push_str(line);
+    }
+    Some(res)
+}
+
+/// The `%%  ^^^file text` form, which attaches `text` to the whole file.
+fn render_whole_file_annotation(content: &str) -> String {
+    format!("%%  ^^^file {}", content.replace('\n', " "))
+}
+
+struct FixtureLine<'a> {
+    text: &'a str,
+    /// Start offset of the line, accumulated exactly as `extract_annotations`
+    /// does: annotation lines count as zero-length and the cursor marker does
+    /// not count towards a line's length.
+    start: TextSize,
+    len: TextSize,
+}
+
+fn fixture_lines(text: &str) -> Vec<FixtureLine<'_>> {
+    let mut res = Vec::new();
+    let mut start: TextSize = 0.into();
+    for line in text.split_inclusive('\n') {
+        let len = if let Some((_prefix, suffix)) = line.split_once("%%") {
+            if extract_line_annotations(suffix.trim_end_matches('\n')).is_empty() {
+                TextSize::of(line)
+            } else {
+                TextSize::from(0)
+            }
+        } else if line.contains(CURSOR_MARKER) {
+            if line.contains(ESCAPED_CURSOR_MARKER) {
+                TextSize::of(line) - TextSize::of(ESCAPED_CURSOR_MARKER)
+            } else {
+                TextSize::of(line) - TextSize::of(CURSOR_MARKER)
+            }
+        } else {
+            TextSize::of(line)
+        };
+        res.push(FixtureLine {
+            text: line,
+            start,
+            len,
+        });
+        start += len;
+    }
+    res
+}
+
 static TOP_OF_FILE_RANGE: LazyLock<TextRange> =
     LazyLock::new(|| TextRange::new(0.into(), 0.into()));
 
@@ -894,6 +1079,28 @@ mod tests {
     use crate::test_fixture::extract_annotations;
     use crate::test_fixture::extract_tags;
     use crate::test_fixture::remove_annotations;
+    use crate::test_fixture::render_annotations;
+
+    /// Render the annotations `text` declares back into the stripped fixture
+    /// body, and check the result reports the very same annotations over the
+    /// very same text. Preserving the text matters as much as the annotations:
+    /// a render that drops a byte changes the file the test runs against.
+    fn check_render_round_trip(text: &str) -> String {
+        let text = stdx::trim_indent(text);
+        let (annotations, stripped) = extract_annotations(&text);
+        let rendered = render_annotations(&stripped, &annotations)
+            .expect("fixture should be expressible in the caret syntax");
+        let (round_tripped, round_tripped_text) = extract_annotations(&rendered);
+        assert_eq!(
+            annotations, round_tripped,
+            "annotations rendered into the fixture should read back unchanged"
+        );
+        assert_eq!(
+            stripped, round_tripped_text,
+            "rendering annotations should not change the text they describe"
+        );
+        rendered
+    }
 
     #[test]
     #[should_panic(expected = "Fixture has content before the first file marker")]
@@ -1319,6 +1526,63 @@ meaning_of_life() ->
             ]
         "#]]
         .assert_debug_eq(&res);
+    }
+
+    #[test]
+    fn render_annotations_zero_offset_on_first_line() {
+        let rendered = check_render_round_trip(
+            r#"
+            main() ->
+            %%<^^^ warning: W0000: something
+                 zoo + 1.
+            "#,
+        );
+        expect![[r#"
+            main() ->
+            %%<^^^ warning: W0000: something
+                 zoo + 1.
+        "#]]
+        .assert_eq(&rendered);
+    }
+
+    #[test]
+    fn render_annotations_keeps_trailing_newline_under_last_annotation() {
+        let rendered = check_render_round_trip(
+            r#"
+            -module(main).
+            main() -> ok.
+            %%         ^^ warning: W0000: something
+            "#,
+        );
+        expect![[r#"
+            -module(main).
+            main() -> ok.
+            %%         ^^ warning: W0000: something
+        "#]]
+        .assert_eq(&rendered);
+    }
+
+    #[test]
+    fn render_annotations_zero_offset_after_first_line() {
+        let rendered = check_render_round_trip(
+            r#"
+            -module(main).
+
+            main() ->
+            %%<^^^ warning: W0000: something
+            %%   | Related info: 0:1-2 elsewhere
+                 zoo + 1.
+            "#,
+        );
+        expect![[r#"
+            -module(main).
+
+            main() ->
+            %%<^^^ warning: W0000: something
+            %%   | Related info: 0:1-2 elsewhere
+                 zoo + 1.
+        "#]]
+        .assert_eq(&rendered);
     }
 
     #[test]
