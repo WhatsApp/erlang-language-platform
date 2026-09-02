@@ -81,13 +81,6 @@ object Occurrence {
 
   private type AMap = Map[String, Obj]
 
-  private implicit class MaybeOps(maybe: Option[Boolean]) {
-    @inline
-    def isTrue: Boolean = maybe.contains(true)
-    @inline
-    def isFalse: Boolean = maybe.contains(false)
-  }
-
   private sealed trait Polarity
   private case object + extends Polarity
   private case object - extends Polarity
@@ -353,14 +346,14 @@ final class Occurrence(pipelineContext: PipelineContext) {
   private def implies(p: AProp, q: AProp): Boolean = (p, q) match {
     case (Pos(o1, t1), Pos(o2, t2)) if o1 == o2 => subtype.gradualSubType(t1, t2)
     case (Neg(o1, t1), Neg(o2, t2)) if o1 == o2 => subtype.gradualSubType(t2, t1)
-    case (Pos(o1, t1), Neg(o2, t2)) if o1 == o2 => subtype.overlap(t1, t2).isFalse
+    case (Pos(o1, t1), Neg(o2, t2)) if o1 == o2 => !subtype.mayOverlap(t1, t2)
     case _                                      => false
   }
 
   private def contradicts(p: AProp, q: AProp): Boolean = (p, q) match {
     case (Pos(o1, t1), Neg(o2, t2)) if o1 == o2 => subtype.gradualSubType(t1, t2)
     case (Neg(o1, t1), Pos(o2, t2)) if o1 == o2 => subtype.gradualSubType(t2, t1)
-    case (Pos(o1, t1), Pos(o2, t2)) if o1 == o2 => subtype.overlap(t1, t2).isFalse
+    case (Pos(o1, t1), Pos(o2, t2)) if o1 == o2 => !subtype.mayOverlap(t1, t2)
     case _                                      => false
   }
 

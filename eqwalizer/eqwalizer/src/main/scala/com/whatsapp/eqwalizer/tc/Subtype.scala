@@ -624,266 +624,202 @@ class Subtype(pipelineContext: PipelineContext) {
     }
   }
 
-  private def simpleOverlap(t1: Type, t2: Type): Option[Boolean] =
+  private def mayOverlapSimple(t1: Type, t2: Type): Boolean =
     (Subtype.kind(t1), Subtype.kind(t2)) match {
-      case (Some(k1), Some(k2)) =>
-        Some(k1 == k2)
-      case (_, _) =>
-        if (subType(t1, t2) || subType(t2, t1))
-          Some(true)
-        else
-          None
+      case (Some(k1), Some(k2)) => k1 == k2
+      case (_, _)               => true
     }
 
-  def overlap(t1: Type, t2: Type): Option[Boolean] =
-    overlap(t1, t2, Set.empty)
+  def mayOverlap(t1: Type, t2: Type): Boolean =
+    mayOverlap(t1, t2, Set.empty)
 
-  private def overlap(t1: Type, t2: Type, seen: Set[(Type, Type)]): Option[Boolean] =
+  private def mayOverlap(t1: Type, t2: Type, seen: Set[(Type, Type)]): Boolean =
     (t1, t2) match {
       case (NoneType, _) =>
-        Some(false)
+        false
       case (_, NoneType) =>
-        Some(false)
+        false
       case (_, _) if t1 == t2 || seen.contains(t1, t2) || seen.contains(t2, t1) =>
-        Some(true)
+        true
       case (AnyType, _) =>
-        Some(true)
+        true
       case (_, AnyType) =>
-        Some(true)
+        true
 
       case (DynamicType, _) =>
-        Some(true)
+        true
       case (_, DynamicType) =>
-        Some(true)
+        true
 
       case (BoundedDynamicType(bound), _) =>
-        overlap(bound, t2, seen)
+        mayOverlap(bound, t2, seen)
       case (_, BoundedDynamicType(bound)) =>
-        overlap(t1, bound, seen)
+        mayOverlap(t1, bound, seen)
 
       case (FreeVarType(_), _) =>
-        Some(true)
+        true
       case (_, FreeVarType(_)) =>
-        Some(true)
+        true
 
       // Unions
       case (UnionType(ts), _) =>
         boundary {
-          var allFalse = true
           for (t1 <- ts) {
-            overlap(t1, t2, seen) match {
-              case Some(true) =>
-                boundary.break(Some(true))
-              case None =>
-                allFalse = false
-              case Some(false) =>
-                ()
-            }
+            if (mayOverlap(t1, t2, seen))
+              boundary.break(true)
           }
-          if (allFalse) Some(false) else None
+          false
         }
       case (_, UnionType(ts)) =>
         boundary {
-          var allFalse = true
           for (t2 <- ts) {
-            overlap(t1, t2, seen) match {
-              case Some(true) =>
-                boundary.break(Some(true))
-              case None =>
-                allFalse = false
-              case Some(false) =>
-                ()
+            if (mayOverlap(t1, t2, seen)) {
+              boundary.break(true)
             }
           }
-          if (allFalse) Some(false) else None
+          false
         }
 
       case (NativeRecordType(id1), NativeRecordType(id2)) =>
-        Some(id1 == id2)
+        id1 == id2
       case (AtomLitType(l1), AtomLitType(l2)) =>
-        Some(l1 == l2)
+        l1 == l2
 
       case (RemoteType(rid, args), _) =>
         val body = util.getTypeDeclBody(rid, args)
-        overlap(body, t2, seen + (t1 -> t2))
+        mayOverlap(body, t2, seen + (t1 -> t2))
       case (_, RemoteType(rid, args)) =>
         val body = util.getTypeDeclBody(rid, args)
-        overlap(t1, body, seen + (t1 -> t2))
+        mayOverlap(t1, body, seen + (t1 -> t2))
 
       // funs
       case (FunType(_, ins1, _), FunType(_, ins2, _)) =>
-        if (ins1.size != ins2.size)
-          Some(false)
-        else
-          None
+        ins1.size == ins2.size
       case (FunType(_, _, _), AnyFunType) =>
-        Some(true)
+        true
       case (AnyFunType, FunType(_, _, _)) =>
-        Some(true)
+        true
       case (AnyArityFunType(_), AnyFunType) =>
-        Some(true)
+        true
       case (AnyFunType, AnyArityFunType(_)) =>
-        Some(true)
+        true
       case (AnyArityFunType(_), FunType(_, _, _)) =>
-        None
+        true
       case (FunType(_, _, _), AnyArityFunType(_)) =>
-        None
+        true
       case (FunType(_, _, _), _) =>
-        Some(false)
+        false
       case (_, FunType(_, _, _)) =>
-        Some(false)
+        false
       case (AnyFunType, _) =>
-        Some(false)
+        false
       case (_, AnyFunType) =>
-        Some(false)
+        false
 
       // tuples and records
       case (TupleType(ts1), TupleType(ts2)) =>
-        if (ts1.size != ts2.size) Some(false)
+        if (ts1.size != ts2.size) false
         else
           boundary {
-            var allTrue = true
             for ((t1, t2) <- ts1.lazyZip(ts2)) {
-              overlap(t1, t2, seen) match {
-                case Some(false) =>
-                  boundary.break(Some(false))
-                case Some(true) =>
-                  ()
-                case None =>
-                  allTrue = false
-              }
+              if (!mayOverlap(t1, t2, seen))
+                boundary.break(false)
             }
-            if (allTrue) Some(true) else None
+            true
           }
       case (TupleType(_), AnyTupleType) =>
-        Some(true)
+        true
       case (AnyTupleType, TupleType(_)) =>
-        Some(true)
+        true
       case (RecordType(_), AnyTupleType) =>
-        Some(true)
+        true
       case (RefinedRecordType(_, _), AnyTupleType) =>
-        Some(true)
+        true
       case (AnyTupleType, RefinedRecordType(_, _)) =>
-        Some(true)
+        true
       case (AnyTupleType, RecordType(_)) =>
-        Some(true)
+        true
       case (RecordType(n1), RecordType(n2)) =>
-        Some(n1 == n2)
+        n1 == n2
       case (RefinedRecordType(t1, fields1), RefinedRecordType(t2, fields2)) =>
-        if (t1.name != t2.name) Some(false)
+        if (t1.name != t2.name) false
         else
           boundary {
             val fNames = fields1.keySet ++ fields2.keySet
-            var allTrue = true
             for (fN <- fNames)
               (fields1.get(fN), fields2.get(fN)) match {
                 case (Some(f1), Some(f2)) =>
-                  overlap(f1, f2, seen) match {
-                    case Some(false) =>
-                      boundary.break(Some(false))
-                    case Some(true) =>
-                      ()
-                    case None =>
-                      allTrue = false
+                  if (!mayOverlap(f1, f2, seen)) {
+                    boundary.break(false)
                   }
                 case _ =>
                   ()
               }
-            if (allTrue) Some(true) else None
+            true
           }
       case (RefinedRecordType(t, _), RecordType(n)) =>
-        Some(n == t.name)
+        n == t.name
       case (RecordType(n), RefinedRecordType(t, _)) =>
-        Some(n == t.name)
+        n == t.name
       case (r: RecordType, TupleType(elems)) =>
         util.getRecordArity(r.module, r.name) match {
           case Some(arity) if arity + 1 == elems.size =>
-            overlap(AtomLitType(r.name), elems.head, seen)
+            mayOverlap(AtomLitType(r.name), elems.head, seen)
           case _ =>
-            Some(false)
+            false
         }
       case (TupleType(elems), r: RecordType) =>
         util.getRecordArity(r.module, r.name) match {
           case Some(arity) if arity + 1 == elems.size =>
-            overlap(elems.head, AtomLitType(r.name), seen)
+            mayOverlap(elems.head, AtomLitType(r.name), seen)
           case _ =>
-            Some(false)
+            false
         }
       case (RefinedRecordType(t, _), TupleType(elems)) =>
         util.getRecordArity(t.module, t.name) match {
           case Some(arity) if arity + 1 == elems.size =>
-            overlap(AtomLitType(t.name), elems.head, seen)
+            mayOverlap(AtomLitType(t.name), elems.head, seen)
           case _ =>
-            Some(false)
+            false
         }
       case (TupleType(elems), RefinedRecordType(t, _)) =>
         util.getRecordArity(t.module, t.name) match {
           case Some(arity) if arity + 1 == elems.size =>
-            overlap(elems.head, AtomLitType(t.name), seen)
+            mayOverlap(elems.head, AtomLitType(t.name), seen)
           case _ =>
-            Some(false)
+            false
         }
       case (TupleType(_), _) =>
-        Some(false)
+        false
       case (_, TupleType(_)) =>
-        Some(false)
+        false
       case (AnyTupleType, _) =>
-        Some(false)
+        false
       case (_, AnyTupleType) =>
-        Some(false)
+        false
 
       case (NilType, NilType) =>
-        Some(true)
+        true
       case (NilType, ConsType(_, _)) =>
-        Some(false)
+        false
       case (NilType, ListType(_)) =>
-        Some(true)
+        true
       case (ConsType(_, _), NilType) =>
-        Some(false)
+        false
       case (ConsType(h1, tl1), ConsType(h2, tl2)) =>
-        overlap(h1, h2, seen) match {
-          case Some(false) =>
-            Some(false)
-          case Some(true) =>
-            overlap(tl1, tl2, seen)
-          case None =>
-            overlap(tl1, tl2, seen) match {
-              case Some(false) => Some(false)
-              case _           => None
-            }
-        }
+        mayOverlap(h1, h2, seen) && mayOverlap(tl1, tl2, seen)
       case (ConsType(h1, tl1), ListType(e2)) =>
-        overlap(h1, e2, seen) match {
-          case Some(false) =>
-            Some(false)
-          case Some(true) =>
-            overlap(tl1, ListType(e2), seen)
-          case None =>
-            overlap(tl1, ListType(e2), seen) match {
-              case Some(false) => Some(false)
-              case _           => None
-            }
-        }
+        mayOverlap(h1, e2, seen) && mayOverlap(tl1, ListType(e2), seen)
       case (ListType(_), NilType) =>
-        Some(true)
+        true
       case (ListType(e1), ConsType(h2, tl2)) =>
-        overlap(e1, h2, seen) match {
-          case Some(false) =>
-            Some(false)
-          case Some(true) =>
-            overlap(ListType(e1), tl2, seen)
-          case None =>
-            overlap(ListType(e1), tl2, seen) match {
-              case Some(false) => Some(false)
-              case _           => None
-            }
-        }
+        mayOverlap(e1, h2, seen) && mayOverlap(ListType(e1), tl2, seen)
       case (ListType(_), ListType(_)) =>
-        Some(true)
+        true
       case (ListType(_) | NilType | ConsType(_, _), _) =>
-        Some(false)
+        false
       case (_, ListType(_) | NilType | ConsType(_, _)) =>
-        Some(false)
+        false
 
       case (mt1 @ MapType(props1, kT1, vT1), mt2 @ MapType(props2, kT2, vT2)) =>
         // Checking that maps overlap in required associations.
@@ -891,18 +827,14 @@ class Subtype(pipelineContext: PipelineContext) {
           val reqKeys =
             props1.collect { case (k, MapProp(true, _)) => k }.toSet ++
               props2.collect { case (k, MapProp(true, _)) => k }
-          var allTrue = true
           for (key <- reqKeys)
-            overlap(mapValueType(key, mt1), mapValueType(key, mt2), seen) match {
-              case Some(false) => boundary.break(Some(false))
-              case Some(true)  => ()
-              case None        => allTrue = false
-            }
-          if (allTrue) Some(true) else None
+            if (!mayOverlap(mapValueType(key, mt1), mapValueType(key, mt2), seen))
+              boundary.break(false)
+          true
         }
 
       case _ =>
-        simpleOverlap(t1, t2)
+        mayOverlapSimple(t1, t2)
     }
 
   private def mapValueType(key: Key, mt: MapType): Type =
@@ -918,7 +850,7 @@ class Subtype(pipelineContext: PipelineContext) {
     meetAux(t1, t2, Set.empty)
 
   private def meetAux(t1: Type, t2: Type, seen: Set[(Type, Type)]): Type =
-    if (overlap(t1, t2).contains(false)) NoneType
+    if (!mayOverlap(t1, t2)) NoneType
     else if (gradualSubType(t1, t2)) t1
     else if (gradualSubType(t2, t1)) t2
     else

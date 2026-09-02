@@ -461,7 +461,7 @@ class Narrow(pipelineContext: PipelineContext) {
         mapType
       case None =>
         val props = mapType.props.map { case (key, prop) =>
-          if (subtype.overlap(Key.asType(key), keyT) != Some(false))
+          if (subtype.mayOverlap(Key.asType(key), keyT))
             (key, MapProp(prop.req, subtype.join(prop.tp, valT)))
           else
             (key, prop)
