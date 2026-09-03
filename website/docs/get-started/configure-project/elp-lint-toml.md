@@ -72,6 +72,7 @@ and must be opted into explicitly; see for example
 | severity           | String           | Override the reported severity. One of `error`, `warning`, `weak`, `info`.                                        |
 | include_tests      | Boolean          | If `true`, run the linter on test modules as well.                                                                |
 | include_generated  | Boolean          | If `true`, run the linter on generated modules as well.                                                           |
+| include_headers    | Boolean          | If `true`, run the linter on header files as well. Some linters skip headers by default, because linting a header in isolation is not meaningful for them. |
 | experimental       | Boolean          | Override the linter's experimental flag. If `true`, the linter only runs when the `--experimental` flag is passed; if `false`, it runs unconditionally even if it is experimental by default. |
 | exclude_apps       | Array of Strings | List of application name [glob patterns](https://docs.rs/glob/latest/glob/struct.Pattern.html) for which this linter should be skipped. A pattern with no metacharacter matches that application name exactly. |
 | runs_on_save_only  | Boolean          | If `true`, the linter only runs when a file is saved (rather than on every keystroke). Useful for expensive linters. |
@@ -218,9 +219,11 @@ include_tests = false
 exclude_apps = ["legacy_app"]
 ```
 
-`enabled`, `severity`, `include_tests`, `include_generated`, `experimental` and
-`exclude_apps` all apply. Ad-hoc lints run on test modules by default, so
-`include_tests = false` is the way to keep one out of test code.
+`enabled`, `severity`, `include_tests`, `include_generated`, `include_headers`,
+`experimental` and `exclude_apps` all apply. Ad-hoc lints run on test modules
+and header files by default, so `include_tests = false` and
+`include_headers = false` are the way to keep one out of test code and headers
+respectively.
 
 ## [dynamic_calls]
 

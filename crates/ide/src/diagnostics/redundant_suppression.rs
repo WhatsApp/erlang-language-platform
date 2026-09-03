@@ -465,6 +465,10 @@ mod tests {
 
     use crate::diagnostics::DiagnosticCode;
     use crate::diagnostics::DiagnosticsConfig;
+    use crate::diagnostics::LintConfig;
+    use crate::diagnostics::LinterConfig;
+    use crate::diagnostics::from_config::Lint;
+    use crate::diagnostics::from_config::MatchSsr;
     use crate::tests::check_diagnostics;
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix;
@@ -780,6 +784,117 @@ baz() ->
 % elp:ignore W0007
 test() ->
   ok.
+"#,
+        );
+    }
+
+    /// Control for `not_redundant_when_code_excluded_from_headers`: with no
+    /// `include_headers` override, W0083 is reportable in a header, so an
+    /// annotation that suppresses nothing there is flagged as usual.
+    #[test]
+    fn redundant_in_header_when_code_reportable() {
+        let config = DiagnosticsConfig::default()
+            .configure_diagnostics(
+                &LintConfig::default(),
+                &[
+                    "avoid_type_defs_in_header".to_string(),
+                    "redundant_suppression".to_string(),
+                ],
+                &[],
+            )
+            .unwrap();
+        check_diagnostics_with_config(
+            config,
+            r#"
+//- /src/main.hrl
+% elp:ignore W0083
+%%           ^^^^^ warning: W0081: Redundant suppression: no `W0083 (avoid_type_defs_in_header)` diagnostic in suppressed range
+%%               | 💡 Delete redundant suppression
+-define(FOO, 1).
+"#,
+        );
+    }
+
+    /// `include_headers = false` stops W0083 running on headers, so an
+    /// annotation naming it cannot suppress anything there. By the same
+    /// eligibility rule as `redundant_when_only_other_disabled_codes_listed`
+    /// we must not flag it — otherwise the user deletes the annotation and
+    /// the diagnostic returns the moment the override is lifted.
+    #[test]
+    fn not_redundant_when_code_excluded_from_headers() {
+        let mut lint_config = LintConfig::default();
+        lint_config.linters.insert(
+            DiagnosticCode::AvoidTypeDefsInHeader,
+            LinterConfig {
+                include_headers: Some(false),
+                ..Default::default()
+            },
+        );
+        let config = DiagnosticsConfig::default()
+            .configure_diagnostics(
+                &lint_config,
+                &[
+                    "avoid_type_defs_in_header".to_string(),
+                    "redundant_suppression".to_string(),
+                ],
+                &[],
+            )
+            .unwrap();
+        check_diagnostics_with_config(
+            config,
+            r#"
+//- /src/main.hrl
+% elp:ignore W0083
+-define(FOO, 1).
+"#,
+        );
+    }
+
+    /// Ad-hoc suppressions are outside the audit entirely: `redundant_codes_of`
+    /// skips any annotation that is not `is_native_only()`, and that predicate
+    /// excludes `DiagnosticCode::AdHoc`. So `code_reportable` is never reached
+    /// with an ad-hoc code, and the `include_headers` eligibility that
+    /// `MatchSsr::should_run` applies makes no difference here.
+    ///
+    /// Both headers below carry a suppression that suppresses nothing. They
+    /// differ only in whether the lint they name is excluded from headers, and
+    /// neither is flagged — which is the point: the outcome does not depend on
+    /// that config at all. Contrast `redundant_in_header_when_code_reportable`,
+    /// where a native code in the same position *is* flagged.
+    #[test]
+    fn ad_hoc_suppressions_are_out_of_scope() {
+        let mut excluded = MatchSsr::from_pattern("ssr: ok.");
+        excluded.name = Some("excluded_lint".to_string());
+        let mut running = MatchSsr::from_pattern("ssr: ok.");
+        running.name = Some("running_lint".to_string());
+
+        let mut lint_config = LintConfig::default();
+        lint_config
+            .ad_hoc_lints
+            .lints
+            .extend([Lint::LintMatchSsr(excluded), Lint::LintMatchSsr(running)]);
+        lint_config.linters.insert(
+            DiagnosticCode::AdHoc("excluded_lint".to_string()),
+            LinterConfig {
+                include_headers: Some(false),
+                ..Default::default()
+            },
+        );
+
+        // No `--diagnostic-filter`: `configure_diagnostics` force-enables every
+        // filtered code, which would undo the `[linters.<code>]` section above.
+        let config = DiagnosticsConfig::default()
+            .configure_diagnostics(&lint_config, &[], &[])
+            .unwrap();
+        check_diagnostics_with_config(
+            config,
+            r#"
+//- /src/excluded.hrl
+% elp:ignore ad-hoc:excluded_lint
+-define(FOO, 1).
+//- /src/running.hrl
+% elp:ignore ad-hoc:running_lint
+-define(BAR, 2).
 "#,
         );
     }

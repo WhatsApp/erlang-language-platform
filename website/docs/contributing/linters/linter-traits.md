@@ -62,6 +62,13 @@ fn should_process_test_files(&self) -> bool {
     true
 }
 
+// Specify if the linter should process header files. Linters for which
+// linting a header in isolation is not meaningful (e.g. module-level
+// checks) should return false.
+fn should_process_headers(&self) -> bool {
+    true
+}
+
 // Specify if the linter should process the given file id.
 fn should_process_file_id(&self, _sema: &Semantic, _file_id: FileId) -> bool {
     true

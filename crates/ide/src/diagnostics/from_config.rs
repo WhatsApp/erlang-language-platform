@@ -13,6 +13,7 @@
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_ssr::SsrRule;
 use elp_ide_ssr::SsrSearchScope;
 use elp_ide_ssr::match_pattern;
@@ -508,6 +509,14 @@ impl MatchSsr {
             .and_then(|c| c.get_include_tests_override(&code))
             .unwrap_or(true);
         if is_test && !include_tests {
+            return false;
+        }
+
+        let is_header = sema.db.file_kind(file_id) == FileKind::Header;
+        let include_headers = lint_config
+            .and_then(|c| c.get_include_headers_override(&code))
+            .unwrap_or(true);
+        if is_header && !include_headers {
             return false;
         }
 
@@ -1836,6 +1845,42 @@ t() -> ok.
             .map(|file_id| diagnostics_for_with(&lint, &sema, *file_id, &config).len())
             .collect();
         // src still reported, the suite is not.
+        let expected = vec![1, 0];
+        assert_eq_expected!(expected, counts);
+    }
+
+    /// Ad-hoc lints run on headers by default, as they always have. Only an
+    /// explicit `include_headers = false` changes that.
+    #[test]
+    fn linter_config_can_exclude_headers() {
+        use elp_ide_db::elp_base_db::assert_eq_expected;
+        let (db, files, _) = RootDatabase::with_many_files(
+            r#"
+//- /src/main.erl
+t() -> ok.
+//- /src/main.hrl
+t() -> ok.
+"#,
+        );
+        let sema = Semantic::new(&db);
+        let lint = named_lint("my_lint", "ssr: ok.");
+
+        for file_id in &files {
+            assert_eq_expected!(1, diagnostics_for(&lint, &sema, *file_id).len());
+        }
+
+        let config = config_for(
+            "my_lint",
+            LinterConfig {
+                include_headers: Some(false),
+                ..Default::default()
+            },
+        );
+        let counts: Vec<_> = files
+            .iter()
+            .map(|file_id| diagnostics_for_with(&lint, &sema, *file_id, &config).len())
+            .collect();
+        // src still reported, the header is not.
         let expected = vec![1, 0];
         assert_eq_expected!(expected, counts);
     }

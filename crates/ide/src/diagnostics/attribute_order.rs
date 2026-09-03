@@ -28,14 +28,12 @@
 
 use std::borrow::Cow;
 
-use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_syntax::AstNode;
 use hir::FormIdx;
 use hir::FormList;
 use hir::IncludeAttribute;
 use hir::PPDirective;
-use hir::Semantic;
 use hir::TypeAlias;
 
 use crate::diagnostics::DiagnosticCode;
@@ -106,8 +104,8 @@ impl Linter for AttributeOrderLinter {
         "Attribute is out of order."
     }
 
-    fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
-        sema.db.file_kind(file_id).is_module()
+    fn should_process_headers(&self) -> bool {
+        false
     }
 }
 

@@ -20,7 +20,6 @@ use elp_ide_assists::helpers::add_compile_option;
 use elp_ide_assists::helpers::rename_atom_in_compile_attribute;
 use elp_ide_db::DiagnosticCode;
 use elp_ide_db::elp_base_db::FileId;
-use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChangeBuilder;
 use elp_ide_db::text_edit::TextRange;
@@ -65,12 +64,8 @@ impl Linter for MissingCompileWarnMissingSpec {
     fn is_enabled(&self) -> bool {
         false
     }
-    fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
-        let file_kind = sema.db.file_kind(file_id);
-        match file_kind {
-            FileKind::Header | FileKind::Other | FileKind::OutsideProjectModel => false,
-            _ => true,
-        }
+    fn should_process_headers(&self) -> bool {
+        false
     }
 }
 

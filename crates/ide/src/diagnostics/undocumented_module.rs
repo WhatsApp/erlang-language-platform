@@ -47,6 +47,10 @@ impl Linter for UndocumentedModuleLinter {
     fn should_process_test_files(&self) -> bool {
         false
     }
+
+    fn should_process_headers(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]

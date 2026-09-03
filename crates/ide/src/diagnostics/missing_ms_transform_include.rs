@@ -16,13 +16,11 @@
 use std::borrow::Cow;
 
 use elp_ide_completion::IncludeFile;
-use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use elp_ide_db::text_edit::TextRange;
 use elp_ide_db::text_edit::TextSize;
-use hir::Semantic;
 
 use crate::Assist;
 use crate::codemod_helpers::FunctionMatch;
@@ -48,9 +46,8 @@ impl Linter for MissingMsTransformIncludeLinter {
         "Missing `-include_lib(\"stdlib/include/ms_transform.hrl\").`"
     }
 
-    fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
-        let file_kind = sema.db.file_kind(file_id);
-        file_kind.is_module()
+    fn should_process_headers(&self) -> bool {
+        false
     }
 }
 

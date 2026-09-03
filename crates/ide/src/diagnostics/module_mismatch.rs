@@ -51,6 +51,10 @@ impl Linter for ModuleMismatchLinter {
     fn severity(&self, _sema: &Semantic, _file_id: FileId) -> Severity {
         Severity::Error
     }
+
+    fn should_process_headers(&self) -> bool {
+        false
+    }
 }
 
 impl GenericLinter for ModuleMismatchLinter {

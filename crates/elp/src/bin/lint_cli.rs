@@ -1822,6 +1822,7 @@ mod tests {
                         severity: None,
                         include_tests: None,
                         include_generated: None,
+                        include_headers: None,
                         experimental: None,
                         exclude_apps: None,
                         runs_on_save_only: None,

@@ -26,7 +26,6 @@ use fxhash::FxHashMap;
 use hir::InFile;
 use hir::IncludeAttribute;
 use hir::IncludeAttributeId;
-use hir::Semantic;
 
 use crate::Assist;
 use crate::diagnostics::DiagnosticCode;
@@ -47,9 +46,8 @@ impl Linter for DuplicateIncludeLinter {
         "Duplicate include file"
     }
 
-    fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
-        let file_kind = sema.db.file_kind(file_id);
-        file_kind.is_module()
+    fn should_process_headers(&self) -> bool {
+        false
     }
 }
 

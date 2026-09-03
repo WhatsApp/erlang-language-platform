@@ -40,9 +40,8 @@ impl Linter for MissingModuleLinter {
         Severity::Error
     }
 
-    fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
-        let file_kind = sema.db.file_kind(file_id);
-        file_kind.is_module()
+    fn should_process_headers(&self) -> bool {
+        false
     }
 }
 

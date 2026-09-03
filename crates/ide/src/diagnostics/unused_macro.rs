@@ -23,7 +23,6 @@ use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
-use hir::Semantic;
 
 use crate::diagnostics::DiagnosticCode;
 use crate::diagnostics::DiagnosticTag;
@@ -45,8 +44,8 @@ impl Linter for UnusedMacroLinter {
     fn should_process_generated_files(&self) -> bool {
         true
     }
-    fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
-        sema.db.file_kind(file_id).is_module()
+    fn should_process_headers(&self) -> bool {
+        false
     }
 }
 

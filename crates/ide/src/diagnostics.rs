@@ -692,6 +692,11 @@ pub(crate) trait Linter: Sync {
         true
     }
 
+    // Specify if the linter should process header files.
+    fn should_process_headers(&self) -> bool {
+        true
+    }
+
     // Specify if the linter should process the given file id.
     fn should_process_file_id(&self, _sema: &Semantic, _file_id: FileId) -> bool {
         true
@@ -743,6 +748,7 @@ fn should_run(
     app_name: &Option<AppName>,
     is_generated: bool,
     is_test: bool,
+    is_header: bool,
 ) -> bool {
     if !config.diagnostic_filter.is_empty()
         && !config.diagnostic_filter.contains(&linter.id())
@@ -769,6 +775,17 @@ fn should_run(
     }
     let is_enabled = is_diagnostic_enabled(config, &linter.id(), linter.is_enabled());
     if !is_enabled {
+        return false;
+    }
+
+    let include_headers = if let Some(lint_config) = config.lint_config.as_ref() {
+        lint_config
+            .get_include_headers_override(&linter.id())
+            .unwrap_or_else(|| linter.should_process_headers())
+    } else {
+        linter.should_process_headers()
+    };
+    if is_header && !include_headers {
         return false;
     }
 
@@ -1530,6 +1547,11 @@ impl LintConfig {
         self.linters.get(diagnostic_code)?.include_generated
     }
 
+    /// Get the include_headers override for a linter based on its diagnostic code
+    pub fn get_include_headers_override(&self, diagnostic_code: &DiagnosticCode) -> Option<bool> {
+        self.linters.get(diagnostic_code)?.include_headers
+    }
+
     /// Get the experimental override for a linter based on its diagnostic code
     pub fn get_experimental_override(&self, diagnostic_code: &DiagnosticCode) -> Option<bool> {
         self.linters.get(diagnostic_code)?.experimental
@@ -1785,6 +1807,7 @@ pub struct LinterConfig {
     pub severity: Option<Severity>,
     pub include_tests: Option<bool>,
     pub include_generated: Option<bool>,
+    pub include_headers: Option<bool>,
     pub experimental: Option<bool>,
     pub exclude_apps: Option<Vec<AppPattern>>,
     pub runs_on_save_only: Option<bool>,
@@ -1807,6 +1830,7 @@ impl LinterConfig {
             severity: other.severity.or(self.severity),
             include_tests: other.include_tests.or(self.include_tests),
             include_generated: other.include_generated.or(self.include_generated),
+            include_headers: other.include_headers.or(self.include_headers),
             experimental: other.experimental.or(self.experimental),
             exclude_apps: other.exclude_apps.or(self.exclude_apps),
             runs_on_save_only: other.runs_on_save_only.or(self.runs_on_save_only),
@@ -2013,6 +2037,7 @@ pub fn native_diagnostics(
     // anyway.
     let is_generated = db.generated_status(file_id).is_generated();
     let is_test = db.is_test_suite_or_test_helper(file_id).unwrap_or(false);
+    let is_header = file_kind == FileKind::Header;
     let all_linters = linters();
     let linters_by_code: FxHashMap<DiagnosticCode, &dyn Linter> = all_linters
         .iter()
@@ -2044,7 +2069,15 @@ pub fn native_diagnostics(
         // MissingSeparator coming from parse errors) are assumed reportable
         // if they passed the cheap config-level checks above.
         match linters_by_code.get(code) {
-            Some(linter) => should_run(*linter, config, trigger, &app_name, is_generated, is_test),
+            Some(linter) => should_run(
+                *linter,
+                config,
+                trigger,
+                &app_name,
+                is_generated,
+                is_test,
+                is_header,
+            ),
             None => true,
         }
     };
@@ -2066,6 +2099,7 @@ pub fn native_diagnostics(
         &app_name,
         is_generated,
         is_test,
+        is_header,
     ) {
         let _guard = in_flight::begin("native:redundant_suppression");
         // Forms excluded by conditional compilation are not lowered, so a
@@ -2273,6 +2307,7 @@ fn diagnostics_from_linters(
         .is_test_suite_or_test_helper(file_id)
         .unwrap_or(false);
     let app_name = sema.db.file_app_name(file_id);
+    let is_header = sema.db.file_kind(file_id) == FileKind::Header;
 
     // For partially-generated files, always get the manual section ranges
     // (we need them to strip fixes from generated sections even when include_generated is true)
@@ -2300,6 +2335,7 @@ fn diagnostics_from_linters(
                 &app_name,
                 effective_is_generated,
                 is_test,
+                is_header,
             )
         {
             let severity = if let Some(lint_config) = config.lint_config.as_ref() {
@@ -4474,6 +4510,7 @@ foo() -> XX 3.0.
                 severity: Some(Severity::Error),
                 include_tests: None,
                 include_generated: None,
+                include_headers: None,
                 experimental: None,
                 exclude_apps: None,
                 runs_on_save_only: None,
@@ -4514,6 +4551,7 @@ foo() -> XX 3.0.
                 severity: None,
                 include_tests: Some(true),
                 include_generated: None,
+                include_headers: None,
                 experimental: None,
                 exclude_apps: None,
                 runs_on_save_only: None,
@@ -4553,6 +4591,7 @@ foo() -> XX 3.0.
                 severity: None,
                 include_tests: None,
                 include_generated: Some(true),
+                include_headers: None,
                 experimental: None,
                 exclude_apps: None,
                 runs_on_save_only: None,
@@ -4584,6 +4623,73 @@ foo() -> XX 3.0.
     }
 
     #[test]
+    fn test_linter_include_headers_override_enables() {
+        let mut lint_config = LintConfig::default();
+        lint_config.linters.insert(
+            DiagnosticCode::UnusedMacro,
+            LinterConfig {
+                is_enabled: None,
+                severity: None,
+                include_tests: None,
+                include_generated: None,
+                include_headers: Some(true),
+                experimental: None,
+                exclude_apps: None,
+                runs_on_save_only: None,
+                config: None,
+            },
+        );
+
+        let config = DiagnosticsConfig::default()
+            .configure_diagnostics(&lint_config, &["unused_macro".to_string()], &[])
+            .unwrap();
+        check_diagnostics_with_config(
+            config,
+            r#"
+            //- /src/main.hrl
+            -define(MEANING_OF_LIFE, 42).
+            %%      ^^^^^^^^^^^^^^^ warning: W0002: Unused macro (MEANING_OF_LIFE)
+            %%                    | 💡 Delete unused macro (MEANING_OF_LIFE)
+            %%                    | 💡 <suppression>
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_linter_include_headers_override_disables() {
+        let mut lint_config = LintConfig::default();
+        lint_config.linters.insert(
+            DiagnosticCode::AvoidTypeDefsInHeader,
+            LinterConfig {
+                is_enabled: None,
+                severity: None,
+                include_tests: None,
+                include_generated: None,
+                include_headers: Some(false),
+                experimental: None,
+                exclude_apps: None,
+                runs_on_save_only: None,
+                config: None,
+            },
+        );
+
+        let config = DiagnosticsConfig::default()
+            .configure_diagnostics(
+                &lint_config,
+                &["avoid_type_defs_in_header".to_string()],
+                &[],
+            )
+            .unwrap();
+        check_diagnostics_with_config(
+            config,
+            r#"
+            //- /src/main.hrl
+            -type my_type() :: term().
+            "#,
+        );
+    }
+
+    #[test]
     fn test_linter_experimental_override() {
         let mut lint_config = LintConfig::default();
         lint_config.linters.insert(
@@ -4593,6 +4699,7 @@ foo() -> XX 3.0.
                 severity: None,
                 include_tests: None,
                 include_generated: None,
+                include_headers: None,
                 experimental: Some(true),
                 exclude_apps: None,
                 runs_on_save_only: None,
@@ -4634,6 +4741,7 @@ foo() -> XX 3.0.
                 severity: None,
                 include_tests: None,
                 include_generated: None,
+                include_headers: None,
                 experimental: None,
                 exclude_apps: None,
                 runs_on_save_only: None,
@@ -4678,6 +4786,7 @@ foo() -> XX 3.0.
                 severity: None,
                 include_tests: None,
                 include_generated: None,
+                include_headers: None,
                 experimental: None,
                 exclude_apps: None,
                 runs_on_save_only: None,
@@ -4719,6 +4828,7 @@ foo() -> XX 3.0.
                 severity: None,
                 include_tests: None,
                 include_generated: None,
+                include_headers: None,
                 experimental: None,
                 exclude_apps: Some(vec![AppPattern::try_new("my_app").unwrap()]),
                 runs_on_save_only: None,
@@ -4973,6 +5083,7 @@ foo() -> XX 3.0.
                 severity: Some(Severity::Error),
                 include_tests: None,
                 include_generated: None,
+                include_headers: None,
                 experimental: None,
                 exclude_apps: None,
                 runs_on_save_only: None,
@@ -5005,6 +5116,7 @@ foo() -> XX 3.0.
                 severity: Some(Severity::Warning),
                 include_tests: Some(true),
                 include_generated: None,
+                include_headers: None,
                 experimental: None,
                 exclude_apps: None,
                 runs_on_save_only: None,
@@ -5024,6 +5136,7 @@ foo() -> XX 3.0.
                 severity: None,
                 include_tests: None,
                 include_generated: Some(true),
+                include_headers: None,
                 experimental: None,
                 exclude_apps: None,
                 runs_on_save_only: None,

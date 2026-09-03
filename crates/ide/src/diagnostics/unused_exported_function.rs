@@ -53,10 +53,11 @@ impl Linter for UnusedExportedFunctionLinter {
         "Exported function is not used anywhere else in the codebase."
     }
 
+    fn should_process_headers(&self) -> bool {
+        false
+    }
+
     fn should_process_file_id(&self, sema: &Semantic, file_id: FileId) -> bool {
-        if !sema.db.file_kind(file_id).is_module() {
-            return false;
-        }
         // Test suites have too many false positives (exported test
         // callbacks, etc.), so skip them.  We still process test
         // helpers that don't end in _SUITE.

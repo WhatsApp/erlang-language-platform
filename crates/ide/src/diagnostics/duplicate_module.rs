@@ -32,6 +32,10 @@ impl Linter for DuplicateModuleLinter {
     fn description(&self) -> &'static str {
         "A module with this name exists elsewhere"
     }
+
+    fn should_process_headers(&self) -> bool {
+        false
+    }
 }
 
 impl GenericLinter for DuplicateModuleLinter {

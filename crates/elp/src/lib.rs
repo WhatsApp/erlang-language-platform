@@ -312,4 +312,22 @@ mod tests {
             Some(Severity::Error)
         );
     }
+
+    #[test]
+    fn serde_read_lint_config_include_headers_override() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+        let content = r#"
+            [linters.unused_macro]
+            include_headers = true
+            "#;
+        let config = toml::from_str::<LintConfig>(content).unwrap();
+        assert_eq_expected!(
+            Some(true),
+            config
+                .linters
+                .get(&DiagnosticCode::UnusedMacro)
+                .unwrap()
+                .include_headers
+        );
+    }
 }
