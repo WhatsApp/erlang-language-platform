@@ -305,9 +305,6 @@ class Subtype(pipelineContext: PipelineContext) {
       case (UnionType(tys1), _) =>
         tys1.forall(subTypePol(_, t2, seen))
 
-      case (ty1: TupleType, ty2: UnionType) if ty1.argTys.nonEmpty =>
-        ty1.argTys.zipWithIndex.exists { case (elem, i) => subtypeTuple(elem, ty2, i, ty1, seen) }
-
       case (_, UnionType(tys2)) =>
         tys2.exists(subTypePol(t1, _, seen))
 
@@ -498,26 +495,6 @@ class Subtype(pipelineContext: PipelineContext) {
       case _ =>
         val tuple2 = TupleType(originalTuple.argTys.updated(proj, t1))
         t2.tys.exists(t => subType(tuple2, t, seen))
-    }
-
-  /** Checks whether originalTuple.updated(proj, t1) < t2, by expanding t1 if it is an alias or a union.
-    */
-  private def subtypeTuple(
-      t1: Type,
-      t2: UnionType,
-      proj: Int,
-      originalTuple: TupleType,
-      seen: Set[(Type, Type, Polarity)],
-  )(implicit p: Polarity): Boolean =
-    t1 match {
-      case RemoteType(rid, args) =>
-        val body = util.getTypeDeclBody(rid, args)
-        subtypeTuple(body, t2, proj, originalTuple, seen)
-      case UnionType(tys1) =>
-        tys1.forall(subtypeTuple(_, t2, proj, originalTuple, seen))
-      case _ =>
-        val tuple2 = TupleType(originalTuple.argTys.updated(proj, t1))
-        t2.tys.exists(t => subTypePol(tuple2, t, seen))
     }
 
   def joinEnvs(envs: List[Env]): Env = {
