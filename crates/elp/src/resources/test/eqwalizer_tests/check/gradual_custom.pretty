@@ -278,16 +278,18 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   atom() | dynamic() | dynamic() | number()
 Context expected type: number()
 
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-    ┌─ check/src/gradual_custom.erl:277:25
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/gradual_custom.erl:276:3
     │
-277 │   eqwalizer:reveal_type(Y),
-    │                         ^ dynamic() | {none()}
+276 │   min(X, Y).
+    │   ^^^^^^^^^ erlang:min(X, Y).
+Expression has type:   atom() | dynamic() | dynamic() | {dynamic()}
+Context expected type: number()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/gradual_custom.erl:325:13
+    ┌─ check/src/gradual_custom.erl:323:13
     │
-325 │     true -> Atom;
+323 │     true -> Atom;
     │             ^^^^
     │             │
     │             Atom.
@@ -301,17 +303,17 @@ Because in the expression's type:
   Differs from the expected type:  'bar' | 'foo' | binary()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/gradual_custom.erl:340:13
+    ┌─ check/src/gradual_custom.erl:338:13
     │
-340 │     true -> Atom;
+338 │     true -> Atom;
     │             ^^^^ Atom.
 Expression has type:   atom()
 Context expected type: A
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/gradual_custom.erl:350:3
+    ┌─ check/src/gradual_custom.erl:348:3
     │
-350 │   parse_atom(Bin, [foo, bar]).
+348 │   parse_atom(Bin, [foo, bar]).
     │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
     │   │
     │   parse_atom(Bin, ['foo', 'bar']).

@@ -269,13 +269,11 @@ min6_neg(X, Y) -> min(X, Y).
 min7_neg(X, Y) -> min(X, Y).
 
 -spec min8_neg(
-    eqwalizer:dynamic() | atom() | none(),
-    eqwalizer:dynamic() | {none()}
+    eqwalizer:dynamic() | atom(),
+    eqwalizer:dynamic() | {eqwalizer:dynamic()}
 ) -> number().
 min8_neg(X, Y) ->
-  Y = min(X, Y),
-  eqwalizer:reveal_type(Y),
-  Y.
+  min(X, Y).
 
 -type version() :: {integer(), integer(), integer()}.
 
