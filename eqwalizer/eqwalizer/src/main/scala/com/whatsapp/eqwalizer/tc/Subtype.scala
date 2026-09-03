@@ -117,7 +117,9 @@ class Subtype(pipelineContext: PipelineContext) {
         tys1.forall(subType(_, t2, seen))
 
       case (ty1: TupleType, ty2: UnionType) if ty1.argTys.nonEmpty =>
-        ty1.argTys.zipWithIndex.exists { case (elem, i) => subtypeTuple(elem, ty2, i, ty1, seen) }
+        // Fast path: if the tuple as-is fits one of the union members, no unfolding is needed.
+        ty2.tys.exists(subType(ty1, _, seen)) ||
+        ty1.argTys.zipWithIndex.exists { case (elem, i) => isExpandable(elem) && subtypeTuple(elem, ty2, i, ty1, seen) }
 
       case (_, UnionType(tys2)) =>
         tys2.exists(subType(t1, _, seen))
@@ -476,6 +478,14 @@ class Subtype(pipelineContext: PipelineContext) {
       case _ => false
     }
   }
+
+  // Whether [[subtypeTuple]] can make progress on this component
+  private def isExpandable(t: Type): Boolean =
+    t match {
+      case RemoteType(_, _) => true
+      case UnionType(_)     => true
+      case _                => false
+    }
 
   /** Checks whether originalTuple.updated(proj, t1) < t2, by expanding t1 if it is an alias or a union.
    */
