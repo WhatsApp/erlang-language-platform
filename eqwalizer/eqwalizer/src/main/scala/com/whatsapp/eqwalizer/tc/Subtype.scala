@@ -491,8 +491,6 @@ class Subtype(pipelineContext: PipelineContext) {
   ): Boolean =
     (t1, t2) match {
       // Standard cases from subType
-      case (NoneType, _) =>
-        true
       case (_, AnyType) =>
         true
       case (_, AnyTupleType) =>
@@ -548,8 +546,6 @@ class Subtype(pipelineContext: PipelineContext) {
   )(implicit p: Polarity): Boolean =
     (t1, t2) match {
       // Standard cases from subType
-      case (NoneType, _) =>
-        true
       case (_, AnyType) =>
         true
       case (_, AnyTupleType) =>

@@ -62,4 +62,12 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   {none()}
 Context expected type: atom()
 
-6 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/tuples.erl:43:20
+   │
+43 │ subtype_neg2(T) -> T.
+   │                    ^ T.
+Expression has type:   {none()}
+Context expected type: atom() | binary()
+
+7 ERRORS
