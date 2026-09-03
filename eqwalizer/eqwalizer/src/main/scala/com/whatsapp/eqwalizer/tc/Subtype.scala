@@ -484,118 +484,40 @@ class Subtype(pipelineContext: PipelineContext) {
    */
   private def subtypeTuple(
       t1: Type,
-      t2: Type,
+      t2: UnionType,
       proj: Int,
       originalTuple: TupleType,
       seen: Set[(Type, Type)],
   ): Boolean =
-    (t1, t2) match {
-      // Standard cases from subType
-      case (_, AnyType) =>
-        true
-      case (_, AnyTupleType) =>
-        true
-      case (_, DynamicType) =>
-        true
-      case (_, BoundedDynamicType(bound)) =>
-        subtypeTuple(t1, bound, proj, originalTuple, seen)
-      case (RemoteType(rid, args), _) =>
+    t1 match {
+      case RemoteType(rid, args) =>
         val body = util.getTypeDeclBody(rid, args)
         subtypeTuple(body, t2, proj, originalTuple, seen)
-
-      // ** Main logic **
-      case (UnionType(tys1), _) =>
-        // Distributes a tuple of unions into a union of tuples
+      case UnionType(tys1) =>
         tys1.forall(subtypeTuple(_, t2, proj, originalTuple, seen))
-      case (_, TupleType(tys2)) if originalTuple.argTys.size == tys2.size =>
-        // Injects the union back into the original tuple
-        subType(TupleType(originalTuple.argTys.updated(proj, t1)), t2, seen)
-      // Standard cases from subType
-      case (_, RemoteType(rid, args)) =>
-        val body = util.getTypeDeclBody(rid, args)
-        subtypeTuple(t1, body, proj, originalTuple, seen + (originalTuple -> t2))
-      case (_, UnionType(tys)) =>
-        tys.exists(t => subtypeTuple(t1, t, proj, originalTuple, seen))
-      case (_, r: RecordType) =>
-        util.getRecord(r.module, r.name) match {
-          case Some(recDecl) =>
-            subtypeTuple(t1, recordAsTuple(recDecl), proj, originalTuple, seen)
-          case None =>
-            false
-        }
-      case (_, r: RefinedRecordType) =>
-        val recTy = r.recType
-        util.getRecord(recTy.module, recTy.name) match {
-          case Some(recDecl) =>
-            subtypeTuple(t1, refinedRecordAsTuple(recDecl, r), proj, originalTuple, seen)
-          case None =>
-            false
-        }
       case _ =>
-        false
+        val tuple2 = TupleType(originalTuple.argTys.updated(proj, t1))
+        t2.tys.exists(t => subType(tuple2, t, seen))
     }
 
   /** Checks whether originalTuple.updated(proj, t1) < t2, by expanding t1 if it is an alias or a union.
     */
   private def subtypeTuple(
       t1: Type,
-      t2: Type,
+      t2: UnionType,
       proj: Int,
       originalTuple: TupleType,
       seen: Set[(Type, Type, Polarity)],
   )(implicit p: Polarity): Boolean =
-    (t1, t2) match {
-      // Standard cases from subType
-      case (_, AnyType) =>
-        true
-      case (_, AnyTupleType) =>
-        true
-      case (_, DynamicType) if p == + =>
-        true
-      case (_, DynamicType) if p == - =>
-        false
-      case (DynamicType, _) if p == + =>
-        subtypeTuple(AnyType, t2, proj, originalTuple, seen)
-      case (_, BoundedDynamicType(bound)) if p == + =>
-        subtypeTuple(t1, bound, proj, originalTuple, seen)
-      case (_, BoundedDynamicType(_)) if p == - =>
-        false
-      case (BoundedDynamicType(bound), _) if p == + =>
-        subtypeTuple(bound, t2, proj, originalTuple, seen)
-      case (RemoteType(rid, args), _) =>
+    t1 match {
+      case RemoteType(rid, args) =>
         val body = util.getTypeDeclBody(rid, args)
         subtypeTuple(body, t2, proj, originalTuple, seen)
-
-      // ** Main logic **
-      case (UnionType(tys1), _) =>
-        // Distributes a tuple of unions into a union of tuples
+      case UnionType(tys1) =>
         tys1.forall(subtypeTuple(_, t2, proj, originalTuple, seen))
-      case (_, TupleType(tys2)) if originalTuple.argTys.size == tys2.size =>
-        // Injects the union back into the original tuple
-        subTypePol(TupleType(originalTuple.argTys.updated(proj, t1)), t2, seen)
-      // Standard cases from subType
-      case (_, RemoteType(rid, args)) =>
-        val body = util.getTypeDeclBody(rid, args)
-        subtypeTuple(t1, body, proj, originalTuple, seen + ((originalTuple, t2, p)))
-      case (_, UnionType(tys)) =>
-        tys.exists(t => subtypeTuple(t1, t, proj, originalTuple, seen))
-      case (_, r: RecordType) =>
-        util.getRecord(r.module, r.name) match {
-          case Some(recDecl) =>
-            subtypeTuple(t1, recordAsTuple(recDecl), proj, originalTuple, seen)
-          case None =>
-            false
-        }
-      case (_, r: RefinedRecordType) =>
-        val recTy = r.recType
-        util.getRecord(recTy.module, recTy.name) match {
-          case Some(recDecl) =>
-            subtypeTuple(t1, refinedRecordAsTuple(recDecl, r), proj, originalTuple, seen)
-          case None =>
-            false
-        }
       case _ =>
-        false
+        val tuple2 = TupleType(originalTuple.argTys.updated(proj, t1))
+        t2.tys.exists(t => subTypePol(tuple2, t, seen))
     }
 
   def joinEnvs(envs: List[Env]): Env = {
