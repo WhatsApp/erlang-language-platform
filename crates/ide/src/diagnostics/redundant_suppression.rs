@@ -899,6 +899,37 @@ test() ->
         );
     }
 
+    /// `code_reportable` has to apply both gates the linter run applies:
+    /// `should_process_file_id` as well as `should_run`. W0077 declines
+    /// `_SUITE` modules in the former, so it never runs here and the
+    /// suppression below cannot be redundant — checking only `should_run`
+    /// would tell the author to delete an annotation that starts mattering
+    /// the moment the module stops being a suite.
+    #[test]
+    fn not_redundant_when_linter_declines_the_file() {
+        let config = DiagnosticsConfig::default()
+            .configure_diagnostics(
+                &LintConfig::default(),
+                &[
+                    "unused_exported_function".to_string(),
+                    "redundant_suppression".to_string(),
+                ],
+                &[],
+            )
+            .unwrap();
+        check_diagnostics_with_config(
+            config,
+            r#"
+//- /test/main_SUITE.erl extra:test
+-module(main_SUITE).
+-export([all/0]).
+
+% elp:ignore W0077
+all() -> [].
+"#,
+        );
+    }
+
     #[test]
     fn fix_removes_entire_line_when_all_codes_redundant() {
         // All codes are redundant -> "Delete redundant suppression" fix

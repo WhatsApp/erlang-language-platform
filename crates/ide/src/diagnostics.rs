@@ -1990,9 +1990,11 @@ pub fn native_diagnostics(
 
     let mut res = Vec::new();
 
-    let labeled_syntax_errors = if report_diagnostics {
-        let sema = Semantic::new(db);
+    // Also needed by `code_reportable` below, which is built for every file,
+    // not only the ones we report diagnostics for.
+    let sema = Semantic::new(db);
 
+    let labeled_syntax_errors = if report_diagnostics {
         {
             let _guard = in_flight::begin("native:adhoc_semantic");
             adhoc_semantic_diagnostics
@@ -2063,21 +2065,28 @@ pub fn native_diagnostics(
         if !should_process_app(&app_name, config, code) {
             return false;
         }
-        // If a Linter is registered for this code, defer to should_run for
-        // the trigger / experimental / runs_on_save_only / EnabledDiagnostics
-        // checks. Codes without a registered Linter (e.g. SyntaxError,
-        // MissingSeparator coming from parse errors) are assumed reportable
-        // if they passed the cheap config-level checks above.
+        // If a Linter is registered for this code, apply the same pair of
+        // gates the linter run itself uses: `should_process_file_id` for
+        // per-file opt-outs, and `should_run` for the trigger / experimental /
+        // runs_on_save_only / EnabledDiagnostics checks. Checking only the
+        // latter would call a suppression redundant on a file the linter
+        // declines outright — e.g. W0077 skips `_SUITE` modules. Codes without
+        // a registered Linter (e.g. SyntaxError, MissingSeparator coming from
+        // parse errors) are assumed reportable if they passed the cheap
+        // config-level checks above.
         match linters_by_code.get(code) {
-            Some(linter) => should_run(
-                *linter,
-                config,
-                trigger,
-                &app_name,
-                is_generated,
-                is_test,
-                is_header,
-            ),
+            Some(linter) => {
+                linter.should_process_file_id(&sema, file_id)
+                    && should_run(
+                        *linter,
+                        config,
+                        trigger,
+                        &app_name,
+                        is_generated,
+                        is_test,
+                        is_header,
+                    )
+            }
             None => true,
         }
     };
