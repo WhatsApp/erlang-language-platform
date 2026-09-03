@@ -13,6 +13,7 @@ use std::sync::Arc;
 use elp_base_db::FileId;
 use elp_base_db::ProjectId;
 use elp_base_db::RootQueryDb;
+use elp_base_db::Upcast;
 use elp_base_db::salsa;
 use elp_base_db::salsa::Database;
 use elp_erlang_service::CTInfoRequest;
@@ -28,6 +29,8 @@ use hir::NameArity;
 use hir::db::DefDatabase;
 
 use crate::ErlAstDatabase;
+
+mod literal_eval;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum CommonTestInfo {
@@ -64,13 +67,30 @@ pub trait CommonTestLoader {
 
 impl CommonTestLoader for crate::RootDatabase {
     fn check(&self, project_id: ProjectId, file_id: FileId, def_map: &DefMap) -> CommonTestInfo {
-        let erlang_service = self.erlang_service_for(project_id);
         let should_request_groups =
             def_map.is_function_exported(&NameArity::new(Name::from_erlang_service("groups"), 0));
+
+        // Resolved before the fast path so that a module which does not
+        // compile keeps reporting `BadAST`, exactly as it does today. The
+        // result is cached and needed by the rest of the lint anyway, so this
+        // costs nothing; the round trip worth skipping is the `ct_info` one
+        // below, which ships the whole AST back to the service.
         let module_ast = self.module_ast(file_id);
         if !module_ast.is_ok() {
             return CommonTestInfo::BadAST;
         }
+
+        // Suites whose callbacks are literal data need no round trip at all.
+        if let Some(info) = literal_eval::try_literal_ct_info(
+            self.upcast(),
+            file_id,
+            def_map,
+            should_request_groups,
+        ) {
+            return info;
+        }
+
+        let erlang_service = self.erlang_service_for(project_id);
         let index = self.module_index(project_id);
         let module = index.module_for_file(file_id);
 
