@@ -35,3 +35,9 @@ update_rec(Rec) -> setelement(2, Rec, red).
 
 -spec update_rec_neg(#rec{}) -> #rec{}.
 update_rec_neg(Rec) -> setelement(2, Rec, ~"red").
+
+-spec subtype_neg1({none()}) -> atom().
+subtype_neg1(T) -> T.
+
+-spec subtype_neg2({none()}) -> atom() | binary().
+subtype_neg2(T) -> T.
