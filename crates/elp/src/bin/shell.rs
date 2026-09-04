@@ -16,13 +16,12 @@ use std::time::SystemTime;
 use anyhow::Result;
 use clap::ValueHint;
 use elp::build::load;
-use elp::build::load::FileOrder;
+use elp::build::load::LoadConfig;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::watchman::UpdateResult;
 use elp::watchman::Watchman;
 use elp_eqwalizer::Mode;
-use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_log::telemetry;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::buck::BuckQueryConfig;
@@ -218,15 +217,9 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfi
 
     let mut watchman = Watchman::new(&shell.project)?;
     let config = DiscoverConfig::new(false, "test");
-    let mut loaded = load::load_project_at(
-        cli,
-        &shell.project,
-        config.clone(),
-        IncludeOtp::Yes,
-        Mode::Shell,
-        query_config,
-        FileOrder::AsLoaded,
-    )?;
+    let load_config = LoadConfig::new(Mode::Shell, *query_config);
+    let mut loaded =
+        load::load_project_at(cli, &shell.project, config.clone(), load_config.clone())?;
     watchman.set_project_dirs(&loaded);
     telemetry::report_elapsed_time("shell operational", start_time);
     let mut rl = rustyline::DefaultEditor::new()?;
@@ -255,10 +248,7 @@ pub fn run_shell(shell: &Shell, cli: &mut dyn Cli, query_config: &BuckQueryConfi
                             cli,
                             &shell.project,
                             config.clone(),
-                            IncludeOtp::Yes,
-                            Mode::Shell,
-                            query_config,
-                            FileOrder::AsLoaded,
+                            load_config.clone(),
                         )?;
                         watchman.set_project_dirs(&loaded);
                     }

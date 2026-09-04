@@ -21,7 +21,7 @@ use clap::ValueHint;
 use clap_complete::engine::ArgValueCompleter;
 use elp::build;
 use elp::build::load;
-use elp::build::load::FileOrder;
+use elp::build::load::LoadConfig;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
@@ -30,7 +30,6 @@ use elp::sort_by_file_size_descending;
 use elp_eqwalizer::Mode;
 use elp_ide::Analysis;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
-use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::erlang_service::DiagnosticLocation;
 use elp_log::telemetry;
 use elp_log::timeit;
@@ -78,10 +77,7 @@ pub fn parse_all(args: &ParseAll, cli: &mut dyn Cli, query_config: &BuckQueryCon
         cli,
         &args.project,
         config,
-        IncludeOtp::Yes,
-        Mode::Cli,
-        query_config,
-        FileOrder::AsLoaded,
+        LoadConfig::new(Mode::Cli, *query_config),
     )?;
     build::compile_deps(&loaded, cli)?;
     fs::create_dir_all(&args.to)?;

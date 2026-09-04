@@ -22,7 +22,7 @@ use clap::ArgAction;
 use clap::ValueHint;
 use clap_complete::engine::ArgValueCompleter;
 use elp::build::load;
-use elp::build::load::FileOrder;
+use elp::build::load::LoadConfig;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
@@ -42,7 +42,6 @@ use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileSource;
-use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
@@ -175,10 +174,7 @@ pub fn parse_all(
         cli,
         &args.project,
         config,
-        IncludeOtp::Yes,
-        Mode::Cli,
-        query_config,
-        FileOrder::AsLoaded,
+        LoadConfig::new(Mode::Cli, *query_config),
     )?;
 
     if let Some(to) = &args.to {

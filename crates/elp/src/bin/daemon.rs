@@ -75,7 +75,7 @@ use clap::ValueHint;
 use codespan_reporting::term::termcolor::ColorSpec;
 use codespan_reporting::term::termcolor::WriteColor;
 use elp::build::load;
-use elp::build::load::FileOrder;
+use elp::build::load::LoadConfig;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::read_lint_config_file;
@@ -83,7 +83,6 @@ use elp::watchman::UpdateResult;
 use elp::watchman::Watchman;
 use elp_eqwalizer::Mode;
 use elp_ide::diagnostics::LintConfig;
-use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_log::telemetry;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::ElpConfig;
@@ -624,10 +623,7 @@ fn run_daemon_server(args: &DaemonRun, query_config: &BuckQueryConfig) -> Result
         &daemon_cli,
         &manifest,
         &elp_config,
-        IncludeOtp::Yes,
-        Mode::Shell,
-        query_config,
-        FileOrder::AsLoaded,
+        LoadConfig::new(Mode::Shell, *query_config),
     )?;
     watchman.set_project_dirs(&loaded);
 
@@ -779,10 +775,7 @@ fn handle_connection(
                 &cli,
                 ctx.manifest,
                 ctx.elp_config,
-                IncludeOtp::Yes,
-                Mode::Shell,
-                ctx.query_config,
-                FileOrder::AsLoaded,
+                LoadConfig::new(Mode::Shell, *ctx.query_config),
             )?;
             state.watchman.set_project_dirs(&state.loaded);
             // Fresh analysis_host loses the lint config; re-apply.

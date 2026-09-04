@@ -19,7 +19,7 @@ use anyhow::bail;
 use clap::ValueHint;
 use elp::build;
 use elp::build::load;
-use elp::build::load::FileOrder;
+use elp::build::load::LoadConfig;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
@@ -38,7 +38,6 @@ use elp_ide::elp_ide_db::EqwalizerDiagnostics;
 use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
-use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_log::telemetry;
@@ -206,10 +205,7 @@ pub fn eqwalize_module(
         cli,
         &args.project,
         config,
-        IncludeOtp::Yes,
-        Mode::Cli,
-        query_config,
-        FileOrder::AsLoaded,
+        LoadConfig::new(Mode::Cli, *query_config),
     )?;
     build::compile_deps(&loaded, cli)?;
     telemetry::report_elapsed_time("eqwalize operational", start_time);
@@ -281,10 +277,7 @@ pub fn eqwalize_all(
         cli,
         &args.project,
         config,
-        IncludeOtp::Yes,
-        Mode::Cli,
-        query_config,
-        FileOrder::AsLoaded,
+        LoadConfig::new(Mode::Cli, *query_config),
     )?;
     build::compile_deps(&loaded, cli)?;
     telemetry::report_elapsed_time("eqwalize-all operational", start_time);
@@ -365,10 +358,7 @@ pub fn eqwalize_app(
         cli,
         &args.project,
         config,
-        IncludeOtp::Yes,
-        Mode::Cli,
-        query_config,
-        FileOrder::AsLoaded,
+        LoadConfig::new(Mode::Cli, *query_config),
     )?;
     build::compile_deps(&loaded, cli)?;
     telemetry::report_elapsed_time("eqwalize-app operational", start_time);
@@ -438,10 +428,7 @@ pub fn eqwalize_target(
         cli,
         &args.project,
         config,
-        IncludeOtp::Yes,
-        Mode::Cli,
-        query_config,
-        FileOrder::AsLoaded,
+        LoadConfig::new(Mode::Cli, *query_config),
     )?;
 
     telemetry::report_elapsed_time("eqwalize-target operational", start_time);
@@ -544,10 +531,7 @@ pub fn eqwalize_stats(
         cli,
         &args.project,
         config,
-        IncludeOtp::Yes,
-        Mode::Cli,
-        query_config,
-        FileOrder::AsLoaded,
+        LoadConfig::new(Mode::Cli, *query_config),
     )?;
     build::compile_deps(&loaded, cli)?;
     let analysis = &loaded.analysis();

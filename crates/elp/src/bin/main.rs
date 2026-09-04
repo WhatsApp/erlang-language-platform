@@ -346,7 +346,7 @@ mod tests {
     use clap::Parser;
     use elp::build;
     use elp::build::load;
-    use elp::build::load::FileOrder;
+    use elp::build::load::LoadConfig;
     use elp::cli::Fake;
     use elp::sort_by_file_size_descending;
     use elp_eqwalizer::EqwalizerConfig;
@@ -355,7 +355,6 @@ mod tests {
     use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
     use elp_ide::elp_ide_db::diagnostic_code::BASE_URL;
     use elp_ide::elp_ide_db::elp_base_db::FileId;
-    use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
     use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
     use elp_project_model::AppName;
     use elp_project_model::DiscoverConfig;
@@ -518,10 +517,7 @@ mod tests {
             &cli,
             &project_path,
             project_config,
-            IncludeOtp::Yes,
-            Mode::Cli,
-            &BUCK_QUERY_CONFIG,
-            FileOrder::AsLoaded,
+            LoadConfig::new(Mode::Cli, BUCK_QUERY_CONFIG),
         )
         .with_context(|| format!("Failed to load project at {}", project_path.display()))
         .unwrap();

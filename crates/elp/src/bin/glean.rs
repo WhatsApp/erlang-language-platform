@@ -18,6 +18,7 @@ use clap::ValueHint;
 use clap_complete::engine::ArgValueCompleter;
 use elp::build::load;
 use elp::build::load::FileOrder;
+use elp::build::load::LoadConfig;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp_eqwalizer::EqwalizerDiagnostics;
@@ -30,7 +31,6 @@ use elp_ide::elp_ide_db::RootDatabase;
 use elp_ide::elp_ide_db::docs::DocDatabase;
 use elp_ide::elp_ide_db::docs::Documentation;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
-use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
@@ -286,18 +286,14 @@ impl GleanIndexer {
         query_config: &BuckQueryConfig,
     ) -> Result<(Self, LoadResult)> {
         let config = DiscoverConfig::buck();
-        // `FileOrder::ByPath` so that the `src.File` ids, and everything that
-        // references them, come out the same on every run: two dumps over the
-        // same tree are then directly comparable.
-        let loaded = load::load_project_at(
-            cli,
-            &args.project,
-            config,
-            IncludeOtp::Yes,
-            elp_eqwalizer::Mode::Server,
-            query_config,
-            FileOrder::ByPath,
-        )?;
+        let load_config = LoadConfig {
+            // `FileOrder::ByPath` so that the `src.File` ids, and everything
+            // that references them, come out the same on every run: two dumps
+            // over the same tree are then directly comparable.
+            file_order: FileOrder::ByPath,
+            ..LoadConfig::new(elp_eqwalizer::Mode::Server, *query_config)
+        };
+        let loaded = load::load_project_at(cli, &args.project, config, load_config)?;
         let analysis = loaded.analysis();
         let indexer = Self {
             project_id: loaded.project_id,

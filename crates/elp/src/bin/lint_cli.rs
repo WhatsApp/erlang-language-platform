@@ -24,7 +24,7 @@ use anyhow::Result;
 use anyhow::bail;
 use crossbeam_channel::unbounded;
 use elp::build::load;
-use elp::build::load::FileOrder;
+use elp::build::load::LoadConfig;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
@@ -51,7 +51,6 @@ use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::Change;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FilePosition;
-use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
@@ -346,10 +345,7 @@ fn load_project(
         cli,
         manifest,
         elp_config,
-        IncludeOtp::Yes,
-        Mode::Server,
-        query_config,
-        FileOrder::AsLoaded,
+        LoadConfig::new(Mode::Server, *query_config),
     )?;
 
     elp::apply_lint_config(&mut loaded.analysis_host, lint_config);

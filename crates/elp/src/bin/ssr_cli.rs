@@ -20,7 +20,7 @@ use clap::ValueHint;
 use clap_complete::engine::ArgValueCompleter;
 use crossbeam_channel::unbounded;
 use elp::build::load;
-use elp::build::load::FileOrder;
+use elp::build::load::LoadConfig;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
 use elp::convert;
@@ -40,7 +40,6 @@ use elp_ide::elp_ide_db::DiagnosticCode;
 use elp_ide::elp_ide_db::LineCol;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
-use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
@@ -527,10 +526,7 @@ fn load_project(
         cli,
         &args.project,
         config,
-        IncludeOtp::Yes,
-        Mode::Server,
-        query_config,
-        FileOrder::AsLoaded,
+        LoadConfig::new(Mode::Server, *query_config),
     )
 }
 fn do_parse_one(

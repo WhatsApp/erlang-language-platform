@@ -111,25 +111,48 @@ pub enum FileOrder {
     ByPath,
 }
 
+/// How a project is loaded, beyond which project it is: what to pull in
+/// alongside it, and how to read and index it.
+///
+/// Build one with [`LoadConfig::new`] and override the rest through struct
+/// update syntax, so a caller only spells out what it does differently:
+///
+/// ```ignore
+/// LoadConfig {
+///     file_order: FileOrder::ByPath,
+///     ..LoadConfig::new(elp_eqwalizer::Mode::Server, *query_config)
+/// }
+/// ```
+#[derive(Clone, Debug)]
+pub struct LoadConfig {
+    /// Whether OTP is loaded alongside the project's own applications.
+    pub include_otp: IncludeOtp,
+    pub eqwalizer_mode: elp_eqwalizer::Mode,
+    pub query_config: BuckQueryConfig,
+    pub file_order: FileOrder,
+}
+
+impl LoadConfig {
+    /// Defaults to loading OTP, and to [`FileOrder::AsLoaded`] — reproducible
+    /// `FileId`s cost something, so they are asked for rather than assumed.
+    pub fn new(eqwalizer_mode: elp_eqwalizer::Mode, query_config: BuckQueryConfig) -> Self {
+        Self {
+            include_otp: IncludeOtp::Yes,
+            eqwalizer_mode,
+            query_config,
+            file_order: FileOrder::AsLoaded,
+        }
+    }
+}
+
 pub fn load_project_at(
     cli: &dyn Cli,
     root: &Path,
     conf: DiscoverConfig,
-    include_otp: IncludeOtp,
-    eqwalizer_mode: elp_eqwalizer::Mode,
-    query_config: &BuckQueryConfig,
-    file_order: FileOrder,
+    load_config: LoadConfig,
 ) -> Result<LoadResult> {
     let (elp_config, manifest) = discover_manifest(root, &conf)?;
-    load_project_from_manifest(
-        cli,
-        &manifest,
-        &elp_config,
-        include_otp,
-        eqwalizer_mode,
-        query_config,
-        file_order,
-    )
+    load_project_from_manifest(cli, &manifest, &elp_config, load_config)
 }
 
 /// Load a project from an already-discovered manifest.
@@ -139,29 +162,23 @@ pub fn load_project_from_manifest(
     cli: &dyn Cli,
     manifest: &ProjectManifest,
     elp_config: &ElpConfig,
-    include_otp: IncludeOtp,
-    eqwalizer_mode: elp_eqwalizer::Mode,
-    query_config: &BuckQueryConfig,
-    file_order: FileOrder,
+    load_config: LoadConfig,
 ) -> Result<LoadResult> {
     crate::ensure_rayon_pool();
     log::info!("Loading project: {manifest:?}");
     let pb = cli.spinner("Loading build info");
-    let project = Project::load(manifest, elp_config, query_config, &|message| {
-        pb.set_message(message.to_string())
-    })?;
+    let project = Project::load(
+        manifest,
+        elp_config,
+        &load_config.query_config,
+        &|message| pb.set_message(message.to_string()),
+    )?;
     pb.finish();
 
-    load_project(cli, project, include_otp, eqwalizer_mode, file_order)
+    load_project(cli, project, load_config)
 }
 
-fn load_project(
-    cli: &dyn Cli,
-    project: Project,
-    include_otp: IncludeOtp,
-    eqwalizer_mode: elp_eqwalizer::Mode,
-    file_order: FileOrder,
-) -> Result<LoadResult> {
+fn load_project(cli: &dyn Cli, project: Project, load_config: LoadConfig) -> Result<LoadResult> {
     let project_id = ProjectId(0);
     let (sender, receiver) = unbounded();
     let mut vfs = Vfs::default();
@@ -172,7 +189,7 @@ fn load_project(
     };
 
     let projects = [project.clone()];
-    let project_apps = ProjectApps::new(&projects, include_otp);
+    let project_apps = ProjectApps::new(&projects, load_config.include_otp);
     let folders = ProjectFolders::new(&project_apps);
 
     let vfs_loader_config = loader::Config {
@@ -189,8 +206,7 @@ fn load_project(
         &mut vfs,
         &mut line_ending_map,
         &receiver,
-        eqwalizer_mode,
-        file_order,
+        &load_config,
     )?;
     Ok(LoadResult::new(
         analysis_host,
@@ -202,7 +218,6 @@ fn load_project(
     ))
 }
 
-#[allow(clippy::too_many_arguments)]
 fn load_database(
     cli: &dyn Cli,
     project_apps: &ProjectApps,
@@ -210,14 +225,13 @@ fn load_database(
     vfs: &mut Vfs,
     line_ending_map: &mut FxHashMap<FileId, LineEndings>,
     receiver: &Receiver<loader::Message>,
-    eqwalizer_mode: elp_eqwalizer::Mode,
-    file_order: FileOrder,
+    load_config: &LoadConfig,
 ) -> Result<AnalysisHost> {
     let mut analysis_host = AnalysisHost::default();
 
     let db = analysis_host.raw_database_mut();
 
-    db.set_eqwalizer_mode(eqwalizer_mode);
+    db.set_eqwalizer_mode(load_config.eqwalizer_mode.clone());
 
     let pb = cli.simple_progress(0, "Loading applications");
 
@@ -240,7 +254,7 @@ fn load_database(
                 }
             }
             loader::Message::Loaded { files } | loader::Message::Changed { files } => {
-                match file_order {
+                match load_config.file_order {
                     FileOrder::AsLoaded => {
                         for (path, contents) in files {
                             vfs.set_file_contents(path.into(), contents);
