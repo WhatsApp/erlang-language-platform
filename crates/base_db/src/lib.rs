@@ -684,6 +684,36 @@ fn module_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc<Modul
     builder.build()
 }
 
+/// Whether `defining_app` is reachable from the application described by
+/// `referencing_app_data`, following that application's declared dependencies.
+///
+/// An application is always reachable from itself. OTP applications are always
+/// reachable, and reachability is transitive - both are `IncludeMapping::is_dep`
+/// semantics. A project with no build-system dependency graph, or an application
+/// with no buck target, has nothing to check against and is treated as reachable.
+pub fn is_app_reachable(
+    db: &dyn RootQueryDb,
+    referencing_app_data: &AppData,
+    defining_app: &AppName,
+) -> bool {
+    if &referencing_app_data.name == defining_app {
+        return true;
+    }
+
+    let Some(referencing_target) = referencing_app_data.buck_target_name.as_ref() else {
+        return true;
+    };
+
+    match &db
+        .project_data(referencing_app_data.project_id)
+        .project_data(db)
+        .include_mapping
+    {
+        Some(include_mapping) => include_mapping.is_dep(referencing_target, defining_app),
+        None => true,
+    }
+}
+
 /// A map from file path to `FileId` for each `.hrl` file we have
 /// loaded.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

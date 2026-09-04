@@ -20,7 +20,7 @@ use std::borrow::Cow;
 
 use elp_ide_db::elp_base_db::AppData;
 use elp_ide_db::elp_base_db::FileId;
-use elp_project_model::AppName;
+use elp_ide_db::elp_base_db::is_app_reachable;
 use hir::AnyExpr;
 use hir::Callback;
 use hir::InFile;
@@ -276,32 +276,6 @@ fn check_record(
     );
 }
 
-fn is_type_available(
-    sema: &Semantic,
-    referencing_app_data: &AppData,
-    referencing_target: &String,
-    referencing_app_name: &AppName,
-    defining_app_name: &AppName,
-) -> bool {
-    // Types from the same app are always available
-    if referencing_app_name == defining_app_name {
-        return true;
-    }
-
-    // Check if type is available through dependencies
-    if let Some(include_mapping) = &sema
-        .db
-        .project_data(referencing_app_data.project_id)
-        .project_data(sema.db)
-        .include_mapping
-    {
-        include_mapping.is_dep(referencing_target, defining_app_name)
-    } else {
-        // Can't determine - be conservative and allow it
-        true
-    }
-}
-
 fn check_type_call(
     matches: &mut Vec<GenericLinterMatchContext<Context>>,
     sema: &Semantic,
@@ -321,13 +295,7 @@ fn check_type_call(
         let defining_app_name = &defining_app_data.name;
         let referencing_app_name = &referencing_app_data.name;
 
-        if !is_type_available(
-            sema,
-            referencing_app_data,
-            referencing_target,
-            referencing_app_name,
-            defining_app_name,
-        ) {
+        if !is_app_reachable(sema.db.upcast(), referencing_app_data, defining_app_name) {
             matches.push(GenericLinterMatchContext {
                 range: target_range,
                 context: Context {

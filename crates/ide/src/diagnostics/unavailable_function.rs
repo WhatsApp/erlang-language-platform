@@ -23,9 +23,7 @@
 
 use std::borrow::Cow;
 
-use elp_ide_db::elp_base_db::AppData;
-use elp_project_model::AppName;
-use hir::Semantic;
+use elp_ide_db::elp_base_db::is_app_reachable;
 
 use super::DiagnosticCode;
 use crate::FunctionMatch;
@@ -105,13 +103,7 @@ impl FunctionCallLinter for UnavailableFunctionLinter {
         let referencing_app = &referencing_app_data.name;
         let defining_app = &defining_app_data.name;
 
-        if is_app_available(
-            sema,
-            &referencing_app_data,
-            referencing_target,
-            referencing_app,
-            defining_app,
-        ) {
+        if is_app_reachable(sema.db.upcast(), &referencing_app_data, defining_app) {
             return None;
         }
 
@@ -125,34 +117,6 @@ impl FunctionCallLinter for UnavailableFunctionLinter {
 }
 
 pub static LINTER: UnavailableFunctionLinter = UnavailableFunctionLinter;
-
-fn is_app_available(
-    sema: &Semantic,
-    referencing_app_data: &AppData,
-    referencing_target: &String,
-    referencing_app: &AppName,
-    defining_app: &AppName,
-) -> bool {
-    if referencing_app == defining_app {
-        return true;
-    }
-
-    match &sema
-        .db
-        .project_data(referencing_app_data.project_id)
-        .project_data(sema.db)
-        .include_mapping
-    {
-        // `is_dep` treats OTP applications as always available, and walks the
-        // dependency graph transitively. Transitive reachability is weaker than
-        // checking direct dependencies only, but it is what `unavailable_type`
-        // already uses, so both boundary diagnostics agree on what "reachable"
-        // means. Tightening it is a possible follow-up.
-        Some(include_mapping) => include_mapping.is_dep(referencing_target, defining_app),
-        // No dependency graph (non-buck project) - be conservative and allow it.
-        None => true,
-    }
-}
 
 #[cfg(test)]
 mod tests {
