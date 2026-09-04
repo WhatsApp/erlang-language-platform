@@ -2271,6 +2271,24 @@ mod tests {
         )
     }
 
+    #[test]
+    fn lint_unavailable_function() {
+        simple_snapshot(
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--config-file",
+                project_path("xref/elp_lint_unavailable_function.toml"),
+                "--module",
+                "unavailable_function"
+            ],
+            "xref",
+            resource_file("xref/unavailable_function.stdout"),
+            true,
+            None,
+        )
+    }
+
     /// Deliberately passes the legacy spaced `ad-hoc: <name>` spelling to
     /// `--diagnostic-filter`. `as_code` emits `ad-hoc:<name>` without the space,
     /// but `is_adhoc` still accepts the spaced form so existing invocations do

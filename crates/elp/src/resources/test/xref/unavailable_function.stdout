@@ -1,0 +1,3 @@
+module specified: unavailable_function
+Diagnostics reported:
+app_a/src/unavailable_function.erl:6:27-6:44::[Warning] [W0085] The function 'app_c:my_function/0' is defined in application 'app_c', but the application is not a dependency of 'app_a' (defined in 'root//xref:app_a').

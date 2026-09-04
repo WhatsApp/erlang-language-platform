@@ -215,6 +215,8 @@ pub enum DiagnosticCode {
     AvoidTypeDefsInHeader,
     #[strum(props(code = "W0084"))]
     AttributeOrder,
+    #[strum(props(code = "W0085"))]
+    UnavailableFunction,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
