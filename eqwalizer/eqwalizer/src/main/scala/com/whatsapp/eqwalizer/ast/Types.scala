@@ -51,6 +51,23 @@ object Types {
     }
   }
 
+  case class InterType(tys: Set[Type]) extends Type
+
+  object InterType {
+    def apply(tys: Set[Type]): Type = {
+      // intersections with AnyType are meaningless, we can remove them early
+      val types = tys - AnyType
+      if (types.contains(NoneType))
+        NoneType
+      else
+        types.size match {
+          case 0 => AnyType
+          case 1 => types.head
+          case _ => new InterType(types)
+        }
+    }
+  }
+
   case class RemoteType(id: RemoteId, argTys: List[Type]) extends Type
 
   case class BoundVarType(lvl: Int)(val name: String) extends Type

@@ -25,6 +25,7 @@ object Subst {
       case ListType(elemT)                    => ListType(sub(elemT))
       case ConsType(headT, tailT)             => ConsType(sub(headT), sub(tailT))
       case UnionType(params)                  => UnionType(params.map(sub))
+      case InterType(params)                  => InterType(params.map(sub))
       case RemoteType(id, params)             => RemoteType(id, params.map(sub))
       case FreeVarType(n)                     => s.getOrElse(n, t)
       case RefinedRecordType(recType, fields) => RefinedRecordType(recType, fields.map(f => f._1 -> sub(f._2)))

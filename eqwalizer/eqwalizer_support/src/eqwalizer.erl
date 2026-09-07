@@ -12,7 +12,7 @@
 -compile(nowarn_redefined_builtin_type).
 -typing([eqwalizer]).
 
--export_type([dynamic/0, dynamic/1, refinable/1]).
+-export_type([dynamic/0, dynamic/1, refinable/1, inter/2]).
 -export([reveal_type/1]).
 
 %% This type is intended to help with code being transitioned
@@ -52,3 +52,15 @@ reveal_type(_Expr) -> error(eqwalizer_reveal_type).
 %% While this is not mandatory, using this type will make the type-checker
 %% smarter about refined record types.
 -type refinable(A) :: A.
+
+%% `inter(T1, T2)` is interpreted by eqWAlizer as an intersection type `T1 & T2`.
+-ifdef(ELP_ERLANG_SERVICE).
+%% If the alias is parsed by eqWAlizer it's expanded into a union type
+%% to align with the productivity check.
+%% (Union and intersection type constructors do not contribute to productivity).
+-type inter(T1, T2) :: T1 | T2.
+-else.
+%% If the alias is parsed by other tooling (eg dialyzer) it's expanded into dynamic() type
+%% since other tools don't have any notion of intersection types in the first place.
+-type inter(_T1, _T2) :: dynamic().
+-endif.

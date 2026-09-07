@@ -14,6 +14,7 @@ import com.whatsapp.eqwalizer.ast.TypeVars
 import com.whatsapp.eqwalizer.ast.Types.*
 import com.whatsapp.eqwalizer.tc.Subtype.CType
 
+import scala.annotation.tailrec
 import scala.util.boundary
 
 object Subtype {
@@ -23,6 +24,8 @@ object Subtype {
         true
       case UnionType(ts) =>
         ts.forall(isNoneType)
+      case InterType(ts) =>
+        ts.exists(isNoneType)
       case BoundedDynamicType(bound) =>
         isNoneType(bound)
       case _ =>
@@ -113,6 +116,9 @@ class Subtype(pipelineContext: PipelineContext) {
         val body = util.getTypeDeclBody(rid, args)
         subType(t1, body, seen + (t1 -> t2))
 
+      case (_, InterType(tys2)) =>
+        tys2.forall(subType(t1, _, seen))
+
       case (UnionType(tys1), _) =>
         tys1.forall(subType(_, t2, seen))
 
@@ -120,6 +126,9 @@ class Subtype(pipelineContext: PipelineContext) {
         // Fast path: if the tuple as-is fits one of the union members, no unfolding is needed.
         ty2.tys.exists(subType(ty1, _, seen)) ||
         ty1.argTys.zipWithIndex.exists { case (elem, i) => isExpandable(elem) && subtypeTuple(elem, ty2, i, ty1, seen) }
+
+      case (InterType(tys1), _) =>
+        tys1.exists(subType(_, t2, seen))
 
       case (_, UnionType(tys2)) =>
         tys2.exists(subType(t1, _, seen))
@@ -280,8 +289,14 @@ class Subtype(pipelineContext: PipelineContext) {
         val body = util.getTypeDeclBody(rid, args)
         subTypePol(t1, body, seen + ((t1, t2, p)))
 
+      case (_, InterType(tys2)) =>
+        tys2.forall(subTypePol(t1, _, seen))
+
       case (UnionType(tys1), _) =>
         tys1.forall(subTypePol(_, t2, seen))
+
+      case (InterType(tys1), _) =>
+        tys1.exists(subTypePol(_, t2, seen))
 
       case (_, UnionType(tys2)) =>
         tys2.exists(subTypePol(t1, _, seen))
@@ -413,6 +428,8 @@ class Subtype(pipelineContext: PipelineContext) {
       case _ if t1 == t2 => true
       case UnionType(tys) =>
         tys.exists(containsType(t1, _))
+      case InterType(tys) =>
+        tys.forall(containsType(t1, _))
       case BoundedDynamicType(bound) =>
         containsType(t1, bound)
       case _ => false
@@ -425,6 +442,8 @@ class Subtype(pipelineContext: PipelineContext) {
       case _ if t1 == t2 => true
       case UnionType(tys) =>
         tys.exists(containsType(t1, _, p))
+      case InterType(tys) =>
+        tys.forall(containsType(t1, _, p))
       case BoundedDynamicType(bound) if p == + =>
         containsType(t1, bound, p)
       case _ => false
@@ -485,6 +504,27 @@ class Subtype(pipelineContext: PipelineContext) {
     }
   }
 
+  def inter(args: List[Type]): Type = {
+    @tailrec
+    def loop(elems: Set[Type], remaining: List[Type]): Type =
+      remaining match {
+        case Nil =>
+          InterType(elems)
+        case arg :: rest =>
+          arg match {
+            case AnyType =>
+              loop(elems, rest)
+            case InterType(ts) =>
+              loop(elems, ts.toList ++ rest)
+            case _ =>
+              if (rest.exists(!mayOverlap(_, arg))) NoneType
+              else loop(elems + arg, rest)
+          }
+      }
+
+    loop(Set.empty, args)
+  }
+
   private def mayOverlapSimple(t1: CType, t2: CType): Boolean =
     Subtype.kind(t1) == Subtype.kind(t2)
 
@@ -529,6 +569,11 @@ class Subtype(pipelineContext: PipelineContext) {
         ts.exists(mayOverlap(_, t2, seen))
       case (_, UnionType(ts)) =>
         ts.exists(mayOverlap(t1, _, seen))
+
+      case (InterType(ts), _) =>
+        ts.forall(mayOverlap(_, t2, seen))
+      case (_, InterType(ts)) =>
+        ts.forall(mayOverlap(t1, _, seen))
 
       case (NativeRecordType(id1), NativeRecordType(id2)) =>
         id1 == id2
@@ -707,6 +752,10 @@ class Subtype(pipelineContext: PipelineContext) {
           join(ty1s.map(meetAux(_, t2, seen)))
         case (_, UnionType(ty2s)) =>
           join(ty2s.map(meetAux(t1, _, seen)))
+        case (InterType(ty1s), _) =>
+          inter(ty1s.toList.map(meetAux(_, t2, seen)))
+        case (_, InterType(ty2s)) =>
+          inter(ty2s.toList.map(meetAux(t1, _, seen)))
         case (TupleType(elems1), TupleType(elems2)) if elems1.size == elems2.size =>
           val elems = elems1.zip(elems2).map { (a, b) => meetAux(a, b, seen) }
           TupleType_*(elems)

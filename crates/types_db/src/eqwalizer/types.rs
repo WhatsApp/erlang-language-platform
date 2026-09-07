@@ -51,6 +51,7 @@ pub enum Type {
     ListType(ListType),
     ConsType(ConsType),
     UnionType(UnionType),
+    InterType(InterType),
     RemoteType(RemoteType),
     BoundVarType(BoundVarType),
     FreeVarType(FreeVarType),
@@ -272,6 +273,7 @@ impl Type {
             Type::AnyArityFunType(ty) => f(&ty.res_ty),
             Type::TupleType(ty) => ty.arg_tys.iter().try_for_each(f),
             Type::UnionType(ty) => ty.tys.iter().try_for_each(f),
+            Type::InterType(ty) => ty.tys.iter().try_for_each(f),
             Type::RemoteType(ty) => ty.arg_tys.iter().try_for_each(f),
             Type::MapType(ty) => f(&ty.k_type)
                 .and_then(|()| f(&ty.v_type))
@@ -361,6 +363,17 @@ impl fmt::Display for Type {
                         .map(|ty| ty.to_string())
                         .collect::<Vec<_>>()
                         .join(" | ")
+                )
+            }
+            Type::InterType(ty) => {
+                write!(
+                    f,
+                    "{}",
+                    ty.tys
+                        .iter()
+                        .map(|ty| ty.to_string())
+                        .collect::<Vec<_>>()
+                        .join(" & ")
                 )
             }
             Type::RemoteType(ty) => write!(
@@ -474,6 +487,12 @@ pub struct ConsType {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnionType {
+    #[serde(default)]
+    pub tys: Vec<Type>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct InterType {
     #[serde(default)]
     pub tys: Vec<Type>,
 }

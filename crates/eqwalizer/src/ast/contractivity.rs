@@ -85,6 +85,7 @@ fn he_by_diving(s: &Type, t: &Type) -> bool {
         Type::ListType(lt) => is_he(s, &lt.t),
         Type::ConsType(ct) => is_he(s, &ct.head_t) || is_he(s, &ct.tail_t),
         Type::UnionType(ut) => any_he(s, &ut.tys),
+        Type::InterType(it) => any_he(s, &it.tys),
         Type::RemoteType(rt) => any_he(s, &rt.arg_tys),
         Type::MapType(m) => {
             let tys = m.props.values().map(|p| &p.tp);
@@ -116,6 +117,10 @@ fn he_by_coupling(s: &Type, t: &Type) -> bool {
             all_he(&ut1.tys, &ut2.tys)
         }
         (Type::UnionType(_), _) => false,
+        (Type::InterType(it1), Type::InterType(it2)) if it1.tys.len() == it2.tys.len() => {
+            all_he(&it1.tys, &it2.tys)
+        }
+        (Type::InterType(_), _) => false,
         (Type::RemoteType(rt1), Type::RemoteType(rt2)) if rt1.id == rt2.id => {
             all_he(&rt1.arg_tys, &rt2.arg_tys)
         }
@@ -245,6 +250,7 @@ impl StubContractivityChecker<'_> {
                 this.is_contractive(*ct.head_t) && this.is_contractive(*ct.tail_t)
             }),
             Type::UnionType(ut) => self.all_contractive(ut.tys),
+            Type::InterType(it) => self.all_contractive(it.tys),
             Type::MapType(mt) => self.with_productive_history(|this| {
                 let prop = mt.props.into_values().map(|prop| prop.tp);
                 this.all_contractive(cons(*mt.k_type, cons(*mt.v_type, prop)))

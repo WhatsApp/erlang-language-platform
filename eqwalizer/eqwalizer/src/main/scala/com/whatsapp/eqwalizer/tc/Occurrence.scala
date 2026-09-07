@@ -882,6 +882,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
         if (removed == body) t1 else removed
       case (UnionType(ts), s) =>
         subtype.join(ts.map(remove(_, s)))
+      case (InterType(ts), s) =>
+        subtype.inter(ts.toList.map(remove(_, s)))
       case (BoundedDynamicType(t), s) =>
         BoundedDynamicType(remove(t, s))
       case (t, _) =>
@@ -914,6 +916,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
         update(body, path, pol, s)
       case (UnionType(ts), _) =>
         subtype.join(ts.map(update(_, path, pol, s)))
+      case (InterType(ts), _) =>
+        subtype.inter(ts.toList.map(update(_, path, pol, s)))
       case (BoundedDynamicType(t), _) =>
         BoundedDynamicType(update(t, path, pol, s))
       case (TupleType(ts), TupleField(pos, Some(arity)) :: path) if ts.size == arity =>
@@ -1093,6 +1097,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
         BoundedDynamicType(typePathRef(bound, path))
       case (UnionType(ts), _) =>
         subtype.join(ts.map(typePathRef(_, path)))
+      case (InterType(ts), _) =>
+        subtype.inter(ts.toList.map(typePathRef(_, path)))
       case (TupleType(ts), TupleField(index, Some(arity)) :: path1) if ts.size == arity =>
         typePathRef(ts(index), path1)
       case (rTy: RecordType, RecordField(fieldName, recName) :: path1) if rTy.name == recName =>

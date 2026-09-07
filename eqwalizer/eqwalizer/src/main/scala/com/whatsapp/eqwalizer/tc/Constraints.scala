@@ -103,6 +103,14 @@ class Constraints(pipelineContext: PipelineContext) {
             None
           else
             Some(results.flatten)
+        case (InterType(tys), _) =>
+          val results = tys.flatMap(constrain(ctx, _, upper, seen)).toList
+          if (results.isEmpty)
+            None
+          else
+            Some(results.flatten)
+        case (_, InterType(tys)) =>
+          constrainSeq(ctx, tys.map((lower, _)), seen)
         case (r: RecordType, t: TupleType) =>
           val recDecl = util.getRecord(r.module, r.name)
           constrain(ctx, recordAsTuple(recDecl), t, seen)

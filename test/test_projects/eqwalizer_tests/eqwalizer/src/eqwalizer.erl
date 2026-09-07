@@ -5,7 +5,7 @@
 
 -module(eqwalizer).
 
--export_type([dynamic/0, dynamic/1, refinable/1]).
+-export_type([dynamic/0, dynamic/1, refinable/1, inter/2]).
 -export([reveal_type/1]).
 
 %% @doc
@@ -48,3 +48,8 @@ reveal_type(_Expr) -> error(eqwalizer_reveal_type).
 %% While this is not mandatory, using this type will make the type-checker
 %% smarter about refined record types.
 -type refinable(A) :: A.
+
+%% `inter(T1, T2)` is interpreted by eqWAlizer as an intersection type `T1 & T2`.
+%% Currently it's expanded into a union type here to align with the productivity check.
+%% (Union and intersection type constructors do not contribute to productivity).
+-type inter(T1, T2) :: T1 | T2.

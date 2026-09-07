@@ -12,6 +12,7 @@ use elp_types_db::eqwalizer::types::AnyArityFunType;
 use elp_types_db::eqwalizer::types::BoundedDynamicType;
 use elp_types_db::eqwalizer::types::ConsType;
 use elp_types_db::eqwalizer::types::FunType;
+use elp_types_db::eqwalizer::types::InterType;
 use elp_types_db::eqwalizer::types::ListType;
 use elp_types_db::eqwalizer::types::MapProp;
 use elp_types_db::eqwalizer::types::MapType;
@@ -49,6 +50,9 @@ impl Subst<'_> {
             }),
             Type::UnionType(ut) => Type::UnionType(UnionType {
                 tys: self.apply_all(ut.tys),
+            }),
+            Type::InterType(it) => Type::InterType(InterType {
+                tys: self.apply_all(it.tys),
             }),
             Type::RemoteType(rt) => Type::RemoteType(RemoteType {
                 id: rt.id,

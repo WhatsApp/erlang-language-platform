@@ -105,6 +105,8 @@ class Util(pipelineContext: PipelineContext) {
         return DynamicType
       case RemoteId("eqwalizer", "dynamic", 1) =>
         return BoundedDynamicType(args.head)
+      case RemoteId("eqwalizer", "inter", 2) =>
+        return InterType(args.toSet)
       case _ =>
     }
     val id = Id(remoteId.name, remoteId.arity)
@@ -146,6 +148,8 @@ class Util(pipelineContext: PipelineContext) {
       isFunType(body, arity)
     case UnionType(tys) =>
       tys.forall(isFunType(_, arity))
+    case InterType(tys) =>
+      tys.exists(isFunType(_, arity))
     case BoundedDynamicType(_) => true
     case _                     => false
   }
