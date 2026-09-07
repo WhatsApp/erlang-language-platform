@@ -147,3 +147,21 @@ as_f0_neg(F, A)
 -spec as_f1_neg(term()) -> #f1{}.
 as_f1_neg(F)
     when is_function(F, 2) -> #f1{f = F}.
+
+-spec rec_slice2
+    (#rec1{} | {rec1}) -> #rec1{} | {rec1}.
+rec_slice2(R) when is_record(R, rec1) -> R;
+rec_slice2(R) when is_record(R, rec1, 1) -> R;
+rec_slice2(_) -> error(not_reachable).
+
+-spec rec_slice3
+    (#rec1{}) -> #rec1{} | {rec1}.
+rec_slice3(R) when is_record(R, rec1, 1) -> R;
+rec_slice3(R) when is_record(R, rec1) -> R;
+rec_slice3(_) -> error(not_reachable).
+
+-spec rec_slice4_neg
+    (term()) -> #rec1{} | {rec1, atom(), atom()}.
+rec_slice4_neg(R) when is_record(R, rec1, 3) -> R;
+rec_slice4_neg(R) when is_record(R, rec1) -> R;
+rec_slice4_neg(_) -> error(not_reachable).

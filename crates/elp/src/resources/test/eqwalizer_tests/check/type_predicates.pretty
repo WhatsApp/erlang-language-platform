@@ -22,4 +22,22 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   fun((term(), term()) -> term())
 Context expected type: fun((term()) -> term())
 
-3 ERRORS
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/type_predicates.erl:154:1
+    │
+154 │ rec_slice2(R) when is_record(R, rec1, 1) -> R;
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/type_predicates.erl:160:1
+    │
+160 │ rec_slice3(R) when is_record(R, rec1) -> R;
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+    ┌─ check/src/type_predicates.erl:166:1
+    │
+166 │ rec_slice4_neg(R) when is_record(R, rec1) -> R;
+    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+6 ERRORS
