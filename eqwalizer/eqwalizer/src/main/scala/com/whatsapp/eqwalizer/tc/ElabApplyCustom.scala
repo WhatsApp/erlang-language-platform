@@ -13,7 +13,7 @@ package com.whatsapp.eqwalizer.tc
 import com.whatsapp.eqwalizer.ast.Exprs.{AtomLit, Cons, Expr, IntLit, Lambda, NilLit, Var}
 import com.whatsapp.eqwalizer.ast.Types.*
 import com.whatsapp.eqwalizer.ast.{Exprs, Pos, RemoteId}
-import com.whatsapp.eqwalizer.tc.TcDiagnostics.{ExpectedSubtype, IndexOutOfBounds, UnboundRecord}
+import com.whatsapp.eqwalizer.tc.TcDiagnostics.{ExpectedSubtype, IndexOutOfBounds}
 import com.whatsapp.eqwalizer.ast.CompilerMacro
 import com.whatsapp.eqwalizer.ast.Pats.{Pat, PatAtom, PatTuple, PatVar, PatWild}
 import com.whatsapp.eqwalizer.ast.Types.Key.asType
@@ -686,15 +686,9 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
         access match {
           case "size" => (IntegerType, env1)
           case "fields" =>
-            val record = util.getRecord(pipelineContext.module, recName)
-            record match {
-              case Some(recDecl) =>
-                val fields = recDecl.fields.map(f => AtomLitType(f.name))
-                (ListType(UnionType(fields.toSet)), env1)
-              case None =>
-                diagnosticsInfo.add(UnboundRecord(name.pos, recName))
-                (DynamicType, env1)
-            }
+            val recDecl = util.getRecord(pipelineContext.module, recName)
+            val fields = recDecl.fields.map(f => AtomLitType(f.name))
+            (ListType(UnionType(fields.toSet)), env1)
         }
       },
       RemoteId("maps", "merge", 2) -> { (args, argTys, _, env1, _) =>

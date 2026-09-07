@@ -170,10 +170,6 @@ create_user() -> #user{id = <<"000">>}.
 This error indicates an unbound variable. Check the spelling of the variable.
 
 
-### unbound_record
-
-This error indicates an unbound record type. Check the spelling of the record name.
-
 ### behaviour_does_not_exist
 
 This error indicates that there is a `-behaviour(some_module)` attribute, where

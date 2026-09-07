@@ -104,43 +104,22 @@ class Constraints(pipelineContext: PipelineContext) {
           else
             Some(results.flatten)
         case (r: RecordType, t: TupleType) =>
-          util.getRecord(r.module, r.name) match {
-            case Some(recDecl) =>
-              constrain(ctx, recordAsTuple(recDecl), t, seen)
-            case None =>
-              None
-          }
+          val recDecl = util.getRecord(r.module, r.name)
+          constrain(ctx, recordAsTuple(recDecl), t, seen)
         case (t: TupleType, r: RecordType) =>
-          util.getRecord(r.module, r.name) match {
-            case Some(recDecl) =>
-              constrain(ctx, t, recordAsTuple(recDecl), seen)
-            case None =>
-              None
-          }
+          val recDecl = util.getRecord(r.module, r.name)
+          constrain(ctx, t, recordAsTuple(recDecl), seen)
         case (r: RefinedRecordType, t: TupleType) =>
-          util.getRecord(r.recType.module, r.recType.name) match {
-            case Some(recDecl) =>
-              constrain(ctx, refinedRecordAsTuple(recDecl, r), t, seen)
-            case None =>
-              None
-          }
+          val recDecl = util.getRecord(r.recType.module, r.recType.name)
+          constrain(ctx, refinedRecordAsTuple(recDecl, r), t, seen)
         case (t: TupleType, r: RefinedRecordType) =>
-          util.getRecord(r.recType.module, r.recType.name) match {
-            case Some(recDecl) =>
-              constrain(ctx, t, refinedRecordAsTuple(recDecl, r), seen)
-            case None =>
-              None
-          }
+          val recDecl = util.getRecord(r.recType.module, r.recType.name)
+          constrain(ctx, t, refinedRecordAsTuple(recDecl, r), seen)
         case (r1: RefinedRecordType, r2: RefinedRecordType) =>
-          if (r1.recType == r2.recType)
-            util.getRecord(r1.recType.module, r1.recType.name) match {
-              case Some(recDecl) =>
-                constrain(ctx, refinedRecordAsTuple(recDecl, r1), refinedRecordAsTuple(recDecl, r2), seen)
-              case None =>
-                None
-            }
-          else
-            None
+          if (r1.recType == r2.recType) {
+            val recDecl = util.getRecord(r1.recType.module, r1.recType.name)
+            constrain(ctx, refinedRecordAsTuple(recDecl, r1), refinedRecordAsTuple(recDecl, r2), seen)
+          } else None
         case (NativeRecordType(id1), NativeRecordType(id2)) if id1 == id2 =>
           constrainSeq(ctx, Nil, seen)
         case (TupleType(leftTys), TupleType(rightTys)) if leftTys.size == rightTys.size =>

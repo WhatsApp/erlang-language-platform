@@ -16,7 +16,6 @@ import com.whatsapp.eqwalizer.ast.Types._
 import com.whatsapp.eqwalizer.ast.Exprs.NativeRecordName
 import com.whatsapp.eqwalizer.tc.TcDiagnostics.{
   UnboundNativeRecord,
-  UnboundRecord,
   UndefinedAnonNativeRecordField,
   UndefinedNativeRecordField,
   UnhandledOp,
@@ -125,13 +124,7 @@ final class ElabPat(pipelineContext: PipelineContext) {
         elabPatNativeRecord(p, t, env)
       case PatRecord(recName, namedFields, genFieldOpt) =>
         val recType = subtype.meet(t, RecordType(recName)(module))
-        val recDecl =
-          util.getRecord(module, recName) match {
-            case Some(recDecl) => recDecl
-            case None =>
-              diagnosticsInfo.add(UnboundRecord(pat.pos, recName))
-              return (DynamicType, env)
-          }
+        val recDecl = util.getRecord(module, recName)
         var envAcc = env
         var refinedFields: Map[String, Type] = Map.empty
         for (namedField <- namedFields) {

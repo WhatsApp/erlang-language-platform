@@ -133,53 +133,29 @@ class Subtype(pipelineContext: PipelineContext) {
       case (RefinedRecordType(_, _), AnyTupleType) =>
         true
       case (r: RecordType, t: TupleType) =>
-        util.getRecord(r.module, r.name) match {
-          case Some(recDecl) =>
-            subType(recordAsTuple(recDecl), t, seen)
-          case None =>
-            false
-        }
+        val recDecl = util.getRecord(r.module, r.name)
+        subType(recordAsTuple(recDecl), t, seen)
       case (t: TupleType, r: RecordType) =>
-        util.getRecord(r.module, r.name) match {
-          case Some(recDecl) =>
-            subType(t, recordAsTuple(recDecl), seen)
-          case None =>
-            false
-        }
+        val recDecl = util.getRecord(r.module, r.name)
+        subType(t, recordAsTuple(recDecl), seen)
       case (r: RefinedRecordType, t: TupleType) =>
-        util.getRecord(r.recType.module, r.recType.name) match {
-          case Some(recDecl) =>
-            subType(refinedRecordAsTuple(recDecl, r), t, seen)
-          case None =>
-            false
-        }
+        val recDecl = util.getRecord(r.recType.module, r.recType.name)
+        subType(refinedRecordAsTuple(recDecl, r), t, seen)
       case (t: TupleType, r: RefinedRecordType) =>
-        util.getRecord(r.recType.module, r.recType.name) match {
-          case Some(recDecl) =>
-            subType(t, refinedRecordAsTuple(recDecl, r), seen)
-          case None =>
-            false
-        }
+        val recDecl = util.getRecord(r.recType.module, r.recType.name)
+        subType(t, refinedRecordAsTuple(recDecl, r), seen)
       case (refRec: RefinedRecordType, rec: RecordType) =>
         refRec.recType.name == rec.name
       case (rec: RecordType, refRec: RefinedRecordType) if rec == refRec.recType =>
-        util.getRecord(rec.module, rec.name) match {
-          case Some(recDecl) =>
-            refRec.fields.forall(f => subType(recDecl.fMap(f._1).tp, f._2, seen))
-          case None =>
-            // rec was elaborated via is_record/3, optimistically assuming subtyping here
-            true
-        }
+        val recDecl = util.getRecord(rec.module, rec.name)
+        refRec.fields.forall(f => subType(recDecl.fMap(f._1).tp, f._2, seen))
       case (refRec1: RefinedRecordType, refRec2: RefinedRecordType) if refRec1.recType == refRec2.recType =>
-        util.getRecord(refRec1.recType.module, refRec1.recType.name) match {
-          case None => false
-          case Some(recDecl) =>
-            refRec2.fields.forall { case (fName, fTy) =>
-              if (refRec1.fields.contains(fName))
-                subType(refRec1.fields(fName), fTy, seen)
-              else
-                subType(recDecl.fMap(fName).tp, fTy, seen)
-            }
+        val recDecl = util.getRecord(refRec1.recType.module, refRec1.recType.name)
+        refRec2.fields.forall { case (fName, fTy) =>
+          if (refRec1.fields.contains(fName))
+            subType(refRec1.fields(fName), fTy, seen)
+          else
+            subType(recDecl.fMap(fName).tp, fTy, seen)
         }
       case (NativeRecordType(_), AnyNativeRecordType) =>
         true
@@ -319,53 +295,29 @@ class Subtype(pipelineContext: PipelineContext) {
       case (RefinedRecordType(_, _), AnyTupleType) =>
         true
       case (r: RecordType, t: TupleType) =>
-        util.getRecord(r.module, r.name) match {
-          case Some(recDecl) =>
-            subTypePol(recordAsTuple(recDecl), t, seen)
-          case None =>
-            false
-        }
+        val recDecl = util.getRecord(r.module, r.name)
+        subTypePol(recordAsTuple(recDecl), t, seen)
       case (t: TupleType, r: RecordType) =>
-        util.getRecord(r.module, r.name) match {
-          case Some(recDecl) =>
-            subTypePol(t, recordAsTuple(recDecl), seen)
-          case None =>
-            false
-        }
+        val recDecl = util.getRecord(r.module, r.name)
+        subTypePol(t, recordAsTuple(recDecl), seen)
       case (r: RefinedRecordType, t: TupleType) =>
-        util.getRecord(r.recType.module, r.recType.name) match {
-          case Some(recDecl) =>
-            subTypePol(refinedRecordAsTuple(recDecl, r), t, seen)
-          case None =>
-            false
-        }
+        val recDecl = util.getRecord(r.recType.module, r.recType.name)
+        subTypePol(refinedRecordAsTuple(recDecl, r), t, seen)
       case (t: TupleType, r: RefinedRecordType) =>
-        util.getRecord(r.recType.module, r.recType.name) match {
-          case Some(recDecl) =>
-            subTypePol(t, refinedRecordAsTuple(recDecl, r), seen)
-          case None =>
-            false
-        }
+        val recDecl = util.getRecord(r.recType.module, r.recType.name)
+        subTypePol(t, refinedRecordAsTuple(recDecl, r), seen)
       case (refRec: RefinedRecordType, rec: RecordType) =>
         refRec.recType.name == rec.name
       case (rec: RecordType, refRec: RefinedRecordType) if rec == refRec.recType =>
-        util.getRecord(rec.module, rec.name) match {
-          case Some(recDecl) =>
-            refRec.fields.forall(f => subTypePol(recDecl.fMap(f._1).tp, f._2, seen))
-          case None =>
-            // rec was elaborated via is_record/3, optimistically assuming subtyping here
-            true
-        }
+        val recDecl = util.getRecord(rec.module, rec.name)
+        refRec.fields.forall(f => subTypePol(recDecl.fMap(f._1).tp, f._2, seen))
       case (refRec1: RefinedRecordType, refRec2: RefinedRecordType) if refRec1.recType == refRec2.recType =>
-        util.getRecord(refRec1.recType.module, refRec1.recType.name) match {
-          case None => false
-          case Some(recDecl) =>
-            refRec2.fields.forall { case (fName, fTy) =>
-              if (refRec1.fields.contains(fName))
-                subTypePol(refRec1.fields(fName), fTy, seen)
-              else
-                subTypePol(recDecl.fMap(fName).tp, fTy, seen)
-            }
+        val recDecl = util.getRecord(refRec1.recType.module, refRec1.recType.name)
+        refRec2.fields.forall { case (fName, fTy) =>
+          if (refRec1.fields.contains(fName))
+            subTypePol(refRec1.fields(fName), fTy, seen)
+          else
+            subTypePol(recDecl.fMap(fName).tp, fTy, seen)
         }
       case (NativeRecordType(_), AnyNativeRecordType) =>
         true
@@ -640,33 +592,25 @@ class Subtype(pipelineContext: PipelineContext) {
       case (RecordType(n), RefinedRecordType(t, _)) =>
         n == t.name
       case (r: RecordType, TupleType(elems)) =>
-        util.getRecordArity(r.module, r.name) match {
-          case Some(arity) if arity + 1 == elems.size =>
-            mayOverlap(AtomLitType(r.name), elems.head, seen)
-          case _ =>
-            false
-        }
+        if (util.getRecordArity(r.module, r.name) + 1 == elems.size)
+          mayOverlap(AtomLitType(r.name), elems.head, seen)
+        else
+          false
       case (TupleType(elems), r: RecordType) =>
-        util.getRecordArity(r.module, r.name) match {
-          case Some(arity) if arity + 1 == elems.size =>
-            mayOverlap(elems.head, AtomLitType(r.name), seen)
-          case _ =>
-            false
-        }
+        if (util.getRecordArity(r.module, r.name) + 1 == elems.size)
+          mayOverlap(elems.head, AtomLitType(r.name), seen)
+        else
+          false
       case (RefinedRecordType(t, _), TupleType(elems)) =>
-        util.getRecordArity(t.module, t.name) match {
-          case Some(arity) if arity + 1 == elems.size =>
-            mayOverlap(AtomLitType(t.name), elems.head, seen)
-          case _ =>
-            false
-        }
+        if (util.getRecordArity(t.module, t.name) + 1 == elems.size)
+          mayOverlap(AtomLitType(t.name), elems.head, seen)
+        else
+          false
       case (TupleType(elems), RefinedRecordType(t, _)) =>
-        util.getRecordArity(t.module, t.name) match {
-          case Some(arity) if arity + 1 == elems.size =>
-            mayOverlap(elems.head, AtomLitType(t.name), seen)
-          case _ =>
-            false
-        }
+        if (util.getRecordArity(t.module, t.name) + 1 == elems.size)
+          mayOverlap(elems.head, AtomLitType(t.name), seen)
+        else
+          false
       case (TupleType(_), _) =>
         false
       case (_, TupleType(_)) =>
@@ -859,23 +803,19 @@ class Subtype(pipelineContext: PipelineContext) {
   private def overlapRecordTag(rt: RecordType, tt: TupleType): Boolean =
     tt.argTys.headOption.exists(subType(AtomLitType(rt.name), _))
 
-  private def meetRecordTuple(rt: RefinedRecordType, tt: TupleType, seen: Set[(Type, Type)]): Type =
-    util.getRecord(rt.recType.module, rt.recType.name) match {
-      case Some(recDecl) =>
-        if (recDecl.fields.size + 1 == tt.argTys.size) {
-          val fieldsMeet = recDecl.fields.lazyZip(tt.argTys.tail).map { (field, elemT) =>
-            field.name -> meetAux(rt.fields.getOrElse(field.name, field.tp), elemT, seen)
-          }
-          if (fieldsMeet.exists((_, t) => Subtype.isNoneType(t))) NoneType
-          else {
-            // keeping only the fields which are narrower than the declared ones
-            val fields = fieldsMeet.filter((name, t) => !gradualSubType(recDecl.fMap(name).tp, t)).toMap
-            if (fields.isEmpty) rt.recType else RefinedRecordType(rt.recType, fields)
-          }
-        } else NoneType
-      case _ =>
-        // Falling back to use the tuple type if something is wrong with resolving record declaration.
-        tt
-    }
+  private def meetRecordTuple(rt: RefinedRecordType, tt: TupleType, seen: Set[(Type, Type)]): Type = {
+    val recDecl = util.getRecord(rt.recType.module, rt.recType.name)
+    if (recDecl.fields.size + 1 == tt.argTys.size) {
+      val fieldsMeet = recDecl.fields.lazyZip(tt.argTys.tail).map { (field, elemT) =>
+        field.name -> meetAux(rt.fields.getOrElse(field.name, field.tp), elemT, seen)
+      }
+      if (fieldsMeet.exists((_, t) => Subtype.isNoneType(t))) NoneType
+      else {
+        // keeping only the fields which are narrower than the declared ones
+        val fields = fieldsMeet.filter((name, t) => !gradualSubType(recDecl.fMap(name).tp, t)).toMap
+        if (fields.isEmpty) rt.recType else RefinedRecordType(rt.recType, fields)
+      }
+    } else NoneType
+  }
 
 }

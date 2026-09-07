@@ -78,11 +78,6 @@ object TcDiagnostics {
     def errorName = "unbound_var"
     override def erroneousExpr: Option[Expr] = None
   }
-  case class UnboundRecord(pos: Pos, rec: String) extends TypeError {
-    override val msg: String = s"Unbound rec: ${rec}"
-    def errorName = "unbound_record"
-    override def erroneousExpr: Option[Expr] = None
-  }
   case class UnboundNativeRecord(pos: Pos, module: String, name: String) extends TypeError {
     override val msg: String = s"Unbound native record: #$module:$name{}"
     def errorName = "unbound_native_record"

@@ -208,11 +208,7 @@ final class Vars(pipelineContext: PipelineContext) {
         val fieldsVars = fields.flatMap(f => patVarsL(f.pat))
         gen match {
           case Some(genPat) =>
-            val genFields =
-              util
-                .getRecord(module, recName)
-                .map(_.fields.size - fields.size)
-                .getOrElse(0)
+            val genFields = util.getRecord(module, recName).fields.size - fields.size
             fieldsVars ++ List.fill(genFields)(patVarsL(genPat)).flatten
           case None => fieldsVars
         }

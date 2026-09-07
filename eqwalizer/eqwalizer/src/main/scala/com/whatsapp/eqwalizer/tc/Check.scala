@@ -407,53 +407,38 @@ final class Check(pipelineContext: PipelineContext) {
             diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = elabType))
           env
         case rCreate: RecordCreate =>
-          val recDeclOpt = util.getRecord(module, rCreate.recName)
-          recDeclOpt match {
-            case Some(recDecl) if recDecl.refinable =>
-              val (recType, envCreate) = elab.elabRecordCreate(rCreate, env)
-              if (!subtype.subType(recType, resTy))
-                diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = recType))
-              envCreate
-            case Some(recDecl) =>
-              val recType = RecordType(rCreate.recName)(module)
-              if (!subtype.subType(recType, resTy))
-                diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = recType))
-              elab.elabRecordCreate(rCreate, env)._2
-            case None =>
-              diagnosticsInfo.add(UnboundRecord(expr.pos, rCreate.recName))
-              env
+          val recDecl = util.getRecord(module, rCreate.recName)
+          if (recDecl.refinable) {
+            val (recType, envCreate) = elab.elabRecordCreate(rCreate, env)
+            if (!subtype.subType(recType, resTy))
+              diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = recType))
+            envCreate
+          } else {
+            val recType = RecordType(rCreate.recName)(module)
+            if (!subtype.subType(recType, resTy))
+              diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = recType))
+            elab.elabRecordCreate(rCreate, env)._2
           }
         case rUpdate: RecordUpdate =>
-          val recDeclOpt = util.getRecord(module, rUpdate.recName)
-          recDeclOpt match {
-            case Some(recDecl) if recDecl.refinable =>
-              val (recType, envUpdate) = elab.elabRecordUpdate(rUpdate, env)
-              if (!subtype.subType(recType, resTy))
-                diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = recType))
-              envUpdate
-            case Some(_) =>
-              val recType = RecordType(rUpdate.recName)(module)
-              if (!subtype.subType(recType, resTy))
-                diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = recType))
-              elab.elabRecordUpdate(rUpdate, env)._2
-            case None =>
-              diagnosticsInfo.add(UnboundRecord(expr.pos, rUpdate.recName))
-              env
+          val recDecl = util.getRecord(module, rUpdate.recName)
+          if (recDecl.refinable) {
+            val (recType, envUpdate) = elab.elabRecordUpdate(rUpdate, env)
+            if (!subtype.subType(recType, resTy))
+              diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = recType))
+            envUpdate
+          } else {
+            val recType = RecordType(rUpdate.recName)(module)
+            if (!subtype.subType(recType, resTy))
+              diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = recType))
+            elab.elabRecordUpdate(rUpdate, env)._2
           }
         case RecordSelect(recExpr, recName, fieldName) =>
-          val recDeclOpt = util.getRecord(module, recName)
-          val (elabTy, elabEnv) = elab.elabExpr(recExpr, env)
-          recDeclOpt match {
-            case Some(recDecl) =>
-              val (elabTy, elabEnv) = elab.elabExprAndCheck(recExpr, env, RecordType(recName)(module))
-              val fieldTy = narrow.getRecordField(recDecl, elabTy, fieldName)
-              if (!subtype.subType(fieldTy, resTy))
-                diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = fieldTy))
-              elabEnv
-            case None =>
-              diagnosticsInfo.add(UnboundRecord(expr.pos, recName))
-              env
-          }
+          val recDecl = util.getRecord(module, recName)
+          val (elabTy, elabEnv) = elab.elabExprAndCheck(recExpr, env, RecordType(recName)(module))
+          val fieldTy = narrow.getRecordField(recDecl, elabTy, fieldName)
+          if (!subtype.subType(fieldTy, resTy))
+            diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = fieldTy))
+          elabEnv
         case RecordIndex(_, _) =>
           val indT = IntegerType
           if (!subtype.subType(indT, resTy))

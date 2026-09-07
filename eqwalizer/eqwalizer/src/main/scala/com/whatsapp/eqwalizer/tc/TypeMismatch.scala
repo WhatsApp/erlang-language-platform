@@ -301,68 +301,56 @@ class TypeMismatch(pipelineContext: PipelineContext) {
         Details(None, 100)
 
       case (r: RecordType, t: TupleType) =>
-        util.getRecord(r.module, r.name) match {
-          case Some(recDecl) if isRecordCandidate(recDecl, t) =>
-            findMismatch(recordAsTuple(recDecl), t, seen)
-          case _ =>
-            Details(Some(t1, t2, Incompatible), 20)
-        }
+        val recDecl = util.getRecord(r.module, r.name)
+        if (isRecordCandidate(recDecl, t))
+          findMismatch(recordAsTuple(recDecl), t, seen)
+        else
+          Details(Some(t1, t2, Incompatible), 20)
       case (t: TupleType, r: RecordType) =>
-        util.getRecord(r.module, r.name) match {
-          case Some(recDecl) if isRecordCandidate(recDecl, t) =>
-            findMismatch(t, recordAsTuple(recDecl), seen)
-          case _ =>
-            Details(Some(t1, t2, Incompatible), 20)
-        }
+        val recDecl = util.getRecord(r.module, r.name)
+        if (isRecordCandidate(recDecl, t))
+          findMismatch(t, recordAsTuple(recDecl), seen)
+        else
+          Details(Some(t1, t2, Incompatible), 20)
       case (r: RefinedRecordType, t: TupleType) =>
-        util.getRecord(r.recType.module, r.recType.name) match {
-          case Some(recDecl) if isRecordCandidate(recDecl, t) =>
-            findMismatch(refinedRecordAsTuple(recDecl, r), t, seen)
-          case _ =>
-            Details(Some(t1, t2, Incompatible), 20)
-        }
+        val recDecl = util.getRecord(r.recType.module, r.recType.name)
+        if (isRecordCandidate(recDecl, t))
+          findMismatch(refinedRecordAsTuple(recDecl, r), t, seen)
+        else
+          Details(Some(t1, t2, Incompatible), 20)
       case (t: TupleType, r: RefinedRecordType) =>
-        util.getRecord(r.recType.module, r.recType.name) match {
-          case Some(recDecl) if isRecordCandidate(recDecl, t) =>
-            findMismatch(t, refinedRecordAsTuple(recDecl, r), seen)
-          case _ =>
-            Details(Some(t1, t2, Incompatible), 20)
-        }
+        val recDecl = util.getRecord(r.recType.module, r.recType.name)
+        if (isRecordCandidate(recDecl, t))
+          findMismatch(t, refinedRecordAsTuple(recDecl, r), seen)
+        else
+          Details(Some(t1, t2, Incompatible), 20)
       case (refRec: RefinedRecordType, rec: RecordType) if refRec.recType.name == rec.name =>
         Details(None, 100)
       case (rec: RecordType, refRec: RefinedRecordType) if refRec.recType.name == rec.name =>
-        util.getRecord(rec.module, rec.name) match {
-          case Some(recDecl) =>
-            val indexedPairs = refRec.fields.map { case (fieldName, fieldTy) =>
-              ((recDecl.fMap(fieldName).tp, fieldTy), fieldName)
-            }.toList
-            findMismatchWithIndex(indexedPairs) match {
-              case None => Details(None, 100)
-              case Some((fieldTy1, fieldTy2, mismatch, fieldName)) =>
-                val newTy1 = RefinedRecordType(rec, Map(fieldName -> fieldTy1))
-                val newTy2 = RefinedRecordType(rec, Map(fieldName -> fieldTy2))
-                Details(Some(newTy1, newTy2, RecordFieldMismatch(fieldName, mismatch)), 80)
-            }
-          case None =>
-            Details(Some(t1, t2, Incompatible), 20)
+        val recDecl = util.getRecord(rec.module, rec.name)
+        val indexedPairs = refRec.fields.map { case (fieldName, fieldTy) =>
+          ((recDecl.fMap(fieldName).tp, fieldTy), fieldName)
+        }.toList
+        findMismatchWithIndex(indexedPairs) match {
+          case None => Details(None, 100)
+          case Some((fieldTy1, fieldTy2, mismatch, fieldName)) =>
+            val newTy1 = RefinedRecordType(rec, Map(fieldName -> fieldTy1))
+            val newTy2 = RefinedRecordType(rec, Map(fieldName -> fieldTy2))
+            Details(Some(newTy1, newTy2, RecordFieldMismatch(fieldName, mismatch)), 80)
         }
       case (refRec1: RefinedRecordType, refRec2: RefinedRecordType) if refRec1.recType == refRec2.recType =>
         val rec = refRec1.recType
-        util.getRecord(rec.module, rec.name) match {
-          case Some(recDecl) =>
-            val indexedPairs = refRec2.fields.map { case (fieldName, fieldTy2) =>
-              val fieldTy1 = refRec1.fields.getOrElse(fieldName, recDecl.fMap(fieldName).tp)
-              ((fieldTy1, fieldTy2), fieldName)
-            }.toList
-            findMismatchWithIndex(indexedPairs) match {
-              case None => Details(None, 100)
-              case Some((fieldTy1, fieldTy2, mismatch, fieldName)) =>
-                val newTy1 = RefinedRecordType(rec, Map(fieldName -> fieldTy1))
-                val newTy2 = RefinedRecordType(rec, Map(fieldName -> fieldTy2))
-                Details(Some(newTy1, newTy2, RecordFieldMismatch(fieldName, mismatch)), 80)
-            }
-          case None =>
-            Details(Some(t1, t2, Incompatible), 20)
+        val recDecl = util.getRecord(rec.module, rec.name)
+        val indexedPairs = refRec2.fields.map { case (fieldName, fieldTy2) =>
+          val fieldTy1 = refRec1.fields.getOrElse(fieldName, recDecl.fMap(fieldName).tp)
+          ((fieldTy1, fieldTy2), fieldName)
+        }.toList
+        findMismatchWithIndex(indexedPairs) match {
+          case None => Details(None, 100)
+          case Some((fieldTy1, fieldTy2, mismatch, fieldName)) =>
+            val newTy1 = RefinedRecordType(rec, Map(fieldName -> fieldTy1))
+            val newTy2 = RefinedRecordType(rec, Map(fieldName -> fieldTy2))
+            Details(Some(newTy1, newTy2, RecordFieldMismatch(fieldName, mismatch)), 80)
         }
 
       case (FunType(_, _, _), AnyFunType) =>

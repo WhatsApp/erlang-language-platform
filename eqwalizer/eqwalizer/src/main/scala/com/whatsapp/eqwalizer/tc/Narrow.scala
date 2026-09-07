@@ -235,26 +235,16 @@ class Narrow(pipelineContext: PipelineContext) {
       case AnyType | FreeVarType(_) =>
         List(TupleType(List.fill(arity)(AnyType)))
       case r: RecordType if arity > 0 =>
-        val rec = util.getRecord(r.module, r.name)
-        val recFieldTypes = rec match {
-          case Some(recDecl) =>
-            recDecl.fields.map(_.tp)
-          case None =>
-            List.fill(arity - 1)(DynamicType)
-        }
+        val recDecl = util.getRecord(r.module, r.name)
+        val recFieldTypes = recDecl.fields.map(_.tp)
         val recArity = recFieldTypes.size + 1
         if (arity == recArity) {
           List(TupleType(AtomLitType(r.name) :: recFieldTypes))
         } else
           List()
       case r: RefinedRecordType if arity > 0 =>
-        val rec = util.getRecord(r.recType.module, r.recType.name)
-        val recFieldTypes = rec match {
-          case Some(recDecl) =>
-            recDecl.fields.map(f => r.fields.getOrElse(f.name, f.tp))
-          case None =>
-            List.fill(arity - 1)(DynamicType)
-        }
+        val recDecl = util.getRecord(r.recType.module, r.recType.name)
+        val recFieldTypes = recDecl.fields.map(f => r.fields.getOrElse(f.name, f.tp))
         val recArity = recFieldTypes.size + 1
         if (arity == recArity) {
           List(TupleType(AtomLitType(r.recType.name) :: recFieldTypes))
@@ -289,19 +279,11 @@ class Narrow(pipelineContext: PipelineContext) {
       case tt: TupleType if isTupleElem(tt, elemIndex, elemTy) =>
         t
       case r: RecordType =>
-        recordToTuple(r) match {
-          case Some(tt) if isTupleElem(tt, elemIndex, elemTy) =>
-            t
-          case _ =>
-            NoneType
-        }
+        if (isTupleElem(recordToTuple(r), elemIndex, elemTy)) t
+        else NoneType
       case r: RefinedRecordType =>
-        refinedRecordToTuple(r) match {
-          case Some(tt) if isTupleElem(tt, elemIndex, elemTy) =>
-            t
-          case _ =>
-            NoneType
-        }
+        if (isTupleElem(refinedRecordToTuple(r), elemIndex, elemTy)) t
+        else NoneType
       case UnionType(tys) =>
         UnionType(tys.map(filterTupleTypeAux(_, elemIndex, elemTy)))
       case RemoteType(rid, args) =>
@@ -337,15 +319,9 @@ class Narrow(pipelineContext: PipelineContext) {
     case TupleType(elemTys) =>
       Left(elemTys.length)
     case r: RecordType =>
-      recordToTuple(r) match {
-        case Some(tupTy) => getTupleElement(tupTy, idx)
-        case None        => Right(DynamicType)
-      }
+      getTupleElement(recordToTuple(r), idx)
     case r: RefinedRecordType =>
-      refinedRecordToTuple(r) match {
-        case Some(tupTy) => getTupleElement(tupTy, idx)
-        case None        => Right(DynamicType)
-      }
+      getTupleElement(refinedRecordToTuple(r), idx)
     case UnionType(tys) =>
       val res = tys.map(getTupleElement(_, idx)).foldLeft[Either[Int, Set[Type]]](Right(Set.empty)) {
         case (Right(accTy), Right(elemTy)) => Right(accTy + elemTy)
@@ -377,15 +353,9 @@ class Narrow(pipelineContext: PipelineContext) {
     case TupleType(elemTys) =>
       Left(elemTys.length)
     case r: RecordType =>
-      recordToTuple(r) match {
-        case Some(tupTy) => setTupleElement(tupTy, idx, elemT)
-        case None        => Right(DynamicType)
-      }
+      setTupleElement(recordToTuple(r), idx, elemT)
     case r: RefinedRecordType =>
-      refinedRecordToTuple(r) match {
-        case Some(tupTy) => setTupleElement(tupTy, idx, elemT)
-        case None        => Right(DynamicType)
-      }
+      setTupleElement(refinedRecordToTuple(r), idx, elemT)
     case UnionType(tys) =>
       val res = tys.map(setTupleElement(_, idx, elemT)).foldLeft[Either[Int, Set[Type]]](Right(Set.empty)) {
         case (Right(accTy), Right(elemTy)) => Right(accTy + elemTy)
@@ -418,15 +388,9 @@ class Narrow(pipelineContext: PipelineContext) {
     case TupleType(elemTys) =>
       UnionType(elemTys.toSet)
     case r: RecordType =>
-      recordToTuple(r) match {
-        case Some(tupTy) => getAllTupleElements(tupTy)
-        case None        => DynamicType
-      }
+      getAllTupleElements(recordToTuple(r))
     case r: RefinedRecordType =>
-      refinedRecordToTuple(r) match {
-        case Some(tupTy) => getAllTupleElements(tupTy)
-        case None        => DynamicType
-      }
+      getAllTupleElements(refinedRecordToTuple(r))
     case UnionType(tys) =>
       UnionType(util.flattenUnions(UnionType(tys.map(getAllTupleElements))).toSet)
     case RemoteType(rid, args) =>
@@ -436,14 +400,14 @@ class Narrow(pipelineContext: PipelineContext) {
       throw new IllegalStateException()
   }
 
-  private def recordToTuple(r: RecordType): Option[TupleType] =
+  private def recordToTuple(r: RecordType): TupleType =
     refinedRecordToTuple(RefinedRecordType(r, Map()))
 
-  private def refinedRecordToTuple(r: RefinedRecordType): Option[TupleType] =
-    util.getRecord(r.recType.module, r.recType.name).map { recDecl =>
-      val elemTys = AtomLitType(r.recType.name) :: recDecl.fields.map(f => r.fields.getOrElse(f.name, f.tp))
-      TupleType(elemTys)
-    }
+  private def refinedRecordToTuple(r: RefinedRecordType): TupleType = {
+    val recDecl = util.getRecord(r.recType.module, r.recType.name)
+    val elemTys = AtomLitType(r.recType.name) :: recDecl.fields.map(f => r.fields.getOrElse(f.name, f.tp))
+    TupleType(elemTys)
+  }
 
   def adjustMapType(mapType: MapType, keyT: Type, valT: Type): MapType =
     asKeys(keyT) match {

@@ -803,11 +803,9 @@ final class Occurrence(pipelineContext: PipelineContext) {
         lazy val rec = util.getRecord(module, recName)
         // `_ = GenPat` applies to every field not mentioned explicitly
         val genInfo = gen.toList.flatMap { genPat =>
-          rec.toList.flatMap {
-            _.fields
-              .filter(fDecl => !fields.exists(f => f.name == fDecl.name))
-              .map(fDecl => patProps(x, path :+ RecordField(fDecl.name, recName), genPat, env))
-          }
+          rec.fields
+            .filter(fDecl => !fields.exists(f => f.name == fDecl.name))
+            .map(fDecl => patProps(x, path :+ RecordField(fDecl.name, recName), genPat, env))
         }
         patNode(Pos(obj, recTy), Neg(obj, recTy), genInfo ++ namedInfo)
       case PatMatch(pat1, pat2) =>
@@ -919,26 +917,25 @@ final class Occurrence(pipelineContext: PipelineContext) {
         val t1 = update(t, path, pol, s)
         TupleType_*(ts.updated(pos, t1))
       case (rt: RecordType, RecordField(fieldName, recName) :: path) if rt.name == recName =>
-        util.getRecord(rt.module, rt.name).flatMap(_.fMap.get(fieldName)) match {
+        util.getRecord(rt.module, rt.name).fMap.get(fieldName) match {
           case Some(field) =>
             val t1 = update(field.tp, path, pol, s)
             refineRecord(rt, fieldName, t1)
           case None => rt
         }
       case (rt: RecordType, TupleField(_, Some(arity)) :: _) =>
-        util.getRecord(rt.module, rt.name) match {
-          case Some(recDecl) if recDecl.fields.size + 1 == arity =>
-            val rTy = narrow.asTupleType(rt, arity).head
-            update(rTy, path, pol, s)
-          case _ => rt
-        }
+        val recDecl = util.getRecord(rt.module, rt.name)
+        if (recDecl.fields.size + 1 == arity) {
+          val rTy = narrow.asTupleType(rt, arity).head
+          update(rTy, path, pol, s)
+        } else rt
       case (rt: RefinedRecordType, RecordField(fieldName, recName) :: path) if rt.recType.name == recName =>
         if (rt.fields.contains(fieldName)) {
           val t = rt.fields(fieldName)
           val t1 = update(t, path, pol, s)
           refineRecord(rt, fieldName, t1)
         } else {
-          util.getRecord(rt.recType.module, rt.recType.name).flatMap(_.fMap.get(fieldName)) match {
+          util.getRecord(rt.recType.module, rt.recType.name).fMap.get(fieldName) match {
             case Some(field) =>
               val t1 = update(field.tp, path, pol, s)
               refineRecord(rt, fieldName, t1)
@@ -946,12 +943,11 @@ final class Occurrence(pipelineContext: PipelineContext) {
           }
         }
       case (rt: RefinedRecordType, TupleField(_, Some(arity)) :: _) =>
-        util.getRecord(rt.recType.module, rt.recType.name) match {
-          case Some(recDecl) if recDecl.fields.size + 1 == arity =>
-            val rTy = narrow.asTupleType(rt, arity).head
-            update(rTy, path, pol, s)
-          case _ => rt
-        }
+        val recDecl = util.getRecord(rt.recType.module, rt.recType.name)
+        if (recDecl.fields.size + 1 == arity) {
+          val rTy = narrow.asTupleType(rt, arity).head
+          update(rTy, path, pol, s)
+        } else rt
       case (MapType(props, kTy, vTy), MapField(field) :: path) =>
         if (props.contains(field) || (subtype.subType(Key.asType(field), kTy) && pol == +)) {
           val refinedProps = props.updatedWith(field) {
@@ -1084,7 +1080,8 @@ final class Occurrence(pipelineContext: PipelineContext) {
       case (DynamicType, RecordField(fieldName, recName) :: path1) =>
         util
           .getRecord(module, recName)
-          .flatMap(_.fMap.get(fieldName))
+          .fMap
+          .get(fieldName)
           .map(_.tp)
           .map(typePathRef(_, path1))
           .getOrElse(DynamicType)
@@ -1097,35 +1094,35 @@ final class Occurrence(pipelineContext: PipelineContext) {
       case (rTy: RecordType, RecordField(fieldName, recName) :: path1) if rTy.name == recName =>
         util
           .getRecord(rTy.module, rTy.name)
-          .flatMap(_.fMap.get(fieldName))
+          .fMap
+          .get(fieldName)
           .map(_.tp)
           .map(typePathRef(_, path1))
           .getOrElse(AnyType)
       case (rTy: RecordType, TupleField(index, Some(arity)) :: path1) =>
-        util.getRecord(rTy.module, rTy.name) match {
-          case Some(recDecl) if recDecl.fields.size + 1 == arity =>
-            val tuple = narrow.asTupleType(rTy, arity).head
-            typePathRef(tuple.argTys(index), path1)
-          case _ => AnyType
-        }
+        val recDecl = util.getRecord(rTy.module, rTy.name)
+        if (recDecl.fields.size + 1 == arity) {
+          val tuple = narrow.asTupleType(rTy, arity).head
+          typePathRef(tuple.argTys(index), path1)
+        } else AnyType
       case (rTy: RefinedRecordType, RecordField(fieldName, recName) :: path1) if rTy.recType.name == recName =>
         if (rTy.fields.contains(fieldName)) {
           typePathRef(rTy.fields(fieldName), path1)
         } else {
           util
             .getRecord(rTy.recType.module, rTy.recType.name)
-            .flatMap(_.fMap.get(fieldName))
+            .fMap
+            .get(fieldName)
             .map(_.tp)
             .map(typePathRef(_, path1))
             .getOrElse(AnyType)
         }
       case (rTy: RefinedRecordType, TupleField(index, Some(arity)) :: path1) =>
-        util.getRecord(rTy.recType.module, rTy.recType.name) match {
-          case Some(recDecl) if recDecl.fields.size + 1 == arity =>
-            val tuple = narrow.asTupleType(rTy, arity).head
-            typePathRef(tuple.argTys(index), path1)
-          case _ => AnyType
-        }
+        val recDecl = util.getRecord(rTy.recType.module, rTy.recType.name)
+        if (recDecl.fields.size + 1 == arity) {
+          val tuple = narrow.asTupleType(rTy, arity).head
+          typePathRef(tuple.argTys(index), path1)
+        } else AnyType
       case (MapType(props, _, vTy), MapField(field) :: path1) =>
         val ty = props
           .get(field)

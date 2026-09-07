@@ -556,15 +556,9 @@ final class Elab(pipelineContext: PipelineContext) {
       case rUpdate: RecordUpdate =>
         elabRecordUpdate(rUpdate, env)
       case RecordSelect(recExpr, recName, fieldName) =>
-        val recDeclOpt = util.getRecord(module, recName)
-        recDeclOpt match {
-          case Some(recDecl) =>
-            val (elabTy, elabEnv) = elabExprAndCheck(recExpr, env, RecordType(recName)(module))
-            (narrow.getRecordField(recDecl, elabTy, fieldName), elabEnv)
-          case None =>
-            diagnosticsInfo.add(UnboundRecord(expr.pos, recName))
-            (DynamicType, env)
-        }
+        val recDecl = util.getRecord(module, recName)
+        val (elabTy, elabEnv) = elabExprAndCheck(recExpr, env, RecordType(recName)(module))
+        (narrow.getRecordField(recDecl, elabTy, fieldName), elabEnv)
       case RecordIndex(_, _) =>
         (IntegerType, env)
       case rUpdate: NativeRecordUpdate =>
@@ -644,13 +638,7 @@ final class Elab(pipelineContext: PipelineContext) {
     val recType = RecordType(recName)(module)
     val namedFields = fields.collect { case n: RecordFieldNamed => n }
     val genFieldOpt = fields.collectFirst { case g: RecordFieldGen => g }
-    val recDecl =
-      util.getRecord(module, recName) match {
-        case Some(rd) => rd
-        case None =>
-          diagnosticsInfo.add(UnboundRecord(rCreate.pos, recName))
-          return (DynamicType, env)
-      }
+    val recDecl = util.getRecord(module, recName)
     var refinedFields: Map[String, Type] = Map.empty
 
     var envAcc = env
@@ -706,13 +694,7 @@ final class Elab(pipelineContext: PipelineContext) {
   def elabRecordUpdate(rUpdate: RecordUpdate, env: Env): (Type, Env) = {
     val RecordUpdate(recExpr, recName, fields) = rUpdate
     val recType = RecordType(recName)(module)
-    val recDecl =
-      util.getRecord(module, recName) match {
-        case Some(rd) => rd
-        case None =>
-          diagnosticsInfo.add(UnboundRecord(rUpdate.pos, recName))
-          return (DynamicType, env)
-      }
+    val recDecl = util.getRecord(module, recName)
     var refinedFields: Map[String, Type] = Map.empty
     var envAcc = Env.empty
     if (recDecl.refinable) {

@@ -24,7 +24,6 @@ pub enum TypeError {
     IndexOutOfBounds(IndexOutOfBounds),
     UndefinedField(UndefinedField),
     UnboundVar(UnboundVar),
-    UnboundRecord(UnboundRecord),
     NonexistentBehaviour(NonexistentBehaviour),
     MissingCallback(MissingCallback),
     IncorrectCallbackReturn(IncorrectCallbackReturn),
@@ -88,12 +87,6 @@ pub struct UndefinedField {
 pub struct UnboundVar {
     pub pos: eqwalizer::Pos,
     pub n: SmolStr,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct UnboundRecord {
-    pub pos: eqwalizer::Pos,
-    pub rec: SmolStr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

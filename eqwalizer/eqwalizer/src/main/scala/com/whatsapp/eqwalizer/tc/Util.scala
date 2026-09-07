@@ -29,7 +29,12 @@ class Util(pipelineContext: PipelineContext) {
   def getFunType(module: String, id: Id): FunType =
     getFunType(globalFunId(module, id))
 
-  def getRecord(module: String, name: String): Option[RecDecl] = {
+  def getRecord(module: String, name: String): RecDecl =
+    getRecordOpt(module, name).getOrElse(
+      sys.error(s"Cannot fetch record #$name{} from module $module. Current module: ${this.module}")
+    )
+
+  private def getRecordOpt(module: String, name: String): Option[RecDecl] =
     if (recordCache.contains((module, name))) {
       recordCache((module, name))
     } else {
@@ -37,10 +42,9 @@ class Util(pipelineContext: PipelineContext) {
       recordCache += ((module, name) -> recDecl)
       recDecl
     }
-  }
 
   def isRecordDefined(module: String, name: String, arity: Int): Boolean =
-    getRecord(module, name) match {
+    getRecordOpt(module, name) match {
       case Some(recDecl) =>
         recDecl.fields.size == (arity - 1)
       case None =>
@@ -65,8 +69,8 @@ class Util(pipelineContext: PipelineContext) {
     }
   }
 
-  def getRecordArity(module: String, name: String): Option[Int] = {
-    getRecord(module, name).map(_.fields.size)
+  def getRecordArity(module: String, name: String): Int = {
+    getRecord(module, name).fields.size
   }
 
   def getFunType(fqn: RemoteId): FunType = {
