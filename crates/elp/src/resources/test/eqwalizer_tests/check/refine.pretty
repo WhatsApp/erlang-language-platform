@@ -3,7 +3,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 12 │ param1(X, X) -> X.
    │                 ^ X.
-Expression has type:   _B
+Expression has type:   _A & _B
 Context expected type: none()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -13,15 +13,15 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                 ^
    │                 │
    │                 X.
-Expression has type:   {B, A}
+Expression has type:   {A & B, A & B}
 Context expected type: {none(), none()}
    │                 
 
 Because in the expression's type:
   { 
-    Here the type is:     B
+    Here the type is:     A & B
     Context expects type: none()
-  , A}
+  , A & B}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/refine.erl:22:15
@@ -38,13 +38,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                ^
    │                │
    │                F.
-Expression has type:   fun((A | B) -> A)
+Expression has type:   fun((A | B) -> A & B)
 Context expected type: fun((A | B) -> none())
    │                
 
 Because in the expression's type:
   fun((A | B) ->
-    Here the type is:     A
+    Here the type is:     A & B
     Context expects type: none()
   )
 
@@ -55,13 +55,13 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │                ^
    │                │
    │                F.
-Expression has type:   fun((A | atom()) -> A)
+Expression has type:   fun((A | atom()) -> A & atom())
 Context expected type: fun((A | atom()) -> none())
    │                
 
 Because in the expression's type:
   fun((A | atom()) ->
-    Here the type is:     A
+    Here the type is:     A & atom()
     Context expects type: none()
   )
 
@@ -86,7 +86,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │
 101 │     -> X.
     │        ^ X.
-Expression has type:   _T
+Expression has type:   _T & fun(() -> term())
 Context expected type: U
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

@@ -1,17 +1,9 @@
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/parametricity.erl:178:19
-    │
-178 │ refine01(X, X) -> X.
-    │                   ^ X.
-Expression has type:   _B
-Context expected type: A
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/parametricity.erl:186:22
     │
 186 │     [Elem || Elem <- X].
     │                      ^ X.
-Expression has type:   B
+Expression has type:   A & B
 Context expected type: [term()]
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -46,4 +38,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   term()
 Context expected type: Value
 
-6 ERRORS
+5 ERRORS

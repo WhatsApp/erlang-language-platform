@@ -43,7 +43,7 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    │
 57 │   -> X.
    │      ^ X.
-Expression has type:   _T
+Expression has type:   _T & fun(() -> term())
 Context expected type: U
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)

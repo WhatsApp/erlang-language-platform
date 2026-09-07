@@ -835,9 +835,11 @@ class Subtype(pipelineContext: PipelineContext) {
         case (NativeRecordType(_), AnyNativeRecordType) => t1
         case (AnyNativeRecordType, NativeRecordType(_)) => t2
 
-        // "Non-refinable" types. - Using the main type
-        case (FreeVarType(_), _)                    => t1
-        case (_, FreeVarType(_))                    => t1
+        case (FreeVarType(_), _) => inter(List(t1, t2))
+        case (_, FreeVarType(_)) => inter(List(t1, t2))
+
+        // There are a few ways how to intersect functions.
+        // We stay for now with what we did previously.
         case (AnyFunType, FunType(_, _, _))         => t1
         case (FunType(_, _, _), AnyFunType)         => t1
         case (AnyArityFunType(_), FunType(_, _, _)) => t1
