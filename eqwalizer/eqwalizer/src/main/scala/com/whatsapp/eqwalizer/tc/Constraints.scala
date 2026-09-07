@@ -123,6 +123,12 @@ class Constraints(pipelineContext: PipelineContext) {
         case (t: TupleType, r: RefinedRecordType) =>
           val recDecl = util.getRecord(r.recType.module, r.recType.name)
           constrain(ctx, t, refinedRecordAsTuple(recDecl, r), seen)
+        case (r: RecordType, rr: RefinedRecordType) if r == rr.recType =>
+          val recDecl = util.getRecord(r.module, r.name)
+          constrain(ctx, recordAsTuple(recDecl), refinedRecordAsTuple(recDecl, rr), seen)
+        case (rr: RefinedRecordType, r: RecordType) if r == rr.recType =>
+          val recDecl = util.getRecord(r.module, r.name)
+          constrain(ctx, refinedRecordAsTuple(recDecl, rr), recordAsTuple(recDecl), seen)
         case (r1: RefinedRecordType, r2: RefinedRecordType) =>
           if (r1.recType == r2.recType) {
             val recDecl = util.getRecord(r1.recType.module, r1.recType.name)
