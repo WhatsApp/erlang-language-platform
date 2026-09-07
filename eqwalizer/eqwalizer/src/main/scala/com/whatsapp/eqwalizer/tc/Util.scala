@@ -39,6 +39,14 @@ class Util(pipelineContext: PipelineContext) {
     }
   }
 
+  def isRecordDefined(module: String, name: String, arity: Int): Boolean =
+    getRecord(module, name) match {
+      case Some(recDecl) =>
+        recDecl.fields.size == (arity - 1)
+      case None =>
+        false
+    }
+
   def getNativeRecord(module: String, name: String): Option[NativeRecDecl] = {
     if (nativeRecordCache.contains((module, name))) {
       nativeRecordCache((module, name))

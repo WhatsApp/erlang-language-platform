@@ -588,8 +588,17 @@ final class Occurrence(pipelineContext: PipelineContext) {
         typeTest(arg, nativeRecordTypeFor(modName, recName), aMap)
       case TestCall(Id("is_record", 2), List(arg, TestAtom(recName))) =>
         typeTest(arg, resolveIsRecord2Name(recName), aMap)
-      case TestCall(Id("is_record", 3), arg :: TestAtom(recName) :: TestInteger(Some(_)) :: Nil) =>
-        typeTest(arg, RecordType(recName)(module), aMap)
+      // erlc allows for integer arity in guards only.
+      // erlc errors for negative arities.
+      // erlc only warns "guard is always false" for 0 arity.
+      case TestCall(Id("is_record", 3), arg :: TestAtom(_) :: TestInteger(Some(0)) :: Nil) =>
+        val tpArg = testProps(arg, aMap)
+        TP(False, tpArg.ev, tpArg.ev, th = tpArg.th, resT = Some(booleanType))
+      case TestCall(Id("is_record", 3), arg :: TestAtom(recName) :: TestInteger(Some(arity)) :: Nil) =>
+        val recType =
+          if (util.isRecordDefined(module, recName, arity)) RecordType(recName)(module)
+          else TupleType(AtomLitType(recName) :: List.fill(arity - 1)(AnyType))
+        typeTest(arg, recType, aMap)
       case TestCall(Id("is_map_key", 2), List(keyArg, mapArg)) =>
         val tpKey = testProps(keyArg, aMap)
         val tpMap = testProps(mapArg, aMap)
