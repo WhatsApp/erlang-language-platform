@@ -269,7 +269,7 @@ final class Check(pipelineContext: PipelineContext) {
           val (argTys, env2) = elab.elabExprs(args, env1)
           if (funTys.nonEmpty) {
             funTys.foreach { ft =>
-              val ftResTy = elabApply.elabApply(ft, args, argTys, env1, expr.pos)
+              val ftResTy = elabApply.elabApply(ft, args, argTys, env2, expr.pos)
               if (!subtype.subType(ftResTy, resTy))
                 diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = ftResTy))
             }
