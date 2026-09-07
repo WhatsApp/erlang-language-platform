@@ -597,6 +597,10 @@ final class Occurrence(pipelineContext: PipelineContext) {
       case TestCall(Id("is_record", 3), arg :: TestAtom(recName) :: TestInteger(Some(arity)) :: Nil) =>
         val recType =
           if (util.isRecordDefined(module, recName, arity)) RecordType(recName)(module)
+          // There is a common pattern that a private/opaque record `my_record` is defined (without a header file)
+          // directly in the module `my_record` and is tested by record name and arity.
+          // If such record definition exists indeed, we "instantiate" it here then.
+          else if (util.isRecordDefined(recName, recName, arity)) RecordType(recName)(recName)
           else TupleType(AtomLitType(recName) :: List.fill(arity - 1)(AnyType))
         typeTest(arg, recType, aMap)
       case TestCall(Id("is_map_key", 2), List(keyArg, mapArg)) =>
