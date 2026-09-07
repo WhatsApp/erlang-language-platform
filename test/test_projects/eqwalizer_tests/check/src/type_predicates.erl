@@ -165,3 +165,46 @@ rec_slice3(_) -> error(not_reachable).
 rec_slice4_neg(R) when is_record(R, rec1, 3) -> R;
 rec_slice4_neg(R) when is_record(R, rec1) -> R;
 rec_slice4_neg(_) -> error(not_reachable).
+
+%% `magic_rec` is not defined here, but the module
+%% `magic_rec` defines a record `magic_rec` of arity 2
+-spec magic_rec1(term()) -> magic_rec:t().
+magic_rec1(R)
+    when is_record(R, magic_rec, 2) -> R;
+magic_rec1(_) -> magic_rec:new(undefined).
+
+-spec magic_rec2
+    (magic_rec:t() | atom()) -> atom().
+magic_rec2(R)
+    when is_record(R, magic_rec, 2) ->
+    magic_rec:id(R);
+magic_rec2(A) -> A.
+
+-spec magic_rec3
+    (term()) -> magic_rec:t() | undefined.
+magic_rec3(X) ->
+    case is_record(X, magic_rec, 2) of
+        true -> X;
+        false -> undefined
+    end.
+
+%% arity 3 doesn't match the record `magic_rec`
+-spec magic_rec4_neg(term()) -> magic_rec:t().
+magic_rec4_neg(R)
+    when is_record(R, magic_rec, 3) -> R;
+magic_rec4_neg(_) -> magic_rec:new(undefined).
+
+%% `misc_lib` is a module, but it defines no record
+%% `misc_lib`
+-spec not_magic1
+    (term()) -> {misc_lib, term()}.
+not_magic1(R)
+    when is_record(R, misc_lib, 2) -> R;
+not_magic1(_) -> {misc_lib, undefined}.
+
+-spec not_magic2_neg
+    (term()) -> {misc_lib, atom(), atom()}.
+not_magic2_neg(R)
+    when is_record(R, misc_lib, 2) -> R;
+not_magic2_neg(_) ->
+    {misc_lib, undefined, undefined}.

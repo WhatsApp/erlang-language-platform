@@ -45,4 +45,61 @@ Because in the expression's type:
     Context expects type: atom()
   , term()}
 
-5 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/type_predicates.erl:173:40
+    │
+173 │     when is_record(R, magic_rec, 2) -> R;
+    │                                        ^
+    │                                        │
+    │                                        R.
+Expression has type:   {'magic_rec', term()}
+Context expected type: magic_rec:t()
+    │                                        
+
+Because in the expression's type:
+  { 'magic_rec', 
+    Here the type is:     term()
+    Context expects type: atom()
+  }
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/type_predicates.erl:187:17
+    │
+187 │         true -> X;
+    │                 ^
+    │                 │
+    │                 X.
+Expression has type:   {'magic_rec', term()}
+Context expected type: 'undefined' | magic_rec:t()
+    │                 
+
+Because in the expression's type:
+  { 'magic_rec', 
+    Here the type is:     term()
+    Context expects type: atom()
+  }
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/type_predicates.erl:194:40
+    │
+194 │     when is_record(R, magic_rec, 3) -> R;
+    │                                        ^
+    │                                        │
+    │                                        R.
+Expression has type:   {'magic_rec', term(), term()}
+Context expected type: magic_rec:t()
+    │                                        
+
+Because in the expression's type:
+  Here the type is:     {'magic_rec', term(), term()}
+  Context expects type: #magic_rec{}
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/type_predicates.erl:208:39
+    │
+208 │     when is_record(R, misc_lib, 2) -> R;
+    │                                       ^ R.
+Expression has type:   {'misc_lib', term()}
+Context expected type: {'misc_lib', atom(), atom()}
+
+9 ERRORS
