@@ -1,0 +1,9 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/dyn_call_lambda_env.erl:19:26
+   │
+19 │   F(X = 1, fun(Y) -> Y + X end).
+   │                          ^ X.
+Expression has type:   atom() | integer()
+Context expected type: number()
+
+1 ERROR
