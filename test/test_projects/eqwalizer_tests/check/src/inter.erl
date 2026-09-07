@@ -87,3 +87,18 @@ fun_inter_call(F, X) -> F(X).
 %% asListType / extractListElem — element type is the meet of the conjuncts'
 -spec list_inter_elem(i([atom()], [foo | bar | baz])) -> [foo | bar | baz].
 list_inter_elem(L) -> [X || X <- L].
+
+%% Occurrence typing turns `Box :: box(T) | T` into `#box{} & T | box(T)`.
+%% That has to be accepted both by subtyping and by constraint generation,
+%% i.e. as an argument of a polymorphic function.
+-record(box, {v :: fun(() -> eqwalizer:dynamic())}).
+-type box(T) :: #box{v :: fun(() -> T)}.
+
+-spec unbox(box(T)) -> T.
+unbox(#box{v = V}) -> V().
+
+-spec inter_rec_sub(i(#box{}, T) | box(T)) -> box(T).
+inter_rec_sub(Box) -> Box.
+
+-spec inter_rec_poly_call(i(#box{}, T) | box(T)) -> T.
+inter_rec_poly_call(Box) -> unbox(Box).

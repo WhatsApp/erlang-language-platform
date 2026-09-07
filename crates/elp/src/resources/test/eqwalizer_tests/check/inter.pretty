@@ -44,4 +44,19 @@ Because in the expression's type:
   However the following candidate: binary()
   Differs from the expected type:  atom()
 
-3 ERRORS
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+    ┌─ check/src/inter.erl:104:35
+    │
+104 │ inter_rec_poly_call(Box) -> unbox(Box).
+    │                                   ^^^
+    │                                   │
+    │                                   Box.
+Expression has type:   box(T) | i(#box{}, T)
+Context expected type: box(T)
+    │                                   
+
+Because in the expression's type:
+  Here the type is:     #box{} & T
+  Context expects type: #box{}
+
+4 ERRORS
