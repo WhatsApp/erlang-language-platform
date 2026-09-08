@@ -321,12 +321,8 @@ final class Check(pipelineContext: PipelineContext) {
             .lazyZip(clauseEnvs)
             .map((clause, occEnv) => checkClause(clause, List.empty, resTy, occEnv, effVars))
           subtype.joinEnvs(envs1)
-        case Match(mPat, mExp) =>
-          val (mType, env1) = elab.elabExpr(mExp, env)
-          val (t2, env2) = elabPat.elabPat(mPat, mType, env1)
-          if (!subtype.subType(t2, resTy))
-            diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = t2))
-          env2
+        case _: Match =>
+          elab.elabExprAndCheck(expr, env, resTy)._2
         case _: UnOp | _: BinOp =>
           elab.elabExprAndCheck(expr, env, resTy)._2
         case Binary(elems) =>
