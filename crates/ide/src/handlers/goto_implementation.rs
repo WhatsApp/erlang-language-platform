@@ -18,11 +18,12 @@ use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FilePosition;
 
 use crate::RangeInfo;
+// @fb-only: use crate::meta_only;
 use crate::navigation_target::NavigationTarget;
 
-pub(crate) fn goto_implementation(
-    _db: &RootDatabase,
-    _position: FilePosition,
-) -> Option<RangeInfo<Vec<NavigationTarget>>> {
-    None
+#[rustfmt::skip]
+// @fb-only: pub(crate) fn goto_implementation(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<Vec<NavigationTarget>>> {
+pub(crate) fn goto_implementation(_db: &RootDatabase, _position: FilePosition) -> Option<RangeInfo<Vec<NavigationTarget>>> { // @oss-only
+    // @fb-only: meta_only::goto_implementation::goto_implementation(db, position)
+    None // @oss-only
 }

@@ -43,7 +43,6 @@ use crate::macro_exp;
 use crate::macro_exp::BuiltInMacro;
 use crate::macro_exp::MacroExpCtx;
 use crate::resolver::Resolver;
-// @fb-only: use crate::sema::meta_only;
 
 pub trait ToDef: Clone {
     type Def;
@@ -615,24 +614,16 @@ pub fn resolve_call_target(
             let name = body[*name].as_atom()?.as_name();
             (name, arity, file_id)
         }
-        #[rustfmt::skip]
         CallTarget::Remote { module, name, .. } => {
             let module_name = body[*module].as_atom()?.as_name();
             let fn_name: Name = body[*name].as_atom()?.as_name();
-            let mo =
-                None; // @oss-only
-                // @fb-only: meta_only::resolve_handle_call_target(sema, arity, file_id, &module_name, &fn_name);
-            if let Some(r) = mo {
-                r
-            } else {
-                (
-                    fn_name,
-                    arity,
-                    (resolve_module_name(sema, file_id, &module_name)?
-                        .file
-                        .file_id),
-                )
-            }
+            (
+                fn_name,
+                arity,
+                resolve_module_name(sema, file_id, &module_name)?
+                    .file
+                    .file_id,
+            )
         }
     };
     match arity {
