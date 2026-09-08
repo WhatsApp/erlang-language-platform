@@ -160,7 +160,8 @@ handle_info({IO, eof}, #{io := IO} = State) ->
 handle_info({timeout, Pid}, #{io := IO, requests := Requests} = State) ->
     case lists:keytake(Pid, 1, Requests) of
         {value, {Pid, Id, _Timer}, NewRequests} ->
-            exit(Pid, normal),
+            unlink(Pid),
+            exit(Pid, kill),
             reply_exception(Id, <<"Timeout">>, IO),
             {noreply, State#{requests => NewRequests}};
         _ ->
