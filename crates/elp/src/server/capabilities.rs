@@ -17,6 +17,7 @@ use lsp_types::CodeLensOptions;
 use lsp_types::CompletionOptions;
 use lsp_types::FoldingRangeProviderCapability;
 use lsp_types::HoverProviderCapability;
+use lsp_types::ImplementationProviderCapability;
 use lsp_types::InlayHintOptions;
 use lsp_types::InlayHintServerCapabilities;
 use lsp_types::OneOf;
@@ -70,7 +71,7 @@ pub fn compute(client: &ClientCapabilities) -> ServerCapabilities {
         }),
         definition_provider: Some(OneOf::Left(true)),
         type_definition_provider: Some(TypeDefinitionProviderCapability::Simple(true)),
-        implementation_provider: None,
+        implementation_provider: Some(ImplementationProviderCapability::Simple(true)),
         references_provider: Some(OneOf::Left(true)),
         document_highlight_provider: Some(OneOf::Left(true)),
         document_symbol_provider: Some(OneOf::Left(!text_document_symbols_dynamic_registration(

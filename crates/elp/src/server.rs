@@ -676,6 +676,7 @@ impl Server {
             .on::<request::CodeActionResolveRequest>(handlers::handle_code_action_resolve)
             .on::<request::GotoDefinition>(handlers::handle_goto_definition)
             .on::<request::GotoTypeDefinition>(handlers::handle_goto_type_definition)
+            .on::<request::GotoImplementation>(handlers::handle_goto_implementation)
             .on::<request::References>(handlers::handle_references)
             .on::<request::Completion>(handlers::handle_completion)
             .on::<request::ResolveCompletionItem>(handlers::handle_completion_resolve)

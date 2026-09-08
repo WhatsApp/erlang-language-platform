@@ -74,6 +74,7 @@ use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use handlers::get_docs;
 use handlers::goto_definition;
+use handlers::goto_implementation;
 use handlers::goto_type_definition;
 use handlers::references;
 use hir::DefMap;
@@ -637,6 +638,13 @@ impl Analysis {
         position: FilePosition,
     ) -> Cancellable<Option<RangeInfo<Vec<NavigationTarget>>>> {
         self.with_db(|db| goto_definition::goto_definition(db, position))
+    }
+
+    pub fn goto_implementation(
+        &self,
+        position: FilePosition,
+    ) -> Cancellable<Option<RangeInfo<Vec<NavigationTarget>>>> {
+        self.with_db(|db| goto_implementation::goto_implementation(db, position))
     }
 
     /// Returns the best token at `position` as `(text, kind)`, for telemetry
