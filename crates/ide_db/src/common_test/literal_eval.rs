@@ -88,14 +88,18 @@ pub(crate) fn try_literal_ct_info(
 
 /// Parse transforms known not to touch `all/0` or `groups/0`.
 ///
-/// `wa_assert_parse_trans` rewrites only *applications* of
-/// `wa_assert:'$assert_match_error_info$'/1` and `wa_assert:'$expand_assert$'/1`,
-/// the internal targets the `?assert*` macros expand to. A literal callback
-/// body contains no applications at all, so the transform cannot reach it. It
-/// is declared by `assert/include/assert.hrl`, which nearly every WhatsApp
-/// Server suite includes, so treating it as unknown would disable the fast
-/// path across the whole tree.
-const CALLBACK_SAFE_PARSE_TRANSFORMS: &[&str] = &["wa_assert_parse_trans"];
+/// Each rewrites only *applications*, and a literal callback body contains
+/// none at all, so neither can reach one:
+///
+/// - `ms_transform` rewrites `ets:fun2ms/1` and `dbg:fun2ms/1`. It is declared
+///   by `stdlib/include/ms_transform.hrl`, which every `fun2ms` caller must
+///   include.
+/// - `wa_assert_parse_trans` rewrites `wa_assert:'$assert_match_error_info$'/1`
+///   and `wa_assert:'$expand_assert$'/1`, the internal targets the `?assert*`
+///   macros expand to. It is declared by `assert/include/assert.hrl`, which
+///   nearly every WhatsApp Server suite includes, so treating it as unknown
+///   would disable the fast path across the whole tree.
+const CALLBACK_SAFE_PARSE_TRANSFORMS: &[&str] = &["ms_transform", "wa_assert_parse_trans"];
 
 /// Whether a parse transform we cannot vouch for applies to this module.
 ///
@@ -678,6 +682,21 @@ all() -> [a].
 all() -> [a].
 //- /assert.hrl
 -compile({parse_transform, wa_assert_parse_trans}).
+"#,
+        );
+    }
+
+    /// `ms_transform` reaches `fun2ms` applications only, so a suite that
+    /// includes `ms_transform.hrl` stays on the fast path.
+    #[test]
+    fn ms_transform_stays_on_the_fast_path() {
+        check(
+            "all: [a] | groups: []",
+            r#"
+-module(my_SUITE).
+-compile({parse_transform, ms_transform}).
+-export([all/0]).
+all() -> [a].
 "#,
         );
     }
