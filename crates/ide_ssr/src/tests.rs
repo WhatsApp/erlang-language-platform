@@ -1156,6 +1156,37 @@ fn ssr_expr_list_comprehension_binary() {
 }
 
 #[test]
+fn ssr_expr_comprehension_brackets_must_agree() {
+    // Same generator either side, so only the builder tells the two apart.
+    assert_matches(
+        "ssr: [XX || XX <- _@List].",
+        "bar(List) -> << XX || XX <- List >>.",
+        &[],
+    );
+    assert_matches(
+        "ssr: << XX || XX <- _@List >>.",
+        "bar(List) -> [XX || XX <- List].",
+        &[],
+    );
+}
+
+#[test]
+fn ssr_expr_multi_template_list_does_not_match_map_comprehension() {
+    // Both builders contribute two sub-ids and both generators are list
+    // generators, so the brackets are the only difference.
+    assert_matches(
+        "ssr: [_@A, _@B || XX <- _@List].",
+        "bar(List) -> #{XX => 1 || XX <- List}.",
+        &[],
+    );
+    assert_matches(
+        "ssr: #{_@K => _@V || XX <- _@List}.",
+        "bar(List) -> [XX, 1 || XX <- List].",
+        &[],
+    );
+}
+
+#[test]
 fn ssr_expr_map_comprehension() {
     assert_matches(
         "ssr: #{_@K => _@V || _@K := _@V <- _@Map}.",

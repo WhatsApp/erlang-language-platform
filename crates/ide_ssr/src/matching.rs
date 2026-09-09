@@ -2144,19 +2144,26 @@ impl PatternIterator {
                     res
                 }),
                 Expr::Comprehension { builder, exprs } => {
-                    let bs: Vec<SubId> = match builder {
-                        ComprehensionBuilder::List(exprs) => {
-                            exprs.iter().map(|e| (*e).into()).collect()
+                    // The separator names the builder, so a pattern written
+                    // with one kind of bracket cannot match another. Without
+                    // it `[B || ..]` and `<< B || .. >>` flatten to the same
+                    // list of sub-ids.
+                    let (separator, bs): (SubId, Vec<SubId>) = match builder {
+                        ComprehensionBuilder::List(body) => {
+                            ("[||]".into(), body.iter().map(|e| (*e).into()).collect())
                         }
-                        ComprehensionBuilder::Binary(e) => vec![(*e).into()],
-                        ComprehensionBuilder::Map(fields) => fields
-                            .iter()
-                            .flat_map(|(k, v)| [(*k).into(), (*v).into()])
-                            .collect(),
+                        ComprehensionBuilder::Binary(e) => ("<<||>>".into(), vec![(*e).into()]),
+                        ComprehensionBuilder::Map(fields) => (
+                            "#{||}".into(),
+                            fields
+                                .iter()
+                                .flat_map(|(k, v)| [(*k).into(), (*v).into()])
+                                .collect(),
+                        ),
                     };
                     PatternIterator::as_pattern_list(
                         bs.into_iter()
-                            .chain(iter::once("||".into()))
+                            .chain(iter::once(separator))
                             .chain(
                                 exprs
                                     .iter()
