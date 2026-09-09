@@ -1298,8 +1298,9 @@ fn targets_to_project_data_bxl(
             target
                 .deps
                 .iter()
-                .chain(target.apps.iter().chain(target.included_apps.iter()))
-                .chain(target.apps.iter().chain(target.extra_includes.iter()))
+                .chain(target.apps.iter())
+                .chain(target.included_apps.iter())
+                .chain(target.extra_includes.iter())
                 .cloned(),
         );
         include_mapping.deps.insert(target_name.clone(), all_deps);
