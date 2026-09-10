@@ -22,7 +22,7 @@ use elp_project_model::AppType;
 use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
 use elp_project_model::ProjectBuildData;
-use elp_project_model::buck::IncludeMapping;
+use elp_project_model::buck::BuckProjectIndex;
 use elp_project_model::otp::Otp;
 use elp_project_model::otp::find_otp_app;
 use elp_project_model::otp::read_otp_app_sources;
@@ -266,18 +266,18 @@ impl ChangeFixture {
 
         let root = AbsPathBuf::assert("/".into());
         let mut apps: Vec<ProjectAppData> = app_map.all_apps().cloned().collect();
-        let mut project_include_mapping = None;
+        let mut project_buck_index = None;
 
-        // If any app has buck metadata, build an IncludeMapping and set
+        // If any app has buck metadata, build a BuckProjectIndex and set
         // applicable_files so the buck code path in resolve_remote_query
         // is exercised.
         if has_buck_metadata {
-            let mut include_mapping = IncludeMapping::default();
+            let mut buck_index = BuckProjectIndex::default();
 
             for app in &mut apps {
                 if let Some(ref target_name) = app.buck_target_name {
                     // Register app ↔ target mapping
-                    include_mapping.register_app_target(app.name.clone(), target_name.clone());
+                    buck_index.register_app_target(app.name.clone(), target_name.clone());
 
                     // Set applicable_files from the collected file paths
                     if let Some(paths) = app_file_paths.get(&app.name) {
@@ -299,7 +299,7 @@ impl ChangeFixture {
                             "R:{}/include/{}",
                             app.name, file_name
                         ));
-                        include_mapping.insert(remote_path, hrl_path.clone());
+                        buck_index.insert(remote_path, hrl_path.clone());
                     }
                 }
             }
@@ -314,7 +314,7 @@ impl ChangeFixture {
                         if let Some(dep_app) = apps.iter().find(|a| a.name == dep_app_name)
                             && let Some(ref dep_target) = dep_app.buck_target_name
                         {
-                            include_mapping.add_dep(source_target.clone(), dep_target.clone());
+                            buck_index.add_dep(source_target.clone(), dep_target.clone());
                         }
                     }
                 }
@@ -325,7 +325,7 @@ impl ChangeFixture {
                 app_map.update(app.clone());
             }
 
-            project_include_mapping = Some(StdArc::new(include_mapping));
+            project_buck_index = Some(StdArc::new(buck_index));
         }
 
         let apps_with_includes = RebarProject::add_app_includes(apps, &[], &otp.lib_dir);
@@ -333,7 +333,7 @@ impl ChangeFixture {
         let mut project = Project::otp(otp, app_map.otp_apps().cloned().collect());
         project.add_apps(apps_with_includes);
         project.project_build_data = ProjectBuildData::Rebar(rebar_project);
-        project.include_mapping = project_include_mapping;
+        project.buck_index = project_buck_index;
         project.eqwalizer_config.enable_all = diagnostics_enabled.use_eqwalizer;
 
         let projects = [project.clone()];
@@ -758,7 +758,7 @@ bar() -> ?FOO.
                                 ignore_modules: [],
                                 ignore_modules_compiled_patterns: [],
                             },
-                            include_mapping: None,
+                            buck_index: None,
                         },
                         ProjectId(
                             1,
@@ -793,7 +793,7 @@ bar() -> ?FOO.
                                 ignore_modules: [],
                                 ignore_modules_compiled_patterns: [],
                             },
-                            include_mapping: None,
+                            buck_index: None,
                         },
                     },
                     catch_all_source_root: SourceRootId(
@@ -925,7 +925,7 @@ foo() -> ?BAR.
                                 ignore_modules: [],
                                 ignore_modules_compiled_patterns: [],
                             },
-                            include_mapping: None,
+                            buck_index: None,
                         },
                         ProjectId(
                             1,
@@ -950,7 +950,7 @@ foo() -> ?BAR.
                                 ignore_modules: [],
                                 ignore_modules_compiled_patterns: [],
                             },
-                            include_mapping: None,
+                            buck_index: None,
                         },
                     },
                     catch_all_source_root: SourceRootId(

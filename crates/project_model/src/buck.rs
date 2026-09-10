@@ -207,7 +207,7 @@ pub struct BuckProject {
 }
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
-pub struct IncludeMapping {
+pub struct BuckProjectIndex {
     includes: FxHashMap<SmolStr, AbsPathBuf>,
     deps: FxHashMap<TargetFullName, FxHashSet<TargetFullName>>,
     /// A buck target can have an alternative app name in case the
@@ -227,12 +227,12 @@ pub enum IncludeMappingScope {
 }
 
 /// We add a prefix to the local and remote lookup strings in the
-/// `IncludeMapping`, so we can do dependency checking on the remote
+/// `BuckProjectIndex`, so we can do dependency checking on the remote
 /// one via `include_lib`
 const LOCAL_LOOKUP_INCLUDE_PREFIX: &str = "L";
 const REMOTE_LOOKUP_INCLUDE_PREFIX: &str = "R";
 
-impl IncludeMapping {
+impl BuckProjectIndex {
     pub fn add_otp(&mut self, otp_apps: &[ProjectAppData]) {
         for app in otp_apps {
             self.otp_apps.insert(app.name.clone());
@@ -396,7 +396,7 @@ impl BuckProject {
             BuckProject,
             Vec<ProjectAppData>,
             Utf8PathBuf,
-            Arc<IncludeMapping>,
+            Arc<BuckProjectIndex>,
         ),
         anyhow::Error,
     > {
@@ -404,8 +404,7 @@ impl BuckProject {
         let _ = set_cell_info(buck_conf)?;
         let target_info = load_buck_targets_bxl(buck_conf, query_config, report_progress)?;
         report_progress("Making project app data");
-        let (project_app_data, mut include_mapping) =
-            targets_to_project_data_bxl(&target_info.targets);
+        let (project_app_data, mut buck_index) = targets_to_project_data_bxl(&target_info.targets);
         let project = BuckProject {
             target_info,
             buck_conf: buck_conf.clone(),
@@ -413,13 +412,8 @@ impl BuckProject {
         let otp_root = Otp::find_otp()?.to_path_buf();
         // TODO: we now get these twice. Perhaps they should be cached?
         let (_otp, otp_project_apps) = Otp::discover(otp_root.clone(), &elp_config.otp);
-        include_mapping.add_otp(&otp_project_apps);
-        Ok((
-            project,
-            project_app_data,
-            otp_root,
-            Arc::new(include_mapping),
-        ))
+        buck_index.add_otp(&otp_project_apps);
+        Ok((project, project_app_data, otp_root, Arc::new(buck_index)))
     }
 
     pub fn target(&self, file_path: &AbsPathBuf) -> Option<String> {
@@ -1269,28 +1263,28 @@ fn common_prefix(a: &AbsPathBuf, b: &AbsPathBuf) -> AbsPathBuf {
 
 fn targets_to_project_data_bxl(
     targets: &FxHashMap<TargetFullName, Target>,
-) -> (Vec<ProjectAppData>, IncludeMapping) {
-    let mut include_mapping = IncludeMapping::default();
+) -> (Vec<ProjectAppData>, BuckProjectIndex) {
+    let mut buck_index = BuckProjectIndex::default();
     let mut result: Vec<ProjectAppData> = vec![];
 
     for target in targets.values() {
         target.include_files.iter().for_each(|inc: &AbsPathBuf| {
             // TODO: make a FXHashSet of include paths, and use that to update the mapping
             let include_path = include_path_from_file(inc);
-            include_mapping.update_mapping_from_path(&target.app_name.0, include_path);
+            buck_index.update_mapping_from_path(&target.app_name.0, include_path);
         });
 
         if target.private_header {
             target.src_files.iter().for_each(|path: &AbsPathBuf| {
                 if Some("hrl") == path.extension() {
                     let include_path = include_path_from_file(path);
-                    include_mapping.update_mapping_from_path(&target.app_name.0, include_path);
+                    buck_index.update_mapping_from_path(&target.app_name.0, include_path);
                 }
             });
         }
     }
 
-    // Track target dependencies, as a check in the include_mapping, which is global.
+    // Track target dependencies, as a check in the buck index, which is global.
     // The app being looked up must be in the dependency relation of the app.
     // Note: This step must be fast, so we do not build out the graph.
     for (target_name, target) in targets {
@@ -1303,11 +1297,11 @@ fn targets_to_project_data_bxl(
                 .chain(target.extra_includes.iter())
                 .cloned(),
         );
-        include_mapping.deps.insert(target_name.clone(), all_deps);
-        include_mapping
+        buck_index.deps.insert(target_name.clone(), all_deps);
+        buck_index
             .app_names
             .insert(target.app_name.clone(), target_name.clone());
-        include_mapping
+        buck_index
             .app_names_rev
             .insert(target_name.clone(), target.app_name.clone());
     }
@@ -1381,7 +1375,7 @@ fn targets_to_project_data_bxl(
         }
     }
 
-    (result, include_mapping)
+    (result, buck_index)
 }
 
 fn include_path_from_file(path: &AbsPath) -> AbsPathBuf {

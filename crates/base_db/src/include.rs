@@ -112,7 +112,7 @@ impl<'a> IncludeCtx<'a> {
             // Not in the current app, look in the dependencies
             let include_file_index = db.include_file_index(project_id);
             if let Some(file_path) = include_file_index
-                .include_mapping
+                .buck_index
                 .find_local(&app_data.name, &path)
             {
                 include_file_index
@@ -157,8 +157,8 @@ impl<'a> IncludeCtx<'a> {
         let (app_name, include_path) = path.split_once('/')?;
         let source_root_id = project_data.app_roots.get(app_name)?;
         let target_app_data = db.app_data(source_root_id)?;
-        if let Some(include_mapping) = &project_data.include_mapping {
-            if let Some(p) = include_mapping
+        if let Some(buck_index) = &project_data.buck_index {
+            if let Some(p) = buck_index
                 .get(IncludeMappingScope::Remote, &path)
                 .map(|path| db.include_file_id(project_id, VfsPath::from(path.clone())))
             {
@@ -173,7 +173,7 @@ impl<'a> IncludeCtx<'a> {
                         .any(|d| {
                             d.buck_target_name
                                 .as_ref()
-                                .is_some_and(|t| include_mapping.is_dep(t, &target))
+                                .is_some_and(|t| buck_index.is_dep(t, &target))
                         });
 
                     if is_dep {
@@ -208,7 +208,7 @@ impl<'a> IncludeCtx<'a> {
             // There is no include mapping.
             // This is the path followed when it is not a buck2
             // project, as those are currently the only ones that
-            // populate the include_mapping.
+            // populate the buck index.
             let path = target_app_data.dir.join(include_path);
             db.include_file_id(project_id, VfsPath::from(path.clone()))
                 .or_else(|| {

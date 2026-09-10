@@ -16,7 +16,7 @@ use std::sync::LazyLock;
 use dashmap::DashMap;
 use dashmap::Entry;
 use elp_project_model::AppName;
-use elp_project_model::buck::IncludeMapping;
+use elp_project_model::buck::BuckProjectIndex;
 use elp_project_model::buck::IncludeMappingScope;
 use elp_syntax::AstNode;
 use elp_syntax::Parse;
@@ -688,7 +688,7 @@ fn module_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc<Modul
 /// `referencing_app_data`, following that application's declared dependencies.
 ///
 /// An application is always reachable from itself. OTP applications are always
-/// reachable, and reachability is transitive - both are `IncludeMapping::is_dep`
+/// reachable, and reachability is transitive - both are `BuckProjectIndex::is_dep`
 /// semantics. A project with no build-system dependency graph, or an application
 /// with no buck target, has nothing to check against and is treated as reachable.
 pub fn is_app_reachable(
@@ -707,9 +707,9 @@ pub fn is_app_reachable(
     match &db
         .project_data(referencing_app_data.project_id)
         .project_data(db)
-        .include_mapping
+        .buck_index
     {
-        Some(include_mapping) => include_mapping.is_dep(referencing_target, defining_app),
+        Some(buck_index) => buck_index.is_dep(referencing_target, defining_app),
         None => true,
     }
 }
@@ -728,7 +728,7 @@ pub struct IncludeFileIndex {
     pub path_to_file_id: FxHashMap<VfsPath, FileId>,
     /// Mapping from the raw text seen in an `-include` or
     /// `-include_lib` directive to the associated file
-    pub include_mapping: Arc<IncludeMapping>,
+    pub buck_index: Arc<BuckProjectIndex>,
 }
 
 impl IncludeFileIndex {
@@ -761,8 +761,8 @@ fn include_file_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc
                 );
             }
         });
-    if let Some(include_mapping) = &project_data.include_mapping {
-        include_file_index.include_mapping = include_mapping.clone();
+    if let Some(buck_index) = &project_data.buck_index {
+        include_file_index.buck_index = buck_index.clone();
     }
     Arc::new(include_file_index)
 }
@@ -821,7 +821,7 @@ fn mapped_include_file_inner(
 ) -> Option<FileId> {
     let project_id = pid.project_id(db);
     let include_file_index = db.include_file_index(project_id);
-    let file_path = include_file_index.include_mapping.get(scope, &path)?;
+    let file_path = include_file_index.buck_index.get(scope, &path)?;
     include_file_index
         .path_to_file_id
         .get(&VfsPath::from(file_path.clone()))

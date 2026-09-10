@@ -31,8 +31,8 @@ use anyhow::Context;
 use anyhow::Result;
 use anyhow::bail;
 use buck::BuckConfig;
+use buck::BuckProjectIndex;
 use buck::BuckQueryConfig;
-use buck::IncludeMapping;
 use buck::TargetFullName;
 use elp_log::timeit;
 use fxhash::FxHashMap;
@@ -763,7 +763,7 @@ pub struct Project {
     pub project_build_data: ProjectBuildData,
     pub project_apps: Vec<ProjectAppData>,
     pub eqwalizer_config: EqwalizerConfig,
-    pub include_mapping: Option<Arc<IncludeMapping>>,
+    pub buck_index: Option<Arc<BuckProjectIndex>>,
 }
 
 #[derive(Clone, Debug)]
@@ -798,7 +798,7 @@ impl Project {
             project_build_data: ProjectBuildData::Otp,
             project_apps,
             eqwalizer_config: EqwalizerConfig::default(),
-            include_mapping: None,
+            buck_index: None,
         }
     }
 
@@ -808,7 +808,7 @@ impl Project {
             project_build_data: ProjectBuildData::Rebar(Default::default()),
             project_apps: Vec::default(),
             eqwalizer_config: EqwalizerConfig::default(),
-            include_mapping: None,
+            buck_index: None,
         }
     }
 
@@ -1090,7 +1090,7 @@ impl Project {
         query_config: &BuckQueryConfig,
         report_progress: &impl Fn(&str),
     ) -> Result<Project> {
-        let (project_build_info, mut project_apps, otp_root, include_mapping) = match manifest {
+        let (project_build_info, mut project_apps, otp_root, buck_index) = match manifest {
             ProjectManifest::Rebar(rebar_setting) => {
                 let cache_key = format!(
                     "{}:{}",
@@ -1145,13 +1145,13 @@ impl Project {
             }
             ProjectManifest::TomlBuck(buck) => {
                 // We only select this manifest if buck is actually enabled
-                let (project, apps, otp_root, include_mapping) =
+                let (project, apps, otp_root, buck_index) =
                     BuckProject::load_from_config(buck, elp_config, query_config, report_progress)?;
                 (
                     ProjectBuildData::Buck(project),
                     apps,
                     otp_root,
-                    Some(include_mapping),
+                    Some(buck_index),
                 )
             }
             ProjectManifest::Json(config) => {
@@ -1193,7 +1193,7 @@ impl Project {
             project_build_data: project_build_info,
             project_apps,
             eqwalizer_config: elp_config.eqwalizer.clone(),
-            include_mapping,
+            buck_index,
         })
     }
 

@@ -18,7 +18,7 @@ use elp_project_model::AppType;
 use elp_project_model::EqwalizerConfig;
 use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
-use elp_project_model::buck::IncludeMapping;
+use elp_project_model::buck::BuckProjectIndex;
 use elp_project_model::buck::TargetFullName;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -116,7 +116,7 @@ pub struct ProjectData {
     pub otp_project_id: Option<ProjectId>,
     pub app_roots: AppRoots,
     pub eqwalizer_config: EqwalizerConfig,
-    pub include_mapping: Option<Arc<IncludeMapping>>,
+    pub buck_index: Option<Arc<BuckProjectIndex>>,
 }
 
 /// `AppData` is stored in salsa, indexed by `SourceRootId`.
@@ -429,7 +429,7 @@ impl<'a> ProjectApps<'a> {
                 otp_project_id: self.otp_project_id,
                 app_roots,
                 eqwalizer_config: project.eqwalizer_config.clone(),
-                include_mapping: project.include_mapping.clone(),
+                buck_index: project.buck_index.clone(),
             };
             app_structure.add_project_data(project_id, project_data);
         }
