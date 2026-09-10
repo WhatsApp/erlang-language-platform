@@ -9,6 +9,7 @@
  */
 
 use std::borrow::Cow;
+use std::cell::OnceCell;
 use std::collections::BTreeSet;
 use std::fmt;
 use std::path::Path;
@@ -74,13 +75,16 @@ use glob::PatternError;
 use hir::FormIdx;
 use hir::InFile;
 use hir::IncludeAttributeId;
+use hir::MacroName;
 use hir::PPConditionId;
+use hir::PPConditionResult;
 use hir::PPDirective;
 use hir::Semantic;
 use hir::db::DefDatabase;
 use hir::fold::MacroStrategy;
 use hir::fold::ParenStrategy;
 use hir::fold::Strategy;
+use hir::known;
 use itertools::Itertools;
 use regex::Regex;
 use serde::Deserialize;
@@ -742,6 +746,56 @@ fn is_diagnostic_enabled(config: &DiagnosticsConfig, code: &DiagnosticCode, defa
     }
 }
 
+fn include_tests(linter: &dyn Linter, config: &DiagnosticsConfig) -> bool {
+    if let Some(lint_config) = config.lint_config.as_ref() {
+        lint_config
+            .get_include_tests_override(&linter.id())
+            .unwrap_or_else(|| linter.should_process_test_files())
+    } else {
+        linter.should_process_test_files()
+    }
+}
+
+/// Ranges of the forms that are compiled only when the `TEST` macro is
+/// defined, such as the body of an `-ifdef(TEST).` block in a production
+/// module.
+///
+/// Membership is decided by re-running the preprocessor with `TEST` removed
+/// from the macro environment: a form that is active as configured but
+/// inactive without `TEST` exists purely for tests. This covers `-ifndef`,
+/// `-else`, `-elif` and nesting without having to interpret the condition
+/// chain here.
+fn test_only_form_ranges(db: &dyn DefDatabase, file_id: FileId) -> Vec<TextRange> {
+    let env = db.project_macro_environment(file_id);
+    let test_macro = MacroName::new(*known::TEST, None);
+    if !env.externally_defined.contains(&test_macro) {
+        return Vec::new();
+    }
+    let mut without_test = (*env).clone();
+    without_test.externally_defined.remove(&test_macro);
+    let without_test = Arc::new(without_test);
+
+    let form_list = db.file_form_list(file_id);
+    form_list
+        .forms()
+        .iter()
+        .filter_map(|&form_idx| {
+            let form = form_list.get(form_idx);
+            let pp_ctx = form.pp_ctx(&form_list)?;
+            pp_ctx.condition?;
+            if form_list.is_form_active_with_env(db, file_id, pp_ctx, env.clone())
+                != PPConditionResult::Active
+            {
+                return None;
+            }
+            match form_list.is_form_active_with_env(db, file_id, pp_ctx, without_test.clone()) {
+                PPConditionResult::Inactive => Some(form_list.form_range(form_idx, db, file_id)),
+                PPConditionResult::Active | PPConditionResult::Unknown => None,
+            }
+        })
+        .collect()
+}
+
 fn should_run(
     linter: &dyn Linter,
     config: &DiagnosticsConfig,
@@ -790,13 +844,7 @@ fn should_run(
         return false;
     }
 
-    let include_tests = if let Some(lint_config) = config.lint_config.as_ref() {
-        lint_config
-            .get_include_tests_override(&linter.id())
-            .unwrap_or_else(|| linter.should_process_test_files())
-    } else {
-        linter.should_process_test_files()
-    };
+    let include_tests = include_tests(linter, config);
     let include_generated = if let Some(lint_config) = config.lint_config.as_ref() {
         lint_config
             .get_include_generated_override(&linter.id())
@@ -2328,6 +2376,10 @@ fn diagnostics_from_linters(
         None
     };
 
+    // Only needed by linters that opt out of test files, and only in modules
+    // that are not already test files, so compute it on first use.
+    let test_ranges: OnceCell<Vec<TextRange>> = OnceCell::new();
+
     for l in linters {
         let linter = l.as_linter();
 
@@ -2364,7 +2416,24 @@ fn diagnostics_from_linters(
                 linter.cli_severity(sema, file_id)
             };
 
-            let filter_for_manual_section = |diagnostics: Vec<Diagnostic>| -> Vec<Diagnostic> {
+            let skip_test_sections = !is_test && !include_tests(linter, config);
+
+            let filter_test_sections = |diagnostics: Vec<Diagnostic>| -> Vec<Diagnostic> {
+                if !skip_test_sections {
+                    return diagnostics;
+                }
+                let ranges = test_ranges.get_or_init(|| test_only_form_ranges(sema.db, file_id));
+                if ranges.is_empty() {
+                    return diagnostics;
+                }
+                diagnostics
+                    .into_iter()
+                    .filter(|diag| !ranges.iter().any(|r| r.contains_range(diag.range)))
+                    .collect()
+            };
+
+            let filter_linter_diagnostics = |diagnostics: Vec<Diagnostic>| -> Vec<Diagnostic> {
+                let diagnostics = filter_test_sections(diagnostics);
                 if let Some(ref ranges) = manual_ranges {
                     diagnostics
                         .into_iter()
@@ -2406,7 +2475,7 @@ fn diagnostics_from_linters(
                         &linter_config,
                         config.include_fixes,
                     );
-                    res.extend(filter_for_manual_section(diagnostics));
+                    res.extend(filter_linter_diagnostics(diagnostics));
                 }
                 DiagnosticLinter::SsrPatterns(ssr_linter) => {
                     let linter_config = if let Some(lint_config) = config.lint_config.as_ref() {
@@ -2423,7 +2492,7 @@ fn diagnostics_from_linters(
                         &linter_config,
                         config.include_fixes,
                     );
-                    res.extend(filter_for_manual_section(diagnostics));
+                    res.extend(filter_linter_diagnostics(diagnostics));
                 }
                 DiagnosticLinter::Generic(generic_linter) => {
                     let diagnostics = generic_linter.diagnostics(
@@ -2432,7 +2501,7 @@ fn diagnostics_from_linters(
                         cli_severity,
                         config.include_fixes,
                     );
-                    res.extend(filter_for_manual_section(diagnostics));
+                    res.extend(filter_linter_diagnostics(diagnostics));
                 }
             }
         }
@@ -4584,6 +4653,90 @@ foo() -> XX 3.0.
                 erlang:garbage_collect().
             %%  ^^^^^^^^^^^^^^^^^^^^^^ warning: W0047: Avoid forcing garbage collection.
             %%                       | 💡 <suppression>
+            //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+            -module(erlang).
+            -export([garbage_collect/0]).
+            garbage_collect() -> ok.
+            "#,
+        );
+    }
+
+    fn no_garbage_collect_config() -> DiagnosticsConfig {
+        DiagnosticsConfig::default()
+            .configure_diagnostics(
+                &LintConfig::default(),
+                &["no_garbage_collect".to_string()],
+                &[],
+            )
+            .unwrap()
+    }
+
+    #[test]
+    fn test_ifdef_test_section_is_test_code() {
+        check_diagnostics_with_config(
+            no_garbage_collect_config(),
+            r#"
+            //- /src/main.erl macros:[TEST]
+            -module(main).
+            -export([prod/0]).
+
+            prod() ->
+                erlang:garbage_collect().
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ warning: W0047: Avoid forcing garbage collection.
+            %%                       | 💡 <suppression>
+
+            -ifdef(TEST).
+            -export([test_helper/0]).
+            test_helper() ->
+                erlang:garbage_collect().
+            -endif.
+            //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+            -module(erlang).
+            -export([garbage_collect/0]).
+            garbage_collect() -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_ifndef_test_else_branch_is_test_code() {
+        check_diagnostics_with_config(
+            no_garbage_collect_config(),
+            r#"
+            //- /src/main.erl macros:[TEST]
+            -module(main).
+            -export([collect/0]).
+
+            -ifndef(TEST).
+            collect() ->
+                erlang:garbage_collect().
+            -else.
+            collect() ->
+                erlang:garbage_collect().
+            -endif.
+            //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+            -module(erlang).
+            -export([garbage_collect/0]).
+            garbage_collect() -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_ifdef_other_macro_is_not_test_code() {
+        check_diagnostics_with_config(
+            no_garbage_collect_config(),
+            r#"
+            //- /src/main.erl macros:[TEST,DEBUG]
+            -module(main).
+            -export([debug/0]).
+
+            -ifdef(DEBUG).
+            debug() ->
+                erlang:garbage_collect().
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ warning: W0047: Avoid forcing garbage collection.
+            %%                       | 💡 <suppression>
+            -endif.
             //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
             -module(erlang).
             -export([garbage_collect/0]).
