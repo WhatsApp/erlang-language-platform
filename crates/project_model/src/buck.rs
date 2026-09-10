@@ -206,9 +206,26 @@ pub struct BuckProject {
     pub buck_conf: BuckConfig,
 }
 
+/// A mapping from the text of an `-include` or `-include_lib` directive
+/// to the file it resolves to.
+///
+/// Local and remote directives share the one map, distinguished by a
+/// key prefix. See `IncludeMappingScope`.
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
-pub struct BuckProjectIndex {
+pub struct IncludeMapping {
     includes: FxHashMap<SmolStr, AbsPathBuf>,
+}
+
+/// The buck dependency graph, at application granularity.
+///
+/// Answers "may application A refer to application B". This gates
+/// `include_lib` resolution, and also the `unavailable_function` and
+/// `unavailable_type` diagnostics, which have nothing to do with
+/// includes.
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
+pub struct AppDepGraph {
+    /// Immediate dependencies only. Reachability is transitive, and is
+    /// computed on demand rather than being materialised here.
     deps: FxHashMap<TargetFullName, FxHashSet<TargetFullName>>,
     /// A buck target can have an alternative app name in case the
     /// last part of its `TargetFullName` is ambiguous.  Keep a
@@ -220,6 +237,17 @@ pub struct BuckProjectIndex {
     otp_apps: FxHashSet<AppName>,
 }
 
+/// The lookup structures ELP derives from the buck target graph and
+/// keeps for the lifetime of a project.
+///
+/// The two halves are always built together, so they are kept together
+/// rather than as a pair of `Option`s that could disagree.
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
+pub struct BuckProjectIndex {
+    pub includes: IncludeMapping,
+    pub app_deps: AppDepGraph,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum IncludeMappingScope {
     Local(AppName),
@@ -227,15 +255,15 @@ pub enum IncludeMappingScope {
 }
 
 /// We add a prefix to the local and remote lookup strings in the
-/// `BuckProjectIndex`, so we can do dependency checking on the remote
+/// `IncludeMapping`, so we can do dependency checking on the remote
 /// one via `include_lib`
 const LOCAL_LOOKUP_INCLUDE_PREFIX: &str = "L";
 const REMOTE_LOOKUP_INCLUDE_PREFIX: &str = "R";
 
-impl BuckProjectIndex {
+impl IncludeMapping {
+    /// Record the include directories of the OTP applications.
     pub fn add_otp(&mut self, otp_apps: &[ProjectAppData]) {
         for app in otp_apps {
-            self.otp_apps.insert(app.name.clone());
             for inc in &app.include_dirs {
                 self.update_mapping_from_path(&app.name.0, inc.clone());
             }
@@ -289,45 +317,14 @@ impl BuckProjectIndex {
     pub fn insert(&mut self, path: SmolStr, abs_path: AbsPathBuf) -> Option<AbsPathBuf> {
         self.includes.insert(path, abs_path)
     }
+}
 
-    /// Local lookup of `path` in the dependencies of `app_name`
-    pub fn find_local(&self, app_name: &AppName, path: &SmolStr) -> Option<AbsPathBuf> {
-        self.get(IncludeMappingScope::Local(app_name.clone()), path);
-        if let Some(current) = self.app_names.get(app_name) {
-            let mut visited = FxHashSet::default();
-            self.dfs_local(current, path, &mut visited)
-        } else {
-            None
+impl AppDepGraph {
+    /// The OTP applications are always available as dependencies.
+    pub fn add_otp(&mut self, otp_apps: &[ProjectAppData]) {
+        for app in otp_apps {
+            self.otp_apps.insert(app.name.clone());
         }
-    }
-
-    fn dfs_local(
-        &self,
-        current: &TargetFullName,
-        path: &SmolStr,
-        visited: &mut FxHashSet<TargetFullName>,
-    ) -> Option<AbsPathBuf> {
-        if let Some(app_name) = self.app_names_rev.get(current)
-            && let Some(abs_path) = self.get(IncludeMappingScope::Local(app_name.clone()), path)
-        {
-            return Some(abs_path.clone());
-        }
-
-        if visited.contains(current) {
-            return None;
-        }
-
-        visited.insert(current.clone());
-
-        if let Some(deps) = self.deps.get(current) {
-            for dep in deps {
-                if let Some(abs_path) = self.dfs_local(dep, path, visited) {
-                    return Some(abs_path);
-                }
-            }
-        }
-
-        None
     }
 
     /// Register an app name ↔ buck target name mapping.
@@ -382,6 +379,55 @@ impl BuckProjectIndex {
         }
 
         false
+    }
+}
+
+impl BuckProjectIndex {
+    pub fn add_otp(&mut self, otp_apps: &[ProjectAppData]) {
+        self.app_deps.add_otp(otp_apps);
+        self.includes.add_otp(otp_apps);
+    }
+
+    /// Local lookup of `path` in `app_name` and its dependencies.
+    ///
+    /// This is the one operation needing both halves of the index: the
+    /// dependency graph gives the search order, the include mapping
+    /// resolves at each step.
+    pub fn find_local(&self, app_name: &AppName, path: &SmolStr) -> Option<AbsPathBuf> {
+        let current = self.app_deps.app_names.get(app_name)?;
+        let mut visited = FxHashSet::default();
+        self.dfs_local(current, path, &mut visited)
+    }
+
+    fn dfs_local(
+        &self,
+        current: &TargetFullName,
+        path: &SmolStr,
+        visited: &mut FxHashSet<TargetFullName>,
+    ) -> Option<AbsPathBuf> {
+        if let Some(app_name) = self.app_deps.app_names_rev.get(current)
+            && let Some(abs_path) = self
+                .includes
+                .get(IncludeMappingScope::Local(app_name.clone()), path)
+        {
+            return Some(abs_path.clone());
+        }
+
+        if visited.contains(current) {
+            return None;
+        }
+
+        visited.insert(current.clone());
+
+        if let Some(deps) = self.app_deps.deps.get(current) {
+            for dep in deps {
+                if let Some(abs_path) = self.dfs_local(dep, path, visited) {
+                    return Some(abs_path);
+                }
+            }
+        }
+
+        None
     }
 }
 
@@ -1271,21 +1317,25 @@ fn targets_to_project_data_bxl(
         target.include_files.iter().for_each(|inc: &AbsPathBuf| {
             // TODO: make a FXHashSet of include paths, and use that to update the mapping
             let include_path = include_path_from_file(inc);
-            buck_index.update_mapping_from_path(&target.app_name.0, include_path);
+            buck_index
+                .includes
+                .update_mapping_from_path(&target.app_name.0, include_path);
         });
 
         if target.private_header {
             target.src_files.iter().for_each(|path: &AbsPathBuf| {
                 if Some("hrl") == path.extension() {
                     let include_path = include_path_from_file(path);
-                    buck_index.update_mapping_from_path(&target.app_name.0, include_path);
+                    buck_index
+                        .includes
+                        .update_mapping_from_path(&target.app_name.0, include_path);
                 }
             });
         }
     }
 
-    // Track target dependencies, as a check in the buck index, which is global.
-    // The app being looked up must be in the dependency relation of the app.
+    // Track target dependencies. The app being looked up must be in the
+    // dependency relation of the app.
     // Note: This step must be fast, so we do not build out the graph.
     for (target_name, target) in targets {
         let all_deps: FxHashSet<TargetFullName> = FxHashSet::from_iter(
@@ -1297,13 +1347,13 @@ fn targets_to_project_data_bxl(
                 .chain(target.extra_includes.iter())
                 .cloned(),
         );
-        buck_index.deps.insert(target_name.clone(), all_deps);
         buck_index
-            .app_names
-            .insert(target.app_name.clone(), target_name.clone());
+            .app_deps
+            .deps
+            .insert(target_name.clone(), all_deps);
         buck_index
-            .app_names_rev
-            .insert(target_name.clone(), target.app_name.clone());
+            .app_deps
+            .register_app_target(target.app_name.clone(), target_name.clone());
     }
 
     for target in targets.values() {

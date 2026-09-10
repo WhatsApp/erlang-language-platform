@@ -277,7 +277,9 @@ impl ChangeFixture {
             for app in &mut apps {
                 if let Some(ref target_name) = app.buck_target_name {
                     // Register app ↔ target mapping
-                    buck_index.register_app_target(app.name.clone(), target_name.clone());
+                    buck_index
+                        .app_deps
+                        .register_app_target(app.name.clone(), target_name.clone());
 
                     // Set applicable_files from the collected file paths
                     if let Some(paths) = app_file_paths.get(&app.name) {
@@ -299,7 +301,7 @@ impl ChangeFixture {
                             "R:{}/include/{}",
                             app.name, file_name
                         ));
-                        buck_index.insert(remote_path, hrl_path.clone());
+                        buck_index.includes.insert(remote_path, hrl_path.clone());
                     }
                 }
             }
@@ -314,7 +316,9 @@ impl ChangeFixture {
                         if let Some(dep_app) = apps.iter().find(|a| a.name == dep_app_name)
                             && let Some(ref dep_target) = dep_app.buck_target_name
                         {
-                            buck_index.add_dep(source_target.clone(), dep_target.clone());
+                            buck_index
+                                .app_deps
+                                .add_dep(source_target.clone(), dep_target.clone());
                         }
                     }
                 }

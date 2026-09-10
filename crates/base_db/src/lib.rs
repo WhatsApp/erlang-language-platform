@@ -688,7 +688,7 @@ fn module_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc<Modul
 /// `referencing_app_data`, following that application's declared dependencies.
 ///
 /// An application is always reachable from itself. OTP applications are always
-/// reachable, and reachability is transitive - both are `BuckProjectIndex::is_dep`
+/// reachable, and reachability is transitive - both are `AppDepGraph::is_dep`
 /// semantics. A project with no build-system dependency graph, or an application
 /// with no buck target, has nothing to check against and is treated as reachable.
 pub fn is_app_reachable(
@@ -709,7 +709,7 @@ pub fn is_app_reachable(
         .project_data(db)
         .buck_index
     {
-        Some(buck_index) => buck_index.is_dep(referencing_target, defining_app),
+        Some(buck_index) => buck_index.app_deps.is_dep(referencing_target, defining_app),
         None => true,
     }
 }
@@ -726,8 +726,8 @@ pub struct IncludeFileIndex {
     // This means we get candidate paths quickly, and just need to validate them.
     // Perhaps use a pre-cached version of the SourceRoot partition calcs.
     pub path_to_file_id: FxHashMap<VfsPath, FileId>,
-    /// Mapping from the raw text seen in an `-include` or
-    /// `-include_lib` directive to the associated file
+    /// The include mapping and application dependency graph derived
+    /// from the buck target graph.
     pub buck_index: Arc<BuckProjectIndex>,
 }
 
@@ -821,7 +821,7 @@ fn mapped_include_file_inner(
 ) -> Option<FileId> {
     let project_id = pid.project_id(db);
     let include_file_index = db.include_file_index(project_id);
-    let file_path = include_file_index.buck_index.get(scope, &path)?;
+    let file_path = include_file_index.buck_index.includes.get(scope, &path)?;
     include_file_index
         .path_to_file_id
         .get(&VfsPath::from(file_path.clone()))

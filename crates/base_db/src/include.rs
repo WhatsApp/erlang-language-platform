@@ -159,6 +159,7 @@ impl<'a> IncludeCtx<'a> {
         let target_app_data = db.app_data(source_root_id)?;
         if let Some(buck_index) = &project_data.buck_index {
             if let Some(p) = buck_index
+                .includes
                 .get(IncludeMappingScope::Remote, &path)
                 .map(|path| db.include_file_id(project_id, VfsPath::from(path.clone())))
             {
@@ -173,7 +174,7 @@ impl<'a> IncludeCtx<'a> {
                         .any(|d| {
                             d.buck_target_name
                                 .as_ref()
-                                .is_some_and(|t| buck_index.is_dep(t, &target))
+                                .is_some_and(|t| buck_index.app_deps.is_dep(t, &target))
                         });
 
                     if is_dep {
