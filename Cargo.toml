@@ -107,7 +107,7 @@ threadpool = "1.8.1"
 tikv-jemallocator = "0.7.0"
 time = { version = "0.3.55", features = ["formatting"] }
 timeout-readwrite = "0.3.3"
-toml = { version = "1.1.4", features = ["preserve_order"] }
+toml = { version = "1.1.6", features = ["preserve_order"] }
 tower-lsp-server = "0.22.1"
 tracing = { version = "0.1.41", features = ["attributes", "valuable"] }
 tree-sitter = "0.25.0"
