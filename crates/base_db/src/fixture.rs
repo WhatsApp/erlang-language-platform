@@ -161,6 +161,7 @@ impl ChangeFixture {
 
         // Collect per-app deps and file paths for building buck-style metadata
         let mut app_deps: FxHashMap<AppName, Vec<String>> = FxHashMap::default();
+        let mut app_distributed_deps: FxHashMap<AppName, Vec<String>> = FxHashMap::default();
         let mut app_file_paths: FxHashMap<AppName, Vec<AbsPathBuf>> = FxHashMap::default();
         let mut has_buck_metadata = false;
 
@@ -198,6 +199,12 @@ impl ChangeFixture {
                     .entry(app_name.clone())
                     .or_default()
                     .extend(entry.deps.iter().cloned());
+            }
+            if !entry.distributed_deps.is_empty() {
+                app_distributed_deps
+                    .entry(app_name.clone())
+                    .or_default()
+                    .extend(entry.distributed_deps.iter().cloned());
             }
             app_file_paths
                 .entry(app_name.clone())
@@ -320,6 +327,20 @@ impl ChangeFixture {
                                 .app_deps
                                 .add_dep(source_target.clone(), dep_target.clone());
                         }
+                    }
+                }
+            }
+
+            // Wire up distributed_dependencies, which name applications
+            // directly rather than buck targets.
+            for (app_name, dep_names) in &app_distributed_deps {
+                if let Some(app) = apps.iter().find(|a| &a.name == app_name)
+                    && let Some(ref source_target) = app.buck_target_name
+                {
+                    for dep_name in dep_names {
+                        buck_index
+                            .app_deps
+                            .add_distributed_dep(source_target.clone(), AppName(dep_name.clone()));
                     }
                 }
             }

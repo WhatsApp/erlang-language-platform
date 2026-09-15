@@ -25,6 +25,8 @@ use eetf::Term::Atom;
 use elp_log::timeit;
 use elp_log::timeit_with_telemetry;
 use elp_syntax::SmolStr;
+use elp_syntax::SourceFile;
+use elp_syntax::ast;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use indexmap::indexset;
@@ -51,6 +53,11 @@ pub type TargetFullName = String;
 
 const ERL_EXT: &str = "erl";
 const BUCK_ISOLATION_DIR: &str = "lsp";
+
+/// `extra_properties` key naming the applications a target talks to over the
+/// network. Unlike `applications` it is a runtime relation between nodes, so
+/// it carries no build-system edge and is allowed to be cyclic.
+const DISTRIBUTED_DEPENDENCIES: &str = "distributed_dependencies";
 
 #[derive(
     Debug,
@@ -227,6 +234,10 @@ pub struct AppDepGraph {
     /// Immediate dependencies only. Reachability is transitive, and is
     /// computed on demand rather than being materialised here.
     deps: FxHashMap<TargetFullName, FxHashSet<TargetFullName>>,
+    /// The `distributed_dependencies` declared by each target. Kept apart
+    /// from `deps` because they are not build-system edges: they only count
+    /// for [`DepKind::Extra`].
+    distributed_deps: FxHashMap<TargetFullName, FxHashSet<AppName>>,
     /// A buck target can have an alternative app name in case the
     /// last part of its `TargetFullName` is ambiguous.  Keep a
     /// mapping from these to the corresponding `TargetFullName`.
@@ -235,6 +246,23 @@ pub struct AppDepGraph {
     /// The OTP apps are always available as dependencies, keep track
     /// of what they are
     otp_apps: FxHashSet<AppName>,
+}
+
+/// Which dependency declarations a reachability query honours.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DepKind {
+    /// Only the dependencies that put the target's code within reach of the
+    /// referencing code: `deps`, `applications`, `included_applications` and
+    /// `extra_includes`. A call needs this so the callee's beam is loadable,
+    /// and an `include_lib` so the header is on the include path.
+    Runtime,
+    /// [`DepKind::Runtime`] plus the applications reached over the network,
+    /// declared in `distributed_dependencies` - a superset, not the network
+    /// edges on their own. A reference erased before the code is built needs
+    /// no more than this. Carrying no build edge, the network edges are
+    /// exempt from the acyclicity buck2 imposes, so this relation may be
+    /// cyclic where [`DepKind::Runtime`] cannot be.
+    Extra,
 }
 
 /// The lookup structures ELP derives from the buck target graph and
@@ -339,45 +367,50 @@ impl AppDepGraph {
         self.deps.entry(source).or_default().insert(dep);
     }
 
-    /// For each buck TargetFullName we have a set of immediate dependencies.
-    /// Check for the `source` one if the target is in the graph rooted at it.
-    /// If the target is an OTP app then it is always a dependency.
-    pub fn is_dep(&self, source: &TargetFullName, target_app: &AppName) -> bool {
+    /// Record that `source` declares `app` as a `distributed_dependency`.
+    pub fn add_distributed_dep(&mut self, source: TargetFullName, app: AppName) {
+        self.distributed_deps.entry(source).or_default().insert(app);
+    }
+
+    /// Whether the application `target_app` is reachable from the target
+    /// `source`, following the edges `kind` allows. Reachability is
+    /// transitive, and an OTP application is always reachable.
+    pub fn is_reachable(
+        &self,
+        source: &TargetFullName,
+        target_app: &AppName,
+        kind: DepKind,
+    ) -> bool {
         if self.otp_apps.contains(target_app) {
             return true;
         }
-        if let Some(target) = self.app_names.get(target_app) {
-            let mut visited = FxHashSet::default();
-            self.dfs(source, target, &mut visited)
-        } else {
-            false
-        }
-    }
-
-    fn dfs(
-        &self,
-        current: &TargetFullName,
-        target: &TargetFullName,
-        visited: &mut FxHashSet<TargetFullName>,
-    ) -> bool {
-        if current == target {
-            return true;
-        }
-
-        if visited.contains(current) {
+        let Some(target) = self.app_names.get(target_app) else {
             return false;
-        }
+        };
 
-        visited.insert(current.clone());
-
-        if let Some(deps) = self.deps.get(current) {
-            for dep in deps {
-                if self.dfs(dep, target, visited) {
-                    return true;
+        // An explicit stack rather than recursion: the `Extra` closure is
+        // largely one cycle, so its longest simple path is bounded by the
+        // number of applications rather than by the depth of a build graph.
+        let mut visited = FxHashSet::default();
+        let mut stack = vec![source];
+        while let Some(current) = stack.pop() {
+            if current == target {
+                return true;
+            }
+            if !visited.insert(current) {
+                continue;
+            }
+            if let Some(deps) = self.deps.get(current) {
+                stack.extend(deps);
+            }
+            if kind == DepKind::Extra {
+                // `distributed_dependencies` name applications rather than
+                // targets, and may name one outside the project altogether.
+                if let Some(apps) = self.distributed_deps.get(current) {
+                    stack.extend(apps.iter().filter_map(|app| self.app_names.get(app)));
                 }
             }
         }
-
         false
     }
 }
@@ -551,6 +584,23 @@ pub struct BuckTarget {
     /// to build the graph.
     #[serde(default)]
     extra_includes: Vec<TargetFullName>,
+    /// Free-form key-value pairs written verbatim into the generated `.app`
+    /// file. We consume only `distributed_dependencies` from here.
+    #[serde(default)]
+    extra_properties: Option<FxHashMap<String, ExtraProperty>>,
+}
+
+/// An `extra_properties` value, which `erlang_app` types as either a single
+/// string or a list of strings.
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[serde(untagged)]
+pub(crate) enum ExtraProperty {
+    Single(String),
+    List(Vec<String>),
+    /// Any other shape, under a key we do not read. No rule declares one
+    /// today, but without it one unreadable key would discard the whole map,
+    /// taking a valid `distributed_dependencies` sibling with it.
+    Other(serde_json::Value),
 }
 
 impl BuckTarget {
@@ -562,9 +612,66 @@ impl BuckTarget {
         }
     }
 
+    /// The applications this target declares it talks to over the network.
+    /// These are application names, not target labels.
+    fn distributed_apps(&self) -> Vec<AppName> {
+        let Some(value) = self
+            .extra_properties
+            .as_ref()
+            .and_then(|props| props.get(DISTRIBUTED_DEPENDENCIES))
+        else {
+            return vec![];
+        };
+        // `app_src_builder` renders the list spelling into the string one by
+        // joining on `,` and wrapping in brackets, so both reach the Erlang
+        // parser as the same term and cannot diverge.
+        let term = match value {
+            ExtraProperty::List(apps) => Some(Cow::Owned(format!("[{}]", apps.join(",")))),
+            ExtraProperty::Single(term) => Some(Cow::Borrowed(term.as_str())),
+            ExtraProperty::Other(_) => None,
+        };
+        term.and_then(|term| parse_atom_list(&term))
+            .unwrap_or_else(|| {
+                // Dropping a declaration we cannot read makes W0059 stricter, so
+                // say so rather than silently reinstating the false positives.
+                log::warn!(
+                    "Ignoring unreadable {DISTRIBUTED_DEPENDENCIES} on {}: {value:?}",
+                    self.name
+                );
+                vec![]
+            })
+    }
+
     fn is_generated(&self) -> bool {
         self.labels.contains("generated")
     }
+}
+
+/// Read an `extra_properties` value written as an Erlang list of atoms, e.g.
+/// `"[a, 'b-c']"`. `None` if it is anything else, which is the one shape we
+/// cannot read.
+///
+/// The Erlang parser decides what an atom is, so quoting and escaping follow
+/// the language rather than an approximation of it: `'a,b'` is one atom, and
+/// `"a"` is a string and therefore not an application name.
+fn parse_atom_list(term: &str) -> Option<Vec<AppName>> {
+    let parse = SourceFile::parse_text(term);
+    if !parse.errors().is_empty() {
+        return None;
+    }
+    let mut exprs = parse.tree().exprs();
+    let ast::Expr::ExprMax(ast::ExprMax::List(list)) = exprs.next()? else {
+        return None;
+    };
+    if exprs.next().is_some() {
+        return None;
+    }
+    list.exprs()
+        .map(|expr| match expr {
+            ast::Expr::ExprMax(ast::ExprMax::Atom(atom)) => atom.text().map(AppName),
+            _ => None,
+        })
+        .collect()
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -632,6 +739,8 @@ pub struct BuckTargetBare {
     #[serde(default)]
     extra_includes: Vec<String>,
     #[serde(default)]
+    extra_properties: serde_json::Value,
+    #[serde(default)]
     included_applications: Vec<String>,
     #[serde(default)]
     includes: Vec<String>,
@@ -666,6 +775,14 @@ impl BuckTargetBare {
         let labels = Self::json_value_to_strings(&bare.labels)
             .into_iter()
             .collect();
+        let extra_properties = serde_json::from_value(bare.extra_properties)
+            .inspect_err(|err| {
+                log::warn!(
+                    "Ignoring unreadable extra_properties on {}: {err}",
+                    bare.name
+                )
+            })
+            .unwrap_or_default();
         BuckTarget {
             name: bare.name,
             app_name: bare.app_name,
@@ -686,6 +803,7 @@ impl BuckTargetBare {
                         .to_string()
                 })
                 .collect::<Vec<_>>(),
+            extra_properties,
         }
     }
 
@@ -725,6 +843,9 @@ pub struct Target {
     pub apps: Vec<TargetFullName>,
     pub included_apps: Vec<TargetFullName>,
     pub extra_includes: Vec<TargetFullName>,
+    /// Applications named in the `distributed_dependencies` entry of the
+    /// target's `extra_properties`.
+    pub distributed_apps: Vec<AppName>,
     pub ebin: Option<AbsPathBuf>,
     pub target_type: TargetType,
     /// true if there are .hrl files in the src dir
@@ -907,6 +1028,7 @@ fn make_buck_target(
         apps: target.apps.clone(),
         included_apps: target.included_apps.clone(),
         extra_includes: target.extra_includes.clone(),
+        distributed_apps: target.distributed_apps(),
         ebin,
         target_type,
         private_header,
@@ -1351,6 +1473,11 @@ fn targets_to_project_data_bxl(
             .app_deps
             .deps
             .insert(target_name.clone(), all_deps);
+        for app in &target.distributed_apps {
+            buck_index
+                .app_deps
+                .add_distributed_dep(target_name.clone(), app.clone());
+        }
         buck_index
             .app_deps
             .register_app_target(target.app_name.clone(), target_name.clone());
@@ -1509,17 +1636,222 @@ mod tests {
 
     use super::BUCK_CELL_INFO;
     use super::BuckCellInfo;
+    use crate::AppName;
+    use crate::buck::AppDepGraph;
     use crate::buck::BuckQueryError;
     use crate::buck::BuckTarget;
     use crate::buck::BuckTargetBare;
+    use crate::buck::DepKind;
     use crate::buck::buck_path_to_abs_path;
     use crate::buck::find_app_root_bxl;
+    use crate::buck::parse_atom_list;
     use crate::temp_dir::TempDir;
     use crate::test_fixture::FixtureWithProjectMeta;
     use crate::to_abs_path_buf;
 
     fn as_absolute_string(dir: &TempDir, path: &str) -> String {
         dir.path().join(path).to_string_lossy().to_string()
+    }
+
+    /// `apps` gives, per application, its buck dependencies and its
+    /// `distributed_dependencies`, both as application names.
+    fn app_dep_graph(apps: &[(&str, &[&str], &[&str])]) -> AppDepGraph {
+        let target_of = |app: &str| format!("cell//{app}:{app}");
+        let mut mapping = AppDepGraph::default();
+        for (app, _, _) in apps {
+            mapping.register_app_target(AppName(app.to_string()), target_of(app));
+        }
+        for (app, deps, distributed_deps) in apps {
+            for dep in *deps {
+                mapping.add_dep(target_of(app), target_of(dep));
+            }
+            for dep in *distributed_deps {
+                mapping.add_distributed_dep(target_of(app), AppName(dep.to_string()));
+            }
+        }
+        mapping
+    }
+
+    #[test]
+    fn distributed_deps_are_ignored_by_the_runtime_relation() {
+        let mapping = app_dep_graph(&[("app_a", &[], &["app_b"]), ("app_b", &[], &[])]);
+        let app_a = "cell//app_a:app_a".to_string();
+        let app_b = AppName("app_b".to_string());
+        assert!(!mapping.is_reachable(&app_a, &app_b, DepKind::Runtime));
+        assert!(mapping.is_reachable(&app_a, &app_b, DepKind::Extra));
+    }
+
+    #[test]
+    fn distributed_deps_are_followed_transitively_for_types() {
+        // app_a -> app_b (buck) -> app_c (distributed) -> app_d (distributed)
+        // -> app_e (buck). Chains of distributed deps are followed too: the
+        // relation is the transitive closure, not a single extra hop.
+        let mapping = app_dep_graph(&[
+            ("app_a", &["app_b"], &[]),
+            ("app_b", &[], &["app_c"]),
+            ("app_c", &[], &["app_d"]),
+            ("app_d", &["app_e"], &[]),
+            ("app_e", &[], &[]),
+        ]);
+        let app_a = "cell//app_a:app_a".to_string();
+        for app in ["app_c", "app_d", "app_e"] {
+            let app = AppName(app.to_string());
+            assert!(
+                !mapping.is_reachable(&app_a, &app, DepKind::Runtime),
+                "{app:?} is not a buck dep"
+            );
+            assert!(mapping.is_reachable(&app_a, &app, DepKind::Extra));
+        }
+    }
+
+    #[test]
+    fn cyclic_distributed_deps_terminate() {
+        // A cycle that `applications` could not express, since buck2 rejects
+        // target cycles.
+        let mapping = app_dep_graph(&[
+            ("app_a", &[], &["app_b"]),
+            ("app_b", &[], &["app_a"]),
+            ("app_c", &[], &[]),
+        ]);
+        let app_a = "cell//app_a:app_a".to_string();
+        assert!(mapping.is_reachable(&app_a, &AppName("app_b".to_string()), DepKind::Extra));
+        assert!(!mapping.is_reachable(&app_a, &AppName("app_c".to_string()), DepKind::Extra));
+    }
+
+    #[test]
+    fn distributed_dep_on_app_outside_the_project_is_ignored() {
+        let mapping = app_dep_graph(&[("app_a", &[], &["not_a_project_app"])]);
+        let app_a = "cell//app_a:app_a".to_string();
+        assert!(!mapping.is_reachable(
+            &app_a,
+            &AppName("not_a_project_app".to_string()),
+            DepKind::Extra
+        ));
+    }
+
+    #[test]
+    fn distributed_dependencies_extra_property_is_read() {
+        // `extra_properties` reaches us as free-form JSON, and buck2 allows
+        // the value to be a bare string as well as a list.
+        let target: BuckTarget = serde_json::from_str(
+            r#"{
+                 "name": "app_a",
+                 "extra_properties": {
+                   "distributed_dependencies": ["app_b", "app_c"],
+                   "build_type": "release"
+                 }
+               }"#,
+        )
+        .unwrap();
+        assert_eq_expected!(
+            vec![AppName("app_b".to_string()), AppName("app_c".to_string())],
+            target.distributed_apps()
+        );
+
+        // The string spelling means the same thing as the list one, since
+        // `app_src_builder` renders the list into exactly this shape.
+        let raw_term: BuckTarget = serde_json::from_str(
+            r#"{"name": "app_a", "extra_properties": {"distributed_dependencies": "[app_b, 'app-c']"}}"#,
+        )
+        .unwrap();
+        assert_eq_expected!(
+            vec![AppName("app_b".to_string()), AppName("app-c".to_string())],
+            raw_term.distributed_apps()
+        );
+
+        // Declaring nothing is readable, however it is spelled, so none of
+        // these is a value we failed to read.
+        for empty in ["[]", "[ ]"] {
+            assert_eq_expected!(Some(Vec::<AppName>::new()), parse_atom_list(empty));
+        }
+        for empty in [r#""[]""#, r#""[ ]""#, "[]", r#"[""]"#, r#"[" "]"#] {
+            let target: BuckTarget = serde_json::from_str(&format!(
+                r#"{{"name": "app_a", "extra_properties": {{"distributed_dependencies": {empty}}}}}"#
+            ))
+            .unwrap();
+            assert_eq_expected!(Vec::<AppName>::new(), target.distributed_apps());
+        }
+
+        // Anything that is not a bracketed list is not an application list,
+        // and unlike the cases above it is unreadable rather than empty.
+        let not_a_list: BuckTarget = serde_json::from_str(
+            r#"{"name": "app_a", "extra_properties": {"distributed_dependencies": "chatd"}}"#,
+        )
+        .unwrap();
+        assert_eq_expected!(Vec::<AppName>::new(), not_a_list.distributed_apps());
+        assert!(parse_atom_list("chatd").is_none());
+
+        // Quoting, whitespace and commas survive into a list element, because
+        // `app_src_builder` joins the list into the string spelling before
+        // parsing it. Both must name the same applications.
+        let quoted_list: BuckTarget = serde_json::from_str(
+            r#"{"name": "app_a", "extra_properties": {"distributed_dependencies": ["'app-c'", " app_b, app_d "]}}"#,
+        )
+        .unwrap();
+        assert_eq_expected!(
+            vec![
+                AppName("app-c".to_string()),
+                AppName("app_b".to_string()),
+                AppName("app_d".to_string())
+            ],
+            quoted_list.distributed_apps()
+        );
+        let quoted_string: BuckTarget = serde_json::from_str(
+            r#"{"name": "app_a", "extra_properties": {"distributed_dependencies": "['app-c', app_b, app_d]"}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            quoted_list.distributed_apps(),
+            quoted_string.distributed_apps(),
+            "the list and string spellings must normalise the same way"
+        );
+
+        // Erlang decides what an atom is, so a quoted atom may contain the
+        // separator and an unterminated quote is a syntax error rather than a
+        // name we invent. A double-quoted entry is a string, not an atom.
+        assert_eq_expected!(
+            Some(vec![AppName("a,b".to_string())]),
+            parse_atom_list("['a,b']")
+        );
+        for malformed in ["['app_b]", "[,]", r#"["app_b"]"#] {
+            assert_eq_expected!(None, parse_atom_list(malformed));
+        }
+
+        // An unreadable sibling key must not discard the one we do read.
+        let other: BuckTarget = serde_json::from_str(
+            r#"{"name": "app_a", "extra_properties": {"unrelated": 1, "distributed_dependencies": ["app_b"]}}"#,
+        )
+        .unwrap();
+        assert_eq_expected!(vec![AppName("app_b".to_string())], other.distributed_apps());
+
+        let absent: BuckTarget = serde_json::from_str(r#"{"name": "app_a"}"#).unwrap();
+        assert_eq_expected!(Vec::<AppName>::new(), absent.distributed_apps());
+
+        let null: BuckTarget =
+            serde_json::from_str(r#"{"name": "app_a", "extra_properties": null}"#).unwrap();
+        assert_eq_expected!(Vec::<AppName>::new(), null.distributed_apps());
+    }
+
+    #[test]
+    fn extra_properties_of_an_unexpected_shape_does_not_fail_the_query() {
+        // `BuckTargetBare` is deserialized for every target the query returns,
+        // before the unwanted target types are filtered out, so a rule outside
+        // the prelude declaring an `extra_properties` of another type would
+        // otherwise abort the whole project load rather than drop one target.
+        let bare: BuckTargetBare = serde_json::from_str(
+            r#"{
+                 "name": "app_a",
+                 "buck.package": "cell//linter",
+                 "buck.type": "prelude//rules.bzl:erlang_app",
+                 "extra_properties": ["not_a_dict"]
+               }"#,
+        )
+        .unwrap();
+        let cells = BuckCellInfo {
+            cells: FxHashMap::default(),
+        };
+        let target = BuckTargetBare::as_buck_target(bare, &cells);
+        assert_eq_expected!(Vec::<AppName>::new(), target.distributed_apps());
     }
 
     #[test]
@@ -1547,6 +1879,7 @@ mod tests {
             apps: vec![],
             included_apps: vec![],
             extra_includes: vec![],
+            extra_properties: None,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1579,6 +1912,7 @@ mod tests {
             apps: vec![],
             included_apps: vec![],
             extra_includes: vec![],
+            extra_properties: None,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1611,6 +1945,7 @@ mod tests {
             apps: vec![],
             included_apps: vec![],
             extra_includes: vec![],
+            extra_properties: None,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1647,6 +1982,7 @@ mod tests {
             apps: vec![],
             included_apps: vec![],
             extra_includes: vec![],
+            extra_properties: None,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1680,6 +2016,7 @@ mod tests {
             apps: vec![],
             included_apps: vec![],
             extra_includes: vec![],
+            extra_properties: None,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1713,6 +2050,7 @@ mod tests {
             apps: vec![],
             included_apps: vec![],
             extra_includes: vec![],
+            extra_properties: None,
         };
 
         let actual = find_app_root_bxl(root, &target_name, &target);
@@ -1917,6 +2255,7 @@ mod tests {
                     applications: Array [],
                     deps: Null,
                     extra_includes: [],
+                    extra_properties: Null,
                     included_applications: [],
                     includes: [
                         "cell//linter/app_a/include/app_a.hrl",
@@ -1982,6 +2321,7 @@ mod tests {
                     apps: [],
                     included_apps: [],
                     extra_includes: [],
+                    extra_properties: None,
                 },
             ]
         "#]]

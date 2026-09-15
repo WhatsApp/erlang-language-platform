@@ -11,6 +11,7 @@
 use std::sync::Arc;
 
 use elp_project_model::AppName;
+use elp_project_model::buck::DepKind;
 use elp_project_model::buck::IncludeMappingScope;
 use elp_syntax::SmolStr;
 use vfs::FileId;
@@ -172,9 +173,11 @@ impl<'a> IncludeCtx<'a> {
                         .iter()
                         .filter_map(|d| d.as_ref())
                         .any(|d| {
-                            d.buck_target_name
-                                .as_ref()
-                                .is_some_and(|t| buck_index.app_deps.is_dep(t, &target))
+                            d.buck_target_name.as_ref().is_some_and(|t| {
+                                buck_index
+                                    .app_deps
+                                    .is_reachable(t, &target, DepKind::Runtime)
+                            })
                         });
 
                     if is_dep {

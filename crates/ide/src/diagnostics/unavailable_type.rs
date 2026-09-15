@@ -19,8 +19,11 @@
 use std::borrow::Cow;
 
 use elp_ide_db::elp_base_db::AppData;
+use elp_ide_db::elp_base_db::DepKind;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::is_app_reachable;
+use elp_project_model::AppName;
+use fxhash::FxHashMap;
 use hir::AnyExpr;
 use hir::Callback;
 use hir::InFile;
@@ -77,58 +80,37 @@ impl GenericLinter for UnavailableTypeLinter {
         // Extract target once here - if not available, can't create diagnostics anyway
         let referencing_target = referencing_app_data.buck_target_name.as_ref()?;
 
-        let mut res = Vec::new();
+        let mut checker = Checker {
+            matches: Vec::new(),
+            sema,
+            file_id,
+            referencing_app_data: &referencing_app_data,
+            referencing_target,
+            reachable: FxHashMap::default(),
+        };
         let form_list = sema.form_list(file_id);
 
         // Check -spec attributes
         for (spec_id, _spec) in form_list.specs() {
-            check_spec(
-                &mut res,
-                sema,
-                file_id,
-                &referencing_app_data,
-                referencing_target,
-                spec_id,
-            );
+            checker.check_spec(spec_id);
         }
 
         // Check -type and -opaque attributes
         for (type_alias_id, _type_alias) in form_list.type_aliases() {
-            check_type_alias(
-                &mut res,
-                sema,
-                file_id,
-                &referencing_app_data,
-                referencing_target,
-                type_alias_id,
-            );
+            checker.check_type_alias(type_alias_id);
         }
 
         // Check -callback attributes
         for (callback_id, _callback) in form_list.callback_attributes() {
-            check_callback(
-                &mut res,
-                sema,
-                file_id,
-                &referencing_app_data,
-                referencing_target,
-                callback_id,
-            );
+            checker.check_callback(callback_id);
         }
 
         // Check -record attributes
         for (record_id, _record) in form_list.records() {
-            check_record(
-                &mut res,
-                sema,
-                file_id,
-                &referencing_app_data,
-                referencing_target,
-                record_id,
-            );
+            checker.check_record(record_id);
         }
 
-        Some(res)
+        Some(checker.matches)
     }
 
     fn match_description(&self, context: &Self::Context) -> Cow<'_, str> {
@@ -144,168 +126,269 @@ impl GenericLinter for UnavailableTypeLinter {
 
 pub static LINTER: UnavailableTypeLinter = UnavailableTypeLinter;
 
-fn check_spec(
-    matches: &mut Vec<GenericLinterMatchContext<Context>>,
-    sema: &Semantic,
+struct Checker<'a, 'db> {
+    matches: Vec<GenericLinterMatchContext<Context>>,
+    sema: &'a Semantic<'db>,
     file_id: FileId,
-    referencing_app_data: &AppData,
-    referencing_target: &String,
-    spec_id: hir::SpecId,
-) {
-    let spec_id = InFile::new(file_id, spec_id);
-    let spec_body = sema.db.spec_body(spec_id);
-
-    Spec::fold(
-        sema,
-        Strategy {
-            macros: MacroStrategy::Expand,
-            parens: ParenStrategy::InvisibleParens,
-        },
-        spec_id,
-        (),
-        &mut |_acc, ctx| {
-            check_type_call(
-                matches,
-                sema,
-                file_id,
-                referencing_app_data,
-                referencing_target,
-                &ctx,
-                &spec_body.body,
-            );
-        },
-    );
+    referencing_app_data: &'a AppData,
+    referencing_target: &'a String,
+    /// One reachability query per defining application rather than one per
+    /// reference. The source target and the [`DepKind`] are fixed for the
+    /// file, so every reference into the same application asks the same
+    /// question, and answering it walks the whole dependency closure.
+    reachable: FxHashMap<AppName, bool>,
 }
 
-fn check_type_alias(
-    matches: &mut Vec<GenericLinterMatchContext<Context>>,
-    sema: &Semantic,
-    file_id: FileId,
-    referencing_app_data: &AppData,
-    referencing_target: &String,
-    type_alias_id: hir::TypeAliasId,
-) {
-    let type_alias_id = InFile::new(file_id, type_alias_id);
-    let type_body = sema.db.type_body(type_alias_id);
+impl Checker<'_, '_> {
+    fn check_spec(&mut self, spec_id: hir::SpecId) {
+        let sema = self.sema;
+        let spec_id = InFile::new(self.file_id, spec_id);
 
-    TypeAlias::fold(
-        sema,
-        Strategy {
-            macros: MacroStrategy::Expand,
-            parens: ParenStrategy::InvisibleParens,
-        },
-        type_alias_id,
-        (),
-        &mut |_acc, ctx| {
-            check_type_call(
-                matches,
-                sema,
-                file_id,
-                referencing_app_data,
-                referencing_target,
-                &ctx,
-                &type_body.body,
-            );
-        },
-    );
-}
-
-fn check_callback(
-    matches: &mut Vec<GenericLinterMatchContext<Context>>,
-    sema: &Semantic,
-    file_id: FileId,
-    referencing_app_data: &AppData,
-    referencing_target: &String,
-    callback_id: hir::CallbackId,
-) {
-    let callback_id = InFile::new(file_id, callback_id);
-    let callback_body = sema.db.callback_body(callback_id);
-
-    Callback::fold(
-        sema,
-        Strategy {
-            macros: MacroStrategy::Expand,
-            parens: ParenStrategy::InvisibleParens,
-        },
-        callback_id,
-        (),
-        &mut |_acc, ctx| {
-            check_type_call(
-                matches,
-                sema,
-                file_id,
-                referencing_app_data,
-                referencing_target,
-                &ctx,
-                &callback_body.body,
-            );
-        },
-    );
-}
-
-fn check_record(
-    matches: &mut Vec<GenericLinterMatchContext<Context>>,
-    sema: &Semantic,
-    file_id: FileId,
-    referencing_app_data: &AppData,
-    referencing_target: &String,
-    record_id: hir::RecordId,
-) {
-    let record_id = InFile::new(file_id, record_id);
-    let record_body = sema.db.record_body(record_id);
-
-    Record::fold(
-        sema,
-        Strategy {
-            macros: MacroStrategy::Expand,
-            parens: ParenStrategy::InvisibleParens,
-        },
-        record_id,
-        (),
-        &mut |_acc, ctx| {
-            check_type_call(
-                matches,
-                sema,
-                file_id,
-                referencing_app_data,
-                referencing_target,
-                &ctx,
-                &record_body.body,
-            );
-        },
-    );
-}
-
-fn check_type_call(
-    matches: &mut Vec<GenericLinterMatchContext<Context>>,
-    sema: &Semantic,
-    file_id: FileId,
-    referencing_app_data: &AppData,
-    referencing_target: &String,
-    ctx: &hir::fold::AnyCallBackCtx<'_>,
-    body: &hir::Body,
-) -> Option<()> {
-    if let AnyExpr::TypeExpr(TypeExpr::Call { target, args }) = &ctx.item {
-        let arity = args.len() as u32;
-        let target_label = target.label(arity, body)?;
-        let target_range = target.range(sema, body)?;
-        let type_alias_def = target.resolve_call(arity, sema, file_id, body)?;
-        let defining_file_id = type_alias_def.file.file_id;
-        let defining_app_data = sema.db.file_app_data(defining_file_id)?;
-        let defining_app_name = &defining_app_data.name;
-        let referencing_app_name = &referencing_app_data.name;
-
-        if !is_app_reachable(sema.db.upcast(), referencing_app_data, defining_app_name) {
-            matches.push(GenericLinterMatchContext {
-                range: target_range,
-                context: Context {
-                    type_label: target_label.to_string(),
-                    defining_app: defining_app_name.to_string(),
-                    referencing_app: referencing_app_name.to_string(),
-                    referencing_target: referencing_target.to_string(),
-                },
-            });
-        }
+        Spec::fold(
+            sema,
+            Strategy {
+                macros: MacroStrategy::Expand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            spec_id,
+            (),
+            &mut |_acc, ctx| {
+                self.check_type_call(&ctx);
+            },
+        );
     }
-    Some(())
+
+    fn check_type_alias(&mut self, type_alias_id: hir::TypeAliasId) {
+        let sema = self.sema;
+        let type_alias_id = InFile::new(self.file_id, type_alias_id);
+
+        TypeAlias::fold(
+            sema,
+            Strategy {
+                macros: MacroStrategy::Expand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            type_alias_id,
+            (),
+            &mut |_acc, ctx| {
+                self.check_type_call(&ctx);
+            },
+        );
+    }
+
+    fn check_callback(&mut self, callback_id: hir::CallbackId) {
+        let sema = self.sema;
+        let callback_id = InFile::new(self.file_id, callback_id);
+
+        Callback::fold(
+            sema,
+            Strategy {
+                macros: MacroStrategy::Expand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            callback_id,
+            (),
+            &mut |_acc, ctx| {
+                self.check_type_call(&ctx);
+            },
+        );
+    }
+
+    fn check_record(&mut self, record_id: hir::RecordId) {
+        let sema = self.sema;
+        let record_id = InFile::new(self.file_id, record_id);
+
+        Record::fold(
+            sema,
+            Strategy {
+                macros: MacroStrategy::Expand,
+                parens: ParenStrategy::InvisibleParens,
+            },
+            record_id,
+            (),
+            &mut |_acc, ctx| {
+                self.check_type_call(&ctx);
+            },
+        );
+    }
+
+    fn check_type_call(&mut self, ctx: &hir::fold::AnyCallBackCtx<'_>) -> Option<()> {
+        if let AnyExpr::TypeExpr(TypeExpr::Call { target, args }) = &ctx.item {
+            let body = &ctx.body_origin.get_body(self.sema)?;
+            let arity = args.len() as u32;
+            let target_label = target.label(arity, body)?;
+            let target_range = target.range(self.sema, body)?;
+            let type_alias_def = target.resolve_call(arity, self.sema, self.file_id, body)?;
+            let defining_file_id = type_alias_def.file.file_id;
+            let defining_app_data = self.sema.db.file_app_data(defining_file_id)?;
+            let defining_app_name = &defining_app_data.name;
+
+            if !self.is_reachable(defining_app_name) {
+                self.matches.push(GenericLinterMatchContext {
+                    range: target_range,
+                    context: Context {
+                        type_label: target_label.to_string(),
+                        defining_app: defining_app_name.to_string(),
+                        referencing_app: self.referencing_app_data.name.to_string(),
+                        referencing_target: self.referencing_target.to_string(),
+                    },
+                });
+            }
+        }
+        Some(())
+    }
+
+    fn is_reachable(&mut self, defining_app: &AppName) -> bool {
+        if let Some(reachable) = self.reachable.get(defining_app) {
+            return *reachable;
+        }
+        // A type reference is erased at compile time, so nothing has to be
+        // within reach of this code: an application talked to over the
+        // network is close enough.
+        let reachable = is_app_reachable(
+            self.sema.db.upcast(),
+            self.referencing_app_data,
+            defining_app,
+            DepKind::Extra,
+        );
+        self.reachable.insert(defining_app.clone(), reachable);
+        reachable
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::DiagnosticsConfig;
+    use crate::diagnostics::DiagnosticCode;
+    use crate::tests::check_diagnostics_with_config;
+
+    pub(crate) fn check_diagnostics(fixture: &str) {
+        let config = DiagnosticsConfig::default().enable(DiagnosticCode::UnavailableType);
+        check_diagnostics_with_config(config, fixture)
+    }
+
+    #[test]
+    fn type_from_declared_dep_is_ok() {
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib deps:app_b
+  -module(main).
+  -spec main() -> app_b:t().
+  main() -> ok.
+//- /app_b/src/app_b.erl app:app_b buck_target:cell//app_b:lib
+  -module(app_b).
+  -type t() :: ok.
+  -export_type([t/0]).
+            "#,
+        )
+    }
+
+    #[test]
+    fn type_from_undeclared_dep_is_reported() {
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib
+  -module(main).
+  -spec main() -> app_b:t().
+%%                ^^^^^^^ warning: W0059: The type 'app_b:t/0' is defined in application 'app_b', but the application is not a dependency of 'app_a' (defined in 'cell//app_a:lib').
+%%                      | 💡 <suppression>
+  main() -> ok.
+//- /app_b/src/app_b.erl app:app_b buck_target:cell//app_b:lib
+  -module(app_b).
+  -type t() :: ok.
+  -export_type([t/0]).
+            "#,
+        )
+    }
+
+    #[test]
+    fn type_from_distributed_dep_is_ok() {
+        // `app_b` runs on another node, so no build-time dependency can
+        // exist, but the spec that mentions its type is erased anyway.
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib distributed_deps:app_b
+  -module(main).
+  -spec main() -> app_b:t().
+  main() -> ok.
+//- /app_b/src/app_b.erl app:app_b buck_target:cell//app_b:lib
+  -module(app_b).
+  -type t() :: ok.
+  -export_type([t/0]).
+            "#,
+        )
+    }
+
+    #[test]
+    fn type_from_distributed_dep_of_a_dep_is_ok() {
+        // The `foo_api` / `foo` split: `app_a` depends on the API app, which
+        // is the one declaring the cross-node relationship to `app_c`.
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib deps:app_b
+  -module(main).
+  -spec main() -> app_c:t().
+  main() -> ok.
+//- /app_b/src/app_b.erl app:app_b buck_target:cell//app_b:lib distributed_deps:app_c
+  -module(app_b).
+//- /app_c/src/app_c.erl app:app_c buck_target:cell//app_c:lib
+  -module(app_c).
+  -type t() :: ok.
+  -export_type([t/0]).
+            "#,
+        )
+    }
+
+    #[test]
+    fn cyclic_distributed_deps_terminate() {
+        // Unlike `applications`, this relation is allowed to be cyclic.
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib distributed_deps:app_b
+  -module(main).
+  -spec main() -> app_b:t().
+  main() -> ok.
+//- /app_b/src/app_b.erl app:app_b buck_target:cell//app_b:lib distributed_deps:app_a
+  -module(app_b).
+  -type t() :: ok.
+  -export_type([t/0]).
+            "#,
+        )
+    }
+
+    #[test]
+    fn distributed_dep_on_unknown_app_is_ignored() {
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib distributed_deps:not_a_project_app
+  -module(main).
+  -spec main() -> app_b:t().
+%%                ^^^^^^^ warning: W0059: The type 'app_b:t/0' is defined in application 'app_b', but the application is not a dependency of 'app_a' (defined in 'cell//app_a:lib').
+%%                      | 💡 <suppression>
+  main() -> ok.
+//- /app_b/src/app_b.erl app:app_b buck_target:cell//app_b:lib
+  -module(app_b).
+  -type t() :: ok.
+  -export_type([t/0]).
+            "#,
+        )
+    }
+
+    #[test]
+    fn non_buck_project_is_not_reported() {
+        // Without buck metadata there is no dependency graph to check against.
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+  -module(main).
+  -spec main() -> dependency:t().
+  main() -> ok.
+//- /src/dependency.erl
+  -module(dependency).
+  -type t() :: ok.
+  -export_type([t/0]).
+            "#,
+        )
+    }
 }

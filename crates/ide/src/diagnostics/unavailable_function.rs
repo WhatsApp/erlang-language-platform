@@ -23,6 +23,7 @@
 
 use std::borrow::Cow;
 
+use elp_ide_db::elp_base_db::DepKind;
 use elp_ide_db::elp_base_db::is_app_reachable;
 
 use super::DiagnosticCode;
@@ -103,7 +104,14 @@ impl FunctionCallLinter for UnavailableFunctionLinter {
         let referencing_app = &referencing_app_data.name;
         let defining_app = &defining_app_data.name;
 
-        if is_app_reachable(sema.db.upcast(), &referencing_app_data, defining_app) {
+        // A call is a runtime edge, so the callee's beam must be loadable in
+        // this VM: an application only reached over the network will not do.
+        if is_app_reachable(
+            sema.db.upcast(),
+            &referencing_app_data,
+            defining_app,
+            DepKind::Runtime,
+        ) {
             return None;
         }
 
@@ -166,6 +174,26 @@ mod tests {
   exists() -> ok.
 //- /app_c/src/app_c.erl app:app_c buck_target:cell//app_c:lib
   -module(app_c).
+  -compile(export_all).
+  exists() -> ok.
+            "#,
+        )
+    }
+
+    #[test]
+    fn call_into_distributed_dep_is_reported() {
+        // A `distributed_dependency` relaxes `unavailable_type` (W0059), but
+        // not this one: a call still has to find the beam in this VM.
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib distributed_deps:app_b
+  -module(main).
+  main() ->
+    app_b:exists().
+%%  ^^^^^^^^^^^^ warning: W0085: The function 'app_b:exists/0' is defined in application 'app_b', but the application is not a dependency of 'app_a' (defined in 'cell//app_a:lib').
+%%             | 💡 <suppression>
+//- /app_b/src/app_b.erl app:app_b buck_target:cell//app_b:lib
+  -module(app_b).
   -compile(export_all).
   exists() -> ok.
             "#,

@@ -44,6 +44,7 @@ pub mod test_utils;
 pub use change::Change;
 pub use eetf;
 pub use elp_project_model::AppType;
+pub use elp_project_model::buck::DepKind;
 pub use elp_project_model::otp::Otp;
 pub use elp_project_model::test_fixture::CURSOR_MARKER;
 pub use elp_project_model::test_fixture::RangeOrOffset;
@@ -685,16 +686,19 @@ fn module_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc<Modul
 }
 
 /// Whether `defining_app` is reachable from the application described by
-/// `referencing_app_data`, following that application's declared dependencies.
+/// `referencing_app_data`, following the edges `dep_kind` allows - see
+/// [`DepKind`], which is what decides whether `distributed_dependencies` count.
 ///
 /// An application is always reachable from itself. OTP applications are always
-/// reachable, and reachability is transitive - both are `AppDepGraph::is_dep`
-/// semantics. A project with no build-system dependency graph, or an application
-/// with no buck target, has nothing to check against and is treated as reachable.
+/// reachable, and reachability is transitive - both are
+/// `AppDepGraph::is_reachable` semantics, for either `dep_kind`. A project with
+/// no build-system dependency graph, or an application with no buck target, has
+/// nothing to check against and is treated as reachable.
 pub fn is_app_reachable(
     db: &dyn RootQueryDb,
     referencing_app_data: &AppData,
     defining_app: &AppName,
+    dep_kind: DepKind,
 ) -> bool {
     if &referencing_app_data.name == defining_app {
         return true;
@@ -709,7 +713,11 @@ pub fn is_app_reachable(
         .project_data(db)
         .buck_index
     {
-        Some(buck_index) => buck_index.app_deps.is_dep(referencing_target, defining_app),
+        Some(buck_index) => {
+            buck_index
+                .app_deps
+                .is_reachable(referencing_target, defining_app, dep_kind)
+        }
         None => true,
     }
 }

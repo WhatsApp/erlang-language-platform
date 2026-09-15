@@ -116,6 +116,8 @@ pub struct Fixture {
     pub macros: Vec<String>,
     /// App names that this file's app depends on (for buck-style dependency checking).
     pub deps: Vec<String>,
+    /// App names that this file's app declares as `distributed_dependencies`.
+    pub distributed_deps: Vec<String>,
     /// When set, places this file into the named app's SourceRoot/FileSet
     /// instead of its own app's. This models the buck scenario where
     /// lib + test targets share the same directory (== source root).
@@ -343,6 +345,7 @@ impl FixtureWithProjectMeta {
         let mut macros = Vec::new();
         let mut buck_target = None;
         let mut deps = Vec::new();
+        let mut distributed_deps = Vec::new();
         let mut src_app = None;
 
         for component in components[1..].iter() {
@@ -373,25 +376,15 @@ impl FixtureWithProjectMeta {
                 }
                 "macros" => {
                     // Parse format like "[A,B,C]" or "[]"
-                    let value = value.trim_start_matches('[').trim_end_matches(']');
-                    for macro_name in value.split(',') {
-                        let name = macro_name.trim();
-                        if !name.is_empty() {
-                            macros.push(name.to_string());
-                        }
-                    }
+                    macros.extend(parse_comma_list(
+                        value.trim_start_matches('[').trim_end_matches(']'),
+                    ));
                 }
                 "buck_target" => {
                     buck_target = Some(value.to_string());
                 }
-                "deps" => {
-                    for dep in value.split(',') {
-                        let dep = dep.trim();
-                        if !dep.is_empty() {
-                            deps.push(dep.to_string());
-                        }
-                    }
-                }
+                "deps" => deps.extend(parse_comma_list(value)),
+                "distributed_deps" => distributed_deps.extend(parse_comma_list(value)),
                 "src_app" => {
                     src_app = Some(value.to_string());
                 }
@@ -436,9 +429,20 @@ impl FixtureWithProjectMeta {
             marker_pos: None,
             macros,
             deps,
+            distributed_deps,
             src_app,
         }
     }
+}
+
+/// Splits a meta-line value such as `a, b, c` into its non-empty items.
+fn parse_comma_list(value: &str) -> Vec<String> {
+    value
+        .split(',')
+        .map(str::trim)
+        .filter(|item| !item.is_empty())
+        .map(String::from)
+        .collect()
 }
 
 /// Extracts ranges, marked with `<tag> </tag>` pairs from the `text`
