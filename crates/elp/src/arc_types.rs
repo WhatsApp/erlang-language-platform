@@ -186,4 +186,9 @@ impl Diagnostic {
     pub fn severity(&self) -> &Severity {
         &self.severity
     }
+
+    /// Documentation URL carried by lint diagnostics, when present.
+    pub fn doc_path(&self) -> Option<&str> {
+        self.doc_path.as_deref().filter(|path| !path.is_empty())
+    }
 }

@@ -816,7 +816,7 @@ fn handle_connection(
     if let Some(json) = line.strip_prefix("lint ") {
         let done = match serde_json::from_str::<Lint>(json) {
             Ok(mut lint_args) => {
-                lint_args.format = Some(Format::Json);
+                lint_args.format = Some(Format::Daemon);
                 match lint_cli::do_lint(&lint_args, &state.lint_config, &mut state.loaded, &mut cli)
                 {
                     Ok(()) => DoneMessage::ok(),
@@ -900,7 +900,6 @@ fn connect_and_run(
     profile: &str,
     rebar: bool,
     format_json: bool,
-    pretty_snippets: bool,
     cli: &mut dyn Cli,
 ) -> Result<()> {
     let conf = DiscoverConfig::new(rebar, profile);
@@ -951,7 +950,7 @@ fn connect_and_run(
     // Read response lines
     let reader = BufReader::new(&stream);
     let mut exit_code = 0;
-    let mut diagnostic_count: usize = 0;
+    let mut error_count: usize = 0;
     for line in reader.lines() {
         let line = line?;
         // Try to detect done message first (small JSON with "type" field)
@@ -978,15 +977,7 @@ fn connect_and_run(
                 }
                 cleanup_stale_in_dir(&dir);
                 // Start new daemon and retry the command
-                return connect_and_run(
-                    command_line,
-                    project,
-                    profile,
-                    rebar,
-                    format_json,
-                    pretty_snippets,
-                    cli,
-                );
+                return connect_and_run(command_line, project, profile, rebar, format_json, cli);
             }
             if v.get("status").and_then(|s| s.as_str()) == Some("error") {
                 exit_code = 1;
@@ -997,24 +988,28 @@ fn connect_and_run(
             break;
         }
         if v.get("type").and_then(|t| t.as_str()) == Some("diagnostic") {
-            diagnostic_count += 1;
             let message: reporting::DaemonDiagnostic = serde_json::from_value(v)?;
-            message.write_to(cli, format_json, pretty_snippets)?;
+            if message.is_error() {
+                error_count += 1;
+            }
+            message.write_to(cli, format_json)?;
             continue;
         }
 
-        // Legacy diagnostic line (currently used by lint).
-        diagnostic_count += 1;
+        // Legacy untagged diagnostic line from older daemon responses.
         if format_json {
             writeln!(cli, "{line}")?;
         } else {
             let diag: elp::arc_types::Diagnostic = serde_json::from_str(&line)?;
+            if diag.severity() == &elp::arc_types::Severity::Error {
+                error_count += 1;
+            }
             write!(cli, "{diag}")?;
         }
     }
 
     if !format_json {
-        reporting::write_error_count_summary(cli, diagnostic_count)?;
+        reporting::write_error_count_summary(cli, error_count)?;
     }
 
     if exit_code != 0 {
@@ -1101,7 +1096,6 @@ pub fn connect_eqwalize(args: &Eqwalize, cli: &mut dyn Cli) -> Result<()> {
         &args.profile,
         args.rebar,
         format_json,
-        true,
         cli,
     )
 }
@@ -1115,7 +1109,6 @@ pub fn connect_eqwalize_all(args: &EqwalizeAll, cli: &mut dyn Cli) -> Result<()>
         &args.profile,
         args.rebar,
         format_json,
-        true,
         cli,
     )
 }
@@ -1129,7 +1122,6 @@ pub fn connect_eqwalize_app(args: &EqwalizeApp, cli: &mut dyn Cli) -> Result<()>
         &args.profile,
         args.rebar,
         format_json,
-        true,
         cli,
     )
 }
@@ -1138,7 +1130,7 @@ pub fn connect_eqwalize_target(args: &EqwalizeTarget, cli: &mut dyn Cli) -> Resu
     let cmd = format!("eqwalize-target {}", args.target);
     let format_json = args.format.is_some();
     // eqwalize-target is buck-only, so profile is always "test" and rebar is always false
-    connect_and_run(&cmd, &args.project, "test", false, format_json, true, cli)
+    connect_and_run(&cmd, &args.project, "test", false, format_json, cli)
 }
 
 /// The reason a `Lint` invocation can't be served by the daemon, or `None` if it
@@ -1201,7 +1193,6 @@ pub fn connect_lint(args: &Lint, cli: &mut dyn Cli) -> Result<()> {
         &args.profile,
         args.rebar,
         format_json,
-        false,
         cli,
     )
 }

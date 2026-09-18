@@ -35,6 +35,7 @@ use elp::convert;
 use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
 use elp_ide::TextRange;
+use elp_ide::diagnostics;
 use elp_ide::elp_ide_db::EqwalizerDiagnostic;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
@@ -115,6 +116,14 @@ pub(crate) struct RenderedDiagnostic {
     ansi: String,
 }
 
+pub(crate) struct IdeDiagnosticContext<'a> {
+    pub analysis: &'a Analysis,
+    pub vfs: &'a Vfs,
+    pub file_id: FileId,
+    pub path: &'a Path,
+    pub diagnostic: &'a diagnostics::Diagnostic,
+}
+
 impl DaemonDiagnostic {
     fn new(diagnostic: arc_types::Diagnostic, rendered: Option<RenderedDiagnostic>) -> Self {
         Self {
@@ -124,10 +133,47 @@ impl DaemonDiagnostic {
         }
     }
 
-    pub(crate) fn write_to(self, cli: &mut dyn Cli, format_json: bool, pretty: bool) -> Result<()> {
+    pub(crate) fn from_ide(
+        context: IdeDiagnosticContext<'_>,
+        diagnostic: arc_types::Diagnostic,
+    ) -> Result<Self> {
+        let source = context.analysis.file_text(context.file_id)?;
+        let mut files = SimpleFiles::new();
+        let reporting_id = files.add(context.path.display().to_string(), source);
+        let range: Range<usize> =
+            context.diagnostic.range.start().into()..context.diagnostic.range.end().into();
+        let label =
+            Label::primary(reporting_id, range).with_message(context.diagnostic.message.clone());
+        let header = match diagnostic.doc_path() {
+            Some(uri) => format!("{} (See {})", diagnostic.name(), uri),
+            None => diagnostic.name().to_string(),
+        };
+        let rendered_diagnostic = arc_severity_reporting(diagnostic.severity())
+            .with_message(header)
+            .with_labels(vec![label]);
+        let mut rendered = render_reporting_diagnostic(&files, &rendered_diagnostic)?;
+        for line in related_information_lines(
+            context.analysis,
+            context.vfs,
+            context.file_id,
+            context.diagnostic,
+        )? {
+            rendered.plain.push_str(&line);
+            rendered.plain.push('\n');
+            rendered.ansi.push_str(&line);
+            rendered.ansi.push('\n');
+        }
+        Ok(Self::new(diagnostic, Some(rendered)))
+    }
+
+    pub(crate) fn is_error(&self) -> bool {
+        matches!(self.diagnostic.severity(), arc_types::Severity::Error)
+    }
+
+    pub(crate) fn write_to(self, cli: &mut dyn Cli, format_json: bool) -> Result<()> {
         if format_json {
             writeln!(cli, "{}", serde_json::to_string(&self.diagnostic)?)?;
-        } else if pretty && let Some(rendered) = &self.rendered {
+        } else if let Some(rendered) = &self.rendered {
             rendered.write_to(cli)?;
         } else {
             write!(cli, "{}", self.diagnostic)?;
@@ -333,6 +379,16 @@ fn advice_reporting_diagnostic(
         .with_labels(vec![label])
 }
 
+fn arc_severity_reporting(severity: &arc_types::Severity) -> ReportingDiagnostic<usize> {
+    match severity {
+        arc_types::Severity::Error => ReportingDiagnostic::error(),
+        arc_types::Severity::Warning | arc_types::Severity::Autofix => {
+            ReportingDiagnostic::warning()
+        }
+        arc_types::Severity::Advice | arc_types::Severity::Disabled => ReportingDiagnostic::note(),
+    }
+}
+
 fn emit_reporting_diagnostic<W: WriteColor>(
     writer: &mut W,
     files: &SimpleFiles<String, Arc<str>>,
@@ -506,6 +562,42 @@ pub fn get_relative_path<'a>(root: &AbsPath, file: &'a VfsPath) -> &'a Path {
     }
 }
 
+pub(crate) fn related_information_lines(
+    analysis: &Analysis,
+    vfs: &Vfs,
+    file_id: FileId,
+    diagnostic: &diagnostics::Diagnostic,
+) -> Result<Vec<String>> {
+    diagnostic
+        .related_info
+        .iter()
+        .flatten()
+        .map(|info| {
+            let line_index = analysis.line_index(info.file_id)?;
+            let start = line_index.line_col(info.range.start());
+            let end = line_index.line_col(info.range.end());
+            let location = if info.file_id == file_id {
+                String::new()
+            } else if let Some(module_name) = analysis.module_name(info.file_id).ok().flatten() {
+                format!("[{}] ", module_name.as_str())
+            } else if let Some(project_data) = analysis.project_data(info.file_id).ok().flatten() {
+                let path = get_relative_path(&project_data.root_dir, vfs.file_path(info.file_id));
+                format!("[{}] ", path.display())
+            } else {
+                String::new()
+            };
+            Ok(format!(
+                "        {location}{}:{}-{}:{}: {}",
+                start.line + 1,
+                start.col_utf16 + 1,
+                end.line + 1,
+                end.col_utf16 + 1,
+                info.message
+            ))
+        })
+        .collect()
+}
+
 static REPORTING_CONFIG: LazyLock<term::Config> =
     LazyLock::new(codespan_reporting::term::Config::default);
 static REPORTING_STYLE: LazyLock<Styles> = LazyLock::new(|| {
@@ -665,21 +757,21 @@ mod tests {
         let mut human_cli = Fake::default();
         message
             .clone()
-            .write_to(&mut human_cli, false, true)
+            .write_to(&mut human_cli, false)
             .expect("human output should render");
         let (human_stdout, _) = human_cli.to_strings();
         assert_eq_expected!("human output\n", human_stdout.as_str());
 
         let mut fallback_cli = Fake::default();
         DaemonDiagnostic::new(diagnostic.clone(), None)
-            .write_to(&mut fallback_cli, false, true)
+            .write_to(&mut fallback_cli, false)
             .expect("human output should fall back to the machine diagnostic");
         let (fallback_stdout, _) = fallback_cli.to_strings();
         assert_eq_expected!(diagnostic.to_string(), fallback_stdout);
 
         let mut machine_cli = Fake::default();
         message
-            .write_to(&mut machine_cli, true, true)
+            .write_to(&mut machine_cli, true)
             .expect("machine output should render");
         let (machine_stdout, _) = machine_cli.to_strings();
         let parsed: arc_types::Diagnostic =

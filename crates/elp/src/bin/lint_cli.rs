@@ -225,8 +225,8 @@ impl Lint {
         self.format.is_none()
     }
 
-    pub fn is_format_json(&self) -> bool {
-        self.format == Some(Format::Json)
+    pub fn uses_structured_diagnostics(&self) -> bool {
+        matches!(self.format, Some(Format::Json | Format::Daemon))
     }
 
     /// To prevent flaky test results we allow disabling streaming when applying fixes
@@ -766,7 +766,7 @@ pub fn do_codemod(
                 filtered_diags.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
                 let module_count: &mut i32 = &mut 0;
                 let has_diagnostics: &mut bool = &mut false;
-                if args.is_format_json() {
+                if args.uses_structured_diagnostics() {
                     do_print_diagnostics_json_filtered(
                         cli,
                         args,
@@ -847,7 +847,7 @@ fn print_diagnostic_result(
     module_count: &mut i32,
     result: &(String, FileId, DiagnosticCollection),
 ) -> Result<bool> {
-    if args.is_format_json() {
+    if args.uses_structured_diagnostics() {
         do_print_diagnostic_collection_json(
             cli,
             analysis,
@@ -1013,7 +1013,14 @@ fn do_print_diagnostics_json_filtered(
                 writeln!(cli, "  {}: {}", name, diags.len())?;
             } else {
                 for diag in diags {
-                    *err_in_diag = true;
+                    if args.format == Some(Format::Json)
+                        || matches!(
+                            diag.severity(args.use_cli_severity),
+                            diagnostics::Severity::Error
+                        )
+                    {
+                        *err_in_diag = true;
+                    }
 
                     // Get relative path for diagnostic output
                     let vfs_path = loaded.vfs.file_path(*file_id);
@@ -1025,12 +1032,16 @@ fn do_print_diagnostics_json_filtered(
                         .root_dir;
                     let relative_path = reporting::get_relative_path(root_path, vfs_path);
                     print_diagnostic_json(
-                        diag,
-                        &analysis,
-                        *file_id,
-                        relative_path,
-                        args.use_cli_severity,
-                        args.arc_patch,
+                        JsonDiagnosticContext {
+                            diagnostic: diag,
+                            analysis: &analysis,
+                            vfs: &loaded.vfs,
+                            file_id: *file_id,
+                            path: relative_path,
+                            use_cli_severity: args.use_cli_severity,
+                            arc_patch: args.arc_patch,
+                            daemon_format: args.format == Some(Format::Daemon),
+                        },
                         cli,
                     )?;
                 }
@@ -1073,80 +1084,38 @@ fn print_diagnostic(
         writeln!(cli, "      {}", diag_str)?;
     }
 
-    // Print any related information, indented
-    if let Some(related_info) = &diag.related_info {
-        for info in related_info {
-            let info_line_index = analysis.line_index(info.file_id)?;
-            let start = info_line_index.line_col(info.range.start());
-            let end = info_line_index.line_col(info.range.end());
-
-            // Include file identifier if related info is from a different file
-            if info.file_id != file_id {
-                let file_identifier =
-                    if let Ok(Some(module_name)) = analysis.module_name(info.file_id) {
-                        // It's a module (.erl file), use module name
-                        format!("[{}]", module_name.as_str())
-                    } else {
-                        // Not a module (e.g., include file), use relative path
-                        let vfs_path = vfs.file_path(info.file_id);
-                        if let Ok(Some(project_data)) = analysis.project_data(info.file_id) {
-                            let relative_path =
-                                reporting::get_relative_path(&project_data.root_dir, vfs_path);
-                            format!("[{}]", relative_path.display())
-                        } else {
-                            // Fallback: just show location without file identifier
-                            String::new()
-                        }
-                    };
-
-                if file_identifier.is_empty() {
-                    writeln!(
-                        cli,
-                        "        {}:{}-{}:{}: {}",
-                        start.line + 1,
-                        start.col_utf16 + 1,
-                        end.line + 1,
-                        end.col_utf16 + 1,
-                        info.message
-                    )?;
-                } else {
-                    writeln!(
-                        cli,
-                        "        {} {}:{}-{}:{}: {}",
-                        file_identifier,
-                        start.line + 1,
-                        start.col_utf16 + 1,
-                        end.line + 1,
-                        end.col_utf16 + 1,
-                        info.message
-                    )?;
-                }
-            } else {
-                writeln!(
-                    cli,
-                    "        {}:{}-{}:{}: {}",
-                    start.line + 1,
-                    start.col_utf16 + 1,
-                    end.line + 1,
-                    end.col_utf16 + 1,
-                    info.message
-                )?;
-            }
-        }
+    for line in reporting::related_information_lines(analysis, vfs, file_id, diag)? {
+        writeln!(cli, "{line}")?;
     }
 
     Ok(())
 }
 
-fn print_diagnostic_json(
-    diagnostic: &diagnostics::Diagnostic,
-    analysis: &Analysis,
+struct JsonDiagnosticContext<'a> {
+    diagnostic: &'a diagnostics::Diagnostic,
+    analysis: &'a Analysis,
+    vfs: &'a Vfs,
     file_id: FileId,
-    path: &Path,
+    path: &'a Path,
     use_cli_severity: bool,
     arc_patch: bool,
+    daemon_format: bool,
+}
+
+fn print_diagnostic_json(
+    context: JsonDiagnosticContext<'_>,
     cli: &mut dyn Cli,
 ) -> Result<(), anyhow::Error> {
+    let JsonDiagnosticContext {
+        diagnostic,
+        analysis,
+        vfs,
+        file_id,
+        path,
+        use_cli_severity,
+        arc_patch,
+        daemon_format,
+    } = context;
     let line_index = analysis.line_index(file_id)?;
     let mut converted_diagnostic =
         convert::ide_to_arc_diagnostic(&line_index, path, diagnostic, use_cli_severity);
@@ -1157,13 +1126,27 @@ fn print_diagnostic_json(
         converted_diagnostic =
             converted_diagnostic.with_fix(fix.line, fix.char, fix.original, fix.replacement);
     }
-    writeln!(
-        cli,
-        "{}",
-        serde_json::to_string(&converted_diagnostic).unwrap_or_else(|err| panic!(
-            "print_diagnostics_json failed for '{converted_diagnostic:?}': {err}"
-        ))
-    )?;
+    if daemon_format {
+        let message = reporting::DaemonDiagnostic::from_ide(
+            reporting::IdeDiagnosticContext {
+                analysis,
+                vfs,
+                file_id,
+                path,
+                diagnostic,
+            },
+            converted_diagnostic,
+        )?;
+        writeln!(cli, "{}", serde_json::to_string(&message)?)?;
+    } else {
+        writeln!(
+            cli,
+            "{}",
+            serde_json::to_string(&converted_diagnostic).unwrap_or_else(|err| panic!(
+                "print_diagnostics_json failed for '{converted_diagnostic:?}': {err}"
+            ))
+        )?;
+    }
     Ok(())
 }
 
