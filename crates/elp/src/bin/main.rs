@@ -73,6 +73,13 @@ static INIT: Once = Once::new();
 #[cfg(not(unix))]
 const DAEMON_UNSUPPORTED: &str = "ELP daemon mode is not supported on this platform";
 
+/// Whether to route a command through the persistent daemon. It is the default
+/// on Unix unless `--no-connect` opts out. An explicit `--connect` also routes
+/// here on non-Unix so the caller receives the unsupported-platform error.
+fn use_daemon(connect: bool, no_connect: bool) -> bool {
+    connect || (cfg!(unix) && !no_connect)
+}
+
 #[rustfmt::skip]
 fn main() {
     // Handle dynamic shell-completion requests (driven by the `COMPLETE` env
@@ -207,9 +214,17 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
         args::Command::RunServer(_) => run_server(logger)?,
         args::Command::ParseAll(args) => erlang_service_cli::parse_all(args, cli, &query_config)?,
         args::Command::ParseAllElp(args) => elp_parse_cli::parse_all(args, cli, &query_config)?,
-        args::Command::Eqwalize(eqwalize_args) if eqwalize_args.connect => {
+        args::Command::Eqwalize(eqwalize_args)
+            if use_daemon(eqwalize_args.connect, eqwalize_args.no_connect) =>
+        {
             #[cfg(unix)]
-            daemon::connect_eqwalize(eqwalize_args, cli)?;
+            run_with_daemon_fallback(
+                eqwalize_args.connect,
+                None,
+                cli,
+                |cli| eqwalizer_cli::eqwalize_module(eqwalize_args, cli, &query_config),
+                |cli| daemon::connect_eqwalize(eqwalize_args, cli),
+            )?;
             #[cfg(not(unix))]
             {
                 let _ = eqwalize_args;
@@ -217,9 +232,17 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
             }
         }
         args::Command::Eqwalize(args) => eqwalizer_cli::eqwalize_module(args, cli, &query_config)?,
-        args::Command::EqwalizeAll(eqwalize_all_args) if eqwalize_all_args.connect => {
+        args::Command::EqwalizeAll(eqwalize_all_args)
+            if use_daemon(eqwalize_all_args.connect, eqwalize_all_args.no_connect) =>
+        {
             #[cfg(unix)]
-            daemon::connect_eqwalize_all(eqwalize_all_args, cli)?;
+            run_with_daemon_fallback(
+                eqwalize_all_args.connect,
+                None,
+                cli,
+                |cli| eqwalizer_cli::eqwalize_all(eqwalize_all_args, cli, &query_config),
+                |cli| daemon::connect_eqwalize_all(eqwalize_all_args, cli),
+            )?;
             #[cfg(not(unix))]
             {
                 let _ = eqwalize_all_args;
@@ -228,9 +251,17 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
         }
         args::Command::EqwalizeAll(args) => eqwalizer_cli::eqwalize_all(args, cli, &query_config)?,
         args::Command::DialyzeAll(args) => dialyzer_cli::dialyze_all(args, cli)?,
-        args::Command::EqwalizeApp(eqwalize_app_args) if eqwalize_app_args.connect => {
+        args::Command::EqwalizeApp(eqwalize_app_args)
+            if use_daemon(eqwalize_app_args.connect, eqwalize_app_args.no_connect) =>
+        {
             #[cfg(unix)]
-            daemon::connect_eqwalize_app(eqwalize_app_args, cli)?;
+            run_with_daemon_fallback(
+                eqwalize_app_args.connect,
+                None,
+                cli,
+                |cli| eqwalizer_cli::eqwalize_app(eqwalize_app_args, cli, &query_config),
+                |cli| daemon::connect_eqwalize_app(eqwalize_app_args, cli),
+            )?;
             #[cfg(not(unix))]
             {
                 let _ = eqwalize_app_args;
@@ -241,9 +272,20 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
         args::Command::EqwalizeStats(args) => {
             eqwalizer_cli::eqwalize_stats(args, cli, &query_config)?
         }
-        args::Command::EqwalizeTarget(eqwalize_target_args) if eqwalize_target_args.connect => {
+        args::Command::EqwalizeTarget(eqwalize_target_args)
+            if use_daemon(
+                eqwalize_target_args.connect,
+                eqwalize_target_args.no_connect,
+            ) =>
+        {
             #[cfg(unix)]
-            daemon::connect_eqwalize_target(eqwalize_target_args, cli)?;
+            run_with_daemon_fallback(
+                eqwalize_target_args.connect,
+                None,
+                cli,
+                |cli| eqwalizer_cli::eqwalize_target(eqwalize_target_args, cli, &query_config),
+                |cli| daemon::connect_eqwalize_target(eqwalize_target_args, cli),
+            )?;
             #[cfg(not(unix))]
             {
                 let _ = eqwalize_target_args;
@@ -259,19 +301,16 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
         args::Command::ProjectInfo(args) => {
             build_info_cli::save_project_info(args, cli, &query_config)?
         }
-        args::Command::Lint(lint_args) if lint_args.connect => {
+        args::Command::Lint(lint_args) if use_daemon(lint_args.connect, lint_args.no_connect) => {
             #[cfg(unix)]
             {
-                // Fall back to standalone lint for flag combinations the daemon
-                // can't serve (fix application, config sources, filesystem
-                // outputs), so `--connect` — soon the default — never breaks
-                // these workflows.
-                if let Some(reason) = daemon::lint_daemon_incompatibility(lint_args) {
-                    cli.info(&format!("{reason}; running without the daemon"))?;
-                    lint_cli::run_lint_command(lint_args, cli, &query_config)?;
-                } else {
-                    daemon::connect_lint(lint_args, cli)?;
-                }
+                run_with_daemon_fallback(
+                    lint_args.connect,
+                    daemon::lint_daemon_incompatibility(lint_args),
+                    cli,
+                    |cli| lint_cli::run_lint_command(lint_args, cli, &query_config),
+                    |cli| daemon::connect_lint(lint_args, cli),
+                )?;
             }
             #[cfg(not(unix))]
             {
@@ -305,6 +344,29 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
     log::logger().flush();
 
     Ok(())
+}
+
+#[cfg(unix)]
+fn run_with_daemon_fallback(
+    explicit_connect: bool,
+    incompatibility: Option<&str>,
+    cli: &mut dyn Cli,
+    standalone: impl FnOnce(&mut dyn Cli) -> Result<()>,
+    connected: impl FnOnce(&mut dyn Cli) -> Result<()>,
+) -> Result<()> {
+    if let Some(reason) = incompatibility {
+        cli.info(&format!("{reason}; running without the daemon"))?;
+        return standalone(cli);
+    }
+
+    match connected(cli) {
+        Ok(()) => Ok(()),
+        Err(error) if !explicit_connect && daemon::is_daemon_unavailable(&error) => {
+            cli.info(&format!("{error:#}; running without the daemon"))?;
+            standalone(cli)
+        }
+        Err(error) => Err(error),
+    }
 }
 
 fn setup_logging(log_file: &Option<PathBuf>, no_buffering: bool) -> Result<Logger> {
@@ -350,6 +412,7 @@ fn run_server(logger: Logger) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use std::cell::Cell;
     use std::env::current_dir;
     use std::ffi::OsString;
     use std::path::Path;
@@ -393,6 +456,89 @@ mod tests {
 
     const BUCK_QUERY_CONFIG: BuckQueryConfig = BuckQueryConfig::BuildGeneratedCode;
 
+    #[cfg(unix)]
+    #[test]
+    fn use_daemon_defaults_on_and_respects_no_connect() {
+        // Connect is the default on Unix.
+        assert!(use_daemon(false, false), "default should use the daemon");
+        // --no-connect opts out.
+        assert!(
+            !use_daemon(false, true),
+            "--no-connect should run standalone"
+        );
+        assert!(use_daemon(true, false));
+    }
+
+    #[test]
+    fn connect_and_no_connect_conflict() {
+        let result =
+            args::Args::try_parse_from(["elp", "eqwalize", "--connect", "--no-connect", "app_a"]);
+        assert!(result.is_err(), "opposing daemon flags must be rejected");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn implicit_daemon_unavailability_falls_back_to_standalone() {
+        let standalone_ran = Cell::new(false);
+        let mut cli = Fake::default();
+
+        run_with_daemon_fallback(
+            false,
+            None,
+            &mut cli,
+            |_| {
+                standalone_ran.set(true);
+                Ok(())
+            },
+            |_| Err(daemon::DaemonUnavailable::new(anyhow::anyhow!("socket unavailable")).into()),
+        )
+        .expect("implicit daemon use should fall back");
+
+        assert!(standalone_ran.get());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn explicit_connect_preserves_daemon_unavailability_error() {
+        let standalone_ran = Cell::new(false);
+        let mut cli = Fake::default();
+
+        let result = run_with_daemon_fallback(
+            true,
+            None,
+            &mut cli,
+            |_| {
+                standalone_ran.set(true);
+                Ok(())
+            },
+            |_| Err(daemon::DaemonUnavailable::new(anyhow::anyhow!("socket unavailable")).into()),
+        );
+
+        assert!(result.is_err());
+        assert!(!standalone_ran.get());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn implicit_daemon_command_failure_does_not_rerun_standalone() {
+        let standalone_ran = Cell::new(false);
+        let mut cli = Fake::default();
+
+        let result = run_with_daemon_fallback(
+            false,
+            None,
+            &mut cli,
+            |_| {
+                standalone_ran.set(true);
+                Ok(())
+            },
+            |_| anyhow::bail!("daemon command failed"),
+        );
+
+        assert!(result.is_err());
+        assert!(!standalone_ran.get());
+    }
+
     macro_rules! args_vec {
         ($($e:expr$(,)?)+) => {
             vec![$(OsString::from($e),)+]
@@ -415,7 +561,13 @@ mod tests {
         let mut cli = Fake::default();
         let mut full_args = vec![OsString::from("elp")];
         full_args.extend(args);
-        let args = args::Args::try_parse_from(full_args).unwrap();
+        let mut args = args::Args::try_parse_from(full_args).unwrap();
+        // The daemon is the default, but these tests exercise the standalone
+        // code paths (spawning a background daemon in-test would hang). Opt out
+        // unless a test passed --connect explicitly.
+        if let Some(command) = args.command.as_mut() {
+            command.disable_daemon();
+        }
         let res = try_main(&mut cli, args, stdout_is_tty);
         let code = handle_res(res, cli.err());
         let (stdout, stderr) = cli.to_strings();

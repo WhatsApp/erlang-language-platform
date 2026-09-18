@@ -16,8 +16,10 @@ Options:
       --ignore-app <APP>               Skip the given application. Can be repeated to skip several
       --rebar                          Run with rebar
       --as <PROFILE>                   Rebar3 profile to pickup [default: test]
-      --connect                        Use a persistent daemon for fast turnaround (auto-starts if
-                                       needed)
+      --connect                        Use the persistent daemon for fast turnaround (default;
+                                       auto-starts if needed). Pass --no-connect to disable
+      --no-connect                     Disable the persistent daemon and run standalone (no
+                                       cross-run caching)
       --include-generated              Also generate diagnostics for generated files
       --include-tests                  Deprecated (no-op): Diagnostics for test files are now always
                                        included

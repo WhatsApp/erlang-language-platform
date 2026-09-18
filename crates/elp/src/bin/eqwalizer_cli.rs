@@ -71,9 +71,13 @@ pub struct Eqwalize {
     /// Run with rebar
     #[arg(long)]
     pub rebar: bool,
-    /// Use a persistent daemon for fast turnaround (auto-starts if needed)
-    #[arg(long)]
+    /// Use the persistent daemon for fast turnaround (default; auto-starts if
+    /// needed). Pass --no-connect to disable.
+    #[arg(long, conflicts_with = "no_connect")]
     pub connect: bool,
+    /// Disable the persistent daemon and run standalone (no cross-run caching).
+    #[arg(long = "no-connect")]
+    pub no_connect: bool,
     /// Exit with a non-zero status code if any errors are found
     #[arg(long)]
     pub bail_on_error: bool,
@@ -96,9 +100,13 @@ pub struct EqwalizeAll {
     /// Run with rebar
     #[arg(long)]
     pub rebar: bool,
-    /// Use a persistent daemon for fast turnaround (auto-starts if needed)
-    #[arg(long)]
+    /// Use the persistent daemon for fast turnaround (default; auto-starts if
+    /// needed). Pass --no-connect to disable.
+    #[arg(long, conflicts_with = "no_connect")]
     pub connect: bool,
+    /// Disable the persistent daemon and run standalone (no cross-run caching).
+    #[arg(long = "no-connect")]
+    pub no_connect: bool,
     /// Also eqwalize opted-in generated modules from project (deprecated)
     #[arg(long, hide = true)]
     pub include_generated: bool,
@@ -124,9 +132,13 @@ pub struct EqwalizeTarget {
     /// Also eqwalize opted-in generated modules from application (deprecated)
     #[arg(long, hide = true)]
     pub include_generated: bool,
-    /// Use a persistent daemon for fast turnaround (auto-starts if needed)
-    #[arg(long)]
+    /// Use the persistent daemon for fast turnaround (default; auto-starts if
+    /// needed). Pass --no-connect to disable.
+    #[arg(long, conflicts_with = "no_connect")]
     pub connect: bool,
+    /// Disable the persistent daemon and run standalone (no cross-run caching).
+    #[arg(long = "no-connect")]
+    pub no_connect: bool,
     /// Exit with a non-zero status code if any errors are found
     #[arg(long)]
     pub bail_on_error: bool,
@@ -152,9 +164,13 @@ pub struct EqwalizeApp {
     /// Run with rebar
     #[arg(long)]
     pub rebar: bool,
-    /// Use a persistent daemon for fast turnaround (auto-starts if needed)
-    #[arg(long)]
+    /// Use the persistent daemon for fast turnaround (default; auto-starts if
+    /// needed). Pass --no-connect to disable.
+    #[arg(long, conflicts_with = "no_connect")]
     pub connect: bool,
+    /// Disable the persistent daemon and run standalone (no cross-run caching).
+    #[arg(long = "no-connect")]
+    pub no_connect: bool,
     /// Exit with a non-zero status code if any errors are found
     #[arg(long)]
     pub bail_on_error: bool,

@@ -246,6 +246,12 @@ struct DoneMessage {
     /// Its presence *is* the restart flag — `None` means "no restart".
     #[serde(skip_serializing_if = "Option::is_none")]
     restart: Option<String>,
+    #[serde(skip_serializing_if = "is_false")]
+    daemon_unavailable: bool,
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 impl DoneMessage {
@@ -255,6 +261,7 @@ impl DoneMessage {
             status: "ok",
             message: None,
             restart: None,
+            daemon_unavailable: false,
         }
     }
 
@@ -264,6 +271,17 @@ impl DoneMessage {
             status: "error",
             message: Some(msg),
             restart: None,
+            daemon_unavailable: false,
+        }
+    }
+
+    fn unavailable(msg: String) -> Self {
+        DoneMessage {
+            r#type: "done",
+            status: "error",
+            message: Some(msg),
+            restart: None,
+            daemon_unavailable: true,
         }
     }
 
@@ -757,7 +775,11 @@ fn handle_connection(
     }
 
     // Check for file changes and apply them
-    match state.watchman.poll_and_apply_changes(&mut state.loaded)? {
+    let update = match state.watchman.poll_and_apply_changes(&mut state.loaded) {
+        Ok(update) => update,
+        Err(error) => return write_connection_unavailable(&mut cli, &error),
+    };
+    match update {
         UpdateResult::NeedsRestart { reason } => {
             let _ = writeln!(cli.err(), "[elp-daemon] {reason}");
             let done = serde_json::to_string(&DoneMessage::ok().with_restart(reason))?;
@@ -771,12 +793,15 @@ fn handle_connection(
             // to daemon.log via the load.
             cli.info(reason)?;
             let reload_start = Instant::now();
-            state.loaded = load::load_project_from_manifest(
+            state.loaded = match load::load_project_from_manifest(
                 &cli,
                 ctx.manifest,
                 ctx.elp_config,
                 LoadConfig::new(Mode::Shell, *ctx.query_config),
-            )?;
+            ) {
+                Ok(loaded) => loaded,
+                Err(error) => return write_connection_unavailable(&mut cli, &error),
+            };
             state.watchman.set_project_dirs(&state.loaded);
             // Fresh analysis_host loses the lint config; re-apply.
             elp::apply_lint_config(&mut state.loaded.analysis_host, &state.lint_config);
@@ -890,6 +915,13 @@ fn handle_connection(
     Ok(should_quit)
 }
 
+fn write_connection_unavailable(cli: &mut dyn Cli, error: &anyhow::Error) -> Result<bool> {
+    let done = serde_json::to_string(&DoneMessage::unavailable(format!("{error:#}")))?;
+    writeln!(cli, "{done}")?;
+    cli.flush()?;
+    Ok(true)
+}
+
 fn daemon_lint_format(requested: Option<Format>) -> Format {
     match requested {
         Some(Format::Json) => Format::DaemonJson,
@@ -900,6 +932,31 @@ fn daemon_lint_format(requested: Option<Format>) -> Format {
 // ---------------------------------------------------------------------------
 // Daemon client (connect mode)
 // ---------------------------------------------------------------------------
+
+#[derive(Debug, thiserror::Error)]
+#[error("Could not use elp daemon: {source:#}")]
+pub(crate) struct DaemonUnavailable {
+    #[source]
+    source: anyhow::Error,
+}
+
+impl DaemonUnavailable {
+    pub(crate) fn new(source: anyhow::Error) -> Self {
+        Self { source }
+    }
+}
+
+pub(crate) fn is_daemon_unavailable(error: &anyhow::Error) -> bool {
+    error.downcast_ref::<DaemonUnavailable>().is_some()
+}
+
+fn daemon_connection_error(error: anyhow::Error, emitted_diagnostic: bool) -> anyhow::Error {
+    if emitted_diagnostic {
+        error
+    } else {
+        DaemonUnavailable::new(error).into()
+    }
+}
 
 fn connect_and_run(
     command_line: &str,
@@ -919,7 +976,8 @@ fn connect_and_run(
     // Try to connect, auto-start if needed
     let mut stream = match UnixStream::connect(&sock) {
         Ok(s) => s,
-        Err(_) => start_daemon(&dir, &sock, project, profile, rebar, startup_timeout, cli)?,
+        Err(_) => start_daemon(&dir, &sock, project, profile, rebar, startup_timeout, cli)
+            .map_err(DaemonUnavailable::new)?,
     };
 
     // Check for version mismatch; if the daemon is from a different build, restart it
@@ -944,22 +1002,30 @@ fn connect_and_run(
         }
         cleanup_stale_in_dir(&dir);
 
-        stream = start_daemon(&dir, &sock, project, profile, rebar, startup_timeout, cli)?;
+        stream = start_daemon(&dir, &sock, project, profile, rebar, startup_timeout, cli)
+            .map_err(DaemonUnavailable::new)?;
     }
 
     // Send command
     let mut writer = BufWriter::new(&stream);
-    writeln!(writer, "{command_line}")?;
-    writer.flush()?;
+    writeln!(writer, "{command_line}").map_err(|error| DaemonUnavailable::new(error.into()))?;
+    writer
+        .flush()
+        .map_err(|error| DaemonUnavailable::new(error.into()))?;
     // Signal end of request by shutting down write side
-    stream.shutdown(std::net::Shutdown::Write)?;
+    stream
+        .shutdown(std::net::Shutdown::Write)
+        .map_err(|error| DaemonUnavailable::new(error.into()))?;
 
     // Read response lines
     let reader = BufReader::new(&stream);
     let mut exit_code = 0;
     let mut error_count: usize = 0;
+    let mut emitted_diagnostic = false;
+    let mut received_done = false;
     for line in reader.lines() {
-        let line = line?;
+        let line =
+            line.map_err(|error| daemon_connection_error(error.into(), emitted_diagnostic))?;
         // Try to detect done message first (small JSON with "type" field)
         let v: serde_json::Value = serde_json::from_str(&line)?;
         // Out-of-band status from the daemon (e.g. a deprecation warning).
@@ -973,6 +1039,18 @@ fn connect_and_run(
             continue;
         }
         if v.get("type").and_then(|t| t.as_str()) == Some("done") {
+            received_done = true;
+            if v.get("daemon_unavailable")
+                .and_then(|value| value.as_bool())
+                == Some(true)
+            {
+                let message = v
+                    .get("message")
+                    .and_then(|message| message.as_str())
+                    .unwrap_or("daemon became unavailable")
+                    .to_owned();
+                return Err(DaemonUnavailable::new(anyhow::Error::msg(message)).into());
+            }
             // A restart request (e.g. config change) carries its reason as the
             // `restart` value; its presence means "restart".
             if let Some(reason) = v.get("restart").and_then(|r| r.as_str()) {
@@ -1000,6 +1078,7 @@ fn connect_and_run(
                 error_count += 1;
             }
             message.write_to(cli, format_json)?;
+            emitted_diagnostic = true;
             continue;
         }
 
@@ -1013,6 +1092,14 @@ fn connect_and_run(
             }
             write!(cli, "{diag}")?;
         }
+        emitted_diagnostic = true;
+    }
+
+    if !received_done {
+        return Err(daemon_connection_error(
+            anyhow::anyhow!("Daemon closed the connection before completing the request"),
+            emitted_diagnostic,
+        ));
     }
 
     if !format_json {
@@ -1325,6 +1412,15 @@ mod tests {
     use crate::args::Severity;
 
     #[test]
+    fn connection_errors_are_unavailable_only_before_diagnostic_output() {
+        let before_output = daemon_connection_error(anyhow::anyhow!("closed"), false);
+        let after_output = daemon_connection_error(anyhow::anyhow!("closed"), true);
+
+        assert!(is_daemon_unavailable(&before_output));
+        assert!(!is_daemon_unavailable(&after_output));
+    }
+
+    #[test]
     fn daemon_lint_format_preserves_explicit_json_semantics() {
         assert!(matches!(
             daemon_lint_format(Some(Format::Json)),
@@ -1355,6 +1451,30 @@ mod tests {
         assert_eq!(v["type"], "done");
         assert_eq!(v["status"], "error");
         assert_eq!(v["message"], "bad thing");
+    }
+
+    #[test]
+    fn connection_unavailability_is_sent_and_stops_daemon() {
+        use elp::cli::Fake;
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        let mut cli = Fake::default();
+        let should_stop = write_connection_unavailable(&mut cli, &anyhow::anyhow!("reload failed"))
+            .expect("error response should be written");
+        let (stdout, _) = cli.to_strings();
+        let response: serde_json::Value =
+            serde_json::from_str(stdout.trim()).expect("response should be JSON");
+
+        assert!(should_stop);
+        let expected_status = Some("error");
+        assert_eq_expected!(expected_status, response["status"].as_str());
+        let expected_message = Some("reload failed");
+        assert_eq_expected!(expected_message, response["message"].as_str());
+        let expected_unavailable = Some(true);
+        assert_eq_expected!(
+            expected_unavailable,
+            response["daemon_unavailable"].as_bool()
+        );
     }
 
     #[test]
@@ -1581,6 +1701,7 @@ mod tests {
               "rebar": true,
               "profile": "prod",
               "connect": true,
+              "no_connect": false,
               "include_generated": true,
               "include_tests": false,
               "print_diags": false,

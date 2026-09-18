@@ -116,9 +116,14 @@ pub struct Lint {
     /// Rebar3 profile to pickup
     #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
     pub profile: String,
-    /// Use a persistent daemon for fast turnaround (auto-starts if needed)
-    #[arg(long)]
+    /// Use the persistent daemon for fast turnaround (default; auto-starts if
+    /// needed). Pass --no-connect to disable.
+    #[arg(long, conflicts_with = "no_connect")]
     pub connect: bool,
+    /// Disable the persistent daemon and run standalone (no cross-run caching).
+    #[arg(long = "no-connect")]
+    #[serde(default)]
+    pub no_connect: bool,
 
     /// Also generate diagnostics for generated files
     #[arg(long)]

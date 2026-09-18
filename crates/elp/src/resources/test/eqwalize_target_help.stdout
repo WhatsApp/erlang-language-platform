@@ -9,7 +9,9 @@ Options:
       --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
       --format <FORMAT>    Customize the output format (defaults to human-readable) [possible
                            values: json]
-      --connect            Use a persistent daemon for fast turnaround (auto-starts if needed)
+      --connect            Use the persistent daemon for fast turnaround (default; auto-starts if
+                           needed). Pass --no-connect to disable
+      --no-connect         Disable the persistent daemon and run standalone (no cross-run caching)
       --bail-on-error      Exit with a non-zero status code if any errors are found
   -h, --help               Print help
 

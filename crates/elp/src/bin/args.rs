@@ -269,6 +269,23 @@ impl Command {
         };
         format.get_or_insert(Format::ImplicitJson);
     }
+
+    /// Test helper: opt out of the daemon (now the default) so integration tests
+    /// exercise the standalone code paths without spawning a background process.
+    /// Equivalent to passing `--no-connect`; an explicit `--connect` in the test
+    /// args still wins in `use_daemon`.
+    #[cfg(test)]
+    pub(crate) fn disable_daemon(&mut self) {
+        let no_connect = match self {
+            Command::Eqwalize(args) => &mut args.no_connect,
+            Command::EqwalizeAll(args) => &mut args.no_connect,
+            Command::EqwalizeApp(args) => &mut args.no_connect,
+            Command::EqwalizeTarget(args) => &mut args.no_connect,
+            Command::Lint(args) => &mut args.no_connect,
+            _ => return,
+        };
+        *no_connect = true;
+    }
 }
 
 // --- Enumerated argument values ---

@@ -99,6 +99,7 @@ impl ShellCommand {
                             format: None,
                             rebar,
                             connect: false,
+                            no_connect: false,
                             modules: args.iter().map(|s| s.to_string()).collect(),
                             bail_on_error: false,
                         })));
@@ -126,6 +127,7 @@ impl ShellCommand {
                             format: None,
                             rebar,
                             connect: false,
+                            no_connect: false,
                             app: app.into(),
                             include_generated,
                             bail_on_error: false,
@@ -152,6 +154,7 @@ impl ShellCommand {
                         profile,
                         rebar,
                         connect: false,
+                        no_connect: false,
                         format: None,
                         include_generated,
                         bail_on_error: false,
@@ -178,6 +181,7 @@ impl ShellCommand {
                             format: None,
                             include_generated: false,
                             connect: false,
+                            no_connect: false,
                             bail_on_error: false,
                             target: target.into(),
                         })));
