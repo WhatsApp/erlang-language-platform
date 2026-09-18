@@ -242,13 +242,14 @@ final class Check(pipelineContext: PipelineContext) {
               val funType = FunType(0, List.fill(argTys.size)(DynamicType), resTy)
               val env2 = env.updated(name, funType)
               checkExpr(l, funType, env2)
+              env1
             case _ =>
               val envs = occurrence.clausesEnvs(l.clauses, argTys, env1)
-              l.clauses
+              val resEnvs = l.clauses
                 .lazyZip(envs)
                 .map((clause, occEnv) => checkClause(clause, argTys, resTy, occEnv, Set.empty))
+              if (args.isEmpty) subtype.joinEnvs(resEnvs) else env1
           }
-          env1
         case DynCall(DynRemoteFun(mod, name), args) =>
           val env1 = checkExpr(mod, AtomType, env)
           val env2 = checkExpr(name, AtomType, env1)
