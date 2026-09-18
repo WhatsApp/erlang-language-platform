@@ -240,6 +240,9 @@ final class Check(pipelineContext: PipelineContext) {
           l.name match {
             case Some(name) =>
               val funType = FunType(0, List.fill(argTys.size)(DynamicType), resTy)
+              if (arity > 0 && pipelineCtx.reportDynamicLambdas && typeInfo.isCollect) {
+                diagnosticsInfo.add(DynamicLambda(l.pos))
+              }
               val env2 = env.updated(name, funType)
               checkExpr(l, funType, env2)
               env1
