@@ -24,6 +24,7 @@ use codespan_reporting::files::SimpleFiles;
 use codespan_reporting::term;
 use codespan_reporting::term::Styles;
 use codespan_reporting::term::StylesWriter;
+use codespan_reporting::term::termcolor::Buffer;
 use codespan_reporting::term::termcolor::Color;
 use codespan_reporting::term::termcolor::ColorSpec;
 use codespan_reporting::term::termcolor::WriteColor;
@@ -43,6 +44,8 @@ use elp_ide::elp_ide_db::memory_usage::memory_usage;
 use indicatif::ProgressBar;
 use itertools::Itertools;
 use parking_lot::Mutex;
+use serde::Deserialize;
+use serde::Serialize;
 use vfs::Vfs;
 
 pub trait Reporter {
@@ -77,11 +80,72 @@ pub struct PrettyReporter<'a> {
     start: Instant,
 }
 
-pub struct JsonReporter<'a> {
+pub struct WireReporter<'a> {
     analysis: &'a Analysis,
     loaded: &'a LoadResult,
     cli: &'a mut dyn Cli,
     start: Instant,
+    format: WireFormat,
+}
+
+#[derive(Clone, Copy)]
+enum WireFormat {
+    Json,
+    Daemon,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub(crate) struct DaemonDiagnostic {
+    #[serde(rename = "type")]
+    message_type: DaemonDiagnosticType,
+    #[serde(flatten)]
+    diagnostic: arc_types::Diagnostic,
+    rendered: Option<RenderedDiagnostic>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+enum DaemonDiagnosticType {
+    Diagnostic,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub(crate) struct RenderedDiagnostic {
+    plain: String,
+    ansi: String,
+}
+
+impl DaemonDiagnostic {
+    fn new(diagnostic: arc_types::Diagnostic, rendered: Option<RenderedDiagnostic>) -> Self {
+        Self {
+            message_type: DaemonDiagnosticType::Diagnostic,
+            diagnostic,
+            rendered,
+        }
+    }
+
+    pub(crate) fn write_to(self, cli: &mut dyn Cli, format_json: bool, pretty: bool) -> Result<()> {
+        if format_json {
+            writeln!(cli, "{}", serde_json::to_string(&self.diagnostic)?)?;
+        } else if pretty && let Some(rendered) = &self.rendered {
+            rendered.write_to(cli)?;
+        } else {
+            write!(cli, "{}", self.diagnostic)?;
+        }
+        Ok(())
+    }
+}
+
+impl RenderedDiagnostic {
+    pub(crate) fn write_to(&self, cli: &mut dyn Cli) -> Result<()> {
+        let output = if cli.supports_color() {
+            &self.ansi
+        } else {
+            &self.plain
+        };
+        write!(cli, "{output}")?;
+        Ok(())
+    }
 }
 
 impl<'a> PrettyReporter<'a> {
@@ -94,23 +158,23 @@ impl<'a> PrettyReporter<'a> {
             start: Instant::now(),
         }
     }
+}
 
-    fn get_reporting_data(
-        &self,
-        file_id: FileId,
-    ) -> Result<(SimpleFiles<String, Arc<str>>, usize)> {
-        let file_path = &self.loaded.vfs.file_path(file_id);
-        let root_path = &self
-            .analysis
-            .project_data(file_id)?
-            .with_context(|| "could not find project data")?
-            .root_dir;
-        let relative_path = get_relative_path(root_path, file_path);
-        let content = self.analysis.file_text(file_id)?;
-        let mut files: SimpleFiles<String, Arc<str>> = SimpleFiles::new();
-        let id = files.add(relative_path.display().to_string(), content);
-        Ok((files, id))
-    }
+fn get_reporting_data(
+    analysis: &Analysis,
+    loaded: &LoadResult,
+    file_id: FileId,
+) -> Result<(SimpleFiles<String, Arc<str>>, usize)> {
+    let file_path = &loaded.vfs.file_path(file_id);
+    let root_path = &analysis
+        .project_data(file_id)?
+        .with_context(|| "could not find project data")?
+        .root_dir;
+    let relative_path = get_relative_path(root_path, file_path);
+    let content = analysis.file_text(file_id)?;
+    let mut files: SimpleFiles<String, Arc<str>> = SimpleFiles::new();
+    let id = files.add(relative_path.display().to_string(), content);
+    Ok((files, id))
 }
 
 impl Reporter for PrettyReporter<'_> {
@@ -119,35 +183,11 @@ impl Reporter for PrettyReporter<'_> {
         file_id: FileId,
         diagnostics: &[EqwalizerDiagnostic],
     ) -> Result<()> {
-        let (reporting_files, reporting_id) = self.get_reporting_data(file_id)?;
+        let (reporting_files, reporting_id) =
+            get_reporting_data(self.analysis, self.loaded, file_id)?;
         for diagnostic in diagnostics {
-            let range: Range<usize> =
-                diagnostic.range.start().into()..diagnostic.range.end().into();
-            let expr = match &diagnostic.expression {
-                Some(s) => format!("{s}.\n"),
-                None => "".to_string(),
-            };
-
-            let code = format!("{} (See {})", diagnostic.code, diagnostic.uri);
-            let msg = format!("{}{}", expr, diagnostic.message);
-            let msg_label = Label::primary(reporting_id, range.clone()).with_message(&msg);
-            let mut labels = vec![msg_label];
-            if let Some(s) = &diagnostic.explanation {
-                let explanation_label =
-                    Label::secondary(reporting_id, range).with_message(format!("\n\n{s}"));
-                labels.push(explanation_label);
-            };
-            let d: ReportingDiagnostic<usize> = ReportingDiagnostic::error()
-                .with_message(code)
-                .with_labels(labels);
-
-            term::emit_to_write_style(
-                &mut StylesWriter::new(&mut self.cli, &REPORTING_STYLE),
-                &REPORTING_CONFIG,
-                &reporting_files,
-                &d,
-            )
-            .unwrap();
+            let diagnostic = eqwalizer_reporting_diagnostic(reporting_id, diagnostic);
+            emit_reporting_diagnostic(&mut self.cli, &reporting_files, &diagnostic)?;
         }
         self.error_count += diagnostics.len();
         Ok(())
@@ -155,37 +195,19 @@ impl Reporter for PrettyReporter<'_> {
 
     fn write_parse_diagnostics(&mut self, diagnostics: &[ParseDiagnostic]) -> Result<()> {
         for diagnostic in diagnostics {
-            let range = diagnostic.range.unwrap_or_default();
-            let range: Range<usize> = range.start().into()..range.end().into();
-            let (reporting_files, reporting_id) = self.get_reporting_data(diagnostic.file_id)?;
-            let label = Label::primary(reporting_id, range).with_message(&diagnostic.msg);
-            let d: ReportingDiagnostic<usize> = ReportingDiagnostic::error()
-                .with_message("parse_error")
-                .with_labels(vec![label]);
-            term::emit_to_write_style(
-                &mut StylesWriter::new(&mut self.cli, &REPORTING_STYLE),
-                &REPORTING_CONFIG,
-                &reporting_files,
-                &d,
-            )
-            .unwrap();
+            let (reporting_files, reporting_id) =
+                get_reporting_data(self.analysis, self.loaded, diagnostic.file_id)?;
+            let diagnostic = parse_reporting_diagnostic(reporting_id, diagnostic);
+            emit_reporting_diagnostic(&mut self.cli, &reporting_files, &diagnostic)?;
         }
         Ok(())
     }
 
     fn write_file_advice(&mut self, file_id: FileId, description: String) -> Result<()> {
-        let (reporting_files, reporting_id) = self.get_reporting_data(file_id)?;
-        let label = Label::primary(reporting_id, 1..2).with_message(description);
-        let d: ReportingDiagnostic<usize> = ReportingDiagnostic::note()
-            .with_message("advice")
-            .with_labels(vec![label]);
-        term::emit_to_write_style(
-            &mut StylesWriter::new(&mut self.cli, &REPORTING_STYLE),
-            &REPORTING_CONFIG,
-            &reporting_files,
-            &d,
-        )
-        .unwrap();
+        let (reporting_files, reporting_id) =
+            get_reporting_data(self.analysis, self.loaded, file_id)?;
+        let diagnostic = advice_reporting_diagnostic(reporting_id, description);
+        emit_reporting_diagnostic(&mut self.cli, &reporting_files, &diagnostic)?;
         Ok(())
     }
 
@@ -205,18 +227,143 @@ impl Reporter for PrettyReporter<'_> {
     }
 }
 
-impl<'a> JsonReporter<'a> {
-    pub fn new(analysis: &'a Analysis, loaded: &'a LoadResult, cli: &'a mut dyn Cli) -> Self {
+impl<'a> WireReporter<'a> {
+    pub fn json(analysis: &'a Analysis, loaded: &'a LoadResult, cli: &'a mut dyn Cli) -> Self {
         Self {
             analysis,
             loaded,
             cli,
             start: Instant::now(),
+            format: WireFormat::Json,
         }
+    }
+
+    pub fn daemon(analysis: &'a Analysis, loaded: &'a LoadResult, cli: &'a mut dyn Cli) -> Self {
+        Self {
+            analysis,
+            loaded,
+            cli,
+            start: Instant::now(),
+            format: WireFormat::Daemon,
+        }
+    }
+
+    fn write_diagnostic(
+        &mut self,
+        diagnostic: arc_types::Diagnostic,
+        rendered: Option<RenderedDiagnostic>,
+    ) -> Result<()> {
+        match self.format {
+            WireFormat::Json => {
+                writeln!(self.cli, "{}", serde_json::to_string(&diagnostic)?)?;
+            }
+            WireFormat::Daemon => {
+                let message = DaemonDiagnostic::new(diagnostic, rendered);
+                writeln!(self.cli, "{}", serde_json::to_string(&message)?)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn reporting_data(&self, file_id: FileId) -> Option<(SimpleFiles<String, Arc<str>>, usize)> {
+        match self.format {
+            WireFormat::Json => None,
+            WireFormat::Daemon => get_reporting_data(self.analysis, self.loaded, file_id)
+                .inspect_err(|error| {
+                    log::warn!("Failed to prepare daemon diagnostic rendering: {error:#}");
+                })
+                .ok(),
+        }
+    }
+
+    fn render_diagnostic(
+        reporting_data: Option<&(SimpleFiles<String, Arc<str>>, usize)>,
+        diagnostic: impl FnOnce(usize) -> ReportingDiagnostic<usize>,
+    ) -> Option<RenderedDiagnostic> {
+        let (files, reporting_id) = reporting_data?;
+        render_reporting_diagnostic(files, &diagnostic(*reporting_id))
+            .inspect_err(|error| {
+                log::warn!("Failed to render daemon diagnostic: {error:#}");
+            })
+            .ok()
     }
 }
 
-impl Reporter for JsonReporter<'_> {
+fn eqwalizer_reporting_diagnostic(
+    reporting_id: usize,
+    diagnostic: &EqwalizerDiagnostic,
+) -> ReportingDiagnostic<usize> {
+    let range: Range<usize> = diagnostic.range.start().into()..diagnostic.range.end().into();
+    let expression = diagnostic
+        .expression
+        .as_ref()
+        .map(|expression| format!("{expression}.\n"))
+        .unwrap_or_default();
+    let message = format!("{}{}", expression, diagnostic.message);
+    let mut labels = vec![Label::primary(reporting_id, range.clone()).with_message(message)];
+    if let Some(explanation) = &diagnostic.explanation {
+        labels
+            .push(Label::secondary(reporting_id, range).with_message(format!("\n\n{explanation}")));
+    }
+
+    ReportingDiagnostic::error()
+        .with_message(format!("{} (See {})", diagnostic.code, diagnostic.uri))
+        .with_labels(labels)
+}
+
+fn parse_reporting_diagnostic(
+    reporting_id: usize,
+    diagnostic: &ParseDiagnostic,
+) -> ReportingDiagnostic<usize> {
+    let range = diagnostic.range.unwrap_or_default();
+    let range: Range<usize> = range.start().into()..range.end().into();
+    let label = Label::primary(reporting_id, range).with_message(&diagnostic.msg);
+    ReportingDiagnostic::error()
+        .with_message("parse_error")
+        .with_labels(vec![label])
+}
+
+fn advice_reporting_diagnostic(
+    reporting_id: usize,
+    description: String,
+) -> ReportingDiagnostic<usize> {
+    let label = Label::primary(reporting_id, 1..2).with_message(description);
+    ReportingDiagnostic::note()
+        .with_message("advice")
+        .with_labels(vec![label])
+}
+
+fn emit_reporting_diagnostic<W: WriteColor>(
+    writer: &mut W,
+    files: &SimpleFiles<String, Arc<str>>,
+    diagnostic: &ReportingDiagnostic<usize>,
+) -> Result<()> {
+    term::emit_to_write_style(
+        &mut StylesWriter::new(writer, &REPORTING_STYLE),
+        &REPORTING_CONFIG,
+        files,
+        diagnostic,
+    )?;
+    Ok(())
+}
+
+fn render_reporting_diagnostic(
+    files: &SimpleFiles<String, Arc<str>>,
+    diagnostic: &ReportingDiagnostic<usize>,
+) -> Result<RenderedDiagnostic> {
+    let mut plain = Buffer::no_color();
+    emit_reporting_diagnostic(&mut plain, files, diagnostic)?;
+    let plain =
+        String::from_utf8(plain.into_inner()).context("rendered diagnostic was not UTF-8")?;
+
+    let mut ansi = Buffer::ansi();
+    emit_reporting_diagnostic(&mut ansi, files, diagnostic)?;
+    let ansi = String::from_utf8(ansi.into_inner()).context("rendered diagnostic was not UTF-8")?;
+
+    Ok(RenderedDiagnostic { plain, ansi })
+}
+
+impl Reporter for WireReporter<'_> {
     fn write_eqwalizer_diagnostics(
         &mut self,
         file_id: FileId,
@@ -230,30 +377,35 @@ impl Reporter for JsonReporter<'_> {
             .with_context(|| "could not find project data")?
             .root_dir;
         let relative_path = get_relative_path(root_path, file_path);
+        let reporting_data = self.reporting_data(file_id);
         for diagnostic in diagnostics {
-            let diagnostic =
+            let wire_diagnostic =
                 convert::eqwalizer_to_arc_diagnostic(diagnostic, &line_index, relative_path);
-            let diagnostic = serde_json::to_string(&diagnostic)?;
-            writeln!(self.cli, "{diagnostic}")?;
+            let rendered = Self::render_diagnostic(reporting_data.as_ref(), |reporting_id| {
+                eqwalizer_reporting_diagnostic(reporting_id, diagnostic)
+            });
+            self.write_diagnostic(wire_diagnostic, rendered)?;
         }
         Ok(())
     }
 
     fn write_parse_diagnostics(&mut self, diagnostics: &[ParseDiagnostic]) -> Result<()> {
         for diagnostic in diagnostics {
-            let severity = arc_types::Severity::Error;
-            let diagnostic = arc_types::Diagnostic::new(
+            let wire_diagnostic = arc_types::Diagnostic::new(
                 diagnostic.relative_path.as_path(),
                 diagnostic.line_num,
                 None,
-                severity,
+                arc_types::Severity::Error,
                 "ELP".to_string(),
                 diagnostic.msg.clone(),
                 None,
                 None,
             );
-            let diagnostic = serde_json::to_string(&diagnostic)?;
-            writeln!(self.cli, "{diagnostic}")?;
+            let reporting_data = self.reporting_data(diagnostic.file_id);
+            let rendered = Self::render_diagnostic(reporting_data.as_ref(), |reporting_id| {
+                parse_reporting_diagnostic(reporting_id, diagnostic)
+            });
+            self.write_diagnostic(wire_diagnostic, rendered)?;
         }
         Ok(())
     }
@@ -266,19 +418,21 @@ impl Reporter for JsonReporter<'_> {
             .with_context(|| "could not find project data")?
             .root_dir;
         let relative_path = get_relative_path(root_path, file_path);
-        let diagnostic = arc_types::Diagnostic::new(
+        let wire_diagnostic = arc_types::Diagnostic::new(
             relative_path,
             1,
             None,
             arc_types::Severity::Advice,
             "ELP".to_string(),
-            description,
+            description.clone(),
             None,
             None,
         );
-        let diagnostic = serde_json::to_string(&diagnostic)?;
-        writeln!(self.cli, "{diagnostic}")?;
-        Ok(())
+        let reporting_data = self.reporting_data(file_id);
+        let rendered = Self::render_diagnostic(reporting_data.as_ref(), |reporting_id| {
+            advice_reporting_diagnostic(reporting_id, description)
+        });
+        self.write_diagnostic(wire_diagnostic, rendered)
     }
 
     fn write_error_count(&mut self) -> Result<()> {
@@ -421,9 +575,117 @@ pub(crate) fn print_memory_usage(
 
 #[cfg(test)]
 mod tests {
+    use elp::cli::Fake;
     use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
 
     use super::*;
+
+    #[test]
+    fn rendered_diagnostic_preserves_plain_and_ansi_output() {
+        let mut files = SimpleFiles::new();
+        let file_id = files.add(
+            "src/foo.erl".to_string(),
+            Arc::<str>::from("foo() -> ok.\n"),
+        );
+        let diagnostic = ReportingDiagnostic::error()
+            .with_message("eqWAlizer: incompatible_types")
+            .with_labels(vec![
+                Label::primary(file_id, 0..5).with_message("expected integer"),
+            ]);
+
+        let rendered = render_reporting_diagnostic(&files, &diagnostic)
+            .expect("diagnostic rendering should succeed");
+
+        assert!(rendered.plain.contains("foo() -> ok."));
+        assert!(rendered.plain.contains("expected integer"));
+        assert!(!rendered.plain.contains("\u{1b}["));
+        assert!(rendered.ansi.contains("\u{1b}["));
+    }
+
+    #[test]
+    fn daemon_render_failure_falls_back_to_unrendered() {
+        let reporting_data = (SimpleFiles::new(), 0);
+        let rendered = WireReporter::render_diagnostic(Some(&reporting_data), |reporting_id| {
+            ReportingDiagnostic::error().with_labels(vec![Label::primary(reporting_id, 0..1)])
+        });
+
+        assert!(rendered.is_none());
+    }
+
+    #[test]
+    fn daemon_diagnostic_round_trips_both_representations() {
+        let diagnostic = arc_types::Diagnostic::new(
+            Path::new("src/foo.erl"),
+            1,
+            Some(1),
+            arc_types::Severity::Error,
+            "eqWAlizer: incompatible_types".to_string(),
+            "expected integer".to_string(),
+            None,
+            None,
+        );
+        let message = DaemonDiagnostic::new(
+            diagnostic.clone(),
+            Some(RenderedDiagnostic {
+                plain: "plain\n".to_string(),
+                ansi: "\u{1b}[31mansi\u{1b}[0m\n".to_string(),
+            }),
+        );
+
+        let json = serde_json::to_string(&message).expect("message should serialize");
+        let legacy: arc_types::Diagnostic =
+            serde_json::from_str(&json).expect("older clients should ignore rendering fields");
+        assert_eq_expected!(diagnostic.clone(), legacy);
+        let parsed: DaemonDiagnostic =
+            serde_json::from_str(&json).expect("message should deserialize");
+        let expected = (diagnostic, message.rendered);
+        assert_eq_expected!(expected, (parsed.diagnostic, parsed.rendered));
+    }
+
+    #[test]
+    fn daemon_diagnostic_selects_machine_or_human_output() {
+        let diagnostic = arc_types::Diagnostic::new(
+            Path::new("src/foo.erl"),
+            1,
+            Some(1),
+            arc_types::Severity::Error,
+            "incompatible_types".to_string(),
+            "expected integer".to_string(),
+            None,
+            None,
+        );
+        let message = DaemonDiagnostic::new(
+            diagnostic.clone(),
+            Some(RenderedDiagnostic {
+                plain: "human output\n".to_string(),
+                ansi: "ansi output\n".to_string(),
+            }),
+        );
+
+        let mut human_cli = Fake::default();
+        message
+            .clone()
+            .write_to(&mut human_cli, false, true)
+            .expect("human output should render");
+        let (human_stdout, _) = human_cli.to_strings();
+        assert_eq_expected!("human output\n", human_stdout.as_str());
+
+        let mut fallback_cli = Fake::default();
+        DaemonDiagnostic::new(diagnostic.clone(), None)
+            .write_to(&mut fallback_cli, false, true)
+            .expect("human output should fall back to the machine diagnostic");
+        let (fallback_stdout, _) = fallback_cli.to_strings();
+        assert_eq_expected!(diagnostic.to_string(), fallback_stdout);
+
+        let mut machine_cli = Fake::default();
+        message
+            .write_to(&mut machine_cli, true, true)
+            .expect("machine output should render");
+        let (machine_stdout, _) = machine_cli.to_strings();
+        let parsed: arc_types::Diagnostic =
+            serde_json::from_str(machine_stdout.trim()).expect("machine output should be JSON");
+        assert_eq_expected!(diagnostic, parsed);
+    }
 
     #[test]
     fn format_eqwalize_stats_all_eqwalized() {

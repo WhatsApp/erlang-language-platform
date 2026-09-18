@@ -237,7 +237,7 @@ pub fn do_eqwalize_module(
         file_ids.push(file_id);
     }
 
-    let mut json_reporter;
+    let mut wire_reporter;
     let mut pretty_reporter;
 
     let reporter: &mut dyn Reporter = match args.format {
@@ -245,9 +245,13 @@ pub fn do_eqwalize_module(
             pretty_reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
             &mut pretty_reporter
         }
-        Some(_) => {
-            json_reporter = reporting::JsonReporter::new(analysis, loaded, cli);
-            &mut json_reporter
+        Some(Format::Json) => {
+            wire_reporter = reporting::WireReporter::json(analysis, loaded, cli);
+            &mut wire_reporter
+        }
+        Some(Format::Daemon) => {
+            wire_reporter = reporting::WireReporter::daemon(analysis, loaded, cli);
+            &mut wire_reporter
         }
     };
     let bail_on_error = args.bail_on_error;
@@ -319,7 +323,7 @@ pub fn do_eqwalize_all(
         .collect();
     pb.finish();
 
-    let mut json_reporter;
+    let mut wire_reporter;
     let mut pretty_reporter;
 
     let reporter: &mut dyn Reporter = match args.format {
@@ -327,9 +331,13 @@ pub fn do_eqwalize_all(
             pretty_reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
             &mut pretty_reporter
         }
-        Some(_) => {
-            json_reporter = reporting::JsonReporter::new(analysis, loaded, cli);
-            &mut json_reporter
+        Some(Format::Json) => {
+            wire_reporter = reporting::WireReporter::json(analysis, loaded, cli);
+            &mut wire_reporter
+        }
+        Some(Format::Daemon) => {
+            wire_reporter = reporting::WireReporter::daemon(analysis, loaded, cli);
+            &mut wire_reporter
         }
     };
     let bail_on_error = args.bail_on_error;
@@ -393,7 +401,7 @@ pub fn do_eqwalize_app(
             }
         })
         .collect();
-    let mut json_reporter;
+    let mut wire_reporter;
     let mut pretty_reporter;
 
     let reporter: &mut dyn Reporter = match args.format {
@@ -401,9 +409,13 @@ pub fn do_eqwalize_app(
             pretty_reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
             &mut pretty_reporter
         }
-        Some(_) => {
-            json_reporter = reporting::JsonReporter::new(analysis, loaded, cli);
-            &mut json_reporter
+        Some(Format::Json) => {
+            wire_reporter = reporting::WireReporter::json(analysis, loaded, cli);
+            &mut wire_reporter
+        }
+        Some(Format::Daemon) => {
+            wire_reporter = reporting::WireReporter::daemon(analysis, loaded, cli);
+            &mut wire_reporter
         }
     };
     let bail_on_error = args.bail_on_error;
@@ -497,7 +509,7 @@ elp eqwalize-target erl/chatd #same as //erl/chatd/... but enables shell complet
         _ => (),
     };
 
-    let mut json_reporter;
+    let mut wire_reporter;
     let mut pretty_reporter;
 
     let reporter: &mut dyn Reporter = match args.format {
@@ -505,9 +517,13 @@ elp eqwalize-target erl/chatd #same as //erl/chatd/... but enables shell complet
             pretty_reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
             &mut pretty_reporter
         }
-        Some(_) => {
-            json_reporter = reporting::JsonReporter::new(analysis, loaded, cli);
-            &mut json_reporter
+        Some(Format::Json) => {
+            wire_reporter = reporting::WireReporter::json(analysis, loaded, cli);
+            &mut wire_reporter
+        }
+        Some(Format::Daemon) => {
+            wire_reporter = reporting::WireReporter::daemon(analysis, loaded, cli);
+            &mut wire_reporter
         }
     };
     let bail_on_error = args.bail_on_error;

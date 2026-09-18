@@ -268,6 +268,9 @@ impl Command {
 #[serde(rename_all = "snake_case")]
 pub enum Format {
     Json,
+    /// Internal daemon wire format carrying both machine and human renderings.
+    #[value(skip)]
+    Daemon,
 }
 
 /// Minimum diagnostic severity to report.

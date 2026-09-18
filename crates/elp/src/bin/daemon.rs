@@ -843,7 +843,7 @@ fn handle_connection(
         Ok(Some(ShellCommand::Help)) => (DoneMessage::ok(), false),
         Ok(Some(ShellCommand::Quit)) => (DoneMessage::ok(), true),
         Ok(Some(ShellCommand::ShellEqwalize(mut eqwalize))) => {
-            eqwalize.format = Some(Format::Json);
+            eqwalize.format = Some(Format::Daemon);
             let done =
                 match eqwalizer_cli::do_eqwalize_module(&eqwalize, &mut state.loaded, &mut cli) {
                     Ok(()) => DoneMessage::ok(),
@@ -852,7 +852,7 @@ fn handle_connection(
             (done, false)
         }
         Ok(Some(ShellCommand::ShellEqwalizeApp(mut eqwalize_app))) => {
-            eqwalize_app.format = Some(Format::Json);
+            eqwalize_app.format = Some(Format::Daemon);
             let done =
                 match eqwalizer_cli::do_eqwalize_app(&eqwalize_app, &mut state.loaded, &mut cli) {
                     Ok(()) => DoneMessage::ok(),
@@ -861,7 +861,7 @@ fn handle_connection(
             (done, false)
         }
         Ok(Some(ShellCommand::ShellEqwalizeAll(mut eqwalize_all))) => {
-            eqwalize_all.format = Some(Format::Json);
+            eqwalize_all.format = Some(Format::Daemon);
             let done =
                 match eqwalizer_cli::do_eqwalize_all(&eqwalize_all, &mut state.loaded, &mut cli) {
                     Ok(()) => DoneMessage::ok(),
@@ -870,7 +870,7 @@ fn handle_connection(
             (done, false)
         }
         Ok(Some(ShellCommand::ShellEqwalizeTarget(mut eqwalize_target))) => {
-            eqwalize_target.format = Some(Format::Json);
+            eqwalize_target.format = Some(Format::Daemon);
             let done = match eqwalizer_cli::do_eqwalize_target(
                 &eqwalize_target,
                 &mut state.loaded,
@@ -900,6 +900,7 @@ fn connect_and_run(
     profile: &str,
     rebar: bool,
     format_json: bool,
+    pretty_snippets: bool,
     cli: &mut dyn Cli,
 ) -> Result<()> {
     let conf = DiscoverConfig::new(rebar, profile);
@@ -977,7 +978,15 @@ fn connect_and_run(
                 }
                 cleanup_stale_in_dir(&dir);
                 // Start new daemon and retry the command
-                return connect_and_run(command_line, project, profile, rebar, format_json, cli);
+                return connect_and_run(
+                    command_line,
+                    project,
+                    profile,
+                    rebar,
+                    format_json,
+                    pretty_snippets,
+                    cli,
+                );
             }
             if v.get("status").and_then(|s| s.as_str()) == Some("error") {
                 exit_code = 1;
@@ -987,7 +996,14 @@ fn connect_and_run(
             }
             break;
         }
-        // Diagnostic line
+        if v.get("type").and_then(|t| t.as_str()) == Some("diagnostic") {
+            diagnostic_count += 1;
+            let message: reporting::DaemonDiagnostic = serde_json::from_value(v)?;
+            message.write_to(cli, format_json, pretty_snippets)?;
+            continue;
+        }
+
+        // Legacy diagnostic line (currently used by lint).
         diagnostic_count += 1;
         if format_json {
             writeln!(cli, "{line}")?;
@@ -1085,6 +1101,7 @@ pub fn connect_eqwalize(args: &Eqwalize, cli: &mut dyn Cli) -> Result<()> {
         &args.profile,
         args.rebar,
         format_json,
+        true,
         cli,
     )
 }
@@ -1098,6 +1115,7 @@ pub fn connect_eqwalize_all(args: &EqwalizeAll, cli: &mut dyn Cli) -> Result<()>
         &args.profile,
         args.rebar,
         format_json,
+        true,
         cli,
     )
 }
@@ -1111,6 +1129,7 @@ pub fn connect_eqwalize_app(args: &EqwalizeApp, cli: &mut dyn Cli) -> Result<()>
         &args.profile,
         args.rebar,
         format_json,
+        true,
         cli,
     )
 }
@@ -1119,7 +1138,7 @@ pub fn connect_eqwalize_target(args: &EqwalizeTarget, cli: &mut dyn Cli) -> Resu
     let cmd = format!("eqwalize-target {}", args.target);
     let format_json = args.format.is_some();
     // eqwalize-target is buck-only, so profile is always "test" and rebar is always false
-    connect_and_run(&cmd, &args.project, "test", false, format_json, cli)
+    connect_and_run(&cmd, &args.project, "test", false, format_json, true, cli)
 }
 
 /// Reject `Lint` flag combinations that don't make sense in daemon mode.
@@ -1171,6 +1190,7 @@ pub fn connect_lint(args: &Lint, cli: &mut dyn Cli) -> Result<()> {
         &args.profile,
         args.rebar,
         format_json,
+        false,
         cli,
     )
 }
