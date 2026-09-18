@@ -55,11 +55,10 @@ use serde::Serialize;
 use crate::args::Format;
 use crate::reporting;
 use crate::reporting::ParseDiagnostic;
-use crate::reporting::Reporter;
 use crate::reporting::add_stat;
 use crate::reporting::dump_stats;
 
-#[derive(Clone, Debug, clap::Args, Serialize, Deserialize)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct Eqwalize {
     /// Path to directory with project, or to a JSON file
     #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
@@ -88,7 +87,7 @@ pub struct Eqwalize {
     pub modules: Vec<String>,
 }
 
-#[derive(Clone, Debug, clap::Args, Serialize, Deserialize)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct EqwalizeAll {
     /// Path to directory with project, or to a JSON file
     #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
@@ -123,7 +122,7 @@ pub struct EqwalizeAll {
     pub list_modules: bool,
 }
 
-#[derive(Clone, Debug, clap::Args, Serialize, Deserialize)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct EqwalizeTarget {
     /// Path to directory with project, or to a JSON file
     #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
@@ -149,7 +148,7 @@ pub struct EqwalizeTarget {
     pub target: String,
 }
 
-#[derive(Clone, Debug, clap::Args, Serialize, Deserialize)]
+#[derive(Clone, Debug, clap::Args)]
 pub struct EqwalizeApp {
     /// Path to directory with project, or to a JSON file
     #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
@@ -179,6 +178,86 @@ pub struct EqwalizeApp {
     /// app name
     #[arg(value_name = "APP")]
     pub app: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct EqwalizeRequest {
+    pub(crate) format: Option<Format>,
+    bail_on_error: bool,
+    selection: EqwalizeSelection,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+enum EqwalizeSelection {
+    Modules {
+        modules: Vec<String>,
+    },
+    All {
+        include_generated: bool,
+        stats: bool,
+        list_modules: bool,
+    },
+    App {
+        app: String,
+        include_generated: bool,
+    },
+    Target {
+        target: String,
+        include_generated: bool,
+    },
+}
+
+impl From<&Eqwalize> for EqwalizeRequest {
+    fn from(args: &Eqwalize) -> Self {
+        Self {
+            format: args.format,
+            bail_on_error: args.bail_on_error,
+            selection: EqwalizeSelection::Modules {
+                modules: args.modules.clone(),
+            },
+        }
+    }
+}
+
+impl From<&EqwalizeAll> for EqwalizeRequest {
+    fn from(args: &EqwalizeAll) -> Self {
+        Self {
+            format: args.format,
+            bail_on_error: args.bail_on_error,
+            selection: EqwalizeSelection::All {
+                include_generated: args.include_generated,
+                stats: args.stats,
+                list_modules: args.list_modules,
+            },
+        }
+    }
+}
+
+impl From<&EqwalizeApp> for EqwalizeRequest {
+    fn from(args: &EqwalizeApp) -> Self {
+        Self {
+            format: args.format,
+            bail_on_error: args.bail_on_error,
+            selection: EqwalizeSelection::App {
+                app: args.app.clone(),
+                include_generated: args.include_generated,
+            },
+        }
+    }
+}
+
+impl From<&EqwalizeTarget> for EqwalizeRequest {
+    fn from(args: &EqwalizeTarget) -> Self {
+        Self {
+            format: args.format,
+            bail_on_error: args.bail_on_error,
+            selection: EqwalizeSelection::Target {
+                target: args.target.clone(),
+                include_generated: args.include_generated,
+            },
+        }
+    }
 }
 
 #[derive(Clone, Debug, clap::Args)]
@@ -212,6 +291,15 @@ struct EqwalizerInternalArgs<'a> {
     bail_on_error: bool,
 }
 
+struct EqwalizerRunArgs<'a> {
+    analysis: &'a Analysis,
+    loaded: &'a LoadResult,
+    file_ids: Vec<FileId>,
+    format: Option<Format>,
+    bail_on_error: bool,
+    cli: &'a mut dyn Cli,
+}
+
 pub fn eqwalize_module(
     args: &Eqwalize,
     cli: &mut dyn Cli,
@@ -238,49 +326,7 @@ pub fn do_eqwalize_module(
     loaded: &mut LoadResult,
     cli: &mut dyn Cli,
 ) -> Result<()> {
-    set_eqwalizer_config(loaded);
-    let analysis = &loaded.analysis();
-    let mut file_ids = vec![];
-    for module in &args.modules {
-        let suggest_name = Path::new(module).file_stem().and_then(|name| name.to_str());
-        let context_str = match suggest_name {
-            Some(name) if name != module => {
-                format!("Module {module} not found. Did you mean elp eqwalize {name}?")
-            }
-            _ => format!("Module {module} not found"),
-        };
-        let file_id = analysis
-            .module_file_id(loaded.project_id, module)?
-            .with_context(|| context_str)?;
-        file_ids.push(file_id);
-    }
-
-    let mut wire_reporter;
-    let mut pretty_reporter;
-
-    let reporter: &mut dyn Reporter = match args.format {
-        None => {
-            pretty_reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
-            &mut pretty_reporter
-        }
-        Some(Format::Json | Format::ImplicitJson) => {
-            wire_reporter = reporting::WireReporter::json(analysis, loaded, cli);
-            &mut wire_reporter
-        }
-        Some(Format::Daemon | Format::DaemonJson) => {
-            wire_reporter = reporting::WireReporter::daemon(analysis, loaded, cli);
-            &mut wire_reporter
-        }
-    };
-    let bail_on_error = args.bail_on_error;
-
-    eqwalize(EqwalizerInternalArgs {
-        analysis,
-        loaded,
-        file_ids,
-        reporter,
-        bail_on_error,
-    })
+    do_eqwalize(&EqwalizeRequest::from(args), loaded, cli)
 }
 
 pub const SHELL_HINT: &str = "\
@@ -314,63 +360,7 @@ pub fn do_eqwalize_all(
     loaded: &mut LoadResult,
     cli: &mut dyn Cli,
 ) -> Result<()> {
-    set_eqwalizer_config(loaded);
-    let analysis = &loaded.analysis();
-    let module_index = analysis.module_index(loaded.project_id)?;
-    let include_generated = args.include_generated;
-    if include_generated {
-        write!(cli, "{DEPRECATED_INCLUDE_GENERATED}")?;
-    }
-    let pb = cli.progress(module_index.len_own() as u64, "Gathering modules");
-    let file_ids: Vec<FileId> = module_index
-        .iter_own()
-        .par_bridge()
-        .progress_with(pb.clone())
-        .map_with(analysis.clone(), |analysis, (name, _source, file_id)| {
-            if analysis.should_eqwalize(file_id).unwrap() && !otp_file_to_ignore(analysis, file_id)
-            {
-                if args.stats {
-                    add_stat(name.to_string());
-                }
-                Some(file_id)
-            } else {
-                None
-            }
-        })
-        .flatten()
-        .collect();
-    pb.finish();
-
-    let mut wire_reporter;
-    let mut pretty_reporter;
-
-    let reporter: &mut dyn Reporter = match args.format {
-        None => {
-            pretty_reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
-            &mut pretty_reporter
-        }
-        Some(Format::Json | Format::ImplicitJson) => {
-            wire_reporter = reporting::WireReporter::json(analysis, loaded, cli);
-            &mut wire_reporter
-        }
-        Some(Format::Daemon | Format::DaemonJson) => {
-            wire_reporter = reporting::WireReporter::daemon(analysis, loaded, cli);
-            &mut wire_reporter
-        }
-    };
-    let bail_on_error = args.bail_on_error;
-
-    eqwalize(EqwalizerInternalArgs {
-        analysis,
-        loaded,
-        file_ids,
-        reporter,
-        bail_on_error,
-    })?;
-    if args.stats {
-        dump_stats(cli, args.list_modules);
-    }
-    Ok(())
+    do_eqwalize(&EqwalizeRequest::from(args), loaded, cli)
 }
 
 pub fn eqwalize_app(
@@ -399,52 +389,7 @@ pub fn do_eqwalize_app(
     loaded: &mut LoadResult,
     cli: &mut dyn Cli,
 ) -> Result<()> {
-    set_eqwalizer_config(loaded);
-    let analysis = &loaded.analysis();
-    let module_index = analysis.module_index(loaded.project_id)?;
-    let include_generated = args.include_generated;
-    if include_generated {
-        write!(cli, "{DEPRECATED_INCLUDE_GENERATED}")?;
-    }
-    let file_ids: Vec<FileId> = module_index
-        .iter_own()
-        .filter_map(|(_name, _source, file_id)| {
-            if analysis.file_app_name(file_id).ok()? == Some(AppName(args.app.clone()))
-                && analysis.should_eqwalize(file_id).unwrap()
-                && !otp_file_to_ignore(analysis, file_id)
-            {
-                Some(file_id)
-            } else {
-                None
-            }
-        })
-        .collect();
-    let mut wire_reporter;
-    let mut pretty_reporter;
-
-    let reporter: &mut dyn Reporter = match args.format {
-        None => {
-            pretty_reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
-            &mut pretty_reporter
-        }
-        Some(Format::Json | Format::ImplicitJson) => {
-            wire_reporter = reporting::WireReporter::json(analysis, loaded, cli);
-            &mut wire_reporter
-        }
-        Some(Format::Daemon | Format::DaemonJson) => {
-            wire_reporter = reporting::WireReporter::daemon(analysis, loaded, cli);
-            &mut wire_reporter
-        }
-    };
-    let bail_on_error = args.bail_on_error;
-
-    eqwalize(EqwalizerInternalArgs {
-        analysis,
-        loaded,
-        file_ids,
-        reporter,
-        bail_on_error,
-    })
+    do_eqwalize(&EqwalizeRequest::from(args), loaded, cli)
 }
 
 pub fn eqwalize_target(
@@ -473,44 +418,154 @@ pub fn do_eqwalize_target(
     loaded: &mut LoadResult,
     cli: &mut dyn Cli,
 ) -> Result<()> {
+    do_eqwalize(&EqwalizeRequest::from(args), loaded, cli)
+}
+
+pub(crate) fn do_eqwalize(
+    request: &EqwalizeRequest,
+    loaded: &mut LoadResult,
+    cli: &mut dyn Cli,
+) -> Result<()> {
     set_eqwalizer_config(loaded);
+    let analysis = &loaded.analysis();
+
+    let include_generated = match &request.selection {
+        EqwalizeSelection::Modules { .. } => false,
+        EqwalizeSelection::All {
+            include_generated, ..
+        }
+        | EqwalizeSelection::App {
+            include_generated, ..
+        }
+        | EqwalizeSelection::Target {
+            include_generated, ..
+        } => *include_generated,
+    };
+    if include_generated {
+        write!(cli, "{DEPRECATED_INCLUDE_GENERATED}")?;
+    }
+
+    let file_ids = match &request.selection {
+        EqwalizeSelection::Modules { modules } => modules
+            .iter()
+            .map(|module| {
+                let suggest_name = Path::new(module).file_stem().and_then(|name| name.to_str());
+                let context = match suggest_name {
+                    Some(name) if name != module => {
+                        format!("Module {module} not found. Did you mean elp eqwalize {name}?")
+                    }
+                    _ => format!("Module {module} not found"),
+                };
+                analysis
+                    .module_file_id(loaded.project_id, module)?
+                    .with_context(|| context)
+            })
+            .collect::<Result<Vec<_>>>()?,
+        EqwalizeSelection::All { stats, .. } => {
+            let module_index = analysis.module_index(loaded.project_id)?;
+            let pb = cli.progress(module_index.len_own() as u64, "Gathering modules");
+            let file_ids = module_index
+                .iter_own()
+                .par_bridge()
+                .progress_with(pb.clone())
+                .map_with(analysis.clone(), |analysis, (name, _source, file_id)| {
+                    if analysis.should_eqwalize(file_id).unwrap()
+                        && !otp_file_to_ignore(analysis, file_id)
+                    {
+                        if *stats {
+                            add_stat(name.to_string());
+                        }
+                        Some(file_id)
+                    } else {
+                        None
+                    }
+                })
+                .flatten()
+                .collect();
+            pb.finish();
+            file_ids
+        }
+        EqwalizeSelection::App { app, .. } => {
+            let module_index = analysis.module_index(loaded.project_id)?;
+            module_index
+                .iter_own()
+                .filter_map(|(_name, _source, file_id)| {
+                    if analysis.file_app_name(file_id).ok()? == Some(AppName(app.clone()))
+                        && analysis.should_eqwalize(file_id).unwrap()
+                        && !otp_file_to_ignore(analysis, file_id)
+                    {
+                        Some(file_id)
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        }
+        EqwalizeSelection::Target { target, .. } => target_file_ids(target, analysis, loaded)?,
+    };
+
+    run_eqwalizer(EqwalizerRunArgs {
+        analysis,
+        loaded,
+        file_ids,
+        format: request.format,
+        bail_on_error: request.bail_on_error,
+        cli,
+    })?;
+
+    if let EqwalizeSelection::All {
+        stats: true,
+        list_modules,
+        ..
+    } = &request.selection
+    {
+        dump_stats(cli, *list_modules);
+    }
+    Ok(())
+}
+
+fn target_file_ids(
+    requested_target: &str,
+    analysis: &Analysis,
+    loaded: &LoadResult,
+) -> Result<Vec<FileId>> {
     let buck = match &loaded.project.project_build_data {
         ProjectBuildData::Buck(buck) => buck,
         _ => bail!("only buck project supported"),
     };
-    let (_, target) = args.target.split_once("//").unwrap_or(("", &args.target));
+    let (_, target) = requested_target
+        .split_once("//")
+        .unwrap_or(("", requested_target));
     let buck_target = target.strip_suffix("/...").unwrap_or(target);
     let buck_target = buck_target.strip_suffix(':').unwrap_or(buck_target);
 
-    let analysis = &loaded.analysis();
-    let include_generated = args.include_generated;
-    if include_generated {
-        write!(cli, "{DEPRECATED_INCLUDE_GENERATED}")?;
-    }
-    let mut file_ids: Vec<FileId> = Default::default();
     let mut at_least_one_found = false;
     let exact_match = buck_target.contains(':');
-    for (name, target) in &buck.target_info.targets {
-        let (_, name) = name.split_once("//").unwrap();
-        let matches = if exact_match {
-            name == buck_target
-        } else {
-            name.starts_with(buck_target)
-        };
-        if matches {
-            for src in &target.src_files {
-                let vfs_path = VfsPath::from(src.clone());
-                if let Some((file_id, _)) = loaded.vfs.file_id(&vfs_path) {
-                    at_least_one_found = true;
-                    if analysis.should_eqwalize(file_id).unwrap()
-                        && !otp_file_to_ignore(analysis, file_id)
-                    {
-                        file_ids.push(file_id);
-                    }
-                }
+    let file_ids = buck
+        .target_info
+        .targets
+        .iter()
+        .filter(|(name, _)| {
+            let (_, name) = name.split_once("//").unwrap();
+            if exact_match {
+                name == buck_target
+            } else {
+                name.starts_with(buck_target)
             }
-        }
-    }
+        })
+        .flat_map(|(_, target)| &target.src_files)
+        .filter_map(|src| {
+            let vfs_path = VfsPath::from(src.clone());
+            loaded.vfs.file_id(&vfs_path).map(|(file_id, _)| {
+                at_least_one_found = true;
+                file_id
+            })
+        })
+        .filter(|file_id| {
+            analysis.should_eqwalize(*file_id).unwrap() && !otp_file_to_ignore(analysis, *file_id)
+        })
+        .collect::<Vec<_>>();
+
     match (file_ids.is_empty(), at_least_one_found) {
         (true, true) => bail!("Eqwalizer is disabled for all source files in given target"),
         (true, false) => bail!(
@@ -522,37 +577,46 @@ elp eqwalize-target waserver//erl/chatd #all targets listed in buck2 targets was
 elp eqwalize-target //erl/chatd:chatd #concrete target: buck2 targets waserver//erl/chatd:chatd
 elp eqwalize-target erl/chatd #same as //erl/chatd/... but enables shell completion
             "###,
-            args.target
+            requested_target
         ),
-        _ => (),
-    };
+        _ => Ok(file_ids),
+    }
+}
 
-    let mut wire_reporter;
-    let mut pretty_reporter;
-
-    let reporter: &mut dyn Reporter = match args.format {
-        None => {
-            pretty_reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
-            &mut pretty_reporter
-        }
-        Some(Format::Json | Format::ImplicitJson) => {
-            wire_reporter = reporting::WireReporter::json(analysis, loaded, cli);
-            &mut wire_reporter
-        }
-        Some(Format::Daemon | Format::DaemonJson) => {
-            wire_reporter = reporting::WireReporter::daemon(analysis, loaded, cli);
-            &mut wire_reporter
-        }
-    };
-    let bail_on_error = args.bail_on_error;
-
-    eqwalize(EqwalizerInternalArgs {
+fn run_eqwalizer(
+    EqwalizerRunArgs {
         analysis,
         loaded,
         file_ids,
-        reporter,
+        format,
         bail_on_error,
-    })
+        cli,
+    }: EqwalizerRunArgs<'_>,
+) -> Result<()> {
+    let run = |reporter: &mut dyn reporting::Reporter| {
+        eqwalize(EqwalizerInternalArgs {
+            analysis,
+            loaded,
+            file_ids,
+            reporter,
+            bail_on_error,
+        })
+    };
+
+    match format {
+        None => {
+            let mut reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
+            run(&mut reporter)
+        }
+        Some(Format::Json | Format::ImplicitJson) => {
+            let mut reporter = reporting::WireReporter::json(analysis, loaded, cli);
+            run(&mut reporter)
+        }
+        Some(Format::Daemon | Format::DaemonJson) => {
+            let mut reporter = reporting::WireReporter::daemon(analysis, loaded, cli);
+            run(&mut reporter)
+        }
+    }
 }
 
 pub fn eqwalize_stats(

@@ -100,6 +100,7 @@ use crate::eqwalizer_cli;
 use crate::eqwalizer_cli::Eqwalize;
 use crate::eqwalizer_cli::EqwalizeAll;
 use crate::eqwalizer_cli::EqwalizeApp;
+use crate::eqwalizer_cli::EqwalizeRequest;
 use crate::eqwalizer_cli::EqwalizeTarget;
 use crate::lint_cli;
 use crate::lint_cli::Lint;
@@ -132,10 +133,7 @@ impl DaemonStartupOptions {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "command", content = "args", rename_all = "kebab-case")]
 enum DaemonRequest {
-    Eqwalize(Box<Eqwalize>),
-    EqwalizeAll(Box<EqwalizeAll>),
-    EqwalizeApp(Box<EqwalizeApp>),
-    EqwalizeTarget(Box<EqwalizeTarget>),
+    Eqwalize(Box<EqwalizeRequest>),
     Lint(Box<Lint>),
 }
 
@@ -985,19 +983,7 @@ fn execute_daemon_request(
     match request {
         DaemonRequest::Eqwalize(mut args) => {
             args.format = Some(daemon_request_format(args.format));
-            eqwalizer_cli::do_eqwalize_module(&args, &mut state.loaded, cli)
-        }
-        DaemonRequest::EqwalizeAll(mut args) => {
-            args.format = Some(daemon_request_format(args.format));
-            eqwalizer_cli::do_eqwalize_all(&args, &mut state.loaded, cli)
-        }
-        DaemonRequest::EqwalizeApp(mut args) => {
-            args.format = Some(daemon_request_format(args.format));
-            eqwalizer_cli::do_eqwalize_app(&args, &mut state.loaded, cli)
-        }
-        DaemonRequest::EqwalizeTarget(mut args) => {
-            args.format = Some(daemon_request_format(args.format));
-            eqwalizer_cli::do_eqwalize_target(&args, &mut state.loaded, cli)
+            eqwalizer_cli::do_eqwalize(&args, &mut state.loaded, cli)
         }
         DaemonRequest::Lint(mut args) => {
             args.format = Some(daemon_request_format(args.format));
@@ -1159,7 +1145,10 @@ fn connect_and_run(
                     .and_then(|message| message.as_str())
                     .unwrap_or("daemon became unavailable")
                     .to_owned();
-                return Err(DaemonUnavailable::new(anyhow::Error::msg(message)).into());
+                return Err(daemon_connection_error(
+                    anyhow::Error::msg(message),
+                    emitted_diagnostic,
+                ));
             }
             // A restart request (e.g. config change) carries its reason as the
             // `restart` value; its presence means "restart".
@@ -1301,7 +1290,8 @@ pub fn connect_eqwalize(
     startup_options: &DaemonStartupOptions,
     cli: &mut dyn Cli,
 ) -> Result<()> {
-    let cmd = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(args.clone())))?;
+    let request = EqwalizeRequest::from(args);
+    let cmd = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(request)))?;
     let format_json = args.format.is_some();
     let connection =
         DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
@@ -1316,7 +1306,8 @@ pub fn connect_eqwalize_all(
     if let Some(reason) = eqwalize_daemon_incompatibility(args.include_generated, args.stats) {
         bail!("{reason}");
     }
-    let cmd = encode_daemon_request(DaemonRequest::EqwalizeAll(Box::new(args.clone())))?;
+    let request = EqwalizeRequest::from(args);
+    let cmd = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(request)))?;
     let format_json = args.format.is_some();
     let connection =
         DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
@@ -1331,7 +1322,8 @@ pub fn connect_eqwalize_app(
     if let Some(reason) = eqwalize_daemon_incompatibility(args.include_generated, false) {
         bail!("{reason}");
     }
-    let cmd = encode_daemon_request(DaemonRequest::EqwalizeApp(Box::new(args.clone())))?;
+    let request = EqwalizeRequest::from(args);
+    let cmd = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(request)))?;
     let format_json = args.format.is_some();
     let connection =
         DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
@@ -1346,7 +1338,8 @@ pub fn connect_eqwalize_target(
     if let Some(reason) = eqwalize_daemon_incompatibility(args.include_generated, false) {
         bail!("{reason}");
     }
-    let cmd = encode_daemon_request(DaemonRequest::EqwalizeTarget(Box::new(args.clone())))?;
+    let request = EqwalizeRequest::from(args);
+    let cmd = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(request)))?;
     let format_json = args.format.is_some();
     // eqwalize-target is buck-only, so profile is always "test" and rebar is always false
     let connection = DaemonConnection::new(&args.project, "test", false, startup_options);
@@ -1617,22 +1610,34 @@ mod tests {
             stats: false,
             list_modules: true,
         };
-        let line = encode_daemon_request(DaemonRequest::EqwalizeAll(Box::new(args)))
-            .expect("request should serialize");
+        let line = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(EqwalizeRequest::from(
+            &args,
+        ))))
+        .expect("request should serialize");
         let json = line
             .strip_prefix("request ")
             .expect("request should have the wire prefix");
-        let request = decode_daemon_request(json).expect("request should deserialize");
+        let expected = serde_json::json!({
+            "command": "eqwalize",
+            "args": {
+                "format": "json",
+                "bail_on_error": true,
+                "selection": {
+                    "kind": "all",
+                    "include_generated": false,
+                    "stats": false,
+                    "list_modules": true
+                }
+            }
+        });
+        let actual_json: serde_json::Value =
+            serde_json::from_str(json).expect("request should be JSON");
+        assert_eq_expected!(expected, actual_json);
 
-        let DaemonRequest::EqwalizeAll(args) = request else {
-            panic!("expected an eqwalize-all request");
+        let request = decode_daemon_request(json).expect("request should deserialize");
+        let DaemonRequest::Eqwalize(_) = request else {
+            panic!("expected an eqwalize request");
         };
-        assert!(args.rebar);
-        assert!(args.connect);
-        assert!(!args.include_generated);
-        assert!(args.bail_on_error);
-        assert!(!args.stats);
-        assert!(args.list_modules);
     }
 
     #[test]
