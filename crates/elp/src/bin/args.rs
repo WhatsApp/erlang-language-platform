@@ -19,6 +19,7 @@ use clap::CommandFactory;
 use clap::ValueHint;
 use clap_complete::aot::Shell as CompletionShell;
 use clap_complete::engine::CompletionCandidate;
+use elp_ide::diagnostics::Severity as DiagnosticSeverity;
 use elp_ide::elp_ide_db::DiagnosticCode;
 use itertools::Itertools;
 use serde::Deserialize;
@@ -246,6 +247,28 @@ impl Command {
             args.normalize()
         }
     }
+
+    /// Default `--format` from whether stdout is a terminal, for the commands
+    /// that emit diagnostics: a human at a TTY keeps the rich human-readable
+    /// output, while a piped or redirected stream (typically an agent or script)
+    /// gets JSON. An explicit `--format` always takes precedence, so this only
+    /// fills in an unset value. Call after [`normalize`].
+    pub fn apply_default_format(&mut self, stdout_is_tty: bool) {
+        if stdout_is_tty {
+            return;
+        }
+        let format = match self {
+            Command::Eqwalize(args) => &mut args.format,
+            Command::EqwalizeAll(args) => &mut args.format,
+            Command::EqwalizeApp(args) => &mut args.format,
+            Command::EqwalizeTarget(args) => &mut args.format,
+            Command::Lint(args) => &mut args.format,
+            Command::ParseAllElp(args) => &mut args.format,
+            Command::Search(args) | Command::Ssr(args) => &mut args.format,
+            _ => return,
+        };
+        format.get_or_insert(Format::ImplicitJson);
+    }
 }
 
 // --- Enumerated argument values ---
@@ -268,9 +291,41 @@ impl Command {
 #[serde(rename_all = "snake_case")]
 pub enum Format {
     Json,
+    /// JSON selected automatically for non-terminal stdout. Warning-only
+    /// diagnostics retain a successful exit status.
+    #[value(skip)]
+    ImplicitJson,
     /// Internal daemon wire format carrying both machine and human renderings.
     #[value(skip)]
     Daemon,
+    /// Internal daemon wire format preserving explicit JSON exit semantics.
+    #[value(skip)]
+    DaemonJson,
+}
+
+impl Format {
+    pub(crate) fn is_json(self) -> bool {
+        match self {
+            Self::Json | Self::ImplicitJson | Self::Daemon | Self::DaemonJson => true,
+        }
+    }
+
+    /// Whether this format preserves the command's legacy failure semantics
+    /// for a diagnostic with the given severity.
+    fn diagnostic_counts_as_error(self, severity: DiagnosticSeverity) -> bool {
+        matches!(self, Self::Json | Self::DaemonJson)
+            || matches!(severity, DiagnosticSeverity::Error)
+    }
+}
+
+pub(crate) fn diagnostic_counts_as_error(
+    format: Option<Format>,
+    severity: DiagnosticSeverity,
+) -> bool {
+    match format {
+        Some(format) => format.diagnostic_counts_as_error(severity),
+        None => matches!(severity, DiagnosticSeverity::Error),
+    }
 }
 
 /// Minimum diagnostic severity to report.
@@ -382,13 +437,94 @@ pub fn generate_completions(shell: CompletionShell, buf: &mut dyn std::io::Write
 mod tests {
     use clap::CommandFactory;
     use clap::Parser;
+    use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
 
     use super::Args;
     use super::Command;
+    use super::DiagnosticSeverity;
+    use super::Format;
+    use super::diagnostic_counts_as_error;
 
     #[test]
     fn check_options() {
         Args::command().debug_assert();
+    }
+
+    fn parse_format(cli_args: &[&str], stdout_is_tty: bool) -> Option<Format> {
+        let mut command = Args::try_parse_from(cli_args)
+            .expect("args should parse")
+            .command
+            .expect("a subcommand should be present");
+        command.apply_default_format(stdout_is_tty);
+        match command {
+            Command::Eqwalize(args) => args.format,
+            Command::Ssr(args) | Command::Search(args) => args.format,
+            _ => panic!("unexpected command variant in test"),
+        }
+    }
+
+    #[test]
+    fn apply_default_format_defaults_pipe_to_json() {
+        // Not a TTY (piped/redirected): default to JSON for machine consumers.
+        let expected = Some(Format::ImplicitJson);
+        assert_eq_expected!(expected, parse_format(&["elp", "eqwalize", "foo"], false));
+    }
+
+    #[test]
+    fn apply_default_format_keeps_tty_human_readable() {
+        // A TTY keeps the human-readable default, i.e. `--format` stays unset.
+        let expected = None;
+        assert_eq_expected!(expected, parse_format(&["elp", "eqwalize", "foo"], true));
+    }
+
+    #[test]
+    fn apply_default_format_preserves_explicit_json() {
+        // An explicit `--format json` is preserved even on a TTY.
+        let expected = Some(Format::Json);
+        assert_eq_expected!(
+            expected,
+            parse_format(&["elp", "eqwalize", "--format", "json", "foo"], true)
+        );
+    }
+
+    #[test]
+    fn apply_default_format_covers_other_diagnostic_commands() {
+        // The TTY-based default applies to every diagnostic-emitting command, not
+        // just eqwalize/lint — e.g. `ssr` (and `search`) also default to JSON when
+        // piped.
+        let expected = Some(Format::ImplicitJson);
+        assert_eq_expected!(
+            expected,
+            parse_format(&["elp", "ssr", "foo(_@Args)"], false)
+        );
+    }
+
+    #[test]
+    fn diagnostic_error_status_respects_effective_format() {
+        assert!(
+            diagnostic_counts_as_error(None, DiagnosticSeverity::Error),
+            "errors should fail in the default human format"
+        );
+        assert!(
+            !diagnostic_counts_as_error(None, DiagnosticSeverity::Warning),
+            "warnings should not fail in the default human format"
+        );
+        assert!(
+            diagnostic_counts_as_error(Some(Format::Json), DiagnosticSeverity::Warning),
+            "explicit JSON should preserve its fail-on-diagnostic behavior"
+        );
+        assert!(
+            !diagnostic_counts_as_error(Some(Format::ImplicitJson), DiagnosticSeverity::Warning),
+            "implicit JSON should preserve human-format exit semantics"
+        );
+        assert!(
+            !diagnostic_counts_as_error(Some(Format::Daemon), DiagnosticSeverity::Warning),
+            "daemon human output should not fail on warnings"
+        );
+        assert!(
+            diagnostic_counts_as_error(Some(Format::DaemonJson), DiagnosticSeverity::Warning),
+            "daemon JSON should preserve explicit JSON exit semantics"
+        );
     }
 
     /// The Glean indexer invokes elp with the global `--erl`/`--escript`

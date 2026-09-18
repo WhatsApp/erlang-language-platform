@@ -10,6 +10,7 @@
 
 use std::env;
 use std::fs;
+use std::io::IsTerminal;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process;
@@ -117,7 +118,7 @@ fn run_cli(args: Args) -> i32 {
     } else {
         Box::new(cli::NoColor::default())
     };
-    let res = try_main(&mut *cli, args);
+    let res = try_main(&mut *cli, args, std::io::stdout().is_terminal());
     handle_res(res, cli.err())
 }
 
@@ -173,7 +174,7 @@ fn setup_cli_telemetry(args: &Args) {
     }
 }
 
-fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
+fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
     let logger = setup_logging(&args.log_file, args.no_log_buffering)?;
     setup_cli_telemetry(&args);
 
@@ -199,6 +200,9 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
     };
 
     command.normalize();
+    // Default the output format from whether stdout is a terminal (human → rich
+    // text, pipe → JSON) unless the user set `--format` explicitly.
+    command.apply_default_format(stdout_is_tty);
     match &command {
         args::Command::RunServer(_) => run_server(logger)?,
         args::Command::ParseAll(args) => erlang_service_cli::parse_all(args, cli, &query_config)?,
@@ -399,6 +403,10 @@ mod tests {
     use crate::test_utils::resource_file;
 
     fn elp(args: Vec<OsString>) -> (String, String, i32) {
+        elp_with_stdout_tty(args, true)
+    }
+
+    fn elp_with_stdout_tty(args: Vec<OsString>, stdout_is_tty: bool) -> (String, String, i32) {
         // Enable manifest caching for tests — the config files in test
         // fixtures never change, and this avoids re-spawning rebar3/erl
         // subprocesses for every test case (~25× faster for ::rebar tests).
@@ -408,10 +416,47 @@ mod tests {
         let mut full_args = vec![OsString::from("elp")];
         full_args.extend(args);
         let args = args::Args::try_parse_from(full_args).unwrap();
-        let res = try_main(&mut cli, args);
+        let res = try_main(&mut cli, args, stdout_is_tty);
         let code = handle_res(res, cli.err());
         let (stdout, stderr) = cli.to_strings();
         (stdout, stderr, code)
+    }
+
+    #[test]
+    fn piped_warning_only_diagnostics_exit_successfully() {
+        let diagnostics_project = project_path("diagnostics");
+        let (stdout, stderr, code) = elp_with_stdout_tty(
+            args_vec![
+                "parse-elp",
+                "--project",
+                &diagnostics_project,
+                "--file",
+                diagnostics_project.join("app_a/src/diagnostics_warnings.escript"),
+            ],
+            false,
+        );
+        assert_eq_expected!(0, code);
+        assert!(stdout.contains("\"severity\":\"warning\""), "got: {stdout}");
+        assert!(stderr.is_empty(), "got: {stderr}");
+
+        let linter_project = project_path("linter");
+        let (stdout, stderr, code) = elp_with_stdout_tty(
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--experimental",
+                "--diagnostic-ignore",
+                "W0011",
+                "--config-file",
+                linter_project.join("elp_lint_test_ignore.toml"),
+                "--project",
+                &linter_project,
+            ],
+            false,
+        );
+        assert_eq_expected!(0, code);
+        assert!(stdout.contains("\"severity\":\"warning\""), "got: {stdout}");
+        assert!(stderr.is_empty(), "got: {stderr}");
     }
 
     fn make_tmp_dir() -> TempDir {

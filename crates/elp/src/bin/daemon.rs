@@ -816,7 +816,7 @@ fn handle_connection(
     if let Some(json) = line.strip_prefix("lint ") {
         let done = match serde_json::from_str::<Lint>(json) {
             Ok(mut lint_args) => {
-                lint_args.format = Some(Format::Daemon);
+                lint_args.format = Some(daemon_lint_format(lint_args.format));
                 match lint_cli::do_lint(&lint_args, &state.lint_config, &mut state.loaded, &mut cli)
                 {
                     Ok(()) => DoneMessage::ok(),
@@ -888,6 +888,13 @@ fn handle_connection(
     writeln!(cli, "{done}")?;
     cli.flush()?;
     Ok(should_quit)
+}
+
+fn daemon_lint_format(requested: Option<Format>) -> Format {
+    match requested {
+        Some(Format::Json) => Format::DaemonJson,
+        _ => Format::Daemon,
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1316,6 +1323,19 @@ fn cleanup_stale_in_dir(dir: &Path) {
 mod tests {
     use super::*;
     use crate::args::Severity;
+
+    #[test]
+    fn daemon_lint_format_preserves_explicit_json_semantics() {
+        assert!(matches!(
+            daemon_lint_format(Some(Format::Json)),
+            Format::DaemonJson
+        ));
+        assert!(matches!(
+            daemon_lint_format(Some(Format::ImplicitJson)),
+            Format::Daemon
+        ));
+        assert!(matches!(daemon_lint_format(None), Format::Daemon));
+    }
 
     // -- DoneMessage serialization --
 

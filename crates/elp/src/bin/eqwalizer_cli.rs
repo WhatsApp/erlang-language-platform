@@ -245,11 +245,11 @@ pub fn do_eqwalize_module(
             pretty_reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
             &mut pretty_reporter
         }
-        Some(Format::Json) => {
+        Some(Format::Json | Format::ImplicitJson) => {
             wire_reporter = reporting::WireReporter::json(analysis, loaded, cli);
             &mut wire_reporter
         }
-        Some(Format::Daemon) => {
+        Some(Format::Daemon | Format::DaemonJson) => {
             wire_reporter = reporting::WireReporter::daemon(analysis, loaded, cli);
             &mut wire_reporter
         }
@@ -331,11 +331,11 @@ pub fn do_eqwalize_all(
             pretty_reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
             &mut pretty_reporter
         }
-        Some(Format::Json) => {
+        Some(Format::Json | Format::ImplicitJson) => {
             wire_reporter = reporting::WireReporter::json(analysis, loaded, cli);
             &mut wire_reporter
         }
-        Some(Format::Daemon) => {
+        Some(Format::Daemon | Format::DaemonJson) => {
             wire_reporter = reporting::WireReporter::daemon(analysis, loaded, cli);
             &mut wire_reporter
         }
@@ -409,11 +409,11 @@ pub fn do_eqwalize_app(
             pretty_reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
             &mut pretty_reporter
         }
-        Some(Format::Json) => {
+        Some(Format::Json | Format::ImplicitJson) => {
             wire_reporter = reporting::WireReporter::json(analysis, loaded, cli);
             &mut wire_reporter
         }
-        Some(Format::Daemon) => {
+        Some(Format::Daemon | Format::DaemonJson) => {
             wire_reporter = reporting::WireReporter::daemon(analysis, loaded, cli);
             &mut wire_reporter
         }
@@ -517,11 +517,11 @@ elp eqwalize-target erl/chatd #same as //erl/chatd/... but enables shell complet
             pretty_reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
             &mut pretty_reporter
         }
-        Some(Format::Json) => {
+        Some(Format::Json | Format::ImplicitJson) => {
             wire_reporter = reporting::WireReporter::json(analysis, loaded, cli);
             &mut wire_reporter
         }
-        Some(Format::Daemon) => {
+        Some(Format::Daemon | Format::DaemonJson) => {
             wire_reporter = reporting::WireReporter::daemon(analysis, loaded, cli);
             &mut wire_reporter
         }

@@ -60,6 +60,7 @@ use vfs::AbsPath;
 
 use crate::args::Format;
 use crate::args::Severity;
+use crate::args::diagnostic_counts_as_error;
 use crate::args::module_completer;
 use crate::reporting;
 use crate::reporting::print_memory_usage;
@@ -119,7 +120,7 @@ impl ParseAllElp {
     }
 
     pub fn is_format_json(&self) -> bool {
-        self.format == Some(Format::Json)
+        self.format.is_some_and(Format::is_json)
     }
 }
 
@@ -277,7 +278,9 @@ pub fn parse_all(
                 combined.sort_by_key(|a| a.range.start());
                 for diag in combined {
                     if args.is_format_json() {
-                        err_in_diag = true;
+                        if diagnostic_counts_as_error(args.format, diag.severity) {
+                            err_in_diag = true;
+                        }
                         let vfs_path = loaded.vfs.file_path(diags.file_id);
                         let analysis = loaded.analysis();
                         let root_path = &analysis

@@ -83,6 +83,7 @@ use serde::Serialize;
 use crate::args::Format;
 use crate::args::Severity;
 use crate::args::diagnostic_code_candidates;
+use crate::args::diagnostic_counts_as_error;
 use crate::args::module_completer;
 use crate::reporting;
 use crate::reporting::print_memory_usage;
@@ -226,7 +227,7 @@ impl Lint {
     }
 
     pub fn uses_structured_diagnostics(&self) -> bool {
-        matches!(self.format, Some(Format::Json | Format::Daemon))
+        self.format.is_some_and(Format::is_json)
     }
 
     /// To prevent flaky test results we allow disabling streaming when applying fixes
@@ -1013,11 +1014,7 @@ fn do_print_diagnostics_json_filtered(
                 writeln!(cli, "  {}: {}", name, diags.len())?;
             } else {
                 for diag in diags {
-                    if args.format == Some(Format::Json)
-                        || matches!(
-                            diag.severity(args.use_cli_severity),
-                            diagnostics::Severity::Error
-                        )
+                    if diagnostic_counts_as_error(args.format, diag.severity(args.use_cli_severity))
                     {
                         *err_in_diag = true;
                     }
@@ -1040,7 +1037,10 @@ fn do_print_diagnostics_json_filtered(
                             path: relative_path,
                             use_cli_severity: args.use_cli_severity,
                             arc_patch: args.arc_patch,
-                            daemon_format: args.format == Some(Format::Daemon),
+                            daemon_format: matches!(
+                                args.format,
+                                Some(Format::Daemon | Format::DaemonJson)
+                            ),
                         },
                         cli,
                     )?;

@@ -156,7 +156,7 @@ impl Ssr {
     }
 
     pub fn is_format_json(&self) -> bool {
-        self.format == Some(Format::Json)
+        self.format.is_some_and(Format::is_json)
     }
 
     pub fn parse_strategy(&self) -> Result<Strategy> {
