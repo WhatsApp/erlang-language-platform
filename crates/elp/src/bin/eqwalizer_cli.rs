@@ -49,6 +49,8 @@ use fxhash::FxHashMap;
 use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
 use rayon::prelude::*;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::args::Format;
 use crate::reporting;
@@ -57,7 +59,7 @@ use crate::reporting::Reporter;
 use crate::reporting::add_stat;
 use crate::reporting::dump_stats;
 
-#[derive(Clone, Debug, clap::Args)]
+#[derive(Clone, Debug, clap::Args, Serialize, Deserialize)]
 pub struct Eqwalize {
     /// Path to directory with project, or to a JSON file
     #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
@@ -86,7 +88,7 @@ pub struct Eqwalize {
     pub modules: Vec<String>,
 }
 
-#[derive(Clone, Debug, clap::Args)]
+#[derive(Clone, Debug, clap::Args, Serialize, Deserialize)]
 pub struct EqwalizeAll {
     /// Path to directory with project, or to a JSON file
     #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
@@ -121,7 +123,7 @@ pub struct EqwalizeAll {
     pub list_modules: bool,
 }
 
-#[derive(Clone, Debug, clap::Args)]
+#[derive(Clone, Debug, clap::Args, Serialize, Deserialize)]
 pub struct EqwalizeTarget {
     /// Path to directory with project, or to a JSON file
     #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
@@ -147,7 +149,7 @@ pub struct EqwalizeTarget {
     pub target: String,
 }
 
-#[derive(Clone, Debug, clap::Args)]
+#[derive(Clone, Debug, clap::Args, Serialize, Deserialize)]
 pub struct EqwalizeApp {
     /// Path to directory with project, or to a JSON file
     #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]

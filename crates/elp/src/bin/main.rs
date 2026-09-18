@@ -185,6 +185,9 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
     let logger = setup_logging(&args.log_file, args.no_log_buffering)?;
     setup_cli_telemetry(&args);
 
+    #[cfg(unix)]
+    let daemon_startup_options =
+        daemon::DaemonStartupOptions::new(args.erl.as_deref(), args.escript.as_deref());
     INIT.call_once(|| setup_static(&args));
     for flag in [
         args.buck_quick_start.then_some("--buck-quick-start"),
@@ -223,7 +226,7 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
                 None,
                 cli,
                 |cli| eqwalizer_cli::eqwalize_module(eqwalize_args, cli, &query_config),
-                |cli| daemon::connect_eqwalize(eqwalize_args, cli),
+                |cli| daemon::connect_eqwalize(eqwalize_args, &daemon_startup_options, cli),
             )?;
             #[cfg(not(unix))]
             {
@@ -236,13 +239,24 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
             if use_daemon(eqwalize_all_args.connect, eqwalize_all_args.no_connect) =>
         {
             #[cfg(unix)]
-            run_with_daemon_fallback(
-                eqwalize_all_args.connect,
-                None,
-                cli,
-                |cli| eqwalizer_cli::eqwalize_all(eqwalize_all_args, cli, &query_config),
-                |cli| daemon::connect_eqwalize_all(eqwalize_all_args, cli),
-            )?;
+            {
+                run_with_daemon_fallback(
+                    eqwalize_all_args.connect,
+                    daemon::eqwalize_daemon_incompatibility(
+                        eqwalize_all_args.include_generated,
+                        eqwalize_all_args.stats,
+                    ),
+                    cli,
+                    |cli| eqwalizer_cli::eqwalize_all(eqwalize_all_args, cli, &query_config),
+                    |cli| {
+                        daemon::connect_eqwalize_all(
+                            eqwalize_all_args,
+                            &daemon_startup_options,
+                            cli,
+                        )
+                    },
+                )?;
+            }
             #[cfg(not(unix))]
             {
                 let _ = eqwalize_all_args;
@@ -255,13 +269,24 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
             if use_daemon(eqwalize_app_args.connect, eqwalize_app_args.no_connect) =>
         {
             #[cfg(unix)]
-            run_with_daemon_fallback(
-                eqwalize_app_args.connect,
-                None,
-                cli,
-                |cli| eqwalizer_cli::eqwalize_app(eqwalize_app_args, cli, &query_config),
-                |cli| daemon::connect_eqwalize_app(eqwalize_app_args, cli),
-            )?;
+            {
+                run_with_daemon_fallback(
+                    eqwalize_app_args.connect,
+                    daemon::eqwalize_daemon_incompatibility(
+                        eqwalize_app_args.include_generated,
+                        false,
+                    ),
+                    cli,
+                    |cli| eqwalizer_cli::eqwalize_app(eqwalize_app_args, cli, &query_config),
+                    |cli| {
+                        daemon::connect_eqwalize_app(
+                            eqwalize_app_args,
+                            &daemon_startup_options,
+                            cli,
+                        )
+                    },
+                )?;
+            }
             #[cfg(not(unix))]
             {
                 let _ = eqwalize_app_args;
@@ -279,13 +304,24 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
             ) =>
         {
             #[cfg(unix)]
-            run_with_daemon_fallback(
-                eqwalize_target_args.connect,
-                None,
-                cli,
-                |cli| eqwalizer_cli::eqwalize_target(eqwalize_target_args, cli, &query_config),
-                |cli| daemon::connect_eqwalize_target(eqwalize_target_args, cli),
-            )?;
+            {
+                run_with_daemon_fallback(
+                    eqwalize_target_args.connect,
+                    daemon::eqwalize_daemon_incompatibility(
+                        eqwalize_target_args.include_generated,
+                        false,
+                    ),
+                    cli,
+                    |cli| eqwalizer_cli::eqwalize_target(eqwalize_target_args, cli, &query_config),
+                    |cli| {
+                        daemon::connect_eqwalize_target(
+                            eqwalize_target_args,
+                            &daemon_startup_options,
+                            cli,
+                        )
+                    },
+                )?;
+            }
             #[cfg(not(unix))]
             {
                 let _ = eqwalize_target_args;
@@ -309,7 +345,7 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
                     daemon::lint_daemon_incompatibility(lint_args),
                     cli,
                     |cli| lint_cli::run_lint_command(lint_args, cli, &query_config),
-                    |cli| daemon::connect_lint(lint_args, cli),
+                    |cli| daemon::connect_lint(lint_args, &daemon_startup_options, cli),
                 )?;
             }
             #[cfg(not(unix))]

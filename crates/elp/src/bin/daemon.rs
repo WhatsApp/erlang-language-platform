@@ -92,6 +92,7 @@ use indicatif::ProgressBar;
 use indicatif::ProgressDrawTarget;
 use indicatif::ProgressStyle;
 use indicatif::TermLike;
+use serde::Deserialize;
 use serde::Serialize;
 
 use crate::args::Format;
@@ -111,6 +112,39 @@ pub enum DaemonCommand {
     Run(DaemonRun),
     Stop,
     Status(DaemonStatus),
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) struct DaemonStartupOptions {
+    pub(crate) erl: Option<PathBuf>,
+    pub(crate) escript: Option<PathBuf>,
+}
+
+impl DaemonStartupOptions {
+    pub(crate) fn new(erl: Option<&Path>, escript: Option<&Path>) -> Self {
+        Self {
+            erl: erl.map(Path::to_path_buf),
+            escript: escript.map(Path::to_path_buf),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "command", content = "args", rename_all = "kebab-case")]
+enum DaemonRequest {
+    Eqwalize(Box<Eqwalize>),
+    EqwalizeAll(Box<EqwalizeAll>),
+    EqwalizeApp(Box<EqwalizeApp>),
+    EqwalizeTarget(Box<EqwalizeTarget>),
+    Lint(Box<Lint>),
+}
+
+fn encode_daemon_request(request: DaemonRequest) -> Result<String> {
+    Ok(format!("request {}", serde_json::to_string(&request)?))
+}
+
+fn decode_daemon_request(json: &str) -> Result<DaemonRequest> {
+    Ok(serde_json::from_str(json)?)
 }
 
 #[derive(Clone, Debug, clap::Args)]
@@ -756,12 +790,12 @@ fn handle_connection(
     // info().
     let mut cli = DaemonCli::client(stream.try_clone()?);
 
-    // Strip the JSON payload from log output for lint commands — it can be
-    // multi-KB and dominates the log file.
+    // Strip JSON payloads from log output — they can be multi-KB and dominate
+    // the log file.
     if let Some(prefix) = line.split_once(' ').map(|(p, _)| p)
-        && prefix == "lint"
+        && matches!(prefix, "request" | "lint")
     {
-        let _ = writeln!(cli.err(), "[elp-daemon] Command: lint <json>");
+        let _ = writeln!(cli.err(), "[elp-daemon] Command: {prefix} <json>");
     } else {
         let _ = writeln!(cli.err(), "[elp-daemon] Command: {line}");
     }
@@ -835,13 +869,27 @@ fn handle_connection(
         UpdateResult::Updated => {}
     }
 
+    if let Some(json) = line.strip_prefix("request ") {
+        let done = match decode_daemon_request(json) {
+            Ok(request) => match execute_daemon_request(request, state, &mut cli) {
+                Ok(()) => DoneMessage::ok(),
+                Err(e) => DoneMessage::error(e.to_string()),
+            },
+            Err(e) => DoneMessage::error(format!("invalid daemon request: {e}")),
+        };
+        let done = serde_json::to_string(&done)?;
+        writeln!(cli, "{done}")?;
+        cli.flush()?;
+        return Ok(false);
+    }
+
     // Lint requests use a JSON-encoded `Lint` struct on the wire — too many
     // flags to express through the shell parser. Handle them before falling
     // through to ShellCommand::parse.
     if let Some(json) = line.strip_prefix("lint ") {
         let done = match serde_json::from_str::<Lint>(json) {
             Ok(mut lint_args) => {
-                lint_args.format = Some(daemon_lint_format(lint_args.format));
+                lint_args.format = Some(daemon_request_format(lint_args.format));
                 match lint_cli::do_lint(&lint_args, &state.lint_config, &mut state.loaded, &mut cli)
                 {
                     Ok(()) => DoneMessage::ok(),
@@ -922,10 +970,39 @@ fn write_connection_unavailable(cli: &mut dyn Cli, error: &anyhow::Error) -> Res
     Ok(true)
 }
 
-fn daemon_lint_format(requested: Option<Format>) -> Format {
+fn daemon_request_format(requested: Option<Format>) -> Format {
     match requested {
         Some(Format::Json) => Format::DaemonJson,
         _ => Format::Daemon,
+    }
+}
+
+fn execute_daemon_request(
+    request: DaemonRequest,
+    state: &mut DaemonState,
+    cli: &mut dyn Cli,
+) -> Result<()> {
+    match request {
+        DaemonRequest::Eqwalize(mut args) => {
+            args.format = Some(daemon_request_format(args.format));
+            eqwalizer_cli::do_eqwalize_module(&args, &mut state.loaded, cli)
+        }
+        DaemonRequest::EqwalizeAll(mut args) => {
+            args.format = Some(daemon_request_format(args.format));
+            eqwalizer_cli::do_eqwalize_all(&args, &mut state.loaded, cli)
+        }
+        DaemonRequest::EqwalizeApp(mut args) => {
+            args.format = Some(daemon_request_format(args.format));
+            eqwalizer_cli::do_eqwalize_app(&args, &mut state.loaded, cli)
+        }
+        DaemonRequest::EqwalizeTarget(mut args) => {
+            args.format = Some(daemon_request_format(args.format));
+            eqwalizer_cli::do_eqwalize_target(&args, &mut state.loaded, cli)
+        }
+        DaemonRequest::Lint(mut args) => {
+            args.format = Some(daemon_request_format(args.format));
+            lint_cli::do_lint(&args, &state.lint_config, &mut state.loaded, cli)
+        }
     }
 }
 
@@ -958,37 +1035,71 @@ fn daemon_connection_error(error: anyhow::Error, emitted_diagnostic: bool) -> an
     }
 }
 
+struct DaemonConnection<'a> {
+    project: &'a Path,
+    profile: &'a str,
+    rebar: bool,
+    startup_options: &'a DaemonStartupOptions,
+}
+
+impl<'a> DaemonConnection<'a> {
+    fn new(
+        project: &'a Path,
+        profile: &'a str,
+        rebar: bool,
+        startup_options: &'a DaemonStartupOptions,
+    ) -> Self {
+        Self {
+            project,
+            profile,
+            rebar,
+            startup_options,
+        }
+    }
+}
+
+struct DaemonEndpoint {
+    dir: PathBuf,
+    sock: PathBuf,
+    startup_timeout: Option<Duration>,
+}
+
 fn connect_and_run(
     command_line: &str,
-    project: &Path,
-    profile: &str,
-    rebar: bool,
     format_json: bool,
+    connection: &DaemonConnection<'_>,
     cli: &mut dyn Cli,
 ) -> Result<()> {
-    let conf = DiscoverConfig::new(rebar, profile);
-    let (elp_config, manifest) = load::discover_manifest(project, &conf)?;
+    let conf = DiscoverConfig::new(connection.rebar, connection.profile);
+    let (elp_config, manifest) = load::discover_manifest(connection.project, &conf)?;
     let root = load::project_root_dir(&manifest);
-    let dir = daemon_dir(&root, profile);
-    let sock = dir.join("daemon.sock");
-    let startup_timeout = effective_startup_timeout(elp_config.daemon.startup_timeout_secs);
-
-    // Try to connect, auto-start if needed
-    let mut stream = match UnixStream::connect(&sock) {
-        Ok(s) => s,
-        Err(_) => start_daemon(&dir, &sock, project, profile, rebar, startup_timeout, cli)
-            .map_err(DaemonUnavailable::new)?,
+    let dir = daemon_dir(&root, connection.profile);
+    let endpoint = DaemonEndpoint {
+        sock: dir.join("daemon.sock"),
+        dir,
+        startup_timeout: effective_startup_timeout(elp_config.daemon.startup_timeout_secs),
     };
 
-    // Check for version mismatch; if the daemon is from a different build, restart it
-    let version_file = dir.join("daemon.version");
-    if let Ok(daemon_version) = fs::read_to_string(&version_file)
-        && daemon_version.trim() != elp::version()
-    {
+    // Try to connect, auto-start if needed
+    let mut stream = match UnixStream::connect(&endpoint.sock) {
+        Ok(s) => s,
+        Err(_) => start_daemon(&endpoint, connection, cli).map_err(DaemonUnavailable::new)?,
+    };
+
+    // Reuse is safe only when the marker proves protocol compatibility. A
+    // missing or unreadable marker therefore triggers the same restart as a
+    // known version mismatch.
+    let version_file = endpoint.dir.join("daemon.version");
+    let expected_version = elp::version();
+    let running_version = fs::read_to_string(&version_file).ok();
+    if running_version.as_deref().map(str::trim) != Some(expected_version.as_str()) {
         cli.info(&format!(
             "Daemon version mismatch (daemon: {}, client: {}), restarting...",
-            daemon_version.trim(),
-            elp::version()
+            running_version
+                .as_deref()
+                .map(str::trim)
+                .unwrap_or("unknown"),
+            expected_version
         ))?;
         let mut writer = BufWriter::new(&stream);
         let _ = writeln!(writer, "__stop__");
@@ -997,13 +1108,12 @@ fn connect_and_run(
         drop(stream);
 
         let start = Instant::now();
-        while sock.exists() && start.elapsed() < Duration::from_secs(10) {
+        while endpoint.sock.exists() && start.elapsed() < Duration::from_secs(10) {
             thread::sleep(Duration::from_millis(100));
         }
-        cleanup_stale_in_dir(&dir);
+        cleanup_stale_in_dir(&endpoint.dir);
 
-        stream = start_daemon(&dir, &sock, project, profile, rebar, startup_timeout, cli)
-            .map_err(DaemonUnavailable::new)?;
+        stream = start_daemon(&endpoint, connection, cli).map_err(DaemonUnavailable::new)?;
     }
 
     // Send command
@@ -1057,12 +1167,12 @@ fn connect_and_run(
                 cli.info(&format!("Restarting daemon: {reason}"))?;
                 // Wait for daemon to shut down
                 let start = Instant::now();
-                while sock.exists() && start.elapsed() < Duration::from_secs(10) {
+                while endpoint.sock.exists() && start.elapsed() < Duration::from_secs(10) {
                     thread::sleep(Duration::from_millis(100));
                 }
-                cleanup_stale_in_dir(&dir);
+                cleanup_stale_in_dir(&endpoint.dir);
                 // Start new daemon and retry the command
-                return connect_and_run(command_line, project, profile, rebar, format_json, cli);
+                return connect_and_run(command_line, format_json, connection, cli);
             }
             if v.get("status").and_then(|s| s.as_str()) == Some("error") {
                 exit_code = 1;
@@ -1087,7 +1197,7 @@ fn connect_and_run(
             writeln!(cli, "{line}")?;
         } else {
             let diag: elp::arc_types::Diagnostic = serde_json::from_str(&line)?;
-            if diag.severity() == &elp::arc_types::Severity::Error {
+            if is_error_diagnostic(&diag) {
                 error_count += 1;
             }
             write!(cli, "{diag}")?;
@@ -1115,22 +1225,21 @@ fn connect_and_run(
     Ok(())
 }
 
+fn is_error_diagnostic(diag: &elp::arc_types::Diagnostic) -> bool {
+    diag.severity() == &elp::arc_types::Severity::Error
+}
 /// Spawn a new daemon process and wait for it to become ready.
 fn start_daemon(
-    dir: &Path,
-    sock: &Path,
-    project: &Path,
-    profile: &str,
-    rebar: bool,
-    startup_timeout: Option<Duration>,
+    endpoint: &DaemonEndpoint,
+    connection: &DaemonConnection<'_>,
     cli: &mut dyn Cli,
 ) -> Result<UnixStream> {
-    cleanup_stale_in_dir(dir);
+    cleanup_stale_in_dir(&endpoint.dir);
 
     cli.info("Starting elp daemon...")?;
     let exe = env::current_exe()?;
-    let log = dir.join("daemon.log");
-    fs::create_dir_all(dir)?;
+    let log = endpoint.dir.join("daemon.log");
+    fs::create_dir_all(&endpoint.dir)?;
     let log_file = fs::File::create(&log)?;
     // Surface the log path up front so the user can tail it during a long first
     // load (project loading can take many seconds).
@@ -1139,12 +1248,18 @@ fn start_daemon(
     let mut cmd = process::Command::new(exe);
     cmd.arg("daemon")
         .arg("--project")
-        .arg(project)
+        .arg(connection.project)
         .arg("--as")
-        .arg(profile)
+        .arg(connection.profile)
         .arg("--daemonize");
-    if rebar {
+    if connection.rebar {
         cmd.arg("--rebar");
+    }
+    if let Some(erl) = &connection.startup_options.erl {
+        cmd.arg("--erl").arg(erl);
+    }
+    if let Some(escript) = &connection.startup_options.escript {
+        cmd.arg("--escript").arg(escript);
     }
     cmd.stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -1156,14 +1271,14 @@ fn start_daemon(
     // accurate (a coarser interval would round fast starts up to a full tick).
     let start = Instant::now();
     loop {
-        if let Ok(s) = UnixStream::connect(sock) {
+        if let Ok(s) = UnixStream::connect(&endpoint.sock) {
             cli.info(&format!(
                 "elp daemon started in {}",
                 format_duration(start.elapsed())
             ))?;
             return Ok(s);
         }
-        if let Some(timeout) = startup_timeout
+        if let Some(timeout) = endpoint.startup_timeout
             && start.elapsed() > timeout
         {
             bail!(
@@ -1181,50 +1296,77 @@ fn start_daemon(
 // Public connect entry points
 // ---------------------------------------------------------------------------
 
-pub fn connect_eqwalize(args: &Eqwalize, cli: &mut dyn Cli) -> Result<()> {
-    let cmd = format!("eqwalize {}", args.modules.join(" "));
+pub fn connect_eqwalize(
+    args: &Eqwalize,
+    startup_options: &DaemonStartupOptions,
+    cli: &mut dyn Cli,
+) -> Result<()> {
+    let cmd = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(args.clone())))?;
     let format_json = args.format.is_some();
-    connect_and_run(
-        &cmd,
-        &args.project,
-        &args.profile,
-        args.rebar,
-        format_json,
-        cli,
-    )
+    let connection =
+        DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
+    connect_and_run(&cmd, format_json, &connection, cli)
 }
 
-pub fn connect_eqwalize_all(args: &EqwalizeAll, cli: &mut dyn Cli) -> Result<()> {
-    let cmd = "eqwalize-all".to_string();
+pub fn connect_eqwalize_all(
+    args: &EqwalizeAll,
+    startup_options: &DaemonStartupOptions,
+    cli: &mut dyn Cli,
+) -> Result<()> {
+    if let Some(reason) = eqwalize_daemon_incompatibility(args.include_generated, args.stats) {
+        bail!("{reason}");
+    }
+    let cmd = encode_daemon_request(DaemonRequest::EqwalizeAll(Box::new(args.clone())))?;
     let format_json = args.format.is_some();
-    connect_and_run(
-        &cmd,
-        &args.project,
-        &args.profile,
-        args.rebar,
-        format_json,
-        cli,
-    )
+    let connection =
+        DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
+    connect_and_run(&cmd, format_json, &connection, cli)
 }
 
-pub fn connect_eqwalize_app(args: &EqwalizeApp, cli: &mut dyn Cli) -> Result<()> {
-    let cmd = format!("eqwalize-app {}", args.app);
+pub fn connect_eqwalize_app(
+    args: &EqwalizeApp,
+    startup_options: &DaemonStartupOptions,
+    cli: &mut dyn Cli,
+) -> Result<()> {
+    if let Some(reason) = eqwalize_daemon_incompatibility(args.include_generated, false) {
+        bail!("{reason}");
+    }
+    let cmd = encode_daemon_request(DaemonRequest::EqwalizeApp(Box::new(args.clone())))?;
     let format_json = args.format.is_some();
-    connect_and_run(
-        &cmd,
-        &args.project,
-        &args.profile,
-        args.rebar,
-        format_json,
-        cli,
-    )
+    let connection =
+        DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
+    connect_and_run(&cmd, format_json, &connection, cli)
 }
 
-pub fn connect_eqwalize_target(args: &EqwalizeTarget, cli: &mut dyn Cli) -> Result<()> {
-    let cmd = format!("eqwalize-target {}", args.target);
+pub fn connect_eqwalize_target(
+    args: &EqwalizeTarget,
+    startup_options: &DaemonStartupOptions,
+    cli: &mut dyn Cli,
+) -> Result<()> {
+    if let Some(reason) = eqwalize_daemon_incompatibility(args.include_generated, false) {
+        bail!("{reason}");
+    }
+    let cmd = encode_daemon_request(DaemonRequest::EqwalizeTarget(Box::new(args.clone())))?;
     let format_json = args.format.is_some();
     // eqwalize-target is buck-only, so profile is always "test" and rebar is always false
-    connect_and_run(&cmd, &args.project, "test", false, format_json, cli)
+    let connection = DaemonConnection::new(&args.project, "test", false, startup_options);
+    connect_and_run(&cmd, format_json, &connection, cli)
+}
+
+/// The command dispatcher uses this to select standalone fallback. The public
+/// connect entry points repeat the check so direct callers cannot send options
+/// that the daemon cannot honor.
+pub(crate) fn eqwalize_daemon_incompatibility(
+    include_generated: bool,
+    stats: bool,
+) -> Option<&'static str> {
+    if include_generated {
+        return Some("--include-generated requires standalone output handling");
+    }
+    if stats {
+        return Some("--stats requires standalone output handling");
+    }
+    None
 }
 
 /// The reason a `Lint` invocation can't be served by the daemon, or `None` if it
@@ -1277,18 +1419,42 @@ fn validate_lint_for_daemon(args: &Lint) -> Result<()> {
     }
 }
 
-pub fn connect_lint(args: &Lint, cli: &mut dyn Cli) -> Result<()> {
+pub fn connect_lint(
+    args: &Lint,
+    startup_options: &DaemonStartupOptions,
+    cli: &mut dyn Cli,
+) -> Result<()> {
     validate_lint_for_daemon(args)?;
-    let cmd = format!("lint {}", serde_json::to_string(args)?);
+    let current_dir =
+        env::current_dir().context("failed to resolve the client working directory")?;
+    let request_args = lint_request_with_absolute_paths(args, &current_dir);
+    let cmd = encode_daemon_request(DaemonRequest::Lint(Box::new(request_args)))?;
     let format_json = args.format.is_some();
-    connect_and_run(
-        &cmd,
-        &args.project,
-        &args.profile,
-        args.rebar,
-        format_json,
-        cli,
-    )
+    let connection =
+        DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
+    connect_and_run(&cmd, format_json, &connection, cli)
+}
+
+fn lint_request_with_absolute_paths(args: &Lint, current_dir: &Path) -> Lint {
+    let mut request = args.clone();
+    request.file = request
+        .file
+        .into_iter()
+        .map(|path| absolute_client_path(current_dir, path))
+        .collect();
+    request.path = request
+        .path
+        .map(|path| absolute_client_path(current_dir, path));
+    request
+}
+
+fn absolute_client_path(current_dir: &Path, path: PathBuf) -> PathBuf {
+    let absolute = if path.is_absolute() {
+        path
+    } else {
+        current_dir.join(path)
+    };
+    dunce::canonicalize(&absolute).unwrap_or(absolute)
 }
 
 // ---------------------------------------------------------------------------
@@ -1408,6 +1574,8 @@ fn cleanup_stale_in_dir(dir: &Path) {
 
 #[cfg(test)]
 mod tests {
+    use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
     use super::*;
     use crate::args::Severity;
 
@@ -1421,16 +1589,82 @@ mod tests {
     }
 
     #[test]
-    fn daemon_lint_format_preserves_explicit_json_semantics() {
+    fn daemon_request_format_preserves_explicit_json_semantics() {
         assert!(matches!(
-            daemon_lint_format(Some(Format::Json)),
+            daemon_request_format(Some(Format::Json)),
             Format::DaemonJson
         ));
         assert!(matches!(
-            daemon_lint_format(Some(Format::ImplicitJson)),
+            daemon_request_format(Some(Format::ImplicitJson)),
             Format::Daemon
         ));
-        assert!(matches!(daemon_lint_format(None), Format::Daemon));
+        assert!(matches!(daemon_request_format(None), Format::Daemon));
+    }
+
+    // -- Daemon request serialization --
+
+    #[test]
+    fn daemon_request_roundtrip_preserves_eqwalize_all_fields() {
+        let args = EqwalizeAll {
+            project: PathBuf::from("/tmp/project"),
+            profile: "prod".to_string(),
+            format: Some(Format::Json),
+            rebar: true,
+            connect: true,
+            no_connect: false,
+            include_generated: false,
+            bail_on_error: true,
+            stats: false,
+            list_modules: true,
+        };
+        let line = encode_daemon_request(DaemonRequest::EqwalizeAll(Box::new(args)))
+            .expect("request should serialize");
+        let json = line
+            .strip_prefix("request ")
+            .expect("request should have the wire prefix");
+        let request = decode_daemon_request(json).expect("request should deserialize");
+
+        let DaemonRequest::EqwalizeAll(args) = request else {
+            panic!("expected an eqwalize-all request");
+        };
+        assert!(args.rebar);
+        assert!(args.connect);
+        assert!(!args.include_generated);
+        assert!(args.bail_on_error);
+        assert!(!args.stats);
+        assert!(args.list_modules);
+    }
+
+    #[test]
+    fn eqwalize_daemon_incompatibility_requires_standalone_output() {
+        assert!(eqwalize_daemon_incompatibility(false, false).is_none());
+
+        let include_generated = eqwalize_daemon_incompatibility(true, false)
+            .expect("--include-generated should require standalone output");
+        assert!(include_generated.contains("--include-generated"));
+
+        let stats = eqwalize_daemon_incompatibility(false, true)
+            .expect("--stats should require standalone output");
+        assert!(stats.contains("--stats"));
+    }
+
+    #[test]
+    fn lint_request_resolves_client_relative_paths() {
+        let current_dir = Path::new("/workspace/client");
+        let args = Lint {
+            file: vec![PathBuf::from("src/foo.erl"), PathBuf::from("/tmp/bar.erl")],
+            path: Some(PathBuf::from("src")),
+            ..Lint::default()
+        };
+
+        let request = lint_request_with_absolute_paths(&args, current_dir);
+        let expected_files = vec![
+            PathBuf::from("/workspace/client/src/foo.erl"),
+            PathBuf::from("/tmp/bar.erl"),
+        ];
+        assert_eq_expected!(expected_files, request.file);
+        let expected_path = Some(PathBuf::from("/workspace/client/src"));
+        assert_eq_expected!(expected_path, request.path);
     }
 
     // -- DoneMessage serialization --
@@ -1996,6 +2230,33 @@ mod tests {
         );
     }
 
+    #[test]
+    fn only_error_diagnostics_increment_the_human_summary() {
+        let warning = elp::arc_types::Diagnostic::new(
+            Path::new("src/foo.erl"),
+            1,
+            Some(1),
+            elp::arc_types::Severity::Warning,
+            "W0001".to_string(),
+            "warning".to_string(),
+            None,
+            None,
+        );
+        let error = elp::arc_types::Diagnostic::new(
+            Path::new("src/foo.erl"),
+            1,
+            Some(1),
+            elp::arc_types::Severity::Error,
+            "E0001".to_string(),
+            "error".to_string(),
+            None,
+            None,
+        );
+
+        assert!(!is_error_diagnostic(&warning));
+        assert!(is_error_diagnostic(&error));
+    }
+
     // -- Daemon lifecycle integration tests --
 
     fn watchman_available() -> bool {
@@ -2007,7 +2268,7 @@ mod tests {
     }
 
     #[test]
-    fn daemon_stop_command() {
+    fn daemon_serves_typed_request_and_stops() {
         if !watchman_available() {
             eprintln!("Skipping: watchman not available");
             return;
@@ -2017,6 +2278,7 @@ mod tests {
         let profile = format!("test-daemon-stop-{}", process::id());
 
         let query_config = BuckQueryConfig::BuildGeneratedCode;
+        let startup_options = DaemonStartupOptions::default();
 
         let profile_bg = profile.clone();
         let project_bg = project.clone();
@@ -2060,6 +2322,54 @@ mod tests {
             );
             thread::sleep(Duration::from_millis(200));
         }
+
+        let mut cli = elp::cli::Fake::default();
+        let result = connect_eqwalize(
+            &Eqwalize {
+                project: project.clone(),
+                profile: profile.clone(),
+                format: Some(Format::Json),
+                rebar: false,
+                connect: true,
+                no_connect: false,
+                bail_on_error: true,
+                modules: vec!["app_a".to_string()],
+            },
+            &startup_options,
+            &mut cli,
+        );
+        assert!(result.is_err(), "app_a should report eqWAlizer errors");
+        let (stdout, stderr) = cli.to_strings();
+        assert!(
+            stdout.contains("incompatible_types"),
+            "typed request should stream diagnostics: {stdout}"
+        );
+        assert!(
+            stderr.contains("Eqwalizer errors found"),
+            "--bail-on-error should reach the daemon: {stderr}"
+        );
+
+        let mut cli = elp::cli::Fake::default();
+        let result = connect_lint(
+            &Lint {
+                project: project.clone(),
+                module: Some("app_a".to_string()),
+                profile: profile.clone(),
+                connect: true,
+                print_diags: true,
+                diagnostic_filter: vec!["W0010".to_string()],
+                ..Lint::default()
+            },
+            &startup_options,
+            &mut cli,
+        );
+        assert!(
+            result.is_ok(),
+            "warning-only lint should succeed: {result:?}"
+        );
+        let (stdout, stderr) = cli.to_strings();
+        assert!(stdout.contains("NO ERRORS"), "got: {stdout}");
+        assert!(stderr.is_empty(), "got: {stderr}");
 
         // Stop the daemon using the stop command
         let mut cli = elp::cli::Fake::default();
