@@ -257,7 +257,18 @@ fn try_main(cli: &mut dyn Cli, args: Args) -> Result<()> {
         }
         args::Command::Lint(lint_args) if lint_args.connect => {
             #[cfg(unix)]
-            daemon::connect_lint(lint_args, cli)?;
+            {
+                // Fall back to standalone lint for flag combinations the daemon
+                // can't serve (fix application, config sources, filesystem
+                // outputs), so `--connect` — soon the default — never breaks
+                // these workflows.
+                if let Some(reason) = daemon::lint_daemon_incompatibility(lint_args) {
+                    cli.info(&format!("{reason}; running without the daemon"))?;
+                    lint_cli::run_lint_command(lint_args, cli, &query_config)?;
+                } else {
+                    daemon::connect_lint(lint_args, cli)?;
+                }
+            }
             #[cfg(not(unix))]
             {
                 let _ = lint_args;

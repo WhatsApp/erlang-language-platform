@@ -1141,43 +1141,54 @@ pub fn connect_eqwalize_target(args: &EqwalizeTarget, cli: &mut dyn Cli) -> Resu
     connect_and_run(&cmd, &args.project, "test", false, format_json, true, cli)
 }
 
-/// Reject `Lint` flag combinations that don't make sense in daemon mode.
-///
-/// Some flags (config sources) must be fixed at daemon spawn time; others
+/// The reason a `Lint` invocation can't be served by the daemon, or `None` if it
+/// can. Some flags (config sources) must be fixed at daemon spawn time; others
 /// (filesystem outputs, fix application, process-level stats) would resolve
 /// against the daemon process instead of the client.
-fn validate_lint_for_daemon(args: &Lint) -> Result<()> {
+///
+/// The command dispatcher falls back to standalone lint for incompatible
+/// options. [`connect_lint`] also validates them so direct callers cannot send
+/// a request the daemon cannot serve correctly.
+pub(crate) fn lint_daemon_incompatibility(args: &Lint) -> Option<&'static str> {
     if args.read_config {
-        bail!(
-            "--read-config is not supported with --connect; the daemon reads .elp_lint.toml at startup"
+        return Some(
+            "--read-config is not supported with --connect; the daemon reads .elp_lint.toml at startup",
         );
     }
     if args.config_file.is_some() {
-        bail!(
-            "--config-file is not supported with --connect; the daemon's lint config is fixed at startup"
+        return Some(
+            "--config-file is not supported with --connect; the daemon's lint config is fixed at startup",
         );
     }
     if args.to.is_some() {
-        bail!(
-            "--to is not supported with --connect (paths resolve relative to the daemon process, not the client)"
+        return Some(
+            "--to is not supported with --connect (paths resolve relative to the daemon process, not the client)",
         );
     }
     if args.report_system_stats {
-        bail!(
-            "--report-system-stats is not supported with --connect (would measure daemon process state, not lint cost)"
+        return Some(
+            "--report-system-stats is not supported with --connect (would measure daemon process state, not lint cost)",
         );
     }
     if args.apply_fix {
-        bail!("--apply-fix is not yet supported with --connect");
+        return Some("--apply-fix is not yet supported with --connect");
     }
     // `--no-diags` flips the JSON writer to emit a plain-text per-module
     // summary, which the daemon client's per-line JSON parser would reject.
     if !args.print_diags {
-        bail!(
-            "--no-diags is not supported with --connect (the daemon's JSON wire format has no plain-text summary)"
+        return Some(
+            "--no-diags is not supported with --connect (the daemon's JSON wire format has no plain-text summary)",
         );
     }
-    Ok(())
+    None
+}
+
+/// Reject `Lint` flag combinations that don't make sense in daemon mode.
+fn validate_lint_for_daemon(args: &Lint) -> Result<()> {
+    match lint_daemon_incompatibility(args) {
+        Some(reason) => bail!("{reason}"),
+        None => Ok(()),
+    }
 }
 
 pub fn connect_lint(args: &Lint, cli: &mut dyn Cli) -> Result<()> {
@@ -1709,6 +1720,32 @@ mod tests {
                 ..Lint::default()
             },
         );
+    }
+
+    #[test]
+    fn lint_daemon_incompatibility_none_for_safe_args() {
+        let args = Lint {
+            project: PathBuf::from("."),
+            module: Some("foo".to_string()),
+            connect: true,
+            print_diags: true,
+            ..Lint::default()
+        };
+        // Safe args are daemon-compatible, so there is nothing to fall back for.
+        assert!(lint_daemon_incompatibility(&args).is_none());
+    }
+
+    #[test]
+    fn lint_daemon_incompatibility_flags_apply_fix() {
+        let args = Lint {
+            connect: true,
+            apply_fix: true,
+            print_diags: true,
+            ..Lint::default()
+        };
+        let reason =
+            lint_daemon_incompatibility(&args).expect("--apply-fix should be daemon-incompatible");
+        assert!(reason.contains("--apply-fix"), "got: {reason}");
     }
 
     // -- Diagnostic Display --
