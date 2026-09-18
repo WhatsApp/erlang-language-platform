@@ -1,0 +1,49 @@
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/lambda_call_env.erl:18:5
+   │
+18 │     X.
+   │     ^
+   │     │
+   │     X.
+Expression has type:   atom() | integer()
+Context expected type: integer()
+   │     
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: integer()
+  However the following candidate: atom()
+  Differs from the expected type:  integer()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/lambda_call_env.erl:30:5
+   │
+30 │     X.
+   │     ^
+   │     │
+   │     X.
+Expression has type:   atom() | integer()
+Context expected type: integer()
+   │     
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: integer()
+  However the following candidate: atom()
+  Differs from the expected type:  integer()
+
+error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+   ┌─ check/src/lambda_call_env.erl:35:5
+   │
+35 │     X.
+   │     ^
+   │     │
+   │     X.
+Expression has type:   atom() | integer()
+Context expected type: integer()
+   │     
+
+Because in the expression's type:
+  Here the type is a union type with some valid candidates: integer()
+  However the following candidate: atom()
+  Differs from the expected type:  integer()
+
+3 ERRORS
