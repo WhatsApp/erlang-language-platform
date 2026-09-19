@@ -95,8 +95,9 @@ pub struct Lint {
     #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
     pub project: PathBuf,
     /// Parse a single module from the project, not the entire project.
-    #[arg(long, value_name = "MODULE", add = ArgValueCompleter::new(module_completer))]
-    pub module: Option<String>,
+    #[arg(long = "module", value_name = "MODULE", add = ArgValueCompleter::new(module_completer))]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub modules: Vec<String>,
     /// Parse a single application from the project, not the entire project.
     #[arg(long = "app", alias = "application", value_name = "APP")]
     pub app: Option<String>,
@@ -225,6 +226,8 @@ impl Lint {
         if self.arc_patch {
             self.format = Some(Format::Json);
         }
+        self.modules.sort_unstable();
+        self.modules.dedup();
     }
 
     pub fn is_format_normal(&self) -> bool {
@@ -371,17 +374,17 @@ fn run_diagnostics_parallel(
     config: &DiagnosticsConfig,
     args: &Lint,
     loaded: &LoadResult,
-    modules: Vec<(String, FileId)>,
-    module_filter: &Option<String>,
+    files: Vec<(String, FileId)>,
+    modules: &[String],
 ) -> Result<DiagnosticsResult> {
     // Sort biggest modules first to reduce long-tail in parallel processing
-    let mut modules = modules;
-    sort_by_file_size_descending(analysis, &mut modules, |m| m.1);
+    let mut files = files;
+    sort_by_file_size_descending(analysis, &mut files, |m| m.1);
 
     // Create a channel for streaming results
     let (tx, rx) = unbounded();
 
-    let pb = cli.progress(modules.len() as u64, "Linting");
+    let pb = cli.progress(files.len() as u64, "Linting");
     let pb_clone = pb.clone();
 
     let analysis_clone = analysis.clone();
@@ -389,7 +392,7 @@ fn run_diagnostics_parallel(
     let args_clone = args.clone();
 
     let join_handle = thread::spawn(move || {
-        modules
+        files
             .into_iter()
             .par_bridge()
             .map_with(
@@ -423,7 +426,7 @@ fn run_diagnostics_parallel(
                 config,
                 args,
                 loaded,
-                module_filter,
+                modules,
                 &mut err_in_diag,
                 &mut module_count,
                 &result,
@@ -450,7 +453,7 @@ fn do_diagnostics_all(
     config: &DiagnosticsConfig,
     args: &Lint,
     loaded: &LoadResult,
-    module: &Option<String>,
+    modules: &[String],
 ) -> Result<DiagnosticsResult> {
     let module_index = analysis.module_index(*project_id).unwrap();
 
@@ -495,7 +498,7 @@ fn do_diagnostics_all(
     };
 
     // Collect modules into an owned vector, pre-filtering by path, app, etc.
-    let modules: Vec<(String, FileId)> = module_index
+    let project_modules: Vec<(String, FileId)> = module_index
         .iter_own()
         .filter(|&(_name, _source, file_id)| should_lint(file_id))
         .map(|(name, _source, file_id)| (name.as_str().to_string(), file_id))
@@ -517,14 +520,14 @@ fn do_diagnostics_all(
         })
         .collect();
 
-    let mut files = modules;
+    let mut files = project_modules;
     files.extend(
         headers
             .into_iter()
             .map(|file_id| (file_label(analysis, loaded, file_id), file_id)),
     );
 
-    run_diagnostics_parallel(cli, analysis, config, args, loaded, files, module)
+    run_diagnostics_parallel(cli, analysis, config, args, loaded, files, modules)
 }
 
 fn do_diagnostics_one(
@@ -600,15 +603,17 @@ fn resolve_target_files(
 ) -> Result<Option<Vec<(FileId, String)>>> {
     let mut file_ids: Vec<FileId> = vec![];
     let user_selected_targets;
-    if let Some(module) = &args.module {
+    if !args.modules.is_empty() {
         user_selected_targets = true;
-        if let Some(file_id) = analysis.module_file_id(loaded.project_id, module)? {
-            file_ids.push(file_id);
-            if args.is_format_normal() {
-                writeln!(cli, "module specified: {module}")?;
+        for module in &args.modules {
+            if let Some(file_id) = analysis.module_file_id(loaded.project_id, module)? {
+                file_ids.push(file_id);
+                if args.is_format_normal() {
+                    writeln!(cli, "module specified: {module}")?;
+                }
+            } else {
+                log::warn!("Module not found, skipping: {module}");
             }
-        } else {
-            log::warn!("Module not found, skipping: {module}");
         }
     } else if !args.file.is_empty() {
         user_selected_targets = true;
@@ -696,7 +701,7 @@ pub fn do_codemod(
                 args,
                 loaded,
                 modules,
-                &args.module,
+                &args.modules,
             )?;
             streamed_err_in_diag = err_in_diag;
             any_diagnostics_printed = any_printed;
@@ -710,7 +715,7 @@ pub fn do_codemod(
                 diagnostics_config,
                 args,
                 loaded,
-                &args.module,
+                &args.modules,
             )?;
             streamed_err_in_diag = err_in_diag;
             any_diagnostics_printed = any_printed;
@@ -733,7 +738,7 @@ pub fn do_codemod(
                 diagnostics_config,
                 args,
                 loaded,
-                &args.module,
+                &args.modules,
                 &mut err_in_diag,
                 &mut module_count,
                 result,
@@ -755,7 +760,7 @@ pub fn do_codemod(
             let analysis = loaded.analysis();
             filter_diagnostics(
                 &analysis,
-                &args.module,
+                &args.modules,
                 Some(&diagnostics_config.enabled),
                 &initial_diags,
                 &FxHashSet::default(),
@@ -848,7 +853,7 @@ fn print_diagnostic_result(
     config: &DiagnosticsConfig,
     args: &Lint,
     loaded: &LoadResult,
-    module: &Option<String>,
+    modules: &[String],
     err_in_diag: &mut bool,
     module_count: &mut i32,
     result: &(String, FileId, DiagnosticCollection),
@@ -860,7 +865,7 @@ fn print_diagnostic_result(
             config,
             args,
             loaded,
-            module,
+            modules,
             err_in_diag,
             module_count,
             result,
@@ -872,7 +877,7 @@ fn print_diagnostic_result(
             config,
             args,
             loaded,
-            module,
+            modules,
             err_in_diag,
             module_count,
             result,
@@ -887,7 +892,7 @@ fn do_print_diagnostic_collection(
     config: &DiagnosticsConfig,
     args: &Lint,
     loaded: &LoadResult,
-    module: &Option<String>,
+    modules: &[String],
     err_in_diag: &mut bool,
     module_count: &mut i32,
     result: &(String, FileId, DiagnosticCollection),
@@ -897,7 +902,7 @@ fn do_print_diagnostic_collection(
     let min_severity = args.severity.map(arg_severity);
     if let Ok(filtered) = filter_diagnostics(
         analysis,
-        module,
+        modules,
         Some(&config.enabled),
         &single_result,
         &FxHashSet::default(),
@@ -973,7 +978,7 @@ fn do_print_diagnostic_collection_json(
     config: &DiagnosticsConfig,
     args: &Lint,
     loaded: &LoadResult,
-    module: &Option<String>,
+    modules: &[String],
     err_in_diag: &mut bool,
     module_count: &mut i32,
     result: &(String, FileId, DiagnosticCollection),
@@ -983,7 +988,7 @@ fn do_print_diagnostic_collection_json(
     let min_severity = args.severity.map(arg_severity);
     if let Ok(filtered) = filter_diagnostics(
         analysis,
-        module,
+        modules,
         Some(&config.enabled),
         &single_result,
         &FxHashSet::default(),
@@ -1157,7 +1162,7 @@ fn print_diagnostic_json(
 
 fn filter_diagnostics<'a>(
     db: &Analysis,
-    module: &'a Option<String>,
+    modules: &[String],
     allowed_diagnostics: Option<&EnabledDiagnostics>,
     diags: &'a [(String, FileId, DiagnosticCollection)],
     changed_forms: &FxHashSet<InFile<FormIdx>>,
@@ -1172,7 +1177,7 @@ fn filter_diagnostics<'a>(
         .iter()
         .cloned()
         .filter_map(|(m, file_id, ds)| {
-            if module.is_none() || &Some(m.to_string()) == module {
+            if modules.is_empty() || modules.contains(&m) {
                 let ds2 = ds
                     .diagnostics_for(file_id)
                     .iter()
@@ -1358,14 +1363,7 @@ impl<'a> Lints<'a> {
 
             let new_diagnostics = {
                 let analysis = self.analysis_host.analysis();
-                filter_diagnostics(
-                    &analysis,
-                    &None,
-                    None,
-                    &new_diags,
-                    &self.changed_forms,
-                    None,
-                )?
+                filter_diagnostics(&analysis, &[], None, &new_diags, &self.changed_forms, None)?
             };
             self.diags = diagnostics_by_file_id(&new_diagnostics);
             if !self.diags.is_empty() {
@@ -1918,6 +1916,40 @@ mod tests {
                 Diagnostics reported:
                 app_a/src/lints.erl:5:3-5:16::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
                         4:3-4:16: Mismatched clause name
+            "#]],
+            expect![""],
+        );
+    }
+
+    #[test]
+    fn lint_multiple_modules_from_fixture() {
+        run_lint_command(
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--module",
+                "first",
+                "--module",
+                "second",
+                "--diagnostic-filter",
+                "L1230",
+            ],
+            r#"
+            //- /app_a/src/first.erl app:app_a
+              -module(first).
+
+              foo() -> ok.
+            //- /app_a/src/second.erl app:app_a
+              -module(second).
+
+              bar() -> ok.
+          "#,
+            expect![[r#"
+                module specified: first
+                module specified: second
+                Diagnostics reported:
+                app_a/src/first.erl:3:3-3:6::[Warning] [L1230] function foo/0 is unused
+                app_a/src/second.erl:3:3-3:6::[Warning] [L1230] function bar/0 is unused
             "#]],
             expect![""],
         );

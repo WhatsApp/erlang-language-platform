@@ -1898,7 +1898,7 @@ mod tests {
 
         let original = Lint {
             project: PathBuf::from("/some/project"),
-            module: Some("my_mod".to_string()),
+            modules: vec!["my_mod".to_string()],
             app: Some("my_app".to_string()),
             file: vec!["a.erl".into(), "b.erl".into()],
             path: Some(PathBuf::from("/some/path")),
@@ -1926,7 +1926,9 @@ mod tests {
         expect![[r#"
             {
               "project": "/some/project",
-              "module": "my_mod",
+              "modules": [
+                "my_mod"
+              ],
               "app": "my_app",
               "file": [
                 "a.erl",
@@ -1981,6 +1983,22 @@ mod tests {
     }
 
     #[test]
+    fn lint_payload_round_trips_multiple_modules() {
+        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+
+        let original = Lint {
+            modules: vec!["first".to_string(), "second".to_string()],
+            ..Lint::default()
+        };
+
+        let json = serde_json::to_string(&original).expect("lint payload should serialize");
+        let parsed: Lint = serde_json::from_str(&json).expect("lint payload should deserialize");
+
+        let expected = vec!["first".to_string(), "second".to_string()];
+        assert_eq_expected!(expected, parsed.modules);
+    }
+
+    #[test]
     fn lint_payload_tolerates_unknown_fields() {
         use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
 
@@ -1998,7 +2016,7 @@ mod tests {
     fn validate_lint_for_daemon_accepts_safe_args() {
         let args = Lint {
             project: PathBuf::from("."),
-            module: Some("foo".to_string()),
+            modules: vec!["foo".to_string()],
             connect: true,
             // print_diags=true matches the clap default for `--no-diags`
             // (absent ⇒ true). Lint::default() leaves it at bool::default()=false.
@@ -2097,7 +2115,7 @@ mod tests {
     fn lint_daemon_incompatibility_none_for_safe_args() {
         let args = Lint {
             project: PathBuf::from("."),
-            module: Some("foo".to_string()),
+            modules: vec!["foo".to_string()],
             connect: true,
             print_diags: true,
             ..Lint::default()
@@ -2358,7 +2376,7 @@ mod tests {
         let result = connect_lint(
             &Lint {
                 project: project.clone(),
-                module: Some("app_a".to_string()),
+                modules: vec!["app_a".to_string()],
                 profile: profile.clone(),
                 connect: true,
                 print_diags: true,
