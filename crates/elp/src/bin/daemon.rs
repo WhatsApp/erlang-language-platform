@@ -137,6 +137,15 @@ enum DaemonRequest {
     Lint(Box<Lint>),
 }
 
+impl DaemonRequest {
+    fn subcommand(&self) -> &'static str {
+        match self {
+            Self::Eqwalize(_) => "eqwalize",
+            Self::Lint(_) => "lint",
+        }
+    }
+}
+
 fn encode_daemon_request(request: DaemonRequest) -> Result<String> {
     Ok(format!("request {}", serde_json::to_string(&request)?))
 }
@@ -320,6 +329,59 @@ impl DoneMessage {
     fn with_restart(mut self, reason: impl Into<String>) -> Self {
         self.restart = Some(reason.into());
         self
+    }
+}
+
+struct DaemonRequestTelemetry {
+    start_time: SystemTime,
+    subcommand: String,
+    execution_status: &'static str,
+}
+
+impl DaemonRequestTelemetry {
+    fn new(command: &str) -> Self {
+        let subcommand = match command.split_once(' ') {
+            Some(("request", _)) => "unknown",
+            Some(("lint", _)) => "lint",
+            _ => command.split_whitespace().next().unwrap_or("unknown"),
+        };
+        Self {
+            start_time: SystemTime::now(),
+            subcommand: subcommand.to_owned(),
+            execution_status: "error",
+        }
+    }
+
+    fn complete(&mut self, status: &'static str) {
+        self.execution_status = status;
+    }
+
+    fn set_subcommand(&mut self, subcommand: &'static str) {
+        self.subcommand = subcommand.to_owned();
+    }
+
+    fn complete_from_done(&mut self, done: &DoneMessage) {
+        self.complete(if done.status == "ok" {
+            "success"
+        } else {
+            "error"
+        });
+    }
+}
+
+impl Drop for DaemonRequestTelemetry {
+    fn drop(&mut self) {
+        let dimensions = telemetry::TelemetryDimensions::from([
+            ("event_phase".into(), "done".into()),
+            ("execution_status".into(), self.execution_status.into()),
+            ("execution_mode".into(), "daemon".into()),
+            ("subcommand".into(), self.subcommand.clone().into()),
+        ]);
+        telemetry::report_elapsed_time_with_dimensions(
+            "daemon request done",
+            self.start_time,
+            dimensions,
+        );
     }
 }
 
@@ -782,6 +844,7 @@ fn handle_connection(
     if line.is_empty() {
         return Ok(false);
     }
+    let mut request_telemetry = DaemonRequestTelemetry::new(&line);
 
     // One Cli for this connection: command results stream to the client, while
     // progress narrates to daemon.log and reload status goes to the client via
@@ -803,6 +866,7 @@ fn handle_connection(
         let done = serde_json::to_string(&DoneMessage::ok())?;
         writeln!(cli, "{done}")?;
         cli.flush()?;
+        request_telemetry.complete("success");
         return Ok(true);
     }
 
@@ -817,6 +881,7 @@ fn handle_connection(
             let done = serde_json::to_string(&DoneMessage::ok().with_restart(reason))?;
             writeln!(cli, "{done}")?;
             cli.flush()?;
+            request_telemetry.complete("restart");
             return Ok(true);
         }
         UpdateResult::NeedsFullReload { reason } => {
@@ -860,6 +925,7 @@ fn handle_connection(
                     )?;
                     writeln!(cli, "{done}")?;
                     cli.flush()?;
+                    request_telemetry.complete("restart");
                     return Ok(true);
                 }
             }
@@ -868,14 +934,18 @@ fn handle_connection(
     }
 
     if let Some(json) = line.strip_prefix("request ") {
-        let done = match decode_daemon_request(json) {
-            Ok(request) => match execute_daemon_request(request, state, &mut cli) {
-                Ok(()) => DoneMessage::ok(),
-                Err(e) => DoneMessage::error(e.to_string()),
-            },
+        let done_message = match decode_daemon_request(json) {
+            Ok(request) => {
+                request_telemetry.set_subcommand(request.subcommand());
+                match execute_daemon_request(request, state, &mut cli) {
+                    Ok(()) => DoneMessage::ok(),
+                    Err(e) => DoneMessage::error(e.to_string()),
+                }
+            }
             Err(e) => DoneMessage::error(format!("invalid daemon request: {e}")),
         };
-        let done = serde_json::to_string(&done)?;
+        request_telemetry.complete_from_done(&done_message);
+        let done = serde_json::to_string(&done_message)?;
         writeln!(cli, "{done}")?;
         cli.flush()?;
         return Ok(false);
@@ -885,7 +955,7 @@ fn handle_connection(
     // flags to express through the shell parser. Handle them before falling
     // through to ShellCommand::parse.
     if let Some(json) = line.strip_prefix("lint ") {
-        let done = match serde_json::from_str::<Lint>(json) {
+        let done_message = match serde_json::from_str::<Lint>(json) {
             Ok(mut lint_args) => {
                 lint_args.format = Some(daemon_request_format(lint_args.format));
                 match lint_cli::do_lint(&lint_args, &state.lint_config, &mut state.loaded, &mut cli)
@@ -896,7 +966,8 @@ fn handle_connection(
             }
             Err(e) => DoneMessage::error(format!("invalid lint payload: {e}")),
         };
-        let done = serde_json::to_string(&done)?;
+        request_telemetry.complete_from_done(&done_message);
+        let done = serde_json::to_string(&done_message)?;
         writeln!(cli, "{done}")?;
         cli.flush()?;
         return Ok(false);
@@ -955,6 +1026,7 @@ fn handle_connection(
         Err(err) => (DoneMessage::error(err.to_string()), false),
     };
 
+    request_telemetry.complete_from_done(&done);
     let done = serde_json::to_string(&done)?;
     writeln!(cli, "{done}")?;
     cli.flush()?;
@@ -1013,12 +1085,30 @@ pub(crate) fn is_daemon_unavailable(error: &anyhow::Error) -> bool {
     error.downcast_ref::<DaemonUnavailable>().is_some()
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("Errors found")]
+struct DaemonCommandError {
+    execution_mode: DaemonExecutionMode,
+}
+
+pub(crate) fn execution_mode_from_error(error: &anyhow::Error) -> Option<DaemonExecutionMode> {
+    error
+        .downcast_ref::<DaemonCommandError>()
+        .map(|error| error.execution_mode)
+}
+
 fn daemon_connection_error(error: anyhow::Error, emitted_diagnostic: bool) -> anyhow::Error {
     if emitted_diagnostic {
         error
     } else {
         DaemonUnavailable::new(error).into()
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum DaemonExecutionMode {
+    Warm,
+    Cold,
 }
 
 struct DaemonConnection<'a> {
@@ -1055,7 +1145,7 @@ fn connect_and_run(
     format_json: bool,
     connection: &DaemonConnection<'_>,
     cli: &mut dyn Cli,
-) -> Result<()> {
+) -> Result<DaemonExecutionMode> {
     let conf = DiscoverConfig::new(connection.rebar, connection.profile);
     let (elp_config, manifest) = load::discover_manifest(connection.project, &conf)?;
     let root = load::project_root_dir(&manifest);
@@ -1067,9 +1157,12 @@ fn connect_and_run(
     };
 
     // Try to connect, auto-start if needed
-    let mut stream = match UnixStream::connect(&endpoint.sock) {
-        Ok(s) => s,
-        Err(_) => start_daemon(&endpoint, connection, cli).map_err(DaemonUnavailable::new)?,
+    let (mut stream, mut execution_mode) = match UnixStream::connect(&endpoint.sock) {
+        Ok(stream) => (stream, DaemonExecutionMode::Warm),
+        Err(_) => (
+            start_daemon(&endpoint, connection, cli).map_err(DaemonUnavailable::new)?,
+            DaemonExecutionMode::Cold,
+        ),
     };
 
     // Reuse is safe only when the marker proves protocol compatibility. A
@@ -1100,6 +1193,7 @@ fn connect_and_run(
         cleanup_stale_in_dir(&endpoint.dir);
 
         stream = start_daemon(&endpoint, connection, cli).map_err(DaemonUnavailable::new)?;
+        execution_mode = DaemonExecutionMode::Cold;
     }
 
     // Send command
@@ -1207,11 +1301,11 @@ fn connect_and_run(
 
     if exit_code != 0 {
         // Shared between eqwalize and lint; the daemon's own error message
-        // was already printed to stderr above, so the bail is just an
-        // exit-code carrier.
-        bail!("Errors found");
+        // was already printed to stderr above, so this error only carries the
+        // exit status and execution mode back to the client.
+        return Err(DaemonCommandError { execution_mode }.into());
     }
-    Ok(())
+    Ok(execution_mode)
 }
 
 fn is_error_diagnostic(diag: &elp::arc_types::Diagnostic) -> bool {
@@ -1289,20 +1383,39 @@ pub fn connect_eqwalize(
     args: &Eqwalize,
     startup_options: &DaemonStartupOptions,
     cli: &mut dyn Cli,
-) -> Result<()> {
+) -> Result<DaemonExecutionMode> {
+    let start_time = SystemTime::now();
     let request = EqwalizeRequest::from(args);
     let cmd = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(request)))?;
     let format_json = args.format.is_some();
     let connection =
         DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
-    connect_and_run(&cmd, format_json, &connection, cli)
+    let result = connect_and_run(&cmd, format_json, &connection, cli);
+    match &result {
+        Ok(DaemonExecutionMode::Warm) => {
+            eqwalizer_cli::report_eqwalize_done(start_time, "success", "daemon_warm")
+        }
+        Ok(DaemonExecutionMode::Cold) => {
+            eqwalizer_cli::report_eqwalize_done(start_time, "success", "daemon_cold")
+        }
+        Err(error) if is_daemon_unavailable(error) => {}
+        Err(error) => {
+            let execution_mode = match execution_mode_from_error(error) {
+                Some(DaemonExecutionMode::Warm) => "daemon_warm",
+                Some(DaemonExecutionMode::Cold) => "daemon_cold",
+                None => "unknown",
+            };
+            eqwalizer_cli::report_eqwalize_done(start_time, "error", execution_mode);
+        }
+    }
+    result
 }
 
 pub fn connect_eqwalize_all(
     args: &EqwalizeAll,
     startup_options: &DaemonStartupOptions,
     cli: &mut dyn Cli,
-) -> Result<()> {
+) -> Result<DaemonExecutionMode> {
     if let Some(reason) = eqwalize_daemon_incompatibility(args.include_generated, args.stats) {
         bail!("{reason}");
     }
@@ -1318,7 +1431,7 @@ pub fn connect_eqwalize_app(
     args: &EqwalizeApp,
     startup_options: &DaemonStartupOptions,
     cli: &mut dyn Cli,
-) -> Result<()> {
+) -> Result<DaemonExecutionMode> {
     if let Some(reason) = eqwalize_daemon_incompatibility(args.include_generated, false) {
         bail!("{reason}");
     }
@@ -1334,7 +1447,7 @@ pub fn connect_eqwalize_target(
     args: &EqwalizeTarget,
     startup_options: &DaemonStartupOptions,
     cli: &mut dyn Cli,
-) -> Result<()> {
+) -> Result<DaemonExecutionMode> {
     if let Some(reason) = eqwalize_daemon_incompatibility(args.include_generated, false) {
         bail!("{reason}");
     }
@@ -1416,7 +1529,7 @@ pub fn connect_lint(
     args: &Lint,
     startup_options: &DaemonStartupOptions,
     cli: &mut dyn Cli,
-) -> Result<()> {
+) -> Result<DaemonExecutionMode> {
     validate_lint_for_daemon(args)?;
     let current_dir =
         env::current_dir().context("failed to resolve the client working directory")?;
@@ -1579,6 +1692,13 @@ mod tests {
 
         assert!(is_daemon_unavailable(&before_output));
         assert!(!is_daemon_unavailable(&after_output));
+    }
+
+    #[test]
+    fn typed_lint_request_has_lint_subcommand() {
+        let request = DaemonRequest::Lint(Box::default());
+
+        assert_eq_expected!("lint", request.subcommand());
     }
 
     #[test]

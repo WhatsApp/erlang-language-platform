@@ -300,10 +300,28 @@ struct EqwalizerRunArgs<'a> {
     cli: &'a mut dyn Cli,
 }
 
+pub(crate) fn report_eqwalize_done(
+    start_time: SystemTime,
+    execution_status: &'static str,
+    execution_mode: &'static str,
+) {
+    telemetry::report_elapsed_time_with_dimensions(
+        "eqwalize done",
+        start_time,
+        telemetry::TelemetryDimensions::from([
+            ("event_phase".into(), "done".into()),
+            ("execution_status".into(), execution_status.into()),
+            ("execution_mode".into(), execution_mode.into()),
+            ("subcommand".into(), "eqwalize".into()),
+        ]),
+    );
+}
+
 pub fn eqwalize_module(
     args: &Eqwalize,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
+    execution_mode: &'static str,
 ) -> Result<()> {
     let start_time = SystemTime::now();
     let config = DiscoverConfig::new(args.rebar, &args.profile);
@@ -315,10 +333,13 @@ pub fn eqwalize_module(
     )?;
     build::compile_deps(&loaded, cli)?;
     telemetry::report_elapsed_time("eqwalize operational", start_time);
-    let r = do_eqwalize_module(args, &mut loaded, cli);
-    telemetry::report_elapsed_time("eqwalize done", start_time);
-
-    r
+    let result = do_eqwalize_module(args, &mut loaded, cli);
+    report_eqwalize_done(
+        start_time,
+        if result.is_ok() { "success" } else { "error" },
+        execution_mode,
+    );
+    result
 }
 
 pub fn do_eqwalize_module(

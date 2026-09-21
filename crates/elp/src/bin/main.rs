@@ -225,7 +225,7 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
                 eqwalize_args.connect,
                 None,
                 cli,
-                |cli| eqwalizer_cli::eqwalize_module(eqwalize_args, cli, &query_config),
+                |cli| eqwalizer_cli::eqwalize_module(eqwalize_args, cli, &query_config, "fallback"),
                 |cli| daemon::connect_eqwalize(eqwalize_args, &daemon_startup_options, cli),
             )?;
             #[cfg(not(unix))]
@@ -234,7 +234,9 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
                 anyhow::bail!(DAEMON_UNSUPPORTED);
             }
         }
-        args::Command::Eqwalize(args) => eqwalizer_cli::eqwalize_module(args, cli, &query_config)?,
+        args::Command::Eqwalize(args) => {
+            eqwalizer_cli::eqwalize_module(args, cli, &query_config, "standalone")?
+        }
         args::Command::EqwalizeAll(eqwalize_all_args)
             if use_daemon(eqwalize_all_args.connect, eqwalize_all_args.no_connect) =>
         {
@@ -388,7 +390,7 @@ fn run_with_daemon_fallback(
     incompatibility: Option<&str>,
     cli: &mut dyn Cli,
     standalone: impl FnOnce(&mut dyn Cli) -> Result<()>,
-    connected: impl FnOnce(&mut dyn Cli) -> Result<()>,
+    connected: impl FnOnce(&mut dyn Cli) -> Result<daemon::DaemonExecutionMode>,
 ) -> Result<()> {
     if let Some(reason) = incompatibility {
         cli.info(&format!("{reason}; running without the daemon"))?;
@@ -396,7 +398,7 @@ fn run_with_daemon_fallback(
     }
 
     match connected(cli) {
-        Ok(()) => Ok(()),
+        Ok(_) => Ok(()),
         Err(error) if !explicit_connect && daemon::is_daemon_unavailable(&error) => {
             cli.info(&format!("{error:#}; running without the daemon"))?;
             standalone(cli)

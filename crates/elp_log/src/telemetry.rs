@@ -18,6 +18,8 @@
 //! in this case is very small - just an integer load, comparison and
 //! jump.
 
+use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::sync::LazyLock;
 use std::time::Duration;
 use std::time::SystemTime;
@@ -27,6 +29,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 pub type TelemetryData = serde_json::Value;
+pub type TelemetryDimensions = BTreeMap<Cow<'static, str>, Cow<'static, str>>;
 pub type DurationMs = u32;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TelemetryMessage {
@@ -37,6 +40,8 @@ pub struct TelemetryMessage {
     pub start_time_string: Option<String>,
     pub end_time_string: Option<String>,
     pub data: TelemetryData,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub dimensions: TelemetryDimensions,
 }
 
 pub type TelemetrySender = crossbeam_channel::Sender<TelemetryMessage>;
@@ -78,6 +83,7 @@ pub fn build_message(
         start_time_string,
         end_time_string,
         data,
+        dimensions: BTreeMap::new(),
     }
 }
 
@@ -109,9 +115,24 @@ pub fn duration_ms(duration: Duration) -> DurationMs {
 }
 
 pub fn report_elapsed_time(what: &str, start_time: SystemTime) {
+    report_elapsed_time_with_dimensions(what, start_time, BTreeMap::new());
+}
+
+pub fn report_elapsed_time_with_dimensions(
+    what: &str,
+    start_time: SystemTime,
+    dimensions: TelemetryDimensions,
+) {
     let data = serde_json::Value::String(what.to_string());
     let duration = start_time.elapsed().map(|e| e.as_millis()).unwrap_or(0) as u32;
-    send_with_duration("telemetry".to_string(), data, duration, start_time);
+    let mut message = build_message(
+        "telemetry".to_string(),
+        data,
+        Some(duration),
+        Some(start_time),
+    );
+    message.dimensions = dimensions;
+    let _ = sender().send(message);
 }
 
 #[cfg(test)]
@@ -151,6 +172,7 @@ mod tests {
                     "2025-09-22T11:38:41.321",
                 ),
                 data: String("Hello telemetry!"),
+                dimensions: {},
             }
         "#]]
         .assert_debug_eq(&msg);
