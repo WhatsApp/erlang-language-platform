@@ -1290,7 +1290,6 @@ impl<'a> Lints<'a> {
         loop {
             let changes = self.apply_diagnostics_fixes(format_normal, cli)?;
             if changes.is_empty() {
-                // Done
                 break;
             }
             if recursion_limit <= 0 {
@@ -1300,66 +1299,60 @@ impl<'a> Lints<'a> {
                 );
             }
             recursion_limit -= 1;
-            let new_diags = changes
-                .into_iter()
-                .map(
-                    |FixResult {
-                         file_id,
-                         name,
-                         source,
-                         changes,
-                         diff: _,
-                     }|
-                     -> Result<Option<(String, FileId, DiagnosticCollection)>> {
-                        self.analysis_host.apply_change(
-                            Change {
-                                roots: None,
-                                files_changed: vec![(file_id, Some(Arc::from(source)))],
-                                app_structure: None,
-                            },
-                            &|path| {
-                                self.vfs
-                                    .file_id(&VfsPath::from(path.clone()))
-                                    .map(|(id, _)| id)
-                            },
-                        );
-                        if self.args.check_eqwalize_all {
-                            writeln!(cli, "Running eqwalize-all to check for knock-on problems.")?;
-                        }
-                        let diags = {
-                            let analysis = self.analysis_host.analysis();
-                            do_diagnostics_one(&analysis, self.cfg, file_id, &name, self.args)?
-                        };
-                        let err_in_diags = diags.iter().any(|(_, file_id, diags)| {
-                            let diags = diags.diagnostics_for(*file_id);
-                            diags
-                                .into_iter()
-                                .any(|diag| diagnostics::Severity::Error == diag.severity)
-                        });
-                        if (self.args.with_check || self.args.check_eqwalize_all) && err_in_diags {
-                            bail!("Applying change introduces an error diagnostic");
-                        } else {
-                            self.changed_files.insert(file_id);
-                            let changed_forms = {
-                                let analysis = self.analysis_host.analysis();
-                                changes
-                                    .iter()
-                                    .filter_map(|d| form_from_diff(&analysis, file_id, d))
-                                    .collect::<Vec<_>>()
-                            };
 
-                            for form_id in &changed_forms {
-                                self.changed_forms.insert(InFile::new(file_id, *form_id));
-                            }
-
-                            Ok(diags)
-                        }
+            let mut new_diags = Vec::new();
+            for FixResult {
+                file_id,
+                name,
+                source,
+                changes,
+                diff: _,
+            } in changes
+            {
+                self.analysis_host.apply_change(
+                    Change {
+                        roots: None,
+                        files_changed: vec![(file_id, Some(Arc::from(source)))],
+                        app_structure: None,
                     },
-                )
-                .collect::<Result<Vec<Option<_>>>>()?
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>();
+                    &|path| {
+                        self.vfs
+                            .file_id(&VfsPath::from(path.clone()))
+                            .map(|(id, _)| id)
+                    },
+                );
+                if self.args.check_eqwalize_all {
+                    writeln!(cli, "Running eqwalize-all to check for knock-on problems.")?;
+                }
+                let diags = {
+                    let analysis = self.analysis_host.analysis();
+                    do_diagnostics_one(&analysis, self.cfg, file_id, &name, self.args)?
+                };
+                let err_in_diags = diags.iter().any(|(_, file_id, diagnostics)| {
+                    diagnostics
+                        .diagnostics_for(*file_id)
+                        .into_iter()
+                        .any(|diagnostic| diagnostics::Severity::Error == diagnostic.severity)
+                });
+                if (self.args.with_check || self.args.check_eqwalize_all) && err_in_diags {
+                    bail!("Applying change introduces an error diagnostic");
+                }
+
+                self.changed_files.insert(file_id);
+                let changed_forms = {
+                    let analysis = self.analysis_host.analysis();
+                    changes
+                        .iter()
+                        .filter_map(|diff| form_from_diff(&analysis, file_id, diff))
+                        .collect::<Vec<_>>()
+                };
+                self.changed_forms.extend(
+                    changed_forms
+                        .into_iter()
+                        .map(|form_id| InFile::new(file_id, form_id)),
+                );
+                new_diags.extend(diags);
+            }
 
             let new_diagnostics = {
                 let analysis = self.analysis_host.analysis();
@@ -1370,11 +1363,11 @@ impl<'a> Lints<'a> {
                 writeln!(cli, "---------------------------------------------\n")?;
                 writeln!(cli, "New filtered diagnostics")?;
                 let analysis = self.analysis_host.analysis();
-                for (file_id, (name, diags)) in &self.diags {
-                    writeln!(cli, "  {}: {}", name, diags.len())?;
-                    for diag in diags.iter() {
+                for (file_id, (name, diagnostics)) in &self.diags {
+                    writeln!(cli, "  {}: {}", name, diagnostics.len())?;
+                    for diagnostic in diagnostics {
                         print_diagnostic(
-                            diag,
+                            diagnostic,
                             &analysis,
                             self.vfs,
                             *file_id,
@@ -1389,9 +1382,7 @@ impl<'a> Lints<'a> {
                 break;
             }
         }
-        // Every file is attempted: one unwritable path must not cancel the
-        // fixes for the others, which iteration order would pick arbitrarily.
-        // Sorted so the report does not depend on that order either.
+
         let failures = self
             .changed_files
             .iter()
@@ -1415,27 +1406,25 @@ impl<'a> Lints<'a> {
         format_normal: bool,
         cli: &mut dyn Cli,
     ) -> Result<Vec<FixResult>> {
-        let mut changes: Vec<FixResult> = Vec::default();
+        let mut changes = Vec::new();
         if self.args.one_shot {
-            self.diags.iter().for_each(|(file_id, (m, ds))| {
-                if let Ok(fs) = self.apply_all_fixes(m, ds, *file_id, format_normal, cli) {
-                    changes.extend(fs);
+            for (file_id, (name, diagnostics)) in &self.diags {
+                if let Ok(results) =
+                    self.apply_all_fixes(name, diagnostics, *file_id, format_normal, cli)
+                {
+                    changes.extend(results);
                 }
-            });
+            }
         } else {
-            // Only apply a single fix, then re-parse. This avoids potentially
-            // conflicting changes.
-            changes = self
-                .diags
-                .iter()
-                .flat_map(|(file_id, (m, ds))| {
-                    ds.iter().next().map_or(Ok(vec![]), |d| {
-                        self.apply_fixes(m, d, *file_id, format_normal, cli)
-                    })
-                })
-                .flatten()
-                .collect::<Vec<FixResult>>();
-        };
+            for (file_id, (name, diagnostics)) in &self.diags {
+                if let Some(diagnostic) = diagnostics.first()
+                    && let Ok(results) =
+                        self.apply_fixes(name, diagnostic, *file_id, format_normal, cli)
+                {
+                    changes.extend(results);
+                }
+            }
+        }
         Ok(changes)
     }
 
@@ -1446,7 +1435,6 @@ impl<'a> Lints<'a> {
         } else if self.args.fixme_fix_only {
             fix.group == Some(GroupLabel::fixme())
         } else {
-            // Default: exclude both ignore and fixme groups
             fix.group != Some(GroupLabel::ignore()) && fix.group != Some(GroupLabel::fixme())
         }
     }
@@ -1460,46 +1448,44 @@ impl<'a> Lints<'a> {
         format_normal: bool,
         cli: &mut dyn Cli,
     ) -> Result<Vec<FixResult>> {
-        // Get code action ones too
         let fixes = diagnostic.get_diagnostic_fixes(self.analysis_host.raw_database(), file_id);
-        if !fixes.is_empty() {
-            let fixes: Vec<_> = fixes
-                .iter()
-                .filter(|f| self.filter_fix_by_group(f))
-                .collect();
-            if !fixes.is_empty() {
-                if format_normal {
-                    writeln!(cli, "---------------------------------------------\n")?;
-                    writeln!(cli, "Applying fix in module '{name}' for")?;
-                    let analysis = self.analysis_host.analysis();
-                    print_diagnostic(
-                        diagnostic,
-                        &analysis,
-                        self.vfs,
-                        file_id,
-                        None,
-                        self.args.use_cli_severity,
-                        cli,
-                    )?;
-                }
-                let changed = fixes
-                    .iter()
-                    .filter_map(|fix| self.apply_one_fix(fix, name))
-                    .collect::<Vec<FixResult>>();
-                if format_normal {
-                    changed.iter().for_each(|r| {
-                        if let Some(unified) = &r.diff {
-                            _ = writeln!(cli, "{unified}");
-                        }
-                    });
-                }
-                Ok(changed)
-            } else {
-                bail!("Only 'ignore' or 'fixme' fixes in {:?}", diagnostic);
-            }
-        } else {
+        if fixes.is_empty() {
             bail!("No fixes in {:?}", diagnostic);
         }
+        let fixes = fixes
+            .iter()
+            .filter(|fix| self.filter_fix_by_group(fix))
+            .collect::<Vec<_>>();
+        if fixes.is_empty() {
+            bail!("Only 'ignore' or 'fixme' fixes in {:?}", diagnostic);
+        }
+
+        if format_normal {
+            writeln!(cli, "---------------------------------------------\n")?;
+            writeln!(cli, "Applying fix in module '{name}' for")?;
+            let analysis = self.analysis_host.analysis();
+            print_diagnostic(
+                diagnostic,
+                &analysis,
+                self.vfs,
+                file_id,
+                None,
+                self.args.use_cli_severity,
+                cli,
+            )?;
+        }
+        let changed = fixes
+            .iter()
+            .filter_map(|fix| self.apply_one_fix(fix, name))
+            .collect::<Vec<_>>();
+        if format_normal {
+            for result in &changed {
+                if let Some(unified) = &result.diff {
+                    _ = writeln!(cli, "{unified}");
+                }
+            }
+        }
+        Ok(changed)
     }
 
     fn apply_all_fixes(
@@ -1510,59 +1496,55 @@ impl<'a> Lints<'a> {
         format_normal: bool,
         cli: &mut dyn Cli,
     ) -> Result<Vec<FixResult>> {
-        // Get code action ones too
         let fixes = diagnostics
             .iter()
-            .filter_map(|d| {
-                let fs = d
+            .filter_map(|diagnostic| {
+                let fixes = diagnostic
                     .get_diagnostic_fixes(self.analysis_host.raw_database(), file_id)
                     .iter()
-                    .filter(|f| self.filter_fix_by_group(f))
+                    .filter(|fix| self.filter_fix_by_group(fix))
                     .cloned()
                     .collect_vec();
-                if fs.is_empty() {
-                    None
-                } else {
-                    Some((d.clone(), fs))
-                }
+                (!fixes.is_empty()).then(|| (diagnostic.clone(), fixes))
             })
             .collect_vec();
-        if !fixes.is_empty() {
-            let (diagnostics, assists): (Vec<diagnostics::Diagnostic>, Vec<Vec<Assist>>) =
-                fixes.iter().cloned().unzip();
-            if format_normal {
-                writeln!(cli, "---------------------------------------------\n")?;
-                let plural = if diagnostics.len() > 1 { "es" } else { "" };
-                writeln!(cli, "Applying fix{plural} in module '{name}' for")?;
-                for diagnostic in diagnostics {
-                    print_diagnostic(
-                        &diagnostic,
-                        &self.analysis_host.analysis(),
-                        self.vfs,
-                        file_id,
-                        None,
-                        self.args.use_cli_severity,
-                        cli,
-                    )?;
-                }
-            }
-            let source_change =
-                Self::assists_to_source_change(&assists.into_iter().flatten().collect_vec());
-            let changed = self
-                .apply_one_source_change(&source_change, name)
-                .into_iter()
-                .collect_vec();
-            if format_normal {
-                changed.iter().for_each(|r| {
-                    if let Some(unified) = &r.diff {
-                        _ = writeln!(cli, "{unified}");
-                    }
-                });
-            }
-            Ok(changed)
-        } else {
+        if fixes.is_empty() {
             bail!("No fixes in {:?}", diagnostics);
         }
+
+        let (diagnostics, assists): (Vec<diagnostics::Diagnostic>, Vec<Vec<Assist>>) =
+            fixes.iter().cloned().unzip();
+        if format_normal {
+            writeln!(cli, "---------------------------------------------\n")?;
+            let plural = if diagnostics.len() > 1 { "es" } else { "" };
+            writeln!(cli, "Applying fix{plural} in module '{name}' for")?;
+            for diagnostic in &diagnostics {
+                let analysis = self.analysis_host.analysis();
+                print_diagnostic(
+                    diagnostic,
+                    &analysis,
+                    self.vfs,
+                    file_id,
+                    None,
+                    self.args.use_cli_severity,
+                    cli,
+                )?;
+            }
+        }
+        let source_change =
+            Self::assists_to_source_change(&assists.into_iter().flatten().collect_vec());
+        let changed = self
+            .apply_one_source_change(&source_change, name)
+            .into_iter()
+            .collect_vec();
+        if format_normal {
+            for result in &changed {
+                if let Some(unified) = &result.diff {
+                    _ = writeln!(cli, "{unified}");
+                }
+            }
+        }
+        Ok(changed)
     }
 
     fn assists_to_source_change(assists: &[Assist]) -> SourceChange {
