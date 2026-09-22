@@ -5,6 +5,15 @@ oncalls: ['vscode_erlang']
 ---
 # ELP Development Rules for LLMs (OSS)
 
+## Daemon Client/Server Invariant
+
+Always treat the ELP client and daemon as processes from the same binary. The
+client compares `daemon.version` with `elp::version()` before every request and
+restarts the daemon when the marker is missing, unreadable, or different. Never
+add a separate daemon protocol version. Change producers and consumers together;
+do not add mixed-version compatibility paths, legacy decoding, or wire-shape
+preservation for older ELP binaries.
+
 ## Diagnostic Code Management
 
 ### Adding New Diagnostic Codes

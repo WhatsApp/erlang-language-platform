@@ -96,6 +96,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::args::Format;
+use crate::daemon_protocol::DaemonResponse;
 use crate::eqwalizer_cli;
 use crate::eqwalizer_cli::Eqwalize;
 use crate::eqwalizer_cli::EqwalizeAll;
@@ -273,64 +274,8 @@ fn format_duration(d: Duration) -> String {
 }
 
 // ---------------------------------------------------------------------------
-// Wire protocol
+// Request telemetry
 // ---------------------------------------------------------------------------
-
-#[derive(Serialize)]
-struct DoneMessage {
-    r#type: &'static str,
-    status: &'static str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    message: Option<String>,
-    /// Set iff the daemon wants the client to restart it; the value is the
-    /// human-readable reason (e.g. ".elp.toml changed"), shown to the client.
-    /// Its presence *is* the restart flag — `None` means "no restart".
-    #[serde(skip_serializing_if = "Option::is_none")]
-    restart: Option<String>,
-    #[serde(skip_serializing_if = "is_false")]
-    daemon_unavailable: bool,
-}
-
-fn is_false(value: &bool) -> bool {
-    !*value
-}
-
-impl DoneMessage {
-    fn ok() -> Self {
-        DoneMessage {
-            r#type: "done",
-            status: "ok",
-            message: None,
-            restart: None,
-            daemon_unavailable: false,
-        }
-    }
-
-    fn error(msg: String) -> Self {
-        DoneMessage {
-            r#type: "done",
-            status: "error",
-            message: Some(msg),
-            restart: None,
-            daemon_unavailable: false,
-        }
-    }
-
-    fn unavailable(msg: String) -> Self {
-        DoneMessage {
-            r#type: "done",
-            status: "error",
-            message: Some(msg),
-            restart: None,
-            daemon_unavailable: true,
-        }
-    }
-
-    fn with_restart(mut self, reason: impl Into<String>) -> Self {
-        self.restart = Some(reason.into());
-        self
-    }
-}
 
 struct DaemonRequestTelemetry {
     start_time: SystemTime,
@@ -360,12 +305,17 @@ impl DaemonRequestTelemetry {
         self.subcommand = subcommand.to_owned();
     }
 
-    fn complete_from_done(&mut self, done: &DoneMessage) {
-        self.complete(if done.status == "ok" {
-            "success"
-        } else {
-            "error"
-        });
+    fn complete_from_response(&mut self, response: &DaemonResponse) {
+        self.complete(
+            if matches!(
+                response,
+                DaemonResponse::Done | DaemonResponse::Restart { .. }
+            ) {
+                "success"
+            } else {
+                "error"
+            },
+        );
     }
 }
 
@@ -388,15 +338,6 @@ impl Drop for DaemonRequestTelemetry {
 // ---------------------------------------------------------------------------
 // DaemonCli — Cli implementation for the daemon
 // ---------------------------------------------------------------------------
-
-/// An out-of-band status line pushed from the daemon to the client mid-request
-/// (e.g. "reloading project"). The client prints these to stderr; they are not
-/// diagnostics and never appear on stdout, so `--format json` stays clean.
-#[derive(Serialize)]
-struct InfoMessage<'a> {
-    r#type: &'static str,
-    message: &'a str,
-}
 
 /// Where a [`DaemonCli`]'s command results (stdout) go.
 enum DaemonOut {
@@ -490,11 +431,8 @@ impl Cli for DaemonCli {
     fn info(&mut self, message: &str) -> io::Result<()> {
         let _ = writeln!(self.stderr, "[elp-daemon] {message}");
         if let DaemonOut::Client(writer) = &mut self.out {
-            let info = InfoMessage {
-                r#type: "info",
-                message,
-            };
-            if let Ok(json) = serde_json::to_string(&info) {
+            let response = DaemonResponse::info(message);
+            if let Ok(json) = serde_json::to_string(&response) {
                 let _ = writeln!(writer, "{json}");
                 let _ = writer.flush();
             }
@@ -863,7 +801,7 @@ fn handle_connection(
 
     // Handle stop command
     if line == "__stop__" {
-        let done = serde_json::to_string(&DoneMessage::ok())?;
+        let done = serde_json::to_string(&DaemonResponse::success())?;
         writeln!(cli, "{done}")?;
         cli.flush()?;
         request_telemetry.complete("success");
@@ -878,7 +816,7 @@ fn handle_connection(
     match update {
         UpdateResult::NeedsRestart { reason } => {
             let _ = writeln!(cli.err(), "[elp-daemon] {reason}");
-            let done = serde_json::to_string(&DoneMessage::ok().with_restart(reason))?;
+            let done = serde_json::to_string(&DaemonResponse::restart(reason))?;
             writeln!(cli, "{done}")?;
             cli.flush()?;
             request_telemetry.complete("restart");
@@ -920,9 +858,9 @@ fn handle_connection(
                         cli.err(),
                         "[elp-daemon] Failed to reload .elp_lint.toml, restarting: {e}"
                     );
-                    let done = serde_json::to_string(
-                        &DoneMessage::ok().with_restart(format!("Lint config reload failed: {e}")),
-                    )?;
+                    let done = serde_json::to_string(&DaemonResponse::restart(format!(
+                        "Lint config reload failed: {e}"
+                    )))?;
                     writeln!(cli, "{done}")?;
                     cli.flush()?;
                     request_telemetry.complete("restart");
@@ -934,18 +872,18 @@ fn handle_connection(
     }
 
     if let Some(json) = line.strip_prefix("request ") {
-        let done_message = match decode_daemon_request(json) {
+        let response = match decode_daemon_request(json) {
             Ok(request) => {
                 request_telemetry.set_subcommand(request.subcommand());
                 match execute_daemon_request(request, state, &mut cli) {
-                    Ok(()) => DoneMessage::ok(),
-                    Err(e) => DoneMessage::error(e.to_string()),
+                    Ok(()) => DaemonResponse::success(),
+                    Err(e) => DaemonResponse::error(e.to_string()),
                 }
             }
-            Err(e) => DoneMessage::error(format!("invalid daemon request: {e}")),
+            Err(e) => DaemonResponse::error(format!("invalid daemon request: {e}")),
         };
-        request_telemetry.complete_from_done(&done_message);
-        let done = serde_json::to_string(&done_message)?;
+        request_telemetry.complete_from_response(&response);
+        let done = serde_json::to_string(&response)?;
         writeln!(cli, "{done}")?;
         cli.flush()?;
         return Ok(false);
@@ -955,19 +893,19 @@ fn handle_connection(
     // flags to express through the shell parser. Handle them before falling
     // through to ShellCommand::parse.
     if let Some(json) = line.strip_prefix("lint ") {
-        let done_message = match serde_json::from_str::<Lint>(json) {
+        let response = match serde_json::from_str::<Lint>(json) {
             Ok(mut lint_args) => {
                 lint_args.format = Some(daemon_request_format(lint_args.format));
                 match lint_cli::do_lint(&lint_args, &state.lint_config, &mut state.loaded, &mut cli)
                 {
-                    Ok(()) => DoneMessage::ok(),
-                    Err(e) => DoneMessage::error(e.to_string()),
+                    Ok(()) => DaemonResponse::success(),
+                    Err(e) => DaemonResponse::error(e.to_string()),
                 }
             }
-            Err(e) => DoneMessage::error(format!("invalid lint payload: {e}")),
+            Err(e) => DaemonResponse::error(format!("invalid lint payload: {e}")),
         };
-        request_telemetry.complete_from_done(&done_message);
-        let done = serde_json::to_string(&done_message)?;
+        request_telemetry.complete_from_response(&response);
+        let done = serde_json::to_string(&response)?;
         writeln!(cli, "{done}")?;
         cli.flush()?;
         return Ok(false);
@@ -981,15 +919,15 @@ fn handle_connection(
 
     // Parse and execute command, writing output to the socket
     let (done, should_quit) = match ShellCommand::parse(&shell, line) {
-        Ok(None) => (DoneMessage::ok(), false),
-        Ok(Some(ShellCommand::Help)) => (DoneMessage::ok(), false),
-        Ok(Some(ShellCommand::Quit)) => (DoneMessage::ok(), true),
+        Ok(None) => (DaemonResponse::success(), false),
+        Ok(Some(ShellCommand::Help)) => (DaemonResponse::success(), false),
+        Ok(Some(ShellCommand::Quit)) => (DaemonResponse::success(), true),
         Ok(Some(ShellCommand::ShellEqwalize(mut eqwalize))) => {
             eqwalize.format = Some(Format::Daemon);
             let done =
                 match eqwalizer_cli::do_eqwalize_module(&eqwalize, &mut state.loaded, &mut cli) {
-                    Ok(()) => DoneMessage::ok(),
-                    Err(e) => DoneMessage::error(e.to_string()),
+                    Ok(()) => DaemonResponse::success(),
+                    Err(e) => DaemonResponse::error(e.to_string()),
                 };
             (done, false)
         }
@@ -997,8 +935,8 @@ fn handle_connection(
             eqwalize_app.format = Some(Format::Daemon);
             let done =
                 match eqwalizer_cli::do_eqwalize_app(&eqwalize_app, &mut state.loaded, &mut cli) {
-                    Ok(()) => DoneMessage::ok(),
-                    Err(e) => DoneMessage::error(e.to_string()),
+                    Ok(()) => DaemonResponse::success(),
+                    Err(e) => DaemonResponse::error(e.to_string()),
                 };
             (done, false)
         }
@@ -1006,8 +944,8 @@ fn handle_connection(
             eqwalize_all.format = Some(Format::Daemon);
             let done =
                 match eqwalizer_cli::do_eqwalize_all(&eqwalize_all, &mut state.loaded, &mut cli) {
-                    Ok(()) => DoneMessage::ok(),
-                    Err(e) => DoneMessage::error(e.to_string()),
+                    Ok(()) => DaemonResponse::success(),
+                    Err(e) => DaemonResponse::error(e.to_string()),
                 };
             (done, false)
         }
@@ -1018,15 +956,15 @@ fn handle_connection(
                 &mut state.loaded,
                 &mut cli,
             ) {
-                Ok(()) => DoneMessage::ok(),
-                Err(e) => DoneMessage::error(e.to_string()),
+                Ok(()) => DaemonResponse::success(),
+                Err(e) => DaemonResponse::error(e.to_string()),
             };
             (done, false)
         }
-        Err(err) => (DoneMessage::error(err.to_string()), false),
+        Err(err) => (DaemonResponse::error(err.to_string()), false),
     };
 
-    request_telemetry.complete_from_done(&done);
+    request_telemetry.complete_from_response(&done);
     let done = serde_json::to_string(&done)?;
     writeln!(cli, "{done}")?;
     cli.flush()?;
@@ -1034,7 +972,7 @@ fn handle_connection(
 }
 
 fn write_connection_unavailable(cli: &mut dyn Cli, error: &anyhow::Error) -> Result<bool> {
-    let done = serde_json::to_string(&DoneMessage::unavailable(format!("{error:#}")))?;
+    let done = serde_json::to_string(&DaemonResponse::unavailable(format!("{error:#}")))?;
     writeln!(cli, "{done}")?;
     cli.flush()?;
     Ok(true)
@@ -1165,9 +1103,6 @@ fn connect_and_run(
         ),
     };
 
-    // Reuse is safe only when the marker proves protocol compatibility. A
-    // missing or unreadable marker therefore triggers the same restart as a
-    // known version mismatch.
     let version_file = endpoint.dir.join("daemon.version");
     let expected_version = elp::version();
     let running_version = fs::read_to_string(&version_file).ok();
@@ -1209,44 +1144,37 @@ fn connect_and_run(
 
     // Read response lines
     let reader = BufReader::new(&stream);
-    let mut exit_code = 0;
+    let mut command_failed = false;
     let mut error_count: usize = 0;
     let mut emitted_diagnostic = false;
     let mut received_done = false;
     for line in reader.lines() {
         let line =
             line.map_err(|error| daemon_connection_error(error.into(), emitted_diagnostic))?;
-        // Try to detect done message first (small JSON with "type" field)
-        let v: serde_json::Value = serde_json::from_str(&line)?;
-        // Out-of-band status from the daemon (e.g. a deprecation warning).
-        // Render it via the client's own info channel (yellow on a TTY); it
-        // never reaches stdout, so `--format json` stays clean, and it is not
-        // counted as a diagnostic.
-        if v.get("type").and_then(|t| t.as_str()) == Some("info") {
-            if let Some(msg) = v.get("message").and_then(|m| m.as_str()) {
-                cli.info(msg)?;
+        let response: DaemonResponse = serde_json::from_str(&line)?;
+        match response {
+            // Out-of-band status from the daemon (e.g. a deprecation warning).
+            // Render it via the client's own info channel (yellow on a TTY); it
+            // never reaches stdout, so `--format json` stays clean, and it is not
+            // counted as a diagnostic.
+            DaemonResponse::Info { message } => cli.info(&message)?,
+            DaemonResponse::Done => {
+                received_done = true;
+                break;
             }
-            continue;
-        }
-        if v.get("type").and_then(|t| t.as_str()) == Some("done") {
-            received_done = true;
-            if v.get("daemon_unavailable")
-                .and_then(|value| value.as_bool())
-                == Some(true)
-            {
-                let message = v
-                    .get("message")
-                    .and_then(|message| message.as_str())
-                    .unwrap_or("daemon became unavailable")
-                    .to_owned();
+            DaemonResponse::Error { message } => {
+                received_done = true;
+                command_failed = true;
+                writeln!(cli.err(), "Error: {message}")?;
+                break;
+            }
+            DaemonResponse::Unavailable { message } => {
                 return Err(daemon_connection_error(
                     anyhow::Error::msg(message),
                     emitted_diagnostic,
                 ));
             }
-            // A restart request (e.g. config change) carries its reason as the
-            // `restart` value; its presence means "restart".
-            if let Some(reason) = v.get("restart").and_then(|r| r.as_str()) {
+            DaemonResponse::Restart { reason } => {
                 cli.info(&format!("Restarting daemon: {reason}"))?;
                 // Wait for daemon to shut down
                 let start = Instant::now();
@@ -1257,35 +1185,24 @@ fn connect_and_run(
                 // Start new daemon and retry the command
                 return connect_and_run(command_line, format_json, connection, cli);
             }
-            if v.get("status").and_then(|s| s.as_str()) == Some("error") {
-                exit_code = 1;
-                if let Some(msg) = v.get("message").and_then(|m| m.as_str()) {
-                    writeln!(cli.err(), "Error: {msg}")?;
+            DaemonResponse::Diagnostic {
+                diagnostic,
+                rendered,
+            } => {
+                if is_error_diagnostic(&diagnostic) {
+                    error_count += 1;
                 }
+                if format_json {
+                    writeln!(cli, "{}", serde_json::to_string(&diagnostic)?)?;
+                } else if let Some(rendered) = rendered {
+                    let use_color = cli.supports_color();
+                    write!(cli, "{}", rendered.output(use_color))?;
+                } else {
+                    write!(cli, "{diagnostic}")?;
+                }
+                emitted_diagnostic = true;
             }
-            break;
         }
-        if v.get("type").and_then(|t| t.as_str()) == Some("diagnostic") {
-            let message: reporting::DaemonDiagnostic = serde_json::from_value(v)?;
-            if message.is_error() {
-                error_count += 1;
-            }
-            message.write_to(cli, format_json)?;
-            emitted_diagnostic = true;
-            continue;
-        }
-
-        // Legacy untagged diagnostic line from older daemon responses.
-        if format_json {
-            writeln!(cli, "{line}")?;
-        } else {
-            let diag: elp::arc_types::Diagnostic = serde_json::from_str(&line)?;
-            if is_error_diagnostic(&diag) {
-                error_count += 1;
-            }
-            write!(cli, "{diag}")?;
-        }
-        emitted_diagnostic = true;
     }
 
     if !received_done {
@@ -1299,7 +1216,7 @@ fn connect_and_run(
         reporting::write_error_count_summary(cli, error_count)?;
     }
 
-    if exit_code != 0 {
+    if command_failed {
         // Shared between eqwalize and lint; the daemon's own error message
         // was already printed to stderr above, so this error only carries the
         // exit status and execution mode back to the client.
@@ -1792,25 +1709,7 @@ mod tests {
         assert_eq_expected!(expected_path, request.path);
     }
 
-    // -- DoneMessage serialization --
-
-    #[test]
-    fn done_message_ok() {
-        let json = serde_json::to_string(&DoneMessage::ok()).unwrap();
-        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert_eq!(v["type"], "done");
-        assert_eq!(v["status"], "ok");
-        assert!(v.get("message").is_none());
-    }
-
-    #[test]
-    fn done_message_error() {
-        let json = serde_json::to_string(&DoneMessage::error("bad thing".into())).unwrap();
-        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert_eq!(v["type"], "done");
-        assert_eq!(v["status"], "error");
-        assert_eq!(v["message"], "bad thing");
-    }
+    // -- Daemon response serialization --
 
     #[test]
     fn connection_unavailability_is_sent_and_stops_daemon() {
@@ -1821,40 +1720,12 @@ mod tests {
         let should_stop = write_connection_unavailable(&mut cli, &anyhow::anyhow!("reload failed"))
             .expect("error response should be written");
         let (stdout, _) = cli.to_strings();
-        let response: serde_json::Value =
+        let response: DaemonResponse =
             serde_json::from_str(stdout.trim()).expect("response should be JSON");
 
         assert!(should_stop);
-        let expected_status = Some("error");
-        assert_eq_expected!(expected_status, response["status"].as_str());
-        let expected_message = Some("reload failed");
-        assert_eq_expected!(expected_message, response["message"].as_str());
-        let expected_unavailable = Some(true);
-        assert_eq_expected!(
-            expected_unavailable,
-            response["daemon_unavailable"].as_bool()
-        );
-    }
-
-    #[test]
-    fn done_message_restart_carries_reason() {
-        use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
-
-        // `restart` is the reason string; its presence is the restart flag.
-        let msg = DoneMessage::ok().with_restart("ELP config change detected, restart required");
-        let json = serde_json::to_string(&msg).unwrap();
-        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
-
-        let expected_reason = Some("ELP config change detected, restart required");
-        assert_eq_expected!(expected_reason, v["restart"].as_str());
-    }
-
-    #[test]
-    fn done_message_omits_restart_when_absent() {
-        // ok() without with_restart: `restart` (skip-when-None) is omitted.
-        let json = serde_json::to_string(&DoneMessage::ok()).unwrap();
-        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert!(v.get("restart").is_none(), "restart should be omitted");
+        let expected = DaemonResponse::unavailable("reload failed");
+        assert_eq_expected!(expected, response);
     }
 
     // -- DaemonCli info wire message --

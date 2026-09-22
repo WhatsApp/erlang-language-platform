@@ -85,6 +85,7 @@ use crate::args::Severity;
 use crate::args::diagnostic_code_candidates;
 use crate::args::diagnostic_counts_as_error;
 use crate::args::module_completer;
+use crate::daemon_protocol::DaemonResponse;
 use crate::reporting;
 use crate::reporting::print_memory_usage;
 
@@ -1137,7 +1138,7 @@ fn print_diagnostic_json(
             converted_diagnostic.with_fix(fix.line, fix.char, fix.original, fix.replacement);
     }
     if daemon_format {
-        let message = reporting::DaemonDiagnostic::from_ide(
+        let rendered = reporting::render_ide_diagnostic(
             reporting::IdeDiagnosticContext {
                 analysis,
                 vfs,
@@ -1145,9 +1146,10 @@ fn print_diagnostic_json(
                 path,
                 diagnostic,
             },
-            converted_diagnostic,
+            &converted_diagnostic,
         )?;
-        writeln!(cli, "{}", serde_json::to_string(&message)?)?;
+        let response = DaemonResponse::diagnostic(converted_diagnostic, Some(rendered));
+        writeln!(cli, "{}", serde_json::to_string(&response)?)?;
     } else {
         writeln!(
             cli,

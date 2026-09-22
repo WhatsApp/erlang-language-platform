@@ -38,6 +38,7 @@ mod build_info_cli;
 mod config_stanza;
 #[cfg(unix)]
 mod daemon;
+mod daemon_protocol;
 mod dialyzer_cli;
 mod elp_parse_cli;
 mod eqwalizer_cli;
