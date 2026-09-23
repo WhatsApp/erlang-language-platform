@@ -80,6 +80,29 @@ use rayon::prelude::ParallelIterator;
 use serde::Deserialize;
 use serde::Serialize;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub(crate) enum LintOutcome {
+    Clean,
+    Findings { has_errors: bool },
+}
+
+impl LintOutcome {
+    pub(crate) fn process_exit_code(self) -> i32 {
+        match self {
+            LintOutcome::Clean | LintOutcome::Findings { has_errors: false } => 0,
+            LintOutcome::Findings { has_errors: true } => 101,
+        }
+    }
+
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            LintOutcome::Clean => "clean",
+            LintOutcome::Findings { .. } => "findings",
+        }
+    }
+}
+
 use crate::args::Format;
 use crate::args::Severity;
 use crate::args::diagnostic_code_candidates;
@@ -277,7 +300,7 @@ pub fn run_lint_command(
     args: &Lint,
     cli: &mut dyn Cli,
     query_config: &BuckQueryConfig,
-) -> Result<()> {
+) -> Result<LintOutcome> {
     let start_time = SystemTime::now();
     let memory_start = MemoryUsage::now();
 
@@ -318,7 +341,7 @@ pub fn do_lint(
     lint_config: &LintConfig,
     loaded: &mut LoadResult,
     cli: &mut dyn Cli,
-) -> Result<()> {
+) -> Result<LintOutcome> {
     if args.include_ct_diagnostics && args.is_format_normal() {
         cli.info(
             "Warning: the --include-ct-diagnostics flag is deprecated and will be removed in an upcoming release. Common Test diagnostics are now always included.",
@@ -415,7 +438,7 @@ fn run_diagnostics_parallel(
     let mut results = Vec::new();
     let mut err_in_diag = false;
     let mut module_count = 0;
-    let mut any_diagnostics_printed = false;
+    let mut any_findings = false;
 
     for result in rx {
         let printed = if args.skip_stream_print() {
@@ -433,7 +456,7 @@ fn run_diagnostics_parallel(
                 &result,
             )?
         };
-        any_diagnostics_printed = any_diagnostics_printed || printed;
+        any_findings = any_findings || printed;
         results.push(result);
     }
 
@@ -444,7 +467,7 @@ fn run_diagnostics_parallel(
         .expect("Failed to join diagnostics thread");
     pb.finish();
 
-    Ok((results, err_in_diag, any_diagnostics_printed))
+    Ok((results, err_in_diag, any_findings))
 }
 
 fn do_diagnostics_all(
@@ -664,9 +687,9 @@ pub fn do_codemod(
     loaded: &mut LoadResult,
     diagnostics_config: &DiagnosticsConfig,
     args: &Lint,
-) -> Result<()> {
+) -> Result<LintOutcome> {
     let streamed_err_in_diag;
-    let mut any_diagnostics_printed;
+    let mut any_findings;
     let mut initial_diags = {
         // We put this in its own block so that analysis is
         // freed before we apply lints. To apply lints
@@ -695,7 +718,7 @@ pub fn do_codemod(
                 .into_iter()
                 .map(|(file_id, name)| (name, file_id))
                 .collect();
-            let (results, err_in_diag, any_printed) = run_diagnostics_parallel(
+            let (results, err_in_diag, findings_detected) = run_diagnostics_parallel(
                 cli,
                 &analysis,
                 diagnostics_config,
@@ -705,11 +728,11 @@ pub fn do_codemod(
                 &args.modules,
             )?;
             streamed_err_in_diag = err_in_diag;
-            any_diagnostics_printed = any_printed;
+            any_findings = findings_detected;
             results
         } else {
             // No specific targets requested: lint all project files.
-            let (results, err_in_diag, any_printed) = do_diagnostics_all(
+            let (results, err_in_diag, findings_detected) = do_diagnostics_all(
                 cli,
                 &analysis,
                 &loaded.project_id,
@@ -719,7 +742,7 @@ pub fn do_codemod(
                 &args.modules,
             )?;
             streamed_err_in_diag = err_in_diag;
-            any_diagnostics_printed = any_printed;
+            any_findings = findings_detected;
             results
         }
     };
@@ -744,7 +767,7 @@ pub fn do_codemod(
                 &mut module_count,
                 result,
             )?;
-            any_diagnostics_printed = any_diagnostics_printed || printed;
+            any_findings = any_findings || printed;
         }
     }
 
@@ -769,6 +792,7 @@ pub fn do_codemod(
             )?
         };
 
+        any_findings = !filtered_diags.is_empty();
         if filtered_diags.is_empty() {
             if args.is_format_normal() {
                 writeln!(cli, "No diagnostics reported")?;
@@ -828,23 +852,24 @@ pub fn do_codemod(
                     cli.info(&format!("Apply fix failed: {err:#}")).ok();
                 }
             };
-
-            if err_in_diag {
-                bail!("Errors found")
-            }
         }
     } else {
-        // Non-apply-fix case: rely on any_diagnostics_printed which is set
-        // correctly based on filtered diagnostics during streaming/batch printing
-        if !any_diagnostics_printed {
+        // In the non-apply-fix case, `any_findings` reflects filtered diagnostics
+        // produced by streaming or batch processing.
+        if !any_findings {
             if args.is_format_normal() {
                 writeln!(cli, "No diagnostics reported")?;
             }
-        } else if err_in_diag {
-            bail!("Errors found")
         }
     }
-    Ok(())
+
+    if any_findings {
+        Ok(LintOutcome::Findings {
+            has_errors: err_in_diag,
+        })
+    } else {
+        Ok(LintOutcome::Clean)
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1148,7 +1173,7 @@ fn print_diagnostic_json(
             },
             &converted_diagnostic,
         )?;
-        let response = DaemonResponse::diagnostic(converted_diagnostic, Some(rendered));
+        let response = DaemonResponse::<()>::diagnostic(converted_diagnostic, Some(rendered));
         writeln!(cli, "{}", serde_json::to_string(&response)?)?;
     } else {
         writeln!(
@@ -1703,11 +1728,13 @@ mod tests {
     use elp_ide::diagnostics::ReplaceCallAction;
     use elp_ide::diagnostics::Replacement;
     use elp_ide::elp_ide_db::diagnostic_code::BASE_URL;
+    use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
     use expect_test::Expect;
     use expect_test::expect;
     use fxhash::FxHashMap;
 
     use super::LintConfig;
+    use super::LintOutcome;
     use super::do_codemod;
     use crate::args;
     use crate::args::Command;
@@ -1874,6 +1901,84 @@ mod tests {
         } else {
             panic!("expecting lint command");
         }
+    }
+
+    fn lint_outcome_from_fixture(args_vec: Vec<OsString>, fixture: &str) -> LintOutcome {
+        let mut loaded = fixture::load_result(fixture);
+        let output_dir = tempfile::tempdir().expect("temporary output directory should be created");
+        let mut full_args = vec![std::ffi::OsString::from("elp")];
+        full_args.extend(args_vec);
+        full_args.push("--to".into());
+        full_args.push(output_dir.path().as_os_str().to_owned());
+        let args = args::Args::try_parse_from(full_args).expect("lint arguments should parse");
+        let Some(Command::Lint(mut lint)) = args.command else {
+            panic!("expecting lint command");
+        };
+        let mut cli = Fake::default();
+        let lint_config = LintConfig::default();
+        lint.normalize();
+        let diagnostics_config = super::get_diagnostics_config(&lint, &lint_config)
+            .expect("diagnostics config should be valid");
+
+        do_codemod(&mut cli, &mut loaded, &diagnostics_config, &lint).expect("lint should complete")
+    }
+
+    #[test]
+    fn apply_fix_preserves_filtered_exit_semantics() {
+        let fixture = r#"
+            //- /app_a/src/lints.erl app:app_a
+              -module(lints).
+              -export([head_mismatch/1]).
+
+              head_mismatch(X) -> X;
+              head_mismatcX(0) -> 0.
+
+              unused_fun() -> ok.
+        "#;
+
+        let warning = lint_outcome_from_fixture(
+            args_vec![
+                "lint",
+                "--module",
+                "lints",
+                "--diagnostic-filter",
+                "L1230",
+                "--apply-fix",
+            ],
+            fixture,
+        );
+        assert_eq_expected!(LintOutcome::Findings { has_errors: false }, warning);
+        assert_eq_expected!(0, warning.process_exit_code());
+
+        let error = lint_outcome_from_fixture(
+            args_vec![
+                "lint",
+                "--module",
+                "lints",
+                "--diagnostic-filter",
+                "P1700",
+                "--apply-fix",
+            ],
+            fixture,
+        );
+        assert_eq_expected!(LintOutcome::Findings { has_errors: true }, error);
+        assert_eq_expected!(101, error.process_exit_code());
+
+        let filtered_out = lint_outcome_from_fixture(
+            args_vec![
+                "lint",
+                "--module",
+                "lints",
+                "--diagnostic-filter",
+                "L1230",
+                "--severity",
+                "error",
+                "--apply-fix",
+            ],
+            fixture,
+        );
+        assert_eq_expected!(LintOutcome::Clean, filtered_out);
+        assert_eq_expected!(0, filtered_out.process_exit_code());
     }
 
     #[test]

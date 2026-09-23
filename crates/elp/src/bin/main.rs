@@ -74,6 +74,49 @@ static INIT: Once = Once::new();
 #[cfg(not(unix))]
 const DAEMON_UNSUPPORTED: &str = "ELP daemon mode is not supported on this platform";
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CommandOutcome {
+    NotApplicable,
+    Lint(lint_cli::LintOutcome),
+}
+
+impl CommandOutcome {
+    fn process_exit_code(self) -> i32 {
+        match self {
+            Self::NotApplicable => 0,
+            Self::Lint(outcome) => outcome.process_exit_code(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CliRunResult<T> {
+    Completed { outcome: T, process_exit_code: i32 },
+    Failed { process_exit_code: i32 },
+}
+
+impl<T> CliRunResult<T> {
+    pub(crate) fn process_exit_code(&self) -> i32 {
+        match self {
+            Self::Completed {
+                process_exit_code, ..
+            }
+            | Self::Failed { process_exit_code } => *process_exit_code,
+        }
+    }
+
+    pub(crate) fn execution_succeeded(&self) -> bool {
+        matches!(self, Self::Completed { .. })
+    }
+
+    pub(crate) fn completed_outcome(&self) -> Option<&T> {
+        match self {
+            Self::Completed { outcome, .. } => Some(outcome),
+            Self::Failed { .. } => None,
+        }
+    }
+}
+
 /// Whether to route a command through the persistent daemon. It is the default
 /// on Unix unless `--no-connect` opts out. An explicit `--connect` also routes
 /// here on non-Unix so the caller receives the unsupported-platform error.
@@ -95,7 +138,7 @@ fn main() {
             // @fb-only: #[cfg(buck_build)] let subcommand = args.command.as_ref().map(|c| c.as_ref()).unwrap_or("help").to_owned();
             // @fb-only: #[cfg(buck_build)] let code = meta_only::run_with_usage_metadata(&subcommand, || run_cli(args));
             #[cfg(not(buck_build))]
-            let code = run_cli(args);
+            let code = run_cli(args).process_exit_code();
             process::exit(code);
         }
         Err(err) => {
@@ -115,10 +158,13 @@ fn parse_error_exit_code(err: clap::Error) -> i32 {
     code
 }
 
-fn run_cli(args: Args) -> i32 {
+fn run_cli(args: Args) -> CliRunResult<CommandOutcome> {
     if let Some(shell) = args.bpaf_compat_shell() {
         args::generate_completions(shell, &mut std::io::stdout());
-        return 0;
+        return CliRunResult::Completed {
+            outcome: CommandOutcome::NotApplicable,
+            process_exit_code: 0,
+        };
     }
     let use_color = args.should_use_color();
     let mut cli: Box<dyn cli::Cli> = if use_color {
@@ -130,25 +176,41 @@ fn run_cli(args: Args) -> i32 {
     handle_res(res, cli.err())
 }
 
-fn handle_res(result: Result<()>, stderr: &mut dyn Write) -> i32 {
-    if let Err(err) = result {
-        // `elp lint-compare` returns LintCompareRegression when the
-        // diagnostic landscape shifted vs the supplied base. The
-        // user-facing detail lives in the report file we already
-        // wrote; here we only translate the typed error into a
-        // dedicated exit code so callers (CI workflows, scripts) can
-        // distinguish "regression detected" from "elp itself failed".
-        if err
-            .downcast_ref::<lint_compare::LintCompareRegression>()
-            .is_some()
-        {
-            writeln!(stderr, "{err:#}").unwrap();
-            return 1;
+fn handle_res(
+    result: Result<CommandOutcome>,
+    stderr: &mut dyn Write,
+) -> CliRunResult<CommandOutcome> {
+    match result {
+        Ok(outcome) => {
+            if matches!(
+                outcome,
+                CommandOutcome::Lint(lint_cli::LintOutcome::Findings { has_errors: true })
+            ) {
+                writeln!(stderr, "Errors found").expect("stderr should accept lint outcome");
+            }
+            CliRunResult::Completed {
+                outcome,
+                process_exit_code: outcome.process_exit_code(),
+            }
         }
-        writeln!(stderr, "{err:#}").unwrap();
-        101
-    } else {
-        0
+        Err(err) => {
+            // `elp lint-compare` returns LintCompareRegression when the
+            // diagnostic landscape shifted vs the supplied base. The
+            // user-facing detail lives in the report file we already
+            // wrote; here we only translate the typed error into a
+            // dedicated exit code so callers (CI workflows, scripts) can
+            // distinguish "regression detected" from "elp itself failed".
+            let process_exit_code = if err
+                .downcast_ref::<lint_compare::LintCompareRegression>()
+                .is_some()
+            {
+                1
+            } else {
+                101
+            };
+            writeln!(stderr, "{err:#}").expect("stderr should accept execution error");
+            CliRunResult::Failed { process_exit_code }
+        }
     }
 }
 
@@ -182,7 +244,7 @@ fn setup_cli_telemetry(args: &Args) {
     }
 }
 
-fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
+fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<CommandOutcome> {
     let logger = setup_logging(&args.log_file, args.no_log_buffering)?;
     setup_cli_telemetry(&args);
 
@@ -207,13 +269,14 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
         let help = args::Args::render_help();
         writeln!(cli, "{help}")?;
         log::logger().flush();
-        return Ok(());
+        return Ok(CommandOutcome::NotApplicable);
     };
 
     command.normalize();
     // Default the output format from whether stdout is a terminal (human → rich
     // text, pipe → JSON) unless the user set `--format` explicitly.
     command.apply_default_format(stdout_is_tty);
+    let mut command_outcome = CommandOutcome::NotApplicable;
     match &command {
         args::Command::RunServer(_) => run_server(logger)?,
         args::Command::ParseAll(args) => erlang_service_cli::parse_all(args, cli, &query_config)?,
@@ -343,13 +406,13 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
         args::Command::Lint(lint_args) if use_daemon(lint_args.connect, lint_args.no_connect) => {
             #[cfg(unix)]
             {
-                run_with_daemon_fallback(
+                command_outcome = CommandOutcome::Lint(run_with_daemon_fallback(
                     lint_args.connect,
                     daemon::lint_daemon_incompatibility(lint_args),
                     cli,
                     |cli| lint_cli::run_lint_command(lint_args, cli, &query_config),
                     |cli| daemon::connect_lint(lint_args, &daemon_startup_options, cli),
-                )?;
+                )?);
             }
             #[cfg(not(unix))]
             {
@@ -357,7 +420,10 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
                 anyhow::bail!(DAEMON_UNSUPPORTED);
             }
         }
-        args::Command::Lint(args) => lint_cli::run_lint_command(args, cli, &query_config)?,
+        args::Command::Lint(args) => {
+            command_outcome =
+                CommandOutcome::Lint(lint_cli::run_lint_command(args, cli, &query_config)?);
+        }
         args::Command::LintCompare(args) => lint_compare::run_lint_compare_command(args, cli)?,
         args::Command::Search(ssr_args) | args::Command::Ssr(ssr_args) => {
             ssr_cli::run_ssr_command(ssr_args, cli, &query_config, use_color)?
@@ -382,24 +448,24 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<()> {
 
     log::logger().flush();
 
-    Ok(())
+    Ok(command_outcome)
 }
 
 #[cfg(unix)]
-fn run_with_daemon_fallback(
+fn run_with_daemon_fallback<T>(
     explicit_connect: bool,
     incompatibility: Option<&str>,
     cli: &mut dyn Cli,
-    standalone: impl FnOnce(&mut dyn Cli) -> Result<()>,
-    connected: impl FnOnce(&mut dyn Cli) -> Result<daemon::DaemonExecutionMode>,
-) -> Result<()> {
+    standalone: impl FnOnce(&mut dyn Cli) -> Result<T>,
+    connected: impl FnOnce(&mut dyn Cli) -> Result<T>,
+) -> Result<T> {
     if let Some(reason) = incompatibility {
         cli.info(&format!("{reason}; running without the daemon"))?;
         return standalone(cli);
     }
 
     match connected(cli) {
-        Ok(_) => Ok(()),
+        Ok(outcome) => Ok(outcome),
         Err(error) if !explicit_connect && daemon::is_daemon_unavailable(&error) => {
             cli.info(&format!("{error:#}; running without the daemon"))?;
             standalone(cli)
@@ -509,6 +575,61 @@ mod tests {
     }
 
     #[test]
+    fn clean_lint_is_execution_success() {
+        let mut stderr = Vec::new();
+        let actual = handle_res(
+            Ok(CommandOutcome::Lint(lint_cli::LintOutcome::Clean)),
+            &mut stderr,
+        );
+        let expected = CliRunResult::Completed {
+            outcome: CommandOutcome::Lint(lint_cli::LintOutcome::Clean),
+            process_exit_code: 0,
+        };
+
+        assert_eq_expected!(expected, actual);
+        assert_eq_expected!(0, actual.process_exit_code());
+        assert!(actual.execution_succeeded());
+        let expected_outcome = Some(&CommandOutcome::Lint(lint_cli::LintOutcome::Clean));
+        assert_eq_expected!(expected_outcome, actual.completed_outcome());
+        assert!(stderr.is_empty(), "clean lint should not write to stderr");
+    }
+
+    #[test]
+    fn lint_findings_preserve_exit_101_as_execution_success() {
+        let mut stderr = Vec::new();
+        let findings = lint_cli::LintOutcome::Findings { has_errors: true };
+        let actual = handle_res(Ok(CommandOutcome::Lint(findings)), &mut stderr);
+        let expected = CliRunResult::Completed {
+            outcome: CommandOutcome::Lint(findings),
+            process_exit_code: 101,
+        };
+
+        assert_eq_expected!(expected, actual);
+        assert_eq_expected!(101, actual.process_exit_code());
+        assert!(actual.execution_succeeded());
+        let expected_outcome = Some(&CommandOutcome::Lint(findings));
+        assert_eq_expected!(expected_outcome, actual.completed_outcome());
+        let expected_stderr = b"Errors found\n".to_vec();
+        assert_eq_expected!(expected_stderr, stderr);
+    }
+
+    #[test]
+    fn lint_operational_error_is_execution_failure() {
+        let mut stderr = Vec::new();
+        let actual = handle_res(Err(anyhow::anyhow!("project load failed")), &mut stderr);
+        let expected = CliRunResult::Failed {
+            process_exit_code: 101,
+        };
+
+        assert_eq_expected!(expected, actual);
+        assert_eq_expected!(101, actual.process_exit_code());
+        assert!(!actual.execution_succeeded());
+        assert_eq_expected!(None, actual.completed_outcome());
+        let expected_stderr = b"project load failed\n".to_vec();
+        assert_eq_expected!(expected_stderr, stderr);
+    }
+
+    #[test]
     fn connect_and_no_connect_conflict() {
         let result =
             args::Args::try_parse_from(["elp", "eqwalize", "--connect", "--no-connect", "app_a"]);
@@ -608,7 +729,8 @@ mod tests {
             command.disable_daemon();
         }
         let res = try_main(&mut cli, args, stdout_is_tty);
-        let code = handle_res(res, cli.err());
+        let result = handle_res(res, cli.err());
+        let code = result.process_exit_code();
         let (stdout, stderr) = cli.to_strings();
         (stdout, stderr, code)
     }

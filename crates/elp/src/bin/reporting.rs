@@ -247,7 +247,7 @@ impl<'a> WireReporter<'a> {
                 writeln!(self.cli, "{}", serde_json::to_string(&diagnostic)?)?;
             }
             WireFormat::Daemon => {
-                let response = DaemonResponse::diagnostic(diagnostic, rendered);
+                let response = DaemonResponse::<()>::diagnostic(diagnostic, rendered);
                 writeln!(self.cli, "{}", serde_json::to_string(&response)?)?;
             }
         }
