@@ -19,6 +19,7 @@ use std::sync::LazyLock;
 use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::SearchScope;
 use elp_ide_db::SymbolDefinition;
+use elp_ide_db::elp_base_db::AppDataId;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
@@ -28,12 +29,14 @@ use elp_syntax::TextRange;
 use elp_syntax::ast::AstNode;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
+use hir::DefMap;
+use hir::FormList;
 use hir::InFile;
 use hir::IncludeAttribute;
-use hir::MacroEnvironment;
 use hir::MacroName;
 use hir::Name;
 use hir::NameArity;
+use hir::PreprocessorAnalysis;
 use hir::Semantic;
 use hir::db::DefDatabase;
 
@@ -103,6 +106,10 @@ impl GenericLinter for UnusedIncludeLinter {
         // defined. An include with no entry was not reached at all.
         let env = db.project_macro_environment(ctx.file_id);
         let analysis = db.file_preprocessor_analysis(ctx.file_id, Arc::clone(&env));
+        let target_def_map = db.def_map(ctx.file_id);
+        let app_data_id = db.app_data_id_by_file(ctx.file_id);
+        let direct_include_files =
+            direct_include_files(db, ctx.file_id, &form_list, &analysis, app_data_id);
 
         for (include_idx, attr) in form_list.includes() {
             if !EXCLUDES.contains(attr.path()) {
@@ -110,43 +117,61 @@ impl GenericLinter for UnusedIncludeLinter {
                 let Some(include_env) = analysis.include_env(include_idx) else {
                     continue;
                 };
-                if let Some(include_file_id) =
-                    db.resolve_include(db.app_data_id_by_file(ctx.file_id), in_file)
-                {
-                    if is_include_used(
+                let Some(include_file_id) = db.resolve_include(app_data_id, in_file) else {
+                    continue;
+                };
+                // Cheap first: a header that affects compilation by its
+                // presence alone is worth keeping. Otherwise the include earns
+                // its place by supplying something used here, or by declaring
+                // something used that reached the module through another
+                // include.
+                let include_def_map = db.def_map_with_env(include_file_id, Arc::clone(include_env));
+                let is_used = include_def_map.has_effectful_form
+                    || db.def_map_local(include_file_id).has_effectful_form
+                    || is_def_map_used(
                         ctx.sema,
-                        db,
-                        include_file_id,
-                        Arc::clone(include_env),
-                        ctx.file_id,
+                        &include_def_map,
+                        &target_def_map,
+                        DefinitionScope::IncludeClosure {
+                            root: include_file_id,
+                            direct_include_files: &direct_include_files,
+                        },
                         &scope,
                         &mut searched,
-                    ) {
-                        continue;
-                    }
-
-                    let path = match attr {
-                        IncludeAttribute::Include { path, .. } => path,
-                        IncludeAttribute::IncludeLib { path, .. } => path,
-                    };
-                    let attribute = attr.form_id().get(&source_file.tree());
-                    let attribute_syntax = attribute.syntax();
-                    let attribute_range = attribute_syntax.text_range();
-                    let extended_attribute_range = extend_range(attribute_syntax);
-
-                    log::debug!("Found unused include {path:?}");
-
-                    res.push(GenericLinterMatchContext {
-                        range: FileRange {
-                            file_id: ctx.file_id,
-                            range: attribute_range,
-                        },
-                        context: Context {
-                            path: path.clone(),
-                            extended_range: extended_attribute_range,
-                        },
-                    });
+                    )
+                    || is_def_map_used(
+                        ctx.sema,
+                        &target_def_map,
+                        &target_def_map,
+                        DefinitionScope::File(include_file_id),
+                        &scope,
+                        &mut searched,
+                    );
+                if is_used {
+                    continue;
                 }
+
+                let path = match attr {
+                    IncludeAttribute::Include { path, .. } => path,
+                    IncludeAttribute::IncludeLib { path, .. } => path,
+                };
+                let attribute = attr.form_id().get(&source_file.tree());
+                let attribute_syntax = attribute.syntax();
+                let attribute_range = attribute_syntax.text_range();
+                let extended_attribute_range = extend_range(attribute_syntax);
+
+                log::debug!("Found unused include {path:?}");
+
+                res.push(GenericLinterMatchContext {
+                    range: FileRange {
+                        file_id: ctx.file_id,
+                        range: attribute_range,
+                    },
+                    context: Context {
+                        path: path.clone(),
+                        extended_range: extended_attribute_range,
+                    },
+                });
             }
         }
         Some(res)
@@ -178,6 +203,48 @@ impl GenericLinter for UnusedIncludeLinter {
 
 pub static LINTER: UnusedIncludeLinter = UnusedIncludeLinter;
 
+/// Returns the files the module's active direct includes resolve to.
+fn direct_include_files(
+    db: &dyn DefDatabase,
+    file_id: FileId,
+    form_list: &FormList,
+    analysis: &PreprocessorAnalysis,
+    app_data_id: Option<AppDataId>,
+) -> FxHashSet<FileId> {
+    form_list
+        .includes()
+        .filter_map(|(include_idx, _)| {
+            analysis.include_env(include_idx)?;
+            db.resolve_include(app_data_id, InFile::new(file_id, include_idx))
+        })
+        .collect()
+}
+
+/// Restricts which definitions in a `DefMap` answer for an include.
+///
+/// Definitions declared by a directly included header belong to that include,
+/// so they do not make another direct include used just because its closure
+/// passes through the same header.
+enum DefinitionScope<'a> {
+    IncludeClosure {
+        root: FileId,
+        direct_include_files: &'a FxHashSet<FileId>,
+    },
+    File(FileId),
+}
+
+impl DefinitionScope<'_> {
+    fn contains(&self, file_id: FileId) -> bool {
+        match self {
+            Self::IncludeClosure {
+                root,
+                direct_include_files,
+            } => file_id == *root || !direct_include_files.contains(&file_id),
+            Self::File(source_file) => file_id == *source_file,
+        }
+    }
+}
+
 /// Identifies a definition reached through the module's includes. A definition
 /// can sit in the closure of several includes, and the usage search is the
 /// expensive part, so each is searched at most once per module.
@@ -189,32 +256,20 @@ enum DefKey {
     Macro(FileId, MacroName),
 }
 
-/// Whether `include_file_id`, expanded under `env`, gives `target` a reason to
-/// include it.
-///
-/// `def_map_with_env` has already done the work of expanding it the way the
-/// preprocessor would: each nested include is followed under the environment
-/// recorded for it, and each file's forms are filtered by the conditions that
-/// environment settles. A header behind a guard the module has already
-/// tripped therefore merges in empty, and contributes nothing here.
-fn is_include_used(
+/// Whether any definition in `def_map` allowed by `definition_scope` is used by
+/// the module being linted.
+fn is_def_map_used(
     sema: &Semantic,
-    db: &dyn DefDatabase,
-    include_file_id: FileId,
-    env: Arc<MacroEnvironment>,
-    target: FileId,
+    def_map: &DefMap,
+    target_def_map: &DefMap,
+    definition_scope: DefinitionScope<'_>,
     scope: &SearchScope,
     searched: &mut FxHashMap<DefKey, bool>,
 ) -> bool {
-    let def_map = db.def_map_with_env(include_file_id, env);
-
-    // Cheap first: forms that count by being present at all.
-    if def_map.has_effectful_form {
-        return true;
-    }
-
-    let target_def_map = db.def_map(target);
     for (name_arity, fun_def) in def_map.get_functions() {
+        if !definition_scope.contains(fun_def.file.file_id) {
+            continue;
+        }
         if target_def_map.is_function_exported(name_arity) {
             return true;
         }
@@ -227,6 +282,9 @@ fn is_include_used(
     }
 
     for (name_arity, type_def) in def_map.get_types() {
+        if !definition_scope.contains(type_def.file.file_id) {
+            continue;
+        }
         let key = DefKey::Type(type_def.file.file_id, name_arity.clone());
         if is_used(sema, scope, searched, key, || {
             SymbolDefinition::Type(type_def.clone())
@@ -236,6 +294,9 @@ fn is_include_used(
     }
 
     for (name, record_def) in def_map.get_records() {
+        if !definition_scope.contains(record_def.file.file_id) {
+            continue;
+        }
         let key = DefKey::Record(record_def.file.file_id, name.clone());
         if is_used(sema, scope, searched, key, || {
             SymbolDefinition::Record(record_def.clone())
@@ -245,6 +306,9 @@ fn is_include_used(
     }
 
     for (name, macro_def) in def_map.get_macros() {
+        if !definition_scope.contains(macro_def.file.file_id) {
+            continue;
+        }
         let key = DefKey::Macro(macro_def.file.file_id, name.clone());
         if is_used(sema, scope, searched, key, || {
             SymbolDefinition::Define(macro_def.clone())
@@ -535,6 +599,184 @@ foo() -> ?MACRO.
 
 //- /src/macros.hrl
 -define(MACRO, 3).
+"#,
+        )
+    }
+
+    #[test]
+    fn transitive_definition_does_not_make_outer_header_used() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+-module(main).
+  -include("outer.hrl").
+%%^^^^^^^^^^^^^^^^^^^^^^ warning: W0020: Unused file: outer.hrl
+%%                     | 💡 Remove unused include
+%%                     | 💡 <suppression>
+-include("stats.hrl").
+
+foo() -> ?COUNT_FOO.
+
+//- /src/outer.hrl
+-include("stats.hrl").
+
+//- /src/stats.hrl
+-ifndef(STATS_HRL).
+-define(STATS_HRL, true).
+-define(COUNT_FOO, 3).
+-endif.
+"#,
+        )
+    }
+
+    #[test]
+    fn unused_guarded_header_included_transitively_and_directly() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+-module(main).
+  -include("outer.hrl").
+%%^^^^^^^^^^^^^^^^^^^^^^ warning: W0020: Unused file: outer.hrl
+%%                     | 💡 Remove unused include
+%%                     | 💡 <suppression>
+  -include("stats.hrl").
+%%^^^^^^^^^^^^^^^^^^^^^^ warning: W0020: Unused file: stats.hrl
+%%                     | 💡 Remove unused include
+%%                     | 💡 <suppression>
+
+foo() -> ok.
+
+//- /src/outer.hrl
+-include("stats.hrl").
+
+//- /src/stats.hrl
+-ifndef(STATS_HRL).
+-define(STATS_HRL, true).
+-define(COUNT_FOO, 3).
+-endif.
+"#,
+        )
+    }
+
+    #[test]
+    fn guarded_headers_used_and_unused_transitively_and_directly() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+-module(main).
+-include("outer.hrl").
+-include("stats.hrl").
+  -include("spare.hrl").
+%%^^^^^^^^^^^^^^^^^^^^^^ warning: W0020: Unused file: spare.hrl
+%%                     | 💡 Remove unused include
+%%                     | 💡 <suppression>
+
+foo() -> {?OUTER, ?COUNT_FOO}.
+
+//- /src/outer.hrl
+-define(OUTER, ok).
+-include("stats.hrl").
+-include("spare.hrl").
+
+//- /src/stats.hrl
+-ifndef(STATS_HRL).
+-define(STATS_HRL, true).
+-define(COUNT_FOO, 3).
+-endif.
+
+//- /src/spare.hrl
+-ifndef(SPARE_HRL).
+-define(SPARE_HRL, true).
+-define(COUNT_SPARE, 4).
+-endif.
+"#,
+        )
+    }
+
+    #[test]
+    fn guarded_header_effectful_form_transitively_and_directly() {
+        // A guarded header whose only contribution is an effectful form
+        // (here `-compile(export_all)`) arrives both transitively through
+        // `outer.hrl` and directly. The direct expansion is empty because
+        // the guard has already been tripped, but the header still affects
+        // compilation through the transitive path.
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+-module(main).
+-include("outer.hrl").
+-include("effects.hrl").
+
+foo() -> ok.
+
+//- /src/outer.hrl
+-include("effects.hrl").
+
+//- /src/effects.hrl
+-ifndef(EFFECTS_HRL).
+-define(EFFECTS_HRL, true).
+-compile(export_all).
+-endif.
+"#,
+        )
+    }
+
+    #[test]
+    fn duplicate_direct_include_of_a_guarded_header() {
+        // An exact duplicate `include` is `W0078`'s business, not W0020's: the
+        // header is a genuine direct dependency of this module, so W0020 stays
+        // quiet and the duplicate is reported once, with its own fix.
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+-module(main).
+-include("stats.hrl").
+  -include("stats.hrl").
+%%^^^^^^^^^^^^^^^^^^^^^^ warning: W0078: Duplicate include: stats.hrl
+%%                     | 💡 Remove duplicate include
+%%                     | 💡 <suppression>
+
+foo() -> ?COUNT_FOO.
+
+//- /src/stats.hrl
+-ifndef(STATS_HRL).
+-define(STATS_HRL, true).
+-define(COUNT_FOO, 3).
+-endif.
+"#,
+        )
+    }
+
+    #[test]
+    fn effectful_form_disabled_by_an_earlier_macro() {
+        // Records current behaviour, which is wrong for `effects.hrl`.
+        // `DISABLE_EFFECTS` makes the `-compile` inactive everywhere in this
+        // module, so neither include contributes anything -- `outer.hrl` is
+        // reported, but the direct include is kept alive by the standalone
+        // `def_map_local` check, which evaluates the header under its own
+        // project environment rather than the module's. Fixing this needs
+        // per-file attribution of effectful forms in `DefMap`, the way
+        // definitions already carry their source file.
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+-module(main).
+-define(DISABLE_EFFECTS, true).
+  -include("outer.hrl").
+%%^^^^^^^^^^^^^^^^^^^^^^ warning: W0020: Unused file: outer.hrl
+%%                     | 💡 Remove unused include
+%%                     | 💡 <suppression>
+-include("effects.hrl").
+
+foo() -> ok.
+
+//- /src/outer.hrl
+-include("effects.hrl").
+
+//- /src/effects.hrl
+-ifndef(DISABLE_EFFECTS).
+-compile(export_all).
+-endif.
 "#,
         )
     }
