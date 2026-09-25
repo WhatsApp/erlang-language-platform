@@ -152,6 +152,7 @@ mod module_mismatch;
 mod mutable_variable;
 mod no_and_or;
 mod no_catch;
+mod no_ct_config_macro;
 mod no_dialyzer_attribute;
 mod no_error_logger;
 mod no_garbage_collect;
@@ -2261,6 +2262,7 @@ const SSR_PATTERN_LINTERS: &[&dyn SsrPatternsDiagnostics] = &[
     &encode_hex_with_case::LINTER,
     &eqwalizer_escape_hatches::UNCHECKED_CAST_LINTER,
     &simplify_negation::LINTER,
+    &no_ct_config_macro::LINTER,
 ];
 
 /// Generic linters

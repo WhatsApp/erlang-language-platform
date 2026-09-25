@@ -217,6 +217,8 @@ pub enum DiagnosticCode {
     AttributeOrder,
     #[strum(props(code = "W0085"))]
     UnavailableFunction,
+    #[strum(props(code = "W0086"))]
+    NoCtConfigMacro,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
