@@ -76,19 +76,22 @@ final class Check(pipelineContext: PipelineContext) {
     checkExpr(exprs.last, resTy, envAcc)
   }
 
-  private def checkMaybeBody(body: Body, resTy: Type, env: Env): Env = {
+  private def checkMaybe(maybe: Maybe, resTy: Type, env: Env): Env = {
     var envAcc = env
+    var tyAcc: Type = NoneType
     var lastTy: Type = NoneType
-    val exprs = body.exprs
+    val exprs = maybe.body.exprs
     for (expr <- exprs) {
       expr match {
         case MaybeMatch(Pats.PatAtom("true"), mExp) if Filters.asTest(mExp).isDefined =>
           val test = Filters.asTest(mExp).get
           envAcc = occurrence.testEnv(test, envAcc, result = true)
+          tyAcc = subtype.join(tyAcc, booleanType)
           lastTy = trueType
         case MaybeMatch(mPat, mExp) =>
-          val (mType, env1) = elab.elabExprAndCheck(mExp, envAcc, resTy)
+          val (mType, env1) = elab.elabExpr(mExp, envAcc)
           val (patTy, env2) = elabPat.elabPat(mPat, mType, env1)
+          tyAcc = subtype.join(tyAcc, mType)
           lastTy = patTy
           envAcc = env2
         case _ =>
@@ -97,8 +100,9 @@ final class Check(pipelineContext: PipelineContext) {
           envAcc = env1
       }
     }
-    if (!subtype.subType(lastTy, resTy))
-      diagnosticsInfo.add(ExpectedSubtype(exprs.last.pos, exprs.last, expected = resTy, got = lastTy))
+    tyAcc = subtype.join(tyAcc, lastTy)
+    if (!subtype.subType(tyAcc, resTy))
+      diagnosticsInfo.add(ExpectedSubtype(maybe.pos, maybe, expected = resTy, got = tyAcc))
     env
   }
 
@@ -465,8 +469,8 @@ final class Check(pipelineContext: PipelineContext) {
           if (!subtype.subType(t2, resTy))
             diagnosticsInfo.add(ExpectedSubtype(expr.pos, expr, expected = resTy, got = t2))
           env2
-        case Maybe(body) =>
-          checkMaybeBody(body, resTy, env)
+        case m: Maybe =>
+          checkMaybe(m, resTy, env)
         case MaybeElse(body, elseClauses) =>
           checkBody(body, resTy, env)
           val argType = DynamicType

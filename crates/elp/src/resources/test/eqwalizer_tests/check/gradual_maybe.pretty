@@ -15,19 +15,26 @@ Expression has type:   integer()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_maybe.erl:58:21
-   │
-58 │         {err, A} ?= T,
-   │                     ^ T.
-Expression has type:   {'err', term()} | {'ok', atom()}
+   ┌─ check/src/gradual_maybe.erl:57:5
+   │  
+57 │ ╭     maybe
+58 │ │         {err, A} ?= T,
+59 │ │         A
+60 │ │     end.
+   │ ╰───────^ maybe ...
+Expression has type:   term()
 Context expected type: atom()
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_maybe.erl:67:20
-   │
-67 │         {ok, A} ?= T,
-   │                    ^ T.
-Expression has type:   {'err', term()} | {'ok', atom()}
+   ┌─ check/src/gradual_maybe.erl:66:5
+   │  
+66 │ ╭     maybe
+67 │ │         {ok, A} ?= T,
+68 │ │         ok = B ?= A,
+69 │ │         B
+70 │ │     end.
+   │ ╰───────^ maybe ...
+Expression has type:   atom() | {'err', term()} | {'ok', atom()}
 Context expected type: 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -47,15 +54,16 @@ Expression has type:   'ok'
 Context expected type: 'err'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/gradual_maybe.erl:123:18
-    │
-123 │         a = A ?= T,
-    │                  ^
-    │                  │
-    │                  T.
+    ┌─ check/src/gradual_maybe.erl:122:5
+    │    
+122 │ ╭ ╭     maybe
+123 │ │ │         a = A ?= T,
+124 │ │ │         b
+125 │ │ │     end.
+    │ ╰─│───────^ maybe ...
 Expression has type:   'a' | 'b' | 'c'
 Context expected type: 'b' | 'c'
-    │                  
+    │   ╰───────' 
 
 Because in the expression's type:
   Here the type is a union type with some valid candidates: 'b' | 'c'
@@ -71,14 +79,16 @@ Expression has type:   'err'
 Context expected type: 'ok'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/gradual_maybe.erl:156:13
+    ┌─ check/src/gradual_maybe.erl:154:5
     │  
-156 │ ╭             maybe
+154 │ ╭     maybe
+155 │ │         A ?=
+156 │ │             maybe
 157 │ │                 B ?= {a, T},
-158 │ │                 V = {b, B},
-159 │ │                 C ?= V
+    · │
 160 │ │             end
-    │ ╰───────────────^ maybe ...
+161 │ │     end.
+    │ ╰───────^ maybe ...
 Expression has type:   {'a', term()} | {'b', {'a', term()}}
 Context expected type: 'err'
 

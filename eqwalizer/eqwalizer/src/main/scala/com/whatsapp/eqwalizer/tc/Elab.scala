@@ -79,11 +79,11 @@ final class Elab(pipelineContext: PipelineContext) {
     (tys, envAcc)
   }
 
-  private def elabMaybeBody(body: Body, env: Env): (Type, Env) = {
+  private def elabMaybe(maybe: Maybe, env: Env): (Type, Env) = {
     var envAcc = env
     var tyAcc: Type = NoneType
     var lastTy: Type = NoneType
-    val exprs = body.exprs
+    val exprs = maybe.body.exprs
     for (expr <- exprs) {
       expr match {
         case MaybeMatch(Pats.PatAtom("true"), mExp) if Filters.asTest(mExp).isDefined =>
@@ -600,8 +600,8 @@ final class Elab(pipelineContext: PipelineContext) {
       case MaybeMatch(mPat, mExp) =>
         val (mType, env1) = elabExpr(mExp, env)
         elabPat.elabPat(mPat, mType, env1)
-      case Maybe(body) =>
-        elabMaybeBody(body, env)
+      case m: Maybe =>
+        elabMaybe(m, env)
       case MaybeElse(body, elseClauses) =>
         val (bodyType, _) = elabBody(body, env)
         val argType = DynamicType
