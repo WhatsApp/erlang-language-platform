@@ -49,6 +49,7 @@ use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileKind;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
+use elp_ide::elp_ide_db::elp_base_db::PathOwners;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
@@ -56,7 +57,7 @@ use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::elp_base_db::loader;
-use elp_ide::elp_ide_db::elp_base_db::set_app_data_id_by_file;
+use elp_ide::elp_ide_db::elp_base_db::set_app_data_ids_by_file;
 use elp_log::Logger;
 use elp_log::TimeIt;
 use elp_log::telemetry;
@@ -298,7 +299,7 @@ pub struct Server {
     initial_load_status: InitialLoading,
     reload_manager: Arc<Mutex<ReloadManager>>,
     dynamic_registrations_done: bool,
-    unresolved_app_id_paths: Arc<FxHashMap<AbsPathBuf, AppDataId>>,
+    unresolved_app_id_paths: Arc<FxHashMap<AbsPathBuf, PathOwners>>,
     generated_app_inputs: Arc<FxHashMap<AbsPathBuf, AppDataId>>,
     update_app_data_ids: bool,
     reset_source_roots: bool,
@@ -1074,10 +1075,9 @@ impl Server {
 
         // We still fall through here with no file changes when waiting to
         // transition from DoneButVfsChanges to Done (finished below). T279355670
-        let changed;
         let mut highest_file_id: u32 = 0;
-        if no_file_work {
-            changed = false;
+        let changed = if no_file_work {
+            false
         } else {
             // Acquire a shared read lock while processing changes: the block
             // below only reads the vfs (all mutation goes to salsa via
@@ -1148,10 +1148,9 @@ impl Server {
                     }
 
                     if let Some(path) = vfs.file_path(file.file_id).as_path()
-                        && let Some(app_data_id) =
-                            self.unresolved_app_id_paths.get(&path.to_path_buf())
+                        && let Some(owners) = self.unresolved_app_id_paths.get(&path.to_path_buf())
                     {
-                        set_app_data_id_by_file(raw_database, file.file_id, *app_data_id);
+                        set_app_data_ids_by_file(raw_database, file.file_id, owners);
                         // This is not really necessary, but we do it
                         // to be able to check that we resolve them
                         // all eventually
@@ -1177,13 +1176,14 @@ impl Server {
                 let mut paths_to_remove = vec![];
                 self.unresolved_app_id_paths
                     .iter()
-                    .for_each(|(path, app_data_id)| {
+                    .for_each(|(path, owners)| {
                         let vfs_path = VfsPath::from(path.clone());
                         if let Some((file_id, _)) = vfs.file_id(&vfs_path) {
                             paths_to_remove.push(path.clone());
-                            Arc::make_mut(&mut app_data_index)
-                                .map
-                                .insert(file_id, *app_data_id);
+                            let index = Arc::make_mut(&mut app_data_index);
+                            for app_data_id in owners.iter() {
+                                index.insert_owner(file_id, app_data_id);
+                            }
                         }
                     });
                 raw_database.set_app_index(app_data_index);
@@ -1202,8 +1202,8 @@ impl Server {
                 self.reset_source_roots = false;
             }
 
-            changed = true;
-        }
+            true
+        };
 
         // The loaded VFS changes (if any) are now applied to the salsa DB.
         // Finish the initial-load handshake; on first completion this promotes

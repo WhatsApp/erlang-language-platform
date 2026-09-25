@@ -24,7 +24,7 @@
 use std::borrow::Cow;
 
 use elp_ide_db::elp_base_db::DepKind;
-use elp_ide_db::elp_base_db::is_app_reachable;
+use elp_ide_db::elp_base_db::is_any_owner_reachable;
 
 use super::DiagnosticCode;
 use crate::FunctionMatch;
@@ -106,10 +106,10 @@ impl FunctionCallLinter for UnavailableFunctionLinter {
 
         // A call is a runtime edge, so the callee's beam must be loadable in
         // this VM: an application only reached over the network will not do.
-        if is_app_reachable(
+        if is_any_owner_reachable(
             sema.db.upcast(),
             &referencing_app_data,
-            defining_app,
+            function_def.file.file_id,
             DepKind::Runtime,
         ) {
             return None;
@@ -194,6 +194,84 @@ mod tests {
 %%             | 💡 <suppression>
 //- /app_b/src/app_b.erl app:app_b buck_target:cell//app_b:lib
   -module(app_b).
+  -compile(export_all).
+  exists() -> ok.
+            "#,
+        )
+    }
+
+    /// `shared.erl` is compiled into both `app_a` and `app_b`, so the call
+    /// links within `app_a`'s own target even though the file is nominally
+    /// assigned to one app.
+    #[test]
+    fn call_into_file_shared_with_the_calling_app_is_ok() {
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib
+  -module(main).
+  main() ->
+    shared:exists().
+//- /app_b/src/shared.erl app:app_b buck_target:cell//app_b:lib also_app:app_a
+  -module(shared).
+  -compile(export_all).
+  exists() -> ok.
+            "#,
+        )
+    }
+
+    /// The callee's file is compiled into `app_b` and `app_c`; `app_a` declares
+    /// only `app_b`, which is enough for the call to resolve.
+    #[test]
+    fn call_into_file_shared_with_a_declared_dep_is_ok() {
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib deps:app_b
+  -module(main).
+  main() ->
+    shared:exists().
+//- /app_b/src/app_b.erl app:app_b buck_target:cell//app_b:lib
+  -module(app_b).
+//- /app_c/src/shared.erl app:app_c buck_target:cell//app_c:lib also_app:app_b
+  -module(shared).
+  -compile(export_all).
+  exists() -> ok.
+            "#,
+        )
+    }
+
+    /// Mirror of `call_into_file_shared_with_the_calling_app_is_ok` with the
+    /// roles swapped. Which owner ends up nominal depends on hash order, so
+    /// one of the pair always resolves through a non-nominal owner.
+    #[test]
+    fn call_into_file_shared_with_the_calling_app_is_ok_mirrored() {
+        check_diagnostics(
+            r#"
+//- /app_b/src/main.erl app:app_b buck_target:cell//app_b:lib
+  -module(main).
+  main() ->
+    shared:exists().
+//- /app_a/src/shared.erl app:app_a buck_target:cell//app_a:lib also_app:app_b
+  -module(shared).
+  -compile(export_all).
+  exists() -> ok.
+            "#,
+        )
+    }
+
+    /// Mirror of `call_into_file_shared_with_a_declared_dep_is_ok` with the
+    /// owners swapped, for the same reason.
+    #[test]
+    fn call_into_file_shared_with_a_declared_dep_is_ok_mirrored() {
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib deps:app_c
+  -module(main).
+  main() ->
+    shared:exists().
+//- /app_c/src/app_c.erl app:app_c buck_target:cell//app_c:lib
+  -module(app_c).
+//- /app_b/src/shared.erl app:app_b buck_target:cell//app_b:lib also_app:app_c
+  -module(shared).
   -compile(export_all).
   exists() -> ok.
             "#,

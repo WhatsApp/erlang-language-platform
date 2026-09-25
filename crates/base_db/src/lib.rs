@@ -59,6 +59,7 @@ pub use input::AppRoots;
 pub use input::AppStructure;
 pub use input::FileSource;
 pub use input::IncludeOtp;
+pub use input::PathOwners;
 pub use input::ProjectApps;
 pub use input::ProjectData;
 pub use input::ProjectId;
@@ -722,6 +723,50 @@ pub fn is_app_reachable(
     }
 }
 
+/// Whether `pred` holds for any application `file_id` is compiled into, or
+/// `None` when no application for the file is known, in which case there is
+/// nothing to check reachability against.
+///
+/// Owners are visited lazily and by reference: this runs for every reference a
+/// dependency diagnostic resolves, and nearly every file has a single owner.
+pub fn any_owning_app(
+    db: &dyn RootQueryDb,
+    file_id: FileId,
+    mut pred: impl FnMut(&AppName) -> bool,
+) -> Option<bool> {
+    let app_index = db.app_index();
+    let mut owners = app_index
+        .owners(file_id)
+        .filter_map(|app_data_id| db.app_data_by_id(app_data_id).app_data(db))
+        .peekable();
+    if owners.peek().is_none() {
+        // No indexed owner (IDE-mode additions, OTP), so `file_app_data` fell
+        // back to the source root. Nothing to widen the check with.
+        return db
+            .file_app_data(file_id)
+            .map(|app_data| pred(&app_data.name));
+    }
+    Some(owners.any(|app_data| pred(&app_data.name)))
+}
+
+/// Whether any application `callee_file` is compiled into is reachable from
+/// `referencing_app_data` under `dep_kind`.
+///
+/// Prefer this to `is_app_reachable` when asking whether a call resolves: a
+/// file compiled into several targets has no single defining application, and
+/// linking any one of them satisfies the call.
+pub fn is_any_owner_reachable(
+    db: &dyn RootQueryDb,
+    referencing_app_data: &AppData,
+    callee_file: FileId,
+    dep_kind: DepKind,
+) -> bool {
+    any_owning_app(db, callee_file, |app| {
+        is_app_reachable(db, referencing_app_data, app, dep_kind)
+    })
+    .unwrap_or(true)
+}
+
 /// A map from file path to `FileId` for each `.hrl` file we have
 /// loaded.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -839,6 +884,41 @@ fn mapped_include_file_inner(
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct AppDataIndex {
     pub map: FxHashMap<FileId, AppDataId>,
+    /// A source file can be compiled into several Buck targets, each of which
+    /// is its own application. `map` holds one of them; the others are here.
+    /// Populated only for such files, which are a fraction of a percent.
+    pub extra_owners: FxHashMap<FileId, Vec<AppDataId>>,
+}
+
+impl AppDataIndex {
+    /// Record that `app_data_id` claims `file_id`. A file compiled into several
+    /// targets is claimed by each of their apps; which one lands in `map` is
+    /// arbitrary, so a displaced claim moves to `extra_owners` rather than
+    /// being lost. Repeating a claim is a no-op.
+    pub fn insert_owner(&mut self, file_id: FileId, app_data_id: AppDataId) {
+        let Some(displaced) = self.map.insert(file_id, app_data_id) else {
+            return;
+        };
+        if displaced == app_data_id {
+            return;
+        }
+        let extra = self.extra_owners.entry(file_id).or_default();
+        extra.retain(|id| *id != app_data_id);
+        if !extra.contains(&displaced) {
+            extra.push(displaced);
+        }
+    }
+
+    /// Every application the file is compiled into, the one in `map` first.
+    pub fn owners(&self, file_id: FileId) -> impl Iterator<Item = AppDataId> + '_ {
+        self.map.get(&file_id).copied().into_iter().chain(
+            self.extra_owners
+                .get(&file_id)
+                .into_iter()
+                .flatten()
+                .copied(),
+        )
+    }
 }
 
 fn app_data_id_by_file_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<AppDataId> {
@@ -851,11 +931,12 @@ fn app_data_id_by_file_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Optio
     app_data_index.map.get(&file_id).copied()
 }
 
-pub fn set_app_data_id_by_file(db: &mut dyn RootQueryDb, id: FileId, app_data_id: AppDataId) {
+pub fn set_app_data_ids_by_file(db: &mut dyn RootQueryDb, id: FileId, owners: &PathOwners) {
     let mut app_data_index: Arc<AppDataIndex> = db.app_index();
-    Arc::make_mut(&mut app_data_index)
-        .map
-        .insert(id, app_data_id);
+    let index = Arc::make_mut(&mut app_data_index);
+    for app_data_id in owners.iter() {
+        index.insert_owner(id, app_data_id);
+    }
     db.set_app_index(app_data_index);
 }
 

@@ -124,6 +124,9 @@ pub struct Fixture {
     /// The file's `app:` annotation still controls its AppDataId via
     /// `applicable_files`.
     pub src_app: Option<String>,
+    /// Further apps this file is compiled into, on top of its own `app:`.
+    /// Models a source file listed in the `srcs` of more than one Buck target.
+    pub also_apps: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -347,6 +350,7 @@ impl FixtureWithProjectMeta {
         let mut deps = Vec::new();
         let mut distributed_deps = Vec::new();
         let mut src_app = None;
+        let mut also_apps = Vec::new();
 
         for component in components[1..].iter() {
             let (key, value) = component
@@ -387,6 +391,14 @@ impl FixtureWithProjectMeta {
                 "distributed_deps" => distributed_deps.extend(parse_comma_list(value)),
                 "src_app" => {
                     src_app = Some(value.to_string());
+                }
+                "also_app" => {
+                    for app in value.split(',') {
+                        let app = app.trim();
+                        if !app.is_empty() {
+                            also_apps.push(app.to_string());
+                        }
+                    }
                 }
                 _ => panic!("bad component: {component:?}"),
             }
@@ -431,6 +443,7 @@ impl FixtureWithProjectMeta {
             deps,
             distributed_deps,
             src_app,
+            also_apps,
         }
     }
 }

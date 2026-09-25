@@ -21,6 +21,7 @@ use std::borrow::Cow;
 use elp_ide_db::elp_base_db::AppData;
 use elp_ide_db::elp_base_db::DepKind;
 use elp_ide_db::elp_base_db::FileId;
+use elp_ide_db::elp_base_db::any_owning_app;
 use elp_ide_db::elp_base_db::is_app_reachable;
 use elp_project_model::AppName;
 use fxhash::FxHashMap;
@@ -223,7 +224,7 @@ impl Checker<'_, '_> {
             let defining_app_data = self.sema.db.file_app_data(defining_file_id)?;
             let defining_app_name = &defining_app_data.name;
 
-            if !self.is_reachable(defining_app_name) {
+            if !self.is_reachable(defining_file_id) {
                 self.matches.push(GenericLinterMatchContext {
                     range: target_range,
                     context: Context {
@@ -238,7 +239,17 @@ impl Checker<'_, '_> {
         Some(())
     }
 
-    fn is_reachable(&mut self, defining_app: &AppName) -> bool {
+    /// A file compiled into several targets belongs to several applications,
+    /// and reaching any one of them is enough.
+    fn is_reachable(&mut self, defining_file_id: FileId) -> bool {
+        let sema = self.sema;
+        any_owning_app(sema.db.upcast(), defining_file_id, |app| {
+            self.is_app_reachable(app)
+        })
+        .unwrap_or(true)
+    }
+
+    fn is_app_reachable(&mut self, defining_app: &AppName) -> bool {
         if let Some(reachable) = self.reachable.get(defining_app) {
             return *reachable;
         }
@@ -278,6 +289,47 @@ mod tests {
   main() -> ok.
 //- /app_b/src/app_b.erl app:app_b buck_target:cell//app_b:lib
   -module(app_b).
+  -type t() :: ok.
+  -export_type([t/0]).
+            "#,
+        )
+    }
+
+    #[test]
+    fn type_from_file_shared_with_a_declared_dep_is_ok() {
+        // `shared.erl` is compiled into both `app_b` and `app_c`; `app_a`
+        // declares only `app_b`, which is enough for the reference to resolve.
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib deps:app_b
+  -module(main).
+  -spec main() -> shared:t().
+  main() -> ok.
+//- /app_b/src/app_b.erl app:app_b buck_target:cell//app_b:lib
+  -module(app_b).
+//- /app_c/src/shared.erl app:app_c buck_target:cell//app_c:lib also_app:app_b
+  -module(shared).
+  -type t() :: ok.
+  -export_type([t/0]).
+            "#,
+        )
+    }
+
+    /// Mirror of `type_from_file_shared_with_a_declared_dep_is_ok` with the
+    /// owners swapped. Which owner ends up nominal depends on hash order, so
+    /// one of the pair always reaches the type through a non-nominal owner.
+    #[test]
+    fn type_from_file_shared_with_a_declared_dep_is_ok_mirrored() {
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib deps:app_c
+  -module(main).
+  -spec main() -> shared:t().
+  main() -> ok.
+//- /app_c/src/app_c.erl app:app_c buck_target:cell//app_c:lib
+  -module(app_c).
+//- /app_b/src/shared.erl app:app_b buck_target:cell//app_b:lib also_app:app_c
+  -module(shared).
   -type t() :: ok.
   -export_type([t/0]).
             "#,

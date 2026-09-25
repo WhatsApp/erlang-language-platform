@@ -206,10 +206,17 @@ impl ChangeFixture {
                     .or_default()
                     .extend(entry.distributed_deps.iter().cloned());
             }
+            let abs_entry_path = AbsPathBuf::assert(entry.path.clone().into());
             app_file_paths
                 .entry(app_name.clone())
                 .or_default()
-                .push(AbsPathBuf::assert(entry.path.clone().into()));
+                .push(abs_entry_path.clone());
+            for also in &entry.also_apps {
+                app_file_paths
+                    .entry(AppName(also.clone()))
+                    .or_default()
+                    .push(abs_entry_path.clone());
+            }
 
             app_map.combine(entry.app_data);
 

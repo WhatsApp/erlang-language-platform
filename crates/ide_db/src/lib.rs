@@ -497,11 +497,57 @@ impl TypedSemantic for RootDatabase {
 
 #[cfg(test)]
 mod tests {
+    use elp_base_db::AppDataId;
+    use elp_base_db::AppDataIndex;
+    use elp_base_db::FileId;
     use elp_base_db::RootQueryDb;
+    use elp_base_db::SourceDatabase;
+    use elp_base_db::assert_eq_expected;
     use elp_base_db::fixture::WithFixture;
 
     use super::text_edit::TextRange;
     use crate::RootDatabase;
+
+    /// A file compiled into two Buck targets must keep both owners: `map` holds
+    /// an arbitrary one of them, so dropping the rest is unrecoverable.
+    #[test]
+    fn app_data_index_keeps_every_owner_of_a_shared_file() {
+        let (db, fixture) = RootDatabase::with_fixture(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib
+-module(main).
+//- /app_b/src/shared.erl app:app_b buck_target:cell//app_b:lib also_app:app_a
+-module(shared).
+"#,
+        );
+        let shared = fixture.files[1];
+        let app_index = db.app_index();
+        let mut owners: Vec<String> = app_index
+            .owners(shared)
+            .filter_map(|id| db.app_data_by_id(id).app_data(&db))
+            .map(|app_data| app_data.name.to_string())
+            .collect();
+        owners.sort();
+
+        let expected_owners = vec!["app_a".to_string(), "app_b".to_string()];
+        assert_eq_expected!(expected_owners, owners);
+    }
+
+    /// Late resolution (files loaded after the project model is applied, as in
+    /// the language server) records owners one claim at a time. Every claim
+    /// must survive, and repeating one must not duplicate it.
+    #[test]
+    fn app_data_index_insert_owner_keeps_every_claim_once() {
+        let mut index = AppDataIndex::default();
+        let file = FileId::from_raw(0);
+        for id in [1, 2, 1, 2] {
+            index.insert_owner(file, AppDataId(id));
+        }
+        let mut owners: Vec<u32> = index.owners(file).map(|id| id.0).collect();
+        owners.sort();
+
+        assert_eq_expected!(vec![1, 2], owners);
+    }
 
     #[test]
     fn clamp_range() {
