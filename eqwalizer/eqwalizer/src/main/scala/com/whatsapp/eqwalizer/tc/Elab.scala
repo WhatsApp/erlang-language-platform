@@ -88,13 +88,16 @@ final class Elab(pipelineContext: PipelineContext) {
       expr match {
         case MaybeMatch(Pats.PatAtom("true"), mExp) if Filters.asTest(mExp).isDefined =>
           val test = Filters.asTest(mExp).get
+          val (mType, _) = elabExpr(mExp, envAcc)
+          val elseTy = occurrence.remove(mType, trueType)
           envAcc = occurrence.testEnv(test, envAcc, result = true)
-          tyAcc = subtype.join(tyAcc, booleanType)
-          lastTy = trueType
+          tyAcc = subtype.join(tyAcc, elseTy)
+          lastTy = mType
         case MaybeMatch(mPat, mExp) =>
           val (mType, env1) = elabExpr(mExp, envAcc)
           val (patTy, env2) = elabPat.elabPat(mPat, mType, env1)
-          tyAcc = subtype.join(tyAcc, mType)
+          val elseTy = occurrence.remove(mType, patTy)
+          tyAcc = subtype.join(tyAcc, elseTy)
           lastTy = patTy
           envAcc = env2
         case _ =>
