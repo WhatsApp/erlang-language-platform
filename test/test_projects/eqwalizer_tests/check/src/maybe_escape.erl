@@ -26,3 +26,47 @@ guard_escape_eval(X) ->
             1
         end,
     R.
+
+%% The `{ok, _} ?= ...` idiom: only the values that fail to match escape, so the
+%% block is `ok | {error, atom()}` and never `{ok, integer()}`.
+
+-spec res() -> {ok, integer()} | {error, atom()}.
+res() ->
+    {ok, 1}.
+
+-spec result_escape_check() -> ok | {error, atom()}.
+result_escape_check() ->
+    maybe
+        {ok, _} ?= res(),
+        ok
+    end.
+
+-spec result_escape_eval() -> ok | {error, atom()}.
+result_escape_eval() ->
+    R = maybe
+            {ok, _} ?= res(),
+            ok
+        end,
+    R.
+
+%% `true ?= <expr>` where the right-hand side is not a test: `true` is the value
+%% that makes the block continue, so it is the one value that cannot escape.
+
+-spec flag() -> boolean().
+flag() ->
+    true.
+
+-spec orelse_escape_check(integer()) -> integer().
+orelse_escape_check(N) ->
+    maybe
+        true ?= flag() orelse N,
+        0
+    end.
+
+-spec orelse_escape_eval(integer()) -> integer().
+orelse_escape_eval(N) ->
+    R = maybe
+            true ?= flag() orelse N,
+            0
+        end,
+    R.
