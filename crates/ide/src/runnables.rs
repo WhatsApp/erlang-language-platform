@@ -131,6 +131,7 @@ impl Runnable {
                 args.push("--case".to_string());
                 args.push(case.to_string());
                 if let GroupName::Name(group) = group {
+                    args.push("--group".to_string());
                     args.push(group.to_string());
                 }
             }
