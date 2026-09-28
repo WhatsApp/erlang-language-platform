@@ -17,7 +17,6 @@ import com.whatsapp.eqwalizer.ast.Types.{DynamicType, FunType, Type}
 import com.whatsapp.eqwalizer.tc.TcDiagnostics.NoSpecialType
 
 class ElabApplyOverloaded(pipelineContext: PipelineContext) {
-  private lazy val check = pipelineCtx.check
   private lazy val elab = pipelineContext.elab
   private lazy val util = pipelineContext.util
   private lazy val subtype = pipelineContext.subtype

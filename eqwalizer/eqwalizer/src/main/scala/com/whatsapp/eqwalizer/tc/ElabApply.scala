@@ -19,7 +19,6 @@ import com.whatsapp.eqwalizer.tc.TcDiagnostics.{AmbiguousLambda, ExpectedSubtype
 import com.whatsapp.eqwalizer.tc.Constraints.{CMap, Constraint, Ctx}
 
 class ElabApply(pipelineContext: PipelineContext) {
-  private lazy val check = pipelineContext.check
   private lazy val elab = pipelineContext.elab
   private lazy val subtype = pipelineContext.subtype
   private lazy val constraints = pipelineContext.constraints
@@ -219,7 +218,7 @@ class ElabApply(pipelineContext: PipelineContext) {
         case _ =>
           env
       }
-    val (_, typed) = check.checkLambda(lambda, expFunTy, env1)
+    val (_, typed) = elab.checkLambda(lambda, expFunTy, env1)
     typed
   }
 

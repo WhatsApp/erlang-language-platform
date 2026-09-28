@@ -32,17 +32,17 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
    ┌─ check/src/records.erl:73:5
    │
 73 │     Foo#foo_def{name = default, id = 0}.
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...#foo_def{...}.
-Expression has type:   #foo_def{}
-Context expected type: #foo{}
+   │     ^^^ Foo.
+Expression has type:   #foo{}
+Context expected type: #foo_def{}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/records.erl:73:5
    │
 73 │     Foo#foo_def{name = default, id = 0}.
-   │     ^^^ Foo.
-Expression has type:   #foo{}
-Context expected type: #foo_def{}
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...#foo_def{...}.
+Expression has type:   #foo_def{}
+Context expected type: #foo{}
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
    ┌─ check/src/records.erl:86:5

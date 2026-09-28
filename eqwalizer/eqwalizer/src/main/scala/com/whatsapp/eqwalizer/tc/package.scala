@@ -32,8 +32,6 @@ package object tc {
     val checkCallback: CheckCallback = new CheckCallback(this)
     val typeMismatch: TypeMismatch = new TypeMismatch(this)
     val instantiate: TypeVars.Instantiate = new TypeVars.Instantiate()
-    val check: Check =
-      new Check(this)
     val elab: Elab =
       new Elab(this)
     val elabApply: ElabApply =

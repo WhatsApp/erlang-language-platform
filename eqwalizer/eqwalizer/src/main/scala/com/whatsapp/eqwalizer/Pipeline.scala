@@ -88,7 +88,7 @@ object Pipeline {
     FunSpec(f.id, FunType(0, List.fill(f.id.arity)(DynamicType), DynamicType))
 
   private def checkFun(ctx: PipelineContext, f: FunDecl, spec: FunSpec): List[Diagnostic] = {
-    ctx.check.checkFun(f, spec)
+    ctx.elab.checkFun(f, spec)
     ctx.diagnosticsInfo.popErrors()
   }
 
@@ -97,7 +97,7 @@ object Pipeline {
       f: FunDecl,
       overloadedSpec: OverloadedFunSpec,
   ): List[Diagnostic] = {
-    ctx.check.checkOverloadedFun(f, overloadedSpec)
+    ctx.elab.checkOverloadedFun(f, overloadedSpec)
     ctx.diagnosticsInfo.popErrors()
   }
 

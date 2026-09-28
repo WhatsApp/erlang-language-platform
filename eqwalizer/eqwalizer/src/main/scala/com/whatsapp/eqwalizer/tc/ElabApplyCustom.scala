@@ -24,7 +24,6 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
   private lazy val elab = pipelineContext.elab
   private lazy val elabApply = pipelineContext.elabApply
   private lazy val elabPat = pipelineContext.elabPat
-  private lazy val check = pipelineContext.check
   private lazy val subtype = pipelineContext.subtype
   private lazy val narrow = pipelineContext.narrow
   private lazy val util = pipelineContext.util
@@ -186,7 +185,7 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
         val expFunTy = FunType(0, List(elemTy), expRet)
         val funResTys = funArg match {
           case lambda: Lambda =>
-            check.checkLambda(lambda, expFunTy, env)
+            elab.checkLambda(lambda, expFunTy, env)
             val lamEnv = lambda.name.map(name => env.updated(name, expFunTy)).getOrElse(env)
             val clauseEnvs = occurrence.clausesEnvs(lambda.clauses, List(elemTy), lamEnv)
             lambda.clauses
@@ -250,7 +249,7 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
         val expFunTy = FunType(0, List(elemTy), booleanType)
         pred match {
           case lambda: Lambda if Predicates.booleanReturnClauses(lambda.clauses) =>
-            check.checkLambda(lambda, expFunTy, env1)
+            elab.checkLambda(lambda, expFunTy, env1)
             val (trueClause, falseClause) = Predicates.getTrueFalseReturnClauses(lambda.clauses)
             val lamEnv = lambda.name.map(name => env.updated(name, expFunTy)).getOrElse(env1)
             val List(trueEnv, falseEnv) = occurrence.clausesEnvs(List(trueClause, falseClause), List(elemTy), lamEnv)
@@ -274,7 +273,7 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
         val narrowedV: Option[Type] = funArg match {
           case lambda: Lambda
               if Predicates.booleanReturnClauses(lambda.clauses) && lambda.clauses.forall(_.pats.size == 2) =>
-            check.checkLambda(lambda, expFunTy, env)
+            elab.checkLambda(lambda, expFunTy, env)
             val (trueClause, falseClause) = Predicates.getTrueFalseReturnClauses(lambda.clauses)
             val lamEnv = lambda.name.map(name => env.updated(name, expFunTy)).getOrElse(env)
             val List(trueEnv, _) =
@@ -282,7 +281,7 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
             val (nv, _) = elabPat.elabPat(trueClause.pats(1), valTy, trueEnv)
             Some(nv)
           case lambda: Lambda =>
-            check.checkLambda(lambda, expFunTy, env)
+            elab.checkLambda(lambda, expFunTy, env)
             None
           case _ =>
             coerce(funArg, funArgTy, expFunTy)
@@ -398,13 +397,13 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
                 case PatAtom(a) =>
                   val refinedValTy = UnionType(mapTys.map(m => narrow.getValType(AtomKey(a), m)))
                   keyTyLast = occurrence.remove(keyTyLast, AtomLitType(a))
-                  check.checkClause(clause, List(AtomLitType(a), refinedValTy, accTy), accTy, occEnv, Set.empty)
+                  elab.elabClause(clause, List(AtomLitType(a), refinedValTy, accTy), occEnv, Set.empty, accTy)
                 case _ =>
-                  check.checkClause(clause, List(keyTyLast, valTy, accTy), accTy, occEnv, Set.empty)
+                  elab.elabClause(clause, List(keyTyLast, valTy, accTy), occEnv, Set.empty, accTy)
               }
             }
           case lambda: Lambda =>
-            check.checkLambda(lambda, FunType(0, List(keyTy, valTy, accTy), accTy), env)
+            elab.checkLambda(lambda, FunType(0, List(keyTy, valTy, accTy), accTy), env)
           case _ =>
             val expFunTy = FunType(0, List(keyTy, valTy, accTy), accTy)
             coerce(funArg, funArgTy, expFunTy)
@@ -530,7 +529,7 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
         val expFunTy = FunType(0, List(keyTy, valTy), expRet)
         val funResTys = funArg match {
           case lambda: Lambda =>
-            check.checkLambda(lambda, expFunTy, env)
+            elab.checkLambda(lambda, expFunTy, env)
             val lamEnv = lambda.name.map(name => env.updated(name, expFunTy)).getOrElse(env)
             val clauseEnvs = occurrence.clausesEnvs(lambda.clauses, List(keyTy, valTy), lamEnv)
             lambda.clauses
@@ -610,13 +609,13 @@ class ElabApplyCustom(pipelineContext: PipelineContext) {
                 val refinedValTy = UnionType(mapTys.map(m => narrow.getValType(key, m)))
                 val kTy = Key.asType(key)
                 keyTyLast = occurrence.remove(keyTyLast, kTy)
-                check.checkClause(clause, List(kTy, refinedValTy), AnyType, lamEnv, Set.empty)
+                elab.elabClause(clause, List(kTy, refinedValTy), lamEnv, Set.empty)
               } else {
-                check.checkClause(clause, List(keyTyLast, valTy), AnyType, lamEnv, Set.empty)
+                elab.elabClause(clause, List(keyTyLast, valTy), lamEnv, Set.empty)
               }
             }
           case _ =>
-            check.checkExpr(funArg, expFunTy, env)
+            elab.elabExpr(funArg, env, expFunTy)
         }
         (AtomLitType("ok"), env)
       },

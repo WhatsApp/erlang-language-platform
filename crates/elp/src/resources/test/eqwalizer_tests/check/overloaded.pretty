@@ -71,14 +71,6 @@ Expression has type:   'ok'
 Context expected type: 'error'
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/overloaded.erl:247:22
-    │
-247 │ take_ok_or_any(_) -> error.
-    │                      ^^^^^ 'error'.
-Expression has type:   'error'
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/overloaded.erl:259:21
     │
 259 │ use_over(X) -> over(X).
@@ -123,12 +115,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   binary()
 Context expected type: number()
 
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/overloaded.erl:308:19
-    │
-308 │ reachable_3(_) -> b.
-    │                   ^ 'b'.
-Expression has type:   'b'
-Context expected type: 'a'
-
-15 ERRORS
+13 ERRORS

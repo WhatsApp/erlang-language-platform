@@ -26,7 +26,7 @@ final class ElabPat(pipelineContext: PipelineContext) {
   private lazy val narrow = pipelineContext.narrow
   private lazy val subtype = pipelineContext.subtype
   private lazy val util = pipelineContext.util
-  private lazy val check = pipelineContext.check
+  private lazy val elab = pipelineContext.elab
   private lazy val diagnosticsInfo = pipelineContext.diagnosticsInfo
   private lazy val typeInfo = pipelineContext.typeInfo
 
@@ -175,7 +175,7 @@ final class ElabPat(pipelineContext: PipelineContext) {
 
   private def elabBinaryElem(elem: PatBinaryElem, env: Env): Env = {
     for (eSize <- elem.size)
-      check.checkExpr(eSize, IntegerType, env)
+      elab.elabExpr(eSize, env, IntegerType)
     val isStringLiteral = elem.pat.isInstanceOf[PatString]
     val expType = Specifier.expType(elem.specifier, isStringLiteral)
     val (_, env1) = elabPat(elem.pat, expType, env)
