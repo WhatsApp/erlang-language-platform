@@ -17,7 +17,7 @@
 branch(_) -> throw(not_implemented).
 
 %% T = 'a' (minimal), not 'a' | ['a']
--spec branch_atom_print(a | [a]) -> err.
+-spec branch_atom_print(a | [a]) -> term().
 branch_atom_print(X) ->
   eqwalizer:reveal_type(branch(X)).
 

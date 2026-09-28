@@ -167,5 +167,5 @@ game2(L) ->
 -spec either({T, T}, T) -> T.
 either({_, _}, A) -> A.
 
--spec unify_dyn_atom(eqwalizer:dynamic(), undef) -> ok.
+-spec unify_dyn_atom(eqwalizer:dynamic(), undef) -> term().
 unify_dyn_atom(D, A) -> eqwalizer:reveal_type(either(D, A)).

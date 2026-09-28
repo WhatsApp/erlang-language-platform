@@ -14,7 +14,7 @@
 -spec cons(T, [T]) -> [T].
 cons(H, T) -> [H | T].
 
--spec cons_dyn_print([dynamic()]) -> err.
+-spec cons_dyn_print([dynamic()]) -> term().
 cons_dyn_print(L) ->
   eqwalizer:reveal_type(cons(ok, L)).
 
@@ -27,7 +27,7 @@ expect(_E) -> throw(not_implemented).
 
 -spec expect_atom_print(
     atom() | fun((atom() | dynamic()) -> boolean())
-) -> err.
+) -> term().
 expect_atom_print(E) ->
   eqwalizer:reveal_type(expect(E)).
 
@@ -48,13 +48,13 @@ set(K, V, KVs) -> [{K, V} | KVs].
 
 -spec set_dyn_print(
     kvs(dynamic(), dynamic())
-) -> err.
+) -> term().
 set_dyn_print(KVs) ->
   eqwalizer:reveal_type(set(b, 3, KVs)).
 
 -spec from_list_dyn_print(
     kvs(dynamic(), dynamic())
-) -> err.
+) -> term().
 from_list_dyn_print(KVs) ->
   eqwalizer:reveal_type(
     maps:from_list(set(b, 3, KVs))

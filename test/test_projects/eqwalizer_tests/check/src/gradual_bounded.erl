@@ -38,14 +38,14 @@ bd_map_03(M) -> maps:get(at, M).
 
 -spec bd_map_put_01_print
     (dyn(#{b => c}))
-    -> err.
+    -> term().
 bd_map_put_01_print(M) ->
     V = maps:put(42, a, M),
     eqwalizer:reveal_type(V).
 
 -spec bd_map_put_02_print
     (dyn(#{b => c}))
-    -> err.
+    -> term().
 bd_map_put_02_print(M) ->
     V = maps:put(a, b, M),
     eqwalizer:reveal_type(V).
@@ -62,7 +62,7 @@ bd_tuple_01({V, _}) -> V.
 bd_tuple_02({V, _}) -> V.
 
 -spec bd_distrib_print
-    (dyn({a, b})) -> err.
+    (dyn({a, b})) -> term().
 bd_distrib_print({a, V}) -> eqwalizer:reveal_type(V).
 
 -spec bd_generic_fun(dyn(T), T) -> T.
