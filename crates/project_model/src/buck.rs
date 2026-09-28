@@ -27,8 +27,10 @@ use elp_log::timeit_with_telemetry;
 use elp_syntax::SmolStr;
 use elp_syntax::SourceFile;
 use elp_syntax::ast;
+use fxhash::FxBuildHasher;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
+use indexmap::IndexMap;
 use indexmap::indexset;
 use parking_lot::Mutex;
 use paths::AbsPath;
@@ -232,8 +234,12 @@ pub struct IncludeMapping {
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct AppDepGraph {
     /// Immediate dependencies only. Reachability is transitive, and is
-    /// computed on demand rather than being materialised here.
-    deps: FxHashMap<TargetFullName, FxHashSet<TargetFullName>>,
+    /// computed on demand rather than being materialised here. A target's
+    /// position in this map is its index in a [`ReachableTargets`] set, so
+    /// entries are never removed or reordered, and a target registered to an
+    /// application, or declaring `distributed_dependencies`, has an entry even
+    /// without dependencies.
+    deps: IndexMap<TargetFullName, FxHashSet<TargetFullName>, FxBuildHasher>,
     /// The `distributed_dependencies` declared by each target. Kept apart
     /// from `deps` because they are not build-system edges: they only count
     /// for [`DepKind::Extra`].
@@ -249,7 +255,7 @@ pub struct AppDepGraph {
 }
 
 /// Which dependency declarations a reachability query honours.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DepKind {
     /// Only the dependencies that put the target's code within reach of the
     /// referencing code: `deps`, `applications`, `included_applications` and
@@ -357,6 +363,7 @@ impl AppDepGraph {
 
     /// Register an app name ↔ buck target name mapping.
     pub fn register_app_target(&mut self, app_name: AppName, target_name: TargetFullName) {
+        self.deps.entry(target_name.clone()).or_default();
         self.app_names_rev
             .insert(target_name.clone(), app_name.clone());
         self.app_names.insert(app_name, target_name);
@@ -369,49 +376,112 @@ impl AppDepGraph {
 
     /// Record that `source` declares `app` as a `distributed_dependency`.
     pub fn add_distributed_dep(&mut self, source: TargetFullName, app: AppName) {
+        self.deps.entry(source.clone()).or_default();
         self.distributed_deps.entry(source).or_default().insert(app);
     }
 
     /// Whether the application `target_app` is reachable from the target
     /// `source`, following the edges `kind` allows. Reachability is
     /// transitive, and an OTP application is always reachable.
+    ///
+    /// Each call walks the dependency closure. To ask about many applications
+    /// from one source, compute [`Self::reachable_targets`] once and ask
+    /// [`Self::is_reachable_in`] instead.
     pub fn is_reachable(
         &self,
         source: &TargetFullName,
         target_app: &AppName,
         kind: DepKind,
     ) -> bool {
-        if self.otp_apps.contains(target_app) {
-            return true;
-        }
-        let Some(target) = self.app_names.get(target_app) else {
-            return false;
-        };
+        self.otp_apps.contains(target_app)
+            || self.target_position(target_app).is_some_and(|target| {
+                self.reachable_positions(source, kind)
+                    .any(|position| position == target)
+            })
+    }
 
+    /// Every target reachable from `source` under `kind`, in a single walk of
+    /// the dependency closure.
+    pub fn reachable_targets(&self, source: &TargetFullName, kind: DepKind) -> ReachableTargets {
+        let mut bits = vec![0u64; self.deps.len().div_ceil(64)].into_boxed_slice();
+        for position in self.reachable_positions(source, kind) {
+            bits[position / 64] |= 1 << (position % 64);
+        }
+        ReachableTargets { bits }
+    }
+
+    /// [`Self::is_reachable`] for the source and kind `reachable` was built
+    /// for. `reachable` must come from this graph's [`Self::reachable_targets`].
+    pub fn is_reachable_in(&self, reachable: &ReachableTargets, target_app: &AppName) -> bool {
+        self.otp_apps.contains(target_app)
+            || self
+                .target_position(target_app)
+                .is_some_and(|target| reachable.contains(target))
+    }
+
+    /// The position of the target `app` is registered to.
+    fn target_position(&self, app: &AppName) -> Option<usize> {
+        self.deps.get_index_of(self.app_names.get(app)?)
+    }
+
+    /// The positions of the targets reachable from `source`, `source`
+    /// included, each yielded once and lazily, so that a caller looking for
+    /// one can stop early.
+    fn reachable_positions(
+        &self,
+        source: &TargetFullName,
+        kind: DepKind,
+    ) -> impl Iterator<Item = usize> {
         // An explicit stack rather than recursion: the `Extra` closure is
         // largely one cycle, so its longest simple path is bounded by the
         // number of applications rather than by the depth of a build graph.
         let mut visited = FxHashSet::default();
-        let mut stack = vec![source];
-        while let Some(current) = stack.pop() {
-            if current == target {
-                return true;
-            }
-            if !visited.insert(current) {
-                continue;
-            }
-            if let Some(deps) = self.deps.get(current) {
-                stack.extend(deps);
-            }
-            if kind == DepKind::Extra {
+        let mut stack: Vec<usize> = self.deps.get_index_of(source).into_iter().collect();
+        std::iter::from_fn(move || {
+            while let Some(current) = stack.pop() {
+                if !visited.insert(current) {
+                    continue;
+                }
+                let (name, deps) = self
+                    .deps
+                    .get_index(current)
+                    .expect("should be a position taken from this map");
+                stack.extend(deps.iter().filter_map(|dep| self.deps.get_index_of(dep)));
                 // `distributed_dependencies` name applications rather than
                 // targets, and may name one outside the project altogether.
-                if let Some(apps) = self.distributed_deps.get(current) {
-                    stack.extend(apps.iter().filter_map(|app| self.app_names.get(app)));
+                if kind == DepKind::Extra
+                    && let Some(apps) = self.distributed_deps.get(name)
+                {
+                    stack.extend(apps.iter().filter_map(|app| self.target_position(app)));
                 }
+                return Some(current);
             }
-        }
-        false
+            None
+        })
+    }
+}
+
+/// The targets reachable from one target under one [`DepKind`], built by
+/// [`AppDepGraph::reachable_targets`] and read with
+/// [`AppDepGraph::is_reachable_in`].
+#[derive(Clone, PartialEq, Eq)]
+pub struct ReachableTargets {
+    /// Indexed by a target's position in the graph that built the set.
+    bits: Box<[u64]>,
+}
+
+impl ReachableTargets {
+    fn contains(&self, position: usize) -> bool {
+        self.bits[position / 64] & (1 << (position % 64)) != 0
+    }
+}
+
+impl fmt::Debug for ReachableTargets {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let count: u32 = self.bits.iter().map(|word| word.count_ones()).sum();
+        f.debug_struct("ReachableTargets")
+            .field("targets", &count)
+            .finish_non_exhaustive()
     }
 }
 
@@ -1727,6 +1797,125 @@ mod tests {
             &AppName("not_a_project_app".to_string()),
             DepKind::Extra
         ));
+    }
+
+    /// `is_reachable_in` on a `reachable_targets` set gives `is_reachable`'s
+    /// answer, and both see targets the graph only knows as registered to an
+    /// application or as declaring `distributed_dependencies`.
+    #[test]
+    fn reachable_targets_agree_with_is_reachable() {
+        let mut mapping = app_dep_graph(&[
+            ("app_a", &["app_b"], &["app_d"]),
+            ("app_b", &["app_c"], &[]),
+            ("app_c", &[], &[]),
+            ("app_d", &[], &["app_a", "not_a_project_app"]),
+            ("app_e", &[], &[]),
+            ("app_f", &[], &[]),
+        ]);
+        mapping.otp_apps.insert(AppName("kernel".to_string()));
+        mapping.otp_apps.insert(AppName("app_f".to_string()));
+        mapping.register_app_target(
+            AppName("alias_of_b".to_string()),
+            "cell//app_b:app_b".to_string(),
+        );
+        let other_app_c = "cell//other:app_c".to_string();
+        mapping.register_app_target(AppName("app_c".to_string()), other_app_c.clone());
+        mapping.add_dep("cell//app_e:app_e".to_string(), other_app_c);
+        mapping.add_distributed_dep(
+            "cell//loose:loose".to_string(),
+            AppName("app_e".to_string()),
+        );
+
+        let apps = [
+            "app_a",
+            "app_b",
+            "alias_of_b",
+            "app_c",
+            "app_d",
+            "app_e",
+            "app_f",
+            "kernel",
+            "not_a_project_app",
+        ]
+        .map(|app| AppName(app.to_string()));
+        let sources = [
+            "app_a", "app_b", "app_c", "app_d", "app_e", "app_f", "loose", "unknown",
+        ]
+        .map(|app| format!("cell//{app}:{app}"));
+        for kind in [DepKind::Runtime, DepKind::Extra] {
+            for source in &sources {
+                let reachable = mapping.reachable_targets(source, kind);
+                for app in &apps {
+                    assert_eq!(
+                        mapping.is_reachable(source, app, kind),
+                        mapping.is_reachable_in(&reachable, app),
+                        "both should agree on {app:?} from {source} under {kind:?}"
+                    );
+                }
+            }
+        }
+
+        let from_a = mapping.reachable_targets(&sources[0], DepKind::Runtime);
+        assert!(
+            mapping.is_reachable_in(&from_a, &AppName("alias_of_b".to_string())),
+            "both names of app_b's target are reached"
+        );
+        let app_c = AppName("app_c".to_string());
+        let from_b = mapping.reachable_targets(&sources[1], DepKind::Runtime);
+        assert!(
+            !mapping.is_reachable_in(&from_b, &app_c),
+            "app_c is now registered to another target"
+        );
+        let from_e = mapping.reachable_targets(&sources[4], DepKind::Runtime);
+        assert!(
+            mapping.is_reachable_in(&from_e, &app_c),
+            "app_e depends on the target app_c is registered to"
+        );
+        let app_e = AppName("app_e".to_string());
+        let from_loose = mapping.reachable_targets(&sources[6], DepKind::Extra);
+        assert!(
+            mapping.is_reachable_in(&from_loose, &app_e),
+            "loose declares app_e as a distributed dependency"
+        );
+        let from_loose = mapping.reachable_targets(&sources[6], DepKind::Runtime);
+        assert!(
+            !mapping.is_reachable_in(&from_loose, &app_e),
+            "a distributed dependency is not a runtime one"
+        );
+    }
+
+    /// A chain longer than 64 targets, so a reachable set spans several words.
+    #[test]
+    fn reachable_targets_span_several_words() {
+        let apps: Vec<String> = (0..130).map(|i| format!("app_{i}")).collect();
+        let target_of = |app: &str| format!("cell//{app}:{app}");
+        let mut mapping = AppDepGraph::default();
+        for app in &apps {
+            mapping.register_app_target(AppName(app.clone()), target_of(app));
+        }
+        for (app, next) in apps.iter().zip(apps.iter().skip(1)) {
+            mapping.add_dep(target_of(app), target_of(next));
+        }
+
+        for source in ["app_0", "app_64", "app_100"].map(target_of) {
+            let reachable = mapping.reachable_targets(&source, DepKind::Runtime);
+            for app in apps.iter().map(|app| AppName(app.clone())) {
+                assert_eq!(
+                    mapping.is_reachable(&source, &app, DepKind::Runtime),
+                    mapping.is_reachable_in(&reachable, &app),
+                    "both should agree on {app:?} from {source}"
+                );
+            }
+        }
+        let from_100 = mapping.reachable_targets(&target_of("app_100"), DepKind::Runtime);
+        assert!(
+            mapping.is_reachable_in(&from_100, &AppName("app_129".to_string())),
+            "the chain continues to its end"
+        );
+        assert!(
+            !mapping.is_reachable_in(&from_100, &AppName("app_1".to_string())),
+            "app_1 comes before app_100 in the chain"
+        );
     }
 
     #[test]

@@ -18,6 +18,8 @@ use dashmap::Entry;
 use elp_project_model::AppName;
 use elp_project_model::buck::BuckProjectIndex;
 use elp_project_model::buck::IncludeMappingScope;
+use elp_project_model::buck::ReachableTargets;
+use elp_project_model::buck::TargetFullName;
 use elp_syntax::AstNode;
 use elp_syntax::Parse;
 use elp_syntax::SmolStr;
@@ -445,6 +447,27 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
         path: SmolStr,
     ) -> Option<FileId>;
 
+    /// Every target reachable from the buck target `source`, or `None` for a
+    /// project with no build-system dependency graph. Every reference a
+    /// dependency diagnostic checks asks this of the referencing file's
+    /// target, so it is computed once per target rather than per reference.
+    #[salsa::transparent]
+    #[salsa::invoke(reachable_targets_dispatch)]
+    fn reachable_targets(
+        &self,
+        project_id: ProjectId,
+        source: TargetFullName,
+        dep_kind: DepKind,
+    ) -> Option<Arc<ReachableTargets>>;
+
+    #[salsa::invoke(reachable_targets_inner)]
+    fn reachable_targets_interned(
+        &self,
+        pid: InternedProjectId,
+        source: TargetFullName,
+        dep_kind: DepKind,
+    ) -> Option<Arc<ReachableTargets>>;
+
     /// Extra dynamic call patterns from `.elp_lint.toml` configuration.
     /// These patterns extend the built-in OTP patterns for find-references
     /// on dynamic calls (e.g., `apply/3`, `rpc:call/4`).
@@ -709,18 +732,44 @@ pub fn is_app_reachable(
         return true;
     };
 
-    match &db
+    let project_data = db
         .project_data(referencing_app_data.project_id)
-        .project_data(db)
-        .buck_index
-    {
-        Some(buck_index) => {
-            buck_index
-                .app_deps
-                .is_reachable(referencing_target, defining_app, dep_kind)
-        }
-        None => true,
-    }
+        .project_data(db);
+    let Some(buck_index) = &project_data.buck_index else {
+        return true;
+    };
+    db.reachable_targets(
+        referencing_app_data.project_id,
+        referencing_target.clone(),
+        dep_kind,
+    )
+    .is_none_or(|reachable| {
+        buck_index
+            .app_deps
+            .is_reachable_in(&reachable, defining_app)
+    })
+}
+
+fn reachable_targets_dispatch(
+    db: &dyn RootQueryDb,
+    project_id: ProjectId,
+    source: TargetFullName,
+    dep_kind: DepKind,
+) -> Option<Arc<ReachableTargets>> {
+    db.reachable_targets_interned(InternedProjectId::new(db, project_id), source, dep_kind)
+}
+
+fn reachable_targets_inner(
+    db: &dyn RootQueryDb,
+    pid: InternedProjectId,
+    source: TargetFullName,
+    dep_kind: DepKind,
+) -> Option<Arc<ReachableTargets>> {
+    let project_data = db.project_data(pid.project_id(db)).project_data(db);
+    let buck_index = project_data.buck_index.as_ref()?;
+    Some(Arc::new(
+        buck_index.app_deps.reachable_targets(&source, dep_kind),
+    ))
 }
 
 /// Whether `pred` holds for any application `file_id` is compiled into, or

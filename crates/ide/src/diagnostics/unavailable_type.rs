@@ -24,7 +24,6 @@ use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::any_owning_app;
 use elp_ide_db::elp_base_db::is_app_reachable;
 use elp_project_model::AppName;
-use fxhash::FxHashMap;
 use hir::AnyExpr;
 use hir::Callback;
 use hir::InFile;
@@ -87,7 +86,6 @@ impl GenericLinter for UnavailableTypeLinter {
             file_id,
             referencing_app_data: &referencing_app_data,
             referencing_target,
-            reachable: FxHashMap::default(),
         };
         let form_list = sema.form_list(file_id);
 
@@ -133,11 +131,6 @@ struct Checker<'a, 'db> {
     file_id: FileId,
     referencing_app_data: &'a AppData,
     referencing_target: &'a String,
-    /// One reachability query per defining application rather than one per
-    /// reference. The source target and the [`DepKind`] are fixed for the
-    /// file, so every reference into the same application asks the same
-    /// question, and answering it walks the whole dependency closure.
-    reachable: FxHashMap<AppName, bool>,
 }
 
 impl Checker<'_, '_> {
@@ -241,7 +234,7 @@ impl Checker<'_, '_> {
 
     /// A file compiled into several targets belongs to several applications,
     /// and reaching any one of them is enough.
-    fn is_reachable(&mut self, defining_file_id: FileId) -> bool {
+    fn is_reachable(&self, defining_file_id: FileId) -> bool {
         let sema = self.sema;
         any_owning_app(sema.db.upcast(), defining_file_id, |app| {
             self.is_app_reachable(app)
@@ -249,21 +242,16 @@ impl Checker<'_, '_> {
         .unwrap_or(true)
     }
 
-    fn is_app_reachable(&mut self, defining_app: &AppName) -> bool {
-        if let Some(reachable) = self.reachable.get(defining_app) {
-            return *reachable;
-        }
+    fn is_app_reachable(&self, defining_app: &AppName) -> bool {
         // A type reference is erased at compile time, so nothing has to be
         // within reach of this code: an application talked to over the
         // network is close enough.
-        let reachable = is_app_reachable(
+        is_app_reachable(
             self.sema.db.upcast(),
             self.referencing_app_data,
             defining_app,
             DepKind::Extra,
-        );
-        self.reachable.insert(defining_app.clone(), reachable);
-        reachable
+        )
     }
 }
 
