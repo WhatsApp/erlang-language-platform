@@ -156,7 +156,7 @@ final class Occurrence(pipelineContext: PipelineContext) {
       case PatVar(_) => false
       case _         => true
     }
-    if (!hasComplexPattern)
+    if (!hasComplexPattern && clause.guards.isEmpty)
       return true
     val env = clausesEnvs(List(clause), argTys, Map()).head
     !env.exists { case (_, ty) => Subtype.isNoneType(ty) }

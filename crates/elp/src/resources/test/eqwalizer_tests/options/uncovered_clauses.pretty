@@ -5,9 +5,15 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+   ┌─ options/src/uncovered_clauses.erl:49:1
+   │
+49 │ uncovered_last_1(A) when is_integer(A) -> ok.
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+
+error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
    ┌─ options/src/uncovered_clauses.erl:57:1
    │
 57 │ uncovered_last_3({err, _A}) -> ok.
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
 
-2 ERRORS
+3 ERRORS
