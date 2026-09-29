@@ -8,19 +8,19 @@
 -compile([export_all, nowarn_export_all]).
 
 -spec mk_io_list1(
-    byte() | binary() | iolist()
-) -> iolist().
+    byte() | binary() | iodata()
+) -> iodata().
 mk_io_list1(X) ->
     [X].
 
--spec first(iolist()) ->
-byte() | binary() | iolist().
+-spec first(iodata()) ->
+byte() | binary() | iodata().
 first(IoList)
     when is_binary(IoList) -> IoList;
 first([H|_]) -> H.
 
--spec refine_as_list(iolist()) ->
-byte() | binary() | iolist().
+-spec refine_as_list(iodata()) ->
+byte() | binary() | iodata().
 refine_as_list(IoList)
     when is_list(IoList) ->
     IoList;
@@ -28,39 +28,39 @@ refine_as_list(IoList)
     when is_binary(IoList) ->
     binary_to_list(IoList).
 
--spec refine1([term()], iolist()) ->
-[byte() | binary() | iolist()].
+-spec refine1([term()], iodata()) ->
+[byte() | binary() | iodata()].
 refine1(X, X) -> X.
 
--spec refine2(iolist(), [term()]) ->
-    [byte() | binary() | iolist()].
+-spec refine2(iodata(), [term()]) ->
+    [byte() | binary() | iodata()].
 refine2(X, X) -> X.
 
--spec refine3(term(), iolist()) ->
-    [byte() | binary() | iolist()].
+-spec refine3(term(), iodata()) ->
+    binary() | [byte() | binary() | iolist()].
 refine3(X, X) -> X.
 
--spec refine4(iolist(), term()) ->
-    [byte() | binary() | iolist()].
+-spec refine4(iodata(), term()) ->
+    binary() | [byte() | binary() | iolist()].
 refine4(X, X) -> X.
 
 -spec refine5(
-    iolist(), [atom() | binary()]
+    iodata(), [atom() | binary()]
 ) -> [binary()].
 refine5(X, X) -> X.
 
 -spec refine6_neg(
-    iolist(), [atom() | binary()]
+    iodata(), [atom() | binary()]
 ) -> [atom()].
 refine6_neg(X, X) -> X.
 
 -spec refine_to_empty1(
-    iolist(), [atom()]
+    iodata(), [atom()]
 ) -> [].
 refine_to_empty1(X, X) -> X.
 
 -spec refine_to_empty2(
-    [atom()], iolist()
+    [atom()], iodata()
 ) -> [].
 refine_to_empty2(X, X) -> X.
 
@@ -68,16 +68,16 @@ refine_to_empty2(X, X) -> X.
 head_or([A], _) -> A;
 head_or([_], A) -> A.
 
--spec io_list_head(iolist()) ->
-    binary() | iolist() | number().
+-spec io_list_head(iodata()) ->
+    binary() | iodata() | number().
 io_list_head(X) when is_list(X)
     -> head_or(X, X).
 
--spec ioio(iolist(), A) -> A.
+-spec ioio(iodata(), A) -> A.
 ioio(_, A) ->  A.
 
 -spec test() -> atom().
 test() -> ioio([<<>>], ok).
 
--spec test2_neg(iolist()) -> wrong_ret.
+-spec test2_neg(iodata()) -> wrong_ret.
 test2_neg(X) -> X.
