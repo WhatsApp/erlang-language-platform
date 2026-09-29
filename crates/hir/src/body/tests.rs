@@ -1185,6 +1185,102 @@ foo() ->
 }
 
 #[test]
+fn call_result_of_parenthesised_call() {
+    check_ast(
+        r#"
+-define(MAKE, mod:make(1)).
+foo(X) ->
+    (mod:make(1))(X),
+    (make(1))(X),
+    (mod:make)(X),
+    (?MAKE)(X).
+"#,
+        expect![[r#"
+            -define(MAKE,
+                Expr<3>:Expr::Call {
+                    target
+                        CallTarget::Remote {
+                            Expr<0>:Literal(Atom('mod'))
+                            Expr<1>:Literal(Atom('make'))
+                        }
+                    args
+                        Expr<2>:Literal(Integer(1)),
+                }
+            ).
+            function: foo/1
+            Clause {
+                pats
+                    Pat<0>:Pat::Var(X),
+                guards
+                exprs
+                    Expr<9>:Expr::Call {
+                        target
+                            CallTarget::Local {
+                                Expr<7>:Expr::Paren {
+                                    Expr<6>:Expr::Call {
+                                        target
+                                            CallTarget::Remote {
+                                                Expr<3>:Literal(Atom('mod'))
+                                                Expr<4>:Literal(Atom('make'))
+                                            }
+                                        args
+                                            Expr<5>:Literal(Integer(1)),
+                                    }
+                                }
+                            }
+                        args
+                            Expr<8>:Expr::Var(X),
+                    },
+                    Expr<17>:Expr::Call {
+                        target
+                            CallTarget::Local {
+                                Expr<15>:Expr::Paren {
+                                    Expr<14>:Expr::Call {
+                                        target
+                                            CallTarget::Local {
+                                                Expr<12>:Literal(Atom('make'))
+                                            }
+                                        args
+                                            Expr<13>:Literal(Integer(1)),
+                                    }
+                                }
+                            }
+                        args
+                            Expr<16>:Expr::Var(X),
+                    },
+                    Expr<23>:Expr::Call {
+                        target
+                            CallTarget::Remote {
+                                Expr<20>:Literal(Atom('mod'))
+                                Expr<21>:Literal(Atom('make'))
+                            }
+                        args
+                            Expr<22>:Expr::Var(X),
+                    },
+                    Expr<32>:Expr::Call {
+                        target
+                            CallTarget::Local {
+                                Expr<30>:Expr::Paren {
+                                    Expr<29>:Expr::Call {
+                                        target
+                                            CallTarget::Remote {
+                                                Expr<26>:Literal(Atom('mod'))
+                                                Expr<27>:Literal(Atom('make'))
+                                            }
+                                        args
+                                            Expr<28>:Literal(Integer(1)),
+                                    }
+                                }
+                            }
+                        args
+                            Expr<31>:Expr::Var(X),
+                    },
+            }.
+        "#]],
+    );
+}
+
+#[test]
 fn capture_fun() {
     check(
         r#"

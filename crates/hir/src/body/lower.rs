@@ -1444,12 +1444,20 @@ impl<'a> Ctx<'a> {
                     },
                 }
             }
-            Some(ast::Expr::Remote(remote)) => CallTarget::Remote {
-                module: self
-                    .lower_optional_expr(remote.module().and_then(|module| module.module())),
-                name: self.lower_optional_expr(remote.fun()),
-                parens: false,
-                unqualified: false,
+            Some(expr @ ast::Expr::Remote(remote)) => match remote.fun() {
+                // In tree-sitter's AST, the remote call `m:f(A)` is a `Remote`
+                // whose `fun` child is `Call(f, A)`. Lower the whole remote call
+                // instead of treating `f(A)` as the function name.
+                Some(ast::Expr::Call(_)) => CallTarget::Local {
+                    name: self.lower_expr(expr),
+                },
+                _ => CallTarget::Remote {
+                    module: self
+                        .lower_optional_expr(remote.module().and_then(|module| module.module())),
+                    name: self.lower_optional_expr(remote.fun()),
+                    parens: false,
+                    unqualified: false,
+                },
             },
             Some(ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(call))) => self
                 .resolve_macro(call, |this, source, replacement| match replacement {

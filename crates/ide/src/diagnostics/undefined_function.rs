@@ -422,6 +422,25 @@ exists() -> ok.
     }
 
     #[test]
+    fn test_call_result_of_parenthesised_remote_call() {
+        check_diagnostics(
+            r#"
+//- /src/main.erl
+  -module(main).
+  main(X) ->
+    (dependency:exists(1))(X),
+    (dependency:not_exists(1))(X).
+%%   ^^^^^^^^^^^^^^^^^^^^^ warning: W0017: Function 'dependency:not_exists/1' is undefined.
+%%                       | 💡 <suppression>
+//- /src/dependency.erl
+  -module(dependency).
+  -export([exists/1]).
+  exists(_) -> fun(X) -> X end.
+            "#,
+        )
+    }
+
+    #[test]
     fn test_exclusion_list() {
         check_diagnostics(
             r#"
