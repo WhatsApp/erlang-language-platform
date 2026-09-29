@@ -38,17 +38,6 @@ b_to_n3(true) ->
 b_to_n3(A) ->
   A.
 
--spec opacity_tolerance
-    (atom(), misc:o()) -> atom().
-opacity_tolerance(a, _) ->
-  1;
-opacity_tolerance(b, _) ->
-  2;
-opacity_tolerance(_, {_}) ->
-  3;
-opacity_tolerance(c, _) ->
-  4.
-
 -spec too_many_errors
     (atom()) -> atom().
 too_many_errors(a) ->
