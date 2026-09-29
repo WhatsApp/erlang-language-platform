@@ -108,20 +108,6 @@ Because in the expression's type:
   However the following candidate: integer()
   Differs from the expected type:  atom()
 
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-   ┌─ check/src/custom.erl:91:1
-   │  
-91 │ ╭ element_2_none_1(Tup) ->
-92 │ │     element(42, Tup).
-   │ ╰────────────────────^ Clause is not covered by spec
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-   ┌─ check/src/custom.erl:95:1
-   │  
-95 │ ╭ element_2_none_2(N, Tup) ->
-96 │ │     element(N, Tup).
-   │ ╰───────────────────^ Clause is not covered by spec
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/custom.erl:108:5
     │
@@ -477,17 +463,6 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
 600 │ │         #{},
 601 │ │         #{1 => 1}
 602 │ │     ).
-    │ ╰─────^ Clause is not covered by spec
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/custom.erl:605:1
-    │  
-605 │ ╭ maps_fold_3_7(None) ->
-606 │ │     maps:fold(
-607 │ │         None,
-608 │ │         None,
-609 │ │         None
-610 │ │     ).
     │ ╰─────^ Clause is not covered by spec
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
@@ -1778,16 +1753,6 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'non_map'
 Context expected type: #{term() => term()}
 
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-     ┌─ check/src/custom.erl:1845:1
-     │  
-1845 │ ╭ maps_without_12_neg(None) ->
-1846 │ │     maps:without(
-1847 │ │         [a, b],
-1848 │ │         None
-1849 │ │     ).
-     │ ╰─────^ Clause is not covered by spec
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
      ┌─ check/src/custom.erl:1855:5
      │    
@@ -2415,4 +2380,4 @@ Because in the expression's type:
   Context expects type: #{...} (no default association)
   The expected map has no default association while the type of the expression has one.
 
-195 ERRORS
+191 ERRORS

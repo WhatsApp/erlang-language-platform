@@ -22,12 +22,6 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   fun((term(), term()) -> term())
 Context expected type: fun((term()) -> term())
 
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/type_predicates.erl:159:1
-    │
-159 │ rec_slice3(R) when is_record(R, rec1, 1) -> R;
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/type_predicates.erl:165:49
     │
@@ -68,4 +62,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   {'misc_lib', term()}
 Context expected type: {'misc_lib', atom(), atom()}
 
-7 ERRORS
+6 ERRORS

@@ -41,12 +41,6 @@ error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
 51 │     eqwalizer:reveal_type(V).
    │                           ^ #{a := 'b', b => dynamic('c')}
 
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-   ┌─ check/src/gradual_bounded.erl:62:1
-   │
-62 │ bd_tuple_02({V, _}) -> V.
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
-
 error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
    ┌─ check/src/gradual_bounded.erl:66:51
    │
@@ -69,4 +63,4 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   'test' | dyn(number())
 Context expected type: number()
 
-8 ERRORS
+7 ERRORS

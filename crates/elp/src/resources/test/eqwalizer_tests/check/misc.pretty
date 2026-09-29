@@ -265,12 +265,6 @@ error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered
 196 │ test41_pos([X | Y]) -> {X, Y}.
     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
 
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/misc.erl:204:1
-    │
-204 │ test43_pos([_ | Y]) when Y + 1 > 0 -> Y.
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:221:17
     │
@@ -302,12 +296,6 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │                 ^^^^^^^^^^^^^^^^^ misc:test47_neg().
 Expression has type:   number()
 Context expected type: atom()
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/misc.erl:337:1
-    │
-337 │ test68_pos({E, _}) -> E.
-    │ ^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
 
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:352:22
@@ -512,12 +500,6 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
 Expression has type:   [atom() | integer()]
 Context expected type: string()
 
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/misc.erl:615:1
-    │
-615 │ ss3("b" ++ S) -> S.
-    │ ^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
-
 error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
     ┌─ check/src/misc.erl:632:5
     │
@@ -620,26 +602,6 @@ error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types
     │     ^^^ Res.
 Expression has type:   [dynamic() | integer() | number()]
 Context expected type: pid()
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/misc.erl:685:1
-    │
-685 │ not_list1_neg("atom" ++ A) -> A.
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/misc.erl:689:1
-    │  
-689 │ ╭ not_list2_neg
-690 │ │     (A, [_ | A]) -> A.
-    │ ╰─────────────────────^ Clause is not covered by spec
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/misc.erl:694:1
-    │  
-694 │ ╭ not_list3_neg
-695 │ │     (A, "atom" ++ A) -> A.
-    │ ╰─────────────────────────^ Clause is not covered by spec
 
 error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
     ┌─ check/src/misc.erl:728:1
@@ -856,4 +818,4 @@ error: non_exported_id (See https://fb.me/eqwalizer_errors#non_exported_id)
 1011 │ -type non_exported_id_t() :: any_fun_type:f1().
      │                              ^^^^^^^^^^^^^^^^^ Type exists but is not exported: any_fun_type:f1/0
 
-90 ERRORS
+84 ERRORS

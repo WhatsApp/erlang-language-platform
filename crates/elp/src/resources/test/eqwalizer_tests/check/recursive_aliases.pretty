@@ -306,12 +306,6 @@ error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_ali
 443 │ -type x_cycle() :: misc:x_cycle().
     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type x_cycle/0 is not productive
 
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/recursive_aliases.erl:462:1
-    │
-462 │ trick_me(X, X) -> X.
-    │ ^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
-
 error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
     ┌─ check/src/recursive_aliases.erl:479:1
     │  
@@ -369,4 +363,4 @@ error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_t
 519 │ │   (invalid_transitive()) -> a.
     │ ╰─────────────────────────────^ use_invalid/1 (transitively) references type with invalid definition: invalid_ty/0
 
-43 ERRORS
+42 ERRORS

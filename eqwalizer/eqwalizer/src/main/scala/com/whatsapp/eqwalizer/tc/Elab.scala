@@ -88,16 +88,16 @@ final class Elab(pipelineContext: PipelineContext) {
     val (patTys, env3) = elabPat.elabPats(clause.pats, argTys, env2)
     occurrence.annotateGuards(clause.guards, env3)
     val hasEmptyType = env3.exists { case (_, ty) => Subtype.isNoneType(ty) }
-    if (hasEmptyType && checkCoverage && (fullCoverage || !occurrence.clauseCovered(clause, argTys)))
-      diagnosticsInfo.add(ClauseNotCovered(clause.pos))
     if (checkReachability && (hasEmptyType || patTys.exists(Subtype.isNoneType)))
       return (NoneType, util.exitScope(env0, env3, exportedVars))
     val (eType, env4) = elabBody(clause.body, env3, expected)
     val env5 = util.exitScope(env0, env4, exportedVars)
-    if (subtype.gradualSubType(eType, NoneType))
-      (NoneType, env5.map { case (name, _) => name -> NoneType })
-    else
+    if (subtype.gradualSubType(eType, NoneType)) (NoneType, env5.map { case (name, _) => name -> NoneType })
+    else {
+      if (hasEmptyType && checkCoverage && (fullCoverage || !occurrence.clauseCovered(clause, argTys)))
+        diagnosticsInfo.add(ClauseNotCovered(clause.pos))
       (eType, env5)
+    }
   }
 
   def elabExprs(exprs: List[Expr], env: Env): (List[Type], Env) = {
