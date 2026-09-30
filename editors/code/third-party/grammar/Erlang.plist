@@ -12,6 +12,19 @@
 		<string>xrl</string>
 		<string>yrl</string>
 	</array>
+	<key>injections</key>
+	<dict>
+		<key>L:source.erlang meta.type.erlang - comment - string</key>
+		<dict>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>include</key>
+					<string>#function-type</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
 	<key>keyEquivalent</key>
 	<string>^~E</string>
 	<key>name</key>
@@ -45,6 +58,10 @@
 		<dict>
 			<key>include</key>
 			<string>#doc-directive</string>
+		</dict>
+		<dict>
+			<key>include</key>
+			<string>#type-directive</string>
 		</dict>
 		<dict>
 			<key>include</key>
@@ -971,7 +988,80 @@
 				</dict>
 				<dict>
 					<key>begin</key>
-					<string>\b(fun)\s+(?!\()</string>
+					<string>\b(fun)\s+(_[a-zA-Z\d@_]*+|[A-Z][a-zA-Z\d@_]*+)\s*+(?=\()</string>
+					<key>beginCaptures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>keyword.control.fun.erlang</string>
+						</dict>
+						<key>2</key>
+						<dict>
+							<key>name</key>
+							<string>entity.name.function.erlang</string>
+						</dict>
+					</dict>
+					<key>comment</key>
+					<string>Named function expression</string>
+					<key>end</key>
+					<string>\b(end)\b</string>
+					<key>endCaptures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>keyword.control.end.erlang</string>
+						</dict>
+					</dict>
+					<key>name</key>
+					<string>meta.expression.fun.erlang</string>
+					<key>patterns</key>
+					<array>
+						<dict>
+							<key>captures</key>
+							<dict>
+								<key>1</key>
+								<dict>
+									<key>name</key>
+									<string>entity.name.function.erlang</string>
+								</dict>
+							</dict>
+							<key>comment</key>
+							<string>Name of a named function expression clause</string>
+							<key>match</key>
+							<string>(_[a-zA-Z\d@_]*+|[A-Z][a-zA-Z\d@_]*+)\s*+(?=\()</string>
+						</dict>
+						<dict>
+							<key>begin</key>
+							<string>(?=\()</string>
+							<key>end</key>
+							<string>(;)|(?=\bend\b)</string>
+							<key>endCaptures</key>
+							<dict>
+								<key>1</key>
+								<dict>
+									<key>name</key>
+									<string>punctuation.separator.clauses.erlang</string>
+								</dict>
+							</dict>
+							<key>patterns</key>
+							<array>
+								<dict>
+									<key>include</key>
+									<string>#internal-function-parts</string>
+								</dict>
+							</array>
+						</dict>
+						<dict>
+							<key>include</key>
+							<string>#everything-else</string>
+						</dict>
+					</array>
+				</dict>
+				<dict>
+					<key>begin</key>
+					<string>\b(fun)\s+(?!\()(?=[^\n]*/)</string>
 					<key>beginCaptures</key>
 					<dict>
 						<key>1</key>
@@ -1004,34 +1094,71 @@
 				</dict>
 				<dict>
 					<key>begin</key>
-					<string>\b(fun)\s*+(\()(?=(\s*+\()|(\)))</string>
+					<string>\b(fun)\s+(?!\()(?![^\n]*/)</string>
 					<key>beginCaptures</key>
 					<dict>
 						<key>1</key>
 						<dict>
 							<key>name</key>
-							<string>entity.name.function.erlang</string>
-						</dict>
-						<key>2</key>
-						<dict>
-							<key>name</key>
-							<string>punctuation.definition.parameters.begin.erlang</string>
+							<string>keyword.control.fun.erlang</string>
 						</dict>
 					</dict>
 					<key>comment</key>
-					<string>Function type in type specification</string>
+					<string>Function expression whose form is still unknown on the line it starts: an implicit one with the arity on a later line, or an explicit or named one with the first clause on a later line</string>
 					<key>end</key>
-					<string>(\))</string>
+					<string>(/)|\b(end)\b</string>
 					<key>endCaptures</key>
 					<dict>
 						<key>1</key>
 						<dict>
 							<key>name</key>
-							<string>punctuation.definition.parameters.end.erlang</string>
+							<string>punctuation.separator.function-arity.erlang</string>
+						</dict>
+						<key>2</key>
+						<dict>
+							<key>name</key>
+							<string>keyword.control.end.erlang</string>
 						</dict>
 					</dict>
+					<key>name</key>
+					<string>meta.expression.fun.erlang</string>
 					<key>patterns</key>
 					<array>
+						<dict>
+							<key>captures</key>
+							<dict>
+								<key>1</key>
+								<dict>
+									<key>name</key>
+									<string>entity.name.function.erlang</string>
+								</dict>
+							</dict>
+							<key>comment</key>
+							<string>Name of a named function expression clause</string>
+							<key>match</key>
+							<string>(_[a-zA-Z\d@_]*+|[A-Z][a-zA-Z\d@_]*+)\s*+(?=\()</string>
+						</dict>
+						<dict>
+							<key>begin</key>
+							<string>(?=\()</string>
+							<key>end</key>
+							<string>(;)|(?=\bend\b)</string>
+							<key>endCaptures</key>
+							<dict>
+								<key>1</key>
+								<dict>
+									<key>name</key>
+									<string>punctuation.separator.clauses.erlang</string>
+								</dict>
+							</dict>
+							<key>patterns</key>
+							<array>
+								<dict>
+									<key>include</key>
+									<string>#internal-function-parts</string>
+								</dict>
+							</array>
+						</dict>
 						<dict>
 							<key>include</key>
 							<string>#everything-else</string>
@@ -1065,6 +1192,20 @@
 					<string>meta.expression.fun.erlang</string>
 					<key>patterns</key>
 					<array>
+						<dict>
+							<key>captures</key>
+							<dict>
+								<key>1</key>
+								<dict>
+									<key>name</key>
+									<string>entity.name.function.erlang</string>
+								</dict>
+							</dict>
+							<key>comment</key>
+							<string>Name of a named function expression clause</string>
+							<key>match</key>
+							<string>(_[a-zA-Z\d@_]*+|[A-Z][a-zA-Z\d@_]*+)\s*+(?=\()</string>
+						</dict>
 						<dict>
 							<key>begin</key>
 							<string>(?=\()</string>
@@ -1379,6 +1520,43 @@
 							<string>#everything-else</string>
 						</dict>
 					</array>
+				</dict>
+			</array>
+		</dict>
+		<key>function-type</key>
+		<dict>
+			<key>begin</key>
+			<string>\b(fun)\s*+(\()(?=(\s*+\()|(\)))</string>
+			<key>beginCaptures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>entity.name.function.erlang</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>punctuation.definition.parameters.begin.erlang</string>
+				</dict>
+			</dict>
+			<key>comment</key>
+			<string>Function type in type specification</string>
+			<key>end</key>
+			<string>(\))</string>
+			<key>endCaptures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>punctuation.definition.parameters.end.erlang</string>
+				</dict>
+			</dict>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>include</key>
+					<string>#everything-else</string>
 				</dict>
 			</array>
 		</dict>
@@ -1711,6 +1889,31 @@
 					</dict>
 					<key>patterns</key>
 					<array>
+						<dict>
+							<key>begin</key>
+							<string>(::)</string>
+							<key>beginCaptures</key>
+							<dict>
+								<key>1</key>
+								<dict>
+									<key>name</key>
+									<string>keyword.operator.symbolic.erlang</string>
+								</dict>
+							</dict>
+							<key>comment</key>
+							<string>Type of a record field; meta.type.erlang marks the region where the function type rule is injected</string>
+							<key>end</key>
+							<string>(?=,|\})</string>
+							<key>name</key>
+							<string>meta.type.erlang</string>
+							<key>patterns</key>
+							<array>
+								<dict>
+									<key>include</key>
+									<string>#everything-else</string>
+								</dict>
+							</array>
+						</dict>
 						<dict>
 							<key>include</key>
 							<string>#everything-else</string>
@@ -3562,6 +3765,55 @@
 					<key>name</key>
 					<string>punctuation.separator.tuple.erlang</string>
 				</dict>
+				<dict>
+					<key>include</key>
+					<string>#everything-else</string>
+				</dict>
+			</array>
+		</dict>
+		<key>type-directive</key>
+		<dict>
+			<key>begin</key>
+			<string>^\s*+(-)\s*+(type|opaque|nominal|spec|callback)(?![a-zA-Z\d@_])\s*+(\(?)</string>
+			<key>beginCaptures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>punctuation.section.directive.begin.erlang</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>keyword.control.directive.erlang</string>
+				</dict>
+				<key>3</key>
+				<dict>
+					<key>name</key>
+					<string>punctuation.definition.parameters.begin.erlang</string>
+				</dict>
+			</dict>
+			<key>comment</key>
+			<string>Directive carrying types; meta.type.erlang marks the region where the function type rule is injected</string>
+			<key>end</key>
+			<string>(\)?)\s*+(\.)(?=\s|%|$)</string>
+			<key>endCaptures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>punctuation.definition.parameters.end.erlang</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>punctuation.section.directive.end.erlang</string>
+				</dict>
+			</dict>
+			<key>name</key>
+			<string>meta.directive.erlang meta.type.erlang</string>
+			<key>patterns</key>
+			<array>
 				<dict>
 					<key>include</key>
 					<string>#everything-else</string>

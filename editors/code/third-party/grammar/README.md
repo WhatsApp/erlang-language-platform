@@ -56,15 +56,35 @@ from _Ben Hockley_.
   from Github and use below commands: (On Windows use e.g. WSL)
 
   ```bash
-  /path/to/plist_yaml.py Erlang.plist Erlang.yaml
+  /path/to/plistyamlplist.py Erlang.plist Erlang.yaml
   # Edit YAML file here ... then if you are ready convert back to PLIST
-  /path/to/yaml_plist.py Erlang.yaml Erlang.plist
+  /path/to/plistyamlplist.py Erlang.yaml Erlang.plist
   ```
 
-Commit your updates on `Erlang.plist` and ignode `Erlang.yaml`.
+  > Note:
+  > Please read
+  > [Issue with Python 3.11](https://github.com/grahampugh/plist-yaml-plist/issues/15)
+  > if you get a strange error when convert PLIST to YAML or vice versa.
+
+Commit your updates on `Erlang.plist` and ignore `Erlang.yaml`.
+
+To test the grammar we use
+[VSCode Textmate grammar test](https://github.com/PanAeon/vscode-tmgrammar-test),
+simply run `npm ci && npm test` (or `npm ci` and `npm test` separately in
+PowerShell) and all tests will be run. To add more tests you can either add
+annotated files to `./tests/` or use the snapshot facility and then tests should
+be added to `./tests/snap`.
+
+To update the snapshot tests, simply:
+
+```
+npx vscode-tmgrammar-snap -g ./tests/grammars/markdown.tmLanguage.json --updateSnapshot ./tests/snap/*.erl
+```
 
 See more:
 
 1. Visual Studio Code [Syntax Highlight Guide](https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide)
 2. TextMate [Language Grammars](https://macromates.com/manual/en/language_grammars)
 3. [Writing a TextMate Grammar: Some Lessons Learned](https://www.apeth.com/nonblog/stories/textmatebundle.html)
+4. [Building a syntax highlighting extension for VS Code](https://dev.to/borama/building-a-syntax-highlighting-extension-for-vs-code-594)
+5. [Regular expression editor](https://rubular.com/) to quickly experiment with matches and captures
