@@ -90,7 +90,7 @@ other apps in the same `some_apps` directory will default to `src` only.
 
 ### \[eqwalizer\] {#eqwalizer}
 
-ELP is integrated with the [eqWAlizer](https://github.com/whatsapp/eqwalizer)
+ELP is integrated with the [eqWAlizer](https://github.com/whatsapp/erlang-language-platform/tree/main/eqwalizer)
 type checker. The integration can be configured via this section.
 
 :::info
