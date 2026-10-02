@@ -50,6 +50,7 @@ use elp_ide::elp_ide_db::LineCol;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::Change;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
+use elp_ide::elp_ide_db::elp_base_db::FileKind;
 use elp_ide::elp_ide_db::elp_base_db::FilePosition;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::Vfs;
@@ -504,6 +505,11 @@ fn do_diagnostics_all(
             }
         }
         if otp_file_to_ignore(analysis, file_id) {
+            return false;
+        }
+        // e.g. Common Test suite data, which the header enumeration below
+        // would otherwise pick up.
+        if analysis.file_kind(file_id).ok() == Some(FileKind::OutsideProjectModel) {
             return false;
         }
         if analysis.file_app_type(file_id).ok() == Some(Some(AppType::Dep)) {
