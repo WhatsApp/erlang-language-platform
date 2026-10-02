@@ -38,17 +38,17 @@ jobs:
       fail-fast: false
       matrix:
         platform-arch: [ubuntu-22.04-x64, ubuntu-22.04-arm, macos-15-x64, macos-latest-arm, windows-2022-x64]
-        otp-version: [27.3, 28.5, 29.0]
+        otp-version: ['27.3', '28.5', '29.0']
         include:
-          - otp-version: 27.3
+          - otp-version: '27.3'
             brew-otp-version: 27
             vscode-publish: true
             choco-otp-version: 27.3.4
-          - otp-version: 28.5
+          - otp-version: '28.5'
             brew-otp-version: 28
             vscode-publish: false
             choco-otp-version: 28.5.0
-          - otp-version: 29.0
+          - otp-version: '29.0'
             brew-otp-version: 29
             vscode-publish: false
             choco-otp-version: 29.0.2
