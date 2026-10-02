@@ -14,9 +14,9 @@ By default, ELP integrates with the eqWAlizer type checker. For this to work, yo
 {deps, [
   {eqwalizer_support,
     {git_subdir,
-        "https://github.com/whatsapp/eqwalizer.git",
+        "https://github.com/whatsapp/erlang-language-platform.git",
         {branch, "main"},
-        "eqwalizer_support"}}
+        "eqwalizer/eqwalizer_support"}}
 ]}.
 ```
 
