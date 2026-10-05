@@ -13,6 +13,7 @@
 use std::fmt;
 use std::sync::Arc;
 
+use elp_base_db::AppType;
 use elp_base_db::FileId;
 use elp_base_db::RootQueryDb;
 use elp_base_db::SourceDatabase;
@@ -244,8 +245,7 @@ fn is_file_in_otp(db: &dyn DocDatabase, file_id: FileId) -> Option<bool> {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nis_file_in_otp: {file_id:?}"));
     if let Some(app_data) = db.file_app_data(file_id) {
-        let project_id = app_data.project_id;
-        Some(db.project_data(project_id).project_data(db).otp_project_id == Some(project_id))
+        Some(app_data.app_type == AppType::Otp)
     } else {
         log::error!(
             "Unknown application - could not load app_data to determine whether file is on OTP"

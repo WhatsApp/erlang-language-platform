@@ -338,7 +338,7 @@ impl GleanIndexer {
                             let type_ = match app_data.app_type {
                                 AppType::App => glean::AppType::FirstParty,
                                 AppType::Otp => glean::AppType::Otp,
-                                AppType::Dep => glean::AppType::ThirdParty,
+                                AppType::Dep | AppType::Bundled => glean::AppType::ThirdParty,
                             };
                             infos.push(glean::AppInfo {
                                 name: app_name.clone(),

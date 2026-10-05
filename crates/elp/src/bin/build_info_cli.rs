@@ -17,7 +17,6 @@ use clap::ValueHint;
 use elp::build::load;
 use elp::cli::Cli;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
-use elp_project_model::AppType;
 use elp_project_model::ElpConfig;
 use elp_project_model::IncludeParentDirs;
 use elp_project_model::Project;
@@ -145,7 +144,7 @@ fn buck_targets_and_types(apps: &[ProjectAppData]) -> Vec<String> {
     };
     let mut vec = apps
         .iter()
-        .filter(|app| app.app_type != AppType::Otp)
+        .filter(|app| !app.app_type.is_shared())
         .filter(|app| app.is_buck_generated != Some(true))
         .map(|app| {
             format!(

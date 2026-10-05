@@ -8,55 +8,39 @@
  * above-listed licenses.
  */
 
-use std::fs;
-use std::sync::LazyLock;
-
-use anyhow::Result;
-use dirs;
-use include_dir::Dir;
-use paths::AbsPath;
 use paths::AbsPathBuf;
-use paths::Utf8PathBuf;
 
 use crate::AppName;
 use crate::AppType;
 use crate::ProjectAppData;
+use crate::otp::Otp;
 
-pub static EQWALIZER_SUPPORT: LazyLock<Utf8PathBuf> = LazyLock::new(|| {
-    dirs::cache_dir()
-        .map(|d| Utf8PathBuf::from_path_buf(d).ok())
-        .unwrap()
-        .expect("Could not get cache dir")
-        .join("elp")
-        .join("eqwalizer_support")
-});
+/// The directory of the `eqwalizer_support` app bundled with ELP, next to the
+/// OTP apps. Nothing exists there on disk: ELP serves the sources from memory.
+pub fn bundled_dir(otp: &Otp) -> AbsPathBuf {
+    otp.lib_dir.join("eqwalizer_support")
+}
 
-pub(crate) fn eqwalizer_suppport_data(otp_root: &AbsPath) -> ProjectAppData {
-    let eqwalizer_support = AbsPathBuf::assert(EQWALIZER_SUPPORT.to_path_buf());
-
+/// The `eqwalizer_support` app bundled with ELP. It is loaded with the OTP apps,
+/// once for all projects, so a project's own apps and modules take precedence
+/// over it, as they do over OTP's, but it is not treated as part of OTP.
+pub(crate) fn bundled_app(otp: &Otp) -> ProjectAppData {
+    let dir = bundled_dir(otp);
     ProjectAppData {
         name: AppName("eqwalizer_support".to_string()),
         buck_target_name: None,
-        dir: eqwalizer_support.clone(),
+        dir: dir.clone(),
         include_dirs: vec![],
-        abs_src_dirs: vec![eqwalizer_support.join("src")],
+        abs_src_dirs: vec![dir.join("src")],
         ebin: None,
         extra_src_dirs: vec![],
-        app_type: AppType::App,
+        app_type: AppType::Bundled,
         macros: vec![],
         parse_transforms: vec![],
-        include_path: vec![otp_root.to_path_buf()],
+        include_path: vec![otp.lib_dir.clone()],
         gen_src_files: None,
         applicable_files: None,
         is_test_target: None,
         is_buck_generated: None,
     }
-}
-
-pub fn setup_eqwalizer_support(project_dir: &Dir) -> Result<()> {
-    if fs::metadata(&*EQWALIZER_SUPPORT).is_err() {
-        fs::create_dir_all(&*EQWALIZER_SUPPORT)?;
-        project_dir.extract(&*EQWALIZER_SUPPORT)?;
-    }
-    Ok(())
 }

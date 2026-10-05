@@ -27,10 +27,7 @@ use elp_log::FileLogger;
 use elp_log::Logger;
 use elp_log::timeit;
 use elp_project_model::buck::BuckQueryConfig;
-use elp_project_model::eqwalizer_support;
 use elp_project_model::otp::ERL;
-use include_dir::Dir;
-use include_dir::include_dir;
 use lsp_server::Connection;
 
 mod args;
@@ -68,7 +65,6 @@ use crate::args::Args;
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
-static EQWALIZER_SUPPORT_DIR: Dir = include_dir!("$EQWALIZER_SUPPORT_DIR");
 static INIT: Once = Once::new();
 
 #[cfg(not(unix))]
@@ -215,9 +211,6 @@ fn handle_res(
 }
 
 fn setup_static(args: &Args) {
-    if let Err(err) = eqwalizer_support::setup_eqwalizer_support(&EQWALIZER_SUPPORT_DIR) {
-        log::warn!("Failed to setup eqwalizer_support: {err}");
-    }
     if let Some(erl) = &args.erl {
         let path = dunce::canonicalize(erl).expect("erl path should be valid");
         let mut erl = ERL.write().unwrap();
@@ -536,8 +529,12 @@ mod tests {
     use elp_eqwalizer::EqwalizerDiagnostics;
     use elp_eqwalizer::Mode;
     use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
+    use elp_ide::TextSize;
     use elp_ide::elp_ide_db::diagnostic_code::BASE_URL;
+    use elp_ide::elp_ide_db::elp_base_db::AppType;
     use elp_ide::elp_ide_db::elp_base_db::FileId;
+    use elp_ide::elp_ide_db::elp_base_db::FilePosition;
+    use elp_ide::elp_ide_db::elp_base_db::ModuleName;
     use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
     use elp_project_model::AppName;
     use elp_project_model::DiscoverConfig;
@@ -1563,6 +1560,60 @@ mod tests {
         let mut json: serde_json::Value = serde_json::from_str(content).unwrap();
         json.sort_all_objects();
         serde_json::to_string_pretty(&json).unwrap()
+    }
+
+    #[test]
+    fn bundled_eqwalizer_support_is_loaded() {
+        let loaded = load::load_project_at(
+            &Fake::default(),
+            &project_path("custom_build_tool"),
+            DiscoverConfig::buck(),
+            LoadConfig::new(Mode::Cli, BUCK_QUERY_CONFIG),
+        )
+        .unwrap();
+        let file_id = loaded
+            .analysis()
+            .module_index(loaded.project_id)
+            .unwrap()
+            .file_for_module(&ModuleName::new("eqwalizer_specs"))
+            .expect("the bundled eqwalizer_specs should be in the module index");
+        let path = loaded.vfs.file_path(file_id).to_string();
+        assert!(
+            path.ends_with("/eqwalizer_support/src/eqwalizer_specs.erl"),
+            "eqwalizer_specs should come from the bundled app, got {path}"
+        );
+        let analysis = loaded.analysis();
+        let otp_project_id = analysis
+            .project_data(file_id)
+            .unwrap()
+            .expect("the bundled app should belong to a project")
+            .otp_project_id;
+        assert_eq!(
+            otp_project_id,
+            analysis.project_id(file_id).unwrap(),
+            "the bundled app should be shared by all projects, in the project with the OTP apps"
+        );
+        assert_eq_expected!(
+            Some(AppType::Bundled),
+            analysis.file_app_type(file_id).unwrap(),
+            "the bundled app should not be an OTP app"
+        );
+        let text = analysis.file_text(file_id).unwrap();
+        let offset = text
+            .find("-module(eqwalizer_specs)")
+            .expect("eqwalizer_specs should have a module attribute")
+            + "-module(e".len();
+        let links = analysis
+            .external_docs(FilePosition {
+                file_id,
+                offset: TextSize::new(offset as u32),
+            })
+            .unwrap()
+            .unwrap_or_default();
+        assert!(
+            links.iter().all(|link| !link.uri.contains("erlang.org")),
+            "the bundled modules should not link to the OTP docs, got {links:?}"
+        );
     }
 
     #[test]

@@ -826,7 +826,7 @@ impl Project {
     pub fn non_otp_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
         self.project_apps
             .iter()
-            .filter(|app| app.app_type != AppType::Otp)
+            .filter(|app| !app.app_type.is_shared())
     }
 
     fn deps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
@@ -838,7 +838,7 @@ impl Project {
     pub fn otp_apps(&self) -> impl Iterator<Item = &ProjectAppData> + '_ {
         self.project_apps
             .iter()
-            .filter(|app| app.app_type == AppType::Otp)
+            .filter(|app| app.app_type.is_shared())
     }
 
     pub fn root(&self) -> Cow<'_, AbsPathBuf> {
@@ -873,16 +873,8 @@ impl Project {
         };
         let json_app_data: Vec<_> = project_app_data
             .iter()
-            .filter_map(|project_app_data| {
-                if project_app_data.name == AppName("eqwalizer_support".to_string()) {
-                    // This is derived from OTP when the project is loaded again
-                    None
-                } else {
-                    Some(JsonProjectAppData::from_project_app_data(
-                        &root_without_file,
-                        project_app_data,
-                    ))
-                }
+            .map(|project_app_data| {
+                JsonProjectAppData::from_project_app_data(&root_without_file, project_app_data)
             })
             .collect();
         JsonConfig {
@@ -934,6 +926,17 @@ pub enum AppType {
     App,
     Dep,
     Otp,
+    /// Bundled with ELP. Like the OTP apps, it is loaded once and shared by all
+    /// projects, but it is not part of OTP.
+    Bundled,
+}
+
+impl AppType {
+    /// Whether the app is loaded once and shared by all projects, rather than
+    /// belonging to one project.
+    pub fn is_shared(self) -> bool {
+        matches!(self, AppType::Otp | AppType::Bundled)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1171,11 +1174,8 @@ impl Project {
                 let otp_root = Otp::find_otp()?;
                 let abs_otp_root = AbsPath::assert(otp_root);
                 let config_path = config.config_path().to_path_buf();
-                let mut apps = config.to_project_app_data(abs_otp_root);
-                let eqwalizer_support_app =
-                    eqwalizer_support::eqwalizer_suppport_data(abs_otp_root);
+                let apps = config.to_project_app_data(abs_otp_root);
                 let project = StaticProject { config_path };
-                apps.push(eqwalizer_support_app);
                 (
                     ProjectBuildData::Static(project),
                     apps,
@@ -1187,6 +1187,11 @@ impl Project {
 
         let (otp, otp_project_apps) = Otp::discover(otp_root, &elp_config.otp);
         project_apps.extend(otp_project_apps);
+        // Only JSON and manifest-less projects (`Static`) get the bundled copy for
+        // now; a later change in this stack extends it to all project types.
+        if matches!(project_build_info, ProjectBuildData::Static(_)) {
+            project_apps.push(eqwalizer_support::bundled_app(&otp));
+        }
         report_progress("Project info loaded");
         Ok(Project {
             otp,

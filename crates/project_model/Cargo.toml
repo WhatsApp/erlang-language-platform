@@ -11,14 +11,12 @@ license.workspace = true
 [dependencies]
 anyhow.workspace = true
 buck-resources.workspace = true
-dirs.workspace = true
 dunce.workspace = true
 eetf.workspace = true
 elp_log.workspace = true
 elp_syntax.workspace = true
 fxhash.workspace = true
 glob.workspace = true
-include_dir.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
 log.workspace = true

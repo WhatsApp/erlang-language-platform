@@ -44,6 +44,7 @@ use crate::line_endings::LineEndings;
 use crate::reload::ProjectFolders;
 use crate::reload::apply_source_roots;
 use crate::reload::apply_vfs_text_changes;
+use crate::reload::bundled_files;
 
 pub fn canonicalize_project_root(root: &Path) -> Result<AbsPathBuf> {
     let root = match dunce::canonicalize(root) {
@@ -280,6 +281,9 @@ fn load_database(
     deferred.sort_by(|(a, _), (b, _)| a.cmp(b));
     for (path, contents) in deferred {
         vfs.set_file_contents(path.into(), contents);
+    }
+    for (path, contents) in bundled_files(project_apps) {
+        vfs.set_file_contents(path, Some(contents));
     }
 
     pb.finish();

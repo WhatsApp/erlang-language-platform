@@ -24,13 +24,18 @@ use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_project_model::ProjectAppData;
 use elp_project_model::ProjectBuildData;
 use elp_project_model::buck::BuckProject;
+use elp_project_model::eqwalizer_support;
 use fxhash::FxHashSet;
+use include_dir::Dir;
+use include_dir::include_dir;
 use vfs::AbsPathBuf;
 use vfs::ChangedFile;
 use vfs::FileId;
 
 use crate::document::Document;
 use crate::line_endings::LineEndings;
+
+static EQWALIZER_SUPPORT: Dir = include_dir!("$EQWALIZER_SUPPORT_DIR");
 
 #[derive(Debug)]
 pub struct ProjectFolders {
@@ -151,6 +156,33 @@ impl ProjectFolders {
             file_set_config,
         }
     }
+}
+
+/// The files in the `src` directory of the `eqwalizer_support` app bundled with
+/// ELP, to be set in the VFS directly, since the loader never sees them. Like the
+/// OTP apps, the app is shared by all projects.
+pub(crate) fn bundled_files(
+    project_apps: &ProjectApps<'_>,
+) -> impl Iterator<Item = (VfsPath, Vec<u8>)> + use<> {
+    let dir = project_apps.otp_project_id.map(|ProjectId(idx)| {
+        eqwalizer_support::bundled_dir(&project_apps.projects[idx as usize].otp)
+    });
+    dir.into_iter().flat_map(|dir| {
+        EQWALIZER_SUPPORT
+            .get_dir("src")
+            .into_iter()
+            .flat_map(Dir::files)
+            .filter_map(move |file| {
+                let Some(path) = file.path().to_str() else {
+                    log::warn!(
+                        "Skipping bundled file with a non-UTF-8 path: {:?}",
+                        file.path()
+                    );
+                    return None;
+                };
+                Some((VfsPath::from(dir.join(path)), file.contents().to_vec()))
+            })
+    })
 }
 
 fn loader_config(project_apps: &ProjectApps<'_>) -> Vec<loader::Entry> {

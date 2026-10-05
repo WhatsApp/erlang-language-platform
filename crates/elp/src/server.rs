@@ -118,6 +118,7 @@ use crate::project_loader::ProjectLoader;
 use crate::project_loader::ReloadManager;
 use crate::read_lint_config_file;
 use crate::reload::ProjectFolders;
+use crate::reload::bundled_files;
 use crate::snapshot::SharedMap;
 use crate::snapshot::Snapshot;
 use crate::task_pool::TaskPool;
@@ -1488,6 +1489,12 @@ impl Server {
         {
             let _phase = watchdog::phase("switch_workspaces:vfs_loader_config");
             self.vfs_loader.handle.set_config(vfs_loader_config);
+        }
+        {
+            let mut vfs = self.vfs.write();
+            for (path, contents) in bundled_files(&project_apps) {
+                vfs.set_file_contents(path, Some(contents));
+            }
         }
 
         self.projects = Arc::new(projects);

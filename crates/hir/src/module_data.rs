@@ -10,6 +10,7 @@
 
 use std::sync::Arc;
 
+use elp_base_db::AppType;
 use elp_base_db::FileId;
 use elp_base_db::FileKind;
 use elp_base_db::ModuleName;
@@ -97,13 +98,7 @@ impl File {
         let file_id = self.file_id;
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nis_in_otp:2: {file_id:?}"));
-        match db.file_app_data(file_id) {
-            Some(app_data) => {
-                let project_id = app_data.project_id;
-                db.project_data(project_id).project_data(db).otp_project_id == Some(project_id)
-            }
-            None => false,
-        }
+        db.file_app_type(file_id) == Some(AppType::Otp)
     }
 }
 
