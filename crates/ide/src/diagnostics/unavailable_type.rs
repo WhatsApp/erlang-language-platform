@@ -32,6 +32,7 @@ use hir::Semantic;
 use hir::Spec;
 use hir::Strategy;
 use hir::TypeAlias;
+use hir::TypeAliasDef;
 use hir::TypeExpr;
 use hir::fold::Fold;
 use hir::fold::MacroStrategy;
@@ -217,7 +218,7 @@ impl Checker<'_, '_> {
             let defining_app_data = self.sema.db.file_app_data(defining_file_id)?;
             let defining_app_name = &defining_app_data.name;
 
-            if !self.is_reachable(defining_file_id) {
+            if !self.is_reachable(&type_alias_def) {
                 self.matches.push(GenericLinterMatchContext {
                     range: target_range,
                     context: Context {
@@ -232,14 +233,31 @@ impl Checker<'_, '_> {
         Some(())
     }
 
+    /// A module name defined in several applications resolves to whichever
+    /// copy the module index kept, which need not be the copy this
+    /// application depends on: any copy within reach that defines the type
+    /// will do.
+    fn is_reachable(&self, type_alias_def: &TypeAliasDef) -> bool {
+        let defining_file_id = type_alias_def.file.file_id;
+        if self.is_file_reachable(defining_file_id) {
+            return true;
+        }
+        let Some(copies) = self.sema.module_name_duplicates(defining_file_id) else {
+            return false;
+        };
+        let type_name = type_alias_def.type_alias.name();
+        copies.into_iter().any(|copy| {
+            copy != defining_file_id
+                && self.sema.def_map(copy).get_type(type_name).is_some()
+                && self.is_file_reachable(copy)
+        })
+    }
+
     /// A file compiled into several targets belongs to several applications,
     /// and reaching any one of them is enough.
-    fn is_reachable(&self, defining_file_id: FileId) -> bool {
+    fn is_file_reachable(&self, file_id: FileId) -> bool {
         let sema = self.sema;
-        any_owning_app(sema.db.upcast(), defining_file_id, |app| {
-            self.is_app_reachable(app)
-        })
-        .unwrap_or(true)
+        any_owning_app(sema.db.upcast(), file_id, |app| self.is_app_reachable(app)).unwrap_or(true)
     }
 
     fn is_app_reachable(&self, defining_app: &AppName) -> bool {
@@ -320,6 +338,87 @@ mod tests {
   -module(shared).
   -type t() :: ok.
   -export_type([t/0]).
+            "#,
+        )
+    }
+
+    #[test]
+    fn type_from_duplicate_module_in_a_declared_dep_is_ok() {
+        // `dup` is defined in both `app_b` and `app_c`; the module index keeps
+        // only one of them, but `app_a` depends on `app_b`, whose copy defines
+        // the type, so the reference resolves whichever copy was kept.
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib deps:app_b
+  -module(main).
+  -spec main() -> dup:t().
+  main() -> ok.
+//- /app_b/src/dup.erl app:app_b buck_target:cell//app_b:lib
+  -module(dup).
+%%        ^^^ warning: W0045: A module with this name exists elsewhere
+%%          | 💡 <suppression>
+  -type t() :: ok.
+  -export_type([t/0]).
+//- /app_c/src/dup.erl app:app_c buck_target:cell//app_c:lib
+  -module(dup).
+%%        ^^^ warning: W0045: A module with this name exists elsewhere
+%%          | 💡 <suppression>
+  -type t() :: ok.
+  -export_type([t/0]).
+            "#,
+        )
+    }
+
+    /// Mirror of `type_from_duplicate_module_in_a_declared_dep_is_ok` with
+    /// `app_a` depending on `app_c` instead. Which copy the module index keeps
+    /// is unspecified, so one of the pair always resolves `dup` to the copy
+    /// outside the dependency closure.
+    #[test]
+    fn type_from_duplicate_module_in_a_declared_dep_is_ok_mirrored() {
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib deps:app_c
+  -module(main).
+  -spec main() -> dup:t().
+  main() -> ok.
+//- /app_c/src/dup.erl app:app_c buck_target:cell//app_c:lib
+  -module(dup).
+%%        ^^^ warning: W0045: A module with this name exists elsewhere
+%%          | 💡 <suppression>
+  -type t() :: ok.
+  -export_type([t/0]).
+//- /app_b/src/dup.erl app:app_b buck_target:cell//app_b:lib
+  -module(dup).
+%%        ^^^ warning: W0045: A module with this name exists elsewhere
+%%          | 💡 <suppression>
+  -type t() :: ok.
+  -export_type([t/0]).
+            "#,
+        )
+    }
+
+    #[test]
+    fn type_missing_from_the_reachable_duplicate_module_is_reported() {
+        // The only copy of `dup` within reach does not define `t/0`, so the
+        // type still comes from outside the dependency closure.
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib deps:app_c
+  -module(main).
+  -spec main() -> dup:t().
+%%                ^^^^^ warning: W0059: The type 'dup:t/0' is defined in application 'app_b', but the application is not a dependency of 'app_a' (defined in 'cell//app_a:lib').
+%%                    | 💡 <suppression>
+  main() -> ok.
+//- /app_b/src/dup.erl app:app_b buck_target:cell//app_b:lib
+  -module(dup).
+%%        ^^^ warning: W0045: A module with this name exists elsewhere
+%%          | 💡 <suppression>
+  -type t() :: ok.
+  -export_type([t/0]).
+//- /app_c/src/dup.erl app:app_c buck_target:cell//app_c:lib
+  -module(dup).
+%%        ^^^ warning: W0045: A module with this name exists elsewhere
+%%          | 💡 <suppression>
             "#,
         )
     }
