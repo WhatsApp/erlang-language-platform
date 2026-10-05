@@ -18,6 +18,8 @@
 
 use std::borrow::Cow;
 
+use elp_eqwalizer::db::EQWALIZER_SPECS;
+use elp_eqwalizer::db::EQWALIZER_TYPES;
 use elp_ide_db::elp_base_db::AppData;
 use elp_ide_db::elp_base_db::DepKind;
 use elp_ide_db::elp_base_db::FileId;
@@ -75,6 +77,15 @@ impl GenericLinter for UnavailableTypeLinter {
     ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
         let sema = ctx.sema;
         let file_id = ctx.file_id;
+        // eqWAlizer's override modules give specs to third-party code they
+        // cannot depend on, so they have to name types from outside their
+        // dependencies.
+        if let Some(module) = sema.module_name(file_id)
+            && (module == *EQWALIZER_SPECS || module == *EQWALIZER_TYPES)
+        {
+            return None;
+        }
+
         // Early return if we don't have app data - can't determine type availability
         let referencing_app_data = sema.db.file_app_data(file_id)?;
 
@@ -501,6 +512,34 @@ mod tests {
         check_diagnostics(
             r#"
 //- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib distributed_deps:not_a_project_app
+  -module(main).
+  -spec main() -> app_b:t().
+%%                ^^^^^^^ warning: W0059: The type 'app_b:t/0' is defined in application 'app_b', but the application is not a dependency of 'app_a' (defined in 'cell//app_a:lib').
+%%                      | 💡 <suppression>
+  main() -> ok.
+//- /app_b/src/app_b.erl app:app_b buck_target:cell//app_b:lib
+  -module(app_b).
+  -type t() :: ok.
+  -export_type([t/0]).
+            "#,
+        )
+    }
+
+    #[test]
+    fn eqwalizer_override_modules_are_not_reported() {
+        // `eqwalizer_specs` and `eqwalizer_types` provide specs for modules
+        // their application cannot depend on; other modules of the same
+        // application are still checked.
+        check_diagnostics(
+            r#"
+//- /app_a/src/eqwalizer_specs.erl app:app_a buck_target:cell//app_a:lib
+  -module(eqwalizer_specs).
+  -spec 'app_b:f'() -> app_b:t().
+  'app_b:f'() -> ok.
+//- /app_a/src/eqwalizer_types.erl app:app_a buck_target:cell//app_a:lib
+  -module(eqwalizer_types).
+  -type 'app_b:u'() :: app_b:t().
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib
   -module(main).
   -spec main() -> app_b:t().
 %%                ^^^^^^^ warning: W0059: The type 'app_b:t/0' is defined in application 'app_b', but the application is not a dependency of 'app_a' (defined in 'cell//app_a:lib').

@@ -379,7 +379,8 @@ fn transitive_stub_bytes(
         .map(|stub| Arc::new(stub.to_bytes()))
 }
 
-static EQWALIZER_TYPES: LazyLock<ModuleName> = LazyLock::new(|| ModuleName::new("eqwalizer_types"));
+pub static EQWALIZER_TYPES: LazyLock<ModuleName> =
+    LazyLock::new(|| ModuleName::new("eqwalizer_types"));
 
 fn custom_types(
     db: &dyn EqwalizerDiagnosticsDatabase,
@@ -553,7 +554,8 @@ fn overloaded_fun_spec_bytes(
         .map(|t| t.map(|t| Arc::new(t.to_bytes())))
 }
 
-static EQWALIZER_SPECS: LazyLock<ModuleName> = LazyLock::new(|| ModuleName::new("eqwalizer_specs"));
+pub static EQWALIZER_SPECS: LazyLock<ModuleName> =
+    LazyLock::new(|| ModuleName::new("eqwalizer_specs"));
 
 fn custom_fun_specs(
     db: &dyn EqwalizerDiagnosticsDatabase,
