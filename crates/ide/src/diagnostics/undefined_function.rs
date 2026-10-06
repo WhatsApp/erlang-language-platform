@@ -18,10 +18,19 @@
 
 use std::borrow::Cow;
 
+use elp_ide_db::elp_base_db::FileId;
+use elp_ide_ssr::Match;
+use elp_ide_ssr::SubId;
+use elp_ide_ssr::match_pattern_in_file_functions;
 use elp_syntax::SmolStr;
+use hir::AnyExprId;
 use hir::Expr;
 use hir::Module;
+use hir::Name;
 use hir::Semantic;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
+use hir::fold::Strategy;
 use hir::known;
 
 use super::DiagnosticCode;
@@ -118,7 +127,10 @@ impl FunctionCallLinter for UndefinedFunctionLinter {
                         // it means the module doesn't exist and we should report it.
                         // If it's a dynamic expression (e.g., a variable or function call),
                         // we can't determine at compile time whether it's defined.
-                        if module.as_atom().is_some() {
+                        if let Some(atom) = module.as_atom() {
+                            if is_non_strict_mock(sema, def_fb.file_id(), &atom.as_name()) {
+                                return None;
+                            }
                             // Static module name that doesn't exist - report as undefined
                             Some(context.target.label(arity, &def_fb.body()))
                         } else {
@@ -135,6 +147,49 @@ impl FunctionCallLinter for UndefinedFunctionLinter {
 }
 
 pub static LINTER: UndefinedFunctionLinter = UndefinedFunctionLinter;
+
+static MOCKED_VAR: &str = "_@Mocked";
+
+/// Whether the file creates `module` with `meck:new(Module, Options)` where
+/// `Options` is a list, written out in the call, that contains `non_strict`,
+/// which is how meck mocks a module that does not exist.
+fn is_non_strict_mock(sema: &Semantic, file_id: FileId, module: &Name) -> bool {
+    let matches = match_pattern_in_file_functions(
+        sema,
+        Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        file_id,
+        &format!("ssr: meck:new({MOCKED_VAR}, [_@@Before, non_strict, _@@After])."),
+    );
+    matches
+        .matches
+        .iter()
+        .any(|m| mocked_modules(sema, m).contains(module))
+}
+
+/// The module names bound to `MOCKED_VAR`: `meck:new/2`'s first argument is a
+/// module or a list of modules.
+fn mocked_modules(sema: &Semantic, m: &Match) -> Vec<Name> {
+    let Some(body) = m.matched_node_body.get_body(sema) else {
+        return vec![];
+    };
+    let Some(SubId::AnyExprId(AnyExprId::Expr(mocked))) = m
+        .get_placeholder_match(MOCKED_VAR)
+        .and_then(|p| p.code_id().cloned())
+    else {
+        return vec![];
+    };
+    let atom_name = |expr: &Expr| expr.as_atom().map(|atom| atom.as_name());
+    match &body[mocked] {
+        Expr::List { exprs, .. } => exprs
+            .iter()
+            .filter_map(|expr| atom_name(&body[*expr]))
+            .collect(),
+        expr => atom_name(expr).into_iter().collect(),
+    }
+}
 
 fn is_automatically_added(sema: &Semantic, module: Module, function: &Expr, arity: u32) -> bool {
     // If the module defines callbacks, {behaviour,behavior}_info are automatically defined
@@ -157,6 +212,9 @@ mod tests {
     use expect_test::expect;
 
     use crate::DiagnosticsConfig;
+    use crate::diagnostics::DiagnosticCode;
+    use crate::diagnostics::LintConfig;
+    use crate::diagnostics::LinterConfig;
     use crate::tests::check_diagnostics_with_config;
     use crate::tests::check_fix;
 
@@ -472,6 +530,104 @@ exists() -> ok.
     -module(main).
     main(Callback) ->
       main:Callback().
+            "#,
+        )
+    }
+
+    fn check_diagnostics_in_tests(fixture: &str) {
+        let mut lint_config = LintConfig::default();
+        lint_config.linters.insert(
+            DiagnosticCode::UndefinedFunction,
+            LinterConfig {
+                include_tests: Some(true),
+                ..Default::default()
+            },
+        );
+        let config = DiagnosticsConfig::default()
+            .disable(DiagnosticCode::NoSize)
+            .configure_diagnostics(&lint_config, &[], &[])
+            .unwrap();
+        check_diagnostics_with_config(config, fixture)
+    }
+
+    #[test]
+    fn test_non_strict_mock() {
+        check_diagnostics_in_tests(
+            r#"
+//- /my_app/test/main_SUITE.erl extra:test
+  -module(main_SUITE).
+  -define(MOCK, macro_mock).
+  init_per_suite(Config) ->
+    meck:new(mocked, [non_strict]),
+    meck:new([mocked_a, mocked_b], [no_link, non_strict]),
+    meck:new(mocked_c, [non_strict, passthrough]),
+    meck:new(?MOCK, [non_strict]),
+    meck:new(strict_mock, [no_link]),
+    Config.
+  main() ->
+    mocked:run(),
+    mocked_a:run(),
+    mocked_b:run(),
+    mocked_c:run(),
+    macro_mock:run(),
+    strict_mock:run().
+%%  ^^^^^^^^^^^^^^^ warning: W0017: Function 'strict_mock:run/0' is undefined.
+%%                | 💡 <suppression>
+//- /my_app/src/meck.erl
+  -module(meck).
+  -export([new/2]).
+  new(_, _) -> ok.
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_non_strict_mock_limits() {
+        check_diagnostics_in_tests(
+            r#"
+//- /my_app/test/main_SUITE.erl extra:test
+  -module(main_SUITE).
+  init_per_suite(Config) ->
+    Options = [non_strict],
+    meck:new(options_in_variable, Options),
+    meck:new(existing, [non_strict]),
+    Config.
+  main() ->
+    options_in_variable:run(),
+%%  ^^^^^^^^^^^^^^^^^^^^^^^ warning: W0017: Function 'options_in_variable:run/0' is undefined.
+%%                        | 💡 <suppression>
+    existing:missing().
+%%  ^^^^^^^^^^^^^^^^ warning: W0017: Function 'existing:missing/0' is undefined.
+%%                 | 💡 <suppression>
+//- /my_app/src/existing.erl
+  -module(existing).
+//- /my_app/src/meck.erl
+  -module(meck).
+  -export([new/2]).
+  new(_, _) -> ok.
+            "#,
+        )
+    }
+
+    #[test]
+    fn test_non_strict_mock_in_other_file() {
+        check_diagnostics_in_tests(
+            r#"
+//- /my_app/test/main_SUITE.erl extra:test
+  -module(main_SUITE).
+  main() ->
+    mocked:run().
+%%  ^^^^^^^^^^ warning: W0017: Function 'mocked:run/0' is undefined.
+%%           | 💡 <suppression>
+//- /my_app/test/other_SUITE.erl extra:test
+  -module(other_SUITE).
+  init_per_suite(Config) ->
+    meck:new(mocked, [non_strict]),
+    Config.
+//- /my_app/src/meck.erl
+  -module(meck).
+  -export([new/2]).
+  new(_, _) -> ok.
             "#,
         )
     }
