@@ -185,6 +185,30 @@ mod tests {
     }
 
     #[test]
+    fn test_deprecated_function_fun_arity() {
+        check_diagnostics(
+            r#"
+  -module(main).
+  -deprecated([not_ok_to_use/0]).
+  -deprecated(also_not_ok/1).
+  not_ok_to_use() ->
+    ok.
+  also_not_ok(_) ->
+    ok.
+  main() ->
+    not_ok_to_use(),
+%%  ^^^^^^^^^^^^^ warning: W0016: Function 'not_ok_to_use/0' is deprecated.
+%%              | 💡 Add xref ignore for all calls to this function
+%%              | 💡 <suppression>
+    also_not_ok(1).
+%%  ^^^^^^^^^^^ warning: W0016: Function 'also_not_ok/1' is deprecated.
+%%            | 💡 Add xref ignore for all calls to this function
+%%            | 💡 <suppression>
+            "#,
+        )
+    }
+
+    #[test]
     fn test_deprecated_function_remote() {
         check_diagnostics(
             r#"

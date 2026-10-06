@@ -640,6 +640,21 @@ fn deprecated() {
     )
 }
 
+#[test]
+fn deprecated_fun_arity() {
+    check(
+        r#"
+                    -deprecated(foo/1).
+                    -deprecated([foo/0, {bar, 1}, baz/2]).
+"#,
+        expect![[r#"
+            -deprecated({foo, 1}). %% cond: None
+
+            -deprecated([{foo, 0},{bar, 1},{baz, 2}]). %% cond: None
+        "#]],
+    )
+}
+
 // ============================================================================
 // Condition Evaluation Tests
 // ============================================================================
