@@ -107,7 +107,7 @@ pub(crate) fn run(
     }
     compute_diagnostics(
         metadata,
-        &mut consumed,
+        &consumed,
         config,
         file_id,
         line_index,
@@ -326,6 +326,11 @@ fn build_diagnostic_codeless(
 /// considered redundant: each must be currently reportable AND not
 /// consumed. Returns `None` if the annotation is out of scope entirely
 /// (non-native, etc.).
+///
+/// W0081 itself is never reported: a `% elp:ignore W0081` is written for
+/// an annotation that is redundant only in some builds or configurations
+/// (e.g. one naming a Meta-only code, unknown to the open-source build),
+/// so wherever it suppresses nothing it is still doing its job.
 fn redundant_codes_of(
     annotation: &Annotation,
     annotation_idx: usize,
@@ -342,7 +347,9 @@ fn redundant_codes_of(
         .codes
         .iter()
         .filter(|code| {
-            code_reportable(code) && !consumed.contains(&(annotation_idx, (*code).clone()))
+            **code != DiagnosticCode::RedundantSuppression
+                && code_reportable(code)
+                && !consumed.contains(&(annotation_idx, (*code).clone()))
         })
         .cloned()
         .collect();
@@ -361,23 +368,13 @@ fn all_codes_redundant(annotation: &Annotation, redundant: &[DiagnosticCode]) ->
 
 /// Compute the W0081 diagnostics for a file.
 ///
-/// Iteratively expands the `consumed` set: each round, we compute candidate
-/// W0081 diagnostics for currently-stale (annotation, code) pairs. A
-/// candidate emitted at code Ci's range inside annotation A's comment can
-/// itself be consumed by another annotation B that lists W0081 in its codes
-/// and whose suppression range covers A's line. When that happens, B is
-/// recorded as consumed for code W0081 and is therefore not itself flagged.
-/// Iterating to a fixed point handles `% elp:ignore W0081` placed above an
-/// intentionally-redundant annotation.
-///
-/// After the fixed point is reached, candidates that would themselves be
-/// suppressed by an annotation (i.e. `should_be_suppressed`) are filtered
-/// out — this is the secondary mechanism by which `% elp:ignore W0081`
-/// silences W0081 emitted on a codeless annotation (codeless annotations
-/// have no codes to participate in the consumption-based iteration).
+/// Candidates that an `% elp:ignore W0081` annotation covers are dropped,
+/// mirroring the retain-time `should_be_suppressed` filtering for normal
+/// diagnostics. This lets users keep an intentionally-redundant annotation
+/// by placing an `% elp:ignore W0081` above it.
 fn compute_diagnostics(
     metadata: &Metadata,
-    consumed: &mut Consumed,
+    consumed: &Consumed,
     config: &DiagnosticsConfig,
     file_id: FileId,
     line_index: &LineIndex,
@@ -385,76 +382,37 @@ fn compute_diagnostics(
     code_reportable: &dyn Fn(&DiagnosticCode) -> bool,
     inactive_ranges: &[TextRange],
 ) -> Vec<Diagnostic> {
-    // Termination: `consumed` is insert-only (entries are never removed), and
-    // every candidate emitted in this loop carries `DiagnosticCode::
-    // RedundantSuppression`, so each annotation contributes at most one
-    // `(idx, W0081)` entry. Each iteration therefore either grows `consumed`
-    // by ≥1 or breaks via the `consumed.len() == prev_len` check, giving at
-    // most `annotations + 1` iterations. The `debug_assert!` is a tripwire
-    // for future refactors that break either invariant (monotonicity, or
-    // only-W0081-inserted-here).
-    let max_iterations = metadata.elp_annotations_indexed().count() + 1;
     let mut candidates: Vec<Diagnostic> = Vec::new();
-    for iteration in 0.. {
-        debug_assert!(
-            iteration < max_iterations,
-            "redundant_suppression fixed-point loop exceeded {max_iterations} iterations; \
-             `consumed` is no longer monotone or the bound is wrong",
-        );
-        candidates = Vec::new();
-        for (idx, annotation) in metadata.elp_annotations_indexed() {
-            // An annotation in a conditionally-excluded leg suppresses code
-            // that was never analysed; the absence of a diagnostic there does
-            // not make the suppression redundant.
-            if in_inactive_code(annotation, inactive_ranges) {
-                continue;
-            }
-            if annotation.codes.is_empty() {
-                // Codeless: emit one diagnostic per annotation. Codeless
-                // annotations have no codes to enter `consumed`, so they are
-                // re-emitted every iteration with the same range — harmless
-                // because the loop only checks `consumed.len()` to decide
-                // when to stop.
-                if annotation.is_native_only() {
-                    candidates.push(build_diagnostic_codeless(
-                        annotation, file_id, line_index, file_text,
-                    ));
-                }
-                continue;
-            }
-            let Some(redundant) = redundant_codes_of(annotation, idx, consumed, code_reportable)
-            else {
-                continue;
-            };
-            let all_redundant = all_codes_redundant(annotation, &redundant);
-            for code in &redundant {
-                candidates.push(build_diagnostic_for_code(
-                    annotation,
-                    code,
-                    all_redundant,
-                    file_id,
-                    line_index,
-                    file_text,
+    for (idx, annotation) in metadata.elp_annotations_indexed() {
+        // An annotation in a conditionally-excluded leg suppresses code
+        // that was never analysed; the absence of a diagnostic there does
+        // not make the suppression redundant.
+        if in_inactive_code(annotation, inactive_ranges) {
+            continue;
+        }
+        if annotation.codes.is_empty() {
+            if annotation.is_native_only() {
+                candidates.push(build_diagnostic_codeless(
+                    annotation, file_id, line_index, file_text,
                 ));
             }
+            continue;
         }
-
-        let prev_len = consumed.len();
-        for d in &candidates {
-            record_consumed_annotations(metadata, d, consumed);
-        }
-        if consumed.len() == prev_len {
-            break;
+        let Some(redundant) = redundant_codes_of(annotation, idx, consumed, code_reportable) else {
+            continue;
+        };
+        let all_redundant = all_codes_redundant(annotation, &redundant);
+        for code in &redundant {
+            candidates.push(build_diagnostic_for_code(
+                annotation,
+                code,
+                all_redundant,
+                file_id,
+                line_index,
+                file_text,
+            ));
         }
     }
-
-    // Final pass: drop candidates that an `% elp:ignore W0081` annotation
-    // would suppress. This mirrors the existing retain-time
-    // `should_be_suppressed` filtering for normal diagnostics, and lets
-    // users keep an intentionally-redundant annotation by placing an
-    // `% elp:ignore W0081` above it. Particularly important for codeless
-    // annotations, which don't participate in the iterative consumption
-    // loop above.
     candidates.retain(|d| !d.should_be_suppressed(metadata, config));
     candidates
 }
@@ -728,6 +686,51 @@ foo() ->
 
 % elp:ignore W0081
 % elp:ignore W0007
+test() ->
+  ok.
+"#,
+        );
+    }
+
+    #[test]
+    fn w0081_suppression_is_never_redundant() {
+        // A `% elp:ignore W0081` is written for an annotation that is
+        // redundant only in some builds or configurations. `XY123` stands in
+        // for a code this build does not know (e.g. a Meta-only code in the
+        // open-source build), which leaves its annotation codeless; where
+        // the annotation below is live, or there is none, the W0081
+        // suppression must not be flagged either.
+        check_diagnostics(
+            r#"
+-module(main).
+
+% elp:ignore W0081
+% elp:ignore XY123 (some_lint) -- reason
+test() ->
+  ok.
+
+baz() ->
+  % elp:ignore W0081
+  % elp:ignore W0007
+  Foo = 1,
+  ok.
+
+% elp:fixme W0081
+qux() ->
+  ok.
+"#,
+        );
+    }
+
+    #[test]
+    fn other_codes_next_to_w0081_still_flagged() {
+        check_diagnostics(
+            r#"
+-module(main).
+
+% elp:ignore W0081 W0007
+%%                 ^^^^^ warning: W0081: Redundant suppression: no `W0007 (trivial_match)` diagnostic in suppressed range
+%%                     | 💡 Remove redundant code `W0007`
 test() ->
   ok.
 "#,
