@@ -29,8 +29,7 @@
     undefined | {ok, eqwalizer:dynamic()}.
 'application:get_env'(_, _) -> error(eqwalizer_specs).
 
--spec 'application:get_env'(App :: atom(), Param :: atom(), Default :: term()) ->
-    eqwalizer:dynamic().
+-spec 'application:get_env'(App :: atom(), Param :: atom(), Default) -> eqwalizer:dynamic() | Default.
 'application:get_env'(_, _, _) -> error(eqwalizer_specs).
 
 -spec 'application:get_key'(Key :: atom()) -> undefined | {ok, eqwalizer:dynamic()}.
@@ -38,6 +37,27 @@
 
 -spec 'application:get_key'(App :: atom(), Key :: atom()) -> undefined | {ok, eqwalizer:dynamic()}.
 'application:get_key'(_, _) -> error(eqwalizer_specs).
+
+-spec 'application:info'() -> [{atom(), eqwalizer:dynamic()}].
+'application:info'() -> error(eqwalizer_specs).
+
+%% -------- argparse --------
+
+-type argparse_parser_options() :: #{
+    prefixes => [char()],
+    default => term(),
+    progname => string() | atom(),
+    command => [string()],
+    columns => pos_integer()
+}.
+
+-spec 'argparse:run'(Args :: [string()], argparse:command(), argparse_parser_options()) -> eqwalizer:dynamic().
+'argparse:run'(_, _, _) -> error(eqwalizer_specs).
+
+%% -------- array --------
+
+-spec 'array:new'() -> array:array(none()).
+'array:new'() -> error(eqwalizer_specs).
 
 %% -------- code --------
 
@@ -57,6 +77,13 @@
     | error
     | {error, eqwalizer:dynamic(), eqwalizer:dynamic()}.
 'compile:forms'(_) -> error(eqwalizer_specs).
+
+-spec 'compile:forms'(compile:forms(), [compile:option()]) ->
+    {ok, module(), binary()}
+    | {ok, module(), binary(), eqwalizer:dynamic()}
+    | error
+    | {error, eqwalizer:dynamic(), eqwalizer:dynamic()}.
+'compile:forms'(_, _) -> error(eqwalizer_specs).
 
 %% -------- crypto --------
 
@@ -93,11 +120,53 @@
         OutPlainText :: binary().
 'crypto:crypto_one_time_aead'(_, _, _, _, _, _, _) -> error(eqwalizer_specs).
 
+%% -------- dets --------
+
+-spec 'dets:lookup'(dets:tab_name(), term()) -> [Tuple] | {'error', term()} when Tuple :: eqwalizer:dynamic().
+'dets:lookup'(_, _) -> error(eqwalizer_specs).
+
+%% -------- digraph --------
+
+-spec 'digraph:add_vertex'(G :: digraph:graph(), V :: digraph:vertex(), Label :: digraph:label()) ->
+    V :: eqwalizer:dynamic().
+'digraph:add_vertex'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'digraph:edge'(G :: digraph:graph(), E :: digraph:edge()) ->
+    {E :: eqwalizer:dynamic(), V1 :: eqwalizer:dynamic(), V2 :: eqwalizer:dynamic(), Label :: eqwalizer:dynamic()}
+    | 'false'.
+'digraph:edge'(_, _) -> error(eqwalizer_specs).
+
+-spec 'digraph:vertex'(G :: digraph:graph(), V :: digraph:vertex()) ->
+    {V :: eqwalizer:dynamic(), Label :: eqwalizer:dynamic()} | 'false'.
+'digraph:vertex'(_, _) -> error(eqwalizer_specs).
+
+%% -------- digraph_utils --------
+
+-spec 'digraph_utils:cyclic_strong_components'(digraph:graph()) -> [[eqwalizer:dynamic()]].
+'digraph_utils:cyclic_strong_components'(_) -> error(eqwalizer_specs).
+
 %% -------- epp_dodger --------
 
 -spec 'epp_dodger:parse_file'(file:filename_all()) ->
     {ok, [erl_syntax:syntaxTree()]} | {error, erl_scan:error_info()}.
 'epp_dodger:parse_file'(_) -> error(eqwalizer_specs).
+
+%% -------- erl_parse --------
+
+-spec 'erl_parse:map_anno'(fun((eqwalizer:dynamic()) -> eqwalizer:dynamic()), AST) -> AST.
+'erl_parse:map_anno'(_, _) -> error(eqwalizer_specs).
+
+-spec 'erl_parse:parse_term'([erl_scan:token()]) ->
+    {ok, eqwalizer:dynamic()} | {error, erl_parse:error_info()}.
+'erl_parse:parse_term'(_) -> error(eqwalizer_specs).
+
+%% -------- erl_syntax --------
+
+-spec 'erl_syntax:concrete'(erl_syntax:syntaxTree()) -> eqwalizer:dynamic().
+'erl_syntax:concrete'(_) -> error(eqwalizer_specs).
+
+-spec 'erl_syntax:revert'(erl_syntax:syntaxTree()) -> eqwalizer:dynamic().
+'erl_syntax:revert'(_) -> error(eqwalizer_specs).
 
 %% -------- erl_syntax_lib --------
 
@@ -106,13 +175,16 @@
 ) -> Acc.
 'erl_syntax_lib:fold'(_, _, _) -> error(eqwalizer_specs).
 
+-spec 'erl_syntax_lib:fold_subtrees'(fun((erl_syntax:syntaxTree(), Acc) -> Acc), Acc, erl_syntax:syntaxTree()) -> Acc.
+'erl_syntax_lib:fold_subtrees'(_, _, _) -> error(eqwalizer_specs).
+
 %% -------- erlang --------
 
 -spec 'erlang:abs'(number()) -> number().
 'erlang:abs'(_) -> error(eqwalizer_specs).
 
--spec 'erlang:apply'(Fun, Args) -> eqwalizer:dynamic() when
-    Fun :: function(),
+-spec 'erlang:apply'(Fun, Args) -> Ret when
+    Fun :: fun((...) -> Ret),
     Args :: [term()].
 'erlang:apply'(_, _) -> error(eqwalizer_specs).
 
@@ -132,7 +204,13 @@
     (function(), arity) -> {arity, non_neg_integer()};
     (function(), module) -> {module, module()};
     (function(), name) -> {name, atom()};
-    (function(), type) -> {type, local | external}.
+    (function(), type) -> {type, local | external};
+    (function(), env) -> {env, [eqwalizer:dynamic()]};
+    (function(), index) -> {index, non_neg_integer() | undefined};
+    (function(), new_index) -> {new_index, non_neg_integer() | undefined};
+    (function(), new_uniq) -> {new_uniq, binary() | undefined};
+    (function(), uniq) -> {uniq, integer() | undefined};
+    (function(), pid) -> {pid, pid() | undefined}.
 'erlang:fun_info'(_, _) -> error(eqwalizer_specs).
 
 -spec 'erlang:hd'([A, ...]) -> A.
@@ -179,6 +257,109 @@
 
 -spec 'erlang:tl'([A]) -> [A].
 'erlang:tl'(_) -> error(eqwalizer_specs).
+
+-spec 'erlang:binary_to_term'(binary(), [safe | used]) -> eqwalizer:dynamic().
+'erlang:binary_to_term'(_, _) -> error(eqwalizer_specs).
+
+-spec 'erlang:list_to_existing_atom'(string()) -> eqwalizer:dynamic(atom()).
+'erlang:list_to_existing_atom'(_) -> error(eqwalizer_specs).
+
+-spec 'erlang:binary_to_existing_atom'(binary()) -> eqwalizer:dynamic(atom()).
+'erlang:binary_to_existing_atom'(_) -> error(eqwalizer_specs).
+
+-spec 'erlang:binary_to_existing_atom'(binary(), latin1 | unicode | utf8) -> eqwalizer:dynamic(atom()).
+'erlang:binary_to_existing_atom'(_, _) -> error(eqwalizer_specs).
+
+%% -------- erpc --------
+
+-spec 'erpc:call'(Node, Fun) -> Result when
+    Node :: node(),
+    Fun :: fun(() -> Result).
+'erpc:call'(_, _) -> error(eqwalizer_specs).
+
+-spec 'erpc:call'(Node, Fun, TimeoutOrOptions) -> Result when
+    Node :: node(),
+    Fun :: fun(() -> Result),
+    TimeoutOrOptions :: erpc:timeout_time() | #{timeout => erpc:timeout_time(), always_spawn => boolean()}.
+'erpc:call'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'erpc:call'(Node, Module, Function, Args) -> Result when
+    Node :: node(),
+    Module :: module(),
+    Function :: atom(),
+    Args :: [term()],
+    Result :: eqwalizer:dynamic().
+'erpc:call'(_, _, _, _) -> error(eqwalizer_specs).
+
+-spec 'erpc:call'(Node, Module, Function, Args, TimeoutOrOptions) -> Result when
+    Node :: node(),
+    Module :: module(),
+    Function :: atom(),
+    Args :: [term()],
+    TimeoutOrOptions :: erpc:timeout_time() | #{timeout => erpc:timeout_time(), always_spawn => boolean()},
+    Result :: eqwalizer:dynamic().
+'erpc:call'(_, _, _, _, _) -> error(eqwalizer_specs).
+
+-spec 'erpc:multicall'(Nodes, Fun) -> Result when
+    Nodes :: [atom()],
+    Fun :: function(),
+    Result :: eqwalizer:dynamic().
+'erpc:multicall'(_, _) -> error(eqwalizer_specs).
+
+-spec 'erpc:multicall'(Nodes, Module, Function, Args) -> [{ok, Res} | Error] when
+    Nodes :: [node()],
+    Module :: module(),
+    Function :: atom(),
+    Args :: [term()],
+    Res :: eqwalizer:dynamic(),
+    Error ::
+        {throw, Throw :: term()}
+        | {exit, {exception, Reason :: term()}}
+        | {error, {exception, Reason :: term(), StackTrace :: [Stack]}}
+        | {exit, {signal, Reason :: term()}}
+        | {error, {erpc, Reason :: term()}},
+    Stack ::
+        {
+            Module :: atom(),
+            Function :: atom(),
+            Arity :: arity() | (Args :: [term()]),
+            Location :: [
+                {file, Filename :: string()}
+                | {line, Line :: pos_integer()}
+            ]
+        }.
+'erpc:multicall'(_, _, _, _) -> error(eqwalizer_specs).
+
+-spec 'erpc:multicall'(Nodes, Module, Function, Args, Timeout) -> [{ok, Res} | Error] when
+    Nodes :: [node()],
+    Module :: module(),
+    Function :: atom(),
+    Args :: [term()],
+    Res :: eqwalizer:dynamic(),
+    Timeout :: erpc:timeout_time(),
+    Error ::
+        {throw, Throw :: term()}
+        | {exit, {exception, Reason :: term()}}
+        | {error, {exception, Reason :: term(), StackTrace :: [Stack]}}
+        | {exit, {signal, Reason :: term()}}
+        | {error, {erpc, Reason :: term()}},
+    Stack ::
+        {
+            Module :: atom(),
+            Function :: atom(),
+            Arity :: arity() | (Args :: [term()]),
+            Location :: [
+                {file, Filename :: string()}
+                | {line, Line :: pos_integer()}
+            ]
+        }.
+'erpc:multicall'(_, _, _, _, _) -> error(eqwalizer_specs).
+
+-spec 'erpc:receive_response'(RequestId, Timeout) -> Result when
+    RequestId :: erpc:request_id(),
+    Timeout :: erpc:timeout_time(),
+    Result :: eqwalizer:dynamic().
+'erpc:receive_response'(_, _) -> error(eqwalizer_specs).
 
 %% -------- ets --------
 
@@ -238,10 +419,10 @@
 -spec 'ets:lookup_element'(ets:table(), term(), pos_integer()) -> eqwalizer:dynamic().
 'ets:lookup_element'(_, _, _) -> error(eqwalizer_specs).
 
--spec 'ets:lookup_element'(ets:table(), term(), pos_integer(), term()) -> eqwalizer:dynamic().
+-spec 'ets:lookup_element'(ets:table(), term(), pos_integer(), Default) -> eqwalizer:dynamic() | Default.
 'ets:lookup_element'(_, _, _, _) -> error(eqwalizer_specs).
 
--spec 'ets:match'(ets:table(), ets:match_pattern()) -> [eqwalizer:dynamic()].
+-spec 'ets:match'(ets:table(), ets:match_pattern()) -> [[eqwalizer:dynamic()]].
 'ets:match'(_, _) -> error(eqwalizer_specs).
 
 -spec 'ets:select'(EtsContinuation) ->
@@ -303,6 +484,9 @@ when
     Default :: tuple().
 'ets:update_counter'(_, _, _, _) -> error(eqwalizer_specs).
 
+-spec 'ets:match_object'(ets:table(), ets:match_pattern()) -> [eqwalizer:dynamic()].
+'ets:match_object'(_, _) -> error(eqwalizer_specs).
+
 %% -------- file --------
 
 -spec 'file:consult'(Filename) -> {ok, Terms} | {error, Reason} when
@@ -327,6 +511,36 @@ when
     Filenames :: [string()],
     Reason :: file:posix() | badarg.
 'file:list_dir_all'(_) -> error(eqwalizer_specs).
+
+-spec 'file:pread'(IoDevice, LocNums) -> {ok, DataL} | eof | {error, Reason} when
+    IoDevice :: file:io_device(),
+    LocNums :: [{Location :: file:location(), Number :: non_neg_integer()}],
+    DataL :: [Data],
+    Data :: eqwalizer:dynamic(string() | binary()) | eof,
+    Reason :: file:posix() | badarg | terminated.
+'file:pread'(_, _) -> error(eqwalizer_specs).
+
+-spec 'file:read_line'(IoDevice) -> {ok, Data} | eof | {error, Reason} when
+    IoDevice :: file:io_device() | io:device(),
+    Data :: eqwalizer:dynamic(string() | binary()),
+    Reason ::
+        file:posix()
+        | badarg
+        | terminated
+        | {no_translation, unicode, latin1}.
+'file:read_line'(_) -> error(eqwalizer_specs).
+
+%% -------- filelib --------
+
+-spec 'filelib:fold_files'(Dir, RegExp, Recursive, Fun, Acc) -> Acc when
+    Dir :: file:name_all(),
+    RegExp :: string(),
+    Recursive :: boolean(),
+    Fun :: fun((F :: file:filename(), Acc) -> Acc).
+'filelib:fold_files'(_, _, _, _, _) -> error(eqwalizer_specs).
+
+-spec 'filelib:safe_relative_path'(file:name_all(), file:name_all()) -> eqwalizer:dynamic().
+'filelib:safe_relative_path'(_, _) -> error(eqwalizer_specs).
 
 %% -------- filename --------
 
@@ -355,6 +569,32 @@ when
     (binary(), binary()) -> binary().
 'filename:rootname'(_, _) -> error(eqwalizer_specs).
 
+-spec 'filename:basename'
+    (string(), string()) -> string();
+    (binary(), binary()) -> binary();
+    (binary(), string()) -> binary();
+    (string(), binary()) -> binary().
+'filename:basename'(_, _) -> error(eqwalizer_specs).
+
+-spec 'filename:split'
+    (io_lib:chars() | atom()) -> [string()];
+    (binary()) -> [binary()].
+'filename:split'(_) -> error(eqwalizer_specs).
+
+-spec 'filename:absname_join'(file:name_all(), file:name_all()) -> eqwalizer:dynamic().
+'filename:absname_join'(_, _) -> error(eqwalizer_specs).
+
+%% -------- gen_event --------
+
+-type gen_event_emgr_ref() ::
+    atom() | {atom(), atom()} | {'global', term()} | {'via', atom(), term()} | pid().
+
+-spec 'gen_event:call'(gen_event_emgr_ref(), gen_event:handler(), term()) -> eqwalizer:dynamic().
+'gen_event:call'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'gen_event:call'(gen_event_emgr_ref(), gen_event:handler(), term(), timeout()) -> eqwalizer:dynamic().
+'gen_event:call'(_, _, _, _) -> error(eqwalizer_specs).
+
 %% -------- gen_server --------
 
 -spec 'gen_server:call'(gen_server:server_ref(), term()) -> eqwalizer:dynamic().
@@ -362,6 +602,18 @@ when
 
 -spec 'gen_server:call'(gen_server:server_ref(), term(), timeout()) -> eqwalizer:dynamic().
 'gen_server:call'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'gen_server:multi_call'(Name :: atom(), Request :: term()) ->
+    {[{node(), eqwalizer:dynamic()}], [node()]}.
+'gen_server:multi_call'(_, _) -> error(eqwalizer_specs).
+
+-spec 'gen_server:multi_call'(Nodes :: [node()], Name :: atom(), Request :: term()) ->
+    {[{node(), eqwalizer:dynamic()}], [node()]}.
+'gen_server:multi_call'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'gen_server:multi_call'(Nodes :: [node()], Name :: atom(), Request :: term(), Timeout :: timeout()) ->
+    {[{node(), eqwalizer:dynamic()}], [node()]}.
+'gen_server:multi_call'(_, _, _, _) -> error(eqwalizer_specs).
 
 %% -------- gen_statem --------
 
@@ -371,6 +623,19 @@ when
 -spec 'gen_statem:call'(gen_statem:server_ref(), term(), Timeout) -> eqwalizer:dynamic() when
     Timeout :: timeout() | {clean_timeout, timeout()} | {dirty_timeout, timeout()}.
 'gen_statem:call'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'gen_statem:check_response'(Msg, ReqIdCollection, Delete) -> Result when
+    Msg :: term(),
+    ReqIdCollection :: gen_statem:request_id_collection(),
+    Delete :: boolean(),
+    Response ::
+        {reply, Reply :: eqwalizer:dynamic()}
+        | {error, {Reason :: eqwalizer:dynamic(), gen_statem:server_ref()}},
+    Result ::
+        {Response, Label :: eqwalizer:dynamic(), NewReqIdCollection :: gen_statem:request_id_collection()}
+        | 'no_request'
+        | 'no_reply'.
+'gen_statem:check_response'(_, _, _) -> error(eqwalizer_specs).
 
 %% -------- gb_sets --------
 
@@ -384,6 +649,75 @@ when
 
 -spec 'gb_trees:empty'() -> gb_trees:tree(none(), none()).
 'gb_trees:empty'() -> error(eqwalizer_specs).
+
+-spec 'gb_trees:take'(Key, Tree) -> {Value, Tree} when Tree :: gb_trees:tree(Key, Value).
+'gb_trees:take'(_, _) -> error(eqwalizer_specs).
+
+%% -------- httpc --------
+
+-type httpc_method() :: head | get | put | patch | post | trace | options | delete.
+
+-type httpc_header() :: {Field :: [byte()], Value :: binary() | iolist()}.
+
+-type httpc_request_body() ::
+    iolist()
+    | binary()
+    | {fun((Acc :: term()) -> eof | {ok, iolist(), Acc :: term()}), Acc :: term()}
+    | {chunkify, fun((Acc :: term()) -> eof | {ok, iolist(), Acc :: term()}), Acc :: term()}.
+
+-type httpc_request() ::
+    {uri_string:uri_string(), [httpc_header()]}
+    | {uri_string:uri_string(), [httpc_header()], ContentType :: string(), httpc_request_body()}.
+
+-type httpc_result() ::
+    {
+        StatusLine :: {HttpVersion :: string(), StatusCode :: non_neg_integer(), string()},
+        [httpc_header()],
+        Body :: string() | binary()
+    }
+    | {StatusCode :: non_neg_integer(), Body :: string() | binary()}
+    | saved_to_file
+    | RequestId :: eqwalizer:dynamic().
+
+-spec 'httpc:request'(uri_string:uri_string()) -> {ok, httpc_result()} | {error, term()}.
+'httpc:request'(_) -> error(eqwalizer_specs).
+
+-spec 'httpc:request'(uri_string:uri_string(), Profile :: atom() | pid()) ->
+    {ok, httpc_result()} | {error, term()}.
+'httpc:request'(_, _) -> error(eqwalizer_specs).
+
+-spec 'httpc:request'(Method, Request, HttpOptions, Options) -> {ok, httpc_result()} | {error, term()} when
+    Method :: httpc_method(),
+    Request :: httpc_request(),
+    HttpOptions :: [{atom(), term()}],
+    Options :: [{atom(), term()}].
+'httpc:request'(_, _, _, _) -> error(eqwalizer_specs).
+
+-spec 'httpc:request'(Method, Request, HttpOptions, Options, Profile) -> {ok, httpc_result()} | {error, term()} when
+    Method :: httpc_method(),
+    Request :: httpc_request(),
+    HttpOptions :: [{atom(), term()}],
+    Options :: [{atom(), term()}],
+    Profile :: atom() | pid().
+'httpc:request'(_, _, _, _, _) -> error(eqwalizer_specs).
+
+%% -------- inets --------
+
+-spec 'inets:start'(httpc | httpd, eqwalizer:dynamic()) -> {ok, pid()} | {error, eqwalizer:dynamic()}.
+'inets:start'(_, _) -> error(eqwalizer_specs).
+
+%% -------- io --------
+
+-spec 'io:fread'(Prompt, Format) -> Result when
+    Prompt :: unicode:chardata(),
+    Format :: io:format(),
+    Result :: {'ok', Terms :: [eqwalizer:dynamic()]} | 'eof' | {'error', What :: eqwalizer:dynamic()}.
+'io:fread'(_, _) -> error(eqwalizer_specs).
+
+%% -------- json --------
+
+-spec 'json:decode'(binary()) -> eqwalizer:dynamic().
+'json:decode'(_) -> error(eqwalizer_specs).
 
 %% -------- jsone --------
 
@@ -407,7 +741,7 @@ when
 -spec 'lists:append'([T], [T]) -> [T].
 'lists:append'(_, _) -> error(eqwalizer_specs).
 
--spec 'lists:delete'(T, [T]) -> [T].
+-spec 'lists:delete'(term(), [T]) -> [T].
 'lists:delete'(_, _) -> error(eqwalizer_specs).
 
 -spec 'lists:droplast'([T]) -> [T].
@@ -600,6 +934,80 @@ when
 -spec 'lists:zipwith3'(fun((X, Y, Z) -> T), [X], [Y], [Z]) -> [T].
 'lists:zipwith3'(_, _, _, _) -> error(eqwalizer_specs).
 
+-spec 'lists:enumerate'(integer(), [A]) -> [{integer(), A}].
+'lists:enumerate'(_, _) -> error(eqwalizer_specs).
+
+-spec 'lists:enumerate'(integer(), integer(), [A]) -> [{integer(), A}].
+'lists:enumerate'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'lists:keymember'(Key :: term(), N :: pos_integer(), [term()]) -> boolean().
+'lists:keymember'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'lists:keymerge'(pos_integer(), [Tuple1], [Tuple2]) -> [Tuple1 | Tuple2].
+'lists:keymerge'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'lists:keysort'(pos_integer(), [Tuple]) -> [Tuple].
+'lists:keysort'(_, _) -> error(eqwalizer_specs).
+
+-spec 'lists:ukeymerge'(pos_integer(), [Tuple1], [Tuple2]) -> [Tuple1 | Tuple2].
+'lists:ukeymerge'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'lists:ukeysort'(pos_integer(), [Tuple]) -> [Tuple].
+'lists:ukeysort'(_, _) -> error(eqwalizer_specs).
+
+-spec 'lists:uniq'(fun((A) -> term()), [A]) -> [A].
+'lists:uniq'(_, _) -> error(eqwalizer_specs).
+
+-spec 'lists:zip'([A], [B], 'fail' | 'trim' | {'pad', {DefaultA, DefaultB}}) ->
+    [{A | DefaultA, B | DefaultB}].
+'lists:zip'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'lists:zip3'([A], [B], [C], 'fail' | 'trim' | {'pad', {DefaultA, DefaultB, DefaultC}}) ->
+    [{A | DefaultA, B | DefaultB, C | DefaultC}].
+'lists:zip3'(_, _, _, _) -> error(eqwalizer_specs).
+
+-spec 'lists:zipwith'(
+    fun((X | DefaultX, Y | DefaultY) -> T),
+    [X],
+    [Y],
+    'fail' | 'trim' | {'pad', {DefaultX, DefaultY}}
+) -> [T].
+'lists:zipwith'(_, _, _, _) -> error(eqwalizer_specs).
+
+-spec 'lists:zipwith3'(
+    fun((X | DefaultX, Y | DefaultY, Z | DefaultZ) -> T),
+    [X],
+    [Y],
+    [Z],
+    'fail' | 'trim' | {'pad', {DefaultX, DefaultY, DefaultZ}}
+) -> [T].
+'lists:zipwith3'(_, _, _, _, _) -> error(eqwalizer_specs).
+
+%% -------- logger --------
+
+-spec 'logger:log'
+    (Level, StringOrReport, Metadata) -> ok when
+        Level :: logger:level(),
+        StringOrReport :: unicode:chardata() | logger:report(),
+        Metadata :: logger:metadata();
+    (Level, Format, Args) -> ok when
+        Level :: logger:level(),
+        Format :: io:format(),
+        Args :: [term()];
+    (Level, Fun, FunArgs) -> ok when
+        Level :: logger:level(),
+        Fun :: logger:msg_fun(),
+        FunArgs :: term().
+'logger:log'(_, _, _) -> error(eqwalizer_specs).
+
+%% -------- logger_filters --------
+
+-spec 'logger_filters:domain'(logger:log_event(), term()) -> logger:filter_return().
+'logger_filters:domain'(_, _) -> error(eqwalizer_specs).
+
+-spec 'logger_filters:progress'(logger:log_event(), term()) -> logger:filter_return().
+'logger_filters:progress'(_, _) -> error(eqwalizer_specs).
+
 %% -------- logger_formatter --------
 
 -spec 'logger_formatter:check_config'(Config) -> ok | {error, term()} when
@@ -641,15 +1049,44 @@ when
 -spec 'maps:update_with'(Key :: term(), fun(), Init :: term(), map()) -> map().
 'maps:update_with'(_, _, _, _) -> error(eqwalizer_specs).
 
+-spec 'maps:from_keys'([Key], Value) -> #{Key => Value}.
+'maps:from_keys'(_, _) -> error(eqwalizer_specs).
+
+%% -------- mod_esi --------
+
+-spec 'mod_esi:deliver'(SessionID, Data) -> ok | {error, Reason} when
+    SessionID :: term(),
+    Data :: iodata(),
+    Reason :: bad_sessionID.
+'mod_esi:deliver'(_, _) -> error(eqwalizer_specs).
+
 %% -------- orddict --------
 
 -spec 'orddict:new'() -> orddict:orddict(none(), none()).
 'orddict:new'() -> error(eqwalizer_specs).
 
+-spec 'orddict:append'(Key, Value, Orddict1) -> Orddict2 when
+    Orddict1 :: orddict:orddict(Key, [Value]),
+    Orddict2 :: orddict:orddict(Key, [Value]).
+'orddict:append'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'orddict:take'(Key, Orddict) -> {Value, Orddict1} | error when
+    Orddict :: orddict:orddict(Key, Value),
+    Orddict1 :: orddict:orddict(Key, Value),
+    Key :: term(),
+    Value :: eqwalizer:dynamic().
+'orddict:take'(_, _) -> error(eqwalizer_specs).
+
 %% -------- ordsets --------
 
 -spec 'ordsets:subtract'(ordsets:ordset(T), ordsets:ordset(term())) -> ordsets:ordset(T).
 'ordsets:subtract'(_, _) -> error(eqwalizer_specs).
+
+-spec 'ordsets:fold'(fun((T, Acc) -> Acc), Acc, ordsets:ordset(T)) -> Acc.
+'ordsets:fold'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'ordsets:intersection'(ordsets:ordset(T), ordsets:ordset(T)) -> ordsets:ordset(T).
+'ordsets:intersection'(_, _) -> error(eqwalizer_specs).
 
 %% -------- persistent_term --------
 
@@ -667,6 +1104,10 @@ when
     Args :: [term()],
     Ret :: eqwalizer:dynamic().
 'proc_lib:start_link'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'proc_lib:get_label'(Pid) -> undefined | eqwalizer:dynamic() when
+    Pid :: pid().
+'proc_lib:get_label'(_) -> error(eqwalizer_specs).
 
 %% -------- proplists --------
 
@@ -694,9 +1135,15 @@ when
     eqwalizer:dynamic().
 'public_key:der_decode'(_, _) -> error(eqwalizer_specs).
 
+-spec 'public_key:pem_entry_decode'(public_key:pem_entry()) -> eqwalizer:dynamic().
+'public_key:pem_entry_decode'(_) -> error(eqwalizer_specs).
+
 %% -------- queue --------
 -spec 'queue:new'() -> queue:queue(none()).
 'queue:new'() -> error(eqwalizer_specs).
+
+-spec 'queue:fold'(fun((Item, Acc) -> Acc), Acc, queue:queue(Item)) -> Acc.
+'queue:fold'(_, _, _) -> error(eqwalizer_specs).
 
 %% -------- peer --------
 
@@ -707,6 +1154,15 @@ when
     Args :: [term()]
 ) -> Result :: eqwalizer:dynamic().
 'peer:call'(_, _, _, _) -> error(eqwalizer_specs).
+
+-spec 'peer:call'(
+    Dest :: pid(),
+    Module :: module(),
+    Function :: atom(),
+    Args :: [term()],
+    Timeout :: timeout()
+) -> Result :: eqwalizer:dynamic().
+'peer:call'(_, _, _, _, _) -> error(eqwalizer_specs).
 
 %% -------- re --------
 
@@ -769,6 +1225,27 @@ when
 're:run'(_, _, _) ->
     error(eqwalizer_specs).
 
+%% -------- rpc --------
+
+-spec 'rpc:call'(Node, Module, Function, Args) -> Res | {badrpc, Reason} when
+    Node :: node(),
+    Module :: module(),
+    Function :: atom(),
+    Args :: [term()],
+    Res :: eqwalizer:dynamic(),
+    Reason :: term().
+'rpc:call'(_, _, _, _) -> error(eqwalizer_specs).
+
+-spec 'rpc:call'(Node, Module, Function, Args, Timeout) -> Res | {badrpc, Reason} when
+    Node :: node(),
+    Module :: module(),
+    Function :: atom(),
+    Args :: [term()],
+    Res :: eqwalizer:dynamic(),
+    Reason :: term(),
+    Timeout :: timeout().
+'rpc:call'(_, _, _, _, _) -> error(eqwalizer_specs).
+
 %% -------- sets --------
 
 -spec 'sets:new'() -> sets:set(none()).
@@ -776,6 +1253,35 @@ when
 
 -spec 'sets:new'(Opts :: [{version, 1..2}]) -> sets:set(none()).
 'sets:new'(_) -> error(eqwalizer_specs).
+
+%% -------- socket --------
+
+-spec 'socket:open'(term(), term()) -> eqwalizer:dynamic().
+'socket:open'(_, _) -> error(eqwalizer_specs).
+
+-spec 'socket:open'(socket:domain() | integer(), socket:type() | integer(), eqwalizer:dynamic()) ->
+    {ok, socket:socket()} | {error, term()}.
+'socket:open'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'socket:recv'(socket:socket()) -> eqwalizer:dynamic().
+'socket:recv'(_) -> error(eqwalizer_specs).
+
+-spec 'socket:recv'(socket:socket(), eqwalizer:dynamic()) -> eqwalizer:dynamic().
+'socket:recv'(_, _) -> error(eqwalizer_specs).
+
+-spec 'socket:recv'(socket:socket(), eqwalizer:dynamic(), eqwalizer:dynamic()) -> eqwalizer:dynamic().
+'socket:recv'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'socket:send'(socket:socket(), iodata()) -> eqwalizer:dynamic().
+'socket:send'(_, _) -> error(eqwalizer_specs).
+
+-spec 'socket:send'(socket:socket(), iodata(), eqwalizer:dynamic()) -> eqwalizer:dynamic().
+'socket:send'(_, _, _) -> error(eqwalizer_specs).
+
+%% -------- ssl --------
+
+-spec 'ssl:connect'(ssl:sslsocket() | ssl:host(), eqwalizer:dynamic(), eqwalizer:dynamic()) -> eqwalizer:dynamic().
+'ssl:connect'(_, _, _) -> error(eqwalizer_specs).
 
 %% -------- string --------
 
@@ -849,6 +1355,15 @@ when
     (unicode:unicode_binary()) -> unicode:unicode_binary().
 'string:uppercase'(_) -> error(eqwalizer_specs).
 
+-spec 'string:chomp'(unicode:chardata()) -> eqwalizer:dynamic(unicode:chardata()).
+'string:chomp'(_) -> error(eqwalizer_specs).
+
+-spec 'string:find'(unicode:chardata(), unicode:chardata()) -> eqwalizer:dynamic(unicode:chardata()) | nomatch.
+'string:find'(_, _) -> error(eqwalizer_specs).
+
+-spec 'string:titlecase'(unicode:chardata()) -> eqwalizer:dynamic(unicode:chardata()).
+'string:titlecase'(_) -> error(eqwalizer_specs).
+
 %% -------- sys --------
 
 -spec 'sys:get_status'(Name) -> Status when
@@ -857,19 +1372,47 @@ when
     SItem :: eqwalizer:dynamic().
 'sys:get_status'(_) -> error(eqwalizer_specs).
 
+-spec 'sys:get_state'(Name) -> State when
+    Name :: pid() | atom() | {atom(), term()} | {'via', module(), term()},
+    State :: eqwalizer:dynamic().
+'sys:get_state'(_) -> error(eqwalizer_specs).
+
+-spec 'sys:replace_state'(Name, Function) -> State when
+    Name :: pid() | atom() | {atom(), term()} | {'via', module(), term()},
+    Function :: function(),
+    State :: eqwalizer:dynamic().
+'sys:replace_state'(_, _) -> error(eqwalizer_specs).
+
+-spec 'sys:replace_state'(Name, Function, Timeout) -> State when
+    Name :: pid() | atom() | {atom(), term()} | {'via', module(), term()},
+    Function :: function(),
+    Timeout :: timeout(),
+    State :: eqwalizer:dynamic().
+'sys:replace_state'(_, _, _) -> error(eqwalizer_specs).
+
+%% -------- test_server --------
+
+-spec 'test_server:start_peer'(
+    [string()] | peer:start_options() | #{start_cover => boolean()},
+    atom() | string(),
+    TestCase :: atom() | string()
+) ->
+    {ok, peer:server_ref(), node()} | {error, term()}.
+'test_server:start_peer'(_, _, _) -> error(eqwalizer_specs).
+
 %% -------- timer --------
 
 -spec 'timer:tc'(fun(() -> T)) -> {integer(), T}.
 'timer:tc'(_) -> error(eqwalizer_specs).
 
--spec 'timer:tc'(Fun, Arguments) -> {Time, Value} when
+-spec 'timer:tc'(Fun, ArgumentsOrUnit) -> {Time, Value} when
     Fun :: function(),
-    Arguments :: [term()],
+    ArgumentsOrUnit :: [term()] | erlang:time_unit(),
     Time :: integer(),
     Value :: eqwalizer:dynamic().
 'timer:tc'(_, _) -> error(eqwalizer_specs).
 
--spec 'timer:tc'(module(), atom(), [term()]) -> {integer(), eqwalizer:dynamic()}.
+-spec 'timer:tc'(module(), atom(), [term()] | erlang:time_unit()) -> {integer(), eqwalizer:dynamic()}.
 'timer:tc'(_, _, _) -> error(eqwalizer_specs).
 
 -spec 'filename:join'([file:name_all()]) -> eqwalizer:dynamic().
@@ -877,3 +1420,22 @@ when
 
 -spec 'filename:join'(file:name_all(), file:name_all()) -> eqwalizer:dynamic().
 'filename:join'(_, _) -> error(eqwalizer_specs).
+%% -------- xmerl --------
+
+-spec 'xmerl:export_simple'(Content, Callback) -> io_lib:chars() when
+    Content :: [Element],
+    Element :: eqwalizer:dynamic(),
+    Callback :: module() | [module()].
+'xmerl:export_simple'(_, _) -> error(eqwalizer_specs).
+
+-spec 'xmerl:export_simple'(Content, Callback, RootAttributes) -> io_lib:chars() when
+    Content :: [Element],
+    Element :: eqwalizer:dynamic(),
+    Callback :: module() | [module()],
+    RootAttributes :: [eqwalizer:dynamic()].
+'xmerl:export_simple'(_, _, _) -> error(eqwalizer_specs).
+
+%% -------- xmerl_xpath --------
+
+-spec 'xmerl_xpath:string'(eqwalizer:dynamic(), eqwalizer:dynamic()) -> eqwalizer:dynamic().
+'xmerl_xpath:string'(_, _) -> error(eqwalizer_specs).

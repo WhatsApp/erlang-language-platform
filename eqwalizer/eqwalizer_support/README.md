@@ -1,6 +1,6 @@
 # eqwalizer_support library
 
-This library provides API and integrations points for eqWAlizer, including alternative (more type-checking-friendly) specs for some essential functions from OTP libraries.
+This library provides API and integrations points for eqWAlizer, including alternative (more type-checking-friendly) specs for some essential functions and definitions for some types from OTP libraries.
 
 Minimal rebar3 config:
 
