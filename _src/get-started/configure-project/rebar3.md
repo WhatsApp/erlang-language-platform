@@ -8,7 +8,9 @@ ELP can auto-discover projects which contain a `rebar.config` or `rebar.config.s
 
 ## Eqwalizer Support
 
-By default, ELP integrates with the eqWAlizer type checker. For this to work, you need to add the following to your project dependencies:
+By default, ELP integrates with the eqWAlizer type checker. ELP bundles the `eqwalizer_support` library, which provides eqWAlizer-friendly specs for common OTP functions, and adds it to your project automatically.
+
+Specs that refer to `eqwalizer` types compile and run without the library, but other tools, such as Dialyzer, report those types as unknown. If you use such tools, add the library to your project dependencies, and ELP uses your copy:
 
 ```
 {deps, [
@@ -19,6 +21,8 @@ By default, ELP integrates with the eqWAlizer type checker. For this to work, yo
         "eqwalizer/eqwalizer_support"}}
 ]}.
 ```
+
+Modules and applications in your project take precedence over the bundled ones with the same name. For example, if your project defines its own `eqwalizer_specs` module, in any app, ELP uses it instead of the bundled one.
 
 If you, instead, prefer to disable eqWAlizer support altogether (you will lose features such as _types on hover_), you can do so via the [.elp.toml](./elp-toml.md#eqwalizer) config file.
 
