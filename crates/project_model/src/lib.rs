@@ -1187,11 +1187,7 @@ impl Project {
 
         let (otp, otp_project_apps) = Otp::discover(otp_root, &elp_config.otp);
         project_apps.extend(otp_project_apps);
-        // Only JSON and manifest-less projects (`Static`) get the bundled copy for
-        // now; a later change in this stack extends it to all project types.
-        if matches!(project_build_info, ProjectBuildData::Static(_)) {
-            project_apps.push(eqwalizer_support::bundled_app(&otp));
-        }
+        project_apps.push(eqwalizer_support::bundled_app(&otp));
         report_progress("Project info loaded");
         Ok(Project {
             otp,

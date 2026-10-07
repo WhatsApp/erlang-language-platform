@@ -334,12 +334,16 @@ impl GleanIndexer {
                 {
                     if let Some(app_data) = db.app_data(source_root_id) {
                         let app_name = app_data.name.as_str().to_string();
-                        if seen_apps.insert(app_name.clone()) {
-                            let type_ = match app_data.app_type {
-                                AppType::App => glean::AppType::FirstParty,
-                                AppType::Otp => glean::AppType::Otp,
-                                AppType::Dep | AppType::Bundled => glean::AppType::ThirdParty,
-                            };
+                        let type_ = match app_data.app_type {
+                            AppType::App => Some(glean::AppType::FirstParty),
+                            AppType::Otp => Some(glean::AppType::Otp),
+                            AppType::Dep => Some(glean::AppType::ThirdParty),
+                            // Bundled with ELP rather than part of the project or of OTP.
+                            AppType::Bundled => None,
+                        };
+                        if let Some(type_) = type_
+                            && seen_apps.insert(app_name.clone())
+                        {
                             infos.push(glean::AppInfo {
                                 name: app_name.clone(),
                                 type_,

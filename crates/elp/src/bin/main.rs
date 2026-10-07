@@ -1617,6 +1617,28 @@ mod tests {
     }
 
     #[test]
+    fn project_eqwalizer_specs_shadows_the_bundled_one() {
+        let loaded = load::load_project_at(
+            &Fake::default(),
+            &project_path("standard"),
+            DiscoverConfig::new(true, "test"),
+            LoadConfig::new(Mode::Cli, BUCK_QUERY_CONFIG),
+        )
+        .unwrap();
+        let file_id = loaded
+            .analysis()
+            .module_index(loaded.project_id)
+            .unwrap()
+            .file_for_module(&ModuleName::new("eqwalizer_specs"))
+            .expect("eqwalizer_specs should be in the module index");
+        let path = loaded.vfs.file_path(file_id).to_string();
+        assert!(
+            path.ends_with("/standard/eqwalizer/src/eqwalizer_specs.erl"),
+            "eqwalizer_specs should come from the project's own eqwalizer app, got {path}"
+        );
+    }
+
+    #[test]
     fn parse_elp_custom_build_tool() {
         simple_snapshot_expect_error(
             args_vec!["parse-elp", "--module", "app_b"],

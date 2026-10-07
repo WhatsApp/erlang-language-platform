@@ -15,14 +15,13 @@ Please use the [erlang-language-platform](https://github.com/whatsapp/erlang-lan
 eqWAlizer is integrated and distributed with ELP (Erlang Language Platform).
 
 1. [Install ELP](https://whatsapp.github.io/erlang-language-platform/docs/get-started/install/).
-2. [Add](https://whatsapp.github.io/erlang-language-platform/docs/get-started/configure-project/rebar3/) `eqwalizer_support` dependency
-   to your rebar3 project definition (see below)
-3. From the project directory run:
+2. From the project directory run:
   - `elp eqwalize <module>` to type-check a single module
   - `elp eqwalize-all` to type-check all `src` modules in the project
 
-
-Adding `eqwalizer_support`:
+ELP adds its bundled copy of the `eqwalizer_support` library to your project.
+Specs that refer to `eqwalizer` types compile and run without the library, but other tools, such as Dialyzer,
+report those types as unknown. If you use such tools, add the library to your dependencies, and ELP uses your copy:
 
 ```
 {deps, [
