@@ -1,23 +1,23 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/index1.erl:31:21
-   │
-31 │   _ = X#rec{field = 3},
-   │                     ^ 3.
-Expression has type:   integer()
-Context expected type: [integer()]
-
-error: undefined_field (See https://fb.me/eqwalizer_errors#undefined_field)
-   ┌─ check/src/index1.erl:32:7
-   │
-32 │   _ = #rec{},
-   │       ^^^^^^ #rec{...}: field is 'undefined'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/index1.erl:39:5
-   │
-39 │   _ = fun index2:foo/1.
-   │     ^^^^^^^^^^^^^^^^^^ match_expr.
-Expression has type:   fun((#rec{}) -> {index2:ty_a(), ty_a(), rec()})
-Context expected type: {ty_a(), ty_b(), ty_a(), ty_b(), index2:ty_a(), #rec{}, rec()}
-
-3 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/index1.erl:31:21
+stdout |    │
+stdout | 31 │   _ = X#rec{field = 3},
+stdout |    │                     ^ 3.
+stdout | Expression has type:   integer()
+stdout | Context expected type: [integer()]
+stdout |
+stdout | error: undefined_field (See https://fb.me/eqwalizer_errors#undefined_field)
+stdout |    ┌─ check/src/index1.erl:32:7
+stdout |    │
+stdout | 32 │   _ = #rec{},
+stdout |    │       ^^^^^^ #rec{...}: field is 'undefined'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/index1.erl:39:5
+stdout |    │
+stdout | 39 │   _ = fun index2:foo/1.
+stdout |    │     ^^^^^^^^^^^^^^^^^^ match_expr.
+stdout | Expression has type:   fun((#rec{}) -> {index2:ty_a(), ty_a(), rec()})
+stdout | Context expected type: {ty_a(), ty_b(), ty_a(), ty_b(), index2:ty_a(), #rec{}, rec()}
+stdout |
+stdout | 3 ERRORS

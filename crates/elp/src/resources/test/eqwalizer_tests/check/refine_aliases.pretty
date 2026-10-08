@@ -1,20 +1,20 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/refine_aliases.erl:51:36
-   │
-51 │     execute(#client{pid = self()}, H, opts).
-   │                                    ^
-   │                                    │
-   │                                    H.
-Expression has type:   handler('ok') | txn_handler('ok')
-Context expected type: handler(dynamic())
-   │                                    
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: handler('ok')
-  However, the following candidate doesn't match:
-  fun((
-    Here the type is:     #client{}
-    Context expects type: #txn{}
-  , binary()) -> 'ok')
-
-1 ERROR
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/refine_aliases.erl:51:36
+stdout |    │
+stdout | 51 │     execute(#client{pid = self()}, H, opts).
+stdout |    │                                    ^
+stdout |    │                                    │
+stdout |    │                                    H.
+stdout | Expression has type:   handler('ok') | txn_handler('ok')
+stdout | Context expected type: handler(dynamic())
+stdout |    │                                    
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: handler('ok')
+stdout |   However, the following candidate doesn't match:
+stdout |   fun((
+stdout |     Here the type is:     #client{}
+stdout |     Context expects type: #txn{}
+stdout |   , binary()) -> 'ok')
+stdout |
+stdout | 1 ERROR

@@ -1,66 +1,66 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_bounded.erl:16:21
-   │
-16 │ bd_unsafe_neg(V) -> V.
-   │                     ^
-   │                     │
-   │                     V.
-Expression has type:   'b' | dyn('a')
-Context expected type: 'c'
-   │                     
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: dyn('a')
-  However the following candidate: 'b'
-  Differs from the expected type:  'c'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_bounded.erl:25:26
-   │
-25 │ bd_coerce_safe_neg(V) -> V.
-   │                          ^
-   │                          │
-   │                          V.
-Expression has type:   'a'
-Context expected type: dyn('b')
-   │                          
-
-Because in the expression's type:
-  Here the type is:     'a'
-  Context expects type: 'b'
-
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-   ┌─ check/src/gradual_bounded.erl:44:27
-   │
-44 │     eqwalizer:reveal_type(V).
-   │                           ^ #{b => dynamic('c'), integer() => 'a'}
-
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-   ┌─ check/src/gradual_bounded.erl:51:27
-   │
-51 │     eqwalizer:reveal_type(V).
-   │                           ^ #{a := 'b', b => dynamic('c')}
-
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-   ┌─ check/src/gradual_bounded.erl:66:51
-   │
-66 │ bd_distrib_print({a, V}) -> eqwalizer:reveal_type(V).
-   │                                                   ^ dynamic('b')
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_bounded.erl:79:5
-   │
-79 │     bd_generic_fun(test, 42).
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^ bd_generic_fun('test', 42).
-Expression has type:   'test' | integer()
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_bounded.erl:89:5
-   │
-89 │     bd_generic_fun(test, N).
-   │     ^^^^^^^^^^^^^^^^^^^^^^^ bd_generic_fun('test', N).
-Expression has type:   'test' | dyn(number())
-Context expected type: number()
-
-7 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_bounded.erl:16:21
+stdout |    │
+stdout | 16 │ bd_unsafe_neg(V) -> V.
+stdout |    │                     ^
+stdout |    │                     │
+stdout |    │                     V.
+stdout | Expression has type:   'b' | dyn('a')
+stdout | Context expected type: 'c'
+stdout |    │                     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: dyn('a')
+stdout |   However the following candidate: 'b'
+stdout |   Differs from the expected type:  'c'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_bounded.erl:25:26
+stdout |    │
+stdout | 25 │ bd_coerce_safe_neg(V) -> V.
+stdout |    │                          ^
+stdout |    │                          │
+stdout |    │                          V.
+stdout | Expression has type:   'a'
+stdout | Context expected type: dyn('b')
+stdout |    │                          
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     'a'
+stdout |   Context expects type: 'b'
+stdout |
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |    ┌─ check/src/gradual_bounded.erl:44:27
+stdout |    │
+stdout | 44 │     eqwalizer:reveal_type(V).
+stdout |    │                           ^ #{b => dynamic('c'), integer() => 'a'}
+stdout |
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |    ┌─ check/src/gradual_bounded.erl:51:27
+stdout |    │
+stdout | 51 │     eqwalizer:reveal_type(V).
+stdout |    │                           ^ #{a := 'b', b => dynamic('c')}
+stdout |
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |    ┌─ check/src/gradual_bounded.erl:66:51
+stdout |    │
+stdout | 66 │ bd_distrib_print({a, V}) -> eqwalizer:reveal_type(V).
+stdout |    │                                                   ^ dynamic('b')
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_bounded.erl:79:5
+stdout |    │
+stdout | 79 │     bd_generic_fun(test, 42).
+stdout |    │     ^^^^^^^^^^^^^^^^^^^^^^^^ bd_generic_fun('test', 42).
+stdout | Expression has type:   'test' | integer()
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_bounded.erl:89:5
+stdout |    │
+stdout | 89 │     bd_generic_fun(test, N).
+stdout |    │     ^^^^^^^^^^^^^^^^^^^^^^^ bd_generic_fun('test', N).
+stdout | Expression has type:   'test' | dyn(number())
+stdout | Context expected type: number()
+stdout |
+stdout | 7 ERRORS

@@ -1,8 +1,9 @@
-module specified: diagnostics
-Diagnostics reported in 1 modules:
-  diagnostics: 5
-      3:0-3:35::[Error] [L0000] Issue in included file
-      5:30-5:44::[Error] [L1295] type undefined_type/0 undefined
-      6:0-6:4::[Warning] [L1230] function main/1 is unused
-      9:0-9:3::[Warning] [L1230] function foo/0 is unused
-      11:7-11:11::[Warning] [W0060] Match on a bound variable
+stdout | module specified: diagnostics
+stdout | Diagnostics reported in 1 modules:
+stdout |   diagnostics: 5
+stdout |       3:0-3:35::[Error] [L0000] Issue in included file
+stdout |       5:30-5:44::[Error] [L1295] type undefined_type/0 undefined
+stdout |       6:0-6:4::[Warning] [L1230] function main/1 is unused
+stdout |       9:0-9:3::[Warning] [L1230] function foo/0 is unused
+stdout |       11:7-11:11::[Warning] [W0060] Match on a bound variable
+stderr | Parse failures found

@@ -1,7 +1,7 @@
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-   ┌─ check/src/constraints_ordering.erl:22:25
-   │
-22 │   eqwalizer:reveal_type(branch(X)).
-   │                         ^^^^^^^^^ 'a'
-
-1 ERROR
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |    ┌─ check/src/constraints_ordering.erl:22:25
+stdout |    │
+stdout | 22 │   eqwalizer:reveal_type(branch(X)).
+stdout |    │                         ^^^^^^^^^ 'a'
+stdout |
+stdout | 1 ERROR

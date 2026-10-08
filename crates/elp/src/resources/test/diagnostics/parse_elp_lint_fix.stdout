@@ -1,18 +1,19 @@
-module specified: lints
-Diagnostics reported:
-app_a/src/lints.erl:5:1-5:14::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
-        4:1-4:14: Mismatched clause name
----------------------------------------------
-
-Applying fix in module 'lints' for
-      5:1-5:14::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
-        4:1-4:14: Mismatched clause name
-@@ -1,6 +1,6 @@
- -module(lints).
- -export([head_mismatch/1]).
- 
- head_mismatch(X) -> X;
--head_mismatcX(0) -> 0.
-+head_mismatch(0) -> 0.
- 
-
+stdout | module specified: lints
+stdout | Diagnostics reported:
+stdout | app_a/src/lints.erl:5:1-5:14::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+stdout |         4:1-4:14: Mismatched clause name
+stdout | ---------------------------------------------
+stdout |
+stdout | Applying fix in module 'lints' for
+stdout |       5:1-5:14::[Error] [P1700] head mismatch 'head_mismatcX' vs 'head_mismatch'
+stdout |         4:1-4:14: Mismatched clause name
+stdout | @@ -1,6 +1,6 @@
+stdout |  -module(lints).
+stdout |  -export([head_mismatch/1]).
+stdout |  
+stdout |  head_mismatch(X) -> X;
+stdout | -head_mismatcX(0) -> 0.
+stdout | +head_mismatch(0) -> 0.
+stdout |  
+stdout |
+stderr | Errors found

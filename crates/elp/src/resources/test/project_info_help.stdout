@@ -1,20 +1,20 @@
-Generate project info file
-
-Usage: elp project-info [OPTIONS]
-
-Options:
-      --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
-      --to <TO>            Path to a directory where to dump wa.build_info
-      --buck-query         Include the buck uquery results in the output
-      --target-types       Dump a list of targets and their types
-  -h, --help               Print help
-
-Global options:
-      --log-file <LOG_FILE>  
-      --erl <ERL>            
-      --escript <ESCRIPT>    
-      --no-log-buffering     
-      --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
-      --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
-      --color <WHEN>         Use color in output [default: always] [possible values: always, never,
-                             auto]
+stdout | Generate project info file
+stdout |
+stdout | Usage: elp project-info [OPTIONS]
+stdout |
+stdout | Options:
+stdout |       --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
+stdout |       --to <TO>            Path to a directory where to dump wa.build_info
+stdout |       --buck-query         Include the buck uquery results in the output
+stdout |       --target-types       Dump a list of targets and their types
+stdout |   -h, --help               Print help
+stdout |
+stdout | Global options:
+stdout |       --log-file <LOG_FILE>  
+stdout |       --erl <ERL>            
+stdout |       --escript <ESCRIPT>    
+stdout |       --no-log-buffering     
+stdout |       --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
+stdout |       --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
+stdout |       --color <WHEN>         Use color in output [default: always] [possible values: always, never,
+stdout |                              auto]

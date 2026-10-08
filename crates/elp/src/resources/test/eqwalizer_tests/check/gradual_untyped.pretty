@@ -1,65 +1,65 @@
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-   ┌─ check/src/gradual_untyped.erl:11:25
-   │
-11 │   eqwalizer:reveal_type(_L),
-   │                         ^^ [dynamic()]
-
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-   ┌─ check/src/gradual_untyped.erl:23:25
-   │
-23 │   eqwalizer:reveal_type(Field2),
-   │                         ^^^^^^ dynamic()
-
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-   ┌─ check/src/gradual_untyped.erl:28:25
-   │
-28 │   eqwalizer:reveal_type(A),
-   │                         ^ term()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_untyped.erl:29:3
-   │
-29 │   A.
-   │   ^ A.
-Expression has type:   term()
-Context expected type: 'ok'
-
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-   ┌─ check/src/gradual_untyped.erl:33:25
-   │
-33 │   eqwalizer:reveal_type(B),
-   │                         ^ term()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_untyped.erl:34:3
-   │
-34 │   B.
-   │   ^ B.
-Expression has type:   term()
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_untyped.erl:39:3
-   │
-39 │   T.
-   │   ^ T.
-Expression has type:   tuple()
-Context expected type: {integer()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_untyped.erl:44:3
-   │
-44 │   T.
-   │   ^ T.
-Expression has type:   tuple()
-Context expected type: {integer(), integer()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_untyped.erl:49:3
-   │
-49 │   T.
-   │   ^ T.
-Expression has type:   tuple()
-Context expected type: #untyped{}
-
-9 ERRORS
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |    ┌─ check/src/gradual_untyped.erl:11:25
+stdout |    │
+stdout | 11 │   eqwalizer:reveal_type(_L),
+stdout |    │                         ^^ [dynamic()]
+stdout |
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |    ┌─ check/src/gradual_untyped.erl:23:25
+stdout |    │
+stdout | 23 │   eqwalizer:reveal_type(Field2),
+stdout |    │                         ^^^^^^ dynamic()
+stdout |
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |    ┌─ check/src/gradual_untyped.erl:28:25
+stdout |    │
+stdout | 28 │   eqwalizer:reveal_type(A),
+stdout |    │                         ^ term()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_untyped.erl:29:3
+stdout |    │
+stdout | 29 │   A.
+stdout |    │   ^ A.
+stdout | Expression has type:   term()
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |    ┌─ check/src/gradual_untyped.erl:33:25
+stdout |    │
+stdout | 33 │   eqwalizer:reveal_type(B),
+stdout |    │                         ^ term()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_untyped.erl:34:3
+stdout |    │
+stdout | 34 │   B.
+stdout |    │   ^ B.
+stdout | Expression has type:   term()
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_untyped.erl:39:3
+stdout |    │
+stdout | 39 │   T.
+stdout |    │   ^ T.
+stdout | Expression has type:   tuple()
+stdout | Context expected type: {integer()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_untyped.erl:44:3
+stdout |    │
+stdout | 44 │   T.
+stdout |    │   ^ T.
+stdout | Expression has type:   tuple()
+stdout | Context expected type: {integer(), integer()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_untyped.erl:49:3
+stdout |    │
+stdout | 49 │   T.
+stdout |    │   ^ T.
+stdout | Expression has type:   tuple()
+stdout | Context expected type: #untyped{}
+stdout |
+stdout | 9 ERRORS

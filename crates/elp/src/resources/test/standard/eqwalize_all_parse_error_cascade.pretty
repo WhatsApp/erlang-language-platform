@@ -1,6 +1,6 @@
-error: parse_error
-   ┌─ app_a/src/parse_error_a_cascade.erl:11:5
-   │
-11 │     .
-   │     ^ syntax error before: '.'
-
+stdout | error: parse_error
+stdout |    ┌─ app_a/src/parse_error_a_cascade.erl:11:5
+stdout |    │
+stdout | 11 │     .
+stdout |    │     ^ syntax error before: '.'
+stdout |

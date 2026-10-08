@@ -1,52 +1,52 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ debug/src/expr1.erl:83:8
-   │
-83 │     << X || X <- [1, 2, 3] >>.
-   │        ^ X.
-Expression has type:   integer()
-Context expected type: binary()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ debug/src/expr1.erl:86:8
-   │
-86 │     << X || <<X>> <= <<1, 2, 3>> >>.
-   │        ^ X.
-Expression has type:   integer()
-Context expected type: binary()
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ debug/src/expr1.erl:194:1
-    │  
-194 │ ╭ map_guard(_X)
-195 │ │     when #{} -> ok.
-    │ ╰──────────────────^ Clause is not covered by spec
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ debug/src/expr1.erl:197:1
-    │  
-197 │ ╭ map_update_guard(X)
-198 │ │     when X#{id := 3} -> ok.
-    │ ╰──────────────────────────^ Clause is not covered by spec
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ debug/src/expr1.erl:206:1
-    │  
-206 │ ╭ atom_guard(_X)
-207 │ │     when ok -> ok.
-    │ ╰─────────────────^ Clause is not covered by spec
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ debug/src/expr1.erl:209:1
-    │  
-209 │ ╭ string_guard(_X)
-210 │ │     when "string" -> ok.
-    │ ╰───────────────────────^ Clause is not covered by spec
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ debug/src/expr1.erl:212:1
-    │  
-212 │ ╭ lit_guard(_X)
-213 │ │     when $c -> ok.
-    │ ╰─────────────────^ Clause is not covered by spec
-
-7 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ debug/src/expr1.erl:83:8
+stdout |    │
+stdout | 83 │     << X || X <- [1, 2, 3] >>.
+stdout |    │        ^ X.
+stdout | Expression has type:   integer()
+stdout | Context expected type: binary()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ debug/src/expr1.erl:86:8
+stdout |    │
+stdout | 86 │     << X || <<X>> <= <<1, 2, 3>> >>.
+stdout |    │        ^ X.
+stdout | Expression has type:   integer()
+stdout | Context expected type: binary()
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |     ┌─ debug/src/expr1.erl:194:1
+stdout |     │  
+stdout | 194 │ ╭ map_guard(_X)
+stdout | 195 │ │     when #{} -> ok.
+stdout |     │ ╰──────────────────^ Clause is not covered by spec
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |     ┌─ debug/src/expr1.erl:197:1
+stdout |     │  
+stdout | 197 │ ╭ map_update_guard(X)
+stdout | 198 │ │     when X#{id := 3} -> ok.
+stdout |     │ ╰──────────────────────────^ Clause is not covered by spec
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |     ┌─ debug/src/expr1.erl:206:1
+stdout |     │  
+stdout | 206 │ ╭ atom_guard(_X)
+stdout | 207 │ │     when ok -> ok.
+stdout |     │ ╰─────────────────^ Clause is not covered by spec
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |     ┌─ debug/src/expr1.erl:209:1
+stdout |     │  
+stdout | 209 │ ╭ string_guard(_X)
+stdout | 210 │ │     when "string" -> ok.
+stdout |     │ ╰───────────────────────^ Clause is not covered by spec
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |     ┌─ debug/src/expr1.erl:212:1
+stdout |     │  
+stdout | 212 │ ╭ lit_guard(_X)
+stdout | 213 │ │     when $c -> ok.
+stdout |     │ ╰─────────────────^ Clause is not covered by spec
+stdout |
+stdout | 7 ERRORS

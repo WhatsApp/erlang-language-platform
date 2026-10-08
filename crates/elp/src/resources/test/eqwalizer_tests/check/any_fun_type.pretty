@@ -1,90 +1,90 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/any_fun_type.erl:46:21
-   │
-46 │ to_f_any_neg2(F) -> F.
-   │                     ^
-   │                     │
-   │                     F.
-Expression has type:   'f0' | 'f1' | fun((atom()) -> pid())
-Context expected type: fun()
-   │                     
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: fun((atom()) -> pid())
-  However the following candidate: 'f0'
-  Differs from the expected type:  fun()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/any_fun_type.erl:49:23
-   │
-49 │ f_any_to_f0_neg(F) -> F.
-   │                       ^ F.
-Expression has type:   fun()
-Context expected type: 'f0'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/any_fun_type.erl:61:31
-   │
-61 │     when is_function(F, 1) -> F.
-   │                               ^
-   │                               │
-   │                               F.
-Expression has type:   fun((term()) -> term())
-Context expected type: f2()
-   │                               
-
-Because in the expression's type:
-  Here the type is:     fun((term()) -> term())
-  Context expects type: fun((term(), term()) -> term())
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-   ┌─ check/src/any_fun_type.erl:64:1
-   │
-64 │ a_to_a(a) -> a.
-   │ ^^^^^^^^^^^^^^ Clause is not covered by spec
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/any_fun_type.erl:92:24
-   │
-92 │ f5_to_f4_cov_neg(F) -> F.
-   │                        ^
-   │                        │
-   │                        F.
-Expression has type:   f5('a' | 'b')
-Context expected type: f4('a')
-   │                        
-
-Because in the expression's type:
-  fun((term()) ->
-    Here the type is a union type with some valid candidates: 'a'
-    However the following candidate: 'b'
-    Differs from the expected type:  'a'
-  )
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/any_fun_type.erl:98:20
-   │
-98 │ apply_f4_neg(F) -> F(a).
-   │                    ^^^^ F('a').
-Expression has type:   number()
-Context expected type: boolean()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/any_fun_type.erl:113:22
-    │
-113 │ fun3_to_f4_neg(F) -> F.
-    │                      ^
-    │                      │
-    │                      F.
-Expression has type:   fun((term()) -> 'a' | 'b')
-Context expected type: f4('a')
-    │                      
-
-Because in the expression's type:
-  fun((term()) ->
-    Here the type is a union type with some valid candidates: 'a'
-    However the following candidate: 'b'
-    Differs from the expected type:  'a'
-  )
-
-7 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/any_fun_type.erl:46:21
+stdout |    │
+stdout | 46 │ to_f_any_neg2(F) -> F.
+stdout |    │                     ^
+stdout |    │                     │
+stdout |    │                     F.
+stdout | Expression has type:   'f0' | 'f1' | fun((atom()) -> pid())
+stdout | Context expected type: fun()
+stdout |    │                     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: fun((atom()) -> pid())
+stdout |   However the following candidate: 'f0'
+stdout |   Differs from the expected type:  fun()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/any_fun_type.erl:49:23
+stdout |    │
+stdout | 49 │ f_any_to_f0_neg(F) -> F.
+stdout |    │                       ^ F.
+stdout | Expression has type:   fun()
+stdout | Context expected type: 'f0'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/any_fun_type.erl:61:31
+stdout |    │
+stdout | 61 │     when is_function(F, 1) -> F.
+stdout |    │                               ^
+stdout |    │                               │
+stdout |    │                               F.
+stdout | Expression has type:   fun((term()) -> term())
+stdout | Context expected type: f2()
+stdout |    │                               
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     fun((term()) -> term())
+stdout |   Context expects type: fun((term(), term()) -> term())
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |    ┌─ check/src/any_fun_type.erl:64:1
+stdout |    │
+stdout | 64 │ a_to_a(a) -> a.
+stdout |    │ ^^^^^^^^^^^^^^ Clause is not covered by spec
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/any_fun_type.erl:92:24
+stdout |    │
+stdout | 92 │ f5_to_f4_cov_neg(F) -> F.
+stdout |    │                        ^
+stdout |    │                        │
+stdout |    │                        F.
+stdout | Expression has type:   f5('a' | 'b')
+stdout | Context expected type: f4('a')
+stdout |    │                        
+stdout |
+stdout | Because in the expression's type:
+stdout |   fun((term()) ->
+stdout |     Here the type is a union type with some valid candidates: 'a'
+stdout |     However the following candidate: 'b'
+stdout |     Differs from the expected type:  'a'
+stdout |   )
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/any_fun_type.erl:98:20
+stdout |    │
+stdout | 98 │ apply_f4_neg(F) -> F(a).
+stdout |    │                    ^^^^ F('a').
+stdout | Expression has type:   number()
+stdout | Context expected type: boolean()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/any_fun_type.erl:113:22
+stdout |     │
+stdout | 113 │ fun3_to_f4_neg(F) -> F.
+stdout |     │                      ^
+stdout |     │                      │
+stdout |     │                      F.
+stdout | Expression has type:   fun((term()) -> 'a' | 'b')
+stdout | Context expected type: f4('a')
+stdout |     │                      
+stdout |
+stdout | Because in the expression's type:
+stdout |   fun((term()) ->
+stdout |     Here the type is a union type with some valid candidates: 'a'
+stdout |     However the following candidate: 'b'
+stdout |     Differs from the expected type:  'a'
+stdout |   )
+stdout |
+stdout | 7 ERRORS

@@ -1,28 +1,28 @@
-Eqwalize all opted-in modules in specified application
-
-Usage: elp eqwalize-app [OPTIONS] <APP>
-
-Arguments:
-  <APP>  app name
-
-Options:
-      --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
-      --as <PROFILE>       Rebar3 profile to pickup [default: test]
-      --format <FORMAT>    Customize the output format (defaults to human-readable) [possible
-                           values: json]
-      --rebar              Run with rebar
-      --connect            Use the persistent daemon for fast turnaround (default when watchman is
-                           installed; auto-starts if needed). Pass --no-connect to disable
-      --no-connect         Disable the persistent daemon and run standalone (no cross-run caching)
-      --bail-on-error      Exit with a non-zero status code if any errors are found
-  -h, --help               Print help
-
-Global options:
-      --log-file <LOG_FILE>  
-      --erl <ERL>            
-      --escript <ESCRIPT>    
-      --no-log-buffering     
-      --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
-      --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
-      --color <WHEN>         Use color in output [default: always] [possible values: always, never,
-                             auto]
+stdout | Eqwalize all opted-in modules in specified application
+stdout |
+stdout | Usage: elp eqwalize-app [OPTIONS] <APP>
+stdout |
+stdout | Arguments:
+stdout |   <APP>  app name
+stdout |
+stdout | Options:
+stdout |       --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
+stdout |       --as <PROFILE>       Rebar3 profile to pickup [default: test]
+stdout |       --format <FORMAT>    Customize the output format (defaults to human-readable) [possible
+stdout |                            values: json]
+stdout |       --rebar              Run with rebar
+stdout |       --connect            Use the persistent daemon for fast turnaround (default when watchman is
+stdout |                            installed; auto-starts if needed). Pass --no-connect to disable
+stdout |       --no-connect         Disable the persistent daemon and run standalone (no cross-run caching)
+stdout |       --bail-on-error      Exit with a non-zero status code if any errors are found
+stdout |   -h, --help               Print help
+stdout |
+stdout | Global options:
+stdout |       --log-file <LOG_FILE>  
+stdout |       --erl <ERL>            
+stdout |       --escript <ESCRIPT>    
+stdout |       --no-log-buffering     
+stdout |       --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
+stdout |       --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
+stdout |       --color <WHEN>         Use color in output [default: always] [possible values: always, never,
+stdout |                              auto]

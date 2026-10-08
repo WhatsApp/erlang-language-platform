@@ -1,24 +1,24 @@
-Manage a persistent ELP daemon for fast turnaround
-
-Usage: elp daemon [OPTIONS] [COMMAND]
-
-Commands:
-  stop    Stop all running daemons
-  status  Show daemon status for this project
-  help    Print this message or the help of the given subcommand(s)
-
-Options:
-      --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
-      --as <PROFILE>       Rebar3 profile to pickup [default: test]
-      --rebar              Run with rebar
-  -h, --help               Print help
-
-Global options:
-      --log-file <LOG_FILE>  
-      --erl <ERL>            
-      --escript <ESCRIPT>    
-      --no-log-buffering     
-      --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
-      --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
-      --color <WHEN>         Use color in output [default: always] [possible values: always, never,
-                             auto]
+stdout | Manage a persistent ELP daemon for fast turnaround
+stdout |
+stdout | Usage: elp daemon [OPTIONS] [COMMAND]
+stdout |
+stdout | Commands:
+stdout |   stop    Stop all running daemons
+stdout |   status  Show daemon status for this project
+stdout |   help    Print this message or the help of the given subcommand(s)
+stdout |
+stdout | Options:
+stdout |       --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
+stdout |       --as <PROFILE>       Rebar3 profile to pickup [default: test]
+stdout |       --rebar              Run with rebar
+stdout |   -h, --help               Print help
+stdout |
+stdout | Global options:
+stdout |       --log-file <LOG_FILE>  
+stdout |       --erl <ERL>            
+stdout |       --escript <ESCRIPT>    
+stdout |       --no-log-buffering     
+stdout |       --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
+stdout |       --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
+stdout |       --color <WHEN>         Use color in output [default: always] [possible values: always, never,
+stdout |                              auto]

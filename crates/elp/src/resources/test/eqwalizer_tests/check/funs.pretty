@@ -1,299 +1,299 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/funs.erl:23:20
-   │
-23 │ check_fun_neg() -> fun() -> ok end.
-   │                    ^^^^^^^^^^^^^^^ fun.
-Expression has type:   fun(() -> 'ok')
-Context expected type: pid()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/funs.erl:28:27
-   │
-28 │     fun() -> list_to_atom(Tup) end.
-   │                           ^^^ Tup.
-Expression has type:   {}
-Context expected type: string()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/funs.erl:63:9
-   │
-63 │         X ++ [] end,
-   │         ^
-   │         │
-   │         X.
-Expression has type:   n()
-Context expected type: [term()]
-   │         
-
-Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: [term()]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/funs.erl:63:9
-   │
-63 │         X ++ [] end,
-   │         ^^^^^^^
-   │         │
-   │         _ ++ _.
-Expression has type:   [dynamic()]
-Context expected type: n()
-   │         
-
-Because in the expression's type:
-  Here the type is:     [dynamic()]
-  Context expects type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/funs.erl:70:13
-   │
-70 │             erlang:atom_to_binary(X)
-   │             ^^^^^^^^^^^^^^^^^^^^^^^^
-   │             │
-   │             erlang:atom_to_binary(X).
-Expression has type:   binary()
-Context expected type: n()
-   │             
-
-Because in the expression's type:
-  Here the type is:     binary()
-  Context expects type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/funs.erl:70:35
-   │
-70 │             erlang:atom_to_binary(X)
-   │                                   ^
-   │                                   │
-   │                                   X.
-Expression has type:   n()
-Context expected type: atom()
-   │                                   
-
-Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/funs.erl:77:5
-   │    
-77 │ ╭ ╭     lmap_n_to_n(
-78 │ │ │         fun(X) -> X end,
-79 │ │ │         [1,2,3]
-80 │ │ │     ).
-   │ ╰─│─────^ lmap_n_to_n(fun, [1, 2, 3]).
-Expression has type:   [n()]
-Context expected type: ['a']
-   │   ╰─────' 
-
-Because in the expression's type:
-  [
-    Here the type is:     number()
-    Context expects type: 'a'
-  ]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/funs.erl:90:18
-   │
-90 │     fun(X, Y) -> X ++ Y end.
-   │                  ^
-   │                  │
-   │                  X.
-Expression has type:   n()
-Context expected type: [term()]
-   │                  
-
-Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: [term()]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/funs.erl:90:18
-   │
-90 │     fun(X, Y) -> X ++ Y end.
-   │                  ^^^^^^
-   │                  │
-   │                  _ ++ _.
-Expression has type:   [dynamic()]
-Context expected type: n()
-   │                  
-
-Because in the expression's type:
-  Here the type is:     [dynamic()]
-  Context expects type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/funs.erl:90:23
-   │
-90 │     fun(X, Y) -> X ++ Y end.
-   │                       ^
-   │                       │
-   │                       Y.
-Expression has type:   n()
-Context expected type: [term()]
-   │                       
-
-Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: [term()]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/funs.erl:96:31
-   │
-96 │         erlang:atom_to_binary(X),
-   │                               ^
-   │                               │
-   │                               X.
-Expression has type:   n()
-Context expected type: atom()
-   │                               
-
-Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/funs.erl:97:9
-   │
-97 │         X ++ Y
-   │         ^
-   │         │
-   │         X.
-Expression has type:   n()
-Context expected type: [term()]
-   │         
-
-Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: [term()]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/funs.erl:97:9
-   │
-97 │         X ++ Y
-   │         ^^^^^^
-   │         │
-   │         _ ++ _.
-Expression has type:   [dynamic()]
-Context expected type: n()
-   │         
-
-Because in the expression's type:
-  Here the type is:     [dynamic()]
-  Context expects type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/funs.erl:97:14
-   │
-97 │         X ++ Y
-   │              ^
-   │              │
-   │              Y.
-Expression has type:   n()
-Context expected type: [term()]
-   │              
-
-Because in the expression's type:
-  Here the type is:     number()
-  Context expects type: [term()]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/funs.erl:104:7
-    │
-104 │       erlang:is_number(X)
-    │       ^^^^^^^^^^^^^^^^^^^ erlang:is_number(X).
-Expression has type:   boolean()
-Context expected type: n()
-
-error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
-    ┌─ check/src/funs.erl:127:9
-    │
-127 │         fun (X, _) -> X end,
-    │         ^^^^^^^^^^^^^^^^^^^ fun.
-fun with arity 2 used as fun with 1 arguments
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/funs.erl:134:24
-    │
-134 │         fun (Y) -> Y + N end,
-    │                        ^ N.
-Expression has type:   atom()
-Context expected type: number()
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/funs.erl:155:1
-    │  
-155 │ ╭ x6(L, B) ->
-156 │ │     xmap(fun (_) -> B end, L).
-    │ ╰─────────────────────────────^ Clause is not covered by spec
-
-error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
-    ┌─ check/src/funs.erl:195:5
-    │
-195 │     (fun () -> ok end)(1, 2, 3).
-    │     ^^^^^^^^^^^^^^^^^^ fun.
-fun with arity 0 used as fun with 3 arguments
-
-error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
-    ┌─ check/src/funs.erl:199:5
-    │
-199 │     (fun (_X) -> ok end)(1, 2, 3).
-    │     ^^^^^^^^^^^^^^^^^^^^ fun.
-fun with arity 1 used as fun with 3 arguments
-
-error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
-    ┌─ check/src/funs.erl:203:5
-    │
-203 │     (fun (_X) -> ok end)().
-    │     ^^^^^^^^^^^^^^^^^^^^ fun.
-fun with arity 1 used as fun with 0 arguments
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/funs.erl:224:16
-    │
-224 │     fun F() -> F end.
-    │                ^ F.
-Expression has type:   fun(() -> 'a')
-Context expected type: 'a'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/funs.erl:329:9
-    │
-329 │         F(A)
-    │         ^^^^ F(A).
-Expression has type:   term()
-Context expected type: 'other'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/funs.erl:336:11
-    │
-336 │         F(A)
-    │           ^ A.
-Expression has type:   term()
-Context expected type: atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/funs.erl:363:5
-    │
-363 │     Fun().
-    │     ^^^^^ Fun().
-Expression has type:   'no_ok'
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/funs.erl:368:5
-    │
-368 │     Fun().
-    │     ^^^^^ Fun().
-Expression has type:   'no_ok'
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/funs.erl:374:54
-    │
-374 │ use_callback_test_neg() -> callback_test(fun (_T) -> ok end).
-    │                                                      ^^ 'ok'.
-Expression has type:   'ok'
-Context expected type: none()
-
-27 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/funs.erl:23:20
+stdout |    │
+stdout | 23 │ check_fun_neg() -> fun() -> ok end.
+stdout |    │                    ^^^^^^^^^^^^^^^ fun.
+stdout | Expression has type:   fun(() -> 'ok')
+stdout | Context expected type: pid()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/funs.erl:28:27
+stdout |    │
+stdout | 28 │     fun() -> list_to_atom(Tup) end.
+stdout |    │                           ^^^ Tup.
+stdout | Expression has type:   {}
+stdout | Context expected type: string()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/funs.erl:63:9
+stdout |    │
+stdout | 63 │         X ++ [] end,
+stdout |    │         ^
+stdout |    │         │
+stdout |    │         X.
+stdout | Expression has type:   n()
+stdout | Context expected type: [term()]
+stdout |    │         
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     number()
+stdout |   Context expects type: [term()]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/funs.erl:63:9
+stdout |    │
+stdout | 63 │         X ++ [] end,
+stdout |    │         ^^^^^^^
+stdout |    │         │
+stdout |    │         _ ++ _.
+stdout | Expression has type:   [dynamic()]
+stdout | Context expected type: n()
+stdout |    │         
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     [dynamic()]
+stdout |   Context expects type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/funs.erl:70:13
+stdout |    │
+stdout | 70 │             erlang:atom_to_binary(X)
+stdout |    │             ^^^^^^^^^^^^^^^^^^^^^^^^
+stdout |    │             │
+stdout |    │             erlang:atom_to_binary(X).
+stdout | Expression has type:   binary()
+stdout | Context expected type: n()
+stdout |    │             
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     binary()
+stdout |   Context expects type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/funs.erl:70:35
+stdout |    │
+stdout | 70 │             erlang:atom_to_binary(X)
+stdout |    │                                   ^
+stdout |    │                                   │
+stdout |    │                                   X.
+stdout | Expression has type:   n()
+stdout | Context expected type: atom()
+stdout |    │                                   
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     number()
+stdout |   Context expects type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/funs.erl:77:5
+stdout |    │    
+stdout | 77 │ ╭ ╭     lmap_n_to_n(
+stdout | 78 │ │ │         fun(X) -> X end,
+stdout | 79 │ │ │         [1,2,3]
+stdout | 80 │ │ │     ).
+stdout |    │ ╰─│─────^ lmap_n_to_n(fun, [1, 2, 3]).
+stdout | Expression has type:   [n()]
+stdout | Context expected type: ['a']
+stdout |    │   ╰─────' 
+stdout |
+stdout | Because in the expression's type:
+stdout |   [
+stdout |     Here the type is:     number()
+stdout |     Context expects type: 'a'
+stdout |   ]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/funs.erl:90:18
+stdout |    │
+stdout | 90 │     fun(X, Y) -> X ++ Y end.
+stdout |    │                  ^
+stdout |    │                  │
+stdout |    │                  X.
+stdout | Expression has type:   n()
+stdout | Context expected type: [term()]
+stdout |    │                  
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     number()
+stdout |   Context expects type: [term()]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/funs.erl:90:18
+stdout |    │
+stdout | 90 │     fun(X, Y) -> X ++ Y end.
+stdout |    │                  ^^^^^^
+stdout |    │                  │
+stdout |    │                  _ ++ _.
+stdout | Expression has type:   [dynamic()]
+stdout | Context expected type: n()
+stdout |    │                  
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     [dynamic()]
+stdout |   Context expects type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/funs.erl:90:23
+stdout |    │
+stdout | 90 │     fun(X, Y) -> X ++ Y end.
+stdout |    │                       ^
+stdout |    │                       │
+stdout |    │                       Y.
+stdout | Expression has type:   n()
+stdout | Context expected type: [term()]
+stdout |    │                       
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     number()
+stdout |   Context expects type: [term()]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/funs.erl:96:31
+stdout |    │
+stdout | 96 │         erlang:atom_to_binary(X),
+stdout |    │                               ^
+stdout |    │                               │
+stdout |    │                               X.
+stdout | Expression has type:   n()
+stdout | Context expected type: atom()
+stdout |    │                               
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     number()
+stdout |   Context expects type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/funs.erl:97:9
+stdout |    │
+stdout | 97 │         X ++ Y
+stdout |    │         ^
+stdout |    │         │
+stdout |    │         X.
+stdout | Expression has type:   n()
+stdout | Context expected type: [term()]
+stdout |    │         
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     number()
+stdout |   Context expects type: [term()]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/funs.erl:97:9
+stdout |    │
+stdout | 97 │         X ++ Y
+stdout |    │         ^^^^^^
+stdout |    │         │
+stdout |    │         _ ++ _.
+stdout | Expression has type:   [dynamic()]
+stdout | Context expected type: n()
+stdout |    │         
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     [dynamic()]
+stdout |   Context expects type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/funs.erl:97:14
+stdout |    │
+stdout | 97 │         X ++ Y
+stdout |    │              ^
+stdout |    │              │
+stdout |    │              Y.
+stdout | Expression has type:   n()
+stdout | Context expected type: [term()]
+stdout |    │              
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     number()
+stdout |   Context expects type: [term()]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/funs.erl:104:7
+stdout |     │
+stdout | 104 │       erlang:is_number(X)
+stdout |     │       ^^^^^^^^^^^^^^^^^^^ erlang:is_number(X).
+stdout | Expression has type:   boolean()
+stdout | Context expected type: n()
+stdout |
+stdout | error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
+stdout |     ┌─ check/src/funs.erl:127:9
+stdout |     │
+stdout | 127 │         fun (X, _) -> X end,
+stdout |     │         ^^^^^^^^^^^^^^^^^^^ fun.
+stdout | fun with arity 2 used as fun with 1 arguments
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/funs.erl:134:24
+stdout |     │
+stdout | 134 │         fun (Y) -> Y + N end,
+stdout |     │                        ^ N.
+stdout | Expression has type:   atom()
+stdout | Context expected type: number()
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |     ┌─ check/src/funs.erl:155:1
+stdout |     │  
+stdout | 155 │ ╭ x6(L, B) ->
+stdout | 156 │ │     xmap(fun (_) -> B end, L).
+stdout |     │ ╰─────────────────────────────^ Clause is not covered by spec
+stdout |
+stdout | error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
+stdout |     ┌─ check/src/funs.erl:195:5
+stdout |     │
+stdout | 195 │     (fun () -> ok end)(1, 2, 3).
+stdout |     │     ^^^^^^^^^^^^^^^^^^ fun.
+stdout | fun with arity 0 used as fun with 3 arguments
+stdout |
+stdout | error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
+stdout |     ┌─ check/src/funs.erl:199:5
+stdout |     │
+stdout | 199 │     (fun (_X) -> ok end)(1, 2, 3).
+stdout |     │     ^^^^^^^^^^^^^^^^^^^^ fun.
+stdout | fun with arity 1 used as fun with 3 arguments
+stdout |
+stdout | error: fun_arity_mismatch (See https://fb.me/eqwalizer_errors#fun_arity_mismatch)
+stdout |     ┌─ check/src/funs.erl:203:5
+stdout |     │
+stdout | 203 │     (fun (_X) -> ok end)().
+stdout |     │     ^^^^^^^^^^^^^^^^^^^^ fun.
+stdout | fun with arity 1 used as fun with 0 arguments
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/funs.erl:224:16
+stdout |     │
+stdout | 224 │     fun F() -> F end.
+stdout |     │                ^ F.
+stdout | Expression has type:   fun(() -> 'a')
+stdout | Context expected type: 'a'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/funs.erl:329:9
+stdout |     │
+stdout | 329 │         F(A)
+stdout |     │         ^^^^ F(A).
+stdout | Expression has type:   term()
+stdout | Context expected type: 'other'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/funs.erl:336:11
+stdout |     │
+stdout | 336 │         F(A)
+stdout |     │           ^ A.
+stdout | Expression has type:   term()
+stdout | Context expected type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/funs.erl:363:5
+stdout |     │
+stdout | 363 │     Fun().
+stdout |     │     ^^^^^ Fun().
+stdout | Expression has type:   'no_ok'
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/funs.erl:368:5
+stdout |     │
+stdout | 368 │     Fun().
+stdout |     │     ^^^^^ Fun().
+stdout | Expression has type:   'no_ok'
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/funs.erl:374:54
+stdout |     │
+stdout | 374 │ use_callback_test_neg() -> callback_test(fun (_T) -> ok end).
+stdout |     │                                                      ^^ 'ok'.
+stdout | Expression has type:   'ok'
+stdout | Context expected type: none()
+stdout |
+stdout | 27 ERRORS

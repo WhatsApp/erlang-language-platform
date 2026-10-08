@@ -1,25 +1,25 @@
-error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
-  ┌─ check/src/behave.erl:8:20
-  │
-8 │ -callback foo() -> behave1:test().
-  │                    ^^^^^^^^^^^^^^ Unknown id: behave1:test/0
-
-error: unbound_type_var (See https://fb.me/eqwalizer_errors#unbound_type_var)
-   ┌─ check/src/behave.erl:10:1
-   │
-10 │ -type invalid() :: _T.
-   │ ^^^^^^^^^^^^^^^^^^^^^ _T: Type variable is unbound.
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-   ┌─ check/src/behave.erl:12:1
-   │
-12 │ -callback use_invalid() -> invalid().
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use_invalid/0 (transitively) references type with invalid definition: invalid/0
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-   ┌─ check/src/behave.erl:14:1
-   │
-14 │ -callback use_invalid2() -> invalid().
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use_invalid2/0 (transitively) references type with invalid definition: invalid/0
-
-4 ERRORS
+stdout | error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
+stdout |   ┌─ check/src/behave.erl:8:20
+stdout |   │
+stdout | 8 │ -callback foo() -> behave1:test().
+stdout |   │                    ^^^^^^^^^^^^^^ Unknown id: behave1:test/0
+stdout |
+stdout | error: unbound_type_var (See https://fb.me/eqwalizer_errors#unbound_type_var)
+stdout |    ┌─ check/src/behave.erl:10:1
+stdout |    │
+stdout | 10 │ -type invalid() :: _T.
+stdout |    │ ^^^^^^^^^^^^^^^^^^^^^ _T: Type variable is unbound.
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |    ┌─ check/src/behave.erl:12:1
+stdout |    │
+stdout | 12 │ -callback use_invalid() -> invalid().
+stdout |    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use_invalid/0 (transitively) references type with invalid definition: invalid/0
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |    ┌─ check/src/behave.erl:14:1
+stdout |    │
+stdout | 14 │ -callback use_invalid2() -> invalid().
+stdout |    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use_invalid2/0 (transitively) references type with invalid definition: invalid/0
+stdout |
+stdout | 4 ERRORS

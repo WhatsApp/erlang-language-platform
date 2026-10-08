@@ -1,78 +1,78 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_maybe.erl:26:9
-   │
-26 │         A
-   │         ^ A.
-Expression has type:   term()
-Context expected type: atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_maybe.erl:50:14
-   │
-50 │         _ -> 3
-   │              ^ 3.
-Expression has type:   integer()
-Context expected type: atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_maybe.erl:57:5
-   │  
-57 │ ╭     maybe
-58 │ │         {err, A} ?= T,
-59 │ │         A
-60 │ │     end.
-   │ ╰───────^ maybe ...
-Expression has type:   term()
-Context expected type: atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_maybe.erl:66:5
-   │  
-66 │ ╭     maybe
-67 │ │         {ok, A} ?= T,
-68 │ │         ok = B ?= A,
-69 │ │         B
-70 │ │     end.
-   │ ╰───────^ maybe ...
-Expression has type:   atom() | {'err', term()}
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_maybe.erl:91:9
-   │
-91 │         B
-   │         ^ B.
-Expression has type:   'ok'
-Context expected type: 'err'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_maybe.erl:93:14
-   │
-93 │         _ -> ok
-   │              ^^ 'ok'.
-Expression has type:   'ok'
-Context expected type: 'err'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/gradual_maybe.erl:147:14
-    │
-147 │         c -> err
-    │              ^^^ 'err'.
-Expression has type:   'err'
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/gradual_maybe.erl:154:5
-    │  
-154 │ ╭     maybe
-155 │ │         A ?=
-156 │ │             maybe
-157 │ │                 B ?= {a, T},
-    · │
-160 │ │             end
-161 │ │     end.
-    │ ╰───────^ maybe ...
-Expression has type:   {'b', {'a', term()}}
-Context expected type: 'err'
-
-8 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_maybe.erl:26:9
+stdout |    │
+stdout | 26 │         A
+stdout |    │         ^ A.
+stdout | Expression has type:   term()
+stdout | Context expected type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_maybe.erl:50:14
+stdout |    │
+stdout | 50 │         _ -> 3
+stdout |    │              ^ 3.
+stdout | Expression has type:   integer()
+stdout | Context expected type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_maybe.erl:57:5
+stdout |    │  
+stdout | 57 │ ╭     maybe
+stdout | 58 │ │         {err, A} ?= T,
+stdout | 59 │ │         A
+stdout | 60 │ │     end.
+stdout |    │ ╰───────^ maybe ...
+stdout | Expression has type:   term()
+stdout | Context expected type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_maybe.erl:66:5
+stdout |    │  
+stdout | 66 │ ╭     maybe
+stdout | 67 │ │         {ok, A} ?= T,
+stdout | 68 │ │         ok = B ?= A,
+stdout | 69 │ │         B
+stdout | 70 │ │     end.
+stdout |    │ ╰───────^ maybe ...
+stdout | Expression has type:   atom() | {'err', term()}
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_maybe.erl:91:9
+stdout |    │
+stdout | 91 │         B
+stdout |    │         ^ B.
+stdout | Expression has type:   'ok'
+stdout | Context expected type: 'err'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_maybe.erl:93:14
+stdout |    │
+stdout | 93 │         _ -> ok
+stdout |    │              ^^ 'ok'.
+stdout | Expression has type:   'ok'
+stdout | Context expected type: 'err'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/gradual_maybe.erl:147:14
+stdout |     │
+stdout | 147 │         c -> err
+stdout |     │              ^^^ 'err'.
+stdout | Expression has type:   'err'
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/gradual_maybe.erl:154:5
+stdout |     │  
+stdout | 154 │ ╭     maybe
+stdout | 155 │ │         A ?=
+stdout | 156 │ │             maybe
+stdout | 157 │ │                 B ?= {a, T},
+stdout |     · │
+stdout | 160 │ │             end
+stdout | 161 │ │     end.
+stdout |     │ ╰───────^ maybe ...
+stdout | Expression has type:   {'b', {'a', term()}}
+stdout | Context expected type: 'err'
+stdout |
+stdout | 8 ERRORS

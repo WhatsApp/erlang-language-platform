@@ -1,7 +1,8 @@
-module specified: main_app
-Diagnostics reported in 1 modules:
-  main_app: 4
-      11:0-11:42::[Warning] [W0020] Unused file: stdlib/include/assert.hrl
-      14:9-14:21::[Error] [E1516] can't find include file "assert.hrl"
-      16:9-16:24::[Error] [L1227] function test_function/0 undefined
-      20:4-20:25::[Error] [E1508] undefined macro 'normalDepAssertEqual/2'
+stdout | module specified: main_app
+stdout | Diagnostics reported in 1 modules:
+stdout |   main_app: 4
+stdout |       11:0-11:42::[Warning] [W0020] Unused file: stdlib/include/assert.hrl
+stdout |       14:9-14:21::[Error] [E1516] can't find include file "assert.hrl"
+stdout |       16:9-16:24::[Error] [L1227] function test_function/0 undefined
+stdout |       20:4-20:25::[Error] [E1508] undefined macro 'normalDepAssertEqual/2'
+stderr | Parse failures found

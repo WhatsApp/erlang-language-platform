@@ -1,18 +1,18 @@
-Generate build info JSON file
-
-Usage: elp build-info [OPTIONS] --to <TO>
-
-Options:
-      --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
-      --to <TO>            Path to a (JSON) file to write the build information
-  -h, --help               Print help
-
-Global options:
-      --log-file <LOG_FILE>  
-      --erl <ERL>            
-      --escript <ESCRIPT>    
-      --no-log-buffering     
-      --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
-      --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
-      --color <WHEN>         Use color in output [default: always] [possible values: always, never,
-                             auto]
+stdout | Generate build info JSON file
+stdout |
+stdout | Usage: elp build-info [OPTIONS] --to <TO>
+stdout |
+stdout | Options:
+stdout |       --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
+stdout |       --to <TO>            Path to a (JSON) file to write the build information
+stdout |   -h, --help               Print help
+stdout |
+stdout | Global options:
+stdout |       --log-file <LOG_FILE>  
+stdout |       --erl <ERL>            
+stdout |       --escript <ESCRIPT>    
+stdout |       --no-log-buffering     
+stdout |       --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
+stdout |       --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
+stdout |       --color <WHEN>         Use color in output [default: always] [possible values: always, never,
+stdout |                              auto]

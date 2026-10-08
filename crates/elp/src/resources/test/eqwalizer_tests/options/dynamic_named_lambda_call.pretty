@@ -1,13 +1,13 @@
-error: dynamic_lambda (See https://fb.me/eqwalizer_errors#dynamic_lambda)
-   ┌─ options/src/dynamic_named_lambda_call.erl:16:5
-   │
-16 │     (fun _Loop(X) -> X end)(1).
-   │     ^^^^^^^^^^^^^^^^^^^^^^^ Lambda without context: parameters are dynamic()
-
-error: dynamic_lambda (See https://fb.me/eqwalizer_errors#dynamic_lambda)
-   ┌─ options/src/dynamic_named_lambda_call.erl:20:9
-   │
-20 │     R = (fun _Loop(X) -> X end)(1),
-   │         ^^^^^^^^^^^^^^^^^^^^^^^ Lambda without context: parameters are dynamic()
-
-2 ERRORS
+stdout | error: dynamic_lambda (See https://fb.me/eqwalizer_errors#dynamic_lambda)
+stdout |    ┌─ options/src/dynamic_named_lambda_call.erl:16:5
+stdout |    │
+stdout | 16 │     (fun _Loop(X) -> X end)(1).
+stdout |    │     ^^^^^^^^^^^^^^^^^^^^^^^ Lambda without context: parameters are dynamic()
+stdout |
+stdout | error: dynamic_lambda (See https://fb.me/eqwalizer_errors#dynamic_lambda)
+stdout |    ┌─ options/src/dynamic_named_lambda_call.erl:20:9
+stdout |    │
+stdout | 20 │     R = (fun _Loop(X) -> X end)(1),
+stdout |    │         ^^^^^^^^^^^^^^^^^^^^^^^ Lambda without context: parameters are dynamic()
+stdout |
+stdout | 2 ERRORS

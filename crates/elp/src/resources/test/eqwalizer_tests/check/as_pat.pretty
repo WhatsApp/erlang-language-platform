@@ -1,17 +1,17 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/as_pat.erl:51:38
-   │
-51 │ unboxL_neg(BN = #box_n{}) -> unbox_a(BN).
-   │                                      ^^ BN.
-Expression has type:   #box_n{}
-Context expected type: #box_a{}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/as_pat.erl:61:38
-   │
-61 │ unboxR_neg(#box_n{} = BN) -> unbox_b(BN).
-   │                                      ^^ BN.
-Expression has type:   #box_n{}
-Context expected type: #box_b{}
-
-2 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/as_pat.erl:51:38
+stdout |    │
+stdout | 51 │ unboxL_neg(BN = #box_n{}) -> unbox_a(BN).
+stdout |    │                                      ^^ BN.
+stdout | Expression has type:   #box_n{}
+stdout | Context expected type: #box_a{}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/as_pat.erl:61:38
+stdout |    │
+stdout | 61 │ unboxR_neg(#box_n{} = BN) -> unbox_b(BN).
+stdout |    │                                      ^^ BN.
+stdout | Expression has type:   #box_n{}
+stdout | Context expected type: #box_b{}
+stdout |
+stdout | 2 ERRORS

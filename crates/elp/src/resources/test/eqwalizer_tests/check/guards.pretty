@@ -1,29 +1,29 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/guards.erl:51:5
-   │
-51 │     X.
-   │     ^ X.
-Expression has type:   term()
-Context expected type: #{number() => number()}
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-   ┌─ check/src/guards.erl:53:1
-   │
-53 │ -type loop() :: loop().
-   │ ^^^^^^^^^^^^^^^^^^^^ recursive type loop/0 is not productive
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-   ┌─ check/src/guards.erl:54:1
-   │
-54 │ -record(invalid, {field :: loop()}).
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid (transitively) references type with invalid definition: loop/0
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/guards.erl:89:25
-   │
-89 │ guard_element_neg(T) -> T + 1.
-   │                         ^ T.
-Expression has type:   tuple()
-Context expected type: number()
-
-4 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/guards.erl:51:5
+stdout |    │
+stdout | 51 │     X.
+stdout |    │     ^ X.
+stdout | Expression has type:   term()
+stdout | Context expected type: #{number() => number()}
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |    ┌─ check/src/guards.erl:53:1
+stdout |    │
+stdout | 53 │ -type loop() :: loop().
+stdout |    │ ^^^^^^^^^^^^^^^^^^^^ recursive type loop/0 is not productive
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |    ┌─ check/src/guards.erl:54:1
+stdout |    │
+stdout | 54 │ -record(invalid, {field :: loop()}).
+stdout |    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid (transitively) references type with invalid definition: loop/0
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/guards.erl:89:25
+stdout |    │
+stdout | 89 │ guard_element_neg(T) -> T + 1.
+stdout |    │                         ^ T.
+stdout | Expression has type:   tuple()
+stdout | Context expected type: number()
+stdout |
+stdout | 4 ERRORS

@@ -1,3 +1,4 @@
-Diagnostics reported:
-app_a/src/app_a.erl:9:1-9:5::[Error] [P1700] head mismatch 'fooX' vs 'food'
-        7:1-7:5: Mismatched clause name
+stdout | Diagnostics reported:
+stdout | app_a/src/app_a.erl:9:1-9:5::[Error] [P1700] head mismatch 'fooX' vs 'food'
+stdout |         7:1-7:5: Mismatched clause name
+stderr | Errors found

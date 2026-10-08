@@ -1,21 +1,21 @@
-error: redundant_nowarn_function (See https://fb.me/eqwalizer_errors#redundant_nowarn_function)
-   ┌─ check/src/nowarn.erl:10:1
-   │
-10 │ -eqwalizer({nowarn_function, nowarn_redundant/0}).
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ redundant nowarn_function
-
-error: redundant_nowarn_function (See https://fb.me/eqwalizer_errors#redundant_nowarn_function)
-   ┌─ check/src/nowarn.erl:11:1
-   │
-11 │ -eqwalizer({nowarn_function, nowarn_nonexist/0}).
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ redundant nowarn_function
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/nowarn.erl:21:3
-   │
-21 │   ok.
-   │   ^^ 'ok'.
-Expression has type:   'ok'
-Context expected type: integer()
-
-3 ERRORS
+stdout | error: redundant_nowarn_function (See https://fb.me/eqwalizer_errors#redundant_nowarn_function)
+stdout |    ┌─ check/src/nowarn.erl:10:1
+stdout |    │
+stdout | 10 │ -eqwalizer({nowarn_function, nowarn_redundant/0}).
+stdout |    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ redundant nowarn_function
+stdout |
+stdout | error: redundant_nowarn_function (See https://fb.me/eqwalizer_errors#redundant_nowarn_function)
+stdout |    ┌─ check/src/nowarn.erl:11:1
+stdout |    │
+stdout | 11 │ -eqwalizer({nowarn_function, nowarn_nonexist/0}).
+stdout |    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ redundant nowarn_function
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/nowarn.erl:21:3
+stdout |    │
+stdout | 21 │   ok.
+stdout |    │   ^^ 'ok'.
+stdout | Expression has type:   'ok'
+stdout | Context expected type: integer()
+stdout |
+stdout | 3 ERRORS

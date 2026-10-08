@@ -1,23 +1,23 @@
-Dump ast for all files in a project for specified rebar.config file
-
-Usage: elp parse-all [OPTIONS] --to <TO>
-
-Options:
-      --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
-      --to <TO>            Path to a directory where to dump .etf files
-      --as <PROFILE>       Rebar3 profile to pickup [default: test]
-      --module <MODULE>    Parse a single module from the project, not the entire project
-      --buck               Run with buck
-      --stats              Print statistics when done
-      --list-modules       When printing statistics, include the list of modules parsed
-  -h, --help               Print help
-
-Global options:
-      --log-file <LOG_FILE>  
-      --erl <ERL>            
-      --escript <ESCRIPT>    
-      --no-log-buffering     
-      --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
-      --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
-      --color <WHEN>         Use color in output [default: always] [possible values: always, never,
-                             auto]
+stdout | Dump ast for all files in a project for specified rebar.config file
+stdout |
+stdout | Usage: elp parse-all [OPTIONS] --to <TO>
+stdout |
+stdout | Options:
+stdout |       --project <PROJECT>  Path to directory with project, or to a JSON file [default: .]
+stdout |       --to <TO>            Path to a directory where to dump .etf files
+stdout |       --as <PROFILE>       Rebar3 profile to pickup [default: test]
+stdout |       --module <MODULE>    Parse a single module from the project, not the entire project
+stdout |       --buck               Run with buck
+stdout |       --stats              Print statistics when done
+stdout |       --list-modules       When printing statistics, include the list of modules parsed
+stdout |   -h, --help               Print help
+stdout |
+stdout | Global options:
+stdout |       --log-file <LOG_FILE>  
+stdout |       --erl <ERL>            
+stdout |       --escript <ESCRIPT>    
+stdout |       --no-log-buffering     
+stdout |       --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
+stdout |       --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
+stdout |       --color <WHEN>         Use color in output [default: always] [possible values: always, never,
+stdout |                              auto]

@@ -1,151 +1,151 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/type_asserts.erl:39:3
-   │
-39 │   Arg.
-   │   ^^^ Arg.
-Expression has type:   string()
-Context expected type: binary()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/type_asserts.erl:63:26
-   │
-63 │     andalso list_to_atom(A).
-   │                          ^ A.
-Expression has type:   binary()
-Context expected type: string()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/type_asserts.erl:70:26
-   │
-70 │     andalso list_to_atom(A).
-   │                          ^ A.
-Expression has type:   binary()
-Context expected type: string()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/type_asserts.erl:84:3
-   │    
-84 │ ╭ ╭   is_number(N)
-85 │ │ │     andalso is_atom(A)
-86 │ │ │     andalso {N, A}.
-   │ ╰─│──────────────────^ _ andalso _.
-Expression has type:   'false' | {number(), atom()}
-Context expected type: 'false' | {atom(), number()}
-   │   ╰──────────────────' 
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: 'false'
-  However, the following candidate doesn't match:
-  { 
-    Here the type is:     number()
-    Context expects type: atom()
-  , atom()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/type_asserts.erl:92:3
-   │
-92 │   {X, A}.
-   │   ^^^^^^
-   │   │
-   │   {X, A}.
-Expression has type:   {'false' | number(), term()}
-Context expected type: {'false' | number(), number()}
-   │   
-
-Because in the expression's type:
-  { 'false' | number(), 
-    Here the type is:     term()
-    Context expects type: number()
-  }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/type_asserts.erl:105:39
-    │
-105 │ checked_cast1_neg(A) -> ?checked_cast(A, ok).
-    │                                       ^ A.
-Expression has type:   atom()
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/type_asserts.erl:108:25
-    │
-108 │ checked_cast2_neg(A) -> ?checked_cast(A, atom()).
-    │                         ^^^^^^^^^^^^^^^^^^^^^^^^ .. :: ...
-Expression has type:   atom()
-Context expected type: 'ok'
-
-error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
-    ┌─ check/src/type_asserts.erl:110:20
-    │
-110 │ -type invalid() :: foo:non_exist().
-    │                    ^^^^^^^^^^^^^^^ Unknown id: foo:non_exist/0
-
-error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
-    ┌─ check/src/type_asserts.erl:113:42
-    │
-113 │ checked_cast3_neg(A) -> ?checked_cast(A, foo:non_exist()).
-    │                                          ^^^^^^^^^^^^^^^ Unknown id: foo:non_exist/0
-
-error: invalid_ref_in_type_cast (See https://fb.me/eqwalizer_errors#invalid_ref_in_type_cast)
-    ┌─ check/src/type_asserts.erl:116:42
-    │
-116 │ checked_cast4_neg(A) -> ?checked_cast(A, {ok, invalid()}).
-    │                                          ^^^^^^^^^^^^^^^ type cast references type with invalid definition: invalid/0
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/type_asserts.erl:123:5
-    │    
-123 │ ╭ ╭     case Key of
-124 │ │ │       a ->
-125 │ │ │         V = maps:get(K, Acc, #{}),
-126 │ │ │         Acc#{K => V#{ka => va}};
-    · │ │
-132 │ │ │         Acc#{K => V#{kc => vc}}
-133 │ │ │     end
-    │ ╰─│───────^ case ....
-Expression has type:   #{dynamic() => #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'} | #{kc := 'vc'}}
-Context expected type: #{dynamic() => #{ka := 'va', kb := 'vb'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va'} | #{kb := 'vb'} | #{kc := 'vc'}} | #{dynamic() => #{ka := 'va', kb := 'vb'} | #{ka := 'va'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'} | #{kc := 'vc'}} | #{dynamic() => #{ka := 'va', kc := 'vc'} | #{ka := 'va'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'} | #{kc := 'vc'}}
-    │   ╰───────' 
-
-Because in the expression's type:
-  #{ dynamic() =>
-    Here the type is:     #{kb := ...}
-    Context expects type: #{...}
-    The expected map has no corresponding key for: kb.
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/type_asserts.erl:156:24
-    │
-156 │ unsafe_cast1_neg(A) -> ?unchecked_cast(A, err).
-    │                        ^^^^^^^^^^^^^^^^^^^^^^^ .. :: ...
-Expression has type:   'err'
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/type_asserts.erl:159:40
-    │
-159 │ unsafe_cast2_neg(D) -> ?unchecked_cast(a + D, ok).
-    │                                        ^ 'a'.
-Expression has type:   'a'
-Context expected type: number()
-
-error: variables_in_type_cast (See https://fb.me/eqwalizer_errors#variables_in_type_cast)
-    ┌─ check/src/type_asserts.erl:163:21
-    │
-163 │   ?checked_cast(ok, A).
-    │                     ^ type variables are not allowed in type casts, found: A
-
-error: variables_in_type_cast (See https://fb.me/eqwalizer_errors#variables_in_type_cast)
-    ┌─ check/src/type_asserts.erl:167:23
-    │
-167 │   ?unchecked_cast(ok, A | B).
-    │                       ^^^^^ type variables are not allowed in type casts, found: A, B
-
-error: refined_record_in_type_cast (See https://fb.me/eqwalizer_errors#refined_record_in_type_cast)
-    ┌─ check/src/type_asserts.erl:173:22
-    │
-173 │   ?unchecked_cast(1, #rec{bad_field :: atom()}).
-    │                      ^^^^^^^^^^^^^^^^^^^^^^^^^ refined records are not allowed in type casts, found: rec
-
-16 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/type_asserts.erl:39:3
+stdout |    │
+stdout | 39 │   Arg.
+stdout |    │   ^^^ Arg.
+stdout | Expression has type:   string()
+stdout | Context expected type: binary()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/type_asserts.erl:63:26
+stdout |    │
+stdout | 63 │     andalso list_to_atom(A).
+stdout |    │                          ^ A.
+stdout | Expression has type:   binary()
+stdout | Context expected type: string()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/type_asserts.erl:70:26
+stdout |    │
+stdout | 70 │     andalso list_to_atom(A).
+stdout |    │                          ^ A.
+stdout | Expression has type:   binary()
+stdout | Context expected type: string()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/type_asserts.erl:84:3
+stdout |    │    
+stdout | 84 │ ╭ ╭   is_number(N)
+stdout | 85 │ │ │     andalso is_atom(A)
+stdout | 86 │ │ │     andalso {N, A}.
+stdout |    │ ╰─│──────────────────^ _ andalso _.
+stdout | Expression has type:   'false' | {number(), atom()}
+stdout | Context expected type: 'false' | {atom(), number()}
+stdout |    │   ╰──────────────────' 
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: 'false'
+stdout |   However, the following candidate doesn't match:
+stdout |   { 
+stdout |     Here the type is:     number()
+stdout |     Context expects type: atom()
+stdout |   , atom()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/type_asserts.erl:92:3
+stdout |    │
+stdout | 92 │   {X, A}.
+stdout |    │   ^^^^^^
+stdout |    │   │
+stdout |    │   {X, A}.
+stdout | Expression has type:   {'false' | number(), term()}
+stdout | Context expected type: {'false' | number(), number()}
+stdout |    │   
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 'false' | number(), 
+stdout |     Here the type is:     term()
+stdout |     Context expects type: number()
+stdout |   }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/type_asserts.erl:105:39
+stdout |     │
+stdout | 105 │ checked_cast1_neg(A) -> ?checked_cast(A, ok).
+stdout |     │                                       ^ A.
+stdout | Expression has type:   atom()
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/type_asserts.erl:108:25
+stdout |     │
+stdout | 108 │ checked_cast2_neg(A) -> ?checked_cast(A, atom()).
+stdout |     │                         ^^^^^^^^^^^^^^^^^^^^^^^^ .. :: ...
+stdout | Expression has type:   atom()
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
+stdout |     ┌─ check/src/type_asserts.erl:110:20
+stdout |     │
+stdout | 110 │ -type invalid() :: foo:non_exist().
+stdout |     │                    ^^^^^^^^^^^^^^^ Unknown id: foo:non_exist/0
+stdout |
+stdout | error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
+stdout |     ┌─ check/src/type_asserts.erl:113:42
+stdout |     │
+stdout | 113 │ checked_cast3_neg(A) -> ?checked_cast(A, foo:non_exist()).
+stdout |     │                                          ^^^^^^^^^^^^^^^ Unknown id: foo:non_exist/0
+stdout |
+stdout | error: invalid_ref_in_type_cast (See https://fb.me/eqwalizer_errors#invalid_ref_in_type_cast)
+stdout |     ┌─ check/src/type_asserts.erl:116:42
+stdout |     │
+stdout | 116 │ checked_cast4_neg(A) -> ?checked_cast(A, {ok, invalid()}).
+stdout |     │                                          ^^^^^^^^^^^^^^^ type cast references type with invalid definition: invalid/0
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/type_asserts.erl:123:5
+stdout |     │    
+stdout | 123 │ ╭ ╭     case Key of
+stdout | 124 │ │ │       a ->
+stdout | 125 │ │ │         V = maps:get(K, Acc, #{}),
+stdout | 126 │ │ │         Acc#{K => V#{ka => va}};
+stdout |     · │ │
+stdout | 132 │ │ │         Acc#{K => V#{kc => vc}}
+stdout | 133 │ │ │     end
+stdout |     │ ╰─│───────^ case ....
+stdout | Expression has type:   #{dynamic() => #{ka := 'va', kb := 'vb', kc := 'vc'} | #{ka := 'va', kb := 'vb'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'} | #{kc := 'vc'}}
+stdout | Context expected type: #{dynamic() => #{ka := 'va', kb := 'vb'} | #{ka := 'va', kc := 'vc'} | #{ka := 'va'} | #{kb := 'vb'} | #{kc := 'vc'}} | #{dynamic() => #{ka := 'va', kb := 'vb'} | #{ka := 'va'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'} | #{kc := 'vc'}} | #{dynamic() => #{ka := 'va', kc := 'vc'} | #{ka := 'va'} | #{kb := 'vb', kc := 'vc'} | #{kb := 'vb'} | #{kc := 'vc'}}
+stdout |     │   ╰───────' 
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ dynamic() =>
+stdout |     Here the type is:     #{kb := ...}
+stdout |     Context expects type: #{...}
+stdout |     The expected map has no corresponding key for: kb.
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/type_asserts.erl:156:24
+stdout |     │
+stdout | 156 │ unsafe_cast1_neg(A) -> ?unchecked_cast(A, err).
+stdout |     │                        ^^^^^^^^^^^^^^^^^^^^^^^ .. :: ...
+stdout | Expression has type:   'err'
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/type_asserts.erl:159:40
+stdout |     │
+stdout | 159 │ unsafe_cast2_neg(D) -> ?unchecked_cast(a + D, ok).
+stdout |     │                                        ^ 'a'.
+stdout | Expression has type:   'a'
+stdout | Context expected type: number()
+stdout |
+stdout | error: variables_in_type_cast (See https://fb.me/eqwalizer_errors#variables_in_type_cast)
+stdout |     ┌─ check/src/type_asserts.erl:163:21
+stdout |     │
+stdout | 163 │   ?checked_cast(ok, A).
+stdout |     │                     ^ type variables are not allowed in type casts, found: A
+stdout |
+stdout | error: variables_in_type_cast (See https://fb.me/eqwalizer_errors#variables_in_type_cast)
+stdout |     ┌─ check/src/type_asserts.erl:167:23
+stdout |     │
+stdout | 167 │   ?unchecked_cast(ok, A | B).
+stdout |     │                       ^^^^^ type variables are not allowed in type casts, found: A, B
+stdout |
+stdout | error: refined_record_in_type_cast (See https://fb.me/eqwalizer_errors#refined_record_in_type_cast)
+stdout |     ┌─ check/src/type_asserts.erl:173:22
+stdout |     │
+stdout | 173 │   ?unchecked_cast(1, #rec{bad_field :: atom()}).
+stdout |     │                      ^^^^^^^^^^^^^^^^^^^^^^^^^ refined records are not allowed in type casts, found: rec
+stdout |
+stdout | 16 ERRORS

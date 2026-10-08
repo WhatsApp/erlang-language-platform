@@ -1,73 +1,73 @@
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-   ┌─ check/src/tuples.erl:17:27
-   │
-17 │     eqwalizer:reveal_type(Tuple),
-   │                           ^^^^^ {term()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/tuples.erl:19:5
-   │
-19 │     Z.
-   │     ^ Z.
-Expression has type:   term()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/tuples.erl:24:31
-   │
-24 │         T when is_tuple(T) -> T
-   │                               ^ T.
-Expression has type:   tuple()
-Context expected type: {atom(), binary()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/tuples.erl:31:23
-   │
-31 │ setelement_neg(AB) -> setelement(1, AB, ~"").
-   │                       ^^^^^^^^^^^^^^^^^^^^^^
-   │                       │
-   │                       erlang:setelement(1, AB, <<..>>).
-Expression has type:   {binary(), binary()}
-Context expected type: {atom(), binary()}
-   │                       
-
-Because in the expression's type:
-  { 
-    Here the type is:     binary()
-    Context expects type: atom()
-  , binary()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/tuples.erl:37:24
-   │
-37 │ update_rec_neg(Rec) -> setelement(2, Rec, ~"red").
-   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   │                        │
-   │                        erlang:setelement(2, Rec, <<..>>).
-Expression has type:   {'rec', binary(), binary()}
-Context expected type: #rec{}
-   │                        
-
-Because in the expression's type:
-  { 'rec', 
-    Here the type is:     binary()
-    Context expects type: atom()
-  , binary()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/tuples.erl:40:20
-   │
-40 │ subtype_neg1(T) -> T.
-   │                    ^ T.
-Expression has type:   {none()}
-Context expected type: atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/tuples.erl:43:20
-   │
-43 │ subtype_neg2(T) -> T.
-   │                    ^ T.
-Expression has type:   {none()}
-Context expected type: atom() | binary()
-
-7 ERRORS
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |    ┌─ check/src/tuples.erl:17:27
+stdout |    │
+stdout | 17 │     eqwalizer:reveal_type(Tuple),
+stdout |    │                           ^^^^^ {term()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/tuples.erl:19:5
+stdout |    │
+stdout | 19 │     Z.
+stdout |    │     ^ Z.
+stdout | Expression has type:   term()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/tuples.erl:24:31
+stdout |    │
+stdout | 24 │         T when is_tuple(T) -> T
+stdout |    │                               ^ T.
+stdout | Expression has type:   tuple()
+stdout | Context expected type: {atom(), binary()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/tuples.erl:31:23
+stdout |    │
+stdout | 31 │ setelement_neg(AB) -> setelement(1, AB, ~"").
+stdout |    │                       ^^^^^^^^^^^^^^^^^^^^^^
+stdout |    │                       │
+stdout |    │                       erlang:setelement(1, AB, <<..>>).
+stdout | Expression has type:   {binary(), binary()}
+stdout | Context expected type: {atom(), binary()}
+stdout |    │                       
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 
+stdout |     Here the type is:     binary()
+stdout |     Context expects type: atom()
+stdout |   , binary()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/tuples.erl:37:24
+stdout |    │
+stdout | 37 │ update_rec_neg(Rec) -> setelement(2, Rec, ~"red").
+stdout |    │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+stdout |    │                        │
+stdout |    │                        erlang:setelement(2, Rec, <<..>>).
+stdout | Expression has type:   {'rec', binary(), binary()}
+stdout | Context expected type: #rec{}
+stdout |    │                        
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 'rec', 
+stdout |     Here the type is:     binary()
+stdout |     Context expects type: atom()
+stdout |   , binary()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/tuples.erl:40:20
+stdout |    │
+stdout | 40 │ subtype_neg1(T) -> T.
+stdout |    │                    ^ T.
+stdout | Expression has type:   {none()}
+stdout | Context expected type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/tuples.erl:43:20
+stdout |    │
+stdout | 43 │ subtype_neg2(T) -> T.
+stdout |    │                    ^ T.
+stdout | Expression has type:   {none()}
+stdout | Context expected type: atom() | binary()
+stdout |
+stdout | 7 ERRORS

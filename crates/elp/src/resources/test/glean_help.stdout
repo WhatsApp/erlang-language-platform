@@ -1,23 +1,23 @@
-Glean indexer
-
-Usage: elp glean [OPTIONS]
-
-Options:
-      --project <PROJECT>   Path to directory with project, or to a JSON file [default: .]
-      --module <MODULE>     
-      --to <TO>             Path to a directory where to dump result
-      --pretty              Pretty print
-      --multi               Output each fact separately
-      --print-metrics       Print indexer metrics as JSON
-      --source-root <PATH>  Prefix for every emitted `src.File` path
-  -h, --help                Print help
-
-Global options:
-      --log-file <LOG_FILE>  
-      --erl <ERL>            
-      --escript <ESCRIPT>    
-      --no-log-buffering     
-      --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
-      --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
-      --color <WHEN>         Use color in output [default: always] [possible values: always, never,
-                             auto]
+stdout | Glean indexer
+stdout |
+stdout | Usage: elp glean [OPTIONS]
+stdout |
+stdout | Options:
+stdout |       --project <PROJECT>   Path to directory with project, or to a JSON file [default: .]
+stdout |       --module <MODULE>     
+stdout |       --to <TO>             Path to a directory where to dump result
+stdout |       --pretty              Pretty print
+stdout |       --multi               Output each fact separately
+stdout |       --print-metrics       Print indexer metrics as JSON
+stdout |       --source-root <PATH>  Prefix for every emitted `src.File` path
+stdout |   -h, --help                Print help
+stdout |
+stdout | Global options:
+stdout |       --log-file <LOG_FILE>  
+stdout |       --erl <ERL>            
+stdout |       --escript <ESCRIPT>    
+stdout |       --no-log-buffering     
+stdout |       --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
+stdout |       --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
+stdout |       --color <WHEN>         Use color in output [default: always] [possible values: always, never,
+stdout |                              auto]

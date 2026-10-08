@@ -1,375 +1,375 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:17:11
-   │
-17 │ f01(X) -> X.
-   │           ^ X.
-Expression has type:   term()
-Context expected type: {A, A}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:20:11
-   │
-20 │ f02(X) -> X.
-   │           ^ X.
-Expression has type:   term()
-Context expected type: atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:24:11
-   │
-24 │ f03(F) -> F.
-   │           ^
-   │           │
-   │           F.
-Expression has type:   fun((atom()) -> term())
-Context expected type: fun((term()) -> atom())
-   │           
-
-Because in the expression's type:
-  fun((atom()) ->
-    Here the type is:     term()
-    Context expects type: atom()
-  )
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:27:11
-   │
-27 │ f04(X) -> X.
-   │           ^
-   │           │
-   │           X.
-Expression has type:   'a' | 'b' | 'c'
-Context expected type: 'a' | 'b'
-   │           
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: 'a' | 'b'
-  However the following candidate: 'c'
-  Differs from the expected type:  'a' | 'b'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:30:11
-   │
-30 │ f05(X) -> X.
-   │           ^ X.
-Expression has type:   'a' | 'b'
-Context expected type: none()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:34:11
-   │
-34 │ f06(X) -> X.
-   │           ^
-   │           │
-   │           X.
-Expression has type:   {'a' | 'b', 'a' | 'b'}
-Context expected type: {'a', 'b'} | {'b', 'a'}
-   │           
-
-Because in the expression's type:
-  { 
-    Here the type is a union type with some valid candidates: 'a'
-    However the following candidate: 'b'
-    Differs from the expected type:  'a'
-  , 'a' | 'b'}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:38:11
-   │
-38 │ f07(X) -> X.
-   │           ^
-   │           │
-   │           X.
-Expression has type:   pair_ab()
-Context expected type: pair_diff_elems()
-   │           
-
-Because in the expression's type:
-  { 
-    Here the type is a union type with some valid candidates: 'a'
-    However the following candidate: 'b'
-    Differs from the expected type:  'a'
-  , ab()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:41:11
-   │
-41 │ f08(X) -> X.
-   │           ^ X.
-Expression has type:   {none(), none()}
-Context expected type: none()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:48:13
-   │
-48 │ map02(M) -> M.
-   │             ^
-   │             │
-   │             M.
-Expression has type:   #{a => atom()}
-Context expected type: #{a := atom()}
-   │             
-
-Because in the expression's type:
-  Here the type is:     #{a => ..., ...}
-  Context expects type: #{a := ..., ...}
-  The type of the expression is missing the following required keys: a.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:52:13
-   │
-52 │ map03(M) -> M.
-   │             ^
-   │             │
-   │             M.
-Expression has type:   #{a := atom(), b := atom()}
-Context expected type: #{a => atom()}
-   │             
-
-Because in the expression's type:
-  Here the type is:     #{b := ...}
-  Context expects type: #{...}
-  The expected map has no corresponding key for: b.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:60:13
-   │
-60 │ map05(M) -> M.
-   │             ^
-   │             │
-   │             M.
-Expression has type:   #{'a' | 'b' => 'a' | 'b' | 'c'}
-Context expected type: #{a := 'a' | 'b', b => 'a' | 'b'}
-   │             
-
-Because in the expression's type:
-  Here the type is:     #{...}
-  Context expects type: #{a := ..., ...}
-  The type of the expression is missing the following required keys: a.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:64:13
-   │
-64 │ map06(M) -> M.
-   │             ^
-   │             │
-   │             M.
-Expression has type:   #{term() => integer()}
-Context expected type: #{atom() => integer()}
-   │             
-
-Because in the expression's type:
-  #{ map domains are incompatible:
-    Here the type is:     term()
-    Context expects type: atom()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:68:13
-   │
-68 │ map07(M) -> M.
-   │             ^
-   │             │
-   │             M.
-Expression has type:   #{atom() => term()}
-Context expected type: #{atom() => integer()}
-   │             
-
-Because in the expression's type:
-  #{ atom() =>
-    Here the type is:     term()
-    Context expects type: integer()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:72:13
-   │
-72 │ map08(M) -> M.
-   │             ^
-   │             │
-   │             M.
-Expression has type:   #{atom() => term()}
-Context expected type: #{}
-   │             
-
-Because in the expression's type:
-  Here the type is:     #{atom() => term()}
-  Context expects type: #{...} (no default association)
-  The expected map has no default association while the type of the expression has one.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:76:14
-   │
-76 │ tuple1(X) -> X.
-   │              ^ X.
-Expression has type:   tuple()
-Context expected type: {term()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:79:15
-   │
-79 │ any_fun(F) -> F.
-   │               ^ F.
-Expression has type:   term()
-Context expected type: fun()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:83:5
-   │
-83 │     {{}, error}.
-   │     ^^^^^^^^^^^
-   │     │
-   │     {{}, 'error'}.
-Expression has type:   {{}, 'error'}
-Context expected type: {tuple(), 'ok'}
-   │     
-
-Because in the expression's type:
-  { {}, 
-    Here the type is:     'error'
-    Context expects type: 'ok'
-  }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:87:5
-   │
-87 │     {[], error}.
-   │     ^^^^^^^^^^^
-   │     │
-   │     {[], 'error'}.
-Expression has type:   {[], 'error'}
-Context expected type: {[pid()], 'ok'}
-   │     
-
-Because in the expression's type:
-  { [], 
-    Here the type is:     'error'
-    Context expects type: 'ok'
-  }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:91:5
-   │
-91 │     {[], error}.
-   │     ^^^^^^^^^^^
-   │     │
-   │     {[], 'error'}.
-Expression has type:   {[], 'error'}
-Context expected type: {iolist(), 'ok'}
-   │     
-
-Because in the expression's type:
-  { [], 
-    Here the type is:     'error'
-    Context expects type: 'ok'
-  }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:94:13
-   │
-94 │ nil_1(L) -> L.
-   │             ^
-   │             │
-   │             L.
-Expression has type:   ['a']
-Context expected type: []
-   │             
-
-Because in the expression's type:
-  [
-    Here the type is:     'a'
-    Context expects type: none()
-  ]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/subtype_neg.erl:97:13
-   │
-97 │ nil_2(L) -> L.
-   │             ^
-   │             │
-   │             L.
-Expression has type:   ['a'] | [none()]
-Context expected type: []
-   │             
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: [none()]
-  However, the following candidate doesn't match:
-  [
-    Here the type is:     'a'
-    Context expects type: none()
-  ]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/subtype_neg.erl:109:25
-    │
-109 │ type_containment_1() -> fun id/1.
-    │                         ^^^^^^^^
-    │                         │
-    │                         id/1.
-Expression has type:   fun((T) -> T) with 1 type parameter
-Context expected type: fun((atom() | binary()) -> atom()) with 0 type parameters
-    │                         
-
-Because in the expression's type:
-  Here the type is:     fun((T) -> T) with 1 type parameter
-  Context expects type: fun((atom() | binary()) -> atom()) with 0 type parameters
-  The number of type parameters doesn't match.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/subtype_neg.erl:112:25
-    │
-112 │ type_containment_2() -> fun pair_id/1.
-    │                         ^^^^^^^^^^^^^
-    │                         │
-    │                         pair_id/1.
-Expression has type:   fun(({A, B}) -> {A, B}) with 2 type parameters
-Context expected type: fun(({atom(), binary()}) -> {binary(), atom()}) with 0 type parameters
-    │                         
-
-Because in the expression's type:
-  Here the type is:     fun(({A, B}) -> {A, B}) with 2 type parameters
-  Context expects type: fun()/1 with 0 type parameters
-  The number of type parameters doesn't match.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/subtype_neg.erl:115:25
-    │
-115 │ type_containment_3() -> fun pair_swap/1.
-    │                         ^^^^^^^^^^^^^^^
-    │                         │
-    │                         pair_swap/1.
-Expression has type:   fun(({A, B}) -> {B, A}) with 2 type parameters
-Context expected type: fun(({atom(), binary()}) -> {binary(), integer()}) with 0 type parameters
-    │                         
-
-Because in the expression's type:
-  Here the type is:     fun(({A, B}) -> {B, A}) with 2 type parameters
-  Context expects type: fun()/1 with 0 type parameters
-  The number of type parameters doesn't match.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/subtype_neg.erl:118:11
-    │
-118 │ test() -> fun pair_swap/1.
-    │           ^^^^^^^^^^^^^^^ pair_swap/1.
-Expression has type:   fun(({A, B}) -> {B, A})
-Context expected type: atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/subtype_neg.erl:124:13
-    │
-124 │ f1_bar() -> fun f1/1.
-    │             ^^^^^^^^
-    │             │
-    │             f1/1.
-Expression has type:   fun(({A}) -> {A, 'foo'}) with 1 type parameter
-Context expected type: fun(({binary()}) -> {binary(), 'bar'}) with 0 type parameters
-    │             
-
-Because in the expression's type:
-  Here the type is:     fun(({A}) -> {A, 'foo'}) with 1 type parameter
-  Context expects type: fun(({binary()}) -> {binary(), 'bar'}) with 0 type parameters
-  The number of type parameters doesn't match.
-
-26 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:17:11
+stdout |    │
+stdout | 17 │ f01(X) -> X.
+stdout |    │           ^ X.
+stdout | Expression has type:   term()
+stdout | Context expected type: {A, A}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:20:11
+stdout |    │
+stdout | 20 │ f02(X) -> X.
+stdout |    │           ^ X.
+stdout | Expression has type:   term()
+stdout | Context expected type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:24:11
+stdout |    │
+stdout | 24 │ f03(F) -> F.
+stdout |    │           ^
+stdout |    │           │
+stdout |    │           F.
+stdout | Expression has type:   fun((atom()) -> term())
+stdout | Context expected type: fun((term()) -> atom())
+stdout |    │           
+stdout |
+stdout | Because in the expression's type:
+stdout |   fun((atom()) ->
+stdout |     Here the type is:     term()
+stdout |     Context expects type: atom()
+stdout |   )
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:27:11
+stdout |    │
+stdout | 27 │ f04(X) -> X.
+stdout |    │           ^
+stdout |    │           │
+stdout |    │           X.
+stdout | Expression has type:   'a' | 'b' | 'c'
+stdout | Context expected type: 'a' | 'b'
+stdout |    │           
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: 'a' | 'b'
+stdout |   However the following candidate: 'c'
+stdout |   Differs from the expected type:  'a' | 'b'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:30:11
+stdout |    │
+stdout | 30 │ f05(X) -> X.
+stdout |    │           ^ X.
+stdout | Expression has type:   'a' | 'b'
+stdout | Context expected type: none()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:34:11
+stdout |    │
+stdout | 34 │ f06(X) -> X.
+stdout |    │           ^
+stdout |    │           │
+stdout |    │           X.
+stdout | Expression has type:   {'a' | 'b', 'a' | 'b'}
+stdout | Context expected type: {'a', 'b'} | {'b', 'a'}
+stdout |    │           
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 
+stdout |     Here the type is a union type with some valid candidates: 'a'
+stdout |     However the following candidate: 'b'
+stdout |     Differs from the expected type:  'a'
+stdout |   , 'a' | 'b'}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:38:11
+stdout |    │
+stdout | 38 │ f07(X) -> X.
+stdout |    │           ^
+stdout |    │           │
+stdout |    │           X.
+stdout | Expression has type:   pair_ab()
+stdout | Context expected type: pair_diff_elems()
+stdout |    │           
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 
+stdout |     Here the type is a union type with some valid candidates: 'a'
+stdout |     However the following candidate: 'b'
+stdout |     Differs from the expected type:  'a'
+stdout |   , ab()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:41:11
+stdout |    │
+stdout | 41 │ f08(X) -> X.
+stdout |    │           ^ X.
+stdout | Expression has type:   {none(), none()}
+stdout | Context expected type: none()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:48:13
+stdout |    │
+stdout | 48 │ map02(M) -> M.
+stdout |    │             ^
+stdout |    │             │
+stdout |    │             M.
+stdout | Expression has type:   #{a => atom()}
+stdout | Context expected type: #{a := atom()}
+stdout |    │             
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{a => ..., ...}
+stdout |   Context expects type: #{a := ..., ...}
+stdout |   The type of the expression is missing the following required keys: a.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:52:13
+stdout |    │
+stdout | 52 │ map03(M) -> M.
+stdout |    │             ^
+stdout |    │             │
+stdout |    │             M.
+stdout | Expression has type:   #{a := atom(), b := atom()}
+stdout | Context expected type: #{a => atom()}
+stdout |    │             
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{b := ...}
+stdout |   Context expects type: #{...}
+stdout |   The expected map has no corresponding key for: b.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:60:13
+stdout |    │
+stdout | 60 │ map05(M) -> M.
+stdout |    │             ^
+stdout |    │             │
+stdout |    │             M.
+stdout | Expression has type:   #{'a' | 'b' => 'a' | 'b' | 'c'}
+stdout | Context expected type: #{a := 'a' | 'b', b => 'a' | 'b'}
+stdout |    │             
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{...}
+stdout |   Context expects type: #{a := ..., ...}
+stdout |   The type of the expression is missing the following required keys: a.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:64:13
+stdout |    │
+stdout | 64 │ map06(M) -> M.
+stdout |    │             ^
+stdout |    │             │
+stdout |    │             M.
+stdout | Expression has type:   #{term() => integer()}
+stdout | Context expected type: #{atom() => integer()}
+stdout |    │             
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ map domains are incompatible:
+stdout |     Here the type is:     term()
+stdout |     Context expects type: atom()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:68:13
+stdout |    │
+stdout | 68 │ map07(M) -> M.
+stdout |    │             ^
+stdout |    │             │
+stdout |    │             M.
+stdout | Expression has type:   #{atom() => term()}
+stdout | Context expected type: #{atom() => integer()}
+stdout |    │             
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ atom() =>
+stdout |     Here the type is:     term()
+stdout |     Context expects type: integer()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:72:13
+stdout |    │
+stdout | 72 │ map08(M) -> M.
+stdout |    │             ^
+stdout |    │             │
+stdout |    │             M.
+stdout | Expression has type:   #{atom() => term()}
+stdout | Context expected type: #{}
+stdout |    │             
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{atom() => term()}
+stdout |   Context expects type: #{...} (no default association)
+stdout |   The expected map has no default association while the type of the expression has one.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:76:14
+stdout |    │
+stdout | 76 │ tuple1(X) -> X.
+stdout |    │              ^ X.
+stdout | Expression has type:   tuple()
+stdout | Context expected type: {term()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:79:15
+stdout |    │
+stdout | 79 │ any_fun(F) -> F.
+stdout |    │               ^ F.
+stdout | Expression has type:   term()
+stdout | Context expected type: fun()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:83:5
+stdout |    │
+stdout | 83 │     {{}, error}.
+stdout |    │     ^^^^^^^^^^^
+stdout |    │     │
+stdout |    │     {{}, 'error'}.
+stdout | Expression has type:   {{}, 'error'}
+stdout | Context expected type: {tuple(), 'ok'}
+stdout |    │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   { {}, 
+stdout |     Here the type is:     'error'
+stdout |     Context expects type: 'ok'
+stdout |   }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:87:5
+stdout |    │
+stdout | 87 │     {[], error}.
+stdout |    │     ^^^^^^^^^^^
+stdout |    │     │
+stdout |    │     {[], 'error'}.
+stdout | Expression has type:   {[], 'error'}
+stdout | Context expected type: {[pid()], 'ok'}
+stdout |    │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   { [], 
+stdout |     Here the type is:     'error'
+stdout |     Context expects type: 'ok'
+stdout |   }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:91:5
+stdout |    │
+stdout | 91 │     {[], error}.
+stdout |    │     ^^^^^^^^^^^
+stdout |    │     │
+stdout |    │     {[], 'error'}.
+stdout | Expression has type:   {[], 'error'}
+stdout | Context expected type: {iolist(), 'ok'}
+stdout |    │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   { [], 
+stdout |     Here the type is:     'error'
+stdout |     Context expects type: 'ok'
+stdout |   }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:94:13
+stdout |    │
+stdout | 94 │ nil_1(L) -> L.
+stdout |    │             ^
+stdout |    │             │
+stdout |    │             L.
+stdout | Expression has type:   ['a']
+stdout | Context expected type: []
+stdout |    │             
+stdout |
+stdout | Because in the expression's type:
+stdout |   [
+stdout |     Here the type is:     'a'
+stdout |     Context expects type: none()
+stdout |   ]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/subtype_neg.erl:97:13
+stdout |    │
+stdout | 97 │ nil_2(L) -> L.
+stdout |    │             ^
+stdout |    │             │
+stdout |    │             L.
+stdout | Expression has type:   ['a'] | [none()]
+stdout | Context expected type: []
+stdout |    │             
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: [none()]
+stdout |   However, the following candidate doesn't match:
+stdout |   [
+stdout |     Here the type is:     'a'
+stdout |     Context expects type: none()
+stdout |   ]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/subtype_neg.erl:109:25
+stdout |     │
+stdout | 109 │ type_containment_1() -> fun id/1.
+stdout |     │                         ^^^^^^^^
+stdout |     │                         │
+stdout |     │                         id/1.
+stdout | Expression has type:   fun((T) -> T) with 1 type parameter
+stdout | Context expected type: fun((atom() | binary()) -> atom()) with 0 type parameters
+stdout |     │                         
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     fun((T) -> T) with 1 type parameter
+stdout |   Context expects type: fun((atom() | binary()) -> atom()) with 0 type parameters
+stdout |   The number of type parameters doesn't match.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/subtype_neg.erl:112:25
+stdout |     │
+stdout | 112 │ type_containment_2() -> fun pair_id/1.
+stdout |     │                         ^^^^^^^^^^^^^
+stdout |     │                         │
+stdout |     │                         pair_id/1.
+stdout | Expression has type:   fun(({A, B}) -> {A, B}) with 2 type parameters
+stdout | Context expected type: fun(({atom(), binary()}) -> {binary(), atom()}) with 0 type parameters
+stdout |     │                         
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     fun(({A, B}) -> {A, B}) with 2 type parameters
+stdout |   Context expects type: fun()/1 with 0 type parameters
+stdout |   The number of type parameters doesn't match.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/subtype_neg.erl:115:25
+stdout |     │
+stdout | 115 │ type_containment_3() -> fun pair_swap/1.
+stdout |     │                         ^^^^^^^^^^^^^^^
+stdout |     │                         │
+stdout |     │                         pair_swap/1.
+stdout | Expression has type:   fun(({A, B}) -> {B, A}) with 2 type parameters
+stdout | Context expected type: fun(({atom(), binary()}) -> {binary(), integer()}) with 0 type parameters
+stdout |     │                         
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     fun(({A, B}) -> {B, A}) with 2 type parameters
+stdout |   Context expects type: fun()/1 with 0 type parameters
+stdout |   The number of type parameters doesn't match.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/subtype_neg.erl:118:11
+stdout |     │
+stdout | 118 │ test() -> fun pair_swap/1.
+stdout |     │           ^^^^^^^^^^^^^^^ pair_swap/1.
+stdout | Expression has type:   fun(({A, B}) -> {B, A})
+stdout | Context expected type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/subtype_neg.erl:124:13
+stdout |     │
+stdout | 124 │ f1_bar() -> fun f1/1.
+stdout |     │             ^^^^^^^^
+stdout |     │             │
+stdout |     │             f1/1.
+stdout | Expression has type:   fun(({A}) -> {A, 'foo'}) with 1 type parameter
+stdout | Context expected type: fun(({binary()}) -> {binary(), 'bar'}) with 0 type parameters
+stdout |     │             
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     fun(({A}) -> {A, 'foo'}) with 1 type parameter
+stdout |   Context expects type: fun(({binary()}) -> {binary(), 'bar'}) with 0 type parameters
+stdout |   The number of type parameters doesn't match.
+stdout |
+stdout | 26 ERRORS

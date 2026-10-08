@@ -1,22 +1,22 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/other.erl:46:27
-   │
-46 │ any_as_metadata_neg(M) -> M.
-   │                           ^
-   │                           │
-   │                           M.
-Expression has type:   term()
-Context expected type: logger:metadata()
-   │                           
-
-Because in the expression's type:
-  Here the type is:     term()
-  Context expects type: #{...}
-
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-   ┌─ check/src/other.erl:59:27
-   │
-59 │     eqwalizer:reveal_type(X),
-   │                           ^ integer()
-
-2 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/other.erl:46:27
+stdout |    │
+stdout | 46 │ any_as_metadata_neg(M) -> M.
+stdout |    │                           ^
+stdout |    │                           │
+stdout |    │                           M.
+stdout | Expression has type:   term()
+stdout | Context expected type: logger:metadata()
+stdout |    │                           
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     term()
+stdout |   Context expects type: #{...}
+stdout |
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |    ┌─ check/src/other.erl:59:27
+stdout |    │
+stdout | 59 │     eqwalizer:reveal_type(X),
+stdout |    │                           ^ integer()
+stdout |
+stdout | 2 ERRORS

@@ -1,99 +1,99 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/approx.erl:36:5
-   │
-36 │     {X, X}.
-   │     ^^^^^^ {X, X}.
-Expression has type:   {dynamic(), dynamic()}
-Context expected type: 'ok'
-
-error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
-   ┌─ check/src/approx.erl:39:1
-   │
-39 │ generics_with_unions:type_var_from_nowhere().
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Unknown id: generics_with_unions:type_var_from_nowhere/0
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-   ┌─ check/src/approx.erl:41:1
-   │  
-41 │ ╭ -spec test_trans_invalid1_neg(
-42 │ │     trans_invalid()
-43 │ │ ) -> nok.
-   │ ╰────────^ test_trans_invalid1_neg/1 (transitively) references type with invalid definition: trans_invalid/0
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-   ┌─ check/src/approx.erl:47:1
-   │  
-47 │ ╭ -spec test_trans_invalid2_neg(
-48 │ │     trans_invalid()
-49 │ │ ) -> nok.
-   │ ╰────────^ test_trans_invalid2_neg/1 (transitively) references type with invalid definition: trans_invalid/0
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-   ┌─ check/src/approx.erl:53:1
-   │  
-53 │ ╭ -spec test_trans_invalid3_neg(
-54 │ │     trans_invalid()
-55 │ │ ) -> nok.
-   │ ╰────────^ test_trans_invalid3_neg/1 (transitively) references type with invalid definition: trans_invalid/0
-
-error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
-   ┌─ check/src/approx.erl:62:30
-   │
-62 │ test_opaque_as_fun_neg(X) -> X(ok).
-   │                              ^ X.
-Expected fun type with arity 1
-Got: fun((term()) -> none()) | misc:o()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/approx.erl:69:3
-   │
-69 │   Dyn2.
-   │   ^^^^
-   │   │
-   │   Dyn2.
-Expression has type:   dynamic() | string()
-Context expected type: 'anything'
-   │   
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: dynamic()
-  However the following candidate: string()
-  Differs from the expected type:  'anything'
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-   ┌─ check/src/approx.erl:74:1
-   │  
-74 │ ╭ dyn_union_1(N, D) ->
-75 │ │   Res = case D of
-76 │ │           1 -> N;
-77 │ │           2 -> D
-78 │ │         end,
-79 │ │   eqwalizer:reveal_type(Res),
-80 │ │   Res.
-   │ ╰─────^ Clause is not covered by spec
-
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-   ┌─ check/src/approx.erl:79:25
-   │
-79 │   eqwalizer:reveal_type(Res),
-   │                         ^^^ dynamic(integer())
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-   ┌─ check/src/approx.erl:85:1
-   │  
-85 │ ╭ dyn_union_2(N, D) ->
-86 │ │   Res = case D of
-87 │ │           2 -> D;
-88 │ │           1 -> N
-89 │ │         end,
-90 │ │   eqwalizer:reveal_type(Res),
-91 │ │   Res.
-   │ ╰─────^ Clause is not covered by spec
-
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-   ┌─ check/src/approx.erl:90:25
-   │
-90 │   eqwalizer:reveal_type(Res),
-   │                         ^^^ dynamic(integer())
-
-11 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/approx.erl:36:5
+stdout |    │
+stdout | 36 │     {X, X}.
+stdout |    │     ^^^^^^ {X, X}.
+stdout | Expression has type:   {dynamic(), dynamic()}
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
+stdout |    ┌─ check/src/approx.erl:39:1
+stdout |    │
+stdout | 39 │ generics_with_unions:type_var_from_nowhere().
+stdout |    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Unknown id: generics_with_unions:type_var_from_nowhere/0
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |    ┌─ check/src/approx.erl:41:1
+stdout |    │  
+stdout | 41 │ ╭ -spec test_trans_invalid1_neg(
+stdout | 42 │ │     trans_invalid()
+stdout | 43 │ │ ) -> nok.
+stdout |    │ ╰────────^ test_trans_invalid1_neg/1 (transitively) references type with invalid definition: trans_invalid/0
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |    ┌─ check/src/approx.erl:47:1
+stdout |    │  
+stdout | 47 │ ╭ -spec test_trans_invalid2_neg(
+stdout | 48 │ │     trans_invalid()
+stdout | 49 │ │ ) -> nok.
+stdout |    │ ╰────────^ test_trans_invalid2_neg/1 (transitively) references type with invalid definition: trans_invalid/0
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |    ┌─ check/src/approx.erl:53:1
+stdout |    │  
+stdout | 53 │ ╭ -spec test_trans_invalid3_neg(
+stdout | 54 │ │     trans_invalid()
+stdout | 55 │ │ ) -> nok.
+stdout |    │ ╰────────^ test_trans_invalid3_neg/1 (transitively) references type with invalid definition: trans_invalid/0
+stdout |
+stdout | error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
+stdout |    ┌─ check/src/approx.erl:62:30
+stdout |    │
+stdout | 62 │ test_opaque_as_fun_neg(X) -> X(ok).
+stdout |    │                              ^ X.
+stdout | Expected fun type with arity 1
+stdout | Got: fun((term()) -> none()) | misc:o()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/approx.erl:69:3
+stdout |    │
+stdout | 69 │   Dyn2.
+stdout |    │   ^^^^
+stdout |    │   │
+stdout |    │   Dyn2.
+stdout | Expression has type:   dynamic() | string()
+stdout | Context expected type: 'anything'
+stdout |    │   
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: dynamic()
+stdout |   However the following candidate: string()
+stdout |   Differs from the expected type:  'anything'
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |    ┌─ check/src/approx.erl:74:1
+stdout |    │  
+stdout | 74 │ ╭ dyn_union_1(N, D) ->
+stdout | 75 │ │   Res = case D of
+stdout | 76 │ │           1 -> N;
+stdout | 77 │ │           2 -> D
+stdout | 78 │ │         end,
+stdout | 79 │ │   eqwalizer:reveal_type(Res),
+stdout | 80 │ │   Res.
+stdout |    │ ╰─────^ Clause is not covered by spec
+stdout |
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |    ┌─ check/src/approx.erl:79:25
+stdout |    │
+stdout | 79 │   eqwalizer:reveal_type(Res),
+stdout |    │                         ^^^ dynamic(integer())
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |    ┌─ check/src/approx.erl:85:1
+stdout |    │  
+stdout | 85 │ ╭ dyn_union_2(N, D) ->
+stdout | 86 │ │   Res = case D of
+stdout | 87 │ │           2 -> D;
+stdout | 88 │ │           1 -> N
+stdout | 89 │ │         end,
+stdout | 90 │ │   eqwalizer:reveal_type(Res),
+stdout | 91 │ │   Res.
+stdout |    │ ╰─────^ Clause is not covered by spec
+stdout |
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |    ┌─ check/src/approx.erl:90:25
+stdout |    │
+stdout | 90 │   eqwalizer:reveal_type(Res),
+stdout |    │                         ^^^ dynamic(integer())
+stdout |
+stdout | 11 ERRORS

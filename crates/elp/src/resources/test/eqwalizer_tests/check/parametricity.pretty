@@ -1,41 +1,41 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/parametricity.erl:186:22
-    │
-186 │     [Elem || Elem <- X].
-    │                      ^ X.
-Expression has type:   A & B
-Context expected type: [term()]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/parametricity.erl:218:3
-    │
-218 │   select(T, <<>>, 0).
-    │   ^^^^^^^^^^^^^^^^^^ select(T, <<..>>, 0).
-Expression has type:   binary()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/parametricity.erl:218:3
-    │
-218 │   select(T, <<>>, 0).
-    │   ^^^^^^^^^^^^^^^^^^ select(T, <<..>>, 0).
-Expression has type:   integer()
-Context expected type: binary()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/parametricity.erl:224:3
-    │
-224 │   select(T, 0, 0).
-    │   ^^^^^^^^^^^^^^^ select(T, 0, 0).
-Expression has type:   integer()
-Context expected type: binary()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/parametricity.erl:229:31
-    │
-229 │ unwrap(undefined, Default) -> Default;
-    │                               ^^^^^^^ Default.
-Expression has type:   term()
-Context expected type: Value
-
-5 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/parametricity.erl:186:22
+stdout |     │
+stdout | 186 │     [Elem || Elem <- X].
+stdout |     │                      ^ X.
+stdout | Expression has type:   A & B
+stdout | Context expected type: [term()]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/parametricity.erl:218:3
+stdout |     │
+stdout | 218 │   select(T, <<>>, 0).
+stdout |     │   ^^^^^^^^^^^^^^^^^^ select(T, <<..>>, 0).
+stdout | Expression has type:   binary()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/parametricity.erl:218:3
+stdout |     │
+stdout | 218 │   select(T, <<>>, 0).
+stdout |     │   ^^^^^^^^^^^^^^^^^^ select(T, <<..>>, 0).
+stdout | Expression has type:   integer()
+stdout | Context expected type: binary()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/parametricity.erl:224:3
+stdout |     │
+stdout | 224 │   select(T, 0, 0).
+stdout |     │   ^^^^^^^^^^^^^^^ select(T, 0, 0).
+stdout | Expression has type:   integer()
+stdout | Context expected type: binary()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/parametricity.erl:229:31
+stdout |     │
+stdout | 229 │ unwrap(undefined, Default) -> Default;
+stdout |     │                               ^^^^^^^ Default.
+stdout | Expression has type:   term()
+stdout | Context expected type: Value
+stdout |
+stdout | 5 ERRORS

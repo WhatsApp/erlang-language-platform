@@ -1,0 +1,6 @@
+stderr | failed to read "{project_path}/.elp_lint.toml":TOML parse error at line 2, column 9
+stderr |   |
+stderr | 2 | [linters
+stderr |   |         ^
+stderr | unclosed table, expected `]`
+stderr |

@@ -230,20 +230,117 @@ impl WriteColor for NoColor {
     }
 }
 
-pub struct Fake(Buffer, Vec<u8>);
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FakeStream {
+    Stdout,
+    Stderr,
+}
+
+impl FakeStream {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Stdout => "stdout",
+            Self::Stderr => "stderr",
+        }
+    }
+}
+
+struct FakeWrite {
+    stream: FakeStream,
+    bytes: Vec<u8>,
+}
+
+#[derive(Default)]
+struct FakeCapture {
+    writes: Vec<FakeWrite>,
+}
+
+impl Write for FakeCapture {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if !buf.is_empty() {
+            self.writes.push(FakeWrite {
+                stream: FakeStream::Stderr,
+                bytes: buf.to_vec(),
+            });
+        }
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+pub struct Fake {
+    stdout: Buffer,
+    capture: FakeCapture,
+}
 
 impl Default for Fake {
     fn default() -> Self {
-        Self(Buffer::no_color(), Vec::new())
+        Self {
+            stdout: Buffer::no_color(),
+            capture: FakeCapture::default(),
+        }
     }
 }
 
 impl Fake {
     pub fn to_strings(self) -> (String, String) {
-        let stdout = String::from_utf8(self.0.into_inner()).unwrap();
-        let stderr = String::from_utf8(self.1).unwrap();
+        let (stdout, stderr, _) = self.into_parts();
         (stdout, stderr)
     }
+
+    pub fn to_strings_with_tagged(self) -> (String, String, String) {
+        let (stdout, stderr, writes) = self.into_parts();
+        let tagged = render_tagged_writes(writes);
+        (stdout, stderr, tagged)
+    }
+
+    fn into_parts(self) -> (String, String, Vec<FakeWrite>) {
+        let Self { stdout, capture } = self;
+        let writes = capture.writes;
+        let stdout = String::from_utf8(stdout.into_inner()).unwrap();
+        let stderr = writes
+            .iter()
+            .filter(|write| write.stream == FakeStream::Stderr)
+            .flat_map(|write| write.bytes.iter().copied())
+            .collect();
+        let stderr = String::from_utf8(stderr).unwrap();
+        (stdout, stderr, writes)
+    }
+}
+
+fn render_tagged_writes(writes: Vec<FakeWrite>) -> String {
+    let mut merged: Vec<FakeWrite> = Vec::new();
+    for write in writes {
+        if let Some(last) = merged.last_mut()
+            && last.stream == write.stream
+        {
+            last.bytes.extend(write.bytes);
+        } else {
+            merged.push(write);
+        }
+    }
+
+    let mut output = String::new();
+    for write in merged {
+        if !output.is_empty() && !output.ends_with('\n') {
+            output.push('\n');
+        }
+        let text = String::from_utf8(write.bytes).unwrap();
+        for line in text.split_inclusive('\n') {
+            output.push_str(write.stream.label());
+            output.push_str(" |");
+            if line == "\n" {
+                output.push('\n');
+            } else {
+                output.push(' ');
+                output.push_str(line);
+            }
+        }
+    }
+    output
 }
 
 impl Cli for Fake {
@@ -260,31 +357,38 @@ impl Cli for Fake {
     }
 
     fn err(&mut self) -> &mut dyn Write {
-        &mut self.1
+        &mut self.capture
     }
 }
 
 impl Write for Fake {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.0.write(buf)
+        let written = self.stdout.write(buf)?;
+        if written > 0 {
+            self.capture.writes.push(FakeWrite {
+                stream: FakeStream::Stdout,
+                bytes: buf[..written].to_vec(),
+            });
+        }
+        Ok(written)
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        self.0.flush()
+        self.stdout.flush()
     }
 }
 
 impl WriteColor for Fake {
     fn supports_color(&self) -> bool {
-        self.0.supports_color()
+        self.stdout.supports_color()
     }
 
     fn set_color(&mut self, spec: &ColorSpec) -> std::io::Result<()> {
-        self.0.set_color(spec)
+        self.stdout.set_color(spec)
     }
 
     fn reset(&mut self) -> std::io::Result<()> {
-        self.0.reset()
+        self.stdout.reset()
     }
 }
 
@@ -306,5 +410,48 @@ mod tests {
         assert_eq_expected!(expected_stdout, stdout.as_str());
         let expected_stderr = "status line\n";
         assert_eq_expected!(expected_stderr, stderr.as_str());
+    }
+
+    #[test]
+    fn tagged_output_preserves_order_across_unterminated_stream_writes() {
+        let mut cli = Fake::default();
+        write!(cli, "first").unwrap();
+        cli.info("status").unwrap();
+        write!(cli, "second").unwrap();
+
+        let (stdout, stderr, tagged) = cli.to_strings_with_tagged();
+        let expected_stdout = "firstsecond";
+        assert_eq_expected!(expected_stdout, stdout.as_str());
+        let expected_stderr = "status\n";
+        assert_eq_expected!(expected_stderr, stderr.as_str());
+        let expected_tagged = "\
+stdout | first
+stderr | status
+stdout | second";
+        assert_eq_expected!(expected_tagged, tagged.as_str());
+    }
+
+    #[test]
+    fn tagged_output_preserves_stream_order_and_line_boundaries() {
+        let mut cli = Fake::default();
+        write!(cli, "out").unwrap();
+        assert_eq_expected!(0, cli.err().write(&[]).unwrap());
+        writeln!(cli, "put").unwrap();
+        cli.info("status").unwrap();
+        writeln!(cli, "result").unwrap();
+        writeln!(cli.err()).unwrap();
+
+        let (stdout, stderr, tagged) = cli.to_strings_with_tagged();
+        let expected_stdout = "output\nresult\n";
+        assert_eq_expected!(expected_stdout, stdout.as_str());
+        let expected_stderr = "status\n\n";
+        assert_eq_expected!(expected_stderr, stderr.as_str());
+        let expected_tagged = "\
+stdout | output
+stderr | status
+stdout | result
+stderr |
+";
+        assert_eq_expected!(expected_tagged, tagged.as_str());
     }
 }

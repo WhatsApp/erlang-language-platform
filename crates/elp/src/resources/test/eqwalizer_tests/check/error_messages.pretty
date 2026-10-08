@@ -1,123 +1,123 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/error_messages.erl:16:22
-   │
-16 │ map_candidates(M) -> M.
-   │                      ^
-   │                      │
-   │                      M.
-Expression has type:   #{bar := atom(), baz := atom()}
-Context expected type: #{foo => atom()} | foo_map()
-   │                      
-
-Because in the expression's type:
-  #{ baz =>
-    Here the type is:     atom()
-    Context expects type: integer()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/error_messages.erl:19:24
-   │
-19 │ map_candidates_2(M) -> M.
-   │                        ^
-   │                        │
-   │                        M.
-Expression has type:   [#{bar => 'a' | 'b'} | #{baz => 'a' | 'b'}]
-Context expected type: [#{bar => 'a'}]
-   │                        
-
-Because in the expression's type:
-  [
-    Here the type is:     #{baz => ...}
-    Context expects type: #{...}
-    The expected map has no corresponding key for: baz.
-  ]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/error_messages.erl:22:22
-   │
-22 │ no_map_rewrite(M) -> M.
-   │                      ^
-   │                      │
-   │                      M.
-Expression has type:   #{'undefined' | binary() => atom()}
-Context expected type: #{binary() => atom()}
-   │                      
-
-Because in the expression's type:
-  #{ map domains are incompatible:
-    Here the type is a union type with some valid candidates: binary()
-    However the following candidate: 'undefined'
-    Differs from the expected type:  binary()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/error_messages.erl:27:32
-   │
-27 │ no_record_conversion_1(Foo) -> Foo.
-   │                                ^^^ Foo.
-Expression has type:   #foo{}
-Context expected type: {'foobar', atom()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/error_messages.erl:30:32
-   │
-30 │ no_record_conversion_2(Foo) -> Foo.
-   │                                ^^^ Foo.
-Expression has type:   #foo{}
-Context expected type: {binary(), atom(), atom()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/error_messages.erl:33:27
-   │
-33 │ record_conversion(Foo) -> Foo.
-   │                           ^^^
-   │                           │
-   │                           Foo.
-Expression has type:   #foo{}
-Context expected type: {'foo', binary(), atom()}
-   │                           
-
-Because in the expression's type:
-  { 'foo', 
-    Here the type is:     atom()
-    Context expects type: binary()
-  , atom()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/error_messages.erl:37:31
-   │
-37 │ no_good_map_candidate_1(M) -> M.
-   │                               ^
-   │                               │
-   │                               M.
-Expression has type:   #{foo => #{large_map_key_a => 'large_map_val_a', large_map_key_b => 'large_map_val_b'}}
-Context expected type: #{foo => #{large_map_key_c => 'large_map_val_c'} | #{large_map_key_d => 'large_map_val_d'}}
-   │                               
-
-Because in the expression's type:
-  #{ foo =>
-    Here the type is:     #{large_map_key_a => ...}
-    Context expects type: #{...}
-    The expected map has no corresponding key for: large_map_key_a.
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/error_messages.erl:41:31
-   │
-41 │ no_good_map_candidate_2(M) -> M.
-   │                               ^
-   │                               │
-   │                               M.
-Expression has type:   #{foo => #{large_map_key_a => 'large_map_val_a', large_map_key_b => 'large_map_val_b'}}
-Context expected type: #{foo => #{large_map_key_c => 'large_map_val_c', large_map_key_d => 'large_map_val_d'} | 'any'}
-   │                               
-
-Because in the expression's type:
-  #{ foo =>
-    Here the type is:     #{large_map_key_a => ...}
-    Context expects type: #{...}
-    The expected map has no corresponding key for: large_map_key_a.
-  , ... }
-
-8 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/error_messages.erl:16:22
+stdout |    │
+stdout | 16 │ map_candidates(M) -> M.
+stdout |    │                      ^
+stdout |    │                      │
+stdout |    │                      M.
+stdout | Expression has type:   #{bar := atom(), baz := atom()}
+stdout | Context expected type: #{foo => atom()} | foo_map()
+stdout |    │                      
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ baz =>
+stdout |     Here the type is:     atom()
+stdout |     Context expects type: integer()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/error_messages.erl:19:24
+stdout |    │
+stdout | 19 │ map_candidates_2(M) -> M.
+stdout |    │                        ^
+stdout |    │                        │
+stdout |    │                        M.
+stdout | Expression has type:   [#{bar => 'a' | 'b'} | #{baz => 'a' | 'b'}]
+stdout | Context expected type: [#{bar => 'a'}]
+stdout |    │                        
+stdout |
+stdout | Because in the expression's type:
+stdout |   [
+stdout |     Here the type is:     #{baz => ...}
+stdout |     Context expects type: #{...}
+stdout |     The expected map has no corresponding key for: baz.
+stdout |   ]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/error_messages.erl:22:22
+stdout |    │
+stdout | 22 │ no_map_rewrite(M) -> M.
+stdout |    │                      ^
+stdout |    │                      │
+stdout |    │                      M.
+stdout | Expression has type:   #{'undefined' | binary() => atom()}
+stdout | Context expected type: #{binary() => atom()}
+stdout |    │                      
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ map domains are incompatible:
+stdout |     Here the type is a union type with some valid candidates: binary()
+stdout |     However the following candidate: 'undefined'
+stdout |     Differs from the expected type:  binary()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/error_messages.erl:27:32
+stdout |    │
+stdout | 27 │ no_record_conversion_1(Foo) -> Foo.
+stdout |    │                                ^^^ Foo.
+stdout | Expression has type:   #foo{}
+stdout | Context expected type: {'foobar', atom()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/error_messages.erl:30:32
+stdout |    │
+stdout | 30 │ no_record_conversion_2(Foo) -> Foo.
+stdout |    │                                ^^^ Foo.
+stdout | Expression has type:   #foo{}
+stdout | Context expected type: {binary(), atom(), atom()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/error_messages.erl:33:27
+stdout |    │
+stdout | 33 │ record_conversion(Foo) -> Foo.
+stdout |    │                           ^^^
+stdout |    │                           │
+stdout |    │                           Foo.
+stdout | Expression has type:   #foo{}
+stdout | Context expected type: {'foo', binary(), atom()}
+stdout |    │                           
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 'foo', 
+stdout |     Here the type is:     atom()
+stdout |     Context expects type: binary()
+stdout |   , atom()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/error_messages.erl:37:31
+stdout |    │
+stdout | 37 │ no_good_map_candidate_1(M) -> M.
+stdout |    │                               ^
+stdout |    │                               │
+stdout |    │                               M.
+stdout | Expression has type:   #{foo => #{large_map_key_a => 'large_map_val_a', large_map_key_b => 'large_map_val_b'}}
+stdout | Context expected type: #{foo => #{large_map_key_c => 'large_map_val_c'} | #{large_map_key_d => 'large_map_val_d'}}
+stdout |    │                               
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ foo =>
+stdout |     Here the type is:     #{large_map_key_a => ...}
+stdout |     Context expects type: #{...}
+stdout |     The expected map has no corresponding key for: large_map_key_a.
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/error_messages.erl:41:31
+stdout |    │
+stdout | 41 │ no_good_map_candidate_2(M) -> M.
+stdout |    │                               ^
+stdout |    │                               │
+stdout |    │                               M.
+stdout | Expression has type:   #{foo => #{large_map_key_a => 'large_map_val_a', large_map_key_b => 'large_map_val_b'}}
+stdout | Context expected type: #{foo => #{large_map_key_c => 'large_map_val_c', large_map_key_d => 'large_map_val_d'} | 'any'}
+stdout |    │                               
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ foo =>
+stdout |     Here the type is:     #{large_map_key_a => ...}
+stdout |     Context expects type: #{...}
+stdout |     The expected map has no corresponding key for: large_map_key_a.
+stdout |   , ... }
+stdout |
+stdout | 8 ERRORS

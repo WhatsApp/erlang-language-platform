@@ -1,507 +1,507 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/numbers.erl:15:3
-   │
-15 │   2.0.
-   │   ^^^ float_lit.
-Expression has type:   float()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/numbers.erl:20:3
-   │
-20 │   X.
-   │   ^ X.
-Expression has type:   float()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/numbers.erl:37:3
-   │
-37 │   X.
-   │   ^ X.
-Expression has type:   float()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/numbers.erl:59:3
-   │
-59 │   {M, F, A}.
-   │   ^^^^^^^^^ {M, F, A}.
-Expression has type:   {atom(), atom(), number()}
-Context expected type: mfa()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/numbers.erl:64:3
-   │
-64 │   X.
-   │   ^ X.
-Expression has type:   float()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/numbers.erl:69:3
-   │
-69 │   X.
-   │   ^ X.
-Expression has type:   number()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/numbers.erl:77:3
-   │
-77 │   [2.0].
-   │   ^^^^^ [float_lit].
-Expression has type:   [float()]
-Context expected type: iolist()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/numbers.erl:89:3
-   │
-89 │   id(2.0).
-   │   ^^^^^^^ id(float_lit).
-Expression has type:   float()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:101:3
-    │
-101 │   2 + 2.0.
-    │   ^^^^^^^ _ + _.
-Expression has type:   float()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:105:3
-    │
-105 │   2.0 + 2.
-    │   ^^^^^^^ _ + _.
-Expression has type:   float()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:109:3
-    │
-109 │   2 / 2.
-    │   ^^^^^ _ / _.
-Expression has type:   float()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:117:3
-    │
-117 │   +2.0.
-    │   ^^^^ + _.
-Expression has type:   float()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:121:3
-    │
-121 │   A / 2.
-    │   ^ A.
-Expression has type:   'a'
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:125:7
-    │
-125 │   2 / A.
-    │       ^ A.
-Expression has type:   'a'
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:129:7
-    │
-129 │   2 * A.
-    │       ^ A.
-Expression has type:   'a'
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:133:3
-    │
-133 │   A * 2.
-    │   ^ A.
-Expression has type:   'a'
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:137:7
-    │
-137 │   X = A * 2,
-    │       ^ A.
-Expression has type:   'a'
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:142:9
-    │
-142 │   2 div A.
-    │         ^ A.
-Expression has type:   'a'
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:146:14
-    │
-146 │   X = (2 div A),
-    │              ^ A.
-Expression has type:   'a'
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:151:3
-    │
-151 │   A div 2.
-    │   ^ A.
-Expression has type:   'a'
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:155:7
-    │
-155 │   X = A div 2,
-    │       ^ A.
-Expression has type:   'a'
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:160:3
-    │
-160 │   1 div 2.
-    │   ^^^^^^^ _ div _.
-Expression has type:   integer()
-Context expected type: 'a'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:182:3
-    │
-182 │   bnot 0.
-    │   ^^^^^^ bnot _.
-Expression has type:   integer()
-Context expected type: pid()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:270:23
-    │
-270 │ test_42_wip_neg(X) -> X.
-    │                       ^ X.
-Expression has type:   number()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:276:3
-    │
-276 │   Res.
-    │   ^^^ Res.
-Expression has type:   number()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:290:23
-    │
-290 │ test_44_wip_neg(X) -> X.
-    │                       ^ X.
-Expression has type:   number()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:296:3
-    │
-296 │   Res.
-    │   ^^^ Res.
-Expression has type:   number()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:311:3
-    │
-311 │   X.
-    │   ^ X.
-Expression has type:   number()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:317:3
-    │
-317 │   Res.
-    │   ^^^ Res.
-Expression has type:   number()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:350:5
-    │
-350 │   (+X).
-    │     ^ X.
-Expression has type:   term()
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:354:9
-    │
-354 │   _ = (+X),
-    │         ^ X.
-Expression has type:   term()
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:359:9
-    │
-359 │   _ = (-X),
-    │         ^ X.
-Expression has type:   term()
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:364:9
-    │
-364 │   _ = (-X),
-    │         ^ X.
-Expression has type:   term()
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:428:8
-    │
-428 │   bnot X.
-    │        ^ X.
-Expression has type:   term()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:433:12
-    │
-433 │   _ = bnot X,
-    │            ^ X.
-Expression has type:   term()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:491:3
-    │
-491 │   U * N.
-    │   ^ U.
-Expression has type:   'a' | number()
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:498:3
-    │
-498 │   U div N.
-    │   ^
-    │   │
-    │   U.
-Expression has type:   float() | integer()
-Context expected type: integer()
-    │   
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: integer()
-  However the following candidate: float()
-  Differs from the expected type:  integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:526:3
-    │
-526 │   U1 + U2 / (U2 + U1).
-    │   ^^^^^^^^^^^^^^^^^^^ _ + _.
-Expression has type:   float()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:533:3
-    │
-533 │   U1 div U2 / (U2 bsl U1).
-    │   ^^^^^^^^^^^^^^^^^^^^^^^ _ / _.
-Expression has type:   float()
-Context expected type: integer()
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/numbers.erl:538:1
-    │  
-538 │ ╭ test_85(X) ->
-539 │ │   X div X.
-    │ ╰─────────^ Clause is not covered by spec
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:552:3
-    │
-552 │   U1 div U2 / (U2 bsl U1).
-    │   ^^ U1.
-Expression has type:   'a' | 'b'
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:552:3
-    │
-552 │   U1 div U2 / (U2 bsl U1).
-    │   ^^^^^^^^^^^^^^^^^^^^^^^ _ / _.
-Expression has type:   float()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:552:10
-    │
-552 │   U1 div U2 / (U2 bsl U1).
-    │          ^^ U2.
-Expression has type:   'c' | 'd'
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:552:16
-    │
-552 │   U1 div U2 / (U2 bsl U1).
-    │                ^^ U2.
-Expression has type:   'c' | 'd'
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:552:23
-    │
-552 │   U1 div U2 / (U2 bsl U1).
-    │                       ^^ U1.
-Expression has type:   'a' | 'b'
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:559:3
-    │
-559 │   U1 * U2 / (U2 + U1).
-    │   ^^ U1.
-Expression has type:   'a' | 'b'
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:559:3
-    │
-559 │   U1 * U2 / (U2 + U1).
-    │   ^^^^^^^^^^^^^^^^^^^ _ / _.
-Expression has type:   float()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:559:8
-    │
-559 │   U1 * U2 / (U2 + U1).
-    │        ^^ U2.
-Expression has type:   'c' | 'd'
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:559:14
-    │
-559 │   U1 * U2 / (U2 + U1).
-    │              ^^ U2.
-Expression has type:   'c' | 'd'
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:559:19
-    │
-559 │   U1 * U2 / (U2 + U1).
-    │                   ^^ U1.
-Expression has type:   'a' | 'b'
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:571:3
-    │
-571 │   X * X.
-    │   ^^^^^
-    │   │
-    │   _ * _.
-Expression has type:   float() | integer()
-Context expected type: integer()
-    │   
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: integer()
-  However the following candidate: float()
-  Differs from the expected type:  integer()
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/numbers.erl:582:1
-    │  
-582 │ ╭ test_92_neg(X) ->
-583 │ │   bnot X.
-    │ ╰────────^ Clause is not covered by spec
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:583:3
-    │
-583 │   bnot X.
-    │   ^^^^^^ bnot _.
-Expression has type:   integer()
-Context expected type: none()
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/numbers.erl:588:1
-    │  
-588 │ ╭ test_93_neg(X) ->
-589 │ │   5 * X.
-    │ ╰───────^ Clause is not covered by spec
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:589:3
-    │
-589 │   5 * X.
-    │   ^^^^^ _ * _.
-Expression has type:   integer()
-Context expected type: none()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:617:3
-    │
-617 │   X - Y.
-    │   ^^^^^ _ - _.
-Expression has type:   number()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:625:3
-    │
-625 │   X.
-    │   ^ X.
-Expression has type:   number()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:629:3
-    │
-629 │   X.
-    │   ^ X.
-Expression has type:   number()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:644:3
-    │    
-644 │ ╭ ╭   {
-645 │ │ │     1,
-646 │ │ │     0,
-647 │ │ │     -1,
-648 │ │ │     Int,
-649 │ │ │     error
-650 │ │ │   }.
-    │ ╰─│───^ {1, 0, - _, Int, 'error'}.
-Expression has type:   {integer(), integer(), integer(), integer(), 'error'}
-Context expected type: {number(), integer(), integer(), number(), 'ok'}
-    │   ╰───' 
-
-Because in the expression's type:
-  { integer(), integer(), integer(), integer(), 
-    Here the type is:     'error'
-    Context expects type: 'ok'
-  }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/numbers.erl:658:3
-    │
-658 │   1.0.
-    │   ^^^ float_lit.
-Expression has type:   float()
-Context expected type: pid()
-
-60 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/numbers.erl:15:3
+stdout |    │
+stdout | 15 │   2.0.
+stdout |    │   ^^^ float_lit.
+stdout | Expression has type:   float()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/numbers.erl:20:3
+stdout |    │
+stdout | 20 │   X.
+stdout |    │   ^ X.
+stdout | Expression has type:   float()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/numbers.erl:37:3
+stdout |    │
+stdout | 37 │   X.
+stdout |    │   ^ X.
+stdout | Expression has type:   float()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/numbers.erl:59:3
+stdout |    │
+stdout | 59 │   {M, F, A}.
+stdout |    │   ^^^^^^^^^ {M, F, A}.
+stdout | Expression has type:   {atom(), atom(), number()}
+stdout | Context expected type: mfa()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/numbers.erl:64:3
+stdout |    │
+stdout | 64 │   X.
+stdout |    │   ^ X.
+stdout | Expression has type:   float()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/numbers.erl:69:3
+stdout |    │
+stdout | 69 │   X.
+stdout |    │   ^ X.
+stdout | Expression has type:   number()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/numbers.erl:77:3
+stdout |    │
+stdout | 77 │   [2.0].
+stdout |    │   ^^^^^ [float_lit].
+stdout | Expression has type:   [float()]
+stdout | Context expected type: iolist()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/numbers.erl:89:3
+stdout |    │
+stdout | 89 │   id(2.0).
+stdout |    │   ^^^^^^^ id(float_lit).
+stdout | Expression has type:   float()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:101:3
+stdout |     │
+stdout | 101 │   2 + 2.0.
+stdout |     │   ^^^^^^^ _ + _.
+stdout | Expression has type:   float()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:105:3
+stdout |     │
+stdout | 105 │   2.0 + 2.
+stdout |     │   ^^^^^^^ _ + _.
+stdout | Expression has type:   float()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:109:3
+stdout |     │
+stdout | 109 │   2 / 2.
+stdout |     │   ^^^^^ _ / _.
+stdout | Expression has type:   float()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:117:3
+stdout |     │
+stdout | 117 │   +2.0.
+stdout |     │   ^^^^ + _.
+stdout | Expression has type:   float()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:121:3
+stdout |     │
+stdout | 121 │   A / 2.
+stdout |     │   ^ A.
+stdout | Expression has type:   'a'
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:125:7
+stdout |     │
+stdout | 125 │   2 / A.
+stdout |     │       ^ A.
+stdout | Expression has type:   'a'
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:129:7
+stdout |     │
+stdout | 129 │   2 * A.
+stdout |     │       ^ A.
+stdout | Expression has type:   'a'
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:133:3
+stdout |     │
+stdout | 133 │   A * 2.
+stdout |     │   ^ A.
+stdout | Expression has type:   'a'
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:137:7
+stdout |     │
+stdout | 137 │   X = A * 2,
+stdout |     │       ^ A.
+stdout | Expression has type:   'a'
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:142:9
+stdout |     │
+stdout | 142 │   2 div A.
+stdout |     │         ^ A.
+stdout | Expression has type:   'a'
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:146:14
+stdout |     │
+stdout | 146 │   X = (2 div A),
+stdout |     │              ^ A.
+stdout | Expression has type:   'a'
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:151:3
+stdout |     │
+stdout | 151 │   A div 2.
+stdout |     │   ^ A.
+stdout | Expression has type:   'a'
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:155:7
+stdout |     │
+stdout | 155 │   X = A div 2,
+stdout |     │       ^ A.
+stdout | Expression has type:   'a'
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:160:3
+stdout |     │
+stdout | 160 │   1 div 2.
+stdout |     │   ^^^^^^^ _ div _.
+stdout | Expression has type:   integer()
+stdout | Context expected type: 'a'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:182:3
+stdout |     │
+stdout | 182 │   bnot 0.
+stdout |     │   ^^^^^^ bnot _.
+stdout | Expression has type:   integer()
+stdout | Context expected type: pid()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:270:23
+stdout |     │
+stdout | 270 │ test_42_wip_neg(X) -> X.
+stdout |     │                       ^ X.
+stdout | Expression has type:   number()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:276:3
+stdout |     │
+stdout | 276 │   Res.
+stdout |     │   ^^^ Res.
+stdout | Expression has type:   number()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:290:23
+stdout |     │
+stdout | 290 │ test_44_wip_neg(X) -> X.
+stdout |     │                       ^ X.
+stdout | Expression has type:   number()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:296:3
+stdout |     │
+stdout | 296 │   Res.
+stdout |     │   ^^^ Res.
+stdout | Expression has type:   number()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:311:3
+stdout |     │
+stdout | 311 │   X.
+stdout |     │   ^ X.
+stdout | Expression has type:   number()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:317:3
+stdout |     │
+stdout | 317 │   Res.
+stdout |     │   ^^^ Res.
+stdout | Expression has type:   number()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:350:5
+stdout |     │
+stdout | 350 │   (+X).
+stdout |     │     ^ X.
+stdout | Expression has type:   term()
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:354:9
+stdout |     │
+stdout | 354 │   _ = (+X),
+stdout |     │         ^ X.
+stdout | Expression has type:   term()
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:359:9
+stdout |     │
+stdout | 359 │   _ = (-X),
+stdout |     │         ^ X.
+stdout | Expression has type:   term()
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:364:9
+stdout |     │
+stdout | 364 │   _ = (-X),
+stdout |     │         ^ X.
+stdout | Expression has type:   term()
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:428:8
+stdout |     │
+stdout | 428 │   bnot X.
+stdout |     │        ^ X.
+stdout | Expression has type:   term()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:433:12
+stdout |     │
+stdout | 433 │   _ = bnot X,
+stdout |     │            ^ X.
+stdout | Expression has type:   term()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:491:3
+stdout |     │
+stdout | 491 │   U * N.
+stdout |     │   ^ U.
+stdout | Expression has type:   'a' | number()
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:498:3
+stdout |     │
+stdout | 498 │   U div N.
+stdout |     │   ^
+stdout |     │   │
+stdout |     │   U.
+stdout | Expression has type:   float() | integer()
+stdout | Context expected type: integer()
+stdout |     │   
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: integer()
+stdout |   However the following candidate: float()
+stdout |   Differs from the expected type:  integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:526:3
+stdout |     │
+stdout | 526 │   U1 + U2 / (U2 + U1).
+stdout |     │   ^^^^^^^^^^^^^^^^^^^ _ + _.
+stdout | Expression has type:   float()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:533:3
+stdout |     │
+stdout | 533 │   U1 div U2 / (U2 bsl U1).
+stdout |     │   ^^^^^^^^^^^^^^^^^^^^^^^ _ / _.
+stdout | Expression has type:   float()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |     ┌─ check/src/numbers.erl:538:1
+stdout |     │  
+stdout | 538 │ ╭ test_85(X) ->
+stdout | 539 │ │   X div X.
+stdout |     │ ╰─────────^ Clause is not covered by spec
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:552:3
+stdout |     │
+stdout | 552 │   U1 div U2 / (U2 bsl U1).
+stdout |     │   ^^ U1.
+stdout | Expression has type:   'a' | 'b'
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:552:3
+stdout |     │
+stdout | 552 │   U1 div U2 / (U2 bsl U1).
+stdout |     │   ^^^^^^^^^^^^^^^^^^^^^^^ _ / _.
+stdout | Expression has type:   float()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:552:10
+stdout |     │
+stdout | 552 │   U1 div U2 / (U2 bsl U1).
+stdout |     │          ^^ U2.
+stdout | Expression has type:   'c' | 'd'
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:552:16
+stdout |     │
+stdout | 552 │   U1 div U2 / (U2 bsl U1).
+stdout |     │                ^^ U2.
+stdout | Expression has type:   'c' | 'd'
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:552:23
+stdout |     │
+stdout | 552 │   U1 div U2 / (U2 bsl U1).
+stdout |     │                       ^^ U1.
+stdout | Expression has type:   'a' | 'b'
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:559:3
+stdout |     │
+stdout | 559 │   U1 * U2 / (U2 + U1).
+stdout |     │   ^^ U1.
+stdout | Expression has type:   'a' | 'b'
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:559:3
+stdout |     │
+stdout | 559 │   U1 * U2 / (U2 + U1).
+stdout |     │   ^^^^^^^^^^^^^^^^^^^ _ / _.
+stdout | Expression has type:   float()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:559:8
+stdout |     │
+stdout | 559 │   U1 * U2 / (U2 + U1).
+stdout |     │        ^^ U2.
+stdout | Expression has type:   'c' | 'd'
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:559:14
+stdout |     │
+stdout | 559 │   U1 * U2 / (U2 + U1).
+stdout |     │              ^^ U2.
+stdout | Expression has type:   'c' | 'd'
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:559:19
+stdout |     │
+stdout | 559 │   U1 * U2 / (U2 + U1).
+stdout |     │                   ^^ U1.
+stdout | Expression has type:   'a' | 'b'
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:571:3
+stdout |     │
+stdout | 571 │   X * X.
+stdout |     │   ^^^^^
+stdout |     │   │
+stdout |     │   _ * _.
+stdout | Expression has type:   float() | integer()
+stdout | Context expected type: integer()
+stdout |     │   
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: integer()
+stdout |   However the following candidate: float()
+stdout |   Differs from the expected type:  integer()
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |     ┌─ check/src/numbers.erl:582:1
+stdout |     │  
+stdout | 582 │ ╭ test_92_neg(X) ->
+stdout | 583 │ │   bnot X.
+stdout |     │ ╰────────^ Clause is not covered by spec
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:583:3
+stdout |     │
+stdout | 583 │   bnot X.
+stdout |     │   ^^^^^^ bnot _.
+stdout | Expression has type:   integer()
+stdout | Context expected type: none()
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |     ┌─ check/src/numbers.erl:588:1
+stdout |     │  
+stdout | 588 │ ╭ test_93_neg(X) ->
+stdout | 589 │ │   5 * X.
+stdout |     │ ╰───────^ Clause is not covered by spec
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:589:3
+stdout |     │
+stdout | 589 │   5 * X.
+stdout |     │   ^^^^^ _ * _.
+stdout | Expression has type:   integer()
+stdout | Context expected type: none()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:617:3
+stdout |     │
+stdout | 617 │   X - Y.
+stdout |     │   ^^^^^ _ - _.
+stdout | Expression has type:   number()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:625:3
+stdout |     │
+stdout | 625 │   X.
+stdout |     │   ^ X.
+stdout | Expression has type:   number()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:629:3
+stdout |     │
+stdout | 629 │   X.
+stdout |     │   ^ X.
+stdout | Expression has type:   number()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:644:3
+stdout |     │    
+stdout | 644 │ ╭ ╭   {
+stdout | 645 │ │ │     1,
+stdout | 646 │ │ │     0,
+stdout | 647 │ │ │     -1,
+stdout | 648 │ │ │     Int,
+stdout | 649 │ │ │     error
+stdout | 650 │ │ │   }.
+stdout |     │ ╰─│───^ {1, 0, - _, Int, 'error'}.
+stdout | Expression has type:   {integer(), integer(), integer(), integer(), 'error'}
+stdout | Context expected type: {number(), integer(), integer(), number(), 'ok'}
+stdout |     │   ╰───' 
+stdout |
+stdout | Because in the expression's type:
+stdout |   { integer(), integer(), integer(), integer(), 
+stdout |     Here the type is:     'error'
+stdout |     Context expects type: 'ok'
+stdout |   }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/numbers.erl:658:3
+stdout |     │
+stdout | 658 │   1.0.
+stdout |     │   ^^^ float_lit.
+stdout | Expression has type:   float()
+stdout | Context expected type: pid()
+stdout |
+stdout | 60 ERRORS

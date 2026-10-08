@@ -1,61 +1,61 @@
-Alias for 'search': search Erlang code structurally using SSR patterns.
-
-Usage: elp ssr [OPTIONS] <SSR_SPECS>...
-
-Arguments:
-  <SSR_SPECS>...  SSR specs to use. Each accepts `PATTERN`, `ssr: PATTERN.`, or `LABEL:ssr:
-                  PATTERN.` forms; the LABEL surfaces as `patternLabel` in JSON output
-
-Options:
-      --project <PROJECT>      Path to directory with project, or to a JSON file [default: .]
-      --module <MODULE>        Parse a single module from the project, not the entire project
-      --app <APP>              Parse a single application from the project, not the entire project
-      --file <FILE>            Parse a single file from the project, not the entire project. This
-                               can be an include file or escript, etc
-      --rebar                  Run with rebar
-      --as <PROFILE>           Rebar3 profile to pickup [default: test]
-      --include-generated      Also generate diagnostics for generated files
-      --include-tests          Deprecated: has no effect, will be removed in future
-      --format <FORMAT>        Customize the output format (defaults to human-readable) [possible
-                               values: json]
-      --macros <STRATEGY>      Macro expansion strategy (default: expand) [possible values: expand,
-                               no-expand, visible-expand]
-      --parens                 Explicitly match parentheses. If omitted, they are ignored
-      --dump-config            Dump a configuration snippet that can be put in .elp_lint.toml to
-                               match the given SSR patterns
-      --show-source            Show source code context for matches
-  -B, --before-context <NUM>   Print NUM lines of leading context, enables --show-source
-  -A, --after-context <NUM>    Print NUM lines of trailing context, enables --show-source
-  -C, --context <NUM>          Print NUM lines of output context, enables --show-source
-      --group-separator <SEP>  Print SEP on line between matches with context, enables --show-source
-      --no-group-separator     Do not print separator for matches with context, enables
-                               --show-source
-      --report-system-stats    Report system memory usage and other statistics
-  -h, --help                   Print help
-
-Global options:
-      --log-file <LOG_FILE>  
-      --erl <ERL>            
-      --escript <ESCRIPT>    
-      --no-log-buffering     
-      --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
-      --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
-      --color <WHEN>         Use color in output [default: always] [possible values: always, never,
-                             auto]
-
-Patterns are Erlang code with placeholders:
-    _@Name   match any single expression or pattern; reuse a name to require the two matches be
-    equal
-    _@_      anonymous wildcard (match anything, bind nothing)
-    _@@Name  glob: match zero or more sibling elements (at most one glob per sequence)
-
-Constrain placeholders with a `where` clause, e.g. `_@X where is_atom(_@X)`.
-
-Examples:
-    elp search 'lists:reverse(lists:reverse(_@List))'
-    elp search 'case _@Cond of true -> _@Body; false -> _@Body end'
-    elp search --format json 'foo(_@@Args)'
-
-A bare PATTERN is shorthand for `ssr: PATTERN.`. Prefix with `LABEL:ssr: ` to tag matches.
-
-Full syntax guide: https://whatsapp.github.io/erlang-language-platform/docs/structural-search
+stdout | Alias for 'search': search Erlang code structurally using SSR patterns.
+stdout |
+stdout | Usage: elp ssr [OPTIONS] <SSR_SPECS>...
+stdout |
+stdout | Arguments:
+stdout |   <SSR_SPECS>...  SSR specs to use. Each accepts `PATTERN`, `ssr: PATTERN.`, or `LABEL:ssr:
+stdout |                   PATTERN.` forms; the LABEL surfaces as `patternLabel` in JSON output
+stdout |
+stdout | Options:
+stdout |       --project <PROJECT>      Path to directory with project, or to a JSON file [default: .]
+stdout |       --module <MODULE>        Parse a single module from the project, not the entire project
+stdout |       --app <APP>              Parse a single application from the project, not the entire project
+stdout |       --file <FILE>            Parse a single file from the project, not the entire project. This
+stdout |                                can be an include file or escript, etc
+stdout |       --rebar                  Run with rebar
+stdout |       --as <PROFILE>           Rebar3 profile to pickup [default: test]
+stdout |       --include-generated      Also generate diagnostics for generated files
+stdout |       --include-tests          Deprecated: has no effect, will be removed in future
+stdout |       --format <FORMAT>        Customize the output format (defaults to human-readable) [possible
+stdout |                                values: json]
+stdout |       --macros <STRATEGY>      Macro expansion strategy (default: expand) [possible values: expand,
+stdout |                                no-expand, visible-expand]
+stdout |       --parens                 Explicitly match parentheses. If omitted, they are ignored
+stdout |       --dump-config            Dump a configuration snippet that can be put in .elp_lint.toml to
+stdout |                                match the given SSR patterns
+stdout |       --show-source            Show source code context for matches
+stdout |   -B, --before-context <NUM>   Print NUM lines of leading context, enables --show-source
+stdout |   -A, --after-context <NUM>    Print NUM lines of trailing context, enables --show-source
+stdout |   -C, --context <NUM>          Print NUM lines of output context, enables --show-source
+stdout |       --group-separator <SEP>  Print SEP on line between matches with context, enables --show-source
+stdout |       --no-group-separator     Do not print separator for matches with context, enables
+stdout |                                --show-source
+stdout |       --report-system-stats    Report system memory usage and other statistics
+stdout |   -h, --help                   Print help
+stdout |
+stdout | Global options:
+stdout |       --log-file <LOG_FILE>  
+stdout |       --erl <ERL>            
+stdout |       --escript <ESCRIPT>    
+stdout |       --no-log-buffering     
+stdout |       --no-buck-generated    Deprecated (no-op): buck project loading always builds generated code
+stdout |       --buck-quick-start     Deprecated (no-op): buck project loading always builds generated code
+stdout |       --color <WHEN>         Use color in output [default: always] [possible values: always, never,
+stdout |                              auto]
+stdout |
+stdout | Patterns are Erlang code with placeholders:
+stdout |     _@Name   match any single expression or pattern; reuse a name to require the two matches be
+stdout |     equal
+stdout |     _@_      anonymous wildcard (match anything, bind nothing)
+stdout |     _@@Name  glob: match zero or more sibling elements (at most one glob per sequence)
+stdout |
+stdout | Constrain placeholders with a `where` clause, e.g. `_@X where is_atom(_@X)`.
+stdout |
+stdout | Examples:
+stdout |     elp search 'lists:reverse(lists:reverse(_@List))'
+stdout |     elp search 'case _@Cond of true -> _@Body; false -> _@Body end'
+stdout |     elp search --format json 'foo(_@@Args)'
+stdout |
+stdout | A bare PATTERN is shorthand for `ssr: PATTERN.`. Prefix with `LABEL:ssr: ` to tag matches.
+stdout |
+stdout | Full syntax guide: https://whatsapp.github.io/erlang-language-platform/docs/structural-search

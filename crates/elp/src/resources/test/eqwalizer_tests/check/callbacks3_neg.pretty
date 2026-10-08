@@ -1,27 +1,27 @@
-error: incorrect_return_type_in_cb_implementation (See https://fb.me/eqwalizer_errors#incorrect_return_type_in_cb_implementation)
-   ┌─ check/src/callbacks3_neg.erl:13:1
-   │
-13 │ -behavior(gen_server).
-   │ ^^^^^^^^^^^^^^^^^^^^^ Incorrect return type for implementation of gen_server:handle_cast/2.
-Expected: {'noreply', term(), gen_server:action()} | {'noreply', term()} | {'stop', term(), term()}
-Got:      'wrong_ret'
-
-error: incorrect_return_type_in_cb_implementation (See https://fb.me/eqwalizer_errors#incorrect_return_type_in_cb_implementation)
-   ┌─ check/src/callbacks3_neg.erl:13:1
-   │
-13 │ -behavior(gen_server).
-   │ ^^^^^^^^^^^^^^^^^^^^^
-   │ │
-   │ Incorrect return type for implementation of gen_server:handle_info/2.
-Expected: {'noreply', term(), gen_server:action()} | {'noreply', term()} | {'stop', term(), term()}
-Got:      {'noreply', 'ok', 'wrong_atom'}
-   │ 
-
-Because in the expression's type:
-  { 'noreply', 'ok', 
-    Here the type is:     'wrong_atom'
-    Context expects type: 'hibernate' | 'infinity' | integer() | tuple()/2 | tuple()/3 | ...
-    No candidate matches in the expected union.
-  }
-
-2 ERRORS
+stdout | error: incorrect_return_type_in_cb_implementation (See https://fb.me/eqwalizer_errors#incorrect_return_type_in_cb_implementation)
+stdout |    ┌─ check/src/callbacks3_neg.erl:13:1
+stdout |    │
+stdout | 13 │ -behavior(gen_server).
+stdout |    │ ^^^^^^^^^^^^^^^^^^^^^ Incorrect return type for implementation of gen_server:handle_cast/2.
+stdout | Expected: {'noreply', term(), gen_server:action()} | {'noreply', term()} | {'stop', term(), term()}
+stdout | Got:      'wrong_ret'
+stdout |
+stdout | error: incorrect_return_type_in_cb_implementation (See https://fb.me/eqwalizer_errors#incorrect_return_type_in_cb_implementation)
+stdout |    ┌─ check/src/callbacks3_neg.erl:13:1
+stdout |    │
+stdout | 13 │ -behavior(gen_server).
+stdout |    │ ^^^^^^^^^^^^^^^^^^^^^
+stdout |    │ │
+stdout |    │ Incorrect return type for implementation of gen_server:handle_info/2.
+stdout | Expected: {'noreply', term(), gen_server:action()} | {'noreply', term()} | {'stop', term(), term()}
+stdout | Got:      {'noreply', 'ok', 'wrong_atom'}
+stdout |    │ 
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 'noreply', 'ok', 
+stdout |     Here the type is:     'wrong_atom'
+stdout |     Context expects type: 'hibernate' | 'infinity' | integer() | tuple()/2 | tuple()/3 | ...
+stdout |     No candidate matches in the expected union.
+stdout |   }
+stdout |
+stdout | 2 ERRORS

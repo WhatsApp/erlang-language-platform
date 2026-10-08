@@ -1,57 +1,57 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/unspecced.erl:14:15
-   │
-14 │   expect_none({Id}).
-   │               ^^^^ {Id}.
-Expression has type:   {dynamic()}
-Context expected type: none()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/unspecced.erl:20:15
-   │
-20 │   expect_none(Res).
-   │               ^^^ Res.
-Expression has type:   #{dynamic() => {dynamic()}}
-Context expected type: none()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/unspecced.erl:24:15
-   │
-24 │   expect_none({Id}).
-   │               ^^^^ {Id}.
-Expression has type:   {dynamic()}
-Context expected type: none()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/unspecced.erl:28:15
-   │
-28 │   expect_none({Res}).
-   │               ^^^^^ {Res}.
-Expression has type:   {#{id := integer(), dynamic() => dynamic()}}
-Context expected type: none()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/unspecced.erl:32:15
-   │
-32 │   expect_none(Res).
-   │               ^^^ Res.
-Expression has type:   {dynamic(), dynamic([term()])}
-Context expected type: none()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/unspecced.erl:36:15
-   │
-36 │   expect_none(Res).
-   │               ^^^ Res.
-Expression has type:   {dynamic()}
-Context expected type: none()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/unspecced.erl:41:18
-   │
-41 │   atom_to_binary(Rec#rec.id).
-   │                  ^^^^^^^^^^ ...#rec.id.
-Expression has type:   number()
-Context expected type: atom()
-
-7 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/unspecced.erl:14:15
+stdout |    │
+stdout | 14 │   expect_none({Id}).
+stdout |    │               ^^^^ {Id}.
+stdout | Expression has type:   {dynamic()}
+stdout | Context expected type: none()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/unspecced.erl:20:15
+stdout |    │
+stdout | 20 │   expect_none(Res).
+stdout |    │               ^^^ Res.
+stdout | Expression has type:   #{dynamic() => {dynamic()}}
+stdout | Context expected type: none()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/unspecced.erl:24:15
+stdout |    │
+stdout | 24 │   expect_none({Id}).
+stdout |    │               ^^^^ {Id}.
+stdout | Expression has type:   {dynamic()}
+stdout | Context expected type: none()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/unspecced.erl:28:15
+stdout |    │
+stdout | 28 │   expect_none({Res}).
+stdout |    │               ^^^^^ {Res}.
+stdout | Expression has type:   {#{id := integer(), dynamic() => dynamic()}}
+stdout | Context expected type: none()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/unspecced.erl:32:15
+stdout |    │
+stdout | 32 │   expect_none(Res).
+stdout |    │               ^^^ Res.
+stdout | Expression has type:   {dynamic(), dynamic([term()])}
+stdout | Context expected type: none()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/unspecced.erl:36:15
+stdout |    │
+stdout | 36 │   expect_none(Res).
+stdout |    │               ^^^ Res.
+stdout | Expression has type:   {dynamic()}
+stdout | Context expected type: none()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/unspecced.erl:41:18
+stdout |    │
+stdout | 41 │   atom_to_binary(Rec#rec.id).
+stdout |    │                  ^^^^^^^^^^ ...#rec.id.
+stdout | Expression has type:   number()
+stdout | Context expected type: atom()
+stdout |
+stdout | 7 ERRORS

@@ -1,9 +1,9 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ parse_error_a/src/parse_error_a.erl:15:5
-   │
-15 │     X.
-   │     ^ X.
-Expression has type:   [number()]
-Context expected type: atom()
-
-1 ERROR
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ parse_error_a/src/parse_error_a.erl:15:5
+stdout |    │
+stdout | 15 │     X.
+stdout |    │     ^ X.
+stdout | Expression has type:   [number()]
+stdout | Context expected type: atom()
+stdout |
+stdout | 1 ERROR

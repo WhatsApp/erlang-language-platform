@@ -1,9 +1,9 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/strict_receive.erl:71:9
-   │
-71 │   after T -> ok
-   │         ^ T.
-Expression has type:   atom()
-Context expected type: timeout()
-
-1 ERROR
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/strict_receive.erl:71:9
+stdout |    │
+stdout | 71 │   after T -> ok
+stdout |    │         ^ T.
+stdout | Expression has type:   atom()
+stdout | Context expected type: timeout()
+stdout |
+stdout | 1 ERROR

@@ -1,4 +1,5 @@
-module specified: custom_function_matches
-Diagnostics reported:
-app_a/src/custom_function_matches.erl:14:5-14:26::[Warning] [W0017] Function 'not_excluded:function/0' is undefined.
-app_a/src/custom_function_matches.erl:16:5-16:20::[Error] [W0014] Production code must not use cross node eval (e.g. `rpc:call()`)
+stdout | module specified: custom_function_matches
+stdout | Diagnostics reported:
+stdout | app_a/src/custom_function_matches.erl:14:5-14:26::[Warning] [W0017] Function 'not_excluded:function/0' is undefined.
+stdout | app_a/src/custom_function_matches.erl:16:5-16:20::[Error] [W0014] Production code must not use cross node eval (e.g. `rpc:call()`)
+stderr | Errors found

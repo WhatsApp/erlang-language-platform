@@ -1,89 +1,89 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_maps.erl:26:53
-   │
-26 │ map_occ_04_neg(M = #{a := I}) when is_integer(I) -> M;
-   │                                                     ^
-   │                                                     │
-   │                                                     M.
-Expression has type:   #{a := integer(), b => integer()}
-Context expected type: #{a := integer(), b := integer()}
-   │                                                     
-
-Because in the expression's type:
-  Here the type is:     #{b => ..., ...}
-  Context expects type: #{b := ..., ...}
-  The type of the expression is missing the following required keys: b.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_maps.erl:27:22
-   │
-27 │ map_occ_04_neg(M) -> M#{a => 0}.
-   │                      ^^^^^^^^^^
-   │                      │
-   │                      ..#{..}.
-Expression has type:   #{a := integer(), b => integer()}
-Context expected type: #{a := integer(), b := integer()}
-   │                      
-
-Because in the expression's type:
-  Here the type is:     #{b => ..., ...}
-  Context expects type: #{b := ..., ...}
-  The type of the expression is missing the following required keys: b.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_maps.erl:36:22
-   │
-36 │ map_occ_06_neg(V) -> V.
-   │                      ^
-   │                      │
-   │                      V.
-Expression has type:   #{} | 'ok'
-Context expected type: 'ok'
-   │                      
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: 'ok'
-  However the following candidate: #{}
-  Differs from the expected type:  'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_maps.erl:42:22
-   │
-42 │ map_occ_07_neg(M) -> M.
-   │                      ^
-   │                      │
-   │                      M.
-Expression has type:   #{c := integer()}
-Context expected type: #{b := integer()}
-   │                      
-
-Because in the expression's type:
-  Here the type is:     #{...}
-  Context expects type: #{b := ..., ...}
-  The type of the expression is missing the following required keys: b.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_maps.erl:55:34
-   │
-55 │ map_occ_08_neg(#{a := _} = M) -> M;
-   │                                  ^ M.
-Expression has type:   #{a := dynamic(), dynamic() => dynamic()}
-Context expected type: 'err'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_maps.erl:70:29
-   │
-70 │     (_, #{a := V}) -> is_ok(V)
-   │                             ^
-   │                             │
-   │                             V.
-Expression has type:   'err' | 'ok'
-Context expected type: 'ok'
-   │                             
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: 'ok'
-  However the following candidate: 'err'
-  Differs from the expected type:  'ok'
-
-6 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/eqwater_maps.erl:26:53
+stdout |    │
+stdout | 26 │ map_occ_04_neg(M = #{a := I}) when is_integer(I) -> M;
+stdout |    │                                                     ^
+stdout |    │                                                     │
+stdout |    │                                                     M.
+stdout | Expression has type:   #{a := integer(), b => integer()}
+stdout | Context expected type: #{a := integer(), b := integer()}
+stdout |    │                                                     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{b => ..., ...}
+stdout |   Context expects type: #{b := ..., ...}
+stdout |   The type of the expression is missing the following required keys: b.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/eqwater_maps.erl:27:22
+stdout |    │
+stdout | 27 │ map_occ_04_neg(M) -> M#{a => 0}.
+stdout |    │                      ^^^^^^^^^^
+stdout |    │                      │
+stdout |    │                      ..#{..}.
+stdout | Expression has type:   #{a := integer(), b => integer()}
+stdout | Context expected type: #{a := integer(), b := integer()}
+stdout |    │                      
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{b => ..., ...}
+stdout |   Context expects type: #{b := ..., ...}
+stdout |   The type of the expression is missing the following required keys: b.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/eqwater_maps.erl:36:22
+stdout |    │
+stdout | 36 │ map_occ_06_neg(V) -> V.
+stdout |    │                      ^
+stdout |    │                      │
+stdout |    │                      V.
+stdout | Expression has type:   #{} | 'ok'
+stdout | Context expected type: 'ok'
+stdout |    │                      
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: 'ok'
+stdout |   However the following candidate: #{}
+stdout |   Differs from the expected type:  'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/eqwater_maps.erl:42:22
+stdout |    │
+stdout | 42 │ map_occ_07_neg(M) -> M.
+stdout |    │                      ^
+stdout |    │                      │
+stdout |    │                      M.
+stdout | Expression has type:   #{c := integer()}
+stdout | Context expected type: #{b := integer()}
+stdout |    │                      
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{...}
+stdout |   Context expects type: #{b := ..., ...}
+stdout |   The type of the expression is missing the following required keys: b.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/eqwater_maps.erl:55:34
+stdout |    │
+stdout | 55 │ map_occ_08_neg(#{a := _} = M) -> M;
+stdout |    │                                  ^ M.
+stdout | Expression has type:   #{a := dynamic(), dynamic() => dynamic()}
+stdout | Context expected type: 'err'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/eqwater_maps.erl:70:29
+stdout |    │
+stdout | 70 │     (_, #{a := V}) -> is_ok(V)
+stdout |    │                             ^
+stdout |    │                             │
+stdout |    │                             V.
+stdout | Expression has type:   'err' | 'ok'
+stdout | Context expected type: 'ok'
+stdout |    │                             
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: 'ok'
+stdout |   However the following candidate: 'err'
+stdout |   Differs from the expected type:  'ok'
+stdout |
+stdout | 6 ERRORS

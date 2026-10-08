@@ -1,39 +1,39 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/tuple_union.erl:27:19
-   │
-27 │ test_03_neg(X) -> X.
-   │                   ^
-   │                   │
-   │                   X.
-Expression has type:   t4()
-Context expected type: t5()
-   │                   
-
-Because in the expression's type:
-  { 'msg', 
-    Here the type is a union type with some valid candidates: 'ok'
-    However the following candidate: 'err'
-    Differs from the expected type:  'ok'
-  , 'arg' | 'nil'}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/tuple_union.erl:66:26
-   │
-66 │ tree3_as_tree1_neg(T) -> T.
-   │                          ^
-   │                          │
-   │                          T.
-Expression has type:   tree3()
-Context expected type: tree1()
-   │                          
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: {'leaf', atom()}
-  However, the following candidate doesn't match:
-  { 
-    Here the type is:     'b1' | 'b2' | 'b3'
-    Context expects type: 'leaf'
-    No candidate of the expression's type matches the expected type.
-  , tree2()}
-
-2 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/tuple_union.erl:27:19
+stdout |    │
+stdout | 27 │ test_03_neg(X) -> X.
+stdout |    │                   ^
+stdout |    │                   │
+stdout |    │                   X.
+stdout | Expression has type:   t4()
+stdout | Context expected type: t5()
+stdout |    │                   
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 'msg', 
+stdout |     Here the type is a union type with some valid candidates: 'ok'
+stdout |     However the following candidate: 'err'
+stdout |     Differs from the expected type:  'ok'
+stdout |   , 'arg' | 'nil'}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/tuple_union.erl:66:26
+stdout |    │
+stdout | 66 │ tree3_as_tree1_neg(T) -> T.
+stdout |    │                          ^
+stdout |    │                          │
+stdout |    │                          T.
+stdout | Expression has type:   tree3()
+stdout | Context expected type: tree1()
+stdout |    │                          
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: {'leaf', atom()}
+stdout |   However, the following candidate doesn't match:
+stdout |   { 
+stdout |     Here the type is:     'b1' | 'b2' | 'b3'
+stdout |     Context expects type: 'leaf'
+stdout |     No candidate of the expression's type matches the expected type.
+stdout |   , tree2()}
+stdout |
+stdout | 2 ERRORS

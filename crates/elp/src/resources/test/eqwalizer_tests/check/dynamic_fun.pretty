@@ -1,151 +1,151 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_fun.erl:65:3
-   │
-65 │   fun M:id/1.
-   │   ^^^^^^^^^^ M:'id'/1.
-Expression has type:   fun((dynamic()) -> dynamic())
-Context expected type: fun(() -> pid())
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_fun.erl:71:3
-   │
-71 │   Res.
-   │   ^^^ Res.
-Expression has type:   fun((dynamic()) -> dynamic())
-Context expected type: fun(() -> pid())
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_fun.erl:87:3
-   │
-87 │   fun M:F/2.
-   │   ^^^^^^^^^ M:F/2.
-Expression has type:   fun((dynamic(), dynamic()) -> dynamic())
-Context expected type: fun((pid()) -> pid())
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_fun.erl:93:3
-   │
-93 │   Res.
-   │   ^^^ Res.
-Expression has type:   fun((dynamic(), dynamic()) -> dynamic())
-Context expected type: fun((pid()) -> pid())
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_fun.erl:98:7
-   │
-98 │   fun M:F/1.
-   │       ^ M.
-Expression has type:   {atom()}
-Context expected type: atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/dynamic_fun.erl:103:9
-    │
-103 │   fun M:F/1.
-    │         ^ F.
-Expression has type:   {atom()}
-Context expected type: atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/dynamic_fun.erl:109:11
-    │
-109 │   fun M:F/A.
-    │           ^ A.
-Expression has type:   pid()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/dynamic_fun.erl:146:24
-    │
-146 │ f5_to_f4_cov_neg(F) -> F.
-    │                        ^
-    │                        │
-    │                        F.
-Expression has type:   f5('a' | 'b')
-Context expected type: f4('a')
-    │                        
-
-Because in the expression's type:
-  fun((term()) ->
-    Here the type is a union type with some valid candidates: 'a'
-    However the following candidate: 'b'
-    Differs from the expected type:  'a'
-  )
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/dynamic_fun.erl:155:20
-    │
-155 │ apply_f4_neg(F) -> F(a).
-    │                    ^^^^ F('a').
-Expression has type:   number()
-Context expected type: boolean()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/dynamic_fun.erl:170:22
-    │
-170 │ fun3_to_f4_neg(F) -> F.
-    │                      ^
-    │                      │
-    │                      F.
-Expression has type:   fun((term()) -> 'a' | 'b')
-Context expected type: f4('a')
-    │                      
-
-Because in the expression's type:
-  fun((term()) ->
-    Here the type is a union type with some valid candidates: 'a'
-    However the following candidate: 'b'
-    Differs from the expected type:  'a'
-  )
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/dynamic_fun.erl:176:21
-    │
-176 │ f4_to_fun_neg(F) -> F.
-    │                     ^
-    │                     │
-    │                     F.
-Expression has type:   f4('a' | 'b')
-Context expected type: fun((term()) -> 'a')
-    │                     
-
-Because in the expression's type:
-  fun((term()) ->
-    Here the type is a union type with some valid candidates: 'a'
-    However the following candidate: 'b'
-    Differs from the expected type:  'a'
-  )
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/dynamic_fun.erl:208:34
-    │
-208 │ apply_by_name_neg1(Mod, Name) -> Mod:Name().
-    │                                  ^^^ Mod.
-Expression has type:   term()
-Context expected type: atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/dynamic_fun.erl:208:38
-    │
-208 │ apply_by_name_neg1(Mod, Name) -> Mod:Name().
-    │                                      ^^^^ Name.
-Expression has type:   term()
-Context expected type: atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/dynamic_fun.erl:212:9
-    │
-212 │   Res = Mod:Name(),
-    │         ^^^ Mod.
-Expression has type:   term()
-Context expected type: atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/dynamic_fun.erl:212:13
-    │
-212 │   Res = Mod:Name(),
-    │             ^^^^ Name.
-Expression has type:   term()
-Context expected type: atom()
-
-15 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_fun.erl:65:3
+stdout |    │
+stdout | 65 │   fun M:id/1.
+stdout |    │   ^^^^^^^^^^ M:'id'/1.
+stdout | Expression has type:   fun((dynamic()) -> dynamic())
+stdout | Context expected type: fun(() -> pid())
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_fun.erl:71:3
+stdout |    │
+stdout | 71 │   Res.
+stdout |    │   ^^^ Res.
+stdout | Expression has type:   fun((dynamic()) -> dynamic())
+stdout | Context expected type: fun(() -> pid())
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_fun.erl:87:3
+stdout |    │
+stdout | 87 │   fun M:F/2.
+stdout |    │   ^^^^^^^^^ M:F/2.
+stdout | Expression has type:   fun((dynamic(), dynamic()) -> dynamic())
+stdout | Context expected type: fun((pid()) -> pid())
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_fun.erl:93:3
+stdout |    │
+stdout | 93 │   Res.
+stdout |    │   ^^^ Res.
+stdout | Expression has type:   fun((dynamic(), dynamic()) -> dynamic())
+stdout | Context expected type: fun((pid()) -> pid())
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_fun.erl:98:7
+stdout |    │
+stdout | 98 │   fun M:F/1.
+stdout |    │       ^ M.
+stdout | Expression has type:   {atom()}
+stdout | Context expected type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/dynamic_fun.erl:103:9
+stdout |     │
+stdout | 103 │   fun M:F/1.
+stdout |     │         ^ F.
+stdout | Expression has type:   {atom()}
+stdout | Context expected type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/dynamic_fun.erl:109:11
+stdout |     │
+stdout | 109 │   fun M:F/A.
+stdout |     │           ^ A.
+stdout | Expression has type:   pid()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/dynamic_fun.erl:146:24
+stdout |     │
+stdout | 146 │ f5_to_f4_cov_neg(F) -> F.
+stdout |     │                        ^
+stdout |     │                        │
+stdout |     │                        F.
+stdout | Expression has type:   f5('a' | 'b')
+stdout | Context expected type: f4('a')
+stdout |     │                        
+stdout |
+stdout | Because in the expression's type:
+stdout |   fun((term()) ->
+stdout |     Here the type is a union type with some valid candidates: 'a'
+stdout |     However the following candidate: 'b'
+stdout |     Differs from the expected type:  'a'
+stdout |   )
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/dynamic_fun.erl:155:20
+stdout |     │
+stdout | 155 │ apply_f4_neg(F) -> F(a).
+stdout |     │                    ^^^^ F('a').
+stdout | Expression has type:   number()
+stdout | Context expected type: boolean()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/dynamic_fun.erl:170:22
+stdout |     │
+stdout | 170 │ fun3_to_f4_neg(F) -> F.
+stdout |     │                      ^
+stdout |     │                      │
+stdout |     │                      F.
+stdout | Expression has type:   fun((term()) -> 'a' | 'b')
+stdout | Context expected type: f4('a')
+stdout |     │                      
+stdout |
+stdout | Because in the expression's type:
+stdout |   fun((term()) ->
+stdout |     Here the type is a union type with some valid candidates: 'a'
+stdout |     However the following candidate: 'b'
+stdout |     Differs from the expected type:  'a'
+stdout |   )
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/dynamic_fun.erl:176:21
+stdout |     │
+stdout | 176 │ f4_to_fun_neg(F) -> F.
+stdout |     │                     ^
+stdout |     │                     │
+stdout |     │                     F.
+stdout | Expression has type:   f4('a' | 'b')
+stdout | Context expected type: fun((term()) -> 'a')
+stdout |     │                     
+stdout |
+stdout | Because in the expression's type:
+stdout |   fun((term()) ->
+stdout |     Here the type is a union type with some valid candidates: 'a'
+stdout |     However the following candidate: 'b'
+stdout |     Differs from the expected type:  'a'
+stdout |   )
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/dynamic_fun.erl:208:34
+stdout |     │
+stdout | 208 │ apply_by_name_neg1(Mod, Name) -> Mod:Name().
+stdout |     │                                  ^^^ Mod.
+stdout | Expression has type:   term()
+stdout | Context expected type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/dynamic_fun.erl:208:38
+stdout |     │
+stdout | 208 │ apply_by_name_neg1(Mod, Name) -> Mod:Name().
+stdout |     │                                      ^^^^ Name.
+stdout | Expression has type:   term()
+stdout | Context expected type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/dynamic_fun.erl:212:9
+stdout |     │
+stdout | 212 │   Res = Mod:Name(),
+stdout |     │         ^^^ Mod.
+stdout | Expression has type:   term()
+stdout | Context expected type: atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/dynamic_fun.erl:212:13
+stdout |     │
+stdout | 212 │   Res = Mod:Name(),
+stdout |     │             ^^^^ Name.
+stdout | Expression has type:   term()
+stdout | Context expected type: atom()
+stdout |
+stdout | 15 ERRORS

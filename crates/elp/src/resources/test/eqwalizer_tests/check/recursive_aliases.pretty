@@ -1,366 +1,366 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/recursive_aliases.erl:61:20
-   │
-61 │ subtype3_neg(C) -> C.
-   │                    ^
-   │                    │
-   │                    C.
-Expression has type:   chainA()
-Context expected type: chainB()
-   │                    
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: 'nil'
-  However, the following candidate doesn't match:
-  { 
-    Here the type is:     'a'
-    Context expects type: 'b'
-  , chainA()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/recursive_aliases.erl:64:20
-   │
-64 │ subtype4_neg(C) -> C.
-   │                    ^
-   │                    │
-   │                    C.
-Expression has type:   chainB()
-Context expected type: chainA()
-   │                    
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: 'nil'
-  However, the following candidate doesn't match:
-  { 
-    Here the type is:     'b'
-    Context expects type: 'a'
-  , chainB()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/recursive_aliases.erl:67:20
-   │
-67 │ subtype5_neg(C) -> C.
-   │                    ^
-   │                    │
-   │                    C.
-Expression has type:   chainAB()
-Context expected type: chainA()
-   │                    
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: 'nil' | {'a', chainAB()}
-  However, the following candidate doesn't match:
-  { 
-    Here the type is:     'b'
-    Context expects type: 'a'
-  , chainAB()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/recursive_aliases.erl:70:20
-   │
-70 │ subtype6_neg(C) -> C.
-   │                    ^
-   │                    │
-   │                    C.
-Expression has type:   chainAB()
-Context expected type: chainB()
-   │                    
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: 'nil' | {'b', chainAB()}
-  However, the following candidate doesn't match:
-  { 
-    Here the type is:     'a'
-    Context expects type: 'b'
-  , chainAB()}
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-   ┌─ check/src/recursive_aliases.erl:72:1
-   │
-72 │ -type non_prod() :: non_prod().
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type non_prod/0 is not productive
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-   ┌─ check/src/recursive_aliases.erl:74:1
-   │  
-74 │ ╭ -spec non_prod_id(non_prod()) ->
-75 │ │     non_prod() | number().
-   │ ╰───────────────────────^ non_prod_id/1 (transitively) references type with invalid definition: non_prod/0
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/recursive_aliases.erl:83:22
-   │
-83 │ subtype_p1_neg(C) -> C.
-   │                      ^
-   │                      │
-   │                      C.
-Expression has type:   pchainA(atom())
-Context expected type: pchainAB(atom())
-   │                      
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: 'nil'
-  However the following candidate: {'a', atom(), pchainA(atom())}
-  Differs from the expected type:  'nil' | {'a', pchainAB(atom())} | {'b', pchainAB(atom())}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/recursive_aliases.erl:115:23
-    │
-115 │     1 + m_chainA_size(Chain).
-    │                       ^^^^^
-    │                       │
-    │                       Chain.
-Expression has type:   mChainB()
-Context expected type: mChainA()
-    │                       
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: 'nil'
-  However, the following candidate doesn't match:
-  Here the type is:     #{...}
-  Context expects type: #{a := ..., ...}
-  The type of the expression is missing the following required keys: a.
-
-error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
-    ┌─ check/src/recursive_aliases.erl:140:15
-    │
-140 │ fun_fan(F) -> F().
-    │               ^ F.
-Expected fun type with arity 0
-Got: fan()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/recursive_aliases.erl:189:21
-    │
-189 │ subtype_6_neg(C) -> C.
-    │                     ^
-    │                     │
-    │                     C.
-Expression has type:   pchainA('a')
-Context expected type: pchainA('b' | 'c')
-    │                     
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: 'nil'
-  However, the following candidate doesn't match:
-  { 'a', 
-    Here the type is:     'a'
-    Context expects type: 'b' | 'c'
-    No candidate matches in the expected union.
-  , pchainA('a')}
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:204:1
-    │
-204 │ -type mu_bad() :: mu_bad() | {a}.
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type mu_bad/0 is not productive
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/recursive_aliases.erl:206:1
-    │  
-206 │ ╭ -spec to_mu_bad_neg() ->
-207 │ │   mu_bad().
-    │ ╰────────^ to_mu_bad_neg/0 (transitively) references type with invalid definition: mu_bad/0
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/recursive_aliases.erl:210:1
-    │  
-210 │ ╭ -spec test_mu_bad_neg(mu_bad()) ->
-211 │ │   pid().
-    │ ╰─────^ test_mu_bad_neg/1 (transitively) references type with invalid definition: mu_bad/0
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:214:1
-    │
-214 │ -type mu(A) :: {mu, mu(mu(A))}.
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type mu/1 is not productive
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/recursive_aliases.erl:216:1
-    │
-216 │ -spec test2_neg(mu(A)) -> mu(mu(A)).
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ test2_neg/1 (transitively) references type with invalid definition: mu/1
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/recursive_aliases.erl:225:23
-    │
-225 │ test4_neg({mu, M}) -> M.
-    │                       ^ M.
-Expression has type:   atom() | mu2()
-Context expected type: pid()
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:298:1
-    │
-298 │ -type mu_bad2() :: id(mu_bad2()).
-    │ ^^^^^^^^^^^^^^^^^^^^^ recursive type mu_bad2/0 is not productive
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:299:1
-    │
-299 │ -type mu_bad2b() :: id(mu_bad2()).
-    │ ^^^^^^^^^^^^^^^^^^^^^^ recursive type mu_bad2b/0 is not productive
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:301:1
-    │
-301 │ -type mu_bad3() :: id(mu_bad3()).
-    │ ^^^^^^^^^^^^^^^^^^^^^ recursive type mu_bad3/0 is not productive
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/recursive_aliases.erl:303:1
-    │  
-303 │ ╭ -spec to_mu_bad3_neg(mu_bad2()) ->
-304 │ │     mu_bad3().
-    │ ╰───────────^ to_mu_bad3_neg/1 (transitively) references types with invalid definitions: mu_bad2/0, mu_bad3/0
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/recursive_aliases.erl:307:1
-    │  
-307 │ ╭ -spec to_mu_bad2b_neg(mu_bad2()) ->
-308 │ │   mu_bad2b().
-    │ ╰──────────^ to_mu_bad2b_neg/1 (transitively) references types with invalid definitions: mu_bad2/0, mu_bad2b/0
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:311:1
-    │
-311 │ -type indirect2() :: mutual2().
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type indirect2/0 is not productive
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:312:1
-    │
-312 │ -type indirect1() :: mutual1().
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type indirect1/0 is not productive
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:314:1
-    │  
-314 │ ╭ -type mutual1() :: indirect1()
-315 │ │   | indirect2().
-    │ ╰─────────────^ recursive type mutual1/0 is not productive
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:316:1
-    │  
-316 │ ╭ -type mutual2() :: indirect1()
-317 │ │   | indirect2().
-    │ ╰─────────────^ recursive type mutual2/0 is not productive
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/recursive_aliases.erl:319:1
-    │  
-319 │ ╭ -spec test_mutual_neg(mutual1()) ->
-320 │ │     mutual2().
-    │ ╰───────────^ test_mutual_neg/1 (transitively) references types with invalid definitions: mutual1/0, mutual2/0
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:344:1
-    │
-344 │ -type mu_bad5() :: opaque_id(mu_bad5()).
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type mu_bad5/0 is not productive
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:345:1
-    │
-345 │ -type mu_bad5b() :: opaque_id(mu_bad5()).
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type mu_bad5b/0 is not productive
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/recursive_aliases.erl:347:1
-    │  
-347 │ ╭ -spec test_mu_bad5(
-348 │ │     mu_bad5()
-349 │ │ ) -> mu_bad5b().
-    │ ╰─────────────^ test_mu_bad5/1 (transitively) references types with invalid definitions: mu_bad5/0, mu_bad5b/0
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:394:1
-    │
-394 │ -type recur() :: foo(recur()) | a.
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type recur/0 is not productive
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/recursive_aliases.erl:397:1
-    │
-397 │ -spec un_recur_neg(recur()) -> ok.
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ un_recur_neg/1 (transitively) references type with invalid definition: recur/0
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/recursive_aliases.erl:401:1
-    │  
-401 │ ╭ -spec term_to_recur_neg(term()) ->
-402 │ │   recur().
-    │ ╰───────^ term_to_recur_neg/1 (transitively) references type with invalid definition: recur/0
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:411:1
-    │  
-411 │ ╭ -type foo7_neg(T) ::
-412 │ │   {unit, foo7_neg(foo7_neg(T))}.
-    │ ╰───────────────────────────────^ recursive type foo7_neg/1 is not productive
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:443:1
-    │
-443 │ -type x_cycle() :: misc:x_cycle().
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type x_cycle/0 is not productive
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:479:1
-    │  
-479 │ ╭ -type t_tree2(Z) ::
-480 │ │   {leaf, Z} |
-481 │ │   {node, t_tree2(simple_id(Z))}.
-    │ ╰───────────────────────────────^ recursive type t_tree2/1 is not productive
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:483:1
-    │  
-483 │ ╭ -type t_tree3(Z) ::
-484 │ │   {leaf, Z} |
-485 │ │   {node, t_tree3(t_tree3(Z))}.
-    │ ╰─────────────────────────────^ recursive type t_tree3/1 is not productive
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:495:1
-    │  
-495 │ ╭ -type stream2(Z) ::
-496 │ │   {chunk, stream2(simple_id(Z))}.
-    │ ╰────────────────────────────────^ recursive type stream2/1 is not productive
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/recursive_aliases.erl:507:1
-    │  
-507 │ ╭ -type d_stream(Z) ::
-508 │ │   {chunk, d_stream([Z])}.
-    │ ╰────────────────────────^ recursive type d_stream/1 is not productive
-
-error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
-    ┌─ check/src/recursive_aliases.erl:510:23
-    │
-510 │ -type invalid_ty() :: non_exist:invalid().
-    │                       ^^^^^^^^^^^^^^^^^^^ Unknown id: non_exist:invalid/0
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/recursive_aliases.erl:512:1
-    │  
-512 │ ╭ -type invalid_rec() ::
-513 │ │   invalid_ty() | invalid_transitive().
-    │ ╰───────────────────────────────────^ invalid_rec/0 (transitively) references type with invalid definition: invalid_ty/0
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/recursive_aliases.erl:515:1
-    │  
-515 │ ╭ -type invalid_transitive() ::
-516 │ │   {a, invalid_rec()}.
-    │ ╰────────────────────^ invalid_transitive/0 (transitively) references type with invalid definition: invalid_ty/0
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/recursive_aliases.erl:518:1
-    │  
-518 │ ╭ -spec use_invalid
-519 │ │   (invalid_transitive()) -> a.
-    │ ╰─────────────────────────────^ use_invalid/1 (transitively) references type with invalid definition: invalid_ty/0
-
-42 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/recursive_aliases.erl:61:20
+stdout |    │
+stdout | 61 │ subtype3_neg(C) -> C.
+stdout |    │                    ^
+stdout |    │                    │
+stdout |    │                    C.
+stdout | Expression has type:   chainA()
+stdout | Context expected type: chainB()
+stdout |    │                    
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: 'nil'
+stdout |   However, the following candidate doesn't match:
+stdout |   { 
+stdout |     Here the type is:     'a'
+stdout |     Context expects type: 'b'
+stdout |   , chainA()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/recursive_aliases.erl:64:20
+stdout |    │
+stdout | 64 │ subtype4_neg(C) -> C.
+stdout |    │                    ^
+stdout |    │                    │
+stdout |    │                    C.
+stdout | Expression has type:   chainB()
+stdout | Context expected type: chainA()
+stdout |    │                    
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: 'nil'
+stdout |   However, the following candidate doesn't match:
+stdout |   { 
+stdout |     Here the type is:     'b'
+stdout |     Context expects type: 'a'
+stdout |   , chainB()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/recursive_aliases.erl:67:20
+stdout |    │
+stdout | 67 │ subtype5_neg(C) -> C.
+stdout |    │                    ^
+stdout |    │                    │
+stdout |    │                    C.
+stdout | Expression has type:   chainAB()
+stdout | Context expected type: chainA()
+stdout |    │                    
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: 'nil' | {'a', chainAB()}
+stdout |   However, the following candidate doesn't match:
+stdout |   { 
+stdout |     Here the type is:     'b'
+stdout |     Context expects type: 'a'
+stdout |   , chainAB()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/recursive_aliases.erl:70:20
+stdout |    │
+stdout | 70 │ subtype6_neg(C) -> C.
+stdout |    │                    ^
+stdout |    │                    │
+stdout |    │                    C.
+stdout | Expression has type:   chainAB()
+stdout | Context expected type: chainB()
+stdout |    │                    
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: 'nil' | {'b', chainAB()}
+stdout |   However, the following candidate doesn't match:
+stdout |   { 
+stdout |     Here the type is:     'a'
+stdout |     Context expects type: 'b'
+stdout |   , chainAB()}
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |    ┌─ check/src/recursive_aliases.erl:72:1
+stdout |    │
+stdout | 72 │ -type non_prod() :: non_prod().
+stdout |    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type non_prod/0 is not productive
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |    ┌─ check/src/recursive_aliases.erl:74:1
+stdout |    │  
+stdout | 74 │ ╭ -spec non_prod_id(non_prod()) ->
+stdout | 75 │ │     non_prod() | number().
+stdout |    │ ╰───────────────────────^ non_prod_id/1 (transitively) references type with invalid definition: non_prod/0
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/recursive_aliases.erl:83:22
+stdout |    │
+stdout | 83 │ subtype_p1_neg(C) -> C.
+stdout |    │                      ^
+stdout |    │                      │
+stdout |    │                      C.
+stdout | Expression has type:   pchainA(atom())
+stdout | Context expected type: pchainAB(atom())
+stdout |    │                      
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: 'nil'
+stdout |   However the following candidate: {'a', atom(), pchainA(atom())}
+stdout |   Differs from the expected type:  'nil' | {'a', pchainAB(atom())} | {'b', pchainAB(atom())}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/recursive_aliases.erl:115:23
+stdout |     │
+stdout | 115 │     1 + m_chainA_size(Chain).
+stdout |     │                       ^^^^^
+stdout |     │                       │
+stdout |     │                       Chain.
+stdout | Expression has type:   mChainB()
+stdout | Context expected type: mChainA()
+stdout |     │                       
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: 'nil'
+stdout |   However, the following candidate doesn't match:
+stdout |   Here the type is:     #{...}
+stdout |   Context expects type: #{a := ..., ...}
+stdout |   The type of the expression is missing the following required keys: a.
+stdout |
+stdout | error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
+stdout |     ┌─ check/src/recursive_aliases.erl:140:15
+stdout |     │
+stdout | 140 │ fun_fan(F) -> F().
+stdout |     │               ^ F.
+stdout | Expected fun type with arity 0
+stdout | Got: fan()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/recursive_aliases.erl:189:21
+stdout |     │
+stdout | 189 │ subtype_6_neg(C) -> C.
+stdout |     │                     ^
+stdout |     │                     │
+stdout |     │                     C.
+stdout | Expression has type:   pchainA('a')
+stdout | Context expected type: pchainA('b' | 'c')
+stdout |     │                     
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: 'nil'
+stdout |   However, the following candidate doesn't match:
+stdout |   { 'a', 
+stdout |     Here the type is:     'a'
+stdout |     Context expects type: 'b' | 'c'
+stdout |     No candidate matches in the expected union.
+stdout |   , pchainA('a')}
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:204:1
+stdout |     │
+stdout | 204 │ -type mu_bad() :: mu_bad() | {a}.
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type mu_bad/0 is not productive
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |     ┌─ check/src/recursive_aliases.erl:206:1
+stdout |     │  
+stdout | 206 │ ╭ -spec to_mu_bad_neg() ->
+stdout | 207 │ │   mu_bad().
+stdout |     │ ╰────────^ to_mu_bad_neg/0 (transitively) references type with invalid definition: mu_bad/0
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |     ┌─ check/src/recursive_aliases.erl:210:1
+stdout |     │  
+stdout | 210 │ ╭ -spec test_mu_bad_neg(mu_bad()) ->
+stdout | 211 │ │   pid().
+stdout |     │ ╰─────^ test_mu_bad_neg/1 (transitively) references type with invalid definition: mu_bad/0
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:214:1
+stdout |     │
+stdout | 214 │ -type mu(A) :: {mu, mu(mu(A))}.
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type mu/1 is not productive
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |     ┌─ check/src/recursive_aliases.erl:216:1
+stdout |     │
+stdout | 216 │ -spec test2_neg(mu(A)) -> mu(mu(A)).
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ test2_neg/1 (transitively) references type with invalid definition: mu/1
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/recursive_aliases.erl:225:23
+stdout |     │
+stdout | 225 │ test4_neg({mu, M}) -> M.
+stdout |     │                       ^ M.
+stdout | Expression has type:   atom() | mu2()
+stdout | Context expected type: pid()
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:298:1
+stdout |     │
+stdout | 298 │ -type mu_bad2() :: id(mu_bad2()).
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^ recursive type mu_bad2/0 is not productive
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:299:1
+stdout |     │
+stdout | 299 │ -type mu_bad2b() :: id(mu_bad2()).
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^^ recursive type mu_bad2b/0 is not productive
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:301:1
+stdout |     │
+stdout | 301 │ -type mu_bad3() :: id(mu_bad3()).
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^ recursive type mu_bad3/0 is not productive
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |     ┌─ check/src/recursive_aliases.erl:303:1
+stdout |     │  
+stdout | 303 │ ╭ -spec to_mu_bad3_neg(mu_bad2()) ->
+stdout | 304 │ │     mu_bad3().
+stdout |     │ ╰───────────^ to_mu_bad3_neg/1 (transitively) references types with invalid definitions: mu_bad2/0, mu_bad3/0
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |     ┌─ check/src/recursive_aliases.erl:307:1
+stdout |     │  
+stdout | 307 │ ╭ -spec to_mu_bad2b_neg(mu_bad2()) ->
+stdout | 308 │ │   mu_bad2b().
+stdout |     │ ╰──────────^ to_mu_bad2b_neg/1 (transitively) references types with invalid definitions: mu_bad2/0, mu_bad2b/0
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:311:1
+stdout |     │
+stdout | 311 │ -type indirect2() :: mutual2().
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type indirect2/0 is not productive
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:312:1
+stdout |     │
+stdout | 312 │ -type indirect1() :: mutual1().
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type indirect1/0 is not productive
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:314:1
+stdout |     │  
+stdout | 314 │ ╭ -type mutual1() :: indirect1()
+stdout | 315 │ │   | indirect2().
+stdout |     │ ╰─────────────^ recursive type mutual1/0 is not productive
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:316:1
+stdout |     │  
+stdout | 316 │ ╭ -type mutual2() :: indirect1()
+stdout | 317 │ │   | indirect2().
+stdout |     │ ╰─────────────^ recursive type mutual2/0 is not productive
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |     ┌─ check/src/recursive_aliases.erl:319:1
+stdout |     │  
+stdout | 319 │ ╭ -spec test_mutual_neg(mutual1()) ->
+stdout | 320 │ │     mutual2().
+stdout |     │ ╰───────────^ test_mutual_neg/1 (transitively) references types with invalid definitions: mutual1/0, mutual2/0
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:344:1
+stdout |     │
+stdout | 344 │ -type mu_bad5() :: opaque_id(mu_bad5()).
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type mu_bad5/0 is not productive
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:345:1
+stdout |     │
+stdout | 345 │ -type mu_bad5b() :: opaque_id(mu_bad5()).
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type mu_bad5b/0 is not productive
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |     ┌─ check/src/recursive_aliases.erl:347:1
+stdout |     │  
+stdout | 347 │ ╭ -spec test_mu_bad5(
+stdout | 348 │ │     mu_bad5()
+stdout | 349 │ │ ) -> mu_bad5b().
+stdout |     │ ╰─────────────^ test_mu_bad5/1 (transitively) references types with invalid definitions: mu_bad5/0, mu_bad5b/0
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:394:1
+stdout |     │
+stdout | 394 │ -type recur() :: foo(recur()) | a.
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type recur/0 is not productive
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |     ┌─ check/src/recursive_aliases.erl:397:1
+stdout |     │
+stdout | 397 │ -spec un_recur_neg(recur()) -> ok.
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ un_recur_neg/1 (transitively) references type with invalid definition: recur/0
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |     ┌─ check/src/recursive_aliases.erl:401:1
+stdout |     │  
+stdout | 401 │ ╭ -spec term_to_recur_neg(term()) ->
+stdout | 402 │ │   recur().
+stdout |     │ ╰───────^ term_to_recur_neg/1 (transitively) references type with invalid definition: recur/0
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:411:1
+stdout |     │  
+stdout | 411 │ ╭ -type foo7_neg(T) ::
+stdout | 412 │ │   {unit, foo7_neg(foo7_neg(T))}.
+stdout |     │ ╰───────────────────────────────^ recursive type foo7_neg/1 is not productive
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:443:1
+stdout |     │
+stdout | 443 │ -type x_cycle() :: misc:x_cycle().
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type x_cycle/0 is not productive
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:479:1
+stdout |     │  
+stdout | 479 │ ╭ -type t_tree2(Z) ::
+stdout | 480 │ │   {leaf, Z} |
+stdout | 481 │ │   {node, t_tree2(simple_id(Z))}.
+stdout |     │ ╰───────────────────────────────^ recursive type t_tree2/1 is not productive
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:483:1
+stdout |     │  
+stdout | 483 │ ╭ -type t_tree3(Z) ::
+stdout | 484 │ │   {leaf, Z} |
+stdout | 485 │ │   {node, t_tree3(t_tree3(Z))}.
+stdout |     │ ╰─────────────────────────────^ recursive type t_tree3/1 is not productive
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:495:1
+stdout |     │  
+stdout | 495 │ ╭ -type stream2(Z) ::
+stdout | 496 │ │   {chunk, stream2(simple_id(Z))}.
+stdout |     │ ╰────────────────────────────────^ recursive type stream2/1 is not productive
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/recursive_aliases.erl:507:1
+stdout |     │  
+stdout | 507 │ ╭ -type d_stream(Z) ::
+stdout | 508 │ │   {chunk, d_stream([Z])}.
+stdout |     │ ╰────────────────────────^ recursive type d_stream/1 is not productive
+stdout |
+stdout | error: unknown_id (See https://fb.me/eqwalizer_errors#unknown_id)
+stdout |     ┌─ check/src/recursive_aliases.erl:510:23
+stdout |     │
+stdout | 510 │ -type invalid_ty() :: non_exist:invalid().
+stdout |     │                       ^^^^^^^^^^^^^^^^^^^ Unknown id: non_exist:invalid/0
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |     ┌─ check/src/recursive_aliases.erl:512:1
+stdout |     │  
+stdout | 512 │ ╭ -type invalid_rec() ::
+stdout | 513 │ │   invalid_ty() | invalid_transitive().
+stdout |     │ ╰───────────────────────────────────^ invalid_rec/0 (transitively) references type with invalid definition: invalid_ty/0
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |     ┌─ check/src/recursive_aliases.erl:515:1
+stdout |     │  
+stdout | 515 │ ╭ -type invalid_transitive() ::
+stdout | 516 │ │   {a, invalid_rec()}.
+stdout |     │ ╰────────────────────^ invalid_transitive/0 (transitively) references type with invalid definition: invalid_ty/0
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |     ┌─ check/src/recursive_aliases.erl:518:1
+stdout |     │  
+stdout | 518 │ ╭ -spec use_invalid
+stdout | 519 │ │   (invalid_transitive()) -> a.
+stdout |     │ ╰─────────────────────────────^ use_invalid/1 (transitively) references type with invalid definition: invalid_ty/0
+stdout |
+stdout | 42 ERRORS

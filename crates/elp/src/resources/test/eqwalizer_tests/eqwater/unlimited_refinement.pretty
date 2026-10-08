@@ -1,25 +1,25 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/unlimited_refinement.erl:60:14
-   │
-60 │   is_special(X).
-   │              ^
-   │              │
-   │              X.
-Expression has type:   binary() | integer()
-Context expected type: integer()
-   │              
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: integer()
-  However the following candidate: binary()
-  Differs from the expected type:  integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/unlimited_refinement.erl:94:14
-   │
-94 │         V -> V
-   │              ^ V.
-Expression has type:   {'ok1' | 'ok2' | 'ok3' | 'ok4' | 'ok5' | 'ok6' | 'ok7' | 'ok8' | 'ok9', map1() | map2() | map3() | map4() | map5() | map6() | map7() | map8() | map9()}
-Context expected type: 'ok'
-
-2 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/unlimited_refinement.erl:60:14
+stdout |    │
+stdout | 60 │   is_special(X).
+stdout |    │              ^
+stdout |    │              │
+stdout |    │              X.
+stdout | Expression has type:   binary() | integer()
+stdout | Context expected type: integer()
+stdout |    │              
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: integer()
+stdout |   However the following candidate: binary()
+stdout |   Differs from the expected type:  integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/unlimited_refinement.erl:94:14
+stdout |    │
+stdout | 94 │         V -> V
+stdout |    │              ^ V.
+stdout | Expression has type:   {'ok1' | 'ok2' | 'ok3' | 'ok4' | 'ok5' | 'ok6' | 'ok7' | 'ok8' | 'ok9', map1() | map2() | map3() | map4() | map5() | map6() | map7() | map8() | map9()}
+stdout | Context expected type: 'ok'
+stdout |
+stdout | 2 ERRORS

@@ -1,9 +1,9 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/auto_imports.erl:22:20
-   │
-22 │   erlang:error(ok, ok).
-   │                    ^^ 'ok'.
-Expression has type:   'ok'
-Context expected type: 'none' | [term()]
-
-1 ERROR
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/auto_imports.erl:22:20
+stdout |    │
+stdout | 22 │   erlang:error(ok, ok).
+stdout |    │                    ^^ 'ok'.
+stdout | Expression has type:   'ok'
+stdout | Context expected type: 'none' | [term()]
+stdout |
+stdout | 1 ERROR

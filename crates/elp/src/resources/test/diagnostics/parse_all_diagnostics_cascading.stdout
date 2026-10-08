@@ -1,4 +1,5 @@
-module specified: cascading
-Diagnostics reported in 1 modules:
-  cascading: 1
-      8:4-8:5::[Error] [W0004] Missing ')'
+stdout | module specified: cascading
+stdout | Diagnostics reported in 1 modules:
+stdout |   cascading: 1
+stdout |       8:4-8:5::[Error] [W0004] Missing ')'
+stderr | Parse failures found

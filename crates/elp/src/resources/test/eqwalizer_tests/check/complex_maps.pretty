@@ -1,224 +1,224 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:11:21
-   │
-11 │ downcast_neg1(X) -> X.
-   │                     ^
-   │                     │
-   │                     X.
-Expression has type:   #{a => 'b', c => 'd'}
-Context expected type: #{a => 'b'}
-   │                     
-
-Because in the expression's type:
-  Here the type is:     #{c => ...}
-  Context expects type: #{...}
-  The expected map has no corresponding key for: c.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:17:21
-   │
-17 │ downcast_neg2(X) -> X.
-   │                     ^
-   │                     │
-   │                     X.
-Expression has type:   #{a => 'b', c => 'd'}
-Context expected type: #{a => 'b', atom() => integer()}
-   │                     
-
-Because in the expression's type:
-  #{ c =>
-    Here the type is:     'd'
-    Context expects type: integer()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:20:19
-   │
-20 │ upcast_neg1(X) -> X.
-   │                   ^
-   │                   │
-   │                   X.
-Expression has type:   #{a => 'b', atom() => atom()}
-Context expected type: #{a => 'b', c => 'd'}
-   │                   
-
-Because in the expression's type:
-  Here the type is:     #{atom() => atom()}
-  Context expects type: #{...} (no default association)
-  The expected map has no default association while the type of the expression has one.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:23:19
-   │
-23 │ upcast_neg2(X) -> X.
-   │                   ^
-   │                   │
-   │                   X.
-Expression has type:   #{a => 'b', atom() => integer()}
-Context expected type: #{a => 'b', c => 'd', atom() => integer()}
-   │                   
-
-Because in the expression's type:
-  #{ atom() =>
-    Here the type is:     integer()
-    Context expects type: 'd'
-  , ... }
-  The context introduces a new association c => 'd' which is incompatible with the expression's default association.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:38:21
-   │
-38 │ downcast_neg3(X) -> X.
-   │                     ^
-   │                     │
-   │                     X.
-Expression has type:   #{a => 'b', atom() => atom()}
-Context expected type: #{a => 'b'}
-   │                     
-
-Because in the expression's type:
-  Here the type is:     #{atom() => atom()}
-  Context expects type: #{...} (no default association)
-  The expected map has no default association while the type of the expression has one.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:44:26
-   │
-44 │ downcast_dyn_neg_1(X) -> X.
-   │                          ^
-   │                          │
-   │                          X.
-Expression has type:   #{a => 'b', dynamic(atom()) => atom()}
-Context expected type: #{a => 'b'}
-   │                          
-
-Because in the expression's type:
-  Here the type is:     #{dynamic(atom()) => atom()}
-  Context expects type: #{...} (no default association)
-  The expected map has no default association while the type of the expression has one.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:47:26
-   │
-47 │ downcast_dyn_neg_2(X) -> X.
-   │                          ^
-   │                          │
-   │                          X.
-Expression has type:   #{a => 'b', atom() => dynamic(atom())}
-Context expected type: #{a => 'b'}
-   │                          
-
-Because in the expression's type:
-  Here the type is:     #{atom() => dynamic(atom())}
-  Context expects type: #{...} (no default association)
-  The expected map has no default association while the type of the expression has one.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:56:44
-   │
-56 │ tuple_key_get_neg(#{{ok, {a, b}} := V}) -> V.
-   │                                            ^ V.
-Expression has type:   'v'
-Context expected type: 'err'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:62:30
-   │
-62 │ tuple_key_maps_get_neg(M) -> maps:get({ok, {a, b}}, M).
-   │                              ^^^^^^^^^^^^^^^^^^^^^^^^^ maps:get({'ok', {'a', 'b'}}, M).
-Expression has type:   'v'
-Context expected type: 'err'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:71:32
-   │
-71 │ get_default_neg1(#{a := V}) -> V.
-   │                                ^ V.
-Expression has type:   'b'
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:74:34
-   │
-74 │ get_default_neg2(#{def := V}) -> V.
-   │                                  ^ V.
-Expression has type:   integer()
-Context expected type: 'b'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:77:41
-   │
-77 │ match_required_1_neg(#{b := _V} = M) -> M.
-   │                                         ^ M.
-Expression has type:   #{a := integer(), b := dynamic(), atom() => dynamic()}
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:80:28
-   │
-80 │ compat_default_1_neg(X) -> X.
-   │                            ^
-   │                            │
-   │                            X.
-Expression has type:   #{atom() => binary()}
-Context expected type: #{a => binary(), atom() => atom()}
-   │                            
-
-Because in the expression's type:
-  #{ atom() =>
-    Here the type is:     binary()
-    Context expects type: atom()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:83:28
-   │
-83 │ compat_default_2_neg(X) -> X.
-   │                            ^
-   │                            │
-   │                            X.
-Expression has type:   #{a := 'b', atom() => binary()}
-Context expected type: #{a => 'b', {c, d} => atom() | binary(), term() => atom()}
-   │                            
-
-Because in the expression's type:
-  #{ atom() =>
-    Here the type is:     binary()
-    Context expects type: atom()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:86:28
-   │
-86 │ compat_default_3_neg(X) -> X.
-   │                            ^
-   │                            │
-   │                            X.
-Expression has type:   #{a := 'b', atom() => binary()}
-Context expected type: #{a => 'b', {c, d} => atom() | binary(), atom() => atom()}
-   │                            
-
-Because in the expression's type:
-  #{ atom() =>
-    Here the type is:     binary()
-    Context expects type: atom()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/complex_maps.erl:89:29
-   │
-89 │ dyn_domain_coerce_neg(X) -> X.
-   │                             ^
-   │                             │
-   │                             X.
-Expression has type:   #{dynamic() => atom()}
-Context expected type: #{dynamic() => binary()}
-   │                             
-
-Because in the expression's type:
-  #{ dynamic() =>
-    Here the type is:     atom()
-    Context expects type: binary()
-  , ... }
-
-16 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:11:21
+stdout |    │
+stdout | 11 │ downcast_neg1(X) -> X.
+stdout |    │                     ^
+stdout |    │                     │
+stdout |    │                     X.
+stdout | Expression has type:   #{a => 'b', c => 'd'}
+stdout | Context expected type: #{a => 'b'}
+stdout |    │                     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{c => ...}
+stdout |   Context expects type: #{...}
+stdout |   The expected map has no corresponding key for: c.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:17:21
+stdout |    │
+stdout | 17 │ downcast_neg2(X) -> X.
+stdout |    │                     ^
+stdout |    │                     │
+stdout |    │                     X.
+stdout | Expression has type:   #{a => 'b', c => 'd'}
+stdout | Context expected type: #{a => 'b', atom() => integer()}
+stdout |    │                     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ c =>
+stdout |     Here the type is:     'd'
+stdout |     Context expects type: integer()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:20:19
+stdout |    │
+stdout | 20 │ upcast_neg1(X) -> X.
+stdout |    │                   ^
+stdout |    │                   │
+stdout |    │                   X.
+stdout | Expression has type:   #{a => 'b', atom() => atom()}
+stdout | Context expected type: #{a => 'b', c => 'd'}
+stdout |    │                   
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{atom() => atom()}
+stdout |   Context expects type: #{...} (no default association)
+stdout |   The expected map has no default association while the type of the expression has one.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:23:19
+stdout |    │
+stdout | 23 │ upcast_neg2(X) -> X.
+stdout |    │                   ^
+stdout |    │                   │
+stdout |    │                   X.
+stdout | Expression has type:   #{a => 'b', atom() => integer()}
+stdout | Context expected type: #{a => 'b', c => 'd', atom() => integer()}
+stdout |    │                   
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ atom() =>
+stdout |     Here the type is:     integer()
+stdout |     Context expects type: 'd'
+stdout |   , ... }
+stdout |   The context introduces a new association c => 'd' which is incompatible with the expression's default association.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:38:21
+stdout |    │
+stdout | 38 │ downcast_neg3(X) -> X.
+stdout |    │                     ^
+stdout |    │                     │
+stdout |    │                     X.
+stdout | Expression has type:   #{a => 'b', atom() => atom()}
+stdout | Context expected type: #{a => 'b'}
+stdout |    │                     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{atom() => atom()}
+stdout |   Context expects type: #{...} (no default association)
+stdout |   The expected map has no default association while the type of the expression has one.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:44:26
+stdout |    │
+stdout | 44 │ downcast_dyn_neg_1(X) -> X.
+stdout |    │                          ^
+stdout |    │                          │
+stdout |    │                          X.
+stdout | Expression has type:   #{a => 'b', dynamic(atom()) => atom()}
+stdout | Context expected type: #{a => 'b'}
+stdout |    │                          
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{dynamic(atom()) => atom()}
+stdout |   Context expects type: #{...} (no default association)
+stdout |   The expected map has no default association while the type of the expression has one.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:47:26
+stdout |    │
+stdout | 47 │ downcast_dyn_neg_2(X) -> X.
+stdout |    │                          ^
+stdout |    │                          │
+stdout |    │                          X.
+stdout | Expression has type:   #{a => 'b', atom() => dynamic(atom())}
+stdout | Context expected type: #{a => 'b'}
+stdout |    │                          
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{atom() => dynamic(atom())}
+stdout |   Context expects type: #{...} (no default association)
+stdout |   The expected map has no default association while the type of the expression has one.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:56:44
+stdout |    │
+stdout | 56 │ tuple_key_get_neg(#{{ok, {a, b}} := V}) -> V.
+stdout |    │                                            ^ V.
+stdout | Expression has type:   'v'
+stdout | Context expected type: 'err'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:62:30
+stdout |    │
+stdout | 62 │ tuple_key_maps_get_neg(M) -> maps:get({ok, {a, b}}, M).
+stdout |    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^ maps:get({'ok', {'a', 'b'}}, M).
+stdout | Expression has type:   'v'
+stdout | Context expected type: 'err'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:71:32
+stdout |    │
+stdout | 71 │ get_default_neg1(#{a := V}) -> V.
+stdout |    │                                ^ V.
+stdout | Expression has type:   'b'
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:74:34
+stdout |    │
+stdout | 74 │ get_default_neg2(#{def := V}) -> V.
+stdout |    │                                  ^ V.
+stdout | Expression has type:   integer()
+stdout | Context expected type: 'b'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:77:41
+stdout |    │
+stdout | 77 │ match_required_1_neg(#{b := _V} = M) -> M.
+stdout |    │                                         ^ M.
+stdout | Expression has type:   #{a := integer(), b := dynamic(), atom() => dynamic()}
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:80:28
+stdout |    │
+stdout | 80 │ compat_default_1_neg(X) -> X.
+stdout |    │                            ^
+stdout |    │                            │
+stdout |    │                            X.
+stdout | Expression has type:   #{atom() => binary()}
+stdout | Context expected type: #{a => binary(), atom() => atom()}
+stdout |    │                            
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ atom() =>
+stdout |     Here the type is:     binary()
+stdout |     Context expects type: atom()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:83:28
+stdout |    │
+stdout | 83 │ compat_default_2_neg(X) -> X.
+stdout |    │                            ^
+stdout |    │                            │
+stdout |    │                            X.
+stdout | Expression has type:   #{a := 'b', atom() => binary()}
+stdout | Context expected type: #{a => 'b', {c, d} => atom() | binary(), term() => atom()}
+stdout |    │                            
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ atom() =>
+stdout |     Here the type is:     binary()
+stdout |     Context expects type: atom()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:86:28
+stdout |    │
+stdout | 86 │ compat_default_3_neg(X) -> X.
+stdout |    │                            ^
+stdout |    │                            │
+stdout |    │                            X.
+stdout | Expression has type:   #{a := 'b', atom() => binary()}
+stdout | Context expected type: #{a => 'b', {c, d} => atom() | binary(), atom() => atom()}
+stdout |    │                            
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ atom() =>
+stdout |     Here the type is:     binary()
+stdout |     Context expects type: atom()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/complex_maps.erl:89:29
+stdout |    │
+stdout | 89 │ dyn_domain_coerce_neg(X) -> X.
+stdout |    │                             ^
+stdout |    │                             │
+stdout |    │                             X.
+stdout | Expression has type:   #{dynamic() => atom()}
+stdout | Context expected type: #{dynamic() => binary()}
+stdout |    │                             
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ dynamic() =>
+stdout |     Here the type is:     atom()
+stdout |     Context expects type: binary()
+stdout |   , ... }
+stdout |
+stdout | 16 ERRORS

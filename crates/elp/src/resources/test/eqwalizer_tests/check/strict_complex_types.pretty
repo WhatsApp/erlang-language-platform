@@ -1,43 +1,43 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/strict_complex_types.erl:24:3
-   │
-24 │   undefined.
-   │   ^^^^^^^^^
-   │   │
-   │   'undefined'.
-Expression has type:   'undefined'
-Context expected type: complex_map()
-   │   
-
-Because in the expression's type:
-  Here the type is:     'undefined'
-  Context expects type: #{...}
-
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-   ┌─ check/src/strict_complex_types.erl:29:25
-   │
-29 │   eqwalizer:reveal_type(Map),
-   │                         ^^^ complex_map()
-
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-   ┌─ check/src/strict_complex_types.erl:35:25
-   │
-35 │   eqwalizer:reveal_type(List),
-   │                         ^^^^ [complex_map()]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/strict_complex_types.erl:48:16
-   │
-48 │   lists:nth(7, Map).
-   │                ^^^
-   │                │
-   │                Map.
-Expression has type:   complex_map()
-Context expected type: [dynamic()]
-   │                
-
-Because in the expression's type:
-  Here the type is:     #{...}
-  Context expects type: [dynamic()]
-
-4 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/strict_complex_types.erl:24:3
+stdout |    │
+stdout | 24 │   undefined.
+stdout |    │   ^^^^^^^^^
+stdout |    │   │
+stdout |    │   'undefined'.
+stdout | Expression has type:   'undefined'
+stdout | Context expected type: complex_map()
+stdout |    │   
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     'undefined'
+stdout |   Context expects type: #{...}
+stdout |
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |    ┌─ check/src/strict_complex_types.erl:29:25
+stdout |    │
+stdout | 29 │   eqwalizer:reveal_type(Map),
+stdout |    │                         ^^^ complex_map()
+stdout |
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |    ┌─ check/src/strict_complex_types.erl:35:25
+stdout |    │
+stdout | 35 │   eqwalizer:reveal_type(List),
+stdout |    │                         ^^^^ [complex_map()]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/strict_complex_types.erl:48:16
+stdout |    │
+stdout | 48 │   lists:nth(7, Map).
+stdout |    │                ^^^
+stdout |    │                │
+stdout |    │                Map.
+stdout | Expression has type:   complex_map()
+stdout | Context expected type: [dynamic()]
+stdout |    │                
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{...}
+stdout |   Context expects type: [dynamic()]
+stdout |
+stdout | 4 ERRORS

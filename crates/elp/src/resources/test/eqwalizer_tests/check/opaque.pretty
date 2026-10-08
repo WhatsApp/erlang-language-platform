@@ -1,143 +1,143 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/opaque.erl:23:3
-   │
-23 │   X.
-   │   ^
-   │   │
-   │   X.
-Expression has type:   sets:set({'ok', 'error'})
-Context expected type: sets:set({'ok', 'ok'})
-   │   
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: sets:set_v1({'ok', 'error'})
-  However, the following candidate doesn't match:
-  Here the type is:     #{{ok, error} => ...}
-  Context expects type: #{...}
-  The expected map has no corresponding key for: {ok, error}.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/opaque.erl:57:11
-   │
-57 │           X2
-   │           ^^
-   │           │
-   │           X2.
-Expression has type:   misc:o()
-Context expected type: none()
-   │           
-
-Because in the expression's type:
-  Here the type is:     {'ok'}
-  Context expects type: none()
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-   ┌─ check/src/opaque.erl:86:1
-   │  
-86 │ ╭ test10({rec_w_opaque_field,
-87 │ │   {_, _}}
-88 │ │ ) -> ok.
-   │ ╰───────^ Clause is not covered by spec
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/opaque.erl:95:6
-   │
-95 │ ) -> X.
-   │      ^ X.
-Expression has type:   'ok'
-Context expected type: {'ok'}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/opaque.erl:107:18
-    │
-107 │ test14_neg(X) -> X =:= {ok}.
-    │                  ^^^^^^^^^^ _ =:= _.
-Expression has type:   boolean()
-Context expected type: 'true'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/opaque.erl:125:18
-    │
-125 │ test18_neg(X) -> X.
-    │                  ^
-    │                  │
-    │                  X.
-Expression has type:   'a' | misc:o()
-Context expected type: misc:o()
-    │                  
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: misc:o()
-  However the following candidate: 'a'
-  Differs from the expected type:  {'ok'}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/opaque.erl:135:18
-    │
-135 │ test20_neg(X) -> X.
-    │                  ^
-    │                  │
-    │                  X.
-Expression has type:   'a' | misc:o()
-Context expected type: misc:o()
-    │                  
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: misc:o()
-  However the following candidate: 'a'
-  Differs from the expected type:  {'ok'}
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-    ┌─ check/src/opaque.erl:150:1
-    │
-150 │ -opaque o_cycle() :: misc:o_cycle().
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type o_cycle/0 is not productive
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/opaque.erl:152:1
-    │  
-152 │ ╭ -spec use_o_cycle1(misc:o_cycle()) ->
-153 │ │   opaque:o_cycle().
-    │ ╰──────────────────^ use_o_cycle1/1 (transitively) references types with invalid definitions: misc:o_cycle/0, o_cycle/0
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/opaque.erl:156:1
-    │  
-156 │ ╭ -spec use_o_cycle2(opaque:o_cycle()) ->
-157 │ │   misc:o_cycle().
-    │ ╰────────────────^ use_o_cycle2/1 (transitively) references types with invalid definitions: misc:o_cycle/0, o_cycle/0
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/opaque.erl:236:1
-    │  
-236 │ ╭ test29_neg(X) when X =:= {1.0} ->
-237 │ │   ok.
-    │ ╰────^ Clause is not covered by spec
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/opaque.erl:240:1
-    │  
-240 │ ╭ test30_neg(X) when X =:= "" ->
-241 │ │   ok.
-    │ ╰────^ Clause is not covered by spec
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ check/src/opaque.erl:256:1
-    │  
-256 │ ╭ test34_neg(X) when X =:= <<>> ->
-257 │ │   ok.
-    │ ╰────^ Clause is not covered by spec
-
-error: unbound_type_var (See https://fb.me/eqwalizer_errors#unbound_type_var)
-    ┌─ check/src/opaque.erl:288:1
-    │
-288 │ -type invalid() :: _T.
-    │ ^^^^^^^^^^^^^^^^^^^^^ _T: Type variable is unbound.
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-    ┌─ check/src/opaque.erl:290:1
-    │
-290 │ -opaque o_trans_invalid() :: invalid().
-    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ o_trans_invalid/0 (transitively) references type with invalid definition: invalid/0
-
-15 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/opaque.erl:23:3
+stdout |    │
+stdout | 23 │   X.
+stdout |    │   ^
+stdout |    │   │
+stdout |    │   X.
+stdout | Expression has type:   sets:set({'ok', 'error'})
+stdout | Context expected type: sets:set({'ok', 'ok'})
+stdout |    │   
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: sets:set_v1({'ok', 'error'})
+stdout |   However, the following candidate doesn't match:
+stdout |   Here the type is:     #{{ok, error} => ...}
+stdout |   Context expects type: #{...}
+stdout |   The expected map has no corresponding key for: {ok, error}.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/opaque.erl:57:11
+stdout |    │
+stdout | 57 │           X2
+stdout |    │           ^^
+stdout |    │           │
+stdout |    │           X2.
+stdout | Expression has type:   misc:o()
+stdout | Context expected type: none()
+stdout |    │           
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     {'ok'}
+stdout |   Context expects type: none()
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |    ┌─ check/src/opaque.erl:86:1
+stdout |    │  
+stdout | 86 │ ╭ test10({rec_w_opaque_field,
+stdout | 87 │ │   {_, _}}
+stdout | 88 │ │ ) -> ok.
+stdout |    │ ╰───────^ Clause is not covered by spec
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/opaque.erl:95:6
+stdout |    │
+stdout | 95 │ ) -> X.
+stdout |    │      ^ X.
+stdout | Expression has type:   'ok'
+stdout | Context expected type: {'ok'}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/opaque.erl:107:18
+stdout |     │
+stdout | 107 │ test14_neg(X) -> X =:= {ok}.
+stdout |     │                  ^^^^^^^^^^ _ =:= _.
+stdout | Expression has type:   boolean()
+stdout | Context expected type: 'true'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/opaque.erl:125:18
+stdout |     │
+stdout | 125 │ test18_neg(X) -> X.
+stdout |     │                  ^
+stdout |     │                  │
+stdout |     │                  X.
+stdout | Expression has type:   'a' | misc:o()
+stdout | Context expected type: misc:o()
+stdout |     │                  
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: misc:o()
+stdout |   However the following candidate: 'a'
+stdout |   Differs from the expected type:  {'ok'}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/opaque.erl:135:18
+stdout |     │
+stdout | 135 │ test20_neg(X) -> X.
+stdout |     │                  ^
+stdout |     │                  │
+stdout |     │                  X.
+stdout | Expression has type:   'a' | misc:o()
+stdout | Context expected type: misc:o()
+stdout |     │                  
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: misc:o()
+stdout |   However the following candidate: 'a'
+stdout |   Differs from the expected type:  {'ok'}
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |     ┌─ check/src/opaque.erl:150:1
+stdout |     │
+stdout | 150 │ -opaque o_cycle() :: misc:o_cycle().
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type o_cycle/0 is not productive
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |     ┌─ check/src/opaque.erl:152:1
+stdout |     │  
+stdout | 152 │ ╭ -spec use_o_cycle1(misc:o_cycle()) ->
+stdout | 153 │ │   opaque:o_cycle().
+stdout |     │ ╰──────────────────^ use_o_cycle1/1 (transitively) references types with invalid definitions: misc:o_cycle/0, o_cycle/0
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |     ┌─ check/src/opaque.erl:156:1
+stdout |     │  
+stdout | 156 │ ╭ -spec use_o_cycle2(opaque:o_cycle()) ->
+stdout | 157 │ │   misc:o_cycle().
+stdout |     │ ╰────────────────^ use_o_cycle2/1 (transitively) references types with invalid definitions: misc:o_cycle/0, o_cycle/0
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |     ┌─ check/src/opaque.erl:236:1
+stdout |     │  
+stdout | 236 │ ╭ test29_neg(X) when X =:= {1.0} ->
+stdout | 237 │ │   ok.
+stdout |     │ ╰────^ Clause is not covered by spec
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |     ┌─ check/src/opaque.erl:240:1
+stdout |     │  
+stdout | 240 │ ╭ test30_neg(X) when X =:= "" ->
+stdout | 241 │ │   ok.
+stdout |     │ ╰────^ Clause is not covered by spec
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |     ┌─ check/src/opaque.erl:256:1
+stdout |     │  
+stdout | 256 │ ╭ test34_neg(X) when X =:= <<>> ->
+stdout | 257 │ │   ok.
+stdout |     │ ╰────^ Clause is not covered by spec
+stdout |
+stdout | error: unbound_type_var (See https://fb.me/eqwalizer_errors#unbound_type_var)
+stdout |     ┌─ check/src/opaque.erl:288:1
+stdout |     │
+stdout | 288 │ -type invalid() :: _T.
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^ _T: Type variable is unbound.
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |     ┌─ check/src/opaque.erl:290:1
+stdout |     │
+stdout | 290 │ -opaque o_trans_invalid() :: invalid().
+stdout |     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ o_trans_invalid/0 (transitively) references type with invalid definition: invalid/0
+stdout |
+stdout | 15 ERRORS

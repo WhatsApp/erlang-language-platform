@@ -1,4 +1,4 @@
-  app_a_ssr: 1
-      7:12-7:13::[WeakWarning] [ad-hoc:ssr-match] SSR pattern matched: ssr: (((3))).
-
-Matches found in 1 modules
+stdout |   app_a_ssr: 1
+stdout |       7:12-7:13::[WeakWarning] [ad-hoc:ssr-match] SSR pattern matched: ssr: (((3))).
+stdout |
+stdout | Matches found in 1 modules

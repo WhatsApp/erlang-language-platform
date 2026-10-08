@@ -138,10 +138,9 @@ fn serialization_test() {
         errored_paths: vec![],
     };
     write_results(result, &mut cli, &args).expect("success");
-    let (out, err) = cli.to_strings();
+    let (_, _, tagged) = cli.to_strings_with_tagged();
     let expected = resource_file("glean/serialization_test.out");
-    assert_eq!(expected.data().trim(), &out);
-    assert_eq!(err, "")
+    expected.assert_eq(&format!("{}\n", tagged.trim_end_matches('\n')));
 }
 
 #[test]

@@ -1,5 +1,6 @@
-module specified: syntax
-Diagnostics reported in 1 modules:
-  syntax: 2
-      4:45-4:46::[Error] [P1711] syntax error before: ')'
-      10:8-10:9::[Error] [W0004] Missing ')'
+stdout | module specified: syntax
+stdout | Diagnostics reported in 1 modules:
+stdout |   syntax: 2
+stdout |       4:45-4:46::[Error] [P1711] syntax error before: ')'
+stdout |       10:8-10:9::[Error] [W0004] Missing ')'
+stderr | Parse failures found

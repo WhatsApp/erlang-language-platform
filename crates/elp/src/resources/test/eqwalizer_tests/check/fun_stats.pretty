@@ -1,33 +1,33 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/fun_stats.erl:36:3
-   │
-36 │   wn_ey_sy() + 3.
-   │   ^^^^^^^^^^ wn_ey_sy().
-Expression has type:   'ok'
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/fun_stats.erl:43:3
-   │
-43 │   wy_ey_sy() + 3.
-   │   ^^^^^^^^^^ wy_ey_sy().
-Expression has type:   'ok'
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/fun_stats.erl:46:3
-   │
-46 │   wy_ey_sy() + 3.
-   │   ^^^^^^^^^^ wy_ey_sy().
-Expression has type:   'ok'
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/fun_stats.erl:55:3
-   │
-55 │   wy_ey_sy() + 3.
-   │   ^^^^^^^^^^ wy_ey_sy().
-Expression has type:   'ok'
-Context expected type: number()
-
-4 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/fun_stats.erl:36:3
+stdout |    │
+stdout | 36 │   wn_ey_sy() + 3.
+stdout |    │   ^^^^^^^^^^ wn_ey_sy().
+stdout | Expression has type:   'ok'
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/fun_stats.erl:43:3
+stdout |    │
+stdout | 43 │   wy_ey_sy() + 3.
+stdout |    │   ^^^^^^^^^^ wy_ey_sy().
+stdout | Expression has type:   'ok'
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/fun_stats.erl:46:3
+stdout |    │
+stdout | 46 │   wy_ey_sy() + 3.
+stdout |    │   ^^^^^^^^^^ wy_ey_sy().
+stdout | Expression has type:   'ok'
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/fun_stats.erl:55:3
+stdout |    │
+stdout | 55 │   wy_ey_sy() + 3.
+stdout |    │   ^^^^^^^^^^ wy_ey_sy().
+stdout | Expression has type:   'ok'
+stdout | Context expected type: number()
+stdout |
+stdout | 4 ERRORS

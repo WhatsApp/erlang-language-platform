@@ -1,65 +1,65 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/type_predicates.erl:102:32
-    │
-102 │     when is_record(R, rec2) -> R.
-    │                                ^ R.
-Expression has type:   #rec2{}
-Context expected type: #rec1{}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/type_predicates.erl:107:35
-    │
-107 │     when is_record(R, rec2, 2) -> R.
-    │                                   ^ R.
-Expression has type:   #rec2{}
-Context expected type: #rec1{}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/type_predicates.erl:149:39
-    │
-149 │     when is_function(F, 2) -> #f1{f = F}.
-    │                                       ^ F.
-Expression has type:   fun((term(), term()) -> term())
-Context expected type: fun((term()) -> term())
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/type_predicates.erl:165:49
-    │
-165 │ rec_slice4_neg(R) when is_record(R, rec1, 3) -> R;
-    │                                                 ^
-    │                                                 │
-    │                                                 R.
-Expression has type:   {'rec1', term(), term()}
-Context expected type: #rec1{} | {'rec1', atom(), atom()}
-    │                                                 
-
-Because in the expression's type:
-  { 'rec1', 
-    Here the type is:     term()
-    Context expects type: atom()
-  , term()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/type_predicates.erl:194:40
-    │
-194 │     when is_record(R, magic_rec, 3) -> R;
-    │                                        ^
-    │                                        │
-    │                                        R.
-Expression has type:   {'magic_rec', term(), term()}
-Context expected type: magic_rec:t()
-    │                                        
-
-Because in the expression's type:
-  Here the type is:     {'magic_rec', term(), term()}
-  Context expects type: #magic_rec{}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/type_predicates.erl:208:39
-    │
-208 │     when is_record(R, misc_lib, 2) -> R;
-    │                                       ^ R.
-Expression has type:   {'misc_lib', term()}
-Context expected type: {'misc_lib', atom(), atom()}
-
-6 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/type_predicates.erl:102:32
+stdout |     │
+stdout | 102 │     when is_record(R, rec2) -> R.
+stdout |     │                                ^ R.
+stdout | Expression has type:   #rec2{}
+stdout | Context expected type: #rec1{}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/type_predicates.erl:107:35
+stdout |     │
+stdout | 107 │     when is_record(R, rec2, 2) -> R.
+stdout |     │                                   ^ R.
+stdout | Expression has type:   #rec2{}
+stdout | Context expected type: #rec1{}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/type_predicates.erl:149:39
+stdout |     │
+stdout | 149 │     when is_function(F, 2) -> #f1{f = F}.
+stdout |     │                                       ^ F.
+stdout | Expression has type:   fun((term(), term()) -> term())
+stdout | Context expected type: fun((term()) -> term())
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/type_predicates.erl:165:49
+stdout |     │
+stdout | 165 │ rec_slice4_neg(R) when is_record(R, rec1, 3) -> R;
+stdout |     │                                                 ^
+stdout |     │                                                 │
+stdout |     │                                                 R.
+stdout | Expression has type:   {'rec1', term(), term()}
+stdout | Context expected type: #rec1{} | {'rec1', atom(), atom()}
+stdout |     │                                                 
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 'rec1', 
+stdout |     Here the type is:     term()
+stdout |     Context expects type: atom()
+stdout |   , term()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/type_predicates.erl:194:40
+stdout |     │
+stdout | 194 │     when is_record(R, magic_rec, 3) -> R;
+stdout |     │                                        ^
+stdout |     │                                        │
+stdout |     │                                        R.
+stdout | Expression has type:   {'magic_rec', term(), term()}
+stdout | Context expected type: magic_rec:t()
+stdout |     │                                        
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     {'magic_rec', term(), term()}
+stdout |   Context expects type: #magic_rec{}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/type_predicates.erl:208:39
+stdout |     │
+stdout | 208 │     when is_record(R, misc_lib, 2) -> R;
+stdout |     │                                       ^ R.
+stdout | Expression has type:   {'misc_lib', term()}
+stdout | Context expected type: {'misc_lib', atom(), atom()}
+stdout |
+stdout | 6 ERRORS

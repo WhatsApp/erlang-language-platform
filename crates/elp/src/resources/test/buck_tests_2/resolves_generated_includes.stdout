@@ -1,6 +1,7 @@
-        [check_include_separate_1/include/include_with_bug.hrl] 5:14-5:18: E1507: undefined macro 'FOO'
-        [check_include_separate_1/include/top_includer.hrl] 3:10-3:30: E1516: can't find include file "does_not_exist.hrl"
-Diagnostics reported:
-check_include/src/top_includer.erl:14:5-14:11::[Error] [E1508] undefined macro 'THIRD/2'
-check_include/src/top_includer.erl:6:1-6:67::[Error] [L0000] Issue in included file
-module specified: top_includer
+stderr | Errors found
+stdout |         [check_include_separate_1/include/include_with_bug.hrl] 5:14-5:18: E1507: undefined macro 'FOO'
+stdout |         [check_include_separate_1/include/top_includer.hrl] 3:10-3:30: E1516: can't find include file "does_not_exist.hrl"
+stdout | Diagnostics reported:
+stdout | check_include/src/top_includer.erl:14:5-14:11::[Error] [E1508] undefined macro 'THIRD/2'
+stdout | check_include/src/top_includer.erl:6:1-6:67::[Error] [L0000] Issue in included file
+stdout | module specified: top_includer

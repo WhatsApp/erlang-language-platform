@@ -1,588 +1,588 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/t_maps.erl:36:5
-   │
-36 │     #{0 => 1, 1 => 2}.
-   │     ^^^^^^^^^^^^^^^^^
-   │     │
-   │     #{..}.
-Expression has type:   #{integer() => integer()}
-Context expected type: #{integer() => atom()}
-   │     
-
-Because in the expression's type:
-  #{ integer() =>
-    Here the type is:     integer()
-    Context expects type: atom()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/t_maps.erl:41:5
-   │
-41 │     #{0 => zero, 1 => 2}.
-   │     ^^^^^^^^^^^^^^^^^^^^
-   │     │
-   │     #{..}.
-Expression has type:   #{integer() => 'zero' | integer()}
-Context expected type: #{integer() => atom()}
-   │     
-
-Because in the expression's type:
-  #{ integer() =>
-    Here the type is a union type with some valid candidates: 'zero'
-    However the following candidate: integer()
-    Differs from the expected type:  atom()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/t_maps.erl:56:5
-   │
-56 │     #{zero => 0, one => one}.
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^
-   │     │
-   │     #{..}.
-Expression has type:   #{one := 'one', zero := integer()}
-Context expected type: #{one => number(), zero := number()}
-   │     
-
-Because in the expression's type:
-  #{ one =>
-    Here the type is:     'one'
-    Context expects type: number()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/t_maps.erl:80:5
-   │
-80 │     M#{}.
-   │     ^ M.
-Expression has type:   term()
-Context expected type: #{term() => term()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:120:5
-    │
-120 │     S#{bar := true}.
-    │     ^ S.
-Expression has type:   term()
-Context expected type: #{term() => term()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:130:25
-    │
-130 │ meet_dict2_neg(D, D) -> D.
-    │                         ^
-    │                         │
-    │                         D.
-Expression has type:   #{b() => term()}
-Context expected type: #{n() => term()}
-    │                         
-
-Because in the expression's type:
-  #{ map domains are incompatible:
-    Here the type is:     boolean()
-    Context expects type: n()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:140:26
-    │
-140 │ meet_shape2_neg(S, S) -> S.
-    │                          ^
-    │                          │
-    │                          S.
-Expression has type:   #{a := b()}
-Context expected type: #{a := n()}
-    │                          
-
-Because in the expression's type:
-  #{ a =>
-    Here the type is:     boolean()
-    Context expects type: n()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:145:26
-    │
-145 │ meet_shape3_neg(S, S) -> S.
-    │                          ^
-    │                          │
-    │                          S.
-Expression has type:   #{a := b()}
-Context expected type: #{a => n()}
-    │                          
-
-Because in the expression's type:
-  #{ a =>
-    Here the type is:     boolean()
-    Context expects type: n()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:155:26
-    │
-155 │ meet_shape5_neg(S, S) -> S.
-    │                          ^
-    │                          │
-    │                          S.
-Expression has type:   #{a => b()}
-Context expected type: #{a := b()}
-    │                          
-
-Because in the expression's type:
-  Here the type is:     #{a => ..., ...}
-  Context expects type: #{a := ..., ...}
-  The type of the expression is missing the following required keys: a.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:202:5
-    │
-202 │     S#{K => V}.
-    │     ^^^^^^^^^^
-    │     │
-    │     ..#{..}.
-Expression has type:   #{a := a(), n() => a()}
-Context expected type: #{a() => a()}
-    │     
-
-Because in the expression's type:
-  #{ map domains are incompatible:
-    Here the type is:     number()
-    Context expects type: a()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:208:5
-    │
-208 │     S#{K => V}.
-    │     ^^^^^^^^^^
-    │     │
-    │     ..#{..}.
-Expression has type:   #{a := a(), n() => a()}
-Context expected type: #{n() => a()}
-    │     
-
-Because in the expression's type:
-  #{ incompatible map key a:
-    Here the type is:     'a'
-    Context expects type: number()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:216:5
-    │
-216 │     S#{K => V}.
-    │     ^^^^^^^^^^
-    │     │
-    │     ..#{..}.
-Expression has type:   #{a := a(), n() => a()}
-Context expected type: #{n() => a()}
-    │     
-
-Because in the expression's type:
-  #{ incompatible map key a:
-    Here the type is:     'a'
-    Context expects type: number()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:224:5
-    │
-224 │     S#{K => V}.
-    │     ^^^^^^^^^^
-    │     │
-    │     ..#{..}.
-Expression has type:   #{a => a(), n() => a()}
-Context expected type: #{n() => a()}
-    │     
-
-Because in the expression's type:
-  #{ incompatible map key a:
-    Here the type is:     'a'
-    Context expects type: number()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:242:5
-    │
-242 │     FB#{foo := F1, bar := B1}.
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    │     │
-    │     ..#{..}.
-Expression has type:   #{bar := B1, foo := F1}
-Context expected type: foo_bar(B1, F1)
-    │     
-
-Because in the expression's type:
-  #{ bar =>
-    Here the type is:     B1
-    Context expects type: F1
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:254:5
-    │
-254 │     FB#{foo => F1, bar => B1}.
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    │     │
-    │     ..#{..}.
-Expression has type:   #{bar := B1, foo := F1}
-Context expected type: foo_bar_opt(B1, F1)
-    │     
-
-Because in the expression's type:
-  #{ bar =>
-    Here the type is:     B1
-    Context expects type: F1
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:266:5
-    │
-266 │     Dict#{V2 => K2}.
-    │     ^^^^^^^^^^^^^^^
-    │     │
-    │     ..#{..}.
-Expression has type:   #{K1 | V2 => K2 | V1}
-Context expected type: kv(K1 | K2, V1 | V2)
-    │     
-
-Because in the expression's type:
-  #{ map domains are incompatible:
-    Here the type is a union type with some valid candidates: K1
-    However the following candidate: V2
-    Differs from the expected type:  K1 | K2
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:283:19
-    │
-283 │     needs_shape_a(X#{b => hello}).
-    │                   ^^^^^^^^^^^^^^
-    │                   │
-    │                   ..#{..}.
-Expression has type:   #{a := integer(), b := 'hello'}
-Context expected type: #{a := term()}
-    │                   
-
-Because in the expression's type:
-  Here the type is:     #{b := ...}
-  Context expects type: #{...}
-  The expected map has no corresponding key for: b.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:307:22
-    │
-307 │         #{K := V} -> {K, V};
-    │                      ^^^^^^
-    │                      │
-    │                      {K, V}.
-Expression has type:   {a(), n()}
-Context expected type: {n(), a()}
-    │                      
-
-Because in the expression's type:
-  { 
-    Here the type is:     atom()
-    Context expects type: number()
-  , n()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:321:5
-    │
-321 │     {A, N}.
-    │     ^^^^^^
-    │     │
-    │     {A, N}.
-Expression has type:   {a(), n()}
-Context expected type: {n(), a()}
-    │     
-
-Because in the expression's type:
-  { 
-    Here the type is:     atom()
-    Context expects type: number()
-  , n()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:334:25
-    │
-334 │ to_map3_neg(#{} = M) -> M;
-    │                         ^
-    │                         │
-    │                         M.
-Expression has type:   #{V => K}
-Context expected type: #{K => V}
-    │                         
-
-Because in the expression's type:
-  #{ map domains are incompatible:
-    Here the type is:     V
-    Context expects type: K
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:351:25
-    │
-351 │ to_map5_neg(#{} = M) -> M.
-    │                         ^
-    │                         │
-    │                         M.
-Expression has type:   #{a() => n()} | #{id => 'id' | 'no_id'} | #{n() => a()}
-Context expected type: #{a() | n() => a()}
-    │                         
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: #{id => 'id' | 'no_id'} | #{n() => a()}
-  However, the following candidate doesn't match:
-  #{ a() =>
-    Here the type is:     number()
-    Context expects type: a()
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:377:22
-    │
-377 │         #{K := V} -> {K, V};
-    │                      ^^^^^^
-    │                      │
-    │                      {K, V}.
-Expression has type:   {'a' | 'b', a()}
-Context expected type: {n(), a()}
-    │                      
-
-Because in the expression's type:
-  { 
-    Here the type is:     'a' | 'b'
-    Context expects type: number()
-  , a()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:508:17
-    │
-508 │ sub_3_neg(M) -> M.
-    │                 ^
-    │                 │
-    │                 M.
-Expression has type:   #{a := atom()}
-Context expected type: #{a => atom(), n := number()}
-    │                 
-
-Because in the expression's type:
-  Here the type is:     #{...}
-  Context expects type: #{n := ..., ...}
-  The type of the expression is missing the following required keys: n.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:536:5
-    │
-536 │     maps:update_with(a, F, a, Map).
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    │     │
-    │     maps:update_with('a', F, 'a', Map).
-Expression has type:   #{a => 'a' | 'c' | 'b'}
-Context expected type: #{a => 'b' | 'c'}
-    │     
-
-Because in the expression's type:
-  #{ a =>
-    Here the type is a union type with some valid candidates: 'b' | 'c'
-    However the following candidate: 'a'
-    Differs from the expected type:  'b' | 'c'
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:571:5
-    │
-571 │     X.
-    │     ^
-    │     │
-    │     X.
-Expression has type:   rec_shape()
-Context expected type: rec_shape_v2()
-    │     
-
-Because in the expression's type:
-  Here the type is:     #{...}
-  Context expects type: #{item_v2 := ..., ...}
-  The type of the expression is missing the following required keys: item_v2.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:629:5
-    │
-629 │     X.
-    │     ^
-    │     │
-    │     X.
-Expression has type:   gen_shape('a' | 'b')
-Context expected type: #{item := #{item := 'a' | gen_shape('a')} | 'a'} | 'a'
-    │     
-
-Because in the expression's type:
-  #{ item =>
-    Here the type is a union type with some valid candidates: 'a'
-    However the following candidate: 'b'
-    Differs from the expected type:  #{item := 'a' | gen_shape('a')} | 'a'
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:641:5
-    │
-641 │     X.
-    │     ^
-    │     │
-    │     X.
-Expression has type:   gen_shape_v2('a')
-Context expected type: gen_shape('a')
-    │     
-
-Because in the expression's type:
-  Here the type is:     #{...}
-  Context expects type: #{item := ..., ...}
-  The type of the expression is missing the following required keys: item.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:648:5
-    │
-648 │     X.
-    │     ^
-    │     │
-    │     X.
-Expression has type:   #{a => 'va', b => 'vb', c => 'vc', d => 'vd'}
-Context expected type: #{a => 'va', b => 'vb', c => 'vc'}
-    │     
-
-Because in the expression's type:
-  Here the type is:     #{d => ...}
-  Context expects type: #{...}
-  The expected map has no corresponding key for: d.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:661:5
-    │
-661 │     X.
-    │     ^
-    │     │
-    │     X.
-Expression has type:   #{a => 'va', b => 'vb', c => 'vc', d => 'vd', e => 've'}
-Context expected type: #{a => 'ka', b => 'kb', c => 'kc'}
-    │     
-
-Because in the expression's type:
-  #{ a =>
-    Here the type is:     'va'
-    Context expects type: 'ka'
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:675:5
-    │
-675 │     X.
-    │     ^
-    │     │
-    │     X.
-Expression has type:   #{}
-Context expected type: #{a => 'va', b => 'vb', c := 'vc'}
-    │     
-
-Because in the expression's type:
-  Here the type is:     #{...}
-  Context expects type: #{c := ..., ...}
-  The type of the expression is missing the following required keys: c.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:682:5
-    │
-682 │     X.
-    │     ^
-    │     │
-    │     X.
-Expression has type:   #{a => 'ka', b => 'kb', c => 'kc'}
-Context expected type: #{a => 'ka', b := 'kb', c => 'kc'}
-    │     
-
-Because in the expression's type:
-  Here the type is:     #{b => ..., ...}
-  Context expects type: #{b := ..., ...}
-  The type of the expression is missing the following required keys: b.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:689:5
-    │
-689 │     X.
-    │     ^
-    │     │
-    │     X.
-Expression has type:   #{a => 'ka', b => 'kb', c => 'kc'}
-Context expected type: #{a => 'ka', b := 'kb', c => 'kc'}
-    │     
-
-Because in the expression's type:
-  Here the type is:     #{b => ..., ...}
-  Context expects type: #{b := ..., ...}
-  The type of the expression is missing the following required keys: b.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:710:5
-    │
-710 │     X.
-    │     ^
-    │     │
-    │     X.
-Expression has type:   #{k_extra => term(), k_ok => term(), k_req1 => term(), k_req2 => term(), k_wrong1 => pid(), k_wrong2 => pid()}
-Context expected type: #{k_ok => term(), k_req1 := atom(), k_req2 := atom(), k_req3 := atom(), k_wrong1 => atom(), k_wrong2 => atom()}
-    │     
-
-Because in the expression's type:
-  Here the type is:     #{k_req2 => ..., k_req1 => ..., ...}
-  Context expects type: #{k_req3 := ..., k_req2 := ..., k_req1 := ..., ...}
-  The type of the expression is missing the following required keys: k_req3, k_req2, k_req1.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:732:27
-    │
-732 │ dict_to_shape_neg_1(M) -> M.
-    │                           ^
-    │                           │
-    │                           M.
-Expression has type:   #{'a' | 'b' => boolean()}
-Context expected type: #{a => 'true', b => boolean()}
-    │                           
-
-Because in the expression's type:
-  Here the type is:     #{'a' | 'b' => boolean()}
-  Context expects type: #{...} (no default association)
-  The expected map has no default association while the type of the expression has one.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:737:27
-    │
-737 │ dict_to_shape_neg_2(M) -> M.
-    │                           ^
-    │                           │
-    │                           M.
-Expression has type:   #{'a' | 'b' => boolean()}
-Context expected type: #{a => boolean(), b := term()}
-    │                           
-
-Because in the expression's type:
-  Here the type is:     #{...}
-  Context expects type: #{b := ..., ...}
-  The type of the expression is missing the following required keys: b.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/t_maps.erl:742:27
-    │
-742 │ dict_to_shape_neg_3(M) -> M.
-    │                           ^
-    │                           │
-    │                           M.
-Expression has type:   #{'a' | 'b' => boolean()}
-Context expected type: #{a => boolean()}
-    │                           
-
-Because in the expression's type:
-  Here the type is:     #{'a' | 'b' => boolean()}
-  Context expects type: #{...} (no default association)
-  The expected map has no default association while the type of the expression has one.
-
-36 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/t_maps.erl:36:5
+stdout |    │
+stdout | 36 │     #{0 => 1, 1 => 2}.
+stdout |    │     ^^^^^^^^^^^^^^^^^
+stdout |    │     │
+stdout |    │     #{..}.
+stdout | Expression has type:   #{integer() => integer()}
+stdout | Context expected type: #{integer() => atom()}
+stdout |    │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ integer() =>
+stdout |     Here the type is:     integer()
+stdout |     Context expects type: atom()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/t_maps.erl:41:5
+stdout |    │
+stdout | 41 │     #{0 => zero, 1 => 2}.
+stdout |    │     ^^^^^^^^^^^^^^^^^^^^
+stdout |    │     │
+stdout |    │     #{..}.
+stdout | Expression has type:   #{integer() => 'zero' | integer()}
+stdout | Context expected type: #{integer() => atom()}
+stdout |    │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ integer() =>
+stdout |     Here the type is a union type with some valid candidates: 'zero'
+stdout |     However the following candidate: integer()
+stdout |     Differs from the expected type:  atom()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/t_maps.erl:56:5
+stdout |    │
+stdout | 56 │     #{zero => 0, one => one}.
+stdout |    │     ^^^^^^^^^^^^^^^^^^^^^^^^
+stdout |    │     │
+stdout |    │     #{..}.
+stdout | Expression has type:   #{one := 'one', zero := integer()}
+stdout | Context expected type: #{one => number(), zero := number()}
+stdout |    │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ one =>
+stdout |     Here the type is:     'one'
+stdout |     Context expects type: number()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/t_maps.erl:80:5
+stdout |    │
+stdout | 80 │     M#{}.
+stdout |    │     ^ M.
+stdout | Expression has type:   term()
+stdout | Context expected type: #{term() => term()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:120:5
+stdout |     │
+stdout | 120 │     S#{bar := true}.
+stdout |     │     ^ S.
+stdout | Expression has type:   term()
+stdout | Context expected type: #{term() => term()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:130:25
+stdout |     │
+stdout | 130 │ meet_dict2_neg(D, D) -> D.
+stdout |     │                         ^
+stdout |     │                         │
+stdout |     │                         D.
+stdout | Expression has type:   #{b() => term()}
+stdout | Context expected type: #{n() => term()}
+stdout |     │                         
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ map domains are incompatible:
+stdout |     Here the type is:     boolean()
+stdout |     Context expects type: n()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:140:26
+stdout |     │
+stdout | 140 │ meet_shape2_neg(S, S) -> S.
+stdout |     │                          ^
+stdout |     │                          │
+stdout |     │                          S.
+stdout | Expression has type:   #{a := b()}
+stdout | Context expected type: #{a := n()}
+stdout |     │                          
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ a =>
+stdout |     Here the type is:     boolean()
+stdout |     Context expects type: n()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:145:26
+stdout |     │
+stdout | 145 │ meet_shape3_neg(S, S) -> S.
+stdout |     │                          ^
+stdout |     │                          │
+stdout |     │                          S.
+stdout | Expression has type:   #{a := b()}
+stdout | Context expected type: #{a => n()}
+stdout |     │                          
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ a =>
+stdout |     Here the type is:     boolean()
+stdout |     Context expects type: n()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:155:26
+stdout |     │
+stdout | 155 │ meet_shape5_neg(S, S) -> S.
+stdout |     │                          ^
+stdout |     │                          │
+stdout |     │                          S.
+stdout | Expression has type:   #{a => b()}
+stdout | Context expected type: #{a := b()}
+stdout |     │                          
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{a => ..., ...}
+stdout |   Context expects type: #{a := ..., ...}
+stdout |   The type of the expression is missing the following required keys: a.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:202:5
+stdout |     │
+stdout | 202 │     S#{K => V}.
+stdout |     │     ^^^^^^^^^^
+stdout |     │     │
+stdout |     │     ..#{..}.
+stdout | Expression has type:   #{a := a(), n() => a()}
+stdout | Context expected type: #{a() => a()}
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ map domains are incompatible:
+stdout |     Here the type is:     number()
+stdout |     Context expects type: a()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:208:5
+stdout |     │
+stdout | 208 │     S#{K => V}.
+stdout |     │     ^^^^^^^^^^
+stdout |     │     │
+stdout |     │     ..#{..}.
+stdout | Expression has type:   #{a := a(), n() => a()}
+stdout | Context expected type: #{n() => a()}
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ incompatible map key a:
+stdout |     Here the type is:     'a'
+stdout |     Context expects type: number()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:216:5
+stdout |     │
+stdout | 216 │     S#{K => V}.
+stdout |     │     ^^^^^^^^^^
+stdout |     │     │
+stdout |     │     ..#{..}.
+stdout | Expression has type:   #{a := a(), n() => a()}
+stdout | Context expected type: #{n() => a()}
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ incompatible map key a:
+stdout |     Here the type is:     'a'
+stdout |     Context expects type: number()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:224:5
+stdout |     │
+stdout | 224 │     S#{K => V}.
+stdout |     │     ^^^^^^^^^^
+stdout |     │     │
+stdout |     │     ..#{..}.
+stdout | Expression has type:   #{a => a(), n() => a()}
+stdout | Context expected type: #{n() => a()}
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ incompatible map key a:
+stdout |     Here the type is:     'a'
+stdout |     Context expects type: number()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:242:5
+stdout |     │
+stdout | 242 │     FB#{foo := F1, bar := B1}.
+stdout |     │     ^^^^^^^^^^^^^^^^^^^^^^^^^
+stdout |     │     │
+stdout |     │     ..#{..}.
+stdout | Expression has type:   #{bar := B1, foo := F1}
+stdout | Context expected type: foo_bar(B1, F1)
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ bar =>
+stdout |     Here the type is:     B1
+stdout |     Context expects type: F1
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:254:5
+stdout |     │
+stdout | 254 │     FB#{foo => F1, bar => B1}.
+stdout |     │     ^^^^^^^^^^^^^^^^^^^^^^^^^
+stdout |     │     │
+stdout |     │     ..#{..}.
+stdout | Expression has type:   #{bar := B1, foo := F1}
+stdout | Context expected type: foo_bar_opt(B1, F1)
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ bar =>
+stdout |     Here the type is:     B1
+stdout |     Context expects type: F1
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:266:5
+stdout |     │
+stdout | 266 │     Dict#{V2 => K2}.
+stdout |     │     ^^^^^^^^^^^^^^^
+stdout |     │     │
+stdout |     │     ..#{..}.
+stdout | Expression has type:   #{K1 | V2 => K2 | V1}
+stdout | Context expected type: kv(K1 | K2, V1 | V2)
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ map domains are incompatible:
+stdout |     Here the type is a union type with some valid candidates: K1
+stdout |     However the following candidate: V2
+stdout |     Differs from the expected type:  K1 | K2
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:283:19
+stdout |     │
+stdout | 283 │     needs_shape_a(X#{b => hello}).
+stdout |     │                   ^^^^^^^^^^^^^^
+stdout |     │                   │
+stdout |     │                   ..#{..}.
+stdout | Expression has type:   #{a := integer(), b := 'hello'}
+stdout | Context expected type: #{a := term()}
+stdout |     │                   
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{b := ...}
+stdout |   Context expects type: #{...}
+stdout |   The expected map has no corresponding key for: b.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:307:22
+stdout |     │
+stdout | 307 │         #{K := V} -> {K, V};
+stdout |     │                      ^^^^^^
+stdout |     │                      │
+stdout |     │                      {K, V}.
+stdout | Expression has type:   {a(), n()}
+stdout | Context expected type: {n(), a()}
+stdout |     │                      
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 
+stdout |     Here the type is:     atom()
+stdout |     Context expects type: number()
+stdout |   , n()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:321:5
+stdout |     │
+stdout | 321 │     {A, N}.
+stdout |     │     ^^^^^^
+stdout |     │     │
+stdout |     │     {A, N}.
+stdout | Expression has type:   {a(), n()}
+stdout | Context expected type: {n(), a()}
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 
+stdout |     Here the type is:     atom()
+stdout |     Context expects type: number()
+stdout |   , n()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:334:25
+stdout |     │
+stdout | 334 │ to_map3_neg(#{} = M) -> M;
+stdout |     │                         ^
+stdout |     │                         │
+stdout |     │                         M.
+stdout | Expression has type:   #{V => K}
+stdout | Context expected type: #{K => V}
+stdout |     │                         
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ map domains are incompatible:
+stdout |     Here the type is:     V
+stdout |     Context expects type: K
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:351:25
+stdout |     │
+stdout | 351 │ to_map5_neg(#{} = M) -> M.
+stdout |     │                         ^
+stdout |     │                         │
+stdout |     │                         M.
+stdout | Expression has type:   #{a() => n()} | #{id => 'id' | 'no_id'} | #{n() => a()}
+stdout | Context expected type: #{a() | n() => a()}
+stdout |     │                         
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: #{id => 'id' | 'no_id'} | #{n() => a()}
+stdout |   However, the following candidate doesn't match:
+stdout |   #{ a() =>
+stdout |     Here the type is:     number()
+stdout |     Context expects type: a()
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:377:22
+stdout |     │
+stdout | 377 │         #{K := V} -> {K, V};
+stdout |     │                      ^^^^^^
+stdout |     │                      │
+stdout |     │                      {K, V}.
+stdout | Expression has type:   {'a' | 'b', a()}
+stdout | Context expected type: {n(), a()}
+stdout |     │                      
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 
+stdout |     Here the type is:     'a' | 'b'
+stdout |     Context expects type: number()
+stdout |   , a()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:508:17
+stdout |     │
+stdout | 508 │ sub_3_neg(M) -> M.
+stdout |     │                 ^
+stdout |     │                 │
+stdout |     │                 M.
+stdout | Expression has type:   #{a := atom()}
+stdout | Context expected type: #{a => atom(), n := number()}
+stdout |     │                 
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{...}
+stdout |   Context expects type: #{n := ..., ...}
+stdout |   The type of the expression is missing the following required keys: n.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:536:5
+stdout |     │
+stdout | 536 │     maps:update_with(a, F, a, Map).
+stdout |     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+stdout |     │     │
+stdout |     │     maps:update_with('a', F, 'a', Map).
+stdout | Expression has type:   #{a => 'a' | 'c' | 'b'}
+stdout | Context expected type: #{a => 'b' | 'c'}
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ a =>
+stdout |     Here the type is a union type with some valid candidates: 'b' | 'c'
+stdout |     However the following candidate: 'a'
+stdout |     Differs from the expected type:  'b' | 'c'
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:571:5
+stdout |     │
+stdout | 571 │     X.
+stdout |     │     ^
+stdout |     │     │
+stdout |     │     X.
+stdout | Expression has type:   rec_shape()
+stdout | Context expected type: rec_shape_v2()
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{...}
+stdout |   Context expects type: #{item_v2 := ..., ...}
+stdout |   The type of the expression is missing the following required keys: item_v2.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:629:5
+stdout |     │
+stdout | 629 │     X.
+stdout |     │     ^
+stdout |     │     │
+stdout |     │     X.
+stdout | Expression has type:   gen_shape('a' | 'b')
+stdout | Context expected type: #{item := #{item := 'a' | gen_shape('a')} | 'a'} | 'a'
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ item =>
+stdout |     Here the type is a union type with some valid candidates: 'a'
+stdout |     However the following candidate: 'b'
+stdout |     Differs from the expected type:  #{item := 'a' | gen_shape('a')} | 'a'
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:641:5
+stdout |     │
+stdout | 641 │     X.
+stdout |     │     ^
+stdout |     │     │
+stdout |     │     X.
+stdout | Expression has type:   gen_shape_v2('a')
+stdout | Context expected type: gen_shape('a')
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{...}
+stdout |   Context expects type: #{item := ..., ...}
+stdout |   The type of the expression is missing the following required keys: item.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:648:5
+stdout |     │
+stdout | 648 │     X.
+stdout |     │     ^
+stdout |     │     │
+stdout |     │     X.
+stdout | Expression has type:   #{a => 'va', b => 'vb', c => 'vc', d => 'vd'}
+stdout | Context expected type: #{a => 'va', b => 'vb', c => 'vc'}
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{d => ...}
+stdout |   Context expects type: #{...}
+stdout |   The expected map has no corresponding key for: d.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:661:5
+stdout |     │
+stdout | 661 │     X.
+stdout |     │     ^
+stdout |     │     │
+stdout |     │     X.
+stdout | Expression has type:   #{a => 'va', b => 'vb', c => 'vc', d => 'vd', e => 've'}
+stdout | Context expected type: #{a => 'ka', b => 'kb', c => 'kc'}
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ a =>
+stdout |     Here the type is:     'va'
+stdout |     Context expects type: 'ka'
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:675:5
+stdout |     │
+stdout | 675 │     X.
+stdout |     │     ^
+stdout |     │     │
+stdout |     │     X.
+stdout | Expression has type:   #{}
+stdout | Context expected type: #{a => 'va', b => 'vb', c := 'vc'}
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{...}
+stdout |   Context expects type: #{c := ..., ...}
+stdout |   The type of the expression is missing the following required keys: c.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:682:5
+stdout |     │
+stdout | 682 │     X.
+stdout |     │     ^
+stdout |     │     │
+stdout |     │     X.
+stdout | Expression has type:   #{a => 'ka', b => 'kb', c => 'kc'}
+stdout | Context expected type: #{a => 'ka', b := 'kb', c => 'kc'}
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{b => ..., ...}
+stdout |   Context expects type: #{b := ..., ...}
+stdout |   The type of the expression is missing the following required keys: b.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:689:5
+stdout |     │
+stdout | 689 │     X.
+stdout |     │     ^
+stdout |     │     │
+stdout |     │     X.
+stdout | Expression has type:   #{a => 'ka', b => 'kb', c => 'kc'}
+stdout | Context expected type: #{a => 'ka', b := 'kb', c => 'kc'}
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{b => ..., ...}
+stdout |   Context expects type: #{b := ..., ...}
+stdout |   The type of the expression is missing the following required keys: b.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:710:5
+stdout |     │
+stdout | 710 │     X.
+stdout |     │     ^
+stdout |     │     │
+stdout |     │     X.
+stdout | Expression has type:   #{k_extra => term(), k_ok => term(), k_req1 => term(), k_req2 => term(), k_wrong1 => pid(), k_wrong2 => pid()}
+stdout | Context expected type: #{k_ok => term(), k_req1 := atom(), k_req2 := atom(), k_req3 := atom(), k_wrong1 => atom(), k_wrong2 => atom()}
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{k_req2 => ..., k_req1 => ..., ...}
+stdout |   Context expects type: #{k_req3 := ..., k_req2 := ..., k_req1 := ..., ...}
+stdout |   The type of the expression is missing the following required keys: k_req3, k_req2, k_req1.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:732:27
+stdout |     │
+stdout | 732 │ dict_to_shape_neg_1(M) -> M.
+stdout |     │                           ^
+stdout |     │                           │
+stdout |     │                           M.
+stdout | Expression has type:   #{'a' | 'b' => boolean()}
+stdout | Context expected type: #{a => 'true', b => boolean()}
+stdout |     │                           
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{'a' | 'b' => boolean()}
+stdout |   Context expects type: #{...} (no default association)
+stdout |   The expected map has no default association while the type of the expression has one.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:737:27
+stdout |     │
+stdout | 737 │ dict_to_shape_neg_2(M) -> M.
+stdout |     │                           ^
+stdout |     │                           │
+stdout |     │                           M.
+stdout | Expression has type:   #{'a' | 'b' => boolean()}
+stdout | Context expected type: #{a => boolean(), b := term()}
+stdout |     │                           
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{...}
+stdout |   Context expects type: #{b := ..., ...}
+stdout |   The type of the expression is missing the following required keys: b.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/t_maps.erl:742:27
+stdout |     │
+stdout | 742 │ dict_to_shape_neg_3(M) -> M.
+stdout |     │                           ^
+stdout |     │                           │
+stdout |     │                           M.
+stdout | Expression has type:   #{'a' | 'b' => boolean()}
+stdout | Context expected type: #{a => boolean()}
+stdout |     │                           
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{'a' | 'b' => boolean()}
+stdout |   Context expects type: #{...} (no default association)
+stdout |   The expected map has no default association while the type of the expression has one.
+stdout |
+stdout | 36 ERRORS

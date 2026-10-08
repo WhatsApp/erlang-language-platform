@@ -1,126 +1,126 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_records.erl:35:16
-   │
-35 │ id3_neg(Id) -> Id.
-   │                ^^
-   │                │
-   │                Id.
-Expression has type:   user()
-Context expected type: integer()
-   │                
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: integer()
-  However the following candidate: #rec1{}
-  Differs from the expected type:  integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_records.erl:40:16
-   │
-40 │ id4_neg(Id) -> Id.
-   │                ^^
-   │                │
-   │                Id.
-Expression has type:   user()
-Context expected type: integer()
-   │                
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: integer()
-  However the following candidate: #rec1{}
-  Differs from the expected type:  integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_records.erl:47:11
-   │
-47 │     Id -> Id
-   │           ^^
-   │           │
-   │           Id.
-Expression has type:   user()
-Context expected type: integer()
-   │           
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: integer()
-  However the following candidate: #rec1{}
-  Differs from the expected type:  integer()
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ eqwater/src/eqwater_records.erl:104:1
-    │  
-104 │ ╭ normalize_neg1({R = #rec2{}, R}) ->
-105 │ │   {R, R};
-    │ ╰────────^ Clause is not covered by spec
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater_records.erl:106:25
-    │
-106 │ normalize_neg1(Pair) -> Pair.
-    │                         ^^^^
-    │                         │
-    │                         Pair.
-Expression has type:   {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}}
-Context expected type: {#rec1{}, #rec2{}}
-    │                         
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: {#rec1{}, #rec2{}}
-  However, the following candidate doesn't match:
-  { 
-    Here the type is:     #rec2{}
-    Context expects type: #rec1{}
-  , #rec1{}}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater_records.erl:115:25
-    │
-115 │ normalize_neg2(Pair) -> Pair.
-    │                         ^^^^
-    │                         │
-    │                         Pair.
-Expression has type:   {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}}
-Context expected type: {#rec1{}, #rec2{}}
-    │                         
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: {#rec1{}, #rec2{}}
-  However, the following candidate doesn't match:
-  { 
-    Here the type is:     #rec2{}
-    Context expects type: #rec1{}
-  , #rec1{}}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater_records.erl:120:28
-    │
-120 │ extract1(#rec{f1 = F1}) -> F1.
-    │                            ^^
-    │                            │
-    │                            F1.
-Expression has type:   atom() | binary()
-Context expected type: atom()
-    │                            
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: atom()
-  However the following candidate: binary()
-  Differs from the expected type:  atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater_records.erl:123:28
-    │
-123 │ extract2(#rec{f2 = F2}) -> F2.
-    │                            ^^
-    │                            │
-    │                            F2.
-Expression has type:   atom() | binary()
-Context expected type: binary()
-    │                            
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: binary()
-  However the following candidate: atom()
-  Differs from the expected type:  binary()
-
-8 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/eqwater_records.erl:35:16
+stdout |    │
+stdout | 35 │ id3_neg(Id) -> Id.
+stdout |    │                ^^
+stdout |    │                │
+stdout |    │                Id.
+stdout | Expression has type:   user()
+stdout | Context expected type: integer()
+stdout |    │                
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: integer()
+stdout |   However the following candidate: #rec1{}
+stdout |   Differs from the expected type:  integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/eqwater_records.erl:40:16
+stdout |    │
+stdout | 40 │ id4_neg(Id) -> Id.
+stdout |    │                ^^
+stdout |    │                │
+stdout |    │                Id.
+stdout | Expression has type:   user()
+stdout | Context expected type: integer()
+stdout |    │                
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: integer()
+stdout |   However the following candidate: #rec1{}
+stdout |   Differs from the expected type:  integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/eqwater_records.erl:47:11
+stdout |    │
+stdout | 47 │     Id -> Id
+stdout |    │           ^^
+stdout |    │           │
+stdout |    │           Id.
+stdout | Expression has type:   user()
+stdout | Context expected type: integer()
+stdout |    │           
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: integer()
+stdout |   However the following candidate: #rec1{}
+stdout |   Differs from the expected type:  integer()
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |     ┌─ eqwater/src/eqwater_records.erl:104:1
+stdout |     │  
+stdout | 104 │ ╭ normalize_neg1({R = #rec2{}, R}) ->
+stdout | 105 │ │   {R, R};
+stdout |     │ ╰────────^ Clause is not covered by spec
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater_records.erl:106:25
+stdout |     │
+stdout | 106 │ normalize_neg1(Pair) -> Pair.
+stdout |     │                         ^^^^
+stdout |     │                         │
+stdout |     │                         Pair.
+stdout | Expression has type:   {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}}
+stdout | Context expected type: {#rec1{}, #rec2{}}
+stdout |     │                         
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: {#rec1{}, #rec2{}}
+stdout |   However, the following candidate doesn't match:
+stdout |   { 
+stdout |     Here the type is:     #rec2{}
+stdout |     Context expects type: #rec1{}
+stdout |   , #rec1{}}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater_records.erl:115:25
+stdout |     │
+stdout | 115 │ normalize_neg2(Pair) -> Pair.
+stdout |     │                         ^^^^
+stdout |     │                         │
+stdout |     │                         Pair.
+stdout | Expression has type:   {#rec1{}, #rec2{}} | {#rec2{}, #rec1{}}
+stdout | Context expected type: {#rec1{}, #rec2{}}
+stdout |     │                         
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: {#rec1{}, #rec2{}}
+stdout |   However, the following candidate doesn't match:
+stdout |   { 
+stdout |     Here the type is:     #rec2{}
+stdout |     Context expects type: #rec1{}
+stdout |   , #rec1{}}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater_records.erl:120:28
+stdout |     │
+stdout | 120 │ extract1(#rec{f1 = F1}) -> F1.
+stdout |     │                            ^^
+stdout |     │                            │
+stdout |     │                            F1.
+stdout | Expression has type:   atom() | binary()
+stdout | Context expected type: atom()
+stdout |     │                            
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: atom()
+stdout |   However the following candidate: binary()
+stdout |   Differs from the expected type:  atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater_records.erl:123:28
+stdout |     │
+stdout | 123 │ extract2(#rec{f2 = F2}) -> F2.
+stdout |     │                            ^^
+stdout |     │                            │
+stdout |     │                            F2.
+stdout | Expression has type:   atom() | binary()
+stdout | Context expected type: binary()
+stdout |     │                            
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: binary()
+stdout |   However the following candidate: atom()
+stdout |   Differs from the expected type:  binary()
+stdout |
+stdout | 8 ERRORS

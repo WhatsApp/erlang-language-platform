@@ -1,42 +1,42 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_misc.erl:15:3
-   │
-15 │   X.
-   │   ^
-   │   │
-   │   X.
-Expression has type:   opaque:contravariant('a')
-Context expected type: opaque:contravariant('a' | 'b')
-   │   
-
-Because in the expression's type:
-  fun((
-    Here the type is a union type with some valid candidates: 'a'
-    However the following candidate: 'b'
-    Differs from the expected type:  'a'
-  ) -> 'ok')
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_misc.erl:38:5
-   │
-38 │     <<X || X <- [], (X ++ X) >>.
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ << || >>.
-Expression has type:   binary()
-Context expected type: 'ok'
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-   ┌─ check/src/gradual_misc.erl:41:1
-   │  
-41 │ ╭ fuzz03([_ | {}]) -> 
-42 │ │     ok.
-   │ ╰──────^ Clause is not covered by spec
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/gradual_misc.erl:46:41
-   │
-46 │ refine_tuple_neg(T) when is_tuple(T) -> T;
-   │                                         ^ T.
-Expression has type:   {'b', 'c'}
-Context expected type: 'a' | {none()}
-
-4 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_misc.erl:15:3
+stdout |    │
+stdout | 15 │   X.
+stdout |    │   ^
+stdout |    │   │
+stdout |    │   X.
+stdout | Expression has type:   opaque:contravariant('a')
+stdout | Context expected type: opaque:contravariant('a' | 'b')
+stdout |    │   
+stdout |
+stdout | Because in the expression's type:
+stdout |   fun((
+stdout |     Here the type is a union type with some valid candidates: 'a'
+stdout |     However the following candidate: 'b'
+stdout |     Differs from the expected type:  'a'
+stdout |   ) -> 'ok')
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_misc.erl:38:5
+stdout |    │
+stdout | 38 │     <<X || X <- [], (X ++ X) >>.
+stdout |    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ << || >>.
+stdout | Expression has type:   binary()
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |    ┌─ check/src/gradual_misc.erl:41:1
+stdout |    │  
+stdout | 41 │ ╭ fuzz03([_ | {}]) -> 
+stdout | 42 │ │     ok.
+stdout |    │ ╰──────^ Clause is not covered by spec
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/gradual_misc.erl:46:41
+stdout |    │
+stdout | 46 │ refine_tuple_neg(T) when is_tuple(T) -> T;
+stdout |    │                                         ^ T.
+stdout | Expression has type:   {'b', 'c'}
+stdout | Context expected type: 'a' | {none()}
+stdout |
+stdout | 4 ERRORS

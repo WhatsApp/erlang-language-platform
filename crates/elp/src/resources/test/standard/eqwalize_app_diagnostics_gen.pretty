@@ -1,179 +1,179 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ app_a/src/app_a.erl:10:5
-   │
-10 │     ?OK.
-   │     ^^^ 'error'.
-Expression has type:   'error'
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ app_a/src/app_a.erl:14:5
-   │
-14 │     error.
-   │     ^^^^^ 'error'.
-Expression has type:   'error'
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ app_a/src/app_a.erl:18:13
-   │
-18 │     _ = 3 * an_atom, ok.
-   │             ^^^^^^^ 'an_atom'.
-Expression has type:   'an_atom'
-Context expected type: number()
-
-error: redundant_fixme (See https://fb.me/eqwalizer_errors#redundant_fixme)
-   ┌─ app_a/src/app_a.erl:57:5
-   │
-57 │     % eqwalizer:fixme redundant issue should be reported
-   │     ^^^^^^^^^^^^^^^^^ redundant fixme
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ app_a/src/app_a.erl:79:5
-   │
-79 │     X.
-   │     ^
-   │     │
-   │     X.
-Expression has type:   #{k_extra => term(), k_ok => term(), k_req1 => term(), k_req2 => term(), k_wrong1 => pid(), k_wrong2 => pid()}
-Context expected type: #{k_ok => term(), k_req1 := atom(), k_req2 := atom(), k_req3 := atom(), k_wrong1 => atom(), k_wrong2 => atom()}
-   │     
-
-Because in the expression's type:
-  Here the type is:     #{k_req2 => ..., k_req1 => ..., ...}
-  Context expects type: #{k_req3 := ..., k_req2 := ..., k_req1 := ..., ...}
-  The type of the expression is missing the following required keys: k_req3, k_req2, k_req1.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ app_a/src/app_a.erl:103:5
-    │
-103 │     X.
-    │     ^
-    │     │
-    │     X.
-Expression has type:   id(#{a := 'va', b := #{c := #{d => atom()}}})
-Context expected type: #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
-    │     
-
-Because in the expression's type:
-  #{ b =>
-    #{ c =>
-      Here the type is:     #{d => ..., ...}
-      Context expects type: #{d := ..., e := ..., ...}
-      The type of the expression is missing the following required keys: d, e.
-    , ... }
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ app_a/src/app_a.erl:126:5
-    │
-126 │     X.
-    │     ^
-    │     │
-    │     X.
-Expression has type:   id(#{a := 'va', b := #{c := #{d := pid(), e := pid()}}})
-Context expected type: #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
-    │     
-
-Because in the expression's type:
-  #{ b =>
-    #{ c =>
-      #{ d =>
-        Here the type is:     pid()
-        Context expects type: atom()
-      , ... }
-    , ... }
-  , ... }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-  ┌─ app_a/src/app_a_errors_generated.erl:8:10
-  │
-8 │ foo() -> wrong_ret.
-  │          ^^^^^^^^^ 'wrong_ret'.
-Expression has type:   'wrong_ret'
-Context expected type: 'foo'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ app_a/src/app_a_lists.erl:576:5
-    │
-576 │     flatmap(fun thing_to_list/1, List).
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ flatmap(thing_to_list/1, List).
-Expression has type:   [term()]
-Context expected type: string()
-
-error: recursive_constraint (See https://fb.me/eqwalizer_errors#recursive_constraint)
-    ┌─ app_a/src/app_a_lists.erl:588:29
-    │
-588 │       DeepList :: [term() | DeepList],
-    │                             ^^^^^^^^ Recursive constraint: DeepList
-
-error: recursive_constraint (See https://fb.me/eqwalizer_errors#recursive_constraint)
-    ┌─ app_a/src/app_a_lists.erl:595:29
-    │
-595 │       DeepList :: [term() | DeepList],
-    │                             ^^^^^^^^ Recursive constraint: DeepList
-
-error: recursive_constraint (See https://fb.me/eqwalizer_errors#recursive_constraint)
-    ┌─ app_a/src/app_a_lists.erl:613:29
-    │
-613 │       DeepList :: [term() | DeepList].
-    │                             ^^^^^^^^ Recursive constraint: DeepList
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ app_a/src/app_a_lists.erl:1114:36
-     │
-1114 │    lists:reverse(umerge3_1(L1, [H2 | H3], T2, H2, [], T3, H3), []).
-     │                                    ^^^^^ H3.
-Expression has type:   term()
-Context expected type: [term()]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ app_a/src/app_a_lists.erl:1305:5
-     │
-1305 │     filtermap(F, L).
-     │     ^^^^^^^^^^^^^^^
-     │     │
-     │     filtermap(F, L).
-Expression has type:   [term()]
-Context expected type: [T | X]
-     │     
-
-Because in the expression's type:
-  [
-    Here the type is:     term()
-    Context expects type: T | X
-    No candidate matches in the expected union.
-  ]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ app_a/src/app_a_lists.erl:1305:15
-     │
-1305 │     filtermap(F, L).
-     │               ^
-     │               │
-     │               F.
-Expression has type:   fun((T) -> boolean() | {'true', X})
-Context expected type: fun((term()) -> boolean() | {'true', term()})
-     │               
-
-Because in the expression's type:
-  fun((
-    Here the type is:     term()
-    Context expects type: T
-  ) -> boolean() | {'true', X})
-
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-   ┌─ app_a/src/app_a_mod2.erl:22:1
-   │
-22 │ -type invalid() :: invalid().
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type invalid/0 is not productive
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ app_a/src/app_a_mod2.erl:31:9
-   │
-31 │     1 + an_atom,
-   │         ^^^^^^^ 'an_atom'.
-Expression has type:   'an_atom'
-Context expected type: number()
-
-17 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ app_a/src/app_a.erl:10:5
+stdout |    │
+stdout | 10 │     ?OK.
+stdout |    │     ^^^ 'error'.
+stdout | Expression has type:   'error'
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ app_a/src/app_a.erl:14:5
+stdout |    │
+stdout | 14 │     error.
+stdout |    │     ^^^^^ 'error'.
+stdout | Expression has type:   'error'
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ app_a/src/app_a.erl:18:13
+stdout |    │
+stdout | 18 │     _ = 3 * an_atom, ok.
+stdout |    │             ^^^^^^^ 'an_atom'.
+stdout | Expression has type:   'an_atom'
+stdout | Context expected type: number()
+stdout |
+stdout | error: redundant_fixme (See https://fb.me/eqwalizer_errors#redundant_fixme)
+stdout |    ┌─ app_a/src/app_a.erl:57:5
+stdout |    │
+stdout | 57 │     % eqwalizer:fixme redundant issue should be reported
+stdout |    │     ^^^^^^^^^^^^^^^^^ redundant fixme
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ app_a/src/app_a.erl:79:5
+stdout |    │
+stdout | 79 │     X.
+stdout |    │     ^
+stdout |    │     │
+stdout |    │     X.
+stdout | Expression has type:   #{k_extra => term(), k_ok => term(), k_req1 => term(), k_req2 => term(), k_wrong1 => pid(), k_wrong2 => pid()}
+stdout | Context expected type: #{k_ok => term(), k_req1 := atom(), k_req2 := atom(), k_req3 := atom(), k_wrong1 => atom(), k_wrong2 => atom()}
+stdout |    │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     #{k_req2 => ..., k_req1 => ..., ...}
+stdout |   Context expects type: #{k_req3 := ..., k_req2 := ..., k_req1 := ..., ...}
+stdout |   The type of the expression is missing the following required keys: k_req3, k_req2, k_req1.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ app_a/src/app_a.erl:103:5
+stdout |     │
+stdout | 103 │     X.
+stdout |     │     ^
+stdout |     │     │
+stdout |     │     X.
+stdout | Expression has type:   id(#{a := 'va', b := #{c := #{d => atom()}}})
+stdout | Context expected type: #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ b =>
+stdout |     #{ c =>
+stdout |       Here the type is:     #{d => ..., ...}
+stdout |       Context expects type: #{d := ..., e := ..., ...}
+stdout |       The type of the expression is missing the following required keys: d, e.
+stdout |     , ... }
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ app_a/src/app_a.erl:126:5
+stdout |     │
+stdout | 126 │     X.
+stdout |     │     ^
+stdout |     │     │
+stdout |     │     X.
+stdout | Expression has type:   id(#{a := 'va', b := #{c := #{d := pid(), e := pid()}}})
+stdout | Context expected type: #{a := 'va', b := #{c := id(#{d := atom(), e := atom()})}}
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ b =>
+stdout |     #{ c =>
+stdout |       #{ d =>
+stdout |         Here the type is:     pid()
+stdout |         Context expects type: atom()
+stdout |       , ... }
+stdout |     , ... }
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |   ┌─ app_a/src/app_a_errors_generated.erl:8:10
+stdout |   │
+stdout | 8 │ foo() -> wrong_ret.
+stdout |   │          ^^^^^^^^^ 'wrong_ret'.
+stdout | Expression has type:   'wrong_ret'
+stdout | Context expected type: 'foo'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ app_a/src/app_a_lists.erl:576:5
+stdout |     │
+stdout | 576 │     flatmap(fun thing_to_list/1, List).
+stdout |     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ flatmap(thing_to_list/1, List).
+stdout | Expression has type:   [term()]
+stdout | Context expected type: string()
+stdout |
+stdout | error: recursive_constraint (See https://fb.me/eqwalizer_errors#recursive_constraint)
+stdout |     ┌─ app_a/src/app_a_lists.erl:588:29
+stdout |     │
+stdout | 588 │       DeepList :: [term() | DeepList],
+stdout |     │                             ^^^^^^^^ Recursive constraint: DeepList
+stdout |
+stdout | error: recursive_constraint (See https://fb.me/eqwalizer_errors#recursive_constraint)
+stdout |     ┌─ app_a/src/app_a_lists.erl:595:29
+stdout |     │
+stdout | 595 │       DeepList :: [term() | DeepList],
+stdout |     │                             ^^^^^^^^ Recursive constraint: DeepList
+stdout |
+stdout | error: recursive_constraint (See https://fb.me/eqwalizer_errors#recursive_constraint)
+stdout |     ┌─ app_a/src/app_a_lists.erl:613:29
+stdout |     │
+stdout | 613 │       DeepList :: [term() | DeepList].
+stdout |     │                             ^^^^^^^^ Recursive constraint: DeepList
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ app_a/src/app_a_lists.erl:1114:36
+stdout |      │
+stdout | 1114 │    lists:reverse(umerge3_1(L1, [H2 | H3], T2, H2, [], T3, H3), []).
+stdout |      │                                    ^^^^^ H3.
+stdout | Expression has type:   term()
+stdout | Context expected type: [term()]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ app_a/src/app_a_lists.erl:1305:5
+stdout |      │
+stdout | 1305 │     filtermap(F, L).
+stdout |      │     ^^^^^^^^^^^^^^^
+stdout |      │     │
+stdout |      │     filtermap(F, L).
+stdout | Expression has type:   [term()]
+stdout | Context expected type: [T | X]
+stdout |      │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   [
+stdout |     Here the type is:     term()
+stdout |     Context expects type: T | X
+stdout |     No candidate matches in the expected union.
+stdout |   ]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ app_a/src/app_a_lists.erl:1305:15
+stdout |      │
+stdout | 1305 │     filtermap(F, L).
+stdout |      │               ^
+stdout |      │               │
+stdout |      │               F.
+stdout | Expression has type:   fun((T) -> boolean() | {'true', X})
+stdout | Context expected type: fun((term()) -> boolean() | {'true', term()})
+stdout |      │               
+stdout |
+stdout | Because in the expression's type:
+stdout |   fun((
+stdout |     Here the type is:     term()
+stdout |     Context expects type: T
+stdout |   ) -> boolean() | {'true', X})
+stdout |
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |    ┌─ app_a/src/app_a_mod2.erl:22:1
+stdout |    │
+stdout | 22 │ -type invalid() :: invalid().
+stdout |    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type invalid/0 is not productive
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ app_a/src/app_a_mod2.erl:31:9
+stdout |    │
+stdout | 31 │     1 + an_atom,
+stdout |    │         ^^^^^^^ 'an_atom'.
+stdout | Expression has type:   'an_atom'
+stdout | Context expected type: number()
+stdout |
+stdout | 17 ERRORS

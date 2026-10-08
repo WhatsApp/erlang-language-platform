@@ -1,4 +1,5 @@
-module specified: otp_7655
-Diagnostics reported in 1 modules:
-  otp_7655: 1
-      4:0-4:27::[Error] [L1201] no module definition
+stdout | module specified: otp_7655
+stdout | Diagnostics reported in 1 modules:
+stdout |   otp_7655: 1
+stdout |       4:0-4:27::[Error] [L1201] no module definition
+stderr | Parse failures found

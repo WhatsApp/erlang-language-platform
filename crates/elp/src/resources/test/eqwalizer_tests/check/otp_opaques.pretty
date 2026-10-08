@@ -1,101 +1,101 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/otp_opaques.erl:18:5
-   │
-18 │     gb_sets:from_list(Atoms).
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^
-   │     │
-   │     gb_sets:from_list(Atoms).
-Expression has type:   gb_sets:set(atom())
-Context expected type: gb_sets:set(number())
-   │     
-
-Because in the expression's type:
-  { integer(), 
-    { 
-      Here the type is:     atom()
-      Context expects type: number()
-    , term(), term()}
-  }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/otp_opaques.erl:42:5
-   │
-42 │     List.
-   │     ^^^^
-   │     │
-   │     List.
-Expression has type:   [[A]]
-Context expected type: [A]
-   │     
-
-Because in the expression's type:
-  [
-    Here the type is:     [A]
-    Context expects type: A
-  ]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/otp_opaques.erl:99:17
-   │
-99 │ test3_neg(X) -> X.
-   │                 ^
-   │                 │
-   │                 X.
-Expression has type:   maps:iterator('k', 'v')
-Context expected type: sets:set('a')
-   │                 
-
-Because in the expression's type:
-  Here the type is:     'none' | [...] | tuple()/3
-  Context expects type: sets:set_v1('a') | sets:set_v2('a')
-  No candidate of the expression's type matches the expected type.
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/otp_opaques.erl:107:11
-    │
-107 │     ts(X, X),
-    │           ^
-    │           │
-    │           X.
-Expression has type:   maps:iterator('k', 'v')
-Context expected type: sets:set('a')
-    │           
-
-Because in the expression's type:
-  Here the type is:     'none' | [...] | tuple()/3
-  Context expects type: sets:set_v1('a') | sets:set_v2('a')
-  No candidate of the expression's type matches the expected type.
-
-error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
-    ┌─ check/src/otp_opaques.erl:124:5
-    │
-124 │     X().
-    │     ^ X.
-Expected fun type with arity 0
-Got: maps:iterator('k', 'v') | sets:set('a')
-
-error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
-    ┌─ check/src/otp_opaques.erl:130:5
-    │
-130 │     X().
-    │     ^ X.
-Expected fun type with arity 0
-Got: sets:set('a')
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/otp_opaques.erl:133:11
-    │
-133 │ ts1(X) -> X.
-    │           ^
-    │           │
-    │           X.
-Expression has type:   sets:set('a')
-Context expected type: atom()
-    │           
-
-Because in the expression's type:
-  Here the type is:     sets:set_v1('a') | sets:set_v2('a')
-  Context expects type: atom()
-  No candidate of the expression's type matches the expected type.
-
-7 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/otp_opaques.erl:18:5
+stdout |    │
+stdout | 18 │     gb_sets:from_list(Atoms).
+stdout |    │     ^^^^^^^^^^^^^^^^^^^^^^^^
+stdout |    │     │
+stdout |    │     gb_sets:from_list(Atoms).
+stdout | Expression has type:   gb_sets:set(atom())
+stdout | Context expected type: gb_sets:set(number())
+stdout |    │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   { integer(), 
+stdout |     { 
+stdout |       Here the type is:     atom()
+stdout |       Context expects type: number()
+stdout |     , term(), term()}
+stdout |   }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/otp_opaques.erl:42:5
+stdout |    │
+stdout | 42 │     List.
+stdout |    │     ^^^^
+stdout |    │     │
+stdout |    │     List.
+stdout | Expression has type:   [[A]]
+stdout | Context expected type: [A]
+stdout |    │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   [
+stdout |     Here the type is:     [A]
+stdout |     Context expects type: A
+stdout |   ]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/otp_opaques.erl:99:17
+stdout |    │
+stdout | 99 │ test3_neg(X) -> X.
+stdout |    │                 ^
+stdout |    │                 │
+stdout |    │                 X.
+stdout | Expression has type:   maps:iterator('k', 'v')
+stdout | Context expected type: sets:set('a')
+stdout |    │                 
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     'none' | [...] | tuple()/3
+stdout |   Context expects type: sets:set_v1('a') | sets:set_v2('a')
+stdout |   No candidate of the expression's type matches the expected type.
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/otp_opaques.erl:107:11
+stdout |     │
+stdout | 107 │     ts(X, X),
+stdout |     │           ^
+stdout |     │           │
+stdout |     │           X.
+stdout | Expression has type:   maps:iterator('k', 'v')
+stdout | Context expected type: sets:set('a')
+stdout |     │           
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     'none' | [...] | tuple()/3
+stdout |   Context expects type: sets:set_v1('a') | sets:set_v2('a')
+stdout |   No candidate of the expression's type matches the expected type.
+stdout |
+stdout | error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
+stdout |     ┌─ check/src/otp_opaques.erl:124:5
+stdout |     │
+stdout | 124 │     X().
+stdout |     │     ^ X.
+stdout | Expected fun type with arity 0
+stdout | Got: maps:iterator('k', 'v') | sets:set('a')
+stdout |
+stdout | error: expected_fun_type (See https://fb.me/eqwalizer_errors#expected_fun_type)
+stdout |     ┌─ check/src/otp_opaques.erl:130:5
+stdout |     │
+stdout | 130 │     X().
+stdout |     │     ^ X.
+stdout | Expected fun type with arity 0
+stdout | Got: sets:set('a')
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/otp_opaques.erl:133:11
+stdout |     │
+stdout | 133 │ ts1(X) -> X.
+stdout |     │           ^
+stdout |     │           │
+stdout |     │           X.
+stdout | Expression has type:   sets:set('a')
+stdout | Context expected type: atom()
+stdout |     │           
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     sets:set_v1('a') | sets:set_v2('a')
+stdout |   Context expects type: atom()
+stdout |   No candidate of the expression's type matches the expected type.
+stdout |
+stdout | 7 ERRORS

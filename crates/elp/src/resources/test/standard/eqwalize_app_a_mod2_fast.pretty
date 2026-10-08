@@ -1,15 +1,15 @@
-error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
-   ┌─ app_a/src/app_a_mod2.erl:22:1
-   │
-22 │ -type invalid() :: invalid().
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type invalid/0 is not productive
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ app_a/src/app_a_mod2.erl:31:9
-   │
-31 │     1 + an_atom,
-   │         ^^^^^^^ 'an_atom'.
-Expression has type:   'an_atom'
-Context expected type: number()
-
-2 ERRORS
+stdout | error: type_alias_is_non_productive (See https://fb.me/eqwalizer_errors#type_alias_is_non_productive)
+stdout |    ┌─ app_a/src/app_a_mod2.erl:22:1
+stdout |    │
+stdout | 22 │ -type invalid() :: invalid().
+stdout |    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive type invalid/0 is not productive
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ app_a/src/app_a_mod2.erl:31:9
+stdout |    │
+stdout | 31 │     1 + an_atom,
+stdout |    │         ^^^^^^^ 'an_atom'.
+stdout | Expression has type:   'an_atom'
+stdout | Context expected type: number()
+stdout |
+stdout | 2 ERRORS

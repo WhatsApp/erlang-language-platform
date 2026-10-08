@@ -1,6 +1,6 @@
-errors parsing "{project_path}/elp_lint_ssr_adhoc_parse_fail.toml": TOML parse error at line 1, column 1
-  |
-1 | [[ad_hoc_lints.lints]]
-  | ^^^^^^^^^^^^^^^^^^^^^^
-invalid SSR pattern 'ssr: {_@A, = 10}.': Parse error: Could not lower rule
-
+stderr | errors parsing "{project_path}/elp_lint_ssr_adhoc_parse_fail.toml": TOML parse error at line 1, column 1
+stderr |   |
+stderr | 1 | [[ad_hoc_lints.lints]]
+stderr |   | ^^^^^^^^^^^^^^^^^^^^^^
+stderr | invalid SSR pattern 'ssr: {_@A, = 10}.': Parse error: Could not lower rule
+stderr |

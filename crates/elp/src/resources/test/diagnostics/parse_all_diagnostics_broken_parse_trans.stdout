@@ -1,5 +1,6 @@
-file specified: {project_path}/app_a/src/broken_parse_trans.erl
-Diagnostics reported in 1 modules:
-  broken_parse_trans.erl: 2
-      9:20-9:21::[Error] [L1256] field b undefined in record a
-      9:31-9:32::[Error] [L1262] variable 'B' is unbound
+stdout | file specified: {project_path}/app_a/src/broken_parse_trans.erl
+stdout | Diagnostics reported in 1 modules:
+stdout |   broken_parse_trans.erl: 2
+stdout |       9:20-9:21::[Error] [L1256] field b undefined in record a
+stdout |       9:31-9:32::[Error] [L1262] variable 'B' is unbound
+stderr | Parse failures found

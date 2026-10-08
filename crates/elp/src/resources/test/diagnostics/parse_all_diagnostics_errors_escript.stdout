@@ -1,6 +1,7 @@
-file specified: {project_path}/app_a/src/diagnostics_errors.escript
-Diagnostics reported in 1 modules:
-  diagnostics_errors.escript: 3
-      7:8-7:14::[Error] [L1227] function fac/1 undefined
-      21:0-21:22::[Error] [P1700] head mismatch
-      23:5-23:20::[Error] [P1711] syntax error before: tion_with_error
+stdout | file specified: {project_path}/app_a/src/diagnostics_errors.escript
+stdout | Diagnostics reported in 1 modules:
+stdout |   diagnostics_errors.escript: 3
+stdout |       7:8-7:14::[Error] [L1227] function fac/1 undefined
+stdout |       21:0-21:22::[Error] [P1700] head mismatch
+stdout |       23:5-23:20::[Error] [P1711] syntax error before: tion_with_error
+stderr | Parse failures found

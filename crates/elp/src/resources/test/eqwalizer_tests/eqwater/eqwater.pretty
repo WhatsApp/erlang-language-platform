@@ -1,426 +1,426 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:162:7
-    │
-162 │       B
-    │       ^
-    │       │
-    │       B.
-Expression has type:   binary() | integer()
-Context expected type: binary()
-    │       
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: binary()
-  However the following candidate: integer()
-  Differs from the expected type:  binary()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:172:22
-    │
-172 │ occ05_3_neg_cl(B) -> B.
-    │                      ^
-    │                      │
-    │                      B.
-Expression has type:   binary() | integer()
-Context expected type: binary()
-    │                      
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: binary()
-  However the following candidate: integer()
-  Differs from the expected type:  binary()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:183:7
-    │
-183 │       A
-    │       ^
-    │       │
-    │       A.
-Expression has type:   binary() | integer()
-Context expected type: binary()
-    │       
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: binary()
-  However the following candidate: integer()
-  Differs from the expected type:  binary()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:340:13
-    │
-340 │ occ11(A) -> A.
-    │             ^
-    │             │
-    │             A.
-Expression has type:   #ab_rec{} | atom()
-Context expected type: atom()
-    │             
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: atom()
-  However the following candidate: #ab_rec{}
-  Differs from the expected type:  atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:356:16
-    │
-356 │ occ13(A, _) -> A.
-    │                ^
-    │                │
-    │                A.
-Expression has type:   #ab_rec{} | atom()
-Context expected type: atom()
-    │                
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: atom()
-  However the following candidate: #ab_rec{}
-  Differs from the expected type:  atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:404:25
-    │
-404 │ get_int4_neg({_, I}) -> I.
-    │                         ^ I.
-Expression has type:   atom()
-Context expected type: integer()
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ eqwater/src/eqwater.erl:413:1
-    │  
-413 │ ╭ get_int6({A1, A2})
-414 │ │   when is_atom(A1) and is_atom(A2) -> 1;
-    │ ╰───────────────────────────────────────^ Clause is not covered by spec
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:415:21
-    │
-415 │ get_int6({_, I}) -> I.
-    │                     ^ I.
-Expression has type:   atom() | integer()
-Context expected type: number()
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-    ┌─ eqwater/src/eqwater.erl:419:1
-    │  
-419 │ ╭ get_int7_neg({A, A})
-420 │ │   % A is none()
-421 │ │   when is_atom(A) -> 0;
-    │ ╰──────────────────────^ Clause is not covered by spec
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:422:25
-    │
-422 │ get_int7_neg({_, I}) -> I.
-    │                         ^ I.
-Expression has type:   atom() | integer()
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:429:25
-    │
-429 │ get_int8_neg({_, I}) -> I.
-    │                         ^ I.
-Expression has type:   atom() | integer()
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:496:3
-    │
-496 │   A.
-    │   ^ A.
-Expression has type:   atom()
-Context expected type: binary()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:521:22
-    │
-521 │   record_occ07_tuple(R).
-    │                      ^
-    │                      │
-    │                      R.
-Expression has type:   #union_field{}
-Context expected type: {'union_field', atom()}
-    │                      
-
-Because in the expression's type:
-  { 'union_field', 
-    Here the type is:     binary()
-    Context expects type: atom()
-  }
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:559:50
-    │
-559 │ record_occ13_neg(#union_field4{x = A, y = _}) -> A.
-    │                                                  ^
-    │                                                  │
-    │                                                  A.
-Expression has type:   'ok' | integer()
-Context expected type: integer()
-    │                                                  
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: integer()
-  However the following candidate: 'ok'
-  Differs from the expected type:  integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:590:8
-    │
-590 │     -> B#b.id;
-    │        ^
-    │        │
-    │        B.
-Expression has type:   #b{} | #c{}
-Context expected type: #b{}
-    │        
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: #b{}
-  However the following candidate: #c{}
-  Differs from the expected type:  #b{}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:649:17
-    │
-649 │ occ26_neg(T) -> T.
-    │                 ^
-    │                 │
-    │                 T.
-Expression has type:   fun() | {term()}
-Context expected type: {term()}
-    │                 
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: {term()}
-  However the following candidate: fun()
-  Differs from the expected type:  {term()}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:660:17
-    │
-660 │ occ28_neg(A) -> A.
-    │                 ^
-    │                 │
-    │                 A.
-Expression has type:   atom() | tuple()
-Context expected type: atom()
-    │                 
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: atom()
-  However the following candidate: tuple()
-  Differs from the expected type:  atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:839:27
-    │
-839 │ multi_param2_neg(_, Y) -> Y.
-    │                           ^ Y.
-Expression has type:   atom() | number()
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater.erl:997:31
-    │
-997 │ occ42_neg({F, S} = {_, _}) -> F.
-    │                               ^ F.
-Expression has type:   'undefined' | string()
-Context expected type: string()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1004:31
-     │
-1004 │ occ43_neg({F, S} = {_, _}) -> F.
-     │                               ^ F.
-Expression has type:   'undefined' | string()
-Context expected type: string()
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-     ┌─ eqwater/src/eqwater.erl:1090:1
-     │
-1090 │ occ53_neg(L, undefined) when is_integer(L) -> 0;
-     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1091:20
-     │
-1091 │ occ53_neg(_, I) -> I.
-     │                    ^
-     │                    │
-     │                    I.
-Expression has type:   'undefined' | integer()
-Context expected type: integer()
-     │                    
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: integer()
-  However the following candidate: 'undefined'
-  Differs from the expected type:  integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1122:14
-     │
-1122 │         A -> [A]
-     │              ^^^
-     │              │
-     │              [A].
-Expression has type:   [[]] | [[atom(), ...]] | [atom()]
-Context expected type: [atom()]
-     │              
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: [atom()]
-  However, the following candidate doesn't match:
-  [
-    Here the type is:     [atom(), ...]
-    Context expects type: atom()
-  ]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1131:15
-     │
-1131 │         A2 -> [A2]
-     │               ^^^^
-     │               │
-     │               [A2].
-Expression has type:   [[atom(), ...]] | [atom()]
-Context expected type: [atom()]
-     │               
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: [atom()]
-  However, the following candidate doesn't match:
-  [
-    Here the type is:     [atom(), ...]
-    Context expects type: atom()
-  ]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1155:7
-     │
-1155 │       X
-     │       ^
-     │       │
-     │       X.
-Expression has type:   binary() | string()
-Context expected type: binary()
-     │       
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: binary()
-  However the following candidate: string()
-  Differs from the expected type:  binary()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1181:7
-     │
-1181 │       Y
-     │       ^
-     │       │
-     │       Y.
-Expression has type:   atom() | binary()
-Context expected type: binary()
-     │       
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: binary()
-  However the following candidate: atom()
-  Differs from the expected type:  binary()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1189:60
-     │
-1189 │ occ_guard_binary_2_neg(V) when V =:= <<"ok">>; V =:= ok -> V;
-     │                                                            ^
-     │                                                            │
-     │                                                            V.
-Expression has type:   'ok' | binary()
-Context expected type: binary()
-     │                                                            
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: binary()
-  However the following candidate: 'ok'
-  Differs from the expected type:  binary()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1194:30
-     │
-1194 │ occ_guard_binary_3_neg(V) -> V.
-     │                              ^
-     │                              │
-     │                              V.
-Expression has type:   'ok' | binary()
-Context expected type: 'ok'
-     │                              
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: 'ok'
-  However the following candidate: binary()
-  Differs from the expected type:  'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1225:14
-     │
-1225 │         _ -> Args
-     │              ^^^^ Args.
-Expression has type:   number() | {term(), my_list()}
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1231:31
-     │
-1231 │         _ when is_tuple(T) -> T
-     │                               ^ T.
-Expression has type:   tuple()
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1269:5
-     │
-1269 │     V.
-     │     ^ V.
-Expression has type:   'a'
-Context expected type: 'b'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1286:60
-     │
-1286 │ negate_atoms_neg(A) when not ((A == a) orelse (A == b)) -> A;
-     │                                                            ^ A.
-Expression has type:   'c'
-Context expected type: 'a' | 'b'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1291:43
-     │
-1291 │ negate_number_neg(N) when not (N == 1) -> N;
-     │                                           ^ N.
-Expression has type:   number()
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-     ┌─ eqwater/src/eqwater.erl:1309:45
-     │
-1309 │ negate_fun_neg(F) when is_function(F, 2) -> F;
-     │                                             ^ F.
-Expression has type:   fun((term(), term()) -> term())
-Context expected type: 'ok'
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-     ┌─ eqwater/src/eqwater.erl:1316:1
-     │
-1316 │ dynamic_dead_code_1(true) -> ok;
-     │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
-
-error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
-     ┌─ eqwater/src/eqwater.erl:1325:1
-     │  
-1325 │ ╭ dynamic_dead_code_2(test_decode_group_invite_errors, _Config) ->
-1326 │ │     bar;
-     │ ╰───────^ Clause is not covered by spec
-
-36 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:162:7
+stdout |     │
+stdout | 162 │       B
+stdout |     │       ^
+stdout |     │       │
+stdout |     │       B.
+stdout | Expression has type:   binary() | integer()
+stdout | Context expected type: binary()
+stdout |     │       
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: binary()
+stdout |   However the following candidate: integer()
+stdout |   Differs from the expected type:  binary()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:172:22
+stdout |     │
+stdout | 172 │ occ05_3_neg_cl(B) -> B.
+stdout |     │                      ^
+stdout |     │                      │
+stdout |     │                      B.
+stdout | Expression has type:   binary() | integer()
+stdout | Context expected type: binary()
+stdout |     │                      
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: binary()
+stdout |   However the following candidate: integer()
+stdout |   Differs from the expected type:  binary()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:183:7
+stdout |     │
+stdout | 183 │       A
+stdout |     │       ^
+stdout |     │       │
+stdout |     │       A.
+stdout | Expression has type:   binary() | integer()
+stdout | Context expected type: binary()
+stdout |     │       
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: binary()
+stdout |   However the following candidate: integer()
+stdout |   Differs from the expected type:  binary()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:340:13
+stdout |     │
+stdout | 340 │ occ11(A) -> A.
+stdout |     │             ^
+stdout |     │             │
+stdout |     │             A.
+stdout | Expression has type:   #ab_rec{} | atom()
+stdout | Context expected type: atom()
+stdout |     │             
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: atom()
+stdout |   However the following candidate: #ab_rec{}
+stdout |   Differs from the expected type:  atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:356:16
+stdout |     │
+stdout | 356 │ occ13(A, _) -> A.
+stdout |     │                ^
+stdout |     │                │
+stdout |     │                A.
+stdout | Expression has type:   #ab_rec{} | atom()
+stdout | Context expected type: atom()
+stdout |     │                
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: atom()
+stdout |   However the following candidate: #ab_rec{}
+stdout |   Differs from the expected type:  atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:404:25
+stdout |     │
+stdout | 404 │ get_int4_neg({_, I}) -> I.
+stdout |     │                         ^ I.
+stdout | Expression has type:   atom()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |     ┌─ eqwater/src/eqwater.erl:413:1
+stdout |     │  
+stdout | 413 │ ╭ get_int6({A1, A2})
+stdout | 414 │ │   when is_atom(A1) and is_atom(A2) -> 1;
+stdout |     │ ╰───────────────────────────────────────^ Clause is not covered by spec
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:415:21
+stdout |     │
+stdout | 415 │ get_int6({_, I}) -> I.
+stdout |     │                     ^ I.
+stdout | Expression has type:   atom() | integer()
+stdout | Context expected type: number()
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |     ┌─ eqwater/src/eqwater.erl:419:1
+stdout |     │  
+stdout | 419 │ ╭ get_int7_neg({A, A})
+stdout | 420 │ │   % A is none()
+stdout | 421 │ │   when is_atom(A) -> 0;
+stdout |     │ ╰──────────────────────^ Clause is not covered by spec
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:422:25
+stdout |     │
+stdout | 422 │ get_int7_neg({_, I}) -> I.
+stdout |     │                         ^ I.
+stdout | Expression has type:   atom() | integer()
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:429:25
+stdout |     │
+stdout | 429 │ get_int8_neg({_, I}) -> I.
+stdout |     │                         ^ I.
+stdout | Expression has type:   atom() | integer()
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:496:3
+stdout |     │
+stdout | 496 │   A.
+stdout |     │   ^ A.
+stdout | Expression has type:   atom()
+stdout | Context expected type: binary()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:521:22
+stdout |     │
+stdout | 521 │   record_occ07_tuple(R).
+stdout |     │                      ^
+stdout |     │                      │
+stdout |     │                      R.
+stdout | Expression has type:   #union_field{}
+stdout | Context expected type: {'union_field', atom()}
+stdout |     │                      
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 'union_field', 
+stdout |     Here the type is:     binary()
+stdout |     Context expects type: atom()
+stdout |   }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:559:50
+stdout |     │
+stdout | 559 │ record_occ13_neg(#union_field4{x = A, y = _}) -> A.
+stdout |     │                                                  ^
+stdout |     │                                                  │
+stdout |     │                                                  A.
+stdout | Expression has type:   'ok' | integer()
+stdout | Context expected type: integer()
+stdout |     │                                                  
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: integer()
+stdout |   However the following candidate: 'ok'
+stdout |   Differs from the expected type:  integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:590:8
+stdout |     │
+stdout | 590 │     -> B#b.id;
+stdout |     │        ^
+stdout |     │        │
+stdout |     │        B.
+stdout | Expression has type:   #b{} | #c{}
+stdout | Context expected type: #b{}
+stdout |     │        
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: #b{}
+stdout |   However the following candidate: #c{}
+stdout |   Differs from the expected type:  #b{}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:649:17
+stdout |     │
+stdout | 649 │ occ26_neg(T) -> T.
+stdout |     │                 ^
+stdout |     │                 │
+stdout |     │                 T.
+stdout | Expression has type:   fun() | {term()}
+stdout | Context expected type: {term()}
+stdout |     │                 
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: {term()}
+stdout |   However the following candidate: fun()
+stdout |   Differs from the expected type:  {term()}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:660:17
+stdout |     │
+stdout | 660 │ occ28_neg(A) -> A.
+stdout |     │                 ^
+stdout |     │                 │
+stdout |     │                 A.
+stdout | Expression has type:   atom() | tuple()
+stdout | Context expected type: atom()
+stdout |     │                 
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: atom()
+stdout |   However the following candidate: tuple()
+stdout |   Differs from the expected type:  atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:839:27
+stdout |     │
+stdout | 839 │ multi_param2_neg(_, Y) -> Y.
+stdout |     │                           ^ Y.
+stdout | Expression has type:   atom() | number()
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater.erl:997:31
+stdout |     │
+stdout | 997 │ occ42_neg({F, S} = {_, _}) -> F.
+stdout |     │                               ^ F.
+stdout | Expression has type:   'undefined' | string()
+stdout | Context expected type: string()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ eqwater/src/eqwater.erl:1004:31
+stdout |      │
+stdout | 1004 │ occ43_neg({F, S} = {_, _}) -> F.
+stdout |      │                               ^ F.
+stdout | Expression has type:   'undefined' | string()
+stdout | Context expected type: string()
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |      ┌─ eqwater/src/eqwater.erl:1090:1
+stdout |      │
+stdout | 1090 │ occ53_neg(L, undefined) when is_integer(L) -> 0;
+stdout |      │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ eqwater/src/eqwater.erl:1091:20
+stdout |      │
+stdout | 1091 │ occ53_neg(_, I) -> I.
+stdout |      │                    ^
+stdout |      │                    │
+stdout |      │                    I.
+stdout | Expression has type:   'undefined' | integer()
+stdout | Context expected type: integer()
+stdout |      │                    
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: integer()
+stdout |   However the following candidate: 'undefined'
+stdout |   Differs from the expected type:  integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ eqwater/src/eqwater.erl:1122:14
+stdout |      │
+stdout | 1122 │         A -> [A]
+stdout |      │              ^^^
+stdout |      │              │
+stdout |      │              [A].
+stdout | Expression has type:   [[]] | [[atom(), ...]] | [atom()]
+stdout | Context expected type: [atom()]
+stdout |      │              
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: [atom()]
+stdout |   However, the following candidate doesn't match:
+stdout |   [
+stdout |     Here the type is:     [atom(), ...]
+stdout |     Context expects type: atom()
+stdout |   ]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ eqwater/src/eqwater.erl:1131:15
+stdout |      │
+stdout | 1131 │         A2 -> [A2]
+stdout |      │               ^^^^
+stdout |      │               │
+stdout |      │               [A2].
+stdout | Expression has type:   [[atom(), ...]] | [atom()]
+stdout | Context expected type: [atom()]
+stdout |      │               
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: [atom()]
+stdout |   However, the following candidate doesn't match:
+stdout |   [
+stdout |     Here the type is:     [atom(), ...]
+stdout |     Context expects type: atom()
+stdout |   ]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ eqwater/src/eqwater.erl:1155:7
+stdout |      │
+stdout | 1155 │       X
+stdout |      │       ^
+stdout |      │       │
+stdout |      │       X.
+stdout | Expression has type:   binary() | string()
+stdout | Context expected type: binary()
+stdout |      │       
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: binary()
+stdout |   However the following candidate: string()
+stdout |   Differs from the expected type:  binary()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ eqwater/src/eqwater.erl:1181:7
+stdout |      │
+stdout | 1181 │       Y
+stdout |      │       ^
+stdout |      │       │
+stdout |      │       Y.
+stdout | Expression has type:   atom() | binary()
+stdout | Context expected type: binary()
+stdout |      │       
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: binary()
+stdout |   However the following candidate: atom()
+stdout |   Differs from the expected type:  binary()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ eqwater/src/eqwater.erl:1189:60
+stdout |      │
+stdout | 1189 │ occ_guard_binary_2_neg(V) when V =:= <<"ok">>; V =:= ok -> V;
+stdout |      │                                                            ^
+stdout |      │                                                            │
+stdout |      │                                                            V.
+stdout | Expression has type:   'ok' | binary()
+stdout | Context expected type: binary()
+stdout |      │                                                            
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: binary()
+stdout |   However the following candidate: 'ok'
+stdout |   Differs from the expected type:  binary()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ eqwater/src/eqwater.erl:1194:30
+stdout |      │
+stdout | 1194 │ occ_guard_binary_3_neg(V) -> V.
+stdout |      │                              ^
+stdout |      │                              │
+stdout |      │                              V.
+stdout | Expression has type:   'ok' | binary()
+stdout | Context expected type: 'ok'
+stdout |      │                              
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: 'ok'
+stdout |   However the following candidate: binary()
+stdout |   Differs from the expected type:  'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ eqwater/src/eqwater.erl:1225:14
+stdout |      │
+stdout | 1225 │         _ -> Args
+stdout |      │              ^^^^ Args.
+stdout | Expression has type:   number() | {term(), my_list()}
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ eqwater/src/eqwater.erl:1231:31
+stdout |      │
+stdout | 1231 │         _ when is_tuple(T) -> T
+stdout |      │                               ^ T.
+stdout | Expression has type:   tuple()
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ eqwater/src/eqwater.erl:1269:5
+stdout |      │
+stdout | 1269 │     V.
+stdout |      │     ^ V.
+stdout | Expression has type:   'a'
+stdout | Context expected type: 'b'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ eqwater/src/eqwater.erl:1286:60
+stdout |      │
+stdout | 1286 │ negate_atoms_neg(A) when not ((A == a) orelse (A == b)) -> A;
+stdout |      │                                                            ^ A.
+stdout | Expression has type:   'c'
+stdout | Context expected type: 'a' | 'b'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ eqwater/src/eqwater.erl:1291:43
+stdout |      │
+stdout | 1291 │ negate_number_neg(N) when not (N == 1) -> N;
+stdout |      │                                           ^ N.
+stdout | Expression has type:   number()
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |      ┌─ eqwater/src/eqwater.erl:1309:45
+stdout |      │
+stdout | 1309 │ negate_fun_neg(F) when is_function(F, 2) -> F;
+stdout |      │                                             ^ F.
+stdout | Expression has type:   fun((term(), term()) -> term())
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |      ┌─ eqwater/src/eqwater.erl:1316:1
+stdout |      │
+stdout | 1316 │ dynamic_dead_code_1(true) -> ok;
+stdout |      │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Clause is not covered by spec
+stdout |
+stdout | error: clause_not_covered (See https://fb.me/eqwalizer_errors#clause_not_covered)
+stdout |      ┌─ eqwater/src/eqwater.erl:1325:1
+stdout |      │  
+stdout | 1325 │ ╭ dynamic_dead_code_2(test_decode_group_invite_errors, _Config) ->
+stdout | 1326 │ │     bar;
+stdout |      │ ╰───────^ Clause is not covered by spec
+stdout |
+stdout | 36 ERRORS

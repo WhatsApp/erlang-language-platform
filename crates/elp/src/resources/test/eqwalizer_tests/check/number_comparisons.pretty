@@ -1,25 +1,25 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/number_comparisons.erl:11:30
-   │
-11 │ test_1_neg(X) when X >= 1 -> X.
-   │                              ^ X.
-Expression has type:   term()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/number_comparisons.erl:253:3
-    │
-253 │   X.
-    │   ^ X.
-Expression has type:   integer()
-Context expected type: none()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/number_comparisons.erl:264:3
-    │
-264 │   X.
-    │   ^ X.
-Expression has type:   number()
-Context expected type: integer()
-
-3 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/number_comparisons.erl:11:30
+stdout |    │
+stdout | 11 │ test_1_neg(X) when X >= 1 -> X.
+stdout |    │                              ^ X.
+stdout | Expression has type:   term()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/number_comparisons.erl:253:3
+stdout |     │
+stdout | 253 │   X.
+stdout |     │   ^ X.
+stdout | Expression has type:   integer()
+stdout | Context expected type: none()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/number_comparisons.erl:264:3
+stdout |     │
+stdout | 264 │   X.
+stdout |     │   ^ X.
+stdout | Expression has type:   number()
+stdout | Context expected type: integer()
+stdout |
+stdout | 3 ERRORS

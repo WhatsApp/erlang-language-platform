@@ -1,49 +1,49 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dyn_remote_funs.erl:44:17
-   │
-44 │     fun lists:F/N.
-   │                 ^ N.
-Expression has type:   number()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dyn_remote_funs.erl:69:12
-   │
-69 │         -> Res;
-   │            ^^^ Res.
-Expression has type:   fun((term(), term()) -> term())
-Context expected type: fun((none()) -> term())
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dyn_remote_funs.erl:80:5
-   │
-80 │     fun M:F/2.
-   │     ^^^^^^^^^ M:F/2.
-Expression has type:   fun((dynamic(), dynamic()) -> dynamic())
-Context expected type: 'a'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dyn_remote_funs.erl:85:9
-   │
-85 │ fun M:F/A.
-   │         ^ A.
-Expression has type:   atom()
-Context expected type: integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dyn_remote_funs.erl:90:1
-   │
-90 │ fun M:F/A.
-   │ ^^^^^^^^^ M:F/A.
-Expression has type:   fun()
-Context expected type: 'a'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dyn_remote_funs.erl:90:9
-   │
-90 │ fun M:F/A.
-   │         ^ A.
-Expression has type:   atom()
-Context expected type: integer()
-
-6 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dyn_remote_funs.erl:44:17
+stdout |    │
+stdout | 44 │     fun lists:F/N.
+stdout |    │                 ^ N.
+stdout | Expression has type:   number()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dyn_remote_funs.erl:69:12
+stdout |    │
+stdout | 69 │         -> Res;
+stdout |    │            ^^^ Res.
+stdout | Expression has type:   fun((term(), term()) -> term())
+stdout | Context expected type: fun((none()) -> term())
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dyn_remote_funs.erl:80:5
+stdout |    │
+stdout | 80 │     fun M:F/2.
+stdout |    │     ^^^^^^^^^ M:F/2.
+stdout | Expression has type:   fun((dynamic(), dynamic()) -> dynamic())
+stdout | Context expected type: 'a'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dyn_remote_funs.erl:85:9
+stdout |    │
+stdout | 85 │ fun M:F/A.
+stdout |    │         ^ A.
+stdout | Expression has type:   atom()
+stdout | Context expected type: integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dyn_remote_funs.erl:90:1
+stdout |    │
+stdout | 90 │ fun M:F/A.
+stdout |    │ ^^^^^^^^^ M:F/A.
+stdout | Expression has type:   fun()
+stdout | Context expected type: 'a'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dyn_remote_funs.erl:90:9
+stdout |    │
+stdout | 90 │ fun M:F/A.
+stdout |    │         ^ A.
+stdout | Expression has type:   atom()
+stdout | Context expected type: integer()
+stdout |
+stdout | 6 ERRORS

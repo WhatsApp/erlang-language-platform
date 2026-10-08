@@ -1,13 +1,14 @@
-Diagnostics reported:
-app_a/src/app_a.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
-app_a/src/app_a.erl:5:5-5:24::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
-app_a/src/app_a_edoc.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
-app_a/src/app_a_ssr.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
-app_a/src/app_a_unused_param.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
-app_a/src/app_a_unused_param.erl:5:5-5:6::[Warning] [L1268] variable 'X' is unused
-app_a/src/cross_node.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
-app_a/src/spelling.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
-app_b/src/app_b.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
-app_b/src/app_b.erl:5:5-5:24::[Warning] [W0011] module `app_b` belongs to app `app_b`, but reads env for `misc`
-app_b/src/app_b_unused_param.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
-app_b/src/app_b_unused_param.erl:5:5-5:6::[Warning] [L1268] variable 'X' is unused
+stderr | Errors found
+stdout | Diagnostics reported:
+stdout | app_a/src/app_a.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+stdout | app_a/src/app_a.erl:5:5-5:24::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
+stdout | app_a/src/app_a_edoc.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+stdout | app_a/src/app_a_ssr.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+stdout | app_a/src/app_a_unused_param.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+stdout | app_a/src/app_a_unused_param.erl:5:5-5:6::[Warning] [L1268] variable 'X' is unused
+stdout | app_a/src/cross_node.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+stdout | app_a/src/spelling.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+stdout | app_b/src/app_b.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+stdout | app_b/src/app_b.erl:5:5-5:24::[Warning] [W0011] module `app_b` belongs to app `app_b`, but reads env for `misc`
+stdout | app_b/src/app_b_unused_param.erl:1:1-1:1::[Error] [W0012] Please add "-compile(warn_missing_spec_all)." to the module. If exported functions are not all specced, they need to be specced.
+stdout | app_b/src/app_b_unused_param.erl:5:5-5:6::[Warning] [L1268] variable 'X' is unused

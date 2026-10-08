@@ -564,7 +564,6 @@ mod tests {
     use elp_project_model::buck::BuckQueryConfig;
     use elp_project_model::buck::get_prelude_cell;
     use elp_project_model::otp::Otp;
-    use expect_test::Expect;
     use expect_test::ExpectFile;
     use expect_test::expect;
     use paths::Utf8PathBuf;
@@ -753,6 +752,18 @@ mod tests {
     }
 
     fn elp_with_stdout_tty(args: Vec<OsString>, stdout_is_tty: bool) -> (String, String, i32) {
+        let (cli, code) = run_elp(args, stdout_is_tty);
+        let (stdout, stderr) = cli.to_strings();
+        (stdout, stderr, code)
+    }
+
+    fn elp_with_tagged_output(args: Vec<OsString>) -> (String, String, String, i32) {
+        let (cli, code) = run_elp(args, true);
+        let (stdout, stderr, tagged) = cli.to_strings_with_tagged();
+        (stdout, stderr, tagged, code)
+    }
+
+    fn run_elp(args: Vec<OsString>, stdout_is_tty: bool) -> (Fake, i32) {
         // Enable manifest caching for tests — the config files in test
         // fixtures never change, and this avoids re-spawning rebar3/erl
         // subprocesses for every test case (~25× faster for ::rebar tests).
@@ -771,8 +782,7 @@ mod tests {
         let res = try_main(&mut cli, args, stdout_is_tty);
         let result = handle_res(res, cli.err());
         let code = result.process_exit_code();
-        let (stdout, stderr) = cli.to_strings();
-        (stdout, stderr, code)
+        (cli, code)
     }
 
     #[test]
@@ -901,17 +911,12 @@ mod tests {
             project, module, fast_str, extension
         ));
 
-        let (stdout, stderr, code) = elp(args);
+        let (stdout, stderr, tagged, code) = elp_with_tagged_output(args);
         match code {
-            0 => {
-                assert_normalised_file(exp_path, &stdout, &path, false, false);
-                assert!(stderr.is_empty());
-            }
-            _ => {
-                assert_normalised_file(exp_path, &stderr, &path, false, false);
-                assert!(stdout.is_empty());
-            }
+            0 => assert!(stderr.is_empty()),
+            _ => assert!(stdout.is_empty()),
         }
+        assert_normalised_file(exp_path, &tagged, &path, false, false);
     }
 
     // We can't run eqwalize_snapshot on all individual snapshots as running a new eqWAlizer
@@ -1010,7 +1015,7 @@ mod tests {
 
                     let exp_path =
                         resource_file(&format!("{}/{}/{}.pretty", project, app, module.as_str()));
-                    let (stdout, _) = cli.to_strings();
+                    let (_, _, tagged) = cli.to_strings_with_tagged();
 
                     let otp_version = Otp::version().expect("MISSING OTP VERSION");
                     let otp_version_regex =
@@ -1022,10 +1027,10 @@ mod tests {
                         otp_version_capture.map(|cap| cap.extract())
                     {
                         if otp_version_only == otp_version.as_bytes() {
-                            assert_normalised_file(exp_path, &stdout, &project_path, false, false);
+                            assert_normalised_file(exp_path, &tagged, &project_path, false, false);
                         }
                     } else {
-                        assert_normalised_file(exp_path, &stdout, &project_path, false, false);
+                        assert_normalised_file(exp_path, &tagged, &project_path, false, false);
                     }
                 }
             }
@@ -1827,28 +1832,6 @@ mod tests {
                 ],
                 "diagnostics",
                 resource_file("diagnostics/parse_elp_lint_recursive.stdout"),
-                Some(expect![[r#"
-                    ---------------------------------------------
-
-                    New filtered diagnostics
-                      lint_recursive: 2
-                    ---------------------------------------------
-
-                    New filtered diagnostics
-                      lint_recursive: 2
-                    ---------------------------------------------
-
-                    New filtered diagnostics
-                      lint_recursive: 2
-                    ---------------------------------------------
-
-                    New filtered diagnostics
-                      lint_recursive: 1
-                    ---------------------------------------------
-
-                    New filtered diagnostics
-                      lint_recursive: 1
-                "#]]),
             )
             .expect("bad test");
     }
@@ -1873,7 +1856,6 @@ mod tests {
                 ],
                 "linter",
                 resource_file("linter/parse_elp_lint_ignore_apps.stdout"),
-                None,
             )
             .expect("bad test");
     }
@@ -1900,7 +1882,6 @@ mod tests {
                 ],
                 "linter",
                 resource_file("linter/parse_elp_lint_ignore_apps_b.stdout"),
-                None,
             )
             .expect("bad test");
     }
@@ -1918,7 +1899,6 @@ mod tests {
                 args_vec!["lint", "--no-stream", "--experimental"],
                 "linter",
                 resource_file("linter/parse_elp_lint_config_output.stdout"),
-                None,
             )
             .expect("bad test");
     }
@@ -1935,12 +1915,15 @@ mod tests {
             .buck(buck)
             .expect_code(101)
             .check_lint_fix(
-                args_vec!["lint", "--no-stream", "--experimental", "--config-file", &config_file_path],
+                args_vec![
+                    "lint",
+                    "--no-stream",
+                    "--experimental",
+                    "--config-file",
+                    &config_file_path
+                ],
                 "linter",
                 resource_file("linter/parse_elp_lint_custom_config_invalid_output.stdout"),
-                Some(expect![[r#"
-                    unable to read "{project_path}/does_not_exist.toml": No such file or directory (os error 2)
-                "#]]),
             )
             .expect("bad test");
     }
@@ -1981,7 +1964,6 @@ mod tests {
                 ],
                 "linter",
                 resource_file("linter/parse_elp_lint_custom_config_output.stdout"),
-                None,
             )
             .expect("bad test");
     }
@@ -2059,7 +2041,6 @@ mod tests {
                 ],
                 "linter",
                 resource_file("linter/parse_elp_lint_adhoc_output.stdout"),
-                None,
             )
             .expect("bad test");
     }
@@ -2115,14 +2096,6 @@ mod tests {
                 args_vec!["lint", "--no-stream", "--experimental"],
                 "linter_bad_config",
                 resource_file("linter/parse_elp_lint_bad_config_output.stdout"),
-                Some(expect![[r#"
-                    failed to read "{project_path}/.elp_lint.toml":TOML parse error at line 2, column 9
-                      |
-                    2 | [linters
-                      |         ^
-                    unclosed table, expected `]`
-
-                "#]]),
             )
             .expect("bad test");
     }
@@ -2183,13 +2156,12 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_apply_fix_no_diagnostics_enabled(buck: bool) {
-        simple_snapshot_expect_stderror(
+        simple_snapshot_expect_error(
             args_vec!["lint", "--no-stream", "--apply-fix",],
             "linter",
             resource_file("linter/parse_elp_apply_fix_no_lint_output.stdout"),
             buck,
             None,
-            false,
         );
     }
 
@@ -2212,9 +2184,6 @@ mod tests {
                 ],
                 "linter",
                 resource_file("linter/parse_elp_lint_explicit_enable_output.stdout"),
-                Some(expect![[r#"
-                    Errors found
-                "#]]),
             )
             .expect("bad test");
     }
@@ -2241,9 +2210,6 @@ mod tests {
                 ],
                 "linter",
                 resource_file("linter/parse_elp_lint_json_output.stdout"),
-                Some(expect![[r#"
-                    Errors found
-                "#]]),
             )
             .expect("bad test");
     }
@@ -2272,9 +2238,6 @@ mod tests {
                 ],
                 "diagnostics",
                 resource_file("diagnostics/parse_elp_lint_fix.stdout"),
-                Some(expect![[r#"
-                    Errors found
-                "#]]),
             )
             .expect("Bad test");
     }
@@ -2305,9 +2268,6 @@ mod tests {
                 ],
                 "diagnostics",
                 resource_file("diagnostics/parse_elp_lint_fix_json.stdout"),
-                Some(expect![[r#"
-                    Errors found
-                "#]]),
             )
             .expect("Bad test");
     }
@@ -2346,9 +2306,6 @@ mod tests {
                 ],
                 project,
                 resource_file("diagnostics/parse_elp_lint_fix.stdout"),
-                Some(expect![[r#"
-                    Errors found
-                "#]]),
             )
             .expect("Bad test");
     }
@@ -2377,7 +2334,6 @@ mod tests {
                 ],
                 "linter",
                 resource_file("linter/parse_elp_lint_fix_ignore.stdout"),
-                None,
             )
             .expect("Bad test");
     }
@@ -2407,9 +2363,6 @@ mod tests {
                 ],
                 "linter",
                 resource_file("linter/parse_elp_lint_fixme_spelling.stdout"),
-                Some(expect![[r#"
-                    Errors found
-                "#]]),
             )
             .expect("Bad test");
     }
@@ -2417,7 +2370,7 @@ mod tests {
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn lint_errors_on_deprecated_l1500(buck: bool) {
-        simple_snapshot_expect_stderror(
+        simple_snapshot_expect_error(
             args_vec![
                 "lint",
                 "--no-stream",
@@ -2430,7 +2383,6 @@ mod tests {
             resource_file("diagnostics/parse_elp_l1500_deprecated.stdout"),
             buck,
             None,
-            false,
         )
     }
 
@@ -2467,7 +2419,6 @@ mod tests {
         SnapshotSettings::default()
             .buck(true)
             .expect_error()
-            .check_stderr()
             .normalise_urls()
             .first_line_only()
             .run(
@@ -2505,27 +2456,20 @@ mod tests {
         // Like lint_select_files, but one of the --file arguments is a
         // BUCK file that won't be in the VFS.  The linter should
         // gracefully skip it and still process the valid Erlang file.
-        SnapshotSettings::default()
-            .buck(buck)
-            .expect_error()
-            .expect_stderr(expect![[r#"
-                File not found in project, skipping: {project_path}/BUCK.ELP
-                Errors found
-            "#]])
-            .run(
-                args_vec![
-                    "lint",
-                    "--no-stream",
-                    "--config-file",
-                    project_path("linter/elp_lint_empty.toml"),
-                    "--file",
-                    project_path("linter/app_a/src/app_a.erl"),
-                    "--file",
-                    project_path("linter/BUCK.ELP")
-                ],
-                "linter",
-                resource_file("linter/select_files_skip_unsupported.stdout"),
-            );
+        SnapshotSettings::default().buck(buck).expect_error().run(
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--config-file",
+                project_path("linter/elp_lint_empty.toml"),
+                "--file",
+                project_path("linter/app_a/src/app_a.erl"),
+                "--file",
+                project_path("linter/BUCK.ELP")
+            ],
+            "linter",
+            resource_file("linter/select_files_skip_unsupported.stdout"),
+        );
     }
 
     #[test_case(false ; "rebar")]
@@ -2533,21 +2477,16 @@ mod tests {
     fn lint_select_files_only_unsupported(buck: bool) {
         // Only an unsupported file is selected. The linter should
         // gracefully skip it and NOT fall back to analysing all files.
-        SnapshotSettings::default()
-            .buck(buck)
-            .expect_stderr(expect![[r#"
-                File not found in project, skipping: {project_path}/BUCK.ELP
-            "#]])
-            .run(
-                args_vec![
-                    "lint",
-                    "--no-stream",
-                    "--file",
-                    project_path("linter/BUCK.ELP")
-                ],
-                "linter",
-                resource_file("linter/select_files_only_unsupported.stdout"),
-            );
+        SnapshotSettings::default().buck(buck).run(
+            args_vec![
+                "lint",
+                "--no-stream",
+                "--file",
+                project_path("linter/BUCK.ELP")
+            ],
+            "linter",
+            resource_file("linter/select_files_only_unsupported.stdout"),
+        );
     }
 
     #[test_case(false ; "rebar")]
@@ -2683,7 +2622,6 @@ mod tests {
                 ],
                 "lint_headers",
                 resource_file("lint_headers/apply_fix_to_dir_headers.stdout"),
-                None,
             )
             .expect("Bad test");
     }
@@ -2856,7 +2794,7 @@ mod tests {
     #[test]
     fn lint_ssr_from_bad_config() {
         let config_file = project_path("linter/elp_lint_ssr_adhoc_parse_fail.toml");
-        simple_snapshot_expect_stderror(
+        simple_snapshot_expect_error(
             args_vec![
                 "lint",
                 "--no-stream",
@@ -2870,7 +2808,6 @@ mod tests {
             resource_file("linter/ssr_ad_hoc_parse_fail.stdout"),
             false,
             None,
-            false,
         );
     }
 
@@ -2949,13 +2886,12 @@ mod tests {
 
     #[test]
     fn lint_ssr_as_cli_arg_malformed() {
-        simple_snapshot_expect_stderror(
+        simple_snapshot_expect_error(
             args_vec!["ssr", "ssr: {_@A, = _@B}.",],
             "linter",
             resource_file("linter/ssr_ad_hoc_cli_parse_error.stdout"),
             true,
             None,
-            false,
         )
     }
 
@@ -3320,7 +3256,9 @@ mod tests {
             .term_width(100)
             .try_get_matches_from(full_args)
             .unwrap_err();
-        err.to_string()
+        let mut cli = Fake::default();
+        write!(cli, "{err}").unwrap();
+        cli.to_strings_with_tagged().2
     }
 
     // The `daemon` subcommand is Unix-only (see `#[cfg(unix)]` on the `Daemon`
@@ -3444,9 +3382,12 @@ mod tests {
     #[test]
     fn explain_code() {
         let args = args_vec!["explain", "--code", "W0005"];
-        let (stdout, stderr, code) = elp(args);
+        let (_, stderr, tagged, code) = elp_with_tagged_output(args);
         let expected = resource_file("explain_code.stdout");
-        expected.assert_eq(stdout.strip_prefix(BASE_URL).unwrap());
+        let output = tagged
+            .strip_prefix(&format!("stdout | {BASE_URL}"))
+            .expect("explain output should begin with BASE_URL");
+        expected.assert_eq(&format!("stdout | {output}"));
         assert!(stderr.is_empty());
         assert_eq!(code, 0);
     }
@@ -3454,9 +3395,9 @@ mod tests {
     #[test]
     fn explain_unknown_code() {
         let args = args_vec!["explain", "--code", "does_not_exist"];
-        let (stdout, stderr, code) = elp(args);
+        let (_, stderr, tagged, code) = elp_with_tagged_output(args);
         let expected = resource_file("explain_unkwnown_code.stdout");
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&tagged);
         assert!(stderr.is_empty());
         assert_eq!(code, 0);
     }
@@ -3474,9 +3415,9 @@ mod tests {
     #[test]
     fn dump_config() {
         let args = args_vec!["config"];
-        let (stdout, stderr, code) = elp(args);
+        let (_, stderr, tagged, code) = elp_with_tagged_output(args);
         let expected = resource_file("config_stanza.stdout");
-        expected.assert_eq(&stdout);
+        expected.assert_eq(&tagged);
         assert!(stderr.is_empty());
         assert_eq!(code, 0);
     }
@@ -3627,8 +3568,6 @@ mod tests {
         json_config: Option<&'a str>,
         expected_code: i32,
         sorted: bool,
-        check_stderr: bool,
-        expected_stderr: Option<Expect>,
         normalise_urls: bool,
         first_line_only: bool,
     }
@@ -3688,7 +3627,6 @@ mod tests {
             args: Vec<OsString>,
             project: &str,
             expected: ExpectFile,
-            expected_stderr: Option<Expect>,
         ) -> Result<()> {
             let snapshot = &self.snapshot;
             let (mut args, path) = add_project(args, project, snapshot.file, snapshot.json_config);
@@ -3702,23 +3640,16 @@ mod tests {
             } else {
                 BackupFiles::save_files(project, &[])
             };
-            let (stdout, stderr, code) = elp(args);
+            let (stdout, stderr, tagged, code) = elp_with_tagged_output(args);
             assert_eq!(
                 code, snapshot.expected_code,
                 "Expected exit code {}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}",
                 snapshot.expected_code
             );
-            if let Some(expected_stderr) = expected_stderr {
-                let project_path = path.to_str().expect("project_path");
-                let normalised_stderr = stderr.replace(project_path, "{project_path}");
-                expected_stderr.assert_eq(&normalised_stderr);
-            } else {
-                expect![[""]].assert_eq(&stderr);
-            }
             let output = if snapshot.sorted {
-                sort_lines(&stdout)
+                sort_lines(&tagged)
             } else {
-                stdout
+                tagged
             };
             assert_normalised_file(
                 expected,
@@ -3770,20 +3701,6 @@ mod tests {
             self
         }
 
-        fn check_stderr(mut self) -> Self {
-            self.check_stderr = true;
-            self
-        }
-
-        /// Snapshot stderr *in addition to* stdout, unlike [`check_stderr`],
-        /// which snapshots it instead.
-        ///
-        /// [`check_stderr`]: SnapshotSettings::check_stderr
-        fn expect_stderr(mut self, expected: Expect) -> Self {
-            self.expected_stderr = Some(expected);
-            self
-        }
-
         fn normalise_urls(mut self) -> Self {
             self.normalise_urls = true;
             self
@@ -3800,23 +3717,17 @@ mod tests {
             if !self.buck {
                 args.push("--rebar".into());
             }
-            let (stdout, stderr, code) = elp(args);
+            let (stdout, stderr, tagged, code) = elp_with_tagged_output(args);
             assert_eq!(
                 code, self.expected_code,
                 "Expected exit code {}, got: {code}\nstdout:\n{stdout}\nstderr:\n{stderr}",
                 self.expected_code
             );
 
-            if let Some(expected_stderr) = &self.expected_stderr {
-                let project_path = path.to_str().expect("project_path");
-                expected_stderr.assert_eq(&stderr.replace(project_path, "{project_path}"));
-            }
-
-            let output = if self.check_stderr { &stderr } else { &stdout };
             let output = if self.sorted {
-                sort_lines(output)
+                sort_lines(&tagged)
             } else {
-                output.to_string()
+                tagged
             };
 
             assert_normalised_file(
@@ -3826,13 +3737,6 @@ mod tests {
                 self.normalise_urls,
                 self.first_line_only,
             );
-
-            if self.expected_code == 0 && !self.check_stderr && self.expected_stderr.is_none() {
-                assert!(
-                    stderr.is_empty(),
-                    "expected stderr to be empty, got:\n{stderr}"
-                );
-            }
         }
 
         #[track_caller]
@@ -3868,27 +3772,6 @@ mod tests {
         }
     }
 
-    fn simple_snapshot_expect_stderror(
-        args: Vec<OsString>,
-        project: &str,
-        expected: ExpectFile,
-        buck: bool,
-        file: Option<&str>,
-        normalise_urls: bool,
-    ) {
-        let mut settings = SnapshotSettings::default()
-            .buck(buck)
-            .expect_error()
-            .check_stderr();
-        if let Some(f) = file {
-            settings = settings.file(f);
-        }
-        if normalise_urls {
-            settings = settings.normalise_urls();
-        }
-        settings.run(args, project, expected);
-    }
-
     #[track_caller]
     fn simple_snapshot_output_contains(
         args: Vec<OsString>,
@@ -3922,9 +3805,8 @@ mod tests {
             normalised = replace_url(&normalised);
         }
         if first_line_only {
-            normalised = normalised.lines().next().unwrap_or("").to_string();
-            let expected_first_line = expected.data().lines().next().unwrap_or("").to_string();
-            assert_eq!(expected_first_line, normalised);
+            let first_line = normalised.lines().next().unwrap_or("");
+            expected.assert_eq(&format!("{first_line}\n"));
         } else {
             expected.assert_eq(&normalised);
         }

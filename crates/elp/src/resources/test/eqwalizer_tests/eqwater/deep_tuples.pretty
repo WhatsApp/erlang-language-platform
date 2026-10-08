@@ -1,33 +1,33 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/deep_tuples.erl:14:3
-   │
-14 │   Tag1.
-   │   ^^^^ Tag1.
-Expression has type:   'ok'
-Context expected type: none()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/deep_tuples.erl:20:3
-   │
-20 │   Tag2.
-   │   ^^^^ Tag2.
-Expression has type:   'ok'
-Context expected type: none()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/deep_tuples.erl:26:3
-   │
-26 │   Tag1.
-   │   ^^^^ Tag1.
-Expression has type:   'ok'
-Context expected type: none()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/deep_tuples.erl:32:3
-   │
-32 │   Tag2.
-   │   ^^^^ Tag2.
-Expression has type:   'ok'
-Context expected type: none()
-
-4 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/deep_tuples.erl:14:3
+stdout |    │
+stdout | 14 │   Tag1.
+stdout |    │   ^^^^ Tag1.
+stdout | Expression has type:   'ok'
+stdout | Context expected type: none()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/deep_tuples.erl:20:3
+stdout |    │
+stdout | 20 │   Tag2.
+stdout |    │   ^^^^ Tag2.
+stdout | Expression has type:   'ok'
+stdout | Context expected type: none()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/deep_tuples.erl:26:3
+stdout |    │
+stdout | 26 │   Tag1.
+stdout |    │   ^^^^ Tag1.
+stdout | Expression has type:   'ok'
+stdout | Context expected type: none()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/deep_tuples.erl:32:3
+stdout |    │
+stdout | 32 │   Tag2.
+stdout |    │   ^^^^ Tag2.
+stdout | Expression has type:   'ok'
+stdout | Context expected type: none()
+stdout |
+stdout | 4 ERRORS

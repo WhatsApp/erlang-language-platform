@@ -1,1 +1,1 @@
-We cannot apply fixes if all diagnostics enabled. Perhaps provide --diagnostic-filter
+stderr | We cannot apply fixes if all diagnostics enabled. Perhaps provide --diagnostic-filter

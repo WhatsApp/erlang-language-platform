@@ -1,83 +1,83 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_lists.erl:31:51
-   │
-31 │ occ_list_04_neg(L = [H | _]) when is_binary(H) -> L.
-   │                                                   ^ L.
-Expression has type:   [binary() / [atom() | binary()]]
-Context expected type: [binary()]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_lists.erl:48:23
-   │
-48 │ occ_list_07_neg(L) -> L.
-   │                       ^
-   │                       │
-   │                       L.
-Expression has type:   [] | [term() / []]
-Context expected type: []
-   │                       
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: []
-  However the following candidate: [term() / []]
-  Differs from the expected type:  []
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_lists.erl:54:23
-   │
-54 │ occ_list_08_neg(A) -> A.
-   │                       ^
-   │                       │
-   │                       A.
-Expression has type:   [] | atom()
-Context expected type: atom()
-   │                       
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: atom()
-  However the following candidate: []
-  Differs from the expected type:  atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_lists.erl:76:23
-   │
-76 │ occ_list_11_neg(L) -> L.
-   │                       ^
-   │                       │
-   │                       L.
-Expression has type:   [atom() / []] | [binary() / []] | [binary()]
-Context expected type: [binary()]
-   │                       
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: [binary()]
-  However the following candidate: [atom() / []]
-  Differs from the expected type:  [binary()]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ eqwater/src/eqwater_lists.erl:97:23
-   │
-97 │ occ_list_14_neg(L) -> L.
-   │                       ^ L.
-Expression has type:   []
-Context expected type: binary()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ eqwater/src/eqwater_lists.erl:130:23
-    │
-130 │ occ_list_20_neg(V) -> [ok | [V]].
-    │                       ^^^^^^^^^^
-    │                       │
-    │                       ['ok', V].
-Expression has type:   [atom() | binary()]
-Context expected type: [atom()] | [binary()]
-    │                       
-
-Because in the expression's type:
-  [
-    Here the type is a union type with some valid candidates: atom()
-    However the following candidate: binary()
-    Differs from the expected type:  atom()
-  ]
-
-6 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/eqwater_lists.erl:31:51
+stdout |    │
+stdout | 31 │ occ_list_04_neg(L = [H | _]) when is_binary(H) -> L.
+stdout |    │                                                   ^ L.
+stdout | Expression has type:   [binary() / [atom() | binary()]]
+stdout | Context expected type: [binary()]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/eqwater_lists.erl:48:23
+stdout |    │
+stdout | 48 │ occ_list_07_neg(L) -> L.
+stdout |    │                       ^
+stdout |    │                       │
+stdout |    │                       L.
+stdout | Expression has type:   [] | [term() / []]
+stdout | Context expected type: []
+stdout |    │                       
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: []
+stdout |   However the following candidate: [term() / []]
+stdout |   Differs from the expected type:  []
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/eqwater_lists.erl:54:23
+stdout |    │
+stdout | 54 │ occ_list_08_neg(A) -> A.
+stdout |    │                       ^
+stdout |    │                       │
+stdout |    │                       A.
+stdout | Expression has type:   [] | atom()
+stdout | Context expected type: atom()
+stdout |    │                       
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: atom()
+stdout |   However the following candidate: []
+stdout |   Differs from the expected type:  atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/eqwater_lists.erl:76:23
+stdout |    │
+stdout | 76 │ occ_list_11_neg(L) -> L.
+stdout |    │                       ^
+stdout |    │                       │
+stdout |    │                       L.
+stdout | Expression has type:   [atom() / []] | [binary() / []] | [binary()]
+stdout | Context expected type: [binary()]
+stdout |    │                       
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: [binary()]
+stdout |   However the following candidate: [atom() / []]
+stdout |   Differs from the expected type:  [binary()]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ eqwater/src/eqwater_lists.erl:97:23
+stdout |    │
+stdout | 97 │ occ_list_14_neg(L) -> L.
+stdout |    │                       ^ L.
+stdout | Expression has type:   []
+stdout | Context expected type: binary()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ eqwater/src/eqwater_lists.erl:130:23
+stdout |     │
+stdout | 130 │ occ_list_20_neg(V) -> [ok | [V]].
+stdout |     │                       ^^^^^^^^^^
+stdout |     │                       │
+stdout |     │                       ['ok', V].
+stdout | Expression has type:   [atom() | binary()]
+stdout | Context expected type: [atom()] | [binary()]
+stdout |     │                       
+stdout |
+stdout | Because in the expression's type:
+stdout |   [
+stdout |     Here the type is a union type with some valid candidates: atom()
+stdout |     However the following candidate: binary()
+stdout |     Differs from the expected type:  atom()
+stdout |   ]
+stdout |
+stdout | 6 ERRORS

@@ -1,203 +1,203 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/generics_with_unions.erl:17:18
-   │
-17 │ test02_neg(X) -> {X, X}.
-   │                  ^^^^^^
-   │                  │
-   │                  {X, X}.
-Expression has type:   {T | U, T | U}
-Context expected type: {T, U}
-   │                  
-
-Because in the expression's type:
-  { 
-    Here the type is a union type with some valid candidates: T
-    However the following candidate: U
-    Differs from the expected type:  T
-  , T | U}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/generics_with_unions.erl:70:19
-   │
-70 │ test_ret_neg() -> union(a, b).
-   │                   ^^^^^^^^^^^ union('a', 'b').
-Expression has type:   'a' | 'b'
-Context expected type: 'ok'
-
-error: unbound_type_var (See https://fb.me/eqwalizer_errors#unbound_type_var)
-   ┌─ check/src/generics_with_unions.erl:72:1
-   │
-72 │ -type ty_var_from_nowhere() :: _T.
-   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ _T: Type variable is unbound.
-
-error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
-   ┌─ check/src/generics_with_unions.erl:74:1
-   │  
-74 │ ╭ -spec test_uses_ty_var_from_nowhere
-75 │ │     (pid() | ty_var_from_nowhere())
-76 │ │     -> nok.
-   │ ╰──────────^ test_uses_ty_var_from_nowhere/1 (transitively) references type with invalid definition: ty_var_from_nowhere/0
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/generics_with_unions.erl:132:5
-    │
-132 │     set_list([{a, 5}], [{a, 5}]).
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    │     │
-    │     set_list([{'a', 5}], [{'a', 5}]).
-Expression has type:   props('a', integer())
-Context expected type: 'wrong_ret'
-    │     
-
-Because in the expression's type:
-  Here the type is:     [prop('a', integer())]
-  Context expects type: 'wrong_ret'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/generics_with_unions.erl:217:19
-    │
-217 │ overlap_1([T]) -> T;
-    │                   ^ T.
-Expression has type:   term()
-Context expected type: T
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/generics_with_unions.erl:218:17
-    │
-218 │ overlap_1(T) -> T.
-    │                 ^
-    │                 │
-    │                 T.
-Expression has type:   T | T & [term(), ...] | [T, ...] | []
-Context expected type: T
-    │                 
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: T
-  However the following candidate: [T, ...]
-  Differs from the expected type:  T
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/generics_with_unions.erl:221:21
-    │
-221 │ overlap_2_neg(T) -> T;
-    │                     ^
-    │                     │
-    │                     T.
-Expression has type:   T | [T]
-Context expected type: T
-    │                     
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: T
-  However the following candidate: [T]
-  Differs from the expected type:  T
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/generics_with_unions.erl:233:18
-    │
-233 │ trick(_, {B}) -> B.
-    │                  ^ B.
-Expression has type:   term()
-Context expected type: B
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/generics_with_unions.erl:256:5
-    │
-256 │     Default;
-    │     ^^^^^^^ Default.
-Expression has type:   term()
-Context expected type: Value
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/generics_with_unions.erl:328:29
-    │
-328 │ overlapping_union_neg(X) -> X.
-    │                             ^
-    │                             │
-    │                             X.
-Expression has type:   [K] | [[K]]
-Context expected type: [K]
-    │                             
-
-Because in the expression's type:
-  The type is a union type with some valid candidates: [K]
-  However, the following candidate doesn't match:
-  [
-    Here the type is:     [K]
-    Context expects type: K
-  ]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/generics_with_unions.erl:379:17
-    │
-379 │     Q2 = where1({i, atom}, Q),
-    │                 ^^^^^^^^^
-    │                 │
-    │                 {'i', 'atom'}.
-Expression has type:   {'i', 'atom'}
-Context expected type: {K, V}
-    │                 
-
-Because in the expression's type:
-  { 
-    Here the type is:     'i'
-    Context expects type: K
-  , 'atom'}
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/generics_with_unions.erl:379:28
-    │
-379 │     Q2 = where1({i, atom}, Q),
-    │                            ^
-    │                            │
-    │                            Q.
-Expression has type:   query()
-Context expected type: fun(({K, V}) -> 'ok')
-    │                            
-
-Because in the expression's type:
-  fun((
-    { 
-      Here the type is:     K
-      Context expects type: 'a'
-    , V}
-  ) -> 'ok')
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/generics_with_unions.erl:392:17
-    │
-392 │     Q2 = where2(Q, {a, 123}),
-    │                 ^
-    │                 │
-    │                 Q.
-Expression has type:   query()
-Context expected type: fun(({K, V}) -> 'ok')
-    │                 
-
-Because in the expression's type:
-  fun((
-    { 
-      Here the type is:     K
-      Context expects type: 'a'
-    , V}
-  ) -> 'ok')
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/generics_with_unions.erl:392:20
-    │
-392 │     Q2 = where2(Q, {a, 123}),
-    │                    ^^^^^^^^
-    │                    │
-    │                    {'a', 123}.
-Expression has type:   {'a', integer()}
-Context expected type: {K, V}
-    │                    
-
-Because in the expression's type:
-  { 
-    Here the type is:     'a'
-    Context expects type: K
-  , integer()}
-
-15 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/generics_with_unions.erl:17:18
+stdout |    │
+stdout | 17 │ test02_neg(X) -> {X, X}.
+stdout |    │                  ^^^^^^
+stdout |    │                  │
+stdout |    │                  {X, X}.
+stdout | Expression has type:   {T | U, T | U}
+stdout | Context expected type: {T, U}
+stdout |    │                  
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 
+stdout |     Here the type is a union type with some valid candidates: T
+stdout |     However the following candidate: U
+stdout |     Differs from the expected type:  T
+stdout |   , T | U}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/generics_with_unions.erl:70:19
+stdout |    │
+stdout | 70 │ test_ret_neg() -> union(a, b).
+stdout |    │                   ^^^^^^^^^^^ union('a', 'b').
+stdout | Expression has type:   'a' | 'b'
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: unbound_type_var (See https://fb.me/eqwalizer_errors#unbound_type_var)
+stdout |    ┌─ check/src/generics_with_unions.erl:72:1
+stdout |    │
+stdout | 72 │ -type ty_var_from_nowhere() :: _T.
+stdout |    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ _T: Type variable is unbound.
+stdout |
+stdout | error: reference_to_invalid_type (See https://fb.me/eqwalizer_errors#reference_to_invalid_type)
+stdout |    ┌─ check/src/generics_with_unions.erl:74:1
+stdout |    │  
+stdout | 74 │ ╭ -spec test_uses_ty_var_from_nowhere
+stdout | 75 │ │     (pid() | ty_var_from_nowhere())
+stdout | 76 │ │     -> nok.
+stdout |    │ ╰──────────^ test_uses_ty_var_from_nowhere/1 (transitively) references type with invalid definition: ty_var_from_nowhere/0
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/generics_with_unions.erl:132:5
+stdout |     │
+stdout | 132 │     set_list([{a, 5}], [{a, 5}]).
+stdout |     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+stdout |     │     │
+stdout |     │     set_list([{'a', 5}], [{'a', 5}]).
+stdout | Expression has type:   props('a', integer())
+stdout | Context expected type: 'wrong_ret'
+stdout |     │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is:     [prop('a', integer())]
+stdout |   Context expects type: 'wrong_ret'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/generics_with_unions.erl:217:19
+stdout |     │
+stdout | 217 │ overlap_1([T]) -> T;
+stdout |     │                   ^ T.
+stdout | Expression has type:   term()
+stdout | Context expected type: T
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/generics_with_unions.erl:218:17
+stdout |     │
+stdout | 218 │ overlap_1(T) -> T.
+stdout |     │                 ^
+stdout |     │                 │
+stdout |     │                 T.
+stdout | Expression has type:   T | T & [term(), ...] | [T, ...] | []
+stdout | Context expected type: T
+stdout |     │                 
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: T
+stdout |   However the following candidate: [T, ...]
+stdout |   Differs from the expected type:  T
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/generics_with_unions.erl:221:21
+stdout |     │
+stdout | 221 │ overlap_2_neg(T) -> T;
+stdout |     │                     ^
+stdout |     │                     │
+stdout |     │                     T.
+stdout | Expression has type:   T | [T]
+stdout | Context expected type: T
+stdout |     │                     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: T
+stdout |   However the following candidate: [T]
+stdout |   Differs from the expected type:  T
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/generics_with_unions.erl:233:18
+stdout |     │
+stdout | 233 │ trick(_, {B}) -> B.
+stdout |     │                  ^ B.
+stdout | Expression has type:   term()
+stdout | Context expected type: B
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/generics_with_unions.erl:256:5
+stdout |     │
+stdout | 256 │     Default;
+stdout |     │     ^^^^^^^ Default.
+stdout | Expression has type:   term()
+stdout | Context expected type: Value
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/generics_with_unions.erl:328:29
+stdout |     │
+stdout | 328 │ overlapping_union_neg(X) -> X.
+stdout |     │                             ^
+stdout |     │                             │
+stdout |     │                             X.
+stdout | Expression has type:   [K] | [[K]]
+stdout | Context expected type: [K]
+stdout |     │                             
+stdout |
+stdout | Because in the expression's type:
+stdout |   The type is a union type with some valid candidates: [K]
+stdout |   However, the following candidate doesn't match:
+stdout |   [
+stdout |     Here the type is:     [K]
+stdout |     Context expects type: K
+stdout |   ]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/generics_with_unions.erl:379:17
+stdout |     │
+stdout | 379 │     Q2 = where1({i, atom}, Q),
+stdout |     │                 ^^^^^^^^^
+stdout |     │                 │
+stdout |     │                 {'i', 'atom'}.
+stdout | Expression has type:   {'i', 'atom'}
+stdout | Context expected type: {K, V}
+stdout |     │                 
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 
+stdout |     Here the type is:     'i'
+stdout |     Context expects type: K
+stdout |   , 'atom'}
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/generics_with_unions.erl:379:28
+stdout |     │
+stdout | 379 │     Q2 = where1({i, atom}, Q),
+stdout |     │                            ^
+stdout |     │                            │
+stdout |     │                            Q.
+stdout | Expression has type:   query()
+stdout | Context expected type: fun(({K, V}) -> 'ok')
+stdout |     │                            
+stdout |
+stdout | Because in the expression's type:
+stdout |   fun((
+stdout |     { 
+stdout |       Here the type is:     K
+stdout |       Context expects type: 'a'
+stdout |     , V}
+stdout |   ) -> 'ok')
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/generics_with_unions.erl:392:17
+stdout |     │
+stdout | 392 │     Q2 = where2(Q, {a, 123}),
+stdout |     │                 ^
+stdout |     │                 │
+stdout |     │                 Q.
+stdout | Expression has type:   query()
+stdout | Context expected type: fun(({K, V}) -> 'ok')
+stdout |     │                 
+stdout |
+stdout | Because in the expression's type:
+stdout |   fun((
+stdout |     { 
+stdout |       Here the type is:     K
+stdout |       Context expects type: 'a'
+stdout |     , V}
+stdout |   ) -> 'ok')
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/generics_with_unions.erl:392:20
+stdout |     │
+stdout | 392 │     Q2 = where2(Q, {a, 123}),
+stdout |     │                    ^^^^^^^^
+stdout |     │                    │
+stdout |     │                    {'a', 123}.
+stdout | Expression has type:   {'a', integer()}
+stdout | Context expected type: {K, V}
+stdout |     │                    
+stdout |
+stdout | Because in the expression's type:
+stdout |   { 
+stdout |     Here the type is:     'a'
+stdout |     Context expects type: K
+stdout |   , integer()}
+stdout |
+stdout | 15 ERRORS

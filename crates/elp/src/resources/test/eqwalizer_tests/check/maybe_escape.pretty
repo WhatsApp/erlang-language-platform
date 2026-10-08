@@ -1,34 +1,34 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/maybe_escape.erl:17:5
-   │    
-17 │ ╭ ╭     maybe
-18 │ │ │         true ?= is_atom(X),
-19 │ │ │         1
-20 │ │ │     end.
-   │ ╰─│───────^ maybe ...
-Expression has type:   'false' | integer()
-Context expected type: integer()
-   │   ╰───────' 
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: integer()
-  However the following candidate: 'false'
-  Differs from the expected type:  integer()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/maybe_escape.erl:28:5
-   │
-28 │     R.
-   │     ^
-   │     │
-   │     R.
-Expression has type:   'false' | integer()
-Context expected type: integer()
-   │     
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: integer()
-  However the following candidate: 'false'
-  Differs from the expected type:  integer()
-
-2 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/maybe_escape.erl:17:5
+stdout |    │    
+stdout | 17 │ ╭ ╭     maybe
+stdout | 18 │ │ │         true ?= is_atom(X),
+stdout | 19 │ │ │         1
+stdout | 20 │ │ │     end.
+stdout |    │ ╰─│───────^ maybe ...
+stdout | Expression has type:   'false' | integer()
+stdout | Context expected type: integer()
+stdout |    │   ╰───────' 
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: integer()
+stdout |   However the following candidate: 'false'
+stdout |   Differs from the expected type:  integer()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/maybe_escape.erl:28:5
+stdout |    │
+stdout | 28 │     R.
+stdout |    │     ^
+stdout |    │     │
+stdout |    │     R.
+stdout | Expression has type:   'false' | integer()
+stdout | Context expected type: integer()
+stdout |    │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: integer()
+stdout |   However the following candidate: 'false'
+stdout |   Differs from the expected type:  integer()
+stdout |
+stdout | 2 ERRORS

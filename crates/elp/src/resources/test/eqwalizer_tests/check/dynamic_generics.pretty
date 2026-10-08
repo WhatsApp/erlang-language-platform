@@ -1,133 +1,133 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_generics.erl:33:3
-   │
-33 │   lists:map(fun inc/1, Ns).
-   │   ^^^^^^^^^^^^^^^^^^^^^^^^ lists:map(inc/1, Ns).
-Expression has type:   [number()]
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_generics.erl:43:3
-   │
-43 │   lists:map(fun dyn_fun/1, Ns).
-   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lists:map(dyn_fun/1, Ns).
-Expression has type:   [dynamic()]
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_generics.erl:53:3
-   │
-53 │   lists:foldl(fun add/2, 0, Ns).
-   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lists:foldl(add/2, 0, Ns).
-Expression has type:   number()
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_generics.erl:65:3
-   │
-65 │   lists:foldl(fun add/2, Acc, Ns).
-   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   │   │
-   │   lists:foldl(add/2, Acc, Ns).
-Expression has type:   dynamic() | number()
-Context expected type: none()
-   │   
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: dynamic()
-  However the following candidate: integer()
-  Differs from the expected type:  none()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_generics.erl:72:3
-   │
-72 │   {Res}.
-   │   ^^^^^ {Res}.
-Expression has type:   {dynamic() | number()}
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_generics.erl:78:3
-   │
-78 │   lists:foldl(fun dyn_fun/2, Acc, Ns).
-   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   │   │
-   │   lists:foldl(dyn_fun/2, Acc, Ns).
-Expression has type:   dynamic() | string()
-Context expected type: 'ok'
-   │   
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: dynamic()
-  However the following candidate: string()
-  Differs from the expected type:  'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_generics.erl:87:3
-   │
-87 │   fapply(fun inc/1, dyn_val()).
-   │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ fapply(inc/1, dyn_val()).
-Expression has type:   number()
-Context expected type: 'ok'
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_generics.erl:92:3
-   │
-92 │   {Res}.
-   │   ^^^^^ {Res}.
-Expression has type:   {dynamic()}
-Context expected type: X
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/dynamic_generics.erl:108:3
-    │    
-108 │ ╭ ╭   lists:map(
-109 │ │ │     fun
-110 │ │ │       Fib(N) when N < 2
-111 │ │ │         -> 1;
-    · │ │
-117 │ │ │     [1, 2, 3]
-118 │ │ │   ).
-    │ ╰─│───^ lists:map(fun, [1, 2, 3]).
-Expression has type:   ['three' | dynamic() | integer()]
-Context expected type: [integer()]
-    │   ╰───' 
-
-Because in the expression's type:
-  [
-    Here the type is a union type with some valid candidates: dynamic() | integer()
-    However the following candidate: 'three'
-    Differs from the expected type:  integer()
-  ]
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/dynamic_generics.erl:115:9
-    │
-115 │         Fib(N - 2) + Fib(N - 1)
-    │         ^^^^^^^^^^ Fib(_ - _).
-Expression has type:   'three' | dynamic() | integer()
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/dynamic_generics.erl:115:22
-    │
-115 │         Fib(N - 2) + Fib(N - 1)
-    │                      ^^^^^^^^^^ Fib(_ - _).
-Expression has type:   'three' | dynamic() | integer()
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/dynamic_generics.erl:127:13
-    │
-127 │         Fib(undefined) + Fib(N - 1)
-    │             ^^^^^^^^^ 'undefined'.
-Expression has type:   'undefined'
-Context expected type: integer()
-
-error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
-    ┌─ check/src/dynamic_generics.erl:171:47
-    │
-171 │ unify_dyn_atom(D, A) -> eqwalizer:reveal_type(either(D, A)).
-    │                                               ^^^^^^^^^^^^ 'undef' | dynamic()
-
-13 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_generics.erl:33:3
+stdout |    │
+stdout | 33 │   lists:map(fun inc/1, Ns).
+stdout |    │   ^^^^^^^^^^^^^^^^^^^^^^^^ lists:map(inc/1, Ns).
+stdout | Expression has type:   [number()]
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_generics.erl:43:3
+stdout |    │
+stdout | 43 │   lists:map(fun dyn_fun/1, Ns).
+stdout |    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lists:map(dyn_fun/1, Ns).
+stdout | Expression has type:   [dynamic()]
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_generics.erl:53:3
+stdout |    │
+stdout | 53 │   lists:foldl(fun add/2, 0, Ns).
+stdout |    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lists:foldl(add/2, 0, Ns).
+stdout | Expression has type:   number()
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_generics.erl:65:3
+stdout |    │
+stdout | 65 │   lists:foldl(fun add/2, Acc, Ns).
+stdout |    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+stdout |    │   │
+stdout |    │   lists:foldl(add/2, Acc, Ns).
+stdout | Expression has type:   dynamic() | number()
+stdout | Context expected type: none()
+stdout |    │   
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: dynamic()
+stdout |   However the following candidate: integer()
+stdout |   Differs from the expected type:  none()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_generics.erl:72:3
+stdout |    │
+stdout | 72 │   {Res}.
+stdout |    │   ^^^^^ {Res}.
+stdout | Expression has type:   {dynamic() | number()}
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_generics.erl:78:3
+stdout |    │
+stdout | 78 │   lists:foldl(fun dyn_fun/2, Acc, Ns).
+stdout |    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+stdout |    │   │
+stdout |    │   lists:foldl(dyn_fun/2, Acc, Ns).
+stdout | Expression has type:   dynamic() | string()
+stdout | Context expected type: 'ok'
+stdout |    │   
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: dynamic()
+stdout |   However the following candidate: string()
+stdout |   Differs from the expected type:  'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_generics.erl:87:3
+stdout |    │
+stdout | 87 │   fapply(fun inc/1, dyn_val()).
+stdout |    │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ fapply(inc/1, dyn_val()).
+stdout | Expression has type:   number()
+stdout | Context expected type: 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_generics.erl:92:3
+stdout |    │
+stdout | 92 │   {Res}.
+stdout |    │   ^^^^^ {Res}.
+stdout | Expression has type:   {dynamic()}
+stdout | Context expected type: X
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/dynamic_generics.erl:108:3
+stdout |     │    
+stdout | 108 │ ╭ ╭   lists:map(
+stdout | 109 │ │ │     fun
+stdout | 110 │ │ │       Fib(N) when N < 2
+stdout | 111 │ │ │         -> 1;
+stdout |     · │ │
+stdout | 117 │ │ │     [1, 2, 3]
+stdout | 118 │ │ │   ).
+stdout |     │ ╰─│───^ lists:map(fun, [1, 2, 3]).
+stdout | Expression has type:   ['three' | dynamic() | integer()]
+stdout | Context expected type: [integer()]
+stdout |     │   ╰───' 
+stdout |
+stdout | Because in the expression's type:
+stdout |   [
+stdout |     Here the type is a union type with some valid candidates: dynamic() | integer()
+stdout |     However the following candidate: 'three'
+stdout |     Differs from the expected type:  integer()
+stdout |   ]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/dynamic_generics.erl:115:9
+stdout |     │
+stdout | 115 │         Fib(N - 2) + Fib(N - 1)
+stdout |     │         ^^^^^^^^^^ Fib(_ - _).
+stdout | Expression has type:   'three' | dynamic() | integer()
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/dynamic_generics.erl:115:22
+stdout |     │
+stdout | 115 │         Fib(N - 2) + Fib(N - 1)
+stdout |     │                      ^^^^^^^^^^ Fib(_ - _).
+stdout | Expression has type:   'three' | dynamic() | integer()
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/dynamic_generics.erl:127:13
+stdout |     │
+stdout | 127 │         Fib(undefined) + Fib(N - 1)
+stdout |     │             ^^^^^^^^^ 'undefined'.
+stdout | Expression has type:   'undefined'
+stdout | Context expected type: integer()
+stdout |
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |     ┌─ check/src/dynamic_generics.erl:171:47
+stdout |     │
+stdout | 171 │ unify_dyn_atom(D, A) -> eqwalizer:reveal_type(either(D, A)).
+stdout |     │                                               ^^^^^^^^^^^^ 'undef' | dynamic()
+stdout |
+stdout | 13 ERRORS

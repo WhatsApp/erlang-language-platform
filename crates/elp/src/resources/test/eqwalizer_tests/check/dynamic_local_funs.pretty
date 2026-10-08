@@ -1,41 +1,41 @@
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_local_funs.erl:30:3
-   │
-30 │   lists:foldl(F, 0, L).
-   │   ^^^^^^^^^^^^^^^^^^^^
-   │   │
-   │   lists:foldl(F, 0, L).
-Expression has type:   dynamic() | integer()
-Context expected type: atom()
-   │   
-
-Because in the expression's type:
-  Here the type is a union type with some valid candidates: dynamic()
-  However the following candidate: integer()
-  Differs from the expected type:  atom()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_local_funs.erl:36:15
-   │
-36 │     N1 + N2 + binary_to_atom(Acc)
-   │               ^^^^^^^^^^^^^^^^^^^ erlang:binary_to_atom(Acc).
-Expression has type:   atom()
-Context expected type: number()
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-   ┌─ check/src/dynamic_local_funs.erl:48:3
-   │
-48 │   X.
-   │   ^ X.
-Expression has type:   fun((dynamic(), dynamic()) -> dynamic())
-Context expected type: fun(('a') -> 'b')
-
-error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
-    ┌─ check/src/dynamic_local_funs.erl:111:3
-    │
-111 │   ok.
-    │   ^^ 'ok'.
-Expression has type:   'ok'
-Context expected type: pid()
-
-4 ERRORS
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_local_funs.erl:30:3
+stdout |    │
+stdout | 30 │   lists:foldl(F, 0, L).
+stdout |    │   ^^^^^^^^^^^^^^^^^^^^
+stdout |    │   │
+stdout |    │   lists:foldl(F, 0, L).
+stdout | Expression has type:   dynamic() | integer()
+stdout | Context expected type: atom()
+stdout |    │   
+stdout |
+stdout | Because in the expression's type:
+stdout |   Here the type is a union type with some valid candidates: dynamic()
+stdout |   However the following candidate: integer()
+stdout |   Differs from the expected type:  atom()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_local_funs.erl:36:15
+stdout |    │
+stdout | 36 │     N1 + N2 + binary_to_atom(Acc)
+stdout |    │               ^^^^^^^^^^^^^^^^^^^ erlang:binary_to_atom(Acc).
+stdout | Expression has type:   atom()
+stdout | Context expected type: number()
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/dynamic_local_funs.erl:48:3
+stdout |    │
+stdout | 48 │   X.
+stdout |    │   ^ X.
+stdout | Expression has type:   fun((dynamic(), dynamic()) -> dynamic())
+stdout | Context expected type: fun(('a') -> 'b')
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |     ┌─ check/src/dynamic_local_funs.erl:111:3
+stdout |     │
+stdout | 111 │   ok.
+stdout |     │   ^^ 'ok'.
+stdout | Expression has type:   'ok'
+stdout | Context expected type: pid()
+stdout |
+stdout | 4 ERRORS
