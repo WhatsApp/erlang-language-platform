@@ -11,6 +11,7 @@
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Instant;
 use std::time::SystemTime;
 
 use anyhow::Context;
@@ -55,8 +56,10 @@ use serde::Serialize;
 use crate::args::Format;
 use crate::reporting;
 use crate::reporting::ParseDiagnostic;
+use crate::reporting::Report;
 use crate::reporting::add_stat;
-use crate::reporting::dump_stats;
+use crate::reporting::dump_stats_report;
+use crate::reporting::format_eqwalize_stats;
 
 #[derive(Clone, Debug, clap::Args)]
 pub struct Eqwalize {
@@ -182,7 +185,6 @@ pub struct EqwalizeApp {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct EqwalizeRequest {
-    pub(crate) format: Option<Format>,
     bail_on_error: bool,
     selection: EqwalizeSelection,
 }
@@ -211,7 +213,6 @@ enum EqwalizeSelection {
 impl From<&Eqwalize> for EqwalizeRequest {
     fn from(args: &Eqwalize) -> Self {
         Self {
-            format: args.format,
             bail_on_error: args.bail_on_error,
             selection: EqwalizeSelection::Modules {
                 modules: args.modules.clone(),
@@ -223,7 +224,6 @@ impl From<&Eqwalize> for EqwalizeRequest {
 impl From<&EqwalizeAll> for EqwalizeRequest {
     fn from(args: &EqwalizeAll) -> Self {
         Self {
-            format: args.format,
             bail_on_error: args.bail_on_error,
             selection: EqwalizeSelection::All {
                 include_generated: args.include_generated,
@@ -237,7 +237,6 @@ impl From<&EqwalizeAll> for EqwalizeRequest {
 impl From<&EqwalizeApp> for EqwalizeRequest {
     fn from(args: &EqwalizeApp) -> Self {
         Self {
-            format: args.format,
             bail_on_error: args.bail_on_error,
             selection: EqwalizeSelection::App {
                 app: args.app.clone(),
@@ -250,7 +249,6 @@ impl From<&EqwalizeApp> for EqwalizeRequest {
 impl From<&EqwalizeTarget> for EqwalizeRequest {
     fn from(args: &EqwalizeTarget) -> Self {
         Self {
-            format: args.format,
             bail_on_error: args.bail_on_error,
             selection: EqwalizeSelection::Target {
                 target: args.target.clone(),
@@ -283,21 +281,12 @@ pub const DEPRECATED_INCLUDE_GENERATED: &str = "\
 Option \x1b[0;33m--include-generated\x1b[0m is deprecated and will be removed in a future version. All files are now always eqWAlized.
 ";
 
-struct EqwalizerInternalArgs<'a> {
+struct EqwalizerInternalArgs<'a, 'cli> {
     analysis: &'a Analysis,
     loaded: &'a LoadResult,
     file_ids: Vec<FileId>,
-    reporter: &'a mut dyn reporting::Reporter,
+    report: &'a mut Report<'cli>,
     bail_on_error: bool,
-}
-
-struct EqwalizerRunArgs<'a> {
-    analysis: &'a Analysis,
-    loaded: &'a LoadResult,
-    file_ids: Vec<FileId>,
-    format: Option<Format>,
-    bail_on_error: bool,
-    cli: &'a mut dyn Cli,
 }
 
 pub(crate) fn report_eqwalize_done(
@@ -347,7 +336,8 @@ pub fn do_eqwalize_module(
     loaded: &mut LoadResult,
     cli: &mut dyn Cli,
 ) -> Result<()> {
-    do_eqwalize(&EqwalizeRequest::from(args), loaded, cli)
+    let mut report = Report::for_command(cli, args.format);
+    do_eqwalize(&EqwalizeRequest::from(args), loaded, &mut report)
 }
 
 pub const SHELL_HINT: &str = "\
@@ -381,7 +371,8 @@ pub fn do_eqwalize_all(
     loaded: &mut LoadResult,
     cli: &mut dyn Cli,
 ) -> Result<()> {
-    do_eqwalize(&EqwalizeRequest::from(args), loaded, cli)
+    let mut report = Report::for_command(cli, args.format);
+    do_eqwalize(&EqwalizeRequest::from(args), loaded, &mut report)
 }
 
 pub fn eqwalize_app(
@@ -410,7 +401,8 @@ pub fn do_eqwalize_app(
     loaded: &mut LoadResult,
     cli: &mut dyn Cli,
 ) -> Result<()> {
-    do_eqwalize(&EqwalizeRequest::from(args), loaded, cli)
+    let mut report = Report::for_command(cli, args.format);
+    do_eqwalize(&EqwalizeRequest::from(args), loaded, &mut report)
 }
 
 pub fn eqwalize_target(
@@ -439,13 +431,14 @@ pub fn do_eqwalize_target(
     loaded: &mut LoadResult,
     cli: &mut dyn Cli,
 ) -> Result<()> {
-    do_eqwalize(&EqwalizeRequest::from(args), loaded, cli)
+    let mut report = Report::for_command(cli, args.format);
+    do_eqwalize(&EqwalizeRequest::from(args), loaded, &mut report)
 }
 
 pub(crate) fn do_eqwalize(
     request: &EqwalizeRequest,
     loaded: &mut LoadResult,
-    cli: &mut dyn Cli,
+    report: &mut Report<'_>,
 ) -> Result<()> {
     set_eqwalizer_config(loaded);
     let analysis = &loaded.analysis();
@@ -463,7 +456,7 @@ pub(crate) fn do_eqwalize(
         } => *include_generated,
     };
     if include_generated {
-        write!(cli, "{DEPRECATED_INCLUDE_GENERATED}")?;
+        report.info(DEPRECATED_INCLUDE_GENERATED.trim_end_matches('\n'))?;
     }
 
     let file_ids = match &request.selection {
@@ -484,7 +477,7 @@ pub(crate) fn do_eqwalize(
             .collect::<Result<Vec<_>>>()?,
         EqwalizeSelection::All { stats, .. } => {
             let module_index = analysis.module_index(loaded.project_id)?;
-            let pb = cli.progress(module_index.len_own() as u64, "Gathering modules");
+            let pb = report.progress(module_index.len_own() as u64, "Gathering modules");
             let file_ids = module_index
                 .iter_own()
                 .par_bridge()
@@ -525,13 +518,12 @@ pub(crate) fn do_eqwalize(
         EqwalizeSelection::Target { target, .. } => target_file_ids(target, analysis, loaded)?,
     };
 
-    run_eqwalizer(EqwalizerRunArgs {
+    eqwalize(EqwalizerInternalArgs {
         analysis,
         loaded,
         file_ids,
-        format: request.format,
+        report,
         bail_on_error: request.bail_on_error,
-        cli,
     })?;
 
     if let EqwalizeSelection::All {
@@ -540,7 +532,7 @@ pub(crate) fn do_eqwalize(
         ..
     } = &request.selection
     {
-        dump_stats(cli, *list_modules);
+        dump_stats_report(report, *list_modules);
     }
     Ok(())
 }
@@ -604,42 +596,6 @@ elp eqwalize-target erl/chatd #same as //erl/chatd/... but enables shell complet
     }
 }
 
-fn run_eqwalizer(
-    EqwalizerRunArgs {
-        analysis,
-        loaded,
-        file_ids,
-        format,
-        bail_on_error,
-        cli,
-    }: EqwalizerRunArgs<'_>,
-) -> Result<()> {
-    let run = |reporter: &mut dyn reporting::Reporter| {
-        eqwalize(EqwalizerInternalArgs {
-            analysis,
-            loaded,
-            file_ids,
-            reporter,
-            bail_on_error,
-        })
-    };
-
-    match format {
-        None => {
-            let mut reporter = reporting::PrettyReporter::new(analysis, loaded, cli);
-            run(&mut reporter)
-        }
-        Some(Format::Json | Format::ImplicitJson) => {
-            let mut reporter = reporting::WireReporter::json(analysis, loaded, cli);
-            run(&mut reporter)
-        }
-        Some(Format::Daemon | Format::DaemonJson) => {
-            let mut reporter = reporting::WireReporter::daemon(analysis, loaded, cli);
-            run(&mut reporter)
-        }
-    }
-}
-
 pub fn eqwalize_stats(
     args: &EqwalizeStats,
     cli: &mut dyn Cli,
@@ -657,7 +613,7 @@ pub fn eqwalize_stats(
     let module_index = analysis.module_index(loaded.project_id)?;
     let include_generated = args.include_generated;
     if include_generated {
-        write!(cli, "{DEPRECATED_INCLUDE_GENERATED}")?;
+        cli.info(DEPRECATED_INCLUDE_GENERATED.trim_end_matches('\n'))?;
     }
     let project_id = loaded.project_id;
     let pb = cli.progress(module_index.len_own() as u64, "Computing stats");
@@ -734,10 +690,11 @@ fn eqwalize(
         analysis,
         loaded,
         mut file_ids,
-        reporter,
+        report,
         bail_on_error,
     }: EqwalizerInternalArgs,
 ) -> Result<()> {
+    let start = Instant::now();
     if file_ids.is_empty() {
         bail!("No files to eqWAlize detected")
     }
@@ -746,7 +703,7 @@ fn eqwalize(
     sort_by_file_size_descending(analysis, &mut file_ids, |id| *id);
 
     let files_count = file_ids.len();
-    let pb = reporter.progress(files_count as u64, "EqWAlizing");
+    let pb = report.progress(files_count as u64, "EqWAlizing");
     let output = loaded.with_eqwalizer_progress_bar(pb.clone(), move |analysis| {
         let project_id = loaded.project_id;
         let max_tasks = loaded.project.eqwalizer_config.max_tasks;
@@ -783,15 +740,19 @@ fn eqwalize(
                     .module_index(loaded.project_id)?
                     .file_for_module(module.as_str())
                     .with_context(|| format!("module {module} not found"))?;
-                reporter.write_eqwalizer_diagnostics(file_id, &diagnostics)?;
+                report.write_eqwalizer_diagnostics(analysis, loaded, file_id, &diagnostics)?;
                 if !diagnostics.is_empty() {
                     has_errors = true;
                 }
             }
             if analysis.eqwalizer().mode == Mode::Shell {
-                reporter.write_stats(eqwalized, files_count as u64)?;
+                report.info(&format_eqwalize_stats(
+                    eqwalized,
+                    files_count as u64,
+                    start.elapsed().as_secs(),
+                ))?;
             }
-            reporter.write_error_count()?;
+            report.write_error_summary()?;
             if bail_on_error && has_errors {
                 bail!("Eqwalizer errors found.")
             } else {
@@ -826,7 +787,6 @@ fn eqwalize(
 
                     let line_num = convert::position(&line_index, diag.range.start()).line + 1;
                     parse_diagnostics.push(ParseDiagnostic {
-                        file_id,
                         relative_path: relative_path.to_path_buf(),
                         line_num,
                         msg: diag.message,
@@ -845,7 +805,7 @@ fn eqwalize(
                         Ord::cmp(&d1.range.map(|r| r.start()), &d2.range.map(|r| r.start()))
                     })
                     .collect();
-                reporter.write_parse_diagnostics(&parse_diagnostics)?;
+                report.write_parse_diagnostics(analysis, loaded, file_id, &parse_diagnostics)?;
                 if bail_on_error && has_errors {
                     bail!("Eqwalizer parse errors found.")
                 } else {

@@ -111,6 +111,7 @@ use crate::lint_cli;
 use crate::lint_cli::Lint;
 use crate::lint_cli::LintOutcome;
 use crate::reporting;
+use crate::reporting::Report;
 use crate::shell::Shell;
 use crate::shell::ShellCommand;
 
@@ -1000,9 +1001,9 @@ fn execute_daemon_request(
     cli: &mut dyn Cli,
 ) -> Result<Option<LintOutcome>> {
     match request {
-        DaemonRequest::Eqwalize(mut args) => {
-            args.format = Some(daemon_request_format(args.format));
-            eqwalizer_cli::do_eqwalize(&args, &mut state.loaded, cli)?;
+        DaemonRequest::Eqwalize(args) => {
+            let mut report = Report::for_daemon(cli);
+            eqwalizer_cli::do_eqwalize(&args, &mut state.loaded, &mut report)?;
             Ok(None)
         }
         DaemonRequest::Lint(mut args) => {
@@ -1730,7 +1731,6 @@ mod tests {
         let expected = serde_json::json!({
             "command": "eqwalize",
             "args": {
-                "format": "json",
                 "bail_on_error": true,
                 "selection": {
                     "kind": "all",

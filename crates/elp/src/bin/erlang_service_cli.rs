@@ -198,7 +198,6 @@ pub fn do_parse_one(
                     ),
                 };
                 ParseDiagnostic {
-                    file_id,
                     relative_path: relative_path.to_owned(),
                     line_num,
                     msg: err.msg.to_owned(),

@@ -575,7 +575,6 @@ mod tests {
     use test_case::test_case;
     use vfs::AbsPathBuf;
 
-    use super::reporting::Reporter;
     use super::*;
 
     const BUCK_QUERY_CONFIG: BuckQueryConfig = BuckQueryConfig::BuildGeneratedCode;
@@ -984,23 +983,29 @@ mod tests {
             } => {
                 for file_id in file_ids {
                     let mut cli = Fake::default();
-                    let pretty_reporter =
-                        &mut reporting::PrettyReporter::new(&analysis, &loaded, &mut cli);
                     let module = module_index.module_for_file(file_id).unwrap();
-                    if let Some(diagnostics) = diagnostics_by_module.get(module.as_str()) {
-                        pretty_reporter
-                            .write_eqwalizer_diagnostics(file_id, diagnostics)
+                    {
+                        let mut report = reporting::Report::for_command(&mut cli, None);
+                        if let Some(diagnostics) = diagnostics_by_module.get(module.as_str()) {
+                            report
+                                .write_eqwalizer_diagnostics(
+                                    &analysis,
+                                    &loaded,
+                                    file_id,
+                                    diagnostics,
+                                )
+                                .with_context(|| {
+                                    format!("Failed to write diagnostics for {}", module.as_str())
+                                })
+                                .unwrap();
+                        }
+                        report
+                            .write_error_summary()
                             .with_context(|| {
-                                format!("Failed to write diagnostics for {}", module.as_str())
+                                format!("Failed to write error summary for {}", module.as_str())
                             })
                             .unwrap();
                     }
-                    pretty_reporter
-                        .write_error_count()
-                        .with_context(|| {
-                            format!("Failed to write diagnostics for {}", module.as_str())
-                        })
-                        .unwrap();
 
                     let exp_path =
                         resource_file(&format!("{}/{}/{}.pretty", project, app, module.as_str()));
@@ -1049,6 +1054,29 @@ mod tests {
     #[test_case(true  ; "buck")]
     fn eqwalize_diagnostics_match_snapshot_app_a_json(buck: bool) {
         eqwalize_snapshot_json("standard", "app_a", false, buck, true);
+    }
+
+    #[test]
+    fn eqwalize_stats_deprecation_keeps_stdout_structured() {
+        let (args, _path) = add_project(
+            args_vec!["eqwalize-stats", "--include-generated", "--rebar"],
+            "standard",
+            None,
+            None,
+        );
+        let (stdout, stderr, code) = elp(args);
+
+        assert_eq_expected!(0, code);
+        assert!(
+            stdout
+                .lines()
+                .all(|line| serde_json::from_str::<serde_json::Value>(line).is_ok()),
+            "eqwalize-stats stdout should contain only JSON diagnostics: {stdout}"
+        );
+        assert!(
+            stderr.contains("--include-generated"),
+            "deprecation warning should be written to stderr: {stderr}"
+        );
     }
 
     #[test_case(false ; "rebar")]

@@ -8,13 +8,14 @@
  * above-listed licenses.
  */
 
+use std::fmt;
+use std::io;
 use std::ops::Range;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str;
 use std::sync::Arc;
 use std::sync::LazyLock;
-use std::time::Instant;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -47,53 +48,29 @@ use itertools::Itertools;
 use parking_lot::Mutex;
 use vfs::Vfs;
 
+use crate::args::Format;
 use crate::daemon_protocol::DaemonResponse;
 use crate::daemon_protocol::RenderedDiagnostic;
 
-pub trait Reporter {
-    fn write_eqwalizer_diagnostics(
-        &mut self,
-        file_id: FileId,
-        diagnostics: &[EqwalizerDiagnostic],
-    ) -> Result<()>;
-    fn write_parse_diagnostics(&mut self, diagnostics: &[ParseDiagnostic]) -> Result<()>;
-    #[allow(unused)]
-    fn write_file_advice(&mut self, file_id: FileId, description: String) -> Result<()>;
-    fn write_error_count(&mut self) -> Result<()>;
-    fn write_stats(&mut self, count: u64, total: u64) -> Result<()>;
-
-    fn progress(&self, len: u64, prefix: &'static str) -> ProgressBar;
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Destination {
+    Human,
+    Json,
+    Daemon,
 }
 
 #[derive(Debug, Clone)]
 pub struct ParseDiagnostic {
-    pub file_id: FileId,
     pub relative_path: PathBuf,
     pub line_num: u32,
     pub msg: String,
     pub range: Option<TextRange>,
 }
 
-pub struct PrettyReporter<'a> {
-    analysis: &'a Analysis,
-    loaded: &'a LoadResult,
+pub(crate) struct Report<'a> {
     cli: &'a mut dyn Cli,
+    destination: Destination,
     error_count: usize,
-    start: Instant,
-}
-
-pub struct WireReporter<'a> {
-    analysis: &'a Analysis,
-    loaded: &'a LoadResult,
-    cli: &'a mut dyn Cli,
-    start: Instant,
-    format: WireFormat,
-}
-
-#[derive(Clone, Copy)]
-enum WireFormat {
-    Json,
-    Daemon,
 }
 
 pub(crate) struct IdeDiagnosticContext<'a> {
@@ -137,145 +114,215 @@ pub(crate) fn render_ide_diagnostic(
     Ok(rendered)
 }
 
-impl<'a> PrettyReporter<'a> {
-    pub fn new(analysis: &'a Analysis, loaded: &'a LoadResult, cli: &'a mut dyn Cli) -> Self {
+type ReportingData = (SimpleFiles<String, Arc<str>>, usize);
+
+impl<'a> Report<'a> {
+    pub(crate) fn for_command(cli: &'a mut dyn Cli, format: Option<Format>) -> Self {
+        let destination = match format {
+            None => Destination::Human,
+            Some(Format::Json | Format::ImplicitJson) => Destination::Json,
+            Some(Format::Daemon | Format::DaemonJson) => Destination::Daemon,
+        };
+        Self::new(cli, destination)
+    }
+
+    pub(crate) fn for_daemon(cli: &'a mut dyn Cli) -> Self {
+        Self::new(cli, Destination::Daemon)
+    }
+
+    fn new(cli: &'a mut dyn Cli, destination: Destination) -> Self {
         Self {
-            analysis,
-            loaded,
             cli,
+            destination,
             error_count: 0,
-            start: Instant::now(),
         }
     }
-}
 
-fn get_reporting_data(
-    analysis: &Analysis,
-    loaded: &LoadResult,
-    file_id: FileId,
-) -> Result<(SimpleFiles<String, Arc<str>>, usize)> {
-    let file_path = &loaded.vfs.file_path(file_id);
-    let root_path = &analysis
-        .project_data(file_id)?
-        .with_context(|| "could not find project data")?
-        .root_dir;
-    let relative_path = get_relative_path(root_path, file_path);
-    let content = analysis.file_text(file_id)?;
-    let mut files: SimpleFiles<String, Arc<str>> = SimpleFiles::new();
-    let id = files.add(relative_path.display().to_string(), content);
-    Ok((files, id))
-}
+    pub(crate) fn info(&mut self, message: &str) -> io::Result<()> {
+        self.cli.info(message)
+    }
 
-impl Reporter for PrettyReporter<'_> {
-    fn write_eqwalizer_diagnostics(
+    pub(crate) fn progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
+        self.cli.progress(len, prefix)
+    }
+
+    pub(crate) fn write_eqwalizer_diagnostics(
         &mut self,
+        analysis: &Analysis,
+        loaded: &LoadResult,
         file_id: FileId,
         diagnostics: &[EqwalizerDiagnostic],
     ) -> Result<()> {
-        let (reporting_files, reporting_id) =
-            get_reporting_data(self.analysis, self.loaded, file_id)?;
+        if diagnostics.is_empty() {
+            return Ok(());
+        }
+
+        let relative_path = get_relative_file_path(analysis, loaded, file_id)?;
+        let structured_data = match self.destination {
+            Destination::Human => None,
+            Destination::Json | Destination::Daemon => {
+                Some((analysis.line_index(file_id)?, relative_path.as_path()))
+            }
+        };
+        let reporting_data = self.reporting_data(analysis, file_id, &relative_path)?;
         for diagnostic in diagnostics {
-            let diagnostic = eqwalizer_reporting_diagnostic(reporting_id, diagnostic);
-            emit_reporting_diagnostic(&mut self.cli, &reporting_files, &diagnostic)?;
+            self.emit_local(
+                true,
+                || {
+                    let (line_index, relative_path) = structured_data
+                        .as_ref()
+                        .context("structured eqwalizer reporting data missing")?;
+                    Ok(convert::eqwalizer_to_arc_diagnostic(
+                        diagnostic,
+                        line_index,
+                        relative_path,
+                    ))
+                },
+                |cli| {
+                    let (files, reporting_id) = reporting_data
+                        .as_ref()
+                        .context("human reporting data missing")?;
+                    let diagnostic = eqwalizer_reporting_diagnostic(*reporting_id, diagnostic);
+                    emit_reporting_diagnostic(cli, files, &diagnostic)
+                },
+                |_| {
+                    Ok(render_daemon_diagnostic(
+                        reporting_data.as_ref(),
+                        |reporting_id| eqwalizer_reporting_diagnostic(reporting_id, diagnostic),
+                    ))
+                },
+            )?;
         }
-        self.error_count += diagnostics.len();
         Ok(())
     }
 
-    fn write_parse_diagnostics(&mut self, diagnostics: &[ParseDiagnostic]) -> Result<()> {
-        for diagnostic in diagnostics {
-            let (reporting_files, reporting_id) =
-                get_reporting_data(self.analysis, self.loaded, diagnostic.file_id)?;
-            let diagnostic = parse_reporting_diagnostic(reporting_id, diagnostic);
-            emit_reporting_diagnostic(&mut self.cli, &reporting_files, &diagnostic)?;
-        }
-        Ok(())
-    }
-
-    fn write_file_advice(&mut self, file_id: FileId, description: String) -> Result<()> {
-        let (reporting_files, reporting_id) =
-            get_reporting_data(self.analysis, self.loaded, file_id)?;
-        let diagnostic = advice_reporting_diagnostic(reporting_id, description);
-        emit_reporting_diagnostic(&mut self.cli, &reporting_files, &diagnostic)?;
-        Ok(())
-    }
-
-    fn write_error_count(&mut self) -> Result<()> {
-        write_error_count_summary(self.cli, self.error_count)
-    }
-
-    fn write_stats(&mut self, count: u64, total: u64) -> Result<()> {
-        let duration = self.start.elapsed().as_secs();
-        self.cli
-            .info(&format_eqwalize_stats(count, total, duration))?;
-        Ok(())
-    }
-
-    fn progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
-        self.cli.progress(len, prefix)
-    }
-}
-
-impl<'a> WireReporter<'a> {
-    pub fn json(analysis: &'a Analysis, loaded: &'a LoadResult, cli: &'a mut dyn Cli) -> Self {
-        Self {
-            analysis,
-            loaded,
-            cli,
-            start: Instant::now(),
-            format: WireFormat::Json,
-        }
-    }
-
-    pub fn daemon(analysis: &'a Analysis, loaded: &'a LoadResult, cli: &'a mut dyn Cli) -> Self {
-        Self {
-            analysis,
-            loaded,
-            cli,
-            start: Instant::now(),
-            format: WireFormat::Daemon,
-        }
-    }
-
-    fn write_diagnostic(
+    pub(crate) fn write_parse_diagnostics(
         &mut self,
-        diagnostic: arc_types::Diagnostic,
-        rendered: Option<RenderedDiagnostic>,
+        analysis: &Analysis,
+        loaded: &LoadResult,
+        file_id: FileId,
+        diagnostics: &[ParseDiagnostic],
     ) -> Result<()> {
-        match self.format {
-            WireFormat::Json => {
+        if diagnostics.is_empty() {
+            return Ok(());
+        }
+        let relative_path = get_relative_file_path(analysis, loaded, file_id)?;
+        let reporting_data = self.reporting_data(analysis, file_id, &relative_path)?;
+        for diagnostic in diagnostics {
+            self.emit_local(
+                false,
+                || {
+                    Ok(arc_types::Diagnostic::new(
+                        diagnostic.relative_path.as_path(),
+                        diagnostic.line_num,
+                        None,
+                        arc_types::Severity::Error,
+                        "ELP".to_string(),
+                        diagnostic.msg.clone(),
+                        None,
+                        None,
+                    ))
+                },
+                |cli| {
+                    let (files, reporting_id) = reporting_data
+                        .as_ref()
+                        .context("human reporting data missing")?;
+                    let diagnostic = parse_reporting_diagnostic(*reporting_id, diagnostic);
+                    emit_reporting_diagnostic(cli, files, &diagnostic)
+                },
+                |_| {
+                    Ok(render_daemon_diagnostic(
+                        reporting_data.as_ref(),
+                        |reporting_id| parse_reporting_diagnostic(reporting_id, diagnostic),
+                    ))
+                },
+            )?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn write_error_summary(&mut self) -> Result<()> {
+        if self.destination == Destination::Human {
+            write_error_count_summary(self.cli, self.error_count)?;
+        }
+        Ok(())
+    }
+
+    fn reporting_data(
+        &self,
+        analysis: &Analysis,
+        file_id: FileId,
+        relative_path: &Path,
+    ) -> Result<Option<ReportingData>> {
+        match self.destination {
+            Destination::Human => Ok(Some(get_reporting_data(analysis, file_id, relative_path)?)),
+            Destination::Json => Ok(None),
+            Destination::Daemon => Ok(get_reporting_data(analysis, file_id, relative_path)
+                .inspect_err(|error| {
+                    log::warn!("Failed to prepare daemon diagnostic rendering: {error:#}");
+                })
+                .ok()),
+        }
+    }
+
+    fn emit_local(
+        &mut self,
+        is_error: bool,
+        diagnostic: impl FnOnce() -> Result<arc_types::Diagnostic>,
+        human: impl FnOnce(&mut dyn Cli) -> Result<()>,
+        daemon_render: impl FnOnce(&arc_types::Diagnostic) -> Result<Option<RenderedDiagnostic>>,
+    ) -> Result<()> {
+        match self.destination {
+            Destination::Human => human(self.cli)?,
+            Destination::Json => {
+                let diagnostic = diagnostic()?;
                 writeln!(self.cli, "{}", serde_json::to_string(&diagnostic)?)?;
             }
-            WireFormat::Daemon => {
+            Destination::Daemon => {
+                let diagnostic = diagnostic()?;
+                let rendered = daemon_render(&diagnostic)?;
                 let response = DaemonResponse::<()>::diagnostic(diagnostic, rendered);
                 writeln!(self.cli, "{}", serde_json::to_string(&response)?)?;
             }
         }
+        self.error_count += usize::from(is_error);
         Ok(())
     }
+}
 
-    fn reporting_data(&self, file_id: FileId) -> Option<(SimpleFiles<String, Arc<str>>, usize)> {
-        match self.format {
-            WireFormat::Json => None,
-            WireFormat::Daemon => get_reporting_data(self.analysis, self.loaded, file_id)
-                .inspect_err(|error| {
-                    log::warn!("Failed to prepare daemon diagnostic rendering: {error:#}");
-                })
-                .ok(),
-        }
-    }
+fn render_daemon_diagnostic(
+    reporting_data: Option<&ReportingData>,
+    diagnostic: impl FnOnce(usize) -> ReportingDiagnostic<usize>,
+) -> Option<RenderedDiagnostic> {
+    let (files, reporting_id) = reporting_data?;
+    render_reporting_diagnostic(files, &diagnostic(*reporting_id))
+        .inspect_err(|error| {
+            log::warn!("Failed to render daemon diagnostic: {error:#}");
+        })
+        .ok()
+}
 
-    fn render_diagnostic(
-        reporting_data: Option<&(SimpleFiles<String, Arc<str>>, usize)>,
-        diagnostic: impl FnOnce(usize) -> ReportingDiagnostic<usize>,
-    ) -> Option<RenderedDiagnostic> {
-        let (files, reporting_id) = reporting_data?;
-        render_reporting_diagnostic(files, &diagnostic(*reporting_id))
-            .inspect_err(|error| {
-                log::warn!("Failed to render daemon diagnostic: {error:#}");
-            })
-            .ok()
-    }
+fn get_relative_file_path(
+    analysis: &Analysis,
+    loaded: &LoadResult,
+    file_id: FileId,
+) -> Result<PathBuf> {
+    let file_path = loaded.vfs.file_path(file_id);
+    let project_data = analysis
+        .project_data(file_id)?
+        .context("could not find project data")?;
+    Ok(get_relative_path(&project_data.root_dir, file_path).to_path_buf())
+}
+
+fn get_reporting_data(
+    analysis: &Analysis,
+    file_id: FileId,
+    relative_path: &Path,
+) -> Result<(SimpleFiles<String, Arc<str>>, usize)> {
+    let content = analysis.file_text(file_id)?;
+    let mut files: SimpleFiles<String, Arc<str>> = SimpleFiles::new();
+    let id = files.add(relative_path.display().to_string(), content);
+    Ok((files, id))
 }
 
 fn eqwalizer_reporting_diagnostic(
@@ -312,16 +359,6 @@ fn parse_reporting_diagnostic(
         .with_labels(vec![label])
 }
 
-fn advice_reporting_diagnostic(
-    reporting_id: usize,
-    description: String,
-) -> ReportingDiagnostic<usize> {
-    let label = Label::primary(reporting_id, 1..2).with_message(description);
-    ReportingDiagnostic::note()
-        .with_message("advice")
-        .with_labels(vec![label])
-}
-
 fn arc_severity_reporting(severity: &arc_types::Severity) -> ReportingDiagnostic<usize> {
     match severity {
         arc_types::Severity::Error => ReportingDiagnostic::error(),
@@ -332,7 +369,7 @@ fn arc_severity_reporting(severity: &arc_types::Severity) -> ReportingDiagnostic
     }
 }
 
-fn emit_reporting_diagnostic<W: WriteColor>(
+fn emit_reporting_diagnostic<W: WriteColor + ?Sized>(
     writer: &mut W,
     files: &SimpleFiles<String, Arc<str>>,
     diagnostic: &ReportingDiagnostic<usize>,
@@ -362,99 +399,11 @@ fn render_reporting_diagnostic(
     Ok(RenderedDiagnostic::new(plain, ansi))
 }
 
-impl Reporter for WireReporter<'_> {
-    fn write_eqwalizer_diagnostics(
-        &mut self,
-        file_id: FileId,
-        diagnostics: &[EqwalizerDiagnostic],
-    ) -> Result<()> {
-        let line_index = self.analysis.line_index(file_id)?;
-        let file_path = &self.loaded.vfs.file_path(file_id);
-        let root_path = &self
-            .analysis
-            .project_data(file_id)?
-            .with_context(|| "could not find project data")?
-            .root_dir;
-        let relative_path = get_relative_path(root_path, file_path);
-        let reporting_data = self.reporting_data(file_id);
-        for diagnostic in diagnostics {
-            let wire_diagnostic =
-                convert::eqwalizer_to_arc_diagnostic(diagnostic, &line_index, relative_path);
-            let rendered = Self::render_diagnostic(reporting_data.as_ref(), |reporting_id| {
-                eqwalizer_reporting_diagnostic(reporting_id, diagnostic)
-            });
-            self.write_diagnostic(wire_diagnostic, rendered)?;
-        }
-        Ok(())
-    }
-
-    fn write_parse_diagnostics(&mut self, diagnostics: &[ParseDiagnostic]) -> Result<()> {
-        for diagnostic in diagnostics {
-            let wire_diagnostic = arc_types::Diagnostic::new(
-                diagnostic.relative_path.as_path(),
-                diagnostic.line_num,
-                None,
-                arc_types::Severity::Error,
-                "ELP".to_string(),
-                diagnostic.msg.clone(),
-                None,
-                None,
-            );
-            let reporting_data = self.reporting_data(diagnostic.file_id);
-            let rendered = Self::render_diagnostic(reporting_data.as_ref(), |reporting_id| {
-                parse_reporting_diagnostic(reporting_id, diagnostic)
-            });
-            self.write_diagnostic(wire_diagnostic, rendered)?;
-        }
-        Ok(())
-    }
-
-    fn write_file_advice(&mut self, file_id: FileId, description: String) -> Result<()> {
-        let file_path = &self.loaded.vfs.file_path(file_id);
-        let root_path = &self
-            .analysis
-            .project_data(file_id)?
-            .with_context(|| "could not find project data")?
-            .root_dir;
-        let relative_path = get_relative_path(root_path, file_path);
-        let wire_diagnostic = arc_types::Diagnostic::new(
-            relative_path,
-            1,
-            None,
-            arc_types::Severity::Advice,
-            "ELP".to_string(),
-            description.clone(),
-            None,
-            None,
-        );
-        let reporting_data = self.reporting_data(file_id);
-        let rendered = Self::render_diagnostic(reporting_data.as_ref(), |reporting_id| {
-            advice_reporting_diagnostic(reporting_id, description)
-        });
-        self.write_diagnostic(wire_diagnostic, rendered)
-    }
-
-    fn write_error_count(&mut self) -> Result<()> {
-        Ok(())
-    }
-
-    fn write_stats(&mut self, count: u64, total: u64) -> Result<()> {
-        let duration = self.start.elapsed().as_secs();
-        self.cli
-            .info(&format_eqwalize_stats(count, total, duration))?;
-        Ok(())
-    }
-
-    fn progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
-        self.cli.progress(len, prefix)
-    }
-}
-
-/// The eqwalize summary line ("eqWAlized N module(s) ..."), shared by both
-/// reporters. It is status, not a result, so it is surfaced via `Cli::info`
+/// The eqwalize summary line ("eqWAlized N module(s) ..."), shared by all
+/// reporting modes. It is status, not a result, so it is surfaced via `Cli::info`
 /// (stderr on a terminal, an `info` wire message under `--connect`) rather than
 /// stdout — keeping `--format json` stdout clean.
-fn format_eqwalize_stats(count: u64, total: u64, duration: u64) -> String {
+pub(crate) fn format_eqwalize_stats(count: u64, total: u64, duration: u64) -> String {
     if count == total {
         format!("eqWAlized {count} module(s) in {duration}s")
     } else {
@@ -564,16 +513,28 @@ static CYAN_COLOR_SPEC: LazyLock<ColorSpec> = LazyLock::new(|| {
 // ---------------------------------------------------------------------
 
 pub(crate) fn dump_stats(cli: &mut dyn Cli, list_modules: bool) {
+    for_each_stat_line(list_modules, |line| {
+        writeln!(cli, "{line}").ok();
+    });
+}
+
+pub(crate) fn dump_stats_report(report: &mut Report<'_>, list_modules: bool) {
+    for_each_stat_line(list_modules, |line| {
+        report.info(&line.to_string()).ok();
+    });
+}
+
+fn for_each_stat_line(list_modules: bool, mut write_line: impl for<'a> FnMut(fmt::Arguments<'a>)) {
     let stats = STATS.lock();
     if list_modules {
-        writeln!(cli, "--------------start of modules----------").ok();
-        stats.iter().sorted().for_each(|stat| {
-            writeln!(cli, "{stat}").ok();
-        });
+        write_line(format_args!("--------------start of modules----------"));
+        for stat in stats.iter().sorted() {
+            write_line(format_args!("{stat}"));
+        }
     }
-    writeln!(cli, "{} modules processed", stats.len()).ok();
+    write_line(format_args!("{} modules processed", stats.len()));
     let mem_usage = MemoryUsage::now();
-    writeln!(cli, "{mem_usage}").ok();
+    write_line(format_args!("{mem_usage}"));
 }
 
 static STATS: Mutex<Vec<String>> = Mutex::new(Vec::new());
@@ -639,11 +600,59 @@ mod tests {
     #[test]
     fn daemon_render_failure_falls_back_to_unrendered() {
         let reporting_data = (SimpleFiles::new(), 0);
-        let rendered = WireReporter::render_diagnostic(Some(&reporting_data), |reporting_id| {
+        let rendered = render_daemon_diagnostic(Some(&reporting_data), |reporting_id| {
             ReportingDiagnostic::error().with_labels(vec![Label::primary(reporting_id, 0..1)])
         });
 
         assert!(rendered.is_none());
+    }
+
+    #[test]
+    fn report_constructors_select_the_destination() {
+        let mut cli = elp::cli::Fake::default();
+        {
+            let report = Report::for_command(&mut cli, None);
+            assert!(matches!(report.destination, Destination::Human));
+        }
+
+        {
+            let report = Report::for_command(&mut cli, Some(Format::Json));
+            assert!(matches!(report.destination, Destination::Json));
+        }
+
+        {
+            let report = Report::for_command(&mut cli, Some(Format::ImplicitJson));
+            assert!(matches!(report.destination, Destination::Json));
+        }
+
+        {
+            let report = Report::for_command(&mut cli, Some(Format::Daemon));
+            assert!(matches!(report.destination, Destination::Daemon));
+        }
+
+        {
+            let report = Report::for_command(&mut cli, Some(Format::DaemonJson));
+            assert!(matches!(report.destination, Destination::Daemon));
+        }
+
+        let report = Report::for_daemon(&mut cli);
+        assert!(matches!(report.destination, Destination::Daemon));
+    }
+
+    #[test]
+    fn stats_report_does_not_write_to_structured_stdout() {
+        let mut cli = elp::cli::Fake::default();
+        {
+            let mut report = Report::for_command(&mut cli, Some(Format::Json));
+            dump_stats_report(&mut report, false);
+        }
+        let (stdout, stderr) = cli.to_strings();
+
+        assert!(stdout.is_empty(), "stats should not be written to stdout");
+        assert!(
+            stderr.contains("modules processed"),
+            "stats should be written to stderr"
+        );
     }
 
     #[test]
