@@ -70,8 +70,13 @@ pub struct Eqwalize {
     #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
     pub profile: String,
     /// Customize the output format (defaults to human-readable)
-    #[arg(long, value_name = "FORMAT")]
-    pub format: Option<Format>,
+    #[arg(
+        long,
+        value_name = "FORMAT",
+        default_value = "human",
+        hide_default_value = true
+    )]
+    pub format: Format,
     /// Run with rebar
     #[arg(long)]
     pub rebar: bool,
@@ -99,8 +104,13 @@ pub struct EqwalizeAll {
     #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
     pub profile: String,
     /// Customize the output format (defaults to human-readable)
-    #[arg(long, value_name = "FORMAT")]
-    pub format: Option<Format>,
+    #[arg(
+        long,
+        value_name = "FORMAT",
+        default_value = "human",
+        hide_default_value = true
+    )]
+    pub format: Format,
     /// Run with rebar
     #[arg(long)]
     pub rebar: bool,
@@ -131,8 +141,13 @@ pub struct EqwalizeTarget {
     #[arg(long, value_name = "PROJECT", default_value = ".", value_hint = ValueHint::AnyPath)]
     pub project: PathBuf,
     /// Customize the output format (defaults to human-readable)
-    #[arg(long, value_name = "FORMAT")]
-    pub format: Option<Format>,
+    #[arg(
+        long,
+        value_name = "FORMAT",
+        default_value = "human",
+        hide_default_value = true
+    )]
+    pub format: Format,
     /// Also eqwalize opted-in generated modules from application (deprecated)
     #[arg(long, hide = true)]
     pub include_generated: bool,
@@ -160,8 +175,13 @@ pub struct EqwalizeApp {
     #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
     pub profile: String,
     /// Customize the output format (defaults to human-readable)
-    #[arg(long, value_name = "FORMAT")]
-    pub format: Option<Format>,
+    #[arg(
+        long,
+        value_name = "FORMAT",
+        default_value = "human",
+        hide_default_value = true
+    )]
+    pub format: Format,
     /// Also eqwalize opted-in generated modules from project (deprecated)
     #[arg(long, hide = true)]
     pub include_generated: bool,

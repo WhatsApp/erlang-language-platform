@@ -248,11 +248,10 @@ impl Command {
         }
     }
 
-    /// Default `--format` from whether stdout is a terminal, for the commands
-    /// that emit diagnostics: a human at a TTY keeps the rich human-readable
-    /// output, while a piped or redirected stream (typically an agent or script)
-    /// gets JSON. An explicit `--format` always takes precedence, so this only
-    /// fills in an unset value. Call after [`normalize`].
+    /// Select an effective output format for commands that emit diagnostics.
+    /// A terminal keeps human-readable output; a pipe or redirect switches the
+    /// default to implicit JSON. An explicit `--format json` is never changed.
+    /// Call after [`normalize`].
     pub fn apply_default_format(&mut self, stdout_is_tty: bool) {
         if stdout_is_tty {
             return;
@@ -267,7 +266,9 @@ impl Command {
             Command::Search(args) | Command::Ssr(args) => &mut args.format,
             _ => return,
         };
-        format.get_or_insert(Format::ImplicitJson);
+        if *format == Format::Human {
+            *format = Format::ImplicitJson;
+        }
     }
 
     /// Test helper: opt out of the daemon (now the default) so integration tests
@@ -294,11 +295,12 @@ impl Command {
 // (no hand-written value parsers). The CLI value strings are the kebab-cased
 // variant names; `#[value(name = ...)]` pins any that must differ.
 
-/// Output format for diagnostics. Absent means the default human-readable output.
+/// Output format for diagnostics.
 #[derive(
     Clone,
     Copy,
     Debug,
+    Default,
     PartialEq,
     Eq,
     clap::ValueEnum,
@@ -307,41 +309,22 @@ impl Command {
 )]
 #[serde(rename_all = "snake_case")]
 pub enum Format {
+    /// Internal default for an omitted `--format`; hidden from documented CLI values.
+    #[default]
+    #[value(hide = true)]
+    Human,
     Json,
     /// JSON selected automatically for non-terminal stdout. Warning-only
     /// diagnostics retain a successful exit status.
     #[value(skip)]
     ImplicitJson,
-    /// Internal daemon wire format carrying both machine and human renderings.
-    #[value(skip)]
-    Daemon,
-    /// Internal daemon wire format preserving explicit JSON exit semantics.
-    #[value(skip)]
-    DaemonJson,
 }
 
 impl Format {
-    pub(crate) fn is_json(self) -> bool {
-        match self {
-            Self::Json | Self::ImplicitJson | Self::Daemon | Self::DaemonJson => true,
-        }
-    }
-
     /// Whether this format preserves the command's legacy failure semantics
     /// for a diagnostic with the given severity.
-    fn diagnostic_counts_as_error(self, severity: DiagnosticSeverity) -> bool {
-        matches!(self, Self::Json | Self::DaemonJson)
-            || matches!(severity, DiagnosticSeverity::Error)
-    }
-}
-
-pub(crate) fn diagnostic_counts_as_error(
-    format: Option<Format>,
-    severity: DiagnosticSeverity,
-) -> bool {
-    match format {
-        Some(format) => format.diagnostic_counts_as_error(severity),
-        None => matches!(severity, DiagnosticSeverity::Error),
+    pub(crate) fn diagnostic_counts_as_error(self, severity: DiagnosticSeverity) -> bool {
+        matches!(self, Self::Json) || matches!(severity, DiagnosticSeverity::Error)
     }
 }
 
@@ -460,14 +443,13 @@ mod tests {
     use super::Command;
     use super::DiagnosticSeverity;
     use super::Format;
-    use super::diagnostic_counts_as_error;
 
     #[test]
     fn check_options() {
         Args::command().debug_assert();
     }
 
-    fn parse_format(cli_args: &[&str], stdout_is_tty: bool) -> Option<Format> {
+    fn parse_format(cli_args: &[&str], stdout_is_tty: bool) -> Format {
         let mut command = Args::try_parse_from(cli_args)
             .expect("args should parse")
             .command
@@ -483,21 +465,20 @@ mod tests {
     #[test]
     fn apply_default_format_defaults_pipe_to_json() {
         // Not a TTY (piped/redirected): default to JSON for machine consumers.
-        let expected = Some(Format::ImplicitJson);
+        let expected = Format::ImplicitJson;
         assert_eq_expected!(expected, parse_format(&["elp", "eqwalize", "foo"], false));
     }
 
     #[test]
     fn apply_default_format_keeps_tty_human_readable() {
-        // A TTY keeps the human-readable default, i.e. `--format` stays unset.
-        let expected = None;
+        let expected = Format::Human;
         assert_eq_expected!(expected, parse_format(&["elp", "eqwalize", "foo"], true));
     }
 
     #[test]
     fn apply_default_format_preserves_explicit_json() {
         // An explicit `--format json` is preserved even on a TTY.
-        let expected = Some(Format::Json);
+        let expected = Format::Json;
         assert_eq_expected!(
             expected,
             parse_format(&["elp", "eqwalize", "--format", "json", "foo"], true)
@@ -509,7 +490,7 @@ mod tests {
         // The TTY-based default applies to every diagnostic-emitting command, not
         // just eqwalize/lint — e.g. `ssr` (and `search`) also default to JSON when
         // piped.
-        let expected = Some(Format::ImplicitJson);
+        let expected = Format::ImplicitJson;
         assert_eq_expected!(
             expected,
             parse_format(&["elp", "ssr", "foo(_@Args)"], false)
@@ -519,28 +500,20 @@ mod tests {
     #[test]
     fn diagnostic_error_status_respects_effective_format() {
         assert!(
-            diagnostic_counts_as_error(None, DiagnosticSeverity::Error),
+            Format::Human.diagnostic_counts_as_error(DiagnosticSeverity::Error),
             "errors should fail in the default human format"
         );
         assert!(
-            !diagnostic_counts_as_error(None, DiagnosticSeverity::Warning),
+            !Format::Human.diagnostic_counts_as_error(DiagnosticSeverity::Warning),
             "warnings should not fail in the default human format"
         );
         assert!(
-            diagnostic_counts_as_error(Some(Format::Json), DiagnosticSeverity::Warning),
+            Format::Json.diagnostic_counts_as_error(DiagnosticSeverity::Warning),
             "explicit JSON should preserve its fail-on-diagnostic behavior"
         );
         assert!(
-            !diagnostic_counts_as_error(Some(Format::ImplicitJson), DiagnosticSeverity::Warning),
+            !Format::ImplicitJson.diagnostic_counts_as_error(DiagnosticSeverity::Warning),
             "implicit JSON should preserve human-format exit semantics"
-        );
-        assert!(
-            !diagnostic_counts_as_error(Some(Format::Daemon), DiagnosticSeverity::Warning),
-            "daemon human output should not fail on warnings"
-        );
-        assert!(
-            diagnostic_counts_as_error(Some(Format::DaemonJson), DiagnosticSeverity::Warning),
-            "daemon JSON should preserve explicit JSON exit semantics"
         );
     }
 

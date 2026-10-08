@@ -110,7 +110,6 @@ use crate::eqwalizer_cli::EqwalizeTarget;
 use crate::lint_cli;
 use crate::lint_cli::Lint;
 use crate::lint_cli::LintOutcome;
-use crate::reporting;
 use crate::reporting::Report;
 use crate::shell::Shell;
 use crate::shell::ShellCommand;
@@ -904,18 +903,14 @@ fn handle_connection(
     // through to ShellCommand::parse.
     if let Some(json) = line.strip_prefix("lint ") {
         let response = match serde_json::from_str::<Lint>(json) {
-            Ok(lint_args) => {
-                let mut report = Report::for_daemon(&mut cli);
-                match lint_cli::do_lint(
-                    &lint_args,
-                    &state.lint_config,
-                    &mut state.loaded,
-                    &mut report,
-                ) {
-                    Ok(outcome) => DaemonResponse::success(Some(outcome)),
-                    Err(e) => DaemonResponse::error(e.to_string()),
-                }
-            }
+            Ok(lint_args) => match execute_daemon_request(
+                DaemonRequest::Lint(Box::new(lint_args)),
+                state,
+                &mut cli,
+            ) {
+                Ok(outcome) => DaemonResponse::success(outcome),
+                Err(e) => DaemonResponse::error(e.to_string()),
+            },
             Err(e) => DaemonResponse::error(format!("invalid lint payload: {e}")),
         };
         request_telemetry.complete_from_response(&response);
@@ -936,41 +931,35 @@ fn handle_connection(
         Ok(None) => (DaemonResponse::success(None), false),
         Ok(Some(ShellCommand::Help)) => (DaemonResponse::success(None), false),
         Ok(Some(ShellCommand::Quit)) => (DaemonResponse::success(None), true),
-        Ok(Some(ShellCommand::ShellEqwalize(mut eqwalize))) => {
-            eqwalize.format = Some(Format::Daemon);
-            let done =
-                match eqwalizer_cli::do_eqwalize_module(&eqwalize, &mut state.loaded, &mut cli) {
-                    Ok(()) => DaemonResponse::success(None),
-                    Err(e) => DaemonResponse::error(e.to_string()),
-                };
+        Ok(Some(ShellCommand::ShellEqwalize(eqwalize))) => {
+            let request = DaemonRequest::Eqwalize(Box::new(EqwalizeRequest::from(&eqwalize)));
+            let done = match execute_daemon_request(request, state, &mut cli) {
+                Ok(_) => DaemonResponse::success(None),
+                Err(e) => DaemonResponse::error(e.to_string()),
+            };
             (done, false)
         }
-        Ok(Some(ShellCommand::ShellEqwalizeApp(mut eqwalize_app))) => {
-            eqwalize_app.format = Some(Format::Daemon);
-            let done =
-                match eqwalizer_cli::do_eqwalize_app(&eqwalize_app, &mut state.loaded, &mut cli) {
-                    Ok(()) => DaemonResponse::success(None),
-                    Err(e) => DaemonResponse::error(e.to_string()),
-                };
+        Ok(Some(ShellCommand::ShellEqwalizeApp(eqwalize_app))) => {
+            let request = DaemonRequest::Eqwalize(Box::new(EqwalizeRequest::from(&eqwalize_app)));
+            let done = match execute_daemon_request(request, state, &mut cli) {
+                Ok(_) => DaemonResponse::success(None),
+                Err(e) => DaemonResponse::error(e.to_string()),
+            };
             (done, false)
         }
-        Ok(Some(ShellCommand::ShellEqwalizeAll(mut eqwalize_all))) => {
-            eqwalize_all.format = Some(Format::Daemon);
-            let done =
-                match eqwalizer_cli::do_eqwalize_all(&eqwalize_all, &mut state.loaded, &mut cli) {
-                    Ok(()) => DaemonResponse::success(None),
-                    Err(e) => DaemonResponse::error(e.to_string()),
-                };
+        Ok(Some(ShellCommand::ShellEqwalizeAll(eqwalize_all))) => {
+            let request = DaemonRequest::Eqwalize(Box::new(EqwalizeRequest::from(&eqwalize_all)));
+            let done = match execute_daemon_request(request, state, &mut cli) {
+                Ok(_) => DaemonResponse::success(None),
+                Err(e) => DaemonResponse::error(e.to_string()),
+            };
             (done, false)
         }
-        Ok(Some(ShellCommand::ShellEqwalizeTarget(mut eqwalize_target))) => {
-            eqwalize_target.format = Some(Format::Daemon);
-            let done = match eqwalizer_cli::do_eqwalize_target(
-                &eqwalize_target,
-                &mut state.loaded,
-                &mut cli,
-            ) {
-                Ok(()) => DaemonResponse::success(None),
+        Ok(Some(ShellCommand::ShellEqwalizeTarget(eqwalize_target))) => {
+            let request =
+                DaemonRequest::Eqwalize(Box::new(EqwalizeRequest::from(&eqwalize_target)));
+            let done = match execute_daemon_request(request, state, &mut cli) {
+                Ok(_) => DaemonResponse::success(None),
                 Err(e) => DaemonResponse::error(e.to_string()),
             };
             (done, false)
@@ -997,14 +986,13 @@ fn execute_daemon_request(
     state: &mut DaemonState,
     cli: &mut dyn Cli,
 ) -> Result<Option<LintOutcome>> {
+    let mut report = Report::for_daemon(cli);
     match request {
         DaemonRequest::Eqwalize(args) => {
-            let mut report = Report::for_daemon(cli);
             eqwalizer_cli::do_eqwalize(&args, &mut state.loaded, &mut report)?;
             Ok(None)
         }
         DaemonRequest::Lint(args) => {
-            let mut report = Report::for_daemon(cli);
             lint_cli::do_lint(&args, &state.lint_config, &mut state.loaded, &mut report).map(Some)
         }
     }
@@ -1094,7 +1082,7 @@ struct DaemonCommandResult<T = ()> {
 
 fn connect_and_run<T>(
     command_line: &str,
-    format_json: bool,
+    format: Format,
     connection: &DaemonConnection<'_>,
     cli: &mut dyn Cli,
 ) -> Result<DaemonCommandResult<T>>
@@ -1161,85 +1149,76 @@ where
 
     // Read response lines
     let reader = BufReader::new(&stream);
-    let mut command_failed = false;
     let mut outcome = None;
-    let mut error_count: usize = 0;
-    let mut emitted_diagnostic = false;
-    let mut received_done = false;
-    for line in reader.lines() {
-        let line =
-            line.map_err(|error| daemon_connection_error(error.into(), emitted_diagnostic))?;
-        let response: DaemonResponse<T> = serde_json::from_str(&line)?;
-        match response {
-            // Out-of-band status from the daemon (e.g. a deprecation warning).
-            // Render it via the client's own info channel (yellow on a TTY); it
-            // never reaches stdout, so `--format json` stays clean, and it is not
-            // counted as a diagnostic.
-            DaemonResponse::Info { message } => cli.info(&message)?,
-            DaemonResponse::Done {
-                message:
-                    DoneMessage {
-                        outcome: response_outcome,
-                    },
-            } => {
-                outcome = response_outcome;
-                received_done = true;
-                break;
+    let (command_failed, restart_requested) = {
+        let mut report = Report::for_command(cli, format);
+        let mut command_failed = false;
+        let mut emitted_diagnostic = false;
+        let mut received_done = false;
+        let mut restart_requested = false;
+        for line in reader.lines() {
+            let line =
+                line.map_err(|error| daemon_connection_error(error.into(), emitted_diagnostic))?;
+            let response: DaemonResponse<T> = serde_json::from_str(&line)?;
+            match response {
+                DaemonResponse::Info { message } => report.info(&message)?,
+                DaemonResponse::Done {
+                    message:
+                        DoneMessage {
+                            outcome: response_outcome,
+                        },
+                } => {
+                    outcome = response_outcome;
+                    received_done = true;
+                    break;
+                }
+                DaemonResponse::Error { message } => {
+                    received_done = true;
+                    command_failed = true;
+                    report.terminal_error(&format!("Error: {message}"))?;
+                    break;
+                }
+                DaemonResponse::Unavailable { message } => {
+                    return Err(daemon_connection_error(
+                        anyhow::Error::msg(message),
+                        emitted_diagnostic,
+                    ));
+                }
+                DaemonResponse::Restart { reason } => {
+                    report.info(&format!("Restarting daemon: {reason}"))?;
+                    let start = Instant::now();
+                    while endpoint.sock.exists() && start.elapsed() < Duration::from_secs(10) {
+                        thread::sleep(Duration::from_millis(100));
+                    }
+                    cleanup_stale_in_dir(&endpoint.dir);
+                    restart_requested = true;
+                    break;
+                }
+                DaemonResponse::Diagnostic {
+                    diagnostic,
+                    rendered,
+                } => {
+                    report.write_forwarded_diagnostic(diagnostic, rendered)?;
+                    emitted_diagnostic = true;
+                }
             }
-            DaemonResponse::Error { message } => {
-                received_done = true;
-                command_failed = true;
-                writeln!(cli.err(), "Error: {message}")?;
-                break;
-            }
-            DaemonResponse::Unavailable { message } => {
+        }
+
+        if !restart_requested {
+            if !received_done {
                 return Err(daemon_connection_error(
-                    anyhow::Error::msg(message),
+                    anyhow::anyhow!("Daemon closed the connection before completing the request"),
                     emitted_diagnostic,
                 ));
             }
-            DaemonResponse::Restart { reason } => {
-                cli.info(&format!("Restarting daemon: {reason}"))?;
-                // Wait for daemon to shut down
-                let start = Instant::now();
-                while endpoint.sock.exists() && start.elapsed() < Duration::from_secs(10) {
-                    thread::sleep(Duration::from_millis(100));
-                }
-                cleanup_stale_in_dir(&endpoint.dir);
-                // Start new daemon and retry the command
-                return connect_and_run(command_line, format_json, connection, cli);
-            }
-            DaemonResponse::Diagnostic {
-                diagnostic,
-                rendered,
-            } => {
-                if is_error_diagnostic(&diagnostic) {
-                    error_count += 1;
-                }
-                if format_json {
-                    writeln!(cli, "{}", serde_json::to_string(&diagnostic)?)?;
-                } else if let Some(rendered) = rendered {
-                    let use_color = cli.supports_color();
-                    write!(cli, "{}", rendered.output(use_color))?;
-                } else {
-                    write!(cli, "{diagnostic}")?;
-                }
-                emitted_diagnostic = true;
-            }
+            report.write_error_summary()?;
         }
-    }
+        (command_failed, restart_requested)
+    };
 
-    if !received_done {
-        return Err(daemon_connection_error(
-            anyhow::anyhow!("Daemon closed the connection before completing the request"),
-            emitted_diagnostic,
-        ));
+    if restart_requested {
+        return connect_and_run(command_line, format, connection, cli);
     }
-
-    if !format_json {
-        reporting::write_error_count_summary(cli, error_count)?;
-    }
-
     if command_failed {
         // Shared between eqwalize and lint; the daemon's own error message
         // was already printed to stderr above, so this error only carries the
@@ -1252,9 +1231,6 @@ where
     })
 }
 
-fn is_error_diagnostic(diag: &elp::arc_types::Diagnostic) -> bool {
-    diag.severity() == &elp::arc_types::Severity::Error
-}
 /// Spawn a new daemon process and wait for it to become ready.
 fn start_daemon(
     endpoint: &DaemonEndpoint,
@@ -1371,10 +1347,9 @@ pub fn connect_eqwalize(
     let start_time = SystemTime::now();
     let request = EqwalizeRequest::from(args);
     let cmd = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(request)))?;
-    let format_json = args.format.is_some();
     let connection =
         DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
-    let result = connect_and_run::<()>(&cmd, format_json, &connection, cli);
+    let result = connect_and_run::<()>(&cmd, args.format, &connection, cli);
     match &result {
         Ok(result) if result.execution_mode == DaemonExecutionMode::Warm => {
             eqwalizer_cli::report_eqwalize_done(start_time, "success", "daemon_warm")
@@ -1404,10 +1379,9 @@ pub fn connect_eqwalize_all(
     }
     let request = EqwalizeRequest::from(args);
     let cmd = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(request)))?;
-    let format_json = args.format.is_some();
     let connection =
         DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
-    connect_and_run::<()>(&cmd, format_json, &connection, cli)?;
+    connect_and_run::<()>(&cmd, args.format, &connection, cli)?;
     Ok(())
 }
 
@@ -1421,10 +1395,9 @@ pub fn connect_eqwalize_app(
     }
     let request = EqwalizeRequest::from(args);
     let cmd = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(request)))?;
-    let format_json = args.format.is_some();
     let connection =
         DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
-    connect_and_run::<()>(&cmd, format_json, &connection, cli)?;
+    connect_and_run::<()>(&cmd, args.format, &connection, cli)?;
     Ok(())
 }
 
@@ -1438,10 +1411,9 @@ pub fn connect_eqwalize_target(
     }
     let request = EqwalizeRequest::from(args);
     let cmd = encode_daemon_request(DaemonRequest::Eqwalize(Box::new(request)))?;
-    let format_json = args.format.is_some();
     // eqwalize-target is buck-only, so profile is always "test" and rebar is always false
     let connection = DaemonConnection::new(&args.project, "test", false, startup_options);
-    connect_and_run::<()>(&cmd, format_json, &connection, cli)?;
+    connect_and_run::<()>(&cmd, args.format, &connection, cli)?;
     Ok(())
 }
 
@@ -1521,10 +1493,9 @@ pub fn connect_lint(
         env::current_dir().context("failed to resolve the client working directory")?;
     let request_args = lint_request_with_absolute_paths(args, &current_dir);
     let cmd = encode_daemon_request(DaemonRequest::Lint(Box::new(request_args)))?;
-    let format_json = args.format.is_some();
     let connection =
         DaemonConnection::new(&args.project, &args.profile, args.rebar, startup_options);
-    connect_and_run::<LintOutcome>(&cmd, format_json, &connection, cli)?
+    connect_and_run::<LintOutcome>(&cmd, args.format, &connection, cli)?
         .outcome
         .context("daemon protocol invariant violated: lint response is missing typed `outcome`")
 }
@@ -1672,6 +1643,7 @@ mod tests {
 
     use super::*;
     use crate::args::Severity;
+    use crate::daemon_protocol::RenderedDiagnostic;
 
     #[test]
     fn connection_errors_are_unavailable_only_before_diagnostic_output() {
@@ -1696,7 +1668,7 @@ mod tests {
         let args = EqwalizeAll {
             project: PathBuf::from("/tmp/project"),
             profile: "prod".to_string(),
-            format: Some(Format::Json),
+            format: Format::Json,
             rebar: true,
             connect: true,
             no_connect: false,
@@ -1764,6 +1736,96 @@ mod tests {
         assert_eq_expected!(expected_files, request.file);
         let expected_path = Some(PathBuf::from("/workspace/client/src"));
         assert_eq_expected!(expected_path, request.path);
+    }
+
+    // -- Daemon response decoding and client output --
+
+    #[test]
+    fn daemon_human_output_uses_rendered_and_falls_back_to_typed_diagnostic() {
+        let diagnostic = elp::arc_types::Diagnostic::new(
+            Path::new("src/foo.erl"),
+            1,
+            Some(1),
+            elp::arc_types::Severity::Error,
+            "incompatible_types".to_string(),
+            "expected integer".to_string(),
+            None,
+            None,
+        );
+        let mut cli = elp::cli::Fake::default();
+        {
+            let mut report = Report::for_command(&mut cli, Format::Human);
+            report
+                .write_forwarded_diagnostic(
+                    diagnostic,
+                    Some(RenderedDiagnostic::new(
+                        "human output\n".to_string(),
+                        "ansi output\n".to_string(),
+                    )),
+                )
+                .expect("pre-rendered human output should be used");
+            report
+                .write_error_summary()
+                .expect("error summary should be written");
+        }
+        let (stdout, _) = cli.to_strings();
+        assert_eq_expected!("human output\n1 ERROR\n", stdout.as_str());
+
+        let diagnostic = elp::arc_types::Diagnostic::new(
+            Path::new("src/foo.erl"),
+            1,
+            Some(1),
+            elp::arc_types::Severity::Warning,
+            "incompatible_types".to_string(),
+            "expected integer".to_string(),
+            None,
+            None,
+        );
+        let expected_output = format!("{diagnostic}NO ERRORS\n");
+        let mut cli = elp::cli::Fake::default();
+        {
+            let mut report = Report::for_command(&mut cli, Format::Human);
+            report
+                .write_forwarded_diagnostic(diagnostic, None)
+                .expect("unrendered human output should use the typed fallback");
+            report
+                .write_error_summary()
+                .expect("warning summary should be written");
+        }
+        let (stdout, _) = cli.to_strings();
+        assert_eq_expected!(expected_output, stdout);
+    }
+
+    #[test]
+    fn daemon_json_output_writes_the_typed_diagnostic() {
+        let expected = elp::arc_types::Diagnostic::new(
+            Path::new("src/foo.erl"),
+            1,
+            Some(1),
+            elp::arc_types::Severity::Error,
+            "incompatible_types".to_string(),
+            "expected integer".to_string(),
+            None,
+            None,
+        );
+        let mut cli = elp::cli::Fake::default();
+        {
+            let mut report = Report::for_command(&mut cli, Format::Json);
+            report
+                .write_forwarded_diagnostic(
+                    expected.clone(),
+                    Some(RenderedDiagnostic::new(
+                        "human output\n".to_string(),
+                        "ansi output\n".to_string(),
+                    )),
+                )
+                .expect("JSON output should be written");
+        }
+        let (stdout, _) = cli.to_strings();
+        let actual: elp::arc_types::Diagnostic =
+            serde_json::from_str(stdout.trim()).expect("client output should be a diagnostic");
+
+        assert_eq_expected!(expected, actual);
     }
 
     #[test]
@@ -1953,7 +2015,7 @@ mod tests {
             connect: true,
             include_generated: true,
             print_diags: false,
-            format: Some(Format::Json),
+            format: Format::Json,
             include_erlc_diagnostics: true,
             include_eqwalizer_diagnostics: true,
             include_suppressed: true,
@@ -2301,29 +2363,39 @@ mod tests {
 
     #[test]
     fn only_error_diagnostics_increment_the_human_summary() {
-        let warning = elp::arc_types::Diagnostic::new(
-            Path::new("src/foo.erl"),
-            1,
-            Some(1),
-            elp::arc_types::Severity::Warning,
-            "W0001".to_string(),
-            "warning".to_string(),
-            None,
-            None,
-        );
-        let error = elp::arc_types::Diagnostic::new(
-            Path::new("src/foo.erl"),
-            1,
-            Some(1),
-            elp::arc_types::Severity::Error,
-            "E0001".to_string(),
-            "error".to_string(),
-            None,
-            None,
-        );
+        let diagnostic = |severity, name: &str| {
+            elp::arc_types::Diagnostic::new(
+                Path::new("src/foo.erl"),
+                1,
+                Some(1),
+                severity,
+                name.to_string(),
+                name.to_string(),
+                None,
+                None,
+            )
+        };
+        let warning = diagnostic(elp::arc_types::Severity::Warning, "W0001");
+        let error = diagnostic(elp::arc_types::Severity::Error, "E0001");
+        let mut cli = elp::cli::Fake::default();
+        {
+            let mut report = Report::for_command(&mut cli, Format::Human);
+            report
+                .write_forwarded_diagnostic(warning, None)
+                .expect("warning should be written");
+            report
+                .write_forwarded_diagnostic(error, None)
+                .expect("error should be written");
+            report
+                .write_error_summary()
+                .expect("summary should be written");
+        }
 
-        assert!(!is_error_diagnostic(&warning));
-        assert!(is_error_diagnostic(&error));
+        let (stdout, _) = cli.to_strings();
+        assert!(
+            stdout.ends_with("1 ERROR\n"),
+            "only the error should be counted: {stdout}"
+        );
     }
 
     // -- wait_for_daemon --
@@ -2452,7 +2524,7 @@ mod tests {
             &Eqwalize {
                 project: project.clone(),
                 profile: profile.clone(),
-                format: Some(Format::Json),
+                format: Format::Json,
                 rebar: false,
                 connect: true,
                 no_connect: false,

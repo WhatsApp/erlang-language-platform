@@ -576,6 +576,7 @@ mod tests {
     use vfs::AbsPathBuf;
 
     use super::*;
+    use crate::args::Format;
 
     const BUCK_QUERY_CONFIG: BuckQueryConfig = BuckQueryConfig::BuildGeneratedCode;
 
@@ -985,7 +986,7 @@ mod tests {
                     let mut cli = Fake::default();
                     let module = module_index.module_for_file(file_id).unwrap();
                     {
-                        let mut report = reporting::Report::for_command(&mut cli, None);
+                        let mut report = reporting::Report::for_command(&mut cli, Format::Human);
                         if let Some(diagnostics) = diagnostics_by_module.get(module.as_str()) {
                             report
                                 .write_eqwalizer_diagnostics(

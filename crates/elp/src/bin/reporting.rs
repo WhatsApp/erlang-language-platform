@@ -19,6 +19,7 @@ use std::sync::LazyLock;
 
 use anyhow::Context;
 use anyhow::Result;
+use anyhow::bail;
 use codespan_reporting::diagnostic::Diagnostic as ReportingDiagnostic;
 use codespan_reporting::diagnostic::Label;
 use codespan_reporting::files::SimpleFiles;
@@ -87,11 +88,10 @@ pub(crate) struct IdeDiagnosticContext<'a> {
 type ReportingData = (SimpleFiles<String, Arc<str>>, usize);
 
 impl<'a> Report<'a> {
-    pub(crate) fn for_command(cli: &'a mut dyn Cli, format: Option<Format>) -> Self {
+    pub(crate) fn for_command(cli: &'a mut dyn Cli, format: Format) -> Self {
         let destination = match format {
-            None => Destination::Human,
-            Some(Format::Json | Format::ImplicitJson) => Destination::Json,
-            Some(Format::Daemon | Format::DaemonJson) => Destination::Daemon,
+            Format::Human => Destination::Human,
+            Format::Json | Format::ImplicitJson => Destination::Json,
         };
         Self::new(cli, destination)
     }
@@ -109,6 +109,8 @@ impl<'a> Report<'a> {
         }
     }
 
+    /// Status is out-of-band: it must not enter structured stdout or affect
+    /// diagnostic counts.
     pub(crate) fn info(&mut self, message: &str) -> io::Result<()> {
         self.cli.info(message)
     }
@@ -142,6 +144,11 @@ impl<'a> Report<'a> {
         if self.destination == Destination::Human {
             self.info(message)?;
         }
+        Ok(())
+    }
+
+    pub(crate) fn terminal_error(&mut self, message: &str) -> Result<()> {
+        writeln!(self.cli.err(), "{message}")?;
         Ok(())
     }
 
@@ -321,6 +328,29 @@ impl<'a> Report<'a> {
                 },
             )?;
         }
+        Ok(())
+    }
+
+    pub(crate) fn write_forwarded_diagnostic(
+        &mut self,
+        diagnostic: arc_types::Diagnostic,
+        rendered: Option<RenderedDiagnostic>,
+    ) -> Result<()> {
+        let is_error = diagnostic.severity() == &arc_types::Severity::Error;
+        match self.destination {
+            Destination::Human => match rendered {
+                Some(rendered) => {
+                    let use_color = self.cli.supports_color();
+                    write!(self.cli, "{}", rendered.output(use_color))?;
+                }
+                None => write!(self.cli, "{diagnostic}")?,
+            },
+            Destination::Json => writeln!(self.cli, "{}", serde_json::to_string(&diagnostic)?)?,
+            Destination::Daemon => {
+                bail!("forwarded diagnostic cannot be written to daemon transport")
+            }
+        }
+        self.error_count += usize::from(is_error);
         Ok(())
     }
 
@@ -556,7 +586,7 @@ pub(crate) fn format_eqwalize_stats(count: u64, total: u64, duration: u64) -> St
     }
 }
 
-pub fn write_error_count_summary(writer: &mut dyn WriteColor, error_count: usize) -> Result<()> {
+fn write_error_count_summary(writer: &mut dyn WriteColor, error_count: usize) -> Result<()> {
     if error_count == 0 {
         writer.set_color(&GREEN_COLOR_SPEC)?;
         write!(writer, "NO ERRORS")?;
@@ -783,28 +813,18 @@ mod tests {
     fn report_constructors_select_the_destination() {
         let mut cli = elp::cli::Fake::default();
         {
-            let report = Report::for_command(&mut cli, None);
+            let report = Report::for_command(&mut cli, Format::Human);
             assert!(matches!(report.destination, Destination::Human));
         }
 
         {
-            let report = Report::for_command(&mut cli, Some(Format::Json));
+            let report = Report::for_command(&mut cli, Format::Json);
             assert!(matches!(report.destination, Destination::Json));
         }
 
         {
-            let report = Report::for_command(&mut cli, Some(Format::ImplicitJson));
+            let report = Report::for_command(&mut cli, Format::ImplicitJson);
             assert!(matches!(report.destination, Destination::Json));
-        }
-
-        {
-            let report = Report::for_command(&mut cli, Some(Format::Daemon));
-            assert!(matches!(report.destination, Destination::Daemon));
-        }
-
-        {
-            let report = Report::for_command(&mut cli, Some(Format::DaemonJson));
-            assert!(matches!(report.destination, Destination::Daemon));
         }
 
         let report = Report::for_daemon(&mut cli);
@@ -871,7 +891,7 @@ mod tests {
         let mut cli = elp::cli::Fake::default();
 
         {
-            let mut report = Report::for_command(&mut cli, None);
+            let mut report = Report::for_command(&mut cli, Format::Human);
             report
                 .write_system_stats(analysis_host, vfs, "process usage")
                 .expect("system stats should be reported");
@@ -890,7 +910,7 @@ mod tests {
     fn stats_report_does_not_write_to_structured_stdout() {
         let mut cli = elp::cli::Fake::default();
         {
-            let mut report = Report::for_command(&mut cli, Some(Format::Json));
+            let mut report = Report::for_command(&mut cli, Format::Json);
             dump_stats_report(&mut report, false);
         }
         let (stdout, stderr) = cli.to_strings();

@@ -104,7 +104,6 @@ impl LintOutcome {
 use crate::args::Format;
 use crate::args::Severity;
 use crate::args::diagnostic_code_candidates;
-use crate::args::diagnostic_counts_as_error;
 use crate::args::module_completer;
 use crate::reporting;
 use crate::reporting::IdeDiagnosticContext;
@@ -178,8 +177,13 @@ pub struct Lint {
     #[serde(default)]
     pub print_diags: bool,
     /// Customize the output format (defaults to human-readable)
-    #[arg(long, value_name = "FORMAT")]
-    pub format: Option<Format>,
+    #[arg(
+        long,
+        value_name = "FORMAT",
+        default_value = "human",
+        hide_default_value = true
+    )]
+    pub format: Format,
 
     /// Include diagnostics produced by erlc
     #[arg(long)]
@@ -264,7 +268,7 @@ pub struct Lint {
 impl Lint {
     pub fn normalize(&mut self) {
         if self.arc_patch {
-            self.format = Some(Format::Json);
+            self.format = Format::Json;
         }
         self.modules.sort_unstable();
         self.modules.dedup();
@@ -276,7 +280,7 @@ impl Lint {
     }
 
     fn uses_cli_severity(&self) -> bool {
-        self.use_cli_severity && matches!(self.format, Some(Format::Json | Format::ImplicitJson))
+        self.use_cli_severity && matches!(self.format, Format::Json | Format::ImplicitJson)
     }
 }
 
@@ -849,7 +853,8 @@ fn report_filtered_diagnostics(
         }
         outcome.seen_diagnostics = true;
         outcome.should_fail |= diagnostics.iter().any(|diagnostic| {
-            diagnostic_counts_as_error(args.format, diagnostic.severity(args.uses_cli_severity()))
+            args.format
+                .diagnostic_counts_as_error(diagnostic.severity(args.uses_cli_severity()))
         });
         if !args.print_diags {
             report.write_lint_count(name, diagnostics.len())?;
@@ -2098,7 +2103,7 @@ mod tests {
 
     fn run_lint(
         diagnostic_filter: &str,
-        format: Option<Format>,
+        format: Format,
         daemon: bool,
         print_diags: bool,
     ) -> (anyhow::Result<LintOutcome>, String, String) {
@@ -2139,7 +2144,7 @@ mod tests {
 
     #[test]
     fn lint_warning_preserves_human_explicit_and_implicit_exit_semantics() {
-        let (human_result, human_output, _) = run_lint("L1230", None, false, true);
+        let (human_result, human_output, _) = run_lint("L1230", Format::Human, false, true);
         let human_outcome = human_result.expect("human warnings should complete");
         assert_eq_expected!(0, human_outcome.process_exit_code());
         assert!(
@@ -2147,8 +2152,7 @@ mod tests {
             "human output should render the warning: {human_output}"
         );
 
-        let (explicit_result, explicit_output, _) =
-            run_lint("L1230", Some(Format::Json), false, true);
+        let (explicit_result, explicit_output, _) = run_lint("L1230", Format::Json, false, true);
         let explicit_outcome = explicit_result.expect("explicit JSON lint should complete");
         assert_eq_expected!(101, explicit_outcome.process_exit_code());
         assert!(
@@ -2157,7 +2161,7 @@ mod tests {
         );
 
         let (implicit_result, implicit_output, _) =
-            run_lint("L1230", Some(Format::ImplicitJson), false, true);
+            run_lint("L1230", Format::ImplicitJson, false, true);
         let implicit_outcome = implicit_result.expect("implicit JSON lint should complete");
         assert_eq_expected!(0, implicit_outcome.process_exit_code());
         assert!(
@@ -2182,21 +2186,18 @@ mod tests {
             diagnostic.severity(args.uses_cli_severity())
         };
 
-        assert_eq_expected!(diagnostics::Severity::Warning, severity_for(None));
+        assert_eq_expected!(diagnostics::Severity::Warning, severity_for(Format::Human));
+        assert_eq_expected!(diagnostics::Severity::Error, severity_for(Format::Json));
         assert_eq_expected!(
             diagnostics::Severity::Error,
-            severity_for(Some(Format::Json))
-        );
-        assert_eq_expected!(
-            diagnostics::Severity::Error,
-            severity_for(Some(Format::ImplicitJson))
+            severity_for(Format::ImplicitJson)
         );
     }
 
     #[test]
     fn no_diags_applies_failure_semantics_and_routes_structured_counts_out_of_band() {
         let (human_warning_result, human_warning_output, human_warning_info) =
-            run_lint("L1230", None, false, false);
+            run_lint("L1230", Format::Human, false, false);
         let human_warning_outcome =
             human_warning_result.expect("human warning --no-diags should complete");
         assert_eq_expected!(0, human_warning_outcome.process_exit_code());
@@ -2205,22 +2206,21 @@ mod tests {
         assert_eq_expected!("", human_warning_info.as_str());
 
         let (human_error_result, human_error_output, human_error_info) =
-            run_lint("P1700", None, false, false);
+            run_lint("P1700", Format::Human, false, false);
         let human_error_outcome =
             human_error_result.expect("human error --no-diags should complete");
         assert_eq_expected!(101, human_error_outcome.process_exit_code());
         assert_eq_expected!(expected_human, human_error_output.as_str());
         assert_eq_expected!("", human_error_info.as_str());
 
-        let (json_result, json_output, json_info) =
-            run_lint("L1230", Some(Format::Json), false, false);
+        let (json_result, json_output, json_info) = run_lint("L1230", Format::Json, false, false);
         let json_outcome = json_result.expect("JSON --no-diags should complete");
         assert_eq_expected!(101, json_outcome.process_exit_code());
         assert_eq_expected!("", json_output.as_str());
         assert_eq_expected!("  lints: 1\n", json_info.as_str());
 
         let (daemon_result, daemon_output, daemon_info) =
-            run_lint("L1230", Some(Format::Json), true, false);
+            run_lint("L1230", Format::Json, true, false);
         let daemon_outcome = daemon_result.expect("daemon --no-diags should complete");
         assert_eq_expected!(101, daemon_outcome.process_exit_code());
         assert_eq_expected!("", daemon_output.as_str());
@@ -2241,7 +2241,7 @@ mod tests {
             let lint = super::Lint {
                 modules: vec!["lints".to_string()],
                 print_diags: true,
-                format: Some(format),
+                format,
                 diagnostic_filter: vec!["L1230".to_string()],
                 ..super::Lint::default()
             };

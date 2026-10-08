@@ -60,7 +60,6 @@ use vfs::AbsPath;
 
 use crate::args::Format;
 use crate::args::Severity;
-use crate::args::diagnostic_counts_as_error;
 use crate::args::module_completer;
 use crate::reporting;
 use crate::reporting::print_memory_usage;
@@ -104,8 +103,13 @@ pub struct ParseAllElp {
     #[arg(long)]
     pub use_cli_severity: bool,
     /// Customize the output format (defaults to human-readable)
-    #[arg(long, value_name = "FORMAT")]
-    pub format: Option<Format>,
+    #[arg(
+        long,
+        value_name = "FORMAT",
+        default_value = "human",
+        hide_default_value = true
+    )]
+    pub format: Format,
     /// Report system memory usage and other statistics
     #[arg(long = "report-system-stats")]
     pub report_system_stats: bool,
@@ -116,11 +120,11 @@ pub struct ParseAllElp {
 
 impl ParseAllElp {
     pub fn is_format_normal(&self) -> bool {
-        self.format.is_none()
+        self.format == Format::Human
     }
 
     pub fn is_format_json(&self) -> bool {
-        self.format.is_some_and(Format::is_json)
+        matches!(self.format, Format::Json | Format::ImplicitJson)
     }
 }
 
@@ -278,7 +282,7 @@ pub fn parse_all(
                 combined.sort_by_key(|a| a.range.start());
                 for diag in combined {
                     if args.is_format_json() {
-                        if diagnostic_counts_as_error(args.format, diag.severity) {
+                        if args.format.diagnostic_counts_as_error(diag.severity) {
                             err_in_diag = true;
                         }
                         let vfs_path = loaded.vfs.file_path(diags.file_id);

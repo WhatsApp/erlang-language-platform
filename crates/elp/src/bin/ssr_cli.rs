@@ -92,8 +92,13 @@ pub struct Ssr {
     pub include_tests: bool,
 
     /// Customize the output format (defaults to human-readable)
-    #[arg(long, value_name = "FORMAT")]
-    pub format: Option<Format>,
+    #[arg(
+        long,
+        value_name = "FORMAT",
+        default_value = "human",
+        hide_default_value = true
+    )]
+    pub format: Format,
 
     /// Macro expansion strategy (default: expand)
     #[arg(long = "macros", value_name = "STRATEGY")]
@@ -152,11 +157,11 @@ fn parse_macro_strategy(macro_strategy: Option<MacroStrategyArg>) -> MacroStrate
 
 impl Ssr {
     pub fn is_format_normal(&self) -> bool {
-        self.format.is_none()
+        self.format == Format::Human
     }
 
     pub fn is_format_json(&self) -> bool {
-        self.format.is_some_and(Format::is_json)
+        matches!(self.format, Format::Json | Format::ImplicitJson)
     }
 
     pub fn parse_strategy(&self) -> Result<Strategy> {

@@ -27,6 +27,7 @@ use elp_project_model::DiscoverConfig;
 use elp_project_model::buck::BuckQueryConfig;
 use rustyline::error::ReadlineError;
 
+use crate::args::Format;
 use crate::eqwalizer_cli;
 use crate::eqwalizer_cli::Eqwalize;
 use crate::eqwalizer_cli::EqwalizeAll;
@@ -96,7 +97,7 @@ impl ShellCommand {
                         return Ok(Some(ShellCommand::ShellEqwalize(Eqwalize {
                             project,
                             profile,
-                            format: None,
+                            format: Format::Human,
                             rebar,
                             connect: false,
                             no_connect: false,
@@ -124,7 +125,7 @@ impl ShellCommand {
                         return Ok(Some(ShellCommand::ShellEqwalizeApp(EqwalizeApp {
                             project,
                             profile,
-                            format: None,
+                            format: Format::Human,
                             rebar,
                             connect: false,
                             no_connect: false,
@@ -155,7 +156,7 @@ impl ShellCommand {
                         rebar,
                         connect: false,
                         no_connect: false,
-                        format: None,
+                        format: Format::Human,
                         include_generated,
                         bail_on_error: false,
                         stats: false,
@@ -178,7 +179,7 @@ impl ShellCommand {
                     if let [target] = args[..] {
                         return Ok(Some(ShellCommand::ShellEqwalizeTarget(EqwalizeTarget {
                             project,
-                            format: None,
+                            format: Format::Human,
                             include_generated: false,
                             connect: false,
                             no_connect: false,
