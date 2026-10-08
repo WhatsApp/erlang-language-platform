@@ -40,11 +40,11 @@ same convention and are marked as not exported.
 
 %% -------- argparse --------
 
--type 'argparse:arg_map'() :: #{eqwalizer:dynamic() => eqwalizer:dynamic()}.
+-type 'argparse:arg_map'() :: #{dynamic() => dynamic()}.
 
 %% -------- ct_suite --------
 
--type 'ct_suite:ct_config'() :: [{Key :: atom(), Value :: eqwalizer:dynamic()}].
+-type 'ct_suite:ct_config'() :: [{Key :: atom(), Value :: dynamic()}].
 
 % Adds the {Name, Tests} form, which groups/0 may return.
 -type 'ct_suite:ct_group_def'() ::
@@ -87,17 +87,17 @@ same convention and are marked as not exported.
 
 %% -------- digraph --------
 
--type 'digraph:edge'() :: eqwalizer:dynamic().
--type 'digraph:label'() :: eqwalizer:dynamic().
--type 'digraph:vertex'() :: eqwalizer:dynamic().
+-type 'digraph:edge'() :: dynamic().
+-type 'digraph:label'() :: dynamic().
+-type 'digraph:vertex'() :: dynamic().
 
 %% -------- erl_parse --------
 
--type 'erl_parse:form_info'() :: eqwalizer:dynamic().
+-type 'erl_parse:form_info'() :: dynamic().
 
 %% -------- erl_syntax --------
 
--type 'erl_syntax:annotation_or_location'() :: eqwalizer:dynamic().
+-type 'erl_syntax:annotation_or_location'() :: dynamic().
 
 %% -------- erlang --------
 
@@ -114,8 +114,8 @@ same convention and are marked as not exported.
         Location :: [{file, Filename :: string()} | {line, Line :: pos_integer()}]
     }}
     | {current_stacktrace, Stack :: ['erlang:process_info_stack_item'()]}
-    | {dictionary, Dictionary :: [{Key :: eqwalizer:dynamic(), Value :: eqwalizer:dynamic()}]}
-    | {{dictionary, Key :: eqwalizer:dynamic()}, Value :: eqwalizer:dynamic()}
+    | {dictionary, Dictionary :: [{Key :: dynamic(), Value :: dynamic()}]}
+    | {{dictionary, Key :: dynamic()}, Value :: dynamic()}
     | {error_handler, Module :: module()}
     | {garbage_collection, GCInfo :: [{atom(), non_neg_integer()}]}
     | {garbage_collection_info, GCInfo :: [{atom(), non_neg_integer()}]}
@@ -123,11 +123,11 @@ same convention and are marked as not exported.
     | {heap_size, Size :: non_neg_integer()}
     | {initial_call, mfa()}
     | {links, PidsAndPorts :: [pid() | port()]}
-    | {label, eqwalizer:dynamic()}
+    | {label, dynamic()}
     | {last_calls, false | (Calls :: [mfa()])}
     | {memory, Size :: non_neg_integer()}
     | {message_queue_len, MessageQueueLen :: non_neg_integer()}
-    | {messages, MessageQueue :: [eqwalizer:dynamic()]}
+    | {messages, MessageQueue :: [dynamic()]}
     | {min_heap_size, MinHeapSize :: non_neg_integer()}
     | {min_bin_vheap_size, MinBinVHeapSize :: non_neg_integer()}
     | {max_heap_size, MaxHeapSize :: erlang:max_heap_size()}
@@ -139,7 +139,7 @@ same convention and are marked as not exported.
     | {priority_messages, Enabled :: boolean()}
     | {reductions, Number :: non_neg_integer()}
     | {registered_name, [] | (Atom :: atom())}
-    | {sequential_trace_token, [] | (SequentialTraceToken :: eqwalizer:dynamic())}
+    | {sequential_trace_token, [] | (SequentialTraceToken :: dynamic())}
     | {stack_size, Size :: non_neg_integer()}
     | {status, Status :: exiting | garbage_collecting | waiting | running | runnable | suspended}
     | {suspending,
@@ -154,43 +154,43 @@ same convention and are marked as not exported.
 -type 'erlang:process_info_stack_item'() :: {
     Module :: module(),
     Function :: atom(),
-    Arity :: arity() | (Args :: [eqwalizer:dynamic()]),
+    Arity :: arity() | (Args :: [dynamic()]),
     Location :: [{file, Filename :: string()} | {line, Line :: pos_integer()}]
 }.
 
 -type 'erlang:stacktrace'() :: [
-    {module(), atom(), arity() | [eqwalizer:dynamic()], [
+    {module(), atom(), arity() | [dynamic()], [
         StackTraceExtraInfo ::
             {line, pos_integer()}
             | {file, unicode:chardata()}
-            | {error_info, #{module => module(), function => atom(), cause => eqwalizer:dynamic()}}
-            | {atom(), eqwalizer:dynamic()}
+            | {error_info, #{module => module(), function => atom(), cause => dynamic()}}
+            | {atom(), dynamic()}
     ]}
-    | {function(), arity() | [eqwalizer:dynamic()], [
+    | {function(), arity() | [dynamic()], [
         StackTraceExtraInfo ::
             {line, pos_integer()}
             | {file, unicode:chardata()}
-            | {error_info, #{module => module(), function => atom(), cause => eqwalizer:dynamic()}}
-            | {atom(), eqwalizer:dynamic()}
+            | {error_info, #{module => module(), function => atom(), cause => dynamic()}}
+            | {atom(), dynamic()}
     ]}
 ].
 
 %% -------- gen_server --------
 
 -type 'gen_server:format_status'() :: #{
-    state => eqwalizer:dynamic(),
-    message => eqwalizer:dynamic(),
-    reason => eqwalizer:dynamic(),
+    state => dynamic(),
+    message => dynamic(),
+    reason => dynamic(),
     log => [sys:system_event()]
 }.
 
 %% -------- inet --------
 
--type 'inet:module_socket'() :: {'$inet', Handler :: eqwalizer:dynamic(module()), Handle :: eqwalizer:dynamic()}.
+-type 'inet:module_socket'() :: {'$inet', Handler :: eqwalizer:dynamic(module()), Handle :: dynamic()}.
 
 %% -------- logger --------
 
--type 'logger:filter_arg'() :: eqwalizer:dynamic().
+-type 'logger:filter_arg'() :: dynamic().
 
 -type 'logger:metadata'() :: #{
     pid => pid(),
@@ -201,18 +201,18 @@ same convention and are marked as not exported.
     line => non_neg_integer(),
     domain => [eqwalizer:dynamic(atom())],
     report_cb => logger:report_cb(),
-    atom() => eqwalizer:dynamic()
+    atom() => dynamic()
 }.
 
 -type 'logger:report_cb'() ::
-    fun((eqwalizer:dynamic()) -> {io:format(), [term()]})
-    | fun((eqwalizer:dynamic(), logger:report_cb_config()) -> unicode:chardata()).
+    fun((dynamic()) -> {io:format(), [term()]})
+    | fun((dynamic(), logger:report_cb_config()) -> unicode:chardata()).
 
 %% -------- logger_handler --------
 
 -type 'logger_handler:config'() :: #{
     id => logger_handler:id(),
-    config => eqwalizer:dynamic(),
+    config => dynamic(),
     level => logger:level() | all | none,
     module => module(),
     filter_default => log | stop,
@@ -222,18 +222,17 @@ same convention and are marked as not exported.
 
 %% -------- ssl --------
 
--type 'ssl:sslsocket'() :: eqwalizer:dynamic().
+-type 'ssl:sslsocket'() :: dynamic().
 
 %% -------- supervisor --------
 
 -type 'supervisor:startchild_err'() ::
     already_present
     | {already_started, Child :: undefined | pid()}
-    | eqwalizer:dynamic().
+    | dynamic().
 
 %% -------- sys --------
 
 -type 'sys:dbg_fun'() :: fun(
-    (FuncState :: eqwalizer:dynamic(), Event :: sys:system_event(), ProcState :: eqwalizer:dynamic()) ->
-        done | (NewFuncState :: eqwalizer:dynamic())
+    (FuncState :: dynamic(), Event :: sys:system_event(), ProcState :: dynamic()) -> done | (NewFuncState :: dynamic())
 ).
