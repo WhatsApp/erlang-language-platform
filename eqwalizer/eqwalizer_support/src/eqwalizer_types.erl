@@ -7,16 +7,14 @@
 %%% of this source tree. You may select, at your option, one of the
 %%% above-listed licenses.
 
-%%%-------------------------------------------------------------------
-%%% @doc
-%%% This module provides a means to override types from standard OTP
-%%% libraries for better type-checking with eqWAlizer.
-%%%
-%%% Every type is named 'module:type'. Helper types not present in OTP
-%%% follow the same convention and are marked as not exported.
-%%% @end
-%%%-------------------------------------------------------------------
 -module(eqwalizer_types).
+-moduledoc """
+This module provides a means to override types from standard OTP libraries for
+better type-checking with eqWAlizer.
+
+Every type is named 'module:type'. Helper types not present in OTP follow the
+same convention and are marked as not exported.
+""".
 
 -export_type([
     'argparse:arg_map'/0,

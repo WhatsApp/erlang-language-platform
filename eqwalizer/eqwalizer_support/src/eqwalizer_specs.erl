@@ -7,15 +7,15 @@
 %%% of this source tree. You may select, at your option, one of the
 %%% above-listed licenses.
 
-%%%-------------------------------------------------------------------
-%%% @doc
-%%% This module provides a means to override specs from standard OTP
-%%% libraries for better type-checking with eqWAlizer.
-%%% @end
-%%%-------------------------------------------------------------------
 -module(eqwalizer_specs).
 -compile(warn_missing_spec).
+% elp:ignore W0054 (no_nowarn_suppressions)
 -compile([export_all, nowarn_export_all]).
+
+-moduledoc """
+This module provides a means to override specs from standard OTP libraries for
+better type-checking with eqWAlizer.
+""".
 
 %% -------- application --------
 
