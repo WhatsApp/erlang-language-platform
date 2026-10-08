@@ -35,21 +35,15 @@ use std::sync::Arc;
 use std::sync::LazyLock;
 
 use elp_base_db::FileId;
-use elp_base_db::RootQueryDb;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
-use elp_syntax::Direction;
-use elp_syntax::NodeOrToken;
-use elp_syntax::SyntaxElement;
 use elp_syntax::SyntaxKind;
 use elp_syntax::SyntaxNode;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
-use elp_syntax::algo;
 use elp_syntax::ast;
 use elp_syntax::ast::Form;
 use fxhash::FxHashMap;
-use fxhash::FxHashSet;
 use htmlentity::entity::ICodedDataTrait;
 use itertools::Itertools;
 use regex::Regex;
@@ -69,7 +63,6 @@ pub enum FunctionDoc {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EdocHeader {
     pub kind: EdocHeaderKind,
-    pub exported: bool,
     pub doc: Option<Tag>,
     pub params: Vec<(String, Tag)>,
     pub returns: Option<Tag>,
@@ -77,8 +70,6 @@ pub struct EdocHeader {
     pub equiv: Option<Tag>,
     pub authors: Vec<Tag>,
     pub copyright: Option<Tag>,
-    pub plaintext_copyrights: FxHashSet<String>,
-    pub copyright_prefix: Option<String>,
     pub hidden: Option<Tag>,
     pub sees: Vec<Tag>,
     pub unknown: Vec<(String, Tag)>,
@@ -105,189 +96,6 @@ impl EdocHeader {
             .flat_map(|tag| tag.lines.iter().map(|line| &line.syntax))
             .sorted_by(|a, b| a.range().range.start().cmp(&b.range().range.start()))
     }
-
-    pub fn copyright_comment(&self) -> Option<String> {
-        let copyright = self.copyright.clone()?;
-        let copyright_prefix = self.copyright_prefix.clone()?;
-        for plaintext_copyright in &self.plaintext_copyrights {
-            if plaintext_copyright.contains(&copyright.description()) {
-                return None;
-            }
-        }
-        Some(format!(
-            "{copyright_prefix} Copyright {}\n",
-            copyright.description()
-        ))
-    }
-
-    pub fn prev_divider(&self, db: &dyn RootQueryDb) -> Option<SyntaxNode> {
-        let first_comment = self.comments().next()?;
-        divider(first_comment.to_ast(db).syntax(), Direction::Prev)
-    }
-
-    pub fn next_divider(&self, db: &dyn RootQueryDb) -> Option<SyntaxNode> {
-        let last_comment = self.comments().last()?;
-        divider(last_comment.to_ast(db).syntax(), Direction::Next)
-    }
-
-    pub fn to_eep59(&self) -> String {
-        let mut res = String::new();
-        res.push_str(&self.doc_attribute());
-        res.push_str(&self.hidden_attribute());
-        res.push_str(&self.metadata_attribute());
-        res
-    }
-
-    pub fn doc_attribute(&self) -> String {
-        let mut res = String::new();
-        res.push_str(&self.doc_content());
-        res.push_str(&self.return_tag());
-        res.push_str(&self.see_tags());
-        res.push_str(&self.unknown_tags());
-
-        if !res.is_empty() {
-            let prefix = match self.kind {
-                EdocHeaderKind::Module => "-moduledoc",
-                EdocHeaderKind::Function => "-doc",
-            };
-            format!("{prefix} \"\"\"\n{}\n\"\"\".\n", res.trim_end())
-        } else {
-            res
-        }
-    }
-
-    pub fn doc_content(&self) -> String {
-        let mut res = String::new();
-        if let Some(doc) = &self.doc
-            && let Some(markdown) = doc.to_markdown()
-        {
-            res.push_str(&markdown);
-        }
-        res
-    }
-
-    pub fn return_tag(&self) -> String {
-        let mut res = String::new();
-        if let Some(returns) = &self.returns {
-            res.push_str("### Returns\n");
-            if let Some(text) = returns.to_markdown() {
-                res.push_str(&text);
-            }
-        }
-        res
-    }
-
-    pub fn see_tags(&self) -> String {
-        let mut res = String::new();
-        for tag in &self.sees {
-            if let Some(text) = tag.to_markdown() {
-                match wrap_reference_in_backquotes(&text) {
-                    Some(wrapped) => res.push_str(&format!("See {wrapped}")),
-                    None => res.push_str(&format!("See `{text}`")),
-                }
-            }
-        }
-        res
-    }
-
-    pub fn unknown_tags(&self) -> String {
-        let mut res = String::new();
-        for (name, tag) in &self.unknown {
-            let name = capitalize_first_char(name).unwrap_or(name.to_string());
-            res.push_str(&format!("### {name}\n"));
-            if let Some(text) = tag.to_markdown() {
-                res.push_str(&text);
-            }
-        }
-        res
-    }
-
-    pub fn hidden_attribute(&self) -> String {
-        let mut res = String::new();
-        let mut bug_9672 = false;
-        if self.exported && self.hidden.is_some() {
-            let hidden_attribute = match self.kind {
-                EdocHeaderKind::Module => "-moduledoc hidden.",
-                EdocHeaderKind::Function => "-doc hidden.",
-            };
-            if let Some(doc) = &self.doc
-                && doc.to_markdown().is_some()
-            {
-                bug_9672 = true;
-            }
-            if bug_9672 {
-                // Due to a bug in OTP, we cannot add the hidden attribute if there's actual documentation
-                // https://github.com/erlang/otp/issues/9672
-                // If that's the case, add the tag as a comment instead, and link to the bug
-                let bug_url = "https://github.com/erlang/otp/issues/9672";
-                res.push_str(&format!("%% {hidden_attribute} {bug_url}\n"));
-            } else {
-                res.push_str(&format!("{hidden_attribute}\n"));
-            }
-        }
-        res
-    }
-
-    pub fn params_metadata(&self) -> String {
-        let mut res = String::new();
-        for (name, param) in &self.params {
-            if !name.is_empty() {
-                let mut description = String::new();
-                for line in &param.lines {
-                    if let Some(content) = line.to_markdown() {
-                        description.push_str(&format!("{} ", content.trim()));
-                    }
-                }
-                res.push_str(&format!(
-                    "\"{}\" => \"{}\", ",
-                    name.trim_end_matches(is_param_name_separator),
-                    convert_link_macros(&description)
-                        .trim()
-                        .replace("\"", "\\\"")
-                ));
-            }
-        }
-        res.trim_end_matches(", ").to_string()
-    }
-
-    pub fn metadata_attribute(&self) -> String {
-        let mut res = String::new();
-        let params_metadata = &self.params_metadata();
-        if let Some(deprecated) = &self.deprecated {
-            let deprecated_comment = match deprecated.to_markdown() {
-                Some(deprecated_comment) => deprecated_comment,
-                None => "".to_string(),
-            };
-            res.push_str(&format!(
-                "deprecated => \"{}\", ",
-                convert_link_macros(&deprecated_comment).trim()
-            ));
-        }
-        if !params_metadata.is_empty() {
-            res.push_str(&format!("params => #{{{}}}, ", params_metadata.trim()));
-        }
-        if let Some(equiv) = &self.equiv
-            && let Some(equivalent_to) = equiv.to_markdown()
-        {
-            res.push_str(&format!("equiv => {}, ", equivalent_to.trim()));
-        }
-        let prefix = match self.kind {
-            EdocHeaderKind::Module => "moduledoc",
-            EdocHeaderKind::Function => "doc",
-        };
-        if !res.is_empty() {
-            format!("-{} #{{{}}}.\n", prefix, res.trim_end_matches(", "))
-        } else {
-            res
-        }
-    }
-}
-
-fn capitalize_first_char(word: &str) -> Option<String> {
-    let mut chars = word.chars();
-    chars
-        .next()
-        .map(|char| char.to_uppercase().to_string() + chars.as_str())
 }
 
 fn decode_html_entities(text: &str) -> Cow<'_, str> {
@@ -306,49 +114,6 @@ fn is_divider(text: &str) -> bool {
     static RE: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"^%*\s*-+$").expect("regex should be valid"));
     RE.is_match(text)
-}
-
-fn divider(syntax: &SyntaxNode, direction: Direction) -> Option<SyntaxNode> {
-    if let Some(NodeOrToken::Node(node)) =
-        algo::non_whitespace_sibling(NodeOrToken::Node(syntax.clone()), direction)
-        && node.kind() == SyntaxKind::COMMENT
-        && is_divider(&node.text().to_string())
-        && !next_to_empty_line(&node, direction)
-    {
-        return Some(node);
-    }
-    None
-}
-
-fn next_to_empty_line(syntax: &SyntaxNode, direction: Direction) -> bool {
-    let sibling_or_token = match direction {
-        Direction::Next => syntax.prev_sibling_or_token(),
-        Direction::Prev => syntax.next_sibling_or_token(),
-    };
-    match sibling_or_token {
-        Some(element) => is_empty_line(&element),
-        None => false,
-    }
-}
-
-fn is_empty_line(element: &SyntaxElement) -> bool {
-    match element {
-        NodeOrToken::Token(token) => token.text() == "\n\n",
-        _ => false,
-    }
-}
-
-fn wrap_reference_in_backquotes(text: &str) -> Option<String> {
-    static RE: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"^([^\s.]+)").expect("regex should be valid"));
-    let captures = RE.captures(text)?;
-    let reference = captures.get(1)?;
-    let rest = &text[reference.end()..];
-    Some(format!(
-        "`{}`{}",
-        reference_to_exdoc(reference.as_str()),
-        rest
-    ))
 }
 
 fn reference_to_exdoc(text: &str) -> String {
@@ -465,7 +230,7 @@ fn module_doc_header(
     let ast = module_attribute.form_id.get_ast(db, file_id);
     let syntax = ast.syntax();
     let form = ast::Form::cast(syntax.clone())?;
-    edoc_header(file_id, &form, syntax, EdocHeaderKind::Module, true)
+    edoc_header(file_id, &form, syntax, EdocHeaderKind::Module)
 }
 
 fn function_doc_header(
@@ -477,13 +242,11 @@ fn function_doc_header(
     let decl = decls.first()?;
     let form = ast::Form::cast(decl.syntax().clone())?;
     let syntax = form.syntax();
-    let exported = def.exported;
-    spec_doc_header(db, file_id, def, &form, exported).or(edoc_header(
+    spec_doc_header(db, file_id, def, &form).or(edoc_header(
         file_id,
         &form,
         syntax,
         EdocHeaderKind::Function,
-        exported,
     ))
 }
 
@@ -492,18 +255,11 @@ fn spec_doc_header(
     file_id: FileId,
     def: &FunctionDef,
     form: &Form,
-    exported: bool,
 ) -> Option<(InFileAstPtr<ast::Form>, EdocHeader)> {
     let spec_def = def.spec.clone()?;
     let spec = spec_def.source(db.upcast());
     let spec_syntax = spec.syntax();
-    edoc_header(
-        file_id,
-        form,
-        spec_syntax,
-        EdocHeaderKind::Function,
-        exported,
-    )
+    edoc_header(file_id, form, spec_syntax, EdocHeaderKind::Function)
 }
 
 fn edoc_header(
@@ -511,7 +267,6 @@ fn edoc_header(
     form: &ast::Form,
     syntax: &SyntaxNode,
     kind: EdocHeaderKind,
-    exported: bool,
 ) -> Option<(InFileAstPtr<ast::Form>, EdocHeader)> {
     let mut comments: Vec<_> = prev_form_nodes(syntax)
         .filter_map(ast::Comment::cast)
@@ -520,17 +275,14 @@ fn edoc_header(
     comments.reverse();
 
     let form = InFileAstPtr::new(file_id, AstPtr::new(form));
-    Some((form, parse_edoc(kind, exported, form, &comments)?))
+    Some((form, parse_edoc(kind, form, &comments)?))
 }
 
 #[derive(Debug, Default)]
 struct ParseContext {
-    exported: bool,
     ranges: Vec<TextRange>,
     current_tag: Option<TagName>,
     lines: Vec<Line>,
-    plaintext_copyrights: FxHashSet<String>,
-    copyright_prefix: Option<String>,
 
     doc: Option<Tag>,
     returns: Option<Tag>,
@@ -670,9 +422,7 @@ impl ParseContext {
         }
         Some(EdocHeader {
             kind,
-            exported: self.exported,
             ranges: self.ranges,
-            plaintext_copyrights: self.plaintext_copyrights,
             doc: self.doc,
             params: self.params,
             returns: self.returns,
@@ -680,7 +430,6 @@ impl ParseContext {
             equiv: self.equiv,
             authors: self.authors,
             copyright: self.copyright,
-            copyright_prefix: self.copyright_prefix,
             hidden: self.hidden,
             sees: self.sees,
             unknown: self.unknown,
@@ -698,30 +447,16 @@ fn ensure_non_empty(text: &str) -> Option<String> {
 
 fn parse_edoc(
     kind: EdocHeaderKind,
-    exported: bool,
     form: InFileAstPtr<ast::Form>,
     comments: &[ast::Comment],
 ) -> Option<EdocHeader> {
-    let mut context = ParseContext {
-        exported,
-        ..Default::default()
-    };
-
-    static COPYRIGHT_RE: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"^%+\s+Copyright ?(.*)$").expect("regex should be valid"));
+    let mut context = ParseContext::default();
 
     for comment in comments {
         let text = comment.syntax().text().to_string();
         let syntax = InFileAstPtr::new(form.file_id(), AstPtr::new(comment));
         match extract_edoc_tag_and_content(&text) {
             None => {
-                if let Some(captures) = COPYRIGHT_RE.captures(&text)
-                    && let Some(content) = captures.get(1)
-                {
-                    context
-                        .plaintext_copyrights
-                        .insert(content.as_str().to_string());
-                }
                 if let Some(tag) = &context.current_tag {
                     context.ranges.push(comment.syntax().text_range());
                     let content = text.trim_start_matches('%');
@@ -753,7 +488,7 @@ fn parse_edoc(
                     }
                 }
             }
-            Some((range, prefix, tag, content)) => {
+            Some((range, tag, content)) => {
                 if tag != "end" {
                     context.process_tag();
                 }
@@ -789,7 +524,6 @@ fn parse_edoc(
                         context.start_tag(TagKind::Author, range, content, comment, syntax);
                     }
                     "copyright" => {
-                        context.copyright_prefix = Some(prefix.to_string());
                         context.start_tag(TagKind::Copyright, range, content, comment, syntax);
                     }
                     "end" => {
@@ -880,21 +614,15 @@ fn edoc_header_kind(node: &SyntaxNode) -> Option<EdocHeaderKind> {
 /// Check if the given comment starts with an edoc tag.
 ///    A tag must be the first thing on a comment line, except for leading
 ///    '%' characters and whitespace.
-fn extract_edoc_tag_and_content(comment: &str) -> Option<(TextRange, &str, &str, &str)> {
+fn extract_edoc_tag_and_content(comment: &str) -> Option<(TextRange, &str, &str)> {
     static RE: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"^(%+)\s+@([^\s]+) ?(.*)$").expect("regex should be valid"));
+        LazyLock::new(|| Regex::new(r"^%+\s+@([^\s]+) ?(.*)$").expect("regex should be valid"));
     let captures = RE.captures(comment)?;
-    let prefix = captures.get(1)?;
-    let tag = captures.get(2)?;
+    let tag = captures.get(1)?;
     // add the leading @ to the range
     let start = TextSize::new((tag.start() - 1) as u32);
     let range = TextRange::new(start, TextSize::new(tag.end() as u32));
-    Some((
-        range,
-        prefix.as_str(),
-        tag.as_str(),
-        captures.get(3)?.as_str(),
-    ))
+    Some((range, tag.as_str(), captures.get(2)?.as_str()))
 }
 
 fn convert_single_quotes(comment: &str) -> Cow<'_, str> {
@@ -1051,7 +779,6 @@ mod tests {
             Some(
                 (
                     3..7,
-                    "%%",
                     "foo",
                     "bar",
                 ),

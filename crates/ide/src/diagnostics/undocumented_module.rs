@@ -184,7 +184,6 @@ mod tests {
             r#"
      % @doc
     %% ^^^^ warning: W0038: EDoc style comments are deprecated. Please use Markdown instead.
-    %%    | 💡 Convert to Markdown
     %%    | 💡 <suppression>
      % This is a module
      -module(main).
