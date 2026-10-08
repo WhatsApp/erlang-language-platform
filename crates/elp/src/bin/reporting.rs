@@ -71,47 +71,17 @@ pub(crate) struct Report<'a> {
     cli: &'a mut dyn Cli,
     destination: Destination,
     error_count: usize,
+    lint_header_written: bool,
 }
 
+#[derive(Clone, Copy)]
 pub(crate) struct IdeDiagnosticContext<'a> {
     pub analysis: &'a Analysis,
     pub vfs: &'a Vfs,
     pub file_id: FileId,
-    pub path: &'a Path,
-    pub diagnostic: &'a diagnostics::Diagnostic,
-}
-
-pub(crate) fn render_ide_diagnostic(
-    context: IdeDiagnosticContext<'_>,
-    diagnostic: &arc_types::Diagnostic,
-) -> Result<RenderedDiagnostic> {
-    let source = context.analysis.file_text(context.file_id)?;
-    let mut files = SimpleFiles::new();
-    let reporting_id = files.add(context.path.display().to_string(), source);
-    let range: Range<usize> =
-        context.diagnostic.range.start().into()..context.diagnostic.range.end().into();
-    let label =
-        Label::primary(reporting_id, range).with_message(context.diagnostic.message.clone());
-    let header = match diagnostic.doc_path() {
-        Some(uri) => format!("{} (See {})", diagnostic.name(), uri),
-        None => diagnostic.name().to_string(),
-    };
-    let rendered_diagnostic = arc_severity_reporting(diagnostic.severity())
-        .with_message(header)
-        .with_labels(vec![label]);
-    let mut rendered = render_reporting_diagnostic(&files, &rendered_diagnostic)?;
-    for line in related_information_lines(
-        context.analysis,
-        context.vfs,
-        context.file_id,
-        context.diagnostic,
-    )? {
-        rendered.plain.push_str(&line);
-        rendered.plain.push('\n');
-        rendered.ansi.push_str(&line);
-        rendered.ansi.push('\n');
-    }
-    Ok(rendered)
+    pub path: Option<&'a Path>,
+    pub use_cli_severity: bool,
+    pub arc_patch: bool,
 }
 
 type ReportingData = (SimpleFiles<String, Arc<str>>, usize);
@@ -135,6 +105,7 @@ impl<'a> Report<'a> {
             cli,
             destination,
             error_count: 0,
+            lint_header_written: false,
         }
     }
 
@@ -144,6 +115,118 @@ impl<'a> Report<'a> {
 
     pub(crate) fn progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
         self.cli.progress(len, prefix)
+    }
+
+    pub(crate) fn write_system_stats(
+        &mut self,
+        host: AnalysisHost,
+        vfs: Vfs,
+        process_usage: impl fmt::Display,
+    ) -> Result<()> {
+        for_each_memory_usage_line(host, vfs, |line| {
+            self.info(&line.to_string())?;
+            Ok(())
+        })?;
+        self.info(&process_usage.to_string())?;
+        Ok(())
+    }
+
+    pub(crate) fn human_line(&mut self, args: fmt::Arguments<'_>) -> Result<()> {
+        if self.destination == Destination::Human {
+            writeln!(self.cli, "{args}")?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn human_info(&mut self, message: &str) -> Result<()> {
+        if self.destination == Destination::Human {
+            self.info(message)?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn write_lint_count(&mut self, name: &str, count: usize) -> Result<()> {
+        match self.destination {
+            Destination::Human => {
+                self.write_lint_header()?;
+                writeln!(self.cli, "  {name}: {count}")?;
+            }
+            Destination::Json | Destination::Daemon => {
+                self.info(&format!("  {name}: {count}"))?;
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn write_lint_diagnostics(
+        &mut self,
+        context: IdeDiagnosticContext<'_>,
+        diagnostics: &[diagnostics::Diagnostic],
+    ) -> Result<()> {
+        if diagnostics.is_empty() {
+            return Ok(());
+        }
+
+        let derived_path = if context.path.is_none() && self.destination != Destination::Human {
+            let file_path = context.vfs.file_path(context.file_id);
+            let project_data = context
+                .analysis
+                .project_data(context.file_id)?
+                .context("could not find project data")?;
+            Some(get_relative_path(&project_data.root_dir, file_path).to_path_buf())
+        } else {
+            None
+        };
+        let context = IdeDiagnosticContext {
+            path: context.path.or(derived_path.as_deref()),
+            ..context
+        };
+
+        self.write_lint_header()?;
+        for diagnostic in diagnostics {
+            let is_error =
+                diagnostic.severity(context.use_cli_severity) == diagnostics::Severity::Error;
+            self.emit_local(
+                is_error,
+                || {
+                    let path = context.path.context("lint diagnostic path missing")?;
+                    let line_index = context.analysis.line_index(context.file_id)?;
+                    let mut converted = convert::ide_to_arc_diagnostic(
+                        &line_index,
+                        path,
+                        diagnostic,
+                        context.use_cli_severity,
+                    );
+                    if context.arc_patch
+                        && let Ok(file_text) = context.analysis.file_text(context.file_id)
+                        && let Some(fix) = convert::extract_arc_fix(
+                            diagnostic,
+                            &line_index,
+                            context.file_id,
+                            &file_text,
+                        )
+                    {
+                        converted =
+                            converted.with_fix(fix.line, fix.char, fix.original, fix.replacement);
+                    }
+                    Ok(converted)
+                },
+                |cli| write_ide_diagnostic(cli, context, diagnostic),
+                |converted| Ok(Some(render_ide_diagnostic(context, diagnostic, converted)?)),
+            )?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn write_fix_diagnostic(
+        &mut self,
+        context: IdeDiagnosticContext<'_>,
+        diagnostic: &diagnostics::Diagnostic,
+    ) -> Result<()> {
+        if self.destination == Destination::Human {
+            write_ide_diagnostic(self.cli, context, diagnostic)?;
+        }
+        Ok(())
     }
 
     pub(crate) fn write_eqwalizer_diagnostics(
@@ -248,6 +331,14 @@ impl<'a> Report<'a> {
         Ok(())
     }
 
+    fn write_lint_header(&mut self) -> Result<()> {
+        if self.destination == Destination::Human && !self.lint_header_written {
+            writeln!(self.cli, "Diagnostics reported:")?;
+            self.lint_header_written = true;
+        }
+        Ok(())
+    }
+
     fn reporting_data(
         &self,
         analysis: &Analysis,
@@ -288,6 +379,55 @@ impl<'a> Report<'a> {
         self.error_count += usize::from(is_error);
         Ok(())
     }
+}
+
+fn write_ide_diagnostic(
+    cli: &mut dyn Cli,
+    context: IdeDiagnosticContext<'_>,
+    diagnostic: &diagnostics::Diagnostic,
+) -> Result<()> {
+    let line_index = context.analysis.line_index(context.file_id)?;
+    let diagnostic_text = diagnostic.print(&line_index, context.use_cli_severity);
+    match context.path {
+        Some(path) => writeln!(cli, "{}:{diagnostic_text}", path.display())?,
+        None => writeln!(cli, "      {diagnostic_text}")?,
+    }
+    for line in
+        related_information_lines(context.analysis, context.vfs, context.file_id, diagnostic)?
+    {
+        writeln!(cli, "{line}")?;
+    }
+    Ok(())
+}
+
+fn render_ide_diagnostic(
+    context: IdeDiagnosticContext<'_>,
+    diagnostic: &diagnostics::Diagnostic,
+    converted: &arc_types::Diagnostic,
+) -> Result<RenderedDiagnostic> {
+    let source = context.analysis.file_text(context.file_id)?;
+    let mut files = SimpleFiles::new();
+    let path = context.path.context("lint diagnostic path missing")?;
+    let reporting_id = files.add(path.display().to_string(), source);
+    let range: Range<usize> = diagnostic.range.start().into()..diagnostic.range.end().into();
+    let label = Label::primary(reporting_id, range).with_message(diagnostic.message.clone());
+    let header = match converted.doc_path() {
+        Some(uri) => format!("{} (See {})", converted.name(), uri),
+        None => converted.name().to_string(),
+    };
+    let reporting_diagnostic = arc_severity_reporting(converted.severity())
+        .with_message(header)
+        .with_labels(vec![label]);
+    let mut rendered = render_reporting_diagnostic(&files, &reporting_diagnostic)?;
+    for line in
+        related_information_lines(context.analysis, context.vfs, context.file_id, diagnostic)?
+    {
+        rendered.plain.push_str(&line);
+        rendered.plain.push('\n');
+        rendered.ansi.push_str(&line);
+        rendered.ansi.push('\n');
+    }
+    Ok(rendered)
 }
 
 fn render_daemon_diagnostic(
@@ -544,10 +684,17 @@ pub(crate) fn add_stat(stat: String) {
     stats.push(stat);
 }
 
-pub(crate) fn print_memory_usage(
+pub(crate) fn print_memory_usage(host: AnalysisHost, vfs: Vfs, cli: &mut dyn Cli) -> Result<()> {
+    for_each_memory_usage_line(host, vfs, |line| {
+        writeln!(cli, "{line}")?;
+        Ok(())
+    })
+}
+
+fn for_each_memory_usage_line(
     mut host: AnalysisHost,
     vfs: Vfs,
-    cli: &mut dyn Cli,
+    mut write_line: impl for<'a> FnMut(fmt::Arguments<'a>) -> Result<()>,
 ) -> Result<()> {
     let mem = host.per_query_memory_usage();
 
@@ -561,16 +708,17 @@ pub(crate) fn print_memory_usage(
     let remaining = memory_usage().allocated;
 
     for (name, bytes, entries) in mem {
-        writeln!(cli, "{bytes:>8} {entries:>6} {name}")?;
+        write_line(format_args!("{bytes:>8} {entries:>6} {name}"))?;
     }
-    writeln!(cli, "{vfs:>8}        VFS")?;
-    writeln!(cli, "{unaccounted:>8}        Unaccounted")?;
-    writeln!(cli, "{remaining:>8}        Remaining")?;
+    write_line(format_args!("{vfs:>8}        VFS"))?;
+    write_line(format_args!("{unaccounted:>8}        Unaccounted"))?;
+    write_line(format_args!("{remaining:>8}        Remaining"))?;
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
+    use elp::build::fixture;
     use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
 
     use super::*;
@@ -608,6 +756,30 @@ mod tests {
     }
 
     #[test]
+    fn standalone_plain_rendering_matches_daemon_plain_rendering() {
+        let mut files = SimpleFiles::new();
+        let file_id = files.add(
+            "src/foo.erl".to_string(),
+            Arc::<str>::from("foo() -> ok.\n"),
+        );
+        let diagnostic = ReportingDiagnostic::error()
+            .with_message("eqWAlizer: incompatible_types")
+            .with_labels(vec![
+                Label::primary(file_id, 0..5).with_message("expected integer"),
+            ]);
+        let mut standalone = Buffer::no_color();
+        emit_reporting_diagnostic(&mut standalone, &files, &diagnostic)
+            .expect("standalone diagnostic rendering should succeed");
+        let standalone = String::from_utf8(standalone.into_inner())
+            .expect("standalone diagnostic should be UTF-8");
+
+        let daemon = render_reporting_diagnostic(&files, &diagnostic)
+            .expect("daemon diagnostic rendering should succeed");
+
+        assert_eq_expected!(standalone, daemon.plain);
+    }
+
+    #[test]
     fn report_constructors_select_the_destination() {
         let mut cli = elp::cli::Fake::default();
         {
@@ -637,6 +809,81 @@ mod tests {
 
         let report = Report::for_daemon(&mut cli);
         assert!(matches!(report.destination, Destination::Daemon));
+    }
+
+    #[test]
+    fn daemon_lint_diagnostic_derives_missing_result_path() {
+        let loaded = fixture::load_result(
+            r#"
+            //- /app_a/src/foo.erl app:app_a
+              -module(foo).
+              foo() -> ok.
+            "#,
+        );
+        let analysis = loaded.analysis();
+        let file_id = analysis
+            .module_file_id(loaded.project_id, "foo")
+            .expect("module lookup should succeed")
+            .expect("fixture module should exist");
+        let diagnostic = diagnostics::Diagnostic {
+            message: "problem".to_string(),
+            ..Default::default()
+        };
+        let mut cli = elp::cli::Fake::default();
+
+        {
+            let mut report = Report::for_daemon(&mut cli);
+            report
+                .write_lint_diagnostics(
+                    IdeDiagnosticContext {
+                        analysis: &analysis,
+                        vfs: &loaded.vfs,
+                        file_id,
+                        path: None,
+                        use_cli_severity: false,
+                        arc_patch: false,
+                    },
+                    &[diagnostic],
+                )
+                .expect("daemon diagnostic should derive its path");
+        }
+
+        let (stdout, stderr) = cli.to_strings();
+        let response: serde_json::Value =
+            serde_json::from_str(stdout.trim()).expect("daemon output should be JSON");
+        assert_eq_expected!(Some("diagnostic"), response["type"].as_str());
+        assert_eq_expected!(
+            Some("app_a/src/foo.erl"),
+            response["diagnostic"]["path"].as_str()
+        );
+        assert_eq_expected!("", stderr.as_str());
+    }
+
+    #[test]
+    fn system_stats_use_info_channel() {
+        let loaded = fixture::load_result(
+            r#"
+            //- /app_a/src/foo.erl app:app_a
+              -module(foo).
+            "#,
+        );
+        let (analysis_host, vfs) = loaded.into_parts();
+        let mut cli = elp::cli::Fake::default();
+
+        {
+            let mut report = Report::for_command(&mut cli, None);
+            report
+                .write_system_stats(analysis_host, vfs, "process usage")
+                .expect("system stats should be reported");
+        }
+
+        let (stdout, stderr) = cli.to_strings();
+        assert_eq_expected!("", stdout.as_str());
+        assert!(stderr.contains("VFS"), "missing VFS stats: {stderr}");
+        assert!(
+            stderr.contains("process usage"),
+            "missing process stats: {stderr}"
+        );
     }
 
     #[test]

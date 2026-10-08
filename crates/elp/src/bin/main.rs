@@ -1826,7 +1826,28 @@ mod tests {
                 ],
                 "diagnostics",
                 resource_file("diagnostics/parse_elp_lint_recursive.stdout"),
-                None,
+                Some(expect![[r#"
+                    ---------------------------------------------
+
+                    New filtered diagnostics
+                      lint_recursive: 2
+                    ---------------------------------------------
+
+                    New filtered diagnostics
+                      lint_recursive: 2
+                    ---------------------------------------------
+
+                    New filtered diagnostics
+                      lint_recursive: 2
+                    ---------------------------------------------
+
+                    New filtered diagnostics
+                      lint_recursive: 1
+                    ---------------------------------------------
+
+                    New filtered diagnostics
+                      lint_recursive: 1
+                "#]]),
             )
             .expect("bad test");
     }

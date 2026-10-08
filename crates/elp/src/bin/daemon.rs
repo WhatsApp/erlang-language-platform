@@ -904,10 +904,14 @@ fn handle_connection(
     // through to ShellCommand::parse.
     if let Some(json) = line.strip_prefix("lint ") {
         let response = match serde_json::from_str::<Lint>(json) {
-            Ok(mut lint_args) => {
-                lint_args.format = Some(daemon_request_format(lint_args.format));
-                match lint_cli::do_lint(&lint_args, &state.lint_config, &mut state.loaded, &mut cli)
-                {
+            Ok(lint_args) => {
+                let mut report = Report::for_daemon(&mut cli);
+                match lint_cli::do_lint(
+                    &lint_args,
+                    &state.lint_config,
+                    &mut state.loaded,
+                    &mut report,
+                ) {
                     Ok(outcome) => DaemonResponse::success(Some(outcome)),
                     Err(e) => DaemonResponse::error(e.to_string()),
                 }
@@ -988,13 +992,6 @@ fn write_connection_unavailable(cli: &mut dyn Cli, error: &anyhow::Error) -> Res
     Ok(true)
 }
 
-fn daemon_request_format(requested: Option<Format>) -> Format {
-    match requested {
-        Some(Format::Json) => Format::DaemonJson,
-        _ => Format::Daemon,
-    }
-}
-
 fn execute_daemon_request(
     request: DaemonRequest,
     state: &mut DaemonState,
@@ -1006,9 +1003,9 @@ fn execute_daemon_request(
             eqwalizer_cli::do_eqwalize(&args, &mut state.loaded, &mut report)?;
             Ok(None)
         }
-        DaemonRequest::Lint(mut args) => {
-            args.format = Some(daemon_request_format(args.format));
-            lint_cli::do_lint(&args, &state.lint_config, &mut state.loaded, cli).map(Some)
+        DaemonRequest::Lint(args) => {
+            let mut report = Report::for_daemon(cli);
+            lint_cli::do_lint(&args, &state.lint_config, &mut state.loaded, &mut report).map(Some)
         }
     }
 }
@@ -1496,11 +1493,11 @@ pub(crate) fn lint_daemon_incompatibility(args: &Lint) -> Option<&'static str> {
     if args.apply_fix {
         return Some("--apply-fix is not yet supported with --connect");
     }
-    // `--no-diags` flips the JSON writer to emit a plain-text per-module
-    // summary, which the daemon client's per-line JSON parser would reject.
+    // Human `--no-diags` writes counts to result stdout, while daemon transport
+    // can only carry them as out-of-band info. Reject the flag uniformly.
     if !args.print_diags {
         return Some(
-            "--no-diags is not supported with --connect (the daemon's JSON wire format has no plain-text summary)",
+            "--no-diags is not supported with --connect because its human stdout output cannot be preserved",
         );
     }
     None
@@ -1690,19 +1687,6 @@ mod tests {
         let request = DaemonRequest::Lint(Box::default());
 
         assert_eq_expected!("lint", request.subcommand());
-    }
-
-    #[test]
-    fn daemon_request_format_preserves_explicit_json_semantics() {
-        assert!(matches!(
-            daemon_request_format(Some(Format::Json)),
-            Format::DaemonJson
-        ));
-        assert!(matches!(
-            daemon_request_format(Some(Format::ImplicitJson)),
-            Format::Daemon
-        ));
-        assert!(matches!(daemon_request_format(None), Format::Daemon));
     }
 
     // -- Daemon request serialization --

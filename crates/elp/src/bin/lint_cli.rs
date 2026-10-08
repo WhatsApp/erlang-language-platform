@@ -22,12 +22,15 @@ use std::time::SystemTime;
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::bail;
+use clap::ArgAction;
+use clap::ValueHint;
+use clap_complete::engine::ArgValueCandidates;
+use clap_complete::engine::ArgValueCompleter;
 use crossbeam_channel::unbounded;
 use elp::build::load;
 use elp::build::load::LoadConfig;
 use elp::build::types::LoadResult;
 use elp::cli::Cli;
-use elp::convert;
 use elp::memory_usage::MemoryUsage;
 use elp::otp_file_to_ignore;
 use elp::read_lint_config_file;
@@ -71,12 +74,6 @@ use hir::InFile;
 use itertools::Itertools;
 use paths::Utf8PathBuf;
 use rayon::prelude::ParallelBridge;
-
-type DiagnosticsResult = (Vec<(String, FileId, DiagnosticCollection)>, bool, bool);
-use clap::ArgAction;
-use clap::ValueHint;
-use clap_complete::engine::ArgValueCandidates;
-use clap_complete::engine::ArgValueCompleter;
 use rayon::prelude::ParallelIterator;
 use serde::Deserialize;
 use serde::Serialize;
@@ -109,9 +106,27 @@ use crate::args::Severity;
 use crate::args::diagnostic_code_candidates;
 use crate::args::diagnostic_counts_as_error;
 use crate::args::module_completer;
-use crate::daemon_protocol::DaemonResponse;
 use crate::reporting;
-use crate::reporting::print_memory_usage;
+use crate::reporting::IdeDiagnosticContext;
+use crate::reporting::Report;
+
+type DiagnosticsResult = (
+    Vec<(String, FileId, DiagnosticCollection)>,
+    DiagnosticOutcome,
+);
+
+#[derive(Clone, Copy, Default)]
+struct DiagnosticOutcome {
+    seen_diagnostics: bool,
+    should_fail: bool,
+}
+
+impl DiagnosticOutcome {
+    fn merge(&mut self, other: Self) {
+        self.seen_diagnostics |= other.seen_diagnostics;
+        self.should_fail |= other.should_fail;
+    }
+}
 
 #[derive(Debug, Clone, Default, clap::Args, Serialize, Deserialize)]
 #[serde(default)]
@@ -255,17 +270,13 @@ impl Lint {
         self.modules.dedup();
     }
 
-    pub fn is_format_normal(&self) -> bool {
-        self.format.is_none()
-    }
-
-    pub fn uses_structured_diagnostics(&self) -> bool {
-        self.format.is_some_and(Format::is_json)
-    }
-
     /// To prevent flaky test results we allow disabling streaming when applying fixes
     pub fn skip_stream_print(&self) -> bool {
         self.apply_fix || self.no_stream
+    }
+
+    fn uses_cli_severity(&self) -> bool {
+        self.use_cli_severity && matches!(self.format, Some(Format::Json | Format::ImplicitJson))
     }
 }
 
@@ -320,18 +331,17 @@ pub fn run_lint_command(
 
     telemetry::report_elapsed_time("lint operational", start_time);
 
-    let result = do_lint(args, &lint_config, &mut loaded, cli);
+    let mut report = Report::for_command(cli, args.format);
+    let result = do_lint(args, &lint_config, &mut loaded, &mut report);
 
     telemetry::report_elapsed_time("lint done", start_time);
 
     let memory_end = MemoryUsage::now();
     let memory_used = memory_end - memory_start;
 
-    // Print memory usage at the end if requested and format is normal
-    if args.is_format_normal() && args.report_system_stats {
+    if args.report_system_stats {
         let (analysis_host, vfs) = loaded.into_parts();
-        print_memory_usage(analysis_host, vfs, cli)?;
-        writeln!(cli, "{}", memory_used)?;
+        report.write_system_stats(analysis_host, vfs, memory_used)?;
     }
 
     result
@@ -341,22 +351,21 @@ pub fn do_lint(
     args: &Lint,
     lint_config: &LintConfig,
     loaded: &mut LoadResult,
-    cli: &mut dyn Cli,
+    report: &mut Report<'_>,
 ) -> Result<LintOutcome> {
-    if args.include_ct_diagnostics && args.is_format_normal() {
-        cli.info(
+    if args.include_ct_diagnostics {
+        report.human_info(
             "Warning: the --include-ct-diagnostics flag is deprecated and will be removed in an upcoming release. Common Test diagnostics are now always included.",
         )?;
     }
-    if args.include_tests && args.is_format_normal() {
-        cli.info(
+    if args.include_tests {
+        report.human_info(
             "Warning: the --include-tests flag is deprecated and will be removed in an upcoming release. Diagnostics for test files are now always included.",
         )?;
     }
-    if args.read_config && args.is_format_normal() {
-        writeln!(
-            cli.err(),
-            "Warning: the --read-config flag is deprecated and will be removed in an upcoming release. The project's .elp_lint.toml is now read by default."
+    if args.read_config {
+        report.human_info(
+            "Warning: the --read-config flag is deprecated and will be removed in an upcoming release. The project's .elp_lint.toml is now read by default.",
         )?;
     }
 
@@ -365,7 +374,7 @@ pub fn do_lint(
     };
 
     let diagnostics_config = get_diagnostics_config(args, lint_config)?;
-    do_codemod(cli, loaded, &diagnostics_config, args)
+    do_codemod(report, loaded, &diagnostics_config, args)
 }
 
 fn load_project(
@@ -394,7 +403,7 @@ fn canonicalize_or_keep(path: &Path) -> PathBuf {
 }
 
 fn run_diagnostics_parallel(
-    cli: &mut dyn Cli,
+    report: &mut Report<'_>,
     analysis: &Analysis,
     config: &DiagnosticsConfig,
     args: &Lint,
@@ -409,7 +418,7 @@ fn run_diagnostics_parallel(
     // Create a channel for streaming results
     let (tx, rx) = unbounded();
 
-    let pb = cli.progress(files.len() as u64, "Linting");
+    let pb = report.progress(files.len() as u64, "Linting");
     let pb_clone = pb.clone();
 
     let analysis_clone = analysis.clone();
@@ -435,44 +444,28 @@ fn run_diagnostics_parallel(
             .for_each(|_| {}); // Consume the iterator
     });
 
-    // Collect results as they arrive from the channel
     let mut results = Vec::new();
-    let mut err_in_diag = false;
-    let mut module_count = 0;
-    let mut any_findings = false;
+    let mut outcome = DiagnosticOutcome::default();
 
     for result in rx {
-        let printed = if args.skip_stream_print() {
-            false
-        } else {
-            print_diagnostic_result(
-                cli,
-                analysis,
-                config,
-                args,
-                loaded,
-                modules,
-                &mut err_in_diag,
-                &mut module_count,
-                &result,
-            )?
-        };
-        any_findings = any_findings || printed;
+        if !args.skip_stream_print() {
+            outcome.merge(report_diagnostic_result(
+                report, analysis, config, args, loaded, modules, &result,
+            )?);
+        }
         results.push(result);
     }
 
-    // Wait for the thread to complete before returning
-    // This ensures that analysis_clone is dropped and its read lock is released
     join_handle
         .join()
         .expect("Failed to join diagnostics thread");
     pb.finish();
 
-    Ok((results, err_in_diag, any_findings))
+    Ok((results, outcome))
 }
 
 fn do_diagnostics_all(
-    cli: &mut dyn Cli,
+    report: &mut Report<'_>,
     analysis: &Analysis,
     project_id: &ProjectId,
     config: &DiagnosticsConfig,
@@ -557,7 +550,7 @@ fn do_diagnostics_all(
             .map(|file_id| (file_label(analysis, loaded, file_id), file_id)),
     );
 
-    run_diagnostics_parallel(cli, analysis, config, args, loaded, files, modules)
+    run_diagnostics_parallel(report, analysis, config, args, loaded, files, modules)
 }
 
 fn do_diagnostics_one(
@@ -629,7 +622,7 @@ fn resolve_target_files(
     analysis: &Analysis,
     loaded: &LoadResult,
     args: &Lint,
-    cli: &mut dyn Cli,
+    report: &mut Report<'_>,
 ) -> Result<Option<Vec<(FileId, String)>>> {
     let mut file_ids: Vec<FileId> = vec![];
     let user_selected_targets;
@@ -638,9 +631,7 @@ fn resolve_target_files(
         for module in &args.modules {
             if let Some(file_id) = analysis.module_file_id(loaded.project_id, module)? {
                 file_ids.push(file_id);
-                if args.is_format_normal() {
-                    writeln!(cli, "module specified: {module}")?;
-                }
+                report.human_line(format_args!("module specified: {module}"))?;
             } else {
                 log::warn!("Module not found, skipping: {module}");
             }
@@ -648,9 +639,7 @@ fn resolve_target_files(
     } else if !args.file.is_empty() {
         user_selected_targets = true;
         for file_name in &args.file {
-            if args.is_format_normal() {
-                writeln!(cli, "file specified: {}", file_name.display())?;
-            }
+            report.human_line(format_args!("file specified: {}", file_name.display()))?;
             let path_buf = Utf8PathBuf::from_path_buf(dunce::canonicalize(file_name).unwrap())
                 .expect("UTF8 conversion failed");
             let path = AbsPath::assert(&path_buf);
@@ -666,7 +655,7 @@ fn resolve_target_files(
                 // indistinguishable from a file with no diagnostics. It goes to
                 // `info` rather than stdout so that `--format json` emits only
                 // JSON on stdout, for the benefit of the callers parsing it.
-                cli.info(&format!(
+                report.info(&format!(
                     "File not found in project, skipping: {}",
                     file_name.display()
                 ))?;
@@ -689,21 +678,19 @@ fn resolve_target_files(
 }
 
 pub fn do_codemod(
-    cli: &mut dyn Cli,
+    report: &mut Report<'_>,
     loaded: &mut LoadResult,
     diagnostics_config: &DiagnosticsConfig,
     args: &Lint,
 ) -> Result<LintOutcome> {
-    let streamed_err_in_diag;
-    let mut any_findings;
-    let mut initial_diags = {
+    let (mut initial_diags, mut primary_outcome) = {
         // We put this in its own block so that analysis is
         // freed before we apply lints. To apply lints
         // recursively, we need to update the underlying
         // analysis_host, which will deadlock if there is
         // still an active analysis().
         let analysis = loaded.analysis();
-        let maybe_files = resolve_target_files(&analysis, loaded, args, cli)?;
+        let maybe_files = resolve_target_files(&analysis, loaded, args, report)?;
 
         if let Some(files) = maybe_files {
             // User specified --module or --file: only process the resolved
@@ -720,64 +707,49 @@ pub fn do_codemod(
                     }
                 }
             }
-            let modules: Vec<(String, FileId)> = files
+            let modules = files
                 .into_iter()
                 .map(|(file_id, name)| (name, file_id))
                 .collect();
-            let (results, err_in_diag, findings_detected) = run_diagnostics_parallel(
-                cli,
+            run_diagnostics_parallel(
+                report,
                 &analysis,
                 diagnostics_config,
                 args,
                 loaded,
                 modules,
                 &args.modules,
-            )?;
-            streamed_err_in_diag = err_in_diag;
-            any_findings = findings_detected;
-            results
+            )?
         } else {
             // No specific targets requested: lint all project files.
-            let (results, err_in_diag, findings_detected) = do_diagnostics_all(
-                cli,
+            do_diagnostics_all(
+                report,
                 &analysis,
                 &loaded.project_id,
                 diagnostics_config,
                 args,
                 loaded,
                 &args.modules,
-            )?;
-            streamed_err_in_diag = err_in_diag;
-            any_findings = findings_detected;
-            results
+            )?
         }
     };
-    let mut err_in_diag = streamed_err_in_diag;
-    // At this point, the analysis variable from above is dropped
 
-    // When streaming is disabled (--no-stream) and we're not applying fixes,
-    // we need to print diagnostics now since they weren't printed during streaming
     if args.no_stream && !args.apply_fix && !initial_diags.is_empty() {
         let analysis = loaded.analysis();
-        let mut module_count = 0;
         initial_diags.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
         for result in &initial_diags {
-            let printed = print_diagnostic_result(
-                cli,
+            primary_outcome.merge(report_diagnostic_result(
+                report,
                 &analysis,
                 diagnostics_config,
                 args,
                 loaded,
                 &args.modules,
-                &mut err_in_diag,
-                &mut module_count,
                 result,
-            )?;
-            any_findings = any_findings || printed;
+            )?);
         }
     }
 
-    // Handle apply_fix case separately since it needs to filter diagnostics anyway
     if args.apply_fix {
         if diagnostics_config.diagnostic_filter.is_empty() {
             bail!(
@@ -798,43 +770,20 @@ pub fn do_codemod(
             )?
         };
 
-        any_findings = !filtered_diags.is_empty();
         if filtered_diags.is_empty() {
-            if args.is_format_normal() {
-                writeln!(cli, "No diagnostics reported")?;
-            }
+            report.human_line(format_args!("No diagnostics reported"))?;
         } else {
-            if args.skip_stream_print() {
-                filtered_diags.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
-                let module_count: &mut i32 = &mut 0;
-                let has_diagnostics: &mut bool = &mut false;
-                if args.uses_structured_diagnostics() {
-                    do_print_diagnostics_json_filtered(
-                        cli,
-                        args,
-                        loaded,
-                        &mut err_in_diag,
-                        module_count,
-                        has_diagnostics,
-                        &filtered_diags,
-                    )?;
-                } else {
-                    {
-                        // Scope the analysis instance to ensure it's dropped before creating Lints
-                        let analysis = loaded.analysis();
-                        do_print_diagnostics_filtered(
-                            cli,
-                            &analysis,
-                            args,
-                            loaded,
-                            &mut err_in_diag,
-                            module_count,
-                            has_diagnostics,
-                            &filtered_diags,
-                        )?;
-                        // Analysis is dropped here
-                    }
-                }
+            filtered_diags.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
+            // Drop the analysis guard before `Lints` mutably borrows the host.
+            {
+                let analysis = loaded.analysis();
+                primary_outcome.merge(report_filtered_diagnostics(
+                    report,
+                    &analysis,
+                    args,
+                    loaded,
+                    &filtered_diags,
+                )?);
             }
 
             let mut changed_files = FxHashSet::default();
@@ -846,251 +795,87 @@ pub fn do_codemod(
                 &mut changed_files,
                 filtered_diags,
             );
-            // We handle the fix application result here, so
-            // the overall status of whether error-severity
-            // diagnostics is still returned as usual, in the
-            // next statement.
-            match lints.apply_relevant_fixes(args.is_format_normal(), cli) {
-                Ok(_) => {}
-                Err(err) => {
-                    // Reported via `info`, i.e. stderr, to keep stdout a pure
-                    // stream of JSON documents under `--format json`.
-                    cli.info(&format!("Apply fix failed: {err:#}")).ok();
-                }
-            };
-        }
-    } else {
-        // In the non-apply-fix case, `any_findings` reflects filtered diagnostics
-        // produced by streaming or batch processing.
-        if !any_findings {
-            if args.is_format_normal() {
-                writeln!(cli, "No diagnostics reported")?;
+            if let Err(err) = lints.apply_relevant_fixes(report) {
+                report.info(&format!("Apply fix failed: {err:#}")).ok();
             }
         }
+    } else if !primary_outcome.seen_diagnostics {
+        report.human_line(format_args!("No diagnostics reported"))?;
     }
 
-    if any_findings {
+    if primary_outcome.seen_diagnostics {
         Ok(LintOutcome::Findings {
-            has_errors: err_in_diag,
+            has_errors: primary_outcome.should_fail,
         })
     } else {
         Ok(LintOutcome::Clean)
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn print_diagnostic_result(
-    cli: &mut dyn Cli,
+fn report_diagnostic_result(
+    report: &mut Report<'_>,
     analysis: &Analysis,
     config: &DiagnosticsConfig,
     args: &Lint,
     loaded: &LoadResult,
     modules: &[String],
-    err_in_diag: &mut bool,
-    module_count: &mut i32,
     result: &(String, FileId, DiagnosticCollection),
-) -> Result<bool> {
-    if args.uses_structured_diagnostics() {
-        do_print_diagnostic_collection_json(
-            cli,
-            analysis,
-            config,
-            args,
-            loaded,
-            modules,
-            err_in_diag,
-            module_count,
-            result,
-        )
-    } else {
-        do_print_diagnostic_collection(
-            cli,
-            analysis,
-            config,
-            args,
-            loaded,
-            modules,
-            err_in_diag,
-            module_count,
-            result,
-        )
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn do_print_diagnostic_collection(
-    cli: &mut dyn Cli,
-    analysis: &Analysis,
-    config: &DiagnosticsConfig,
-    args: &Lint,
-    loaded: &LoadResult,
-    modules: &[String],
-    err_in_diag: &mut bool,
-    module_count: &mut i32,
-    result: &(String, FileId, DiagnosticCollection),
-) -> Result<bool> {
-    let single_result = vec![result.clone()];
-    let mut has_diagnostics = false;
+) -> Result<DiagnosticOutcome> {
     let min_severity = args.severity.map(arg_severity);
-    if let Ok(filtered) = filter_diagnostics(
+    let Ok(filtered) = filter_diagnostics(
         analysis,
         modules,
         Some(&config.enabled),
-        &single_result,
+        std::slice::from_ref(result),
         &FxHashSet::default(),
         min_severity,
-    ) {
-        do_print_diagnostics_filtered(
-            cli,
-            analysis,
-            args,
-            loaded,
-            err_in_diag,
-            module_count,
-            &mut has_diagnostics,
-            &filtered,
-        )?;
-    }
-    Ok(has_diagnostics)
+    ) else {
+        return Ok(DiagnosticOutcome::default());
+    };
+    report_filtered_diagnostics(report, analysis, args, loaded, &filtered)
 }
 
-#[allow(clippy::too_many_arguments)]
-fn do_print_diagnostics_filtered(
-    cli: &mut dyn Cli,
+fn report_filtered_diagnostics(
+    report: &mut Report<'_>,
     analysis: &Analysis,
     args: &Lint,
     loaded: &LoadResult,
-    err_in_diag: &mut bool,
-    module_count: &mut i32,
-    has_diagnostics: &mut bool,
     filtered: &[(String, FileId, Vec<diagnostics::Diagnostic>)],
-) -> Result<(), anyhow::Error> {
-    let _: () = for (name, file_id, diags) in filtered {
-        if !diags.is_empty() {
-            *has_diagnostics = true;
-            if *module_count == 0 {
-                writeln!(cli, "Diagnostics reported:")?;
-            }
-            *module_count += 1;
-            if !args.print_diags {
-                writeln!(cli, "  {}: {}", name, diags.len())?;
-            } else {
-                for diag in diags {
-                    if let diagnostics::Severity::Error = diag.severity {
-                        *err_in_diag = true;
-                    };
-                    // Get relative path for diagnostic output
-                    let vfs_path = loaded.vfs.file_path(*file_id);
-                    let root_path = &analysis
-                        .project_data(*file_id)
-                        .unwrap_or_else(|_err| panic!("could not find project data"))
-                        .unwrap_or_else(|| panic!("could not find project data"))
-                        .root_dir;
-                    let relative_path = reporting::get_relative_path(root_path, vfs_path);
-                    print_diagnostic(
-                        diag,
-                        analysis,
-                        &loaded.vfs,
-                        *file_id,
-                        Some(relative_path),
-                        args.use_cli_severity,
-                        cli,
-                    )?;
-                }
-            }
+) -> Result<DiagnosticOutcome> {
+    let mut outcome = DiagnosticOutcome::default();
+    for (name, file_id, diagnostics) in filtered {
+        if diagnostics.is_empty() {
+            continue;
         }
-    };
-    Ok(())
-}
+        outcome.seen_diagnostics = true;
+        outcome.should_fail |= diagnostics.iter().any(|diagnostic| {
+            diagnostic_counts_as_error(args.format, diagnostic.severity(args.uses_cli_severity()))
+        });
+        if !args.print_diags {
+            report.write_lint_count(name, diagnostics.len())?;
+            continue;
+        }
 
-#[allow(clippy::too_many_arguments)]
-fn do_print_diagnostic_collection_json(
-    cli: &mut dyn Cli,
-    analysis: &Analysis,
-    config: &DiagnosticsConfig,
-    args: &Lint,
-    loaded: &LoadResult,
-    modules: &[String],
-    err_in_diag: &mut bool,
-    module_count: &mut i32,
-    result: &(String, FileId, DiagnosticCollection),
-) -> Result<bool> {
-    let single_result = vec![result.clone()];
-    let mut has_diagnostics = false;
-    let min_severity = args.severity.map(arg_severity);
-    if let Ok(filtered) = filter_diagnostics(
-        analysis,
-        modules,
-        Some(&config.enabled),
-        &single_result,
-        &FxHashSet::default(),
-        min_severity,
-    ) {
-        do_print_diagnostics_json_filtered(
-            cli,
-            args,
-            loaded,
-            err_in_diag,
-            module_count,
-            &mut has_diagnostics,
-            &filtered,
+        let vfs_path = loaded.vfs.file_path(*file_id);
+        let root_path = &analysis
+            .project_data(*file_id)
+            .unwrap_or_else(|_| panic!("could not find project data"))
+            .unwrap_or_else(|| panic!("could not find project data"))
+            .root_dir;
+        let relative_path = reporting::get_relative_path(root_path, vfs_path);
+        report.write_lint_diagnostics(
+            IdeDiagnosticContext {
+                analysis,
+                vfs: &loaded.vfs,
+                file_id: *file_id,
+                path: Some(relative_path),
+                use_cli_severity: args.uses_cli_severity(),
+                arc_patch: args.arc_patch,
+            },
+            diagnostics,
         )?;
     }
-    Ok(has_diagnostics)
-}
-
-fn do_print_diagnostics_json_filtered(
-    cli: &mut dyn Cli,
-    args: &Lint,
-    loaded: &LoadResult,
-    err_in_diag: &mut bool,
-    module_count: &mut i32,
-    has_diagnostics: &mut bool,
-    filtered: &[(String, FileId, Vec<diagnostics::Diagnostic>)],
-) -> Result<(), anyhow::Error> {
-    let _: () = for (name, file_id, diags) in filtered {
-        if !diags.is_empty() {
-            *has_diagnostics = true;
-            *module_count += 1;
-            if !args.print_diags {
-                writeln!(cli, "  {}: {}", name, diags.len())?;
-            } else {
-                for diag in diags {
-                    if diagnostic_counts_as_error(args.format, diag.severity(args.use_cli_severity))
-                    {
-                        *err_in_diag = true;
-                    }
-
-                    // Get relative path for diagnostic output
-                    let vfs_path = loaded.vfs.file_path(*file_id);
-                    let analysis = loaded.analysis();
-                    let root_path = &analysis
-                        .project_data(*file_id)
-                        .unwrap_or_else(|_err| panic!("could not find project data"))
-                        .unwrap_or_else(|| panic!("could not find project data"))
-                        .root_dir;
-                    let relative_path = reporting::get_relative_path(root_path, vfs_path);
-                    print_diagnostic_json(
-                        JsonDiagnosticContext {
-                            diagnostic: diag,
-                            analysis: &analysis,
-                            vfs: &loaded.vfs,
-                            file_id: *file_id,
-                            path: relative_path,
-                            use_cli_severity: args.use_cli_severity,
-                            arc_patch: args.arc_patch,
-                            daemon_format: matches!(
-                                args.format,
-                                Some(Format::Daemon | Format::DaemonJson)
-                            ),
-                        },
-                        cli,
-                    )?;
-                }
-            }
-        }
-    };
-    Ok(())
+    Ok(outcome)
 }
 
 fn get_diagnostics_config(args: &Lint, lint_config: &LintConfig) -> Result<DiagnosticsConfig> {
@@ -1104,93 +889,9 @@ fn get_diagnostics_config(args: &Lint, lint_config: &LintConfig) -> Result<Diagn
         .set_experimental(args.experimental_diags)
         .set_include_suppressed(args.include_suppressed)
         .set_include_fixes(args.apply_fix || args.arc_patch)
-        .set_use_cli_severity(args.use_cli_severity)
+        .set_use_cli_severity(args.uses_cli_severity())
         .set_recursive(args.recursive);
     Ok(cfg)
-}
-
-fn print_diagnostic(
-    diag: &diagnostics::Diagnostic,
-    analysis: &Analysis,
-    vfs: &Vfs,
-    file_id: FileId,
-    path: Option<&Path>,
-    use_cli_severity: bool,
-    cli: &mut dyn Cli,
-) -> Result<(), anyhow::Error> {
-    let line_index = analysis.line_index(file_id)?;
-    let diag_str = diag.print(&line_index, use_cli_severity);
-    if let Some(path) = path {
-        writeln!(cli, "{}:{}", path.display(), diag_str)?;
-    } else {
-        writeln!(cli, "      {}", diag_str)?;
-    }
-
-    for line in reporting::related_information_lines(analysis, vfs, file_id, diag)? {
-        writeln!(cli, "{line}")?;
-    }
-
-    Ok(())
-}
-
-struct JsonDiagnosticContext<'a> {
-    diagnostic: &'a diagnostics::Diagnostic,
-    analysis: &'a Analysis,
-    vfs: &'a Vfs,
-    file_id: FileId,
-    path: &'a Path,
-    use_cli_severity: bool,
-    arc_patch: bool,
-    daemon_format: bool,
-}
-
-fn print_diagnostic_json(
-    context: JsonDiagnosticContext<'_>,
-    cli: &mut dyn Cli,
-) -> Result<(), anyhow::Error> {
-    let JsonDiagnosticContext {
-        diagnostic,
-        analysis,
-        vfs,
-        file_id,
-        path,
-        use_cli_severity,
-        arc_patch,
-        daemon_format,
-    } = context;
-    let line_index = analysis.line_index(file_id)?;
-    let mut converted_diagnostic =
-        convert::ide_to_arc_diagnostic(&line_index, path, diagnostic, use_cli_severity);
-    if arc_patch
-        && let Ok(file_text) = analysis.file_text(file_id)
-        && let Some(fix) = convert::extract_arc_fix(diagnostic, &line_index, file_id, &file_text)
-    {
-        converted_diagnostic =
-            converted_diagnostic.with_fix(fix.line, fix.char, fix.original, fix.replacement);
-    }
-    if daemon_format {
-        let rendered = reporting::render_ide_diagnostic(
-            reporting::IdeDiagnosticContext {
-                analysis,
-                vfs,
-                file_id,
-                path,
-                diagnostic,
-            },
-            &converted_diagnostic,
-        )?;
-        let response = DaemonResponse::<()>::diagnostic(converted_diagnostic, Some(rendered));
-        writeln!(cli, "{}", serde_json::to_string(&response)?)?;
-    } else {
-        writeln!(
-            cli,
-            "{}",
-            serde_json::to_string(&converted_diagnostic).unwrap_or_else(|err| panic!(
-                "print_diagnostics_json failed for '{converted_diagnostic:?}': {err}"
-            ))
-        )?;
-    }
-    Ok(())
 }
 
 fn filter_diagnostics<'a>(
@@ -1318,10 +1019,10 @@ impl<'a> Lints<'a> {
 
     // For now we assume that the surrounding codemod environment is
     // invoking this one file at a time.
-    fn apply_relevant_fixes(&mut self, format_normal: bool, cli: &mut dyn Cli) -> Result<()> {
+    fn apply_relevant_fixes(&mut self, report: &mut Report<'_>) -> Result<()> {
         let mut recursion_limit = LINT_APPLICATION_RECURSION_LIMIT;
         loop {
-            let changes = self.apply_diagnostics_fixes(format_normal, cli)?;
+            let changes = self.apply_diagnostics_fixes(report)?;
             if changes.is_empty() {
                 break;
             }
@@ -1355,7 +1056,7 @@ impl<'a> Lints<'a> {
                     },
                 );
                 if self.args.check_eqwalize_all {
-                    writeln!(cli, "Running eqwalize-all to check for knock-on problems.")?;
+                    report.info("Running eqwalize-all to check for knock-on problems.")?;
                 }
                 let diags = {
                     let analysis = self.analysis_host.analysis();
@@ -1393,22 +1094,22 @@ impl<'a> Lints<'a> {
             };
             self.diags = diagnostics_by_file_id(&new_diagnostics);
             if !self.diags.is_empty() {
-                writeln!(cli, "---------------------------------------------\n")?;
-                writeln!(cli, "New filtered diagnostics")?;
+                report.info("---------------------------------------------\n")?;
+                report.info("New filtered diagnostics")?;
                 let analysis = self.analysis_host.analysis();
                 for (file_id, (name, diagnostics)) in &self.diags {
-                    writeln!(cli, "  {}: {}", name, diagnostics.len())?;
-                    for diagnostic in diagnostics {
-                        print_diagnostic(
-                            diagnostic,
-                            &analysis,
-                            self.vfs,
-                            *file_id,
-                            None,
-                            self.args.use_cli_severity,
-                            cli,
-                        )?;
-                    }
+                    report.info(&format!("  {name}: {}", diagnostics.len()))?;
+                    report.write_lint_diagnostics(
+                        IdeDiagnosticContext {
+                            analysis: &analysis,
+                            vfs: self.vfs,
+                            file_id: *file_id,
+                            path: None,
+                            use_cli_severity: self.args.uses_cli_severity(),
+                            arc_patch: false,
+                        },
+                        diagnostics,
+                    )?;
                 }
             }
             if !self.args.recursive {
@@ -1434,25 +1135,18 @@ impl<'a> Lints<'a> {
         Ok(())
     }
 
-    fn apply_diagnostics_fixes(
-        &self,
-        format_normal: bool,
-        cli: &mut dyn Cli,
-    ) -> Result<Vec<FixResult>> {
+    fn apply_diagnostics_fixes(&self, report: &mut Report<'_>) -> Result<Vec<FixResult>> {
         let mut changes = Vec::new();
         if self.args.one_shot {
             for (file_id, (name, diagnostics)) in &self.diags {
-                if let Ok(results) =
-                    self.apply_all_fixes(name, diagnostics, *file_id, format_normal, cli)
-                {
+                if let Ok(results) = self.apply_all_fixes(name, diagnostics, *file_id, report) {
                     changes.extend(results);
                 }
             }
         } else {
             for (file_id, (name, diagnostics)) in &self.diags {
                 if let Some(diagnostic) = diagnostics.first()
-                    && let Ok(results) =
-                        self.apply_fixes(name, diagnostic, *file_id, format_normal, cli)
+                    && let Ok(results) = self.apply_fixes(name, diagnostic, *file_id, report)
                 {
                     changes.extend(results);
                 }
@@ -1478,8 +1172,7 @@ impl<'a> Lints<'a> {
         name: &String,
         diagnostic: &diagnostics::Diagnostic,
         file_id: FileId,
-        format_normal: bool,
-        cli: &mut dyn Cli,
+        report: &mut Report<'_>,
     ) -> Result<Vec<FixResult>> {
         let fixes = diagnostic.get_diagnostic_fixes(self.analysis_host.raw_database(), file_id);
         if fixes.is_empty() {
@@ -1493,29 +1186,29 @@ impl<'a> Lints<'a> {
             bail!("Only 'ignore' or 'fixme' fixes in {:?}", diagnostic);
         }
 
-        if format_normal {
-            writeln!(cli, "---------------------------------------------\n")?;
-            writeln!(cli, "Applying fix in module '{name}' for")?;
-            let analysis = self.analysis_host.analysis();
-            print_diagnostic(
-                diagnostic,
-                &analysis,
-                self.vfs,
+        report.human_line(format_args!(
+            "---------------------------------------------\n"
+        ))?;
+        report.human_line(format_args!("Applying fix in module '{name}' for"))?;
+        let analysis = self.analysis_host.analysis();
+        report.write_fix_diagnostic(
+            IdeDiagnosticContext {
+                analysis: &analysis,
+                vfs: self.vfs,
                 file_id,
-                None,
-                self.args.use_cli_severity,
-                cli,
-            )?;
-        }
+                path: None,
+                use_cli_severity: self.args.uses_cli_severity(),
+                arc_patch: false,
+            },
+            diagnostic,
+        )?;
         let changed = fixes
             .iter()
             .filter_map(|fix| self.apply_one_fix(fix, name))
             .collect::<Vec<_>>();
-        if format_normal {
-            for result in &changed {
-                if let Some(unified) = &result.diff {
-                    _ = writeln!(cli, "{unified}");
-                }
+        for result in &changed {
+            if let Some(unified) = &result.diff {
+                _ = report.human_line(format_args!("{unified}"));
             }
         }
         Ok(changed)
@@ -1526,8 +1219,7 @@ impl<'a> Lints<'a> {
         name: &String,
         diagnostics: &[diagnostics::Diagnostic],
         file_id: FileId,
-        format_normal: bool,
-        cli: &mut dyn Cli,
+        report: &mut Report<'_>,
     ) -> Result<Vec<FixResult>> {
         let fixes = diagnostics
             .iter()
@@ -1547,22 +1239,24 @@ impl<'a> Lints<'a> {
 
         let (diagnostics, assists): (Vec<diagnostics::Diagnostic>, Vec<Vec<Assist>>) =
             fixes.iter().cloned().unzip();
-        if format_normal {
-            writeln!(cli, "---------------------------------------------\n")?;
-            let plural = if diagnostics.len() > 1 { "es" } else { "" };
-            writeln!(cli, "Applying fix{plural} in module '{name}' for")?;
-            for diagnostic in &diagnostics {
-                let analysis = self.analysis_host.analysis();
-                print_diagnostic(
-                    diagnostic,
-                    &analysis,
-                    self.vfs,
+        report.human_line(format_args!(
+            "---------------------------------------------\n"
+        ))?;
+        let plural = if diagnostics.len() > 1 { "es" } else { "" };
+        report.human_line(format_args!("Applying fix{plural} in module '{name}' for"))?;
+        for diagnostic in &diagnostics {
+            let analysis = self.analysis_host.analysis();
+            report.write_fix_diagnostic(
+                IdeDiagnosticContext {
+                    analysis: &analysis,
+                    vfs: self.vfs,
                     file_id,
-                    None,
-                    self.args.use_cli_severity,
-                    cli,
-                )?;
-            }
+                    path: None,
+                    use_cli_severity: self.args.uses_cli_severity(),
+                    arc_patch: false,
+                },
+                diagnostic,
+            )?;
         }
         let source_change =
             Self::assists_to_source_change(&assists.into_iter().flatten().collect_vec());
@@ -1570,11 +1264,9 @@ impl<'a> Lints<'a> {
             .apply_one_source_change(&source_change, name)
             .into_iter()
             .collect_vec();
-        if format_normal {
-            for result in &changed {
-                if let Some(unified) = &result.diff {
-                    _ = writeln!(cli, "{unified}");
-                }
+        for result in &changed {
+            if let Some(unified) = &result.diff {
+                _ = report.human_line(format_args!("{unified}"));
             }
         }
         Ok(changed)
@@ -1727,6 +1419,7 @@ mod tests {
     use elp::build::fixture;
     use elp::cli::Fake;
     use elp_ide::FunctionMatch;
+    use elp_ide::diagnostics;
     use elp_ide::diagnostics::ErlangServiceConfig;
     use elp_ide::diagnostics::Lint;
     use elp_ide::diagnostics::LintsFromConfig;
@@ -1744,6 +1437,8 @@ mod tests {
     use super::do_codemod;
     use crate::args;
     use crate::args::Command;
+    use crate::args::Format;
+    use crate::reporting::Report;
 
     macro_rules! args_vec {
         ($($e:expr$(,)?)+) => {
@@ -1896,7 +1591,10 @@ mod tests {
             let lint_config = LintConfig::default();
             lint.normalize();
             let diagnostics_config = super::get_diagnostics_config(&lint, &lint_config).unwrap();
-            do_codemod(&mut cli, &mut loaded, &diagnostics_config, &lint).ok();
+            {
+                let mut report = Report::for_command(&mut cli, lint.format);
+                do_codemod(&mut report, &mut loaded, &diagnostics_config, &lint).ok();
+            }
             let (stdout, stderr) = cli.to_strings();
             let (stdout, stderr) = (
                 stdout.replace(BASE_URL, "<BASE_URL>"),
@@ -1926,7 +1624,11 @@ mod tests {
         let diagnostics_config = super::get_diagnostics_config(&lint, &lint_config)
             .expect("diagnostics config should be valid");
 
-        do_codemod(&mut cli, &mut loaded, &diagnostics_config, &lint).expect("lint should complete")
+        {
+            let mut report = Report::for_command(&mut cli, lint.format);
+            do_codemod(&mut report, &mut loaded, &diagnostics_config, &lint)
+                .expect("lint should complete")
+        }
     }
 
     #[test]
@@ -2392,6 +2094,186 @@ mod tests {
             "#]],
             expect![""],
         );
+    }
+
+    fn run_lint(
+        diagnostic_filter: &str,
+        format: Option<Format>,
+        daemon: bool,
+        print_diags: bool,
+    ) -> (anyhow::Result<LintOutcome>, String, String) {
+        let mut loaded = fixture::load_result(
+            r#"
+            //- /app_a/src/lints.erl app:app_a
+              -module(lints).
+              -export([head_mismatch/1]).
+
+              head_mismatch(X) -> X;
+              head_mismatcX(0) -> 0.
+
+              warning() -> unknown:f().
+            "#,
+        );
+        let lint = super::Lint {
+            modules: vec!["lints".to_string()],
+            print_diags,
+            format,
+            diagnostic_filter: vec![diagnostic_filter.to_string()],
+            ..super::Lint::default()
+        };
+        let lint_config = LintConfig::default();
+        let diagnostics_config =
+            super::get_diagnostics_config(&lint, &lint_config).expect("config should be valid");
+        let mut cli = Fake::default();
+        let result = {
+            let mut report = if daemon {
+                Report::for_daemon(&mut cli)
+            } else {
+                Report::for_command(&mut cli, format)
+            };
+            do_codemod(&mut report, &mut loaded, &diagnostics_config, &lint)
+        };
+        let (stdout, stderr) = cli.to_strings();
+        (result, stdout, stderr)
+    }
+
+    #[test]
+    fn lint_warning_preserves_human_explicit_and_implicit_exit_semantics() {
+        let (human_result, human_output, _) = run_lint("L1230", None, false, true);
+        let human_outcome = human_result.expect("human warnings should complete");
+        assert_eq_expected!(0, human_outcome.process_exit_code());
+        assert!(
+            human_output.contains("[Warning]"),
+            "human output should render the warning: {human_output}"
+        );
+
+        let (explicit_result, explicit_output, _) =
+            run_lint("L1230", Some(Format::Json), false, true);
+        let explicit_outcome = explicit_result.expect("explicit JSON lint should complete");
+        assert_eq_expected!(101, explicit_outcome.process_exit_code());
+        assert!(
+            explicit_output.trim_start().starts_with('{'),
+            "explicit JSON output should stay structured: {explicit_output}"
+        );
+
+        let (implicit_result, implicit_output, _) =
+            run_lint("L1230", Some(Format::ImplicitJson), false, true);
+        let implicit_outcome = implicit_result.expect("implicit JSON lint should complete");
+        assert_eq_expected!(0, implicit_outcome.process_exit_code());
+        assert!(
+            implicit_output.trim_start().starts_with('{'),
+            "implicit JSON output should stay structured: {implicit_output}"
+        );
+    }
+
+    #[test]
+    fn cli_severity_follows_requested_format() {
+        let diagnostic = diagnostics::Diagnostic {
+            severity: diagnostics::Severity::Warning,
+            cli_severity: Some(diagnostics::Severity::Error),
+            ..Default::default()
+        };
+        let severity_for = |format| {
+            let args = super::Lint {
+                format,
+                use_cli_severity: true,
+                ..super::Lint::default()
+            };
+            diagnostic.severity(args.uses_cli_severity())
+        };
+
+        assert_eq_expected!(diagnostics::Severity::Warning, severity_for(None));
+        assert_eq_expected!(
+            diagnostics::Severity::Error,
+            severity_for(Some(Format::Json))
+        );
+        assert_eq_expected!(
+            diagnostics::Severity::Error,
+            severity_for(Some(Format::ImplicitJson))
+        );
+    }
+
+    #[test]
+    fn no_diags_applies_failure_semantics_and_routes_structured_counts_out_of_band() {
+        let (human_warning_result, human_warning_output, human_warning_info) =
+            run_lint("L1230", None, false, false);
+        let human_warning_outcome =
+            human_warning_result.expect("human warning --no-diags should complete");
+        assert_eq_expected!(0, human_warning_outcome.process_exit_code());
+        let expected_human = "module specified: lints\nDiagnostics reported:\n  lints: 1\n";
+        assert_eq_expected!(expected_human, human_warning_output.as_str());
+        assert_eq_expected!("", human_warning_info.as_str());
+
+        let (human_error_result, human_error_output, human_error_info) =
+            run_lint("P1700", None, false, false);
+        let human_error_outcome =
+            human_error_result.expect("human error --no-diags should complete");
+        assert_eq_expected!(101, human_error_outcome.process_exit_code());
+        assert_eq_expected!(expected_human, human_error_output.as_str());
+        assert_eq_expected!("", human_error_info.as_str());
+
+        let (json_result, json_output, json_info) =
+            run_lint("L1230", Some(Format::Json), false, false);
+        let json_outcome = json_result.expect("JSON --no-diags should complete");
+        assert_eq_expected!(101, json_outcome.process_exit_code());
+        assert_eq_expected!("", json_output.as_str());
+        assert_eq_expected!("  lints: 1\n", json_info.as_str());
+
+        let (daemon_result, daemon_output, daemon_info) =
+            run_lint("L1230", Some(Format::Json), true, false);
+        let daemon_outcome = daemon_result.expect("daemon --no-diags should complete");
+        assert_eq_expected!(101, daemon_outcome.process_exit_code());
+        assert_eq_expected!("", daemon_output.as_str());
+        assert_eq_expected!("  lints: 1\n", daemon_info.as_str());
+    }
+
+    #[test]
+    fn daemon_lint_preserves_explicit_and_implicit_exit_semantics() {
+        let run = |format| {
+            let mut loaded = fixture::load_result(
+                r#"
+                //- /app_a/src/lints.erl app:app_a
+                  -module(lints).
+
+                  foo() -> unknown:f().
+                "#,
+            );
+            let lint = super::Lint {
+                modules: vec!["lints".to_string()],
+                print_diags: true,
+                format: Some(format),
+                diagnostic_filter: vec!["L1230".to_string()],
+                ..super::Lint::default()
+            };
+            let lint_config = LintConfig::default();
+            let diagnostics_config =
+                super::get_diagnostics_config(&lint, &lint_config).expect("config should be valid");
+            let mut cli = Fake::default();
+            let result = {
+                let mut report = Report::for_daemon(&mut cli);
+                do_codemod(&mut report, &mut loaded, &diagnostics_config, &lint)
+            };
+            let (stdout, _) = cli.to_strings();
+            (result, stdout)
+        };
+
+        let (explicit_result, explicit_stdout) = run(Format::Json);
+        let explicit_outcome = explicit_result.expect("explicit JSON lint should complete");
+        assert_eq_expected!(101, explicit_outcome.process_exit_code());
+        let (implicit_result, implicit_stdout) = run(Format::ImplicitJson);
+        let implicit_outcome = implicit_result.expect("implicit JSON lint should complete");
+        assert_eq_expected!(0, implicit_outcome.process_exit_code());
+        for output in [explicit_stdout, implicit_stdout] {
+            let response: crate::daemon_protocol::DaemonResponse =
+                serde_json::from_str(output.trim()).expect("daemon output should stay structured");
+            assert!(
+                matches!(
+                    response,
+                    crate::daemon_protocol::DaemonResponse::Diagnostic { .. }
+                ),
+                "daemon lint should emit a tagged diagnostic"
+            );
+        }
     }
 
     #[test]
