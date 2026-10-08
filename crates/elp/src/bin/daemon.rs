@@ -28,6 +28,8 @@ use std::os::unix::net::UnixStream;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process;
+use std::process::Child;
+use std::process::ExitStatus;
 use std::process::Stdio;
 use std::sync::Mutex;
 use std::thread;
@@ -640,6 +642,10 @@ fn run_daemon_server(args: &DaemonRun, query_config: &BuckQueryConfig) -> Result
     let root = load::project_root_dir(&manifest);
     let dir = daemon_dir(&root, &args.profile);
 
+    // Before daemonizing, a failure exits the process the client spawned, so
+    // the client notices at once instead of waiting out the startup timeout.
+    let mut watchman = Watchman::new(&root)?;
+
     // Daemonize if requested (must happen before creating socket/pid files)
     if args.daemonize {
         fs::create_dir_all(&dir)?;
@@ -671,7 +677,6 @@ fn run_daemon_server(args: &DaemonRun, query_config: &BuckQueryConfig) -> Result
     // progress bars when stderr is a redirected file).
     let mut daemon_cli = DaemonCli::log();
     daemon_cli.info(&format!("Loading project from {}...", root.display()))?;
-    let mut watchman = Watchman::new(&root)?;
     let mut loaded = load::load_project_from_manifest(
         &daemon_cli,
         &manifest,
@@ -1012,7 +1017,7 @@ fn execute_daemon_request(
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, thiserror::Error)]
-#[error("Could not use elp daemon: {source:#}")]
+#[error("Could not use elp daemon")]
 pub(crate) struct DaemonUnavailable {
     #[source]
     source: anyhow::Error,
@@ -1289,10 +1294,20 @@ fn start_daemon(
         .stdout(Stdio::null())
         .stderr(log_file);
 
-    let _child = cmd.spawn()?;
+    let child = cmd.spawn()?;
+    wait_for_daemon(endpoint, child, &log, cli)
+}
 
-    // Wait for socket to appear. Poll at 100ms so the reported startup time is
-    // accurate (a coarser interval would round fast starts up to a full tick).
+/// Wait for a spawned daemon to accept connections, failing as soon as it
+/// exits instead of waiting out the startup timeout.
+fn wait_for_daemon(
+    endpoint: &DaemonEndpoint,
+    mut child: Child,
+    log: &Path,
+    cli: &mut dyn Cli,
+) -> Result<UnixStream> {
+    // Poll at 100ms so the reported startup time is accurate (a coarser
+    // interval would round fast starts up to a full tick).
     let start = Instant::now();
     loop {
         if let Ok(s) = UnixStream::connect(&endpoint.sock) {
@@ -1301,6 +1316,18 @@ fn start_daemon(
                 format_duration(start.elapsed())
             ))?;
             return Ok(s);
+        }
+        // Until `--daemonize` forks, `child` is the daemon itself, so a
+        // startup error shows up as its failing exit status. After the fork
+        // `child` exits successfully, and a daemon that then fails removes
+        // its directory on the way out (`DaemonGuard`).
+        if let Some(status) = child.try_wait()?
+            && !status.success()
+        {
+            bail!("{}", startup_failure(log, status));
+        }
+        if !endpoint.dir.exists() {
+            bail!("Daemon exited during startup");
         }
         if let Some(timeout) = endpoint.startup_timeout
             && start.elapsed() > timeout
@@ -1313,6 +1340,24 @@ fn start_daemon(
             );
         }
         thread::sleep(Duration::from_millis(100));
+    }
+}
+
+/// Describe a daemon that exited before accepting connections, using the
+/// error it wrote last to its log.
+fn startup_failure(log: &Path, status: ExitStatus) -> String {
+    let last_line = fs::read_to_string(log).ok().and_then(|text| {
+        text.lines()
+            .map(str::trim)
+            .rfind(|line| !line.is_empty())
+            .map(str::to_owned)
+    });
+    match last_line {
+        Some(line) => format!("Daemon exited during startup: {line}"),
+        None => format!(
+            "Daemon exited during startup ({status}); check {}",
+            log.display()
+        ),
     }
 }
 
@@ -2295,6 +2340,61 @@ mod tests {
 
         assert!(!is_error_diagnostic(&warning));
         assert!(is_error_diagnostic(&error));
+    }
+
+    // -- wait_for_daemon --
+
+    fn spawn_logging_to(script: &str, log: &Path) -> Child {
+        process::Command::new("sh")
+            .args(["-c", script])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(fs::File::create(log).expect("log file should be creatable"))
+            .spawn()
+            .expect("sh should spawn")
+    }
+
+    fn wait_for_test_daemon(dir: &Path, child: Child, log: &Path) -> anyhow::Error {
+        let endpoint = DaemonEndpoint {
+            dir: dir.to_path_buf(),
+            sock: dir.join("daemon.sock"),
+            startup_timeout: Some(Duration::from_secs(60)),
+        };
+        let start = Instant::now();
+        let error = wait_for_daemon(&endpoint, child, log, &mut elp::cli::Fake::default())
+            .expect_err("no daemon ever listens on the socket");
+        assert!(
+            start.elapsed() < Duration::from_secs(30),
+            "the exit should be noticed long before the 60s startup timeout"
+        );
+        error
+    }
+
+    #[test]
+    fn wait_for_daemon_reports_exit_before_daemonizing() {
+        let dir = tempfile::tempdir().expect("tempdir should be creatable");
+        let log = dir.path().join("daemon.log");
+        let child = spawn_logging_to("echo 'watchman not found' >&2; exit 101", &log);
+
+        let error = wait_for_test_daemon(dir.path(), child, &log);
+        assert_eq_expected!(
+            "Daemon exited during startup: watchman not found",
+            error.to_string()
+        );
+    }
+
+    #[test]
+    fn wait_for_daemon_reports_exit_after_daemonizing() {
+        let dir = tempfile::tempdir().expect("tempdir should be creatable");
+        let daemon_dir = dir.path().join("daemon");
+        fs::create_dir(&daemon_dir).expect("daemon dir should be creatable");
+        let log = dir.path().join("daemon.log");
+        // Like `--daemonize`, the spawned process succeeds; the "daemon" then
+        // fails and its `DaemonGuard` removes the directory.
+        let child = spawn_logging_to(&format!("rm -r '{}'", daemon_dir.display()), &log);
+
+        let error = wait_for_test_daemon(&daemon_dir, child, &log);
+        assert_eq_expected!("Daemon exited during startup", error.to_string());
     }
 
     // -- Daemon lifecycle integration tests --

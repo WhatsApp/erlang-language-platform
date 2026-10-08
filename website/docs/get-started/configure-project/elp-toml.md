@@ -169,6 +169,11 @@ exclude_apps = ["diameter", "megaco"]
 
 Configure the ELP daemon lifecycle.
 
+The daemon relies on [watchman](https://facebook.github.io/watchman/), so
+commands use it by default only when `watchman` is on `PATH`. If the daemon
+cannot start, commands report why and run without it. Pass `--no-connect` to
+skip the daemon, or `--connect` to require it.
+
 | Key                  | Type    | Description                                                                                                                               | Default |
 | -------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------- |
 | idle_timeout_secs    | Integer | Seconds of inactivity before the daemon shuts itself down. Set to `0` to keep the daemon running indefinitely.                            | 3600    |

@@ -142,8 +142,8 @@ pub struct Lint {
     /// Rebar3 profile to pickup
     #[arg(long = "as", value_name = "PROFILE", default_value = "test")]
     pub profile: String,
-    /// Use the persistent daemon for fast turnaround (default; auto-starts if
-    /// needed). Pass --no-connect to disable.
+    /// Use the persistent daemon for fast turnaround (default when watchman is
+    /// installed; auto-starts if needed). Pass --no-connect to disable.
     #[arg(long, conflicts_with = "no_connect")]
     pub connect: bool,
     /// Disable the persistent daemon and run standalone (no cross-run caching).

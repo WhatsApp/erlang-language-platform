@@ -22,6 +22,7 @@ use clap::Parser;
 use elp::ServerSetup;
 use elp::cli;
 use elp::cli::Cli;
+use elp::watchman::Watchman;
 use elp_ide::erlang_service::ESCRIPT;
 use elp_log::FileLogger;
 use elp_log::Logger;
@@ -114,10 +115,12 @@ impl<T> CliRunResult<T> {
 }
 
 /// Whether to route a command through the persistent daemon. It is the default
-/// on Unix unless `--no-connect` opts out. An explicit `--connect` also routes
-/// here on non-Unix so the caller receives the unsupported-platform error.
-fn use_daemon(connect: bool, no_connect: bool) -> bool {
-    connect || (cfg!(unix) && !no_connect)
+/// on Unix when `watchman` is installed, unless `--no-connect` opts out. An
+/// explicit `--connect` always routes here, so the caller receives the error
+/// that keeps the daemon from starting (missing `watchman`, or an unsupported
+/// platform).
+fn use_daemon(connect: bool, no_connect: bool, watchman_installed: impl FnOnce() -> bool) -> bool {
+    connect || (cfg!(unix) && !no_connect && watchman_installed())
 }
 
 #[rustfmt::skip]
@@ -275,7 +278,11 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<Comman
         args::Command::ParseAll(args) => erlang_service_cli::parse_all(args, cli, &query_config)?,
         args::Command::ParseAllElp(args) => elp_parse_cli::parse_all(args, cli, &query_config)?,
         args::Command::Eqwalize(eqwalize_args)
-            if use_daemon(eqwalize_args.connect, eqwalize_args.no_connect) =>
+            if use_daemon(
+                eqwalize_args.connect,
+                eqwalize_args.no_connect,
+                Watchman::is_installed,
+            ) =>
         {
             #[cfg(unix)]
             run_with_daemon_fallback(
@@ -295,7 +302,11 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<Comman
             eqwalizer_cli::eqwalize_module(args, cli, &query_config, "standalone")?
         }
         args::Command::EqwalizeAll(eqwalize_all_args)
-            if use_daemon(eqwalize_all_args.connect, eqwalize_all_args.no_connect) =>
+            if use_daemon(
+                eqwalize_all_args.connect,
+                eqwalize_all_args.no_connect,
+                Watchman::is_installed,
+            ) =>
         {
             #[cfg(unix)]
             {
@@ -325,7 +336,11 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<Comman
         args::Command::EqwalizeAll(args) => eqwalizer_cli::eqwalize_all(args, cli, &query_config)?,
         args::Command::DialyzeAll(args) => dialyzer_cli::dialyze_all(args, cli)?,
         args::Command::EqwalizeApp(eqwalize_app_args)
-            if use_daemon(eqwalize_app_args.connect, eqwalize_app_args.no_connect) =>
+            if use_daemon(
+                eqwalize_app_args.connect,
+                eqwalize_app_args.no_connect,
+                Watchman::is_installed,
+            ) =>
         {
             #[cfg(unix)]
             {
@@ -360,6 +375,7 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<Comman
             if use_daemon(
                 eqwalize_target_args.connect,
                 eqwalize_target_args.no_connect,
+                Watchman::is_installed,
             ) =>
         {
             #[cfg(unix)]
@@ -396,7 +412,13 @@ fn try_main(cli: &mut dyn Cli, args: Args, stdout_is_tty: bool) -> Result<Comman
         args::Command::ProjectInfo(args) => {
             build_info_cli::save_project_info(args, cli, &query_config)?
         }
-        args::Command::Lint(lint_args) if use_daemon(lint_args.connect, lint_args.no_connect) => {
+        args::Command::Lint(lint_args)
+            if use_daemon(
+                lint_args.connect,
+                lint_args.no_connect,
+                Watchman::is_installed,
+            ) =>
+        {
             #[cfg(unix)]
             {
                 command_outcome = CommandOutcome::Lint(run_with_daemon_fallback(
@@ -562,13 +584,34 @@ mod tests {
     #[test]
     fn use_daemon_defaults_on_and_respects_no_connect() {
         // Connect is the default on Unix.
-        assert!(use_daemon(false, false), "default should use the daemon");
+        assert!(
+            use_daemon(false, false, || true),
+            "default should use the daemon"
+        );
         // --no-connect opts out.
         assert!(
-            !use_daemon(false, true),
+            !use_daemon(false, true, || true),
             "--no-connect should run standalone"
         );
-        assert!(use_daemon(true, false));
+        assert!(use_daemon(true, false, || true));
+    }
+
+    #[test]
+    fn use_daemon_requires_watchman_unless_explicit() {
+        assert!(
+            !use_daemon(false, false, || false),
+            "without watchman the default should run standalone"
+        );
+        assert!(
+            use_daemon(true, false, || false),
+            "--connect should still try the daemon and report why it cannot start"
+        );
+        assert!(
+            !use_daemon(false, true, || panic!(
+                "--no-connect should not look for watchman"
+            )),
+            "--no-connect should run standalone"
+        );
     }
 
     #[test]

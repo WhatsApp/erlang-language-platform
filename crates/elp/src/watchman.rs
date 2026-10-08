@@ -8,6 +8,7 @@
  * above-listed licenses.
  */
 
+use std::env;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
@@ -51,6 +52,12 @@ struct WatchmanFile {
 }
 
 impl Watchman {
+    /// Whether a `watchman` executable is on `PATH`.
+    pub fn is_installed() -> bool {
+        env::var_os("PATH")
+            .is_some_and(|path| env::split_paths(&path).any(|dir| dir.join("watchman").is_file()))
+    }
+
     pub fn new(project: &Path) -> Result<Self> {
         let mut cmd = Command::new("watchman");
         cmd.arg("watch-project").arg(project.as_os_str());
@@ -58,7 +65,8 @@ impl Watchman {
             if e.kind() == std::io::ErrorKind::NotFound {
                 anyhow::Error::msg(
                     "`watchman` command not found. install it from \
-                     https://facebook.github.io/watchman/ to use `elp shell`.",
+                     https://facebook.github.io/watchman/ to use `elp shell` \
+                     or the elp daemon.",
                 )
             } else {
                 e.into()
