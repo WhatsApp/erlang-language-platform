@@ -131,6 +131,7 @@ impl Runnable {
                 args.push("--case".to_string());
                 args.push(case.to_string());
                 if let GroupName::Name(group) = group {
+                    args.push("--group".to_string());
                     args.push(group.to_string());
                 }
             }
@@ -273,6 +274,66 @@ mod tests {
  %% ^ Run Test (in gc1)
       ok.
     "#,
+        );
+    }
+
+    #[test]
+    fn rebar3_test_args_include_group_flag() {
+        let fixture = r#"
+ //- erlang_service
+ //- /my_app/test/runnables_SUITE.erl
+    ~
+    -module(runnables_SUITE).
+    -export([all/0, groups/0]).
+    -export([a/1, c/1]).
+    all() -> [a, {group, gc1}].
+    groups() -> [{gc1, [], [c]}].
+    a(_Config) -> ok.
+    c(_Config) -> ok.
+    "#;
+
+        let trimmed_fixture = trim_indent(fixture);
+        let (analysis, fixture) = fixture::with_fixture(trimmed_fixture.as_str());
+        let runnables = analysis.runnables(fixture.file_id()).unwrap();
+
+        let grouped = runnables
+            .iter()
+            .find(|runnable| {
+                matches!(
+                    &runnable.kind,
+                    super::RunnableKind::Test { case, .. } if case == "c"
+                )
+            })
+            .unwrap();
+        assert_eq!(
+            grouped.rebar3_test_args(),
+            vec![
+                "--suite".to_string(),
+                "runnables_SUITE".to_string(),
+                "--case".to_string(),
+                "c".to_string(),
+                "--group".to_string(),
+                "gc1".to_string(),
+            ]
+        );
+
+        let ungrouped = runnables
+            .iter()
+            .find(|runnable| {
+                matches!(
+                    &runnable.kind,
+                    super::RunnableKind::Test { case, .. } if case == "a"
+                )
+            })
+            .unwrap();
+        assert_eq!(
+            ungrouped.rebar3_test_args(),
+            vec![
+                "--suite".to_string(),
+                "runnables_SUITE".to_string(),
+                "--case".to_string(),
+                "a".to_string(),
+            ]
         );
     }
 
