@@ -9,19 +9,39 @@
  */
 
 //! Native extraction of EEP-59 documentation attributes (`-moduledoc` and
-//! `-doc`), following the attachment rules of OTP's `beam_doc`:
+//! `-doc`), following the rules of OTP's `beam_doc`. Each rule has a test
+//! of the same name:
 //!
-//! - `-doc` attributes are accumulated until the next function, type or
-//!   callback definition, which they then document. Other forms (e.g.
-//!   `-spec` or `-export`) in between do not interrupt the accumulation.
-//! - `-doc false.` and `-doc hidden.` hide the next definition.
-//! - A doc whose first line is a call to the documented function with the
-//!   matching arity provides the signature, and is removed from the text.
-//! - Without a doc string, an `equiv` metadata entry produces a short
-//!   "equivalent to" description.
-//!
-//! Doc attributes whose value is a macro call are not expanded, and are
-//! ignored.
+//! - **Module doc**: a `-moduledoc` string documents the module.
+//! - **Attachment**: a `-doc` documents the next function or type definition,
+//!   and only that one. Forms in between that are not definitions (`-spec`,
+//!   `-export`, `-export_type`, `-record`, ...) do not interrupt it.
+//! - **Last doc wins**: when several `-doc` (or `-moduledoc`) attributes
+//!   precede a definition (or the module), the last one is used.
+//! - **Callbacks**: a `-callback` takes the preceding `-doc`, which is not
+//!   passed on to the next definition. Callback docs are not reported.
+//! - **Hidden**: `-doc false.` and `-doc hidden.` hide the next definition,
+//!   even if it has `equiv` metadata. `-moduledoc false.` and
+//!   `-moduledoc hidden.` hide the module.
+//! - **Unexported definitions**: functions and types are documented whether
+//!   or not they are exported.
+//! - **Signature line**: a first line that is a call to the documented
+//!   function with the matching arity is its signature, and is removed from
+//!   the text.
+//! - **Equiv metadata**: without a doc string, `equiv` metadata produces
+//!   "equivalent to `...`", using the source text of the value. A doc string
+//!   takes precedence.
+//! - **Repeated definitions**: a function defined by several `.`-terminated
+//!   forms keeps the doc of the first one, unless a later form has its own
+//!   `-doc`, which replaces it.
+//! - **Inactive branches**: forms in inactive preprocessor branches,
+//!   definitions included, are skipped.
+//! - **String decoding**: doc strings are decoded like Erlang string
+//!   literals (escapes, triple-quoted, sigils, adjacent literals, optional
+//!   parentheses) and trimmed.
+//! - **Macros**: doc attributes whose value contains a macro call are not
+//!   expanded, and are ignored.
+//! - **EDoc comments**: `%% @doc` comments are not read.
 
 use elp_base_db::FileId;
 use elp_syntax::AstNode;
@@ -269,90 +289,110 @@ mod tests {
     }
 
     #[test]
-    fn module_and_function_docs() {
+    fn module_doc() {
         check(
             r#"
 -module(main).
--moduledoc "This is the module doc".
--export([one/0, two/0, three/0]).
-
-%% @doc This is function one, with old style docs
-one() -> 1.
-
--doc "This is function two".
-two() -> 2.
-
--doc "This is function three".
-% @doc Old style doc, ignored.
-three() -> 3.
+-moduledoc "The module doc".
 "#,
             expect![[r#"
-                module: "This is the module doc"
-                function three/0: "This is function three"
-                function two/0: "This is function two"
+                module: "The module doc"
             "#]],
         );
     }
 
     #[test]
-    fn triple_quoted_and_sigil_strings() {
+    fn attachment() {
         check(
             r#"
 -module(main).
--moduledoc """
-  Module doc.
-
-  With a second paragraph.
-  """.
-
--doc \~"Sigil \"doc\"".
-one() -> 1.
-
--doc \~"""
-  Verbatim \n doc
-  """.
-two() -> 2.
-
--doc("Paren" " " "concatenated").
-three() -> 3.
-"#,
-            expect![[r#"
-                module: "Module doc.\n\nWith a second paragraph."
-                function one/0: "Sigil \"doc\""
-                function three/0: "Paren concatenated"
-                function two/0: "Verbatim \\n doc"
-            "#]],
-        );
-    }
-
-    #[test]
-    fn doc_skips_spec_and_attaches_to_next_definition() {
-        check(
-            r#"
--module(main).
--doc "Documented".
+-export([one/0]).
+-doc "Before a spec".
 -spec one() -> ok.
 one() -> ok.
-
 two() -> ok.
-
--doc "Type doc".
+-doc "Before an export_type".
 -export_type([t/0]).
 -type t() :: ok.
-
--doc "Callback doc".
--callback cb() -> ok.
+-doc "Before a record".
+-record(r, {f}).
 three() -> ok.
 "#,
             expect![[r#"
-                function one/0: "Documented"
-                type t/0: "Type doc"
+                function one/0: "Before a spec"
+                function three/0: "Before a record"
+                type t/0: "Before an export_type"
             "#]],
         );
     }
 
     #[test]
-    fn private_functions_are_documented() {
+    fn last_doc_wins() {
+        check(
+            r#"
+-module(main).
+-moduledoc "First module doc".
+-moduledoc "Second module doc".
+-doc "First".
+-doc "Second".
+one() -> 1.
+-doc #{equiv => a()}.
+-doc #{equiv => b()}.
+two() -> 2.
+"#,
+            expect![[r#"
+                module: "Second module doc"
+                function one/0: "Second"
+                function two/0: "equivalent to `b()`"
+            "#]],
+        );
+    }
+
+    #[test]
+    fn callbacks() {
+        check(
+            r#"
+-module(main).
+-doc "Callback doc".
+-callback cb() -> ok.
+one() -> 1.
+-doc "Function doc".
+two() -> 2.
+"#,
+            expect![[r#"
+                function two/0: "Function doc"
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hidden() {
+        check(
+            r#"
+-module(main).
+-moduledoc hidden.
+-doc false.
+one() -> 1.
+-doc hidden.
+two() -> 2.
+-doc false.
+-type t() :: ok.
+-doc hidden.
+-type u() :: ok.
+-doc hidden.
+-doc #{equiv => one()}.
+three() -> 3.
+-doc "Visible".
+four() -> 4.
+"#,
+            expect![[r#"
+                function four/0: "Visible"
+            "#]],
+        );
+    }
+
+    #[test]
+    fn unexported_definitions() {
         check(
             r#"
 -module(main).
@@ -361,56 +401,19 @@ three() -> ok.
 public() -> private().
 -doc "Private".
 private() -> ok.
+-doc "Unexported type, unused in specs".
+-type t() :: ok.
 "#,
             expect![[r#"
                 function private/0: "Private"
                 function public/0: "Public"
+                type t/0: "Unexported type, unused in specs"
             "#]],
         );
     }
 
     #[test]
-    fn hidden_docs() {
-        check(
-            r#"
--module(main).
--moduledoc false.
--doc false.
-one() -> 1.
--doc hidden.
--type t() :: ok.
--doc "Visible".
-two() -> 2.
-"#,
-            expect![[r#"
-                function two/0: "Visible"
-            "#]],
-        );
-    }
-
-    #[test]
-    fn equiv_metadata() {
-        check(
-            r#"
--module(main).
--doc #{equiv => one(ok)}.
-one() -> one(ok).
--doc "Has a doc".
--doc #{equiv => one/0}.
-one(_) -> ok.
--doc(#{since => "1.0", equiv => two/1}).
-two() -> two(ok).
-"#,
-            expect![[r#"
-                function one/0: "equivalent to `one(ok)`"
-                function one/1: "Has a doc"
-                function two/0: "equivalent to `two/1`"
-            "#]],
-        );
-    }
-
-    #[test]
-    fn signature_line_is_stripped() {
+    fn signature_line() {
         check(
             r#"
 -module(main).
@@ -423,52 +426,188 @@ add(A, B) -> A + B.
 
 -doc """
 add(A)
-The arity does not match, so this line is kept.
+Wrong arity: kept.
 """.
 add(A, B, C) -> A + B + C.
 
 -doc """
+add(A, B)
+Other function: kept.
+""".
+mul(A, B) -> A * B.
+
+-doc """
 sub(A, B) and more
-Not a call on its own.
+Not only a call: kept.
 """.
 sub(A, B) -> A - B.
+
+-doc """
+zero()
+Zero arity.
+""".
+zero() -> 0.
 
 -doc "neg(A)".
 neg(A) -> -A.
 "#,
             expect![[r#"
                 function add/2: "Adds A and B."
-                function add/3: "add(A)\nThe arity does not match, so this line is kept."
+                function add/3: "add(A)\nWrong arity: kept."
+                function mul/2: "add(A, B)\nOther function: kept."
                 function neg/1: ""
-                function sub/2: "sub(A, B) and more\nNot a call on its own."
+                function sub/2: "sub(A, B) and more\nNot only a call: kept."
+                function zero/0: "Zero arity."
             "#]],
         );
     }
 
     #[test]
-    fn inactive_forms_are_ignored() {
+    fn equiv_metadata() {
         check(
             r#"
 -module(main).
--ifdef(NOT_DEFINED).
--moduledoc "Inactive".
--doc "Inactive".
--endif.
-one() -> 1.
+-doc #{equiv => one(ok)}.
+one() -> one(ok).
+-doc #{equiv => one/1}.
+alias() -> ok.
+-doc(#{since => "1.0", equiv => two(ok)}).
+two() -> two(ok).
+-doc "Doc string".
+-doc #{equiv => one()}.
+one(_) -> ok.
+-doc #{since => "1.0"}.
+three() -> ok.
 "#,
-            expect![""],
+            expect![[r#"
+                function alias/0: "equivalent to `one/1`"
+                function one/0: "equivalent to `one(ok)`"
+                function one/1: "Doc string"
+                function two/0: "equivalent to `two(ok)`"
+            "#]],
         );
     }
 
     #[test]
-    fn no_docs() {
+    fn repeated_definitions() {
         check(
             r#"
 -module(main).
--spec one() -> ok.
-one() -> ok.
+-doc "First".
+f() -> 1.
+f() -> 2.
+-doc "First".
+g(1) -> a.
+-doc "Second".
+g(2) -> b.
+-doc "First".
+h() -> 1.
+-doc false.
+h() -> 2.
 "#,
-            expect![""],
+            expect![[r#"
+                function f/0: "First"
+                function g/1: "Second"
+            "#]],
+        );
+    }
+
+    #[test]
+    fn inactive_branches() {
+        check(
+            r#"
+-module(main).
+-ifdef(NOT_DEFINED).
+-moduledoc "Inactive module doc".
+-doc "Inactive doc".
+-endif.
+one() -> 1.
+-ifndef(NOT_DEFINED).
+-doc "Active doc".
+-endif.
+two() -> 2.
+-doc "Skips the inactive definition".
+-ifdef(NOT_DEFINED).
+three() -> 3.
+-endif.
+four() -> 4.
+"#,
+            expect![[r#"
+                function four/0: "Skips the inactive definition"
+                function two/0: "Active doc"
+            "#]],
+        );
+    }
+
+    #[test]
+    fn string_decoding() {
+        check(
+            r#"
+-module(main).
+-doc "Tab:\tend".
+one() -> 1.
+-doc """
+  Triple-quoted,
+    indented.
+  """.
+two() -> 2.
+-doc \~"Sigil \"quoted\"".
+three() -> 3.
+-doc \~"""
+  Verbatim \n
+  """.
+four() -> 4.
+-doc("Adjacent" " " "literals").
+five() -> 5.
+-doc "  Trimmed  ".
+six() -> 6.
+"#,
+            expect![[r#"
+                function five/0: "Adjacent literals"
+                function four/0: "Verbatim \\n"
+                function one/0: "Tab:\tend"
+                function six/0: "Trimmed"
+                function three/0: "Sigil \"quoted\""
+                function two/0: "Triple-quoted,\n  indented."
+            "#]],
+        );
+    }
+
+    #[test]
+    fn macros() {
+        check(
+            r#"
+-module(main).
+-define(DOC, "From a macro").
+-moduledoc ?DOC.
+-doc ?DOC.
+one() -> 1.
+-doc "Prefix " ?DOC.
+two() -> 2.
+-doc "No macro".
+three() -> 3.
+"#,
+            expect![[r#"
+                function three/0: "No macro"
+            "#]],
+        );
+    }
+
+    #[test]
+    fn edoc_comments() {
+        check(
+            r#"
+%% @doc Old-style module doc.
+-module(main).
+%% @doc Old-style function doc.
+one() -> 1.
+-doc "Attribute doc".
+%% @doc Old-style doc, not read.
+two() -> 2.
+"#,
+            expect![[r#"
+                function two/0: "Attribute doc"
+            "#]],
         );
     }
 }
