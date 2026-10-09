@@ -108,6 +108,29 @@ pub type FxIndexMap<K, V> =
 
 type EqwalizerProgressReporterBox =
     Arc<AssertUnwindSafe<Mutex<Option<Box<dyn EqwalizerProgressReporter>>>>>;
+type ErlangServices = Arc<AssertUnwindSafe<RwLock<FxHashMap<ProjectId, Connection>>>>;
+type IpcHandles = Arc<AssertUnwindSafe<RwLock<FxHashMap<String, Arc<Mutex<IpcHandle>>>>>>;
+
+/// Clears all process-backed sidecars owned by a database when dropped.
+#[must_use = "the guard must be held for the lifetime of the loaded database"]
+pub struct SidecarCleanupGuard {
+    erlang_services: ErlangServices,
+    ipc_handles: IpcHandles,
+}
+
+impl fmt::Debug for SidecarCleanupGuard {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SidecarCleanupGuard")
+            .finish_non_exhaustive()
+    }
+}
+
+impl Drop for SidecarCleanupGuard {
+    fn drop(&mut self) {
+        self.ipc_handles.write().clear();
+        self.erlang_services.write().clear();
+    }
+}
 
 pub trait EqwalizerProgressReporter: Send + Sync + RefUnwindSafe {
     fn start_module(&mut self, module: String);
@@ -119,10 +142,10 @@ pub trait EqwalizerProgressReporter: Send + Sync + RefUnwindSafe {
 pub struct RootDatabase {
     storage: salsa::Storage<Self>,
     files: Arc<Files>,
-    erlang_services: Arc<AssertUnwindSafe<RwLock<FxHashMap<ProjectId, Connection>>>>,
+    erlang_services: ErlangServices,
     eqwalizer: Eqwalizer,
     eqwalizer_progress_reporter: EqwalizerProgressReporterBox,
-    ipc_handles: Arc<AssertUnwindSafe<RwLock<FxHashMap<String, Arc<Mutex<IpcHandle>>>>>>,
+    ipc_handles: IpcHandles,
 }
 impl Default for RootDatabase {
     fn default() -> Self {
@@ -256,6 +279,14 @@ impl RootDatabase {
     pub fn request_cancellation(&mut self) {
         let _p = tracing::info_span!("RootDatabase::request_cancellation").entered();
         self.synthetic_write(salsa::Durability::LOW);
+    }
+
+    /// Returns a guard that clears this database's process-backed sidecars on drop.
+    pub fn sidecar_cleanup_guard(&self) -> SidecarCleanupGuard {
+        SidecarCleanupGuard {
+            erlang_services: self.erlang_services.clone(),
+            ipc_handles: self.ipc_handles.clone(),
+        }
     }
 
     pub fn clear_erlang_services(&mut self) {

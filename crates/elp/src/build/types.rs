@@ -8,9 +8,12 @@
  * above-listed licenses.
  */
 
+use std::mem::ManuallyDrop;
+
 use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
 use elp_ide::elp_ide_db::EqwalizerProgressReporter;
+use elp_ide::elp_ide_db::SidecarCleanupGuard;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
@@ -25,10 +28,14 @@ use crate::line_endings::LineEndings;
 use crate::reload::apply_source_roots;
 use crate::reload::apply_vfs_text_changes;
 
+/// Expensive-to-drop fields stay in `ManuallyDrop` so one-shot commands skip
+/// the Salsa and VFS destructor cascades. The cleanup guard still releases
+/// external Erlang-service and Eqwalizer processes when this value leaves scope.
 #[derive(Debug)]
 pub struct LoadResult {
-    pub analysis_host: AnalysisHost,
-    pub vfs: Vfs,
+    pub analysis_host: ManuallyDrop<AnalysisHost>,
+    _sidecar_cleanup: SidecarCleanupGuard,
+    pub vfs: ManuallyDrop<Vfs>,
     pub line_ending_map: FxHashMap<FileId, LineEndings>,
     pub project_id: ProjectId,
     pub project: Project,
@@ -44,9 +51,11 @@ impl LoadResult {
         project: Project,
         file_set_config: FileSetConfig,
     ) -> Self {
+        let sidecar_cleanup = analysis_host.raw_database().sidecar_cleanup_guard();
         LoadResult {
-            analysis_host,
-            vfs,
+            analysis_host: ManuallyDrop::new(analysis_host),
+            _sidecar_cleanup: sidecar_cleanup,
+            vfs: ManuallyDrop::new(vfs),
             line_ending_map,
             project_id,
             project,
@@ -55,7 +64,13 @@ impl LoadResult {
     }
 
     pub fn into_parts(self) -> (AnalysisHost, Vfs) {
-        (self.analysis_host, self.vfs)
+        let LoadResult {
+            analysis_host, vfs, ..
+        } = self;
+        (
+            ManuallyDrop::into_inner(analysis_host),
+            ManuallyDrop::into_inner(vfs),
+        )
     }
 
     pub fn with_eqwalizer_progress_bar<R>(
@@ -160,7 +175,7 @@ mod tests {
     }
 
     #[test]
-    fn dropping_load_result_drops_analysis_host() {
+    fn dropping_load_result_skips_analysis_host_teardown() {
         let dropped = Arc::new(AtomicBool::new(false));
         let loaded = fixture::load_result(
             r#"
@@ -178,8 +193,8 @@ mod tests {
         drop(loaded);
 
         assert!(
-            dropped.load(Ordering::SeqCst),
-            "dropping LoadResult should release database-owned resources"
+            !dropped.load(Ordering::SeqCst),
+            "dropping LoadResult should skip the database destructor cascade"
         );
     }
 }
