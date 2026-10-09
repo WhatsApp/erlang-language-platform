@@ -189,7 +189,42 @@ jobs:
         if: matrix.platform-arch != 'macos-latest-arm' && matrix.os != 'windows'
         env:
           CARGO_BUILD_JOBS: 2
-        run: 'cargo test --workspace --target ${{ matrix.target }} -- --test-threads=2'
+        shell: bash
+        run: |
+          if [[ "${{ matrix.os }}" == "linux" ]]; then
+            report_resources() {
+              echo "===== Linux resource snapshot $(date --iso-8601=seconds) ====="
+              uptime || true
+              free -h || true
+              echo "processes=$(ps -e --no-headers | wc -l) threads=$(ps -eLf --no-headers | wc -l)"
+              for file in \
+                /sys/fs/cgroup/memory.current \
+                /sys/fs/cgroup/memory.max \
+                /sys/fs/cgroup/memory.events \
+                /sys/fs/cgroup/pids.current \
+                /sys/fs/cgroup/pids.max \
+                /sys/fs/cgroup/pids.events \
+                /proc/pressure/memory \
+                /proc/pressure/cpu \
+                /proc/pressure/io; do
+                if [[ -f "$file" ]]; then
+                  echo "--- $file"
+                  cat "$file"
+                fi
+              done
+              echo "--- BEAM processes"
+              ps -C beam.smp -o pid=,ppid=,rss=,vsz=,stat=,etimes=,args= || true
+              echo "--- relevant process counts"
+              ps -e -o comm= | sort | uniq -c | sort -nr | head -30 || true
+            }
+
+            report_resources
+            while sleep 15; do report_resources; done &
+            resource_monitor_pid=$!
+            trap 'kill "$resource_monitor_pid" 2>/dev/null || true; wait "$resource_monitor_pid" 2>/dev/null || true' EXIT
+          fi
+
+          cargo test --workspace --target ${{ matrix.target }} -- --test-threads=2
       - name: Build elp (No Windows)
         if: matrix.os != 'windows'
         run: 'cargo build --release  --target ${{ matrix.target }} --config target.aarch64-unknown-linux-gnu.linker=\"aarch64-linux-gnu-gcc\"'
