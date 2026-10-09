@@ -8,8 +8,6 @@
  * above-listed licenses.
  */
 
-use std::mem::ManuallyDrop;
-
 use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
 use elp_ide::elp_ide_db::EqwalizerProgressReporter;
@@ -27,15 +25,10 @@ use crate::line_endings::LineEndings;
 use crate::reload::apply_source_roots;
 use crate::reload::apply_vfs_text_changes;
 
-/// Expensive-to-drop fields are wrapped in `ManuallyDrop` so that
-/// dropping a `LoadResult` leaks them instead of running the Salsa
-/// destructor cascade. The OS reclaims all memory on process exit.
-/// Use `into_parts()` when you need owned `AnalysisHost`/`Vfs`
-/// (e.g. for memory-usage measurement).
 #[derive(Debug)]
 pub struct LoadResult {
-    pub analysis_host: ManuallyDrop<AnalysisHost>,
-    pub vfs: ManuallyDrop<Vfs>,
+    pub analysis_host: AnalysisHost,
+    pub vfs: Vfs,
     pub line_ending_map: FxHashMap<FileId, LineEndings>,
     pub project_id: ProjectId,
     pub project: Project,
@@ -52,8 +45,8 @@ impl LoadResult {
         file_set_config: FileSetConfig,
     ) -> Self {
         LoadResult {
-            analysis_host: ManuallyDrop::new(analysis_host),
-            vfs: ManuallyDrop::new(vfs),
+            analysis_host,
+            vfs,
             line_ending_map,
             project_id,
             project,
@@ -62,13 +55,7 @@ impl LoadResult {
     }
 
     pub fn into_parts(self) -> (AnalysisHost, Vfs) {
-        let LoadResult {
-            analysis_host, vfs, ..
-        } = self;
-        (
-            ManuallyDrop::into_inner(analysis_host),
-            ManuallyDrop::into_inner(vfs),
-        )
+        (self.analysis_host, self.vfs)
     }
 
     pub fn with_eqwalizer_progress_bar<R>(
@@ -143,5 +130,56 @@ impl LoadResult {
         self.analysis_host
             .raw_database()
             .update_erlang_service_paths();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use std::sync::atomic::AtomicBool;
+    use std::sync::atomic::Ordering;
+
+    use elp_ide::elp_ide_db::EqwalizerProgressReporter;
+
+    use crate::build::fixture;
+
+    struct DropReporter {
+        dropped: Arc<AtomicBool>,
+    }
+
+    impl EqwalizerProgressReporter for DropReporter {
+        fn start_module(&mut self, _module: String) {}
+
+        fn done_module(&mut self, _module: &str) {}
+    }
+
+    impl Drop for DropReporter {
+        fn drop(&mut self) {
+            self.dropped.store(true, Ordering::SeqCst);
+        }
+    }
+
+    #[test]
+    fn dropping_load_result_drops_analysis_host() {
+        let dropped = Arc::new(AtomicBool::new(false));
+        let loaded = fixture::load_result(
+            r#"
+            //- /app/src/main.erl app:app
+            -module(main).
+            "#,
+        );
+        loaded
+            .analysis_host
+            .raw_database()
+            .set_eqwalizer_progress_reporter(Some(Box::new(DropReporter {
+                dropped: dropped.clone(),
+            })));
+
+        drop(loaded);
+
+        assert!(
+            dropped.load(Ordering::SeqCst),
+            "dropping LoadResult should release database-owned resources"
+        );
     }
 }
