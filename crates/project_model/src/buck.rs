@@ -12,12 +12,15 @@ use core::str;
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::fmt;
+use std::io;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process;
 use std::process::Command;
 use std::sync::Arc;
 use std::sync::LazyLock;
+use std::thread;
+use std::time::Duration;
 
 use anyhow::Result;
 use anyhow::bail;
@@ -1131,7 +1134,9 @@ fn compute_target_type(
 /// finds buck root directory based on buck config, executing `buck2 root`
 fn find_root(buck_config: &BuckConfig) -> Result<AbsPathBuf> {
     let _timer = timeit!("loading root");
-    let output = match buck_config.buck_command().arg("root").output() {
+    let mut command = buck_config.buck_command();
+    command.arg("root");
+    let output = match buck_output(&mut command) {
         Ok(out) => out,
         Err(err) => {
             log::error!("Err executing buck2 root: {err:?}");
@@ -1305,8 +1310,45 @@ fn query_buck_cell_info(buck_config: &BuckConfig) -> Result<BuckCellInfo> {
 
 // ---------------------------------------------------------------------
 
+/// buck2 exit code for an infrastructure failure.
+const BUCK_INFRA_ERROR: i32 = 2;
+/// buck2 exit code for a failure to start or connect to the daemon, e.g.
+/// another client holding the daemon's lifecycle lock.
+const BUCK_CONNECT_ERROR: i32 = 11;
+/// What buck2 reports when its daemon goes away in the middle of a command.
+const BUCK_DAEMON_DISCONNECT: &str = "Buck daemon event bus encountered an error";
+const BUCK_ATTEMPTS: u32 = 3;
+
+/// Runs a buck2 command, running it again when it failed because of the
+/// daemon rather than because of the command: the daemon died or restarted
+/// under it, or another client held its lifecycle lock. Every command ELP
+/// runs is safe to repeat.
+fn buck_output(command: &mut Command) -> io::Result<process::Output> {
+    let mut attempt = 1;
+    loop {
+        let output = command.output()?;
+        if attempt == BUCK_ATTEMPTS || !is_buck_infra_failure(&output) {
+            return Ok(output);
+        }
+        log::warn!(
+            "buck2 failed for infrastructure reasons, retrying (attempt {attempt} of {BUCK_ATTEMPTS}): {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        thread::sleep(Duration::from_millis(500) * attempt);
+        attempt += 1;
+    }
+}
+
+fn is_buck_infra_failure(output: &process::Output) -> bool {
+    match output.status.code() {
+        Some(BUCK_INFRA_ERROR | BUCK_CONNECT_ERROR) => true,
+        Some(_) => String::from_utf8_lossy(&output.stderr).contains(BUCK_DAEMON_DISCONNECT),
+        None => false,
+    }
+}
+
 fn run_buck_command(mut command: CommandProxy<'_>) -> Result<process::Output> {
-    let output = command.output()?;
+    let output = buck_output(&mut command)?;
     if !output.status.success() {
         let reason = match output.status.code() {
             Some(code) => format!("Exited with status code: {code}"),
@@ -1410,13 +1452,13 @@ fn build_third_party_targets(
         Some(target) => target,
     };
     let _timer = timeit!("building third party deps");
-    let output = buck_config
-        .buck_command()
+    let mut command = buck_config.buck_command();
+    command
         .arg("build")
         .arg("--prefer-local")
         .arg("--show-full-json-output")
-        .arg(deps_target)
-        .output()?;
+        .arg(deps_target);
+    let output = buck_output(&mut command)?;
     if !output.status.success() {
         bail!(
             "Failed to get buck2 build target output, error code: {:?}, stderr: {:?}",
@@ -1640,7 +1682,7 @@ fn include_path_from_file(path: &AbsPath) -> AbsPathBuf {
 }
 
 fn check_buck_output_success(mut command: CommandProxy<'_>) -> Result<String> {
-    let output = command.output()?;
+    let output = buck_output(&mut command)?;
     if output.status.success() {
         return String::from_utf8(output.stdout)
             .map_err(|e| anyhow::anyhow!("Invalid UTF-8 in stdout for `{command}`: {e}"));
