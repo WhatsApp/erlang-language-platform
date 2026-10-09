@@ -112,15 +112,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          buck2_version=2026-10-01
           case "${{ matrix.target }}" in
-            x86_64-unknown-linux-gnu)  buck2_target=x86_64-unknown-linux-musl ;;
-            aarch64-unknown-linux-gnu) buck2_target=aarch64-unknown-linux-musl ;;
+            x86_64-unknown-linux-gnu)
+              buck2_target=x86_64-unknown-linux-musl
+              buck2_sha256=11b92ca53712ee36d95cf48b85d3c8c7c804556abc4d2cb25e0c5b9a37d59f11
+              ;;
+            aarch64-unknown-linux-gnu)
+              buck2_target=aarch64-unknown-linux-musl
+              buck2_sha256=acd5cd11c29e2277a04a5a5e7454c0405d63400e06584e015cbb2ece11557434
+              ;;
             *) echo "unexpected buck2 target: ${{ matrix.target }}" >&2; exit 1 ;;
           esac
           mkdir -p "$HOME/.buck2-bin"
           curl --location --silent --show-error --fail --retry 5 \
-            "https://github.com/facebook/buck2/releases/download/latest/buck2-${buck2_target}.zst" \
+            "https://github.com/facebook/buck2/releases/download/${buck2_version}/buck2-${buck2_target}.zst" \
             -o "$HOME/.buck2-bin/buck2.zst"
+          echo "${buck2_sha256}  $HOME/.buck2-bin/buck2.zst" | sha256sum --check
           zstd -d "$HOME/.buck2-bin/buck2.zst" -o "$HOME/.buck2-bin/buck2"
           chmod +x "$HOME/.buck2-bin/buck2"
           echo "$HOME/.buck2-bin" >> "$GITHUB_PATH"
