@@ -1,0 +1,61 @@
+stdout | error: reveal_type (See https://fb.me/eqwalizer_errors#reveal_type)
+stdout |    ┌─ check/src/layered_overrides.erl:19:27
+stdout |    │
+stdout | 19 │     eqwalizer:reveal_type(Res),
+stdout |    │                           ^^^ 'ok'
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/layered_overrides.erl:26:5
+stdout |    │
+stdout | 26 │     lists:delete(a, [1]).
+stdout |    │     ^^^^^^^^^^^^^^^^^^^^
+stdout |    │     │
+stdout |    │     lists:delete('a', [1]).
+stdout | Expression has type:   ['a' | integer()]
+stdout | Context expected type: [integer()]
+stdout |    │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   [
+stdout |     Here the type is a union type with some valid candidates: integer()
+stdout |     However the following candidate: 'a'
+stdout |     Differs from the expected type:  integer()
+stdout |   ]
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/layered_overrides.erl:32:32
+stdout |    │
+stdout | 32 │     argparse:run(["arg"], #{}, #{progname => 42}).
+stdout |    │                                ^^^^^^^^^^^^^^^^^
+stdout |    │                                │
+stdout |    │                                #{..}.
+stdout | Expression has type:   #{progname := integer()}
+stdout | Context expected type: eqwalizer_specs:argparse_parser_options()
+stdout |    │                                
+stdout |
+stdout | Because in the expression's type:
+stdout |   #{ progname =>
+stdout |     Here the type is:     integer()
+stdout |     Context expects type: atom() | string()
+stdout |     No candidate matches in the expected union.
+stdout |   , ... }
+stdout |
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |    ┌─ check/src/layered_overrides.erl:37:5
+stdout |    │
+stdout | 37 │     filename:split(<<"a/b">>).
+stdout |    │     ^^^^^^^^^^^^^^^^^^^^^^^^^
+stdout |    │     │
+stdout |    │     filename:split(<<..>>).
+stdout | Expression has type:   [file:name_all()]
+stdout | Context expected type: [binary()]
+stdout |    │     
+stdout |
+stdout | Because in the expression's type:
+stdout |   [
+stdout |     Here the type is a union type with some valid candidates: binary()
+stdout |     However the following candidate: string()
+stdout |     Differs from the expected type:  binary()
+stdout |   ]
+stdout |
+stdout | 4 ERRORS

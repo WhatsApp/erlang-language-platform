@@ -367,7 +367,62 @@ fn transitive_stub(
 ) -> Result<Arc<ModuleStub>, Error> {
     let v_stub = db.contractive_stub(project_id, module.clone())?;
     let mut checker = TransitiveChecker::new(db, project_id, module.as_str().into());
-    Ok(Arc::new(checker.check(&v_stub)))
+    let stub = checker.check(&v_stub);
+    match bundled_override_stub(db, project_id, &module)? {
+        Some(bundled) => Ok(Arc::new(layer_stub(&bundled, stub))),
+        None => Ok(Arc::new(stub)),
+    }
+}
+
+/// The stub of the copy of `eqwalizer_specs` or `eqwalizer_types` bundled
+/// with ELP, when the project has its own copy of that module.
+fn bundled_override_stub(
+    db: &dyn EqwalizerDiagnosticsDatabase,
+    project_id: ProjectId,
+    module: &ModuleName,
+) -> Result<Option<Arc<ModuleStub>>, Error> {
+    if *module != *EQWALIZER_SPECS && *module != *EQWALIZER_TYPES {
+        return Ok(None);
+    }
+    let Some(otp_project_id) = db.project_data(project_id).project_data(db).otp_project_id else {
+        return Ok(None);
+    };
+    if otp_project_id == project_id {
+        return Ok(None);
+    }
+    let bundled_file = db.module_index(otp_project_id).file_for_module(module);
+    if bundled_file.is_none() || bundled_file == db.module_index(project_id).file_for_module(module)
+    {
+        return Ok(None);
+    }
+    db.transitive_stub(otp_project_id, module.clone()).map(Some)
+}
+
+/// The project's `own` stub over the `bundled` one, entry by entry. A
+/// function the project declares replaces the bundled spec, whether either is
+/// plain or overloaded.
+fn layer_stub(bundled: &ModuleStub, own: ModuleStub) -> ModuleStub {
+    let mut types = bundled.types.clone();
+    types.extend(own.types);
+    let mut variances = bundled.variances.clone();
+    variances.extend(own.variances);
+    let mut specs = bundled.specs.clone();
+    let mut overloaded_specs = bundled.overloaded_specs.clone();
+    for id in own.specs.keys() {
+        overloaded_specs.remove(id);
+    }
+    for id in own.overloaded_specs.keys() {
+        specs.remove(id);
+    }
+    specs.extend(own.specs);
+    overloaded_specs.extend(own.overloaded_specs);
+    ModuleStub {
+        types,
+        variances,
+        specs,
+        overloaded_specs,
+        ..own
+    }
 }
 
 fn transitive_stub_bytes(

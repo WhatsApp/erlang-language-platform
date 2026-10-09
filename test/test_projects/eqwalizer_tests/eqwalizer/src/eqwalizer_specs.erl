@@ -299,6 +299,37 @@
 -spec 'timer:tc'(fun(() -> T)) -> {integer(), T}.
 'timer:tc'(_) -> error(eqwalizer_specs).
 
+%% -------- OTP specs restored over the bundled overrides --------
+%% The snapshot tests check eqWAlizer against these OTP specs, so they take
+%% precedence over the overrides bundled with ELP.
+
+-spec 'erlang:binary_to_existing_atom'(binary()) -> atom().
+'erlang:binary_to_existing_atom'(_) -> error(eqwalizer_specs).
+
+-spec 'erlang:get'(term()) -> term() | undefined.
+'erlang:get'(_) -> error(eqwalizer_specs).
+
+-spec 'filename:join'([file:name_all()]) -> file:filename_all().
+'filename:join'(_) -> error(eqwalizer_specs).
+
+-spec 'filename:join'(file:name_all(), file:name_all()) -> file:filename_all().
+'filename:join'(_, _) -> error(eqwalizer_specs).
+
+-spec 'filename:split'(file:name_all()) -> [file:name_all()].
+'filename:split'(_) -> error(eqwalizer_specs).
+
+-spec 'proplists:get_all_values'(term(), [term()]) -> [term()].
+'proplists:get_all_values'(_, _) -> error(eqwalizer_specs).
+
+-spec 'proplists:get_keys'([term()]) -> [term()].
+'proplists:get_keys'(_) -> error(eqwalizer_specs).
+
+-spec 'proplists:get_value'(term(), [term()]) -> term().
+'proplists:get_value'(_, _) -> error(eqwalizer_specs).
+
+-spec 'proplists:get_value'(term(), [term()], term()) -> term().
+'proplists:get_value'(_, _, _) -> error(eqwalizer_specs).
+
 %% -------- snapshot tests --------
 
 -spec 'custom:custom_overloaded'
