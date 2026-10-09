@@ -139,28 +139,14 @@ pub struct ParseRequest {
     pub file_text: Arc<str>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum DocOrigin {
-    /// Get docs by running edoc on the Erlang source file.
-    /// Preferable, since it doesn't require an out-of-band build step
-    /// to get up-to-date BEAM files with embedded docs or `.chunk` files
-    /// beside them.
-    Edoc,
-    /// Get docs via the EEP-48 standardised method from BEAM files.
-    /// Required for some dependencies which don't use standard edocs in
-    /// comments, but who store docs in the relevant chunk of beam files
-    /// which we can assume are up-to-date, e.g. OTP.
-    Eep48,
-}
-
+/// Get docs via the EEP-48 standardised method from BEAM files.
+/// Required for dependencies which store docs in the relevant chunk of
+/// beam files which we can assume are up-to-date, e.g. OTP.
 #[derive(Debug, Clone)]
 pub struct DocRequest {
-    pub doc_origin: DocOrigin,
-    /// No matter the doc origin, **we give the path for the source file
-    /// here**. If the origin is EEP-48, erlang_service will resolve it to
-    /// the appropriate BEAM file itself.
+    /// The path of the source file: erlang_service resolves it to the
+    /// appropriate BEAM file itself.
     pub src_path: PathBuf,
-    pub ast: Option<Arc<Vec<u8>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -816,20 +802,12 @@ impl ParseRequest {
 
 impl DocRequest {
     fn tag(&self) -> Tag {
-        match self.doc_origin {
-            DocOrigin::Edoc => b"DCE",
-            DocOrigin::Eep48 => b"DCP",
-        }
+        b"DCP"
     }
 
     fn encode(self) -> Vec<u8> {
         let list = eetf::List::from(vec![path_into_list(self.src_path).into()]);
         let mut buf = Vec::new();
-        if let Some(ast) = self.ast {
-            buf.write_u32::<BigEndian>(ast.len() as u32)
-                .expect("buf write failed");
-            buf.write_all(&ast).expect("buf write failed");
-        }
         eetf::Term::from(list).encode(&mut buf).unwrap();
         buf
     }
@@ -1006,54 +984,6 @@ mod tests {
     }
 
     #[test]
-    fn edoc_scan_errors() {
-        expect_docs(
-            "edoc_scan_errors.erl".into(),
-            fixture_file!("edoc_scan_errors.expected"),
-        );
-    }
-
-    #[test]
-    fn edoc_warnings() {
-        expect_docs(
-            "edoc_warnings.erl".into(),
-            fixture_file!("edoc_warnings.expected"),
-        );
-    }
-
-    #[test]
-    fn edoc_errors() {
-        expect_docs(
-            "edoc_errors.erl".into(),
-            fixture_file!("edoc_errors.expected"),
-        );
-    }
-
-    #[test]
-    fn edoc_include() {
-        expect_docs(
-            "edoc_include.erl".into(),
-            fixture_file!("edoc_include.expected"),
-        );
-    }
-
-    #[test]
-    fn edoc_doc_attribute() {
-        expect_docs(
-            "edoc_doc_attribute.erl".into(),
-            fixture_file!("edoc_doc_attribute_eep059.expected"),
-        );
-    }
-
-    #[test]
-    fn edoc_doc_attribute_missing_moduledoc() {
-        expect_docs(
-            "edoc_doc_attribute_missing_moduledoc.erl".into(),
-            fixture_file!("edoc_doc_attribute_missing_moduledoc_eep059.expected"),
-        );
-    }
-
-    #[test]
     fn ct_info() {
         expect_ct_info(
             "ct_info_SUITE.erl".into(),
@@ -1156,35 +1086,6 @@ mod tests {
         let actual = format!(
             "AST\n{}\n\nWARNINGS\n{:#?}\n\nERRORS\n{:#?}\n",
             ast, response.warnings, errors
-        );
-        expected.assert_eq(&actual);
-    }
-
-    fn expect_docs(path: PathBuf, expected: ExpectFile) {
-        static CONN: LazyLock<Connection> = LazyLock::new(|| Connection::start().unwrap());
-
-        let actual_path = get_fixtures_dir().join(path.to_string_lossy().as_ref());
-        let file_text = Arc::from(
-            fs::read_to_string(&actual_path).expect("Should have been able to read the file"),
-        );
-        let request = ParseRequest {
-            options: vec![],
-            file_id: FileId::from_raw(0),
-            path,
-            file_text,
-            format: Format::OffsetEtf,
-        };
-        let parse_response = CONN.request_parse(request, || (), &|_, _, _| None);
-        // For DocRequest, pass the actual path since the Erlang service needs to read the file
-        let request = DocRequest {
-            doc_origin: DocOrigin::Edoc,
-            src_path: actual_path.into(),
-            ast: Some(parse_response.ast),
-        };
-        let response = CONN.request_doc(request, || ()).unwrap();
-        let actual = format!(
-            "MODULE_DOC\n{}\n\nFUNCTION_DOCS\n{:#?}\n\n\n",
-            response.module_doc, response.function_docs
         );
         expected.assert_eq(&actual);
     }

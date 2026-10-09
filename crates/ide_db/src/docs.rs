@@ -19,7 +19,6 @@ use elp_base_db::RootQueryDb;
 use elp_base_db::SourceDatabase;
 use elp_base_db::Upcast;
 use elp_base_db::salsa;
-use elp_erlang_service::DocOrigin;
 use elp_erlang_service::DocRequest;
 use elp_syntax::AstNode;
 use elp_syntax::SyntaxToken;
@@ -33,17 +32,13 @@ use hir::NameArity;
 use hir::Semantic;
 use hir::db::DefDatabase;
 
-use crate::ErlAstDatabase;
+mod eep59;
 
 pub trait DocLoader {
-    /// when origin = eep-48:
-    ///   Reads docs from beam files. Supports custom doc setups, e.g. as used by
-    ///   OTP, but at the cost of requiring pre-built BEAM files with embedded docs.
-    ///
-    /// when origin = edoc:
-    ///   Reads edocs from comments in source files. Allows for dynamically
-    ///   regenerating docs as the files are edited.
-    fn load_doc_descriptions(&self, file_id: FileId, origin: DocOrigin) -> FileDoc;
+    /// Reads EEP-48 docs from beam files. Supports custom doc setups, e.g. as
+    /// used by OTP, but at the cost of requiring pre-built BEAM files with
+    /// embedded docs.
+    fn load_eep48_docs(&self, file_id: FileId) -> FileDoc;
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -255,13 +250,11 @@ fn is_file_in_otp(db: &dyn DocDatabase, file_id: FileId) -> Option<bool> {
 }
 
 fn get_file_docs(db: &dyn DocDatabase, file_id: FileId) -> Arc<FileDoc> {
-    let origin = if Some(true) == is_file_in_otp(db, file_id) {
-        DocOrigin::Eep48
+    let descriptions = if Some(true) == is_file_in_otp(db, file_id) {
+        db.load_eep48_docs(file_id)
     } else {
-        DocOrigin::Edoc
+        eep59::file_docs(db.upcast(), file_id)
     };
-
-    let descriptions = db.load_doc_descriptions(file_id, origin);
     let specs = get_file_function_specs(db.upcast(), file_id);
     Arc::new(FileDoc {
         module_doc: descriptions.module_doc,
@@ -341,10 +334,10 @@ fn get_file_function_specs(def_db: &dyn DefDatabase, file_id: FileId) -> FxHashM
 }
 
 impl DocLoader for crate::RootDatabase {
-    fn load_doc_descriptions(&self, file_id: FileId, doc_origin: DocOrigin) -> FileDoc {
+    fn load_eep48_docs(&self, file_id: FileId) -> FileDoc {
         _ = SourceDatabase::file_text(self, file_id); // Take dependency on the contents of the file we're getting docs for
         // Context for T171541590
-        let _ = stdx::panic_context::enter(format!("\nload_doc_descriptions: {file_id:?}"));
+        let _ = stdx::panic_context::enter(format!("\nload_eep48_docs: {file_id:?}"));
         let root_id = self.file_source_root(file_id).source_root_id(self);
         let root = self.source_root(root_id).source_root(self);
         let src_db: &dyn RootQueryDb = self.upcast();
@@ -366,22 +359,8 @@ impl DocLoader for crate::RootDatabase {
             .expect("file should have path in source root")
             .as_path()
             .expect("path should be absolute");
-        let src_path = path.to_path_buf().into();
-        let doc_request = match doc_origin {
-            DocOrigin::Edoc => {
-                let parse_result = self.module_ast(file_id);
-                let ast = &parse_result.ast;
-                DocRequest {
-                    src_path,
-                    doc_origin,
-                    ast: Some(ast.clone()),
-                }
-            }
-            DocOrigin::Eep48 => DocRequest {
-                src_path,
-                doc_origin,
-                ast: None,
-            },
+        let doc_request = DocRequest {
+            src_path: path.to_path_buf().into(),
         };
         let raw_doc =
             erlang_service.request_doc(doc_request, || src_db.unwind_if_revision_cancelled());

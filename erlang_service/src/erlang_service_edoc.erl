@@ -15,46 +15,9 @@
         function_docs := [{{FunName :: atom(), FunArity :: arity()}, FunDoc :: binary()}],
         type_docs := [{{TypeName :: atom(), TypeArity :: arity()}, TypeDoc :: binary()}]
     }.
--type origin() :: eep48 | edoc.
 
-run(_Id, [FileName, DocOrigin, AST]) ->
-    Docs =
-        case doc_from_eep059_attributes(FileName, DocOrigin, AST) of
-            {ok, D} ->
-                D;
-            {error, _} ->
-                get_docs_for_src_file(FileName, DocOrigin)
-        end,
-    {ok, serialize_docs(Docs)}.
-
--spec doc_from_eep059_attributes(string(), origin(), no_ast | binary()) ->
-    {ok, docs()} | {error, skipping | no_docs}.
-doc_from_eep059_attributes(_FileName, eep48, _AST) ->
-    {error, skipping};
-doc_from_eep059_attributes(_FileName, _DocOrigin, no_ast) ->
-    {error, skipping};
-doc_from_eep059_attributes(FileName, edoc, AST0) ->
-    {ok, AST, []} = binary_to_term(AST0),
-    % T206726412: By default, the beam_doc module generates docs only for exported functions.
-    % While we implement a native solution to handle documentation in ELP,
-    % mark all functions as exported in this context.
-    PatchedAST = [{attribute, 0, compile, export_all} | AST],
-    case
-        beam_doc:main(
-            filename:dirname(FileName),
-            filename:basename(FileName),
-            % eqwalizer:ignore - We can guarantee that the AST is valid
-            PatchedAST,
-            []
-        )
-    of
-        {ok, DocsV1, _Warnings} ->
-            % elp:ignore W0023 (atoms_exhaustion)
-            ModuleName = list_to_atom(filename:basename(FileName, ".erl")),
-            {ok, render_docs_v1(ModuleName, DocsV1)};
-        {error, no_docs} ->
-            {error, no_docs}
-    end.
+run(_Id, [FileName]) ->
+    {ok, serialize_docs(get_docs_for_src_file(FileName))}.
 
 -spec serialize_docs(docs()) -> [{binary(), binary()}].
 serialize_docs(#{
@@ -86,31 +49,26 @@ serialize_type_doc({{Name, Arity}, Doc}) when
             io_lib:format("~ts ~B ~ts", [Name, Arity, Doc])
         )}.
 
--spec get_docs_for_src_file(file:filename_all(), origin()) -> docs().
-get_docs_for_src_file(FileName, Origin) ->
+-spec get_docs_for_src_file(file:filename_all()) -> docs().
+get_docs_for_src_file(FileName) ->
     case filename:extension(FileName) of
         ".erl" ->
             ModuleName = list_to_atom(filename:basename(FileName, ".erl")),
             try
                 Docs =
-                    case Origin of
-                        eep48 ->
-                            case code:get_doc(ModuleName) of
-                                {ok, DocV1} ->
-                                    DocV1;
-                                {error, Reason} ->
-                                    throw(
-                                        lists:flatten(
-                                            io_lib:format(
-                                                "Failed to load docs via compiled beam for source file ~ts: "
-                                                "~ts",
-                                                [FileName, Reason]
-                                            )
-                                        )
+                    case code:get_doc(ModuleName) of
+                        {ok, DocV1} ->
+                            DocV1;
+                        {error, Reason} ->
+                            throw(
+                                lists:flatten(
+                                    io_lib:format(
+                                        "Failed to load docs via compiled beam for source file ~ts: "
+                                        "~ts",
+                                        [FileName, Reason]
                                     )
-                            end;
-                        edoc ->
-                            throw(edoc_not_supported)
+                                )
+                            )
                     end,
                 render_docs_v1(ModuleName, Docs)
             catch

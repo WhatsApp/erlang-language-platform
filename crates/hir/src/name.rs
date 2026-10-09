@@ -281,6 +281,7 @@ pub mod known {
         client,
         defined,
         dialyzer,
+        equiv,
         erlang,
         error,
         export_all,

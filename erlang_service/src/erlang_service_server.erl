@@ -222,10 +222,8 @@ handle_request(<<"TXT", Id:64/big, Sz:32, FileText:Sz/binary, Data/binary>>, Sta
             unicode:characters_to_binary([io_lib:format("~p.~n", [Form]) || Form <- Forms])
         end,
     request(erlang_service_lint, Id, Data, [FileText, PostProcess, true], infinity, State);
-handle_request(<<"DCE", Id:64/big, Sz:32, AST:Sz/binary, Data/binary>>, State) ->
-    request(erlang_service_edoc, Id, Data, [edoc, AST], infinity, State);
 handle_request(<<"DCP", Id:64/big, Data/binary>>, State) ->
-    request(erlang_service_edoc, Id, Data, [eep48, no_ast], infinity, State);
+    request(erlang_service_edoc, Id, Data, [], infinity, State);
 handle_request(<<"CTI", Id:64/big, Sz:32, AstBinary:Sz/binary, Data/binary>>, State) ->
     request(erlang_service_ct, Id, Data, [AstBinary], 10_000, State);
 % @fb-only: handle_request(<<"CAF", Id:64/big, Sz:32, Content:Sz/binary, Data/binary>>, State) ->
