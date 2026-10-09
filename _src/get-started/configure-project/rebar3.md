@@ -22,7 +22,10 @@ Specs that refer to `eqwalizer` types compile and run without the library, but o
 ]}.
 ```
 
-Modules and applications in your project take precedence over the bundled ones with the same name. For example, if your project defines its own `eqwalizer_specs` module, in any app, ELP uses it instead of the bundled one.
+Your project can also define its own copies of the library's modules, in any app:
+
+- an `eqwalizer` module replaces the bundled one;
+- the specs and types of `eqwalizer_specs` and `eqwalizer_types` modules are layered over the bundled ones, entry by entry: declare only the specs and types you add or override.
 
 If you, instead, prefer to disable eqWAlizer support altogether (you will lose features such as _types on hover_), you can do so via the [.elp.toml](./elp-toml.md#eqwalizer) config file.
 
