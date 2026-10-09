@@ -1187,7 +1187,12 @@ impl Project {
 
         let (otp, otp_project_apps) = Otp::discover(otp_root, &elp_config.otp);
         project_apps.extend(otp_project_apps);
-        project_apps.push(eqwalizer_support::bundled_app(&otp));
+        // CI bisect: restore the behaviour before ab104be641 to test whether
+        // adding the bundled support app to every leaked project crossed the
+        // hosted runner's resource limit.
+        if matches!(project_build_info, ProjectBuildData::Static(_)) {
+            project_apps.push(eqwalizer_support::bundled_app(&otp));
+        }
         report_progress("Project info loaded");
         Ok(Project {
             otp,
