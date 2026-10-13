@@ -10,7 +10,9 @@
 
 // Diagnostic: unused-record-field
 //
-// Return a warning if a record field defined in an .erl file has no references to it
+// Return a warning if a record field defined in an .erl file has no references to it.
+// `record_info(fields, Record)` exposes every field by position, so records
+// passed to it are skipped.
 
 use std::borrow::Cow;
 
@@ -21,9 +23,15 @@ use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
+use elp_ide_ssr::match_pattern_in_file_functions;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
+use fxhash::FxHashSet;
+use hir::Name;
 use hir::Semantic;
+use hir::Strategy;
+use hir::fold::MacroStrategy;
+use hir::fold::ParenStrategy;
 
 use crate::codemod_helpers::compute_comma_separated_delete_range;
 use crate::diagnostics::DiagnosticCode;
@@ -62,7 +70,11 @@ impl GenericLinter for UnusedRecordFieldLinter {
         let file_id = ctx.file_id;
         let mut res = Vec::new();
         let def_map = sema.def_map_local(file_id);
+        let records_with_field_info = records_with_field_info(sema, file_id);
         for (name, def) in def_map.get_records() {
+            if records_with_field_info.contains(name) {
+                continue;
+            }
             // If the record itself is unused, there's little point in showing
             // warnings for each field
             if SymbolDefinition::Record(def.clone())
@@ -119,6 +131,29 @@ impl GenericLinter for UnusedRecordFieldLinter {
             context.delete_range,
         )])
     }
+}
+
+const RECORD_VAR: &str = "_@Record";
+
+/// Names of the records passed to `record_info(fields, Record)` in `file_id`.
+fn records_with_field_info(sema: &Semantic, file_id: FileId) -> FxHashSet<Name> {
+    match_pattern_in_file_functions(
+        sema,
+        Strategy {
+            macros: MacroStrategy::Expand,
+            parens: ParenStrategy::InvisibleParens,
+        },
+        file_id,
+        &format!("ssr: record_info(fields, {RECORD_VAR})."),
+    )
+    .matches
+    .iter()
+    .filter_map(|m| {
+        let body = m.matched_node_body.get_body(sema)?;
+        m.get_placeholder_match(RECORD_VAR)?.is_atom(&body)
+    })
+    .map(|record| record.as_name())
+    .collect()
 }
 
 pub static LINTER: UnusedRecordFieldLinter = UnusedRecordFieldLinter;
@@ -289,6 +324,49 @@ main(#a{a1 = #b{b2 = B2}} = A) ->
 -export([ test/0 ]).
 -record(?MODULE, {queue :: term()}).
 test() -> #?MODULE{queue = ok}.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_unused_record_field_record_info_fields() {
+        check_diagnostics(
+            r#"
+-module(main).
+-export([new/0, field_names/0]).
+-record(event, {field_a, field_b}).
+new() -> #event{}.
+field_names() -> record_info(fields, event).
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_unused_record_field_record_info_fields_in_macro() {
+        check_diagnostics(
+            r#"
+-module(main).
+-export([new/0, field_names/0]).
+-define(FIELDS(Record), record_info(fields, Record)).
+-record(event, {field_a, field_b}).
+new() -> #event{}.
+field_names() -> ?FIELDS(event).
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_unused_record_field_record_info_size() {
+        check_diagnostics(
+            r#"
+-module(main).
+-export([size/1]).
+-record(event, {field_a, field_b}).
+%%                       ^^^^^^^ warning: W0003: Unused record field (event.field_b)
+%%                             | 💡 Remove unused record field (event.field_b)
+%%                             | 💡 <suppression>
+size(#event{field_a = A}) ->
+    {A, record_info(size, event)}.
             "#,
         );
     }
