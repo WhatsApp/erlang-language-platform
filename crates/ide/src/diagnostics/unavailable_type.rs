@@ -367,12 +367,14 @@ mod tests {
 //- /app_b/src/dup.erl app:app_b buck_target:cell//app_b:lib
   -module(dup).
 %%        ^^^ warning: W0045: A module with this name exists elsewhere
+%%          | Related info: 2:10-13 Duplicate module is defined here
 %%          | 💡 <suppression>
   -type t() :: ok.
   -export_type([t/0]).
 //- /app_c/src/dup.erl app:app_c buck_target:cell//app_c:lib
   -module(dup).
 %%        ^^^ warning: W0045: A module with this name exists elsewhere
+%%          | Related info: 1:10-13 Duplicate module is defined here
 %%          | 💡 <suppression>
   -type t() :: ok.
   -export_type([t/0]).
@@ -395,12 +397,14 @@ mod tests {
 //- /app_c/src/dup.erl app:app_c buck_target:cell//app_c:lib
   -module(dup).
 %%        ^^^ warning: W0045: A module with this name exists elsewhere
+%%          | Related info: 2:10-13 Duplicate module is defined here
 %%          | 💡 <suppression>
   -type t() :: ok.
   -export_type([t/0]).
 //- /app_b/src/dup.erl app:app_b buck_target:cell//app_b:lib
   -module(dup).
 %%        ^^^ warning: W0045: A module with this name exists elsewhere
+%%          | Related info: 1:10-13 Duplicate module is defined here
 %%          | 💡 <suppression>
   -type t() :: ok.
   -export_type([t/0]).
@@ -423,12 +427,14 @@ mod tests {
 //- /app_b/src/dup.erl app:app_b buck_target:cell//app_b:lib
   -module(dup).
 %%        ^^^ warning: W0045: A module with this name exists elsewhere
+%%          | Related info: 2:10-13 Duplicate module is defined here
 %%          | 💡 <suppression>
   -type t() :: ok.
   -export_type([t/0]).
 //- /app_c/src/dup.erl app:app_c buck_target:cell//app_c:lib
   -module(dup).
 %%        ^^^ warning: W0045: A module with this name exists elsewhere
+%%          | Related info: 1:10-13 Duplicate module is defined here
 %%          | 💡 <suppression>
             "#,
         )

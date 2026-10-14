@@ -21,6 +21,12 @@ use crate::diagnostics::GenericLinter;
 use crate::diagnostics::GenericLinterMatchContext;
 use crate::diagnostics::Linter;
 use crate::diagnostics::LinterContext;
+use crate::diagnostics::RelatedInformation;
+
+#[derive(Debug, Clone)]
+pub(crate) struct Context {
+    related_info: Vec<RelatedInformation>,
+}
 
 pub(crate) struct DuplicateModuleLinter;
 
@@ -39,7 +45,7 @@ impl Linter for DuplicateModuleLinter {
 }
 
 impl GenericLinter for DuplicateModuleLinter {
-    type Context = ();
+    type Context = Context;
 
     fn matches(
         &self,
@@ -53,17 +59,41 @@ impl GenericLinter for DuplicateModuleLinter {
 
         let app_data = ctx.sema.db.file_app_data(ctx.file_id)?;
         let module_index = ctx.sema.db.module_index(app_data.project_id);
-        if let Some(_dups) = module_index.duplicates(&module_name) {
+        if let Some(dups) = module_index.duplicates(&module_name) {
+            let mut related_info = dups
+                .iter()
+                .filter_map(|&dup_file_id| {
+                    if dup_file_id == ctx.file_id {
+                        return None;
+                    }
+                    let module_name_ast = ctx.sema.module_attribute_name(dup_file_id)?;
+                    Some(RelatedInformation {
+                        file_id: dup_file_id,
+                        range: module_name_ast.syntax().text_range(),
+                        message: "Duplicate module is defined here".to_owned(),
+                    })
+                })
+                .collect::<Vec<_>>();
+            related_info
+                .sort_by_key(|info| (info.file_id.index(), info.range.start(), info.range.end()));
             let range = module_name_ast.syntax().text_range();
             res.push(GenericLinterMatchContext {
                 range: FileRange {
                     file_id: ctx.file_id,
                     range,
                 },
-                context: (),
+                context: Context { related_info },
             });
         }
         Some(res)
+    }
+
+    fn related(
+        &self,
+        context: &Self::Context,
+        _ctx: &LinterContext,
+    ) -> Option<Vec<RelatedInformation>> {
+        Some(context.related_info.clone())
     }
 }
 
@@ -80,11 +110,41 @@ mod test {
              //- /src/dup_mod.erl
              -module(dup_mod).
              %%      ^^^^^^^ warning: W0045: A module with this name exists elsewhere
+             %%            | Related info: 1:8-15 Duplicate module is defined here
              %%            | 💡 <suppression>
 
              //- /src/sub/dup_mod.erl
              -module(dup_mod).
              %%      ^^^^^^^ warning: W0045: A module with this name exists elsewhere
+             %%            | Related info: 0:8-15 Duplicate module is defined here
+             %%            | 💡 <suppression>
+            "#,
+        )
+    }
+
+    #[test]
+    fn duplicate_modules_reports_every_other_definition() {
+        check_diagnostics(
+            r#"
+             //- /src/dup_mod.erl
+             -module(dup_mod).
+             %%      ^^^^^^^ warning: W0045: A module with this name exists elsewhere
+             %%            | Related info: 1:8-15 Duplicate module is defined here
+             %%            | Related info: 2:8-15 Duplicate module is defined here
+             %%            | 💡 <suppression>
+
+             //- /src/sub/dup_mod.erl
+             -module(dup_mod).
+             %%      ^^^^^^^ warning: W0045: A module with this name exists elsewhere
+             %%            | Related info: 0:8-15 Duplicate module is defined here
+             %%            | Related info: 2:8-15 Duplicate module is defined here
+             %%            | 💡 <suppression>
+
+             //- /src/other/dup_mod.erl
+             -module(dup_mod).
+             %%      ^^^^^^^ warning: W0045: A module with this name exists elsewhere
+             %%            | Related info: 0:8-15 Duplicate module is defined here
+             %%            | Related info: 1:8-15 Duplicate module is defined here
              %%            | 💡 <suppression>
             "#,
         )
@@ -99,10 +159,12 @@ mod test {
              //- /app_a/test/dup_SUITE.erl app:app_a extra:test
              -module(dup_SUITE).
              %%      ^^^^^^^^^ warning: W0045: A module with this name exists elsewhere
+             %%              | Related info: 1:8-17 Duplicate module is defined here
              %%              | 💡 <suppression>
              //- /app_b/test/dup_SUITE.erl app:app_b extra:test
              -module(dup_SUITE).
              %%      ^^^^^^^^^ warning: W0045: A module with this name exists elsewhere
+             %%              | Related info: 0:8-17 Duplicate module is defined here
              %%              | 💡 <suppression>
             "#,
         )
