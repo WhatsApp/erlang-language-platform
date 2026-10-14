@@ -9,6 +9,7 @@
  */
 
 use std::fs;
+use std::num::NonZeroU32;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
@@ -85,7 +86,7 @@ const ERL_FIELD_SEP: &str = "|ELP-SEP|";
 pub const DEFAULT_PORT_LIMIT: u32 = 65536;
 
 /// Prepare a command that starts an Erlang VM, replacing the ambient
-/// `ERL_*FLAGS` with a `+Q` of our own choosing.
+/// `ERL_*FLAGS` with a `+Q`, and optionally a `+S`, of our own choosing.
 ///
 /// The port table is preallocated at startup and defaults to the process file
 /// descriptor limit, so on a host with a generous `ulimit -n` even a VM that
@@ -99,10 +100,25 @@ pub const DEFAULT_PORT_LIMIT: u32 = 65536;
 /// for — enough to take a trivial VM from tens of MB resident to over 2GB.
 /// `ERL_AFLAGS` is applied first and so loses to our own flags, but is cleared
 /// too so the VMs we start are not perturbed by the environment.
-pub fn configure_erl_env(cmd: &mut Command, port_limit: u32) -> &mut Command {
+///
+/// `schedulers` caps the scheduler threads, which otherwise default to one per
+/// core. The emulator never puts more of them online than the CPUs it may run
+/// on.
+pub fn configure_erl_env(
+    cmd: &mut Command,
+    port_limit: u32,
+    schedulers: Option<NonZeroU32>,
+) -> &mut Command {
     cmd.env_remove("ERL_AFLAGS")
         .env_remove("ERL_ZFLAGS")
-        .env("ERL_FLAGS", format!("+Q {port_limit}"))
+        .env("ERL_FLAGS", erl_flags(port_limit, schedulers))
+}
+
+fn erl_flags(port_limit: u32, schedulers: Option<NonZeroU32>) -> String {
+    match schedulers {
+        Some(schedulers) => format!("+Q {port_limit} +S {schedulers}"),
+        None => format!("+Q {port_limit}"),
+    }
 }
 
 /// The probe opens no ports and spawns no processes, so both tables can sit at
@@ -118,7 +134,7 @@ fn query_erl_system_info() -> Result<ErlSystemInfo> {
     );
     let erl = ERL.read().unwrap();
     let mut cmd = Command::new(&*erl);
-    let output = configure_erl_env(&mut cmd, PROBE_TABLE_LIMIT)
+    let output = configure_erl_env(&mut cmd, PROBE_TABLE_LIMIT, None)
         // Speed up startup on loaded machines: a single scheduler, no async
         // threads, and minimal code loading.
         .arg("+S1")
@@ -295,6 +311,8 @@ impl Otp {
 
 #[cfg(test)]
 mod tests {
+    use elp_base_db::assert_eq_expected;
+
     use super::*;
 
     #[test]
@@ -344,6 +362,16 @@ mod tests {
         // Verify the filtered list is smaller
         assert!(filtered_apps.len() < all_apps.len());
         assert_eq!(filtered_apps.len(), all_apps.len() - 2);
+    }
+
+    #[test]
+    fn erl_flags_without_schedulers() {
+        assert_eq_expected!("+Q 1024", erl_flags(1024, None));
+    }
+
+    #[test]
+    fn erl_flags_with_schedulers() {
+        assert_eq_expected!("+Q 1024 +S 16", erl_flags(1024, NonZeroU32::new(16)));
     }
 
     #[test]

@@ -99,3 +99,11 @@ once, so it's faster to run the typechecker on changed modules.
 ```
 $ elp shell
 ```
+
+## Environment Variables
+
+These apply to every `elp` command, including `elp server`.
+
+| Variable                        | Description                                                                                                                                                                                                                                                                     | Default |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `ELP_ERLANG_SERVICE_SCHEDULERS` | Number of schedulers of the Erlang VM ELP uses to parse and lint Erlang code. Past about 16, more schedulers make that VM slower rather than faster. On hosts with fewer CPUs, only as many schedulers as there are CPUs run. An already running daemon keeps the value it started with. | 16      |

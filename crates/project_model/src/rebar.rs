@@ -155,7 +155,7 @@ impl RebarConfig {
             cmd
         };
 
-        configure_erl_env(&mut cmd, DEFAULT_PORT_LIMIT);
+        configure_erl_env(&mut cmd, DEFAULT_PORT_LIMIT, None);
         cmd
     }
 

@@ -13,6 +13,7 @@ use std::io::BufWriter;
 use std::io::Read;
 use std::io::Write;
 use std::mem;
+use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::process::Child;
 use std::process::ChildStdin;
@@ -65,6 +66,27 @@ use elp_base_db::in_flight;
 pub static ESCRIPT: LazyLock<RwLock<String>> = LazyLock::new(|| {
     RwLock::new(std::env::var("ELP_ESCRIPT").unwrap_or_else(|_| "escript".to_string()))
 });
+
+/// Overrides the number of schedulers the erlang_service VM runs with.
+const SCHEDULERS_ENV: &str = "ELP_ERLANG_SERVICE_SCHEDULERS";
+
+/// Past about 16 schedulers the VM gets slower, not faster: requests contend
+/// inside the VM for longer than they take to serve. On hosts with fewer CPUs
+/// the emulator puts only as many schedulers online as there are CPUs.
+const DEFAULT_SCHEDULERS: NonZeroU32 = NonZeroU32::new(16).expect("16 is not zero");
+
+static SCHEDULERS: LazyLock<NonZeroU32> =
+    LazyLock::new(|| parse_schedulers(std::env::var(SCHEDULERS_ENV).ok().as_deref()));
+
+fn parse_schedulers(value: Option<&str>) -> NonZeroU32 {
+    let Some(value) = value else {
+        return DEFAULT_SCHEDULERS;
+    };
+    value.trim().parse().unwrap_or_else(|err| {
+        log::warn!("Ignoring {SCHEDULERS_ENV}={value:?} ({err}), using {DEFAULT_SCHEDULERS}");
+        DEFAULT_SCHEDULERS
+    })
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum DiagnosticLocation {
@@ -325,7 +347,7 @@ impl Connection {
         let mut cmd = Command::new(&escript_path);
         cmd.arg(&erlang_service_path);
 
-        configure_erl_env(&mut cmd, DEFAULT_PORT_LIMIT);
+        configure_erl_env(&mut cmd, DEFAULT_PORT_LIMIT, Some(*SCHEDULERS));
 
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -859,6 +881,7 @@ mod tests {
     use std::sync::LazyLock;
 
     use elp_base_db::AbsPathBuf;
+    use elp_base_db::assert_eq_expected;
     use expect_test::ExpectFile;
     use expect_test::expect;
     use expect_test::expect_file;
@@ -1133,5 +1156,24 @@ mod tests {
             2..5
         "#]]
         .assert_debug_eq(&safe_textrange(5.into(), 2.into()));
+    }
+
+    #[test]
+    fn schedulers_default_when_unset() {
+        assert_eq_expected!(DEFAULT_SCHEDULERS, parse_schedulers(None));
+    }
+
+    #[test]
+    fn schedulers_from_the_environment() {
+        assert_eq_expected!(NonZeroU32::new(8), Some(parse_schedulers(Some("8"))));
+        assert_eq_expected!(NonZeroU32::new(32), Some(parse_schedulers(Some(" 32 "))));
+    }
+
+    #[test]
+    fn schedulers_ignore_invalid_values() {
+        assert_eq_expected!(DEFAULT_SCHEDULERS, parse_schedulers(Some("0")));
+        assert_eq_expected!(DEFAULT_SCHEDULERS, parse_schedulers(Some("-4")));
+        assert_eq_expected!(DEFAULT_SCHEDULERS, parse_schedulers(Some("many")));
+        assert_eq_expected!(DEFAULT_SCHEDULERS, parse_schedulers(Some("")));
     }
 }
