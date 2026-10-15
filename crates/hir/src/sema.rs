@@ -1741,6 +1741,7 @@ impl<T> Index<TermId> for InFunctionClauseBody<'_, T> {
 
 #[cfg(test)]
 mod tests {
+    use elp_base_db::FileKind;
     use elp_base_db::ProjectId;
     use elp_base_db::RootQueryDb;
     use elp_base_db::assert_eq_expected;
@@ -2332,5 +2333,25 @@ mod tests {
             ]
         "#]]
         .assert_debug_eq(&results);
+    }
+
+    #[test]
+    fn module_map_files_are_foreign_modules() {
+        let fixture = r#"
+//- /app_a/src/foo.erl app:app_a
+-module(foo).
+//- /app_a/lib/bar.ex app:app_a modules:[Elixir.Bar,Elixir.Bar.Baz]
+defmodule Bar do
+end
+"#;
+        let (db, files, _) = TestDB::with_many_files(fixture);
+        let erl_file = files[0];
+        let ex_file = files[1];
+        let index = db.module_index(ProjectId(0));
+        assert_eq_expected!(Some(erl_file), index.file_for_module("foo"));
+        assert_eq_expected!(Some(ex_file), index.file_for_module("Elixir.Bar"));
+        assert_eq_expected!(Some(ex_file), index.file_for_module("Elixir.Bar.Baz"));
+        assert_eq_expected!(FileKind::SrcModule, db.file_kind(erl_file));
+        assert_eq_expected!(FileKind::ForeignModule, db.file_kind(ex_file));
     }
 }

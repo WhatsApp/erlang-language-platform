@@ -13,8 +13,10 @@ use std::sync::Arc;
 
 use elp_base_db::AbsPath;
 use elp_base_db::FileId;
+use elp_base_db::FileKind;
 use elp_base_db::IncludeCtx;
 use elp_base_db::InternedFileId;
+use elp_base_db::ModuleName;
 use elp_base_db::ProjectId;
 use elp_base_db::RootQueryDb;
 use elp_base_db::SourceDatabase;
@@ -41,6 +43,7 @@ pub trait AstLoader {
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
         elp_metadata: eetf::Term,
+        extra_options: Vec<CompileOption>,
     ) -> ParseResult;
 }
 
@@ -53,14 +56,16 @@ impl AstLoader for crate::RootDatabase {
         macros: &[eetf::Term],
         parse_transforms: &[eetf::Term],
         elp_metadata: eetf::Term,
+        extra_options: Vec<CompileOption>,
     ) -> ParseResult {
         let mut macros = macros.to_vec();
         macros.push(eetf::Atom::from("ELP_ERLANG_SERVICE").into());
-        let options = vec![
+        let mut options = vec![
             CompileOption::Macros(macros),
             CompileOption::ParseTransforms(parse_transforms.to_vec()),
             CompileOption::ElpMetadata(elp_metadata),
         ];
+        options.extend(extra_options);
         let path: PathBuf = path.to_path_buf().into();
         let file_text = SourceDatabase::file_text(self, file_id).text(self);
         let req = ParseRequest {
@@ -119,6 +124,11 @@ pub trait ErlAstDatabase: RootQueryDb + AstLoader + LineIndexDatabase {
     #[salsa::invoke(module_ast_inner)]
     fn module_ast_interned(&self, fid: InternedFileId) -> Arc<ParseResult>;
 
+    /// The forms of `module`, one of the modules a `FileKind::ForeignModule`
+    /// file defines, served from the application's build output.
+    #[salsa::invoke_interned(foreign_module_ast)]
+    fn foreign_module_ast(&self, file_id: FileId, module: ModuleName) -> Arc<ParseResult>;
+
     #[salsa::transparent]
     #[salsa::invoke(elp_metadata_dispatch)]
     fn elp_metadata(&self, file_id: FileId) -> Metadata;
@@ -133,6 +143,23 @@ fn module_ast_dispatch(db: &dyn ErlAstDatabase, file_id: FileId) -> Arc<ParseRes
 fn module_ast_inner(db: &dyn ErlAstDatabase, fid: InternedFileId) -> Arc<ParseResult> {
     let file_id = fid.file_id(db);
     let _ = stdx::panic_context::enter(format!("\nmodule_ast: {file_id:?}"));
+    load_module_ast(db, file_id, None)
+}
+
+fn foreign_module_ast(
+    db: &dyn ErlAstDatabase,
+    file_id: FileId,
+    module: ModuleName,
+) -> Arc<ParseResult> {
+    let _ = stdx::panic_context::enter(format!("\nforeign_module_ast: {file_id:?} {module:?}"));
+    load_module_ast(db, file_id, Some(module))
+}
+
+fn load_module_ast(
+    db: &dyn ErlAstDatabase,
+    file_id: FileId,
+    module: Option<ModuleName>,
+) -> Arc<ParseResult> {
     let root_id = db.file_source_root(file_id).source_root_id(db);
     let root = db.source_root(root_id).source_root(db);
     let path = root
@@ -151,6 +178,24 @@ fn module_ast_inner(db: &dyn ErlAstDatabase, fid: InternedFileId) -> Arc<ParseRe
             code: "L0003".to_string(),
         }));
     };
+    let mut extra_options = vec![];
+    if db.file_kind(file_id) == FileKind::ForeignModule {
+        // The service reads the module from the build output.
+        match &app_data.ebin_path {
+            Some(ebin) => extra_options.push(CompileOption::Ebin(ebin.clone().into())),
+            None => {
+                return Arc::new(ParseResult::error(ParseError {
+                    path: path.to_path_buf().into(),
+                    location: None,
+                    msg: "Application has no ebin directory to read the module from".to_string(),
+                    code: "L0003".to_string(),
+                }));
+            }
+        }
+    }
+    if let Some(module) = module {
+        extra_options.push(CompileOption::Module(module.as_str().to_string()));
+    }
     Arc::new(db.load_ast(
         app_data.project_id,
         file_id,
@@ -158,6 +203,7 @@ fn module_ast_inner(db: &dyn ErlAstDatabase, fid: InternedFileId) -> Arc<ParseRe
         &app_data.macros,
         &app_data.parse_transforms,
         metadata.into(),
+        extra_options,
     ))
 }
 

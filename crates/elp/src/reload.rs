@@ -110,6 +110,15 @@ impl ProjectFolders {
                         .collect();
                     let dir = VfsPath::from(app.dir.clone());
                     file_sets.insert(dir);
+                    // A module mapped to a file outside the app's directory,
+                    // such as its BEAM file under the build directory, still
+                    // belongs to the app.
+                    file_sets.extend(
+                        app.module_map
+                            .keys()
+                            .filter_map(|file| file.parent())
+                            .map(|dir| VfsPath::from(dir.to_path_buf())),
+                    );
                     builder.add_file_set(file_sets.into_iter().collect());
                     builder
                 },
@@ -194,6 +203,7 @@ fn loader_config(project_apps: &ProjectApps<'_>) -> Vec<loader::Entry> {
         if let Some(applicable_files) = app.applicable_files.as_ref() {
             files.extend(applicable_files.clone());
         }
+        files.extend(app.module_map.keys().cloned());
         include_dirs.extend(app.include_dirs.clone());
     });
 

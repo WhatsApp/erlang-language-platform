@@ -12,7 +12,23 @@
 %% Placeholder module name bound to `?MODULE` when a header is analysed on its own.
 -define(HEADER_MODULE, 'ELP_HEADER').
 
-run(Id, [FileName, FileId, Options0, FileText, PostProcess, Deterministic]) ->
+run(Id, [FileName | _] = Params) ->
+    case extension_handler(FileName) of
+        {ok, Handler} -> Handler:run(Id, Params);
+        error -> run_erlang(Id, Params)
+    end.
+
+%% The module serving parse requests for a source file extension that
+%% `erlang_service` does not parse itself, registered in the
+%% `extension_handlers` application environment as a map from extension to
+%% module, e.g. `#{".ex" => elixir_service_lint}`. The handler exports `run/2`
+%% with the same contract as `run/2` here.
+-spec extension_handler(file:filename()) -> {ok, module()} | error.
+extension_handler(FileName) ->
+    Handlers = application:get_env(erlang_service, extension_handlers, #{}),
+    maps:find(filename:extension(FileName), Handlers).
+
+run_erlang(Id, [FileName, FileId, Options0, FileText, PostProcess, Deterministic]) ->
     Options = parse_options(FileName, Options0, Deterministic),
     case extract_forms(Id, FileName, FileId, FileText, Options) of
         {ok, Forms0} ->

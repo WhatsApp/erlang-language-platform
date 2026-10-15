@@ -10,6 +10,7 @@
 
 use std::borrow::Borrow;
 use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -738,6 +739,7 @@ fn app_data_from_path(path: &Path) -> Option<JsonProjectAppData> {
         extra_src_dirs: vec!["test".to_string()],
         include_dirs,
         macros: FxHashMap::default(),
+        modules: FxHashMap::default(),
     };
     Some(app_data)
 }
@@ -966,6 +968,11 @@ pub struct ProjectAppData {
     /// Generated as part of the buck build process, via elp.bxl
     /// Specifically not related to any marker tags in files
     pub is_buck_generated: Option<bool>,
+    /// The modules whose names cannot be derived from their file names, by the
+    /// file defining them. ELP does not parse these files itself: the service
+    /// serves their forms from the application's `ebin`, see
+    /// `FileKind::ForeignModule`.
+    pub module_map: BTreeMap<AbsPathBuf, Vec<String>>,
 }
 
 impl ProjectAppData {
@@ -992,6 +999,7 @@ impl ProjectAppData {
             applicable_files: None,
             is_test_target: None,
             is_buck_generated: None,
+            module_map: Default::default(),
         }
     }
 
@@ -1020,6 +1028,7 @@ impl ProjectAppData {
             applicable_files: None,
             is_test_target: None,
             is_buck_generated: None,
+            module_map: Default::default(),
         }
     }
 
@@ -1066,6 +1075,7 @@ impl ProjectAppData {
         self.macros.dedup();
         self.parse_transforms.extend(other.parse_transforms);
         self.parse_transforms.dedup();
+        self.module_map.extend(other.module_map);
     }
 }
 
@@ -1388,6 +1398,7 @@ mod tests {
                                     extra_src_dirs: [],
                                     include_dirs: [],
                                     macros: {},
+                                    modules: {},
                                 },
                                 JsonProjectAppData {
                                     name: "app_b",
@@ -1403,6 +1414,7 @@ mod tests {
                                         "include",
                                     ],
                                     macros: {},
+                                    modules: {},
                                 },
                             ],
                             deps: [],
@@ -1512,6 +1524,7 @@ mod tests {
                                 macros: {
                                     "TEST": "true",
                                 },
+                                modules: {},
                             },
                             JsonProjectAppData {
                                 name: "app_b",
@@ -1527,6 +1540,7 @@ mod tests {
                                 macros: {
                                     "TEST": "true",
                                 },
+                                modules: {},
                             },
                             JsonProjectAppData {
                                 name: "eqwalizer",
@@ -1542,6 +1556,7 @@ mod tests {
                                 macros: {
                                     "TEST": "true",
                                 },
+                                modules: {},
                             },
                         ],
                         deps: [],
@@ -1929,6 +1944,7 @@ mod tests {
                             extra_src_dirs: [],
                             include_dirs: [],
                             macros: {},
+                            modules: {},
                         },
                     ],
                     deps: [],
@@ -2396,5 +2412,60 @@ mod tests {
             }
         "#]]
         .assert_debug_eq(&config);
+    }
+
+    #[test]
+    fn test_json_project_module_map() {
+        let spec = r#"
+        //- /build_info.json
+        {
+          "apps": [
+            {
+              "name": "app_a",
+              "dir": "app_a",
+              "ebin": "ebin",
+              "src_dirs": ["lib"],
+              "modules": {
+                "Elixir.Foo": "lib/foo.ex",
+                "Elixir.Foo.Bar": "lib/foo.ex",
+                "Elixir.Baz": "lib/baz.ex"
+              }
+            }
+          ],
+          "deps": []
+        }
+        //- /app_a/lib/foo.ex
+        defmodule Foo do
+        end
+        //- /app_a/lib/baz.ex
+        defmodule Baz do
+        end
+        //- /app_a/ebin/.keep
+        "#;
+        let dir = FixtureWithProjectMeta::gen_project(spec);
+        let dir_path = AbsPathBuf::assert_utf8(dunce::canonicalize(dir.path()).unwrap());
+        let json = match ProjectManifest::discover(&dir_path.join("build_info.json")) {
+            Ok((_elp_config, ProjectManifest::Json(json))) => json,
+            other => panic!("expected a JSON manifest, got {other:?}"),
+        };
+        let app = json.apps[0].to_project_app_data(&dir_path, false).unwrap();
+        expect![[r#"
+            {
+                AbsPathBuf(
+                    "TMPDIR/app_a/lib/baz.ex",
+                ): [
+                    "Elixir.Baz",
+                ],
+                AbsPathBuf(
+                    "TMPDIR/app_a/lib/foo.ex",
+                ): [
+                    "Elixir.Foo",
+                    "Elixir.Foo.Bar",
+                ],
+            }
+        "#]]
+        .assert_eq(&debug_normalise_temp_dir(dir, &app.module_map));
+        let round_trip = JsonProjectAppData::from_project_app_data(&dir_path, &app);
+        assert_eq!(json.apps[0].modules, round_trip.modules);
     }
 }
