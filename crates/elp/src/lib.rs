@@ -206,6 +206,8 @@ pub fn read_lint_config_file(project: &Path, config_file: Option<&Path>) -> Resu
 /// Apply dynamic call patterns from a lint config to the database.
 /// Call this whenever a lint config is loaded or updated.
 pub fn apply_lint_config(analysis_host: &mut AnalysisHost, lint_config: &LintConfig) {
+    analysis_host.request_cancellation();
+
     let patterns = lint_config.dynamic_calls.parse();
     let db = analysis_host.raw_database_mut();
     db.set_extra_dynamic_call_patterns(Arc::new(elp_ide::elp_ide_db::elp_base_db::build_index(
