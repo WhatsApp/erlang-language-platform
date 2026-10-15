@@ -22,6 +22,9 @@ linters and refactoring tools for Erlang**.
 ELP also includes **eqWAlizer**, a type-checker for Erlang. eqWAlizer brings
 static type-checking to Erlang code, helping you catch type errors before they
 reach production. See the [eqWAlizer README](./eqwalizer/README.md) for details.
+eqWAlizer can also check Elixir projects, through the
+[elixir service](./elixir_service/README.md): see
+[Elixir projects](./website/docs/get-started/configure-project/elixir.md).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./eqwalizer/logo/eqWAlizer_final_Full_Logo_White_Text.png">
