@@ -130,6 +130,32 @@
 -spec 'Elixir.Process:put'(term(), term()) -> dynamic() | nil.
 'Elixir.Process:put'(_, _) -> error(eqwalizer_specs).
 
+%% -------- Elixir.Stream --------
+
+%% Elixir bounds the accumulator with `when acc: term()`, which eqWAlizer
+%% reads as a substitution by `term()` rather than as a type variable.
+
+-spec 'Elixir.Stream:transform'(term(), Acc, fun((dynamic(), Acc) -> {term(), Acc} | {halt, Acc})) ->
+    dynamic().
+'Elixir.Stream:transform'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'Elixir.Stream:transform'(
+    term(),
+    fun(() -> Acc),
+    fun((dynamic(), Acc) -> {term(), Acc} | {halt, Acc}),
+    fun((Acc) -> term())
+) -> dynamic().
+'Elixir.Stream:transform'(_, _, _, _) -> error(eqwalizer_specs).
+
+-spec 'Elixir.Stream:transform'(
+    term(),
+    fun(() -> Acc),
+    fun((dynamic(), Acc) -> {term(), Acc} | {halt, Acc}),
+    fun((Acc) -> {term(), Acc} | {halt, Acc}),
+    fun((Acc) -> term())
+) -> dynamic().
+'Elixir.Stream:transform'(_, _, _, _, _) -> error(eqwalizer_specs).
+
 %% -------- Elixir.Task --------
 
 -spec 'Elixir.Task:await'(term(), timeout()) -> dynamic().

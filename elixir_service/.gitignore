@@ -4,3 +4,4 @@
 /cover/
 *.beam
 erl_crash.dump
+/tmp/

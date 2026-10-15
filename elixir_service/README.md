@@ -55,7 +55,7 @@ offenders: those types become `dynamic()`, those functions get type
 variables. `mix elp.build_info` copies them into the project's build
 directory as the `elixir_eqwalizer_support` dependency, which ELP layers
 over its bundled OTP overrides. On the `req` library the overrides cut the
-diagnostics from 118 to 24, and the rest are not the standard library's.
+diagnostics from 118 to 22, and the rest are not the standard library's.
 `--no-overlay` leaves them out.
 
 ## Test
