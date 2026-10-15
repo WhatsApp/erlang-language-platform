@@ -4,7 +4,7 @@ defmodule Mix.Tasks.Elp.BuildInfo do
   @moduledoc """
   Writes a `build_info.json` describing a mix project for ELP.
 
-      mix elp.build_info [--project DIR] [--output FILE] [--no-elp-toml]
+      mix elp.build_info [--project DIR] [--output FILE] [--no-elp-toml] [--no-overlay]
 
   The project itself becomes the application ELP checks, every dependency and
   the Elixir applications become its dependencies. Each application lists its
@@ -17,14 +17,21 @@ defmodule Mix.Tasks.Elp.BuildInfo do
   ELP reads Elixir modules from their BEAM files, so compile the project first.
   Unless `--no-elp-toml` is given, an `.elp.toml` pointing at the output is
   written next to it when there is none.
+
+  The spec and type overrides for the Elixir standard library shipped in
+  `priv/eqwalizer_support` are copied into the project's build directory and
+  listed as one more dependency, so that eqWAlizer layers them over its
+  bundled OTP overrides. `--no-overlay` leaves them out, for a project that
+  defines `eqwalizer_specs` or `eqwalizer_types` itself.
   """
 
   use Mix.Task
 
   alias ElixirService.Beam
 
-  @switches [project: :string, output: :string, elp_toml: :boolean]
+  @switches [project: :string, output: :string, elp_toml: :boolean, overlay: :boolean]
   @elixir_apps [:elixir, :logger, :eex, :ex_unit, :iex, :mix]
+  @overlay_app "elixir_eqwalizer_support"
 
   # Evaluated in the project described, see `project_facts/1`.
   @facts_marker "ELP_BUILD_INFO:"
@@ -94,7 +101,9 @@ defmodule Mix.Tasks.Elp.BuildInfo do
     deps =
       Enum.map(facts.deps_paths, fn {dep, path} ->
         dep_app(dep, path, facts.build_path, root)
-      end) ++ Enum.flat_map(@elixir_apps, &elixir_app(&1, root))
+      end) ++
+        Enum.flat_map(@elixir_apps, &elixir_app(&1, root)) ++
+        overlay_app(facts.build_path, root, opts)
 
     File.write!(output, encode(%{"apps" => apps, "deps" => deps}))
     Mix.shell().info("Wrote #{Path.relative_to_cwd(output)}")
@@ -140,18 +149,44 @@ defmodule Mix.Tasks.Elp.BuildInfo do
     end
   end
 
+  # The eqWAlizer overrides for the Elixir standard library, as an app of
+  # Erlang sources under the build directory. See priv/eqwalizer_support.
+  defp overlay_app(build_path, root, opts) do
+    if opts[:overlay] == false do
+      []
+    else
+      dir = Path.join([build_path, "elp", @overlay_app])
+      File.rm_rf!(dir)
+      File.mkdir_p!(dir)
+      File.cp_r!(overlay_source(), dir)
+      [app_entry(@overlay_app, dir, root, ["src"], [], [], nil)]
+    end
+  end
+
+  defp overlay_source do
+    case :code.priv_dir(:elixir_service) do
+      {:error, _} -> Path.expand("../../../priv/eqwalizer_support", __DIR__)
+      priv -> Path.join(to_string(priv), "eqwalizer_support")
+    end
+  end
+
+  # `ebin` is nil for an app with no build output, which then lists no modules.
   defp app_entry(name, dir, root, src_dirs, extra_src_dirs, include_dirs, ebin) do
     existing = fn dirs -> Enum.filter(dirs, &File.dir?(Path.join(dir, &1))) end
 
-    %{
+    entry = %{
       "name" => name,
       "dir" => relative(dir, root),
       "src_dirs" => existing.(src_dirs),
       "extra_src_dirs" => existing.(extra_src_dirs),
-      "include_dirs" => existing.(include_dirs),
-      "ebin" => relative(ebin, dir),
-      "modules" => module_map(ebin, dir)
+      "include_dirs" => existing.(include_dirs)
     }
+
+    if ebin && File.dir?(ebin) do
+      Map.merge(entry, %{"ebin" => relative(ebin, dir), "modules" => module_map(ebin, dir)})
+    else
+      entry
+    end
   end
 
   # The modules ELP cannot index by itself, by the file to index each from.

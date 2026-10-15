@@ -46,6 +46,18 @@ node starts. Functions the compiler generates, such as `__struct__/1`, are
 not checked, but their specs and exports are kept so calls to them are.
 Functions without a spec are dynamically typed, as in Erlang.
 
+The standard library's specs declare elements, values and accumulators as
+`any()`, which eqWAlizer reads as a `term()` that fits nowhere specific, and
+return containers as `map()` or `acc()`, so a struct threaded through
+`Enum.reduce/3` or `update_in/2` loses its type. `priv/eqwalizer_support`
+holds `eqwalizer_types` and `eqwalizer_specs` overrides for the worst
+offenders: those types become `dynamic()`, those functions get type
+variables. `mix elp.build_info` copies them into the project's build
+directory as the `elixir_eqwalizer_support` dependency, which ELP layers
+over its bundled OTP overrides. On the `req` library the overrides cut the
+diagnostics from 118 to 24, and the rest are not the standard library's.
+`--no-overlay` leaves them out.
+
 ## Test
 
     mix test

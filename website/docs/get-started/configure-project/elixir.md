@@ -56,7 +56,14 @@ a node starts.
 Functions the compiler generates, such as `__struct__/1` and `__info__/1`,
 are not checked, but their specs and exports are kept, so calls to them are.
 
-The Elixir standard library is seen through its specs. Many of them, such as
-those of `Enum`, return `term()`, so idiomatic pipelines are checked loosely
-and sometimes reported where the Erlang equivalent, with type variables,
-would not be.
+The Elixir standard library is seen through its specs, with overrides for
+the ones that would otherwise produce noise. Elixir declares the elements of
+enumerables, the values of maps and keyword lists, and accumulators as
+`any()`, which eqWAlizer reads as `term()`, a value that fits nowhere
+specific; and functions such as `Enum.reduce/3` and `update_in/2` return
+their accumulator or container as `any()` or `map()`, so a struct threaded
+through them loses its type. The `elixir_eqwalizer_support` dependency that
+`mix elp.build_info` writes into the build directory redefines those types
+as `dynamic()` and gives those functions type variables, the way ELP's own
+overrides for `lists` and `maps` do. Pass `--no-overlay` to leave it out,
+for a project that defines `eqwalizer_specs` or `eqwalizer_types` itself.
