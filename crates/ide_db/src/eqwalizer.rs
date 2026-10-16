@@ -11,6 +11,7 @@
 use std::sync::Arc;
 
 use elp_base_db::FileId;
+use elp_base_db::FileKind;
 use elp_base_db::FileRange;
 use elp_base_db::InternedFileId;
 use elp_base_db::ModuleName;
@@ -435,7 +436,11 @@ impl EqwalizerErlASTStorage for crate::RootDatabase {
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error> {
         if let Some(file_id) = self.module_index(project_id).file_for_module(&module) {
-            let result = self.module_ast(file_id);
+            let result = if self.file_kind(file_id) == FileKind::ForeignModule {
+                self.foreign_module_ast(file_id, module)
+            } else {
+                self.module_ast(file_id)
+            };
             if result.is_ok() {
                 Ok(result.ast.clone())
             } else {

@@ -67,6 +67,10 @@ pub static ESCRIPT: LazyLock<RwLock<String>> = LazyLock::new(|| {
     RwLock::new(std::env::var("ELP_ESCRIPT").unwrap_or_else(|_| "escript".to_string()))
 });
 
+/// Names an escript to run in place of the bundled `erlang_service`, such as
+/// one extended to serve other languages. It must speak the same protocol.
+const SERVICE_PATH_ENV: &str = "ELP_ERLANG_SERVICE_PATH";
+
 /// Overrides the number of schedulers the erlang_service VM runs with.
 const SCHEDULERS_ENV: &str = "ELP_ERLANG_SERVICE_SCHEDULERS";
 
@@ -124,6 +128,11 @@ pub enum CompileOption {
     Macros(Vec<eetf::Term>),
     ParseTransforms(Vec<eetf::Term>),
     ElpMetadata(eetf::Term),
+    /// The application's `ebin` directory, for a module the service reads from
+    /// the build output instead of parsing, see `FileKind::ForeignModule`.
+    Ebin(PathBuf),
+    /// The module wanted from a file that defines several.
+    Module(String),
 }
 
 impl From<CompileOption> for eetf::Term {
@@ -141,6 +150,15 @@ impl From<CompileOption> for eetf::Term {
             CompileOption::ElpMetadata(elp_metadata) => {
                 let label = eetf::Atom::from("elp_metadata");
                 eetf::Tuple::from(vec![label.into(), elp_metadata]).into()
+            }
+            CompileOption::Ebin(ebin) => {
+                let label = eetf::Atom::from("ebin");
+                eetf::Tuple::from(vec![label.into(), path_into_list(ebin).into()]).into()
+            }
+            CompileOption::Module(module) => {
+                let label = eetf::Atom::from("module");
+                let module = eetf::Atom::from(module.as_str());
+                eetf::Tuple::from(vec![label.into(), module.into()]).into()
             }
         }
     }
@@ -330,18 +348,25 @@ impl Connection {
         // build.rs `cargo:rustc-env=`) and Buck (via `env = {...}` in the
         // BUCK file) set the same env var to the artifact path, so we end
         // up with a single self-contained binary on either build system.
-        fn get_erlang_service_path() -> Result<tempfile::TempPath> {
+        //
+        // `SERVICE_PATH_ENV` names an escript to run instead; the temporary
+        // file then lives as long as the connection.
+        fn get_erlang_service_path() -> Result<(PathBuf, Option<TempPath>)> {
+            if let Ok(path) = std::env::var(SERVICE_PATH_ENV) {
+                return Ok((PathBuf::from(path), None));
+            }
             let escript_src = include_bytes!(env!("ELP_PARSE_SERVER_ESCRIPT_PATH"));
             let mut escript = Builder::new().prefix("erlang_service").tempfile()?;
             escript.write_all(escript_src)?;
-            Ok(escript.into_temp_path())
+            let temp_path = escript.into_temp_path();
+            Ok((temp_path.to_path_buf(), Some(temp_path)))
         }
 
         fn get_escript_path() -> Result<std::path::PathBuf> {
             Ok(PathBuf::from(ESCRIPT.read().unwrap().clone()))
         }
 
-        let erlang_service_path = get_erlang_service_path()?;
+        let (erlang_service_path, file_for_drop) = get_erlang_service_path()?;
         let escript_path = get_escript_path()?;
 
         let mut cmd = Command::new(&escript_path);
@@ -354,8 +379,6 @@ impl Connection {
             .stderr(Stdio::inherit());
 
         let mut proc = cmd.spawn()?;
-
-        let file_for_drop: Option<TempPath> = Some(erlang_service_path);
 
         let (sender, writer, reader) = stdio_transport(&mut proc);
 
