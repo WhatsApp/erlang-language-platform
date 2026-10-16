@@ -63,3 +63,9 @@ diagnostics from 118 to 22, and the rest are not the standard library's.
     mix test
 
 The protocol test runs only when the escript has been built.
+
+## Contributing
+
+The rules the service is developed under, for people and agents alike,
+are in `AGENTS.md`: the service stays general, standard-library knowledge
+goes into the support library, and rewrites of Elixir forms need approval.
