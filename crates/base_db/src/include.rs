@@ -174,9 +174,10 @@ impl<'a> IncludeCtx<'a> {
                         .filter_map(|d| d.as_ref())
                         .any(|d| {
                             d.buck_target_name.as_ref().is_some_and(|t| {
-                                buck_index
-                                    .app_deps
-                                    .is_reachable(t, &target, DepKind::Runtime)
+                                db.reachable_targets(project_id, t.clone(), DepKind::Runtime)
+                                    .is_some_and(|reachable| {
+                                        buck_index.app_deps.is_reachable_in(&reachable, &target)
+                                    })
                             })
                         });
 

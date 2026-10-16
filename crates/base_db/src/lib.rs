@@ -449,8 +449,9 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
 
     /// Every target reachable from the buck target `source`, or `None` for a
     /// project with no build-system dependency graph. Every reference a
-    /// dependency diagnostic checks asks this of the referencing file's
-    /// target, so it is computed once per target rather than per reference.
+    /// dependency diagnostic checks, and every remote `-include_lib`, asks this
+    /// of the referencing file's target, so it is computed once per target
+    /// rather than per reference.
     #[salsa::transparent]
     #[salsa::invoke(reachable_targets_dispatch)]
     fn reachable_targets(
@@ -715,9 +716,9 @@ fn module_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc<Modul
 ///
 /// An application is always reachable from itself. OTP applications are always
 /// reachable, and reachability is transitive - both are
-/// `AppDepGraph::is_reachable` semantics, for either `dep_kind`. A project with
-/// no build-system dependency graph, or an application with no buck target, has
-/// nothing to check against and is treated as reachable.
+/// `AppDepGraph::is_reachable_in` semantics, for either `dep_kind`. A project
+/// with no build-system dependency graph, or an application with no buck
+/// target, has nothing to check against and is treated as reachable.
 pub fn is_app_reachable(
     db: &dyn RootQueryDb,
     referencing_app_data: &AppData,

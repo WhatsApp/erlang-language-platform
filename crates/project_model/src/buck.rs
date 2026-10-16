@@ -384,18 +384,11 @@ impl AppDepGraph {
     }
 
     /// Whether the application `target_app` is reachable from the target
-    /// `source`, following the edges `kind` allows. Reachability is
-    /// transitive, and an OTP application is always reachable.
-    ///
-    /// Each call walks the dependency closure. To ask about many applications
-    /// from one source, compute [`Self::reachable_targets`] once and ask
-    /// [`Self::is_reachable_in`] instead.
-    pub fn is_reachable(
-        &self,
-        source: &TargetFullName,
-        target_app: &AppName,
-        kind: DepKind,
-    ) -> bool {
+    /// `source`, following the edges `kind` allows, without building a
+    /// [`ReachableTargets`] set. The tests check the set storage and lookup of
+    /// [`Self::is_reachable_in`] against it.
+    #[cfg(test)]
+    fn is_reachable(&self, source: &TargetFullName, target_app: &AppName, kind: DepKind) -> bool {
         self.otp_apps.contains(target_app)
             || self.target_position(target_app).is_some_and(|target| {
                 self.reachable_positions(source, kind)
@@ -413,8 +406,10 @@ impl AppDepGraph {
         ReachableTargets { bits }
     }
 
-    /// [`Self::is_reachable`] for the source and kind `reachable` was built
-    /// for. `reachable` must come from this graph's [`Self::reachable_targets`].
+    /// Whether the application `target_app` is reachable from the source,
+    /// under the kind, that `reachable` was built for. Reachability is
+    /// transitive, and an OTP application is always reachable. `reachable`
+    /// must come from this graph's [`Self::reachable_targets`].
     pub fn is_reachable_in(&self, reachable: &ReachableTargets, target_app: &AppName) -> bool {
         self.otp_apps.contains(target_app)
             || self
