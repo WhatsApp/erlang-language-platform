@@ -59,11 +59,34 @@
     {[dynamic()], Acc}.
 'Elixir.Enum:map_reduce'(_, _, _) -> error(eqwalizer_specs).
 
+%% Elixir declares `Enum.sum/1`, `Enum.sum_by/2`, `Enum.product/1` and
+%% `Enum.product_by/2` as returning `number()`, so a sum of integers cannot
+%% flow into an `integer()`. With a type variable, integers sum to an integer
+%% and floats to a float, and a range sums to an integer. (A bound, `when N ::
+%% number()`, would not do: eqWAlizer substitutes it for the variable.) The
+%% empty list sums to the integer 0 and multiplies to 1 whatever its element
+%% type, a looseness accepted here. Any other enumerable matches neither
+%% clause and gets `dynamic()`.
+
+-spec 'Elixir.Enum:product'([N]) -> N;
+                           ('Elixir.Range':t()) -> integer().
+'Elixir.Enum:product'(_) -> error(eqwalizer_specs).
+
+-spec 'Elixir.Enum:product_by'(term(), fun((dynamic()) -> N)) -> N.
+'Elixir.Enum:product_by'(_, _) -> error(eqwalizer_specs).
+
 -spec 'Elixir.Enum:reduce'(term(), Acc, fun((dynamic(), Acc) -> Acc)) -> Acc.
 'Elixir.Enum:reduce'(_, _, _) -> error(eqwalizer_specs).
 
 -spec 'Elixir.Enum:reduce_while'(term(), Acc, fun((dynamic(), Acc) -> {cont, Acc} | {halt, Acc})) -> Acc.
 'Elixir.Enum:reduce_while'(_, _, _) -> error(eqwalizer_specs).
+
+-spec 'Elixir.Enum:sum'([N]) -> N;
+                       ('Elixir.Range':t()) -> integer().
+'Elixir.Enum:sum'(_) -> error(eqwalizer_specs).
+
+-spec 'Elixir.Enum:sum_by'(term(), fun((dynamic()) -> N)) -> N.
+'Elixir.Enum:sum_by'(_, _) -> error(eqwalizer_specs).
 
 -spec 'Elixir.Enum:zip'(term(), term()) -> [{dynamic(), dynamic()}].
 'Elixir.Enum:zip'(_, _) -> error(eqwalizer_specs).
