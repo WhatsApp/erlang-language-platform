@@ -36,10 +36,13 @@ use elp_ide::diagnostics::LabeledDiagnostics;
 use elp_ide::diagnostics::RemoveElpReported;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::EqwalizerDiagnostics;
+use elp_ide::elp_ide_db::ErlAstDatabase;
 use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
+use elp_ide::elp_ide_db::elp_base_db::FileKind;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
+use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_log::telemetry;
 use elp_project_model::AppName;
@@ -495,10 +498,12 @@ pub(crate) fn do_eqwalize(
                     .with_context(|| context)
             })
             .collect::<Result<Vec<_>>>()?,
+        // A file defining several modules, as a `FileKind::ForeignModule` one
+        // may, is listed once per module: it is checked once, for all of them.
         EqwalizeSelection::All { stats, .. } => {
             let module_index = analysis.module_index(loaded.project_id)?;
             let pb = report.progress(module_index.len_own() as u64, "Gathering modules");
-            let file_ids = module_index
+            let file_ids: Vec<FileId> = module_index
                 .iter_own()
                 .par_bridge()
                 .progress_with(pb.clone())
@@ -517,7 +522,7 @@ pub(crate) fn do_eqwalize(
                 .flatten()
                 .collect();
             pb.finish();
-            file_ids
+            file_ids.into_iter().unique().collect()
         }
         EqwalizeSelection::App { app, .. } => {
             let module_index = analysis.module_index(loaded.project_id)?;
@@ -533,6 +538,7 @@ pub(crate) fn do_eqwalize(
                         None
                     }
                 })
+                .unique()
                 .collect()
         }
         EqwalizeSelection::Target { target, .. } => target_file_ids(target, analysis, loaded)?,
@@ -795,16 +801,14 @@ fn eqwalize(
                 let diags = diagnostics.diagnostics_for(file_id);
                 let mut parse_diagnostics: Vec<ParseDiagnostic> = Vec::default();
                 let line_index = analysis.with_db(|db| db.file_line_index(file_id))?;
+                let vfs_path = loaded.vfs.file_path(file_id);
+                let root_path = &analysis
+                    .project_data(file_id)
+                    .unwrap_or_else(|_err| panic!("could not find project data"))
+                    .unwrap_or_else(|| panic!("could not find project data"))
+                    .root_dir;
+                let relative_path = reporting::get_relative_path(root_path, vfs_path);
                 for diag in diags {
-                    let vfs_path = loaded.vfs.file_path(file_id);
-                    let analysis = loaded.analysis();
-                    let root_path = &analysis
-                        .project_data(file_id)
-                        .unwrap_or_else(|_err| panic!("could not find project data"))
-                        .unwrap_or_else(|| panic!("could not find project data"))
-                        .root_dir;
-                    let relative_path = reporting::get_relative_path(root_path, vfs_path);
-
                     let line_num = convert::position(&line_index, diag.range.start()).line + 1;
                     parse_diagnostics.push(ParseDiagnostic {
                         relative_path: relative_path.to_path_buf(),
@@ -813,6 +817,25 @@ fn eqwalize(
                         range: Some(diag.range),
                     });
                     has_errors = true;
+                }
+                // A module the service serves from the build output gets no
+                // diagnostics of its own, so the errors of the request for its
+                // forms are all there is to report.
+                if parse_diagnostics.is_empty()
+                    && analysis.with_db(|db| db.file_kind(file_id))? == FileKind::ForeignModule
+                {
+                    let module = ModuleName::new(&module);
+                    let result =
+                        analysis.with_db(|db| db.foreign_module_ast(file_id, module.clone()))?;
+                    for error in &result.errors {
+                        parse_diagnostics.push(ParseDiagnostic {
+                            relative_path: relative_path.to_path_buf(),
+                            line_num: 1,
+                            msg: error.msg.clone(),
+                            range: None,
+                        });
+                        has_errors = true;
+                    }
                 }
                 // The cached parse errors must be non-empty otherwise we wouldn't have `NoAst`
                 assert!(
