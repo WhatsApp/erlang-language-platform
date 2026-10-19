@@ -10,18 +10,10 @@ translated to `-spec` and `-type`, and eqWAlizer checks those forms as it
 checks Erlang. Support is experimental and limited to type-checking: no other
 ELP feature understands Elixir sources.
 
-ELP reads Elixir modules through the `elixir_service`, an extended
-`erlang_service` found under `elixir_service/` in the ELP repository, which
-you build with mix:
-
-```
-cd elixir_service
-mix deps.get
-MIX_ENV=prod mix escript.build
-```
-
-Compile your mix project, then describe it to ELP from the `elixir_service`
-directory:
+The `mix elp.build_info` task that describes a mix project to ELP lives
+under `elixir_service/` in the ELP repository. Fetch its dependencies with
+`mix deps.get` there. Compile your mix project, then describe it to ELP from
+the `elixir_service` directory:
 
 ```
 mix elp.build_info --project /path/to/project
@@ -35,12 +27,15 @@ with its `ebin` directory and a `modules` map naming the modules ELP cannot
 index by itself: those compiled from `.ex` files, with the file each came
 from, and those with no source at all, with their BEAM file.
 
-Then run ELP with the `elixir_service` escript in place of its bundled one:
+Then run ELP in the project:
 
 ```
 cd /path/to/project
-ELP_ERLANG_SERVICE_PATH=/path/to/elixir_service/_build/elixir_service elp eqwalize-all
+elp eqwalize-all
 ```
+
+ELP's bundled service reads each Elixir module from its BEAM file, with the
+Elixir that compiled the project, which the build info lists as a dependency.
 
 Rerun `mix elp.build_info` after adding modules or dependencies, and
 `mix compile` after editing a module: ELP checks the build output, not the
