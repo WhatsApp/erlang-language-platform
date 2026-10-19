@@ -26,7 +26,7 @@ Add the library to the project's development dependencies:
 
 Then `mix elp.build_info` describes the compiled project to ELP, `mix elp.eqwalize_all` compiles the project and runs `elp eqwalize-all` in it, and `mix elp.eqwalize Hello.World` checks the modules named. See [Elixir projects](https://whatsapp.github.io/erlang-language-platform/docs/get-started/configure-project/elixir/) in the ELP documentation for what is checked.
 
-The overrides for the Elixir standard library are `lib/eqwalizer_specs.erl` and `lib/eqwalizer_types.erl`, apart from the OTP ones in `src`. Neither rebar3 nor mix compiles them, so Erlang projects and Dialyzer never see them; `mix elp.build_info` lists `lib` as the library's only source directory, and ELP layers them over its bundled copy of the OTP overrides.
+The overrides for the Elixir standard library are the Elixir modules `:eqwalizer_specs` and `:eqwalizer_types` under `lib`, apart from the OTP ones in `src`, which only rebar3 builds compile. Mix compiles the Elixir ones, ELP reads them from their BEAM files as it reads the project's own modules and layers them over its bundled copy of the OTP overrides; `mix elp.build_info` lists `lib` as the library's only source directory, so the copy in `src` stays out of the way.
 
 ## Development
 

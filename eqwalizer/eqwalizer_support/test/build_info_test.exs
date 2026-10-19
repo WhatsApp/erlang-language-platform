@@ -27,14 +27,14 @@ defmodule Mix.Tasks.Elp.BuildInfoTest do
     assert app["extra_src_dirs"] == ["test"]
     assert app["modules"] == %{"Elixir.Probe" => "lib/probe.ex"}
 
-    # The library itself: `lib` alone, where the Elixir overrides are, so that
-    # ELP layers them over its bundled copy of the Erlang ones in `src`.
+    # The library itself: `lib` alone, so that the OTP overrides in `src`
+    # stay out of the way, and its Elixir overrides as compiled modules, for
+    # ELP to layer over its bundled copy of the OTP ones.
     support = Enum.find(deps, &(&1["name"] == "eqwalizer_support"))
     assert support["src_dirs"] == ["lib"]
     refute Map.has_key?(support, "macros")
-    support_dir = Path.expand(support["dir"], project)
-    assert File.regular?(Path.join([support_dir, "lib", "eqwalizer_specs.erl"]))
-    refute Map.has_key?(support["modules"], "eqwalizer_specs")
+    assert support["modules"]["eqwalizer_specs"] == "lib/eqwalizer_specs.ex"
+    assert support["modules"]["eqwalizer_types"] == "lib/eqwalizer_types.ex"
     assert Map.has_key?(support["modules"], "Elixir.Mix.Tasks.Elp.BuildInfo")
 
     # The Elixir application, whose ebin holds the debug-info backend the

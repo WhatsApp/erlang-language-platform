@@ -19,10 +19,10 @@ defmodule Mix.Tasks.Elp.BuildInfo do
   Unless `--no-elp-toml` is given, an `.elp.toml` pointing at the output is
   written next to it when there is none.
 
-  This library's entry lists `lib` as its only source directory: it holds the
-  overrides for the Elixir standard library, `eqwalizer_specs.erl` and
-  `eqwalizer_types.erl`, which ELP layers over its bundled copy of the Erlang
-  ones, so the copy in `src` stays out of the way.
+  This library's entry lists `lib` as its only source directory, so that the
+  OTP overrides in its `src`, which ELP bundles already, stay out of the way;
+  its overrides for the Elixir standard library, `:eqwalizer_specs` and
+  `:eqwalizer_types`, are Elixir modules mix compiles, listed like any other.
   """
 
   use Mix.Task
@@ -66,8 +66,9 @@ defmodule Mix.Tasks.Elp.BuildInfo do
     app_entry(to_string(config[:app]), dir, root, src_dirs, ["test"], include_dirs, ebin)
   end
 
-  # This library's Erlang overrides in `src` duplicate ELP's bundled copy;
-  # its `lib` holds the Elixir ones, for ELP to layer over that copy.
+  # This library's Erlang sources in `src` duplicate ELP's bundled copy of
+  # the OTP overrides; its Elixir modules carry the overrides ELP layers over
+  # that copy.
   defp dep_app(:eqwalizer_support = dep, path, root) do
     app_entry(to_string(dep), path, root, ["lib"], [], [], dep_ebin(dep))
   end

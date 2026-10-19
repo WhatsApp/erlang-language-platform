@@ -9,7 +9,12 @@ defmodule EqwalizerSupport.MixProject do
     [
       app: :eqwalizer_support,
       version: @version,
-      elixir: "~> 1.15",
+      elixir: "~> 1.18",
+      # The Erlang sources in src are for rebar3 builds: they hold the OTP
+      # overrides, which Elixir projects get from ELP's bundled copy, and
+      # the eqwalizer_specs and eqwalizer_types modules in lib, the Elixir
+      # overrides, would clash with theirs.
+      erlc_paths: [],
       start_permanent: false,
       deps: [],
       description:

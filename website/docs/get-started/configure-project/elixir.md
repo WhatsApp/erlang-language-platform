@@ -82,6 +82,6 @@ specific; and functions such as `Enum.reduce/3` and `update_in/2` return
 their accumulator or container as `any()` or `map()`, so a struct threaded
 through them loses its type. The `eqwalizer_support` dependency redefines
 those types as `dynamic()` and gives those functions type variables, the way
-ELP's own overrides for `lists` and `maps` do, in the `eqwalizer_specs` and
-`eqwalizer_types` modules under its `lib`, which ELP layers over its bundled
-copy of the Erlang overrides.
+ELP's own overrides for `lists` and `maps` do, in its `:eqwalizer_specs` and
+`:eqwalizer_types` modules, which ELP layers over its bundled copy of the
+OTP overrides.
