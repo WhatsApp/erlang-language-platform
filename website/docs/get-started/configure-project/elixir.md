@@ -25,7 +25,7 @@ defp deps do
 end
 ```
 
-Compile the project, then describe it to ELP:
+It brings three mix tasks. Compile the project, then describe it to ELP:
 
 ```
 mix deps.get
@@ -42,18 +42,27 @@ directory and a `modules` map naming the modules ELP cannot index by itself:
 those compiled from `.ex` files, with the file each came from, and those with
 no source at all, with their BEAM file.
 
-Then run ELP in the project:
+Then run ELP in the project, by hand or through the other two tasks, which
+compile the project first and pass any further arguments on, such as
+`--bail-on-error` for a failing status on a type error; they need `elp` on
+`PATH`, or named by the `ELP` environment variable:
 
 ```
-elp eqwalize-all
+mix elp.eqwalize_all
+mix elp.eqwalize Hello.World
 ```
+
+Modules are named as in Elixir, with `:lists` for an Erlang module. ELP
+checks by file, so a module defined in a file with others is checked along
+with them.
 
 ELP's service reads each Elixir module from its BEAM file through the Elixir
 that compiled the project, which the build info lists as a dependency.
 
 Rerun `mix elp.build_info` after adding modules or dependencies, and
 `mix compile` after editing a module: ELP checks the build output, not the
-source.
+source. The checking tasks compile every time but leave the description
+alone, since it may be under version control.
 
 ## What is checked
 
