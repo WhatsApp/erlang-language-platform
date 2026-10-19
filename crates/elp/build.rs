@@ -42,9 +42,11 @@ fn main() {
     let eqwalizer_dir = env::var(EQWALIZER_DIR);
     let cargo_manifest_dir = env::var(CARGO_MANIFEST_DIR)
         .expect("CARGO_MANIFEST_DIR should be set automatically by cargo");
+    // The `src` directory of the app alone: the app directory also holds its
+    // mix and rebar3 files and, once built, their output.
     let eqwalizer_support_dir = match eqwalizer_dir {
-        Ok(eqwalizer_support_dir) => format!("{eqwalizer_support_dir}/../eqwalizer_support"),
-        Err(_) => format!("{cargo_manifest_dir}/../../eqwalizer/eqwalizer_support"),
+        Ok(eqwalizer_support_dir) => format!("{eqwalizer_support_dir}/../eqwalizer_support/src"),
+        Err(_) => format!("{cargo_manifest_dir}/../../eqwalizer/eqwalizer_support/src"),
     };
 
     println!("cargo:rerun-if-changed=build.rs");

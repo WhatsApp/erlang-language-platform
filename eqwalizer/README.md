@@ -33,6 +33,8 @@ report those types as unknown. If you use such tools, add the library to your de
 ]}.
 ```
 
+An Elixir project adds the library as a mix dependency instead, which also brings the task describing the project to ELP: see [Elixir projects](https://whatsapp.github.io/erlang-language-platform/docs/get-started/configure-project/elixir/).
+
 ## Using it with non-rebar projects
 
 1. [Install ELP](https://whatsapp.github.io/erlang-language-platform/docs/get-started/install/).

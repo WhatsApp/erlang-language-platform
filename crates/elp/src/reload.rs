@@ -35,7 +35,8 @@ use vfs::FileId;
 use crate::document::Document;
 use crate::line_endings::LineEndings;
 
-static EQWALIZER_SUPPORT: Dir = include_dir!("$EQWALIZER_SUPPORT_DIR");
+/// The `src` directory of the `eqwalizer_support` app bundled with ELP.
+static EQWALIZER_SUPPORT_SRC: Dir = include_dir!("$EQWALIZER_SUPPORT_DIR");
 
 #[derive(Debug)]
 pub struct ProjectFolders {
@@ -177,20 +178,19 @@ pub(crate) fn bundled_files(
         eqwalizer_support::bundled_dir(&project_apps.projects[idx as usize].otp)
     });
     dir.into_iter().flat_map(|dir| {
-        EQWALIZER_SUPPORT
-            .get_dir("src")
-            .into_iter()
-            .flat_map(Dir::files)
-            .filter_map(move |file| {
-                let Some(path) = file.path().to_str() else {
-                    log::warn!(
-                        "Skipping bundled file with a non-UTF-8 path: {:?}",
-                        file.path()
-                    );
-                    return None;
-                };
-                Some((VfsPath::from(dir.join(path)), file.contents().to_vec()))
-            })
+        EQWALIZER_SUPPORT_SRC.files().filter_map(move |file| {
+            let Some(path) = file.path().to_str() else {
+                log::warn!(
+                    "Skipping bundled file with a non-UTF-8 path: {:?}",
+                    file.path()
+                );
+                return None;
+            };
+            Some((
+                VfsPath::from(dir.join("src").join(path)),
+                file.contents().to_vec(),
+            ))
+        })
     })
 }
 

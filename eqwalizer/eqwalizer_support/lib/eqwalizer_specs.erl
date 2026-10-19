@@ -1,6 +1,13 @@
 %% Spec overrides for the Elixir standard library, for better type-checking
 %% with eqWAlizer.
 %%
+%% ELP alone reads this module: it lives outside `src`, so neither rebar3 nor
+%% mix compiles it, and the Erlang overrides in `src/eqwalizer_specs.erl`,
+%% along with tools such as Dialyzer, never see the Elixir types referred to
+%% here. `mix elp.build_info` lists `lib` as this library's only source
+%% directory, and ELP layers these entries over its bundled copy of the
+%% Erlang overrides, entry by entry.
+%%
 %% Elixir specs give functions that return their accumulator or container the
 %% result type `acc()` or `map()`, so a struct threaded through `Enum.reduce`
 %% or `update_in` comes out as `term()` and fits nowhere. These specs use type
@@ -8,10 +15,6 @@
 %% type is the output type, and `dynamic()` for the elements and values Elixir
 %% declares as `any()`. Only functions whose Elixir spec causes such noise are
 %% overridden; a function without a spec is dynamically typed already.
-%%
-%% Every function is named 'Module:function', like ELP's bundled
-%% eqwalizer_specs, which these are layered over. `mix elp.build_info` copies
-%% this module into the project's build directory and lists it as a dependency.
 -module(eqwalizer_specs).
 -compile(warn_missing_spec).
 -compile([export_all, nowarn_export_all]).

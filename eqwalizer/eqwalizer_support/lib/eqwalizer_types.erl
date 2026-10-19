@@ -1,9 +1,6 @@
 %% Type overrides for the Elixir standard library, for better type-checking
-%% with eqWAlizer. See eqwalizer_specs.erl for the rationale.
-%%
-%% Every type is named 'Module:type', like ELP's bundled eqwalizer_types,
-%% which these are layered over. `mix elp.build_info` copies this module into
-%% the project's build directory and lists it as a dependency.
+%% with eqWAlizer. See eqwalizer_specs.erl, next to this file, for how ELP
+%% alone reads it and layers it over the bundled Erlang overrides.
 -module(eqwalizer_types).
 
 -export_type([
