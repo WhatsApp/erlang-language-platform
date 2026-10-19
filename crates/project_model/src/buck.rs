@@ -755,12 +755,19 @@ impl<'de> Deserialize<'de> for BuckTargetType {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        match s.as_str() {
-            "prelude//rules.bzl:erlang_app" => Ok(BuckTargetType::App),
-            "prelude//rules.bzl:erlang_test" => Ok(BuckTargetType::Test),
-            other => {
-                log::info!("Ignoring buck target type: {}", other);
-                Ok(BuckTargetType::Other(other.to_string()))
+        // The rule type is prefixed with the prelude file that defines the rule, which
+        // prelude refactors move around, so match on the rule name only.
+        let name = s.rsplit_once(':').map_or(s.as_str(), |(_, name)| name);
+        let target_type = match name {
+            "erlang_app" => Some(BuckTargetType::App),
+            "erlang_test" => Some(BuckTargetType::Test),
+            _ => None,
+        };
+        match target_type {
+            Some(target_type) => Ok(target_type),
+            None => {
+                log::info!("Ignoring buck target type: {}", s);
+                Ok(BuckTargetType::Other(s))
             }
         }
     }
