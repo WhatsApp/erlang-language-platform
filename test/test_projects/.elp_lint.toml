@@ -1,0 +1,2 @@
+# Keeps ELP from picking up a .elp_lint.toml from a parent directory,
+# so the test projects run with the default lint config.
