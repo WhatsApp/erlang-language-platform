@@ -17,7 +17,6 @@ rowan.workspace = true
 smol_str.workspace = true
 tracing.workspace = true
 tree-sitter.workspace = true
-tree-sitter-erlang.workspace = true
 
 [dev-dependencies]
 expect-test.workspace = true
