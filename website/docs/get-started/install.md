@@ -6,7 +6,8 @@ sidebar_position: 2
 
 The easiest way to install ELP on Mac is [using Homebrew](#using-homebrew-mac).
 For other platforms, you can install [from binary](#from-binary). It is also
-possible to compile it [from source](#from-source).
+possible to compile it [from source](#from-source). To install ELP in a GitHub
+Actions workflow, see [GitHub Actions](github-actions.md).
 
 ## Using Homebrew (Mac)
 
