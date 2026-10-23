@@ -415,7 +415,7 @@ fn compute_expr_scopes(
     match &(FoldBody {
         body,
         macros: MacroStrategy::ExpandButIncludeMacroCall,
-        parens: ParenStrategy::InvisibleParens,
+        parens: ParenStrategy::VisibleParens,
     })[expr]
     {
         crate::Expr::Missing => {}
@@ -1033,6 +1033,17 @@ mod tests {
               ~.
             ",
             &["Bar", "Baz"],
+        );
+    }
+
+    #[test]
+    fn test_parenthesised_expr_scope() {
+        do_check(
+            r"
+            f(Bar) ->
+              (~).
+            ",
+            &["Bar"],
         );
     }
 
