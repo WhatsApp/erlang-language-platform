@@ -67,7 +67,7 @@
     "dompurify": "^3.4.16",
     "prismjs": ">=0.30.0",
     "postcss": "^8.5.18",
-    "body-parser": "^2.3.0",
+    "body-parser": "^2.4.0",
     "@babel/core": "^7.29.6",
     "@babel/helpers": ">=7.26.10",
     "@babel/runtime": ">=7.26.10",
