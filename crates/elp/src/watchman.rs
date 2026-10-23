@@ -44,11 +44,11 @@ struct WatchmanQueryResult {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct WatchmanFile {
-    name: String,
-    exists: bool,
+pub(crate) struct WatchmanFile {
+    pub(crate) name: String,
+    pub(crate) exists: bool,
     #[serde(default)]
-    new: bool,
+    pub(crate) new: bool,
 }
 
 impl Watchman {
@@ -150,32 +150,7 @@ impl Watchman {
             .iter()
             .any(|f| is_elp_lint_config_file(&f.name));
 
-        let vfs = &mut loaded.vfs;
-        for file in &result.files {
-            // .elp_lint.toml itself is not tracked in VFS; the daemon's
-            // reload path reads it via read_lint_config_file directly.
-            if is_elp_lint_config_file(&file.name) {
-                continue;
-            }
-            let path = self.watch.join(&file.name);
-            let vfs_path = VfsPath::from(AbsPathBuf::assert(
-                Utf8PathBuf::from_path_buf(path.clone()).expect("UTF8 conversion failed"),
-            ));
-            if !file.exists {
-                vfs.set_file_contents(vfs_path, None);
-            } else {
-                match fs::read(&path) {
-                    Ok(contents) => {
-                        vfs.set_file_contents(vfs_path, Some(contents));
-                    }
-                    Err(err) => {
-                        log::warn!("Cannot read file {path:?}: {err}, treating as deleted");
-                        vfs.set_file_contents(vfs_path, None);
-                    }
-                }
-            }
-        }
-        loaded.apply_vfs_changes();
+        apply_changes(&self.watch, &result.files, loaded);
         self.clock = result.clock;
 
         if lint_config_changed {
@@ -220,6 +195,36 @@ impl Watchman {
         let output = child.wait_with_output()?;
         Ok(serde_json::from_slice(&output.stdout)?)
     }
+}
+
+/// Applies the source files in a watchman result, named relative to `watch`.
+pub(crate) fn apply_changes(watch: &Path, files: &[WatchmanFile], loaded: &mut LoadResult) {
+    let vfs = &mut loaded.vfs;
+    for file in files {
+        // .elp_lint.toml itself is not tracked in VFS; the daemon's
+        // reload path reads it via read_lint_config_file directly.
+        if is_elp_lint_config_file(&file.name) {
+            continue;
+        }
+        let path = watch.join(&file.name);
+        let vfs_path = VfsPath::from(AbsPathBuf::assert(
+            Utf8PathBuf::from_path_buf(path.clone()).expect("UTF8 conversion failed"),
+        ));
+        if !file.exists {
+            vfs.set_file_contents(vfs_path, None);
+        } else {
+            match fs::read(&path) {
+                Ok(contents) => {
+                    vfs.set_file_contents(vfs_path, Some(contents));
+                }
+                Err(err) => {
+                    log::warn!("Cannot read file {path:?}: {err}, treating as deleted");
+                    vfs.set_file_contents(vfs_path, None);
+                }
+            }
+        }
+    }
+    loaded.apply_vfs_changes();
 }
 
 pub enum UpdateResult {
