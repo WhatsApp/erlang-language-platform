@@ -11,7 +11,6 @@
 use std::fmt;
 use std::panic::AssertUnwindSafe;
 use std::panic::RefUnwindSafe;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use elp_base_db::AbsPathBuf;
@@ -54,7 +53,6 @@ use hir::db::DefDatabase;
 use hir::db::InternDatabase;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
-use parking_lot::RwLockUpgradableReadGuard;
 use paths::Utf8PathBuf;
 use salsa::Database;
 use serde::Deserialize;
@@ -108,8 +106,16 @@ pub type FxIndexMap<K, V> =
 
 type EqwalizerProgressReporterBox =
     Arc<AssertUnwindSafe<Mutex<Option<Box<dyn EqwalizerProgressReporter>>>>>;
-type ErlangServices = Arc<AssertUnwindSafe<RwLock<FxHashMap<ProjectId, Connection>>>>;
+type ErlangServices = Arc<AssertUnwindSafe<RwLock<FxHashMap<ErlangServiceKey, Connection>>>>;
 type IpcHandles = Arc<AssertUnwindSafe<RwLock<FxHashMap<String, Arc<Mutex<IpcHandle>>>>>>;
+
+/// Selects a project's erlang_service VM. The projects with an empty code path
+/// share one; every other project has its own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+enum ErlangServiceKey {
+    EmptyCodePath,
+    Project(ProjectId),
+}
 
 /// Clears all process-backed sidecars owned by a database when dropped.
 #[must_use = "the guard must be held for the lifetime of the loaded database"]
@@ -293,25 +299,26 @@ impl RootDatabase {
         self.erlang_services.write().clear();
     }
 
+    /// A project's own VM keeps the code path it started with, so changing a
+    /// project's code path needs `clear_erlang_services`, as a reload does.
     pub fn erlang_service_for(&self, project_id: ProjectId) -> Connection {
-        let read = self.erlang_services.upgradable_read();
-        if let Some(conn) = read.get(&project_id).cloned() {
-            return conn;
+        let project_data = self.project_data(project_id).project_data(self);
+        let code_path = &project_data.deps_ebins;
+        let key = if code_path.is_empty() {
+            ErlangServiceKey::EmptyCodePath
+        } else {
+            ErlangServiceKey::Project(project_id)
+        };
+        if let Some(conn) = self.erlang_services.read().get(&key) {
+            return conn.clone();
         }
-        let mut write = RwLockUpgradableReadGuard::upgrade(read);
-        write
-            .entry(project_id)
+        self.erlang_services
+            .write()
+            .entry(key)
             .or_insert_with(|| {
                 let conn = Connection::start().expect("failed to establish connection");
-                let project_data = self.project_data(project_id).project_data(self);
-                let path: Vec<PathBuf> = project_data
-                    .deps_ebins
-                    .iter()
-                    .map(|path| path.clone().into())
-                    .collect();
-                if !path.is_empty() {
-                    // For a test fixture this should never happen
-                    conn.add_code_path(path);
+                if !code_path.is_empty() {
+                    conn.add_code_path(code_path.iter().map(|path| path.clone().into()).collect());
                 }
                 conn
             })
@@ -319,7 +326,10 @@ impl RootDatabase {
     }
 
     pub fn update_erlang_service_paths(&self) {
-        for (&project_id, connection) in self.erlang_services.read().iter() {
+        for (key, connection) in self.erlang_services.read().iter() {
+            let ErlangServiceKey::Project(project_id) = *key else {
+                continue;
+            };
             let project_data = self.project_data(project_id).project_data(self);
             let paths = project_data
                 .deps_ebins
@@ -528,16 +538,22 @@ impl TypedSemantic for RootDatabase {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use elp_base_db::AppDataId;
     use elp_base_db::AppDataIndex;
     use elp_base_db::FileId;
+    use elp_base_db::ProjectData;
+    use elp_base_db::ProjectId;
     use elp_base_db::RootQueryDb;
     use elp_base_db::SourceDatabase;
     use elp_base_db::assert_eq_expected;
     use elp_base_db::fixture::WithFixture;
 
     use super::text_edit::TextRange;
+    use crate::ErlangServiceKey;
     use crate::RootDatabase;
+    use crate::erl_ast::ErlAstDatabase;
 
     /// A file compiled into two Buck targets must keep both owners: `map` holds
     /// an arbitrary one of them, so dropping the rest is unrecoverable.
@@ -578,6 +594,73 @@ mod tests {
         owners.sort();
 
         assert_eq_expected!(vec![1, 2], owners);
+    }
+
+    fn vm_keys(db: &RootDatabase) -> Vec<ErlangServiceKey> {
+        let mut keys: Vec<_> = db.erlang_services.read().keys().copied().collect();
+        keys.sort();
+        keys
+    }
+
+    #[test]
+    fn only_projects_with_an_empty_code_path_share_a_vm() {
+        let (mut db, _) = RootDatabase::with_fixture(
+            r#"
+//- /src/main.erl
+-module(main).
+"#,
+        );
+        let base = db.project_data(ProjectId(0)).project_data(&db);
+        let ebin = base.root_dir.join("a/ebin");
+        for (id, deps_ebins) in [
+            (10, vec![]),
+            (11, vec![]),
+            (12, vec![ebin.clone()]),
+            (13, vec![ebin.clone()]),
+        ] {
+            let project_data = ProjectData {
+                deps_ebins,
+                ..(*base).clone()
+            };
+            db.set_project_data(ProjectId(id), Arc::new(project_data));
+            db.erlang_service_for(ProjectId(id));
+        }
+
+        let expected_keys = vec![
+            ErlangServiceKey::EmptyCodePath,
+            ErlangServiceKey::Project(ProjectId(12)),
+            ErlangServiceKey::Project(ProjectId(13)),
+        ];
+        assert_eq_expected!(expected_keys, vm_keys(&db));
+    }
+
+    #[test]
+    fn module_ast_reruns_on_a_vm_for_a_changed_code_path() {
+        let (mut db, fixture) = RootDatabase::with_fixture(
+            r#"
+//- /src/main.erl
+-module(main).
+"#,
+        );
+        let file_id = fixture.files[0];
+        let project_id = db
+            .file_app_data(file_id)
+            .expect("the file should have an app")
+            .project_id;
+        let base = db.project_data(project_id).project_data(&db);
+        db.module_ast(file_id);
+        let project_data = ProjectData {
+            deps_ebins: vec![base.root_dir.join("a/ebin")],
+            ..(*base).clone()
+        };
+        db.set_project_data(project_id, Arc::new(project_data));
+        db.module_ast(file_id);
+
+        let expected_keys = vec![
+            ErlangServiceKey::EmptyCodePath,
+            ErlangServiceKey::Project(project_id),
+        ];
+        assert_eq_expected!(expected_keys, vm_keys(&db));
     }
 
     #[test]
