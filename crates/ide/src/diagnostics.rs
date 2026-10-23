@@ -187,7 +187,6 @@ mod unresolved_include;
 mod unresolved_macro;
 mod unspecific_include;
 mod unused_exported_function;
-mod unused_function_args;
 mod unused_include;
 mod unused_macro;
 mod unused_record_field;
@@ -2304,7 +2303,6 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &trivial_match::LINTER,
     &redundant_assignment::LINTER,
     &map_find_to_syntax::LINTER,
-    &unused_function_args::LINTER,
     &effect_free_statement::LINTER,
     &head_mismatch::LINTER,
     &dependent_header::LINTER,

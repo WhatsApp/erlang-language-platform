@@ -256,8 +256,7 @@ mod tests {
     fn check_fix(fixture_before: &str, fixture_after: Expect) {
         let config = DiagnosticsConfig::default()
             .set_experimental(true)
-            .disable(DiagnosticCode::UndefinedFunction)
-            .disable(DiagnosticCode::UnusedFunctionArg);
+            .disable(DiagnosticCode::UndefinedFunction);
         tests::check_fix_with_config(config, fixture_before, fixture_after)
     }
 

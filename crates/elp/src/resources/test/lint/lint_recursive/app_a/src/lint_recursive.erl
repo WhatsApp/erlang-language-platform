@@ -9,11 +9,11 @@ do_something() ->
 %% We want to check that the "no effect" statements in test_foo/1 and
 %% test_foo2/1 are removed, but not the ones in clean_mocks/0 and
 %% something/0.
-test_foo(_Config) ->
+test_foo(Config) ->
     do_something(),
     clean_mocks().
 
-test_foo2(_Config) ->
+test_foo2(Config) ->
     do_something(),
     clean_mocks().
 

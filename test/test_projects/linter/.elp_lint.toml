@@ -10,9 +10,6 @@ enabled = false
 [linters.unreachable_test]
 enabled = false
 
-[linters.unused_function_arg]
-enabled = true
-
 [linters.undefined_function]
 enabled = false
 
@@ -32,9 +29,6 @@ enabled = false
 enabled = false
 
 [linters.L1230]
-enabled = false
-
-[linters.L1268]
 enabled = false
 
 [linters.L1309]

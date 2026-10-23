@@ -65,6 +65,8 @@ pub enum DiagnosticCode {
     UnreachableTest,
     #[strum(props(code = "W0009"))]
     RedundantAssignment,
+    // Retired: no linter reports it. Kept so that configurations and
+    // suppressions naming it still parse.
     #[strum(props(code = "W0010"))]
     UnusedFunctionArg,
     #[strum(props(code = "W0011"))]

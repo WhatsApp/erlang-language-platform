@@ -58,26 +58,6 @@ stdout |
 stderr | ---------------------------------------------
 stderr |
 stderr | New filtered diagnostics
-stderr |   lint_recursive: 2
-stdout |       17:11-17:17::[Warning] [W0010] this variable is unused
-stdout |       14:5-14:11::[Warning] [W0006] this statement has no effect
-stdout | ---------------------------------------------
-stdout |
-stdout | Applying fix in module 'lint_recursive' for
-stdout |       17:11-17:17::[Warning] [W0010] this variable is unused
-stdout | @@ -14,7 +14,7 @@
-stdout |      Config,
-stdout |      clean_mocks().
-stdout |  
-stdout | -test_foo2(Config) ->
-stdout | +test_foo2(_Config) ->
-stdout |      do_something(),
-stdout |      clean_mocks().
-stdout |  
-stdout |
-stderr | ---------------------------------------------
-stderr |
-stderr | New filtered diagnostics
 stderr |   lint_recursive: 1
 stdout |       14:5-14:11::[Warning] [W0006] this statement has no effect
 stdout | ---------------------------------------------
@@ -91,24 +71,5 @@ stdout |      do_something(),
 stdout | -    Config,
 stdout |      clean_mocks().
 stdout |  
-stdout |  test_foo2(_Config) ->
-stdout |
-stderr | ---------------------------------------------
-stderr |
-stderr | New filtered diagnostics
-stderr |   lint_recursive: 1
-stdout |       12:10-12:16::[Warning] [W0010] this variable is unused
-stdout | ---------------------------------------------
-stdout |
-stdout | Applying fix in module 'lint_recursive' for
-stdout |       12:10-12:16::[Warning] [W0010] this variable is unused
-stdout | @@ -9,7 +9,7 @@
-stdout |  %% We want to check that the "no effect" statements in test_foo/1 and
-stdout |  %% test_foo2/1 are removed, but not the ones in clean_mocks/0 and
-stdout |  %% something/0.
-stdout | -test_foo(Config) ->
-stdout | +test_foo(_Config) ->
-stdout |      do_something(),
-stdout |      clean_mocks().
-stdout |  
+stdout |  test_foo2(Config) ->
 stdout |
