@@ -732,4 +732,21 @@ mod tests {
            "#]],
         )
     }
+
+    #[test]
+    fn no_panic_when_match_is_in_included_header() {
+        check_diagnostics(
+            r#"
+//- /include/assert.hrl include_path:/include
+-define(ASSERT_NOT_EMPTY(List), case length(List) of 0 -> error; _ -> ok end).
+
+//- /src/m.erl
+-module(m).
+-include("assert.hrl").
+f(L) -> ?ASSERT_NOT_EMPTY(L).
+%%      ^^^^^^^^^^^^^^^^^^^^ weak: W0065: Use pattern matching on the list directly instead of checking length.
+%%                         | 💡 <suppression>
+           "#,
+        )
+    }
 }
