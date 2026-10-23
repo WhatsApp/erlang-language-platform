@@ -16,7 +16,7 @@ warnings_as_errors = true
 [linters.binary_string_to_sigil]
 enabled = true
 
-[linters.W0010]
+[linters.W0006]
 enabled = false
 
 [linters.no_garbage_collect]
@@ -38,7 +38,7 @@ its default behaviour overridden via a dedicated `[linters.<linter>]` section.
 
 The `<linter>` key can be either:
 
-- the diagnostic **code** (e.g. `W0010`, `W0051`), or
+- the diagnostic **code** (e.g. `W0006`, `W0051`), or
 - the diagnostic **label** (e.g. `binary_string_to_sigil`, `no_garbage_collect`).
 
 The full list of available diagnostics — together with their codes and labels —
@@ -54,7 +54,7 @@ Use the `enabled` key to turn a linter on or off:
 enabled = true
 
 # Disable a diagnostic that is enabled by default
-[linters.W0010]
+[linters.W0006]
 enabled = false
 ```
 
