@@ -73,6 +73,7 @@
 //! //- /include/foo.hrl include_path:/include app:app_a
 //! -define(FOO,3).
 //! //- /src/foo.erl app:app_b
+//! //- /lib/foo.ex app:app_b modules:[Elixir.Foo,Elixir.Foo.Bar]
 //! -module(foo).
 //! -include("foo.hrl").
 //! -include("bar.hrl").
@@ -351,6 +352,7 @@ impl FixtureWithProjectMeta {
         let mut distributed_deps = Vec::new();
         let mut src_app = None;
         let mut also_apps = Vec::new();
+        let mut modules = Vec::new();
 
         for component in components[1..].iter() {
             let (key, value) = component
@@ -400,6 +402,13 @@ impl FixtureWithProjectMeta {
                         }
                     }
                 }
+                "modules" => {
+                    // The modules the file defines, when they cannot be derived
+                    // from its name, as "[A,B]": see `ProjectAppData::module_map`.
+                    modules.extend(parse_comma_list(
+                        value.trim_start_matches('[').trim_end_matches(']'),
+                    ));
+                }
                 _ => panic!("bad component: {component:?}"),
             }
         }
@@ -414,16 +423,18 @@ impl FixtureWithProjectMeta {
             let abs_path = AbsPathBuf::assert(Utf8PathBuf::from(path.clone()));
             let mut src_dirs = vec![];
             if let Some(ext) = abs_path.extension()
-                && ext == "erl"
+                && (ext == "erl" || !modules.is_empty())
                 && let Some(parent) = abs_path.parent()
             {
                 let path = parent.to_path_buf();
                 src_dirs.push(path)
             }
-            (
-                None,
-                ProjectAppData::fixture_app_data(app_name, dir, include_dirs, src_dirs, extra_dirs),
-            )
+            let mut app_data =
+                ProjectAppData::fixture_app_data(app_name, dir, include_dirs, src_dirs, extra_dirs);
+            if !modules.is_empty() {
+                app_data.module_map.insert(abs_path, modules);
+            }
+            (None, app_data)
         };
 
         if let Some(target) = buck_target {
@@ -1410,6 +1421,7 @@ bar() -> ok.
                 applicable_files: None,
                 is_test_target: None,
                 is_buck_generated: None,
+                module_map: {},
             }"#]]
         .assert_eq(format!("{:#?}", meta0.app_data).as_str());
     }

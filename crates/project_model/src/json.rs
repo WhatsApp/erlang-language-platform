@@ -10,6 +10,7 @@
 
 extern crate serde;
 
+use std::collections::BTreeMap;
 use std::fs;
 
 use anyhow::Context;
@@ -55,6 +56,10 @@ pub struct JsonProjectAppData {
     pub include_dirs: Vec<String>,
     #[serde(default)]
     pub macros: FxHashMap<String, String>,
+    /// The modules whose names cannot be derived from their file names, each
+    /// with the file defining it, relative to `dir`: Elixir modules, say.
+    #[serde(default, skip_serializing_if = "FxHashMap::is_empty")]
+    pub modules: FxHashMap<String, String>,
 }
 
 fn default_src_dirs() -> Vec<String> {
@@ -89,6 +94,14 @@ impl JsonProjectAppData {
             true => AppType::Dep,
             false => AppType::App,
         };
+        let mut module_map: BTreeMap<AbsPathBuf, Vec<String>> = BTreeMap::new();
+        for (module, file) in &self.modules {
+            module_map
+                .entry(dir.join(file))
+                .or_default()
+                .push(module.clone());
+        }
+        module_map.values_mut().for_each(|modules| modules.sort());
         Ok(ProjectAppData {
             name: AppName(self.name.clone()),
             buck_target_name: None,
@@ -105,6 +118,7 @@ impl JsonProjectAppData {
             applicable_files: None,
             is_test_target: None,
             is_buck_generated: None,
+            module_map,
         })
     }
 
@@ -131,6 +145,16 @@ impl JsonProjectAppData {
                 .map(|p| abs_path_buf_to_relative_string(p, &project_app_data.dir))
                 .collect(),
             macros: project_app_data.macros.iter().map(convert_macro).collect(),
+            modules: project_app_data
+                .module_map
+                .iter()
+                .flat_map(|(file, modules)| {
+                    let file = abs_path_buf_to_relative_string(file, &project_app_data.dir);
+                    modules
+                        .iter()
+                        .map(move |module| (module.clone(), file.clone()))
+                })
+                .collect(),
         }
     }
 }

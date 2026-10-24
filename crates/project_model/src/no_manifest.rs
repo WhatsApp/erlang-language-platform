@@ -72,6 +72,7 @@ impl NoManifestConfig {
             applicable_files: None,
             is_test_target: None,
             is_buck_generated: None,
+            module_map: Default::default(),
         };
         data.include_path.extend(data.include_dirs());
         if let Some(path) = self.root_path.parent() {

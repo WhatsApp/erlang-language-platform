@@ -12,7 +12,15 @@
 %% Placeholder module name bound to `?MODULE` when a header is analysed on its own.
 -define(HEADER_MODULE, 'ELP_HEADER').
 
-run(Id, [FileName, FileId, Options0, FileText, PostProcess, Deterministic]) ->
+run(Id, [_FileName, _FileId, Options | _] = Params) ->
+    %% A request naming the application's `ebin` is for a module the service
+    %% reads from the build output instead of parsing, see erlang_service_beam.
+    case proplists:is_defined(ebin, Options) of
+        true -> erlang_service_beam:run(Id, Params);
+        false -> run_erlang(Id, Params)
+    end.
+
+run_erlang(Id, [FileName, FileId, Options0, FileText, PostProcess, Deterministic]) ->
     Options = parse_options(FileName, Options0, Deterministic),
     case extract_forms(Id, FileName, FileId, FileText, Options) of
         {ok, Forms0} ->

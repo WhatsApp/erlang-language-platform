@@ -13,6 +13,9 @@ permissions:
 
 env:
   EDB_VERSION: 1.0.0
+  # Compiles the Elixir fixtures of the tests; its precompiled builds cover
+  # every OTP release in the matrix.
+  ELIXIR_VERSION: 1.20.4
 
 jobs:
   ci:
@@ -131,6 +134,7 @@ jobs:
           os: ${{ matrix.os }}
           otp-version: ${{ matrix.otp-version }}
           brew-otp-version: ${{ matrix.brew-otp-version}}
+          elixir-version: ${{ env.ELIXIR_VERSION }}
       - name: Assemble eqwalizer.jar (No Windows)
         if: matrix.os != 'windows'
         working-directory: eqwalizer/eqwalizer

@@ -124,6 +124,11 @@ pub enum CompileOption {
     Macros(Vec<eetf::Term>),
     ParseTransforms(Vec<eetf::Term>),
     ElpMetadata(eetf::Term),
+    /// The application's `ebin` directory, for a module the service reads from
+    /// the build output instead of parsing, see `FileKind::ForeignModule`.
+    Ebin(PathBuf),
+    /// The module wanted from a file that defines several.
+    Module(String),
 }
 
 impl From<CompileOption> for eetf::Term {
@@ -141,6 +146,15 @@ impl From<CompileOption> for eetf::Term {
             CompileOption::ElpMetadata(elp_metadata) => {
                 let label = eetf::Atom::from("elp_metadata");
                 eetf::Tuple::from(vec![label.into(), elp_metadata]).into()
+            }
+            CompileOption::Ebin(ebin) => {
+                let label = eetf::Atom::from("ebin");
+                eetf::Tuple::from(vec![label.into(), path_into_list(ebin).into()]).into()
+            }
+            CompileOption::Module(module) => {
+                let label = eetf::Atom::from("module");
+                let module = eetf::Atom::from(module.as_str());
+                eetf::Tuple::from(vec![label.into(), module.into()]).into()
             }
         }
     }
@@ -877,6 +891,7 @@ fn path_into_list(path: PathBuf) -> eetf::ByteList {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::process::Command;
     use std::str;
     use std::sync::LazyLock;
 
@@ -1051,6 +1066,189 @@ mod tests {
         expect_module(
             "doc_attributes_stripped.erl".into(),
             fixture_file!("doc_attributes_stripped.expected"),
+        );
+    }
+
+    /// The Elixir fixture compiled into a temporary `ebin`, as mix compiles
+    /// a project, and the `ebin` of the Elixir that compiled it, which holds
+    /// the debug-info backend `beam_lib` needs. ELP adds that `ebin` to the
+    /// service's code path as one of the project's dependencies.
+    struct ElixirFixture {
+        _dir: tempfile::TempDir,
+        ebin: PathBuf,
+        elixir_ebin: PathBuf,
+        source: PathBuf,
+        text: Arc<str>,
+    }
+
+    static ELIXIR_FIXTURE: LazyLock<ElixirFixture> = LazyLock::new(|| {
+        let source = get_fixtures_dir().join("hello.ex");
+        let text = Arc::from(fs::read_to_string(&source).expect("fixture should be readable"));
+        let dir = tempfile::tempdir().expect("temporary directory");
+        let status = Command::new("elixirc")
+            .arg("-o")
+            .arg(dir.path())
+            .arg(source.as_os_str())
+            .status()
+            .expect("elixirc should be on PATH: these tests need Elixir installed");
+        assert!(status.success(), "elixirc failed on {source}");
+        let output = Command::new("elixir")
+            .args(["-e", "IO.puts(Path.join(:code.lib_dir(:elixir), \"ebin\"))"])
+            .output()
+            .expect("elixir should be on PATH: these tests need Elixir installed");
+        assert!(
+            output.status.success(),
+            "elixir failed to report its lib dir"
+        );
+        let elixir_ebin = PathBuf::from(String::from_utf8(output.stdout).unwrap().trim());
+        ElixirFixture {
+            ebin: dir.path().to_path_buf(),
+            _dir: dir,
+            elixir_ebin,
+            source: source.into(),
+            text,
+        }
+    });
+
+    static ELIXIR_CONN: LazyLock<Connection> = LazyLock::new(|| {
+        let conn = Connection::start().unwrap();
+        conn.add_code_path(vec![ELIXIR_FIXTURE.elixir_ebin.clone()]);
+        conn
+    });
+
+    fn elixir_module(path: PathBuf, options: Vec<CompileOption>) -> ParseResult {
+        let request = ParseRequest {
+            options,
+            file_id: FileId::from_raw(0),
+            path,
+            file_text: ELIXIR_FIXTURE.text.clone(),
+            format: Format::Text,
+        };
+        ELIXIR_CONN.request_parse(request, || (), &|_, _, _| None)
+    }
+
+    /// The forms the service served, printed without the whitespace the
+    /// pretty-printer wraps long forms with, so that a form can be matched
+    /// as one string.
+    fn elixir_module_text(path: PathBuf, options: Vec<CompileOption>) -> String {
+        let response = elixir_module(path, options);
+        assert!(response.errors.is_empty(), "{:#?}", response.errors);
+        str::from_utf8(&response.ast)
+            .unwrap()
+            .split_whitespace()
+            .collect()
+    }
+
+    fn elixir_options(module: &str) -> Vec<CompileOption> {
+        vec![
+            CompileOption::Ebin(ELIXIR_FIXTURE.ebin.clone()),
+            CompileOption::Module(module.to_string()),
+        ]
+    }
+
+    fn offset_of(needle: &str) -> usize {
+        ELIXIR_FIXTURE
+            .text
+            .find(needle)
+            .unwrap_or_else(|| panic!("{needle:?} should be in the fixture"))
+    }
+
+    #[test]
+    fn elixir_module_from_its_beam() {
+        let ast = elixir_module_text(
+            ELIXIR_FIXTURE.source.clone(),
+            elixir_options("Elixir.Hello"),
+        );
+        assert!(ast.contains("module,'Elixir.Hello'}"), "{ast}");
+        // A function starts at its name, as a one-byte range.
+        let add = offset_of("add(a, b)");
+        let expected = format!("{{function,{{{add},{}}},add,2,", add + 1);
+        assert!(ast.contains(&expected), "{ast}");
+        // A column after multibyte characters is a byte offset.
+        let var = offset_of("a}");
+        let expected = format!("{{var,{{{var},{}}},'_a@1'}}", var + 1);
+        assert!(ast.contains(&expected), "{ast}");
+        // Annotations inside specs are translated too.
+        let greet = offset_of("greet(String.t())");
+        let expected = format!("{{type,{{{greet},{}}},'fun',", greet + 1);
+        assert!(ast.contains(&expected), "{ast}");
+    }
+
+    #[test]
+    fn elixir_generated_functions_dropped_specs_and_exports_kept() {
+        let ast = elixir_module_text(
+            ELIXIR_FIXTURE.source.clone(),
+            elixir_options("Elixir.Hello"),
+        );
+        assert!(!ast.contains("'__info__',1,"), "{ast}");
+        assert!(!ast.contains("'__struct__',0,"), "{ast}");
+        assert!(!ast.contains("'__struct__',1,"), "{ast}");
+        assert!(ast.contains("spec,{{'__info__',1}"), "{ast}");
+        assert!(ast.contains("{'__struct__',0}"), "{ast}");
+    }
+
+    #[test]
+    fn elixir_metadata_inserted() {
+        let mut options = elixir_options("Elixir.Hello");
+        let metadata = eetf::List::from(vec![
+            eetf::Tuple::from(vec![
+                eetf::Atom::from("eqwalizer_fixmes").into(),
+                eetf::List::nil().into(),
+            ])
+            .into(),
+        ]);
+        options.push(CompileOption::ElpMetadata(metadata.into()));
+        let ast = elixir_module_text(ELIXIR_FIXTURE.source.clone(), options);
+        assert!(
+            ast.contains("elp_metadata,[{eqwalizer_fixmes,[]}]"),
+            "{ast}"
+        );
+    }
+
+    #[test]
+    fn elixir_nested_module_served_by_name() {
+        let ast = elixir_module_text(
+            ELIXIR_FIXTURE.source.clone(),
+            elixir_options("Elixir.Hello.Nested"),
+        );
+        assert!(ast.contains("module,'Elixir.Hello.Nested'}"), "{ast}");
+        assert!(!ast.contains("module,'Elixir.Hello'}"), "{ast}");
+    }
+
+    #[test]
+    fn beam_file_served_without_positions() {
+        let beam = ELIXIR_FIXTURE.ebin.join("Elixir.Hello.beam");
+        let ast = elixir_module_text(beam, elixir_options("Elixir.Hello"));
+        assert!(ast.contains("module,'Elixir.Hello'}"), "{ast}");
+        assert!(ast.contains("{function,{0,0},add,2,"), "{ast}");
+    }
+
+    #[test]
+    fn elixir_module_without_beam_reported() {
+        let response = elixir_module(
+            ELIXIR_FIXTURE.source.clone(),
+            elixir_options("Elixir.Hello.Missing"),
+        );
+        let messages: Vec<&str> = response.errors.iter().map(|e| e.msg.as_str()).collect();
+        assert!(
+            messages
+                .iter()
+                .any(|msg| msg.contains("BEAM file not found")
+                    && msg.contains("Elixir.Hello.Missing.beam")),
+            "{messages:#?}"
+        );
+    }
+
+    #[test]
+    fn elixir_module_without_name_reported() {
+        let response = elixir_module(
+            ELIXIR_FIXTURE.source.clone(),
+            vec![CompileOption::Ebin(ELIXIR_FIXTURE.ebin.clone())],
+        );
+        let messages: Vec<&str> = response.errors.iter().map(|e| e.msg.as_str()).collect();
+        assert!(
+            messages.iter().any(|msg| msg.contains("no module named")),
+            "{messages:#?}"
         );
     }
 

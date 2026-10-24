@@ -1,11 +1,14 @@
 name: 'Setup Erlang/OTP'
-description: 'Setup Erlang/OTP + rebar3'
+description: 'Setup Erlang/OTP + rebar3 + Elixir'
 inputs:
   os:
     required: true
   otp-version:
     required: true
   brew-otp-version:
+    required: true
+  elixir-version:
+    description: 'The Elixir the tests compile their fixtures with; a precompiled build for the OTP major'
     required: true
 
 runs:
@@ -16,6 +19,7 @@ runs:
     uses: erlef/setup-beam@v1
     with:
       otp-version: ${{ inputs.otp-version }}
+      elixir-version: ${{ inputs.elixir-version }}
       install-rebar: false
       install-hex: false
   - name: Install Erlang/OTP (MacOS Only)
@@ -30,6 +34,18 @@ runs:
     shell: bash
   - name: Verify Erlang version
     run: erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
+    shell: bash
+  # Homebrew's elixir formula pulls in its own OTP, so take the precompiled
+  # build for the OTP major installed above instead.
+  - name: Install Elixir (MacOS Only)
+    if: inputs.os == 'macos'
+    run: |
+      curl -fsSL "https://github.com/elixir-lang/elixir/releases/download/v${{ inputs.elixir-version }}/elixir-otp-${{ inputs.brew-otp-version }}.zip" -o elixir.zip
+      mkdir -p "$HOME/elixir" && unzip -q elixir.zip -d "$HOME/elixir"
+      echo "$HOME/elixir/bin" >> $GITHUB_PATH
+    shell: bash
+  - name: Verify Elixir version
+    run: elixir --version
     shell: bash
   - name: Install rebar3
     run: "mkdir -p rebar3 && curl -fsSL https://s3.amazonaws.com/rebar3/rebar3 -o rebar3/rebar3 && chmod +x rebar3/rebar3"

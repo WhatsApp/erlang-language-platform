@@ -1145,6 +1145,36 @@ mod tests {
         );
     }
 
+    /// An Elixir project depending on eqwalizer_support: mix compiles it,
+    /// the library's `mix elp.build_info` describes it, and ELP checks it
+    /// through the service reading the BEAM files. Needs mix on PATH.
+    #[test]
+    fn eqwalize_all_elixir_project() {
+        let project = project_path("elixir_hello");
+        for args in [["compile"], ["elp.build_info"]] {
+            let output = std::process::Command::new("mix")
+                .args(args)
+                .current_dir(&project)
+                .env("MIX_ENV", "dev")
+                .output()
+                .expect("mix should be on PATH: this test needs Elixir installed");
+            assert!(
+                output.status.success(),
+                "mix {} failed:\n{}{}",
+                args.join(" "),
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+        // Not a buck project either: `buck` only keeps `--rebar` off, so that
+        // the project is found through the .elp.toml the task wrote.
+        SnapshotSettings::default().buck(true).run(
+            args_vec!["eqwalize-all"],
+            "elixir_hello",
+            resource_file("elixir_hello/eqwalize_all_diagnostics.pretty"),
+        );
+    }
+
     #[test_case(false ; "rebar")]
     #[test_case(true  ; "buck")]
     fn eqwalize_all_diagnostics_match_snapshot_pretty(buck: bool) {

@@ -35,5 +35,8 @@ where an `app` is a map structured as such:
   "ebin": "path/to/ebin",                       // Relative to app dir, defaults to "ebin"
   "include_dirs": ["include", ...],             // Relative to app dir, defaults to []
   "macros": ["MACRO", ...],                     // Defaults to []
+  "modules": {"module": "path/to/file", ...},   // See below, defaults to {}
 }
 ```
+
+The `modules` map lists the modules whose names cannot be derived from their file names, such as Elixir modules, each with the file defining it, relative to the app dir. ELP does not parse these files itself: it indexes the modules under the given names and asks the service it runs for their forms, which reads them from the app's `ebin`. See [Elixir projects](./elixir.md).

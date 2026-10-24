@@ -1655,6 +1655,7 @@ fn targets_to_project_data_bxl(
             )),
             is_test_target: Some(target.target_type == TargetType::ErlangTest),
             is_buck_generated: Some(target.buck_generated),
+            module_map: Default::default(),
         };
         // Do not bother with applications that exist purely as a
         // handle on dependencies for include_path.

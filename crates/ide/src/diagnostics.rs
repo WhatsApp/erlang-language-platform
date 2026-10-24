@@ -4299,6 +4299,27 @@ foo() -> XX 3.0.
     }
 
     #[test]
+    fn test_eqwalizer_bare_no_auto_import() {
+        // `-compile(no_auto_import)`, as the Elixir compiler emits it, makes
+        // a local `error/3` just that, rather than `erlang:error/3`.
+        check_diagnostics(
+            r#"
+            //- eqwalizer
+            //- /play/src/bar1f.erl app:play
+                -module(bar1f).
+                -compile([no_auto_import]).
+                -export([f/0]).
+
+                -spec error(atom(), atom(), atom()) -> ok.
+                error(_, _, _) -> ok.
+
+                -spec f() -> ok.
+                f() -> error(a, b, c).
+            "#,
+        );
+    }
+
+    #[test]
     fn test_nested_syntax_errors() {
         check_diagnostics(
             r#"

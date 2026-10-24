@@ -445,10 +445,11 @@ fn custom_types(
         Ok(stub) => {
             let mut result: TypeDeclMap = BTreeMap::new();
             for (id, type_decl) in stub.types.iter() {
-                let (module_name, ty_name) = id
-                    .name
-                    .split_once(':')
-                    .expect("eqwalizer_types id should contain ':' separator");
+                // An entry not named 'module:type' overrides nothing, such as
+                // one the compiler of a module served from its BEAM generated.
+                let Some((module_name, ty_name)) = id.name.split_once(':') else {
+                    continue;
+                };
                 let module = ModuleName::new(module_name);
                 let id = Id {
                     name: StringId::from(ty_name),
@@ -620,10 +621,12 @@ fn custom_fun_specs(
         Ok(stub) => {
             let mut result: FunSpecMap = BTreeMap::new();
             for (id, fun_spec) in stub.specs.iter() {
-                let (module_name, ty_name) = id
-                    .name
-                    .split_once(':')
-                    .expect("eqwalizer_specs id should contain ':' separator");
+                // An entry not named 'module:function' overrides nothing, such
+                // as the spec of a function the compiler of a module served
+                // from its BEAM generated.
+                let Some((module_name, ty_name)) = id.name.split_once(':') else {
+                    continue;
+                };
                 let module = ModuleName::new(module_name);
                 let id = Id {
                     name: StringId::from(ty_name),
@@ -650,9 +653,10 @@ fn custom_overloaded_fun_specs(
         Ok(stub) => {
             let mut result: OverloadedFunSpecMap = BTreeMap::new();
             for (id, overloaded_fun_spec) in stub.overloaded_specs.iter() {
-                let parts: Vec<&str> = id.name.split(":").collect();
-                let module = ModuleName::new(parts[0]);
-                let ty_name = parts[1];
+                let Some((module_name, ty_name)) = id.name.split_once(':') else {
+                    continue;
+                };
+                let module = ModuleName::new(module_name);
                 let id = Id {
                     name: ty_name.to_string().into(),
                     arity: id.arity,

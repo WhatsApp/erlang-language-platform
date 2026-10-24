@@ -18,8 +18,12 @@ use crossbeam_channel::Sender;
 ///
 /// Mostly needed for eqWAlizer AST conversion.
 /// Due to inefficient encoding of lists, the default stack size of 2MiB may
-/// not be enough for some generated modules.
-const THREAD_STACK_SIZE: usize = 10_000_000;
+/// not be enough for some generated modules: a literal list nests one
+/// `cons` per element, and converting it recurses once per level, about
+/// 1.5 KB of stack per element. 64 MiB covers some 40,000 elements, past
+/// where the checker itself gives up, and is committed only as far as the
+/// recursion goes.
+const THREAD_STACK_SIZE: usize = 64 * 1024 * 1024;
 
 pub struct TaskPool<T> {
     sender: Sender<T>,

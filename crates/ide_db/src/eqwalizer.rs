@@ -11,6 +11,7 @@
 use std::sync::Arc;
 
 use elp_base_db::FileId;
+use elp_base_db::FileKind;
 use elp_base_db::FileRange;
 use elp_base_db::InternedFileId;
 use elp_base_db::ModuleName;
@@ -51,23 +52,26 @@ pub trait EqwalizerLoader {
 
 impl EqwalizerLoader for crate::RootDatabase {
     fn typecheck(&self, project_id: ProjectId, modules: Vec<FileId>) -> EqwalizerDiagnostics {
-        let module_index = self.module_index(project_id);
-        let mut module_names = vec![];
-        for module in modules {
-            match module_index.module_for_file(module) {
-                Some(f) => module_names.push(f.as_str()),
-                None => {
-                    // Context for T171541590
-                    let _ = stdx::panic_context::enter(format!("\ntypecheck: {module:?}"));
-                    let source_root_id =
-                        SourceDatabase::file_source_root(self, module).source_root_id(self);
-                    let source_root = self.source_root(source_root_id).source_root(self);
-                    let path = source_root.path_for_file(&module);
-                    log::error!("Can't find module for path: {path:?}");
-                    continue;
+        let mut module_names: Vec<ModuleName> = vec![];
+        for file_id in modules {
+            let names = self.modules_for_file(project_id, file_id);
+            if names.is_empty() {
+                // Context for T171541590
+                let _ = stdx::panic_context::enter(format!("\ntypecheck: {file_id:?}"));
+                let source_root_id =
+                    SourceDatabase::file_source_root(self, file_id).source_root_id(self);
+                let source_root = self.source_root(source_root_id).source_root(self);
+                let path = source_root.path_for_file(&file_id);
+                log::error!("Can't find module for path: {path:?}");
+                continue;
+            }
+            for name in names {
+                if !module_names.contains(&name) {
+                    module_names.push(name);
                 }
-            };
+            }
         }
+        let module_names = module_names.iter().map(|name| name.as_str()).collect();
         self.eqwalizer.typecheck(self, project_id, module_names)
     }
 
@@ -79,6 +83,33 @@ impl EqwalizerLoader for crate::RootDatabase {
         self.eqwalizer
             .typecheck_functions(self, project_id, funs)
             .map_err(|err| format!("{err:?}"))
+    }
+}
+
+impl crate::RootDatabase {
+    /// The modules a file defines, to check: the one named after it, or, for
+    /// a file of kind `FileKind::ForeignModule`, all the modules its
+    /// application's `module_map` lists for it.
+    fn modules_for_file(&self, project_id: ProjectId, file_id: FileId) -> Vec<ModuleName> {
+        if self.file_kind(file_id) == FileKind::ForeignModule
+            && let Some(app_data) = self.file_app_data(file_id)
+        {
+            let source_root_id =
+                SourceDatabase::file_source_root(self, file_id).source_root_id(self);
+            let source_root = self.source_root(source_root_id).source_root(self);
+            if let Some(modules) = source_root
+                .path_for_file(&file_id)
+                .and_then(|path| path.as_path())
+                .and_then(|path| app_data.module_map.get(&path.to_path_buf()))
+            {
+                return modules.clone();
+            }
+        }
+        self.module_index(project_id)
+            .module_for_file(file_id)
+            .cloned()
+            .into_iter()
+            .collect()
     }
 }
 
@@ -435,7 +466,11 @@ impl EqwalizerErlASTStorage for crate::RootDatabase {
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error> {
         if let Some(file_id) = self.module_index(project_id).file_for_module(&module) {
-            let result = self.module_ast(file_id);
+            let result = if self.file_kind(file_id) == FileKind::ForeignModule {
+                self.foreign_module_ast(file_id, module)
+            } else {
+                self.module_ast(file_id)
+            };
             if result.is_ok() {
                 Ok(result.ast.clone())
             } else {
