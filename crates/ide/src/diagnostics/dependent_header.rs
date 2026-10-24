@@ -27,6 +27,9 @@ use hir::AnyExpr;
 use hir::AsName;
 use hir::BuiltInMacro;
 use hir::InFile;
+use hir::Name;
+use hir::PPCondition;
+use hir::PPConditionId;
 use hir::Semantic;
 use hir::Strategy;
 use hir::fold::MacroStrategy;
@@ -94,6 +97,8 @@ impl GenericLinter for DependentHeaderLinter {
                 .args()
                 .map(|param| param.as_name())
                 .collect::<FxHashSet<_>>();
+            let guarded_macros =
+                condition_guaranteed_macros(&form_list, define.pp_ctx.condition, &source_file);
             for macro_call in define_ast
                 .syntax()
                 .descendants()
@@ -103,6 +108,7 @@ impl GenericLinter for DependentHeaderLinter {
                     && !params.contains(macro_name.name())
                     && !BuiltInMacro::is_built_in_name(macro_name.name())
                     && !defined_macros.contains(&macro_name)
+                    && !guarded_macros.contains(macro_name.name())
                     && (macro_name.arity().is_none()
                         || !defined_macros.contains(&macro_name.with_arity(None)))
                 {
@@ -176,6 +182,114 @@ fn extract_record_name(expr_ast: &ast::Expr) -> Option<RecordName> {
         elp_syntax::ast::Expr::RecordIndexExpr(expr) => expr.name(),
         elp_syntax::ast::Expr::RecordUpdateExpr(expr) => expr.name(),
         _ => None,
+    }
+}
+
+fn condition_guaranteed_macros(
+    form_list: &hir::FormList,
+    mut cond: Option<PPConditionId>,
+    source_file: &hir::InFile<ast::SourceFile>,
+) -> FxHashSet<Name> {
+    let mut names = FxHashSet::default();
+    while let Some(cond_id) = cond {
+        match &form_list[cond_id] {
+            PPCondition::Ifdef { pp_ctx, name, .. } => {
+                names.insert(name.clone());
+                cond = pp_ctx.condition;
+            }
+            PPCondition::Ifndef { pp_ctx, .. } => {
+                cond = pp_ctx.condition;
+            }
+            PPCondition::If { pp_ctx, form_id } => {
+                let pp_if = form_id.get(&source_file.value);
+                if let Some(cond_expr) = pp_if.cond() {
+                    extract_defined_names_from_expr(&cond_expr, &mut names);
+                }
+                cond = pp_ctx.condition;
+            }
+            PPCondition::Else { prev, .. } => {
+                cond = match &form_list[*prev] {
+                    PPCondition::Ifndef { pp_ctx, name, .. } => {
+                        names.insert(name.clone());
+                        pp_ctx.condition
+                    }
+                    PPCondition::Ifdef { pp_ctx, .. } => pp_ctx.condition,
+                    PPCondition::If { pp_ctx, .. } => pp_ctx.condition,
+                    PPCondition::Elif {
+                        prev: elif_prev, ..
+                    } => find_chain_parent(form_list, *elif_prev),
+                    PPCondition::Else { .. } | PPCondition::Endif { .. } => None,
+                };
+            }
+            PPCondition::Elif { prev, form_id } => {
+                let pp_elif = form_id.get(&source_file.value);
+                if let Some(cond_expr) = pp_elif.cond() {
+                    extract_defined_names_from_expr(&cond_expr, &mut names);
+                }
+                cond = find_chain_parent(form_list, *prev);
+            }
+            PPCondition::Endif { .. } => {
+                cond = None;
+            }
+        }
+    }
+    names
+}
+
+fn find_chain_parent(form_list: &hir::FormList, mut prev: PPConditionId) -> Option<PPConditionId> {
+    loop {
+        match &form_list[prev] {
+            PPCondition::Ifdef { pp_ctx, .. }
+            | PPCondition::Ifndef { pp_ctx, .. }
+            | PPCondition::If { pp_ctx, .. } => return pp_ctx.condition,
+            PPCondition::Elif {
+                prev: next_prev, ..
+            } => prev = *next_prev,
+            _ => return None,
+        }
+    }
+}
+
+fn extract_defined_names_from_expr(expr: &ast::Expr, names: &mut FxHashSet<Name>) {
+    match expr {
+        ast::Expr::Call(call) => {
+            if let Some(ast::Expr::ExprMax(ast::ExprMax::Atom(atom))) = call.expr()
+                && atom.as_name().as_str() == "defined"
+            {
+                if let Some(arg) = call.args().and_then(|args| args.args().next()) {
+                    match arg {
+                        ast::Expr::ExprMax(ast::ExprMax::Atom(arg_atom)) => {
+                            names.insert(arg_atom.as_name());
+                        }
+                        ast::Expr::ExprMax(ast::ExprMax::Var(arg_var)) => {
+                            names.insert(arg_var.as_name());
+                        }
+                        ast::Expr::ExprMax(ast::ExprMax::MacroCallExpr(macro_call)) => {
+                            if let Some(m_name) = macro_name(&macro_call) {
+                                names.insert(m_name.name().clone());
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        ast::Expr::BinaryOpExpr(bin) => {
+            if let Some((ast::BinaryOp::LogicOp(ast::LogicOp::And { .. }), _)) = bin.op() {
+                if let Some(lhs) = bin.lhs() {
+                    extract_defined_names_from_expr(&lhs, names);
+                }
+                if let Some(rhs) = bin.rhs() {
+                    extract_defined_names_from_expr(&rhs, names);
+                }
+            }
+        }
+        ast::Expr::ExprMax(ast::ExprMax::ParenExpr(paren)) => {
+            if let Some(inner) = paren.expr() {
+                extract_defined_names_from_expr(&inner, names);
+            }
+        }
+        _ => {}
     }
 }
 
@@ -419,6 +533,115 @@ mod tests {
             r#"
 //- /include/main.hrl
 -define(WHERE_AM_I, {?MODULE, ?LINE}).
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_dependent_header_macro_guarded_by_ifdef() {
+        // Issue #297: Macro invocation guarded by ifdef should not be reported as undefined
+        check_diagnostics(
+            r#"
+//- /include/main.hrl
+-ifdef(gpb_field_record_name).
+-define(gpb_field, ?gpb_field_record_name).
+-else.
+-define(gpb_field, undefined).
+-endif.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_dependent_header_macro_guarded_by_ifdef_no_else() {
+        check_diagnostics(
+            r#"
+//- /include/main.hrl
+-ifdef(MY_FLAG).
+-define(MY_MACRO, ?MY_FLAG).
+-endif.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_dependent_header_macro_in_else_of_ifdef_reported() {
+        check_diagnostics(
+            r#"
+//- /include/main.hrl
+-ifdef(MY_FLAG).
+-define(FOO, ?MY_FLAG).
+-else.
+-define(BAR, ?MY_FLAG).
+%%           ^^^^^^^^ warning: W0015: Macro 'MY_FLAG' not defined in this context
+%%                  | 💡 <suppression>
+-endif.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_dependent_header_macro_in_else_of_ifndef() {
+        check_diagnostics(
+            r#"
+//- /include/main.hrl
+-ifndef(MY_FLAG).
+-define(FOO, 1).
+-else.
+-define(BAR, ?MY_FLAG).
+-endif.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_dependent_header_macro_in_ifndef_reported() {
+        check_diagnostics(
+            r#"
+//- /include/main.hrl
+-ifndef(MY_FLAG).
+-define(FOO, ?MY_FLAG).
+%%           ^^^^^^^^ warning: W0015: Macro 'MY_FLAG' not defined in this context
+%%                  | 💡 <suppression>
+-endif.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_dependent_header_macro_guarded_nested_ifdef() {
+        check_diagnostics(
+            r#"
+//- /include/main.hrl
+-ifdef(OUTER).
+-ifdef(INNER).
+-define(COMBINED, {?OUTER, ?INNER}).
+-endif.
+-endif.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_dependent_header_macro_guarded_by_if_defined() {
+        check_diagnostics(
+            r#"
+//- /include/main.hrl
+-if(defined(FEATURE_A)).
+-define(RUN_FEATURE, ?FEATURE_A).
+-endif.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_dependent_header_macro_guarded_by_if_andalso_defined() {
+        check_diagnostics(
+            r#"
+//- /include/main.hrl
+-if(defined(A) andalso defined(B)).
+-define(COMBINED, {?A, ?B}).
+-endif.
             "#,
         );
     }
