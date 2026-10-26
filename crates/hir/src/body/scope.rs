@@ -295,7 +295,13 @@ impl ExprScopes {
         add_bindings: AddBinding,
     ) {
         self.set_scope_pat(pat, *scope);
-        let pattern = &body[pat];
+        // `ExpandButIncludeMacroCall`: the `Pat::MacroCall` arm below scopes the
+        // expansion *and* the arguments.
+        let pattern = &(FoldBody {
+            body,
+            macros: MacroStrategy::ExpandButIncludeMacroCall,
+            parens: ParenStrategy::VisibleParens,
+        })[pat];
         match pattern {
             crate::Pat::Missing => {}
             crate::Pat::Literal(_) => {}

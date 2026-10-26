@@ -1974,6 +1974,65 @@ foo() ->
     }
 
     #[test]
+    fn var_in_parenthesised_param() {
+        check(
+            r#"
+//- /main/src/main.erl
+-module(main).
+
+foo((Var)) -> V~ar.
+%%   ^^^
+"#,
+        );
+    }
+
+    #[test]
+    fn var_in_parenthesised_match() {
+        check(
+            r#"
+//- /main/src/main.erl
+-module(main).
+
+foo() ->
+   (Var) = 1,
+%%  ^^^
+   V~ar.
+"#,
+        );
+    }
+
+    #[test]
+    fn var_self_in_parenthesised_match() {
+        check(
+            r#"
+//- /main/src/main.erl
+-module(main).
+
+foo() ->
+   (V~ar) = 1,
+%%  ^^^
+   Var.
+"#,
+        );
+    }
+
+    #[test]
+    fn var_self_in_macro_pattern_arg() {
+        check(
+            r#"
+//- /main/src/main.erl
+-module(main).
+-define(WRAP(X), {X}).
+
+foo() ->
+   ?WRAP(V~ar) = {1},
+%%       ^^^
+   Var.
+"#,
+        );
+    }
+
+    #[test]
     fn var_self() {
         check(
             r#"
