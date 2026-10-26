@@ -41,7 +41,7 @@ dashmap = { version = "6.2.1", features = ["rayon", "serde"] }
 dissimilar = "1.0.11"
 dunce = "1.0.5"
 eetf = "0.9.0"
-either = "1.18.0"
+either = "1.19.0"
 elp_base_db = { path = "crates/base_db" }
 elp_eqwalizer = { path = "crates/eqwalizer" }
 elp_erlang_service = { path = "crates/erlang_service" }
