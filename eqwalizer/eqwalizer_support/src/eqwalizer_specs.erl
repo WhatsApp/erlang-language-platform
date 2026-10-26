@@ -1070,6 +1070,12 @@ when
     Orddict2 :: orddict:orddict(Key, [Value]).
 'orddict:append'(_, _, _) -> error(eqwalizer_specs).
 
+-spec 'orddict:append_list'(Key, ValList, Orddict1) -> Orddict2 when
+    ValList :: [Value],
+    Orddict1 :: orddict:orddict(Key, [Value]),
+    Orddict2 :: orddict:orddict(Key, [Value]).
+'orddict:append_list'(_, _, _) -> error(eqwalizer_specs).
+
 -spec 'orddict:take'(Key, Orddict) -> {Value, Orddict1} | error when
     Orddict :: orddict:orddict(Key, Value),
     Orddict1 :: orddict:orddict(Key, Value),
