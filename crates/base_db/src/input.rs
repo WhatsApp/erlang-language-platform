@@ -9,6 +9,7 @@
  */
 
 use std::borrow::Borrow;
+use std::collections::BTreeMap;
 use std::hash::Hash;
 use std::path::Path;
 use std::sync::Arc;
@@ -30,6 +31,7 @@ use vfs::VfsPath;
 use vfs::file_set::FileSet;
 
 use crate::AppDataIndex;
+use crate::ModuleName;
 use crate::RootQueryDb;
 
 /// Files are grouped into source roots. A source root is a directory on the
@@ -143,6 +145,10 @@ pub struct AppData {
     /// When the app is generated from buck, each test module shows
     /// up as a different own app.
     pub is_test_target: Option<bool>,
+    /// The modules whose names cannot be derived from their file names, by
+    /// the file defining them, see `ProjectAppData::module_map`. These files
+    /// are of kind `FileKind::ForeignModule`.
+    pub module_map: BTreeMap<AbsPathBuf, Vec<ModuleName>>,
 }
 
 impl AppData {
@@ -438,6 +444,14 @@ impl<'a> ProjectApps<'a> {
                     src_path: app.abs_src_dirs.clone(),
                     ebin_path: app.ebin.clone(),
                     is_test_target: app.is_test_target,
+                    module_map: app
+                        .module_map
+                        .iter()
+                        .map(|(file, modules)| {
+                            let modules = modules.iter().map(|m| ModuleName::new(m)).collect();
+                            (file.clone(), modules)
+                        })
+                        .collect(),
                 };
                 app_structure.add_app_data(
                     root_id,

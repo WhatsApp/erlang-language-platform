@@ -42,5 +42,6 @@ pub(crate) fn bundled_app(otp: &Otp) -> ProjectAppData {
         applicable_files: None,
         is_test_target: None,
         is_buck_generated: None,
+        module_map: Default::default(),
     }
 }

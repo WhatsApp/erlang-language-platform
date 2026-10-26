@@ -185,6 +185,8 @@ impl SymbolDefinition {
                     SearchScope::files(includers.into_iter())
                 }
                 FileKind::Escript => SearchScope::single_file(self.file().file_id, None),
+                // Not parsed by ELP, so nothing in it can be searched
+                FileKind::ForeignModule => SearchScope::single_file(self.file().file_id, None),
                 FileKind::Other => SearchScope::single_file(self.file().file_id, None),
                 FileKind::OutsideProjectModel => {
                     SearchScope::single_file(self.file().file_id, None)

@@ -190,6 +190,8 @@ static ERLANG: LazyLock<StringId> = LazyLock::new(|| StringId::from("erlang"));
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Converter {
     no_auto_imports: BTreeSet<ast::Id>,
+    /// `-compile(no_auto_import)`: no BIF is auto-imported at all.
+    no_auto_import_all: bool,
     from_beam: bool,
     filter_stub: bool,
     current_file: Option<StringId>,
@@ -1031,9 +1033,7 @@ impl Converter {
                                         id: remote_id,
                                         args,
                                     }));
-                                } else if auto_import::is_auto_imported(&local_id)
-                                    && !self.no_auto_imports.contains(&local_id)
-                                {
+                                } else if self.auto_imported(&local_id) {
                                     let remote_id = RemoteId {
                                         module: *ERLANG,
                                         name: StringId::from(&fname.name),
@@ -1188,9 +1188,7 @@ impl Converter {
                             name,
                             arity: arity.value as u32,
                         };
-                        if auto_import::is_auto_imported(&local_id)
-                            && !self.no_auto_imports.contains(&local_id)
-                        {
+                        if self.auto_imported(&local_id) {
                             let remote_id = RemoteId {
                                 module: *ERLANG,
                                 name,
@@ -2443,22 +2441,57 @@ impl Converter {
         Err(ConversionError::InvalidForm)
     }
 
-    fn extract_no_auto_import(&self, term: &eetf::Term) -> Option<Vec<ast::Id>> {
+    /// Whether a local call to `id` reaches the auto-imported BIF of that name.
+    fn auto_imported(&self, id: &ast::Id) -> bool {
+        auto_import::is_auto_imported(id)
+            && !self.no_auto_import_all
+            && !self.no_auto_imports.contains(id)
+    }
+
+    /// The options of a `-compile` attribute form, given as one option or as
+    /// a list of them.
+    fn compile_options(term: &eetf::Term) -> Option<Vec<&eetf::Term>> {
         if let Term::Tuple(tuple) = term
-            && let [Term::Atom(attr), _, Term::Atom(kind), Term::Tuple(args)] = &tuple.elements[..]
+            && let [Term::Atom(attr), _, Term::Atom(kind), options] = &tuple.elements[..]
             && attr.name == "attribute"
             && kind.name == "compile"
-            && let [Term::Atom(no_auto), Term::List(ids)] = &args.elements[..]
-            && no_auto.name == "no_auto_import"
         {
-            return Some(
-                ids.elements
-                    .iter()
-                    .flat_map(|id| self.convert_id(id))
-                    .collect(),
-            );
+            return Some(match options {
+                Term::List(list) => list.elements.iter().collect(),
+                option => vec![option],
+            });
         }
         None
+    }
+
+    /// The BIFs a `-compile` form lists in `{no_auto_import, [f/1, ...]}`.
+    fn extract_no_auto_import(&self, term: &eetf::Term) -> Option<Vec<ast::Id>> {
+        let options = Self::compile_options(term)?;
+        let ids = options
+            .into_iter()
+            .filter_map(|option| {
+                if let Term::Tuple(args) = option
+                    && let [Term::Atom(no_auto), Term::List(ids)] = &args.elements[..]
+                    && no_auto.name == "no_auto_import"
+                {
+                    Some(ids.elements.iter().flat_map(|id| self.convert_id(id)))
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .collect();
+        Some(ids)
+    }
+
+    /// Whether a `-compile` form has the bare `no_auto_import` option, which
+    /// suppresses every auto-import, as the Elixir compiler emits.
+    fn suppresses_all_auto_imports(term: &eetf::Term) -> bool {
+        Self::compile_options(term).is_some_and(|options| {
+            options
+                .into_iter()
+                .any(|option| matches!(option, Term::Atom(a) if a.name == "no_auto_import"))
+        })
     }
 }
 
@@ -2470,6 +2503,7 @@ pub fn convert_forms(
     if let Term::List(forms) = term {
         let dummy_converter = Converter {
             no_auto_imports: BTreeSet::default(),
+            no_auto_import_all: false,
             from_beam,
             filter_stub,
             current_file: None,
@@ -2481,9 +2515,14 @@ pub fn convert_forms(
             .flat_map(|f| dummy_converter.extract_no_auto_import(f))
             .flatten()
             .collect();
+        let no_auto_import_all = forms
+            .elements
+            .iter()
+            .any(Converter::suppresses_all_auto_imports);
         let native_record_names = collect_native_record_names(&forms.elements);
         let converter = &mut Converter {
             no_auto_imports,
+            no_auto_import_all,
             from_beam,
             filter_stub,
             current_file: None,

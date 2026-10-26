@@ -326,6 +326,7 @@ impl RebarProject {
                 applicable_files: None,
                 is_test_target: None,
                 is_buck_generated: None,
+                module_map: Default::default(),
             })
         }
     }

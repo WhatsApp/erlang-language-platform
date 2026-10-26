@@ -108,8 +108,13 @@ pub fn version() -> String {
 /// first parallel work, avoids both problems.
 pub fn ensure_rayon_pool() {
     /// Default rayon stack is 2 MiB — too small for eqwalizer to parse
-    /// generated modules with deeply-nested list literals.
-    const THREAD_STACK_SIZE: usize = 10_000_000;
+    /// generated modules with deeply-nested list literals. A literal list
+    /// nests one `cons` per element, and decoding, converting and
+    /// serialising a module recurse once per level, about 1.5 KB of stack
+    /// per element in all. 64 MiB covers some 40,000 elements, past where
+    /// the checker itself gives up, and is committed only as far as the
+    /// recursion goes.
+    const THREAD_STACK_SIZE: usize = 64 * 1024 * 1024;
     static INIT: std::sync::Once = std::sync::Once::new();
     INIT.call_once(|| {
         if let Err(err) = rayon::ThreadPoolBuilder::new()

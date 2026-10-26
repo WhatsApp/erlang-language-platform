@@ -1,0 +1,9 @@
+stdout | error: incompatible_types (See https://fb.me/eqwalizer_errors#incompatible_types)
+stdout |   ┌─ lib/hello.ex:8:18
+stdout |   │
+stdout | 8 │   def bad(), do: add("x", 1)
+stdout |   │                  ^ <<..>>.
+stdout | Expression has type:   binary()
+stdout | Context expected type: integer()
+stdout |
+stdout | 1 ERROR

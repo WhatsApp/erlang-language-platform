@@ -124,6 +124,10 @@ pub enum FileKind {
     TestModule,
     Header,
     Escript,
+    /// A module in a language ELP does not parse itself, listed in its
+    /// application's `module_map`. The service serves its forms from the
+    /// build output, so eqWAlizer sees it and nothing else does.
+    ForeignModule,
     Other,
     OutsideProjectModel,
 }
@@ -692,6 +696,20 @@ fn module_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc<Modul
                 && let Some((name, Some("erl"))) = path.name_and_extension()
             {
                 builder.insert(file_id, file_source, ModuleName::new(name));
+            } else if db.file_kind(file_id) == FileKind::ForeignModule
+                && let Some(app_data) = db.file_app_data(file_id)
+                && let Some(path) = source_root.path_for_file(&file_id)
+                && let Some(modules) = path
+                    .as_path()
+                    .and_then(|path| app_data.module_map.get(&path.to_path_buf()))
+            {
+                // A module mapped to its BEAM file lives outside the source directories
+                let file_source = source_root
+                    .file_info(file_id, &app_data)
+                    .map_or(FileSource::Src, |(_, file_source, _)| file_source);
+                for module in modules {
+                    builder.insert(file_id, file_source, module.clone());
+                }
             }
         }
     }
@@ -1233,9 +1251,24 @@ fn file_kind_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> FileKind {
             }
             Some((_, Some("hrl"))) => FileKind::Header,
             Some((_, Some("escript"))) => FileKind::Escript,
+            _ if is_foreign_module(db, file_id, &source_root) => FileKind::ForeignModule,
             _ => FileKind::Other,
         }
     }
+}
+
+/// Whether the file is listed in its application's `module_map`.
+fn is_foreign_module(db: &dyn RootQueryDb, file_id: FileId, source_root: &SourceRoot) -> bool {
+    let Some(app_data) = db.file_app_data(file_id) else {
+        return false;
+    };
+    if app_data.module_map.is_empty() {
+        return false;
+    }
+    source_root
+        .path_for_file(&file_id)
+        .and_then(|path| path.as_path())
+        .is_some_and(|path| app_data.module_map.contains_key(&path.to_path_buf()))
 }
 
 /// When we get a range from the client, limit it to what is in the source file

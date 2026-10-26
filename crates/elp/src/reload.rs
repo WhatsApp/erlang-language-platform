@@ -35,7 +35,8 @@ use vfs::FileId;
 use crate::document::Document;
 use crate::line_endings::LineEndings;
 
-static EQWALIZER_SUPPORT: Dir = include_dir!("$EQWALIZER_SUPPORT_DIR");
+/// The `src` directory of the `eqwalizer_support` app bundled with ELP.
+static EQWALIZER_SUPPORT_SRC: Dir = include_dir!("$EQWALIZER_SUPPORT_DIR");
 
 #[derive(Debug)]
 pub struct ProjectFolders {
@@ -110,6 +111,15 @@ impl ProjectFolders {
                         .collect();
                     let dir = VfsPath::from(app.dir.clone());
                     file_sets.insert(dir);
+                    // A module mapped to a file outside the app's directory,
+                    // such as its BEAM file under the build directory, still
+                    // belongs to the app.
+                    file_sets.extend(
+                        app.module_map
+                            .keys()
+                            .filter_map(|file| file.parent())
+                            .map(|dir| VfsPath::from(dir.to_path_buf())),
+                    );
                     builder.add_file_set(file_sets.into_iter().collect());
                     builder
                 },
@@ -168,20 +178,19 @@ pub(crate) fn bundled_files(
         eqwalizer_support::bundled_dir(&project_apps.projects[idx as usize].otp)
     });
     dir.into_iter().flat_map(|dir| {
-        EQWALIZER_SUPPORT
-            .get_dir("src")
-            .into_iter()
-            .flat_map(Dir::files)
-            .filter_map(move |file| {
-                let Some(path) = file.path().to_str() else {
-                    log::warn!(
-                        "Skipping bundled file with a non-UTF-8 path: {:?}",
-                        file.path()
-                    );
-                    return None;
-                };
-                Some((VfsPath::from(dir.join(path)), file.contents().to_vec()))
-            })
+        EQWALIZER_SUPPORT_SRC.files().filter_map(move |file| {
+            let Some(path) = file.path().to_str() else {
+                log::warn!(
+                    "Skipping bundled file with a non-UTF-8 path: {:?}",
+                    file.path()
+                );
+                return None;
+            };
+            Some((
+                VfsPath::from(dir.join("src").join(path)),
+                file.contents().to_vec(),
+            ))
+        })
     })
 }
 
@@ -194,6 +203,7 @@ fn loader_config(project_apps: &ProjectApps<'_>) -> Vec<loader::Entry> {
         if let Some(applicable_files) = app.applicable_files.as_ref() {
             files.extend(applicable_files.clone());
         }
+        files.extend(app.module_map.keys().cloned());
         include_dirs.extend(app.include_dirs.clone());
     });
 
