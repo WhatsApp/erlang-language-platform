@@ -1176,7 +1176,7 @@ when
     {match, dynamic()} | match | nomatch | {error, dynamic()}
 when
     Subject :: iodata() | unicode:charlist(),
-    RE :: {re_pattern, _, _, _, _} | iodata() | unicode:charlist().
+    RE :: re:mp() | iodata() | unicode:charlist().
 
 're:run'(_, _) ->
     error(eqwalizer_specs).
@@ -1185,48 +1185,8 @@ when
     {match, dynamic()} | match | nomatch | {error, dynamic()}
 when
     Subject :: iodata() | unicode:charlist(),
-    RE :: {re_pattern, _, _, _, _} | iodata() | unicode:charlist(),
-    Options :: [Option],
-    Option ::
-        anchored
-        | global
-        | notbol
-        | noteol
-        | notempty
-        | notempty_atstart
-        | report_errors
-        | {offset, non_neg_integer()}
-        | {match_limit, non_neg_integer()}
-        | {match_limit_recursion, non_neg_integer()}
-        | {newline, NLSpec}
-        | bsr_anycrlf
-        | bsr_unicode
-        | {capture, ValueSpec}
-        | {capture, ValueSpec, Type}
-        | CompileOpt,
-    Type :: index | list | binary,
-    ValueSpec :: all | all_but_first | all_names | first | none | ValueList,
-    ValueList :: [ValueID],
-    ValueID :: integer() | string() | atom(),
-    CompileOpt ::
-        unicode
-        | anchored
-        | caseless
-        | dollar_endonly
-        | dotall
-        | extended
-        | firstline
-        | multiline
-        | no_auto_capture
-        | dupnames
-        | ungreedy
-        | {newline, NLSpec}
-        | bsr_anycrlf
-        | bsr_unicode
-        | no_start_optimize
-        | ucp
-        | never_utf,
-    NLSpec :: cr | crlf | lf | anycrlf | any.
+    RE :: re:mp() | iodata() | unicode:charlist(),
+    Options :: re:options().
 
 're:run'(_, _, _) ->
     error(eqwalizer_specs).
