@@ -77,7 +77,7 @@ mod test {
 
     #[test]
     fn test_modules() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::MODULE).unwrap() == "9");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Module).unwrap() == "9");
 
         check(
             r#"
@@ -111,7 +111,7 @@ mod test {
 
     #[test]
     fn test_module_from_otp() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::MODULE).unwrap() == "9");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Module).unwrap() == "9");
 
         check(
             r#"
@@ -133,7 +133,7 @@ foo() ->
 
     #[test]
     fn test_no_modules() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::MODULE).unwrap() == "9");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Module).unwrap() == "9");
 
         check(
             r#"

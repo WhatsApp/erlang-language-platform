@@ -15,10 +15,10 @@ use elp_log::Builder;
 use elp_log::Filter;
 use elp_log::ReconfigureLog;
 use lsp_server::Message;
+use lsp_types::LogMessageNotification;
 use lsp_types::LogMessageParams;
 use lsp_types::MessageType;
-use lsp_types::notification::LogMessage;
-use lsp_types::notification::Notification;
+use lsp_types::Notification;
 
 pub struct LspLogger {
     filter: Filter,
@@ -56,15 +56,15 @@ impl ReconfigureLog for LspLogger {
         let message = format!("[{}] {}", record.target(), record.args());
 
         let typ = match record.level() {
-            log::Level::Error => MessageType::ERROR,
-            log::Level::Warn => MessageType::WARNING,
-            log::Level::Info => MessageType::INFO,
-            log::Level::Debug => MessageType::LOG,
-            log::Level::Trace => MessageType::LOG,
+            log::Level::Error => MessageType::Error,
+            log::Level::Warn => MessageType::Warning,
+            log::Level::Info => MessageType::Info,
+            log::Level::Debug => MessageType::Log,
+            log::Level::Trace => MessageType::Log,
         };
 
-        let params = LogMessageParams { typ, message };
-        let not = lsp_server::Notification::new(LogMessage::METHOD.to_string(), params);
+        let params = LogMessageParams { kind: typ, message };
+        let not = lsp_server::Notification::new(LogMessageNotification::METHOD.to_string(), params);
         self.sender.send(not.into()).unwrap();
     }
 

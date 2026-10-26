@@ -79,7 +79,7 @@ mod test {
 
     #[test]
     fn test_exports() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::FUNCTION).unwrap() == "3");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Function).unwrap() == "3");
 
         check(
             r#"
@@ -103,7 +103,7 @@ mod test {
 
     #[test]
     fn test_exclude_already_exported_functions() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::FUNCTION).unwrap() == "3");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Function).unwrap() == "3");
 
         check(
             r#"

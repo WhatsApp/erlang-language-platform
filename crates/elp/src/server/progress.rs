@@ -11,13 +11,12 @@
 use crossbeam_channel::Receiver;
 use crossbeam_channel::SendError;
 use crossbeam_channel::Sender;
-use lsp_types::NumberOrString;
 use lsp_types::ProgressParams;
-use lsp_types::ProgressParamsValue;
-use lsp_types::WorkDoneProgress;
+use lsp_types::ProgressToken;
 use lsp_types::WorkDoneProgressBegin;
 use lsp_types::WorkDoneProgressEnd;
 use lsp_types::WorkDoneProgressReport;
+use serde::Serialize;
 
 use super::telemetry_manager::WithTelemetry;
 use super::telemetry_manager::reporter_telemetry_end;
@@ -84,8 +83,8 @@ impl ProgressManager {
         )
     }
 
-    fn next_token(&mut self) -> NumberOrString {
-        let token = NumberOrString::String(format!("ELP/{}", self.counter));
+    fn next_token(&mut self) -> ProgressToken {
+        let token = ProgressToken::String(format!("ELP/{}", self.counter));
         self.counter += 1;
         token
     }
@@ -94,7 +93,7 @@ impl ProgressManager {
 #[derive(Debug)]
 #[must_use]
 pub struct Spinner {
-    token: NumberOrString,
+    token: ProgressToken,
     sender: Sender<ProgressTask>,
     /// The message sent when sending the final end report.
     /// It is used in e2e tests to check for a specific task being done.
@@ -104,7 +103,7 @@ pub struct Spinner {
 impl Spinner {
     fn begin(
         sender: Sender<ProgressTask>,
-        token: NumberOrString,
+        token: ProgressToken,
         title: String,
         telemetry: WithTelemetry,
     ) -> Self {
@@ -127,11 +126,11 @@ impl Spinner {
     }
 
     pub fn report(&self, message: String) {
-        let msg = WorkDoneProgress::Report(WorkDoneProgressReport {
+        let msg = WorkDoneProgressReport {
             cancellable: None,
             message: Some(message.clone()),
             percentage: None,
-        });
+        };
         reporter_telemetry_next(self.token.clone(), message);
         send_progress(&self.sender, self.token.clone(), msg);
     }
@@ -146,9 +145,9 @@ impl Drop for Spinner {
         send_progress(
             &self.sender,
             self.token.clone(),
-            WorkDoneProgress::End(WorkDoneProgressEnd {
+            WorkDoneProgressEnd {
                 message: Some(self.end_message.clone()),
-            }),
+            },
         );
         reporter_telemetry_end(self.token.clone());
     }
@@ -157,7 +156,7 @@ impl Drop for Spinner {
 #[derive(Debug)]
 #[must_use]
 pub struct ProgressBar {
-    token: NumberOrString,
+    token: ProgressToken,
     sender: Sender<ProgressTask>,
     /// The message sent when sending the final end report.
     /// It is used in e2e tests to check for a specific task being done.
@@ -168,7 +167,7 @@ pub struct ProgressBar {
 impl ProgressBar {
     fn begin(
         sender: Sender<ProgressTask>,
-        token: NumberOrString,
+        token: ProgressToken,
         title: String,
         total: Option<usize>,
         report_telemetry: WithTelemetry,
@@ -197,11 +196,11 @@ impl ProgressBar {
         if percent != self.current_percent {
             self.current_percent = percent;
             let message = format!("{percent}%");
-            let msg = WorkDoneProgress::Report(WorkDoneProgressReport {
+            let msg = WorkDoneProgressReport {
                 cancellable: None,
                 message: Some(message),
                 percentage: Some(percent),
-            });
+            };
             // We do not update any associated telemetry here, it will
             // report on the whole bar at the end in the drop.
             send_progress(&self.sender, self.token.clone(), msg);
@@ -214,28 +213,60 @@ impl Drop for ProgressBar {
         send_progress(
             &self.sender,
             self.token.clone(),
-            WorkDoneProgress::End(WorkDoneProgressEnd {
+            WorkDoneProgressEnd {
                 message: Some(self.end_message.clone()),
-            }),
+            },
         );
         reporter_telemetry_end(self.token.clone());
     }
 }
 
-fn send_begin(sender: &Sender<ProgressTask>, token: NumberOrString, msg: WorkDoneProgressBegin) {
+fn progress_value(msg: impl Serialize) -> serde_json::Value {
+    serde_json::to_value(msg).expect("work done progress should always serialize")
+}
+
+fn send_begin(sender: &Sender<ProgressTask>, token: ProgressToken, msg: WorkDoneProgressBegin) {
     let params = ProgressParams {
         token,
-        value: ProgressParamsValue::WorkDone(WorkDoneProgress::Begin(msg)),
+        value: progress_value(msg),
     };
     sender.send(ProgressTask::BeginNotify(params)).unwrap();
 }
 
-fn send_progress(sender: &Sender<ProgressTask>, token: NumberOrString, msg: WorkDoneProgress) {
+fn send_progress(sender: &Sender<ProgressTask>, token: ProgressToken, msg: impl Serialize) {
     let params = ProgressParams {
         token,
-        value: ProgressParamsValue::WorkDone(msg),
+        value: progress_value(msg),
     };
     if let Err(SendError(err)) = sender.send(ProgressTask::Notify(params)) {
         log::error!("Failed to send progress message: {err:?}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use elp_base_db::assert_eq_expected;
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn progress_values_include_their_kind() {
+        let expected = json!(["begin", "report", "end"]);
+        let actual = json!([
+            progress_value(WorkDoneProgressBegin {
+                title: "Indexing".to_string(),
+                cancellable: None,
+                message: None,
+                percentage: None,
+            })["kind"],
+            progress_value(WorkDoneProgressReport {
+                cancellable: None,
+                message: None,
+                percentage: None,
+            })["kind"],
+            progress_value(WorkDoneProgressEnd { message: None })["kind"],
+        ]);
+        assert_eq_expected!(expected, actual);
     }
 }

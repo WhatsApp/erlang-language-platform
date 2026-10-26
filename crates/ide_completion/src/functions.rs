@@ -239,7 +239,7 @@ mod test {
 
     #[test]
     fn test_remote_calls_with_trigger() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::FUNCTION).unwrap() == "3");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Function).unwrap() == "3");
 
         check(
             r#"
@@ -289,7 +289,7 @@ mod test {
 
     #[test]
     fn test_otp_calls_no_trigger() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::FUNCTION).unwrap() == "3");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Function).unwrap() == "3");
 
         check(
             r#"
@@ -312,7 +312,7 @@ mod test {
 
     #[test]
     fn test_import_calls_no_trigger() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::FUNCTION).unwrap() == "3");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Function).unwrap() == "3");
 
         check(
             r#"
@@ -336,7 +336,7 @@ mod test {
 
     #[test]
     fn test_remote_calls_no_trigger() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::MODULE).unwrap() == "9");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Module).unwrap() == "9");
 
         check(
             r#"
@@ -386,7 +386,7 @@ mod test {
 
     #[test]
     fn test_remote_calls_deprecated() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::MODULE).unwrap() == "9");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Module).unwrap() == "9");
 
         check(
             r#"
@@ -415,7 +415,7 @@ mod test {
 
     #[test]
     fn test_remote_calls_multiple_deprecated() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::MODULE).unwrap() == "9");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Module).unwrap() == "9");
 
         check(
             r#"
@@ -444,7 +444,7 @@ mod test {
 
     #[test]
     fn test_remote_module_deprecated() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::MODULE).unwrap() == "9");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Module).unwrap() == "9");
 
         check(
             r#"
@@ -470,7 +470,7 @@ mod test {
 
     #[test]
     fn test_remote_module_incorrect_deprecation() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::MODULE).unwrap() == "9");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Module).unwrap() == "9");
 
         check(
             r#"
@@ -493,7 +493,7 @@ mod test {
 
     #[test]
     fn test_no_function_completions() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::MODULE).unwrap() == "9");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Module).unwrap() == "9");
         check(
             r#"
     //- /src/sample1.erl
@@ -815,7 +815,7 @@ mod test {
 
     #[test]
     fn test_remote_call_with_spec() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::MODULE).unwrap() == "9");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Module).unwrap() == "9");
 
         check(
             r#"

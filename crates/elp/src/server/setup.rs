@@ -25,10 +25,10 @@ use lsp_server::Connection;
 use lsp_server::Notification;
 use lsp_types::InitializeParams;
 use lsp_types::InitializeResult;
+use lsp_types::Notification as _;
 use lsp_types::ServerInfo;
-use lsp_types::notification::Notification as _;
+use lsp_types::ShowMessageNotification;
 use threadpool::ThreadPool;
-use tower_lsp_server::UriExt as _;
 
 use super::FILE_WATCH_LOGGER_NAME;
 use super::logger::LspLogger;
@@ -94,11 +94,11 @@ impl ServerSetup {
             ),
         };
         let show_message_params = lsp_types::ShowMessageParams {
-            typ: lsp_types::MessageType::INFO,
+            kind: lsp_types::MessageType::Info,
             message,
         };
         let notif = Notification::new(
-            lsp_types::notification::ShowMessage::METHOD.to_string(),
+            ShowMessageNotification::METHOD.to_string(),
             show_message_params,
         );
         _ = self.connection.sender.send(notif.into());
@@ -196,8 +196,8 @@ fn root_path(params: &InitializeParams) -> Result<AbsPathBuf> {
     match params
         .root_uri
         .as_ref()
-        .and_then(|uri| uri.to_file_path())
-        .map(|path| AbsPathBuf::assert_utf8(path.into_owned()))
+        .and_then(|uri| uri.to_file_path().ok())
+        .map(AbsPathBuf::assert_utf8)
     {
         Some(path) => Ok(path),
         None => {

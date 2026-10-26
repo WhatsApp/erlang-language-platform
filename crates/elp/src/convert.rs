@@ -11,7 +11,6 @@
 use std::path::Path;
 use std::str::FromStr;
 
-use anyhow::Context as _;
 use anyhow::Result;
 use anyhow::anyhow;
 use elp_ide::TextRange;
@@ -36,7 +35,6 @@ use lsp_types::Location;
 use lsp_types::Uri;
 use paths::Utf8Component;
 use paths::Utf8Prefix;
-use tower_lsp_server::UriExt as _;
 
 use crate::arc_types;
 use crate::from_proto;
@@ -44,8 +42,8 @@ use crate::from_proto;
 pub fn abs_path(uri: &lsp_types::Uri) -> Result<AbsPathBuf> {
     let path = uri
         .to_file_path()
-        .with_context(|| anyhow!("URI '{}' is not a file", **uri))?;
-    Ok(AbsPathBuf::assert_utf8(path.into_owned()))
+        .map_err(|()| anyhow!("URI '{uri}' is not a file"))?;
+    Ok(AbsPathBuf::assert_utf8(path))
 }
 
 pub fn vfs_path(uri: &lsp_types::Uri) -> Result<VfsPath> {
@@ -65,10 +63,10 @@ pub fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position
 
 pub fn diagnostic_severity(severity: Severity) -> lsp_types::DiagnosticSeverity {
     match severity {
-        Severity::Error => lsp_types::DiagnosticSeverity::ERROR,
-        Severity::Warning => lsp_types::DiagnosticSeverity::WARNING,
-        Severity::WeakWarning => lsp_types::DiagnosticSeverity::HINT,
-        Severity::Information => lsp_types::DiagnosticSeverity::INFORMATION,
+        Severity::Error => lsp_types::DiagnosticSeverity::Error,
+        Severity::Warning => lsp_types::DiagnosticSeverity::Warning,
+        Severity::WeakWarning => lsp_types::DiagnosticSeverity::Hint,
+        Severity::Information => lsp_types::DiagnosticSeverity::Information,
     }
 }
 
@@ -94,10 +92,10 @@ where
     lsp_types::Diagnostic {
         range: range(line_index, d.range),
         severity: Some(diagnostic_severity(d.severity)),
-        code: Some(lsp_types::NumberOrString::String(code)),
+        code: Some(lsp_types::Code::String(code)),
         code_description,
         source,
-        message: d.message.clone(),
+        message: lsp_types::Message::String(d.message.clone()),
         related_information: from_related(get_file_info, &d.related_info),
         tags: d.tag.as_ref().map(lsp_diagnostic_tags),
         data: None,
@@ -106,8 +104,8 @@ where
 
 fn lsp_diagnostic_tags(d: &DiagnosticTag) -> Vec<lsp_types::DiagnosticTag> {
     match d {
-        DiagnosticTag::Unused => vec![lsp_types::DiagnosticTag::UNNECESSARY],
-        DiagnosticTag::Deprecated => vec![lsp_types::DiagnosticTag::DEPRECATED],
+        DiagnosticTag::Unused => vec![lsp_types::DiagnosticTag::Unnecessary],
+        DiagnosticTag::Deprecated => vec![lsp_types::DiagnosticTag::Deprecated],
     }
 }
 
@@ -116,9 +114,13 @@ pub fn lsp_to_assist_context_diagnostic(
     d: lsp_types::Diagnostic,
 ) -> Option<AssistContextDiagnostic> {
     let range = from_proto::safe_text_range(line_index, d.range)?;
-    if let Some(lsp_types::NumberOrString::String(code)) = d.code {
+    let message = match d.message {
+        lsp_types::Message::String(message) => message,
+        lsp_types::Message::MarkupContent(content) => content.value,
+    };
+    if let Some(lsp_types::Code::String(code)) = d.code {
         match AssistContextDiagnosticCode::from_str(&code) {
-            Ok(code) => Some(AssistContextDiagnostic::new(code, d.message, range)),
+            Ok(code) => Some(AssistContextDiagnostic::new(code, message, range)),
             Err(_) => None,
         }
     } else {

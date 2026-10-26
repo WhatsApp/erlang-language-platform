@@ -55,7 +55,6 @@ use elp_ide_db::text_edit::TextEdit;
 use elp_project_model::ProjectBuildData;
 use lsp_types::CompletionItemTag;
 use lsp_types::Hover;
-use lsp_types::HoverContents;
 use lsp_types::MarkupContent;
 use lsp_types::MarkupKind;
 
@@ -81,15 +80,15 @@ pub(crate) fn range(line_index: &LineIndex, range: TextRange) -> lsp_types::Rang
 
 pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
     match symbol_kind {
-        SymbolKind::Function => lsp_types::SymbolKind::FUNCTION,
-        SymbolKind::Record => lsp_types::SymbolKind::STRUCT,
-        SymbolKind::Type => lsp_types::SymbolKind::TYPE_PARAMETER,
-        SymbolKind::Define => lsp_types::SymbolKind::CONSTANT,
-        SymbolKind::File => lsp_types::SymbolKind::FILE,
-        SymbolKind::Module => lsp_types::SymbolKind::MODULE,
-        SymbolKind::RecordField => lsp_types::SymbolKind::STRUCT,
-        SymbolKind::Variable => lsp_types::SymbolKind::VARIABLE,
-        SymbolKind::Callback => lsp_types::SymbolKind::FUNCTION,
+        SymbolKind::Function => lsp_types::SymbolKind::Function,
+        SymbolKind::Record => lsp_types::SymbolKind::Struct,
+        SymbolKind::Type => lsp_types::SymbolKind::TypeParameter,
+        SymbolKind::Define => lsp_types::SymbolKind::Constant,
+        SymbolKind::File => lsp_types::SymbolKind::File,
+        SymbolKind::Module => lsp_types::SymbolKind::Module,
+        SymbolKind::RecordField => lsp_types::SymbolKind::Struct,
+        SymbolKind::Variable => lsp_types::SymbolKind::Variable,
+        SymbolKind::Callback => lsp_types::SymbolKind::Function,
     }
 }
 
@@ -117,7 +116,10 @@ pub(crate) fn optional_versioned_text_document_identifier(
 ) -> lsp_types::OptionalVersionedTextDocumentIdentifier {
     let uri = uri(snap, file_id);
     let version = snap.uri_file_version(&uri);
-    lsp_types::OptionalVersionedTextDocumentIdentifier { uri, version }
+    lsp_types::OptionalVersionedTextDocumentIdentifier {
+        text_document_identifier: lsp_types::TextDocumentIdentifier { uri },
+        version,
+    }
 }
 
 pub(crate) fn text_document_edit(
@@ -128,9 +130,9 @@ pub(crate) fn text_document_edit(
 ) -> Result<lsp_types::TextDocumentEdit> {
     let line_index = snap.analysis.line_index(file_id)?;
     let line_endings = snap.line_endings(file_id);
-    let edits: Vec<lsp_types::OneOf<lsp_types::TextEdit, lsp_types::AnnotatedTextEdit>> = edit
+    let edits: Vec<lsp_types::Edit> = edit
         .into_iter()
-        .map(|it| lsp_types::OneOf::Left(text_edit(&line_index, line_endings, it)))
+        .map(|it| lsp_types::Edit::TextEdit(text_edit(&line_index, line_endings, it)))
         .collect();
 
     Ok(lsp_types::TextDocumentEdit {
@@ -142,7 +144,7 @@ pub(crate) fn text_document_edit(
 pub(crate) fn text_document_ops(
     snap: &Snapshot,
     file_system_edit: FileSystemEdit,
-) -> Cancellable<Vec<lsp_types::DocumentChangeOperation>> {
+) -> Cancellable<Vec<lsp_types::DocumentChange>> {
     let mut ops = Vec::new();
     match file_system_edit {
         FileSystemEdit::CreateFile {
@@ -150,24 +152,26 @@ pub(crate) fn text_document_ops(
             initial_contents,
         } => {
             if let Some(uri) = snap.anchored_path(&dst) {
-                let create_file = lsp_types::ResourceOp::Create(lsp_types::CreateFile {
+                let create_file = lsp_types::DocumentChange::CreateFile(lsp_types::CreateFile {
                     uri: uri.clone(),
                     options: None,
                     annotation_id: None,
                 });
-                ops.push(lsp_types::DocumentChangeOperation::Op(create_file));
+                ops.push(create_file);
                 if !initial_contents.is_empty() {
-                    let text_document =
-                        lsp_types::OptionalVersionedTextDocumentIdentifier { uri, version: None };
+                    let text_document = lsp_types::OptionalVersionedTextDocumentIdentifier {
+                        text_document_identifier: lsp_types::TextDocumentIdentifier { uri },
+                        version: None,
+                    };
                     let text_edit = lsp_types::TextEdit {
                         range: lsp_types::Range::default(),
                         new_text: initial_contents,
                     };
                     let edit_file = lsp_types::TextDocumentEdit {
                         text_document,
-                        edits: vec![lsp_types::OneOf::Left(text_edit)],
+                        edits: vec![lsp_types::Edit::TextEdit(text_edit)],
                     };
-                    ops.push(lsp_types::DocumentChangeOperation::Edit(edit_file));
+                    ops.push(lsp_types::DocumentChange::TextDocumentEdit(edit_file));
                 }
             } else {
                 log::warn!("create file failed: {:?}", dst);
@@ -182,9 +186,7 @@ pub(crate) fn text_document_ops(
                     options: None,
                     annotation_id: None,
                 };
-                ops.push(lsp_types::DocumentChangeOperation::Op(
-                    lsp_types::ResourceOp::Rename(rename_file),
-                ))
+                ops.push(lsp_types::DocumentChange::RenameFile(rename_file))
             } else {
                 log::warn!("rename file failed: {:?} -> {:?}", src, dst);
             }
@@ -197,7 +199,7 @@ pub(crate) fn workspace_edit(
     snap: &Snapshot,
     mut source_change: SourceChange,
 ) -> Result<lsp_types::WorkspaceEdit> {
-    let mut document_changes: Vec<lsp_types::DocumentChangeOperation> = Vec::new();
+    let mut document_changes: Vec<lsp_types::DocumentChange> = Vec::new();
 
     // This is copying RA's order of operations, first file creates,
     // then edits, then file moves.
@@ -230,7 +232,7 @@ pub(crate) fn workspace_edit(
     for (file_id, edit) in source_change.source_file_edits {
         let text_document = optional_versioned_text_document_identifier(snap, file_id);
         let edit = text_document_edit(snap, file_id, text_document, edit)?;
-        document_changes.push(lsp_types::DocumentChangeOperation::Edit(
+        document_changes.push(lsp_types::DocumentChange::TextDocumentEdit(
             lsp_types::TextDocumentEdit {
                 text_document: edit.text_document,
                 edits: edit.edits.into_iter().collect(),
@@ -242,9 +244,12 @@ pub(crate) fn workspace_edit(
     for (file_ref, edit) in source_change.new_file_edits {
         if let Some(uri) = snap.anchored_path(&file_ref.clone().into()) {
             let version = snap.uri_file_version(&uri);
-            let text_document = lsp_types::OptionalVersionedTextDocumentIdentifier { uri, version };
+            let text_document = lsp_types::OptionalVersionedTextDocumentIdentifier {
+                text_document_identifier: lsp_types::TextDocumentIdentifier { uri },
+                version,
+            };
             let edit = text_document_edit(snap, file_ref.anchor, text_document, edit)?;
-            document_changes.push(lsp_types::DocumentChangeOperation::Edit(
+            document_changes.push(lsp_types::DocumentChange::TextDocumentEdit(
                 lsp_types::TextDocumentEdit {
                     text_document: edit.text_document,
                     edits: edit.edits.into_iter().collect(),
@@ -257,7 +262,7 @@ pub(crate) fn workspace_edit(
 
     let workspace_edit = lsp_types::WorkspaceEdit {
         changes: None,
-        document_changes: Some(lsp_types::DocumentChanges::Operations(document_changes)),
+        document_changes: Some(document_changes),
         change_annotations: None,
     };
     Ok(workspace_edit)
@@ -265,12 +270,12 @@ pub(crate) fn workspace_edit(
 
 pub(crate) fn code_action_kind(kind: AssistKind) -> lsp_types::CodeActionKind {
     match kind {
-        AssistKind::None | AssistKind::Generate => lsp_types::CodeActionKind::EMPTY,
-        AssistKind::QuickFix => lsp_types::CodeActionKind::QUICKFIX,
-        AssistKind::Refactor => lsp_types::CodeActionKind::REFACTOR,
-        AssistKind::RefactorExtract => lsp_types::CodeActionKind::REFACTOR_EXTRACT,
-        AssistKind::RefactorInline => lsp_types::CodeActionKind::REFACTOR_INLINE,
-        AssistKind::RefactorRewrite => lsp_types::CodeActionKind::REFACTOR_REWRITE,
+        AssistKind::None | AssistKind::Generate => lsp_types::CodeActionKind::Empty,
+        AssistKind::QuickFix => lsp_types::CodeActionKind::QuickFix,
+        AssistKind::Refactor => lsp_types::CodeActionKind::Refactor,
+        AssistKind::RefactorExtract => lsp_types::CodeActionKind::RefactorExtract,
+        AssistKind::RefactorInline => lsp_types::CodeActionKind::RefactorInline,
+        AssistKind::RefactorRewrite => lsp_types::CodeActionKind::RefactorRewrite,
     }
 }
 
@@ -278,10 +283,11 @@ pub(crate) fn code_action(
     snap: &Snapshot,
     assist: Assist,
     resolve_data: Option<(usize, lsp_types::CodeActionParams, Option<AssistUserInput>)>,
-) -> Result<lsp_types::CodeActionOrCommand> {
+) -> Result<lsp_types::CodeActionResponse> {
     let mut res = lsp_types::CodeAction {
         title: assist.label.to_string(),
         kind: Some(code_action_kind(assist.id.1)),
+        tags: None,
         edit: None,
         is_preferred: None,
         data: None,
@@ -303,7 +309,7 @@ pub(crate) fn code_action(
             stdx::never!("assist should always be resolved if client can't do lazy resolving")
         }
     };
-    Ok(lsp_types::CodeActionOrCommand::CodeAction(res))
+    Ok(lsp_types::CodeActionResponse::CodeAction(res))
 }
 
 pub(crate) fn location(snap: &Snapshot, file_range: FileRange) -> Cancellable<lsp_types::Location> {
@@ -360,11 +366,14 @@ fn location_info(
     Ok((target_uri, target_range, target_selection_range))
 }
 
-pub(crate) fn goto_definition_response(
+pub(crate) fn goto_definition_response<R>(
     snap: &Snapshot,
     src: Option<FileRange>,
     targets: Vec<NavigationTarget>,
-) -> Result<lsp_types::GotoDefinitionResponse> {
+) -> Result<R>
+where
+    R: From<lsp_types::Definition> + From<Vec<lsp_types::DefinitionLink>>,
+{
     if snap.config.location_link() {
         let links = targets
             .into_iter()
@@ -376,7 +385,7 @@ pub(crate) fn goto_definition_response(
             .into_iter()
             .map(|nav| location_from_nav(snap, nav))
             .collect::<Cancellable<Vec<_>>>()?;
-        Ok(locations.into())
+        Ok(lsp_types::Definition::LocationList(locations).into())
     }
 }
 
@@ -390,7 +399,7 @@ pub(crate) fn hover_response(
         None => return Result::Ok(None),
     };
     let markup_kind = MarkupKind::Markdown;
-    let hover_contents = HoverContents::Markup(MarkupContent {
+    let hover_contents = lsp_types::Contents::MarkupContent(MarkupContent {
         kind: markup_kind,
         value: markup,
     });
@@ -416,11 +425,9 @@ pub(crate) fn hover_response(
 }
 
 fn doc_link(link: &DocLink) -> Option<lsp_ext::CommandLinkGroup> {
-    let command = command::open_uri(&link.uri, &link.title);
-    let command_link = lsp_ext::CommandLink {
-        tooltip: Some(link.uri.to_string()),
-        command,
-    };
+    let mut command = command::open_uri(&link.uri, &link.title);
+    command.tooltip = Some(link.uri.to_string());
+    let command_link = lsp_ext::CommandLink { command };
     let group = lsp_ext::CommandLinkGroup {
         title: Some("Docs for:".to_string()),
         commands: vec![command_link],
@@ -451,9 +458,13 @@ pub fn completion_response(
         .into_iter()
         .map(|it| completion_item(&snap, it))
         .collect();
-    lsp_types::CompletionResponse::Array(items)
+    lsp_types::CompletionResponse::CompletionItemList(items)
 }
 
+#[expect(
+    deprecated,
+    reason = "CompletionItem still requires its deprecated field alongside tags"
+)]
 fn completion_item(snap: &Snapshot, c: Completion) -> lsp_types::CompletionItem {
     use Kind::*;
     use lsp_types::CompletionItemKind as K;
@@ -466,7 +477,7 @@ fn completion_item(snap: &Snapshot, c: Completion) -> lsp_types::CompletionItem 
     };
     let mut tags = Vec::new();
     if c.deprecated {
-        tags.push(CompletionItemTag::DEPRECATED);
+        tags.push(CompletionItemTag::Deprecated);
     };
     let additional_text_edits =
         c.additional_edit
@@ -484,19 +495,19 @@ fn completion_item(snap: &Snapshot, c: Completion) -> lsp_types::CompletionItem 
     lsp_types::CompletionItem {
         label: c.label,
         kind: Some(match c.kind {
-            Attribute => K::KEYWORD,
-            Behavior => K::INTERFACE,
-            Function => K::FUNCTION,
-            Keyword => K::KEYWORD,
-            Macro => K::CONSTANT,
-            Module => K::MODULE,
-            Operator => K::OPERATOR,
-            RecordField => K::FIELD,
-            Record => K::STRUCT,
-            Map => K::STRUCT,
-            Type => K::INTERFACE,
-            Variable => K::VARIABLE,
-            AiAssist => K::EVENT,
+            Attribute => K::Keyword,
+            Behavior => K::Interface,
+            Function => K::Function,
+            Keyword => K::Keyword,
+            Macro => K::Constant,
+            Module => K::Module,
+            Operator => K::Operator,
+            RecordField => K::Field,
+            Record => K::Struct,
+            Map => K::Struct,
+            Type => K::Interface,
+            Variable => K::Variable,
+            AiAssist => K::Event,
         }),
         detail: None,
         documentation: None,
@@ -504,12 +515,13 @@ fn completion_item(snap: &Snapshot, c: Completion) -> lsp_types::CompletionItem 
         preselect: None,
         insert_text_format: match c.contents {
             Contents::SameAsLabel | Contents::String(_) => {
-                Some(lsp_types::InsertTextFormat::PLAIN_TEXT)
+                Some(lsp_types::InsertTextFormat::PlainText)
             }
-            Contents::Snippet(_) => Some(lsp_types::InsertTextFormat::SNIPPET),
+            Contents::Snippet(_) => Some(lsp_types::InsertTextFormat::Snippet),
         },
         insert_text_mode: None,
         text_edit: None,
+        text_edit_text: None,
         additional_text_edits,
         commit_characters: None,
         data: match completion_item_data(snap, c.position) {
@@ -563,7 +575,7 @@ pub(crate) fn call_hierarchy_item(
     target: NavigationTarget,
 ) -> Result<lsp_types::CallHierarchyItem> {
     let name = target.name.to_string();
-    let kind = lsp_types::SymbolKind::FUNCTION;
+    let kind = lsp_types::SymbolKind::Function;
     let (uri, range, selection_range) = location_info(snap, target)?;
     Ok(lsp_types::CallHierarchyItem {
         name,
@@ -604,7 +616,7 @@ pub(crate) fn signature_information(call_info: SignatureHelp) -> lsp_types::Sign
     let parameters = call_info
         .parameter_labels()
         .map(|label| lsp_types::ParameterInformation {
-            label: lsp_types::ParameterLabel::Simple(label.to_string()),
+            label: lsp_types::ParameterInformationLabel::String(label.to_string()),
             documentation: call_info.parameters_doc.get(label).map(|doc| {
                 lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
                     kind: lsp_types::MarkupKind::Markdown,
@@ -621,7 +633,9 @@ pub(crate) fn signature_information(call_info: SignatureHelp) -> lsp_types::Sign
         })
     });
 
-    let active_parameter = call_info.active_parameter.map(|it| it as u32);
+    let active_parameter = call_info
+        .active_parameter
+        .map(|it| lsp_types::ActiveParameter::Int(it as u32));
 
     lsp_types::SignatureInformation {
         label,
@@ -678,7 +692,7 @@ pub(crate) fn semantic_token_delta(
 
 fn semantic_token_type_and_modifiers(
     highlight: Highlight,
-) -> (lsp_types::SemanticTokenType, semantic_tokens::ModifierSet) {
+) -> (lsp_types::SemanticTokenTypes, semantic_tokens::ModifierSet) {
     let mut mods = semantic_tokens::ModifierSet::default();
     let type_ = match highlight.tag {
         HlTag::Symbol(symbol) => match symbol {
@@ -715,8 +729,8 @@ pub(crate) fn document_highlight_kind(
     category: ReferenceCategory,
 ) -> Option<lsp_types::DocumentHighlightKind> {
     match category {
-        ReferenceCategory::Read => Some(lsp_types::DocumentHighlightKind::READ),
-        ReferenceCategory::Write => Some(lsp_types::DocumentHighlightKind::WRITE),
+        ReferenceCategory::Read => Some(lsp_types::DocumentHighlightKind::Read),
+        ReferenceCategory::Write => Some(lsp_types::DocumentHighlightKind::Write),
     }
 }
 
@@ -947,6 +961,7 @@ pub(crate) mod command {
         lsp_types::Command {
             title: title.to_string(),
             command: "elp.openInteractive".into(),
+            tooltip: None,
             arguments: Some(vec![to_value(runnable).unwrap()]),
         }
     }
@@ -955,6 +970,7 @@ pub(crate) mod command {
         lsp_types::Command {
             title: title.to_string(),
             command: "elp.runInteractive".into(),
+            tooltip: None,
             arguments: Some(vec![to_value(runnable).unwrap()]),
         }
     }
@@ -963,6 +979,7 @@ pub(crate) mod command {
         lsp_types::Command {
             title: title.to_string(),
             command: "elp.runSingle".into(),
+            tooltip: None,
             arguments: Some(vec![to_value(runnable).unwrap()]),
         }
     }
@@ -974,6 +991,7 @@ pub(crate) mod command {
         lsp_types::Command {
             title: title.to_string(),
             command: "elp.debugInteractive".into(),
+            tooltip: None,
             arguments: Some(vec![to_value(runnable).unwrap()]),
         }
     }
@@ -982,6 +1000,7 @@ pub(crate) mod command {
         lsp_types::Command {
             title: title.to_string(),
             command: "elp.debugSingle".into(),
+            tooltip: None,
             arguments: Some(vec![to_value(runnable).unwrap()]),
         }
     }
@@ -990,6 +1009,7 @@ pub(crate) mod command {
         lsp_types::Command {
             title: title.to_string(),
             command: "elp.openUri".into(),
+            tooltip: None,
             arguments: Some(vec![to_value(uri).unwrap()]),
         }
     }
@@ -998,6 +1018,7 @@ pub(crate) mod command {
         lsp_types::Command {
             title: "triggerParameterHints".into(),
             command: "editor.action.triggerParameterHints".into(),
+            tooltip: None,
             arguments: None,
         }
     }
@@ -1028,7 +1049,7 @@ pub(crate) fn inlay_hint(
             InlayKind::Parameter => true,
         }),
         kind: match inlay_hint.kind {
-            InlayKind::Parameter => Some(lsp_types::InlayHintKind::PARAMETER),
+            InlayKind::Parameter => Some(lsp_types::InlayHintKind::Parameter),
         },
         text_edits: None,
         data: None,
@@ -1040,10 +1061,7 @@ pub(crate) fn inlay_hint(
 fn inlay_hint_label(
     snap: &Snapshot,
     mut label: InlayHintLabel,
-) -> Cancellable<(
-    lsp_types::InlayHintLabel,
-    Option<lsp_types::InlayHintTooltip>,
-)> {
+) -> Cancellable<(lsp_types::Label, Option<lsp_types::Tooltip>)> {
     let res = match &*label.parts {
         [
             InlayHintLabelPart {
@@ -1053,13 +1071,11 @@ fn inlay_hint_label(
         ] => {
             let InlayHintLabelPart { text, tooltip, .. } = label.parts.pop().unwrap();
             (
-                lsp_types::InlayHintLabel::String(text),
+                lsp_types::Label::String(text),
                 match tooltip {
-                    Some(elp_ide::InlayTooltip::String(s)) => {
-                        Some(lsp_types::InlayHintTooltip::String(s))
-                    }
+                    Some(elp_ide::InlayTooltip::String(s)) => Some(lsp_types::Tooltip::String(s)),
                     Some(elp_ide::InlayTooltip::Markdown(s)) => Some(
-                        lsp_types::InlayHintTooltip::MarkupContent(lsp_types::MarkupContent {
+                        lsp_types::Tooltip::MarkupContent(lsp_types::MarkupContent {
                             kind: lsp_types::MarkupKind::Markdown,
                             value: s,
                         }),
@@ -1080,16 +1096,14 @@ fn inlay_hint_label(
                             value: part.text,
                             tooltip: match part.tooltip {
                                 Some(elp_ide::InlayTooltip::String(s)) => {
-                                    Some(lsp_types::InlayHintLabelPartTooltip::String(s))
+                                    Some(lsp_types::Tooltip::String(s))
                                 }
-                                Some(elp_ide::InlayTooltip::Markdown(s)) => {
-                                    Some(lsp_types::InlayHintLabelPartTooltip::MarkupContent(
-                                        lsp_types::MarkupContent {
-                                            kind: lsp_types::MarkupKind::Markdown,
-                                            value: s,
-                                        },
-                                    ))
-                                }
+                                Some(elp_ide::InlayTooltip::Markdown(s)) => Some(
+                                    lsp_types::Tooltip::MarkupContent(lsp_types::MarkupContent {
+                                        kind: lsp_types::MarkupKind::Markdown,
+                                        value: s,
+                                    }),
+                                ),
                                 None => None,
                             },
                             location,
@@ -1097,7 +1111,7 @@ fn inlay_hint_label(
                         })
                 })
                 .collect::<Cancellable<_>>()?;
-            (lsp_types::InlayHintLabel::LabelParts(parts), None)
+            (lsp_types::Label::InlayHintLabelPartList(parts), None)
         }
     };
     Ok(res)
@@ -1110,7 +1124,7 @@ pub(crate) fn document_symbol(
 ) -> lsp_types::DocumentSymbol {
     let mut tags = Vec::new();
     if symbol.deprecated {
-        tags.push(lsp_types::SymbolTag::DEPRECATED)
+        tags.push(lsp_types::SymbolTag::Deprecated)
     };
     let selection_range = range(line_index, symbol.selection_range);
     let range = range(line_index, symbol.range);

@@ -206,7 +206,7 @@ mod test {
 
     #[test]
     fn test_record_index() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::FIELD).unwrap() == "5");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Field).unwrap() == "5");
 
         check(
             r#"
@@ -235,7 +235,7 @@ mod test {
 
     #[test]
     fn test_record_field() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::FIELD).unwrap() == "5");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Field).unwrap() == "5");
 
         check(
             r#"

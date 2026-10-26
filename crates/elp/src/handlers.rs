@@ -52,12 +52,11 @@ use lsp_types::FoldingRange;
 use lsp_types::FoldingRangeParams;
 use lsp_types::HoverParams;
 use lsp_types::RenameParams;
+use lsp_types::SemanticTokens;
 use lsp_types::SemanticTokensDeltaParams;
-use lsp_types::SemanticTokensFullDeltaResult;
+use lsp_types::SemanticTokensDeltaResponse;
 use lsp_types::SemanticTokensParams;
 use lsp_types::SemanticTokensRangeParams;
-use lsp_types::SemanticTokensRangeResult;
-use lsp_types::SemanticTokensResult;
 use lsp_types::SymbolInformation;
 use lsp_types::TextDocumentIdentifier;
 use lsp_types::Uri;
@@ -74,7 +73,7 @@ use crate::to_proto;
 pub(crate) fn handle_code_action(
     snap: Snapshot,
     params: lsp_types::CodeActionParams,
-) -> Result<Option<Vec<lsp_types::CodeActionOrCommand>>> {
+) -> Result<Option<Vec<lsp_types::CodeActionResponse>>> {
     let _p = tracing::info_span!("handle_code_action").entered();
 
     if !snap.config.code_action_literals() {
@@ -94,7 +93,7 @@ pub(crate) fn handle_code_action(
         .clone()
         .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
 
-    let mut res: Vec<lsp_types::CodeActionOrCommand> = Vec::new();
+    let mut res: Vec<lsp_types::CodeActionResponse> = Vec::new();
 
     let code_action_resolve_cap = snap.config.code_action_resolve();
     let resolve = if code_action_resolve_cap {
@@ -206,8 +205,8 @@ pub(crate) fn handle_code_action_resolve(
             .into());
     }
     match to_proto::code_action(&snap, assist.clone(), None)? {
-        lsp_types::CodeActionOrCommand::Command(_) => {}
-        lsp_types::CodeActionOrCommand::CodeAction(ca) => code_action.edit = ca.edit,
+        lsp_types::CodeActionResponse::Command(_) => {}
+        lsp_types::CodeActionResponse::CodeAction(ca) => code_action.edit = ca.edit,
     }
     Ok(code_action)
 }
@@ -308,8 +307,8 @@ pub(crate) fn handle_selection_range(
 
 pub(crate) fn handle_goto_definition(
     snap: Snapshot,
-    params: lsp_types::GotoDefinitionParams,
-) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
+    params: lsp_types::DefinitionParams,
+) -> Result<Option<lsp_types::DefinitionResponse>> {
     let _p = tracing::info_span!("handle_goto_definition").entered();
     let start = SystemTime::now();
 
@@ -436,8 +435,8 @@ fn send_hover_telemetry(doc_result: &DocResult) {
 
 pub(crate) fn handle_goto_type_definition(
     snap: Snapshot,
-    params: lsp_types::GotoDefinitionParams,
-) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
+    params: lsp_types::TypeDefinitionParams,
+) -> Result<Option<lsp_types::TypeDefinitionResponse>> {
     if !snap.config.types_on_hover() {
         return Ok(None);
     }
@@ -460,8 +459,8 @@ pub(crate) fn handle_goto_type_definition(
 
 pub(crate) fn handle_goto_implementation(
     snap: Snapshot,
-    params: lsp_types::GotoDefinitionParams,
-) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
+    params: lsp_types::ImplementationParams,
+) -> Result<Option<lsp_types::ImplementationResponse>> {
     let _p = tracing::info_span!("handle_goto_implementation").entered();
     let mut position = from_proto::file_position(&snap, params.text_document_position_params)?;
     position.offset = snap
@@ -485,11 +484,15 @@ pub(crate) fn handle_references(
 ) -> Result<Option<Vec<lsp_types::Location>>> {
     let _p = tracing::info_span!("handle_references").entered();
     let _timer = timeit_with_telemetry!(TelemetryData::References {
-        file_uri: params.text_document_position.text_document.uri.clone(),
-        position: params.text_document_position.position
+        file_uri: params
+            .text_document_position_params
+            .text_document
+            .uri
+            .clone(),
+        position: params.text_document_position_params.position
     });
 
-    let mut position = from_proto::file_position(&snap, params.text_document_position)?;
+    let mut position = from_proto::file_position(&snap, params.text_document_position_params)?;
     position.offset = snap
         .analysis
         .clamp_offset(position.file_id, position.offset)?;
@@ -526,7 +529,7 @@ pub(crate) fn handle_completion(
     params: lsp_types::CompletionParams,
 ) -> Result<Option<lsp_types::CompletionResponse>> {
     let _p = tracing::info_span!("handle_completion").entered();
-    let mut position = from_proto::file_position(&snap, params.text_document_position)?;
+    let mut position = from_proto::file_position(&snap, params.text_document_position_params)?;
     position.offset = snap
         .analysis
         .clamp_offset(position.file_id, position.offset)?;
@@ -599,23 +602,31 @@ pub(crate) fn handle_workspace_symbol(
         for nav in snap.analysis.symbol_search(project_id, &params.query)? {
             #[allow(deprecated)]
             let info = SymbolInformation {
-                name: nav.name.to_string(),
-                kind: to_proto::symbol_kind(nav.kind),
-                tags: None,
-                location: to_proto::location_from_nav(&snap, nav)?,
-                container_name: None,
                 deprecated: None,
+                base_symbol_information: lsp_types::BaseSymbolInformation {
+                    name: nav.name.to_string(),
+                    kind: to_proto::symbol_kind(nav.kind),
+                    tags: None,
+                    container_name: None,
+                },
+                location: to_proto::location_from_nav(&snap, nav)?,
             };
             res.push(info);
         }
     }
-    res.sort_by(|a, b| a.name.cmp(&b.name));
-    Ok(Some(lsp_types::WorkspaceSymbolResponse::Flat(res)))
+    res.sort_by(|a, b| {
+        a.base_symbol_information
+            .name
+            .cmp(&b.base_symbol_information.name)
+    });
+    Ok(Some(
+        lsp_types::WorkspaceSymbolResponse::SymbolInformationList(res),
+    ))
 }
 
 pub(crate) fn handle_rename(snap: Snapshot, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
     let _p = tracing::info_span!("handle_rename").entered();
-    let mut position = from_proto::file_position(&snap, params.text_document_position)?;
+    let mut position = from_proto::file_position(&snap, params.text_document_position_params)?;
     position.offset = snap
         .analysis
         .clamp_offset(position.file_id, position.offset)?;
@@ -669,7 +680,7 @@ pub(crate) fn handle_hover(snap: Snapshot, params: HoverParams) -> Result<Option
                             format!(
                                 "[{}]({}#L{}-{})",
                                 name,
-                                *loc.uri,
+                                loc.uri,
                                 loc.range.start.line + 1,
                                 loc.range.end.line + 1
                             )
@@ -918,7 +929,7 @@ pub(crate) fn handle_signature_help(
 pub(crate) fn handle_semantic_tokens_full(
     snap: Snapshot,
     params: SemanticTokensParams,
-) -> Result<Option<SemanticTokensResult>> {
+) -> Result<Option<SemanticTokens>> {
     let _p = tracing::info_span!("handle_semantic_tokens_full").entered();
 
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
@@ -937,13 +948,13 @@ pub(crate) fn handle_semantic_tokens_full(
         .lock()
         .insert(params.text_document.uri, semantic_tokens.clone());
 
-    Ok(Some(semantic_tokens.into()))
+    Ok(Some(semantic_tokens))
 }
 
 pub(crate) fn handle_semantic_tokens_full_delta(
     snap: Snapshot,
     params: SemanticTokensDeltaParams,
-) -> Result<Option<SemanticTokensFullDeltaResult>> {
+) -> Result<Option<SemanticTokensDeltaResponse>> {
     let _p = tracing::info_span!("handle_semantic_tokens_full_delta").entered();
 
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
@@ -976,7 +987,7 @@ pub(crate) fn handle_semantic_tokens_full_delta(
 pub(crate) fn handle_semantic_tokens_range(
     snap: Snapshot,
     params: SemanticTokensRangeParams,
-) -> Result<Option<SemanticTokensRangeResult>> {
+) -> Result<Option<SemanticTokens>> {
     let _p = tracing::info_span!("handle_semantic_tokens_range").entered();
 
     let mut frange = from_proto::file_range(&snap, params.text_document, params.range)?;
@@ -990,7 +1001,7 @@ pub(crate) fn handle_semantic_tokens_range(
         snap.config.highlighting_config(),
     )?;
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
-    Ok(Some(semantic_tokens.into()))
+    Ok(Some(semantic_tokens))
 }
 
 pub(crate) fn handle_code_lens(

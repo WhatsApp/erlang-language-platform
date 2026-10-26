@@ -79,19 +79,18 @@ use lsp_server::Notification;
 use lsp_server::Request;
 use lsp_server::RequestId;
 use lsp_server::Response;
+use lsp_types as notification;
+use lsp_types as request;
 use lsp_types::FileChangeType;
 use lsp_types::FileEvent;
 use lsp_types::MessageActionItem;
 use lsp_types::MessageActionItemProperty;
-use lsp_types::OneOf;
+use lsp_types::Notification as _;
+use lsp_types::Request as _;
 use lsp_types::ShowDocumentParams;
 use lsp_types::ShowMessageParams;
 use lsp_types::ShowMessageRequestParams;
 use lsp_types::Uri;
-use lsp_types::notification;
-use lsp_types::notification::Notification as _;
-use lsp_types::request;
-use lsp_types::request::Request as _;
 use parking_lot::Mutex;
 use parking_lot::RwLock;
 use rayon::prelude::*;
@@ -193,9 +192,11 @@ impl fmt::Debug for Event {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Event::Lsp(lsp_server::Message::Notification(notif))
-                if notif.method == notification::DidOpenTextDocument::METHOD
-                    || notif.method == notification::DidChangeTextDocument::METHOD
-                    || notif.method == notification::LogMessage::METHOD =>
+                if notif.method
+                    == notification::DidOpenTextDocumentNotification::METHOD.as_str()
+                    || notif.method
+                        == notification::DidChangeTextDocumentNotification::METHOD.as_str()
+                    || notif.method == notification::LogMessageNotification::METHOD.as_str() =>
             {
                 f.debug_struct("Notification")
                     .field("method", &notif.method)
@@ -397,23 +398,31 @@ impl Server {
     pub fn main_loop(mut self) -> Result<()> {
         if self.config.did_save_text_document_dynamic_registration() {
             let save_registration_options = lsp_types::TextDocumentSaveRegistrationOptions {
-                include_text: Some(false),
                 text_document_registration_options: lsp_types::TextDocumentRegistrationOptions {
-                    document_selector: Some(vec![lsp_types::DocumentFilter {
-                        language: None,
-                        scheme: None,
-                        pattern: Some("**/*.{e,h}rl".to_string()),
-                    }]),
+                    document_selector: Some(vec![lsp_types::DocumentFilter::TextDocumentFilter(
+                        lsp_types::TextDocumentFilter::Pattern(
+                            lsp_types::TextDocumentFilterPattern {
+                                language: None,
+                                scheme: None,
+                                pattern: lsp_types::GlobPattern::Pattern(
+                                    "**/*.{e,h}rl".to_string(),
+                                ),
+                            },
+                        ),
+                    )]),
+                },
+                save_options: lsp_types::SaveOptions {
+                    include_text: Some(false),
                 },
             };
 
             let registration = lsp_types::Registration {
-                id: notification::DidSaveTextDocument::METHOD.to_string(),
-                method: notification::DidSaveTextDocument::METHOD.to_string(),
+                id: notification::DidSaveTextDocumentNotification::METHOD.to_string(),
+                method: notification::DidSaveTextDocumentNotification::METHOD.to_string(),
                 register_options: Some(serde_json::to_value(save_registration_options).unwrap()),
             };
 
-            self.send_request::<request::RegisterCapability>(
+            self.send_request::<request::RegistrationRequest>(
                 lsp_types::RegistrationParams {
                     registrations: vec![registration],
                 },
@@ -427,7 +436,7 @@ impl Server {
 
         while let Some(event) = self.next_event() {
             if let Event::Lsp(lsp_server::Message::Notification(notif)) = &event
-                && notif.method == notification::Exit::METHOD
+                && notif.method == notification::ExitNotification::METHOD.as_str()
             {
                 return Ok(());
             }
@@ -631,7 +640,7 @@ impl Server {
                     })
                     .collect();
 
-                self.send_notification::<notification::PublishDiagnostics>(
+                self.send_notification::<notification::PublishDiagnosticsNotification>(
                     lsp_types::PublishDiagnosticsParams {
                         uri,
                         diagnostics,
@@ -658,7 +667,7 @@ impl Server {
         }
 
         if self.status != Status::Running
-            && req.method != request::Shutdown::METHOD
+            && req.method != request::ShutdownRequest::METHOD.as_str()
             && !req.method.starts_with("elp/")
         {
             self.send_response(Response::new_err(
@@ -670,37 +679,35 @@ impl Server {
         }
 
         RequestDispatcher::new(self, req)
-            .on_sync::<request::Shutdown>(|this, ()| {
+            .on_sync::<request::ShutdownRequest>(|this, ()| {
                 this.transition(Status::ShuttingDown);
                 Ok(())
             })?
             .on::<request::CodeActionRequest>(handlers::handle_code_action)
             .on::<request::CodeActionResolveRequest>(handlers::handle_code_action_resolve)
-            .on::<request::GotoDefinition>(handlers::handle_goto_definition)
-            .on::<request::GotoTypeDefinition>(handlers::handle_goto_type_definition)
-            .on::<request::GotoImplementation>(handlers::handle_goto_implementation)
-            .on::<request::References>(handlers::handle_references)
-            .on::<request::Completion>(handlers::handle_completion)
-            .on::<request::ResolveCompletionItem>(handlers::handle_completion_resolve)
+            .on::<request::DefinitionRequest>(handlers::handle_goto_definition)
+            .on::<request::TypeDefinitionRequest>(handlers::handle_goto_type_definition)
+            .on::<request::ImplementationRequest>(handlers::handle_goto_implementation)
+            .on::<request::ReferencesRequest>(handlers::handle_references)
+            .on::<request::CompletionRequest>(handlers::handle_completion)
+            .on::<request::CompletionResolveRequest>(handlers::handle_completion_resolve)
             .on::<request::DocumentSymbolRequest>(handlers::handle_document_symbol)
-            .on::<lsp_types::request::WorkspaceSymbolRequest>(handlers::handle_workspace_symbol)
-            .on::<request::Rename>(handlers::handle_rename)
+            .on::<request::WorkspaceSymbolRequest>(handlers::handle_workspace_symbol)
+            .on::<request::RenameRequest>(handlers::handle_rename)
             .on::<lsp_ext::HoverRequest>(handlers::handle_hover)
             .on::<request::FoldingRangeRequest>(handlers::handle_folding_range)
             .on::<request::DocumentHighlightRequest>(handlers::handle_document_highlight)
-            .on::<lsp_types::request::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)
-            .on::<lsp_types::request::CallHierarchyIncomingCalls>(
+            .on::<request::CallHierarchyPrepareRequest>(handlers::handle_call_hierarchy_prepare)
+            .on::<request::CallHierarchyIncomingCallsRequest>(
                 handlers::handle_call_hierarchy_incoming,
             )
-            .on::<lsp_types::request::CallHierarchyOutgoingCalls>(
+            .on::<request::CallHierarchyOutgoingCallsRequest>(
                 handlers::handle_call_hierarchy_outgoing,
             )
             .on::<request::SignatureHelpRequest>(handlers::handle_signature_help)
             .on::<request::SelectionRangeRequest>(handlers::handle_selection_range)
-            .on::<request::SemanticTokensFullRequest>(handlers::handle_semantic_tokens_full)
-            .on::<request::SemanticTokensFullDeltaRequest>(
-                handlers::handle_semantic_tokens_full_delta,
-            )
+            .on::<request::SemanticTokensRequest>(handlers::handle_semantic_tokens_full)
+            .on::<request::SemanticTokensDeltaRequest>(handlers::handle_semantic_tokens_full_delta)
             .on::<request::SemanticTokensRangeRequest>(handlers::handle_semantic_tokens_range)
             .on::<request::CodeLensRequest>(handlers::handle_code_lens)
             .on::<request::InlayHintRequest>(handlers::handle_inlay_hints)
@@ -715,12 +722,12 @@ impl Server {
 
     fn on_notification(&mut self, notif: Notification) -> Result<()> {
         NotificationDispatcher::new(self, notif)
-            .on::<notification::Cancel>(|this, params| {
+            .on::<notification::CancelNotification>(|this, params| {
                 let id = parse_id(params.id);
                 this.cancel(id);
                 Ok(())
             })?
-            .on::<notification::DidOpenTextDocument>(|this, params| {
+            .on::<notification::DidOpenTextDocumentNotification>(|this, params| {
                 this.eqwalizer_and_erlang_service_diagnostics_requested = true;
                 this.native_diagnostics_requested = true;
                 if let Ok(path) = convert::abs_path(&params.text_document.uri) {
@@ -765,14 +772,19 @@ impl Server {
                 } else {
                     log::error!(
                         "DidOpenTextDocument: could not get vfs path for {}",
-                        *params.text_document.uri
+                        params.text_document.uri
                     );
                 }
 
                 Ok(())
             })?
-            .on::<notification::DidChangeTextDocument>(|this, params| {
-                if let Ok(path) = convert::vfs_path(&params.text_document.uri) {
+            .on::<notification::DidChangeTextDocumentNotification>(|this, params| {
+                if let Ok(path) = convert::vfs_path(
+                    &params
+                        .text_document
+                        .text_document_identifier
+                        .uri,
+                ) {
                     let mut mem_docs = this.mem_docs.write();
                     let Some(DocumentData { version, data }) = mem_docs.get_mut(&path) else {
                         tracing::error!(?path, "unexpected DidChangeTextDocument");
@@ -794,7 +806,7 @@ impl Server {
                 }
                 Ok(())
             })?
-            .on::<notification::DidCloseTextDocument>(|this, params| {
+            .on::<notification::DidCloseTextDocumentNotification>(|this, params| {
                 let uri = params.text_document.uri;
                 let analysis = this.snapshot().analysis;
                 let mut diagnostics = Vec::new();
@@ -833,7 +845,7 @@ impl Server {
                 }
 
                 // Clear the diagnostics for the previously known version of the file.
-                this.send_notification::<lsp_types::notification::PublishDiagnostics>(
+                this.send_notification::<notification::PublishDiagnosticsNotification>(
                     lsp_types::PublishDiagnosticsParams {
                         uri,
                         diagnostics,
@@ -843,8 +855,8 @@ impl Server {
 
                 Ok(())
             })?
-            .on::<notification::DidSaveTextDocument>(|this, params| {
-                let change = FileEvent::new(params.text_document.uri, FileChangeType::CHANGED);
+            .on::<notification::DidSaveTextDocumentNotification>(|this, params| {
+                let change = FileEvent::new(params.text_document.uri, FileChangeType::Changed);
                 if let Ok(path) = convert::abs_path(&change.uri) {
                     // We only put .erl/.hrl files into the
                     // `mem_docs` store, but will get changes for
@@ -864,7 +876,7 @@ impl Server {
                 };
                 Ok(())
             })?
-            .on::<notification::DidChangeWatchedFiles>(|this, params| {
+            .on::<notification::DidChangeWatchedFilesNotification>(|this, params| {
                 // For some reason, we are seeing duplicate notifications for the same file.
                 // But we cannot use FxHashSet because change does not implement Hash.
                 let changes: &[FileEvent] = &params.changes;
@@ -872,10 +884,10 @@ impl Server {
                 #[allow(clippy::mutable_key_type)]
                 let mut seen: FxHashMap<Uri, FileChangeType> = FxHashMap::default();
                 for change in changes {
-                    if seen.get(&change.uri).is_some_and(|prev_typ| prev_typ == &change.typ) {
+                    if seen.get(&change.uri).is_some_and(|prev_typ| prev_typ == &change.kind) {
                         continue;
                     }
-                    seen.insert(change.uri.clone(), change.typ);
+                    seen.insert(change.uri.clone(), change.kind);
                     if let Ok(path) = convert::abs_path(&change.uri) {
                         let opened = convert::vfs_path(&change.uri)
                             .map(|vfs_path| this.mem_docs.read().contains(&vfs_path))
@@ -900,14 +912,14 @@ impl Server {
                 }
                 Ok(())
             })?
-            .on::<notification::DidChangeConfiguration>(|this, _params| {
+            .on::<notification::DidChangeConfigurationNotification>(|this, _params| {
                 // As stated in https://github.com/microsoft/language-server-protocol/issues/676,
                 // this notification's parameters should be ignored and the actual config queried separately.
                 this.refresh_config();
 
                 Ok(())
             })?
-            .on::<notification::SetTrace>(|_, _| {
+            .on::<notification::SetTraceNotification>(|_, _| {
                 // Nothing to do for now
                 Ok(())
             })?
@@ -931,7 +943,7 @@ impl Server {
             (Some("rebar.config"), Some("script")) => true,
             (Some(".elp"), Some("toml")) => true,
             (Some(file), Some("erl"))
-                if change.typ == FileChangeType::CREATED && file.ends_with("_SUITE") =>
+                if change.kind == FileChangeType::Created && file.ends_with("_SUITE") =>
             {
                 true
             }
@@ -1001,7 +1013,7 @@ impl Server {
             LoadingProgress::Finished => {
                 if n_total == 0 {
                     let params = lsp_types::ShowMessageParams {
-                        typ: lsp_types::MessageType::WARNING,
+                        kind: lsp_types::MessageType::Warning,
                         message: "Loaded zero files, check your project config".to_owned(),
                     };
                     self.show_message(params);
@@ -1458,10 +1470,10 @@ impl Server {
         // Unregister the old watcher
         let unregistrations = vec![lsp_types::Unregistration {
             id: registration_id.clone(),
-            method: notification::DidChangeWatchedFiles::METHOD.to_string(),
+            method: notification::DidChangeWatchedFilesNotification::METHOD.to_string(),
         }];
 
-        self.send_request::<request::UnregisterCapability>(
+        self.send_request::<request::UnregistrationRequest>(
             lsp_types::UnregistrationParams {
                 unregisterations: unregistrations,
             },
@@ -1471,11 +1483,11 @@ impl Server {
         // Register the new watcher
         let registrations = vec![lsp_types::Registration {
             id: registration_id,
-            method: notification::DidChangeWatchedFiles::METHOD.to_string(),
+            method: notification::DidChangeWatchedFilesNotification::METHOD.to_string(),
             register_options: Some(serde_json::to_value(register_options).unwrap()),
         }];
 
-        self.send_request::<request::RegisterCapability>(
+        self.send_request::<request::RegistrationRequest>(
             lsp_types::RegistrationParams { registrations },
             |_, _| Ok(()),
         );
@@ -1505,17 +1517,17 @@ impl Server {
     }
 
     pub fn refresh_lens(&mut self) {
-        self.send_request::<request::CodeLensRefresh>((), |_, _| Ok(()));
+        self.send_request::<request::CodeLensRefreshRequest>((), |_, _| Ok(()));
     }
 
     pub fn refresh_semantic_tokens(&mut self) {
         if self.config.refresh_semantic_tokens() {
-            self.send_request::<request::SemanticTokensRefresh>((), |_, _| Ok(()));
+            self.send_request::<request::SemanticTokensRefreshRequest>((), |_, _| Ok(()));
         }
     }
 
     pub fn refresh_config(&mut self) {
-        self.send_request::<request::WorkspaceConfiguration>(
+        self.send_request::<request::ConfigurationRequest>(
             lsp_types::ConfigurationParams {
                 items: vec![lsp_types::ConfigurationItem {
                     scope_uri: None,
@@ -1621,7 +1633,7 @@ impl Server {
     }
 
     fn show_message(&mut self, params: ShowMessageParams) {
-        self.send_notification::<lsp_types::notification::ShowMessage>(params)
+        self.send_notification::<notification::ShowMessageNotification>(params)
     }
 
     fn show_message_request(&mut self, params: ShowMessageRequestParams) {
@@ -1631,7 +1643,7 @@ impl Server {
                 && let Some(uri) = hm.get("URL")
                 && let Ok(uri) = Uri::from_str(uri)
             {
-                this.send_request::<request::ShowDocument>(
+                this.send_request::<request::ShowDocumentRequest>(
                     ShowDocumentParams {
                         uri,
                         external: Some(true),
@@ -1896,7 +1908,7 @@ impl Server {
                     "Look at `Details` in the buck UI for more information, there is likely an invalid BUCK file: {err}"
                 );
                 let params = lsp_types::ShowMessageRequestParams {
-                    typ: lsp_types::MessageType::ERROR,
+                    kind: lsp_types::MessageType::Error,
                     message: error_message,
                     actions: Some(vec![MessageActionItem {
                         title: "Open Buck UI".to_string(),
@@ -1909,7 +1921,7 @@ impl Server {
                 sender.send(Task::ShowMessageRequest(params))?;
             } else {
                 let params = lsp_types::ShowMessageParams {
-                    typ: lsp_types::MessageType::ERROR,
+                    kind: lsp_types::MessageType::Error,
                     message: err,
                 };
                 sender.send(Task::ShowMessage(params))?;
@@ -1972,7 +1984,7 @@ impl Server {
         spinner.report("Switching to loaded projects".to_string());
         if let Err(err) = self.switch_workspaces(spinner, projects) {
             let params = lsp_types::ShowMessageParams {
-                typ: lsp_types::MessageType::ERROR,
+                kind: lsp_types::MessageType::Error,
                 message: err.to_string(),
             };
             self.show_message(params);
@@ -1983,16 +1995,11 @@ impl Server {
 
     fn register_dynamic_now_operational(&mut self) {
         if text_document_symbols_dynamic_registration(&self.config.caps) {
-            let registration_options = lsp_types::GenericRegistrationOptions {
+            let registration_options = lsp_types::DocumentSymbolRegistrationOptions {
                 text_document_registration_options: lsp_types::TextDocumentRegistrationOptions {
                     document_selector: None,
                 },
-                options: lsp_types::GenericOptions {
-                    work_done_progress_options: lsp_types::WorkDoneProgressOptions {
-                        work_done_progress: None,
-                    },
-                },
-                static_registration_options: lsp_types::StaticRegistrationOptions { id: None },
+                document_symbol_options: lsp_types::DocumentSymbolOptions::default(),
             };
 
             // Note that although the `register_options` are empty, and setting
@@ -2005,7 +2012,7 @@ impl Server {
                 register_options: Some(serde_json::to_value(registration_options).unwrap()),
             };
 
-            self.send_request::<request::RegisterCapability>(
+            self.send_request::<request::RegistrationRequest>(
                 lsp_types::RegistrationParams {
                     registrations: vec![register_document_symbols],
                 },
@@ -2087,7 +2094,7 @@ impl Server {
     fn report_progress(&mut self, task: ProgressTask) {
         let params = match task {
             ProgressTask::BeginNotify(params) => {
-                self.send_request::<request::WorkDoneProgressCreate>(
+                self.send_request::<request::WorkDoneProgressCreateRequest>(
                     lsp_types::WorkDoneProgressCreateParams {
                         token: params.token.clone(),
                     },
@@ -2097,13 +2104,15 @@ impl Server {
             }
             ProgressTask::Notify(params) => params,
         };
-        self.send_notification::<lsp_types::notification::Progress>(params);
+        self.send_notification::<notification::ProgressNotification>(params);
     }
 
     fn on_telemetry(&mut self, message: TelemetryMessage) {
         match serde_json::to_value(message.clone()) {
             Ok(serde_json::Value::Object(params)) => self
-                .send_notification::<lsp_types::notification::TelemetryEvent>(OneOf::Left(params)),
+                .send_notification::<notification::TelemetryEventNotification>(
+                    serde_json::Value::Object(params),
+                ),
             Ok(_) => unreachable!(),
             Err(err) => {
                 log::warn!("Error serializing telemetry. message: {message:?} error: {err}")
@@ -2269,10 +2278,10 @@ fn oversize_action(message: &lsp_server::Message, size: usize) -> OversizeAction
     }
 }
 
-fn parse_id(id: lsp_types::NumberOrString) -> RequestId {
+fn parse_id(id: lsp_types::Id) -> RequestId {
     match id {
-        lsp_types::NumberOrString::Number(id) => id.into(),
-        lsp_types::NumberOrString::String(id) => id.into(),
+        lsp_types::Id::Int(id) => id.into(),
+        lsp_types::Id::String(id) => id.into(),
     }
 }
 

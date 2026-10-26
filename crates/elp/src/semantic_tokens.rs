@@ -10,30 +10,31 @@
 
 //! Semantic Tokens helpers
 
+use std::borrow::Cow;
 use std::ops;
 
 use lsp_types::Range;
 use lsp_types::SemanticToken;
-use lsp_types::SemanticTokenModifier;
-use lsp_types::SemanticTokenType;
+use lsp_types::SemanticTokenModifiers;
+use lsp_types::SemanticTokenTypes;
 use lsp_types::SemanticTokens;
 use lsp_types::SemanticTokensEdit;
 
 macro_rules! define_semantic_token_types {
     (
         standard {
-            $($standard:ident),*$(,)?
+            $(($standard:ident, $variant:ident)),*$(,)?
         }
         custom {
             $(($custom:ident, $string:literal)),*$(,)?
         }
 
     ) => {
-        $(pub(crate) const $standard: SemanticTokenType = SemanticTokenType::$standard;)*
-        $(pub(crate) const $custom: SemanticTokenType = SemanticTokenType::new($string);)*
+        $(pub(crate) const $standard: SemanticTokenTypes = SemanticTokenTypes::$variant;)*
+        $(pub(crate) const $custom: SemanticTokenTypes = SemanticTokenTypes::Custom(Cow::Borrowed($string));)*
 
-        pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
-            $(SemanticTokenType::$standard,)*
+        pub(crate) const SUPPORTED_TYPES: &[SemanticTokenTypes] = &[
+            $(SemanticTokenTypes::$variant,)*
             $($custom),*
         ];
     };
@@ -41,24 +42,24 @@ macro_rules! define_semantic_token_types {
 
 define_semantic_token_types![
     standard {
-        // COMMENT,
-        // DECORATOR,
-        // ENUM_MEMBER,
-        // ENUM,
-        FUNCTION,
-        // INTERFACE,
-        // KEYWORD,
-        MACRO,
-        // METHOD,
-        NAMESPACE,
-        // NUMBER,
-        // OPERATOR,
-        // PARAMETER,
-        // PROPERTY,
-        STRING,
-        STRUCT,
-        TYPE_PARAMETER,
-        VARIABLE,
+        // (COMMENT, Comment),
+        // (DECORATOR, Decorator),
+        // (ENUM_MEMBER, EnumMember),
+        // (ENUM, Enum),
+        (FUNCTION, Function),
+        // (INTERFACE, Interface),
+        // (KEYWORD, Keyword),
+        (MACRO, Macro),
+        // (METHOD, Method),
+        (NAMESPACE, Namespace),
+        // (NUMBER, Number),
+        // (OPERATOR, Operator),
+        // (PARAMETER, Parameter),
+        // (PROPERTY, Property),
+        (STRING, String),
+        (STRUCT, Struct),
+        (TYPE_PARAMETER, TypeParameter),
+        (VARIABLE, Variable),
     }
 
     custom {
@@ -69,7 +70,7 @@ define_semantic_token_types![
 macro_rules! define_semantic_token_modifiers {
     (
         standard {
-            $($standard:ident),*$(,)?
+            $(($standard:ident, $variant:ident)),*$(,)?
         }
         custom {
             $(($custom:ident, $string:literal)),*$(,)?
@@ -77,11 +78,11 @@ macro_rules! define_semantic_token_modifiers {
 
     ) => {
 
-        $(pub(crate) const $standard: SemanticTokenModifier = SemanticTokenModifier::$standard;)*
-        $(pub(crate) const $custom: SemanticTokenModifier = SemanticTokenModifier::new($string);)*
+        $(pub(crate) const $standard: SemanticTokenModifiers = SemanticTokenModifiers::$variant;)*
+        $(pub(crate) const $custom: SemanticTokenModifiers = SemanticTokenModifiers::Custom(Cow::Borrowed($string));)*
 
-        pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
-            $(SemanticTokenModifier::$standard,)*
+        pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifiers] = &[
+            $(SemanticTokenModifiers::$variant,)*
             $($custom),*
         ];
     };
@@ -104,8 +105,8 @@ define_semantic_token_modifiers![
 #[derive(Default)]
 pub(crate) struct ModifierSet(pub(crate) u32);
 
-impl ops::BitOrAssign<SemanticTokenModifier> for ModifierSet {
-    fn bitor_assign(&mut self, rhs: SemanticTokenModifier) {
+impl ops::BitOrAssign<SemanticTokenModifiers> for ModifierSet {
+    fn bitor_assign(&mut self, rhs: SemanticTokenModifiers) {
         let idx = SUPPORTED_MODIFIERS
             .iter()
             .position(|it| it == &rhs)
@@ -171,6 +172,21 @@ impl SemanticTokensBuilder {
     }
 }
 
+fn flatten_tokens(tokens: &[SemanticToken]) -> Vec<u32> {
+    tokens
+        .iter()
+        .flat_map(|token| {
+            [
+                token.delta_line,
+                token.delta_start,
+                token.length,
+                token.token_type,
+                token.token_modifiers_bitset,
+            ]
+        })
+        .collect()
+}
+
 pub(crate) fn diff_tokens(old: &[SemanticToken], new: &[SemanticToken]) -> Vec<SemanticTokensEdit> {
     let offset = new
         .iter()
@@ -200,13 +216,13 @@ pub(crate) fn diff_tokens(old: &[SemanticToken], new: &[SemanticToken]) -> Vec<S
         vec![SemanticTokensEdit {
             start: 5 * offset as u32,
             delete_count: 5 * old.len() as u32,
-            data: Some(new.into()),
+            data: Some(flatten_tokens(new)),
         }]
     }
 }
 
-pub(crate) fn type_index(ty: SemanticTokenType) -> u32 {
-    SUPPORTED_TYPES.iter().position(|it| *it == ty).unwrap() as u32
+pub(crate) fn type_index(ty: SemanticTokenTypes) -> u32 {
+    SUPPORTED_TYPES.iter().position(|it| it == &ty).unwrap() as u32
 }
 
 #[cfg(test)]
@@ -238,7 +254,7 @@ mod tests {
             SemanticTokensEdit {
                 start: 10,
                 delete_count: 0,
-                data: Some(vec![from((11, 12, 13, 14, 15))])
+                data: Some(flatten_tokens(&[from((11, 12, 13, 14, 15))]))
             }
         );
     }
@@ -258,7 +274,7 @@ mod tests {
             SemanticTokensEdit {
                 start: 0,
                 delete_count: 0,
-                data: Some(vec![from((11, 12, 13, 14, 15))])
+                data: Some(flatten_tokens(&[from((11, 12, 13, 14, 15))]))
             }
         );
     }
@@ -279,10 +295,10 @@ mod tests {
             SemanticTokensEdit {
                 start: 5,
                 delete_count: 0,
-                data: Some(vec![
+                data: Some(flatten_tokens(&[
                     from((10, 20, 30, 40, 50)),
-                    from((60, 70, 80, 90, 100))
-                ])
+                    from((60, 70, 80, 90, 100)),
+                ]))
             }
         );
     }

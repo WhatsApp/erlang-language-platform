@@ -51,8 +51,8 @@ use elp_project_model::DiscoverConfig;
 use elp_project_model::buck::BuckQueryConfig;
 use indicatif::ParallelProgressIterator;
 use indicatif::ProgressIterator;
+use lsp_types::Code;
 use lsp_types::DiagnosticSeverity;
-use lsp_types::NumberOrString;
 use paths::Utf8PathBuf;
 use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
@@ -353,11 +353,15 @@ fn print_diagnostic(
 ) -> Result<(), anyhow::Error> {
     let diag = convert::ide_to_lsp_diagnostic(line_index, diag, |_file_id| None);
     let severity = match diag.severity {
-        None => DiagnosticSeverity::ERROR,
+        None => DiagnosticSeverity::Error,
         Some(sev) => {
-            *err_in_diag |= sev == DiagnosticSeverity::ERROR;
+            *err_in_diag |= sev == DiagnosticSeverity::Error;
             sev
         }
+    };
+    let message = match diag.message {
+        lsp_types::Message::String(message) => message,
+        lsp_types::Message::MarkupContent(content) => content.value,
     };
     writeln!(
         cli,
@@ -368,17 +372,15 @@ fn print_diagnostic(
         diag.range.end.character,
         severity,
         maybe_code_as_string(diag.code),
-        diag.message
+        message
     )?;
     Ok(())
 }
 
-fn maybe_code_as_string(mc: Option<NumberOrString>) -> String {
+fn maybe_code_as_string(mc: Option<Code>) -> String {
     match mc {
-        Some(ns) => match ns {
-            NumberOrString::Number(n) => format!("{n}"),
-            NumberOrString::String(s) => s,
-        },
+        Some(Code::Int(n)) => format!("{n}"),
+        Some(Code::String(s)) => s,
         None => "".to_string(),
     }
 }

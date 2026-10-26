@@ -154,19 +154,19 @@ pub(crate) enum WithTelemetry {
 }
 
 pub(crate) fn reporter_telemetry_start(
-    token: lsp_types::NumberOrString,
+    token: lsp_types::ProgressToken,
     title: String,
 ) -> ReporterTelemetry {
     let mut telemetry = TELEMETRY.lock();
     telemetry.new_reporter(token, title)
 }
 
-pub(crate) fn reporter_telemetry_next(token: lsp_types::NumberOrString, message: String) {
+pub(crate) fn reporter_telemetry_next(token: lsp_types::ProgressToken, message: String) {
     let mut telemetry = TELEMETRY.lock();
     telemetry.next_segment(token, Some(message));
 }
 
-pub(crate) fn reporter_telemetry_end(token: lsp_types::NumberOrString) {
+pub(crate) fn reporter_telemetry_end(token: lsp_types::ProgressToken) {
     let mut telemetry = TELEMETRY.lock();
     if let Some(t) = telemetry.end(token) {
         t.send_final_telemetry();
@@ -179,7 +179,7 @@ static TELEMETRY: LazyLock<Mutex<ReporterTelemetryManager>> =
 #[derive(Default, Debug)]
 struct ReporterTelemetryManager {
     /// telemetry state indexed by reporting progress tokens, storing last time it changed state
-    active: FxHashMap<lsp_types::NumberOrString, ReporterTelemetry>,
+    active: FxHashMap<lsp_types::ProgressToken, ReporterTelemetry>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -197,7 +197,7 @@ pub(crate) struct ReporterTelemetry {
 impl ReporterTelemetryManager {
     fn new_reporter(
         &mut self,
-        token: lsp_types::NumberOrString,
+        token: lsp_types::ProgressToken,
         title: String,
     ) -> ReporterTelemetry {
         let time = SystemTime::now();
@@ -212,13 +212,13 @@ impl ReporterTelemetryManager {
         val
     }
 
-    fn next_segment(&mut self, token: lsp_types::NumberOrString, message: Option<String>) {
+    fn next_segment(&mut self, token: lsp_types::ProgressToken, message: Option<String>) {
         self.active.entry(token.clone()).and_modify(|then| {
             then.update(message);
         });
     }
 
-    fn end(&mut self, token: lsp_types::NumberOrString) -> Option<ReporterTelemetry> {
+    fn end(&mut self, token: lsp_types::ProgressToken) -> Option<ReporterTelemetry> {
         self.next_segment(token.clone(), None);
         self.active.get(&token).cloned()
     }
@@ -265,7 +265,7 @@ mod test {
     use std::sync::LazyLock;
 
     use expect_test::expect;
-    use lsp_types::NumberOrString;
+    use lsp_types::ProgressToken;
     use parking_lot::Mutex;
 
     use crate::server::telemetry_manager::ReporterTelemetryManager;
@@ -275,7 +275,7 @@ mod test {
         static TEST_TELEMETRY: LazyLock<Mutex<ReporterTelemetryManager>> =
             LazyLock::new(|| Mutex::new(ReporterTelemetryManager::default()));
 
-        let token = NumberOrString::Number(1);
+        let token = ProgressToken::Int(1);
         let message = "Start message".to_string();
 
         let orig = {

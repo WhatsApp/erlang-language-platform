@@ -103,12 +103,12 @@ pub(crate) fn file_range(
 
 pub(crate) fn assist_kind(kind: lsp_types::CodeActionKind) -> Option<AssistKind> {
     let assist_kind = match &kind {
-        k if k == &lsp_types::CodeActionKind::EMPTY => AssistKind::None,
-        k if k == &lsp_types::CodeActionKind::QUICKFIX => AssistKind::QuickFix,
-        k if k == &lsp_types::CodeActionKind::REFACTOR => AssistKind::Refactor,
-        k if k == &lsp_types::CodeActionKind::REFACTOR_EXTRACT => AssistKind::RefactorExtract,
-        k if k == &lsp_types::CodeActionKind::REFACTOR_INLINE => AssistKind::RefactorInline,
-        k if k == &lsp_types::CodeActionKind::REFACTOR_REWRITE => AssistKind::RefactorRewrite,
+        k if k == &lsp_types::CodeActionKind::Empty => AssistKind::None,
+        k if k == &lsp_types::CodeActionKind::QuickFix => AssistKind::QuickFix,
+        k if k == &lsp_types::CodeActionKind::Refactor => AssistKind::Refactor,
+        k if k == &lsp_types::CodeActionKind::RefactorExtract => AssistKind::RefactorExtract,
+        k if k == &lsp_types::CodeActionKind::RefactorInline => AssistKind::RefactorInline,
+        k if k == &lsp_types::CodeActionKind::RefactorRewrite => AssistKind::RefactorRewrite,
         _ => return None,
     };
 

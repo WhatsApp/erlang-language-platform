@@ -33,6 +33,11 @@ use lsp_server::Notification;
 use lsp_server::Request;
 use lsp_server::Response;
 use lsp_server::ResponseError;
+use lsp_types as notification;
+use lsp_types as request;
+use lsp_types::Definition;
+use lsp_types::DefinitionParams;
+use lsp_types::DefinitionResponse;
 use lsp_types::DidChangeWatchedFilesParams;
 use lsp_types::DidCloseTextDocumentParams;
 use lsp_types::DidOpenTextDocumentParams;
@@ -40,17 +45,13 @@ use lsp_types::DocumentSymbolParams;
 use lsp_types::DocumentSymbolResponse;
 use lsp_types::FileChangeType;
 use lsp_types::FileEvent;
-use lsp_types::GotoDefinitionParams;
-use lsp_types::GotoDefinitionResponse;
 use lsp_types::InitializeParams;
+use lsp_types::Notification as _;
 use lsp_types::Position;
+use lsp_types::Request as _;
 use lsp_types::TextDocumentIdentifier;
 use lsp_types::TextDocumentItem;
 use lsp_types::TextDocumentPositionParams;
-use lsp_types::notification;
-use lsp_types::notification::Notification as _;
-use lsp_types::request;
-use lsp_types::request::Request as _;
 use serde_json::Value;
 use tempfile::TempDir;
 
@@ -127,8 +128,10 @@ impl TestServer {
             root_uri: Some(convert::uri_from_abs_path(&project.root)),
             ..Default::default()
         };
-        server.request::<request::Initialize>(params).unwrap();
-        server.notify::<notification::Initialized>(lsp_types::InitializedParams {});
+        server
+            .request::<request::InitializeRequest>(params)
+            .unwrap();
+        server.notify::<notification::InitializedNotification>(lsp_types::InitializedParams {});
         server
     }
 
@@ -161,7 +164,7 @@ impl TestServer {
                 Message::Request(req) => {
                     // The server fetches its configuration and registers
                     // capabilities; a client with no settings will do.
-                    let result = if req.method == request::WorkspaceConfiguration::METHOD {
+                    let result = if req.method == request::ConfigurationRequest::METHOD.as_str() {
                         serde_json::json!([null])
                     } else {
                         Value::Null
@@ -195,10 +198,10 @@ impl TestServer {
     }
 
     fn open(&self, path: &AbsPath, text: &str) {
-        self.notify::<notification::DidOpenTextDocument>(DidOpenTextDocumentParams {
+        self.notify::<notification::DidOpenTextDocumentNotification>(DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
                 uri: convert::uri_from_abs_path(path),
-                language_id: "erlang".to_string(),
+                language_id: "erlang".into(),
                 version: 0,
                 text: text.to_string(),
             },
@@ -206,7 +209,7 @@ impl TestServer {
     }
 
     fn close(&self, path: &AbsPath) {
-        self.notify::<notification::DidCloseTextDocument>(DidCloseTextDocumentParams {
+        self.notify::<notification::DidCloseTextDocumentNotification>(DidCloseTextDocumentParams {
             text_document: TextDocumentIdentifier::new(convert::uri_from_abs_path(path)),
         });
     }
@@ -216,7 +219,9 @@ impl TestServer {
             .iter()
             .map(|(path, typ)| FileEvent::new(convert::uri_from_abs_path(path), *typ))
             .collect();
-        self.notify::<notification::DidChangeWatchedFiles>(DidChangeWatchedFilesParams { changes });
+        self.notify::<notification::DidChangeWatchedFilesNotification>(
+            DidChangeWatchedFilesParams { changes },
+        );
     }
 
     /// The names of the symbols in `path`, or `None` while loading.
@@ -227,7 +232,7 @@ impl TestServer {
             partial_result_params: Default::default(),
         };
         match Self::answer(self.request::<request::DocumentSymbolRequest>(params))? {
-            Some(DocumentSymbolResponse::Nested(symbols)) => {
+            Some(DocumentSymbolResponse::DocumentSymbolList(symbols)) => {
                 Some(symbols.into_iter().map(|symbol| symbol.name).collect())
             }
             other => panic!("unexpected document symbols: {other:?}"),
@@ -237,7 +242,7 @@ impl TestServer {
     /// The files the definition at `position` in `path` is in, or `None`
     /// while loading.
     fn definitions(&mut self, path: &AbsPath, position: Position) -> Option<Vec<AbsPathBuf>> {
-        let params = GotoDefinitionParams {
+        let params = DefinitionParams {
             text_document_position_params: TextDocumentPositionParams::new(
                 TextDocumentIdentifier::new(convert::uri_from_abs_path(path)),
                 position,
@@ -245,10 +250,10 @@ impl TestServer {
             work_done_progress_params: Default::default(),
             partial_result_params: Default::default(),
         };
-        let locations = match Self::answer(self.request::<request::GotoDefinition>(params))? {
+        let locations = match Self::answer(self.request::<request::DefinitionRequest>(params))? {
             None => vec![],
-            Some(GotoDefinitionResponse::Scalar(location)) => vec![location],
-            Some(GotoDefinitionResponse::Array(locations)) => locations,
+            Some(DefinitionResponse::Definition(Definition::Location(location))) => vec![location],
+            Some(DefinitionResponse::Definition(Definition::LocationList(locations))) => locations,
             other => panic!("unexpected definition: {other:?}"),
         };
         Some(
@@ -265,7 +270,7 @@ impl Drop for TestServer {
         let _ = self
             .client
             .sender
-            .send(Notification::new(notification::Exit::METHOD.to_string(), ()).into());
+            .send(Notification::new(notification::ExitNotification::METHOD.to_string(), ()).into());
         let Some(server) = self.server.take() else {
             return;
         };
@@ -318,7 +323,7 @@ fn a_disk_change_does_not_replace_an_open_document() {
 
     project.write("src/a.erl", "-module(a).\nchanged() -> ok.\n");
     project.write("src/b.erl", "-module(b).\nchanged() -> ok.\n");
-    server.files_changed(&[(&a, FileChangeType::CHANGED), (&b, FileChangeType::CHANGED)]);
+    server.files_changed(&[(&a, FileChangeType::Changed), (&b, FileChangeType::Changed)]);
 
     // `b` is reloaded after `a` would be, so once `b` has changed, `a` has had
     // its chance to.
@@ -356,7 +361,7 @@ fn a_created_module_becomes_visible() {
 
     project.write("src/b.erl", CALLEE);
     let b = project.path("src/b.erl");
-    server.files_changed(&[(&b, FileChangeType::CREATED)]);
+    server.files_changed(&[(&b, FileChangeType::Created)]);
 
     server.wait_for("b to be visible", |server| {
         server
@@ -378,7 +383,7 @@ fn a_deleted_module_disappears() {
     });
 
     project.remove("src/b.erl");
-    server.files_changed(&[(&b, FileChangeType::DELETED)]);
+    server.files_changed(&[(&b, FileChangeType::Deleted)]);
 
     server.wait_for("b to disappear", |server| {
         server

@@ -105,7 +105,7 @@ mod test {
 
     #[test]
     fn test_spec() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::INTERFACE).unwrap() == "8");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Interface).unwrap() == "8");
 
         check(
             r#"
@@ -126,7 +126,7 @@ mod test {
 
     #[test]
     fn test_spec_with_args() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::INTERFACE).unwrap() == "8");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Interface).unwrap() == "8");
 
         check(
             r#"

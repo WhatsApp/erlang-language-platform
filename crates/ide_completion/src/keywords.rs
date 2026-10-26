@@ -91,11 +91,11 @@ mod test {
     #[test]
     fn test_keywords() {
         assert_eq!(
-            serde_json::to_string(&lsp_types::CompletionItemKind::KEYWORD).unwrap(),
+            serde_json::to_string(&lsp_types::CompletionItemKind::Keyword).unwrap(),
             "14"
         );
         assert_eq!(
-            serde_json::to_string(&lsp_types::InsertTextFormat::PLAIN_TEXT).unwrap(),
+            serde_json::to_string(&lsp_types::InsertTextFormat::PlainText).unwrap(),
             "1"
         );
         check(

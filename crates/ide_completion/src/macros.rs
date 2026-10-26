@@ -276,7 +276,7 @@ mod test {
 
     #[test]
     fn test_user_defined_macros() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Constant).unwrap() == "21");
 
         check(
             r#"
@@ -325,7 +325,7 @@ mod test {
 
     #[test]
     fn test_predefined_macros() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Constant).unwrap() == "21");
         check(
             r#"
     -module(sample1).
@@ -375,7 +375,7 @@ mod test {
 
     #[test]
     fn well_known_macros_import() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Constant).unwrap() == "21");
         check(
             r#"
             //- /app/src/sample1.erl app:app
@@ -393,7 +393,7 @@ mod test {
 
     #[test]
     fn well_known_macros_no_args_import() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Constant).unwrap() == "21");
         check(
             r#"
             //- /app/src/sample1.erl app:app
@@ -411,7 +411,7 @@ mod test {
 
     #[test]
     fn well_known_macros_no_import() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Constant).unwrap() == "21");
         check(
             r#"
             //- /app/src/sample1.erl app:app
@@ -429,7 +429,7 @@ mod test {
 
     #[test]
     fn well_known_macros_no_match() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Constant).unwrap() == "21");
         check(
             r#"
     -module(sample1).
@@ -442,7 +442,7 @@ mod test {
 
     #[test]
     fn detect_macros_match() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Constant).unwrap() == "21");
         check(
             r#"
          //- /src/sample1.erl
@@ -461,7 +461,7 @@ mod test {
 
     #[test]
     fn detect_macros_multiple_match() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::CONSTANT).unwrap() == "21");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Constant).unwrap() == "21");
         check(
             r#"
          //- /src/sample1.erl

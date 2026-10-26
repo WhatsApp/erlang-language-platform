@@ -73,16 +73,16 @@ impl fmt::Display for TelemetryData {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             TelemetryData::NativeDiagnostics { file_uri } => {
-                write!(f, "Native Diagnostics file_uri: {}", **file_uri)
+                write!(f, "Native Diagnostics file_uri: {}", file_uri)
             }
             TelemetryData::EqwalizerDiagnostics { file_uri } => {
-                write!(f, "Eqwalizer Diagnostics file_uri: {}", **file_uri)
+                write!(f, "Eqwalizer Diagnostics file_uri: {}", file_uri)
             }
             TelemetryData::ParseServerDiagnostics { file_uri } => {
-                write!(f, "Parse Server Diagnostics file_uri: {}", **file_uri)
+                write!(f, "Parse Server Diagnostics file_uri: {}", file_uri)
             }
             TelemetryData::MetaDiagnostics { file_uri } => {
-                write!(f, "Meta Diagnostics file_uri: {}", **file_uri)
+                write!(f, "Meta Diagnostics file_uri: {}", file_uri)
             }
             TelemetryData::Initialize => {
                 write!(f, "Initialize")
@@ -91,7 +91,7 @@ impl fmt::Display for TelemetryData {
                 file_uri,
                 position: _,
             } => {
-                write!(f, "Find References file_uri: {}", **file_uri)
+                write!(f, "Find References file_uri: {}", file_uri)
             }
         }
     }

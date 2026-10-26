@@ -13,11 +13,14 @@
 use std::path::PathBuf;
 
 use elp_ide::elp_ide_db::assists::AssistUserInput;
+use lsp_types::LspNotificationMethod;
+use lsp_types::LspRequestMethod;
+use lsp_types::MessageDirection;
+use lsp_types::Notification;
 use lsp_types::Position;
+use lsp_types::Request;
 use lsp_types::TextDocumentIdentifier;
 use lsp_types::TextDocumentPositionParams;
-use lsp_types::notification::Notification;
-use lsp_types::request::Request;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -46,7 +49,8 @@ pub enum ExpandMacro {}
 impl Request for ExpandMacro {
     type Params = ExpandMacroParams;
     type Result = Option<ExpandedMacro>;
-    const METHOD: &'static str = "elp/expandMacro";
+    const METHOD: LspRequestMethod<'static> = LspRequestMethod::Custom("elp/expandMacro");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -81,7 +85,8 @@ pub struct StatusParams {
 
 impl Notification for StatusNotification {
     type Params = StatusParams;
-    const METHOD: &'static str = "elp/status";
+    const METHOD: LspNotificationMethod<'static> = LspNotificationMethod::Custom("elp/status");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ServerToClient;
 }
 
 // ---------------------------------------------------------------------
@@ -90,7 +95,8 @@ pub enum Ping {}
 impl Request for Ping {
     type Params = Vec<String>;
     type Result = String;
-    const METHOD: &'static str = "elp/ping";
+    const METHOD: LspRequestMethod<'static> = LspRequestMethod::Custom("elp/ping");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 // ---------------------------------------------------------------------
@@ -220,7 +226,8 @@ pub enum ExternalDocs {}
 impl Request for ExternalDocs {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = Option<Vec<lsp_types::Uri>>;
-    const METHOD: &'static str = "experimental/externalDocs";
+    const METHOD: LspRequestMethod<'static> = LspRequestMethod::Custom("experimental/externalDocs");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 pub enum HoverRequest {}
@@ -228,7 +235,8 @@ pub enum HoverRequest {}
 impl Request for HoverRequest {
     type Params = lsp_types::HoverParams;
     type Result = Option<Hover>;
-    const METHOD: &'static str = lsp_types::request::HoverRequest::METHOD;
+    const METHOD: LspRequestMethod<'static> = lsp_types::HoverRequest::METHOD;
+    const MESSAGE_DIRECTION: MessageDirection = lsp_types::HoverRequest::MESSAGE_DIRECTION;
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -246,11 +254,36 @@ pub struct CommandLinkGroup {
     pub commands: Vec<CommandLink>,
 }
 
-// LSP v3.17 Command does not have a `tooltip` field, vscode supports one.
 #[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
 pub struct CommandLink {
     #[serde(flatten)]
     pub command: lsp_types::Command,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tooltip: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use elp_base_db::assert_eq_expected;
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn command_link_serializes_one_tooltip() {
+        let link = CommandLink {
+            command: lsp_types::Command {
+                title: "Open docs".to_string(),
+                command: "elp.openUri".to_string(),
+                tooltip: Some("file:///docs".to_string()),
+                arguments: None,
+            },
+        };
+
+        let expected = json!({
+            "title": "Open docs",
+            "command": "elp.openUri",
+            "tooltip": "file:///docs",
+        });
+        let actual = serde_json::to_value(link).expect("command link should serialize");
+        assert_eq_expected!(expected, actual);
+    }
 }

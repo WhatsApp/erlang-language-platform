@@ -75,7 +75,7 @@ mod test {
 
     #[test]
     fn test_exports() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::INTERFACE).unwrap() == "8");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Interface).unwrap() == "8");
 
         check(
             r#"

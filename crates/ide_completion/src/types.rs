@@ -138,7 +138,7 @@ mod test {
 
     #[test]
     fn user_defined_local() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::INTERFACE).unwrap() == "8");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Interface).unwrap() == "8");
         check(
             r#"
         //- /src/sample.erl
@@ -170,7 +170,7 @@ mod test {
 
     #[test]
     fn user_defined_remote() {
-        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::INTERFACE).unwrap() == "8");
+        assert!(serde_json::to_string(&lsp_types::CompletionItemKind::Interface).unwrap() == "8");
 
         check(
             r#"

@@ -47,7 +47,7 @@ impl<'a> RequestDispatcher<'a> {
         f: fn(&mut Server, R::Params) -> Result<R::Result>,
     ) -> Result<Self>
     where
-        R: lsp_types::request::Request + 'static,
+        R: lsp_types::Request + 'static,
         R::Params: DeserializeOwned + panic::UnwindSafe + fmt::Debug + 'static,
         R::Result: Serialize + 'static,
     {
@@ -76,7 +76,7 @@ impl<'a> RequestDispatcher<'a> {
     /// Dispatches the request onto thread pool
     pub(crate) fn on<R>(mut self, f: fn(Snapshot, R::Params) -> Result<R::Result>) -> Self
     where
-        R: lsp_types::request::Request + 'static,
+        R: lsp_types::Request + 'static,
         R::Params: DeserializeOwned + Send + fmt::Debug + 'static,
         R::Result: Serialize + 'static,
     {
@@ -118,15 +118,15 @@ impl<'a> RequestDispatcher<'a> {
 
     fn parse<R>(&mut self) -> Option<(lsp_server::RequestId, R::Params)>
     where
-        R: lsp_types::request::Request + 'static,
+        R: lsp_types::Request + 'static,
         R::Params: DeserializeOwned + 'static,
     {
         let req = match &self.req {
-            Some(req) if req.method == R::METHOD => self.req.take().unwrap(),
+            Some(req) if req.method == R::METHOD.as_str() => self.req.take().unwrap(),
             _ => return None,
         };
 
-        let res = crate::from_json(R::METHOD, req.params);
+        let res = crate::from_json(R::METHOD.as_str(), req.params);
         match res {
             Ok(params) => Some((req.id, params)),
             Err(err) => {
@@ -149,7 +149,7 @@ fn result_to_response<R>(
     result: Result<R::Result>,
 ) -> lsp_server::Response
 where
-    R: lsp_types::request::Request + 'static,
+    R: lsp_types::Request + 'static,
     R::Params: DeserializeOwned + 'static,
     R::Result: Serialize + 'static,
 {
@@ -226,7 +226,7 @@ impl<'a, S, R> NotificationDispatcher<'a, S, R> {
 
     pub fn on<N>(mut self, f: fn(&mut S, N::Params) -> Result<R>) -> Result<Self>
     where
-        N: lsp_types::notification::Notification + 'static,
+        N: lsp_types::Notification + 'static,
         N::Params: DeserializeOwned + Send + 'static,
     {
         let notif = match self.notif.take() {
@@ -234,7 +234,7 @@ impl<'a, S, R> NotificationDispatcher<'a, S, R> {
             None => return Ok(self),
         };
 
-        let params = match notif.extract(N::METHOD) {
+        let params = match notif.extract(N::METHOD.as_str()) {
             Ok(params) => params,
             Err(ExtractError::JsonError { method, error }) => {
                 bail!("Invalid request\nMethod: {method}\n error: {error}");

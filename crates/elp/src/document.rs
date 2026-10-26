@@ -64,8 +64,9 @@ impl Document {
 
         let mut index_valid = IndexValid::All;
         for change in changes {
-            match change.range {
-                Some(range) => {
+            match change {
+                TextDocumentContentChangeEvent::TextDocumentContentChangePartial(change) => {
+                    let range = change.range;
                     if !index_valid.covers(range.end.line) {
                         line_index = LineIndex::new(&self.content);
                     }
@@ -86,7 +87,7 @@ impl Document {
                         log::warn!("discarding invalid document change range: {:?}", change);
                     }
                 }
-                None => {
+                TextDocumentContentChangeEvent::TextDocumentContentChangeWholeDocument(change) => {
                     self.content = change.text;
                     index_valid = IndexValid::UpToLineExclusive(0);
                 }
