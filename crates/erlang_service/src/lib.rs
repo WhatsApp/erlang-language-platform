@@ -999,6 +999,14 @@ mod tests {
     }
 
     #[test]
+    fn maybe_unused_var() {
+        expect_module(
+            "maybe_unused_var.erl".into(),
+            fixture_file!("maybe_unused_var.expected"),
+        );
+    }
+
+    #[test]
     fn based_float() {
         expect_module(
             "based_float.erl".into(),
