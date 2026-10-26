@@ -156,4 +156,40 @@ mod tests {
             "#,
         );
     }
+
+    #[test]
+    fn no_unresolved_macro_in_define_rhs() {
+        // Macro references in a replacement are resolved when the outer macro is expanded,
+        // so a macro defined later is valid.
+        let config = DiagnosticsConfig::default()
+            .enable(DiagnosticCode::HirUnresolvedMacro)
+            .disable(DiagnosticCode::UndefinedFunction);
+        check_diagnostics_with_config(
+            config,
+            r#"
+            -module(main).
+            -define(DEFAULT_INTERVAL_MS, ?MSEC_PER_MINUTE).
+            -define(MSEC_PER_MINUTE, 60000).
+            foo() -> ?DEFAULT_INTERVAL_MS.
+            "#,
+        );
+    }
+
+    #[test]
+    fn unresolved_macro_still_reported_when_expanded() {
+        // Expanding the outer macro still reports references that remain unresolved.
+        let config = DiagnosticsConfig::default()
+            .enable(DiagnosticCode::HirUnresolvedMacro)
+            .disable(DiagnosticCode::UndefinedFunction);
+        check_diagnostics_with_config(
+            config,
+            r#"
+            -module(main).
+            -define(WRAPPER, ?NEVER_DEFINED).
+            %%               ^^^^^^^^^^^^^^ warning: W0057: undefined macro 'NEVER_DEFINED'
+            %%                            | 💡 <suppression>
+            foo() -> ?WRAPPER.
+            "#,
+        );
+    }
 }

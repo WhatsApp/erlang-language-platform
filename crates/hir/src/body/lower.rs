@@ -4188,15 +4188,14 @@ impl<'a> Ctx<'a> {
     }
 
     fn record_unresolved_macro(&mut self, call: &ast::MacroCallExpr) {
-        // If we're in a macro RHS and this is ?FUNCTION_NAME or ?FUNCTION_ARITY, skip the diagnostic
+        // ELP uses the same macro expansion strategy as the Erlang compiler:
+        // the replacement of a `-define` is effectively just a token string
+        // until the defined macro is expanded at a use site. Macro references
+        // inside the replacement are therefore only resolved (and only need to
+        // be defined) at expansion time, not at the point of the `-define`.
+        // So never report unresolved macros within a macro RHS.
         if self.in_macro_rhs {
-            let macro_name = self.macro_call_name(call.name());
-            if let MacroCallName::Var(var) = macro_name {
-                let name_str = var.as_string();
-                if name_str == "FUNCTION_NAME" || name_str == "FUNCTION_ARITY" {
-                    return;
-                }
-            }
+            return;
         }
 
         let source = InFileAstPtr::new(
