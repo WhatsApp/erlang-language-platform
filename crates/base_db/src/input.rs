@@ -108,6 +108,14 @@ impl SourceRoot {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ProjectId(pub u32);
 
+/// The loaded projects.
+#[salsa::input(singleton, debug)]
+pub struct Workspace {
+    /// Bumped whenever the erlang_service pool drops its VMs. The queries that
+    /// ask a VM read it, so that they run again on a new one.
+    pub vm_epoch: u64,
+}
+
 /// `ProjectData` is stored in salsa, indexed by `ProjectId`
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProjectData {

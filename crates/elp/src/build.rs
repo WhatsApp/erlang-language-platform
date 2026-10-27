@@ -18,11 +18,11 @@ use elp_project_model::ProjectBuildData::Rebar;
 use crate::build::types::LoadResult;
 use crate::cli::Cli;
 
-pub fn compile_deps(loaded: &LoadResult, cli: &dyn Cli) -> Result<()> {
+pub fn compile_deps(loaded: &mut LoadResult, cli: &dyn Cli) -> Result<()> {
     if let Rebar(_) = loaded.project.project_build_data {
         let pb = cli.spinner("Compiling dependencies");
         loaded.project.compile_deps()?;
-        loaded.update_erlang_service_paths();
+        loaded.drop_erlang_services();
         pb.finish();
     }
     Ok(())

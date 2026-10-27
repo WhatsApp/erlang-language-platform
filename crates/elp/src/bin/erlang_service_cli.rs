@@ -73,13 +73,13 @@ pub struct ParseAll {
 pub fn parse_all(args: &ParseAll, cli: &mut dyn Cli, query_config: &BuckQueryConfig) -> Result<()> {
     let start_time = SystemTime::now();
     let config = DiscoverConfig::new(!args.buck, &args.profile);
-    let loaded = load::load_project_at(
+    let mut loaded = load::load_project_at(
         cli,
         &args.project,
         config,
         LoadConfig::new(Mode::Cli, *query_config),
     )?;
-    build::compile_deps(&loaded, cli)?;
+    build::compile_deps(&mut loaded, cli)?;
     fs::create_dir_all(&args.to)?;
 
     telemetry::report_elapsed_time("parse-all operational", start_time);

@@ -939,7 +939,7 @@ mod tests {
             .analysis_host
             .raw_database_mut()
             .set_eqwalizer_config(Arc::new(config));
-        build::compile_deps(&loaded, &cli)
+        build::compile_deps(&mut loaded, &cli)
             .with_context(|| format!("Failed to compile deps for project {project}"))
             .unwrap();
 

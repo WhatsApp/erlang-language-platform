@@ -151,10 +151,8 @@ impl LoadResult {
         self.analysis_host.analysis()
     }
 
-    pub fn update_erlang_service_paths(&self) {
-        self.analysis_host
-            .raw_database()
-            .update_erlang_service_paths();
+    pub fn drop_erlang_services(&mut self) {
+        self.analysis_host.raw_database_mut().drop_erlang_services();
     }
 }
 

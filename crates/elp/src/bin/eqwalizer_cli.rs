@@ -340,7 +340,7 @@ pub fn eqwalize_module(
         config,
         LoadConfig::new(Mode::Cli, *query_config),
     )?;
-    build::compile_deps(&loaded, cli)?;
+    build::compile_deps(&mut loaded, cli)?;
     telemetry::report_elapsed_time("eqwalize operational", start_time);
     let result = do_eqwalize_module(args, &mut loaded, cli);
     report_eqwalize_done(
@@ -378,7 +378,7 @@ pub fn eqwalize_all(
         config,
         LoadConfig::new(Mode::Cli, *query_config),
     )?;
-    build::compile_deps(&loaded, cli)?;
+    build::compile_deps(&mut loaded, cli)?;
     telemetry::report_elapsed_time("eqwalize-all operational", start_time);
     let r = do_eqwalize_all(args, &mut loaded, cli);
     telemetry::report_elapsed_time("eqwalize-all done", start_time);
@@ -408,7 +408,7 @@ pub fn eqwalize_app(
         config,
         LoadConfig::new(Mode::Cli, *query_config),
     )?;
-    build::compile_deps(&loaded, cli)?;
+    build::compile_deps(&mut loaded, cli)?;
     telemetry::report_elapsed_time("eqwalize-app operational", start_time);
     let r = do_eqwalize_app(args, &mut loaded, cli);
     telemetry::report_elapsed_time("eqwalize-app done", start_time);
@@ -621,13 +621,13 @@ pub fn eqwalize_stats(
     query_config: &BuckQueryConfig,
 ) -> Result<()> {
     let config = DiscoverConfig::new(args.rebar, &args.profile);
-    let loaded = load::load_project_at(
+    let mut loaded = load::load_project_at(
         cli,
         &args.project,
         config,
         LoadConfig::new(Mode::Cli, *query_config),
     )?;
-    build::compile_deps(&loaded, cli)?;
+    build::compile_deps(&mut loaded, cli)?;
     let analysis = &loaded.analysis();
     let module_index = analysis.module_index(loaded.project_id)?;
     let include_generated = args.include_generated;

@@ -73,6 +73,7 @@ pub use input::ProjectData;
 pub use input::ProjectId;
 pub use input::SourceRoot;
 pub use input::SourceRootId;
+pub use input::Workspace;
 pub use line_endings::LineEndings;
 pub use lower::lower;
 pub use lower::set_source_roots;

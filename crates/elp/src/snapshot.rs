@@ -30,6 +30,7 @@ use elp_ide::elp_ide_db::elp_base_db::LineEndings;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_log::timeit_with_telemetry;
 use elp_project_model::Project;
+use elp_project_model::ProjectBuildData;
 use fxhash::FxHashMap;
 use itertools::Itertools;
 use lsp_types::SemanticTokens;
@@ -256,8 +257,12 @@ impl Snapshot {
             .map(|(_id, project)| project.clone())
     }
 
-    pub fn set_up_projects(&self) {
+    /// Compiles the projects' dependencies. Returns whether any project has
+    /// dependencies to compile: only rebar projects do.
+    pub fn set_up_projects(&self) -> bool {
+        let mut compiles_deps = false;
         for project in self.projects.as_ref() {
+            compiles_deps |= matches!(project.project_build_data, ProjectBuildData::Rebar(_));
             if let Err(err) = set_up_project(project) {
                 log::error!(
                     "Failed to set up project {} for parsing: {}",
@@ -266,6 +271,7 @@ impl Snapshot {
                 );
             };
         }
+        compiles_deps
     }
 
     pub fn workspace_root(&self, file_id: FileId) -> AbsPathBuf {

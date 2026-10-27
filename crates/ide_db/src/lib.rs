@@ -33,8 +33,10 @@ use elp_base_db::SourceRoot;
 use elp_base_db::SourceRootId;
 use elp_base_db::SourceRootInput;
 use elp_base_db::Upcast;
+use elp_base_db::Workspace;
 use elp_base_db::limit_logged_string;
 use elp_base_db::salsa;
+use elp_base_db::salsa::Setter;
 use elp_eqwalizer::EqwalizerConfig;
 use elp_eqwalizer::Mode;
 use elp_eqwalizer::db::EqwalizerDiagnosticsDatabase;
@@ -167,6 +169,9 @@ impl Default for RootDatabase {
         };
         db.set_eqwalizer_config(Arc::new(EqwalizerConfig::default()));
         db.set_extra_dynamic_call_patterns(Arc::new(FxHashMap::default()));
+        // Before any lowering, so that queries never see it missing: salsa
+        // doesn't track that a singleton doesn't exist.
+        Workspace::new(&db, 0);
         db
     }
 }
@@ -294,15 +299,24 @@ impl RootDatabase {
         }
     }
 
-    pub fn clear_erlang_services(&mut self) {
+    /// Drops every erlang_service VM, so that each starts again with its code
+    /// path, and bumps `Workspace::vm_epoch`, so that the queries that asked
+    /// one run again.
+    pub fn drop_erlang_services(&mut self) {
         self.erlang_services.write().clear();
+        let workspace = Workspace::get(self);
+        let vm_epoch = workspace.vm_epoch(self);
+        workspace.set_vm_epoch(self).to(vm_epoch + 1);
     }
 
-    /// A project's own VM keeps the code path it started with, so changing a
-    /// project's code path needs `clear_erlang_services`, as a reload does.
+    /// The VM projects with an empty code path share, or the project's own,
+    /// which keeps the code path it started with. Every query that asks it
+    /// depends on the project's code path and on `Workspace::vm_epoch`, which
+    /// `drop_erlang_services` bumps.
     pub fn erlang_service_for(&self, project_id: ProjectId) -> Connection {
         let project_data = self.project_data(project_id).project_data(self);
         let code_path = &project_data.deps_ebins;
+        Workspace::get(self).vm_epoch(self);
         let key = if code_path.is_empty() {
             ErlangServiceKey::EmptyCodePath
         } else {
@@ -322,21 +336,6 @@ impl RootDatabase {
                 conn
             })
             .clone()
-    }
-
-    pub fn update_erlang_service_paths(&self) {
-        for (key, connection) in self.erlang_services.read().iter() {
-            let ErlangServiceKey::Project(project_id) = *key else {
-                continue;
-            };
-            let project_data = self.project_data(project_id).project_data(self);
-            let paths = project_data
-                .deps_ebins
-                .iter()
-                .map(|path| path.clone().into())
-                .collect();
-            connection.add_code_path(paths);
-        }
     }
 
     pub fn set_eqwalizer_progress_reporter(
@@ -544,8 +543,10 @@ mod tests {
     use elp_base_db::ProjectId;
     use elp_base_db::RootQueryDb;
     use elp_base_db::SourceDatabase;
+    use elp_base_db::Workspace;
     use elp_base_db::assert_eq_expected;
     use elp_base_db::fixture::WithFixture;
+    use elp_base_db::salsa::Setter;
 
     use super::text_edit::TextRange;
     use crate::ErlangServiceKey;
@@ -658,6 +659,52 @@ mod tests {
             ErlangServiceKey::Project(project_id),
         ];
         assert_eq_expected!(expected_keys, vm_keys(&db));
+    }
+
+    #[test]
+    fn module_ast_reruns_when_the_vm_epoch_changes() {
+        let (mut db, fixture) = RootDatabase::with_fixture(
+            r#"
+//- /src/main.erl
+-module(main).
+"#,
+        );
+        let file_id = fixture.files[0];
+        let vms = |db: &RootDatabase| db.erlang_services.read().len();
+        db.module_ast(file_id);
+        assert_eq_expected!(1, vms(&db));
+
+        db.erlang_services.write().clear();
+        db.module_ast(file_id);
+        assert_eq_expected!(
+            0,
+            vms(&db),
+            "module_ast should not rerun with the same epoch"
+        );
+
+        let workspace = Workspace::get(&db);
+        let vm_epoch = workspace.vm_epoch(&db);
+        workspace.set_vm_epoch(&mut db).to(vm_epoch + 1);
+        db.module_ast(file_id);
+        assert_eq_expected!(1, vms(&db), "module_ast should rerun on a new VM");
+    }
+
+    #[test]
+    fn module_ast_reruns_after_the_erlang_services_are_dropped() {
+        let (mut db, fixture) = RootDatabase::with_fixture(
+            r#"
+//- /src/main.erl
+-module(main).
+"#,
+        );
+        let file_id = fixture.files[0];
+        let vms = |db: &RootDatabase| db.erlang_services.read().len();
+        db.module_ast(file_id);
+
+        db.drop_erlang_services();
+        assert_eq_expected!(0, vms(&db));
+        db.module_ast(file_id);
+        assert_eq_expected!(1, vms(&db), "module_ast should rerun on a new VM");
     }
 
     #[test]

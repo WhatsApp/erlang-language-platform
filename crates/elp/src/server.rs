@@ -177,7 +177,11 @@ pub enum Task {
         Vec<(FileId, Vec<diagnostics::Diagnostic>, Arc<Vec<(Pos, Type)>>)>,
     ),
     ErlangServiceDiagnostics(Vec<(FileId, LabeledDiagnostics)>),
-    CompileDeps(Spinner),
+    CompileDeps {
+        spinner: Spinner,
+        /// Whether any project had dependencies to compile.
+        compiled: bool,
+    },
     Progress(ProgressTask),
     ScheduleCache,
     UpdateCache(Vec<FileId>),
@@ -537,13 +541,8 @@ impl Server {
                 Task::ErlangServiceDiagnostics(diags) => {
                     self.erlang_service_diagnostics_completed(diags)
                 }
-                Task::CompileDeps(spinner) => {
-                    self.analysis_host
-                        .raw_database()
-                        .update_erlang_service_paths();
-                    spinner.end();
-                    self.eqwalizer_and_erlang_service_diagnostics_requested = true;
-                    self.native_diagnostics_requested = true;
+                Task::CompileDeps { spinner, compiled } => {
+                    self.compile_deps_completed(spinner, compiled)
                 }
                 Task::Progress(progress) => self.report_progress(progress),
                 Task::UpdateCache(files) => self.update_cache(files),
@@ -1308,6 +1307,23 @@ impl Server {
         }
     }
 
+    /// Drops the erlang_service VMs if any project compiled dependencies, so
+    /// that what was parsed before is parsed again with them on the code path.
+    fn compile_deps_completed(&mut self, spinner: Spinner, compiled: bool) {
+        if compiled {
+            let raw_db = self.analysis_host.raw_database_mut();
+            {
+                let _phase = watchdog::phase("compile_deps:salsa_cancellation");
+                raw_db.request_cancellation();
+            }
+            let _phase = watchdog::phase("compile_deps:salsa_write");
+            raw_db.drop_erlang_services();
+        }
+        spinner.end();
+        self.eqwalizer_and_erlang_service_diagnostics_requested = true;
+        self.native_diagnostics_requested = true;
+    }
+
     fn switch_workspaces(&mut self, spinner: &Spinner, new_projects: Vec<Project>) -> Result<()> {
         if new_projects.is_empty() {
             log::info!("nothing new, not switching workspaces");
@@ -1348,7 +1364,7 @@ impl Server {
         }
         let gen_src_inputs = {
             let _phase = watchdog::phase("switch_workspaces:salsa_write");
-            raw_db.clear_erlang_services();
+            raw_db.drop_erlang_services();
             lower(raw_db, &self.file_map, &project_apps)
         };
         self.generated_app_inputs = Arc::new(gen_src_inputs);
@@ -1936,9 +1952,11 @@ impl Server {
 
         self.task_pool.handle.spawn_with_sender(move |sender| {
             let _work = in_flight::begin("compile_deps");
-            snapshot.set_up_projects();
+            let compiled = snapshot.set_up_projects();
 
-            sender.send(Task::CompileDeps(spinner)).unwrap();
+            sender
+                .send(Task::CompileDeps { spinner, compiled })
+                .unwrap();
         });
     }
 
