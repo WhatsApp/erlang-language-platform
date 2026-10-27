@@ -219,8 +219,8 @@ fn try_format_call_highlights(
         return None;
     }
     let string_range = fmt_file_range.range;
-    let file_text = sema.db.file_text(position.file_id).text(sema.db);
-    let fmt_src = format_string::parse_format_source(&file_text, string_range)?;
+    let file_text = sema.db.file(position.file_id).text(sema.db);
+    let fmt_src = format_string::parse_format_source(file_text, string_range)?;
     let parsed = &fmt_src.parsed;
 
     if parsed.specifiers.is_empty() {

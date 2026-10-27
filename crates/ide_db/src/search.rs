@@ -14,7 +14,6 @@ use std::convert::TryInto;
 use std::iter;
 use std::iter::FromIterator;
 use std::ops::ControlFlow;
-use std::sync::Arc;
 
 use elp_base_db::FileId;
 use elp_base_db::FileKind;
@@ -320,11 +319,11 @@ impl<'a> FindUsages<'a> {
         fn scope_files<'a>(
             sema: &'a Semantic<'_>,
             scope: &'a SearchScope,
-        ) -> impl Iterator<Item = (Arc<str>, FileId, TextRange)> + 'a {
+        ) -> impl Iterator<Item = (&'a str, FileId, TextRange)> + 'a {
             scope.entries.iter().map(move |(&file_id, &search_range)| {
-                let text = sema.db.file_text(file_id).text(sema.db);
+                let text: &str = sema.db.file(file_id).text(sema.db);
                 let search_range =
-                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
+                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(text)));
 
                 (text, file_id, search_range)
             })
@@ -333,7 +332,7 @@ impl<'a> FindUsages<'a> {
         for (text, file_id, search_range) in scope_files(sema, &search_scope) {
             let tree = LazyCell::new(move || sema.parse(file_id).value.syntax().clone());
             // Search for occurrences of the items name
-            for offset in match_indices(&text, &finder, search_range) {
+            for offset in match_indices(text, &finder, search_range) {
                 if let Some(name) = algo::find_node_at_offset::<NameLike>(&tree, offset)
                     && let Some(token) = name.syntax().first_token()
                 {

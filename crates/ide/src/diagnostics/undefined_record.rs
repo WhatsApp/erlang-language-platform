@@ -15,7 +15,6 @@ use std::sync::LazyLock;
 
 use elp_ide_completion::get_include_file;
 use elp_ide_db::elp_base_db::FileId;
-use elp_ide_db::elp_base_db::path_for_file;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use fxhash::FxHashSet;
@@ -38,12 +37,8 @@ pub(crate) fn add_assist(
         .iter()
         .flat_map(|(_chars, records)| {
             records.iter().flat_map(|record| {
-                let include_path = path_for_file(sema.db, record.file_id);
-                if let Some(include_path) = include_path {
-                    get_include_file(sema.db, file_id, record.file_id, include_path.clone())
-                } else {
-                    None
-                }
+                let include_path = sema.db.file(record.file_id).path(sema.db).clone();
+                get_include_file(sema.db, file_id, record.file_id, include_path)
             })
         })
         .collect();

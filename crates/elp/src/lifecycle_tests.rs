@@ -37,20 +37,30 @@ use lsp_server::Response;
 use lsp_server::ResponseError;
 use lsp_types as notification;
 use lsp_types as request;
+use lsp_types::ClientCapabilities;
+use lsp_types::ClientCodeActionLiteralOptions;
+use lsp_types::CodeActionClientCapabilities;
+use lsp_types::CodeActionContext;
+use lsp_types::CodeActionParams;
+use lsp_types::CodeActionResponse;
 use lsp_types::Definition;
 use lsp_types::DefinitionParams;
 use lsp_types::DefinitionResponse;
 use lsp_types::DidChangeWatchedFilesParams;
 use lsp_types::DidCloseTextDocumentParams;
 use lsp_types::DidOpenTextDocumentParams;
+use lsp_types::DocumentChange;
 use lsp_types::DocumentSymbolParams;
 use lsp_types::DocumentSymbolResponse;
+use lsp_types::Edit;
 use lsp_types::FileChangeType;
 use lsp_types::FileEvent;
 use lsp_types::InitializeParams;
 use lsp_types::Notification as _;
 use lsp_types::Position;
+use lsp_types::Range;
 use lsp_types::Request as _;
+use lsp_types::TextDocumentClientCapabilities;
 use lsp_types::TextDocumentIdentifier;
 use lsp_types::TextDocumentItem;
 use lsp_types::TextDocumentPositionParams;
@@ -111,6 +121,10 @@ struct TestServer {
 
 impl TestServer {
     fn start(project: &TestProject) -> Self {
+        Self::start_with(project, ClientCapabilities::default())
+    }
+
+    fn start_with(project: &TestProject, capabilities: ClientCapabilities) -> Self {
         crate::ensure_rayon_pool();
         let (connection, client) = Connection::memory();
         let server = thread::spawn(|| {
@@ -128,6 +142,7 @@ impl TestServer {
         #[expect(deprecated, reason = "the server reads `root_uri`")]
         let params = InitializeParams {
             root_uri: Some(convert::uri_from_abs_path(&project.root)),
+            capabilities,
             ..Default::default()
         };
         server
@@ -265,6 +280,50 @@ impl TestServer {
                 .collect(),
         )
     }
+
+    /// The texts the code action titled `title` at `position` in `path`
+    /// inserts, or `None` while loading.
+    fn code_action_edits(
+        &mut self,
+        path: &AbsPath,
+        position: Position,
+        title: &str,
+    ) -> Option<Vec<String>> {
+        let params = CodeActionParams {
+            text_document: TextDocumentIdentifier::new(convert::uri_from_abs_path(path)),
+            range: Range::new(position, position),
+            context: CodeActionContext::default(),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        };
+        let actions = Self::answer(self.request::<request::CodeActionRequest>(params))?;
+        let action = actions
+            .into_iter()
+            .flatten()
+            .find_map(|action| match action {
+                CodeActionResponse::CodeAction(action) if action.title == title => Some(action),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("no code action titled {title}"));
+        let changes = action
+            .edit
+            .and_then(|edit| edit.document_changes)
+            .expect("the code action should edit documents");
+        Some(
+            changes
+                .into_iter()
+                .flat_map(|change| match change {
+                    DocumentChange::TextDocumentEdit(edit) => edit.edits,
+                    other => panic!("the code action should only edit documents: {other:?}"),
+                })
+                .map(|edit| match edit {
+                    Edit::TextEdit(edit) => edit.new_text,
+                    Edit::AnnotatedTextEdit(edit) => edit.text_edit.new_text,
+                    Edit::SnippetTextEdit(edit) => panic!("unexpected snippet edit: {edit:?}"),
+                })
+                .collect(),
+        )
+    }
 }
 
 impl Drop for TestServer {
@@ -394,6 +453,32 @@ fn a_deleted_module_disappears() {
     });
 }
 
+#[test]
+fn edits_to_a_document_with_crlf_line_endings_use_crlf() {
+    let text = "-module(a).\r\n\r\nf() -> ok.\r\n";
+    let project = TestProject::new(&[("src/a.erl", text)]);
+    let capabilities = ClientCapabilities {
+        text_document: Some(TextDocumentClientCapabilities {
+            code_action: Some(CodeActionClientCapabilities {
+                code_action_literal_support: Some(ClientCodeActionLiteralOptions::default()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    let mut server = TestServer::start_with(&project, capabilities);
+    let a = project.path("src/a.erl");
+    server.open(&a, text);
+    // The `f` of `f() -> ok.`.
+    let f = Position::new(2, 0);
+
+    let edits = server.wait_for("loading", |server| {
+        server.code_action_edits(&a, f, "Export the function `f/0`")
+    });
+    assert_eq_expected!(vec!["\r\n-export([f/0]).\r\n".to_string()], edits);
+}
+
 /// Loads `project` the way `elp daemon` does.
 fn load_for_daemon(project: &TestProject) -> LoadResult {
     let (elp_config, manifest) =
@@ -421,7 +506,7 @@ fn module_text(loaded: &LoadResult, module: &str) -> Option<String> {
     let file_id = db
         .module_index(loaded.project_id)
         .file_for_module(&ModuleName::new(module))?;
-    Some(db.file_text(file_id).text(db).to_string())
+    Some(db.file(file_id).text(db).to_string())
 }
 
 #[test]

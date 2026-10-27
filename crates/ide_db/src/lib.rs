@@ -17,11 +17,11 @@ use elp_base_db::AbsPathBuf;
 use elp_base_db::AppData;
 use elp_base_db::AppDataId;
 use elp_base_db::AppDataInput;
+use elp_base_db::File;
 use elp_base_db::FileId;
 use elp_base_db::FilePosition;
 use elp_base_db::FileRange;
 use elp_base_db::FileSourceRootInput;
-use elp_base_db::FileText;
 use elp_base_db::Files;
 use elp_base_db::ProjectData;
 use elp_base_db::ProjectDataInput;
@@ -215,13 +215,12 @@ impl salsa::Database for RootDatabase {}
 
 #[salsa::db]
 impl SourceDatabase for RootDatabase {
-    fn file_text(&self, file_id: FileId) -> FileText {
-        self.files.file_text(file_id)
+    fn file(&self, file_id: FileId) -> File {
+        self.files.file(file_id)
     }
 
-    fn set_file_text(&mut self, file_id: FileId, text: Arc<str>) {
-        let files = self.files.clone();
-        files.set_file_text(self, file_id, text);
+    fn insert_file(&self, file_id: FileId, file: File) {
+        self.files.insert_file(file_id, file);
     }
 
     fn source_root(&self, source_root_id: SourceRootId) -> SourceRootInput {
@@ -402,8 +401,8 @@ pub trait LineIndexDatabase: RootQueryDb {
 }
 
 fn file_line_index(db: &dyn LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
-    let text = db.file_text(file_id).text(db);
-    Arc::new(LineIndex::new(&text))
+    let text = db.file(file_id).text(db);
+    Arc::new(LineIndex::new(text))
 }
 
 // ---------------------------------------------------------------------
@@ -432,9 +431,7 @@ impl Includes {
     ) -> Option<Utf8PathBuf> {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\napp_file_path: {file_id:?}"));
-        let root_id = db.file_source_root(file_id).source_root_id(db);
-        let root = db.source_root(root_id).source_root(db);
-        let path = root.path_for_file(&file_id)?;
+        let path = db.file(file_id).path(db);
         let app_data = db.file_app_data(file_id)?;
 
         let path = path.as_path()?;

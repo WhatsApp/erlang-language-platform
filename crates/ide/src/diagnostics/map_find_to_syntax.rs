@@ -399,9 +399,9 @@ fn regenerate_case(
     if contains_comment(sema, file_id, full_range) {
         return None;
     }
-    let file_text = sema.db.file_text(file_id).text(sema.db);
+    let file_text = sema.db.file(file_id).text(sema.db);
     let start: usize = full_range.start().into();
-    let base = line_indent(&file_text, start);
+    let base = line_indent(file_text, start);
 
     let mut out = String::new();
     out.push_str("case ");
@@ -734,7 +734,7 @@ fn text_of_expr(
 }
 
 fn slice(sema: &Semantic, file_id: FileId, range: TextRange) -> String {
-    let file_text = sema.db.file_text(file_id).text(sema.db);
+    let file_text = sema.db.file(file_id).text(sema.db);
     file_text[range.start().into()..range.end().into()].to_string()
 }
 

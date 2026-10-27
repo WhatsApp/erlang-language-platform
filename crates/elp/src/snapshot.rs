@@ -26,6 +26,7 @@ use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileMap;
+use elp_ide::elp_ide_db::elp_base_db::LineEndings;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_log::timeit_with_telemetry;
 use elp_project_model::Project;
@@ -42,11 +43,8 @@ use vfs::AnchoredPathBuf;
 use crate::config::Config;
 use crate::convert;
 use crate::convert::uri_from_abs_path;
-use crate::line_endings::LineEndings;
 use crate::mem_docs::MemDocs;
 use crate::server::EqwalizerTypes;
-use crate::server::file_id_to_path;
-use crate::server::file_id_to_uri;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TelemetryData {
@@ -97,8 +95,6 @@ impl fmt::Display for TelemetryData {
     }
 }
 
-pub type SharedMap<Key, Value> = Arc<RwLock<FxHashMap<Key, Value>>>;
-
 /// An immutable snapshot of the world's state at a point in time.
 #[derive(Clone)]
 pub struct Snapshot {
@@ -112,7 +108,6 @@ pub struct Snapshot {
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Uri, SemanticTokens>>>,
     file_map: Arc<FileMap>,
     pub(crate) mem_docs: Arc<RwLock<MemDocs>>,
-    line_ending_map: SharedMap<FileId, LineEndings>,
     pub(crate) projects: Arc<Vec<Project>>,
 }
 
@@ -126,7 +121,6 @@ impl Snapshot {
         eqwalizer_types: Arc<EqwalizerTypes>,
         file_map: Arc<FileMap>,
         mem_docs: Arc<RwLock<MemDocs>>,
-        line_ending_map: Arc<RwLock<FxHashMap<FileId, LineEndings>>>,
         projects: Arc<Vec<Project>>,
     ) -> Self {
         Snapshot {
@@ -138,7 +132,6 @@ impl Snapshot {
             semantic_tokens_cache: Arc::new(Default::default()),
             file_map,
             mem_docs,
-            line_ending_map,
             projects,
         }
     }
@@ -147,15 +140,17 @@ impl Snapshot {
         let path = convert::vfs_path(uri)?;
         self.file_map
             .file_id(&path)
+            .filter(|file_id| self.analysis.file_exists(*file_id))
             .context(format!("file not found: {path}"))
     }
 
     pub(crate) fn file_id_to_path(&self, id: FileId) -> Option<AbsPathBuf> {
-        file_id_to_path(&self.file_map, id).ok()
+        convert::abs_path(&self.file_id_to_uri(id)).ok()
     }
 
     pub(crate) fn file_id_to_uri(&self, id: FileId) -> Uri {
-        file_id_to_uri(&self.file_map, id)
+        let path = self.analysis.file_path(id);
+        convert::uri_from_abs_path(path.as_path().unwrap())
     }
 
     pub(crate) fn uri_file_version(&self, uri: &Uri) -> Option<i32> {
@@ -164,11 +159,11 @@ impl Snapshot {
     }
 
     pub(crate) fn line_endings(&self, id: FileId) -> LineEndings {
-        self.line_ending_map.read()[&id]
+        self.analysis.line_endings(id)
     }
 
     pub(crate) fn anchored_path(&self, path: &AnchoredPathBuf) -> Option<Uri> {
-        let mut base = self.file_map.file_path(path.anchor);
+        let mut base = self.analysis.file_path(path.anchor);
         base.pop();
         let path = base.join(&path.path)?;
         let path = path.as_path()?;

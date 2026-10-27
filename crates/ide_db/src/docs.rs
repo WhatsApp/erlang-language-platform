@@ -335,11 +335,9 @@ fn get_file_function_specs(def_db: &dyn DefDatabase, file_id: FileId) -> FxHashM
 
 impl DocLoader for crate::RootDatabase {
     fn load_eep48_docs(&self, file_id: FileId) -> FileDoc {
-        _ = SourceDatabase::file_text(self, file_id); // Take dependency on the contents of the file we're getting docs for
+        _ = SourceDatabase::file(self, file_id); // Take dependency on the contents of the file we're getting docs for
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nload_eep48_docs: {file_id:?}"));
-        let root_id = self.file_source_root(file_id).source_root_id(self);
-        let root = self.source_root(root_id).source_root(self);
         let src_db: &dyn RootQueryDb = self.upcast();
         let app_data = if let Some(app_data) = src_db.file_app_data(file_id) {
             app_data
@@ -354,9 +352,8 @@ impl DocLoader for crate::RootDatabase {
 
         let project_id = app_data.project_id;
         let erlang_service = self.erlang_service_for(project_id);
-        let path = root
-            .path_for_file(&file_id)
-            .expect("file should have path in source root")
+        let path = SourceDatabase::file(self, file_id)
+            .path(self)
             .as_path()
             .expect("path should be absolute");
         let doc_request = DocRequest {

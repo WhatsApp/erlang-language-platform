@@ -16,6 +16,7 @@ use elp_ide::elp_ide_db::RootDatabase;
 use elp_ide::elp_ide_db::elp_base_db::ChangeKind;
 use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
+use elp_ide::elp_ide_db::elp_base_db::LineEndings;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
@@ -27,7 +28,6 @@ use elp_project_model::ProjectAppData;
 use elp_project_model::ProjectBuildData;
 use elp_project_model::buck::BuckProject;
 use elp_project_model::eqwalizer_support;
-use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use fxhash::FxHasher;
 use include_dir::Dir;
@@ -37,7 +37,6 @@ use vfs::AbsPathBuf;
 use vfs::FileId;
 
 use crate::document::Document;
-use crate::line_endings::LineEndings;
 
 static EQWALIZER_SUPPORT: Dir = include_dir!("$EQWALIZER_SUPPORT_DIR");
 
@@ -256,9 +255,7 @@ pub struct FileChange {
     pub file_id: FileId,
     pub kind: ChangeKind,
     /// `None` for a deleted file.
-    line_endings: Option<LineEndings>,
-    /// `None` if only the line endings changed.
-    text: Option<Arc<str>>,
+    contents: Option<(Arc<str>, LineEndings)>,
 }
 
 /// The pending changes whose text or line endings differ from what is held.
@@ -268,33 +265,31 @@ pub fn file_changes(
     db: &RootDatabase,
     file_map: &FileMap,
     pending: PendingChanges,
-    line_endings: &FxHashMap<FileId, LineEndings>,
 ) -> Vec<FileChange> {
     pending
         .into_iter()
         .filter_map(|(path, contents)| {
-            let file_id = file_map.intern(path);
-            let existed = file_map.exists(file_id);
+            let file_id = file_map.intern(db, path);
+            let file = db.file(file_id);
+            let existed = file.exists(db);
             let Some(contents) = contents else {
-                return existed.then(|| FileChange {
+                return existed.then_some(FileChange {
                     file_id,
                     kind: ChangeKind::Delete,
-                    line_endings: None,
-                    text: Some(Arc::from("")),
+                    contents: None,
                 });
             };
             // Text held with Unix line endings has no `\r`, so bytes equal to it
             // decode and normalise to themselves: an unchanged file is
             // recognised without allocating.
             if existed
-                && line_endings.get(&file_id) == Some(&LineEndings::Unix)
-                && db.file_text(file_id).text(db).as_bytes() == contents.as_slice()
+                && file.line_endings(db) == LineEndings::Unix
+                && file.text(db).as_bytes() == contents.as_slice()
             {
                 return None;
             }
-            let (text, line_ending) = Document::from_bytes(&contents).vfs_to_salsa();
-            let text_changed = !existed || *db.file_text(file_id).text(db) != *text;
-            if !text_changed && line_endings.get(&file_id) == Some(&line_ending) {
+            let (text, line_endings) = Document::from_bytes(&contents).vfs_to_salsa();
+            if existed && **file.text(db) == *text && file.line_endings(db) == line_endings {
                 return None;
             }
             Some(FileChange {
@@ -304,50 +299,35 @@ pub fn file_changes(
                 } else {
                     ChangeKind::Create
                 },
-                line_endings: Some(line_ending),
-                text: text_changed.then(|| Arc::from(text)),
+                contents: Some((Arc::from(text), line_endings)),
             })
         })
         .collect()
 }
 
-/// Apply changes to the salsa database and the file map, and return the
-/// per-file line-ending updates for the caller to merge into its line-ending
-/// map.
-///
-/// NOTE: this deliberately does NOT take the line-ending map (which in the LSP
-/// server lives behind a `RwLock`). The first `set_file_text` here triggers
-/// salsa's cancellation barrier, which blocks until every outstanding snapshot
-/// is dropped. A request handler holding a snapshot can be parked on
-/// `line_ending_map.read()` (via `to_proto::text_document_edit`), so holding the
-/// map's write lock across this call deadlocks: the write waits for the snapshot
-/// to drop while the handler waits for the lock. By returning the updates, the
-/// caller can merge them under a brief lock taken *after* the barrier. Keep it
-/// that way — do not pass the locked map in here.
-///
-/// NOTE 2: callers that run concurrently with snapshot-holding request handlers
-/// (i.e. the LSP server) MUST drain outstanding snapshots first, via
-/// `RootDatabase::request_cancellation`, before calling this. Each
-/// `set_file_text` below holds a `base_db::Files` DashMap shard write guard
-/// (from `entry(file_id)`) across the salsa input mutation; if that mutation is
-/// the one that triggers the cancellation barrier, it blocks under the shard
-/// guard and a handler reading `file_text` for a colliding shard deadlocks.
-/// Draining first moves the blocking wait out from under the shard guard.
-/// (CLI/one-shot callers with no concurrent handlers are unaffected.)
-pub fn write_file_changes(
-    db: &mut RootDatabase,
-    file_map: &FileMap,
-    changes: Vec<FileChange>,
-) -> Vec<(FileId, LineEndings)> {
-    let mut line_ending_updates = Vec::new();
+/// Applies changes to the salsa database. The first write waits for every
+/// outstanding snapshot to drop, so the LSP server drains them first, with
+/// `RootDatabase::request_cancellation`, to time that wait on its own.
+pub fn write_file_changes(db: &mut RootDatabase, changes: Vec<FileChange>) {
     for change in changes {
-        if let Some(text) = change.text {
-            db.set_file_text(change.file_id, text);
-        }
-        file_map.set_exists(change.file_id, change.kind != ChangeKind::Delete);
-        line_ending_updates.extend(change.line_endings.map(|le| (change.file_id, le)));
+        db.file(change.file_id).set_contents(db, change.contents);
     }
-    line_ending_updates
+}
+
+/// Gives every file the model lists a `File`, whether or not it has loaded, so
+/// that lowering can resolve them all with [`listed_file_id`].
+pub fn intern_listed_files(db: &RootDatabase, file_map: &FileMap, project_apps: &ProjectApps) {
+    for (_, app) in &project_apps.all_apps {
+        for path in app.applicable_files.iter().flatten() {
+            file_map.intern(db, VfsPath::from(path.clone()));
+        }
+    }
+}
+
+pub fn listed_file_id(file_map: &FileMap, path: &AbsPathBuf) -> FileId {
+    file_map
+        .file_id(&VfsPath::from(path.clone()))
+        .expect("listed files should be interned before lowering")
 }
 
 pub fn apply_source_roots(
@@ -355,7 +335,7 @@ pub fn apply_source_roots(
     file_map: &FileMap,
     file_set_config: &FileSetConfig,
 ) {
-    let sets = file_set_config.partition(file_map);
+    let sets = file_set_config.partition(file_map, db);
     for (idx, set) in sets.into_iter().enumerate() {
         let root_id = SourceRootId(idx as u32);
         for file_id in set.iter() {
@@ -372,6 +352,7 @@ mod tests {
     use elp_ide::elp_ide_db::elp_base_db::ChangeKind;
     use elp_ide::elp_ide_db::elp_base_db::FileMap;
     use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
+    use elp_ide::elp_ide_db::elp_base_db::LineEndings;
     use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
     use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
     use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
@@ -381,20 +362,19 @@ mod tests {
     use elp_project_model::Project;
     use elp_project_model::ProjectAppData;
     use elp_project_model::otp::Otp;
-    use fxhash::FxHashMap;
     use fxhash::FxHashSet;
     use vfs::AbsPathBuf;
     use vfs::FileId;
 
     use super::file_changes;
+    use super::intern_listed_files;
+    use super::listed_file_id;
     use super::write_file_changes;
-    use crate::line_endings::LineEndings;
 
     #[derive(Default)]
     struct Files {
         db: RootDatabase,
         file_map: FileMap,
-        line_endings: FxHashMap<FileId, LineEndings>,
     }
 
     impl Files {
@@ -404,18 +384,28 @@ mod tests {
                 .iter()
                 .map(|(path, text)| (path_of(path), text.map(|text| text.as_bytes().to_vec())))
                 .collect();
-            let changes = file_changes(&self.db, &self.file_map, pending, &self.line_endings);
+            let changes = file_changes(&self.db, &self.file_map, pending);
             let changed = changes
                 .iter()
                 .map(|change| (change.file_id, change.kind))
                 .collect();
-            let updates = write_file_changes(&mut self.db, &self.file_map, changes);
-            self.line_endings.extend(updates);
+            write_file_changes(&mut self.db, changes);
             changed
         }
 
+        /// The id of `path`, if the file exists.
+        fn file_id(&self, path: &VfsPath) -> Option<FileId> {
+            self.file_map
+                .file_id(path)
+                .filter(|file_id| self.db.file(*file_id).exists(&self.db))
+        }
+
         fn text(&self, file_id: FileId) -> String {
-            self.db.file_text(file_id).text(&self.db).to_string()
+            self.db.file(file_id).text(&self.db).to_string()
+        }
+
+        fn line_endings(&self, file_id: FileId) -> LineEndings {
+            self.db.file(file_id).line_endings(&self.db)
         }
     }
 
@@ -427,7 +417,7 @@ mod tests {
     fn identical_contents_record_no_change() {
         let mut files = Files::default();
         let created = files.apply(&[("/a.erl", Some("-module(a)."))]);
-        let file_id = files.file_map.file_id(&path_of("/a.erl")).unwrap();
+        let file_id = files.file_id(&path_of("/a.erl")).unwrap();
         assert_eq_expected!(vec![(file_id, ChangeKind::Create)], created);
 
         let reloaded = files.apply(&[("/a.erl", Some("-module(a)."))]);
@@ -453,10 +443,10 @@ mod tests {
         let file_id = FileId::from_raw(0);
         assert_eq_expected!(vec![(file_id, ChangeKind::Create)], changed);
         assert_eq_expected!("-module(last).", files.text(file_id));
-        assert_eq_expected!(None, files.file_map.file_id(&path_of("/b.erl")));
+        assert_eq_expected!(None, files.file_id(&path_of("/b.erl")));
         assert_eq_expected!(
             FileId::from_raw(1),
-            files.file_map.intern(path_of("/b.erl"))
+            files.file_map.intern(&files.db, path_of("/b.erl"))
         );
     }
 
@@ -464,39 +454,59 @@ mod tests {
     fn a_deleted_file_is_emptied_and_keeps_its_id() {
         let mut files = Files::default();
         files.apply(&[("/a.erl", Some("-module(a)."))]);
-        let file_id = files.file_map.file_id(&path_of("/a.erl")).unwrap();
+        let file_id = files.file_id(&path_of("/a.erl")).unwrap();
 
         let deleted = files.apply(&[("/a.erl", None)]);
         assert_eq_expected!(vec![(file_id, ChangeKind::Delete)], deleted);
         assert_eq_expected!("", files.text(file_id));
-        assert_eq_expected!(None, files.file_map.file_id(&path_of("/a.erl")));
+        assert_eq_expected!(None, files.file_id(&path_of("/a.erl")));
 
         let recreated = files.apply(&[("/a.erl", Some("-module(a)."))]);
         assert_eq_expected!(vec![(file_id, ChangeKind::Create)], recreated);
-        assert_eq_expected!(Some(file_id), files.file_map.file_id(&path_of("/a.erl")));
+        assert_eq_expected!(Some(file_id), files.file_id(&path_of("/a.erl")));
+    }
+
+    #[test]
+    fn a_recreated_file_keeps_its_file() {
+        let mut files = Files::default();
+        files.apply(&[("/a.erl", Some("-module(a)."))]);
+        let file_id = files.file_id(&path_of("/a.erl")).unwrap();
+        let file = files.db.file(file_id);
+
+        files.apply(&[("/a.erl", None)]);
+        assert_eq_expected!(false, file.exists(&files.db));
+
+        files.apply(&[("/a.erl", Some("-module(b)."))]);
+        assert_eq!(
+            file,
+            files.db.file(file_id),
+            "the recreated file should have the same File"
+        );
+        assert_eq_expected!(true, file.exists(&files.db));
+        assert_eq_expected!("-module(b).", &**file.text(&files.db));
     }
 
     #[test]
     fn a_change_of_line_endings_alone_is_a_modification() {
         let mut files = Files::default();
         files.apply(&[("/a.erl", Some("-module(a).\n"))]);
-        let file_id = files.file_map.file_id(&path_of("/a.erl")).unwrap();
+        let file_id = files.file_id(&path_of("/a.erl")).unwrap();
 
         let modified = files.apply(&[("/a.erl", Some("-module(a).\r\n"))]);
         assert_eq_expected!(vec![(file_id, ChangeKind::Modify)], modified);
         assert_eq_expected!("-module(a).\n", files.text(file_id));
-        assert_eq_expected!(Some(&LineEndings::Dos), files.line_endings.get(&file_id));
+        assert_eq_expected!(LineEndings::Dos, files.line_endings(file_id));
     }
 
     #[test]
     fn a_change_back_to_unix_line_endings_is_a_modification() {
         let mut files = Files::default();
         files.apply(&[("/a.erl", Some("-module(a).\r\n"))]);
-        let file_id = files.file_map.file_id(&path_of("/a.erl")).unwrap();
+        let file_id = files.file_id(&path_of("/a.erl")).unwrap();
 
         let modified = files.apply(&[("/a.erl", Some("-module(a).\n"))]);
         assert_eq_expected!(vec![(file_id, ChangeKind::Modify)], modified);
-        assert_eq_expected!(Some(&LineEndings::Unix), files.line_endings.get(&file_id));
+        assert_eq_expected!(LineEndings::Unix, files.line_endings(file_id));
     }
 
     #[test]
@@ -516,13 +526,13 @@ mod tests {
         });
         project.add_apps(vec![app]);
         let projects = [project];
-        ProjectApps::new(&projects, IncludeOtp::No)
+        let project_apps = ProjectApps::new(&projects, IncludeOtp::No);
+        intern_listed_files(&files.db, &files.file_map, &project_apps);
+        project_apps
             .app_structure()
-            .apply(&mut files.db, &|path| {
-                files.file_map.intern(VfsPath::from(path.clone()))
-            });
+            .apply(&mut files.db, &|path| listed_file_id(&files.file_map, path));
 
-        let file_id = files.file_map.intern(VfsPath::from(listed));
+        let file_id = files.file_map.intern(&files.db, VfsPath::from(listed));
         let app_name = |files: &Files| {
             files
                 .db
@@ -530,10 +540,7 @@ mod tests {
                 .map(|app_data| app_data.name.clone())
         };
         let expected_app = Some(AppName("app".to_string()));
-        assert_eq_expected!(
-            None,
-            files.file_map.file_id(&path_of("/app/src/listed.erl"))
-        );
+        assert_eq_expected!(None, files.file_id(&path_of("/app/src/listed.erl")));
         assert_eq_expected!(expected_app, app_name(&files), "before the file loads");
 
         files.apply(&[("/app/src/listed.erl", Some("-module(listed)."))]);

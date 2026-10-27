@@ -14,19 +14,25 @@
 use std::fmt;
 use std::sync::Arc;
 
-use vfs::AbsPathBuf;
 use vfs::FileId;
+use vfs::VfsPath;
 
+use crate::FileMap;
+use crate::LineEndings;
 use crate::RootQueryDb;
+use crate::SourceDatabase;
 use crate::SourceRoot;
 use crate::SourceRootId;
 use crate::input::AppStructure;
 
 /// Encapsulate a bunch of raw `.set` calls on the database.
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub struct Change {
     pub roots: Option<Vec<SourceRoot>>,
-    pub files_changed: Vec<(FileId, Option<Arc<str>>)>,
+    /// The file map that gave the files their `FileId`s.
+    pub file_map: FileMap,
+    /// Files new to the database, with their text.
+    pub files_added: Vec<(FileId, Arc<str>)>,
     pub app_structure: Option<AppStructure>,
 }
 
@@ -36,8 +42,8 @@ impl fmt::Debug for Change {
         if let Some(roots) = &self.roots {
             d.field("roots", roots);
         }
-        if !self.files_changed.is_empty() {
-            d.field("files_changed", &self.files_changed.len());
+        if !self.files_added.is_empty() {
+            d.field("files_added", &self.files_added.len());
         }
         if self.app_structure.is_some() {
             d.field("app_structure", &self.app_structure);
@@ -55,21 +61,35 @@ impl Change {
         self.roots = Some(roots);
     }
 
-    pub fn change_file(&mut self, file_id: FileId, new_text: Option<Arc<str>>) {
-        self.files_changed.push((file_id, new_text))
+    /// Gives the file at `path` a `FileId`, whose text `apply` sets.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the change already has a file at `path`.
+    pub fn add_file(&mut self, db: &dyn SourceDatabase, path: VfsPath, text: Arc<str>) -> FileId {
+        assert!(
+            self.file_map.file_id(&path).is_none(),
+            "the fixture lists {path} more than once"
+        );
+        let file_id = self.file_map.intern(db, path);
+        self.files_added.push((file_id, text));
+        file_id
     }
 
     pub fn set_app_structure(&mut self, a: AppStructure) {
         self.app_structure = Some(a);
     }
 
-    pub fn apply(
-        self,
-        db: &mut dyn RootQueryDb,
-        resolve_file_id: &impl Fn(&AbsPathBuf) -> FileId,
-    ) -> Vec<FileId> {
-        let _p = tracing::info_span!("RootDatabase::apply_change").entered();
-        if let Some(roots) = self.roots {
+    /// Returns the file map, which knows the change's files.
+    pub fn apply(self, db: &mut dyn RootQueryDb) -> FileMap {
+        let _p = tracing::info_span!("Change::apply").entered();
+        let Change {
+            roots,
+            file_map,
+            files_added,
+            app_structure,
+        } = self;
+        if let Some(roots) = roots {
             for (idx, root) in roots.into_iter().enumerate() {
                 let root_id = SourceRootId(idx as u32);
                 for file_id in root.iter() {
@@ -79,18 +99,19 @@ impl Change {
             }
         }
 
-        if let Some(set_app_structure) = self.app_structure {
-            set_app_structure.apply(db, resolve_file_id);
+        if let Some(app_structure) = app_structure {
+            app_structure.apply(db, &|path| {
+                file_map
+                    .file_id(&VfsPath::from(path.clone()))
+                    .unwrap_or_else(|| panic!("{path} is not a fixture file"))
+            });
         }
 
-        let mut res = vec![];
-        for (file_id, text) in self.files_changed {
-            // XXX: can't actually remove the file, just reset the text
-
-            let text = text.unwrap_or_else(|| Arc::from(""));
-            db.set_file_text(file_id, text);
-            res.push(file_id);
+        for (file_id, text) in files_added {
+            let line_endings = LineEndings::detect(&text);
+            db.file(file_id)
+                .set_contents(db, Some((text, line_endings)));
         }
-        res
+        file_map
     }
 }

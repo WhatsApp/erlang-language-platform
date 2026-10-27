@@ -20,7 +20,6 @@ use crossbeam_channel::Receiver;
 use crossbeam_channel::unbounded;
 use elp_ide::AnalysisHost;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
-use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
@@ -34,18 +33,17 @@ use elp_project_model::IncludeParentDirs;
 use elp_project_model::Project;
 use elp_project_model::ProjectManifest;
 use elp_project_model::buck::BuckQueryConfig;
-use fxhash::FxHashMap;
-use vfs::VfsPath;
 use vfs::loader::LoadingProgress;
 
 use crate::build::types::LoadResult;
 use crate::cli::Cli;
-use crate::line_endings::LineEndings;
 use crate::reload::PendingChanges;
 use crate::reload::ProjectFolders;
 use crate::reload::apply_source_roots;
 use crate::reload::bundled_files;
 use crate::reload::file_changes;
+use crate::reload::intern_listed_files;
+use crate::reload::listed_file_id;
 use crate::reload::write_file_changes;
 
 pub fn canonicalize_project_root(root: &Path) -> Result<AbsPathBuf> {
@@ -188,7 +186,6 @@ pub fn load_project(
     let project_id = ProjectId(0);
     let (sender, receiver) = unbounded();
     let file_map = FileMap::default();
-    let mut line_ending_map = FxHashMap::default();
     let mut loader = {
         let loader = vfs_notify::NotifyHandle::spawn(sender);
         Box::new(loader)
@@ -210,14 +207,12 @@ pub fn load_project(
         &project_apps,
         &folders.file_set_config,
         &file_map,
-        &mut line_ending_map,
         &receiver,
         &load_config,
     )?;
     Ok(LoadResult::new(
         analysis_host,
         file_map,
-        line_ending_map,
         project_id,
         project,
         folders.file_set_config,
@@ -229,7 +224,6 @@ fn load_database(
     project_apps: &ProjectApps,
     file_set_config: &FileSetConfig,
     file_map: &FileMap,
-    line_ending_map: &mut FxHashMap<FileId, LineEndings>,
     receiver: &Receiver<loader::Message>,
     load_config: &LoadConfig,
 ) -> Result<AnalysisHost> {
@@ -295,14 +289,15 @@ fn load_database(
 
     let pb = cli.spinner("Seeding database");
 
-    let changes = file_changes(db, file_map, pending, &FxHashMap::default());
-    line_ending_map.extend(write_file_changes(db, file_map, changes));
+    let changes = file_changes(db, file_map, pending);
+    write_file_changes(db, changes);
 
     apply_source_roots(db, file_map, file_set_config);
 
+    intern_listed_files(db, file_map, project_apps);
     project_apps
         .app_structure()
-        .apply(db, &|path| file_map.intern(VfsPath::from(path.clone())));
+        .apply(db, &|path| listed_file_id(file_map, path));
 
     pb.finish();
 

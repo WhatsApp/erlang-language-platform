@@ -36,7 +36,10 @@ mod file_map;
 mod file_set_config;
 mod include;
 mod input;
+mod line_endings;
 mod module_index;
+#[cfg(test)]
+mod test_db;
 
 // ---------------------------------------------------------------------
 // Public API
@@ -71,6 +74,7 @@ pub use input::ProjectData;
 pub use input::ProjectId;
 pub use input::SourceRoot;
 pub use input::SourceRootId;
+pub use line_endings::LineEndings;
 pub use module_index::ModuleIndex;
 pub use module_index::ModuleName;
 pub use module_index::Modules;
@@ -184,7 +188,7 @@ pub use dynamic_calls::pattern_key;
 
 #[derive(Default, Clone)]
 pub struct Files {
-    files: Arc<DashMap<FileId, FileText, BuildHasherDefault<FxHasher>>>,
+    files: Arc<DashMap<FileId, File, BuildHasherDefault<FxHasher>>>,
     source_roots: Arc<DashMap<SourceRootId, SourceRootInput, BuildHasherDefault<FxHasher>>>,
     file_source_roots: Arc<DashMap<FileId, FileSourceRootInput, BuildHasherDefault<FxHasher>>>,
     app_datas: Arc<DashMap<AppDataId, AppDataInput, BuildHasherDefault<FxHasher>>>,
@@ -199,24 +203,19 @@ impl std::fmt::Debug for Files {
 }
 
 impl Files {
-    pub fn file_text(&self, file_id: FileId) -> FileText {
+    pub fn file(&self, file_id: FileId) -> File {
         *self
             .files
             .get(&file_id)
             .expect("Unable to fetch file; this is a bug")
     }
 
-    pub fn set_file_text(&self, db: &mut dyn SourceDatabase, file_id: FileId, text: Arc<str>) {
-        let files = Arc::clone(&self.files);
-        match files.entry(file_id) {
-            Entry::Occupied(mut occupied) => {
-                occupied.get_mut().set_text(db).to(text);
-            }
-            Entry::Vacant(vacant) => {
-                let text = FileText::builder(text).new(db);
-                vacant.insert(text);
-            }
-        };
+    /// # Panics
+    ///
+    /// Panics if `file_id` already has a `File`.
+    pub fn insert_file(&self, file_id: FileId, file: File) {
+        let prev = self.files.insert(file_id, file);
+        assert!(prev.is_none(), "{file_id:?} should have a single File");
     }
 
     pub fn source_root(&self, source_root_id: SourceRootId) -> SourceRootInput {
@@ -354,9 +353,58 @@ impl Files {
     }
 }
 
-#[salsa::input]
-pub struct FileText {
+/// A file, whether or not it exists. Each path has one `File` for the life of
+/// the process: deleting the file sets `exists` to false and clears `text`, and
+/// recreating it sets `exists` back on the same `File`.
+#[salsa::input(debug)]
+pub struct File {
+    #[returns(ref)]
+    pub path: VfsPath,
+    #[returns(ref)]
     pub text: Arc<str>,
+    pub exists: bool,
+    /// Those of the file on disk or in the editor, for edits sent back to it.
+    pub line_endings: LineEndings,
+}
+
+impl File {
+    /// Creates the `File` of a newly interned `file_id`.
+    pub fn create(
+        db: &dyn SourceDatabase,
+        file_id: FileId,
+        path: VfsPath,
+        contents: Option<(Arc<str>, LineEndings)>,
+    ) -> File {
+        let exists = contents.is_some();
+        let (text, line_endings) = contents.unwrap_or_else(|| (Arc::from(""), LineEndings::Unix));
+        let file = File::new(db, path, text, exists, line_endings);
+        db.insert_file(file_id, file);
+        file
+    }
+
+    /// Sets the file's contents, `None` if it doesn't exist, writing only the
+    /// fields that change: salsa's setters bump the revision without comparing
+    /// values.
+    pub fn set_contents(
+        self,
+        db: &mut dyn SourceDatabase,
+        contents: Option<(Arc<str>, LineEndings)>,
+    ) {
+        let exists = contents.is_some();
+        let (text, line_endings) = match contents {
+            Some(contents) => contents,
+            None => (Arc::from(""), self.line_endings(db)),
+        };
+        if **self.text(db) != *text {
+            self.set_text(db).to(text);
+        }
+        if self.line_endings(db) != line_endings {
+            self.set_line_endings(db).to(line_endings);
+        }
+        if self.exists(db) != exists {
+            self.set_exists(db).to(exists);
+        }
+    }
 }
 
 #[salsa::input]
@@ -621,9 +669,10 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
 
 #[salsa::db]
 pub trait SourceDatabase: salsa::Database {
-    fn file_text(&self, file_id: FileId) -> FileText;
+    fn file(&self, file_id: FileId) -> File;
 
-    fn set_file_text(&mut self, file_id: FileId, text: Arc<str>);
+    /// Records the `File` of a newly interned `file_id`; see [`File::create`].
+    fn insert_file(&self, file_id: FileId, file: File);
 
     /// Contents of the source root.
     fn source_root(&self, id: SourceRootId) -> SourceRootInput;
@@ -878,12 +927,9 @@ fn build_include_file_index(
     for &source_root_id in &project_data.source_roots {
         let source_root = db.source_root(source_root_id).source_root(db);
         for file_id in source_root.iter() {
-            if let Some(path) = source_root.path_for_file(&file_id) {
-                if let Some((_name, Some("hrl"))) = path.name_and_extension() {
-                    include_file_index.add(path, file_id);
-                }
-            } else {
-                log::warn!("No file path for {file_id:?}");
+            let path = db.file(file_id).path(db);
+            if let Some((_name, Some("hrl"))) = path.name_and_extension() {
+                include_file_index.add(path, file_id);
             }
         }
     }
@@ -987,14 +1033,8 @@ fn parse_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Parse<SourceFile> {
 
 fn parse_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Parse<SourceFile> {
     let file_id = fid.file_id(db);
-    let text = db.file_text(file_id).text(db);
-    SourceFile::parse_text(&text)
-}
-
-pub fn path_for_file(db: &dyn RootQueryDb, file_id: FileId) -> Option<VfsPath> {
-    let source_root_id = db.file_source_root(file_id).source_root_id(db);
-    let source_root = db.source_root(source_root_id).source_root(db);
-    source_root.path_for_file(&file_id).cloned()
+    let text = db.file(file_id).text(db);
+    SourceFile::parse_text(text)
 }
 
 fn generated_status_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> GeneratedStatus {
@@ -1016,7 +1056,7 @@ fn generated_status_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Generate
             .expect("regex should be valid")
     });
 
-    let contents = db.file_text(file_id).text(db);
+    let contents = db.file(file_id).text(db);
     let header = &contents.as_bytes()[0..(2001.min(contents.len()))];
 
     // Check generated first - it takes precedence over partially-generated
@@ -1043,7 +1083,7 @@ fn manual_section_ranges_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Arc
         regex::bytes::Regex::new(r"% END MANUAL SECTION").expect("regex should be valid")
     });
 
-    let contents = db.file_text(file_id).text(db);
+    let contents = db.file(file_id).text(db);
     let bytes = contents.as_bytes();
     let mut ranges = Vec::new();
 
@@ -1120,9 +1160,7 @@ fn is_test_suite_or_test_helper_inner(db: &dyn RootQueryDb, fid: InternedFileId)
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nis_test_suite_or_test_helper: {file_id:?}"));
     let app_data = db.file_app_data(file_id)?;
-    let root_id = db.file_source_root(file_id).source_root_id(db);
-    let root = db.source_root(root_id).source_root(db);
-    let path = root.path_for_file(&file_id)?;
+    let path = db.file(file_id).path(db);
     if app_data.is_extra_src_file(path) {
         Some(true)
     } else {
@@ -1191,11 +1229,9 @@ fn file_kind_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> FileKind {
     let file_id = fid.file_id(db);
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nfile_kind: {file_id:?}"));
-    let source_root_id = db.file_source_root(file_id).source_root_id(db);
-    let source_root = db.source_root(source_root_id).source_root(db);
-    let ignored_path = source_root
-        .path_for_file(&file_id)
-        .and_then(|path| path.as_path())
+    let path = db.file(file_id).path(db);
+    let ignored_path = path
+        .as_path()
         .map(|path| {
             let path = path
                 .as_os_str()
@@ -1211,9 +1247,7 @@ fn file_kind_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> FileKind {
         // sources, do not process
         FileKind::OutsideProjectModel
     } else {
-        let name_and_ext = source_root
-            .path_for_file(&file_id)
-            .and_then(|path| path.name_and_extension());
+        let name_and_ext = path.name_and_extension();
         match name_and_ext {
             Some((name, Some("erl"))) => {
                 if name.ends_with("_SUITE") {
@@ -1289,4 +1323,63 @@ pub fn truncate_string(s: &str, n: usize) -> String {
 }
 pub fn limit_logged_string(s: &str) -> String {
     truncate_string(s, MAX_LOGGED_STRING_LEN)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cell::Cell;
+    use std::sync::Arc;
+
+    use vfs::FileId;
+    use vfs::VfsPath;
+
+    use crate::File;
+    use crate::LineEndings;
+    use crate::SourceDatabase;
+    use crate::assert_eq_expected;
+    use crate::test_db::TestDB;
+
+    thread_local! {
+        static EXECUTIONS: Cell<usize> = const { Cell::new(0) };
+    }
+
+    #[salsa::tracked]
+    fn observe(db: &dyn SourceDatabase, file: File) -> (Arc<str>, bool, LineEndings) {
+        EXECUTIONS.with(|n| n.set(n.get() + 1));
+        (
+            file.text(db).clone(),
+            file.exists(db),
+            file.line_endings(db),
+        )
+    }
+
+    /// Runs `observe` on `file`, and returns how many times it executed.
+    fn executions(db: &TestDB, file: File) -> usize {
+        let before = EXECUTIONS.with(Cell::get);
+        observe(db, file);
+        EXECUTIONS.with(Cell::get) - before
+    }
+
+    #[test]
+    fn setting_identical_contents_does_not_rerun_dependent_queries() {
+        let mut db = TestDB::default();
+        let path = VfsPath::new_real_path("/a.erl".to_string());
+        let contents = Some((Arc::from("-module(a)."), LineEndings::Unix));
+        let file = File::create(&db, FileId::from_raw(0), path, contents);
+        assert_eq_expected!(1, executions(&db, file));
+
+        file.set_contents(&mut db, Some((Arc::from("-module(a)."), LineEndings::Unix)));
+        assert_eq_expected!(0, executions(&db, file), "after identical contents");
+
+        file.set_contents(&mut db, Some((Arc::from("-module(b)."), LineEndings::Unix)));
+        assert_eq_expected!(1, executions(&db, file), "after a text change");
+
+        file.set_contents(&mut db, Some((Arc::from("-module(b)."), LineEndings::Dos)));
+        assert_eq_expected!(1, executions(&db, file), "after a line-endings change");
+
+        file.set_contents(&mut db, None);
+        assert_eq_expected!(1, executions(&db, file), "after deleting the file");
+        file.set_contents(&mut db, None);
+        assert_eq_expected!(0, executions(&db, file), "after deleting it again");
+    }
 }

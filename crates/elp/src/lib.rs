@@ -37,7 +37,6 @@ mod from_proto;
 mod handlers;
 #[cfg(test)]
 mod lifecycle_tests;
-pub mod line_endings;
 pub mod lsp_ext;
 mod mem_docs;
 pub mod memory_usage;

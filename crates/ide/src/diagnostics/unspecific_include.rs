@@ -15,7 +15,6 @@
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::generated_file_include_lib;
-use elp_ide_db::elp_base_db::path_for_file;
 use elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextEdit;
 use elp_ide_db::text_edit::TextRange;
@@ -103,10 +102,7 @@ impl GenericLinter for UnspecificIncludeLinter {
                 continue;
             }
 
-            let include_path = match path_for_file(sema.db.upcast(), included_file_id) {
-                Some(p) => p,
-                None => continue,
-            };
+            let include_path = sema.db.file(included_file_id).path(sema.db).clone();
 
             if include_path.to_string().contains("/src/") {
                 continue;

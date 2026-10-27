@@ -674,8 +674,8 @@ impl<'a> MatchFinder<'a> {
     pub fn debug_where_text_equal(&self, file_id: FileId, snippet: &str) -> Vec<MatchDebugInfo> {
         let file = self.sema.parse(file_id);
         let mut res = Vec::new();
-        let file_text = self.sema.db.file_text(file_id).text(self.sema.db);
-        let mut remaining_text = &*file_text;
+        let file_text = self.sema.db.file(file_id).text(self.sema.db);
+        let mut remaining_text: &str = file_text;
         let mut base = 0;
         let len = snippet.len() as u32;
         if len == 0 {
@@ -774,7 +774,7 @@ impl SsrMatches {
 
 impl Match {
     pub fn matched_text(&self, db: &RootDatabase) -> String {
-        let file_text = SourceDatabase::file_text(db, self.range.file_id).text(db);
+        let file_text = SourceDatabase::file(db, self.range.file_id).text(db);
         file_text[self.range.range.start().into()..self.range.range.end().into()].to_string()
     }
 

@@ -44,7 +44,6 @@ use elp_ide_db::elp_base_db::ProjectId;
 use elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide_db::elp_base_db::VfsPath;
 use elp_ide_db::elp_base_db::in_flight;
-use elp_ide_db::elp_base_db::path_for_file;
 use elp_ide_db::erlang_service::DiagnosticLocation;
 use elp_ide_db::erlang_service::ParseError;
 use elp_ide_db::metadata::Kind;
@@ -2140,7 +2139,7 @@ pub fn native_diagnostics(
         }
     };
     let line_index = db.file_line_index(file_id);
-    let file_text = db.file_text(file_id);
+    let file = db.file(file_id);
 
     // Run the redundant-suppression post-pass BEFORE the retain step so it
     // observes diagnostics that retain is about to filter out (via
@@ -2175,7 +2174,7 @@ pub fn native_diagnostics(
             config,
             file_id,
             &line_index,
-            &file_text.text(db),
+            file.text(db),
             &code_reportable,
             &inactive_ranges,
             &res,
@@ -3193,7 +3192,8 @@ fn related_file_id(db: &RootDatabase, file_id: FileId, path: &Path) -> Option<Fi
         let vfs_path = if path.is_absolute() {
             VfsPath::new_real_path(path_str.as_ref().to_string())
         } else {
-            path_for_file(db, file_id)?
+            db.file(file_id)
+                .path(db)
                 .parent()?
                 .join(path_str.as_ref())?
         };

@@ -17,6 +17,7 @@ use vfs::VfsPath;
 use vfs::file_set::FileSet;
 
 use crate::FileMap;
+use crate::SourceDatabase;
 
 /// Path prefixes that partition the existing files of a [`FileMap`] into
 /// [`FileSet`]s. A file goes to the set with the longest root that is a byte
@@ -40,10 +41,10 @@ impl FileSetConfig {
         FileSetConfigBuilder::default()
     }
 
-    pub fn partition(&self, file_map: &FileMap) -> Vec<FileSet> {
+    pub fn partition(&self, file_map: &FileMap, db: &dyn SourceDatabase) -> Vec<FileSet> {
         let mut scratch_space = Vec::new();
         let mut res = vec![FileSet::default(); self.n_file_sets];
-        for (file_id, path) in file_map.existing_files() {
+        for (file_id, path) in file_map.existing_files(db) {
             let root = self.classify(&path, &mut scratch_space);
             res[root].insert(file_id, path);
         }
@@ -253,11 +254,16 @@ mod windows_paths {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use vfs::Vfs;
     use vfs::VfsPath;
 
     use super::FileSetConfig;
     use crate::FileMap;
+    use crate::LineEndings;
+    use crate::SourceDatabase;
+    use crate::test_db::TestDB;
 
     /// The port must partition exactly as `vfs` does, including the byte prefix
     /// match of a file's directory against the roots.
@@ -294,11 +300,16 @@ mod tests {
             builder.add_file_set(paths.clone());
             vfs_builder.add_file_set(paths);
         }
+        let mut db = TestDB::default();
         let file_map = FileMap::default();
+        let mut set_exists = |path: VfsPath, exists: bool| {
+            let file = db.file(file_map.intern(&db, path));
+            file.set_contents(&mut db, exists.then(|| (Arc::from(""), LineEndings::Unix)));
+        };
         let mut vfs = Vfs::default();
         for (path, exists) in files {
             let path = VfsPath::new_real_path(path.to_string());
-            file_map.set_exists(file_map.intern(path.clone()), exists);
+            set_exists(path.clone(), exists);
             vfs.set_file_contents(path.clone(), Some(vec![]));
             if !exists {
                 vfs.set_file_contents(path, None);
@@ -306,10 +317,10 @@ mod tests {
         }
         // Never claimed by a root, which is a real path.
         let virtual_path = VfsPath::new_virtual_path("/v/n.erl".to_string());
-        file_map.set_exists(file_map.intern(virtual_path.clone()), true);
+        set_exists(virtual_path.clone(), true);
         vfs.set_file_contents(virtual_path, Some(vec![]));
 
-        let sets = builder.build().partition(&file_map);
+        let sets = builder.build().partition(&file_map, &db);
         let vfs_sets = vfs_builder.build().partition(&vfs);
 
         let files_in = |sets: &[vfs::file_set::FileSet]| -> Vec<Vec<VfsPath>> {

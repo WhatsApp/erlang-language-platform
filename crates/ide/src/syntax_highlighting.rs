@@ -373,7 +373,7 @@ fn format_specifier_highlight(
 ) {
     let highlight_spec = HlTag::Symbol(SymbolKind::Variable) | HlMod::FormatSpecifier;
     let def_map = sema.def_map_local(file_id);
-    let file_text = sema.db.file_text(file_id).text(sema.db);
+    let file_text = sema.db.file(file_id).text(sema.db);
 
     for (_, def) in def_map.get_functions() {
         // Skip functions entirely outside the visible range.
@@ -406,7 +406,7 @@ fn format_specifier_highlight(
                     )
                     && let Some(fmt_info) = find_format_highlight_info(
                         file_id,
-                        &file_text,
+                        file_text,
                         info,
                         &args,
                         range_to_highlight,
@@ -659,7 +659,7 @@ mod tests {
                 disabled_code: true,
             },
         );
-        let file_text = db.file_text(file_id).text(&db);
+        let file_text = db.file(file_id).text(&db);
         let mut format_highlights: Vec<_> = highlights
             .iter()
             .filter(|h| h.highlight.mods.contains(HlMod::FormatSpecifier))

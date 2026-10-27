@@ -19,13 +19,13 @@ use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
+use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
+use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_project_model::Project;
-use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use indicatif::ProgressBar;
 use itertools::Itertools;
 
-use crate::line_endings::LineEndings;
 use crate::reload::PendingChanges;
 use crate::reload::apply_source_roots;
 use crate::reload::file_changes;
@@ -39,7 +39,6 @@ pub struct LoadResult {
     pub analysis_host: ManuallyDrop<AnalysisHost>,
     _sidecar_cleanup: SidecarCleanupGuard,
     pub file_map: ManuallyDrop<FileMap>,
-    pub line_ending_map: FxHashMap<FileId, LineEndings>,
     pub project_id: ProjectId,
     pub project: Project,
     pub file_set_config: FileSetConfig,
@@ -49,7 +48,6 @@ impl LoadResult {
     pub fn new(
         analysis_host: AnalysisHost,
         file_map: FileMap,
-        line_ending_map: FxHashMap<FileId, LineEndings>,
         project_id: ProjectId,
         project: Project,
         file_set_config: FileSetConfig,
@@ -59,7 +57,6 @@ impl LoadResult {
             analysis_host: ManuallyDrop::new(analysis_host),
             _sidecar_cleanup: sidecar_cleanup,
             file_map: ManuallyDrop::new(file_map),
-            line_ending_map,
             project_id,
             project,
             file_set_config,
@@ -126,21 +123,28 @@ impl LoadResult {
     }
 
     pub fn apply_pending_changes(&mut self, pending: PendingChanges) {
-        let changes = file_changes(
-            self.analysis_host.raw_database(),
-            &self.file_map,
-            pending,
-            &self.line_ending_map,
-        );
+        let changes = file_changes(self.analysis_host.raw_database(), &self.file_map, pending);
         let created_or_deleted = changes
             .iter()
             .any(|change| change.kind != ChangeKind::Modify);
         let db = self.analysis_host.raw_database_mut();
-        let line_ending_updates = write_file_changes(db, &self.file_map, changes);
-        self.line_ending_map.extend(line_ending_updates);
+        write_file_changes(db, changes);
         if created_or_deleted {
             apply_source_roots(db, &self.file_map, &self.file_set_config);
         }
+    }
+
+    /// The id of the file at `path`, if it exists.
+    pub fn file_id(&self, path: &VfsPath) -> Option<FileId> {
+        let db = self.analysis_host.raw_database();
+        self.file_map
+            .file_id(path)
+            .filter(|file_id| db.file(*file_id).exists(db))
+    }
+
+    pub fn file_path(&self, file_id: FileId) -> VfsPath {
+        let db = self.analysis_host.raw_database();
+        db.file(file_id).path(db).clone()
     }
 
     pub fn analysis(&self) -> Analysis {

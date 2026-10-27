@@ -1320,9 +1320,9 @@ mod tests {
     /// - Unknown lines:  `?| source line`
     /// - Reason annotation at start of inactive/unknown block: `>>> reason`
     pub fn render_preprocessor_state(db: &TestDB, file_id: FileId) -> String {
-        let source = db.file_text(file_id).text(db);
+        let source = db.file(file_id).text(db);
         let form_list = db.file_form_list(file_id);
-        let line_starts_vec = line_starts(&source);
+        let line_starts_vec = line_starts(source);
         let lines: Vec<&str> = source.lines().collect();
 
         // Build a map: line_number -> (status, reason)

@@ -59,10 +59,7 @@ impl EqwalizerLoader for crate::RootDatabase {
                 None => {
                     // Context for T171541590
                     let _ = stdx::panic_context::enter(format!("\ntypecheck: {module:?}"));
-                    let source_root_id =
-                        SourceDatabase::file_source_root(self, module).source_root_id(self);
-                    let source_root = self.source_root(source_root_id).source_root(self);
-                    let path = source_root.path_for_file(&module);
+                    let path = SourceDatabase::file(self, module).path(self);
                     log::error!("Can't find module for path: {path:?}");
                     continue;
                 }
@@ -339,9 +336,7 @@ fn decl_location(
     let module_file_id = module_index.file_for_module(&module)?;
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\ndecl_location: {module_file_id:?}"));
-    let source_root_id = db.file_source_root(module_file_id).source_root_id(db);
-    let source_root = db.source_root(source_root_id).source_root(db);
-    let decl_file_path = &source_root.path_for_file(&module_file_id)?;
+    let decl_file_path = db.file(module_file_id).path(db);
     let file_id = find_path_in_project(db, project_id, decl_file_path)?;
     let range: elp_syntax::TextRange = {
         match pos {

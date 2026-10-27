@@ -41,7 +41,6 @@ use elp_ide::elp_ide_db::Includes;
 use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
-use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FileSource;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
@@ -207,9 +206,7 @@ pub fn parse_all(
                 let path = AbsPath::assert(&path_buf);
                 let path = path.as_os_str().to_str().unwrap();
                 (
-                    loaded
-                        .file_map
-                        .file_id(&VfsPath::new_real_path(path.to_string())),
+                    loaded.file_id(&VfsPath::new_real_path(path.to_string())),
                     path_buf.as_path().file_name().map(ModuleName::new),
                 )
             }
@@ -284,7 +281,7 @@ pub fn parse_all(
                         if args.format.diagnostic_counts_as_error(diag.severity) {
                             err_in_diag = true;
                         }
-                        let vfs_path = &loaded.file_map.file_path(diags.file_id);
+                        let vfs_path = &loaded.file_path(diags.file_id);
                         let analysis = loaded.analysis();
                         let root_path = &analysis
                             .project_data(diags.file_id)
@@ -509,7 +506,6 @@ fn dump_includes_resolutions(
 
     let pb = cli.progress(modules.len() as u64, "Analyzing include resolutions");
 
-    let file_map = &loaded.file_map;
     let mut all_includes: Vec<_> = modules
         .into_iter()
         .par_bridge()
@@ -519,7 +515,7 @@ fn dump_includes_resolutions(
                 && file_source == FileSource::Src
                 && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
             {
-                if is_project_file(file_map, db, file_id) {
+                if is_project_file(db, file_id) {
                     db.resolved_includes(file_id).ok()
                 } else {
                     None
@@ -553,9 +549,9 @@ fn dump_includes_resolutions(
     Ok(())
 }
 
-fn is_project_file(file_map: &FileMap, db: &Analysis, id: FileId) -> bool {
+fn is_project_file(db: &Analysis, id: FileId) -> bool {
     let root_abs = &db.project_data(id).unwrap().unwrap().root_dir;
-    let path = file_map.file_path(id);
+    let path = db.file_path(id);
     let path = path.as_path().unwrap();
     path.starts_with(root_abs)
 }

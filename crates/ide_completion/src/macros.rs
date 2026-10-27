@@ -13,7 +13,6 @@ use elp_base_db::IncludeCtx;
 use elp_base_db::RootQueryDb;
 use elp_base_db::VfsPath;
 use elp_base_db::generated_file_include_lib;
-use elp_base_db::path_for_file;
 use elp_syntax::AstNode;
 use elp_syntax::algo;
 use elp_syntax::ast;
@@ -113,8 +112,8 @@ fn macro_define_as_completion(
     define: &InFile<DefineId>,
     with_app: bool,
 ) -> Option<Completion> {
-    let include_path = path_for_file(sema.db, define.file_id)?;
-    let include = get_include_file(sema.db, file_id, define.file_id, include_path.clone())?;
+    let include_path = sema.db.file(define.file_id).path(sema.db).clone();
+    let include = get_include_file(sema.db, file_id, define.file_id, include_path)?;
     let form_list = sema.form_list(define.file_id);
     let define = &form_list[define.value];
     Some(macro_name_to_completion(

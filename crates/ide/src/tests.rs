@@ -133,11 +133,7 @@ pub(crate) fn check_nth_fix(
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();
         let file_id = *source_change.source_file_edits.keys().next().unwrap();
-        let mut actual = analysis
-            .db
-            .file_text(file_id)
-            .text(&analysis.db)
-            .to_string();
+        let mut actual = analysis.db.file(file_id).text(&analysis.db).to_string();
 
         for edit in source_change.source_file_edits.values() {
             edit.apply(&mut actual);
@@ -268,11 +264,7 @@ pub(crate) fn check_specific_fix_with_config_and_adhoc(
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();
         let file_id = *source_change.source_file_edits.keys().next().unwrap();
-        let mut actual = analysis
-            .db
-            .file_text(file_id)
-            .text(&analysis.db)
-            .to_string();
+        let mut actual = analysis.db.file(file_id).text(&analysis.db).to_string();
 
         for edit in source_change.source_file_edits.values() {
             edit.apply(&mut actual);
@@ -418,7 +410,7 @@ impl FileAnnotations {
     fn fixture_text(&self, analysis: &Analysis) -> Option<String> {
         let mut text = analysis
             .db
-            .file_text(self.file_id)
+            .file(self.file_id)
             .text(&analysis.db)
             .to_string();
         match self.cursor {
@@ -575,7 +567,7 @@ fn fixture_yields(fixture: &str, analysis: &Analysis, files: &[FileAnnotations])
         annotations.sort_by_key(|(range, _)| range.start());
         let db_text = analysis
             .db
-            .file_text(file.file_id)
+            .file(file.file_id)
             .text(&analysis.db)
             .to_string();
         annotations == file.actual && parsed.marker_pos == file.cursor && parsed.text == db_text

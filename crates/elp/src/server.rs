@@ -104,7 +104,6 @@ use crate::convert;
 use crate::convert::ide_to_lsp_diagnostic;
 use crate::document::Document;
 use crate::handlers;
-use crate::line_endings::LineEndings;
 use crate::lsp_ext;
 use crate::mem_docs::DocumentData;
 use crate::mem_docs::MemDocs;
@@ -114,7 +113,6 @@ use crate::read_lint_config_file;
 use crate::reload::PendingChanges;
 use crate::reload::ProjectFolders;
 use crate::reload::bundled_files;
-use crate::snapshot::SharedMap;
 use crate::snapshot::Snapshot;
 use crate::task_pool::TaskPool;
 
@@ -288,7 +286,6 @@ pub struct Server {
     /// Applied, and cleared, at the end of every main loop turn.
     pending_changes: PendingChanges,
     file_set_config: FileSetConfig,
-    line_ending_map: SharedMap<FileId, LineEndings>,
     config: Arc<Config>,
     diagnostics_config: Arc<DiagnosticsConfig>,
     lint_config: Arc<LintConfig>,
@@ -347,7 +344,6 @@ impl Server {
             file_map: Arc::default(),
             pending_changes: PendingChanges::default(),
             file_set_config: FileSetConfig::default(),
-            line_ending_map: SharedMap::default(),
             config: Arc::new(config.clone()),
             diagnostics_config: Arc::new(DiagnosticsConfig::default()),
             lint_config: Arc::new(LintConfig::default()),
@@ -382,7 +378,6 @@ impl Server {
             Arc::clone(&self.eqwalizer_types),
             Arc::clone(&self.file_map),
             Arc::clone(&self.mem_docs),
-            Arc::clone(&self.line_ending_map),
             Arc::clone(&self.projects),
         )
     }
@@ -439,7 +434,8 @@ impl Server {
             self.handle_event(event)?;
             self.telemetry_manager
                 .on_periodic(self.mem_docs.read().len(), || {
-                    self.file_map.existing_count()
+                    self.file_map
+                        .existing_count(self.analysis_host.raw_database())
                 });
         }
 
@@ -594,7 +590,7 @@ impl Server {
 
             let snapshot = self.snapshot();
             for file_id in &diagnostic_changes {
-                let uri = file_id_to_uri(&self.file_map, *file_id);
+                let uri = snapshot.file_id_to_uri(*file_id);
                 let line_index = match snapshot.analysis.line_index(*file_id) {
                     Ok(line_index) => line_index,
                     Err(err) => {
@@ -622,8 +618,8 @@ impl Server {
                     .map(|d| {
                         ide_to_lsp_diagnostic(&line_index, d, |related_file_id| {
                             // Get the line index and URI for the related file
-                            let uri = file_id_to_uri(&self.file_map, related_file_id);
                             let snapshot = self.snapshot();
+                            let uri = snapshot.file_id_to_uri(related_file_id);
                             let line_index = snapshot.analysis.line_index(related_file_id).ok()?;
                             Some(((*line_index).clone(), uri))
                         })
@@ -736,7 +732,9 @@ impl Server {
                         log::error!("duplicate DidOpenTextDocument: {vfs_path}");
                     }
 
-                    let file_id = this.file_map.intern(vfs_path.clone());
+                    let file_id = this
+                        .file_map
+                        .intern(this.analysis_host.raw_database(), vfs_path.clone());
                     this.pending_changes.insert(vfs_path, Some(bytes));
                     // Make a list of files that are freshly opened so
                     // diagnostics are generated for them, even if their
@@ -798,11 +796,12 @@ impl Server {
                         this.vfs_loader.handle.invalidate(path.to_path_buf());
                     }
 
-                    if let Some(file_id) = this.file_map.file_id(&path) {
+                    if let Some(file_id) = this.file_map.file_id(&path)
+                        && analysis.file_exists(file_id)
+                    {
                         Arc::make_mut(&mut this.diagnostics)
                             .clear(file_id);
                         if let Ok(line_index) = analysis.line_index(file_id) {
-                            let file_map = this.file_map.clone();
                             diagnostics = this
                                 .diagnostics
                                 .diagnostics_for(file_id)
@@ -811,7 +810,7 @@ impl Server {
                                     let snapshot = this.snapshot();
                                     ide_to_lsp_diagnostic(&line_index, d, |related_file_id| {
                                         // Get the line index and URI for the related file
-                                        let uri = file_id_to_uri(&file_map, related_file_id);
+                                        let uri = snapshot.file_id_to_uri(related_file_id);
                                         let line_index = snapshot.analysis.line_index(related_file_id).ok()?;
                                         Some(((*line_index).clone(), uri))
                                     })
@@ -1024,7 +1023,6 @@ impl Server {
             self.analysis_host.raw_database(),
             &self.file_map,
             mem::take(&mut self.pending_changes),
-            &self.line_ending_map.read(),
         );
         let mut changed_files: Vec<(FileId, ChangeKind)> = changes
             .iter()
@@ -1049,12 +1047,7 @@ impl Server {
             let raw_database = self.analysis_host.raw_database_mut();
 
             // Drain outstanding snapshots up-front, BEFORE the file-content writes
-            // below. This is the salsa cancellation barrier, and it does not hold
-            // any salsa shard locks.
-            //
-            // This must be done before mutating salsa files, as that does hold a shard
-            // lock while triggering cancellation, which can deadlock any salsa reads of
-            // the files in that shard.
+            // below. This is the salsa cancellation barrier.
             //
             // Time the drain so main-loop stalls (blocking until every outstanding
             // read snapshot — e.g. in-flight eqWAlizer/erlang_service diagnostics —
@@ -1072,23 +1065,22 @@ impl Server {
             }
 
             // Apply text changes (shared with watchman and CLI). Snapshots have been
-            // drained above, so these writes no longer block here. Keep the
-            // `line_ending_map` write *after* the salsa writes: were the drain above
-            // ever removed, holding that write across the barrier would deadlock a
-            // handler parked on `line_ending_map.read()` (via
-            // `to_proto::text_document_edit`).
-            let line_ending_updates = {
+            // drained above, so these writes no longer block here.
+            {
                 let _phase = watchdog::phase("vfs_salsa_write");
-                crate::reload::write_file_changes(raw_database, &self.file_map, changes)
-            };
-            self.line_ending_map.write().extend(line_ending_updates);
+                crate::reload::write_file_changes(raw_database, changes);
+            }
 
             // Server-specific per-file processing
             for &(file_id, kind) in &changed_files {
                 if kind != ChangeKind::Delete {
                     if self.initial_load_status == InitialLoading::Done
                         && kind == ChangeKind::Create
-                        && let Some(path) = self.file_map.file_path(file_id).into_abs_path()
+                        && let Some(path) = raw_database
+                            .file(file_id)
+                            .path(raw_database)
+                            .clone()
+                            .into_abs_path()
                         && (path.extension() == Some("hrl") || path.extension() == Some("erl"))
                     {
                         self.reload_manager.lock().add(path);
@@ -1126,13 +1118,12 @@ impl Server {
         // by the vfs updates above.
         if self.initial_load_status == InitialLoading::DoneButVfsChanges {
             self.initial_load_status = InitialLoading::Done;
-            let missing = self
-                .analysis_host
-                .raw_database()
+            let db = self.analysis_host.raw_database();
+            let missing = db
                 .app_index()
                 .map
                 .keys()
-                .filter(|file_id| !self.file_map.exists(**file_id))
+                .filter(|file_id| !db.file(**file_id).exists(db))
                 .count();
             if missing > 0 {
                 log::warn!("Loading finished with {missing} listed files that do not exist");
@@ -1172,7 +1163,7 @@ impl Server {
             .map(|path| {
                 self.file_map
                     .file_id(path)
-                    .expect("an open document should exist")
+                    .expect("an open document should be interned")
             })
             .collect()
     }
@@ -1357,8 +1348,9 @@ impl Server {
         let gen_src_inputs = {
             let _phase = watchdog::phase("switch_workspaces:salsa_write");
             raw_db.clear_erlang_services();
+            crate::reload::intern_listed_files(raw_db, &self.file_map, &project_apps);
             project_apps.app_structure().apply(raw_db, &|path| {
-                self.file_map.intern(VfsPath::from(path.clone()))
+                crate::reload::listed_file_id(&self.file_map, path)
             })
         };
         self.generated_app_inputs = Arc::new(gen_src_inputs);
@@ -2190,17 +2182,6 @@ fn parse_id(id: lsp_types::Id) -> RequestId {
         lsp_types::Id::Int(id) => id.into(),
         lsp_types::Id::String(id) => id.into(),
     }
-}
-
-pub fn file_id_to_path(file_map: &FileMap, id: FileId) -> Result<AbsPathBuf> {
-    let uri = file_id_to_uri(file_map, id);
-    convert::abs_path(&uri)
-}
-
-pub fn file_id_to_uri(file_map: &FileMap, id: FileId) -> Uri {
-    let path = file_map.file_path(id);
-    let path = path.as_path().unwrap();
-    convert::uri_from_abs_path(path)
 }
 
 pub fn is_supported_by_erlang_service(analysis: &Analysis, id: FileId) -> bool {

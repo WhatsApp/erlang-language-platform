@@ -135,8 +135,8 @@ impl SsrPatternsLinter for NoCtConfigMacroLinter {
 /// while `_@Key` binds at the use site, so a range ending at the placeholder
 /// would span, and delete, everything between the two.
 fn callee_range(ctx: &LinterContext, matched: TextRange) -> Option<TextRange> {
-    let file_text = ctx.sema.db.file_text(ctx.file_id);
-    let text = file_text.text(ctx.sema.db);
+    let file = ctx.sema.db.file(ctx.file_id);
+    let text = file.text(ctx.sema.db);
     let start: usize = matched.start().into();
     let end: usize = matched.end().into();
     let open_paren = text.get(start..end)?.find('(')?;

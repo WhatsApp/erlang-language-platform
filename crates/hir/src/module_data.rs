@@ -77,13 +77,7 @@ impl File {
     pub fn name(&self, db: &dyn RootQueryDb) -> SmolStr {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nFile::name: {:?}", self.file_id));
-        let source_root = db
-            .source_root(db.file_source_root(self.file_id).source_root_id(db))
-            .source_root(db);
-        if let Some((name, Some(ext))) = source_root
-            .path_for_file(&self.file_id)
-            .and_then(|path| path.name_and_extension())
-        {
+        if let Some((name, Some(ext))) = db.file(self.file_id).path(db).name_and_extension() {
             SmolStr::new(format!("{name}.{ext}"))
         } else {
             SmolStr::new_inline("unknown")

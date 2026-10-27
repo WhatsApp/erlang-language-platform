@@ -41,10 +41,10 @@ fn find_eqwalizer_comments(
     file_id: FileId,
     kind: Kind,
 ) -> Option<Vec<GenericLinterMatchContext<()>>> {
-    let file_text = sema.db.file_text(file_id).text(sema.db);
-    let line_index = LineIndex::new(&file_text);
+    let file_text = sema.db.file(file_id).text(sema.db);
+    let line_index = LineIndex::new(file_text);
     let source = sema.db.parse(file_id);
-    let metadata = metadata::collect_metadata(&line_index, &file_text, &source);
+    let metadata = metadata::collect_metadata(&line_index, file_text, &source);
 
     let res: Vec<_> = metadata
         .by_source(Source::Eqwalizer)

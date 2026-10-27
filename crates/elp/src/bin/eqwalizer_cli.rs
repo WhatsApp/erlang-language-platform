@@ -589,7 +589,7 @@ fn target_file_ids(
         .flat_map(|(_, target)| &target.src_files)
         .filter_map(|src| {
             let vfs_path = VfsPath::from(src.clone());
-            loaded.file_map.file_id(&vfs_path).inspect(|_file_id| {
+            loaded.file_id(&vfs_path).inspect(|_file_id| {
                 at_least_one_found = true;
             })
         })
@@ -662,7 +662,7 @@ pub fn eqwalize_stats(
         .into_iter()
         .sorted_by(|(_, (name1, _)), (_, (name2, _))| Ord::cmp(name1, name2))
     {
-        let vfs_path = &loaded.file_map.file_path(file_id);
+        let vfs_path = &loaded.file_path(file_id);
         let analysis = loaded.analysis();
         let root_path = &analysis
             .project_data(file_id)
@@ -795,7 +795,7 @@ fn eqwalize(
                 let mut parse_diagnostics: Vec<ParseDiagnostic> = Vec::default();
                 let line_index = analysis.with_db(|db| db.file_line_index(file_id))?;
                 for diag in diags {
-                    let vfs_path = &loaded.file_map.file_path(file_id);
+                    let vfs_path = &loaded.file_path(file_id);
                     let analysis = loaded.analysis();
                     let root_path = &analysis
                         .project_data(file_id)

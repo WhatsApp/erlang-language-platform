@@ -79,9 +79,9 @@ pub trait WithFixture: Default + SourceDatabase + 'static {
 
     #[track_caller]
     fn with_fixture(fixture_str: &str) -> (Self, ChangeFixture) {
-        let (fixture, change) = ChangeFixture::parse(fixture_str);
         let mut db = Self::default();
-        change.apply(&mut db, &|path| fixture.resolve_file_id(path));
+        let (fixture, change) = ChangeFixture::parse(&db, fixture_str);
+        change.apply(&mut db);
         let patterns: Vec<crate::DynamicCallPatternInput> = fixture
             .dynamic_call_patterns
             .iter()
@@ -128,13 +128,16 @@ impl Builder {
 
 impl ChangeFixture {
     #[track_caller]
-    pub fn parse(test_fixture: &str) -> (ChangeFixture, Change) {
-        let (fixture, change, _) = ChangeFixture::parse_detail(test_fixture);
+    pub fn parse(db: &dyn SourceDatabase, test_fixture: &str) -> (ChangeFixture, Change) {
+        let (fixture, change, _) = ChangeFixture::parse_detail(db, test_fixture);
         (fixture, change)
     }
 
     #[track_caller]
-    pub fn parse_detail(test_fixture: &str) -> (ChangeFixture, Change, Project) {
+    pub fn parse_detail(
+        db: &dyn SourceDatabase,
+        test_fixture: &str,
+    ) -> (ChangeFixture, Change, Project) {
         let fixture_with_meta = FixtureWithProjectMeta::parse(test_fixture);
         let FixtureWithProjectMeta {
             fixture,
@@ -149,7 +152,6 @@ impl ChangeFixture {
 
         let mut files = Vec::new();
         let source_root_prefix = "/".to_string();
-        let mut file_id = FileId::from_raw(0);
 
         let mut file_position = None;
         let mut app_map = AppMap::default();
@@ -166,11 +168,6 @@ impl ChangeFixture {
         let mut has_buck_metadata = false;
 
         for mut entry in fixture.clone() {
-            if let Some(range) = entry.marker_pos {
-                assert!(file_position.is_none());
-                file_position = Some((file_id, range));
-            }
-
             assert!(entry.path.starts_with(&source_root_prefix));
 
             let app_name = entry.app_data.name.clone();
@@ -220,9 +217,12 @@ impl ChangeFixture {
 
             app_map.combine(entry.app_data);
 
-            change.change_file(file_id, Some(Arc::from(entry.text)));
-
             let path = VfsPath::new_real_path(entry.path);
+            let file_id = change.add_file(db, path.clone(), Arc::from(entry.text));
+            if let Some(range) = entry.marker_pos {
+                assert!(file_position.is_none());
+                file_position = Some((file_id, range));
+            }
             // When src_app is specified, place the file into that app's
             // SourceRoot/FileSet instead. This models buck's shared source
             // root scenario (e.g., lib + test targets in the same directory).
@@ -236,8 +236,6 @@ impl ChangeFixture {
             files.push(file_id);
             tags.insert(file_id, entry.tags);
             annotations.insert(file_id, entry.annotations);
-
-            inc_file_id(&mut file_id);
         }
         if builder.needs_otp() {
             // When eqwalizer is enabled, we need erts, stdlib, and kernel
@@ -262,13 +260,9 @@ impl ChangeFixture {
                 )
             });
             for (path, contents) in read_otp_app_sources(&app_data) {
-                change.change_file(file_id, Some(Arc::from(contents)));
-                app_files.insert(
-                    app_data.name.clone(),
-                    file_id,
-                    VfsPath::new_real_path(path.to_string_lossy().to_string()),
-                );
-                inc_file_id(&mut file_id);
+                let path = VfsPath::new_real_path(path.to_string_lossy().to_string());
+                let file_id = change.add_file(db, path.clone(), Arc::from(contents));
+                app_files.insert(app_data.name.clone(), file_id, path);
             }
             app_map.combine(app_data);
         }
@@ -454,13 +448,6 @@ impl ChangeFixture {
         }
     }
 
-    pub fn resolve_file_id(&self, path: &AbsPathBuf) -> FileId {
-        self.files_by_path
-            .get(&VfsPath::from(path.clone()))
-            .copied()
-            .unwrap_or_else(|| panic!("{path} is not a fixture file"))
-    }
-
     /// Validate all files in the fixture for syntax errors.
     /// Panics with context if any syntax errors are found.
     /// Skips validation if `expect_parse_errors` is set to true.
@@ -494,9 +481,9 @@ impl ChangeFixture {
                     })
                     .unwrap_or_else(|| format!("FileId({:?})", file_id));
 
-                let file_text = db.file_text(*file_id);
+                let file = db.file(*file_id);
                 let tree = parse.tree();
-                errors_found.push((path, file_text.text(db).to_string(), errors.to_vec(), tree));
+                errors_found.push((path, file.text(db).to_string(), errors.to_vec(), tree));
             }
         }
 
@@ -518,10 +505,6 @@ impl ChangeFixture {
             panic!("{}", message);
         }
     }
-}
-
-fn inc_file_id(file_id: &mut FileId) {
-    *file_id = FileId::from_raw(file_id.index() + 1);
 }
 
 #[derive(Debug, Clone, Default)]
@@ -577,12 +560,14 @@ mod tests {
     use expect_test::expect;
 
     use super::ChangeFixture;
+    use crate::test_db::TestDB;
 
     #[test]
     fn unresolved_macro_diag_include_dir() {
         // Test the scenario where the include file is referenced
         // relative to a project include directory
         let (_fixture, change) = ChangeFixture::parse(
+            &TestDB::default(),
             r#"
 //- /opt/lib/comp-1.3/include/comp.hrl otp_app:/opt/lib/comp-1.3
 -define(COMP,3).
@@ -842,6 +827,7 @@ bar() -> ?FOO.
         // Test the scenario where the include file is referenced
         // relative to a project include directory
         let (_fixture, change) = ChangeFixture::parse(
+            &TestDB::default(),
             r#"
 //- /extra/include/bar.hrl include_path:/extra/include
 -define(BAR,4).
@@ -998,6 +984,7 @@ foo() -> ?BAR.
     #[should_panic(expected = "OTP app 'stdlb' requested via //- otp_apps: directive not found")]
     fn otp_apps_misspelled_app_panics() {
         let _ = ChangeFixture::parse(
+            &TestDB::default(),
             r#"
 //- otp_apps:stdlb
 //- /src/foo.erl

@@ -8,27 +8,12 @@
  * above-listed licenses.
  */
 
-//! Applies changes to the IDE state transactionally.
-
-use elp_base_db::Change;
-use elp_base_db::FileId;
-use paths::AbsPathBuf;
+//! Memory usage of the database's queries.
 
 use crate::RootDatabase;
 use crate::memory_usage::Bytes;
 
 impl RootDatabase {
-    pub fn apply_change(
-        &mut self,
-        change: Change,
-        resolve_file_id: &impl Fn(&AbsPathBuf) -> FileId,
-    ) {
-        let _p = tracing::info_span!("RootDatabase::apply_change").entered();
-        self.request_cancellation();
-        log::info!("apply_change {change:?}");
-        change.apply(self, resolve_file_id);
-    }
-
     pub fn per_query_memory_usage(&mut self) -> Vec<(String, Bytes, usize)> {
         // In salsa 0.19, the old Query/QueryTable/purge API is no longer available.
         // Per-query memory tracking is not yet supported.

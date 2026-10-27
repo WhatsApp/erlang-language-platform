@@ -39,19 +39,19 @@ use elp_ide_db::assists::AssistContextDiagnostic;
 use elp_ide_db::assists::AssistUserInput;
 use elp_ide_db::common_test::CommonTestInfo;
 use elp_ide_db::docs::Doc;
-use elp_ide_db::elp_base_db::AbsPathBuf;
-use elp_ide_db::elp_base_db::Change;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::elp_base_db::FilePosition;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::IncludeFileIndex;
+use elp_ide_db::elp_base_db::LineEndings;
 use elp_ide_db::elp_base_db::ModuleIndex;
 use elp_ide_db::elp_base_db::ModuleName;
 use elp_ide_db::elp_base_db::ProjectData;
 use elp_ide_db::elp_base_db::ProjectId;
 use elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide_db::elp_base_db::SourceDatabase;
+use elp_ide_db::elp_base_db::VfsPath;
 use elp_ide_db::elp_base_db::salsa;
 use elp_ide_db::eqwalizer::type_references;
 use elp_ide_db::erlang_service::ParseResult;
@@ -223,14 +223,11 @@ impl AnalysisHost {
         &mut self.db
     }
 
-    /// Applies changes to the current state of the world. If there are
-    /// outstanding snapshots, they will be canceled.
-    pub fn apply_change(
-        &mut self,
-        change: Change,
-        resolve_file_id: &impl Fn(&AbsPathBuf) -> FileId,
-    ) {
-        self.db.apply_change(change, resolve_file_id)
+    /// Replaces the text of `file_id`, keeping its line endings.
+    pub fn set_file_text(&mut self, file_id: FileId, text: Arc<str>) {
+        let file = self.db.file(file_id);
+        let line_endings = file.line_endings(&self.db);
+        file.set_contents(&mut self.db, Some((text, line_endings)));
     }
 
     /// NB: this clears the database
@@ -245,7 +242,7 @@ impl AnalysisHost {
 
 /// Analysis is a snapshot of a world state at a moment in time. It is the main
 /// entry point for asking semantic information about the world. When the world
-/// state is advanced using `AnalysisHost::apply_change` method, all existing
+/// state is advanced through `AnalysisHost`, all existing
 /// `Analysis` are canceled (most method return `Err(Canceled)`).
 #[derive(Debug)]
 pub struct Analysis {
@@ -312,7 +309,7 @@ impl Analysis {
             }
             // Sort biggest modules first to reduce long-tail in parallel processing
             let mut file_ids = file_ids;
-            sort_by_size_descending(&mut file_ids, |id| db.file_text(*id).text(db).len());
+            sort_by_size_descending(&mut file_ids, |id| db.file(*id).text(db).len());
             // Round-robin distribute sorted files across chunks for balanced workload
             let chunks = distribute_round_robin(file_ids, max_tasks.min(files_count));
             let diagnostics = chunks
@@ -472,7 +469,21 @@ impl Analysis {
 
     /// Returns the contents of a file
     pub fn file_text(&self, file_id: FileId) -> Cancellable<Arc<str>> {
-        self.with_db(|db| db.file_text(file_id).text(db))
+        self.with_db(|db| db.file(file_id).text(db).clone())
+    }
+
+    // Reading an input is never cancelled.
+
+    pub fn file_path(&self, file_id: FileId) -> VfsPath {
+        self.db.file(file_id).path(&self.db).clone()
+    }
+
+    pub fn file_exists(&self, file_id: FileId) -> bool {
+        self.db.file(file_id).exists(&self.db)
+    }
+
+    pub fn line_endings(&self, file_id: FileId) -> LineEndings {
+        self.db.file(file_id).line_endings(&self.db)
     }
 
     /// Returns the app_type for a file

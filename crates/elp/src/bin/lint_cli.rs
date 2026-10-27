@@ -51,10 +51,8 @@ use elp_ide::elp_ide_assists::Assist;
 use elp_ide::elp_ide_assists::GroupLabel;
 use elp_ide::elp_ide_db::LineCol;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
-use elp_ide::elp_ide_db::elp_base_db::Change;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileKind;
-use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FilePosition;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
@@ -492,7 +490,7 @@ fn do_diagnostics_all(
 
     let should_lint = |file_id: FileId| -> bool {
         if let Some(ref filter_path) = path_filter {
-            match loaded.file_map.file_path(file_id).as_path() {
+            match loaded.file_path(file_id).as_path() {
                 Some(path) => {
                     if !canonicalize_or_keep(path.as_ref()).starts_with(filter_path) {
                         return false;
@@ -607,7 +605,7 @@ fn file_label(analysis: &Analysis, loaded: &LoadResult, file_id: FileId) -> Stri
     if let Ok(Some(name)) = analysis.module_name(file_id) {
         return name.as_str().to_string();
     }
-    let vfs_path = &loaded.file_map.file_path(file_id);
+    let vfs_path = &loaded.file_path(file_id);
     match analysis.project_data(file_id) {
         Ok(Some(project_data)) => reporting::get_relative_path(&project_data.root_dir, vfs_path)
             .to_string_lossy()
@@ -648,10 +646,7 @@ fn resolve_target_files(
                 .expect("UTF8 conversion failed");
             let path = AbsPath::assert(&path_buf);
             let path = path.as_os_str().to_str().unwrap();
-            if let Some(file_id) = loaded
-                .file_map
-                .file_id(&VfsPath::new_real_path(path.to_string()))
-            {
+            if let Some(file_id) = loaded.file_id(&VfsPath::new_real_path(path.to_string())) {
                 file_ids.push(file_id);
             } else {
                 // Do not let this pass silently: an unlinted file is otherwise
@@ -793,7 +788,6 @@ pub fn do_codemod(
             let mut lints = Lints::new(
                 &mut loaded.analysis_host,
                 diagnostics_config,
-                &loaded.file_map,
                 args,
                 &mut changed_files,
                 filtered_diags,
@@ -860,7 +854,7 @@ fn report_filtered_diagnostics(
             continue;
         }
 
-        let vfs_path = &loaded.file_map.file_path(*file_id);
+        let vfs_path = &loaded.file_path(*file_id);
         let root_path = &analysis
             .project_data(*file_id)
             .unwrap_or_else(|_| panic!("could not find project data"))
@@ -870,7 +864,6 @@ fn report_filtered_diagnostics(
         report.write_lint_diagnostics(
             IdeDiagnosticContext {
                 analysis,
-                file_map: &loaded.file_map,
                 file_id: *file_id,
                 path: Some(relative_path),
                 use_cli_severity: args.uses_cli_severity(),
@@ -971,7 +964,6 @@ fn check_changes(
 struct Lints<'a> {
     analysis_host: &'a mut AnalysisHost,
     cfg: &'a DiagnosticsConfig,
-    file_map: &'a FileMap,
     args: &'a Lint,
     changed_files: &'a mut FxHashSet<FileId>,
     diags: FxHashMap<FileId, (String, Vec<diagnostics::Diagnostic>)>,
@@ -990,11 +982,9 @@ struct FixResult {
 const LINT_APPLICATION_RECURSION_LIMIT: i32 = 250;
 
 impl<'a> Lints<'a> {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         analysis_host: &'a mut AnalysisHost,
         cfg: &'a DiagnosticsConfig,
-        file_map: &'a FileMap,
         args: &'a Lint,
         changed_files: &'a mut FxHashSet<FileId>,
         diags: Vec<(String, FileId, Vec<diagnostics::Diagnostic>)>,
@@ -1013,7 +1003,6 @@ impl<'a> Lints<'a> {
         Lints {
             analysis_host,
             cfg,
-            file_map,
             args,
             changed_files,
             diags: diags_by_file_id,
@@ -1047,14 +1036,7 @@ impl<'a> Lints<'a> {
                 diff: _,
             } in changes
             {
-                self.analysis_host.apply_change(
-                    Change {
-                        roots: None,
-                        files_changed: vec![(file_id, Some(Arc::from(source)))],
-                        app_structure: None,
-                    },
-                    &|path| self.file_map.intern(VfsPath::from(path.clone())),
-                );
+                self.analysis_host.set_file_text(file_id, Arc::from(source));
                 if self.args.check_eqwalize_all {
                     report.info("Running eqwalize-all to check for knock-on problems.")?;
                 }
@@ -1102,7 +1084,6 @@ impl<'a> Lints<'a> {
                     report.write_lint_diagnostics(
                         IdeDiagnosticContext {
                             analysis: &analysis,
-                            file_map: self.file_map,
                             file_id: *file_id,
                             path: None,
                             use_cli_severity: self.args.uses_cli_severity(),
@@ -1194,7 +1175,6 @@ impl<'a> Lints<'a> {
         report.write_fix_diagnostic(
             IdeDiagnosticContext {
                 analysis: &analysis,
-                file_map: self.file_map,
                 file_id,
                 path: None,
                 use_cli_severity: self.args.uses_cli_severity(),
@@ -1249,7 +1229,6 @@ impl<'a> Lints<'a> {
             report.write_fix_diagnostic(
                 IdeDiagnosticContext {
                     analysis: &analysis,
-                    file_map: self.file_map,
                     file_id,
                     path: None,
                     use_cli_severity: self.args.uses_cli_severity(),
@@ -1319,7 +1298,7 @@ impl<'a> Lints<'a> {
 
     fn write_fix_result(&self, file_id: FileId) -> Result<()> {
         let file_text = self.analysis_host.analysis().file_text(file_id)?;
-        let vfs_path = &self.file_map.file_path(file_id);
+        let vfs_path = &self.analysis_host.analysis().file_path(file_id);
         let file_path = vfs_path
             .as_path()
             .with_context(|| format!("Not an on-disk file, cannot write fix: {vfs_path}"))?;

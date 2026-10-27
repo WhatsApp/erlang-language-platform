@@ -66,9 +66,7 @@ impl GenericLinter for ModuleMismatchLinter {
     ) -> Option<Vec<GenericLinterMatchContext<Self::Context>>> {
         let sema = ctx.sema;
         let file_id = ctx.file_id;
-        let root_id = sema.db.file_source_root(file_id).source_root_id(sema.db);
-        let root = sema.db.source_root(root_id).source_root(sema.db);
-        let path = root.path_for_file(&file_id)?;
+        let path = sema.db.file(file_id).path(sema.db);
         let (filename, _) = path.name_and_extension()?;
 
         let module_name_ast = sema.module_attribute_name(file_id)?;

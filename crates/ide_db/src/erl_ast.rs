@@ -18,7 +18,6 @@ use elp_base_db::InternedFileId;
 use elp_base_db::ProjectId;
 use elp_base_db::RootQueryDb;
 use elp_base_db::SourceDatabase;
-use elp_base_db::path_for_file;
 use elp_base_db::salsa;
 use elp_base_db::salsa::Database;
 use elp_erlang_service::Format;
@@ -62,7 +61,7 @@ impl AstLoader for crate::RootDatabase {
             CompileOption::ElpMetadata(elp_metadata),
         ];
         let path: PathBuf = path.to_path_buf().into();
-        let file_text = SourceDatabase::file_text(self, file_id).text(self);
+        let file_text = SourceDatabase::file(self, file_id).text(self).clone();
         let req = ParseRequest {
             options,
             file_id,
@@ -103,11 +102,11 @@ fn resolve_include(
                 .resolve_include_doc(path)?
         }
     };
-    let path = path_for_file(db, include_file_id).map(|vfs_path| vfs_path.to_string())?;
+    let file = db.file(include_file_id);
     Some((
-        path,
+        file.path(db).to_string(),
         include_file_id,
-        db.file_text(include_file_id).text(db),
+        file.text(db).clone(),
     ))
 }
 
@@ -133,11 +132,9 @@ fn module_ast_dispatch(db: &dyn ErlAstDatabase, file_id: FileId) -> Arc<ParseRes
 fn module_ast_inner(db: &dyn ErlAstDatabase, fid: InternedFileId) -> Arc<ParseResult> {
     let file_id = fid.file_id(db);
     let _ = stdx::panic_context::enter(format!("\nmodule_ast: {file_id:?}"));
-    let root_id = db.file_source_root(file_id).source_root_id(db);
-    let root = db.source_root(root_id).source_root(db);
-    let path = root
-        .path_for_file(&file_id)
-        .expect("file should have path in source root")
+    let path = db
+        .file(file_id)
+        .path(db)
         .as_path()
         .expect("path should be absolute");
     let metadata = db.elp_metadata(file_id);
@@ -168,7 +165,7 @@ fn elp_metadata_dispatch(db: &dyn ErlAstDatabase, file_id: FileId) -> Metadata {
 fn elp_metadata_inner(db: &dyn ErlAstDatabase, fid: InternedFileId) -> Metadata {
     let file_id = fid.file_id(db);
     let line_index = db.file_line_index(file_id);
-    let file_text = db.file_text(file_id).text(db);
+    let file_text = db.file(file_id).text(db);
     let source = db.parse(file_id);
-    metadata::collect_metadata(&line_index, &file_text, &source)
+    metadata::collect_metadata(&line_index, file_text, &source)
 }

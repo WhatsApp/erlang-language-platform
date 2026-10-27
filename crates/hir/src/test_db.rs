@@ -17,10 +17,10 @@ use std::sync::Arc;
 use elp_base_db::AppData;
 use elp_base_db::AppDataId;
 use elp_base_db::AppDataInput;
+use elp_base_db::File;
 use elp_base_db::FileId;
 use elp_base_db::FileRange;
 use elp_base_db::FileSourceRootInput;
-use elp_base_db::FileText;
 use elp_base_db::Files;
 use elp_base_db::ProjectData;
 use elp_base_db::ProjectDataInput;
@@ -68,13 +68,12 @@ impl fmt::Debug for TestDB {
 
 #[salsa::db]
 impl SourceDatabase for TestDB {
-    fn file_text(&self, file_id: FileId) -> FileText {
-        self.files.file_text(file_id)
+    fn file(&self, file_id: FileId) -> File {
+        self.files.file(file_id)
     }
 
-    fn set_file_text(&mut self, file_id: FileId, text: Arc<str>) {
-        let files = self.files.clone();
-        files.set_file_text(self, file_id, text);
+    fn insert_file(&self, file_id: FileId, file: File) {
+        self.files.insert_file(file_id, file);
     }
 
     fn source_root(&self, source_root_id: SourceRootId) -> SourceRootInput {

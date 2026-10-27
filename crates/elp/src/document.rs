@@ -12,10 +12,10 @@ use core::str;
 use std::ops::Range;
 
 use elp_ide::elp_ide_db::LineIndex;
+use elp_ide::elp_ide_db::elp_base_db::LineEndings;
 use lsp_types::TextDocumentContentChangeEvent;
 
 use crate::from_proto::safe_text_range;
-use crate::line_endings::LineEndings;
 
 pub struct Document {
     pub content: String,

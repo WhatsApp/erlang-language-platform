@@ -519,7 +519,8 @@ fn xref_call_to_generated_dep_module_test() {
         {Client, Request, Options}.
     "#;
 
-    let (fixture, mut change, mut project) = ChangeFixture::parse_detail(spec);
+    let mut db = RootDatabase::default();
+    let (fixture, mut change, mut project) = ChangeFixture::parse_detail(&db, spec);
     for app in &mut project.project_apps {
         if app.name == AppName("dep_app".to_string()) {
             app.app_type = AppType::Dep;
@@ -530,8 +531,7 @@ fn xref_call_to_generated_dep_module_test() {
     let project_apps = ProjectApps::new(&projects, IncludeOtp::Yes);
     change.set_app_structure(project_apps.app_structure());
 
-    let mut db = RootDatabase::default();
-    change.apply(&mut db, &|path| fixture.resolve_file_id(path));
+    change.apply(&mut db);
     fixture.validate(&db);
 
     let host = AnalysisHost::new(db);
@@ -1307,10 +1307,11 @@ fn loaded_files_are_numbered_in_path_order() {
     .expect("the project should load");
 
     // Interning a path finds the id loading gave it.
-    let ids = listed.map(|path| loaded.file_map.intern(VfsPath::from(path)).index());
+    let db = loaded.analysis_host.raw_database();
+    let ids = listed.map(|path| loaded.file_map.intern(db, VfsPath::from(path)).index());
     let first = ids[0];
     assert_eq_expected!([first, first + 1, first + 2], ids);
-    let exists = ids.map(|id| loaded.file_map.exists(FileId::from_raw(id)));
+    let exists = ids.map(|id| db.file(FileId::from_raw(id)).exists(db));
     assert_eq_expected!([true, false, true], exists);
 }
 

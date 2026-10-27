@@ -21,10 +21,17 @@ pub enum LineEndings {
 impl LineEndings {
     /// Replaces `\r\n` with `\n` in `src`.
     pub fn normalize(src: String) -> (String, Self) {
-        if !src.as_bytes().contains(&b'\r') {
-            (src, Self::Unix)
+        match Self::detect(&src) {
+            Self::Unix => (src, Self::Unix),
+            Self::Dos => (src.replace("\r\n", "\n"), Self::Dos),
+        }
+    }
+
+    pub fn detect(src: &str) -> Self {
+        if src.as_bytes().contains(&b'\r') {
+            Self::Dos
         } else {
-            (src.replace("\r\n", "\n"), Self::Dos)
+            Self::Unix
         }
     }
 
