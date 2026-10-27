@@ -4,6 +4,7 @@ stdout | Diagnostics reported:
 stdout | app_a/src/app_a.erl:5:5-5:24::[Warning] [W0011] module `app_a` belongs to app `app_a`, but reads env for `misc`
 stdout | app_a/src/app_a.erl:13:5-13:14::[Warning] [W0026] Function 'app_a:baz/2' is not exported.
 stdout | app_a/src/app_a.erl:8:7-8:8::[Warning] [W0018] Unexpected ';'
+stdout | app_a/src/app_a.erl:9:6-9:7::[Warning] [W0088] Argument 1 of fooX/1 is ignored by every clause and only passed by local calls, so it can be removed.
 stdout | app_a/src/app_a.erl:9:1-9:5::[Error] [P1700] head mismatch 'fooX' vs 'food'
 stdout |         7:1-7:5: Mismatched clause name
 stdout | app_a/src/app_a.erl:12:1-12:4::[Warning] [L1230] function bar/0 is unused

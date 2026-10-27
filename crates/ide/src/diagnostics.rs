@@ -179,6 +179,7 @@ mod undocumented_module;
 mod unexpected_separator;
 mod unexported_function;
 mod unnecessary_fold_to_build_map;
+mod unnecessary_function_arg;
 mod unnecessary_map_from_list_around_comprehension;
 mod unnecessary_map_to_list_in_comprehension;
 mod unreachable_test;
@@ -2302,6 +2303,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &trivial_match::LINTER,
     &redundant_assignment::LINTER,
     &map_find_to_syntax::LINTER,
+    &unnecessary_function_arg::LINTER,
     &effect_free_statement::LINTER,
     &head_mismatch::LINTER,
     &dependent_header::LINTER,
@@ -3959,6 +3961,8 @@ foo() -> XX 3.0.
 
              -spec blah(Pred :: fun ((T) -> erlang:boolean), List :: [T]) -> erlang:boolean().
              blah(0, _Y) -> 1;
+             %%      ^^ warning: W0088: Argument 2 of blah/2 is ignored by every clause and only passed by local calls, so it can be removed.
+             %%       | 💡 <suppression>
              blah(X, _Y) -> X + 1.
             "#,
         );

@@ -382,6 +382,8 @@ mod tests {
             %%                 | 💡 Replace `any()` with `term()`
             %%                 | 💡 <suppression>
             test(_) -> ok.
+            %%   ^ warning: W0088: Argument 1 of test/1 is ignored by every clause and only passed by local calls, so it can be removed.
+            %%   | 💡 <suppression>
             "#,
         )
     }

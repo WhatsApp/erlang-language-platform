@@ -262,6 +262,8 @@ mod tests {
             r#"
             -module(main).
             test_foo(_Config) ->
+            %%       ^^^^^^^ warning: W0088: Argument 1 of test_foo/1 is ignored by every clause and only passed by local calls, so it can be removed.
+            %%             | 💡 <suppression>
                 do_something(),
                 ok,
             %%  ^^ warning: W0006: this statement has no effect
@@ -284,6 +286,8 @@ mod tests {
             r#"
             -module(main).
             test_foo(_Config) ->
+            %%       ^^^^^^^ warning: W0088: Argument 1 of test_foo/1 is ignored by every clause and only passed by local calls, so it can be removed.
+            %%             | 💡 <suppression>
                 X = 42,
                 X,
             %%  ^ warning: W0006: this statement has no effect
@@ -300,6 +304,8 @@ mod tests {
             r#"
             -module(main).
             test_foo(_Config) ->
+            %%       ^^^^^^^ warning: W0088: Argument 1 of test_foo/1 is ignored by every clause and only passed by local calls, so it can be removed.
+            %%             | 💡 <suppression>
                 do_something(),
                 42,
             %%  ^^ warning: W0006: this statement has no effect
@@ -335,6 +341,8 @@ mod tests {
             //- /src/main.erl
             -module(main).
             test_foo(_Config) ->
+            %%       ^^^^^^^ warning: W0088: Argument 1 of test_foo/1 is ignored by every clause and only passed by local calls, so it can be removed.
+            %%             | 💡 <suppression>
                 do_something(),
                 fun() -> do_something() end,
             %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0006: this statement has no effect
@@ -366,6 +374,8 @@ mod tests {
             r#"
             -module(main).
             test_foo(_Config) ->
+            %%       ^^^^^^^ warning: W0088: Argument 1 of test_foo/1 is ignored by every clause and only passed by local calls, so it can be removed.
+            %%             | 💡 <suppression>
                 (do_something()),
                 (blah),
             %%  ^^^^^^ warning: W0006: this statement has no effect
@@ -383,6 +393,8 @@ mod tests {
             r#"
             -module(main).
             test_foo(_Config) ->
+            %%       ^^^^^^^ warning: W0088: Argument 1 of test_foo/1 is ignored by every clause and only passed by local calls, so it can be removed.
+            %%             | 💡 <suppression>
                 do_something(),
                 begin abc, blah, ("foo") end,
             %%  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ warning: W0006: this statement has no effect
@@ -414,6 +426,8 @@ mod tests {
             r#"
             -module(main).
             test_foo(_Config) ->
+            %%       ^^^^^^^ warning: W0088: Argument 1 of test_foo/1 is ignored by every clause and only passed by local calls, so it can be removed.
+            %%             | 💡 <suppression>
                 do_something(),
                 [42, blah, ("foo")],
             %%  ^^^^^^^^^^^^^^^^^^^ warning: W0006: this statement has no effect
@@ -436,6 +450,8 @@ mod tests {
             r#"
             -module(main).
             test_foo(_Config) ->
+            %%       ^^^^^^^ warning: W0088: Argument 1 of test_foo/1 is ignored by every clause and only passed by local calls, so it can be removed.
+            %%             | 💡 <suppression>
                 do_something(),
                 {42, [blah], {"foo"}},
             %%  ^^^^^^^^^^^^^^^^^^^^^ warning: W0006: this statement has no effect
@@ -504,6 +520,8 @@ mod tests {
             r#"
             -module(main).
             test_foo(_P) ->
+            %%       ^^ warning: W0088: Argument 1 of test_foo/1 is ignored by every clause and only passed by local calls, so it can be removed.
+            %%        | 💡 <suppression>
                 catch do_something(),
                 catch ok,
             %%  ^^^^^^^^ warning: W0006: this statement has no effect

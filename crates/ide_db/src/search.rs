@@ -113,7 +113,7 @@ impl SearchScope {
         }
     }
 
-    fn files(files: impl Iterator<Item = FileId>) -> SearchScope {
+    pub fn files(files: impl Iterator<Item = FileId>) -> SearchScope {
         SearchScope {
             entries: files.map(|file_id| (file_id, None)).collect(),
         }
@@ -142,6 +142,18 @@ impl SearchScope {
     pub fn exclude_file(mut self, file_id: FileId) -> SearchScope {
         self.entries.remove(&file_id);
         self
+    }
+
+    /// Keep only the files whose text contains `needle`.
+    pub fn retain_files_containing(mut self, db: &dyn DefDatabase, needle: &str) -> SearchScope {
+        let finder = Finder::new(needle);
+        self.entries
+            .retain(|file_id, _| finder.find(db.file(*file_id).text(db).as_bytes()).is_some());
+        self
+    }
+
+    pub fn file_ids(&self) -> impl Iterator<Item = FileId> + '_ {
+        self.entries.keys().copied()
     }
 }
 

@@ -4,6 +4,7 @@ stdout | app_a/src/app_a.erl:28:4-28:11::[Warning] [W0017] Function 'mod:foo/0' 
 stdout | app_a/src/app_a.erl:72:4-72:11::[Warning] [W0017] Function 'foo:bar/2' is undefined.
 stdout | app_a/src/app_a.erl:37:11-37:28::[Warning] [W0017] Function 'mod_name:fun_name/2' is undefined.
 stdout | app_a/src/app_a.erl:4:1-4:41::[Warning] [W0020] Unused file: inets/include/httpd.hrl
+stdout | app_a/src/app_a.erl:35:3-35:4::[Warning] [W0088] Argument 1 of g/1 is ignored by every clause and only passed by local calls, so it can be removed.
 stdout | app_a/src/app_a.erl:52:3-52:23::[Warning] [W0006] this statement has no effect
 stdout | app_a/src/app_a.erl:39:7-39:28::[Error] [L1267] variable 'A' shadowed in 'named fun'
 stdout | app_a/src/app_a.erl:55:32-55:35::[Error] [L1295] type uri/0 undefined

@@ -300,6 +300,7 @@ mod tests {
             .set_experimental(true)
             .disable(DiagnosticCode::MacroPrecedenceEscape)
             .disable(DiagnosticCode::NoAndOr)
+            .disable(DiagnosticCode::UnnecessaryFunctionArg)
     }
 
     #[track_caller]

@@ -463,6 +463,8 @@ mod tests {
          %% ^^^^ error: P1700: head mismatch 'fooX' vs 'food'
          %%    | Related info: 0:21-25 Mismatched clause name
          %%    | 💡 Fix head mismatch
+         %%      ^^ warning: W0088: Argument 1 of fooX/1 is ignored by every clause and only passed by local calls, so it can be removed.
+         %%       | 💡 <suppression>
                 no.
 
             bar() ->

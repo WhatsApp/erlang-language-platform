@@ -131,6 +131,8 @@ redbug() ->
     ok.
 
 start(_) ->
+%%    ^ warning: W0088: Argument 1 of start/1 is ignored by every clause and only passed by local calls, so it can be removed.
+%%    | 💡 <suppression>
     ok.
 
 //- /src/redbug.erl

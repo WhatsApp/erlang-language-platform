@@ -546,6 +546,8 @@ mod tests {
 //- /include/foo.hrl include_path:/include
 -define(line,).
 lol(A, _B) -> A.
+%%     ^^ warning: W0088: Argument 2 of lol/2 is ignored by every clause and only passed by local calls, so it can be removed.
+%%      | 💡 <suppression>
 -define(enum, lol).
 
 //- /src/foo.erl
@@ -1040,6 +1042,8 @@ foo() -> ?MACRO.
   -include("do_log.hrl").
 
   get_all_logs(_LogsDirectory) ->
+%%             ^^^^^^^^^^^^^^ warning: W0088: Argument 1 of get_all_logs/1 is ignored by every clause and only passed by local calls, so it can be removed.
+%%                          | 💡 <suppression>
     ?LOG_WARNING.
 "#,
         );
