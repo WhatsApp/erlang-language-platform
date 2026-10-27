@@ -1440,6 +1440,7 @@ mod tests {
             },
             dynamic_calls: Default::default(),
             attribute_order: Default::default(),
+            discouraged_type: Default::default(),
         })
         .unwrap();
 
@@ -1466,6 +1467,9 @@ mod tests {
 
             [attribute_order]
             order = []
+
+            [discouraged_type]
+            types = []
         "#]]
         .assert_eq(&result);
     }
@@ -1514,6 +1518,9 @@ mod tests {
                 },
                 attribute_order: AttributeOrderConfig {
                     order: [],
+                },
+                discouraged_type: DiscouragedTypeConfig {
+                    types: [],
                 },
             }
         "#]]

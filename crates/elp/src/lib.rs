@@ -255,6 +255,7 @@ mod tests {
             erlang_service: ErlangServiceConfig::default(),
             dynamic_calls: Default::default(),
             attribute_order: Default::default(),
+            discouraged_type: Default::default(),
         };
         expect![[r#"
             [erlang_service]
@@ -295,6 +296,9 @@ mod tests {
 
             [attribute_order]
             order = []
+
+            [discouraged_type]
+            types = []
         "#]]
         .assert_eq(&toml::to_string::<LintConfig>(&lint_config).unwrap());
     }

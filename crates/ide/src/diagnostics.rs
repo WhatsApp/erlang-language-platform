@@ -113,6 +113,7 @@ mod cross_node_eval;
 mod debugging_function;
 mod dependent_header;
 mod deprecated_function;
+mod discouraged_type;
 mod duplicate_include;
 mod duplicate_module;
 mod dynamic_calls;
@@ -191,6 +192,7 @@ mod unused_include;
 mod unused_macro;
 mod unused_record_field;
 
+pub use discouraged_type::DiscouragedTypeConfig;
 pub use dynamic_calls::DynamicCallsConfig;
 pub use dynamic_calls::parse_dynamic_call_pattern;
 pub use elp_ide_db::DiagnosticCode;
@@ -1573,6 +1575,10 @@ impl LintConfig {
             self.attribute_order = other.attribute_order;
         }
 
+        if !other.discouraged_type.is_empty() {
+            self.discouraged_type = other.discouraged_type;
+        }
+
         self
     }
 
@@ -1659,6 +1665,8 @@ pub struct LintConfig {
     pub dynamic_calls: DynamicCallsConfig,
     #[serde(default)]
     pub attribute_order: AttributeOrderConfig,
+    #[serde(default)]
+    pub discouraged_type: DiscouragedTypeConfig,
 }
 
 /// Configuration for the `attribute_order` (W0084) linter. Kept as a dedicated
@@ -2316,6 +2324,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &unreachable_test::LINTER,
     &avoid_any_type::LINTER,
     &avoid_type_defs_in_header::LINTER,
+    &discouraged_type::LINTER,
 ];
 
 /// Unified registry for all types of linters, initialized once and reused.

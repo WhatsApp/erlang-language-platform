@@ -905,6 +905,47 @@ impl TypeBody {
         (Arc::new(body), Arc::new(source_map))
     }
 
+    /// Lower a type written outside any file, such as a type read from a config
+    /// file, into the same HIR form as types in source. Callers can then compare
+    /// it with code structurally (e.g. by printing both), so built-in types
+    /// match with or without their `erlang:` qualifier and spacing and
+    /// parentheses do not matter. The regular lowering starts from a form in a
+    /// file, so it cannot be used here: `text` is wrapped in a `-type`
+    /// attribute and lowered with no file, as SSR patterns are.
+    ///
+    /// Returns `None` unless `text` is a single type that lowers completely;
+    /// macros are rejected, since there is no file to resolve them against.
+    pub fn lower_standalone(db: &dyn DefDatabase, text: &str) -> Option<TypeBody> {
+        let parse = SourceFile::parse_text(&format!("-type standalone() :: {text}."));
+        if !parse.errors().is_empty() {
+            return None;
+        }
+        let source = parse.tree();
+        if source
+            .syntax()
+            .descendants()
+            .any(|node| ast::MacroCallExpr::can_cast(node.kind()))
+        {
+            return None;
+        }
+        let mut forms = source.forms();
+        let type_alias = ast::TypeAlias::cast(forms.next()?.syntax().clone())?;
+        if forms.next().is_some() {
+            return None;
+        }
+        let (body, _source_map) = lower::Ctx::new(db, BodyOrigin::Invalid(SSR_SOURCE_FILE_ID))
+            .lower_type_alias(&type_alias);
+        if body
+            .body
+            .type_exprs
+            .iter()
+            .any(|(_, ty)| matches!(ty, TypeExpr::Missing))
+        {
+            return None;
+        }
+        Some(body)
+    }
+
     pub fn print(&self, db: &dyn InternDatabase, form: &TypeAlias) -> String {
         pretty::print_type_alias(db, self, form)
     }

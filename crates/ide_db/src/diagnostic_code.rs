@@ -221,6 +221,8 @@ pub enum DiagnosticCode {
     UnavailableFunction,
     #[strum(props(code = "W0086"))]
     NoCtConfigMacro,
+    #[strum(props(code = "W0087"))]
+    DiscouragedType,
     #[strum(props(code = "W0088"))]
     UnnecessaryFunctionArg,
 
