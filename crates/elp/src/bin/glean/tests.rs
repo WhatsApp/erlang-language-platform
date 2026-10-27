@@ -15,13 +15,8 @@ use std::path::PathBuf;
 use elp::cli::Fake;
 use elp_ide::AnalysisHost;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
-use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
-use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
-use elp_ide::elp_ide_db::elp_base_db::fixture::ChangeFixture;
 use elp_ide::elp_ide_db::elp_base_db::fixture::WithFixture;
-use elp_project_model::AppName;
-use elp_project_model::AppType;
 use elp_project_model::Project;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 use fxhash::FxHashMap;
@@ -512,28 +507,14 @@ fn xref_call_to_generated_dep_module_test() {
     send(Client, Request, Options) ->
         trpc_dep_service:call(Client, Request, Options).
 
-    //- /dep_app/src/trpc_dep_service.erl app:dep_app buck_target:cell//dep_app:lib
+    //- /dep_app/src/trpc_dep_service.erl app:dep_app buck_target:cell//dep_app:lib app_type:dep
     -module(trpc_dep_service).
     -codegen_source("dep/service.thrift").
     call(Client, Request, Options) ->
         {Client, Request, Options}.
     "#;
 
-    let mut db = RootDatabase::default();
-    let (fixture, mut change, mut project) = ChangeFixture::parse_detail(&db, spec);
-    for app in &mut project.project_apps {
-        if app.name == AppName("dep_app".to_string()) {
-            app.app_type = AppType::Dep;
-        }
-    }
-
-    let projects = [project];
-    let project_apps = ProjectApps::new(&projects, IncludeOtp::Yes);
-    change.set_app_structure(project_apps.app_structure());
-
-    change.apply(&mut db);
-    fixture.validate(&db);
-
+    let (db, fixture) = RootDatabase::with_fixture(spec);
     let host = AnalysisHost::new(db);
     let glean = GleanIndexer {
         project_id: ProjectId(0),

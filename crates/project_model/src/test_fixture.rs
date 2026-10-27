@@ -97,6 +97,7 @@ use text_size::TextRange;
 use text_size::TextSize;
 
 use crate::AppName;
+use crate::AppType;
 use crate::ProjectAppData;
 use crate::otp::Otp;
 use crate::temp_dir::TempDir;
@@ -329,6 +330,7 @@ impl FixtureWithProjectMeta {
     //- /module.erl app:foo
     //- /opt/lib/comp-1.3/include/comp.hrl otp_app:/opt/lib/comp-1.3
     //- /my_app/test/file_SUITE.erl extra:test
+    //- /dep/src/dep.erl app:dep app_type:dep
     fn parse_meta_line(meta: &str) -> Fixture {
         assert!(meta.starts_with("//-"));
         let meta = meta["//-".len()..].trim();
@@ -351,6 +353,7 @@ impl FixtureWithProjectMeta {
         let mut distributed_deps = Vec::new();
         let mut src_app = None;
         let mut also_apps = Vec::new();
+        let mut app_type = None;
 
         for component in components[1..].iter() {
             let (key, value) = component
@@ -400,6 +403,10 @@ impl FixtureWithProjectMeta {
                         }
                     }
                 }
+                "app_type" => match value {
+                    "dep" => app_type = Some(AppType::Dep),
+                    _ => panic!("unsupported app_type: {value:?}, use otp_app for OTP apps"),
+                },
                 _ => panic!("bad component: {component:?}"),
             }
         }
@@ -428,6 +435,9 @@ impl FixtureWithProjectMeta {
 
         if let Some(target) = buck_target {
             app_data.buck_target_name = Some(target);
+        }
+        if let Some(app_type) = app_type {
+            app_data.app_type = app_type;
         }
 
         Fixture {
@@ -1238,6 +1248,7 @@ mod tests {
     use paths::Utf8PathBuf;
 
     use super::FixtureWithProjectMeta;
+    use crate::AppType;
     use crate::test_fixture::contains_annotation;
     use crate::test_fixture::extract_annotations;
     use crate::test_fixture::extract_tags;
@@ -1829,6 +1840,21 @@ foo() -> ok.
 
         let meta0 = &parsed[0];
         assert!(meta0.macros.is_empty());
+    }
+
+    #[test]
+    fn parse_fixture_app_type_dep() {
+        let fixture = FixtureWithProjectMeta::parse(
+            r#"
+//- /dep/src/dep.erl app:dep app_type:dep
+-module(dep).
+"#,
+        );
+        assert_eq!(
+            AppType::Dep,
+            fixture.fixture[0].app_data.app_type,
+            "the app should be a dependency"
+        );
     }
 
     #[test]
