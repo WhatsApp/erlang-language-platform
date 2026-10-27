@@ -702,7 +702,7 @@ mod tests {
     use elp_base_db::FileId;
     use elp_base_db::RootQueryDb;
     use elp_base_db::SourceDatabase;
-    use elp_base_db::fixture::ChangeFixture;
+    use elp_base_db::fixture::Fixture;
     use elp_base_db::fixture::WithFixture;
     use elp_syntax::TextSize;
     use elp_syntax::ast::ArithOp;
@@ -1412,7 +1412,7 @@ mod tests {
     /// This is similar to `check_preprocessor` but uses `with_fixture` to get
     /// access to annotations for future diagnostic verification.
     fn check_preprocessor_with_diagnostics(fixture: &str, expect: Expect) {
-        let (db, fixture_data): (TestDB, ChangeFixture) = TestDB::with_fixture(fixture);
+        let (db, fixture_data): (TestDB, Fixture) = TestDB::with_fixture(fixture);
         let file_id = fixture_data.files[0];
         let rendered = render_preprocessor_state(&db, file_id);
         expect.assert_eq(&rendered);

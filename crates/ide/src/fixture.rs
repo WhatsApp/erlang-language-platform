@@ -14,7 +14,7 @@ use elp_ide_db::RootDatabase;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::RootQueryDb;
-use elp_ide_db::elp_base_db::fixture::ChangeFixture;
+use elp_ide_db::elp_base_db::fixture::Fixture;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 
@@ -29,7 +29,7 @@ use crate::diagnostics_collection::DiagnosticCollection;
 
 /// Creates analysis from a single file fixture
 #[track_caller]
-pub fn with_fixture(fixture: &str) -> (Analysis, ChangeFixture) {
+pub fn with_fixture(fixture: &str) -> (Analysis, Fixture) {
     let (db, fixture) = RootDatabase::with_fixture(fixture);
     let host = AnalysisHost { db };
     (host.analysis(), fixture)

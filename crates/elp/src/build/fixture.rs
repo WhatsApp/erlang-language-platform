@@ -12,7 +12,7 @@ use elp_ide::AnalysisHost;
 use elp_ide::elp_ide_db::RootDatabase;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
-use elp_ide::elp_ide_db::elp_base_db::fixture::ChangeFixture;
+use elp_ide::elp_ide_db::elp_base_db::fixture::Fixture;
 
 use super::types::LoadResult;
 
@@ -20,7 +20,7 @@ use super::types::LoadResult;
 #[track_caller]
 pub fn load_result(fixture_str: &str) -> LoadResult {
     let mut db = RootDatabase::default();
-    let (_fixture, file_map, project) = ChangeFixture::load(&mut db, fixture_str);
+    let (_fixture, file_map, project) = Fixture::load(&mut db, fixture_str);
 
     LoadResult::new(
         AnalysisHost::new(db),

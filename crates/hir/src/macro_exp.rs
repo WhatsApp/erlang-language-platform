@@ -418,7 +418,7 @@ mod tests {
     use elp_base_db::FileRange;
     use elp_base_db::RootQueryDb;
     use elp_base_db::assert_eq_expected;
-    use elp_base_db::fixture::ChangeFixture;
+    use elp_base_db::fixture::Fixture;
     use elp_base_db::fixture::WithFixture;
     use elp_syntax::AstNode;
     use elp_syntax::algo;
@@ -430,7 +430,7 @@ mod tests {
     use crate::test_db::TestDB;
 
     #[track_caller]
-    fn resolve_macro(fixture: &str) -> (Option<ResolvedMacro>, TestDB, ChangeFixture) {
+    fn resolve_macro(fixture: &str) -> (Option<ResolvedMacro>, TestDB, Fixture) {
         let (db, fixture) = TestDB::with_fixture(fixture);
         let position = fixture.position();
 

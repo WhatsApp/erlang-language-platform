@@ -21,7 +21,7 @@ use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::elp_base_db::RangeOrOffset;
 use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::elp_base_db::assert_eq_expected;
-use elp_ide_db::elp_base_db::fixture::ChangeFixture;
+use elp_ide_db::elp_base_db::fixture::Fixture;
 use elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_ide_db::elp_base_db::remove_annotations;
 use elp_ide_db::elp_base_db::render_annotations;
@@ -386,7 +386,7 @@ pub(crate) struct FileAnnotations {
 }
 
 impl FileAnnotations {
-    fn new(fixture: &ChangeFixture, file_id: FileId, actual: Vec<(TextRange, String)>) -> Self {
+    fn new(fixture: &Fixture, file_id: FileId, actual: Vec<(TextRange, String)>) -> Self {
         let cursor = fixture
             .file_position
             .and_then(|(cursor_file, pos)| (cursor_file == file_id).then_some(pos));

@@ -200,7 +200,7 @@ pub(crate) mod tests {
     use elp_ide_db::elp_base_db::FileId;
     use elp_ide_db::elp_base_db::VfsPath;
     use elp_ide_db::elp_base_db::assert_eq_text;
-    use elp_ide_db::elp_base_db::fixture::ChangeFixture;
+    use elp_ide_db::elp_base_db::fixture::Fixture;
     use elp_ide_db::elp_base_db::fixture::WithFixture as _;
     use elp_ide_db::source_change::FileSystemEdit;
     use elp_ide_db::text_edit::TextEdit;
@@ -342,7 +342,7 @@ pub(crate) mod tests {
     }
 
     fn find_new_file_id<'a>(
-        fixture: &'a ChangeFixture,
+        fixture: &'a Fixture,
         dst: &'a AnchoredPathBuf,
     ) -> Option<(&'a VfsPath, &'a FileId)> {
         fixture

@@ -81,9 +81,9 @@ pub trait WithFixture: Default + SourceDatabase + 'static {
     }
 
     #[track_caller]
-    fn with_fixture(fixture_str: &str) -> (Self, ChangeFixture) {
+    fn with_fixture(fixture_str: &str) -> (Self, Fixture) {
         let mut db = Self::default();
-        let (fixture, _file_map, _project) = ChangeFixture::load(&mut db, fixture_str);
+        let (fixture, _file_map, _project) = Fixture::load(&mut db, fixture_str);
         let patterns: Vec<crate::DynamicCallPatternInput> = fixture
             .dynamic_call_patterns
             .iter()
@@ -123,7 +123,7 @@ fn add_file(
 }
 
 #[derive(Clone, Debug)]
-pub struct ChangeFixture {
+pub struct Fixture {
     pub file_position: Option<(FileId, RangeOrOffset)>,
     pub files: Vec<FileId>,
     pub files_by_path: FxHashMap<VfsPath, FileId>,
@@ -150,13 +150,13 @@ impl Builder {
     }
 }
 
-impl ChangeFixture {
+impl Fixture {
     /// Loads the files of `test_fixture` into `db` and a new file map, sets
     /// their source roots, and lowers the fixture's project as the language
     /// server and the CLI lower theirs. Returns the fixture, the file map and
     /// the project.
     #[track_caller]
-    pub fn load(db: &mut dyn RootQueryDb, test_fixture: &str) -> (ChangeFixture, FileMap, Project) {
+    pub fn load(db: &mut dyn RootQueryDb, test_fixture: &str) -> (Fixture, FileMap, Project) {
         let fixture_with_meta = FixtureWithProjectMeta::parse(test_fixture);
         let FixtureWithProjectMeta {
             fixture,
@@ -402,7 +402,7 @@ impl ChangeFixture {
         set_source_roots(db, roots);
         lower(db, &file_map, &project_apps);
         (
-            ChangeFixture {
+            Fixture {
                 file_position,
                 files,
                 files_by_path,
@@ -579,7 +579,7 @@ mod tests {
     use elp_project_model::Project;
     use expect_test::expect;
 
-    use super::ChangeFixture;
+    use super::Fixture;
     use super::WithFixture;
     use crate::ProjectApps;
     use crate::input::AppStructure;
@@ -594,7 +594,7 @@ mod tests {
     fn unresolved_macro_diag_include_dir() {
         // Test the scenario where the include file is referenced
         // relative to a project include directory
-        let (_fixture, _file_map, project) = ChangeFixture::load(
+        let (_fixture, _file_map, project) = Fixture::load(
             &mut TestDB::default(),
             r#"
 //- /opt/lib/comp-1.3/include/comp.hrl otp_app:/opt/lib/comp-1.3
@@ -852,7 +852,7 @@ bar() -> ?FOO.
     fn unresolved_macro_diag_include_dir2() {
         // Test the scenario where the include file is referenced
         // relative to a project include directory
-        let (_fixture, _file_map, project) = ChangeFixture::load(
+        let (_fixture, _file_map, project) = Fixture::load(
             &mut TestDB::default(),
             r#"
 //- /extra/include/bar.hrl include_path:/extra/include
@@ -1007,7 +1007,7 @@ foo() -> ?BAR.
     #[test]
     #[should_panic(expected = "OTP app 'stdlb' requested via //- otp_apps: directive not found")]
     fn otp_apps_misspelled_app_panics() {
-        ChangeFixture::load(
+        Fixture::load(
             &mut TestDB::default(),
             r#"
 //- otp_apps:stdlb
