@@ -25,7 +25,6 @@ regex.workspace = true
 salsa.workspace = true
 salsa-macros.workspace = true
 stdx.workspace = true
-tracing.workspace = true
 vfs.workspace = true
 
 [dev-dependencies]

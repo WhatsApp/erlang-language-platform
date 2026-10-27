@@ -27,6 +27,7 @@ use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::loader::Handle;
+use elp_ide::elp_ide_db::elp_base_db::lower;
 use elp_project_model::DiscoverConfig;
 use elp_project_model::ElpConfig;
 use elp_project_model::IncludeParentDirs;
@@ -42,8 +43,6 @@ use crate::reload::ProjectFolders;
 use crate::reload::apply_source_roots;
 use crate::reload::bundled_files;
 use crate::reload::file_changes;
-use crate::reload::intern_listed_files;
-use crate::reload::listed_file_id;
 use crate::reload::write_file_changes;
 
 pub fn canonicalize_project_root(root: &Path) -> Result<AbsPathBuf> {
@@ -294,10 +293,7 @@ fn load_database(
 
     apply_source_roots(db, file_map, file_set_config);
 
-    intern_listed_files(db, file_map, project_apps);
-    project_apps
-        .app_structure()
-        .apply(db, &|path| listed_file_id(file_map, path));
+    lower(db, file_map, project_apps);
 
     pb.finish();
 

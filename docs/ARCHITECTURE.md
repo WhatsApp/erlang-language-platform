@@ -640,7 +640,7 @@ pub struct AppData {
 
 `Analysis` is a snapshot of a world state at a moment in time. It is the
 main entry point for asking semantic information about the world. When
-the world state is advanced using `AnalysisHost::apply_change` method,
+the world state is advanced through `AnalysisHost`,
 all existing `Analysis` are canceled (most method return
 `Err(Canceled)`).
 
@@ -1099,8 +1099,8 @@ Shout outs to LSP developers for popularizing the idea that "UI" is a
 good place to draw a boundary at.
 
 `ide` is also the first crate which has the notion of change over time.
-[AnalysisHost](#analysishost) is a state to which you can
-transactionally `apply_change`.
+[AnalysisHost](#analysishost) is the state that changes are applied
+to.
 [Analysis](#analysis) is an immutable snapshot of the state.
 
 Internally, `ide` is split across several crates. `ide_assists`,

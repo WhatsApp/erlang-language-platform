@@ -55,6 +55,7 @@ use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::elp_base_db::loader;
+use elp_ide::elp_ide_db::elp_base_db::lower;
 use elp_log::Logger;
 use elp_log::TimeIt;
 use elp_log::telemetry;
@@ -1348,10 +1349,7 @@ impl Server {
         let gen_src_inputs = {
             let _phase = watchdog::phase("switch_workspaces:salsa_write");
             raw_db.clear_erlang_services();
-            crate::reload::intern_listed_files(raw_db, &self.file_map, &project_apps);
-            project_apps.app_structure().apply(raw_db, &|path| {
-                crate::reload::listed_file_id(&self.file_map, path)
-            })
+            lower(raw_db, &self.file_map, &project_apps)
         };
         self.generated_app_inputs = Arc::new(gen_src_inputs);
 

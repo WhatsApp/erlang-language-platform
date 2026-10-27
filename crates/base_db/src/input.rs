@@ -30,6 +30,7 @@ use vfs::VfsPath;
 use vfs::file_set::FileSet;
 
 use crate::AppDataIndex;
+use crate::FileMap;
 use crate::RootQueryDb;
 
 /// Files are grouped into source roots. A source root is a directory on the
@@ -219,12 +220,12 @@ impl AppStructure {
     }
 
     /// Set the salsa inputs according to this AppStructure, and return the app
-    /// of each generated source file. `resolve_file_id` gives each path an app
-    /// lists its `FileId`, whether or not the file has loaded.
+    /// of each generated source file. Each path an app lists gets a `FileId`
+    /// from `file_map`, whether or not the file has loaded.
     pub fn apply(
         self,
         db: &mut dyn RootQueryDb,
-        resolve_file_id: &impl Fn(&AbsPathBuf) -> FileId,
+        file_map: &FileMap,
     ) -> FxHashMap<AbsPathBuf, AppDataId> {
         let mut app_index = AppDataIndex::default();
         let mut app_data_id = AppDataId(0);
@@ -233,10 +234,9 @@ impl AppStructure {
             let arc_data = app_map_data.app_data.map(Arc::new);
             db.set_app_data_by_id(app_data_id, arc_data);
             db.set_app_data_id(source_root_id, app_data_id);
-            if let Some(files) = app_map_data.applicable_files {
-                files.iter().for_each(|path| {
-                    app_index.insert_owner(resolve_file_id(path), app_data_id);
-                })
+            for path in app_map_data.applicable_files.into_iter().flatten() {
+                let file_id = file_map.intern(db, VfsPath::from(path));
+                app_index.insert_owner(file_id, app_data_id);
             }
             if let Some(files) = app_map_data.gen_src_files {
                 for file in files {

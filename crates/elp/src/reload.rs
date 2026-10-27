@@ -21,9 +21,9 @@ use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::SourceRoot;
-use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::elp_base_db::loader;
+use elp_ide::elp_ide_db::elp_base_db::set_source_roots;
 use elp_project_model::ProjectAppData;
 use elp_project_model::ProjectBuildData;
 use elp_project_model::buck::BuckProject;
@@ -314,36 +314,17 @@ pub fn write_file_changes(db: &mut RootDatabase, changes: Vec<FileChange>) {
     }
 }
 
-/// Gives every file the model lists a `File`, whether or not it has loaded, so
-/// that lowering can resolve them all with [`listed_file_id`].
-pub fn intern_listed_files(db: &RootDatabase, file_map: &FileMap, project_apps: &ProjectApps) {
-    for (_, app) in &project_apps.all_apps {
-        for path in app.applicable_files.iter().flatten() {
-            file_map.intern(db, VfsPath::from(path.clone()));
-        }
-    }
-}
-
-pub fn listed_file_id(file_map: &FileMap, path: &AbsPathBuf) -> FileId {
-    file_map
-        .file_id(&VfsPath::from(path.clone()))
-        .expect("listed files should be interned before lowering")
-}
-
 pub fn apply_source_roots(
     db: &mut RootDatabase,
     file_map: &FileMap,
     file_set_config: &FileSetConfig,
 ) {
-    let sets = file_set_config.partition(file_map, db);
-    for (idx, set) in sets.into_iter().enumerate() {
-        let root_id = SourceRootId(idx as u32);
-        for file_id in set.iter() {
-            db.set_file_source_root(file_id, root_id);
-        }
-        let root = SourceRoot::new(set);
-        db.set_source_root(root_id, Arc::new(root));
-    }
+    let roots = file_set_config
+        .partition(file_map, db)
+        .into_iter()
+        .map(SourceRoot::new)
+        .collect();
+    set_source_roots(db, roots);
 }
 
 #[cfg(test)]
@@ -358,6 +339,7 @@ mod tests {
     use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
     use elp_ide::elp_ide_db::elp_base_db::VfsPath;
     use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+    use elp_ide::elp_ide_db::elp_base_db::lower;
     use elp_project_model::AppName;
     use elp_project_model::Project;
     use elp_project_model::ProjectAppData;
@@ -367,8 +349,6 @@ mod tests {
     use vfs::FileId;
 
     use super::file_changes;
-    use super::intern_listed_files;
-    use super::listed_file_id;
     use super::write_file_changes;
 
     #[derive(Default)]
@@ -527,10 +507,7 @@ mod tests {
         project.add_apps(vec![app]);
         let projects = [project];
         let project_apps = ProjectApps::new(&projects, IncludeOtp::No);
-        intern_listed_files(&files.db, &files.file_map, &project_apps);
-        project_apps
-            .app_structure()
-            .apply(&mut files.db, &|path| listed_file_id(&files.file_map, path));
+        lower(&mut files.db, &files.file_map, &project_apps);
 
         let file_id = files.file_map.intern(&files.db, VfsPath::from(listed));
         let app_name = |files: &Files| {
