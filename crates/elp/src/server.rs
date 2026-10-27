@@ -576,8 +576,8 @@ impl Server {
             self.reload_project(to_reload, query_config);
         }
 
-        let (changed, highest_file_id) = self.process_changes_to_vfs_store();
-        // This has to be outside of process_changes_to_vfs_store to
+        let (changed, highest_file_id) = self.apply_pending_changes();
+        // This has to be outside of apply_pending_changes to
         // avoid mutability clashes
         self.record_highest_file_id(highest_file_id);
 
@@ -1007,7 +1007,7 @@ impl Server {
                     self.show_message(params);
                 }
                 // Don't transition to Running yet – wait until VFS changes are
-                // applied to salsa DB in process_changes_to_vfs_store, otherwise
+                // applied to salsa DB in apply_pending_changes, otherwise
                 // client requests get empty or cancelled results.
                 self.initial_load_status = InitialLoading::DoneButVfsChanges;
                 if !self.unresolved_app_id_paths.is_empty() {
@@ -1028,7 +1028,7 @@ impl Server {
                 log::info!(target: FILE_WATCH_LOGGER_NAME, "VFS change:{}:{}", opened, path);
             }
             if !opened {
-                // Picked up in `process_changes_to_vfs_store`, which
+                // Picked up in `apply_pending_changes`, which
                 // records a change only if the new content differs
                 // from the current.
                 self.pending_changes.insert(path, contents);
@@ -1036,7 +1036,7 @@ impl Server {
         }
     }
 
-    fn process_changes_to_vfs_store(&mut self) -> (bool, u32) {
+    fn apply_pending_changes(&mut self) -> (bool, u32) {
         let changes = crate::reload::file_changes(
             self.analysis_host.raw_database(),
             &self.file_map,
@@ -1097,7 +1097,7 @@ impl Server {
             // `to_proto::text_document_edit`).
             let line_ending_updates = {
                 let _phase = watchdog::phase("vfs_salsa_write");
-                crate::reload::apply_file_changes(raw_database, &self.file_map, changes)
+                crate::reload::write_file_changes(raw_database, &self.file_map, changes)
             };
             self.line_ending_map.write().extend(line_ending_updates);
 
@@ -1396,7 +1396,7 @@ impl Server {
         // below. The first `set_*` inside `apply` is itself a cancellation barrier
         // (it blocks until every outstanding snapshot drops); doing the drain here
         // explicitly keeps it attributed to its own phase and bounded — the same
-        // idiom as `process_changes_to_vfs_store`.
+        // idiom as `apply_pending_changes`.
         {
             let _phase = watchdog::phase("switch_workspaces:salsa_cancellation");
             raw_db.request_cancellation();
@@ -1464,7 +1464,7 @@ impl Server {
             let _phase = watchdog::phase("switch_workspaces:vfs_loader_config");
             self.vfs_loader.handle.set_config(vfs_loader_config);
         }
-        // Picked up in `process_changes_to_vfs_store`, like the loader's files.
+        // Picked up in `apply_pending_changes`, like the loader's files.
         for (path, contents) in bundled_files(&project_apps) {
             self.pending_changes.insert(path, Some(contents));
         }

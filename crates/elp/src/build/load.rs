@@ -43,10 +43,10 @@ use crate::cli::Cli;
 use crate::line_endings::LineEndings;
 use crate::reload::PendingChanges;
 use crate::reload::ProjectFolders;
-use crate::reload::apply_file_changes;
 use crate::reload::apply_source_roots;
 use crate::reload::bundled_files;
 use crate::reload::file_changes;
+use crate::reload::write_file_changes;
 
 pub fn canonicalize_project_root(root: &Path) -> Result<AbsPathBuf> {
     let root = match dunce::canonicalize(root) {
@@ -291,7 +291,7 @@ fn load_database(
     let pb = cli.spinner("Seeding database");
 
     let changes = file_changes(db, file_map, pending, &FxHashMap::default());
-    line_ending_map.extend(apply_file_changes(db, file_map, changes));
+    line_ending_map.extend(write_file_changes(db, file_map, changes));
 
     apply_source_roots(db, file_map, file_set_config);
 

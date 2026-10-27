@@ -27,9 +27,9 @@ use itertools::Itertools;
 
 use crate::line_endings::LineEndings;
 use crate::reload::PendingChanges;
-use crate::reload::apply_file_changes;
 use crate::reload::apply_source_roots;
 use crate::reload::file_changes;
+use crate::reload::write_file_changes;
 
 /// Expensive-to-drop fields stay in `ManuallyDrop` so one-shot commands skip
 /// the Salsa and file map destructor cascades. The cleanup guard still releases
@@ -125,7 +125,7 @@ impl LoadResult {
         r
     }
 
-    pub fn apply_file_changes(&mut self, pending: PendingChanges) {
+    pub fn apply_pending_changes(&mut self, pending: PendingChanges) {
         let changes = file_changes(
             self.analysis_host.raw_database(),
             &self.file_map,
@@ -136,7 +136,7 @@ impl LoadResult {
             .iter()
             .any(|change| change.kind != ChangeKind::Modify);
         let db = self.analysis_host.raw_database_mut();
-        let line_ending_updates = apply_file_changes(db, &self.file_map, changes);
+        let line_ending_updates = write_file_changes(db, &self.file_map, changes);
         self.line_ending_map.extend(line_ending_updates);
         if created_or_deleted {
             apply_source_roots(db, &self.file_map, &self.file_set_config);

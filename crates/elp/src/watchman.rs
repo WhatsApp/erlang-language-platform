@@ -225,7 +225,7 @@ pub(crate) fn apply_changes(watch: &Path, files: &[WatchmanFile], loaded: &mut L
             }
         }
     }
-    loaded.apply_file_changes(pending);
+    loaded.apply_pending_changes(pending);
 }
 
 pub enum UpdateResult {

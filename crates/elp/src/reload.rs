@@ -334,7 +334,7 @@ pub fn file_changes(
 /// guard and a handler reading `file_text` for a colliding shard deadlocks.
 /// Draining first moves the blocking wait out from under the shard guard.
 /// (CLI/one-shot callers with no concurrent handlers are unaffected.)
-pub fn apply_file_changes(
+pub fn write_file_changes(
     db: &mut RootDatabase,
     file_map: &FileMap,
     changes: Vec<FileChange>,
@@ -377,8 +377,8 @@ mod tests {
     use fxhash::FxHashMap;
     use vfs::FileId;
 
-    use super::apply_file_changes;
     use super::file_changes;
+    use super::write_file_changes;
     use crate::line_endings::LineEndings;
 
     #[derive(Default)]
@@ -400,7 +400,7 @@ mod tests {
                 .iter()
                 .map(|change| (change.file_id, change.kind))
                 .collect();
-            let updates = apply_file_changes(&mut self.db, &self.file_map, changes);
+            let updates = write_file_changes(&mut self.db, &self.file_map, changes);
             self.line_endings.extend(updates);
             changed
         }
