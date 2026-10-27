@@ -14,6 +14,7 @@ use std::path::PathBuf;
 
 use elp::cli::Fake;
 use elp_ide::AnalysisHost;
+use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
@@ -21,6 +22,7 @@ use elp_ide::elp_ide_db::elp_base_db::fixture::ChangeFixture;
 use elp_ide::elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_project_model::AppName;
 use elp_project_model::AppType;
+use elp_project_model::Project;
 use elp_project_model::test_fixture::DiagnosticsEnabled;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -1264,6 +1266,52 @@ fn type_definition_text_and_opaque_test() {
             .unwrap()
             .contains("-opaque secret")
     );
+}
+
+/// `src.File` ids are derived from `FileId`s, so two dumps over the same tree
+/// agree only if the files glean loads are numbered in path order, a listed
+/// file that is missing included.
+#[test]
+fn loaded_files_are_numbered_in_path_order() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = AbsPathBuf::assert_utf8(dunce::canonicalize(dir.path()).unwrap());
+    for (name, text) in [
+        (
+            "build_info.json",
+            r#"{"apps": [{"name": "app", "dir": "app"}]}"#,
+        ),
+        ("app/src/a.erl", "-module(a)."),
+        ("app/src/c.erl", "-module(c)."),
+    ] {
+        let path = root.join(name);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    }
+    let listed = ["app/src/a.erl", "app/src/b.erl", "app/src/c.erl"].map(|name| root.join(name));
+    let query_config = BuckQueryConfig::BuildGeneratedCode;
+    let (elp_config, manifest) =
+        load::discover_manifest(root.as_ref(), &DiscoverConfig::new(false, "test")).unwrap();
+    let mut project = Project::load(&manifest, &elp_config, &query_config, &|_| {}).unwrap();
+    let app = project
+        .project_apps
+        .iter_mut()
+        .find(|app| app.name.0 == "app")
+        .unwrap();
+    app.applicable_files = Some(FxHashSet::from_iter(listed.clone()));
+
+    let loaded = load::load_project(
+        &Fake::default(),
+        project,
+        GleanIndexer::load_config(&query_config),
+    )
+    .expect("the project should load");
+
+    // Interning a path finds the id loading gave it.
+    let ids = listed.map(|path| loaded.file_map.intern(VfsPath::from(path)).index());
+    let first = ids[0];
+    assert_eq_expected!([first, first + 1, first + 2], ids);
+    let exists = ids.map(|id| loaded.file_map.exists(FileId::from_raw(id)));
+    assert_eq_expected!([true, false, true], exists);
 }
 
 #[allow(clippy::type_complexity)]

@@ -43,21 +43,18 @@ use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::AppDataId;
-use elp_ide::elp_ide_db::elp_base_db::AppDataIndex;
 use elp_ide::elp_ide_db::elp_base_db::ChangeKind;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileKind;
 use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
-use elp_ide::elp_ide_db::elp_base_db::PathOwners;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::elp_base_db::loader;
-use elp_ide::elp_ide_db::elp_base_db::set_app_data_ids_by_file;
 use elp_log::Logger;
 use elp_log::TimeIt;
 use elp_log::telemetry;
@@ -302,17 +299,13 @@ pub struct Server {
     initial_load_status: InitialLoading,
     reload_manager: Arc<Mutex<ReloadManager>>,
     dynamic_registrations_done: bool,
-    unresolved_app_id_paths: Arc<FxHashMap<AbsPathBuf, PathOwners>>,
     generated_app_inputs: Arc<FxHashMap<AbsPathBuf, AppDataId>>,
-    update_app_data_ids: bool,
     reset_source_roots: bool,
     native_diagnostics_requested: bool,
     eqwalizer_and_erlang_service_diagnostics_requested: bool,
     cache_scheduled: bool,
     logger: Logger,
     telemetry_manager: TelemetryManager,
-    // We record the highest FileId index seen as a count of the number of files recorded
-    highest_file_id: u32,
 
     // Progress reporting
     vfs_config_version: u32,
@@ -365,9 +358,7 @@ impl Server {
             initial_load_status: InitialLoading::Initial,
             reload_manager: Arc::new(Mutex::new(ReloadManager::new())),
             dynamic_registrations_done: false,
-            unresolved_app_id_paths: Arc::new(FxHashMap::default()),
             generated_app_inputs: Arc::new(FxHashMap::default()),
-            update_app_data_ids: false,
             reset_source_roots: false,
             native_diagnostics_requested: false,
             eqwalizer_and_erlang_service_diagnostics_requested: false,
@@ -375,7 +366,6 @@ impl Server {
             logger,
             telemetry_manager: TelemetryManager::new(),
             vfs_config_version: 0,
-            highest_file_id: 0,
         };
 
         // Run config-based initialisation
@@ -448,7 +438,9 @@ impl Server {
             let _turn = watchdog::arm(event_label);
             self.handle_event(event)?;
             self.telemetry_manager
-                .on_periodic(self.mem_docs.read().len(), self.highest_file_id);
+                .on_periodic(self.mem_docs.read().len(), || {
+                    self.file_map.existing_count()
+                });
         }
 
         bail!("client exited without proper shutdown sequence");
@@ -576,10 +568,7 @@ impl Server {
             self.reload_project(to_reload, query_config);
         }
 
-        let (changed, highest_file_id) = self.apply_pending_changes();
-        // This has to be outside of apply_pending_changes to
-        // avoid mutability clashes
-        self.record_highest_file_id(highest_file_id);
+        let changed = self.apply_pending_changes();
 
         if self.status == Status::Running {
             let save_requested = mem::take(&mut self.native_diagnostics_requested);
@@ -1010,12 +999,6 @@ impl Server {
                 // applied to salsa DB in apply_pending_changes, otherwise
                 // client requests get empty or cancelled results.
                 self.initial_load_status = InitialLoading::DoneButVfsChanges;
-                if !self.unresolved_app_id_paths.is_empty() {
-                    log::warn!(
-                        "Loading finished with {} unresolved app ID paths",
-                        self.unresolved_app_id_paths.len()
-                    );
-                }
             }
         }
     }
@@ -1036,7 +1019,7 @@ impl Server {
         }
     }
 
-    fn apply_pending_changes(&mut self) -> (bool, u32) {
+    fn apply_pending_changes(&mut self) -> bool {
         let changes = crate::reload::file_changes(
             self.analysis_host.raw_database(),
             &self.file_map,
@@ -1055,12 +1038,11 @@ impl Server {
 
         let no_file_work = changed_files.is_empty() && !self.reset_source_roots;
         if no_file_work && self.initial_load_status != InitialLoading::DoneButVfsChanges {
-            return (false, 0);
+            return false;
         }
 
         // We still fall through here with no file changes when waiting to
         // transition from DoneButVfsChanges to Done (finished below). T279355670
-        let mut highest_file_id: u32 = 0;
         let changed = if no_file_work {
             false
         } else {
@@ -1103,27 +1085,13 @@ impl Server {
 
             // Server-specific per-file processing
             for &(file_id, kind) in &changed_files {
-                highest_file_id = highest_file_id.max(file_id.index());
-
                 if kind != ChangeKind::Delete {
-                    let path = self.file_map.file_path(file_id);
                     if self.initial_load_status == InitialLoading::Done
                         && kind == ChangeKind::Create
-                        && let Some(path) = path.as_path()
+                        && let Some(path) = self.file_map.file_path(file_id).into_abs_path()
                         && (path.extension() == Some("hrl") || path.extension() == Some("erl"))
                     {
-                        self.reload_manager.lock().add(path.to_path_buf());
-                    }
-
-                    if let Some(path) = path.as_path()
-                        && let Some(owners) = self.unresolved_app_id_paths.get(&path.to_path_buf())
-                    {
-                        set_app_data_ids_by_file(raw_database, file_id, owners);
-                        // This is not really necessary, but we do it
-                        // to be able to check that we resolve them
-                        // all eventually
-                        Arc::make_mut(&mut self.unresolved_app_id_paths)
-                            .remove(&path.to_path_buf());
+                        self.reload_manager.lock().add(path);
                     }
 
                     // causes us to remove stale squiggles from the UI.
@@ -1133,32 +1101,6 @@ impl Server {
                     Arc::make_mut(&mut self.diagnostics)
                         .set_erlang_service(file_id, LabeledDiagnostics::default());
                 }
-            }
-
-            if self.update_app_data_ids {
-                // We process the changes for files opened before project
-                // discovery is complete, so cannot update their app_data_id (for
-                // Buck projects). When the information *is* available, update
-                // any missing ones.
-                let mut app_data_index: Arc<AppDataIndex> = raw_database.app_index();
-                let mut paths_to_remove = vec![];
-                self.unresolved_app_id_paths
-                    .iter()
-                    .for_each(|(path, owners)| {
-                        let vfs_path = VfsPath::from(path.clone());
-                        if let Some(file_id) = self.file_map.file_id(&vfs_path) {
-                            paths_to_remove.push(path.clone());
-                            let index = Arc::make_mut(&mut app_data_index);
-                            for app_data_id in owners.iter() {
-                                index.insert_owner(file_id, app_data_id);
-                            }
-                        }
-                    });
-                raw_database.set_app_index(app_data_index);
-                for remove in paths_to_remove {
-                    Arc::make_mut(&mut self.unresolved_app_id_paths).remove(&remove);
-                }
-                self.update_app_data_ids = false;
             }
 
             if self.reset_source_roots
@@ -1184,6 +1126,17 @@ impl Server {
         // by the vfs updates above.
         if self.initial_load_status == InitialLoading::DoneButVfsChanges {
             self.initial_load_status = InitialLoading::Done;
+            let missing = self
+                .analysis_host
+                .raw_database()
+                .app_index()
+                .map
+                .keys()
+                .filter(|file_id| !self.file_map.exists(**file_id))
+                .count();
+            if missing > 0 {
+                log::warn!("Loading finished with {missing} listed files that do not exist");
+            }
             if self.status != Status::Running {
                 self.transition(Status::Running);
                 // Advertise dynamic capabilities (e.g. document symbols) only
@@ -1209,7 +1162,7 @@ impl Server {
             }
         }
 
-        (changed, highest_file_id)
+        changed
     }
 
     fn opened_documents(&self) -> Vec<FileId> {
@@ -1401,15 +1354,14 @@ impl Server {
             let _phase = watchdog::phase("switch_workspaces:salsa_cancellation");
             raw_db.request_cancellation();
         }
-        let apply_data = {
+        let gen_src_inputs = {
             let _phase = watchdog::phase("switch_workspaces:salsa_write");
             raw_db.clear_erlang_services();
-            project_apps.app_structure().apply(raw_db, &|_path| None)
+            project_apps.app_structure().apply(raw_db, &|path| {
+                self.file_map.intern(VfsPath::from(path.clone()))
+            })
         };
-        // We will set the FileId -> AppDataIndex structure when the file
-        // loads
-        self.unresolved_app_id_paths = Arc::new(apply_data.unresolved_app_id_paths);
-        self.generated_app_inputs = Arc::new(apply_data.gen_src_inputs);
+        self.generated_app_inputs = Arc::new(gen_src_inputs);
 
         self.file_set_config = folders.file_set_config;
 
@@ -1472,7 +1424,6 @@ impl Server {
         self.projects = Arc::new(projects);
         self.project_loader.lock().load_completed();
         self.reset_source_roots = true;
-        self.update_app_data_ids = true;
         Ok(())
     }
 
@@ -2078,10 +2029,6 @@ impl Server {
                 log::warn!("Error serializing telemetry. message: {message:?} error: {err}")
             }
         }
-    }
-
-    fn record_highest_file_id(&mut self, latest_high: u32) {
-        self.highest_file_id = self.highest_file_id.max(latest_high);
     }
 }
 

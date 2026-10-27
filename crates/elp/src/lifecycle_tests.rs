@@ -25,7 +25,9 @@ use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
 use elp_log::Logger;
 use elp_project_model::DiscoverConfig;
+use elp_project_model::Project;
 use elp_project_model::buck::BuckQueryConfig;
+use fxhash::FxHashSet;
 use lsp_server::Connection;
 use lsp_server::ErrorCode;
 use lsp_server::Message;
@@ -451,4 +453,60 @@ fn the_daemon_applies_created_changed_and_deleted_files() {
         &mut loaded,
     );
     assert_eq_expected!(None, module_text(&loaded, "b"));
+}
+
+#[test]
+fn a_listed_file_created_after_loading_gets_its_targets_app() {
+    let project = TestProject::new(&[
+        (
+            "build_info.json",
+            r#"{"apps": [{"name": "app_b", "dir": "app_b"}, {"name": "app_a", "dir": "app_a"}]}"#,
+        ),
+        ("app_a/src/a.erl", "-module(a).\n"),
+        ("app_b/src/b.erl", "-module(b).\n"),
+    ]);
+    let query_config = BuckQueryConfig::BuildGeneratedCode;
+    let (elp_config, manifest) =
+        load::discover_manifest(project.root.as_ref(), &DiscoverConfig::new(false, "test"))
+            .unwrap();
+    let mut model = Project::load(&manifest, &elp_config, &query_config, &|_| {}).unwrap();
+    // `app_a` lists a file in `app_b`'s source directory, which, as Buck
+    // does, makes that directory one of `app_a`'s too. `app_b` claimed it
+    // first, so the directory's application is `app_b`.
+    let app_a = model
+        .project_apps
+        .iter_mut()
+        .find(|app| app.name.0 == "app_a")
+        .unwrap();
+    app_a.abs_src_dirs.push(project.path("app_b/src"));
+    app_a.applicable_files = Some(FxHashSet::from_iter([
+        project.path("app_a/src/a.erl"),
+        project.path("app_b/src/shared.erl"),
+    ]));
+    let mut loaded = load::load_project(
+        &Fake::default(),
+        model,
+        LoadConfig::new(Mode::Shell, query_config),
+    )
+    .unwrap();
+    assert_eq_expected!(None, module_text(&loaded, "shared"));
+
+    project.write("app_b/src/shared.erl", "-module(shared).\n");
+    watchman::apply_changes(
+        project.root.as_ref(),
+        &[watchman_event("app_b/src/shared.erl", true, true)],
+        &mut loaded,
+    );
+
+    assert_eq_expected!(
+        Some("-module(shared).\n".to_string()),
+        module_text(&loaded, "shared")
+    );
+    let db = loaded.analysis_host.raw_database();
+    let shared = db
+        .module_index(loaded.project_id)
+        .file_for_module(&ModuleName::new("shared"))
+        .unwrap();
+    let app = db.file_app_data(shared).map(|app| app.name.0.clone());
+    assert_eq_expected!(Some("app_a".to_string()), app);
 }

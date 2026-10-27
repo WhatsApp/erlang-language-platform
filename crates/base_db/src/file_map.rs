@@ -83,6 +83,10 @@ impl FileMap {
             .collect()
     }
 
+    pub fn existing_count(&self) -> usize {
+        self.files().values().filter(|exists| **exists).count()
+    }
+
     fn files(&self) -> RwLockReadGuard<'_, Files> {
         self.files.read().unwrap_or_else(PoisonError::into_inner)
     }
@@ -155,5 +159,16 @@ mod tests {
             (FileId::from_raw(2), path("/b.erl")),
         ];
         assert_eq_expected!(expected, file_map.existing_files());
+    }
+
+    #[test]
+    fn existing_count_skips_files_that_do_not_exist() {
+        let file_map = FileMap::default();
+        for (p, exists) in [("/a.erl", true), ("/b.erl", false)] {
+            let id = file_map.intern(path(p));
+            file_map.set_exists(id, exists);
+        }
+
+        assert_eq_expected!(1, file_map.existing_count());
     }
 }

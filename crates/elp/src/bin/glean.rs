@@ -286,14 +286,8 @@ impl GleanIndexer {
         query_config: &BuckQueryConfig,
     ) -> Result<(Self, LoadResult)> {
         let config = DiscoverConfig::buck();
-        let load_config = LoadConfig {
-            // `FileOrder::ByPath` so that the `src.File` ids, and everything
-            // that references them, come out the same on every run: two dumps
-            // over the same tree are then directly comparable.
-            file_order: FileOrder::ByPath,
-            ..LoadConfig::new(elp_eqwalizer::Mode::Server, *query_config)
-        };
-        let loaded = load::load_project_at(cli, &args.project, config, load_config)?;
+        let loaded =
+            load::load_project_at(cli, &args.project, config, Self::load_config(query_config))?;
         let analysis = loaded.analysis();
         let indexer = Self {
             project_id: loaded.project_id,
@@ -301,6 +295,16 @@ impl GleanIndexer {
             module: args.module.clone(),
         };
         Ok((indexer, loaded))
+    }
+
+    pub(crate) fn load_config(query_config: &BuckQueryConfig) -> LoadConfig {
+        LoadConfig {
+            // `FileOrder::ByPath` so that the `src.File` ids, and everything
+            // that references them, come out the same on every run: two dumps
+            // over the same tree are then directly comparable.
+            file_order: FileOrder::ByPath,
+            ..LoadConfig::new(elp_eqwalizer::Mode::Server, *query_config)
+        }
     }
 
     fn index(&self, config: IndexConfig) -> Result<IndexResult> {

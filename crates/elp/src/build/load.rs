@@ -179,7 +179,12 @@ pub fn load_project_from_manifest(
     load_project(cli, project, load_config)
 }
 
-fn load_project(cli: &dyn Cli, project: Project, load_config: LoadConfig) -> Result<LoadResult> {
+/// Load an already-built project model.
+pub fn load_project(
+    cli: &dyn Cli,
+    project: Project,
+    load_config: LoadConfig,
+) -> Result<LoadResult> {
     let project_id = ProjectId(0);
     let (sender, receiver) = unbounded();
     let file_map = FileMap::default();
@@ -297,7 +302,7 @@ fn load_database(
 
     project_apps
         .app_structure()
-        .apply(db, &|path| file_map.file_id(&VfsPath::from(path.clone())));
+        .apply(db, &|path| file_map.intern(VfsPath::from(path.clone())));
 
     pb.finish();
 

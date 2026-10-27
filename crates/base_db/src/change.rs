@@ -66,7 +66,7 @@ impl Change {
     pub fn apply(
         self,
         db: &mut dyn RootQueryDb,
-        resolve_file_id: &impl Fn(&AbsPathBuf) -> Option<FileId>,
+        resolve_file_id: &impl Fn(&AbsPathBuf) -> FileId,
     ) -> Vec<FileId> {
         let _p = tracing::info_span!("RootDatabase::apply_change").entered();
         if let Some(roots) = self.roots {

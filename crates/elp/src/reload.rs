@@ -371,10 +371,19 @@ mod tests {
     use elp_ide::elp_ide_db::RootDatabase;
     use elp_ide::elp_ide_db::elp_base_db::ChangeKind;
     use elp_ide::elp_ide_db::elp_base_db::FileMap;
+    use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
+    use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
+    use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
     use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
     use elp_ide::elp_ide_db::elp_base_db::VfsPath;
     use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+    use elp_project_model::AppName;
+    use elp_project_model::Project;
+    use elp_project_model::ProjectAppData;
+    use elp_project_model::otp::Otp;
     use fxhash::FxHashMap;
+    use fxhash::FxHashSet;
+    use vfs::AbsPathBuf;
     use vfs::FileId;
 
     use super::file_changes;
@@ -488,5 +497,46 @@ mod tests {
         let modified = files.apply(&[("/a.erl", Some("-module(a).\n"))]);
         assert_eq_expected!(vec![(file_id, ChangeKind::Modify)], modified);
         assert_eq_expected!(Some(&LineEndings::Unix), files.line_endings.get(&file_id));
+    }
+
+    #[test]
+    fn a_listed_file_has_its_app_before_it_loads() {
+        let mut files = Files::default();
+        let listed = AbsPathBuf::assert("/app/src/listed.erl".into());
+        let mut app = ProjectAppData::fixture_app_data(
+            AppName("app".to_string()),
+            AbsPathBuf::assert("/app".into()),
+            vec![],
+            vec![AbsPathBuf::assert("/app/src".into())],
+            vec![],
+        );
+        app.applicable_files = Some(FxHashSet::from_iter([listed.clone()]));
+        let mut project = Project::empty(Otp {
+            lib_dir: AbsPathBuf::assert("/otp".into()),
+        });
+        project.add_apps(vec![app]);
+        let projects = [project];
+        ProjectApps::new(&projects, IncludeOtp::No)
+            .app_structure()
+            .apply(&mut files.db, &|path| {
+                files.file_map.intern(VfsPath::from(path.clone()))
+            });
+
+        let file_id = files.file_map.intern(VfsPath::from(listed));
+        let app_name = |files: &Files| {
+            files
+                .db
+                .file_app_data(file_id)
+                .map(|app_data| app_data.name.clone())
+        };
+        let expected_app = Some(AppName("app".to_string()));
+        assert_eq_expected!(
+            None,
+            files.file_map.file_id(&path_of("/app/src/listed.erl"))
+        );
+        assert_eq_expected!(expected_app, app_name(&files), "before the file loads");
+
+        files.apply(&[("/app/src/listed.erl", Some("-module(listed)."))]);
+        assert_eq_expected!(expected_app, app_name(&files), "once the file has loaded");
     }
 }

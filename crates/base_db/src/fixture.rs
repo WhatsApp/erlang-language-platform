@@ -454,10 +454,11 @@ impl ChangeFixture {
         }
     }
 
-    pub fn resolve_file_id(&self, path: &AbsPathBuf) -> Option<FileId> {
+    pub fn resolve_file_id(&self, path: &AbsPathBuf) -> FileId {
         self.files_by_path
             .get(&VfsPath::from(path.clone()))
-            .cloned()
+            .copied()
+            .unwrap_or_else(|| panic!("{path} is not a fixture file"))
     }
 
     /// Validate all files in the fixture for syntax errors.

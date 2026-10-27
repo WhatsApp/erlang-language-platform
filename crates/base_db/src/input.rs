@@ -191,39 +191,6 @@ pub struct AppMapData {
     gen_src_files: Option<FxHashSet<AbsPathBuf>>,
 }
 
-/// The applications claiming one source path. Nearly every path has exactly one,
-/// so the first is stored inline and `rest` stays empty (and unallocated) unless
-/// the file is compiled into several targets.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PathOwners {
-    first: AppDataId,
-    rest: Vec<AppDataId>,
-}
-
-impl PathOwners {
-    pub fn new(first: AppDataId) -> Self {
-        PathOwners {
-            first,
-            rest: Vec::new(),
-        }
-    }
-
-    pub fn push(&mut self, owner: AppDataId) {
-        self.rest.push(owner);
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = AppDataId> + '_ {
-        std::iter::once(self.first).chain(self.rest.iter().copied())
-    }
-}
-
-pub struct ApplyOutput {
-    /// Every app claiming a path whose file was not yet loaded; a file compiled
-    /// into several targets has more than one.
-    pub unresolved_app_id_paths: FxHashMap<AbsPathBuf, PathOwners>,
-    pub gen_src_inputs: FxHashMap<AbsPathBuf, AppDataId>,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct AppDataId(pub u32);
 
@@ -251,15 +218,16 @@ impl AppStructure {
         assert!(prev.is_none());
     }
 
-    /// Set the salsa inputs according to this AppStructure
+    /// Set the salsa inputs according to this AppStructure, and return the app
+    /// of each generated source file. `resolve_file_id` gives each path an app
+    /// lists its `FileId`, whether or not the file has loaded.
     pub fn apply(
         self,
         db: &mut dyn RootQueryDb,
-        resolve_file_id: &impl Fn(&AbsPathBuf) -> Option<FileId>,
-    ) -> ApplyOutput {
+        resolve_file_id: &impl Fn(&AbsPathBuf) -> FileId,
+    ) -> FxHashMap<AbsPathBuf, AppDataId> {
         let mut app_index = AppDataIndex::default();
         let mut app_data_id = AppDataId(0);
-        let mut unresolved_paths = FxHashMap::default();
         let mut gen_src_inputs = FxHashMap::default();
         for (source_root_id, app_map_data) in self.app_map {
             let arc_data = app_map_data.app_data.map(Arc::new);
@@ -267,14 +235,7 @@ impl AppStructure {
             db.set_app_data_id(source_root_id, app_data_id);
             if let Some(files) = app_map_data.applicable_files {
                 files.iter().for_each(|path| {
-                    if let Some(file_id) = resolve_file_id(path) {
-                        app_index.insert_owner(file_id, app_data_id);
-                    } else {
-                        unresolved_paths
-                            .entry(path.clone())
-                            .and_modify(|owners: &mut PathOwners| owners.push(app_data_id))
-                            .or_insert_with(|| PathOwners::new(app_data_id));
-                    }
+                    app_index.insert_owner(resolve_file_id(path), app_data_id);
                 })
             }
             if let Some(files) = app_map_data.gen_src_files {
@@ -290,10 +251,7 @@ impl AppStructure {
         db.set_app_index(Arc::new(app_index));
         db.set_catch_all_source_root(self.catch_all_source_root);
 
-        ApplyOutput {
-            unresolved_app_id_paths: unresolved_paths,
-            gen_src_inputs,
-        }
+        gen_src_inputs
     }
 }
 

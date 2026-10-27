@@ -21,7 +21,7 @@ impl RootDatabase {
     pub fn apply_change(
         &mut self,
         change: Change,
-        resolve_file_id: &impl Fn(&AbsPathBuf) -> Option<FileId>,
+        resolve_file_id: &impl Fn(&AbsPathBuf) -> FileId,
     ) {
         let _p = tracing::info_span!("RootDatabase::apply_change").entered();
         self.request_cancellation();

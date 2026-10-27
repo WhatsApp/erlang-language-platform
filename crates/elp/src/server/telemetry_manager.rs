@@ -50,7 +50,11 @@ impl TelemetryManager {
         }
     }
 
-    pub(crate) fn on_periodic(&mut self, num_open_files: usize, num_loaded_files: u32) {
+    pub(crate) fn on_periodic(
+        &mut self,
+        num_open_files: usize,
+        num_loaded_files: impl FnOnce() -> usize,
+    ) {
         if self.last_periodic_processed.elapsed() >= PERIODIC_INTERVAL_MS {
             self.last_periodic_processed = Instant::now();
             let mem_usage = MemoryUsage::now();
@@ -60,14 +64,14 @@ impl TelemetryManager {
                 active: Bytes,
                 resident: Bytes,
                 num_open_files: usize,
-                num_loaded_files: u32,
+                num_loaded_files: usize,
             }
             let mem_stats = MemoryStats {
                 allocated: mem_usage.allocated,
                 active: mem_usage.active,
                 resident: mem_usage.resident,
                 num_open_files,
-                num_loaded_files,
+                num_loaded_files: num_loaded_files(),
             };
             match serde_json::to_value(mem_stats) {
                 Ok(mem_usage_value) => {

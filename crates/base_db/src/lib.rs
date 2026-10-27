@@ -66,7 +66,6 @@ pub use input::AppRoots;
 pub use input::AppStructure;
 pub use input::FileSource;
 pub use input::IncludeOtp;
-pub use input::PathOwners;
 pub use input::ProjectApps;
 pub use input::ProjectData;
 pub use input::ProjectId;
@@ -980,15 +979,6 @@ fn app_data_id_by_file_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Optio
     let file_id = fid.file_id(db);
     let app_data_index = db.app_index();
     app_data_index.map.get(&file_id).copied()
-}
-
-pub fn set_app_data_ids_by_file(db: &mut dyn RootQueryDb, id: FileId, owners: &PathOwners) {
-    let mut app_data_index: Arc<AppDataIndex> = db.app_index();
-    let index = Arc::make_mut(&mut app_data_index);
-    for app_data_id in owners.iter() {
-        index.insert_owner(id, app_data_id);
-    }
-    db.set_app_index(app_data_index);
 }
 
 fn parse_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Parse<SourceFile> {

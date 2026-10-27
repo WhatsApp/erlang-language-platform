@@ -228,7 +228,7 @@ impl AnalysisHost {
     pub fn apply_change(
         &mut self,
         change: Change,
-        resolve_file_id: &impl Fn(&AbsPathBuf) -> Option<FileId>,
+        resolve_file_id: &impl Fn(&AbsPathBuf) -> FileId,
     ) {
         self.db.apply_change(change, resolve_file_id)
     }

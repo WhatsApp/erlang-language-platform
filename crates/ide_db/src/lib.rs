@@ -580,9 +580,9 @@ mod tests {
         assert_eq_expected!(expected_owners, owners);
     }
 
-    /// Late resolution (files loaded after the project model is applied, as in
-    /// the language server) records owners one claim at a time. Every claim
-    /// must survive, and repeating one must not duplicate it.
+    /// Lowering records a file's owners one claim at a time, one per app that
+    /// lists it. Every claim must survive, and repeating one must not
+    /// duplicate it.
     #[test]
     fn app_data_index_insert_owner_keeps_every_claim_once() {
         let mut index = AppDataIndex::default();

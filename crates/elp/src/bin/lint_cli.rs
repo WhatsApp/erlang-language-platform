@@ -1053,7 +1053,7 @@ impl<'a> Lints<'a> {
                         files_changed: vec![(file_id, Some(Arc::from(source)))],
                         app_structure: None,
                     },
-                    &|path| self.file_map.file_id(&VfsPath::from(path.clone())),
+                    &|path| self.file_map.intern(VfsPath::from(path.clone())),
                 );
                 if self.args.check_eqwalize_all {
                     report.info("Running eqwalize-all to check for knock-on problems.")?;
