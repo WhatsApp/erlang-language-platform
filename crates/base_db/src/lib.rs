@@ -32,6 +32,8 @@ use regex::Regex;
 
 mod change;
 mod dynamic_calls;
+mod file_map;
+mod file_set_config;
 mod include;
 mod input;
 mod module_index;
@@ -53,6 +55,9 @@ pub use elp_project_model::test_fixture::RangeOrOffset;
 pub use elp_project_model::test_fixture::extract_offset;
 pub use elp_project_model::test_fixture::remove_annotations;
 pub use elp_project_model::test_fixture::render_annotations;
+pub use file_map::FileMap;
+pub use file_set_config::FileSetConfig;
+pub use file_set_config::FileSetConfigBuilder;
 pub use include::IncludeCtx;
 pub use include::generated_file_include_lib;
 pub use input::AppData;
@@ -79,13 +84,9 @@ use salsa::Setter;
 pub use vfs::AnchoredPath;
 pub use vfs::AnchoredPathBuf;
 pub use vfs::ChangeKind;
-pub use vfs::ChangedFile;
 pub use vfs::FileId;
-pub use vfs::Vfs;
 pub use vfs::VfsPath;
 pub use vfs::file_set::FileSet;
-pub use vfs::file_set::FileSetConfig;
-pub use vfs::file_set::FileSetConfigBuilder;
 pub use vfs::loader;
 
 // ---------------------------------------------------------------------

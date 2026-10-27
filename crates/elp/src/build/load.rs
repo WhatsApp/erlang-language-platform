@@ -21,11 +21,11 @@ use crossbeam_channel::unbounded;
 use elp_ide::AnalysisHost;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
+use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
-use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::loader::Handle;
 use elp_project_model::DiscoverConfig;
@@ -41,10 +41,12 @@ use vfs::loader::LoadingProgress;
 use crate::build::types::LoadResult;
 use crate::cli::Cli;
 use crate::line_endings::LineEndings;
+use crate::reload::PendingChanges;
 use crate::reload::ProjectFolders;
+use crate::reload::apply_file_changes;
 use crate::reload::apply_source_roots;
-use crate::reload::apply_vfs_text_changes;
 use crate::reload::bundled_files;
+use crate::reload::file_changes;
 
 pub fn canonicalize_project_root(root: &Path) -> Result<AbsPathBuf> {
     let root = match dunce::canonicalize(root) {
@@ -96,19 +98,17 @@ pub fn project_root_dir(manifest: &ProjectManifest) -> PathBuf {
     root.to_path_buf()
 }
 
-/// The order in which loaded files are interned into the VFS, which is the
-/// order their `FileId`s are allocated in.
+/// The order in which loaded files are interned into the file map, which is
+/// the order their `FileId`s are allocated in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FileOrder {
-    /// Intern each file as the loader delivers it. The loader reads its
-    /// directory chunks in parallel, so which `FileId` a given path gets
-    /// varies from run to run.
+    /// Intern the files in the order the loader delivers them. The loader
+    /// reads its directory chunks in parallel, so which `FileId` a given path
+    /// gets varies from run to run.
     AsLoaded,
-    /// Buffer the loaded files and intern them in path order, so a given path
-    /// always gets the same `FileId` and the run is reproducible. Costs one
-    /// sort of the file list, and interning waits for the loader to finish
-    /// rather than overlapping it -- only worth asking for when the output is
-    /// compared across runs.
+    /// Intern the loaded files in path order, so a given path always gets the
+    /// same `FileId` and the run is reproducible. Costs one sort of the file
+    /// list -- only worth asking for when the output is compared across runs.
     ByPath,
 }
 
@@ -182,7 +182,7 @@ pub fn load_project_from_manifest(
 fn load_project(cli: &dyn Cli, project: Project, load_config: LoadConfig) -> Result<LoadResult> {
     let project_id = ProjectId(0);
     let (sender, receiver) = unbounded();
-    let mut vfs = Vfs::default();
+    let file_map = FileMap::default();
     let mut line_ending_map = FxHashMap::default();
     let mut loader = {
         let loader = vfs_notify::NotifyHandle::spawn(sender);
@@ -204,14 +204,14 @@ fn load_project(cli: &dyn Cli, project: Project, load_config: LoadConfig) -> Res
         cli,
         &project_apps,
         &folders.file_set_config,
-        &mut vfs,
+        &file_map,
         &mut line_ending_map,
         &receiver,
         &load_config,
     )?;
     Ok(LoadResult::new(
         analysis_host,
-        vfs,
+        file_map,
         line_ending_map,
         project_id,
         project,
@@ -223,7 +223,7 @@ fn load_database(
     cli: &dyn Cli,
     project_apps: &ProjectApps,
     file_set_config: &FileSetConfig,
-    vfs: &mut Vfs,
+    file_map: &FileMap,
     line_ending_map: &mut FxHashMap<FileId, LineEndings>,
     receiver: &Receiver<loader::Message>,
     load_config: &LoadConfig,
@@ -236,6 +236,7 @@ fn load_database(
 
     let pb = cli.simple_progress(0, "Loading applications");
 
+    let mut pending = PendingChanges::default();
     // Stays empty, and unallocated, under `FileOrder::AsLoaded`.
     let mut deferred: Vec<(AbsPathBuf, Option<Vec<u8>>)> = Vec::new();
     for task in receiver {
@@ -258,7 +259,7 @@ fn load_database(
                 match load_config.file_order {
                     FileOrder::AsLoaded => {
                         for (path, contents) in files {
-                            vfs.set_file_contents(path.into(), contents);
+                            pending.insert(path.into(), contents);
                         }
                     }
                     FileOrder::ByPath => deferred.extend(files),
@@ -267,37 +268,36 @@ fn load_database(
         }
     }
 
-    // `FileId` is the path's insertion index into the VFS, and the loader reads
+    // `FileId` is the path's insertion index into the file map, and the loader reads
     // its directory chunks with rayon, so interning in arrival order gives a
     // given path a different `FileId` on every run. Anything keyed on `FileId`
     // then varies too — the `src.File` ids in an `elp glean` dump, iteration of
     // an `FxHashSet<FileId>`, the tiebreak of a stable sort over
     // `SourceRoot::iter()`. Interning in path order makes those reproducible,
-    // at the cost of a sort and of waiting for the loader to finish before
-    // interning anything, which is why the caller has to ask for it.
+    // at the cost of a sort, which is why the caller has to ask for it.
     //
     // A stable sort, so that a path loaded and then changed keeps its arrival
     // order and the later contents still win.
     deferred.sort_by(|(a, _), (b, _)| a.cmp(b));
     for (path, contents) in deferred {
-        vfs.set_file_contents(path.into(), contents);
+        pending.insert(path.into(), contents);
     }
     for (path, contents) in bundled_files(project_apps) {
-        vfs.set_file_contents(path, Some(contents));
+        pending.insert(path, Some(contents));
     }
 
     pb.finish();
 
     let pb = cli.spinner("Seeding database");
 
-    apply_source_roots(db, vfs, file_set_config);
+    let changes = file_changes(db, file_map, pending, &FxHashMap::default());
+    line_ending_map.extend(apply_file_changes(db, file_map, changes));
 
-    project_apps.app_structure().apply(db, &|path| {
-        vfs.file_id(&VfsPath::from(path.clone())).map(|(id, _)| id)
-    });
+    apply_source_roots(db, file_map, file_set_config);
 
-    let changed_files = vfs.take_changes();
-    line_ending_map.extend(apply_vfs_text_changes(db, vfs, changed_files.values()));
+    project_apps
+        .app_structure()
+        .apply(db, &|path| file_map.file_id(&VfsPath::from(path.clone())));
 
     pb.finish();
 

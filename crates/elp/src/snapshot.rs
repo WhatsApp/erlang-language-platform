@@ -25,8 +25,8 @@ use elp_ide::diagnostics::RemoveElpReported;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
+use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
-use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_log::timeit_with_telemetry;
 use elp_project_model::Project;
 use fxhash::FxHashMap;
@@ -110,7 +110,7 @@ pub struct Snapshot {
     pub(crate) diagnostics: Arc<DiagnosticCollection>,
     pub(crate) eqwalizer_types: Arc<EqwalizerTypes>,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Uri, SemanticTokens>>>,
-    vfs: Arc<RwLock<Vfs>>,
+    file_map: Arc<FileMap>,
     pub(crate) mem_docs: Arc<RwLock<MemDocs>>,
     line_ending_map: SharedMap<FileId, LineEndings>,
     pub(crate) projects: Arc<Vec<Project>>,
@@ -124,7 +124,7 @@ impl Snapshot {
         analysis: Analysis,
         diagnostics: Arc<DiagnosticCollection>,
         eqwalizer_types: Arc<EqwalizerTypes>,
-        vfs: Arc<RwLock<Vfs>>,
+        file_map: Arc<FileMap>,
         mem_docs: Arc<RwLock<MemDocs>>,
         line_ending_map: Arc<RwLock<FxHashMap<FileId, LineEndings>>>,
         projects: Arc<Vec<Project>>,
@@ -136,7 +136,7 @@ impl Snapshot {
             diagnostics,
             eqwalizer_types,
             semantic_tokens_cache: Arc::new(Default::default()),
-            vfs,
+            file_map,
             mem_docs,
             line_ending_map,
             projects,
@@ -145,19 +145,17 @@ impl Snapshot {
 
     pub(crate) fn uri_to_file_id(&self, uri: &Uri) -> Result<FileId> {
         let path = convert::vfs_path(uri)?;
-        let vfs = self.vfs.read();
-        let (res, _) = vfs
+        self.file_map
             .file_id(&path)
-            .context(format!("file not found: {path}"))?;
-        Ok(res)
+            .context(format!("file not found: {path}"))
     }
 
     pub(crate) fn file_id_to_path(&self, id: FileId) -> Option<AbsPathBuf> {
-        file_id_to_path(&self.vfs.read(), id).ok()
+        file_id_to_path(&self.file_map, id).ok()
     }
 
     pub(crate) fn file_id_to_uri(&self, id: FileId) -> Uri {
-        file_id_to_uri(&self.vfs.read(), id)
+        file_id_to_uri(&self.file_map, id)
     }
 
     pub(crate) fn uri_file_version(&self, uri: &Uri) -> Option<i32> {
@@ -170,7 +168,7 @@ impl Snapshot {
     }
 
     pub(crate) fn anchored_path(&self, path: &AnchoredPathBuf) -> Option<Uri> {
-        let mut base = self.vfs.read().file_path(path.anchor).clone();
+        let mut base = self.file_map.file_path(path.anchor);
         base.pop();
         let path = base.join(&path.path)?;
         let path = path.as_path()?;

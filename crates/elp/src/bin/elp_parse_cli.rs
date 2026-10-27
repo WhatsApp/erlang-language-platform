@@ -41,9 +41,9 @@ use elp_ide::elp_ide_db::Includes;
 use elp_ide::elp_ide_db::LineIndex;
 use elp_ide::elp_ide_db::LineIndexDatabase;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
+use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FileSource;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
-use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_log::telemetry;
 use elp_project_model::AppType;
@@ -208,9 +208,8 @@ pub fn parse_all(
                 let path = path.as_os_str().to_str().unwrap();
                 (
                     loaded
-                        .vfs
-                        .file_id(&VfsPath::new_real_path(path.to_string()))
-                        .map(|(file_id, _)| file_id),
+                        .file_map
+                        .file_id(&VfsPath::new_real_path(path.to_string())),
                     path_buf.as_path().file_name().map(ModuleName::new),
                 )
             }
@@ -259,8 +258,8 @@ pub fn parse_all(
             writeln!(cli, "No errors reported")?;
         }
         if args.is_format_normal() && args.report_system_stats {
-            let (analysis_host, vfs) = loaded.into_parts();
-            print_memory_usage(analysis_host, vfs, cli)?;
+            let (analysis_host, file_map) = loaded.into_parts();
+            print_memory_usage(analysis_host, file_map, cli)?;
             writeln!(cli, "{}", memory_used)?;
         }
         Ok(())
@@ -285,7 +284,7 @@ pub fn parse_all(
                         if args.format.diagnostic_counts_as_error(diag.severity) {
                             err_in_diag = true;
                         }
-                        let vfs_path = loaded.vfs.file_path(diags.file_id);
+                        let vfs_path = &loaded.file_map.file_path(diags.file_id);
                         let analysis = loaded.analysis();
                         let root_path = &analysis
                             .project_data(diags.file_id)
@@ -311,8 +310,8 @@ pub fn parse_all(
         telemetry::report_elapsed_time("parse-elp done", start_time);
 
         if args.is_format_normal() && args.report_system_stats {
-            let (analysis_host, vfs) = loaded.into_parts();
-            print_memory_usage(analysis_host, vfs, cli)?;
+            let (analysis_host, file_map) = loaded.into_parts();
+            print_memory_usage(analysis_host, file_map, cli)?;
             writeln!(cli, "{}", memory_used)?;
         }
 
@@ -510,7 +509,7 @@ fn dump_includes_resolutions(
 
     let pb = cli.progress(modules.len() as u64, "Analyzing include resolutions");
 
-    let vfs = &loaded.vfs;
+    let file_map = &loaded.file_map;
     let mut all_includes: Vec<_> = modules
         .into_iter()
         .par_bridge()
@@ -520,7 +519,7 @@ fn dump_includes_resolutions(
                 && file_source == FileSource::Src
                 && db.file_app_type(file_id).ok() != Some(Some(AppType::Dep))
             {
-                if is_project_file(vfs, db, file_id) {
+                if is_project_file(file_map, db, file_id) {
                     db.resolved_includes(file_id).ok()
                 } else {
                     None
@@ -554,9 +553,9 @@ fn dump_includes_resolutions(
     Ok(())
 }
 
-fn is_project_file(vfs: &Vfs, db: &Analysis, id: FileId) -> bool {
+fn is_project_file(file_map: &FileMap, db: &Analysis, id: FileId) -> bool {
     let root_abs = &db.project_data(id).unwrap().unwrap().root_dir;
-    let path = vfs.file_path(id);
+    let path = file_map.file_path(id);
     let path = path.as_path().unwrap();
     path.starts_with(root_abs)
 }

@@ -56,6 +56,7 @@ elp_syntax = { path = "crates/syntax" }
 elp_types_db = { path = "crates/types_db" }
 env_filter = "0.1.4"
 expect-test = "1.5.1"
+fst = "0.4"
 fxhash = "0.2.1"
 glob = "0.3.4"
 hir = { path = "crates/hir" }

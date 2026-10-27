@@ -14,10 +14,11 @@ use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
 use elp_ide::elp_ide_db::EqwalizerProgressReporter;
 use elp_ide::elp_ide_db::SidecarCleanupGuard;
+use elp_ide::elp_ide_db::elp_base_db::ChangeKind;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
+use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
-use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_project_model::Project;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
@@ -25,17 +26,19 @@ use indicatif::ProgressBar;
 use itertools::Itertools;
 
 use crate::line_endings::LineEndings;
+use crate::reload::PendingChanges;
+use crate::reload::apply_file_changes;
 use crate::reload::apply_source_roots;
-use crate::reload::apply_vfs_text_changes;
+use crate::reload::file_changes;
 
 /// Expensive-to-drop fields stay in `ManuallyDrop` so one-shot commands skip
-/// the Salsa and VFS destructor cascades. The cleanup guard still releases
+/// the Salsa and file map destructor cascades. The cleanup guard still releases
 /// external Erlang-service and Eqwalizer processes when this value leaves scope.
 #[derive(Debug)]
 pub struct LoadResult {
     pub analysis_host: ManuallyDrop<AnalysisHost>,
     _sidecar_cleanup: SidecarCleanupGuard,
-    pub vfs: ManuallyDrop<Vfs>,
+    pub file_map: ManuallyDrop<FileMap>,
     pub line_ending_map: FxHashMap<FileId, LineEndings>,
     pub project_id: ProjectId,
     pub project: Project,
@@ -45,7 +48,7 @@ pub struct LoadResult {
 impl LoadResult {
     pub fn new(
         analysis_host: AnalysisHost,
-        vfs: Vfs,
+        file_map: FileMap,
         line_ending_map: FxHashMap<FileId, LineEndings>,
         project_id: ProjectId,
         project: Project,
@@ -55,7 +58,7 @@ impl LoadResult {
         LoadResult {
             analysis_host: ManuallyDrop::new(analysis_host),
             _sidecar_cleanup: sidecar_cleanup,
-            vfs: ManuallyDrop::new(vfs),
+            file_map: ManuallyDrop::new(file_map),
             line_ending_map,
             project_id,
             project,
@@ -63,13 +66,15 @@ impl LoadResult {
         }
     }
 
-    pub fn into_parts(self) -> (AnalysisHost, Vfs) {
+    pub fn into_parts(self) -> (AnalysisHost, FileMap) {
         let LoadResult {
-            analysis_host, vfs, ..
+            analysis_host,
+            file_map,
+            ..
         } = self;
         (
             ManuallyDrop::into_inner(analysis_host),
-            ManuallyDrop::into_inner(vfs),
+            ManuallyDrop::into_inner(file_map),
         )
     }
 
@@ -120,21 +125,22 @@ impl LoadResult {
         r
     }
 
-    pub fn apply_vfs_changes(&mut self) -> bool {
-        let changed_files = self.vfs.take_changes();
-        if changed_files.is_empty() {
-            return false;
-        }
+    pub fn apply_file_changes(&mut self, pending: PendingChanges) {
+        let changes = file_changes(
+            self.analysis_host.raw_database(),
+            &self.file_map,
+            pending,
+            &self.line_ending_map,
+        );
+        let created_or_deleted = changes
+            .iter()
+            .any(|change| change.kind != ChangeKind::Modify);
         let db = self.analysis_host.raw_database_mut();
-        let line_ending_updates = apply_vfs_text_changes(db, &self.vfs, changed_files.values());
+        let line_ending_updates = apply_file_changes(db, &self.file_map, changes);
         self.line_ending_map.extend(line_ending_updates);
-        if changed_files
-            .into_values()
-            .any(|f| f.is_created_or_deleted())
-        {
-            apply_source_roots(db, &self.vfs, &self.file_set_config);
+        if created_or_deleted {
+            apply_source_roots(db, &self.file_map, &self.file_set_config);
         }
-        true
     }
 
     pub fn analysis(&self) -> Analysis {

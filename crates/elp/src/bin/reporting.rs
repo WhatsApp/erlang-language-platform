@@ -41,13 +41,13 @@ use elp_ide::diagnostics;
 use elp_ide::elp_ide_db::EqwalizerDiagnostic;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
+use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::memory_usage::MemoryUsage;
 use elp_ide::elp_ide_db::memory_usage::memory_usage;
 use indicatif::ProgressBar;
 use itertools::Itertools;
 use parking_lot::Mutex;
-use vfs::Vfs;
 
 use crate::args::Format;
 use crate::daemon_protocol::DaemonResponse;
@@ -78,7 +78,7 @@ pub(crate) struct Report<'a> {
 #[derive(Clone, Copy)]
 pub(crate) struct IdeDiagnosticContext<'a> {
     pub analysis: &'a Analysis,
-    pub vfs: &'a Vfs,
+    pub file_map: &'a FileMap,
     pub file_id: FileId,
     pub path: Option<&'a Path>,
     pub use_cli_severity: bool,
@@ -122,10 +122,10 @@ impl<'a> Report<'a> {
     pub(crate) fn write_system_stats(
         &mut self,
         host: AnalysisHost,
-        vfs: Vfs,
+        file_map: FileMap,
         process_usage: impl fmt::Display,
     ) -> Result<()> {
-        for_each_memory_usage_line(host, vfs, |line| {
+        for_each_memory_usage_line(host, file_map, |line| {
             self.info(&line.to_string())?;
             Ok(())
         })?;
@@ -175,12 +175,12 @@ impl<'a> Report<'a> {
         }
 
         let derived_path = if context.path.is_none() && self.destination != Destination::Human {
-            let file_path = context.vfs.file_path(context.file_id);
+            let file_path = context.file_map.file_path(context.file_id);
             let project_data = context
                 .analysis
                 .project_data(context.file_id)?
                 .context("could not find project data")?;
-            Some(get_relative_path(&project_data.root_dir, file_path).to_path_buf())
+            Some(get_relative_path(&project_data.root_dir, &file_path).to_path_buf())
         } else {
             None
         };
@@ -422,9 +422,12 @@ fn write_ide_diagnostic(
         Some(path) => writeln!(cli, "{}:{diagnostic_text}", path.display())?,
         None => writeln!(cli, "      {diagnostic_text}")?,
     }
-    for line in
-        related_information_lines(context.analysis, context.vfs, context.file_id, diagnostic)?
-    {
+    for line in related_information_lines(
+        context.analysis,
+        context.file_map,
+        context.file_id,
+        diagnostic,
+    )? {
         writeln!(cli, "{line}")?;
     }
     Ok(())
@@ -449,9 +452,12 @@ fn render_ide_diagnostic(
         .with_message(header)
         .with_labels(vec![label]);
     let mut rendered = render_reporting_diagnostic(&files, &reporting_diagnostic)?;
-    for line in
-        related_information_lines(context.analysis, context.vfs, context.file_id, diagnostic)?
-    {
+    for line in related_information_lines(
+        context.analysis,
+        context.file_map,
+        context.file_id,
+        diagnostic,
+    )? {
         rendered.plain.push_str(&line);
         rendered.plain.push('\n');
         rendered.ansi.push_str(&line);
@@ -477,11 +483,11 @@ fn get_relative_file_path(
     loaded: &LoadResult,
     file_id: FileId,
 ) -> Result<PathBuf> {
-    let file_path = loaded.vfs.file_path(file_id);
+    let file_path = loaded.file_map.file_path(file_id);
     let project_data = analysis
         .project_data(file_id)?
         .context("could not find project data")?;
-    Ok(get_relative_path(&project_data.root_dir, file_path).to_path_buf())
+    Ok(get_relative_path(&project_data.root_dir, &file_path).to_path_buf())
 }
 
 fn get_reporting_data(
@@ -626,7 +632,7 @@ pub fn get_relative_path<'a>(root: &AbsPath, file: &'a VfsPath) -> &'a Path {
 
 pub(crate) fn related_information_lines(
     analysis: &Analysis,
-    vfs: &Vfs,
+    file_map: &FileMap,
     file_id: FileId,
     diagnostic: &diagnostics::Diagnostic,
 ) -> Result<Vec<String>> {
@@ -643,7 +649,8 @@ pub(crate) fn related_information_lines(
             } else if let Some(module_name) = analysis.module_name(info.file_id).ok().flatten() {
                 format!("[{}] ", module_name.as_str())
             } else if let Some(project_data) = analysis.project_data(info.file_id).ok().flatten() {
-                let path = get_relative_path(&project_data.root_dir, vfs.file_path(info.file_id));
+                let file_path = file_map.file_path(info.file_id);
+                let path = get_relative_path(&project_data.root_dir, &file_path);
                 format!("[{}] ", path.display())
             } else {
                 String::new()
@@ -714,8 +721,12 @@ pub(crate) fn add_stat(stat: String) {
     stats.push(stat);
 }
 
-pub(crate) fn print_memory_usage(host: AnalysisHost, vfs: Vfs, cli: &mut dyn Cli) -> Result<()> {
-    for_each_memory_usage_line(host, vfs, |line| {
+pub(crate) fn print_memory_usage(
+    host: AnalysisHost,
+    file_map: FileMap,
+    cli: &mut dyn Cli,
+) -> Result<()> {
+    for_each_memory_usage_line(host, file_map, |line| {
         writeln!(cli, "{line}")?;
         Ok(())
     })
@@ -723,14 +734,14 @@ pub(crate) fn print_memory_usage(host: AnalysisHost, vfs: Vfs, cli: &mut dyn Cli
 
 fn for_each_memory_usage_line(
     mut host: AnalysisHost,
-    vfs: Vfs,
+    file_map: FileMap,
     mut write_line: impl for<'a> FnMut(fmt::Arguments<'a>) -> Result<()>,
 ) -> Result<()> {
     let mem = host.per_query_memory_usage();
 
     let before = memory_usage();
-    drop(vfs);
-    let vfs = before.allocated - memory_usage().allocated;
+    drop(file_map);
+    let file_map = before.allocated - memory_usage().allocated;
 
     let before = memory_usage();
     drop(host);
@@ -740,7 +751,7 @@ fn for_each_memory_usage_line(
     for (name, bytes, entries) in mem {
         write_line(format_args!("{bytes:>8} {entries:>6} {name}"))?;
     }
-    write_line(format_args!("{vfs:>8}        VFS"))?;
+    write_line(format_args!("{file_map:>8}        VFS"))?;
     write_line(format_args!("{unaccounted:>8}        Unaccounted"))?;
     write_line(format_args!("{remaining:>8}        Remaining"))?;
     Ok(())
@@ -857,7 +868,7 @@ mod tests {
                 .write_lint_diagnostics(
                     IdeDiagnosticContext {
                         analysis: &analysis,
-                        vfs: &loaded.vfs,
+                        file_map: &loaded.file_map,
                         file_id,
                         path: None,
                         use_cli_severity: false,
@@ -887,13 +898,13 @@ mod tests {
               -module(foo).
             "#,
         );
-        let (analysis_host, vfs) = loaded.into_parts();
+        let (analysis_host, file_map) = loaded.into_parts();
         let mut cli = elp::cli::Fake::default();
 
         {
             let mut report = Report::for_command(&mut cli, Format::Human);
             report
-                .write_system_stats(analysis_host, vfs, "process usage")
+                .write_system_stats(analysis_host, file_map, "process usage")
                 .expect("system stats should be reported");
         }
 

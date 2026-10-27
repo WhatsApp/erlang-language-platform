@@ -10,6 +10,7 @@
 
 use elp_ide::AnalysisHost;
 use elp_ide::elp_ide_db::RootDatabase;
+use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::fixture::ChangeFixture;
@@ -17,7 +18,6 @@ use elp_project_model::test_fixture::FixtureWithProjectMeta;
 use fxhash::FxHashMap;
 use vfs::AbsPathBuf;
 use vfs::FileId;
-use vfs::Vfs;
 use vfs::VfsPath;
 
 use super::types::LoadResult;
@@ -32,11 +32,11 @@ pub fn load_result(fixture_str: &str) -> LoadResult {
     change.apply(&mut db, &|path| fixture.resolve_file_id(path));
 
     let analysis_host = AnalysisHost::new(db);
-    let (vfs, line_ending_map) = load_info_from_fixture(fixture_str);
+    let (file_map, line_ending_map) = load_info_from_fixture(fixture_str);
 
     LoadResult::new(
         analysis_host,
-        vfs,
+        file_map,
         line_ending_map,
         ProjectId(0),
         project,
@@ -44,19 +44,18 @@ pub fn load_result(fixture_str: &str) -> LoadResult {
     )
 }
 
-fn load_info_from_fixture(fixture: &str) -> (Vfs, FxHashMap<FileId, LineEndings>) {
-    let mut vfs = Vfs::default();
+fn load_info_from_fixture(fixture: &str) -> (FileMap, FxHashMap<FileId, LineEndings>) {
+    let file_map = FileMap::default();
     let mut line_ending_map = FxHashMap::default();
 
     let fixtures = FixtureWithProjectMeta::parse(fixture);
     for fixture in &fixtures.fixture {
         let path = VfsPath::from(AbsPathBuf::assert(fixture.path.clone().into()));
-        let bytes = fixture.text.clone().into_bytes();
-        let document = Document::from_bytes(&bytes);
-        vfs.set_file_contents(path.clone(), Some(bytes));
+        let document = Document::from_bytes(fixture.text.as_bytes());
+        let file_id = file_map.intern(path);
+        file_map.set_exists(file_id, true);
         let (_text, line_ending) = document.vfs_to_salsa();
-        let (file_id, _) = vfs.file_id(&path).unwrap();
         line_ending_map.insert(file_id, line_ending);
     }
-    (vfs, line_ending_map)
+    (file_map, line_ending_map)
 }

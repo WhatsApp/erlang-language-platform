@@ -276,8 +276,8 @@ pub fn run_ssr_command(
 
     // Print memory usage at the end if requested and format is normal
     if args.is_format_normal() && args.report_system_stats {
-        let (analysis_host, vfs) = loaded.into_parts();
-        print_memory_usage(analysis_host, vfs, cli)?;
+        let (analysis_host, file_map) = loaded.into_parts();
+        print_memory_usage(analysis_host, file_map, cli)?;
         writeln!(cli, "{}", memory_used)?;
     }
     r
@@ -312,9 +312,8 @@ pub fn run_ssr(
                 let path = path.as_os_str().to_str().unwrap();
                 (
                     loaded
-                        .vfs
-                        .file_id(&VfsPath::new_real_path(path.to_string()))
-                        .map(|(id, _)| id),
+                        .file_map
+                        .file_id(&VfsPath::new_real_path(path.to_string())),
                     path_buf.as_path().file_name().map(ModuleName::new),
                 )
             }
@@ -441,7 +440,7 @@ fn print_single_result(
 
     if args.is_format_json() {
         for diag in diags {
-            let vfs_path = loaded.vfs.file_path(*file_id);
+            let vfs_path = &loaded.file_map.file_path(*file_id);
             let analysis = loaded.analysis();
             let root_path = &analysis
                 .project_data(*file_id)
@@ -474,7 +473,7 @@ fn print_single_result(
                 writeln!(cli, "{}", sep)?;
             }
             // Get relative path for diagnostic output
-            let vfs_path = loaded.vfs.file_path(*file_id);
+            let vfs_path = &loaded.file_map.file_path(*file_id);
             let analysis = loaded.analysis();
             let root_path = &analysis
                 .project_data(*file_id)

@@ -44,9 +44,10 @@ use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::AppDataId;
 use elp_ide::elp_ide_db::elp_base_db::AppDataIndex;
-use elp_ide::elp_ide_db::elp_base_db::ChangedFile;
+use elp_ide::elp_ide_db::elp_base_db::ChangeKind;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileKind;
+use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::PathOwners;
@@ -54,7 +55,6 @@ use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
-use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::set_app_data_ids_by_file;
@@ -72,7 +72,6 @@ use elp_project_model::buck::BuckQueryConfig;
 use elp_project_model::buck::BuckQueryError;
 use fxhash::FxHashMap;
 use fxhash::FxHashSet;
-use indexmap::map::Entry;
 use lsp_server::Connection;
 use lsp_server::ErrorCode;
 use lsp_server::Notification;
@@ -96,7 +95,6 @@ use parking_lot::RwLock;
 use rayon::prelude::*;
 use serde::Serialize;
 use telemetry_manager::TelemetryManager;
-use vfs::Change;
 use vfs::loader::LoadingProgress;
 
 use self::dispatch::RequestDispatcher;
@@ -116,6 +114,7 @@ use crate::mem_docs::MemDocs;
 use crate::project_loader::ProjectLoader;
 use crate::project_loader::ReloadManager;
 use crate::read_lint_config_file;
+use crate::reload::PendingChanges;
 use crate::reload::ProjectFolders;
 use crate::reload::bundled_files;
 use crate::snapshot::SharedMap;
@@ -287,8 +286,10 @@ pub struct Server {
     req_queue: ReqQueue,
     progress: ProgressManager,
     mem_docs: Arc<RwLock<MemDocs>>,
-    newly_opened_documents: Vec<ChangedFile>,
-    vfs: Arc<RwLock<Vfs>>,
+    newly_opened_documents: Vec<FileId>,
+    file_map: Arc<FileMap>,
+    /// Applied, and cleared, at the end of every main loop turn.
+    pending_changes: PendingChanges,
     file_set_config: FileSetConfig,
     line_ending_map: SharedMap<FileId, LineEndings>,
     config: Arc<Config>,
@@ -350,7 +351,8 @@ impl Server {
             req_queue: ReqQueue::default(),
             mem_docs: Arc::new(RwLock::new(MemDocs::default())),
             newly_opened_documents: Vec::default(),
-            vfs: Arc::new(RwLock::new(Vfs::default())),
+            file_map: Arc::default(),
+            pending_changes: PendingChanges::default(),
             file_set_config: FileSetConfig::default(),
             line_ending_map: SharedMap::default(),
             config: Arc::new(config.clone()),
@@ -388,7 +390,7 @@ impl Server {
             self.analysis_host.analysis(),
             Arc::clone(&self.diagnostics),
             Arc::clone(&self.eqwalizer_types),
-            Arc::clone(&self.vfs),
+            Arc::clone(&self.file_map),
             Arc::clone(&self.mem_docs),
             Arc::clone(&self.line_ending_map),
             Arc::clone(&self.projects),
@@ -603,7 +605,7 @@ impl Server {
 
             let snapshot = self.snapshot();
             for file_id in &diagnostic_changes {
-                let uri = file_id_to_uri(&self.vfs.read(), *file_id);
+                let uri = file_id_to_uri(&self.file_map, *file_id);
                 let line_index = match snapshot.analysis.line_index(*file_id) {
                     Ok(line_index) => line_index,
                     Err(err) => {
@@ -629,10 +631,9 @@ impl Server {
                     .diagnostics_for(*file_id)
                     .iter()
                     .map(|d| {
-                        let vfs = self.vfs.clone();
                         ide_to_lsp_diagnostic(&line_index, d, |related_file_id| {
                             // Get the line index and URI for the related file
-                            let uri = file_id_to_uri(&vfs.read(), related_file_id);
+                            let uri = file_id_to_uri(&self.file_map, related_file_id);
                             let snapshot = self.snapshot();
                             let line_index = snapshot.analysis.line_index(related_file_id).ok()?;
                             Some(((*line_index).clone(), uri))
@@ -732,15 +733,13 @@ impl Server {
                 this.native_diagnostics_requested = true;
                 if let Ok(path) = convert::abs_path(&params.text_document.uri) {
                     let vfs_path = VfsPath::from(path.clone());
+                    let bytes = params.text_document.text.into_bytes();
                     let already_exists = this
                         .mem_docs
                         .write()
                         .insert(
                             vfs_path.clone(),
-                            DocumentData::new(
-                                params.text_document.version,
-                                params.text_document.text.clone().into_bytes(),
-                            ),
+                            DocumentData::new(params.text_document.version, bytes.clone()),
                         )
                         .is_err();
                     if already_exists {
@@ -748,23 +747,13 @@ impl Server {
                         log::error!("duplicate DidOpenTextDocument: {vfs_path}");
                     }
 
-                    let file_id = {
-                        let mut vfs = this.vfs.write();
-                        let bytes = params.text_document.text.into_bytes();
-                        vfs.set_file_contents(vfs_path.clone(), Some(bytes.clone()));
-
-                        // Until we bring over the full rust-analyzer
-                        // style change processing, make a list of files
-                        // that are freshly opened so diagnostics are
-                        // generated for them, despite no changes being
-                        // registered in vfs.
-                        let (file_id, _) = vfs.file_id(&vfs_path).unwrap();
-                        this.newly_opened_documents.push(ChangedFile {
-                            file_id,
-                            change: Change::Modify(bytes, params.text_document.version as u64),
-                        });
-                        file_id
-                    };
+                    let file_id = this.file_map.intern(vfs_path.clone());
+                    this.pending_changes.insert(vfs_path, Some(bytes));
+                    // Make a list of files that are freshly opened so
+                    // diagnostics are generated for them, even if their
+                    // contents match what was loaded, and no change is
+                    // recorded.
+                    this.newly_opened_documents.push(file_id);
                     if this.status != Status::Running || this.analysis_host.raw_database().app_data_id_by_file(file_id).is_none() {
                         // We do not have a project associated with this file
                         this.fetch_projects_if_needed(&path);
@@ -792,7 +781,7 @@ impl Server {
                     };
                     // The version passed in DidChangeTextDocument is
                     // the version after all edits are applied so we
-                    // should apply it before the vfs is notified.
+                    // should apply it before the change is recorded.
                     *version = params.text_document.version;
 
                     let mut document = Document::from_bytes(data);
@@ -801,7 +790,7 @@ impl Server {
 
                     if *data != new_contents {
                         data.clone_from(&new_contents);
-                        this.vfs.write().set_file_contents(path, Some(new_contents));
+                        this.pending_changes.insert(path, Some(new_contents));
                     }
                 }
                 Ok(())
@@ -820,12 +809,11 @@ impl Server {
                         this.vfs_loader.handle.invalidate(path.to_path_buf());
                     }
 
-                    let vfs = this.vfs.read();
-                    if let Some((file_id, _)) = vfs.file_id(&path) {
+                    if let Some(file_id) = this.file_map.file_id(&path) {
                         Arc::make_mut(&mut this.diagnostics)
                             .clear(file_id);
                         if let Ok(line_index) = analysis.line_index(file_id) {
-                            let vfs = this.vfs.clone();
+                            let file_map = this.file_map.clone();
                             diagnostics = this
                                 .diagnostics
                                 .diagnostics_for(file_id)
@@ -834,7 +822,7 @@ impl Server {
                                     let snapshot = this.snapshot();
                                     ide_to_lsp_diagnostic(&line_index, d, |related_file_id| {
                                         // Get the line index and URI for the related file
-                                        let uri = file_id_to_uri(&vfs.read(), related_file_id);
+                                        let uri = file_id_to_uri(&file_map, related_file_id);
                                         let line_index = snapshot.analysis.line_index(related_file_id).ok()?;
                                         Some(((*line_index).clone(), uri))
                                     })
@@ -1033,7 +1021,6 @@ impl Server {
     }
 
     fn on_loader_loaded(&mut self, files: Vec<(AbsPathBuf, Option<Vec<u8>>)>, changed: bool) {
-        let mut vfs = self.vfs.write();
         for (path, contents) in files {
             let path = VfsPath::from(path);
             let opened = self.mem_docs.read().contains(&path);
@@ -1041,43 +1028,28 @@ impl Server {
                 log::info!(target: FILE_WATCH_LOGGER_NAME, "VFS change:{}:{}", opened, path);
             }
             if !opened {
-                // This call will add the file to the changed_files,
-                // picked up in `process_changes`, only if the new
-                // content is different from the current, checked via
-                // a hash.
-                vfs.set_file_contents(path, contents);
+                // Picked up in `process_changes_to_vfs_store`, which
+                // records a change only if the new content differs
+                // from the current.
+                self.pending_changes.insert(path, contents);
             }
         }
     }
 
     fn process_changes_to_vfs_store(&mut self) -> (bool, u32) {
-        // We need to guard against a file being created/modified and
-        // then deleted within a change processing cycle. This is
-        // problematic because the task generating the vfs changes
-        // reported in `vfs.take_changes()` immediately updates the
-        // file contents, setting it to None for a delete. When we are
-        // processing an earlier change, the underlying vfs has
-        // already deleted it, and we will get a panic trying to call
-        // `vfs.file_contents()` for it.
-        // The protection takes two forms
-        // 1. `take_changes()` hands back the file content as an owned
-        //    snapshot inside each change, so we process from that
-        //    rather than re-reading the (possibly already-deleted)
-        //    live vfs.
-        // 2. Make sure that the file actually has content when we try
-        //    to process it (the `vfs.exists()` checks below).
-
-        let mut changed_files = {
-            let mut guard = self.vfs.write();
-            guard.take_changes()
-        };
-        let docs = mem::take(&mut self.newly_opened_documents);
-        for change in docs {
-            match changed_files.entry(change.file_id) {
-                Entry::Occupied(_) => {}
-                Entry::Vacant(v) => {
-                    v.insert(change);
-                }
+        let changes = crate::reload::file_changes(
+            self.analysis_host.raw_database(),
+            &self.file_map,
+            mem::take(&mut self.pending_changes),
+            &self.line_ending_map.read(),
+        );
+        let mut changed_files: Vec<(FileId, ChangeKind)> = changes
+            .iter()
+            .map(|change| (change.file_id, change.kind))
+            .collect();
+        for file_id in mem::take(&mut self.newly_opened_documents) {
+            if !changed_files.iter().any(|(id, _)| *id == file_id) {
+                changed_files.push((file_id, ChangeKind::Modify));
             }
         }
 
@@ -1092,23 +1064,6 @@ impl Server {
         let changed = if no_file_work {
             false
         } else {
-            // Acquire a shared read lock while processing changes: the block
-            // below only reads the vfs (all mutation goes to salsa via
-            // `set_file_text`).
-            //
-            // Releasing the write lock above (after `take_changes()`) and
-            // reacquiring a read lock here is safe against a concurrent writer
-            // mutating the vfs in between: every vfs write happens on this
-            // server main loop, only while processing an event, in one of the
-            // `&mut self` methods `on_notification` (DidOpen/DidChange),
-            // `on_loader_loaded`, or here in `process_changes_to_vfs_store`.
-            // Background work only ever holds read-only `Snapshot` clones of
-            // the vfs Arc, never a write lock. Since we are currently executing
-            // one of those main-loop methods, no other writer can run, so the
-            // live vfs observed below matches the snapshot from `take_changes()`.
-            let guard = self.vfs.read();
-            let vfs: &Vfs = &guard;
-
             let raw_database = self.analysis_host.raw_database_mut();
 
             // Drain outstanding snapshots up-front, BEFORE the file-content writes
@@ -1142,28 +1097,28 @@ impl Server {
             // `to_proto::text_document_edit`).
             let line_ending_updates = {
                 let _phase = watchdog::phase("vfs_salsa_write");
-                crate::reload::apply_vfs_text_changes(raw_database, vfs, changed_files.values())
+                crate::reload::apply_file_changes(raw_database, &self.file_map, changes)
             };
             self.line_ending_map.write().extend(line_ending_updates);
 
             // Server-specific per-file processing
-            for (_, file) in &changed_files {
-                highest_file_id = highest_file_id.max(file.file_id.index());
-                let file_exists = vfs.exists(file.file_id);
+            for &(file_id, kind) in &changed_files {
+                highest_file_id = highest_file_id.max(file_id.index());
 
-                if file.change != vfs::Change::Delete && file_exists {
+                if kind != ChangeKind::Delete {
+                    let path = self.file_map.file_path(file_id);
                     if self.initial_load_status == InitialLoading::Done
-                        && let vfs::Change::Create(_, _) = &file.change
-                        && let Some(path) = vfs.file_path(file.file_id).as_path()
+                        && kind == ChangeKind::Create
+                        && let Some(path) = path.as_path()
                         && (path.extension() == Some("hrl") || path.extension() == Some("erl"))
                     {
                         self.reload_manager.lock().add(path.to_path_buf());
                     }
 
-                    if let Some(path) = vfs.file_path(file.file_id).as_path()
+                    if let Some(path) = path.as_path()
                         && let Some(owners) = self.unresolved_app_id_paths.get(&path.to_path_buf())
                     {
-                        set_app_data_ids_by_file(raw_database, file.file_id, owners);
+                        set_app_data_ids_by_file(raw_database, file_id, owners);
                         // This is not really necessary, but we do it
                         // to be able to check that we resolve them
                         // all eventually
@@ -1173,10 +1128,10 @@ impl Server {
 
                     // causes us to remove stale squiggles from the UI.
                     // We remove all that are only updated on save
-                    Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file.file_id, vec![]);
-                    Arc::make_mut(&mut self.eqwalizer_types).insert(file.file_id, Arc::new(vec![]));
+                    Arc::make_mut(&mut self.diagnostics).set_eqwalizer(file_id, vec![]);
+                    Arc::make_mut(&mut self.eqwalizer_types).insert(file_id, Arc::new(vec![]));
                     Arc::make_mut(&mut self.diagnostics)
-                        .set_erlang_service(file.file_id, LabeledDiagnostics::default());
+                        .set_erlang_service(file_id, LabeledDiagnostics::default());
                 }
             }
 
@@ -1191,7 +1146,7 @@ impl Server {
                     .iter()
                     .for_each(|(path, owners)| {
                         let vfs_path = VfsPath::from(path.clone());
-                        if let Some((file_id, _)) = vfs.file_id(&vfs_path) {
+                        if let Some(file_id) = self.file_map.file_id(&vfs_path) {
                             paths_to_remove.push(path.clone());
                             let index = Arc::make_mut(&mut app_data_index);
                             for app_data_id in owners.iter() {
@@ -1208,10 +1163,14 @@ impl Server {
 
             if self.reset_source_roots
                 || changed_files
-                    .into_values()
-                    .any(|file| file.is_created_or_deleted())
+                    .iter()
+                    .any(|(_, kind)| *kind != ChangeKind::Modify)
             {
-                crate::reload::apply_source_roots(raw_database, vfs, &self.file_set_config);
+                crate::reload::apply_source_roots(
+                    raw_database,
+                    &self.file_map,
+                    &self.file_set_config,
+                );
                 self.reset_source_roots = false;
             }
 
@@ -1254,11 +1213,14 @@ impl Server {
     }
 
     fn opened_documents(&self) -> Vec<FileId> {
-        let vfs = self.vfs.read();
         self.mem_docs
             .read()
             .iter()
-            .map(|path| vfs.file_id(path).unwrap().0)
+            .map(|path| {
+                self.file_map
+                    .file_id(path)
+                    .expect("an open document should exist")
+            })
             .collect()
     }
 
@@ -1502,11 +1464,9 @@ impl Server {
             let _phase = watchdog::phase("switch_workspaces:vfs_loader_config");
             self.vfs_loader.handle.set_config(vfs_loader_config);
         }
-        {
-            let mut vfs = self.vfs.write();
-            for (path, contents) in bundled_files(&project_apps) {
-                vfs.set_file_contents(path, Some(contents));
-            }
+        // Picked up in `process_changes_to_vfs_store`, like the loader's files.
+        for (path, contents) in bundled_files(&project_apps) {
+            self.pending_changes.insert(path, Some(contents));
         }
 
         self.projects = Arc::new(projects);
@@ -2285,13 +2245,13 @@ fn parse_id(id: lsp_types::Id) -> RequestId {
     }
 }
 
-pub fn file_id_to_path(vfs: &Vfs, id: FileId) -> Result<AbsPathBuf> {
-    let uri = file_id_to_uri(vfs, id);
+pub fn file_id_to_path(file_map: &FileMap, id: FileId) -> Result<AbsPathBuf> {
+    let uri = file_id_to_uri(file_map, id);
     convert::abs_path(&uri)
 }
 
-pub fn file_id_to_uri(vfs: &Vfs, id: FileId) -> Uri {
-    let path = vfs.file_path(id);
+pub fn file_id_to_uri(file_map: &FileMap, id: FileId) -> Uri {
+    let path = file_map.file_path(id);
     let path = path.as_path().unwrap();
     convert::uri_from_abs_path(path)
 }

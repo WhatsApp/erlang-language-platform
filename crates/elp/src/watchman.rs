@@ -22,6 +22,7 @@ use paths::Utf8PathBuf;
 use serde::Deserialize;
 
 use crate::build::types::LoadResult;
+use crate::reload::PendingChanges;
 
 pub struct Watchman {
     watch: PathBuf,
@@ -111,7 +112,7 @@ impl Watchman {
         }
 
         // Branches that throw away the in-memory project state can return
-        // without applying VFS changes — the daemon will rebuild from scratch
+        // without applying file changes — the daemon will rebuild from scratch
         // (or exit). Order matters: project-config changes shadow lint-config
         // and suite-file changes, which shadow ordinary source changes.
 
@@ -143,7 +144,7 @@ impl Watchman {
 
         // `.elp_lint.toml` change is hot-reloaded by the caller; the daemon
         // keeps its loaded project, so we MUST still apply any non-config
-        // changes from the same batch to VFS before advancing the clock —
+        // changes from the same batch before advancing the clock —
         // otherwise batched source-file changes are silently lost.
         let lint_config_changed = result
             .files
@@ -199,9 +200,9 @@ impl Watchman {
 
 /// Applies the source files in a watchman result, named relative to `watch`.
 pub(crate) fn apply_changes(watch: &Path, files: &[WatchmanFile], loaded: &mut LoadResult) {
-    let vfs = &mut loaded.vfs;
+    let mut pending = PendingChanges::default();
     for file in files {
-        // .elp_lint.toml itself is not tracked in VFS; the daemon's
+        // .elp_lint.toml itself is not tracked in the file map; the daemon's
         // reload path reads it via read_lint_config_file directly.
         if is_elp_lint_config_file(&file.name) {
             continue;
@@ -211,20 +212,20 @@ pub(crate) fn apply_changes(watch: &Path, files: &[WatchmanFile], loaded: &mut L
             Utf8PathBuf::from_path_buf(path.clone()).expect("UTF8 conversion failed"),
         ));
         if !file.exists {
-            vfs.set_file_contents(vfs_path, None);
+            pending.insert(vfs_path, None);
         } else {
             match fs::read(&path) {
                 Ok(contents) => {
-                    vfs.set_file_contents(vfs_path, Some(contents));
+                    pending.insert(vfs_path, Some(contents));
                 }
                 Err(err) => {
                     log::warn!("Cannot read file {path:?}: {err}, treating as deleted");
-                    vfs.set_file_contents(vfs_path, None);
+                    pending.insert(vfs_path, None);
                 }
             }
         }
     }
-    loaded.apply_vfs_changes();
+    loaded.apply_file_changes(pending);
 }
 
 pub enum UpdateResult {

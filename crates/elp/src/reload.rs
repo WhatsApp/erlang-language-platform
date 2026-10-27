@@ -9,27 +9,31 @@
  */
 
 use std::cmp;
+use std::hash::BuildHasherDefault;
 use std::sync::Arc;
 
 use elp_ide::elp_ide_db::RootDatabase;
+use elp_ide::elp_ide_db::elp_base_db::ChangeKind;
+use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::SourceRoot;
 use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
-use elp_ide::elp_ide_db::elp_base_db::Vfs;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_project_model::ProjectAppData;
 use elp_project_model::ProjectBuildData;
 use elp_project_model::buck::BuckProject;
 use elp_project_model::eqwalizer_support;
+use fxhash::FxHashMap;
 use fxhash::FxHashSet;
+use fxhash::FxHasher;
 use include_dir::Dir;
 use include_dir::include_dir;
+use indexmap::IndexMap;
 use vfs::AbsPathBuf;
-use vfs::ChangedFile;
 use vfs::FileId;
 
 use crate::document::Document;
@@ -244,8 +248,72 @@ fn loader_config(project_apps: &ProjectApps<'_>) -> Vec<loader::Entry> {
     load
 }
 
-/// Apply text changes to the salsa database and return the per-file line-ending
-/// updates for the caller to merge into its line-ending map.
+/// New file contents by path, `None` for a deleted file. The last write to a
+/// path wins, and paths are processed in the order they were first written.
+pub type PendingChanges = IndexMap<VfsPath, Option<Vec<u8>>, BuildHasherDefault<FxHasher>>;
+
+pub struct FileChange {
+    pub file_id: FileId,
+    pub kind: ChangeKind,
+    /// `None` for a deleted file.
+    line_endings: Option<LineEndings>,
+    /// `None` if only the line endings changed.
+    text: Option<Arc<str>>,
+}
+
+/// The pending changes whose text or line endings differ from what is held.
+/// Reads the database without writing it, so it can run before snapshots are
+/// drained. Interns new paths.
+pub fn file_changes(
+    db: &RootDatabase,
+    file_map: &FileMap,
+    pending: PendingChanges,
+    line_endings: &FxHashMap<FileId, LineEndings>,
+) -> Vec<FileChange> {
+    pending
+        .into_iter()
+        .filter_map(|(path, contents)| {
+            let file_id = file_map.intern(path);
+            let existed = file_map.exists(file_id);
+            let Some(contents) = contents else {
+                return existed.then(|| FileChange {
+                    file_id,
+                    kind: ChangeKind::Delete,
+                    line_endings: None,
+                    text: Some(Arc::from("")),
+                });
+            };
+            // Text held with Unix line endings has no `\r`, so bytes equal to it
+            // decode and normalise to themselves: an unchanged file is
+            // recognised without allocating.
+            if existed
+                && line_endings.get(&file_id) == Some(&LineEndings::Unix)
+                && db.file_text(file_id).text(db).as_bytes() == contents.as_slice()
+            {
+                return None;
+            }
+            let (text, line_ending) = Document::from_bytes(&contents).vfs_to_salsa();
+            let text_changed = !existed || *db.file_text(file_id).text(db) != *text;
+            if !text_changed && line_endings.get(&file_id) == Some(&line_ending) {
+                return None;
+            }
+            Some(FileChange {
+                file_id,
+                kind: if existed {
+                    ChangeKind::Modify
+                } else {
+                    ChangeKind::Create
+                },
+                line_endings: Some(line_ending),
+                text: text_changed.then(|| Arc::from(text)),
+            })
+        })
+        .collect()
+}
+
+/// Apply changes to the salsa database and the file map, and return the
+/// per-file line-ending updates for the caller to merge into its line-ending
+/// map.
 ///
 /// NOTE: this deliberately does NOT take the line-ending map (which in the LSP
 /// server lives behind a `RwLock`). The first `set_file_text` here triggers
@@ -266,29 +334,28 @@ fn loader_config(project_apps: &ProjectApps<'_>) -> Vec<loader::Entry> {
 /// guard and a handler reading `file_text` for a colliding shard deadlocks.
 /// Draining first moves the blocking wait out from under the shard guard.
 /// (CLI/one-shot callers with no concurrent handlers are unaffected.)
-pub fn apply_vfs_text_changes<'a>(
+pub fn apply_file_changes(
     db: &mut RootDatabase,
-    vfs: &Vfs,
-    changed_files: impl IntoIterator<Item = &'a ChangedFile>,
+    file_map: &FileMap,
+    changes: Vec<FileChange>,
 ) -> Vec<(FileId, LineEndings)> {
     let mut line_ending_updates = Vec::new();
-    for file in changed_files {
-        if file.change != vfs::Change::Delete && vfs.exists(file.file_id) {
-            if let vfs::Change::Create(v, _) | vfs::Change::Modify(v, _) = &file.change {
-                let document = Document::from_bytes(v);
-                let (text, line_ending) = document.vfs_to_salsa();
-                db.set_file_text(file.file_id, Arc::from(text));
-                line_ending_updates.push((file.file_id, line_ending));
-            }
-        } else {
-            db.set_file_text(file.file_id, Arc::from(""));
+    for change in changes {
+        if let Some(text) = change.text {
+            db.set_file_text(change.file_id, text);
         }
+        file_map.set_exists(change.file_id, change.kind != ChangeKind::Delete);
+        line_ending_updates.extend(change.line_endings.map(|le| (change.file_id, le)));
     }
     line_ending_updates
 }
 
-pub fn apply_source_roots(db: &mut RootDatabase, vfs: &Vfs, file_set_config: &FileSetConfig) {
-    let sets = file_set_config.partition(vfs);
+pub fn apply_source_roots(
+    db: &mut RootDatabase,
+    file_map: &FileMap,
+    file_set_config: &FileSetConfig,
+) {
+    let sets = file_set_config.partition(file_map);
     for (idx, set) in sets.into_iter().enumerate() {
         let root_id = SourceRootId(idx as u32);
         for file_id in set.iter() {
@@ -296,5 +363,130 @@ pub fn apply_source_roots(db: &mut RootDatabase, vfs: &Vfs, file_set_config: &Fi
         }
         let root = SourceRoot::new(set);
         db.set_source_root(root_id, Arc::new(root));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use elp_ide::elp_ide_db::RootDatabase;
+    use elp_ide::elp_ide_db::elp_base_db::ChangeKind;
+    use elp_ide::elp_ide_db::elp_base_db::FileMap;
+    use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
+    use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+    use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
+    use fxhash::FxHashMap;
+    use vfs::FileId;
+
+    use super::apply_file_changes;
+    use super::file_changes;
+    use crate::line_endings::LineEndings;
+
+    #[derive(Default)]
+    struct Files {
+        db: RootDatabase,
+        file_map: FileMap,
+        line_endings: FxHashMap<FileId, LineEndings>,
+    }
+
+    impl Files {
+        /// Applies `changes` as one batch, and returns what changed.
+        fn apply(&mut self, changes: &[(&str, Option<&str>)]) -> Vec<(FileId, ChangeKind)> {
+            let pending = changes
+                .iter()
+                .map(|(path, text)| (path_of(path), text.map(|text| text.as_bytes().to_vec())))
+                .collect();
+            let changes = file_changes(&self.db, &self.file_map, pending, &self.line_endings);
+            let changed = changes
+                .iter()
+                .map(|change| (change.file_id, change.kind))
+                .collect();
+            let updates = apply_file_changes(&mut self.db, &self.file_map, changes);
+            self.line_endings.extend(updates);
+            changed
+        }
+
+        fn text(&self, file_id: FileId) -> String {
+            self.db.file_text(file_id).text(&self.db).to_string()
+        }
+    }
+
+    fn path_of(path: &str) -> VfsPath {
+        VfsPath::new_real_path(path.to_string())
+    }
+
+    #[test]
+    fn identical_contents_record_no_change() {
+        let mut files = Files::default();
+        let created = files.apply(&[("/a.erl", Some("-module(a)."))]);
+        let file_id = files.file_map.file_id(&path_of("/a.erl")).unwrap();
+        assert_eq_expected!(vec![(file_id, ChangeKind::Create)], created);
+
+        let reloaded = files.apply(&[("/a.erl", Some("-module(a)."))]);
+        assert_eq_expected!(Vec::<(FileId, ChangeKind)>::new(), reloaded);
+
+        let modified = files.apply(&[("/a.erl", Some("-module(b)."))]);
+        assert_eq_expected!(vec![(file_id, ChangeKind::Modify)], modified);
+        assert_eq_expected!("-module(b).", files.text(file_id));
+    }
+
+    #[test]
+    fn the_last_write_to_a_path_in_a_batch_wins() {
+        let mut files = Files::default();
+        let changed = files.apply(&[
+            ("/a.erl", Some("-module(first).")),
+            ("/b.erl", None),
+            ("/a.erl", None),
+            ("/a.erl", Some("-module(last).")),
+        ]);
+
+        // `/b.erl` never existed, so deleting it is no change, though it is
+        // interned after `/a.erl`, in the order the paths were first written.
+        let file_id = FileId::from_raw(0);
+        assert_eq_expected!(vec![(file_id, ChangeKind::Create)], changed);
+        assert_eq_expected!("-module(last).", files.text(file_id));
+        assert_eq_expected!(None, files.file_map.file_id(&path_of("/b.erl")));
+        assert_eq_expected!(
+            FileId::from_raw(1),
+            files.file_map.intern(path_of("/b.erl"))
+        );
+    }
+
+    #[test]
+    fn a_deleted_file_is_emptied_and_keeps_its_id() {
+        let mut files = Files::default();
+        files.apply(&[("/a.erl", Some("-module(a)."))]);
+        let file_id = files.file_map.file_id(&path_of("/a.erl")).unwrap();
+
+        let deleted = files.apply(&[("/a.erl", None)]);
+        assert_eq_expected!(vec![(file_id, ChangeKind::Delete)], deleted);
+        assert_eq_expected!("", files.text(file_id));
+        assert_eq_expected!(None, files.file_map.file_id(&path_of("/a.erl")));
+
+        let recreated = files.apply(&[("/a.erl", Some("-module(a)."))]);
+        assert_eq_expected!(vec![(file_id, ChangeKind::Create)], recreated);
+        assert_eq_expected!(Some(file_id), files.file_map.file_id(&path_of("/a.erl")));
+    }
+
+    #[test]
+    fn a_change_of_line_endings_alone_is_a_modification() {
+        let mut files = Files::default();
+        files.apply(&[("/a.erl", Some("-module(a).\n"))]);
+        let file_id = files.file_map.file_id(&path_of("/a.erl")).unwrap();
+
+        let modified = files.apply(&[("/a.erl", Some("-module(a).\r\n"))]);
+        assert_eq_expected!(vec![(file_id, ChangeKind::Modify)], modified);
+        assert_eq_expected!("-module(a).\n", files.text(file_id));
+        assert_eq_expected!(Some(&LineEndings::Dos), files.line_endings.get(&file_id));
+    }
+
+    #[test]
+    fn a_change_back_to_unix_line_endings_is_a_modification() {
+        let mut files = Files::default();
+        files.apply(&[("/a.erl", Some("-module(a).\r\n"))]);
+        let file_id = files.file_map.file_id(&path_of("/a.erl")).unwrap();
+
+        let modified = files.apply(&[("/a.erl", Some("-module(a).\n"))]);
+        assert_eq_expected!(vec![(file_id, ChangeKind::Modify)], modified);
+        assert_eq_expected!(Some(&LineEndings::Unix), files.line_endings.get(&file_id));
     }
 }

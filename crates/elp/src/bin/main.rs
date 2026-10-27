@@ -1654,7 +1654,7 @@ mod tests {
             .unwrap()
             .file_for_module(&ModuleName::new("eqwalizer_specs"))
             .expect("the bundled eqwalizer_specs should be in the module index");
-        let path = loaded.vfs.file_path(file_id).to_string();
+        let path = loaded.file_map.file_path(file_id).to_string();
         assert!(
             path.ends_with("/eqwalizer_support/src/eqwalizer_specs.erl"),
             "eqwalizer_specs should come from the bundled app, got {path}"
@@ -1708,7 +1708,7 @@ mod tests {
             .unwrap()
             .file_for_module(&ModuleName::new("eqwalizer_specs"))
             .expect("eqwalizer_specs should be in the module index");
-        let path = loaded.vfs.file_path(file_id).to_string();
+        let path = loaded.file_map.file_path(file_id).to_string();
         assert!(
             path.ends_with("/standard/eqwalizer/src/eqwalizer_specs.erl"),
             "eqwalizer_specs should come from the project's own eqwalizer app, got {path}"
