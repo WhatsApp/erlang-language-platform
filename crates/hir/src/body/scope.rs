@@ -40,7 +40,6 @@ use la_arena::ArenaMap;
 use la_arena::Idx;
 
 use super::FoldBody;
-use crate::Body;
 use crate::CRClause;
 use crate::ComprehensionBuilder;
 use crate::ComprehensionExpr;
@@ -57,8 +56,18 @@ use crate::expr::ClauseId;
 use crate::expr::MaybeExpr;
 use crate::fold::MacroStrategy;
 use crate::fold::ParenStrategy;
+use crate::fold::Strategy;
 
 pub type ScopeId = Idx<ScopeData>;
+
+/// Scopes are computed over a body that shows macro calls and parentheses:
+/// the `MacroCall` arms scope both the expansion and the arguments, and the
+/// `Paren` arms pass the enclosing scope through to the inner node, so it gets
+/// a scope too.
+const STRATEGY: Strategy = Strategy {
+    macros: MacroStrategy::ExpandButIncludeMacroCall,
+    parens: ParenStrategy::VisibleParens,
+};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct FunctionScopes {
@@ -227,7 +236,9 @@ impl FunctionScopes {
 }
 
 impl ExprScopes {
-    fn for_clause(body: &FunctionClauseBody, anonymous_var: Var) -> ExprScopes {
+    fn for_clause(clause_body: &FunctionClauseBody, anonymous_var: Var) -> ExprScopes {
+        let body = clause_body.body.index_with_strategy(STRATEGY);
+        let clause = &clause_body.clause;
         let mut scopes = ExprScopes {
             scopes: Arena::default(),
             scope_by_expr: FxHashMap::default(),
@@ -236,14 +247,14 @@ impl ExprScopes {
         };
         let mut root = scopes.root_scope();
         let mut vt = VarTable::default();
-        scopes.add_params_bindings(&body.body, &mut root, &body.clause.pats, &mut vt);
-        for exprs in &body.clause.guards {
+        scopes.add_params_bindings(&body, &mut root, &clause.pats, &mut vt);
+        for exprs in &clause.guards {
             for expr_id in exprs {
-                compute_expr_scopes(*expr_id, &body.body, &mut scopes, &mut root, &mut vt);
+                compute_expr_scopes(*expr_id, &body, &mut scopes, &mut root, &mut vt);
             }
         }
-        for expr_id in &body.clause.exprs {
-            compute_expr_scopes(*expr_id, &body.body, &mut scopes, &mut root, &mut vt);
+        for expr_id in &clause.exprs {
+            compute_expr_scopes(*expr_id, &body, &mut scopes, &mut root, &mut vt);
         }
         scopes
     }
@@ -288,21 +299,14 @@ impl ExprScopes {
 
     fn add_bindings(
         &mut self,
-        body: &Body,
+        body: &FoldBody,
         scope: &mut ScopeId,
         pat: PatId,
         vt: &mut VarTable,
         add_bindings: AddBinding,
     ) {
         self.set_scope_pat(pat, *scope);
-        // `ExpandButIncludeMacroCall`: the `Pat::MacroCall` arm below scopes the
-        // expansion *and* the arguments.
-        let pattern = &(FoldBody {
-            body,
-            macros: MacroStrategy::ExpandButIncludeMacroCall,
-            parens: ParenStrategy::VisibleParens,
-        })[pat];
-        match pattern {
+        match &body[pat] {
             crate::Pat::Missing => {}
             crate::Pat::Literal(_) => {}
             crate::Pat::Var(var) => {
@@ -392,7 +396,7 @@ impl ExprScopes {
 
     fn add_params_bindings(
         &mut self,
-        body: &Body,
+        body: &FoldBody,
         scope: &mut ScopeId,
         params: &[PatId],
         vt: &mut VarTable,
@@ -410,20 +414,13 @@ impl ExprScopes {
 
 fn compute_expr_scopes(
     expr: ExprId,
-    body: &Body,
+    body: &FoldBody,
     scopes: &mut ExprScopes,
     scope: &mut ScopeId,
     vt: &mut VarTable,
 ) {
     scopes.set_scope_expr(expr, *scope);
-    // `ExpandButIncludeMacroCall`: the `Expr::MacroCall` arm below scopes the
-    // expansion *and* the arguments.
-    match &(FoldBody {
-        body,
-        macros: MacroStrategy::ExpandButIncludeMacroCall,
-        parens: ParenStrategy::VisibleParens,
-    })[expr]
-    {
+    match &body[expr] {
         crate::Expr::Missing => {}
         crate::Expr::Literal(_) => {}
         crate::Expr::Var(_) => {}
@@ -810,7 +807,7 @@ fn compute_expr_scopes(
 }
 
 fn compute_comprehension_expr_scopes(
-    body: &Body,
+    body: &FoldBody,
     scopes: &mut ExprScopes,
     sub_vt: &mut VarTable,
     scope: &mut Idx<ScopeData>,
@@ -893,7 +890,7 @@ fn compute_comprehension_expr_scopes(
 
 fn compute_clause_scopes(
     clauses: &[CRClause],
-    body: &Body,
+    body: &FoldBody,
     scopes: &mut ExprScopes,
     scope: &mut ScopeId,
     vt: &mut VarTable,
