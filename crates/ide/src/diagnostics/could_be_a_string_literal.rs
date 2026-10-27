@@ -590,11 +590,6 @@ mod tests {
          -module(erlang).
          -export([atom_to_list/1]).
          atom_to_list(_Atom) -> error(not_impl).
-
-         //- /src/erlang.erl
-         -module(erlang).
-         -export([atom_to_list/1]).
-         atom_to_list(_Atom) -> error(not_impl).
             "#,
             expect![[r#"
          -module(main).
