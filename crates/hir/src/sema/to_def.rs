@@ -821,7 +821,7 @@ impl ToDef for ast::ExprArgs {
     }
 }
 
-use super::dynamic_calls::lookup_pattern;
+use super::dynamic_calls::lookup_dynamic_pattern;
 
 pub(crate) fn look_for_dynamic_call(
     sema: &Semantic,
@@ -841,7 +841,7 @@ pub(crate) fn look_for_dynamic_call(
     let function_atom = body[fun].as_atom()?;
     let function_name = function_atom.as_name();
 
-    let pattern = lookup_pattern(
+    let pattern = lookup_dynamic_pattern(
         sema.db.upcast(),
         module_name.as_ref().map(|name| name.as_str()),
         function_name.as_str(),

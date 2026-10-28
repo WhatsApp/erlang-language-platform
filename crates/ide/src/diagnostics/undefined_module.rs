@@ -22,7 +22,7 @@ use elp_ide_db::elp_base_db::FileRange;
 use hir::CallTarget;
 use hir::ExprId;
 use hir::Name;
-use hir::sema::dynamic_calls::lookup_pattern;
+use hir::sema::dynamic_calls::lookup_dynamic_pattern;
 
 use super::DiagnosticCode;
 use crate::FunctionMatch;
@@ -133,7 +133,7 @@ fn dynamic_call_module(
 ) -> Option<ExprId> {
     let def_fb = context.in_clause;
     let function = def_fb.as_atom_name(function)?;
-    let pattern = lookup_pattern(
+    let pattern = lookup_dynamic_pattern(
         def_fb.sema.db.upcast(),
         module.map(Name::as_str),
         function.as_str(),

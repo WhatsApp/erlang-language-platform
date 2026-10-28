@@ -716,7 +716,8 @@ fn rename_module_arg_in_call(
     // Single lookup — the pattern's `module_arg_shape` (Atom / List /
     // Either) tells us which call-site shapes are accepted for this
     // signature. Inspect the actual arg and operate accordingly.
-    let pattern = hir::sema::dynamic_calls::lookup_pattern(db, module_name, function_name, arity)?;
+    let pattern =
+        hir::sema::dynamic_calls::lookup_dynamic_pattern(db, module_name, function_name, arity)?;
     let module_idx = pattern.module_arg_index?;
     let arg = args_vec.get(module_idx as usize)?;
     let shape = pattern.module_arg_shape;

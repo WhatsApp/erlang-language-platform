@@ -148,7 +148,7 @@ static BUILTIN: LazyLock<FxHashMap<PatternKey, DynamicCallPatternInput>> =
 /// Returns `Cow::Borrowed` for built-in patterns (zero-cost, no heap
 /// allocation) and `Cow::Owned` for extra patterns (cloned from the
 /// salsa-managed `Arc`).
-pub fn lookup_pattern<'a>(
+pub fn lookup_dynamic_pattern<'a>(
     db: &dyn elp_base_db::RootQueryDb,
     module: Option<&str>,
     function: &str,
