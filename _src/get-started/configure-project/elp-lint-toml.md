@@ -256,7 +256,7 @@ Each argument name has a special meaning:
 
 There are two kinds of patterns:
 
-1. **Dynamic call patterns** — include `Function` and `Args`/`Arity`/`FunArity`. Used by find-references to resolve dynamic calls.
+1. **Dynamic call patterns** — include `Function` and `Args`/`Arity`/`FunArity`. Used by find-references to resolve dynamic calls. Those with `Module` and `Args` are also checked for undefined modules by [W0089](../../erlang-error-index/w/W0089.md).
 2. **Module-arg-only patterns** — include only `Module` or `[Module]`, without `Function`/`Args`/`Arity`/`FunArity`. Used by rename to track module name arguments.
 
 **Example:**
