@@ -171,6 +171,7 @@ mod simplify_maps_merge;
 mod simplify_negation;
 mod trivial_match;
 mod unavailable_function;
+mod unavailable_module;
 mod unavailable_type;
 mod undefined_function;
 mod undefined_macro;
@@ -2247,6 +2248,7 @@ const FUNCTION_CALL_LINTERS: &[&dyn FunctionCallDiagnostics] = &[
     &undefined_function::LINTER,
     &unavailable_function::LINTER,
     &undefined_module::LINTER,
+    &unavailable_module::LINTER,
     &unexported_function::LINTER,
     &cross_node_eval::LINTER,
     &meck_restricted::LINTER,
