@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.10.0">
 <title data-rh="true">W0088 - Unnecessary function argument | ELP</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://whatsapp.github.io/erlang-language-platform/docs/erlang-error-index/w/W0088/"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="W0088 - Unnecessary function argument | ELP"><meta data-rh="true" name="description" content="Error"><meta data-rh="true" property="og:description" content="Error"><link data-rh="true" rel="icon" href="/erlang-language-platform/img/elp_icon_color.svg"><link data-rh="true" rel="canonical" href="https://whatsapp.github.io/erlang-language-platform/docs/erlang-error-index/w/W0088/"><link data-rh="true" rel="alternate" href="https://whatsapp.github.io/erlang-language-platform/docs/erlang-error-index/w/W0088/" hreflang="en"><link data-rh="true" rel="alternate" href="https://whatsapp.github.io/erlang-language-platform/docs/erlang-error-index/w/W0088/" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Erlang Error Index","item":"https://whatsapp.github.io/erlang-language-platform/docs/erlang-error-index/"},{"@type":"ListItem","position":2,"name":"W0088 - Unnecessary function argument","item":"https://whatsapp.github.io/erlang-language-platform/docs/erlang-error-index/w/W0088"}]}</script><link rel="stylesheet" href="/erlang-language-platform/assets/css/styles.fdd88167.css">
-<script src="/erlang-language-platform/assets/js/runtime~main.272292de.js" defer="defer"></script>
-<script src="/erlang-language-platform/assets/js/main.2c6dd1a7.js" defer="defer"></script>
+<script src="/erlang-language-platform/assets/js/runtime~main.fc519e6a.js" defer="defer"></script>
+<script src="/erlang-language-platform/assets/js/main.936800be.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -23,7 +23,8 @@ unused.</p>
 <p>The diagnostic is only reported when removing the argument is a local change:</p>
 <ul>
 <li class="">the function is not exported, the module does not use <code>export_all</code> or a
-parse transform, and the function is not under conditional compilation</li>
+parse transform and is not a parse transform itself, and the function is
+not under conditional compilation</li>
 <li class="">every reference to the function is an unqualified call with all its
 arguments in its own module, or its <code>-spec</code>, and none of the calls goes
 through a macro, including <code>?FUNCTION_NAME</code></li>
