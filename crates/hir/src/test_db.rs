@@ -22,9 +22,6 @@ use elp_base_db::FileId;
 use elp_base_db::FileRange;
 use elp_base_db::FileSourceRootInput;
 use elp_base_db::Files;
-use elp_base_db::ProjectData;
-use elp_base_db::ProjectDataInput;
-use elp_base_db::ProjectId;
 use elp_base_db::RootQueryDb;
 use elp_base_db::SourceAppDataInput;
 use elp_base_db::SourceDatabase;
@@ -110,15 +107,6 @@ impl SourceDatabase for TestDB {
     fn set_app_data_id(&mut self, id: SourceRootId, app_data_id: AppDataId) {
         let files = self.files.clone();
         files.set_source_app_data(self, id, app_data_id)
-    }
-
-    fn project_data(&self, project_id: ProjectId) -> ProjectDataInput {
-        self.files.project_data(project_id)
-    }
-
-    fn set_project_data(&mut self, id: ProjectId, project_data: Arc<ProjectData>) {
-        let files = self.files.clone();
-        files.set_project_data(self, id, project_data)
     }
 }
 

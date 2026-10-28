@@ -20,9 +20,6 @@ use crate::AppDataInput;
 use crate::File;
 use crate::FileSourceRootInput;
 use crate::Files;
-use crate::ProjectData;
-use crate::ProjectDataInput;
-use crate::ProjectId;
 use crate::SourceAppDataInput;
 use crate::SourceDatabase;
 use crate::SourceRoot;
@@ -83,14 +80,5 @@ impl SourceDatabase for TestDB {
     fn set_app_data_id(&mut self, id: SourceRootId, app_data_id: AppDataId) {
         let files = self.files.clone();
         files.set_source_app_data(self, id, app_data_id)
-    }
-
-    fn project_data(&self, project_id: ProjectId) -> ProjectDataInput {
-        self.files.project_data(project_id)
-    }
-
-    fn set_project_data(&mut self, id: ProjectId, project_data: Arc<ProjectData>) {
-        let files = self.files.clone();
-        files.set_project_data(self, id, project_data)
     }
 }

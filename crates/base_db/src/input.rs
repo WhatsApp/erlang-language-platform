@@ -8,15 +8,13 @@
  * above-listed licenses.
  */
 
-use std::borrow::Borrow;
-use std::hash::Hash;
+use std::fmt;
 use std::path::Path;
 use std::sync::Arc;
 
 use elp_project_model::AppName;
 use elp_project_model::AppType;
 use elp_project_model::EqwalizerConfig;
-use elp_project_model::Project;
 use elp_project_model::ProjectAppData;
 use elp_project_model::buck::BuckProjectIndex;
 use elp_project_model::buck::TargetFullName;
@@ -24,6 +22,7 @@ use fxhash::FxHashMap;
 use fxhash::FxHashSet;
 use paths::RelPath;
 use paths::Utf8Path;
+use salsa::plumbing::AsId;
 use vfs::AbsPathBuf;
 use vfs::FileId;
 use vfs::VfsPath;
@@ -103,27 +102,94 @@ impl SourceRoot {
     }
 }
 
-/// Source roots (apps) are grouped into projects that share some
-/// of the configuration
+/// A project's position in [`Workspace::projects`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ProjectId(pub u32);
 
 /// The loaded projects.
 #[salsa::input(singleton, debug)]
 pub struct Workspace {
+    /// In [`ProjectId`] order.
+    #[returns(ref)]
+    pub projects: Arc<[Project]>,
+    /// The inputs of the projects that are no longer loaded, with their large
+    /// fields cleared, for lowering to give back to a project that returns. No
+    /// query reads them.
+    #[returns(ref)]
+    pub removed_projects: Arc<[Project]>,
     /// Bumped whenever the erlang_service pool drops its VMs. The queries that
     /// ask a VM read it, so that they run again on a new one.
     pub vm_epoch: u64,
 }
 
-/// `ProjectData` is stored in salsa, indexed by `ProjectId`
+#[salsa::input]
+pub struct Project {
+    #[returns(ref)]
+    pub root: VfsPath,
+    /// The OTP project, whose own link is to itself; `None` when OTP isn't
+    /// loaded.
+    pub otp: Option<Project>,
+    #[returns(ref)]
+    pub buck_index: Option<Arc<BuckProjectIndex>>,
+    /// The dependencies' ebin directories, in code-path order. Selects the
+    /// erlang_service VM.
+    #[returns(ref)]
+    pub code_path: Arc<[AbsPathBuf]>,
+    #[returns(ref)]
+    pub eqwalizer_config: EqwalizerConfig,
+    /// The source roots of the apps, in the order the loader gave the apps.
+    #[returns(ref)]
+    pub source_roots: Arc<[SourceRootId]>,
+}
+
+#[salsa::tracked]
+impl Project {
+    /// The project's fields as [`ProjectData`].
+    #[salsa::tracked]
+    pub fn project_data(self, db: &dyn RootQueryDb) -> Arc<ProjectData> {
+        Arc::new(ProjectData {
+            source_roots: self.source_roots(db).to_vec(),
+            root_dir: real_path(self.root(db)),
+            otp_project_id: self.otp(db).map(|otp| project_id(db, otp)),
+            eqwalizer_config: self.eqwalizer_config(db).clone(),
+            buck_index: self.buck_index(db).clone(),
+        })
+    }
+
+    /// The source root of the app `name` refers to in the project: the last
+    /// app of the project with that name, in the order the loader gave them,
+    /// else the OTP app with that name.
+    #[salsa::tracked]
+    pub fn app_named(self, db: &dyn RootQueryDb, name: AppName) -> Option<SourceRootId> {
+        let find = |project: Project| {
+            project
+                .source_roots(db)
+                .iter()
+                .rev()
+                .copied()
+                .find(|&source_root_id| {
+                    db.app_data(source_root_id)
+                        .is_some_and(|app_data| app_data.name == name)
+                })
+        };
+        find(self).or_else(|| self.otp(db).filter(|&otp| otp != self).and_then(find))
+    }
+}
+
+// Only the id: the OTP project links to itself, and salsa's derived `Debug`
+// would follow that cycle.
+impl fmt::Debug for Project {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Project").field(&self.as_id()).finish()
+    }
+}
+
+/// Some fields of a [`Project`], for the consumers that read them this way.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProjectData {
     pub source_roots: Vec<SourceRootId>,
     pub root_dir: AbsPathBuf,
-    pub deps_ebins: Vec<AbsPathBuf>,
     pub otp_project_id: Option<ProjectId>,
-    pub app_roots: AppRoots,
     pub eqwalizer_config: EqwalizerConfig,
     pub buck_index: Option<Arc<BuckProjectIndex>>,
 }
@@ -189,7 +255,6 @@ impl AppData {
 #[derive(Debug, Clone, Default /* Serialize, Deserialize */)]
 pub struct AppStructure {
     pub(crate) app_map: FxHashMap<SourceRootId, AppMapData>,
-    pub(crate) project_map: FxHashMap<ProjectId, ProjectData>,
     pub(crate) catch_all_source_root: SourceRootId,
 }
 
@@ -222,11 +287,6 @@ impl AppStructure {
         assert!(prev.is_none());
     }
 
-    pub fn add_project_data(&mut self, project_id: ProjectId, project_data: ProjectData) {
-        let prev = self.project_map.insert(project_id, project_data);
-        assert!(prev.is_none());
-    }
-
     /// Set the salsa inputs according to this AppStructure, and return the app
     /// of each generated source file. Each path an app lists gets a `FileId`
     /// from `file_map`, whether or not the file has loaded.
@@ -253,9 +313,6 @@ impl AppStructure {
             }
             app_data_id = AppDataId(app_data_id.0 + 1);
         }
-        for (project_id, project_data) in self.project_map {
-            db.set_project_data(project_id, Arc::new(project_data));
-        }
         db.set_app_index(Arc::new(app_index));
         db.set_catch_all_source_root(self.catch_all_source_root);
 
@@ -263,31 +320,32 @@ impl AppStructure {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct AppRoots {
-    otp: Option<Arc<AppRoots>>,
-    app_map: FxHashMap<AppName, SourceRootId>,
+/// The projects in [`ProjectId`] order, none before the first lowering.
+pub(crate) fn workspace_projects(db: &dyn RootQueryDb) -> Arc<[Project]> {
+    Workspace::try_get(db)
+        .map(|workspace| workspace.projects(db).clone())
+        .unwrap_or_default()
 }
 
-impl AppRoots {
-    pub fn insert(&mut self, app: AppName, source_root_id: SourceRootId) {
-        self.app_map.insert(app, source_root_id);
-    }
+pub(crate) fn project_by_id(db: &dyn RootQueryDb, id: ProjectId) -> Project {
+    *workspace_projects(db)
+        .get(id.0 as usize)
+        .unwrap_or_else(|| panic!("{id:?} should be a loaded project"))
+}
 
-    pub fn set_otp(&mut self, otp: Option<Arc<AppRoots>>) {
-        self.otp = otp;
-    }
+pub(crate) fn project_id(db: &dyn RootQueryDb, project: Project) -> ProjectId {
+    let idx = workspace_projects(db)
+        .iter()
+        .position(|loaded| *loaded == project)
+        .expect("the project should be loaded");
+    ProjectId(idx as u32)
+}
 
-    pub fn get<Q>(&self, app: &Q) -> Option<SourceRootId>
-    where
-        AppName: Borrow<Q>,
-        Q: Hash + Eq + ?Sized,
-    {
-        self.app_map
-            .get(app)
-            .cloned()
-            .or_else(|| self.otp.as_ref().and_then(|otp| otp.get(app)))
-    }
+/// Lowering gives projects only real paths.
+fn real_path(path: &VfsPath) -> AbsPathBuf {
+    path.as_path()
+        .expect("lowering should give only real paths")
+        .to_path_buf()
 }
 
 // ---------------------------------------------------------------------
@@ -311,12 +369,15 @@ pub struct ProjectApps<'a> {
     /// Sometimes we don't have an OTP project because we are explicitly
     /// opting out of using it, e.g. for eqWAlizer compatibility
     pub otp_project_id: Option<ProjectId>,
-    // We store the original projects to we can make the AppStructure later
-    pub projects: Vec<Project>,
+    /// The projects, in `ProjectId` order.
+    pub projects: Vec<elp_project_model::Project>,
 }
 
 impl<'a> ProjectApps<'a> {
-    pub fn new(projects: &'a [Project], include_otp: IncludeOtp) -> ProjectApps<'a> {
+    pub fn new(
+        projects: &'a [elp_project_model::Project],
+        include_otp: IncludeOtp,
+    ) -> ProjectApps<'a> {
         let mut all_apps: Vec<(ProjectId, &ProjectAppData)> = projects
             .iter()
             .enumerate()
@@ -340,9 +401,7 @@ impl<'a> ProjectApps<'a> {
                 .map(|app| (otp_project_id, app))
                 .collect();
             all_apps.append(&mut all_otp_apps);
-            // The only part of this we (currently) use in
-            // ProjectApps::app_structure() is Project.otp
-            let otp_project = Project::otp(
+            let otp_project = elp_project_model::Project::otp(
                 first_project.otp.clone(),
                 first_project.otp_apps().cloned().collect(),
             );
@@ -373,23 +432,14 @@ impl<'a> ProjectApps<'a> {
                 .push(appdata);
         }
 
-        let mut project_root_map = app_source_roots(&self.all_apps);
-        let otp_root = self
-            .otp_project_id
-            .and_then(|otp_project_id| project_root_map.get(&otp_project_id))
-            .cloned()
-            .map(Arc::new);
-
-        for (project_idx, project) in self.projects.iter().enumerate() {
+        for project_idx in 0..self.projects.len() {
             let project_id = ProjectId(project_idx as u32);
             let empty = vec![];
             let apps = apps_by_project.get(&project_id).unwrap_or(&empty);
 
-            let mut project_source_roots = vec![];
             for app in apps {
                 let root_id = SourceRootId(app_idx);
                 app_idx += 1;
-                project_source_roots.push(root_id);
                 let input_data = AppData {
                     project_id,
                     name: app.name.clone(),
@@ -412,23 +462,6 @@ impl<'a> ProjectApps<'a> {
                     app.gen_src_files.clone(),
                 );
             }
-
-            let mut app_roots = project_root_map.remove(&project_id).unwrap_or_default();
-
-            if self.otp_project_id != Some(project_id) {
-                app_roots.set_otp(otp_root.clone());
-            }
-
-            let project_data = ProjectData {
-                source_roots: project_source_roots,
-                root_dir: project.root().into_owned(),
-                deps_ebins: project.deps_ebins(),
-                otp_project_id: self.otp_project_id,
-                app_roots,
-                eqwalizer_config: project.eqwalizer_config.clone(),
-                buck_index: project.buck_index.clone(),
-            };
-            app_structure.add_project_data(project_id, project_data);
         }
 
         // Final SourceRoot for out-of-project files
@@ -437,17 +470,4 @@ impl<'a> ProjectApps<'a> {
         app_structure.catch_all_source_root = SourceRootId(app_idx);
         app_structure
     }
-}
-
-fn app_source_roots(all_apps: &[(ProjectId, &ProjectAppData)]) -> FxHashMap<ProjectId, AppRoots> {
-    let mut app_source_roots: FxHashMap<ProjectId, AppRoots> = FxHashMap::default();
-
-    for (idx, (project_id, app)) in all_apps.iter().enumerate() {
-        let source_root_id = SourceRootId(idx as u32);
-        app_source_roots
-            .entry(*project_id)
-            .or_default()
-            .insert(app.name.clone(), source_root_id);
-    }
-    app_source_roots
 }

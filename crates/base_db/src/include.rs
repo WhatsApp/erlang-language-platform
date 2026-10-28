@@ -142,7 +142,8 @@ impl<'a> IncludeCtx<'a> {
         path: SmolStr,
     ) -> Option<FileId> {
         let project_id = db.file_project_id(current_file_id)?;
-        let project_data = db.project_data(project_id).project_data(db);
+        let project = db.project_data(project_id);
+        let project_data = project.project_data(db);
 
         // Gather app data from both the originating app and the current
         // file's app.  For the dep check we accept the include if
@@ -156,7 +157,7 @@ impl<'a> IncludeCtx<'a> {
         let _app_data = orig_app_data.as_ref().or(current_app_data.as_ref())?;
 
         let (app_name, include_path) = path.split_once('/')?;
-        let source_root_id = project_data.app_roots.get(app_name)?;
+        let source_root_id = project.app_named(db, AppName(app_name.to_string()))?;
         let target_app_data = db.app_data(source_root_id)?;
         if let Some(buck_index) = &project_data.buck_index {
             if let Some(p) = buck_index

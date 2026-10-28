@@ -23,8 +23,6 @@ use elp_base_db::FilePosition;
 use elp_base_db::FileRange;
 use elp_base_db::FileSourceRootInput;
 use elp_base_db::Files;
-use elp_base_db::ProjectData;
-use elp_base_db::ProjectDataInput;
 use elp_base_db::ProjectId;
 use elp_base_db::RootQueryDb;
 use elp_base_db::SourceAppDataInput;
@@ -171,7 +169,7 @@ impl Default for RootDatabase {
         db.set_extra_dynamic_call_patterns(Arc::new(FxHashMap::default()));
         // Before any lowering, so that queries never see it missing: salsa
         // doesn't track that a singleton doesn't exist.
-        Workspace::new(&db, 0);
+        Workspace::new(&db, Arc::from([]), Arc::from([]), 0);
         db
     }
 }
@@ -263,15 +261,6 @@ impl SourceDatabase for RootDatabase {
         let files = self.files.clone();
         files.set_source_app_data(self, id, app_data_id)
     }
-
-    fn project_data(&self, project_id: ProjectId) -> ProjectDataInput {
-        self.files.project_data(project_id)
-    }
-
-    fn set_project_data(&mut self, id: ProjectId, project_data: Arc<ProjectData>) {
-        let files = self.files.clone();
-        files.set_project_data(self, id, project_data)
-    }
 }
 
 impl RootDatabase {
@@ -314,8 +303,7 @@ impl RootDatabase {
     /// depends on the project's code path and on `Workspace::vm_epoch`, which
     /// `drop_erlang_services` bumps.
     pub fn erlang_service_for(&self, project_id: ProjectId) -> Connection {
-        let project_data = self.project_data(project_id).project_data(self);
-        let code_path = &project_data.deps_ebins;
+        let code_path = self.project_data(project_id).code_path(self);
         Workspace::get(self).vm_epoch(self);
         let key = if code_path.is_empty() {
             ErlangServiceKey::EmptyCodePath
@@ -539,7 +527,7 @@ mod tests {
     use elp_base_db::AppDataId;
     use elp_base_db::AppDataIndex;
     use elp_base_db::FileId;
-    use elp_base_db::ProjectData;
+    use elp_base_db::Project;
     use elp_base_db::ProjectId;
     use elp_base_db::RootQueryDb;
     use elp_base_db::SourceDatabase;
@@ -608,26 +596,31 @@ mod tests {
 -module(main).
 "#,
         );
-        let base = db.project_data(ProjectId(0)).project_data(&db);
-        let ebin = base.root_dir.join("a/ebin");
-        for (id, deps_ebins) in [
-            (10, vec![]),
-            (11, vec![]),
-            (12, vec![ebin.clone()]),
-            (13, vec![ebin.clone()]),
-        ] {
-            let project_data = ProjectData {
-                deps_ebins,
-                ..(*base).clone()
-            };
-            db.set_project_data(ProjectId(id), Arc::new(project_data));
+        let base = db.project_data(ProjectId(0));
+        let ebin = base.project_data(&db).root_dir.join("a/ebin");
+        let workspace = Workspace::get(&db);
+        let mut projects = workspace.projects(&db).to_vec();
+        let first = projects.len() as u32;
+        for code_path in [vec![], vec![], vec![ebin.clone()], vec![ebin.clone()]] {
+            projects.push(Project::new(
+                &db,
+                base.root(&db).clone(),
+                None,
+                None,
+                code_path.into(),
+                base.eqwalizer_config(&db).clone(),
+                Arc::from([]),
+            ));
+        }
+        workspace.set_projects(&mut db).to(projects.into());
+        for id in first..first + 4 {
             db.erlang_service_for(ProjectId(id));
         }
 
         let expected_keys = vec![
             ErlangServiceKey::EmptyCodePath,
-            ErlangServiceKey::Project(ProjectId(12)),
-            ErlangServiceKey::Project(ProjectId(13)),
+            ErlangServiceKey::Project(ProjectId(first + 2)),
+            ErlangServiceKey::Project(ProjectId(first + 3)),
         ];
         assert_eq_expected!(expected_keys, vm_keys(&db));
     }
@@ -645,13 +638,10 @@ mod tests {
             .file_app_data(file_id)
             .expect("the file should have an app")
             .project_id;
-        let base = db.project_data(project_id).project_data(&db);
+        let project = db.project_data(project_id);
         db.module_ast(file_id);
-        let project_data = ProjectData {
-            deps_ebins: vec![base.root_dir.join("a/ebin")],
-            ..(*base).clone()
-        };
-        db.set_project_data(project_id, Arc::new(project_data));
+        let ebin = project.project_data(&db).root_dir.join("a/ebin");
+        project.set_code_path(&mut db).to(vec![ebin].into());
         db.module_ast(file_id);
 
         let expected_keys = vec![

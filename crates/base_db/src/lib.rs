@@ -15,7 +15,6 @@ use std::sync::LazyLock;
 
 use dashmap::DashMap;
 use dashmap::Entry;
-use elp_project_model::AppName;
 use elp_project_model::buck::BuckProjectIndex;
 use elp_project_model::buck::IncludeMappingScope;
 use elp_project_model::buck::ReachableTargets;
@@ -49,6 +48,7 @@ pub mod in_flight;
 // @fb-only: mod meta_only;
 pub mod test_utils;
 pub use eetf;
+pub use elp_project_model::AppName;
 pub use elp_project_model::AppType;
 pub use elp_project_model::buck::DepKind;
 pub use elp_project_model::otp::Otp;
@@ -64,10 +64,10 @@ pub use include::IncludeCtx;
 pub use include::generated_file_include_lib;
 pub use input::AppData;
 pub use input::AppDataId;
-pub use input::AppRoots;
 pub use input::AppStructure;
 pub use input::FileSource;
 pub use input::IncludeOtp;
+pub use input::Project;
 pub use input::ProjectApps;
 pub use input::ProjectData;
 pub use input::ProjectId;
@@ -195,7 +195,6 @@ pub struct Files {
     file_source_roots: Arc<DashMap<FileId, FileSourceRootInput, BuildHasherDefault<FxHasher>>>,
     app_datas: Arc<DashMap<AppDataId, AppDataInput, BuildHasherDefault<FxHasher>>>,
     source_app_datas: Arc<DashMap<SourceRootId, SourceAppDataInput, BuildHasherDefault<FxHasher>>>,
-    project_datas: Arc<DashMap<ProjectId, ProjectDataInput, BuildHasherDefault<FxHasher>>>,
 }
 
 impl std::fmt::Debug for Files {
@@ -326,33 +325,6 @@ impl Files {
             }
         };
     }
-
-    pub fn project_data(&self, project_id: ProjectId) -> ProjectDataInput {
-        let project_data = self
-            .project_datas
-            .get(&project_id)
-            .expect("Unable to fetch project data; this is a bug");
-
-        *project_data
-    }
-
-    pub fn set_project_data(
-        &self,
-        db: &mut dyn SourceDatabase,
-        project_id: ProjectId,
-        project_data: Arc<ProjectData>,
-    ) {
-        let project_datas = Arc::clone(&self.project_datas);
-        match project_datas.entry(project_id) {
-            Entry::Occupied(mut occupied) => {
-                occupied.get_mut().set_project_data(db).to(project_data);
-            }
-            Entry::Vacant(vacant) => {
-                let project_data = ProjectDataInput::builder(project_data).new(db);
-                vacant.insert(project_data);
-            }
-        };
-    }
 }
 
 /// A file, whether or not it exists. Each path has one `File` for the life of
@@ -429,11 +401,6 @@ pub struct SourceAppDataInput {
     pub app_data_id: AppDataId,
 }
 
-#[salsa::input]
-pub struct ProjectDataInput {
-    pub project_data: Arc<ProjectData>,
-}
-
 /// Salsa-interned wrapper around `vfs::FileId`. Used to satisfy salsa 0.25's
 /// "first non-`db` argument must implement `SalsaStructInDb`" constraint for
 /// queries that take a `FileId`. Construct via `InternedFileId::new(db, file_id)`;
@@ -459,6 +426,10 @@ pub struct InternedProjectId {
 pub trait RootQueryDb: SourceDatabase + salsa::Database {
     #[salsa::input]
     fn catch_all_source_root(&self) -> SourceRootId;
+
+    /// The project with this id.
+    #[salsa::invoke_interned(input::project_by_id)]
+    fn project_data(&self, id: ProjectId) -> Project;
 
     /// The data for a given application. We can access this either
     /// from the `FileId` or by `SourceRootId`, so introduce an
@@ -693,10 +664,6 @@ pub trait SourceDatabase: salsa::Database {
     fn app_data_id(&self, id: SourceRootId) -> SourceAppDataInput;
 
     fn set_app_data_id(&mut self, id: SourceRootId, app_data_id: AppDataId);
-
-    fn project_data(&self, id: ProjectId) -> ProjectDataInput;
-
-    fn set_project_data(&mut self, id: ProjectId, project_data: Arc<ProjectData>);
 }
 
 fn app_data(db: &dyn RootQueryDb, id: SourceRootId) -> Option<Arc<AppData>> {

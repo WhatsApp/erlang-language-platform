@@ -576,26 +576,23 @@ impl SourceRootMap {
 
 #[cfg(test)]
 mod tests {
-    use elp_project_model::Project;
+    use std::sync::Arc;
+
     use expect_test::expect;
 
     use super::Fixture;
     use super::WithFixture;
-    use crate::ProjectApps;
-    use crate::input::AppStructure;
-    use crate::input::IncludeOtp;
+    use crate::AppData;
+    use crate::ProjectData;
+    use crate::RootQueryDb;
+    use crate::Workspace;
     use crate::test_db::TestDB;
-
-    fn app_structure(project: Project) -> AppStructure {
-        ProjectApps::new(&[project], IncludeOtp::Yes).app_structure()
-    }
 
     #[test]
     fn unresolved_macro_diag_include_dir() {
         // Test the scenario where the include file is referenced
         // relative to a project include directory
-        let (_fixture, _file_map, project) = Fixture::load(
-            &mut TestDB::default(),
+        let lowered = lowered_model(
             r#"
 //- /opt/lib/comp-1.3/include/comp.hrl otp_app:/opt/lib/comp-1.3
 -define(COMP,3).
@@ -609,151 +606,9 @@ bar() -> ?FOO.
         );
 
         expect![[r#"
-            AppStructure {
-                app_map: {
-                    SourceRootId(
-                        0,
-                    ): AppMapData {
-                        app_data: Some(
-                            AppData {
-                                project_id: ProjectId(
-                                    0,
-                                ),
-                                name: AppName(
-                                    "test-fixture",
-                                ),
-                                buck_target_name: None,
-                                dir: AbsPathBuf(
-                                    "/",
-                                ),
-                                include_dirs: [],
-                                include_path: [
-                                    AbsPathBuf(
-                                        "/src",
-                                    ),
-                                    AbsPathBuf(
-                                        "/opt/lib",
-                                    ),
-                                ],
-                                src_path: [
-                                    AbsPathBuf(
-                                        "/src",
-                                    ),
-                                ],
-                                extra_src_dirs: [],
-                                macros: [],
-                                parse_transforms: [],
-                                app_type: App,
-                                ebin_path: None,
-                                is_test_target: None,
-                            },
-                        ),
-                        applicable_files: None,
-                        gen_src_files: None,
-                    },
-                    SourceRootId(
-                        2,
-                    ): AppMapData {
-                        app_data: Some(
-                            AppData {
-                                project_id: ProjectId(
-                                    1,
-                                ),
-                                name: AppName(
-                                    "comp",
-                                ),
-                                buck_target_name: None,
-                                dir: AbsPathBuf(
-                                    "/opt/lib/comp-1.3",
-                                ),
-                                include_dirs: [
-                                    AbsPathBuf(
-                                        "/opt/lib/comp-1.3/include",
-                                    ),
-                                ],
-                                include_path: [
-                                    AbsPathBuf(
-                                        "/opt/lib/comp-1.3/include",
-                                    ),
-                                    AbsPathBuf(
-                                        "/opt/lib/comp-1.3/src",
-                                    ),
-                                    AbsPathBuf(
-                                        "/opt/lib",
-                                    ),
-                                ],
-                                src_path: [
-                                    AbsPathBuf(
-                                        "/opt/lib/comp-1.3/src",
-                                    ),
-                                ],
-                                extra_src_dirs: [],
-                                macros: [],
-                                parse_transforms: [],
-                                app_type: Otp,
-                                ebin_path: Some(
-                                    AbsPathBuf(
-                                        "/opt/lib/comp-1.3/ebin",
-                                    ),
-                                ),
-                                is_test_target: None,
-                            },
-                        ),
-                        applicable_files: None,
-                        gen_src_files: None,
-                    },
-                    SourceRootId(
-                        1,
-                    ): AppMapData {
-                        app_data: Some(
-                            AppData {
-                                project_id: ProjectId(
-                                    0,
-                                ),
-                                name: AppName(
-                                    "foo-app",
-                                ),
-                                buck_target_name: None,
-                                dir: AbsPathBuf(
-                                    "/",
-                                ),
-                                include_dirs: [
-                                    AbsPathBuf(
-                                        "/include",
-                                    ),
-                                ],
-                                include_path: [
-                                    AbsPathBuf(
-                                        "/include",
-                                    ),
-                                    AbsPathBuf(
-                                        "/opt/lib",
-                                    ),
-                                ],
-                                src_path: [],
-                                extra_src_dirs: [],
-                                macros: [],
-                                parse_transforms: [],
-                                app_type: App,
-                                ebin_path: None,
-                                is_test_target: None,
-                            },
-                        ),
-                        applicable_files: None,
-                        gen_src_files: None,
-                    },
-                    SourceRootId(
-                        3,
-                    ): AppMapData {
-                        app_data: None,
-                        applicable_files: None,
-                        gen_src_files: None,
-                    },
-                },
-                project_map: {
-                    ProjectId(
-                        0,
-                    ): ProjectData {
+            [
+                (
+                    ProjectData {
                         source_roots: [
                             SourceRootId(
                                 0,
@@ -765,38 +620,11 @@ bar() -> ?FOO.
                         root_dir: AbsPathBuf(
                             "/",
                         ),
-                        deps_ebins: [],
                         otp_project_id: Some(
                             ProjectId(
                                 1,
                             ),
                         ),
-                        app_roots: AppRoots {
-                            otp: Some(
-                                AppRoots {
-                                    otp: None,
-                                    app_map: {
-                                        AppName(
-                                            "comp",
-                                        ): SourceRootId(
-                                            2,
-                                        ),
-                                    },
-                                },
-                            ),
-                            app_map: {
-                                AppName(
-                                    "test-fixture",
-                                ): SourceRootId(
-                                    0,
-                                ),
-                                AppName(
-                                    "foo-app",
-                                ): SourceRootId(
-                                    1,
-                                ),
-                            },
-                        },
                         eqwalizer_config: EqwalizerConfig {
                             enable_all: false,
                             max_tasks: 4,
@@ -805,9 +633,75 @@ bar() -> ?FOO.
                         },
                         buck_index: None,
                     },
-                    ProjectId(
-                        1,
-                    ): ProjectData {
+                    [
+                        AppData {
+                            project_id: ProjectId(
+                                0,
+                            ),
+                            name: AppName(
+                                "test-fixture",
+                            ),
+                            buck_target_name: None,
+                            dir: AbsPathBuf(
+                                "/",
+                            ),
+                            include_dirs: [],
+                            include_path: [
+                                AbsPathBuf(
+                                    "/src",
+                                ),
+                                AbsPathBuf(
+                                    "/opt/lib",
+                                ),
+                            ],
+                            src_path: [
+                                AbsPathBuf(
+                                    "/src",
+                                ),
+                            ],
+                            extra_src_dirs: [],
+                            macros: [],
+                            parse_transforms: [],
+                            app_type: App,
+                            ebin_path: None,
+                            is_test_target: None,
+                        },
+                        AppData {
+                            project_id: ProjectId(
+                                0,
+                            ),
+                            name: AppName(
+                                "foo-app",
+                            ),
+                            buck_target_name: None,
+                            dir: AbsPathBuf(
+                                "/",
+                            ),
+                            include_dirs: [
+                                AbsPathBuf(
+                                    "/include",
+                                ),
+                            ],
+                            include_path: [
+                                AbsPathBuf(
+                                    "/include",
+                                ),
+                                AbsPathBuf(
+                                    "/opt/lib",
+                                ),
+                            ],
+                            src_path: [],
+                            extra_src_dirs: [],
+                            macros: [],
+                            parse_transforms: [],
+                            app_type: App,
+                            ebin_path: None,
+                            is_test_target: None,
+                        },
+                    ],
+                ),
+                (
+                    ProjectData {
                         source_roots: [
                             SourceRootId(
                                 2,
@@ -816,22 +710,11 @@ bar() -> ?FOO.
                         root_dir: AbsPathBuf(
                             "/opt/lib",
                         ),
-                        deps_ebins: [],
                         otp_project_id: Some(
                             ProjectId(
                                 1,
                             ),
                         ),
-                        app_roots: AppRoots {
-                            otp: None,
-                            app_map: {
-                                AppName(
-                                    "comp",
-                                ): SourceRootId(
-                                    2,
-                                ),
-                            },
-                        },
                         eqwalizer_config: EqwalizerConfig {
                             enable_all: true,
                             max_tasks: 4,
@@ -840,20 +723,61 @@ bar() -> ?FOO.
                         },
                         buck_index: None,
                     },
-                },
-                catch_all_source_root: SourceRootId(
-                    3,
+                    [
+                        AppData {
+                            project_id: ProjectId(
+                                1,
+                            ),
+                            name: AppName(
+                                "comp",
+                            ),
+                            buck_target_name: None,
+                            dir: AbsPathBuf(
+                                "/opt/lib/comp-1.3",
+                            ),
+                            include_dirs: [
+                                AbsPathBuf(
+                                    "/opt/lib/comp-1.3/include",
+                                ),
+                            ],
+                            include_path: [
+                                AbsPathBuf(
+                                    "/opt/lib/comp-1.3/include",
+                                ),
+                                AbsPathBuf(
+                                    "/opt/lib/comp-1.3/src",
+                                ),
+                                AbsPathBuf(
+                                    "/opt/lib",
+                                ),
+                            ],
+                            src_path: [
+                                AbsPathBuf(
+                                    "/opt/lib/comp-1.3/src",
+                                ),
+                            ],
+                            extra_src_dirs: [],
+                            macros: [],
+                            parse_transforms: [],
+                            app_type: Otp,
+                            ebin_path: Some(
+                                AbsPathBuf(
+                                    "/opt/lib/comp-1.3/ebin",
+                                ),
+                            ),
+                            is_test_target: None,
+                        },
+                    ],
                 ),
-            }"#]]
-        .assert_eq(format!("{:#?}", app_structure(project)).as_str());
+            ]"#]]
+        .assert_eq(&lowered);
     }
 
     #[test]
     fn unresolved_macro_diag_include_dir2() {
         // Test the scenario where the include file is referenced
         // relative to a project include directory
-        let (_fixture, _file_map, project) = Fixture::load(
-            &mut TestDB::default(),
+        let lowered = lowered_model(
             r#"
 //- /extra/include/bar.hrl include_path:/extra/include
 -define(BAR,4).
@@ -869,76 +793,9 @@ foo() -> ?BAR.
         );
 
         expect![[r#"
-            AppStructure {
-                app_map: {
-                    SourceRootId(
-                        0,
-                    ): AppMapData {
-                        app_data: Some(
-                            AppData {
-                                project_id: ProjectId(
-                                    0,
-                                ),
-                                name: AppName(
-                                    "test-fixture",
-                                ),
-                                buck_target_name: None,
-                                dir: AbsPathBuf(
-                                    "/extra",
-                                ),
-                                include_dirs: [
-                                    AbsPathBuf(
-                                        "/extra/include",
-                                    ),
-                                    AbsPathBuf(
-                                        "/include",
-                                    ),
-                                ],
-                                include_path: [
-                                    AbsPathBuf(
-                                        "/",
-                                    ),
-                                    AbsPathBuf(
-                                        "/extra/include",
-                                    ),
-                                    AbsPathBuf(
-                                        "/include",
-                                    ),
-                                    AbsPathBuf(
-                                        "/src",
-                                    ),
-                                    AbsPathBuf(
-                                        "/",
-                                    ),
-                                ],
-                                src_path: [
-                                    AbsPathBuf(
-                                        "/src",
-                                    ),
-                                ],
-                                extra_src_dirs: [],
-                                macros: [],
-                                parse_transforms: [],
-                                app_type: App,
-                                ebin_path: None,
-                                is_test_target: None,
-                            },
-                        ),
-                        applicable_files: None,
-                        gen_src_files: None,
-                    },
-                    SourceRootId(
-                        1,
-                    ): AppMapData {
-                        app_data: None,
-                        applicable_files: None,
-                        gen_src_files: None,
-                    },
-                },
-                project_map: {
-                    ProjectId(
-                        0,
-                    ): ProjectData {
+            [
+                (
+                    ProjectData {
                         source_roots: [
                             SourceRootId(
                                 0,
@@ -947,22 +804,11 @@ foo() -> ?BAR.
                         root_dir: AbsPathBuf(
                             "/",
                         ),
-                        deps_ebins: [],
                         otp_project_id: Some(
                             ProjectId(
                                 1,
                             ),
                         ),
-                        app_roots: AppRoots {
-                            otp: None,
-                            app_map: {
-                                AppName(
-                                    "test-fixture",
-                                ): SourceRootId(
-                                    0,
-                                ),
-                            },
-                        },
                         eqwalizer_config: EqwalizerConfig {
                             enable_all: false,
                             max_tasks: 4,
@@ -971,23 +817,68 @@ foo() -> ?BAR.
                         },
                         buck_index: None,
                     },
-                    ProjectId(
-                        1,
-                    ): ProjectData {
+                    [
+                        AppData {
+                            project_id: ProjectId(
+                                0,
+                            ),
+                            name: AppName(
+                                "test-fixture",
+                            ),
+                            buck_target_name: None,
+                            dir: AbsPathBuf(
+                                "/extra",
+                            ),
+                            include_dirs: [
+                                AbsPathBuf(
+                                    "/extra/include",
+                                ),
+                                AbsPathBuf(
+                                    "/include",
+                                ),
+                            ],
+                            include_path: [
+                                AbsPathBuf(
+                                    "/",
+                                ),
+                                AbsPathBuf(
+                                    "/extra/include",
+                                ),
+                                AbsPathBuf(
+                                    "/include",
+                                ),
+                                AbsPathBuf(
+                                    "/src",
+                                ),
+                                AbsPathBuf(
+                                    "/",
+                                ),
+                            ],
+                            src_path: [
+                                AbsPathBuf(
+                                    "/src",
+                                ),
+                            ],
+                            extra_src_dirs: [],
+                            macros: [],
+                            parse_transforms: [],
+                            app_type: App,
+                            ebin_path: None,
+                            is_test_target: None,
+                        },
+                    ],
+                ),
+                (
+                    ProjectData {
                         source_roots: [],
                         root_dir: AbsPathBuf(
                             "/",
                         ),
-                        deps_ebins: [],
                         otp_project_id: Some(
                             ProjectId(
                                 1,
                             ),
                         ),
-                        app_roots: AppRoots {
-                            otp: None,
-                            app_map: {},
-                        },
                         eqwalizer_config: EqwalizerConfig {
                             enable_all: true,
                             max_tasks: 4,
@@ -996,12 +887,30 @@ foo() -> ?BAR.
                         },
                         buck_index: None,
                     },
-                },
-                catch_all_source_root: SourceRootId(
-                    1,
+                    [],
                 ),
-            }"#]]
-        .assert_eq(format!("{:#?}", app_structure(project)).as_str());
+            ]"#]]
+        .assert_eq(&lowered);
+    }
+
+    /// The data of each project, and of the app of each of its source roots.
+    fn lowered_model(fixture: &str) -> String {
+        let (db, _) = TestDB::with_fixture(fixture);
+        let projects: Vec<(Arc<ProjectData>, Vec<AppData>)> = Workspace::get(&db)
+            .projects(&db)
+            .iter()
+            .map(|project| {
+                let project_data = project.project_data(&db);
+                let apps = project_data
+                    .source_roots
+                    .iter()
+                    .filter_map(|source_root_id| db.app_data(*source_root_id))
+                    .map(|app_data| (*app_data).clone())
+                    .collect();
+                (project_data, apps)
+            })
+            .collect();
+        format!("{projects:#?}")
     }
 
     #[test]
