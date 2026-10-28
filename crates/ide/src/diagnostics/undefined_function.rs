@@ -153,7 +153,7 @@ static MOCKED_VAR: &str = "_@Mocked";
 /// Whether the file creates `module` with `meck:new(Module, Options)` where
 /// `Options` is a list, written out in the call, that contains `non_strict`,
 /// which is how meck mocks a module that does not exist.
-fn is_non_strict_mock(sema: &Semantic, file_id: FileId, module: &Name) -> bool {
+pub(crate) fn is_non_strict_mock(sema: &Semantic, file_id: FileId, module: &Name) -> bool {
     let matches = match_pattern_in_file_functions(
         sema,
         Strategy {

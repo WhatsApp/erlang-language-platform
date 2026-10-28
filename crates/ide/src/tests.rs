@@ -711,6 +711,7 @@ pub fn check_no_parse_errors(analysis: &Analysis, file_id: FileId) {
     let config = DiagnosticsConfig::default()
         .disable(DiagnosticCode::UnspecificInclude)
         .disable(DiagnosticCode::UndefinedFunction)
+        .disable(DiagnosticCode::UndefinedModule)
         .disable(DiagnosticCode::HirUnresolvedMacro)
         .disable(DiagnosticCode::NoCatch)
         .disable(DiagnosticCode::UnnecessaryFunctionArg);

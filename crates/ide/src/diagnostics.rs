@@ -174,6 +174,7 @@ mod unavailable_function;
 mod unavailable_type;
 mod undefined_function;
 mod undefined_macro;
+mod undefined_module;
 mod undefined_record;
 mod undocumented_function;
 mod undocumented_module;
@@ -904,6 +905,12 @@ pub(crate) trait FunctionCallLinter: Linter {
         Some(Self::Context::default())
     }
 
+    /// Customize the range of each match.
+    /// By default, the `module:function` part of the call.
+    fn match_range(&self, match_ctx: &MatchCtx<Self::Context>) -> FileRange {
+        match_ctx.range(&UseRange::NameOnly)
+    }
+
     /// Return an optional vector of quick-fixes
     fn fixes(
         &self,
@@ -981,7 +988,7 @@ impl<T: FunctionCallLinter> FunctionCallDiagnostics for T {
                                extra,
                                ..
                            }| {
-                        let range = match_ctx.range(&UseRange::NameOnly);
+                        let range = self.match_range(&match_ctx);
                         if range.file_id == def.file.file_id {
                             let fixes =
                                 include_fixes.then(|| self.fixes(&match_ctx, ctx)).flatten();
@@ -2239,6 +2246,7 @@ const FUNCTION_CALL_LINTERS: &[&dyn FunctionCallDiagnostics] = &[
     &atoms_exhaustion::LINTER,
     &undefined_function::LINTER,
     &unavailable_function::LINTER,
+    &undefined_module::LINTER,
     &unexported_function::LINTER,
     &cross_node_eval::LINTER,
     &meck_restricted::LINTER,

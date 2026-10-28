@@ -1021,7 +1021,8 @@ mod tests {
         check_diagnostics_with_config_and_ad_hoc(
             DiagnosticsConfig::default()
                 .disable(DiagnosticCode::CrossNodeEval)
-                .disable(DiagnosticCode::UndefinedFunction),
+                .disable(DiagnosticCode::UndefinedFunction)
+                .disable(DiagnosticCode::UndefinedModule),
             &vec![&|acc, sema, file_id, _ext| {
                 check_functions(acc, sema, file_id, match_spec, UseRange::WithArgs)
             }],
@@ -1034,7 +1035,8 @@ mod tests {
         check_diagnostics_with_config_and_ad_hoc(
             DiagnosticsConfig::default()
                 .disable(DiagnosticCode::CrossNodeEval)
-                .disable(DiagnosticCode::UndefinedFunction),
+                .disable(DiagnosticCode::UndefinedFunction)
+                .disable(DiagnosticCode::UndefinedModule),
             &vec![&|acc, sema, file_id, _ext| {
                 check_functions(acc, sema, file_id, match_spec, UseRange::NameOnly)
             }],
@@ -1051,7 +1053,8 @@ mod tests {
         check_fix_with_config_and_adhoc(
             DiagnosticsConfig::default()
                 .disable(DiagnosticCode::CrossNodeEval)
-                .disable(DiagnosticCode::UndefinedFunction),
+                .disable(DiagnosticCode::UndefinedFunction)
+                .disable(DiagnosticCode::UndefinedModule),
             &vec![&|acc, sema, file_id, _ext| {
                 check_functions(acc, sema, file_id, match_spec, UseRange::WithArgs)
             }],

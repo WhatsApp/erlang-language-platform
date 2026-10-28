@@ -225,6 +225,8 @@ pub enum DiagnosticCode {
     DiscouragedType,
     #[strum(props(code = "W0088"))]
     UnnecessaryFunctionArg,
+    #[strum(props(code = "W0089"))]
+    UndefinedModule,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
