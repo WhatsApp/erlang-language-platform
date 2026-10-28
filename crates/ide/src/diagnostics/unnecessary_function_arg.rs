@@ -78,7 +78,7 @@ impl GenericLinter for UnnecessaryFunctionArgLinter {
     fn matches(&self, ctx: &LinterContext) -> Option<Vec<GenericLinterMatchContext<Context>>> {
         let sema = ctx.sema;
         let file_id = ctx.file_id;
-        if may_export_all_or_transform(sema, file_id) {
+        if may_export_all_or_transform(sema, file_id) || is_parse_transform(sema, file_id) {
             return Some(Vec::new());
         }
         let named_in_attributes = functions_named_in_attributes(sema, file_id);
@@ -186,6 +186,15 @@ fn may_export_all_or_transform(sema: &Semantic, file_id: FileId) -> bool {
             _ => false,
         })
     })
+}
+
+/// Whether the module defines `parse_transform/2`. A parse transform can
+/// copy the clauses of its own functions into the modules it compiles, where
+/// their local calls bind to functions of that module.
+fn is_parse_transform(sema: &Semantic, file_id: FileId) -> bool {
+    sema.def_map_local(file_id)
+        .get_function(&NameArity::new(known::parse_transform.clone(), 2))
+        .is_some()
 }
 
 /// Functions named as `f/N` or `{f, N}` by an attribute, including
@@ -754,6 +763,21 @@ mod tests {
             -compile({inline, ?INLINED}).
             run(X) -> step(X, ctx).
             step(X, _Ctx) -> X.
+            "#,
+        );
+    }
+
+    #[test]
+    fn parse_transform() {
+        check_diagnostics_with_config(
+            config(),
+            r#"
+            -module(main).
+            -export([parse_transform/2, template/1]).
+            parse_transform(Forms, Options) -> rewrite(Forms, Options).
+            rewrite(Forms, _Options) -> Forms.
+            template(X) -> check(X, ctx).
+            check(_, _) -> ok.
             "#,
         );
     }
