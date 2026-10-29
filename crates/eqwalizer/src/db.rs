@@ -384,12 +384,11 @@ fn bundled_override_stub(
     if *module != *EQWALIZER_SPECS && *module != *EQWALIZER_TYPES {
         return Ok(None);
     }
-    let Some(otp_project_id) = db.project_data(project_id).project_data(db).otp_project_id else {
+    let project = db.project_data(project_id);
+    let Some(otp) = project.otp(db).filter(|&otp| otp != project) else {
         return Ok(None);
     };
-    if otp_project_id == project_id {
-        return Ok(None);
-    }
+    let otp_project_id = otp.project_id(db);
     let bundled_file = db.module_index(otp_project_id).file_for_module(module);
     if bundled_file.is_none() || bundled_file == db.module_index(project_id).file_for_module(module)
     {

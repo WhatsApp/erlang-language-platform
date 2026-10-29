@@ -441,10 +441,9 @@ fn print_single_result(
             let vfs_path = &loaded.file_path(*file_id);
             let analysis = loaded.analysis();
             let root_path = &analysis
-                .project_data(*file_id)
-                .unwrap_or_else(|_err| panic!("could not find project data"))
-                .unwrap_or_else(|| panic!("could not find project data"))
-                .root_dir;
+                .project_root(*file_id)
+                .unwrap_or_else(|_err| panic!("could not find the project root"))
+                .unwrap_or_else(|| panic!("could not find the project root"));
             let relative_path = reporting::get_relative_path(root_path, vfs_path);
             print_diagnostic_json(diag, &analysis, *file_id, relative_path, false, cli)?;
         }
@@ -474,10 +473,9 @@ fn print_single_result(
             let vfs_path = &loaded.file_path(*file_id);
             let analysis = loaded.analysis();
             let root_path = &analysis
-                .project_data(*file_id)
-                .unwrap_or_else(|_err| panic!("could not find project data"))
-                .unwrap_or_else(|| panic!("could not find project data"))
-                .root_dir;
+                .project_root(*file_id)
+                .unwrap_or_else(|_err| panic!("could not find the project root"))
+                .unwrap_or_else(|| panic!("could not find the project root"));
             let relative_path = reporting::get_relative_path(root_path, vfs_path);
 
             // Only show path when showing source context

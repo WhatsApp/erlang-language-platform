@@ -229,8 +229,7 @@ fn is_eqwalizer_enabled_inner(db: &dyn EqwalizerDatabase, fid: InternedFileId) -
         return false;
     };
     let project_id = app_data.project_id;
-    let project = db.project_data(project_id).project_data(db);
-    let eqwalizer_config = &project.eqwalizer_config;
+    let eqwalizer_config = db.project_data(project_id).eqwalizer_config(db);
     let module_index = db.module_index(project_id);
     let global_opt_in = eqwalizer_config.enable_all;
     let opt_in = global_opt_in || db.has_eqwalizer_module_marker(file_id);
@@ -309,16 +308,15 @@ fn find_path_in_project(
     project_id: ProjectId,
     path: &VfsPath,
 ) -> Option<FileId> {
-    let project = db.project_data(project_id).project_data(db);
-    let source_roots = &project.source_roots;
-    let mut otp_source_roots = Vec::new();
-    if let Some(otp_project_id) = project.otp_project_id {
-        let otp_project = db.project_data(otp_project_id).project_data(db);
-        otp_source_roots = otp_project.source_roots.clone();
-    }
-    source_roots
+    let project = db.project_data(project_id);
+    let otp_source_roots = project
+        .otp(db)
+        .map(|otp| otp.source_roots(db).clone())
+        .unwrap_or_default();
+    project
+        .source_roots(db)
         .iter()
-        .chain(&otp_source_roots)
+        .chain(otp_source_roots.iter())
         .find_map(|&source_root_id| {
             db.source_root(source_root_id)
                 .source_root(db)

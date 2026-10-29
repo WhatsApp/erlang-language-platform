@@ -175,11 +175,11 @@ impl<'a> Report<'a> {
 
         let derived_path = if context.path.is_none() && self.destination != Destination::Human {
             let file_path = context.analysis.file_path(context.file_id);
-            let project_data = context
+            let project_root = context
                 .analysis
-                .project_data(context.file_id)?
-                .context("could not find project data")?;
-            Some(get_relative_path(&project_data.root_dir, &file_path).to_path_buf())
+                .project_root(context.file_id)?
+                .context("could not find the project root")?;
+            Some(get_relative_path(&project_root, &file_path).to_path_buf())
         } else {
             None
         };
@@ -473,10 +473,10 @@ fn get_relative_file_path(
     file_id: FileId,
 ) -> Result<PathBuf> {
     let file_path = loaded.file_path(file_id);
-    let project_data = analysis
-        .project_data(file_id)?
-        .context("could not find project data")?;
-    Ok(get_relative_path(&project_data.root_dir, &file_path).to_path_buf())
+    let project_root = analysis
+        .project_root(file_id)?
+        .context("could not find the project root")?;
+    Ok(get_relative_path(&project_root, &file_path).to_path_buf())
 }
 
 fn get_reporting_data(
@@ -636,9 +636,9 @@ pub(crate) fn related_information_lines(
                 String::new()
             } else if let Some(module_name) = analysis.module_name(info.file_id).ok().flatten() {
                 format!("[{}] ", module_name.as_str())
-            } else if let Some(project_data) = analysis.project_data(info.file_id).ok().flatten() {
+            } else if let Some(project_root) = analysis.project_root(info.file_id).ok().flatten() {
                 let file_path = analysis.file_path(info.file_id);
-                let path = get_relative_path(&project_data.root_dir, &file_path);
+                let path = get_relative_path(&project_root, &file_path);
                 format!("[{}] ", path.display())
             } else {
                 String::new()

@@ -3219,10 +3219,9 @@ fn related_file_id(db: &RootDatabase, file_id: FileId, path: &Path) -> Option<Fi
                 .join(path_str.as_ref())?
         };
 
-        let project_data = db.project_data(project_id).project_data(db);
         // Search through all source roots in the project to find the file
-        project_data
-            .source_roots
+        db.project_data(project_id)
+            .source_roots(db)
             .iter()
             .find_map(|&source_root_id| {
                 let source_root = db.source_root(source_root_id).source_root(db);

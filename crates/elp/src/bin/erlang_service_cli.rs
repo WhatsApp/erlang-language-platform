@@ -175,7 +175,7 @@ pub fn do_parse_one(
         Ok(vec![])
     } else {
         let line_index = db.line_index(file_id)?;
-        let root_dir = &db.project_data(file_id)?.unwrap().root_dir;
+        let root_dir = &db.project_root(file_id)?.unwrap();
         let diagnostic = result
             .errors
             .iter()

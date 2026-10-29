@@ -557,6 +557,7 @@ mod tests {
     use elp_ide::elp_ide_db::elp_base_db::FileId;
     use elp_ide::elp_ide_db::elp_base_db::FilePosition;
     use elp_ide::elp_ide_db::elp_base_db::ModuleName;
+    use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
     use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
     use elp_project_model::AppName;
     use elp_project_model::DiscoverConfig;
@@ -1660,14 +1661,20 @@ mod tests {
             "eqwalizer_specs should come from the bundled app, got {path}"
         );
         let analysis = loaded.analysis();
-        let otp_project_id = analysis
-            .project_data(file_id)
+        let project_id = analysis
+            .project_id(file_id)
             .unwrap()
-            .expect("the bundled app should belong to a project")
-            .otp_project_id;
+            .expect("the bundled app should belong to a project");
+        let otp_project_id = analysis
+            .with_db(|db| {
+                db.project_data(project_id)
+                    .otp(db)
+                    .map(|otp| otp.project_id(db))
+            })
+            .unwrap();
         assert_eq!(
             otp_project_id,
-            analysis.project_id(file_id).unwrap(),
+            Some(project_id),
             "the bundled app should be shared by all projects, in the project with the OTP apps"
         );
         assert_eq_expected!(

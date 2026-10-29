@@ -275,9 +275,8 @@ impl Snapshot {
     }
 
     pub fn workspace_root(&self, file_id: FileId) -> AbsPathBuf {
-        let project_data = self.analysis.project_data(file_id);
-        match project_data {
-            Ok(Some(project_data)) => project_data.root_dir.clone(),
+        match self.analysis.project_root(file_id) {
+            Ok(Some(project_root)) => project_root,
             _ => self.config.root_path.clone(),
         }
     }

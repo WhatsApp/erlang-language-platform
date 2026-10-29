@@ -284,10 +284,9 @@ pub fn parse_all(
                         let vfs_path = &loaded.file_path(diags.file_id);
                         let analysis = loaded.analysis();
                         let root_path = &analysis
-                            .project_data(diags.file_id)
-                            .unwrap_or_else(|_err| panic!("could not find project data"))
-                            .unwrap_or_else(|| panic!("could not find project data"))
-                            .root_dir;
+                            .project_root(diags.file_id)
+                            .unwrap_or_else(|_err| panic!("could not find the project root"))
+                            .unwrap_or_else(|| panic!("could not find the project root"));
                         let relative_path = reporting::get_relative_path(root_path, vfs_path);
                         print_diagnostic_json(
                             &diag,
@@ -550,7 +549,7 @@ fn dump_includes_resolutions(
 }
 
 fn is_project_file(db: &Analysis, id: FileId) -> bool {
-    let root_abs = &db.project_data(id).unwrap().unwrap().root_dir;
+    let root_abs = &db.project_root(id).unwrap().unwrap();
     let path = db.file_path(id);
     let path = path.as_path().unwrap();
     path.starts_with(root_abs)

@@ -595,29 +595,20 @@ root can't refer to a file in another source root by path.
 An `elp_base_db::input::SourceRootId` is used to refer to a
 `SourceRoot` in a salsa query for it.
 
-### `elp_base_db::input::ProjectData`
+### `elp_base_db::input::Project`
 
 Source roots (apps) are grouped into projects that share some of the
-configuration.  They are indexed in salsa with
-`elp_base_db::input::ProjectId`
-
-Prior to buck2, there is a correspondance between an instance of
-`ProjectData` and a rebar config file. **True?**
-
-```rust
-pub struct ProjectData {
-    pub root_dir: AbsPathBuf,
-    pub deps_ebins: Vec<AbsPathBuf>,
-    pub ast_dir: AbsPathBuf,
-    pub build_info_path: AbsPathBuf,
-}
-```
+configuration. A `Project` is a salsa input with one field per fact: its
+root, its OTP project, its Buck index, its code path, its eqWAlizer
+configuration and its source roots. `elp_base_db::input::Workspace`
+lists the projects, and a project's `elp_base_db::input::ProjectId` is
+its position in that list.
 
 ### `elp_base_db::input::AppData`
 
 `AppData` captures the information for an app from the rebar
 `project_app_dirs` list.  It includes the `ProjectId` of the
-`ProjectData` containing this app.
+`Project` containing this app.
 
 They are indexed in salsa with
 `elp_base_db::input::SourceRootId`

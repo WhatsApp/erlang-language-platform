@@ -4,13 +4,13 @@
 digraph {
     SourceRoot
     SourceRootId
-    ProjectData
+    Project
     ProjectId
     AppData
     FileId
 
     SourceRootId -> AppData    [label = "SourceDatabase\n::app_data"]
-    ProjectId -> ProjectData   [label = "SourceDatabase\n::project_data" ]
+    ProjectId -> Project       [label = "RootQueryDb\n::project_data" ]
 
     AppData -> ProjectId       [label = "<<contains>>"]
 

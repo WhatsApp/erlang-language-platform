@@ -23,6 +23,7 @@ use fxhash::FxHashSet;
 use paths::RelPath;
 use paths::Utf8Path;
 use salsa::plumbing::AsId;
+use vfs::AbsPath;
 use vfs::AbsPathBuf;
 use vfs::FileId;
 use vfs::VfsPath;
@@ -144,16 +145,14 @@ pub struct Project {
 
 #[salsa::tracked]
 impl Project {
-    /// The project's fields as [`ProjectData`].
-    #[salsa::tracked]
-    pub fn project_data(self, db: &dyn RootQueryDb) -> Arc<ProjectData> {
-        Arc::new(ProjectData {
-            source_roots: self.source_roots(db).to_vec(),
-            root_dir: real_path(self.root(db)),
-            otp_project_id: self.otp(db).map(|otp| project_id(db, otp)),
-            eqwalizer_config: self.eqwalizer_config(db).clone(),
-            buck_index: self.buck_index(db).clone(),
-        })
+    /// The project's root, which lowering gives as a real path.
+    pub fn root_dir(self, db: &dyn RootQueryDb) -> &AbsPath {
+        as_real_path(self.root(db))
+    }
+
+    /// The project's position in [`Workspace::projects`].
+    pub fn project_id(self, db: &dyn RootQueryDb) -> ProjectId {
+        project_id(db, self)
     }
 
     /// The source root of the app `name` refers to in the project: the last
@@ -182,16 +181,6 @@ impl fmt::Debug for Project {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Project").field(&self.as_id()).finish()
     }
-}
-
-/// Some fields of a [`Project`], for the consumers that read them this way.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ProjectData {
-    pub source_roots: Vec<SourceRootId>,
-    pub root_dir: AbsPathBuf,
-    pub otp_project_id: Option<ProjectId>,
-    pub eqwalizer_config: EqwalizerConfig,
-    pub buck_index: Option<Arc<BuckProjectIndex>>,
 }
 
 /// `AppData` is stored in salsa, indexed by `SourceRootId`.
@@ -342,10 +331,9 @@ pub(crate) fn project_id(db: &dyn RootQueryDb, project: Project) -> ProjectId {
 }
 
 /// Lowering gives projects only real paths.
-fn real_path(path: &VfsPath) -> AbsPathBuf {
+fn as_real_path(path: &VfsPath) -> &AbsPath {
     path.as_path()
         .expect("lowering should give only real paths")
-        .to_path_buf()
 }
 
 // ---------------------------------------------------------------------

@@ -1754,8 +1754,9 @@ impl Server {
                 if let Some(app_data_id) = self.generated_app_inputs.get(&path) {
                     let db = self.analysis_host.raw_database();
                     if let Some(app_data) = db.app_data_by_id(*app_data_id).app_data(db) {
-                        let project = db.project_data(app_data.project_id).project_data(db);
-                        project.root_dir.clone()
+                        db.project_data(app_data.project_id)
+                            .root_dir(db)
+                            .to_path_buf()
                     } else {
                         path
                     }

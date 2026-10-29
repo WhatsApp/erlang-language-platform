@@ -352,23 +352,23 @@ fn files_mentioning_module(sema: &Semantic, file_id: FileId) -> Vec<FileId> {
         Some("src") => app_data.dir.parent().unwrap_or(&app_data.dir),
         _ => &app_data.dir,
     };
-    let project_data = sema
-        .db
-        .project_data(app_data.project_id)
-        .project_data(sema.db);
-    let app_files = project_data.source_roots.iter().flat_map(|source_root_id| {
-        let source_root = sema.db.source_root(*source_root_id).source_root(sema.db);
-        source_root
-            .iter()
-            .filter(|other| {
-                *other != file_id
-                    && source_root
-                        .path_for_file(other)
-                        .and_then(|path| path.as_path())
-                        .is_some_and(|path| path.starts_with(app_dir))
-            })
-            .collect::<Vec<_>>()
-    });
+    let project = sema.db.project_data(app_data.project_id);
+    let app_files = project
+        .source_roots(sema.db)
+        .iter()
+        .flat_map(|source_root_id| {
+            let source_root = sema.db.source_root(*source_root_id).source_root(sema.db);
+            source_root
+                .iter()
+                .filter(|other| {
+                    *other != file_id
+                        && source_root
+                            .path_for_file(other)
+                            .and_then(|path| path.as_path())
+                            .is_some_and(|path| path.starts_with(app_dir))
+                })
+                .collect::<Vec<_>>()
+        });
     SearchScope::files(app_files)
         .retain_files_containing(sema.db, module_name.as_str())
         .file_ids()

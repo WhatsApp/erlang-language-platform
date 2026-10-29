@@ -143,7 +143,6 @@ impl<'a> IncludeCtx<'a> {
     ) -> Option<FileId> {
         let project_id = db.file_project_id(current_file_id)?;
         let project = db.project_data(project_id);
-        let project_data = project.project_data(db);
 
         // Gather app data from both the originating app and the current
         // file's app.  For the dep check we accept the include if
@@ -159,7 +158,7 @@ impl<'a> IncludeCtx<'a> {
         let (app_name, include_path) = path.split_once('/')?;
         let source_root_id = project.app_named(db, AppName(app_name.to_string()))?;
         let target_app_data = db.app_data(source_root_id)?;
-        if let Some(buck_index) = &project_data.buck_index {
+        if let Some(buck_index) = project.buck_index(db) {
             if let Some(p) = buck_index
                 .includes
                 .get(IncludeMappingScope::Remote, &path)

@@ -311,27 +311,22 @@ impl GleanIndexer {
             let project_id = self.project_id;
             let indexed_files = Self::indexed_source_files(db, project_id);
             // Collect OTP source roots.
-            let project_data = db.project_data(project_id).project_data(db);
-            let otp_source_roots: Vec<_> = project_data
-                .otp_project_id
-                .map(|otp_id| {
-                    db.project_data(otp_id)
-                        .project_data(db)
-                        .source_roots
-                        .clone()
-                })
+            let otp_source_roots: Vec<_> = db
+                .project_data(project_id)
+                .otp(db)
+                .map(|otp| otp.source_roots(db).to_vec())
                 .unwrap_or_default();
             // Module targets used by xrefs must include dependency apps as well as
             // the current app and OTP; remote calls routinely resolve into deps.
             let xref_target_modules = Self::xref_target_modules(db, project_id, &otp_source_roots);
             // app index: file_id → OTP application name
             let (app_index, app_infos) = {
-                let project_data = db.project_data(project_id).project_data(db);
+                let project = db.project_data(project_id);
                 let mut index = FxHashMap::default();
                 let mut seen_apps = FxHashSet::default();
                 let mut infos = Vec::new();
-                for &source_root_id in project_data
-                    .source_roots
+                for &source_root_id in project
+                    .source_roots(db)
                     .iter()
                     .chain(otp_source_roots.iter())
                 {
@@ -503,9 +498,8 @@ impl GleanIndexer {
     }
 
     fn indexed_source_files(db: &RootDatabase, project_id: ProjectId) -> Vec<(FileId, VfsPath)> {
-        let project_data = db.project_data(project_id).project_data(db);
         let mut files = vec![];
-        for &source_root_id in &project_data.source_roots {
+        for &source_root_id in db.project_data(project_id).source_roots(db).iter() {
             if let Some(app_data) = db.app_data(source_root_id)
                 && app_data.app_type == AppType::App
             {
@@ -523,10 +517,10 @@ impl GleanIndexer {
         project_id: ProjectId,
         otp_source_roots: &[SourceRootId],
     ) -> FxHashMap<GleanFileId, String> {
-        let project_data = db.project_data(project_id).project_data(db);
+        let project = db.project_data(project_id);
         let mut modules = FxHashMap::default();
-        for &source_root_id in project_data
-            .source_roots
+        for &source_root_id in project
+            .source_roots(db)
             .iter()
             .chain(otp_source_roots.iter())
         {
@@ -722,8 +716,7 @@ impl GleanIndexer {
             })
             .collect();
 
-        let project_data = db.project_data(project_id).project_data(db);
-        let root = project_data.root_dir.as_path();
+        let root = db.project_data(project_id).root_dir(db);
         let included_files: Vec<(GleanFileId, String)> = def_map
             .get_included_files()
             .filter_map(|inc_file_id| {
@@ -872,8 +865,7 @@ impl GleanIndexer {
         source_root: Option<&str>,
         generated_from: Option<&GeneratedFrom>,
     ) -> Option<(glean::FileFact, bool)> {
-        let project_data = db.project_data(project_id).project_data(db);
-        let root = project_data.root_dir.as_path();
+        let root = db.project_data(project_id).root_dir(db);
         let file_path = path.as_path()?;
         let file_path = file_path.strip_prefix(root)?;
         // Only treat buck-out files as generated; checked-in codegen keeps its real path.

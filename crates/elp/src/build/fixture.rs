@@ -65,8 +65,7 @@ mod tests {
         let apps = [ProjectId(0), ProjectId(1)].map(|project_id| {
             let mut apps: Vec<AppData> = db
                 .project_data(project_id)
-                .project_data(db)
-                .source_roots
+                .source_roots(db)
                 .iter()
                 .filter_map(|root| db.app_data(*root))
                 .map(|app| {

@@ -13,7 +13,7 @@ use std::panic::AssertUnwindSafe;
 use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 
-use elp_base_db::AbsPathBuf;
+use elp_base_db::AbsPath;
 use elp_base_db::AppData;
 use elp_base_db::AppDataId;
 use elp_base_db::AppDataInput;
@@ -346,7 +346,7 @@ impl RootDatabase {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nresolved_includes: {file_id:?}"));
         let project_id = self.file_app_data(file_id)?.project_id;
-        let root_abs = &self.project_data(project_id).project_data(self).root_dir;
+        let root_abs = self.project_data(project_id).root_dir(self);
         let form_list = self.file_form_list(file_id);
         let line_index = self.file_line_index(file_id);
         let includes: Vec<_> = form_list
@@ -414,7 +414,7 @@ impl Includes {
     fn app_file_path(
         db: &RootDatabase,
         file_id: FileId,
-        root_abs: &AbsPathBuf,
+        root_abs: &AbsPath,
     ) -> Option<Utf8PathBuf> {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\napp_file_path: {file_id:?}"));
@@ -597,7 +597,7 @@ mod tests {
 "#,
         );
         let base = db.project_data(ProjectId(0));
-        let ebin = base.project_data(&db).root_dir.join("a/ebin");
+        let ebin = base.root_dir(&db).join("a/ebin");
         let workspace = Workspace::get(&db);
         let mut projects = workspace.projects(&db).to_vec();
         let first = projects.len() as u32;
@@ -640,7 +640,7 @@ mod tests {
             .project_id;
         let project = db.project_data(project_id);
         db.module_ast(file_id);
-        let ebin = project.project_data(&db).root_dir.join("a/ebin");
+        let ebin = project.root_dir(&db).join("a/ebin");
         project.set_code_path(&mut db).to(vec![ebin].into());
         db.module_ast(file_id);
 

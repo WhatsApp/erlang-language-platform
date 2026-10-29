@@ -39,6 +39,7 @@ use elp_ide_db::assists::AssistContextDiagnostic;
 use elp_ide_db::assists::AssistUserInput;
 use elp_ide_db::common_test::CommonTestInfo;
 use elp_ide_db::docs::Doc;
+use elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::elp_base_db::FilePosition;
@@ -47,7 +48,6 @@ use elp_ide_db::elp_base_db::IncludeFileIndex;
 use elp_ide_db::elp_base_db::LineEndings;
 use elp_ide_db::elp_base_db::ModuleIndex;
 use elp_ide_db::elp_base_db::ModuleName;
-use elp_ide_db::elp_base_db::ProjectData;
 use elp_ide_db::elp_base_db::ProjectId;
 use elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide_db::elp_base_db::SourceDatabase;
@@ -411,14 +411,13 @@ impl Analysis {
         self.with_db(|db| Some(db.file_app_data(file_id)?.project_id))
     }
 
-    pub fn project_data(&self, file_id: FileId) -> Cancellable<Option<Arc<ProjectData>>> {
+    /// The root of the project of the file's app, if it has one.
+    pub fn project_root(&self, file_id: FileId) -> Cancellable<Option<AbsPathBuf>> {
         self.with_db(|db| {
             // Context for T171541590
-            let _ = stdx::panic_context::enter(format!("\nproject_data: {file_id:?}"));
-            Some(
-                db.project_data(db.file_app_data(file_id)?.project_id)
-                    .project_data(db),
-            )
+            let _ = stdx::panic_context::enter(format!("\nproject_root: {file_id:?}"));
+            let project_id = db.file_app_data(file_id)?.project_id;
+            Some(db.project_data(project_id).root_dir(db).to_path_buf())
         })
     }
 

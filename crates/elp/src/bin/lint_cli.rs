@@ -606,8 +606,8 @@ fn file_label(analysis: &Analysis, loaded: &LoadResult, file_id: FileId) -> Stri
         return name.as_str().to_string();
     }
     let vfs_path = &loaded.file_path(file_id);
-    match analysis.project_data(file_id) {
-        Ok(Some(project_data)) => reporting::get_relative_path(&project_data.root_dir, vfs_path)
+    match analysis.project_root(file_id) {
+        Ok(Some(project_root)) => reporting::get_relative_path(&project_root, vfs_path)
             .to_string_lossy()
             .to_string(),
         _ => vfs_path.to_string(),
@@ -856,10 +856,9 @@ fn report_filtered_diagnostics(
 
         let vfs_path = &loaded.file_path(*file_id);
         let root_path = &analysis
-            .project_data(*file_id)
-            .unwrap_or_else(|_| panic!("could not find project data"))
-            .unwrap_or_else(|| panic!("could not find project data"))
-            .root_dir;
+            .project_root(*file_id)
+            .unwrap_or_else(|_| panic!("could not find the project root"))
+            .unwrap_or_else(|| panic!("could not find the project root"));
         let relative_path = reporting::get_relative_path(root_path, vfs_path);
         report.write_lint_diagnostics(
             IdeDiagnosticContext {
@@ -1308,12 +1307,10 @@ impl<'a> Lints<'a> {
             // apps holding a header of the same name clobber each other, with
             // the winner decided by iteration order.
             Some(to) => {
-                let project_data = self.analysis_host.analysis().project_data(file_id)?;
-                let relative = project_data
+                let project_root = self.analysis_host.analysis().project_root(file_id)?;
+                let relative = project_root
                     .as_ref()
-                    .map(|project_data| {
-                        reporting::get_relative_path(&project_data.root_dir, vfs_path)
-                    })
+                    .map(|project_root| reporting::get_relative_path(project_root, vfs_path))
                     // Outside any project root `get_relative_path` hands back
                     // the absolute path, and joining that would escape `to`.
                     .filter(|relative| relative.is_relative());

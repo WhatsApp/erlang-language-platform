@@ -578,13 +578,17 @@ impl SourceRootMap {
 mod tests {
     use std::sync::Arc;
 
+    use elp_project_model::EqwalizerConfig;
+    use elp_project_model::buck::BuckProjectIndex;
     use expect_test::expect;
+    use paths::AbsPathBuf;
 
     use super::Fixture;
     use super::WithFixture;
     use crate::AppData;
-    use crate::ProjectData;
+    use crate::ProjectId;
     use crate::RootQueryDb;
+    use crate::SourceRootId;
     use crate::Workspace;
     use crate::test_db::TestDB;
 
@@ -608,7 +612,7 @@ bar() -> ?FOO.
         expect![[r#"
             [
                 (
-                    ProjectData {
+                    LoweredProject {
                         source_roots: [
                             SourceRootId(
                                 0,
@@ -701,7 +705,7 @@ bar() -> ?FOO.
                     ],
                 ),
                 (
-                    ProjectData {
+                    LoweredProject {
                         source_roots: [
                             SourceRootId(
                                 2,
@@ -795,7 +799,7 @@ foo() -> ?BAR.
         expect![[r#"
             [
                 (
-                    ProjectData {
+                    LoweredProject {
                         source_roots: [
                             SourceRootId(
                                 0,
@@ -869,7 +873,7 @@ foo() -> ?BAR.
                     ],
                 ),
                 (
-                    ProjectData {
+                    LoweredProject {
                         source_roots: [],
                         root_dir: AbsPathBuf(
                             "/",
@@ -893,21 +897,38 @@ foo() -> ?BAR.
         .assert_eq(&lowered);
     }
 
-    /// The data of each project, and of the app of each of its source roots.
+    #[derive(Debug)]
+    #[expect(dead_code, reason = "the fields are read through `Debug`")]
+    struct LoweredProject {
+        source_roots: Vec<SourceRootId>,
+        root_dir: AbsPathBuf,
+        otp_project_id: Option<ProjectId>,
+        eqwalizer_config: EqwalizerConfig,
+        buck_index: Option<Arc<BuckProjectIndex>>,
+    }
+
+    /// The fields of each project, and the data of the app of each of its
+    /// source roots.
     fn lowered_model(fixture: &str) -> String {
         let (db, _) = TestDB::with_fixture(fixture);
-        let projects: Vec<(Arc<ProjectData>, Vec<AppData>)> = Workspace::get(&db)
+        let projects: Vec<(LoweredProject, Vec<AppData>)> = Workspace::get(&db)
             .projects(&db)
             .iter()
-            .map(|project| {
-                let project_data = project.project_data(&db);
-                let apps = project_data
-                    .source_roots
+            .map(|&project| {
+                let apps = project
+                    .source_roots(&db)
                     .iter()
                     .filter_map(|source_root_id| db.app_data(*source_root_id))
                     .map(|app_data| (*app_data).clone())
                     .collect();
-                (project_data, apps)
+                let lowered = LoweredProject {
+                    source_roots: project.source_roots(&db).to_vec(),
+                    root_dir: project.root_dir(&db).to_path_buf(),
+                    otp_project_id: project.otp(&db).map(|otp| otp.project_id(&db)),
+                    eqwalizer_config: project.eqwalizer_config(&db).clone(),
+                    buck_index: project.buck_index(&db).clone(),
+                };
+                (lowered, apps)
             })
             .collect();
         format!("{projects:#?}")

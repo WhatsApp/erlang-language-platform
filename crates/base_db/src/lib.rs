@@ -69,7 +69,6 @@ pub use input::FileSource;
 pub use input::IncludeOtp;
 pub use input::Project;
 pub use input::ProjectApps;
-pub use input::ProjectData;
 pub use input::ProjectId;
 pub use input::SourceRoot;
 pub use input::SourceRootId;
@@ -699,8 +698,8 @@ fn module_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc<Modul
     let project_id = pid.project_id(db);
     let mut builder = ModuleIndex::builder();
 
-    let project_data = db.project_data(project_id).project_data(db);
-    for &source_root_id in &project_data.source_roots {
+    let project = db.project_data(project_id);
+    for &source_root_id in project.source_roots(db).iter() {
         let source_root = db.source_root(source_root_id).source_root(db);
         for file_id in source_root.iter() {
             if db.file_kind(file_id).is_module()
@@ -714,16 +713,13 @@ fn module_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc<Modul
         }
     }
 
-    project_data
-        .otp_project_id
-        .iter()
-        .for_each(|otp_project_id| {
-            if *otp_project_id == project_id {
-                builder.is_otp()
-            } else {
-                builder.set_otp(db.module_index(*otp_project_id))
-            }
-        });
+    if let Some(otp) = project.otp(db) {
+        if otp == project {
+            builder.is_otp()
+        } else {
+            builder.set_otp(db.module_index(otp.project_id(db)))
+        }
+    }
 
     builder.build()
 }
@@ -751,10 +747,8 @@ pub fn is_app_reachable(
         return true;
     };
 
-    let project_data = db
-        .project_data(referencing_app_data.project_id)
-        .project_data(db);
-    let Some(buck_index) = &project_data.buck_index else {
+    let project = db.project_data(referencing_app_data.project_id);
+    let Some(buck_index) = project.buck_index(db) else {
         return true;
     };
     db.reachable_targets(
@@ -784,8 +778,10 @@ fn reachable_targets_inner(
     source: TargetFullName,
     dep_kind: DepKind,
 ) -> Option<Arc<ReachableTargets>> {
-    let project_data = db.project_data(pid.project_id(db)).project_data(db);
-    let buck_index = project_data.buck_index.as_ref()?;
+    let buck_index = db
+        .project_data(pid.project_id(db))
+        .buck_index(db)
+        .as_ref()?;
     Some(Arc::new(
         buck_index.app_deps.reachable_targets(&source, dep_kind),
     ))
@@ -868,21 +864,14 @@ fn include_file_index_dispatch(
 fn include_file_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc<IncludeFileIndex> {
     let project_id = pid.project_id(db);
     let mut include_file_index = IncludeFileIndex::default();
-    let project_data = db.project_data(project_id).project_data(db);
-    build_include_file_index(db, &project_data, &mut include_file_index);
-    project_data
-        .otp_project_id
-        .iter()
-        .for_each(|otp_project_id| {
-            if *otp_project_id != project_id {
-                build_include_file_index(
-                    db,
-                    &db.project_data(*otp_project_id).project_data(db),
-                    &mut include_file_index,
-                );
-            }
-        });
-    if let Some(buck_index) = &project_data.buck_index {
+    let project = db.project_data(project_id);
+    build_include_file_index(db, project, &mut include_file_index);
+    if let Some(otp) = project.otp(db)
+        && otp != project
+    {
+        build_include_file_index(db, otp, &mut include_file_index);
+    }
+    if let Some(buck_index) = project.buck_index(db) {
         include_file_index.buck_index = buck_index.clone();
     }
     Arc::new(include_file_index)
@@ -890,10 +879,10 @@ fn include_file_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc
 
 fn build_include_file_index(
     db: &dyn RootQueryDb,
-    project_data: &Arc<ProjectData>,
+    project: Project,
     include_file_index: &mut IncludeFileIndex,
 ) {
-    for &source_root_id in &project_data.source_roots {
+    for &source_root_id in project.source_roots(db).iter() {
         let source_root = db.source_root(source_root_id).source_root(db);
         for file_id in source_root.iter() {
             let path = db.file(file_id).path(db);
@@ -1116,8 +1105,8 @@ fn is_otp_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<bool> {
 fn is_otp_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<bool> {
     let file_id = fid.file_id(db);
     let app_data = db.file_app_data(file_id)?;
-    let project_id = app_data.project_id;
-    Some(db.project_data(project_id).project_data(db).otp_project_id == Some(project_id))
+    let project = db.project_data(app_data.project_id);
+    Some(project.otp(db) == Some(project))
 }
 
 fn is_test_suite_or_test_helper_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<bool> {

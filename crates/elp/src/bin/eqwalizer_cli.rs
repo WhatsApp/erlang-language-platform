@@ -665,10 +665,9 @@ pub fn eqwalize_stats(
         let vfs_path = &loaded.file_path(file_id);
         let analysis = loaded.analysis();
         let root_path = &analysis
-            .project_data(file_id)
-            .unwrap_or_else(|_err| panic!("could not find project data"))
-            .unwrap_or_else(|| panic!("could not find project data"))
-            .root_dir;
+            .project_root(file_id)
+            .unwrap_or_else(|_err| panic!("could not find the project root"))
+            .unwrap_or_else(|| panic!("could not find the project root"));
         let relative_path = reporting::get_relative_path(root_path, vfs_path);
         let line_index = analysis.line_index(file_id)?;
         for stat in stats {
@@ -798,10 +797,9 @@ fn eqwalize(
                     let vfs_path = &loaded.file_path(file_id);
                     let analysis = loaded.analysis();
                     let root_path = &analysis
-                        .project_data(file_id)
-                        .unwrap_or_else(|_err| panic!("could not find project data"))
-                        .unwrap_or_else(|| panic!("could not find project data"))
-                        .root_dir;
+                        .project_root(file_id)
+                        .unwrap_or_else(|_err| panic!("could not find the project root"))
+                        .unwrap_or_else(|| panic!("could not find the project root"));
                     let relative_path = reporting::get_relative_path(root_path, vfs_path);
 
                     let line_num = convert::position(&line_index, diag.range.start()).line + 1;
