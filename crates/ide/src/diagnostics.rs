@@ -143,6 +143,7 @@ mod meck_missing_no_link_in_init_per_suite;
 mod meck_restricted;
 // @fb-only: mod meta_only;
 mod missing_compile_warn_missing_spec;
+mod missing_function_spec;
 mod missing_module;
 mod missing_ms_transform_include;
 mod missing_separator;
@@ -2287,6 +2288,7 @@ const GENERIC_LINTERS: &[&dyn GenericDiagnostics] = &[
     &attribute_order::LINTER,
     &unused_macro::LINTER,
     &missing_compile_warn_missing_spec::LINTER,
+    &missing_function_spec::LINTER,
     &undocumented_module::LINTER,
     &undocumented_function::LINTER,
     &no_catch::LINTER,

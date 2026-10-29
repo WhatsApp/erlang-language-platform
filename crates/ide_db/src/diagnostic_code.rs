@@ -229,6 +229,8 @@ pub enum DiagnosticCode {
     UndefinedModule,
     #[strum(props(code = "W0090"))]
     UnavailableModule,
+    #[strum(props(code = "W0091"))]
+    MissingFunctionSpec,
 
     // Wrapper for erlang service diagnostic codes
     ErlangService(String),
