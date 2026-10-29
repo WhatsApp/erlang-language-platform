@@ -1855,6 +1855,40 @@ mod tests {
         )
     }
 
+    #[test]
+    fn test_find_local_usages_across_case_arm_with_nested_case() {
+        // The `Foo` in the first arm is bound before a nested `case`, which
+        // pushes a new scope. All three occurrences belong to the same variable.
+        check_local_usages(
+            r#"main(X) ->
+                   case X of
+                       a ->
+                           ~Foo = foo,
+                           Bar = case undefined of undefined -> undefined end;
+                       b ->
+                           Foo = bar,
+                           Bar = baz
+                   end,
+                   {Foo, Bar}."#,
+            expect![[r#"
+                [
+                    (
+                        95..98,
+                        "Foo",
+                    ),
+                    (
+                        240..243,
+                        "Foo",
+                    ),
+                    (
+                        332..335,
+                        "Foo",
+                    ),
+                ]
+            "#]],
+        )
+    }
+
     #[track_caller]
     fn check_bound_var_in_pattern(fixture: &str) {
         let (db, fixture) = TestDB::with_fixture(fixture);
