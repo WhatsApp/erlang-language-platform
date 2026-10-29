@@ -11,7 +11,7 @@
 use std::sync::Arc;
 
 use elp_base_db::FileId;
-use elp_base_db::ProjectId;
+use elp_base_db::Project;
 use elp_base_db::RootQueryDb;
 use elp_base_db::Upcast;
 use elp_base_db::salsa;
@@ -55,18 +55,18 @@ fn ct_info(db: &dyn CommonTestDatabase, file_id: FileId) -> Arc<CommonTestInfo> 
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nct_info: {file_id:?}"));
     let def_map = db.def_map(file_id);
-    if let Some(project_id) = db.file_project_id(file_id) {
-        return Arc::new(db.check(project_id, file_id, &def_map));
+    if let Some(project) = db.file_project(file_id) {
+        return Arc::new(db.check(project, file_id, &def_map));
     }
     Arc::new(CommonTestInfo::NoProjectInfoError)
 }
 
 pub trait CommonTestLoader {
-    fn check(&self, project_id: ProjectId, file_id: FileId, def_map: &DefMap) -> CommonTestInfo;
+    fn check(&self, project: Project, file_id: FileId, def_map: &DefMap) -> CommonTestInfo;
 }
 
 impl CommonTestLoader for crate::RootDatabase {
-    fn check(&self, project_id: ProjectId, file_id: FileId, def_map: &DefMap) -> CommonTestInfo {
+    fn check(&self, project: Project, file_id: FileId, def_map: &DefMap) -> CommonTestInfo {
         let should_request_groups =
             def_map.is_function_exported(&NameArity::new(Name::from_erlang_service("groups"), 0));
 
@@ -90,8 +90,8 @@ impl CommonTestLoader for crate::RootDatabase {
             return info;
         }
 
-        let erlang_service = self.erlang_service_for(project_id);
-        let index = self.module_index(project_id);
+        let erlang_service = self.erlang_service_for(project);
+        let index = self.module_index(project);
         let module = index.module_for_file(file_id);
 
         let request = CTInfoRequest {

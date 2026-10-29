@@ -23,7 +23,7 @@ use elp_base_db::FilePosition;
 use elp_base_db::FileRange;
 use elp_base_db::FileSourceRootInput;
 use elp_base_db::Files;
-use elp_base_db::ProjectId;
+use elp_base_db::Project;
 use elp_base_db::RootQueryDb;
 use elp_base_db::SourceAppDataInput;
 use elp_base_db::SourceDatabase;
@@ -111,10 +111,10 @@ type IpcHandles = Arc<AssertUnwindSafe<RwLock<FxHashMap<String, Arc<Mutex<IpcHan
 
 /// Selects a project's erlang_service VM. The projects with an empty code path
 /// share one; every other project has its own.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum ErlangServiceKey {
     EmptyCodePath,
-    Project(ProjectId),
+    Project(Project),
 }
 
 /// Clears all process-backed sidecars owned by a database when dropped.
@@ -302,13 +302,13 @@ impl RootDatabase {
     /// which keeps the code path it started with. Every query that asks it
     /// depends on the project's code path and on `Workspace::vm_epoch`, which
     /// `drop_erlang_services` bumps.
-    pub fn erlang_service_for(&self, project_id: ProjectId) -> Connection {
-        let code_path = self.project_data(project_id).code_path(self);
+    pub fn erlang_service_for(&self, project: Project) -> Connection {
+        let code_path = project.code_path(self);
         Workspace::get(self).vm_epoch(self);
         let key = if code_path.is_empty() {
             ErlangServiceKey::EmptyCodePath
         } else {
-            ErlangServiceKey::Project(project_id)
+            ErlangServiceKey::Project(project)
         };
         if let Some(conn) = self.erlang_services.read().get(&key) {
             return conn.clone();
@@ -345,8 +345,8 @@ impl RootDatabase {
         let source_file = self.parse(file_id).tree();
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nresolved_includes: {file_id:?}"));
-        let project_id = self.file_app_data(file_id)?.project_id;
-        let root_abs = self.project_data(project_id).root_dir(self);
+        let project = self.file_app_data(file_id)?.project;
+        let root_abs = project.root_dir(self);
         let form_list = self.file_form_list(file_id);
         let line_index = self.file_line_index(file_id);
         let includes: Vec<_> = form_list
@@ -478,18 +478,18 @@ impl TypedSemantic for RootDatabase {
         // Check, if the file is actually a module
         let app_data = self.file_app_data(file_id)?;
         let module = self
-            .module_index(app_data.project_id)
+            .module_index(app_data.project)
             .module_for_file(file_id)
             .cloned()?;
 
-        let project_id = app_data.project_id;
+        let project = app_data.project;
 
         let eqwalizer_enabled = EqwalizerDatabase::is_eqwalizer_enabled(self, file_id);
         if !eqwalizer_enabled {
             return Some(vec![]);
         }
 
-        let diags = eqwalizer::eqwalizer_diagnostics_by_project(self, project_id, vec![file_id]);
+        let diags = eqwalizer::eqwalizer_diagnostics_by_project(self, project, vec![file_id]);
         match &*diags {
             EqwalizerDiagnostics::Diagnostics { errors, .. } => Some(
                 errors
@@ -528,13 +528,13 @@ mod tests {
     use elp_base_db::AppDataIndex;
     use elp_base_db::FileId;
     use elp_base_db::Project;
-    use elp_base_db::ProjectId;
     use elp_base_db::RootQueryDb;
     use elp_base_db::SourceDatabase;
     use elp_base_db::Workspace;
     use elp_base_db::assert_eq_expected;
     use elp_base_db::fixture::WithFixture;
     use elp_base_db::salsa::Setter;
+    use fxhash::FxHashSet;
 
     use super::text_edit::TextRange;
     use crate::ErlangServiceKey;
@@ -582,10 +582,8 @@ mod tests {
         assert_eq_expected!(vec![1, 2], owners);
     }
 
-    fn vm_keys(db: &RootDatabase) -> Vec<ErlangServiceKey> {
-        let mut keys: Vec<_> = db.erlang_services.read().keys().copied().collect();
-        keys.sort();
-        keys
+    fn vm_keys(db: &RootDatabase) -> FxHashSet<ErlangServiceKey> {
+        db.erlang_services.read().keys().copied().collect()
     }
 
     #[test]
@@ -596,11 +594,11 @@ mod tests {
 -module(main).
 "#,
         );
-        let base = db.project_data(ProjectId(0));
-        let ebin = base.root_dir(&db).join("a/ebin");
         let workspace = Workspace::get(&db);
+        let base = workspace.projects(&db)[0];
+        let ebin = base.root_dir(&db).join("a/ebin");
         let mut projects = workspace.projects(&db).to_vec();
-        let first = projects.len() as u32;
+        let first = projects.len();
         for code_path in [vec![], vec![], vec![ebin.clone()], vec![ebin.clone()]] {
             projects.push(Project::new(
                 &db,
@@ -612,16 +610,18 @@ mod tests {
                 Arc::from([]),
             ));
         }
-        workspace.set_projects(&mut db).to(projects.into());
-        for id in first..first + 4 {
-            db.erlang_service_for(ProjectId(id));
+        workspace
+            .set_projects(&mut db)
+            .to(Arc::from(projects.as_slice()));
+        for &project in &projects[first..] {
+            db.erlang_service_for(project);
         }
 
-        let expected_keys = vec![
+        let expected_keys = FxHashSet::from_iter([
             ErlangServiceKey::EmptyCodePath,
-            ErlangServiceKey::Project(ProjectId(first + 2)),
-            ErlangServiceKey::Project(ProjectId(first + 3)),
-        ];
+            ErlangServiceKey::Project(projects[first + 2]),
+            ErlangServiceKey::Project(projects[first + 3]),
+        ]);
         assert_eq_expected!(expected_keys, vm_keys(&db));
     }
 
@@ -634,20 +634,19 @@ mod tests {
 "#,
         );
         let file_id = fixture.files[0];
-        let project_id = db
+        let project = db
             .file_app_data(file_id)
             .expect("the file should have an app")
-            .project_id;
-        let project = db.project_data(project_id);
+            .project;
         db.module_ast(file_id);
         let ebin = project.root_dir(&db).join("a/ebin");
         project.set_code_path(&mut db).to(vec![ebin].into());
         db.module_ast(file_id);
 
-        let expected_keys = vec![
+        let expected_keys = FxHashSet::from_iter([
             ErlangServiceKey::EmptyCodePath,
-            ErlangServiceKey::Project(project_id),
-        ];
+            ErlangServiceKey::Project(project),
+        ]);
         assert_eq_expected!(expected_keys, vm_keys(&db));
     }
 

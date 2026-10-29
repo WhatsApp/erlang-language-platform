@@ -18,7 +18,7 @@ use elp_base_db::AbsPathBuf;
 use elp_base_db::AppType;
 use elp_base_db::FileId;
 use elp_base_db::ModuleName;
-use elp_base_db::ProjectId;
+use elp_base_db::Project;
 use elp_base_db::RootQueryDb;
 use elp_types_db::StringId;
 use elp_types_db::eqwalizer::AST;
@@ -51,23 +51,19 @@ use crate::get_module_diagnostics;
 use crate::ipc::IpcHandle;
 
 pub trait EqwalizerErlASTStorage {
-    fn erl_ast_bytes(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-    ) -> Result<Arc<Vec<u8>>, Error>;
+    fn erl_ast_bytes(&self, project: Project, module: ModuleName) -> Result<Arc<Vec<u8>>, Error>;
 
-    fn eqwalizer_ast(&self, project_id: ProjectId, module: ModuleName) -> Result<Arc<AST>, Error> {
-        let ast = self.erl_ast_bytes(project_id, module)?;
+    fn eqwalizer_ast(&self, project: Project, module: ModuleName) -> Result<Arc<AST>, Error> {
+        let ast = self.erl_ast_bytes(project, module)?;
         ast::from_bytes(&ast, false).map(Arc::new)
     }
 
     fn eqwalizer_ast_bytes(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error> {
-        self.eqwalizer_ast(project_id, module).map(|ast| {
+        self.eqwalizer_ast(project, module).map(|ast| {
             Arc::new(ast::to_bytes(
                 &ast.forms.iter().filter(is_non_stub_form).collect(),
             ))
@@ -90,62 +86,55 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
     #[salsa::invoke_interned(module_diagnostics)]
     fn module_diagnostics(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: String,
     ) -> (Arc<EqwalizerDiagnostics>, Instant);
 
     #[salsa::invoke_interned(converted_stub)]
-    fn converted_stub(&self, project_id: ProjectId, module: ModuleName) -> Result<Arc<AST>, Error>;
+    fn converted_stub(&self, project: Project, module: ModuleName) -> Result<Arc<AST>, Error>;
 
     #[salsa::invoke_interned(type_ids)]
     fn type_ids(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
     ) -> Result<Arc<BTreeMap<Id, Visibility>>, Error>;
 
     #[salsa::invoke_interned(native_rec_ids)]
     fn native_rec_ids(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
     ) -> Result<Arc<BTreeMap<StringId, Visibility>>, Error>;
 
     #[salsa::invoke_interned(expanded_stub)]
-    fn expanded_stub(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-    ) -> Result<Arc<ModuleStub>, Error>;
+    fn expanded_stub(&self, project: Project, module: ModuleName)
+    -> Result<Arc<ModuleStub>, Error>;
 
     #[salsa::invoke_interned(contractive_stub)]
-    fn contractive_stub(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-    ) -> Result<Arc<VStub>, Error>;
+    fn contractive_stub(&self, project: Project, module: ModuleName) -> Result<Arc<VStub>, Error>;
 
     #[salsa::invoke_interned(transitive_stub)]
     fn transitive_stub(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
     ) -> Result<Arc<ModuleStub>, Error>;
 
     #[salsa::invoke_interned(transitive_stub_bytes)]
     fn transitive_stub_bytes(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
     ) -> Result<Arc<Vec<u8>>, Error>;
 
     #[salsa::invoke_interned(custom_types)]
-    fn custom_types(&self, project_id: ProjectId) -> Result<Arc<TypeDeclMap>, Error>;
+    fn custom_types(&self, project: Project) -> Result<Arc<TypeDeclMap>, Error>;
 
     #[salsa::invoke_interned(type_decl)]
     fn type_decl(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
         id: Id,
     ) -> Result<Option<Arc<TypeDecl>>, Error>;
@@ -153,7 +142,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
     #[salsa::invoke_interned(type_decl_bytes)]
     fn type_decl_bytes(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
         id: Id,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
@@ -161,7 +150,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
     #[salsa::invoke_interned(rec_decl)]
     fn rec_decl(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
         id: StringId,
     ) -> Result<Option<Arc<RecDecl>>, Error>;
@@ -169,7 +158,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
     #[salsa::invoke_interned(rec_decl_bytes)]
     fn rec_decl_bytes(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
         id: StringId,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
@@ -177,7 +166,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
     #[salsa::invoke_interned(native_rec_decl)]
     fn native_rec_decl(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
         id: StringId,
     ) -> Result<Option<Arc<NativeRecDecl>>, Error>;
@@ -185,7 +174,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
     #[salsa::invoke_interned(native_rec_decl_bytes)]
     fn native_rec_decl_bytes(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
         id: StringId,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
@@ -193,7 +182,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
     #[salsa::invoke_interned(fun_spec)]
     fn fun_spec(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
         id: Id,
     ) -> Result<Option<Arc<FunSpec>>, Error>;
@@ -201,7 +190,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
     #[salsa::invoke_interned(fun_spec_bytes)]
     fn fun_spec_bytes(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
         id: Id,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
@@ -209,7 +198,7 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
     #[salsa::invoke_interned(overloaded_fun_spec)]
     fn overloaded_fun_spec(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
         id: Id,
     ) -> Result<Option<Arc<OverloadedFunSpec>>, Error>;
@@ -217,38 +206,34 @@ pub trait EqwalizerDiagnosticsDatabase: EqwalizerErlASTStorage + RootQueryDb + E
     #[salsa::invoke_interned(overloaded_fun_spec_bytes)]
     fn overloaded_fun_spec_bytes(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
         id: Id,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 
     #[salsa::invoke_interned(custom_fun_specs)]
-    fn custom_fun_specs(&self, project_id: ProjectId) -> Result<Arc<FunSpecMap>, Error>;
+    fn custom_fun_specs(&self, project: Project) -> Result<Arc<FunSpecMap>, Error>;
 
     #[salsa::invoke_interned(custom_overloaded_fun_specs)]
     fn custom_overloaded_fun_specs(
         &self,
-        project_id: ProjectId,
+        project: Project,
     ) -> Result<Arc<OverloadedFunSpecMap>, Error>;
 
     #[salsa::invoke_interned(callbacks)]
-    fn callbacks(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-    ) -> Result<CallbacksResult, Error>;
+    fn callbacks(&self, project: Project, module: ModuleName) -> Result<CallbacksResult, Error>;
 
     #[salsa::invoke_interned(callbacks_bytes)]
     fn callbacks_bytes(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
     ) -> Result<Option<Arc<Vec<u8>>>, Error>;
 }
 
 fn module_diagnostics(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: String,
 ) -> (Arc<EqwalizerDiagnostics>, Instant) {
     // A timestamp is added to the return value to force Salsa to store new
@@ -259,7 +244,7 @@ fn module_diagnostics(
     // Ideally, the config should be passed per module to eqWAlizer instead
     // of being set in the command's environment
     let _ = db.eqwalizer_config();
-    match get_module_diagnostics(db, project_id, module.clone()) {
+    match get_module_diagnostics(db, project, module.clone()) {
         Ok(diag) => (Arc::new(diag), timestamp),
         Err(err) => (
             Arc::new(EqwalizerDiagnostics::Error(format!(
@@ -285,10 +270,10 @@ fn is_non_stub_form(form: &&ExternalForm) -> bool {
 
 fn converted_stub(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
 ) -> Result<Arc<AST>, Error> {
-    if let Some(file_id) = db.module_index(project_id).file_for_module(&module) {
+    if let Some(file_id) = db.module_index(project).file_for_module(&module) {
         if let Some(beam_path) = from_beam_path(db, file_id, &module) {
             if let Ok(beam_contents) = std::fs::read(&beam_path) {
                 ast::from_beam(&beam_contents).map(Arc::new)
@@ -296,7 +281,7 @@ fn converted_stub(
                 Err(Error::BEAMNotFound(beam_path.into()))
             }
         } else {
-            let ast = db.erl_ast_bytes(project_id, module)?;
+            let ast = db.erl_ast_bytes(project, module)?;
             ast::from_bytes(&ast, true).map(Arc::new)
         }
     } else {
@@ -321,29 +306,29 @@ fn from_beam_path(
 
 fn type_ids(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
 ) -> Result<Arc<BTreeMap<Id, Visibility>>, Error> {
-    db.converted_stub(project_id, module)
+    db.converted_stub(project, module)
         .map(|ast| Arc::new(ast::type_ids(&ast)))
 }
 
 fn native_rec_ids(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
 ) -> Result<Arc<BTreeMap<StringId, Visibility>>, Error> {
-    db.converted_stub(project_id, module)
+    db.converted_stub(project, module)
         .map(|ast| Arc::new(ast::native_rec_ids(&ast)))
 }
 
 fn expanded_stub(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
 ) -> Result<Arc<ModuleStub>, Error> {
-    let ast = db.converted_stub(project_id, module.clone())?;
-    let mut expander = StubExpander::new(db, project_id, module.as_str().into(), &ast);
+    let ast = db.converted_stub(project, module.clone())?;
+    let mut expander = StubExpander::new(db, project, module.as_str().into(), &ast);
     expander
         .expand(&ast.forms)
         .map(|()| Arc::new(expander.stub))
@@ -352,23 +337,23 @@ fn expanded_stub(
 
 fn contractive_stub(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
 ) -> Result<Arc<VStub>, Error> {
-    let stub = db.expanded_stub(project_id, module.clone())?;
-    let mut checker = StubContractivityChecker::new(db, project_id, module.as_str().into());
+    let stub = db.expanded_stub(project, module.clone())?;
+    let mut checker = StubContractivityChecker::new(db, project, module.as_str().into());
     Ok(Arc::new(checker.check(stub)))
 }
 
 fn transitive_stub(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
 ) -> Result<Arc<ModuleStub>, Error> {
-    let v_stub = db.contractive_stub(project_id, module.clone())?;
-    let mut checker = TransitiveChecker::new(db, project_id, module.as_str().into());
+    let v_stub = db.contractive_stub(project, module.clone())?;
+    let mut checker = TransitiveChecker::new(db, project, module.as_str().into());
     let stub = checker.check(&v_stub);
-    match bundled_override_stub(db, project_id, &module)? {
+    match bundled_override_stub(db, project, &module)? {
         Some(bundled) => Ok(Arc::new(layer_stub(&bundled, stub))),
         None => Ok(Arc::new(stub)),
     }
@@ -378,23 +363,20 @@ fn transitive_stub(
 /// with ELP, when the project has its own copy of that module.
 fn bundled_override_stub(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: &ModuleName,
 ) -> Result<Option<Arc<ModuleStub>>, Error> {
     if *module != *EQWALIZER_SPECS && *module != *EQWALIZER_TYPES {
         return Ok(None);
     }
-    let project = db.project_data(project_id);
     let Some(otp) = project.otp(db).filter(|&otp| otp != project) else {
         return Ok(None);
     };
-    let otp_project_id = otp.project_id(db);
-    let bundled_file = db.module_index(otp_project_id).file_for_module(module);
-    if bundled_file.is_none() || bundled_file == db.module_index(project_id).file_for_module(module)
-    {
+    let bundled_file = db.module_index(otp).file_for_module(module);
+    if bundled_file.is_none() || bundled_file == db.module_index(project).file_for_module(module) {
         return Ok(None);
     }
-    db.transitive_stub(otp_project_id, module.clone()).map(Some)
+    db.transitive_stub(otp, module.clone()).map(Some)
 }
 
 /// The project's `own` stub over the `bundled` one, entry by entry. A
@@ -426,10 +408,10 @@ fn layer_stub(bundled: &ModuleStub, own: ModuleStub) -> ModuleStub {
 
 fn transitive_stub_bytes(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
 ) -> Result<Arc<Vec<u8>>, Error> {
-    db.transitive_stub(project_id, module)
+    db.transitive_stub(project, module)
         .map(|stub| Arc::new(stub.to_bytes()))
 }
 
@@ -438,9 +420,9 @@ pub static EQWALIZER_TYPES: LazyLock<ModuleName> =
 
 fn custom_types(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
 ) -> Result<Arc<TypeDeclMap>, Error> {
-    match db.transitive_stub(project_id, EQWALIZER_TYPES.clone()) {
+    match db.transitive_stub(project, EQWALIZER_TYPES.clone()) {
         Ok(stub) => {
             let mut result: TypeDeclMap = BTreeMap::new();
             for (id, type_decl) in stub.types.iter() {
@@ -468,29 +450,29 @@ fn custom_types(
 
 fn type_decl(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
     id: Id,
 ) -> Result<Option<Arc<TypeDecl>>, Error> {
-    let custom_types = db.custom_types(project_id)?;
+    let custom_types = db.custom_types(project)?;
     // return custom type if it exists
     if let Some(t) = custom_types.get(&module).and_then(|m| m.get(&id)) {
         return Ok(Some(t.clone()));
     }
-    let stub = db.transitive_stub(project_id, module)?;
+    let stub = db.transitive_stub(project, module)?;
     Ok(stub.types.get(&id).cloned())
 }
 
 fn type_decl_bytes(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
     id: Id,
 ) -> Result<Option<Arc<Vec<u8>>>, Error> {
-    let type_decl = db.type_decl(project_id, module.clone(), id.clone())?;
+    let type_decl = db.type_decl(project, module.clone(), id.clone())?;
     match type_decl {
         Some(t) => {
-            let stub = db.transitive_stub(project_id, module)?;
+            let stub = db.transitive_stub(project, module)?;
             let variances = stub.variances.get(&id).cloned().unwrap_or_default();
             let bytes = serde_json::to_vec(&(&*t, &variances))
                 .expect("type decl with variances should be serializable to JSON");
@@ -502,52 +484,52 @@ fn type_decl_bytes(
 
 fn rec_decl(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
     id: StringId,
 ) -> Result<Option<Arc<RecDecl>>, Error> {
-    let stub = db.transitive_stub(project_id, module)?;
+    let stub = db.transitive_stub(project, module)?;
     Ok(stub.records.get(&id).cloned())
 }
 
 fn rec_decl_bytes(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
     id: StringId,
 ) -> Result<Option<Arc<Vec<u8>>>, Error> {
-    db.rec_decl(project_id, module, id)
+    db.rec_decl(project, module, id)
         .map(|t| t.map(|t| Arc::new(t.to_bytes())))
 }
 
 /// Looks up a native record declaration from the module's transitive stub.
 fn native_rec_decl(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
     id: StringId,
 ) -> Result<Option<Arc<NativeRecDecl>>, Error> {
-    let stub = db.transitive_stub(project_id, module)?;
+    let stub = db.transitive_stub(project, module)?;
     Ok(stub.native_records.get(&id).cloned())
 }
 
 fn native_rec_decl_bytes(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
     id: StringId,
 ) -> Result<Option<Arc<Vec<u8>>>, Error> {
-    db.native_rec_decl(project_id, module, id)
+    db.native_rec_decl(project, module, id)
         .map(|t| t.map(|t| Arc::new(t.to_bytes())))
 }
 
 fn fun_spec(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
     id: Id,
 ) -> Result<Option<Arc<FunSpec>>, Error> {
-    let custom_overloaded_fun_specs = db.custom_overloaded_fun_specs(project_id)?;
+    let custom_overloaded_fun_specs = db.custom_overloaded_fun_specs(project)?;
     if custom_overloaded_fun_specs
         .get(&module)
         .and_then(|m| m.get(&id))
@@ -555,31 +537,31 @@ fn fun_spec(
     {
         return Ok(None);
     }
-    let custom_fun_specs = db.custom_fun_specs(project_id)?;
+    let custom_fun_specs = db.custom_fun_specs(project)?;
     if let Some(fun_spec) = custom_fun_specs.get(&module).and_then(|m| m.get(&id)) {
         return Ok(Some(fun_spec.clone()));
     }
-    let stub = db.transitive_stub(project_id, module)?;
+    let stub = db.transitive_stub(project, module)?;
     Ok(stub.specs.get(&id).cloned())
 }
 
 fn fun_spec_bytes(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
     id: Id,
 ) -> Result<Option<Arc<Vec<u8>>>, Error> {
-    db.fun_spec(project_id, module, id)
+    db.fun_spec(project, module, id)
         .map(|t| t.map(|t| Arc::new(t.to_bytes())))
 }
 
 fn overloaded_fun_spec(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
     id: Id,
 ) -> Result<Option<Arc<OverloadedFunSpec>>, Error> {
-    let custom_fun_specs = db.custom_fun_specs(project_id)?;
+    let custom_fun_specs = db.custom_fun_specs(project)?;
     if custom_fun_specs
         .get(&module)
         .and_then(|m| m.get(&id))
@@ -587,24 +569,24 @@ fn overloaded_fun_spec(
     {
         return Ok(None);
     }
-    let custom_overloaded_fun_specs = db.custom_overloaded_fun_specs(project_id)?;
+    let custom_overloaded_fun_specs = db.custom_overloaded_fun_specs(project)?;
     if let Some(overloaded_fun_spec) = custom_overloaded_fun_specs
         .get(&module)
         .and_then(|m| m.get(&id))
     {
         return Ok(Some(overloaded_fun_spec.clone()));
     }
-    let stub = db.transitive_stub(project_id, module)?;
+    let stub = db.transitive_stub(project, module)?;
     Ok(stub.overloaded_specs.get(&id).cloned())
 }
 
 fn overloaded_fun_spec_bytes(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
     id: Id,
 ) -> Result<Option<Arc<Vec<u8>>>, Error> {
-    db.overloaded_fun_spec(project_id, module, id)
+    db.overloaded_fun_spec(project, module, id)
         .map(|t| t.map(|t| Arc::new(t.to_bytes())))
 }
 
@@ -613,9 +595,9 @@ pub static EQWALIZER_SPECS: LazyLock<ModuleName> =
 
 fn custom_fun_specs(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
 ) -> Result<Arc<FunSpecMap>, Error> {
-    match db.transitive_stub(project_id, EQWALIZER_SPECS.clone()) {
+    match db.transitive_stub(project, EQWALIZER_SPECS.clone()) {
         Ok(stub) => {
             let mut result: FunSpecMap = BTreeMap::new();
             for (id, fun_spec) in stub.specs.iter() {
@@ -643,9 +625,9 @@ fn custom_fun_specs(
 
 fn custom_overloaded_fun_specs(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
 ) -> Result<Arc<OverloadedFunSpecMap>, Error> {
-    match db.transitive_stub(project_id, EQWALIZER_SPECS.clone()) {
+    match db.transitive_stub(project, EQWALIZER_SPECS.clone()) {
         Ok(stub) => {
             let mut result: OverloadedFunSpecMap = BTreeMap::new();
             for (id, overloaded_fun_spec) in stub.overloaded_specs.iter() {
@@ -671,19 +653,19 @@ fn custom_overloaded_fun_specs(
 
 fn callbacks(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
 ) -> Result<CallbacksResult, Error> {
-    let stub = db.transitive_stub(project_id, module)?;
+    let stub = db.transitive_stub(project, module)?;
     Ok((stub.callbacks.clone(), stub.optional_callbacks.clone()))
 }
 
 fn callbacks_bytes(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
 ) -> Result<Option<Arc<Vec<u8>>>, Error> {
-    db.callbacks(project_id, module).map(|op| {
+    db.callbacks(project, module).map(|op| {
         Some(Arc::new(
             serde_json::to_vec(&op).expect("op should be JSON serializable"),
         ))

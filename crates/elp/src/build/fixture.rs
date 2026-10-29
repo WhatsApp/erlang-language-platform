@@ -11,7 +11,6 @@
 use elp_ide::AnalysisHost;
 use elp_ide::elp_ide_db::RootDatabase;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
-use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::fixture::Fixture;
 
 use super::types::LoadResult;
@@ -25,7 +24,6 @@ pub fn load_result(fixture_str: &str) -> LoadResult {
     LoadResult::new(
         AnalysisHost::new(db),
         file_map,
-        ProjectId(0),
         project,
         FileSetConfig::default(),
     )
@@ -35,10 +33,10 @@ pub fn load_result(fixture_str: &str) -> LoadResult {
 mod tests {
     use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
     use elp_ide::elp_ide_db::elp_base_db::AppData;
-    use elp_ide::elp_ide_db::elp_base_db::ProjectId;
     use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
     use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
     use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+    use elp_ide::elp_ide_db::elp_base_db::Workspace;
     use elp_project_model::AppName;
     use elp_project_model::Project;
     use elp_project_model::ProjectAppData;
@@ -62,9 +60,9 @@ mod tests {
 
     fn lowered(loaded: &LoadResult, paths: &[AbsPathBuf]) -> Lowered {
         let db = loaded.analysis_host.raw_database();
-        let apps = [ProjectId(0), ProjectId(1)].map(|project_id| {
-            let mut apps: Vec<AppData> = db
-                .project_data(project_id)
+        let projects = Workspace::get(db).projects(db);
+        let apps = [projects[0], projects[1]].map(|project| {
+            let mut apps: Vec<AppData> = project
                 .source_roots(db)
                 .iter()
                 .filter_map(|root| db.app_data(*root))

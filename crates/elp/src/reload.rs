@@ -18,7 +18,6 @@ use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::LineEndings;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
-use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::SourceRoot;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
@@ -49,12 +48,12 @@ pub struct ProjectFolders {
 
 pub fn watch_paths_for_app(
     app: &ProjectAppData,
-    project_id: ProjectId,
-    otp_project_id: Option<ProjectId>,
+    project_idx: usize,
+    otp_project_idx: Option<usize>,
 ) -> Vec<String> {
     let mut paths = Vec::new();
     for root in app.all_dirs_to_watch() {
-        if Some(project_id) != otp_project_id {
+        if Some(project_idx) != otp_project_idx {
             paths.push(format!("{root}/**/*.{{e,h}}rl"));
         }
     }
@@ -105,7 +104,7 @@ impl ProjectFolders {
             .iter()
             .fold(
                 FileSetConfig::builder(),
-                |mut builder, (_project_id, app)| {
+                |mut builder, (_project_idx, app)| {
                     let mut file_sets: FxHashSet<VfsPath> = app
                         .abs_src_dirs
                         .iter()
@@ -121,12 +120,12 @@ impl ProjectFolders {
 
         let load = loader_config(project_apps);
 
-        let otp_project_id = project_apps.otp_project_id;
+        let otp_project_idx = project_apps.otp_project_idx;
 
         let mut watch_paths: FxHashSet<_> = project_apps
             .all_apps
             .iter()
-            .flat_map(|(project_id, app)| watch_paths_for_app(app, *project_id, otp_project_id))
+            .flat_map(|(project_idx, app)| watch_paths_for_app(app, *project_idx, otp_project_idx))
             .collect();
 
         for project in &project_apps.projects {
@@ -167,9 +166,9 @@ impl ProjectFolders {
 pub(crate) fn bundled_files(
     project_apps: &ProjectApps<'_>,
 ) -> impl Iterator<Item = (VfsPath, Vec<u8>)> + use<> {
-    let dir = project_apps.otp_project_id.map(|ProjectId(idx)| {
-        eqwalizer_support::bundled_dir(&project_apps.projects[idx as usize].otp)
-    });
+    let dir = project_apps
+        .otp_project_idx
+        .map(|idx| eqwalizer_support::bundled_dir(&project_apps.projects[idx].otp));
     dir.into_iter().flat_map(|dir| {
         EQWALIZER_SUPPORT
             .get_dir("src")

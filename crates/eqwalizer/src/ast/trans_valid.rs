@@ -24,7 +24,7 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use elp_base_db::ModuleName;
-use elp_base_db::ProjectId;
+use elp_base_db::Project;
 use elp_syntax::SmolStr;
 use elp_types_db::StringId;
 use elp_types_db::eqwalizer::Pos;
@@ -69,7 +69,7 @@ impl Ref {
 
 pub struct TransitiveChecker<'d> {
     db: &'d dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: StringId,
     // Dependency graph: edge A -> B means "A depends on B"
     graph: DiGraph<Ref, ()>,
@@ -84,12 +84,12 @@ pub struct TransitiveChecker<'d> {
 impl TransitiveChecker<'_> {
     pub fn new(
         db: &dyn EqwalizerDiagnosticsDatabase,
-        project_id: ProjectId,
+        project: Project,
         module: StringId,
     ) -> TransitiveChecker<'_> {
         TransitiveChecker {
             db,
-            project_id,
+            project,
             module,
             graph: DiGraph::new(),
             ref_to_node: BTreeMap::new(),
@@ -130,7 +130,7 @@ impl TransitiveChecker<'_> {
     fn resolve_deps(&self, rref: &Ref) -> Option<Vec<Ref>> {
         let v_stub = self
             .db
-            .contractive_stub(self.project_id, ModuleName::new(rref.module().as_str()))
+            .contractive_stub(self.project, ModuleName::new(rref.module().as_str()))
             .ok()?;
         match rref {
             Ref::RidRef(rid) => {
@@ -173,7 +173,7 @@ impl TransitiveChecker<'_> {
         match rref {
             Ref::RecRef(module, rec_name) => self
                 .db
-                .contractive_stub(self.project_id, ModuleName::new(module.as_str()))
+                .contractive_stub(self.project, ModuleName::new(module.as_str()))
                 .is_ok_and(|v_stub| v_stub.is_invalid_record(*rec_name)),
             _ => false,
         }
@@ -440,7 +440,7 @@ impl TransitiveChecker<'_> {
                     {
                         let v_stub = self
                             .db
-                            .contractive_stub(self.project_id, ModuleName::new(rid.module.as_str()))
+                            .contractive_stub(self.project, ModuleName::new(rid.module.as_str()))
                             .ok()?;
                         let id = Id {
                             name: rid.name,

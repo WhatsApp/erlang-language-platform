@@ -54,7 +54,7 @@ use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileKind;
 use elp_ide::elp_ide_db::elp_base_db::FilePosition;
-use elp_ide::elp_ide_db::elp_base_db::ProjectId;
+use elp_ide::elp_ide_db::elp_base_db::Project;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_ide::elp_ide_db::source_change::SourceChange;
 use elp_ide_db::text_edit::TextSize;
@@ -469,13 +469,13 @@ fn run_diagnostics_parallel(
 fn do_diagnostics_all(
     report: &mut Report<'_>,
     analysis: &Analysis,
-    project_id: &ProjectId,
+    project: &Project,
     config: &DiagnosticsConfig,
     args: &Lint,
     loaded: &LoadResult,
     modules: &[String],
 ) -> Result<DiagnosticsResult> {
-    let module_index = analysis.module_index(*project_id).unwrap();
+    let module_index = analysis.module_index(*project).unwrap();
 
     let ignored_apps: FxHashSet<Option<Option<AppName>>> = args
         .ignore_app
@@ -534,7 +534,7 @@ fn do_diagnostics_all(
     // the dependencies too, hence the explicit `AppType::App`. Collected by
     // `FileId` so a header reachable under two paths is still linted once.
     let headers: FxHashSet<FileId> = analysis
-        .include_file_index(*project_id)
+        .include_file_index(*project)
         .unwrap()
         .path_to_file_id
         .values()
@@ -574,10 +574,10 @@ fn do_diagnostics_one(
     }
     if args.include_eqwalizer_diagnostics {
         if args.check_eqwalize_all {
-            let project_id = db.project_id(file_id).unwrap().unwrap();
+            let project = db.project(file_id).unwrap().unwrap();
             let max_tasks = elp_project_model::EqwalizerConfig::default().max_tasks;
             if let Some(diags) = db
-                .eqwalizer_diagnostics_by_project(project_id, vec![file_id], max_tasks)
+                .eqwalizer_diagnostics_by_project(project, vec![file_id], max_tasks)
                 .unwrap()
             {
                 diagnostics.set_eqwalizer_project(diags);
@@ -631,7 +631,7 @@ fn resolve_target_files(
     if !args.modules.is_empty() {
         user_selected_targets = true;
         for module in &args.modules {
-            if let Some(file_id) = analysis.module_file_id(loaded.project_id, module)? {
+            if let Some(file_id) = analysis.module_file_id(loaded.project_input, module)? {
                 file_ids.push(file_id);
                 report.human_line(format_args!("module specified: {module}"))?;
             } else {
@@ -723,7 +723,7 @@ pub fn do_codemod(
             do_diagnostics_all(
                 report,
                 &analysis,
-                &loaded.project_id,
+                &loaded.project_input,
                 diagnostics_config,
                 args,
                 loaded,

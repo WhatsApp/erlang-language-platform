@@ -40,7 +40,7 @@ use elp_ide_db::common_test::CommonTestInfo;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::elp_base_db::FileRange;
-use elp_ide_db::elp_base_db::ProjectId;
+use elp_ide_db::elp_base_db::Project;
 use elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide_db::elp_base_db::VfsPath;
 use elp_ide_db::elp_base_db::in_flight;
@@ -2838,15 +2838,15 @@ fn add_elp_assists_to_erlang_service_diagnostics(
     }
 
     let sema = Semantic::new(db);
-    let project_id = sema.db.file_project_id(file_id);
+    let project = sema.db.file_project(file_id);
 
     let macro_index = if needs_macro_index {
-        project_id.map(|pid| sema.macro_define_index(pid))
+        project.map(|pid| sema.macro_define_index(pid))
     } else {
         None
     };
     let record_index = if needs_record_index {
-        project_id.map(|pid| sema.record_define_index(pid))
+        project.map(|pid| sema.record_define_index(pid))
     } else {
         None
     };
@@ -2944,11 +2944,11 @@ pub fn eqwalizer_diagnostics(db: &RootDatabase, file_id: FileId) -> Option<Vec<D
 
 pub fn to_standard_diagnostics(
     db: &RootDatabase,
-    project_id: ProjectId,
+    project: Project,
     diagnostics: EqwalizerDiagnostics,
 ) -> Option<Vec<(FileId, Vec<Diagnostic>)>> {
     let sema = Semantic::new(db);
-    let module_index = db.module_index(project_id);
+    let module_index = db.module_index(project);
 
     let mut res = FxHashMap::default();
     if let elp_eqwalizer::EqwalizerDiagnostics::Diagnostics { errors, .. } = diagnostics {
@@ -2969,10 +2969,10 @@ pub fn to_standard_diagnostics(
 
 pub fn eqwalizer_stats(
     db: &RootDatabase,
-    project_id: ProjectId,
+    project: Project,
     file_id: FileId,
 ) -> Option<Vec<Diagnostic>> {
-    let eqwalizer_diagnostics = db.eqwalizer_stats(project_id, file_id)?;
+    let eqwalizer_diagnostics = db.eqwalizer_stats(project, file_id)?;
     // Report as info
     let eqwalizer_enabled = false;
     let sema = Semantic::new(db);
@@ -3208,7 +3208,7 @@ fn parse_error_to_diagnostic_info(
 }
 
 fn related_file_id(db: &RootDatabase, file_id: FileId, path: &Path) -> Option<FileId> {
-    db.file_project_id(file_id).and_then(|project_id| {
+    db.file_project(file_id).and_then(|project| {
         let path_str = path.to_string_lossy();
         let vfs_path = if path.is_absolute() {
             VfsPath::new_real_path(path_str.as_ref().to_string())
@@ -3220,13 +3220,10 @@ fn related_file_id(db: &RootDatabase, file_id: FileId, path: &Path) -> Option<Fi
         };
 
         // Search through all source roots in the project to find the file
-        db.project_data(project_id)
-            .source_roots(db)
-            .iter()
-            .find_map(|&source_root_id| {
-                let source_root = db.source_root(source_root_id).source_root(db);
-                source_root.file_for_path(&vfs_path)
-            })
+        project.source_roots(db).iter().find_map(|&source_root_id| {
+            let source_root = db.source_root(source_root_id).source_root(db);
+            source_root.file_for_path(&vfs_path)
+        })
     })
 }
 

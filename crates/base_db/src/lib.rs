@@ -69,7 +69,6 @@ pub use input::FileSource;
 pub use input::IncludeOtp;
 pub use input::Project;
 pub use input::ProjectApps;
-pub use input::ProjectId;
 pub use input::SourceRoot;
 pub use input::SourceRootId;
 pub use input::Workspace;
@@ -411,24 +410,12 @@ pub struct InternedFileId {
     pub file_id: FileId,
 }
 
-/// Salsa-interned wrapper around `ProjectId`. Same rationale as `InternedFileId`:
-/// satisfies salsa 0.25's `SalsaStructInDb` constraint and bypasses the
-/// contended `create_data_RootQueryDb` wrapper.
-#[salsa::interned(no_lifetime)]
-pub struct InternedProjectId {
-    pub project_id: ProjectId,
-}
-
 /// Database which stores all significant input facts: source code and project
 /// model. Everything else in ELP is derived from these queries.
 #[ra_ap_query_group_macro::query_group]
 pub trait RootQueryDb: SourceDatabase + salsa::Database {
     #[salsa::input]
     fn catch_all_source_root(&self) -> SourceRootId;
-
-    /// The project with this id.
-    #[salsa::invoke_interned(input::project_by_id)]
-    fn project_data(&self, id: ProjectId) -> Project;
 
     /// The data for a given application. We can access this either
     /// from the `FileId` or by `SourceRootId`, so introduce an
@@ -443,26 +430,11 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     #[salsa::invoke(app_data_id_by_file_inner)]
     fn app_data_id_by_file_interned(&self, fid: InternedFileId) -> Option<AppDataId>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(include_file_id_dispatch)]
-    fn include_file_id(&self, project_id: ProjectId, path: VfsPath) -> Option<FileId>;
+    fn include_file_id(&self, project: Project, path: VfsPath) -> Option<FileId>;
 
-    #[salsa::invoke(include_file_id_inner)]
-    fn include_file_id_interned(&self, pid: InternedProjectId, path: VfsPath) -> Option<FileId>;
-
-    #[salsa::transparent]
-    #[salsa::invoke(mapped_include_file_dispatch)]
     fn mapped_include_file(
         &self,
-        project_id: ProjectId,
-        scope: IncludeMappingScope,
-        path: SmolStr,
-    ) -> Option<FileId>;
-
-    #[salsa::invoke(mapped_include_file_inner)]
-    fn mapped_include_file_interned(
-        &self,
-        pid: InternedProjectId,
+        project: Project,
         scope: IncludeMappingScope,
         path: SmolStr,
     ) -> Option<FileId>;
@@ -472,19 +444,9 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     /// dependency diagnostic checks, and every remote `-include_lib`, asks this
     /// of the referencing file's target, so it is computed once per target
     /// rather than per reference.
-    #[salsa::transparent]
-    #[salsa::invoke(reachable_targets_dispatch)]
     fn reachable_targets(
         &self,
-        project_id: ProjectId,
-        source: TargetFullName,
-        dep_kind: DepKind,
-    ) -> Option<Arc<ReachableTargets>>;
-
-    #[salsa::invoke(reachable_targets_inner)]
-    fn reachable_targets_interned(
-        &self,
-        pid: InternedProjectId,
+        project: Project,
         source: TargetFullName,
         dep_kind: DepKind,
     ) -> Option<Arc<ReachableTargets>>;
@@ -506,19 +468,9 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     fn file_app_data_interned(&self, fid: InternedFileId) -> Option<Arc<AppData>>;
 
     /// Returns a map from module name to FileId of the containing file.
-    #[salsa::transparent]
-    #[salsa::invoke(module_index_dispatch)]
-    fn module_index(&self, project_id: ProjectId) -> Arc<ModuleIndex>;
+    fn module_index(&self, project: Project) -> Arc<ModuleIndex>;
 
-    #[salsa::invoke(module_index_inner)]
-    fn module_index_interned(&self, pid: InternedProjectId) -> Arc<ModuleIndex>;
-
-    #[salsa::transparent]
-    #[salsa::invoke(include_file_index_dispatch)]
-    fn include_file_index(&self, project_id: ProjectId) -> Arc<IncludeFileIndex>;
-
-    #[salsa::invoke(include_file_index_inner)]
-    fn include_file_index_interned(&self, pid: InternedProjectId) -> Arc<IncludeFileIndex>;
+    fn include_file_index(&self, project: Project) -> Arc<IncludeFileIndex>;
 
     /// Returns a map from FileId to the AppDataId of the app the file
     /// belongs to.
@@ -595,11 +547,11 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     fn file_app_name_interned(&self, fid: InternedFileId) -> Option<AppName>;
 
     #[salsa::transparent]
-    #[salsa::invoke(file_project_id_dispatch)]
-    fn file_project_id(&self, file_id: FileId) -> Option<ProjectId>;
+    #[salsa::invoke(file_project_dispatch)]
+    fn file_project(&self, file_id: FileId) -> Option<Project>;
 
-    #[salsa::invoke(file_project_id_inner)]
-    fn file_project_id_interned(&self, fid: InternedFileId) -> Option<ProjectId>;
+    #[salsa::invoke(file_project_inner)]
+    fn file_project_interned(&self, fid: InternedFileId) -> Option<Project>;
 
     #[salsa::transparent]
     #[salsa::invoke(file_kind_dispatch)]
@@ -690,15 +642,9 @@ fn file_app_data_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<Arc<
         })
 }
 
-fn module_index_dispatch(db: &dyn RootQueryDb, project_id: ProjectId) -> Arc<ModuleIndex> {
-    db.module_index_interned(InternedProjectId::new(db, project_id))
-}
-
-fn module_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc<ModuleIndex> {
-    let project_id = pid.project_id(db);
+fn module_index(db: &dyn RootQueryDb, project: Project) -> Arc<ModuleIndex> {
     let mut builder = ModuleIndex::builder();
 
-    let project = db.project_data(project_id);
     for &source_root_id in project.source_roots(db).iter() {
         let source_root = db.source_root(source_root_id).source_root(db);
         for file_id in source_root.iter() {
@@ -717,7 +663,7 @@ fn module_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc<Modul
         if otp == project {
             builder.is_otp()
         } else {
-            builder.set_otp(db.module_index(otp.project_id(db)))
+            builder.set_otp(db.module_index(otp))
         }
     }
 
@@ -747,41 +693,25 @@ pub fn is_app_reachable(
         return true;
     };
 
-    let project = db.project_data(referencing_app_data.project_id);
+    let project = referencing_app_data.project;
     let Some(buck_index) = project.buck_index(db) else {
         return true;
     };
-    db.reachable_targets(
-        referencing_app_data.project_id,
-        referencing_target.clone(),
-        dep_kind,
-    )
-    .is_none_or(|reachable| {
-        buck_index
-            .app_deps
-            .is_reachable_in(&reachable, defining_app)
-    })
+    db.reachable_targets(project, referencing_target.clone(), dep_kind)
+        .is_none_or(|reachable| {
+            buck_index
+                .app_deps
+                .is_reachable_in(&reachable, defining_app)
+        })
 }
 
-fn reachable_targets_dispatch(
+fn reachable_targets(
     db: &dyn RootQueryDb,
-    project_id: ProjectId,
+    project: Project,
     source: TargetFullName,
     dep_kind: DepKind,
 ) -> Option<Arc<ReachableTargets>> {
-    db.reachable_targets_interned(InternedProjectId::new(db, project_id), source, dep_kind)
-}
-
-fn reachable_targets_inner(
-    db: &dyn RootQueryDb,
-    pid: InternedProjectId,
-    source: TargetFullName,
-    dep_kind: DepKind,
-) -> Option<Arc<ReachableTargets>> {
-    let buck_index = db
-        .project_data(pid.project_id(db))
-        .buck_index(db)
-        .as_ref()?;
+    let buck_index = project.buck_index(db).as_ref()?;
     Some(Arc::new(
         buck_index.app_deps.reachable_targets(&source, dep_kind),
     ))
@@ -854,17 +784,8 @@ impl IncludeFileIndex {
     }
 }
 
-fn include_file_index_dispatch(
-    db: &dyn RootQueryDb,
-    project_id: ProjectId,
-) -> Arc<IncludeFileIndex> {
-    db.include_file_index_interned(InternedProjectId::new(db, project_id))
-}
-
-fn include_file_index_inner(db: &dyn RootQueryDb, pid: InternedProjectId) -> Arc<IncludeFileIndex> {
-    let project_id = pid.project_id(db);
+fn include_file_index(db: &dyn RootQueryDb, project: Project) -> Arc<IncludeFileIndex> {
     let mut include_file_index = IncludeFileIndex::default();
-    let project = db.project_data(project_id);
     build_include_file_index(db, project, &mut include_file_index);
     if let Some(otp) = project.otp(db)
         && otp != project
@@ -893,41 +814,18 @@ fn build_include_file_index(
     }
 }
 
-fn include_file_id_dispatch(
-    db: &dyn RootQueryDb,
-    project_id: ProjectId,
-    path: VfsPath,
-) -> Option<FileId> {
-    db.include_file_id_interned(InternedProjectId::new(db, project_id), path)
-}
-
-fn include_file_id_inner(
-    db: &dyn RootQueryDb,
-    pid: InternedProjectId,
-    path: VfsPath,
-) -> Option<FileId> {
-    let project_id = pid.project_id(db);
-    let include_file_index = db.include_file_index(project_id);
+fn include_file_id(db: &dyn RootQueryDb, project: Project, path: VfsPath) -> Option<FileId> {
+    let include_file_index = db.include_file_index(project);
     include_file_index.path_to_file_id.get(&path).copied()
 }
 
-fn mapped_include_file_dispatch(
+fn mapped_include_file(
     db: &dyn RootQueryDb,
-    project_id: ProjectId,
+    project: Project,
     scope: IncludeMappingScope,
     path: SmolStr,
 ) -> Option<FileId> {
-    db.mapped_include_file_interned(InternedProjectId::new(db, project_id), scope, path)
-}
-
-fn mapped_include_file_inner(
-    db: &dyn RootQueryDb,
-    pid: InternedProjectId,
-    scope: IncludeMappingScope,
-    path: SmolStr,
-) -> Option<FileId> {
-    let project_id = pid.project_id(db);
-    let include_file_index = db.include_file_index(project_id);
+    let include_file_index = db.include_file_index(project);
     let file_path = include_file_index.buck_index.includes.get(scope, &path)?;
     include_file_index
         .path_to_file_id
@@ -1104,8 +1002,7 @@ fn is_otp_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<bool> {
 
 fn is_otp_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<bool> {
     let file_id = fid.file_id(db);
-    let app_data = db.file_app_data(file_id)?;
-    let project = db.project_data(app_data.project_id);
+    let project = db.file_app_data(file_id)?.project;
     Some(project.otp(db) == Some(project))
 }
 
@@ -1150,23 +1047,23 @@ fn file_app_name_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<AppN
     Some(app_data.name.clone())
 }
 
-fn file_project_id_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<ProjectId> {
-    db.file_project_id_interned(InternedFileId::new(db, file_id))
+fn file_project_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<Project> {
+    db.file_project_interned(InternedFileId::new(db, file_id))
 }
 
-fn file_project_id_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<ProjectId> {
+fn file_project_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<Project> {
     let file_id = fid.file_id(db);
     // Context for T171541590
-    let _ = stdx::panic_context::enter(format!("\nfile_project_id: {file_id:?}"));
+    let _ = stdx::panic_context::enter(format!("\nfile_project: {file_id:?}"));
     let app_data = db.file_app_data(file_id)?;
-    Some(app_data.project_id)
+    Some(app_data.project)
 }
 
 pub fn module_name(db: &dyn RootQueryDb, file_id: FileId) -> Option<ModuleName> {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nmodule_name: {file_id:?}"));
     let app_data = db.file_app_data(file_id)?;
-    let module_index = db.module_index(app_data.project_id);
+    let module_index = db.module_index(app_data.project);
     module_index.module_for_file(file_id).cloned()
 }
 

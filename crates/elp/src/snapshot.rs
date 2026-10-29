@@ -27,12 +27,10 @@ use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::LineEndings;
-use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_log::timeit_with_telemetry;
 use elp_project_model::Project;
 use elp_project_model::ProjectBuildData;
 use fxhash::FxHashMap;
-use itertools::Itertools;
 use lsp_types::SemanticTokens;
 use lsp_types::Uri;
 use parking_lot::Mutex;
@@ -247,14 +245,6 @@ impl Snapshot {
                 .map(|(file_id, ds)| (*file_id, ds.clone()))
                 .collect(),
         ))
-    }
-
-    pub fn get_project(&self, project_id: ProjectId) -> Option<Project> {
-        self.projects
-            .iter()
-            .enumerate()
-            .find_or_first(|(id, _project)| ProjectId(*id as u32) == project_id)
-            .map(|(_id, project)| project.clone())
     }
 
     /// Compiles the projects' dependencies. Returns whether any project has

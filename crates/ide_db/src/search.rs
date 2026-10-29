@@ -18,7 +18,7 @@ use std::ops::ControlFlow;
 use elp_base_db::FileId;
 use elp_base_db::FileKind;
 use elp_base_db::FileRange;
-use elp_base_db::ProjectId;
+use elp_base_db::Project;
 use elp_syntax::AstNode;
 use elp_syntax::TextRange;
 use elp_syntax::TextSize;
@@ -125,10 +125,10 @@ impl SearchScope {
         }
     }
 
-    pub fn project(db: &dyn DefDatabase, project_id: ProjectId) -> SearchScope {
+    pub fn project(db: &dyn DefDatabase, project: Project) -> SearchScope {
         let mut entries = FxHashMap::default();
 
-        for &source_root_id in db.project_data(project_id).source_roots(db).iter() {
+        for &source_root_id in project.source_roots(db).iter() {
             entries.extend(
                 db.source_root(source_root_id)
                     .source_root(db)
@@ -208,11 +208,11 @@ impl SymbolDefinition {
             let file_id = self.file().file_id;
             // Context for T171541590
             let _ = stdx::panic_context::enter(format!("\nsearch_scope: {file_id:?}"));
-            let project_id = match sema.db.file_app_data(file_id) {
-                Some(app_data) => app_data.project_id,
+            let project = match sema.db.file_app_data(file_id) {
+                Some(app_data) => app_data.project,
                 None => return SearchScope::single_file(file_id, None),
             };
-            SearchScope::project(sema.db, project_id)
+            SearchScope::project(sema.db, project)
         }
     }
 

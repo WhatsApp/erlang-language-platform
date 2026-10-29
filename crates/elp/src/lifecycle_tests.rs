@@ -504,7 +504,7 @@ fn watchman_event(name: &str, exists: bool, new: bool) -> WatchmanFile {
 fn module_text(loaded: &LoadResult, module: &str) -> Option<String> {
     let db = loaded.analysis_host.raw_database();
     let file_id = db
-        .module_index(loaded.project_id)
+        .module_index(loaded.project_input)
         .file_for_module(&ModuleName::new(module))?;
     Some(db.file(file_id).text(db).to_string())
 }
@@ -589,7 +589,7 @@ fn a_listed_file_created_after_loading_gets_its_targets_app() {
     );
     let db = loaded.analysis_host.raw_database();
     let shared = db
-        .module_index(loaded.project_id)
+        .module_index(loaded.project_input)
         .file_for_module(&ModuleName::new("shared"))
         .unwrap();
     let app = db.file_app_data(shared).map(|app| app.name.0.clone());

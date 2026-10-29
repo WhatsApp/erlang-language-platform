@@ -32,7 +32,7 @@ use elp_ide::elp_ide_db::docs::DocDatabase;
 use elp_ide::elp_ide_db::docs::Documentation;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
-use elp_ide::elp_ide_db::elp_base_db::ProjectId;
+use elp_ide::elp_ide_db::elp_base_db::Project;
 use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::SourceRootId;
@@ -156,7 +156,7 @@ struct IndexResult {
 }
 
 pub struct GleanIndexer {
-    project_id: ProjectId,
+    project: Project,
     analysis: Analysis,
     module: Option<String>,
 }
@@ -289,7 +289,7 @@ impl GleanIndexer {
             load::load_project_at(cli, &args.project, config, Self::load_config(query_config))?;
         let analysis = loaded.analysis();
         let indexer = Self {
-            project_id: loaded.project_id,
+            project: loaded.project_input,
             analysis,
             module: args.module.clone(),
         };
@@ -308,20 +308,18 @@ impl GleanIndexer {
 
     fn index(&self, config: IndexConfig) -> Result<IndexResult> {
         let ctx = self.analysis.with_db(|db| {
-            let project_id = self.project_id;
-            let indexed_files = Self::indexed_source_files(db, project_id);
+            let project = self.project;
+            let indexed_files = Self::indexed_source_files(db, project);
             // Collect OTP source roots.
-            let otp_source_roots: Vec<_> = db
-                .project_data(project_id)
+            let otp_source_roots: Vec<_> = project
                 .otp(db)
                 .map(|otp| otp.source_roots(db).to_vec())
                 .unwrap_or_default();
             // Module targets used by xrefs must include dependency apps as well as
             // the current app and OTP; remote calls routinely resolve into deps.
-            let xref_target_modules = Self::xref_target_modules(db, project_id, &otp_source_roots);
+            let xref_target_modules = Self::xref_target_modules(db, project, &otp_source_roots);
             // app index: file_id → OTP application name
             let (app_index, app_infos) = {
-                let project = db.project_data(project_id);
                 let mut index = FxHashMap::default();
                 let mut seen_apps = FxHashSet::default();
                 let mut infos = Vec::new();
@@ -360,7 +358,7 @@ impl GleanIndexer {
                 (index, infos)
             };
             let (facts, errored) = if let Some(module) = &self.module {
-                let index = db.module_index(self.project_id);
+                let index = db.module_index(self.project);
                 let file_id = index
                     .file_for_module(&ModuleName::new(module))
                     .expect("No module found");
@@ -369,7 +367,7 @@ impl GleanIndexer {
                     db,
                     file_id,
                     path,
-                    project_id,
+                    project,
                     &xref_target_modules,
                     config.source_root.as_deref(),
                 ) {
@@ -415,7 +413,7 @@ impl GleanIndexer {
                                     db,
                                     file_id,
                                     &path,
-                                    project_id,
+                                    project,
                                     &xref_target_modules,
                                     source_root,
                                 )
@@ -497,9 +495,9 @@ impl GleanIndexer {
         Ok(ctx)
     }
 
-    fn indexed_source_files(db: &RootDatabase, project_id: ProjectId) -> Vec<(FileId, VfsPath)> {
+    fn indexed_source_files(db: &RootDatabase, project: Project) -> Vec<(FileId, VfsPath)> {
         let mut files = vec![];
-        for &source_root_id in db.project_data(project_id).source_roots(db).iter() {
+        for &source_root_id in project.source_roots(db).iter() {
             if let Some(app_data) = db.app_data(source_root_id)
                 && app_data.app_type == AppType::App
             {
@@ -514,10 +512,9 @@ impl GleanIndexer {
 
     fn xref_target_modules(
         db: &RootDatabase,
-        project_id: ProjectId,
+        project: Project,
         otp_source_roots: &[SourceRootId],
     ) -> FxHashMap<GleanFileId, String> {
-        let project = db.project_data(project_id);
         let mut modules = FxHashMap::default();
         for &source_root_id in project
             .source_roots(db)
@@ -538,11 +535,11 @@ impl GleanIndexer {
         db: &RootDatabase,
         file_id: FileId,
         path: &VfsPath,
-        project_id: ProjectId,
+        project: Project,
         module_index: &FxHashMap<GleanFileId, String>,
         source_root: Option<&str>,
     ) -> Option<IndexedFileFacts> {
-        let elp_module_index = db.module_index(project_id);
+        let elp_module_index = db.module_index(project);
         let sema = Semantic::new(db);
         let source = db.file(file_id);
         let source = source.text(db);
@@ -553,18 +550,12 @@ impl GleanIndexer {
         let generated = generated_from(&sema, file_id, source);
         let is_thrift_generated = matches!(generated, Some(GeneratedFrom::Thrift(_)));
 
-        let (file_fact, is_generated) = Self::file_fact(
-            db,
-            file_id,
-            path,
-            project_id,
-            source_root,
-            generated.as_ref(),
-        )?;
+        let (file_fact, is_generated) =
+            Self::file_fact(db, file_id, path, project, source_root, generated.as_ref())?;
         let line_fact = Self::line_fact(db, file_id);
         let mut xrefs = Self::xrefs(db, file_id, module_index);
         let mut file_decl = Self::declarations(db, file_id, path)?;
-        Self::add_xref_based_declarations(db, project_id, file_id, &mut xrefs, &mut file_decl);
+        Self::add_xref_based_declarations(db, project, file_id, &mut xrefs, &mut file_decl);
 
         let module_fact = elp_module_index
             .module_for_file(file_id)
@@ -580,7 +571,7 @@ impl GleanIndexer {
                 }
                 _ => None,
             })
-            .map(|module| Self::module_fact(db, file_id, &module, project_id));
+            .map(|module| Self::module_fact(db, file_id, &module, project));
 
         let thrift_markers = if is_thrift_generated {
             parse_thrift_markers(source)
@@ -602,7 +593,7 @@ impl GleanIndexer {
         db: &RootDatabase,
         file_id: FileId,
         module_name: &ModuleName,
-        project_id: ProjectId,
+        project: Project,
     ) -> parser::ModuleFact {
         let module = Module {
             file: File { file_id },
@@ -716,7 +707,7 @@ impl GleanIndexer {
             })
             .collect();
 
-        let root = db.project_data(project_id).root_dir(db);
+        let root = project.root_dir(db);
         let included_files: Vec<(GleanFileId, String)> = def_map
             .get_included_files()
             .filter_map(|inc_file_id| {
@@ -819,7 +810,7 @@ impl GleanIndexer {
 
     fn add_xref_based_declarations(
         db: &RootDatabase,
-        project_id: ProjectId,
+        project: Project,
         file_id: FileId,
         xrefs: &mut parser::XRefFile,
         file_decl: &mut parser::FileDeclaration,
@@ -830,7 +821,7 @@ impl GleanIndexer {
                 vars.insert(&xref.source, &x.key.name);
             }
         }
-        let var_decls = Self::types(db, project_id, file_id, vars);
+        let var_decls = Self::types(db, project, file_id, vars);
         for var in var_decls {
             // sometimes eqwalizer produces very long types
             // this check will prevent showing it on codehub
@@ -861,11 +852,11 @@ impl GleanIndexer {
         db: &RootDatabase,
         file_id: FileId,
         path: &VfsPath,
-        project_id: ProjectId,
+        project: Project,
         source_root: Option<&str>,
         generated_from: Option<&GeneratedFrom>,
     ) -> Option<(glean::FileFact, bool)> {
-        let root = db.project_data(project_id).root_dir(db);
+        let root = project.root_dir(db);
         let file_path = path.as_path()?;
         let file_path = file_path.strip_prefix(root)?;
         // Only treat buck-out files as generated; checked-in codegen keeps its real path.
@@ -1214,7 +1205,7 @@ impl GleanIndexer {
 
     fn types(
         db: &RootDatabase,
-        project_id: ProjectId,
+        project: Project,
         file_id: FileId,
         vars: FxHashMap<&Location, &String>,
     ) -> Vec<parser::VarDecl> {
@@ -1225,14 +1216,11 @@ impl GleanIndexer {
         // so typechecking such a file finds no module and is pure wasted work.
         if !db.file_kind(file_id).is_module()
             || !db.is_eqwalizer_enabled(file_id)
-            || db
-                .module_index(project_id)
-                .module_for_file(file_id)
-                .is_none()
+            || db.module_index(project).module_for_file(file_id).is_none()
         {
             return result;
         }
-        let module_diagnostics = db.eqwalizer_diagnostics_by_project(project_id, vec![file_id]);
+        let module_diagnostics = db.eqwalizer_diagnostics_by_project(project, vec![file_id]);
         if let EqwalizerDiagnostics::Diagnostics { type_info, .. } = module_diagnostics.as_ref() {
             let types = type_info
                 .values()

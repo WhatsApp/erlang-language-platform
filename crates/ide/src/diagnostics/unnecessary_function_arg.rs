@@ -352,7 +352,7 @@ fn files_mentioning_module(sema: &Semantic, file_id: FileId) -> Vec<FileId> {
         Some("src") => app_data.dir.parent().unwrap_or(&app_data.dir),
         _ => &app_data.dir,
     };
-    let project = sema.db.project_data(app_data.project_id);
+    let project = app_data.project;
     let app_files = project
         .source_roots(sema.db)
         .iter()

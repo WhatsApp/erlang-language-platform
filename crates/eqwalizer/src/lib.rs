@@ -25,7 +25,7 @@ use anyhow::Result;
 use ast::Error;
 use ast::Pos;
 use elp_base_db::ModuleName;
-use elp_base_db::ProjectId;
+use elp_base_db::Project;
 use elp_base_db::in_flight;
 use elp_base_db::limit_logged_string;
 pub use elp_types_db::eqwalizer::EqwalizerDiagnostic;
@@ -271,7 +271,7 @@ impl Eqwalizer {
     pub fn typecheck(
         &self,
         db: &dyn EqwalizerDiagnosticsDatabase,
-        project_id: ProjectId,
+        project: Project,
         modules: Vec<&str>,
     ) -> EqwalizerDiagnostics {
         let mut cmd = self.cmd();
@@ -280,7 +280,7 @@ impl Eqwalizer {
         cmd.args(modules);
         cmd.env("EQWALIZER_MODE", self.mode.to_env_var());
 
-        match do_typecheck(cmd, db, project_id) {
+        match do_typecheck(cmd, db, project) {
             Ok(diags) => diags,
             Err(err) => EqwalizerDiagnostics::Error(format!("{err:?}")),
         }
@@ -289,7 +289,7 @@ impl Eqwalizer {
     pub fn typecheck_functions(
         &self,
         db: &dyn EqwalizerDiagnosticsDatabase,
-        project_id: ProjectId,
+        project: Project,
         funs: Vec<ipc::FunToCheck>,
     ) -> Result<Vec<ipc::FunCheckResult>> {
         let mut cmd = self.cmd();
@@ -297,14 +297,14 @@ impl Eqwalizer {
         cmd.arg("ipc-check-funs");
         cmd.env("EQWALIZER_MODE", self.mode.to_env_var());
 
-        do_typecheck_functions(cmd, db, project_id, funs)
+        do_typecheck_functions(cmd, db, project, funs)
     }
 }
 
 fn do_typecheck(
     mut cmd: Command,
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
 ) -> Result<EqwalizerDiagnostics, anyhow::Error> {
     let _guard = in_flight::begin("eqwalizer:typecheck");
     // Never cache the results of this function
@@ -320,7 +320,7 @@ fn do_typecheck(
             MsgFromEqWAlizer::EnteringModule { module } => {
                 let module_name = ModuleName::new(&module);
                 db.set_module_ipc_handle(module_name.clone(), Some(handle.clone()));
-                let diags = db.module_diagnostics(project_id, module).0;
+                let diags = db.module_diagnostics(project, module).0;
                 db.set_module_ipc_handle(module_name, None);
                 diagnostics = diagnostics.combine((*diags).clone());
                 match diagnostics {
@@ -347,7 +347,7 @@ fn do_typecheck(
 fn do_typecheck_functions(
     mut cmd: Command,
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     funs: Vec<ipc::FunToCheck>,
 ) -> Result<Vec<ipc::FunCheckResult>> {
     let _guard = in_flight::begin("eqwalizer:typecheck_functions");
@@ -365,7 +365,7 @@ fn do_typecheck_functions(
         .context("sending FunToCheck bytes to eqwalizer")?;
 
     // Handle dependency requests until we get FunCheckDone
-    match serve_eqwalizer(&mut handle, db, project_id, |msg, _handle| match msg {
+    match serve_eqwalizer(&mut handle, db, project, |msg, _handle| match msg {
         MsgFromEqWAlizer::FunCheckDone { results } => Ok(ControlFlow::Break(results)),
         msg => {
             log::warn!(
@@ -384,7 +384,7 @@ fn do_typecheck_functions(
 
 fn get_module_diagnostics(
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: String,
 ) -> Result<EqwalizerDiagnostics, anyhow::Error> {
     let _guard = in_flight::begin(format!("eqwalizer:module:{module}"));
@@ -395,13 +395,13 @@ fn get_module_diagnostics(
         )))?;
     let mut handle = handle_mutex.lock();
     handle.send(&MsgToEqWAlizer::ELPEnteringModule, db)?;
-    match serve_eqwalizer(&mut handle, db, project_id, |msg, handle| match msg {
+    match serve_eqwalizer(&mut handle, db, project, |msg, handle| match msg {
         MsgFromEqWAlizer::ValidateType { ty } => {
             log::debug!("received from eqwalizer: ValidateType");
             let pos = ty.pos().to_owned();
-            let mut expander = CastExpander::new(db, project_id, module.clone().into());
+            let mut expander = CastExpander::new(db, project, module.clone().into());
             let expanded_ty = expander.expand(ty).map_err(Error::TypeConversionError)?;
-            let mut trans_checker = TransitiveChecker::new(db, project_id, module.clone().into());
+            let mut trans_checker = TransitiveChecker::new(db, project, module.clone().into());
             let validated_ty = match expanded_ty {
                 Ok(exp_ty) => trans_checker.check_type(pos, exp_ty),
                 Err(invalid) => Err(invalid),
@@ -476,7 +476,7 @@ enum Completion<R> {
 fn serve_eqwalizer<R>(
     handle: &mut IpcHandle,
     db: &dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     mut on_message: impl FnMut(MsgFromEqWAlizer, &mut IpcHandle) -> Result<ControlFlow<R>>,
 ) -> Result<Completion<R>> {
     loop {
@@ -489,10 +489,10 @@ fn serve_eqwalizer<R>(
                 let module_name = ModuleName::new(&module);
                 let ast = match format {
                     EqWAlizerASTFormat::ConvertedForms => {
-                        db.eqwalizer_ast_bytes(project_id, module_name)
+                        db.eqwalizer_ast_bytes(project, module_name)
                     }
                     EqWAlizerASTFormat::TransitiveStub => {
-                        db.transitive_stub_bytes(project_id, module_name)
+                        db.transitive_stub_bytes(project, module_name)
                     }
                 };
                 match ast {
@@ -533,7 +533,7 @@ fn serve_eqwalizer<R>(
                 }
             }
             MsgFromEqWAlizer::GetTypeDecl { module, id } => {
-                let result = db.type_decl_bytes(project_id, ModuleName::new(&module), id);
+                let result = db.type_decl_bytes(project, ModuleName::new(&module), id);
                 if let Some(diag) = send_bytes(
                     result,
                     handle,
@@ -545,7 +545,7 @@ fn serve_eqwalizer<R>(
                 }
             }
             MsgFromEqWAlizer::GetRecDecl { module, id } => {
-                let result = db.rec_decl_bytes(project_id, ModuleName::new(&module), id);
+                let result = db.rec_decl_bytes(project, ModuleName::new(&module), id);
                 if let Some(diag) = send_bytes(
                     result,
                     handle,
@@ -557,7 +557,7 @@ fn serve_eqwalizer<R>(
                 }
             }
             MsgFromEqWAlizer::GetNativeRecDecl { module, id } => {
-                let result = db.native_rec_decl_bytes(project_id, ModuleName::new(&module), id);
+                let result = db.native_rec_decl_bytes(project, ModuleName::new(&module), id);
                 if let Some(diag) = send_bytes(
                     result,
                     handle,
@@ -569,7 +569,7 @@ fn serve_eqwalizer<R>(
                 }
             }
             MsgFromEqWAlizer::GetFunSpec { module, id } => {
-                let result = db.fun_spec_bytes(project_id, ModuleName::new(&module), id);
+                let result = db.fun_spec_bytes(project, ModuleName::new(&module), id);
                 if let Some(diag) = send_bytes(
                     result,
                     handle,
@@ -581,7 +581,7 @@ fn serve_eqwalizer<R>(
                 }
             }
             MsgFromEqWAlizer::GetOverloadedFunSpec { module, id } => {
-                let result = db.overloaded_fun_spec_bytes(project_id, ModuleName::new(&module), id);
+                let result = db.overloaded_fun_spec_bytes(project, ModuleName::new(&module), id);
                 if let Some(diag) = send_bytes(
                     result,
                     handle,
@@ -593,7 +593,7 @@ fn serve_eqwalizer<R>(
                 }
             }
             MsgFromEqWAlizer::GetCallbacks { module } => {
-                let result = db.callbacks_bytes(project_id, ModuleName::new(&module));
+                let result = db.callbacks_bytes(project, ModuleName::new(&module));
                 if let Some(diag) = send_bytes(
                     result,
                     handle,
@@ -607,7 +607,7 @@ fn serve_eqwalizer<R>(
             MsgFromEqWAlizer::Dependencies { modules } => {
                 modules.iter().for_each(|module| {
                     let module = ModuleName::new(module);
-                    _ = db.transitive_stub_bytes(project_id, module);
+                    _ = db.transitive_stub_bytes(project, module);
                 });
             }
             msg => {

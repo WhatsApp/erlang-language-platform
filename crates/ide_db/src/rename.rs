@@ -519,8 +519,8 @@ impl SymbolDefinition {
         safety_check: SafetyChecks,
     ) -> RenameResult<SourceChange> {
         let file_id = self.file().file_id;
-        if let Some(project_id) = sema.db.file_project_id(file_id) {
-            let module_index = sema.db.module_index(project_id);
+        if let Some(project) = sema.db.file_project(file_id) {
+            let module_index = sema.db.module_index(project);
             if safety_check == SafetyChecks::Yes {
                 let new_name_module = ModuleName::new(new_name);
                 if module_index

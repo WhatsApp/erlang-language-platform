@@ -13,7 +13,6 @@
 use std::cmp::Reverse;
 
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
-use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_log::telemetry;
 use elp_project_model::Project;
 use elp_project_model::ProjectBuildData;
@@ -34,20 +33,18 @@ pub(crate) fn send_project_size(
         .iter()
         .enumerate()
         .filter_map(|(idx, project)| {
-            let project_id = ProjectId(idx as u32);
-
-            if Some(project_id) == project_apps.otp_project_id {
+            if Some(idx) == project_apps.otp_project_idx {
                 return None;
             }
 
             let mut app_watch_counts: Vec<(&str, usize)> = project_apps
                 .all_apps
                 .iter()
-                .filter(|(pid, _)| *pid == project_id)
+                .filter(|(project_idx, _)| *project_idx == idx)
                 .map(|(_, app)| {
                     (
                         app.name.as_str(),
-                        watch_paths_for_app(app, project_id, project_apps.otp_project_id).len(),
+                        watch_paths_for_app(app, idx, project_apps.otp_project_idx).len(),
                     )
                 })
                 .collect();

@@ -41,7 +41,7 @@ use elp_ide::elp_ide_db::LineCol;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::ModuleName;
-use elp_ide::elp_ide_db::elp_base_db::ProjectId;
+use elp_ide::elp_ide_db::elp_base_db::Project;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
 use elp_log::telemetry;
 use elp_project_model::AppName;
@@ -292,7 +292,7 @@ pub fn run_ssr(
 ) -> Result<()> {
     let analysis = loaded.analysis();
     let (file_id, name) = match &args.module {
-        Some(module) => match analysis.module_file_id(loaded.project_id, module)? {
+        Some(module) => match analysis.module_file_id(loaded.project_input, module)? {
             Some(file_id) => {
                 if args.is_format_normal() {
                     writeln!(cli, "module specified: {module}")?;
@@ -324,11 +324,11 @@ pub fn run_ssr(
     match (file_id, name) {
         (None, _) => {
             // Streaming case: process all modules
-            let project_id = loaded.project_id;
+            let project = loaded.project_input;
             do_parse_all_streaming(
                 cli,
                 &analysis,
-                &project_id,
+                &project,
                 diagnostics_config,
                 args,
                 use_color,
@@ -368,14 +368,14 @@ pub fn run_ssr(
 fn do_parse_all_streaming(
     cli: &mut dyn Cli,
     analysis: &Analysis,
-    project_id: &ProjectId,
+    project: &Project,
     config: &DiagnosticsConfig,
     args: &Ssr,
     use_color: bool,
     loaded: &mut LoadResult,
     match_count: &mut usize,
 ) -> Result<()> {
-    let module_index = analysis.module_index(*project_id).unwrap();
+    let module_index = analysis.module_index(*project).unwrap();
     let app_name = args.app.as_ref().map(|name| AppName(name.to_string()));
 
     // Create a channel for streaming results

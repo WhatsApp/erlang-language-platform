@@ -350,8 +350,8 @@ impl DocLoader for crate::RootDatabase {
             };
         };
 
-        let project_id = app_data.project_id;
-        let erlang_service = self.erlang_service_for(project_id);
+        let project = app_data.project;
+        let erlang_service = self.erlang_service_for(project);
         let path = SourceDatabase::file(self, file_id)
             .path(self)
             .as_path()

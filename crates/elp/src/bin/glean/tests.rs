@@ -15,6 +15,7 @@ use std::path::PathBuf;
 use elp::cli::Fake;
 use elp_ide::AnalysisHost;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
+use elp_ide::elp_ide_db::elp_base_db::Workspace;
 use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
 use elp_ide::elp_ide_db::elp_base_db::fixture::WithFixture;
 use elp_project_model::Project;
@@ -515,9 +516,10 @@ fn xref_call_to_generated_dep_module_test() {
     "#;
 
     let (db, fixture) = RootDatabase::with_fixture(spec);
+    let project = Workspace::get(&db).projects(&db)[0];
     let host = AnalysisHost::new(db);
     let glean = GleanIndexer {
-        project_id: ProjectId(0),
+        project,
         analysis: host.analysis(),
         module: None,
     };
@@ -1307,10 +1309,10 @@ pub(crate) fn facts_with_annotations(
     FxHashMap<GleanFileId, String>,
 ) {
     let (db, fixture) = RootDatabase::with_fixture(spec);
-    let project_id = ProjectId(0);
+    let project = Workspace::get(&db).projects(&db)[0];
     let host = AnalysisHost::new(db);
     let glean = GleanIndexer {
-        project_id,
+        project,
         analysis: host.analysis(),
         module: None,
     };

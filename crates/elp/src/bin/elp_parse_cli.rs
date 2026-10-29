@@ -192,7 +192,7 @@ pub fn parse_all(
             if args.is_format_normal() {
                 writeln!(cli, "module specified: {module}")?;
             }
-            let file_id = analysis.module_file_id(loaded.project_id, module)?;
+            let file_id = analysis.module_file_id(loaded.project_input, module)?;
             (file_id, analysis.module_name(file_id.unwrap())?)
         }
 
@@ -387,7 +387,7 @@ fn do_parse_all_par(
     to: &Option<PathBuf>,
 ) -> Result<Vec<ParseResult>> {
     let analysis = loaded.analysis();
-    let module_index = analysis.module_index(loaded.project_id).unwrap();
+    let module_index = analysis.module_index(loaded.project_input).unwrap();
 
     // Sort biggest modules first to reduce long-tail in parallel processing
     let mut modules: Vec<_> = module_index.iter_own().collect();
@@ -419,7 +419,10 @@ fn do_parse_all_seq(
     config: &DiagnosticsConfig,
     to: &Option<PathBuf>,
 ) -> Result<Vec<ParseResult>> {
-    let module_index = loaded.analysis().module_index(loaded.project_id).unwrap();
+    let module_index = loaded
+        .analysis()
+        .module_index(loaded.project_input)
+        .unwrap();
     let module_iter = module_index.iter_own();
 
     let pb = cli.progress(module_iter.len() as u64, "Parsing modules (sequential)");
@@ -497,7 +500,7 @@ fn dump_includes_resolutions(
     to: &Option<PathBuf>,
 ) -> Result<()> {
     let analysis = loaded.analysis();
-    let module_index = analysis.module_index(loaded.project_id).unwrap();
+    let module_index = analysis.module_index(loaded.project_input).unwrap();
 
     // Sort biggest modules first to reduce long-tail in parallel processing
     let mut modules: Vec<_> = module_index.iter_own().collect();

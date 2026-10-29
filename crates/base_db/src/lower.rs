@@ -56,8 +56,8 @@ pub fn lower(
         .unwrap_or_default();
 
     let mut source_roots: Vec<Vec<SourceRootId>> = vec![Vec::new(); project_apps.projects.len()];
-    for (idx, (project_id, _)) in project_apps.all_apps.iter().enumerate() {
-        source_roots[project_id.0 as usize].push(SourceRootId(idx as u32));
+    for (idx, (project_idx, _)) in project_apps.all_apps.iter().enumerate() {
+        source_roots[*project_idx].push(SourceRootId(idx as u32));
     }
     let mut projects = Vec::with_capacity(project_apps.projects.len());
     for (loaded, source_roots) in project_apps.projects.iter().zip(source_roots) {
@@ -73,8 +73,8 @@ pub fn lower(
         ));
     }
     let otp = project_apps
-        .otp_project_id
-        .map(|otp_project_id| projects[otp_project_id.0 as usize]);
+        .otp_project_idx
+        .map(|otp_project_idx| projects[otp_project_idx]);
     for &project in &projects {
         if project.otp(db) != otp {
             project.set_otp(db).to(otp);
@@ -91,6 +91,7 @@ pub fn lower(
         }
     }
 
+    let app_structure = project_apps.app_structure(&projects);
     let projects: Arc<[Project]> = projects.into();
     let removed: Arc<[Project]> = known.into();
     match Workspace::try_get(db) {
@@ -107,7 +108,7 @@ pub fn lower(
         }
     }
 
-    project_apps.app_structure().apply(db, file_map)
+    app_structure.apply(db, file_map)
 }
 
 /// The input for `loaded`: `known`, with the fields that changed set, else a

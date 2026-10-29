@@ -14,7 +14,7 @@ use elp_base_db::FileId;
 use elp_base_db::FileRange;
 use elp_base_db::InternedFileId;
 use elp_base_db::ModuleName;
-use elp_base_db::ProjectId;
+use elp_base_db::Project;
 use elp_base_db::RootQueryDb;
 use elp_base_db::SourceDatabase;
 use elp_base_db::VfsPath;
@@ -41,17 +41,17 @@ use crate::ErlAstDatabase;
 use crate::LineCol;
 
 pub trait EqwalizerLoader {
-    fn typecheck(&self, project_id: ProjectId, modules: Vec<FileId>) -> EqwalizerDiagnostics;
+    fn typecheck(&self, project: Project, modules: Vec<FileId>) -> EqwalizerDiagnostics;
     fn typecheck_functions(
         &self,
-        project_id: ProjectId,
+        project: Project,
         funs: Vec<FunToCheck>,
     ) -> Result<Vec<FunCheckResult>, String>;
 }
 
 impl EqwalizerLoader for crate::RootDatabase {
-    fn typecheck(&self, project_id: ProjectId, modules: Vec<FileId>) -> EqwalizerDiagnostics {
-        let module_index = self.module_index(project_id);
+    fn typecheck(&self, project: Project, modules: Vec<FileId>) -> EqwalizerDiagnostics {
+        let module_index = self.module_index(project);
         let mut module_names = vec![];
         for module in modules {
             match module_index.module_for_file(module) {
@@ -65,16 +65,16 @@ impl EqwalizerLoader for crate::RootDatabase {
                 }
             };
         }
-        self.eqwalizer.typecheck(self, project_id, module_names)
+        self.eqwalizer.typecheck(self, project, module_names)
     }
 
     fn typecheck_functions(
         &self,
-        project_id: ProjectId,
+        project: Project,
         funs: Vec<FunToCheck>,
     ) -> Result<Vec<FunCheckResult>, String> {
         self.eqwalizer
-            .typecheck_functions(self, project_id, funs)
+            .typecheck_functions(self, project, funs)
             .map_err(|err| format!("{err:?}"))
     }
 }
@@ -90,13 +90,13 @@ pub trait EqwalizerDatabase:
     #[salsa::invoke_interned(eqwalizer_diagnostics_by_project)]
     fn eqwalizer_diagnostics_by_project(
         &self,
-        project_id: ProjectId,
+        project: Project,
         file_ids: Vec<FileId>,
     ) -> Arc<EqwalizerDiagnostics>;
     #[salsa::invoke_interned(eqwalizer_stats)]
     fn eqwalizer_stats(
         &self,
-        project_id: ProjectId,
+        project: Project,
         file_id: FileId,
     ) -> Option<Arc<Vec<EqwalizerDiagnostic>>>;
     #[salsa::invoke_interned(type_at_position)]
@@ -131,20 +131,20 @@ pub trait EqwalizerDatabase:
 
 pub fn eqwalizer_diagnostics_by_project(
     db: &dyn EqwalizerDatabase,
-    project_id: ProjectId,
+    project: Project,
     file_ids: Vec<FileId>,
 ) -> Arc<EqwalizerDiagnostics> {
-    Arc::new(db.typecheck(project_id, file_ids))
+    Arc::new(db.typecheck(project, file_ids))
 }
 
 fn eqwalizer_stats(
     db: &dyn EqwalizerDatabase,
-    project_id: ProjectId,
+    project: Project,
     file_id: FileId,
 ) -> Option<Arc<Vec<EqwalizerDiagnostic>>> {
-    let module_index = db.module_index(project_id);
+    let module_index = db.module_index(project);
     let module_name: &str = module_index.module_for_file(file_id)?.as_str();
-    Some(db.compute_eqwalizer_stats(project_id, ModuleName::new(module_name)))
+    Some(db.compute_eqwalizer_stats(project, ModuleName::new(module_name)))
 }
 
 fn type_at_position(
@@ -154,15 +154,15 @@ fn type_at_position(
     if !db.is_eqwalizer_enabled(range.file_id) {
         return None;
     }
-    let project_id = db.file_app_data(range.file_id)?.project_id;
-    let module_index = db.module_index(project_id);
+    let project = db.file_app_data(range.file_id)?.project;
+    let module_index = db.module_index(project);
     // Check if this file is actually a module (not an .hrl header file).
     // When analyzing code that originated from an included header file,
     // the FileRange may point to the .hrl file, which is not a module
     // and cannot be typechecked by eqwalizer.
     let module = module_index.module_for_file(range.file_id)?;
     if let EqwalizerDiagnostics::Diagnostics { type_info, .. } =
-        &(*eqwalizer_diagnostics_by_project(db, project_id, vec![range.file_id]))
+        &(*eqwalizer_diagnostics_by_project(db, project, vec![range.file_id]))
     {
         let start: u32 = range.range.start().into();
         let end: u32 = range.range.end().into();
@@ -204,9 +204,9 @@ fn types_for_file_inner(
     if !db.is_eqwalizer_enabled(file_id) {
         return None;
     }
-    let project_id = db.file_app_data(file_id)?.project_id;
+    let project = db.file_app_data(file_id)?.project;
     if let EqwalizerDiagnostics::Diagnostics { type_info, .. } =
-        &(*eqwalizer_diagnostics_by_project(db, project_id, vec![file_id]))
+        &(*eqwalizer_diagnostics_by_project(db, project, vec![file_id]))
     {
         let types = type_info.clone().into_values().next()?;
         return Some(Arc::new(types));
@@ -228,9 +228,9 @@ fn is_eqwalizer_enabled_inner(db: &dyn EqwalizerDatabase, fid: InternedFileId) -
     } else {
         return false;
     };
-    let project_id = app_data.project_id;
-    let eqwalizer_config = db.project_data(project_id).eqwalizer_config(db);
-    let module_index = db.module_index(project_id);
+    let project = app_data.project;
+    let eqwalizer_config = project.eqwalizer_config(db);
+    let module_index = db.module_index(project);
     let global_opt_in = eqwalizer_config.enable_all;
     let opt_in = global_opt_in || db.has_eqwalizer_module_marker(file_id);
     let ignored_in_config = if let Some(module_name) = module_index.module_for_file(file_id) {
@@ -305,10 +305,9 @@ fn has_eqwalizer_ignore_marker_inner(db: &dyn EqwalizerDatabase, fid: InternedFi
 
 fn find_path_in_project(
     db: &dyn EqwalizerDatabase,
-    project_id: ProjectId,
+    project: Project,
     path: &VfsPath,
 ) -> Option<FileId> {
-    let project = db.project_data(project_id);
     let otp_source_roots = project
         .otp(db)
         .map(|otp| otp.source_roots(db).clone())
@@ -326,16 +325,16 @@ fn find_path_in_project(
 
 fn decl_location(
     db: &dyn EqwalizerDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
     pos: &Pos,
 ) -> Option<FileRange> {
-    let module_index = db.module_index(project_id);
+    let module_index = db.module_index(project);
     let module_file_id = module_index.file_for_module(&module)?;
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\ndecl_location: {module_file_id:?}"));
     let decl_file_path = db.file(module_file_id).path(db);
-    let file_id = find_path_in_project(db, project_id, decl_file_path)?;
+    let file_id = find_path_in_project(db, project, decl_file_path)?;
     let range: elp_syntax::TextRange = {
         match pos {
             Pos::LineAndColumn(lc) => {
@@ -355,47 +354,47 @@ fn decl_location(
 
 fn id_name_and_location(
     db: &dyn EqwalizerDatabase,
-    project_id: ProjectId,
+    project: Project,
     type_id: &RemoteId,
 ) -> Option<(SmolStr, FileRange)> {
     let module = ModuleName::new(type_id.module.as_str());
-    let stub = db.transitive_stub(project_id, module.clone()).ok()?;
+    let stub = db.transitive_stub(project, module.clone()).ok()?;
     let decl = stub.types.get(&type_id.to_owned().into())?;
-    let loc = decl_location(db, project_id, module, &decl.pos)?;
+    let loc = decl_location(db, project, module, &decl.pos)?;
     Some((type_id.to_string().into(), loc))
 }
 
 fn record_name_and_location(
     db: &dyn EqwalizerDatabase,
-    project_id: ProjectId,
+    project: Project,
     record: &eqwalizer::types::RecordType,
 ) -> Option<(SmolStr, FileRange)> {
     let module = ModuleName::new(record.module.as_str());
-    let stub = db.transitive_stub(project_id, module.clone()).ok()?;
+    let stub = db.transitive_stub(project, module.clone()).ok()?;
     let decl = stub.records.get(&record.name)?;
-    let loc = decl_location(db, project_id, module, &decl.pos)?;
+    let loc = decl_location(db, project, module, &decl.pos)?;
     Some((format!("#{}:{}", record.module, record.name).into(), loc))
 }
 
 fn collect_references(
     db: &dyn EqwalizerDatabase,
-    project_id: ProjectId,
+    project: Project,
     ty: &eqwalizer::types::Type,
     links: &mut FxHashSet<(SmolStr, FileRange)>,
 ) {
     match ty {
         eqwalizer::types::Type::RemoteType(rt) => {
-            if let Some(link) = id_name_and_location(db, project_id, &rt.id) {
+            if let Some(link) = id_name_and_location(db, project, &rt.id) {
                 links.insert(link);
             };
         }
         eqwalizer::types::Type::RecordType(rt) => {
-            if let Some(link) = record_name_and_location(db, project_id, rt) {
+            if let Some(link) = record_name_and_location(db, project, rt) {
                 links.insert(link);
             };
         }
         eqwalizer::types::Type::RefinedRecordType(rt) => {
-            if let Some(link) = record_name_and_location(db, project_id, &rt.rec_type) {
+            if let Some(link) = record_name_and_location(db, project, &rt.rec_type) {
                 links.insert(link);
             };
             return;
@@ -403,7 +402,7 @@ fn collect_references(
         _ => (),
     }
     ty.walk::<()>(&mut |ty| {
-        collect_references(db, project_id, ty, links);
+        collect_references(db, project, ty, links);
         Ok(())
     })
     .ok();
@@ -415,19 +414,15 @@ pub fn type_references(
     ty: &eqwalizer::types::Type,
 ) -> Vec<(SmolStr, FileRange)> {
     let mut links = FxHashSet::default();
-    if let Some(project_id) = db.file_project_id(file_id) {
-        collect_references(db, project_id, ty, &mut links);
+    if let Some(project) = db.file_project(file_id) {
+        collect_references(db, project, ty, &mut links);
     }
     links.into_iter().collect()
 }
 
 impl EqwalizerErlASTStorage for crate::RootDatabase {
-    fn erl_ast_bytes(
-        &self,
-        project_id: ProjectId,
-        module: ModuleName,
-    ) -> Result<Arc<Vec<u8>>, Error> {
-        if let Some(file_id) = self.module_index(project_id).file_for_module(&module) {
+    fn erl_ast_bytes(&self, project: Project, module: ModuleName) -> Result<Arc<Vec<u8>>, Error> {
+        if let Some(file_id) = self.module_index(project).file_for_module(&module) {
             let result = self.module_ast(file_id);
             if result.is_ok() {
                 Ok(result.ast.clone())

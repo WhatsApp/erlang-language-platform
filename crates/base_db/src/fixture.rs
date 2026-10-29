@@ -586,7 +586,7 @@ mod tests {
     use super::Fixture;
     use super::WithFixture;
     use crate::AppData;
-    use crate::ProjectId;
+    use crate::Project;
     use crate::RootQueryDb;
     use crate::SourceRootId;
     use crate::Workspace;
@@ -624,9 +624,9 @@ bar() -> ?FOO.
                         root_dir: AbsPathBuf(
                             "/",
                         ),
-                        otp_project_id: Some(
-                            ProjectId(
-                                1,
+                        otp: Some(
+                            Project(
+                                Id(c01),
                             ),
                         ),
                         eqwalizer_config: EqwalizerConfig {
@@ -639,8 +639,8 @@ bar() -> ?FOO.
                     },
                     [
                         AppData {
-                            project_id: ProjectId(
-                                0,
+                            project: Project(
+                                Id(c00),
                             ),
                             name: AppName(
                                 "test-fixture",
@@ -671,8 +671,8 @@ bar() -> ?FOO.
                             is_test_target: None,
                         },
                         AppData {
-                            project_id: ProjectId(
-                                0,
+                            project: Project(
+                                Id(c00),
                             ),
                             name: AppName(
                                 "foo-app",
@@ -714,9 +714,9 @@ bar() -> ?FOO.
                         root_dir: AbsPathBuf(
                             "/opt/lib",
                         ),
-                        otp_project_id: Some(
-                            ProjectId(
-                                1,
+                        otp: Some(
+                            Project(
+                                Id(c01),
                             ),
                         ),
                         eqwalizer_config: EqwalizerConfig {
@@ -729,8 +729,8 @@ bar() -> ?FOO.
                     },
                     [
                         AppData {
-                            project_id: ProjectId(
-                                1,
+                            project: Project(
+                                Id(c01),
                             ),
                             name: AppName(
                                 "comp",
@@ -808,9 +808,9 @@ foo() -> ?BAR.
                         root_dir: AbsPathBuf(
                             "/",
                         ),
-                        otp_project_id: Some(
-                            ProjectId(
-                                1,
+                        otp: Some(
+                            Project(
+                                Id(c01),
                             ),
                         ),
                         eqwalizer_config: EqwalizerConfig {
@@ -823,8 +823,8 @@ foo() -> ?BAR.
                     },
                     [
                         AppData {
-                            project_id: ProjectId(
-                                0,
+                            project: Project(
+                                Id(c00),
                             ),
                             name: AppName(
                                 "test-fixture",
@@ -878,9 +878,9 @@ foo() -> ?BAR.
                         root_dir: AbsPathBuf(
                             "/",
                         ),
-                        otp_project_id: Some(
-                            ProjectId(
-                                1,
+                        otp: Some(
+                            Project(
+                                Id(c01),
                             ),
                         ),
                         eqwalizer_config: EqwalizerConfig {
@@ -902,7 +902,7 @@ foo() -> ?BAR.
     struct LoweredProject {
         source_roots: Vec<SourceRootId>,
         root_dir: AbsPathBuf,
-        otp_project_id: Option<ProjectId>,
+        otp: Option<Project>,
         eqwalizer_config: EqwalizerConfig,
         buck_index: Option<Arc<BuckProjectIndex>>,
     }
@@ -924,7 +924,7 @@ foo() -> ?BAR.
                 let lowered = LoweredProject {
                     source_roots: project.source_roots(&db).to_vec(),
                     root_dir: project.root_dir(&db).to_path_buf(),
-                    otp_project_id: project.otp(&db).map(|otp| otp.project_id(&db)),
+                    otp: project.otp(&db),
                     eqwalizer_config: project.eqwalizer_config(&db).clone(),
                     buck_index: project.buck_index(&db).clone(),
                 };

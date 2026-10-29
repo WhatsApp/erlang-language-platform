@@ -19,7 +19,7 @@ use elp_base_db::FileId;
 use elp_base_db::FileRange;
 use elp_base_db::ModuleIndex;
 use elp_base_db::ModuleName;
-use elp_base_db::ProjectId;
+use elp_base_db::Project;
 use elp_base_db::module_name;
 use elp_syntax::AstNode;
 use elp_syntax::AstPtr;
@@ -246,8 +246,8 @@ impl Semantic<'_> {
     pub fn resolve_module_names(&self, from_file: FileId) -> Option<ModuleIter> {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nresolve_module_names: {from_file:?}"));
-        let project_id = self.db.file_app_data(from_file)?.project_id;
-        let module_index = self.db.module_index(project_id);
+        let project = self.db.file_app_data(from_file)?.project;
+        let module_index = self.db.module_index(project);
         Some(ModuleIter(module_index))
     }
 
@@ -291,7 +291,7 @@ impl Semantic<'_> {
 
     pub fn module_name_duplicates(&self, file_id: FileId) -> Option<FxHashSet<FileId>> {
         let app_data = self.db.file_app_data(file_id)?;
-        let module_index = self.db.module_index(app_data.project_id);
+        let module_index = self.db.module_index(app_data.project);
         let module_name = module_index.module_for_file(file_id)?;
         module_index.duplicates(module_name)
     }
@@ -299,8 +299,8 @@ impl Semantic<'_> {
     pub fn resolve_module_name(&self, file_id: FileId, name: &str) -> Option<Module> {
         // Context for T171541590
         let _ = stdx::panic_context::enter(format!("\nresolve_module_names {file_id:?}"));
-        let project_id = self.db.file_app_data(file_id)?.project_id;
-        let module_index = self.db.module_index(project_id);
+        let project = self.db.file_app_data(file_id)?.project;
+        let module_index = self.db.module_index(project);
         let module_file_id = module_index.file_for_module(name)?;
         Some(Module {
             file: File {
@@ -957,9 +957,9 @@ impl Semantic<'_> {
         if vars.is_empty() { None } else { Some(vars) }
     }
 
-    pub fn macro_define_index(&self, project_id: ProjectId) -> Arc<MacroDefineIndex> {
+    pub fn macro_define_index(&self, project: Project) -> Arc<MacroDefineIndex> {
         let mut defines: FxHashMap<String, Vec<InFile<DefineId>>> = FxHashMap::default();
-        let include_file_index = self.db.include_file_index(project_id);
+        let include_file_index = self.db.include_file_index(project);
         for file_id in include_file_index.path_to_file_id.values() {
             let form_list = self.form_list(*file_id);
             for (define_id, define) in form_list.define_attributes() {
@@ -980,9 +980,9 @@ impl Semantic<'_> {
         Arc::new(MacroDefineIndex { index })
     }
 
-    pub fn record_define_index(&self, project_id: ProjectId) -> Arc<RecordDefineIndex> {
+    pub fn record_define_index(&self, project: Project) -> Arc<RecordDefineIndex> {
         let mut defines: FxHashMap<String, Vec<InFile<RecordId>>> = FxHashMap::default();
-        let include_file_index = self.db.include_file_index(project_id);
+        let include_file_index = self.db.include_file_index(project);
         for file_id in include_file_index.path_to_file_id.values() {
             let form_list = self.form_list(*file_id);
             for (record_id, record) in form_list.records() {
@@ -1741,8 +1741,8 @@ impl<T> Index<TermId> for InFunctionClauseBody<'_, T> {
 
 #[cfg(test)]
 mod tests {
-    use elp_base_db::ProjectId;
     use elp_base_db::RootQueryDb;
+    use elp_base_db::Workspace;
     use elp_base_db::assert_eq_expected;
     use elp_base_db::fixture::WithFixture;
     use elp_syntax::AstNode;
@@ -2069,7 +2069,7 @@ mod tests {
              "#;
         let (db, _fixture) = TestDB::with_fixture(fixture);
         let sema = Semantic::new(&db);
-        let index = sema.macro_define_index(ProjectId(0));
+        let index = sema.macro_define_index(Workspace::get(&db).projects(&db)[0]);
         let results: Vec<(String, &Vec<InFile<DefineId>>)> = index.index.iter().collect();
         expect![[r#"
             [
@@ -2286,7 +2286,7 @@ mod tests {
              "#;
         let (db, _fixture) = TestDB::with_fixture(fixture);
         let sema = Semantic::new(&db);
-        let index = sema.macro_define_index(ProjectId(0));
+        let index = sema.macro_define_index(Workspace::get(&db).projects(&db)[0]);
         let results: Vec<(String, &Vec<InFile<DefineId>>)> = index.index.iter().collect();
         expect![[r#"
             [

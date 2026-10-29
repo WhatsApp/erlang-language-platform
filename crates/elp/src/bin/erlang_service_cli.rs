@@ -111,7 +111,7 @@ pub fn do_parse_all(
     buck: bool,
 ) -> Result<Vec<ParseDiagnostic>> {
     let analysis = loaded.analysis();
-    let module_index = analysis.module_index(loaded.project_id)?;
+    let module_index = analysis.module_index(loaded.project_input)?;
     let file_cnt = module_index.len_own();
     let _timer = timeit!("parse {} files", file_cnt);
 

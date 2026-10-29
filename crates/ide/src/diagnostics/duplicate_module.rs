@@ -58,7 +58,7 @@ impl GenericLinter for DuplicateModuleLinter {
         let module_name = ModuleName::new(module_name_ast.text()?.as_str());
 
         let app_data = ctx.sema.db.file_app_data(ctx.file_id)?;
-        let module_index = ctx.sema.db.module_index(app_data.project_id);
+        let module_index = ctx.sema.db.module_index(app_data.project);
         if let Some(dups) = module_index.duplicates(&module_name) {
             let mut related_info = dups
                 .iter()

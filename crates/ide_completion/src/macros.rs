@@ -88,8 +88,8 @@ pub(crate) fn add_completions(
 }
 
 fn macro_index_completion(sema: &Semantic, file_id: FileId, prefix: &str) -> FxHashSet<Completion> {
-    if let Some(project_id) = sema.db.file_project_id(file_id) {
-        let index = sema.macro_define_index(project_id);
+    if let Some(project) = sema.db.file_project(file_id) {
+        let index = sema.macro_define_index(project);
         index
             .complete(prefix)
             .iter()

@@ -5,14 +5,11 @@ digraph {
     SourceRoot
     SourceRootId
     Project
-    ProjectId
     AppData
     FileId
 
     SourceRootId -> AppData    [label = "SourceDatabase\n::app_data"]
-    ProjectId -> Project       [label = "RootQueryDb\n::project_data" ]
-
-    AppData -> ProjectId       [label = "<<contains>>"]
+    AppData -> Project         [label = "<<contains>>"]
 
     FileId       -> String        [label = "SourceDatabaseExt\n::file_text"]
     FileId       -> SourceRootId  [label = "SourceDatabaseExt\n::file_source_root"]

@@ -11,7 +11,7 @@
 use std::sync::Arc;
 
 use elp_base_db::ModuleName;
-use elp_base_db::ProjectId;
+use elp_base_db::Project;
 use elp_types_db::eqwalizer::EqwalizerDiagnostic;
 
 use crate::db::EqwalizerDiagnosticsDatabase;
@@ -24,18 +24,18 @@ pub trait EqwalizerAnalysesDatabase: EqwalizerDiagnosticsDatabase {
     #[salsa::invoke_interned(compute_eqwalizer_stats)]
     fn compute_eqwalizer_stats(
         &self,
-        project_id: ProjectId,
+        project: Project,
         module: ModuleName,
     ) -> Arc<Vec<EqwalizerDiagnostic>>;
 }
 
 pub fn compute_eqwalizer_stats(
     db: &dyn EqwalizerAnalysesDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: ModuleName,
 ) -> Arc<Vec<EqwalizerDiagnostic>> {
     let mut diagnostics = vec![];
-    if let Ok(ast) = db.eqwalizer_ast(project_id, module) {
+    if let Ok(ast) = db.eqwalizer_ast(project, module) {
         escape_hatches::escape_hatches(&mut diagnostics, &ast);
         overloaded_specs::overloaded_specs(&mut diagnostics, &ast);
     }

@@ -32,7 +32,6 @@ use elp_ide::elp_ide_db::assists::AssistContextDiagnostic;
 use elp_ide::elp_ide_db::docs::Doc;
 use elp_ide::elp_ide_db::elp_base_db::FilePosition;
 use elp_ide::elp_ide_db::elp_base_db::FileRange;
-use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_log::telemetry;
 use elp_log::timeit_with_telemetry;
 use elp_syntax::SmolStr;
@@ -597,9 +596,8 @@ pub(crate) fn handle_workspace_symbol(
     let _p = tracing::info_span!("handle_workspace_symbol").entered();
 
     let mut res = Vec::new();
-    for (project_id, _project) in snap.projects.iter().enumerate() {
-        let project_id = ProjectId(project_id as u32);
-        for nav in snap.analysis.symbol_search(project_id, &params.query)? {
+    for project in snap.analysis.projects()? {
+        for nav in snap.analysis.symbol_search(project, &params.query)? {
             #[allow(deprecated)]
             let info = SymbolInformation {
                 deprecated: None,
@@ -1018,22 +1016,19 @@ pub(crate) fn handle_code_lens(
         return Ok(None);
     }
     let line_index = snap.analysis.line_index(file_id)?;
-    if let Ok(Some(project_id)) = snap.analysis.project_id(file_id) {
+    if let Ok(Some(root)) = snap.analysis.project_root(file_id)
+        && let Some(project) = snap.projects.iter().find(|project| *project.root() == root)
+    {
         let annotations = snap.analysis.annotations(file_id)?;
-        if let Some(project_build_data) = snap
-            .get_project(project_id)
-            .map(|project| project.project_build_data)
-        {
-            for a in annotations {
-                to_proto::code_lens(
-                    &mut res,
-                    &snap,
-                    &lens_config,
-                    &line_index,
-                    a,
-                    &project_build_data,
-                );
-            }
+        for a in annotations {
+            to_proto::code_lens(
+                &mut res,
+                &snap,
+                &lens_config,
+                &line_index,
+                a,
+                &project.project_build_data,
+            );
         }
     }
 

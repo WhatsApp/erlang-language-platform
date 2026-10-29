@@ -19,7 +19,7 @@ use vfs::VfsPath;
 
 use crate::AppData;
 use crate::AppDataId;
-use crate::ProjectId;
+use crate::Project;
 use crate::RootQueryDb;
 use crate::SourceRoot;
 
@@ -101,17 +101,17 @@ impl<'a> IncludeCtx<'a> {
         path: SmolStr,
     ) -> Option<FileId> {
         let file_id = fid.file_id(db);
-        let project_id = db.file_project_id(file_id)?;
+        let project = db.file_project(file_id)?;
         let app_data = db.file_app_data(file_id)?;
         if let Some(file_id) = db.mapped_include_file(
-            project_id,
+            project,
             IncludeMappingScope::Local(app_data.name.clone()),
             path.clone(),
         ) {
             Some(file_id)
         } else {
             // Not in the current app, look in the dependencies
-            let include_file_index = db.include_file_index(project_id);
+            let include_file_index = db.include_file_index(project);
             if let Some(file_path) = include_file_index
                 .buck_index
                 .find_local(&app_data.name, &path)
@@ -125,7 +125,7 @@ impl<'a> IncludeCtx<'a> {
                 let path: &str = &path;
                 app_data.include_path.iter().find_map(|include| {
                     let name = include.join(path);
-                    db.include_file_id(app_data.project_id, VfsPath::from(name.clone()))
+                    db.include_file_id(app_data.project, VfsPath::from(name.clone()))
                 })
             }
         }
@@ -141,8 +141,7 @@ impl<'a> IncludeCtx<'a> {
         current_file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId> {
-        let project_id = db.file_project_id(current_file_id)?;
-        let project = db.project_data(project_id);
+        let project = db.file_project(current_file_id)?;
 
         // Gather app data from both the originating app and the current
         // file's app.  For the dep check we accept the include if
@@ -162,7 +161,7 @@ impl<'a> IncludeCtx<'a> {
             if let Some(p) = buck_index
                 .includes
                 .get(IncludeMappingScope::Remote, &path)
-                .map(|path| db.include_file_id(project_id, VfsPath::from(path.clone())))
+                .map(|path| db.include_file_id(project, VfsPath::from(path.clone())))
             {
                 if p.is_some() {
                     // We have an entry in the include mapping, and it maps to a FileId.
@@ -174,7 +173,7 @@ impl<'a> IncludeCtx<'a> {
                         .filter_map(|d| d.as_ref())
                         .any(|d| {
                             d.buck_target_name.as_ref().is_some_and(|t| {
-                                db.reachable_targets(project_id, t.clone(), DepKind::Runtime)
+                                db.reachable_targets(project, t.clone(), DepKind::Runtime)
                                     .is_some_and(|reachable| {
                                         buck_index.app_deps.is_reachable_in(&reachable, &target)
                                     })
@@ -215,17 +214,15 @@ impl<'a> IncludeCtx<'a> {
             // project, as those are currently the only ones that
             // populate the buck index.
             let path = target_app_data.dir.join(include_path);
-            db.include_file_id(project_id, VfsPath::from(path.clone()))
-                .or_else(|| {
-                    find_generated_include_lib(db, project_id, include_path, &target_app_data)
-                })
+            db.include_file_id(project, VfsPath::from(path.clone()))
+                .or_else(|| find_generated_include_lib(db, project, include_path, &target_app_data))
         }
     }
 }
 
 fn find_generated_include_lib(
     db: &dyn RootQueryDb,
-    project_id: ProjectId,
+    project: Project,
     include_path: &str,
     target_app_data: &AppData,
 ) -> Option<FileId> {
@@ -247,7 +244,7 @@ fn find_generated_include_lib(
     let path = include_path.strip_prefix("include/")?;
     target_app_data.include_path.iter().find_map(|dir| {
         let path = dir.join(path);
-        db.include_file_id(project_id, VfsPath::from(path.clone()))
+        db.include_file_id(project, VfsPath::from(path.clone()))
     })
 }
 

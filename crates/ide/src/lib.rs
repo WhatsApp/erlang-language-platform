@@ -48,10 +48,11 @@ use elp_ide_db::elp_base_db::IncludeFileIndex;
 use elp_ide_db::elp_base_db::LineEndings;
 use elp_ide_db::elp_base_db::ModuleIndex;
 use elp_ide_db::elp_base_db::ModuleName;
-use elp_ide_db::elp_base_db::ProjectId;
+use elp_ide_db::elp_base_db::Project;
 use elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide_db::elp_base_db::VfsPath;
+use elp_ide_db::elp_base_db::Workspace;
 use elp_ide_db::elp_base_db::salsa;
 use elp_ide_db::eqwalizer::type_references;
 use elp_ide_db::erlang_service::ParseResult;
@@ -298,7 +299,7 @@ impl Analysis {
     #[allow(clippy::type_complexity)]
     pub fn eqwalizer_diagnostics_by_project(
         &self,
-        project_id: ProjectId,
+        project: Project,
         file_ids: Vec<FileId>,
         max_tasks: usize,
     ) -> Cancellable<Option<Vec<(FileId, Vec<Diagnostic>)>>> {
@@ -317,7 +318,7 @@ impl Analysis {
                 .par_bridge()
                 .map_with(self.clone(), move |analysis, chunk| {
                     analysis
-                        .eqwalizer_diagnostics(project_id, chunk)
+                        .eqwalizer_diagnostics(project, chunk)
                         .unwrap_or(Arc::new(EqwalizerDiagnostics::default()))
                 })
                 .fold(EqwalizerDiagnostics::default, |acc, output| {
@@ -326,7 +327,7 @@ impl Analysis {
                 .reduce(EqwalizerDiagnostics::default, |acc, other| {
                     acc.combine(other)
                 });
-            diagnostics::to_standard_diagnostics(db, project_id, diagnostics)
+            diagnostics::to_standard_diagnostics(db, project, diagnostics)
         })
     }
 
@@ -334,20 +335,20 @@ impl Analysis {
     /// without checking if disabled. Returns EqwalizerDiagnostics
     pub fn eqwalizer_diagnostics(
         &self,
-        project_id: ProjectId,
+        project: Project,
         file_ids: Vec<FileId>,
     ) -> Cancellable<Arc<EqwalizerDiagnostics>> {
         self.with_db(|db| {
-            elp_ide_db::eqwalizer::eqwalizer_diagnostics_by_project(db, project_id, file_ids)
+            elp_ide_db::eqwalizer::eqwalizer_diagnostics_by_project(db, project, file_ids)
         })
     }
 
     pub fn eqwalizer_stats(
         &self,
-        project_id: ProjectId,
+        project: Project,
         file_id: FileId,
     ) -> Cancellable<Option<Vec<Diagnostic>>> {
-        self.with_db(|db| diagnostics::eqwalizer_stats(db, project_id, file_id))
+        self.with_db(|db| diagnostics::eqwalizer_stats(db, project, file_id))
     }
 
     pub fn type_at_position(
@@ -405,10 +406,23 @@ impl Analysis {
         self.with_db(|db| db.module_ast(file_id))
     }
 
-    pub fn project_id(&self, file_id: FileId) -> Cancellable<Option<ProjectId>> {
+    pub fn project(&self, file_id: FileId) -> Cancellable<Option<Project>> {
         // Context for T171541590
-        let _ = stdx::panic_context::enter(format!("\nproject_id: {file_id:?}"));
-        self.with_db(|db| Some(db.file_app_data(file_id)?.project_id))
+        let _ = stdx::panic_context::enter(format!("\nproject: {file_id:?}"));
+        self.with_db(|db| Some(db.file_app_data(file_id)?.project))
+    }
+
+    /// The loaded projects, without the OTP project lowering adds after them:
+    /// the one that is its own OTP project.
+    pub fn projects(&self) -> Cancellable<Vec<Project>> {
+        self.with_db(|db| {
+            Workspace::get(db)
+                .projects(db)
+                .iter()
+                .copied()
+                .filter(|&project| project.otp(db) != Some(project))
+                .collect()
+        })
     }
 
     /// The root of the project of the file's app, if it has one.
@@ -416,8 +430,8 @@ impl Analysis {
         self.with_db(|db| {
             // Context for T171541590
             let _ = stdx::panic_context::enter(format!("\nproject_root: {file_id:?}"));
-            let project_id = db.file_app_data(file_id)?.project_id;
-            Some(db.project_data(project_id).root_dir(db).to_path_buf())
+            let project = db.file_app_data(file_id)?.project;
+            Some(project.root_dir(db).to_path_buf())
         })
     }
 
@@ -427,28 +441,24 @@ impl Analysis {
             // Context for T171541590
             let _ = stdx::panic_context::enter(format!("\nmodule_name: {file_id:?}"));
             let app_data = db.file_app_data(file_id)?;
-            db.module_index(app_data.project_id)
+            db.module_index(app_data.project)
                 .module_for_file(file_id)
                 .cloned()
         })
     }
 
-    pub fn module_index(&self, project_id: ProjectId) -> Cancellable<Arc<ModuleIndex>> {
-        self.with_db(|db| db.module_index(project_id))
+    pub fn module_index(&self, project: Project) -> Cancellable<Arc<ModuleIndex>> {
+        self.with_db(|db| db.module_index(project))
     }
 
     /// The header files of a project. They have no `ModuleIndex` entry, so this
     /// is the only way to enumerate them.
-    pub fn include_file_index(&self, project_id: ProjectId) -> Cancellable<Arc<IncludeFileIndex>> {
-        self.with_db(|db| db.include_file_index(project_id))
+    pub fn include_file_index(&self, project: Project) -> Cancellable<Arc<IncludeFileIndex>> {
+        self.with_db(|db| db.include_file_index(project))
     }
 
-    pub fn module_file_id(
-        &self,
-        project_id: ProjectId,
-        module: &str,
-    ) -> Cancellable<Option<FileId>> {
-        self.with_db(|db| db.module_index(project_id).file_for_module(module))
+    pub fn module_file_id(&self, project: Project, module: &str) -> Cancellable<Option<FileId>> {
+        self.with_db(|db| db.module_index(project).file_for_module(module))
     }
 
     pub fn expand_macro(&self, position: FilePosition) -> Cancellable<Option<ExpandedMacro>> {
@@ -615,13 +625,13 @@ impl Analysis {
     /// Search symbols. Only module names are currently supported.
     pub fn symbol_search(
         &self,
-        project_id: ProjectId,
+        project: Project,
         query: &str,
     ) -> Cancellable<Vec<NavigationTarget>> {
         const LIMIT: i32 = 128;
         self.with_db(|db| {
             let module_index = self
-                .module_index(project_id)
+                .module_index(project)
                 .expect("project should have a module index");
             let mut total = 0;
             module_index

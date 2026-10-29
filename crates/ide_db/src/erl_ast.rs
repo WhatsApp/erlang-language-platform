@@ -15,7 +15,7 @@ use elp_base_db::AbsPath;
 use elp_base_db::FileId;
 use elp_base_db::IncludeCtx;
 use elp_base_db::InternedFileId;
-use elp_base_db::ProjectId;
+use elp_base_db::Project;
 use elp_base_db::RootQueryDb;
 use elp_base_db::SourceDatabase;
 use elp_base_db::salsa;
@@ -34,7 +34,7 @@ use crate::metadata::Metadata;
 pub trait AstLoader {
     fn load_ast(
         &self,
-        project_id: ProjectId,
+        project: Project,
         file_id: FileId,
         path: &AbsPath,
         macros: &[eetf::Term],
@@ -46,7 +46,7 @@ pub trait AstLoader {
 impl AstLoader for crate::RootDatabase {
     fn load_ast(
         &self,
-        project_id: ProjectId,
+        project: Project,
         file_id: FileId,
         path: &AbsPath,
         macros: &[eetf::Term],
@@ -69,7 +69,7 @@ impl AstLoader for crate::RootDatabase {
             format: Format::OffsetEtf,
             file_text,
         };
-        let erlang_service = self.erlang_service_for(project_id);
+        let erlang_service = self.erlang_service_for(project);
 
         erlang_service.request_parse(
             req,
@@ -149,7 +149,7 @@ fn module_ast_inner(db: &dyn ErlAstDatabase, fid: InternedFileId) -> Arc<ParseRe
         }));
     };
     Arc::new(db.load_ast(
-        app_data.project_id,
+        app_data.project,
         file_id,
         path,
         &app_data.macros,

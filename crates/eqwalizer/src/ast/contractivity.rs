@@ -43,7 +43,7 @@ use std::iter;
 use std::sync::Arc;
 
 use elp_base_db::ModuleName;
-use elp_base_db::ProjectId;
+use elp_base_db::Project;
 use elp_types_db::StringId;
 use elp_types_db::eqwalizer::form::TypeDecl;
 use elp_types_db::eqwalizer::invalid_diagnostics::Invalid;
@@ -172,7 +172,7 @@ fn he_prop(s: &MapProp, t: &MapProp) -> bool {
 
 pub struct StubContractivityChecker<'d> {
     db: &'d dyn EqwalizerDiagnosticsDatabase,
-    project_id: ProjectId,
+    project: Project,
     module: StringId,
     cache: FxHashSet<RemoteId>,
     history: Vec<RemoteType>,
@@ -182,12 +182,12 @@ pub struct StubContractivityChecker<'d> {
 impl StubContractivityChecker<'_> {
     pub fn new(
         db: &dyn EqwalizerDiagnosticsDatabase,
-        project_id: ProjectId,
+        project: Project,
         module: StringId,
     ) -> StubContractivityChecker<'_> {
         StubContractivityChecker {
             db,
-            project_id,
+            project,
             module,
             cache: FxHashSet::default(),
             history: vec![],
@@ -330,7 +330,7 @@ impl StubContractivityChecker<'_> {
         // is already expanded - meaning that all the types referencing from it exist
         let stub = self
             .db
-            .expanded_stub(self.project_id, ModuleName::new(id.module.as_str()))
+            .expanded_stub(self.project, ModuleName::new(id.module.as_str()))
             .expect("the stub should exist, since expansion validation has already happened");
         fn subst(decl: &TypeDecl, args: &[Type]) -> Type {
             if decl.params.is_empty() {

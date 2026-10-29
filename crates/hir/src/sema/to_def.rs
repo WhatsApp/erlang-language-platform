@@ -592,8 +592,8 @@ impl ToDef for ast::Var {
 pub fn resolve_module_name(sema: &Semantic<'_>, file_id: FileId, name: &str) -> Option<Module> {
     // Context for T171541590
     let _ = stdx::panic_context::enter(format!("\nresolve_module_name: {file_id:?}"));
-    let project_id = sema.db.file_app_data(file_id)?.project_id;
-    let module_index = sema.db.module_index(project_id);
+    let project = sema.db.file_app_data(file_id)?.project;
+    let module_index = sema.db.module_index(project);
     let module_file_id = module_index.file_for_module(name)?;
     Some(Module {
         file: File {

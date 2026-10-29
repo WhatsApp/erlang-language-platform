@@ -557,7 +557,6 @@ mod tests {
     use elp_ide::elp_ide_db::elp_base_db::FileId;
     use elp_ide::elp_ide_db::elp_base_db::FilePosition;
     use elp_ide::elp_ide_db::elp_base_db::ModuleName;
-    use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
     use elp_ide::elp_ide_db::elp_base_db::assert_eq_expected;
     use elp_project_model::AppName;
     use elp_project_model::DiscoverConfig;
@@ -946,7 +945,7 @@ mod tests {
 
         let analysis = loaded.analysis();
         let module_index = analysis
-            .module_index(loaded.project_id)
+            .module_index(loaded.project_input)
             .with_context(|| format!("No module index for project {project}"))
             .unwrap();
         let file_ids: Vec<FileId> = module_index
@@ -965,7 +964,7 @@ mod tests {
         sort_by_file_size_descending(&analysis, &mut file_ids, |id| *id);
 
         let files_count = file_ids.len();
-        let project_id = loaded.project_id;
+        let project_input = loaded.project_input;
         // Use 4 instances for tests, round-robin to balance chunk sizes
         let chunks = elp_ide::distribute_round_robin(file_ids.clone(), 4.min(files_count));
         let output = chunks
@@ -973,7 +972,7 @@ mod tests {
             .par_bridge()
             .map_with(analysis.clone(), move |analysis, chunk| {
                 analysis
-                    .eqwalizer_diagnostics(project_id, chunk)
+                    .eqwalizer_diagnostics(project_input, chunk)
                     .expect("cancelled")
             })
             .fold(EqwalizerDiagnostics::default, |acc, output| {
@@ -1651,7 +1650,7 @@ mod tests {
         .unwrap();
         let file_id = loaded
             .analysis()
-            .module_index(loaded.project_id)
+            .module_index(loaded.project_input)
             .unwrap()
             .file_for_module(&ModuleName::new("eqwalizer_specs"))
             .expect("the bundled eqwalizer_specs should be in the module index");
@@ -1661,20 +1660,14 @@ mod tests {
             "eqwalizer_specs should come from the bundled app, got {path}"
         );
         let analysis = loaded.analysis();
-        let project_id = analysis
-            .project_id(file_id)
+        let project = analysis
+            .project(file_id)
             .unwrap()
             .expect("the bundled app should belong to a project");
-        let otp_project_id = analysis
-            .with_db(|db| {
-                db.project_data(project_id)
-                    .otp(db)
-                    .map(|otp| otp.project_id(db))
-            })
-            .unwrap();
+        let otp = analysis.with_db(|db| project.otp(db)).unwrap();
         assert_eq!(
-            otp_project_id,
-            Some(project_id),
+            otp,
+            Some(project),
             "the bundled app should be shared by all projects, in the project with the OTP apps"
         );
         assert_eq_expected!(
@@ -1711,7 +1704,7 @@ mod tests {
         .unwrap();
         let file_id = loaded
             .analysis()
-            .module_index(loaded.project_id)
+            .module_index(loaded.project_input)
             .unwrap()
             .file_for_module(&ModuleName::new("eqwalizer_specs"))
             .expect("eqwalizer_specs should be in the module index");

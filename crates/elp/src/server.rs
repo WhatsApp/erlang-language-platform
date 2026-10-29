@@ -50,7 +50,6 @@ use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
-use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
@@ -1754,9 +1753,7 @@ impl Server {
                 if let Some(app_data_id) = self.generated_app_inputs.get(&path) {
                     let db = self.analysis_host.raw_database();
                     if let Some(app_data) = db.app_data_by_id(*app_data_id).app_data(db) {
-                        db.project_data(app_data.project_id)
-                            .root_dir(db)
-                            .to_path_buf()
+                        app_data.project.root_dir(db).to_path_buf()
                     } else {
                         path
                     }
@@ -1970,8 +1967,13 @@ impl Server {
         self.cache_pool.handle.spawn_with_sender(move |sender| {
             let _work = in_flight::begin("schedule_cache");
             let mut files = vec![];
-            for (i, _) in snapshot.projects.iter().enumerate() {
-                let module_index = match snapshot.analysis.module_index(ProjectId(i as u32)) {
+            let Ok(projects) = snapshot.analysis.projects() else {
+                //rescheduling canceled
+                sender.send(Task::ScheduleCache).unwrap();
+                return;
+            };
+            for project in projects {
+                let module_index = match snapshot.analysis.module_index(project) {
                     Ok(module_index) => module_index,
                     //rescheduling canceled
                     Err(_) => {

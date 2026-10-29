@@ -21,7 +21,7 @@ use std::sync::Arc;
 use std::vec;
 
 use elp_base_db::ModuleName;
-use elp_base_db::ProjectId;
+use elp_base_db::Project;
 use elp_types_db::StringId;
 use elp_types_db::eqwalizer::ext_types::AnyArityFunExtType;
 use elp_types_db::eqwalizer::ext_types::ConstrainedFunType;
@@ -74,7 +74,7 @@ use crate::db::EqwalizerDiagnosticsDatabase;
 
 struct Expander<'d> {
     module: StringId,
-    project_id: ProjectId,
+    project: Project,
     invalids: Vec<Invalid>,
     db: &'d dyn EqwalizerDiagnosticsDatabase,
 }
@@ -267,7 +267,7 @@ impl Expander<'_> {
                 let module = ModuleName::new(&ty.id.module);
                 if let Some(visibility) = self
                     .db
-                    .type_ids(self.project_id, module)
+                    .type_ids(self.project, module)
                     .ok()
                     .and_then(|ids| ids.get(&local_id).copied())
                 {
@@ -295,7 +295,7 @@ impl Expander<'_> {
                 let module = ModuleName::new(&ty.id.module);
                 match self
                     .db
-                    .native_rec_ids(self.project_id, module)
+                    .native_rec_ids(self.project, module)
                     .ok()
                     .and_then(|ids| ids.get(&ty.id.name).copied())
                 {
@@ -626,7 +626,7 @@ pub struct StubExpander<'d> {
 impl StubExpander<'_> {
     pub fn new<'d>(
         db: &'d dyn EqwalizerDiagnosticsDatabase,
-        project_id: ProjectId,
+        project: Project,
         module: StringId,
         ast: &AST,
     ) -> StubExpander<'d> {
@@ -634,7 +634,7 @@ impl StubExpander<'_> {
             module,
             invalids: vec![],
             db,
-            project_id,
+            project,
         };
         let type_converter = TypeConverter::new(module);
         let stub = ModuleStub {
@@ -854,14 +854,14 @@ pub struct CastExpander<'d> {
 impl CastExpander<'_> {
     pub fn new(
         db: &dyn EqwalizerDiagnosticsDatabase,
-        project_id: ProjectId,
+        project: Project,
         module: StringId,
     ) -> CastExpander<'_> {
         let expander = Expander {
             module,
             invalids: vec![],
             db,
-            project_id,
+            project,
         };
         let type_converter = TypeConverter::new(module);
         CastExpander {

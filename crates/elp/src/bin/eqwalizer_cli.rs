@@ -491,12 +491,12 @@ pub(crate) fn do_eqwalize(
                     _ => format!("Module {module} not found"),
                 };
                 analysis
-                    .module_file_id(loaded.project_id, module)?
+                    .module_file_id(loaded.project_input, module)?
                     .with_context(|| context)
             })
             .collect::<Result<Vec<_>>>()?,
         EqwalizeSelection::All { stats, .. } => {
-            let module_index = analysis.module_index(loaded.project_id)?;
+            let module_index = analysis.module_index(loaded.project_input)?;
             let pb = report.progress(module_index.len_own() as u64, "Gathering modules");
             let file_ids = module_index
                 .iter_own()
@@ -520,7 +520,7 @@ pub(crate) fn do_eqwalize(
             file_ids
         }
         EqwalizeSelection::App { app, .. } => {
-            let module_index = analysis.module_index(loaded.project_id)?;
+            let module_index = analysis.module_index(loaded.project_input)?;
             module_index
                 .iter_own()
                 .filter_map(|(_name, _source, file_id)| {
@@ -629,12 +629,12 @@ pub fn eqwalize_stats(
     )?;
     build::compile_deps(&mut loaded, cli)?;
     let analysis = &loaded.analysis();
-    let module_index = analysis.module_index(loaded.project_id)?;
+    let module_index = analysis.module_index(loaded.project_input)?;
     let include_generated = args.include_generated;
     if include_generated {
         cli.info(DEPRECATED_INCLUDE_GENERATED.trim_end_matches('\n'))?;
     }
-    let project_id = loaded.project_id;
+    let project = loaded.project_input;
     let pb = cli.progress(module_index.len_own() as u64, "Computing stats");
     // Sort biggest modules first to reduce long-tail in parallel processing
     let mut modules: Vec<_> = module_index.iter_own().collect();
@@ -648,7 +648,7 @@ pub fn eqwalize_stats(
                 && !otp_file_to_ignore(analysis, file_id)
             {
                 analysis
-                    .eqwalizer_stats(project_id, file_id)
+                    .eqwalizer_stats(project, file_id)
                     .expect("cancelled")
                     .map(|stats| (file_id, (name.clone(), stats)))
             } else {
@@ -723,7 +723,7 @@ fn eqwalize(
     let files_count = file_ids.len();
     let pb = report.progress(files_count as u64, "EqWAlizing");
     let output = loaded.with_eqwalizer_progress_bar(pb.clone(), move |analysis| {
-        let project_id = loaded.project_id;
+        let project = loaded.project_input;
         let max_tasks = loaded.project.eqwalizer_config.max_tasks;
         // Round-robin distribute sorted files across chunks for balanced workload
         let chunks = elp_ide::distribute_round_robin(file_ids, max_tasks.min(files_count));
@@ -732,7 +732,7 @@ fn eqwalize(
             .par_bridge()
             .map_with(analysis, move |analysis, chunk| {
                 analysis
-                    .eqwalizer_diagnostics(project_id, chunk)
+                    .eqwalizer_diagnostics(project, chunk)
                     .expect("cancelled")
             })
             .fold(EqwalizerDiagnostics::default, |acc, output| {
@@ -755,7 +755,7 @@ fn eqwalize(
                 .sorted_by(|(name1, _), (name2, _)| Ord::cmp(name1, name2))
             {
                 let file_id = analysis
-                    .module_index(loaded.project_id)?
+                    .module_index(loaded.project_input)?
                     .file_for_module(module.as_str())
                     .with_context(|| format!("module {module} not found"))?;
                 report.write_eqwalizer_diagnostics(analysis, loaded, file_id, &diagnostics)?;
@@ -778,7 +778,7 @@ fn eqwalize(
             }
         }
         EqwalizerDiagnostics::NoAst { module } => {
-            if let Some(file_id) = analysis.module_file_id(loaded.project_id, &module)? {
+            if let Some(file_id) = analysis.module_file_id(loaded.project_input, &module)? {
                 let config = DiagnosticsConfig::default();
                 let erlang_service_diagnostics =
                     analysis.erlang_service_diagnostics(file_id, &config, RemoveElpReported::No)?;

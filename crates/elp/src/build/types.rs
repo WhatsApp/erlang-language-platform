@@ -14,13 +14,14 @@ use elp_ide::Analysis;
 use elp_ide::AnalysisHost;
 use elp_ide::elp_ide_db::EqwalizerProgressReporter;
 use elp_ide::elp_ide_db::SidecarCleanupGuard;
+use elp_ide::elp_ide_db::elp_base_db;
 use elp_ide::elp_ide_db::elp_base_db::ChangeKind;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
-use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use elp_ide::elp_ide_db::elp_base_db::Workspace;
 use elp_project_model::Project;
 use fxhash::FxHashSet;
 use indicatif::ProgressBar;
@@ -39,7 +40,8 @@ pub struct LoadResult {
     pub analysis_host: ManuallyDrop<AnalysisHost>,
     _sidecar_cleanup: SidecarCleanupGuard,
     pub file_map: ManuallyDrop<FileMap>,
-    pub project_id: ProjectId,
+    /// The database's project of `project`.
+    pub project_input: elp_base_db::Project,
     pub project: Project,
     pub file_set_config: FileSetConfig,
 }
@@ -48,16 +50,17 @@ impl LoadResult {
     pub fn new(
         analysis_host: AnalysisHost,
         file_map: FileMap,
-        project_id: ProjectId,
         project: Project,
         file_set_config: FileSetConfig,
     ) -> Self {
-        let sidecar_cleanup = analysis_host.raw_database().sidecar_cleanup_guard();
+        let db = analysis_host.raw_database();
+        let sidecar_cleanup = db.sidecar_cleanup_guard();
+        let project_input = Workspace::get(db).projects(db)[0];
         LoadResult {
             analysis_host: ManuallyDrop::new(analysis_host),
             _sidecar_cleanup: sidecar_cleanup,
             file_map: ManuallyDrop::new(file_map),
-            project_id,
+            project_input,
             project,
             file_set_config,
         }

@@ -601,21 +601,20 @@ Source roots (apps) are grouped into projects that share some of the
 configuration. A `Project` is a salsa input with one field per fact: its
 root, its OTP project, its Buck index, its code path, its eqWAlizer
 configuration and its source roots. `elp_base_db::input::Workspace`
-lists the projects, and a project's `elp_base_db::input::ProjectId` is
-its position in that list.
+lists the projects, and the queries about a project take its `Project`.
 
 ### `elp_base_db::input::AppData`
 
 `AppData` captures the information for an app from the rebar
-`project_app_dirs` list.  It includes the `ProjectId` of the
-`Project` containing this app.
+`project_app_dirs` list.  It includes the `Project` containing this
+app.
 
 They are indexed in salsa with
 `elp_base_db::input::SourceRootId`
 
 ```rust
 pub struct AppData {
-    pub project_id: ProjectId,
+    pub project: Project,
     pub dir: AbsPathBuf,
     pub include_path: Vec<AbsPathBuf>,
     pub src_dirs: Vec<String>,
@@ -662,7 +661,7 @@ It also provides a means to access the external processes for
 ```rust
 pub struct RootDatabase {
     storage: salsa::Storage<Self>,
-    erlang_services: Arc<RwLock<FxHashMap<ProjectId, Connection>>>,
+    erlang_services: Arc<RwLock<FxHashMap<ErlangServiceKey, Connection>>>,
     eqwalizer: Eqwalizer,
 }
 ```

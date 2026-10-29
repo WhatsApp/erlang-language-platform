@@ -103,14 +103,10 @@ impl SourceRoot {
     }
 }
 
-/// A project's position in [`Workspace::projects`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct ProjectId(pub u32);
-
 /// The loaded projects.
 #[salsa::input(singleton, debug)]
 pub struct Workspace {
-    /// In [`ProjectId`] order.
+    /// In the order the loader gave them, the OTP project last.
     #[returns(ref)]
     pub projects: Arc<[Project]>,
     /// The inputs of the projects that are no longer loaded, with their large
@@ -150,11 +146,6 @@ impl Project {
         as_real_path(self.root(db))
     }
 
-    /// The project's position in [`Workspace::projects`].
-    pub fn project_id(self, db: &dyn RootQueryDb) -> ProjectId {
-        project_id(db, self)
-    }
-
     /// The source root of the app `name` refers to in the project: the last
     /// app of the project with that name, in the order the loader gave them,
     /// else the OTP app with that name.
@@ -187,7 +178,7 @@ impl fmt::Debug for Project {
 /// We create a `SourceRoot` for every app in every `Project`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AppData {
-    pub project_id: ProjectId,
+    pub project: Project,
     pub name: AppName,
     /// Target name if this application originates from a buck target
     pub buck_target_name: Option<TargetFullName>,
@@ -309,27 +300,6 @@ impl AppStructure {
     }
 }
 
-/// The projects in [`ProjectId`] order, none before the first lowering.
-pub(crate) fn workspace_projects(db: &dyn RootQueryDb) -> Arc<[Project]> {
-    Workspace::try_get(db)
-        .map(|workspace| workspace.projects(db).clone())
-        .unwrap_or_default()
-}
-
-pub(crate) fn project_by_id(db: &dyn RootQueryDb, id: ProjectId) -> Project {
-    *workspace_projects(db)
-        .get(id.0 as usize)
-        .unwrap_or_else(|| panic!("{id:?} should be a loaded project"))
-}
-
-pub(crate) fn project_id(db: &dyn RootQueryDb, project: Project) -> ProjectId {
-    let idx = workspace_projects(db)
-        .iter()
-        .position(|loaded| *loaded == project)
-        .expect("the project should be loaded");
-    ProjectId(idx as u32)
-}
-
 /// Lowering gives projects only real paths.
 fn as_real_path(path: &VfsPath) -> &AbsPath {
     path.as_path()
@@ -351,13 +321,14 @@ pub enum IncludeOtp {
 
 #[derive(Debug)]
 pub struct ProjectApps<'a> {
-    /// All the applications in a set of projects.  The order here
-    /// will correspond with the vfs sourceRootId's
-    pub all_apps: Vec<(ProjectId, &'a ProjectAppData)>,
-    /// Sometimes we don't have an OTP project because we are explicitly
-    /// opting out of using it, e.g. for eqWAlizer compatibility
-    pub otp_project_id: Option<ProjectId>,
-    /// The projects, in `ProjectId` order.
+    /// All the applications in a set of projects, with the position of their
+    /// project in `projects`.  The order here will correspond with the vfs
+    /// sourceRootId's
+    pub all_apps: Vec<(usize, &'a ProjectAppData)>,
+    /// The position of the OTP project in `projects`. Sometimes we don't have
+    /// an OTP project because we are explicitly opting out of using it, e.g.
+    /// for eqWAlizer compatibility
+    pub otp_project_idx: Option<usize>,
     pub projects: Vec<elp_project_model::Project>,
 }
 
@@ -366,14 +337,10 @@ impl<'a> ProjectApps<'a> {
         projects: &'a [elp_project_model::Project],
         include_otp: IncludeOtp,
     ) -> ProjectApps<'a> {
-        let mut all_apps: Vec<(ProjectId, &ProjectAppData)> = projects
+        let mut all_apps: Vec<(usize, &ProjectAppData)> = projects
             .iter()
             .enumerate()
-            .flat_map(|(project_idx, project)| {
-                project
-                    .all_apps()
-                    .map(move |p| (ProjectId(project_idx as u32), p))
-            })
+            .flat_map(|(project_idx, project)| project.all_apps().map(move |p| (project_idx, p)))
             .collect();
 
         // We assume that all of the `Project`s use the same OTP.
@@ -382,11 +349,11 @@ impl<'a> ProjectApps<'a> {
         // duplicate it for every project. .
         let first_project = &projects[0];
         let mut projects: Vec<_> = projects.into();
-        let otp_project_id = if include_otp == IncludeOtp::Yes {
-            let otp_project_id = ProjectId(projects.len() as u32);
-            let mut all_otp_apps: Vec<(ProjectId, &ProjectAppData)> = first_project
+        let otp_project_idx = if include_otp == IncludeOtp::Yes {
+            let otp_project_idx = projects.len();
+            let mut all_otp_apps: Vec<(usize, &ProjectAppData)> = first_project
                 .otp_apps()
-                .map(|app| (otp_project_id, app))
+                .map(|app| (otp_project_idx, app))
                 .collect();
             all_apps.append(&mut all_otp_apps);
             let otp_project = elp_project_model::Project::otp(
@@ -394,42 +361,42 @@ impl<'a> ProjectApps<'a> {
                 first_project.otp_apps().cloned().collect(),
             );
             projects.push(otp_project);
-            Some(otp_project_id)
+            Some(otp_project_idx)
         } else {
             None
         };
 
         ProjectApps {
             all_apps,
-            otp_project_id,
+            otp_project_idx,
             projects,
         }
     }
 
-    pub fn app_structure(&self) -> AppStructure {
+    /// The apps of `projects`, the inputs lowering made of `self.projects`.
+    pub fn app_structure(&self, projects: &[Project]) -> AppStructure {
         let mut app_structure = AppStructure::default();
         let mut app_idx = 0;
 
         // Reconstruct the per-project list
-        let mut apps_by_project: FxHashMap<ProjectId, Vec<&ProjectAppData>> = FxHashMap::default();
+        let mut apps_by_project: FxHashMap<usize, Vec<&ProjectAppData>> = FxHashMap::default();
 
-        for (project_id, appdata) in self.all_apps.iter() {
+        for (project_idx, appdata) in self.all_apps.iter() {
             apps_by_project
-                .entry(*project_id)
+                .entry(*project_idx)
                 .or_default()
                 .push(appdata);
         }
 
-        for project_idx in 0..self.projects.len() {
-            let project_id = ProjectId(project_idx as u32);
+        for (project_idx, &project) in projects.iter().enumerate() {
             let empty = vec![];
-            let apps = apps_by_project.get(&project_id).unwrap_or(&empty);
+            let apps = apps_by_project.get(&project_idx).unwrap_or(&empty);
 
             for app in apps {
                 let root_id = SourceRootId(app_idx);
                 app_idx += 1;
                 let input_data = AppData {
-                    project_id,
+                    project,
                     name: app.name.clone(),
                     buck_target_name: app.buck_target_name.clone(),
                     dir: app.dir.clone(),

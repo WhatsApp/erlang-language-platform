@@ -87,8 +87,8 @@ impl GenericLinter for UnusedExportedFunctionLinter {
 
         let callbacks = sema.resolve_callbacks(file_id);
 
-        let project_id = sema.db.file_app_data(file_id)?.project_id;
-        let scope = SearchScope::project(sema.db, project_id).exclude_file(file_id);
+        let project = sema.db.file_app_data(file_id)?.project;
+        let scope = SearchScope::project(sema.db, project).exclude_file(file_id);
 
         // Hoist the single-file scope before the loop to avoid allocating
         // a new FxHashMap on every iteration (file_id is loop-invariant).

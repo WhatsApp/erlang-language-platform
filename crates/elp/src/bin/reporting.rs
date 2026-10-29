@@ -841,7 +841,7 @@ mod tests {
         );
         let analysis = loaded.analysis();
         let file_id = analysis
-            .module_file_id(loaded.project_id, "foo")
+            .module_file_id(loaded.project_input, "foo")
             .expect("module lookup should succeed")
             .expect("fixture module should exist");
         let diagnostic = diagnostics::Diagnostic {

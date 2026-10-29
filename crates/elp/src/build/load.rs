@@ -24,7 +24,6 @@ use elp_ide::elp_ide_db::elp_base_db::FileMap;
 use elp_ide::elp_ide_db::elp_base_db::FileSetConfig;
 use elp_ide::elp_ide_db::elp_base_db::IncludeOtp;
 use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
-use elp_ide::elp_ide_db::elp_base_db::ProjectId;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::loader::Handle;
 use elp_ide::elp_ide_db::elp_base_db::lower;
@@ -182,7 +181,6 @@ pub fn load_project(
     project: Project,
     load_config: LoadConfig,
 ) -> Result<LoadResult> {
-    let project_id = ProjectId(0);
     let (sender, receiver) = unbounded();
     let file_map = FileMap::default();
     let mut loader = {
@@ -212,7 +210,6 @@ pub fn load_project(
     Ok(LoadResult::new(
         analysis_host,
         file_map,
-        project_id,
         project,
         folders.file_set_config,
     ))
