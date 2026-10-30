@@ -112,6 +112,13 @@ impl ProjectFolders {
                         .collect();
                     let dir = VfsPath::from(app.dir.clone());
                     file_sets.insert(dir);
+                    // Note: if several apps share an include dir, only the
+                    // first one in `all_apps` owns it (FileSetConfig keeps one
+                    // owner per root), so files there carry that app's AppData
+                    // (macros, include path).
+                    for inc in &app.include_dirs {
+                        file_sets.insert(VfsPath::from(inc.clone()));
+                    }
                     builder.add_file_set(file_sets.into_iter().collect());
                     builder
                 },
@@ -521,5 +528,57 @@ mod tests {
 
         files.apply(&[("/app/src/listed.erl", Some("-module(listed)."))]);
         assert_eq_expected!(expected_app, app_name(&files), "once the file has loaded");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use elp_base_db::assert_eq_expected;
+    use elp_project_model::AppName;
+    use elp_project_model::temp_dir::TempDir;
+
+    use super::*;
+
+    /// Files that live in an app's `include_dirs` must be assigned to that
+    /// app's file set, which is what makes them part of its source root. This
+    /// is the behaviour the `ProjectFolders::new` include-dir insertion adds.
+    #[test]
+    fn include_dirs_become_part_of_the_app_file_set() {
+        let temp = TempDir::new();
+        let root = AbsPathBuf::assert_utf8(temp.path().to_path_buf());
+        let app_dir = root.join("apps/appA");
+        let include_dir = root.join("inc");
+
+        let app = ProjectAppData::fixture_app_data(
+            AppName("appA".to_string()),
+            app_dir.clone(),
+            vec![include_dir.clone()],
+            vec![app_dir.join("src")],
+            vec![],
+        );
+        let project_apps = ProjectApps {
+            all_apps: vec![(ProjectId(0), &app)],
+            otp_project_id: None,
+            projects: vec![],
+        };
+        let folders = ProjectFolders::new(&project_apps);
+
+        let app_file = VfsPath::from(app_dir.join("src/demo.erl"));
+        let include_file = VfsPath::from(include_dir.join("shared.hrl"));
+        let mut vfs = Vfs::default();
+        vfs.set_file_contents(app_file.clone(), Some(Vec::new()));
+        vfs.set_file_contents(include_file.clone(), Some(Vec::new()));
+
+        let file_sets = folders.file_set_config.partition(&vfs);
+        // One set per app, plus a catch-all set for files outside every app.
+        assert_eq_expected!(2, file_sets.len());
+        assert!(
+            file_sets[0].file_for_path(&app_file).is_some(),
+            "file under the app src dir should be in the app's file set"
+        );
+        assert!(
+            file_sets[0].file_for_path(&include_file).is_some(),
+            "file under an external include dir should be in the app's file set"
+        );
     }
 }
