@@ -1215,6 +1215,27 @@ mod tests {
         assert!(!ast.contains("module,'Elixir.Hello'}"), "{ast}");
     }
 
+    /// Elixir compiles `++` and `--` to calls of the BIFs, where it compiles
+    /// every other operator to the operator form; the service serves those
+    /// calls as operators, which eqWAlizer types more precisely.
+    #[test]
+    fn elixir_list_operator_calls_served_as_operators() {
+        let ast = elixir_module_text(
+            ELIXIR_FIXTURE.source.clone(),
+            elixir_options("Elixir.Hello"),
+        );
+        // The operator takes the call's position, which Elixir records at the
+        // operator itself.
+        let concat = offset_of("++ b");
+        let expected = format!("{{op,{{{concat},{}}},'++',{{var,", concat + 1);
+        assert!(ast.contains(&expected), "{ast}");
+        let subtract = offset_of("-- b");
+        let expected = format!("{{op,{{{subtract},{}}},'--',{{var,", subtract + 1);
+        assert!(ast.contains(&expected), "{ast}");
+        assert!(!ast.contains("'++'}}"), "{ast}");
+        assert!(!ast.contains("'--'}}"), "{ast}");
+    }
+
     #[test]
     fn beam_file_served_without_positions() {
         let beam = ELIXIR_FIXTURE.ebin.join("Elixir.Hello.beam");

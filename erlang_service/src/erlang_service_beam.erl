@@ -44,8 +44,9 @@ read(FileName, Options, FileText) ->
         {ok, Beam, Text} ?= locate(FileName, Options, FileText),
         {ok, Forms0} ?= forms(Beam),
         Forms1 = reject_generated_functions(Forms0),
-        Forms2 = to_byte_ranges(Forms1, Text),
-        {ok, insert_metadata(Forms2, Options)}
+        Forms2 = calls_to_operators(Forms1),
+        Forms3 = to_byte_ranges(Forms2, Text),
+        {ok, insert_metadata(Forms3, Options)}
     end.
 
 %% The BEAM file to read, and the text whose byte offsets its forms get: none
@@ -104,6 +105,36 @@ reserved_name(Name) ->
         "__" ++ Rest -> lists:suffix("__", Rest);
         _ -> false
     end.
+
+%% Elixir compiles `a ++ b` and `a -- b` to calls of `erlang:'++'/2` and
+%% `erlang:'--'/2`, where every other operator becomes the Erlang operator
+%% form. eqWAlizer types the operator forms of `++` and `--` by a rule of its
+%% own, which keeps the element types of the lists, and the calls by the
+%% specs of the BIFs, which lose them to `term()`. The calls mean the same as
+%% the operators, so they are served as such.
+-spec calls_to_operators(forms()) -> forms().
+calls_to_operators(Forms) ->
+    [
+        case Form of
+            {function, Anno, Name, Arity, Clauses} ->
+                {function, Anno, Name, Arity, call_to_operator(Clauses)};
+            _ ->
+                Form
+        end
+     || Form <- Forms
+    ].
+
+-spec call_to_operator(term()) -> term().
+call_to_operator({call, Anno, {remote, _, {atom, _, erlang}, {atom, _, Op}}, [Left, Right]}) when
+    Op =:= '++'; Op =:= '--'
+->
+    {op, Anno, Op, call_to_operator(Left), call_to_operator(Right)};
+call_to_operator(Tuple) when is_tuple(Tuple) ->
+    list_to_tuple(call_to_operator(tuple_to_list(Tuple)));
+call_to_operator(List) when is_list(List) ->
+    [call_to_operator(Elem) || Elem <- List];
+call_to_operator(Term) ->
+    Term.
 
 %% ELP's own parser annotates every node with `{StartByte, EndByte}` instead
 %% of a line and column, and eqWAlizer places its diagnostics by those. The

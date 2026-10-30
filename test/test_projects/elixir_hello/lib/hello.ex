@@ -12,6 +12,11 @@ defmodule Hello do
   @spec total([integer()]) :: integer()
   def total(xs), do: Enum.reduce(xs, 0, fn x, acc -> x + acc end)
 
+  # Elixir compiles `++` to a call of `:erlang.++/2`, whose spec would give
+  # `[term()]`; served as the operator, it keeps the element types.
+  @spec concat([integer()], [atom()]) :: [integer() | atom()]
+  def concat(a, b), do: a ++ b
+
   defmodule Nested do
     @spec n() :: integer()
     def n(), do: 1

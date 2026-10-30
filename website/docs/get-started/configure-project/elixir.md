@@ -74,6 +74,12 @@ a node starts.
 Functions the compiler generates, such as `__struct__/1` and `__info__/1`,
 are not checked, but their specs and exports are kept, so calls to them are.
 
+Elixir compiles `++` and `--` to calls of `:erlang.++/2` and `:erlang.--/2`,
+where every other operator becomes the Erlang operator. ELP's service serves
+those calls as the operators too, which eqWAlizer types by a rule of its own
+that keeps the element types of the lists, where the specs of the functions
+would lose them to `term()`.
+
 The Elixir standard library is seen through its specs, with overrides for
 the ones that would otherwise produce noise. Elixir declares the elements of
 enumerables, the values of maps and keyword lists, and accumulators as

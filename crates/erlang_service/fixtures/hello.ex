@@ -14,6 +14,10 @@ defmodule Hello do
 
   def uni(a), do: {"zażółć", a}
 
+  def concat(a, b), do: a ++ b
+
+  def subtract(a, b), do: a -- b
+
   defmodule Nested do
     def n, do: 1
   end
