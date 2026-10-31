@@ -134,7 +134,7 @@ impl EqwalizerDiagnostics {
                 EqwalizerDiagnostics::NoAst {
                     module: other_module,
                 } => {
-                    if other_module > self_module {
+                    if *other_module > *self_module {
                         self
                     } else {
                         other
