@@ -498,7 +498,7 @@ foo() -> ok.
                 DiagnosticsTrigger::Change,
             ] {
                 assert!(!should_run(
-                    &LINTER, &config, &trigger, &None, false, false, false
+                    &LINTER, &config, &trigger, &None, &None, false, false, false
                 ));
             }
             check_diagnostics_with_config(
@@ -526,13 +526,14 @@ foo() -> ok.
         for config in [project_config, cli_config] {
             for trigger in [DiagnosticsTrigger::Cli, DiagnosticsTrigger::Save] {
                 assert!(should_run(
-                    &LINTER, &config, &trigger, &None, false, false, false
+                    &LINTER, &config, &trigger, &None, &None, false, false, false
                 ));
             }
             assert!(!should_run(
                 &LINTER,
                 &config,
                 &DiagnosticsTrigger::Change,
+                &None,
                 &None,
                 false,
                 false,

@@ -40,10 +40,12 @@ use elp_ide_db::common_test::CommonTestInfo;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileKind;
 use elp_ide_db::elp_base_db::FileRange;
+use elp_ide_db::elp_base_db::ModuleName;
 use elp_ide_db::elp_base_db::Project;
 use elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide_db::elp_base_db::VfsPath;
 use elp_ide_db::elp_base_db::in_flight;
+use elp_ide_db::elp_base_db::module_name;
 use elp_ide_db::erlang_service::DiagnosticLocation;
 use elp_ide_db::erlang_service::ParseError;
 use elp_ide_db::metadata::Kind;
@@ -722,25 +724,34 @@ pub(crate) trait Linter: Sync {
     }
 }
 
-fn should_process_app(
+fn should_process_file(
     app_name: &Option<AppName>,
+    module_name: &Option<ModuleName>,
     config: &DiagnosticsConfig,
     diagnostic_code: &DiagnosticCode,
 ) -> bool {
-    let app = match app_name {
-        Some(app) => app.as_str(),
-        None => return true,
+    let Some(linter_config) = config
+        .lint_config
+        .as_ref()
+        .and_then(|lint_config| lint_config.linters.get(diagnostic_code))
+    else {
+        return true;
     };
 
-    if let Some(lint_config) = config.lint_config.as_ref()
-        && let Some(linter_config) = lint_config.linters.get(diagnostic_code)
-        && let Some(ref excluded) = linter_config.exclude_apps
-        && excluded.iter().any(|pattern| pattern.matches(app))
-    {
-        return false;
-    }
+    let is_excluded = |patterns: &Option<Vec<NamePattern>>, name: Option<&str>| {
+        patterns
+            .as_ref()
+            .zip(name)
+            .is_some_and(|(patterns, name)| patterns.iter().any(|pattern| pattern.matches(name)))
+    };
 
-    true
+    !is_excluded(
+        &linter_config.exclude_apps,
+        app_name.as_ref().map(AppName::as_str),
+    ) && !is_excluded(
+        &linter_config.exclude_modules,
+        module_name.as_ref().map(ModuleName::as_str),
+    )
 }
 
 fn is_diagnostic_enabled(config: &DiagnosticsConfig, code: &DiagnosticCode, default: bool) -> bool {
@@ -806,6 +817,7 @@ fn should_run(
     config: &DiagnosticsConfig,
     trigger: &DiagnosticsTrigger,
     app_name: &Option<AppName>,
+    module_name: &Option<ModuleName>,
     is_generated: bool,
     is_test: bool,
     is_header: bool,
@@ -830,7 +842,7 @@ fn should_run(
     if runs_on_save_only && *trigger == DiagnosticsTrigger::Change {
         return false;
     }
-    if !should_process_app(app_name, config, &linter.id()) {
+    if !should_process_file(app_name, module_name, config, &linter.id()) {
         return false;
     }
     let is_enabled = is_diagnostic_enabled(config, &linter.id(), linter.is_enabled());
@@ -1625,10 +1637,20 @@ impl LintConfig {
     pub fn get_exclude_apps_override(
         &self,
         diagnostic_code: &DiagnosticCode,
-    ) -> Option<Vec<AppPattern>> {
+    ) -> Option<Vec<NamePattern>> {
         self.linters
             .get(diagnostic_code)
             .and_then(|c| c.exclude_apps.clone())
+    }
+
+    /// Get the exclude_modules override for a linter based on its diagnostic code.
+    pub fn get_exclude_modules_override(
+        &self,
+        diagnostic_code: &DiagnosticCode,
+    ) -> Option<Vec<NamePattern>> {
+        self.linters
+            .get(diagnostic_code)
+            .and_then(|c| c.exclude_modules.clone())
     }
 
     /// Get the runs_on_save_only override for a linter based on its diagnostic code.
@@ -1811,10 +1833,11 @@ impl LinterTraitConfig {
     }
 }
 
-/// A glob pattern matched against application names, used by `exclude_apps`.
+/// A glob pattern matched against application or module names, used by
+/// `exclude_apps` and `exclude_modules`.
 ///
 /// A pattern with no metacharacter matches that name and nothing else, so plain
-/// application names behave as they always have. Wildcards matter for build
+/// names behave as they always have. Wildcards matter for build
 /// systems that split one source directory across several applications: Buck
 /// gives every Common Test suite its own application named after the suite
 /// module, so `my_app*` is the way to cover `my_app` together with its
@@ -1825,19 +1848,19 @@ impl LinterTraitConfig {
 /// still matches its own literal name but now matches others too; a balanced
 /// `[...]` becomes a character class and stops matching the literal name; an
 /// unbalanced `[` is not a valid pattern and is rejected when the config is
-/// parsed. No application name Buck can produce contains these characters, so
-/// this is unreachable in practice; where it is not, [`Pattern::escape`]
+/// parsed. No application name Buck can produce, and no module name in common
+/// use, contains these characters; where one does, [`Pattern::escape`]
 /// converts a literal name into the equivalent pattern.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AppPattern(Pattern);
+pub struct NamePattern(Pattern);
 
-impl AppPattern {
+impl NamePattern {
     pub fn try_new(pattern: &str) -> Result<Self, PatternError> {
         Pattern::new(pattern).map(Self)
     }
 
-    pub fn matches(&self, app_name: &str) -> bool {
-        self.0.matches(app_name)
+    pub fn matches(&self, name: &str) -> bool {
+        self.0.matches(name)
     }
 
     pub fn as_str(&self) -> &str {
@@ -1845,18 +1868,18 @@ impl AppPattern {
     }
 }
 
-impl<'de> Deserialize<'de> for AppPattern {
+impl<'de> Deserialize<'de> for NamePattern {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        AppPattern::try_new(&s)
-            .map_err(|err| serde::de::Error::custom(format!("Invalid app pattern '{s}': {err}")))
+        NamePattern::try_new(&s)
+            .map_err(|err| serde::de::Error::custom(format!("Invalid name pattern '{s}': {err}")))
     }
 }
 
-impl Serialize for AppPattern {
+impl Serialize for NamePattern {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -1875,7 +1898,8 @@ pub struct LinterConfig {
     pub include_generated: Option<bool>,
     pub include_headers: Option<bool>,
     pub experimental: Option<bool>,
-    pub exclude_apps: Option<Vec<AppPattern>>,
+    pub exclude_apps: Option<Vec<NamePattern>>,
+    pub exclude_modules: Option<Vec<NamePattern>>,
     pub runs_on_save_only: Option<bool>,
     #[serde(flatten)]
     pub config: Option<LinterTraitConfig>,
@@ -1899,6 +1923,7 @@ impl LinterConfig {
             include_headers: other.include_headers.or(self.include_headers),
             experimental: other.experimental.or(self.experimental),
             exclude_apps: other.exclude_apps.or(self.exclude_apps),
+            exclude_modules: other.exclude_modules.or(self.exclude_modules),
             runs_on_save_only: other.runs_on_save_only.or(self.runs_on_save_only),
             config: merged_config,
         }
@@ -2097,6 +2122,7 @@ pub fn native_diagnostics(
         FxHashMap::default()
     };
     let app_name = db.file_app_name(file_id);
+    let module_name = module_name(db, file_id);
     let metadata = db.elp_metadata(file_id);
 
     // `code_reportable` mirrors the per-code conditions inside `should_run`
@@ -2128,7 +2154,7 @@ pub fn native_diagnostics(
         {
             return false;
         }
-        if !should_process_app(&app_name, config, code) {
+        if !should_process_file(&app_name, &module_name, config, code) {
             return false;
         }
         // If a Linter is registered for this code, apply the same pair of
@@ -2148,6 +2174,7 @@ pub fn native_diagnostics(
                         config,
                         trigger,
                         &app_name,
+                        &module_name,
                         is_generated,
                         is_test,
                         is_header,
@@ -2161,7 +2188,7 @@ pub fn native_diagnostics(
 
     // Run the redundant-suppression post-pass BEFORE the retain step so it
     // observes diagnostics that retain is about to filter out (via
-    // `config.disabled`, the experimental gate, or `should_process_app`).
+    // `config.disabled`, the experimental gate, or `should_process_file`).
     // Without this an annotation that successfully suppressed a
     // `--diagnostic-ignore`d code would be falsely flagged as redundant.
     // Its output bypasses retain — W0081 handles its own internal
@@ -2172,6 +2199,7 @@ pub fn native_diagnostics(
         config,
         trigger,
         &app_name,
+        &module_name,
         is_generated,
         is_test,
         is_header,
@@ -2208,7 +2236,7 @@ pub fn native_diagnostics(
             && (config.experimental && d.has_category(Category::Experimental)
                 || !d.has_category(Category::Experimental))
             && !d.should_be_suppressed(&metadata, config)
-            && should_process_app(&app_name, config, &d.code)
+            && should_process_file(&app_name, &module_name, config, &d.code)
     });
 
     res.extend(post_pass_diags);
@@ -2388,6 +2416,7 @@ fn diagnostics_from_linters(
         .is_test_suite_or_test_helper(file_id)
         .unwrap_or(false);
     let app_name = sema.db.file_app_name(file_id);
+    let module_name = sema.module_name(file_id);
     let is_header = sema.db.file_kind(file_id) == FileKind::Header;
 
     // For partially-generated files, always get the manual section ranges
@@ -2418,6 +2447,7 @@ fn diagnostics_from_linters(
                 config,
                 trigger,
                 &app_name,
+                &module_name,
                 effective_is_generated,
                 is_test,
                 is_header,
@@ -2781,6 +2811,7 @@ pub fn erlang_service_diagnostics(
         };
 
         let app_name = db.file_app_name(file_id);
+        let module_name = module_name(db, file_id);
         let metadata = db.elp_metadata(file_id);
         let diags = diags
             .into_iter()
@@ -2788,7 +2819,7 @@ pub fn erlang_service_diagnostics(
                 !d.should_be_suppressed(&metadata, config)
                     && !config.disabled.contains(&d.code)
                     && is_diagnostic_enabled(config, &d.code, true)
-                    && should_process_app(&app_name, config, &d.code)
+                    && should_process_file(&app_name, &module_name, config, &d.code)
             })
             .collect_vec();
         let diags = add_elp_assists_to_erlang_service_diagnostics(db, file_id, diags);
@@ -4614,6 +4645,7 @@ foo() -> XX 3.0.
                 include_headers: None,
                 experimental: None,
                 exclude_apps: None,
+                exclude_modules: None,
                 runs_on_save_only: None,
                 config: None,
             },
@@ -4655,6 +4687,7 @@ foo() -> XX 3.0.
                 include_headers: None,
                 experimental: None,
                 exclude_apps: None,
+                exclude_modules: None,
                 runs_on_save_only: None,
                 config: None,
             },
@@ -4779,6 +4812,7 @@ foo() -> XX 3.0.
                 include_headers: None,
                 experimental: None,
                 exclude_apps: None,
+                exclude_modules: None,
                 runs_on_save_only: None,
                 config: None,
             },
@@ -4820,6 +4854,7 @@ foo() -> XX 3.0.
                 include_headers: Some(true),
                 experimental: None,
                 exclude_apps: None,
+                exclude_modules: None,
                 runs_on_save_only: None,
                 config: None,
             },
@@ -4853,6 +4888,7 @@ foo() -> XX 3.0.
                 include_headers: Some(false),
                 experimental: None,
                 exclude_apps: None,
+                exclude_modules: None,
                 runs_on_save_only: None,
                 config: None,
             },
@@ -4887,6 +4923,7 @@ foo() -> XX 3.0.
                 include_headers: None,
                 experimental: Some(true),
                 exclude_apps: None,
+                exclude_modules: None,
                 runs_on_save_only: None,
                 config: None,
             },
@@ -4929,6 +4966,7 @@ foo() -> XX 3.0.
                 include_headers: None,
                 experimental: None,
                 exclude_apps: None,
+                exclude_modules: None,
                 runs_on_save_only: None,
                 config: None,
             },
@@ -4974,6 +5012,7 @@ foo() -> XX 3.0.
                 include_headers: None,
                 experimental: None,
                 exclude_apps: None,
+                exclude_modules: None,
                 runs_on_save_only: None,
                 config: None,
             },
@@ -5015,7 +5054,8 @@ foo() -> XX 3.0.
                 include_generated: None,
                 include_headers: None,
                 experimental: None,
-                exclude_apps: Some(vec![AppPattern::try_new("my_app").unwrap()]),
+                exclude_apps: Some(vec![NamePattern::try_new("my_app").unwrap()]),
+                exclude_modules: None,
                 runs_on_save_only: None,
                 config: None,
             },
@@ -5049,7 +5089,7 @@ foo() -> XX 3.0.
                 exclude_apps: Some(
                     patterns
                         .iter()
-                        .map(|p| AppPattern::try_new(p).unwrap())
+                        .map(|p| NamePattern::try_new(p).unwrap())
                         .collect(),
                 ),
                 ..Default::default()
@@ -5139,19 +5179,111 @@ foo() -> XX 3.0.
         );
     }
 
+    fn exclude_modules_config(patterns: &[&str]) -> DiagnosticsConfig {
+        let mut lint_config = LintConfig::default();
+        lint_config.linters.insert(
+            DiagnosticCode::NoGarbageCollect,
+            LinterConfig {
+                exclude_modules: Some(
+                    patterns
+                        .iter()
+                        .map(|p| NamePattern::try_new(p).unwrap())
+                        .collect(),
+                ),
+                ..Default::default()
+            },
+        );
+        DiagnosticsConfig::default()
+            .configure_diagnostics(&lint_config, &["no_garbage_collect".to_string()], &[])
+            .unwrap()
+    }
+
+    // Only the named module is skipped; another module in the same
+    // application is still reported.
+    #[test]
+    fn test_linter_exclude_modules() {
+        check_diagnostics_with_config(
+            exclude_modules_config(&["main"]),
+            r#"
+            //- /src/main.erl app:my_app
+            -module(main).
+            -export([warning/0]).
+
+            warning() ->
+                erlang:garbage_collect().
+            //- /src/main_helper.erl app:my_app
+            -module(main_helper).
+            -export([warning/0]).
+
+            warning() ->
+                erlang:garbage_collect().
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ warning: W0047: Avoid forcing garbage collection.
+            %%                       | 💡 <suppression>
+            //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+            -module(erlang).
+            -export([garbage_collect/0]).
+            garbage_collect() -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_linter_exclude_modules_wildcard() {
+        check_diagnostics_with_config(
+            exclude_modules_config(&["legacy_*"]),
+            r#"
+            //- /src/legacy_main.erl app:my_app
+            -module(legacy_main).
+            -export([warning/0]).
+
+            warning() ->
+                erlang:garbage_collect().
+            //- /src/main.erl app:my_app
+            -module(main).
+            -export([warning/0]).
+
+            warning() ->
+                erlang:garbage_collect().
+            %%  ^^^^^^^^^^^^^^^^^^^^^^ warning: W0047: Avoid forcing garbage collection.
+            %%                       | 💡 <suppression>
+            //- /opt/lib/stdlib-3.17/src/erlang.erl otp_app:/opt/lib/stdlib-3.17
+            -module(erlang).
+            -export([garbage_collect/0]).
+            garbage_collect() -> ok.
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_exclude_modules_deserialize() {
+        let toml = r#"
+            [linters.no_garbage_collect]
+            exclude_modules = ["legacy_*", "main"]
+        "#;
+        let config: LintConfig = toml::from_str(toml).unwrap();
+        let patterns = config
+            .get_exclude_modules_override(&DiagnosticCode::NoGarbageCollect)
+            .unwrap();
+        let expected_patterns = vec!["legacy_*", "main"];
+        assert_eq_expected!(
+            expected_patterns,
+            patterns.iter().map(|p| p.as_str()).collect::<Vec<_>>()
+        );
+    }
+
     #[test]
     fn test_app_pattern_matches() {
-        let exact = AppPattern::try_new("my_app").unwrap();
+        let exact = NamePattern::try_new("my_app").unwrap();
         assert!(exact.matches("my_app"));
         assert!(!exact.matches("my_app_x_SUITE"));
         assert!(!exact.matches("your_app"));
 
-        let prefix = AppPattern::try_new("my_app*").unwrap();
+        let prefix = NamePattern::try_new("my_app*").unwrap();
         assert!(prefix.matches("my_app"));
         assert!(prefix.matches("my_app_x_SUITE"));
         assert!(!prefix.matches("your_app"));
 
-        let infix = AppPattern::try_new("*_SUITE").unwrap();
+        let infix = NamePattern::try_new("*_SUITE").unwrap();
         assert!(infix.matches("my_app_x_SUITE"));
         assert!(!infix.matches("my_app"));
     }
@@ -5164,32 +5296,32 @@ foo() -> XX 3.0.
     fn test_app_pattern_metacharacter_semantics() {
         // `?` and `*` widen: the literal name still matches, but so do others,
         // which over-excludes rather than under-excludes.
-        let question = AppPattern::try_new("my_app?").unwrap();
+        let question = NamePattern::try_new("my_app?").unwrap();
         assert!(question.matches("my_app?"));
         assert!(question.matches("my_appX"));
         assert!(!question.matches("my_app"));
 
-        let star = AppPattern::try_new("my_app*").unwrap();
+        let star = NamePattern::try_new("my_app*").unwrap();
         assert!(star.matches("my_app*"));
         assert!(star.matches("my_app_x_SUITE"));
 
         // A balanced bracket pair is a character class, and is the one case
         // where the literal name stops matching.
-        let class = AppPattern::try_new("my_[ab]").unwrap();
+        let class = NamePattern::try_new("my_[ab]").unwrap();
         assert!(class.matches("my_a"));
         assert!(class.matches("my_b"));
         assert!(!class.matches("my_[ab]"));
 
         // An unbalanced bracket is not a valid glob, so it is rejected at parse
         // time instead of being compared as text.
-        assert!(AppPattern::try_new("my_app[").is_err());
+        assert!(NamePattern::try_new("my_app[").is_err());
 
         // `Pattern::escape` turns any literal name back into a pattern matching
         // exactly it. The spelling is asserted because it is what the
         // `.elp_lint.toml` documentation tells users to write by hand.
         let expected_escaped = "my_[[]ab[]]";
         assert_eq_expected!(expected_escaped, Pattern::escape("my_[ab]"));
-        let escaped = AppPattern::try_new(expected_escaped).unwrap();
+        let escaped = NamePattern::try_new(expected_escaped).unwrap();
         assert!(escaped.matches("my_[ab]"));
         assert!(!escaped.matches("my_a"));
     }
@@ -5202,7 +5334,7 @@ foo() -> XX 3.0.
         "#;
         let err = toml::from_str::<LintConfig>(toml).unwrap_err();
         assert!(
-            err.to_string().contains("Invalid app pattern 'my_app['"),
+            err.to_string().contains("Invalid name pattern 'my_app['"),
             "unexpected error: {err}"
         );
     }
@@ -5271,6 +5403,7 @@ foo() -> XX 3.0.
                 include_headers: None,
                 experimental: None,
                 exclude_apps: None,
+                exclude_modules: None,
                 runs_on_save_only: None,
                 config: Some(LinterTraitConfig::FunctionCallLinterConfig(
                     FunctionCallLinterConfig {
@@ -5304,6 +5437,7 @@ foo() -> XX 3.0.
                 include_headers: None,
                 experimental: None,
                 exclude_apps: None,
+                exclude_modules: None,
                 runs_on_save_only: None,
                 config: Some(LinterTraitConfig::FunctionCallLinterConfig(
                     FunctionCallLinterConfig {
@@ -5324,6 +5458,7 @@ foo() -> XX 3.0.
                 include_headers: None,
                 experimental: None,
                 exclude_apps: None,
+                exclude_modules: None,
                 runs_on_save_only: None,
                 config: None,
             },

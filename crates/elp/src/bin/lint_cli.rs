@@ -1499,6 +1499,7 @@ mod tests {
                         include_headers: None,
                         experimental: None,
                         exclude_apps: None,
+                        exclude_modules: None,
                         runs_on_save_only: None,
                         config: Some(
                             FunctionCallLinterConfig(
