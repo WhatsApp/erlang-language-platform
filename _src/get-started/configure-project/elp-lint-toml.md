@@ -71,7 +71,7 @@ and must be opted into explicitly; see for example
 | enabled            | Boolean          | Enable or disable this linter. Overrides the linter's default state.                                              |
 | severity           | String           | Override the reported severity. One of `error`, `warning`, `weak`, `info`.                                        |
 | include_tests      | Boolean          | If `true`, run the linter on test modules as well.                                                                |
-| include_generated  | Boolean          | If `true`, run the linter on generated modules as well.                                                           |
+| include_generated  | Boolean          | If `true`, run the linter on [generated files](./generated-files.mdx) as well; if `false`, skip them.             |
 | include_headers    | Boolean          | If `true`, run the linter on header files as well. Some linters skip headers by default, because linting a header in isolation is not meaningful for them. |
 | experimental       | Boolean          | Override the linter's experimental flag. If `true`, the linter only runs when the `--experimental` flag is passed; if `false`, it runs unconditionally even if it is experimental by default. |
 | exclude_apps       | Array of Strings | List of application name [glob patterns](https://docs.rs/glob/latest/glob/struct.Pattern.html) for which this linter should be skipped. A pattern with no metacharacter matches that application name exactly. |
