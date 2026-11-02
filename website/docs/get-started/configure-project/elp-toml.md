@@ -95,7 +95,7 @@ type checker. The integration can be configured via this section.
 
 :::info
 
-By default eqWAlizer is enabled on all non-test modules, including generated modules.
+By default eqWAlizer is enabled on all non-test modules, including [generated modules](./generated-files.mdx).
 This can be overriden per module via the following attributes:
 
 - `-eqwalizer(ignore).` Opt-out module unconditionally

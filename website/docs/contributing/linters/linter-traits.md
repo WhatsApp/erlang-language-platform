@@ -75,6 +75,10 @@ fn should_process_file_id(&self, _sema: &Semantic, _file_id: FileId) -> bool {
 }
 ```
 
+See [Generated Files](../../get-started/configure-project/generated-files.mdx)
+for how ELP decides whether a file is generated, and how users can override
+`should_process_generated_files` per linter.
+
 ## Additional linter traits
 
 In addition to the `Linter` trait, ELP provides a few additional traits, each

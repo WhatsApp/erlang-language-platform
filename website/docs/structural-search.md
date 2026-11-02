@@ -248,7 +248,7 @@ the input:
 | `--module NAME` | Search a single module |
 | `--app NAME` | Search a single application |
 | `--file PATH` | Search a single file (include file, escript, …) |
-| `--include-generated` | Also search generated files |
+| `--include-generated` | Also search [generated files](get-started/configure-project/generated-files.mdx) |
 | `--rebar` / `--as PROFILE` | Load via rebar3 with the given profile |
 
 ## Macro and parenthesis handling
