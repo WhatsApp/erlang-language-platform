@@ -6919,3 +6919,36 @@ fn type_call_target_explicit_user_module() {
         other => panic!("expected CallTarget::Remote, got {other:?}"),
     }
 }
+
+#[test]
+fn type_cast_type_lowered_as_type() {
+    let (db, file_ids, _) = TestDB::with_many_files(
+        r#"
+            -define(CHECKED_CAST(Expr, Type), (Expr :: Type)).
+            -define(UNCHECKED_CAST(Expr, Type), (Expr :> Type)).
+            f(X) -> {?CHECKED_CAST(X, foo()), ?UNCHECKED_CAST(X, bar())}.
+        "#,
+    );
+    let def_map = db.def_map(file_ids[0]);
+    let na = crate::NameArity::new(crate::Name::from_erlang_service("f"), 1);
+    let fun_def = def_map.get_function(&na).expect("f/1 not in def map");
+    let body = db.function_body(InFile::new(file_ids[0], fun_def.function_id));
+    let (_, clause) = body.clauses.iter().next().expect("f/1 has no clause");
+    let type_calls: Vec<String> = clause
+        .body
+        .type_exprs
+        .iter()
+        .filter_map(|(_, ty)| match ty {
+            TypeExpr::Call {
+                target: CallTarget::Local { name },
+                args,
+            } => Some(format!(
+                "{}/{}",
+                type_atom_of(&clause.body, *name),
+                args.len()
+            )),
+            _ => None,
+        })
+        .collect();
+    assert_eq_expected!(vec!["foo/0".to_string(), "bar/0".to_string()], type_calls);
+}

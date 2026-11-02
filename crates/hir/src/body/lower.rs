@@ -1114,7 +1114,7 @@ impl<'a> Ctx<'a> {
         match expr {
             ast::Expr::ExprMax(expr_max) => self.lower_expr_max(expr_max, expr),
             ast::Expr::AnnType(ann) => {
-                let _ = self.lower_optional_expr(ann.ty());
+                let _ = self.lower_optional_type_expr(ann.ty());
                 self.alloc_expr(Expr::Missing, Some(expr))
             }
             ast::Expr::BinaryOpExpr(binary_op) => {
