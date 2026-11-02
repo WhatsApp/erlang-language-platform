@@ -93,9 +93,9 @@ impl GenericLinter for BooleanPrecedenceLinter {
 
     fn match_description(&self, context: &Self::Context) -> Cow<'_, str> {
         format!(
-            "Consider using the short-circuit expression '{}' instead of '{}'.\nOr add parentheses to avoid potential ambiguity.",
-            context.op.preferred(),
+            "'{}' has higher precedence than the operator around it, so this may not be grouped as intended.\nUse '{}' instead, or add parentheses to make the grouping explicit.",
             context.op,
+            context.op.preferred(),
         )
         .into()
     }
@@ -116,7 +116,7 @@ impl GenericLinter for BooleanPrecedenceLinter {
             context.op.preferred().to_string(),
         );
         fixes.push(fix(
-            "replace_boolean_operator",
+            "boolean_precedence_replace_operator",
             &assist_message,
             SourceChange::from_text_edit(file_id, edit),
             range,
@@ -138,7 +138,7 @@ fn parens_fix(side: &str, file_id: FileId, context: &Context, range: TextRange) 
     let assist_message = format!("Add parens to {side}");
     let edit = add_parens_edit(&context.add_parens_range);
     fix(
-        "replace_boolean_operator_add_parens",
+        "boolean_precedence_add_parens",
         &assist_message,
         SourceChange::from_text_edit(file_id, edit),
         range,
@@ -325,8 +325,8 @@ mod tests {
             foo() ->
               F = fun(X) ->
                 my_is_integer(X) and X > 0 end,
-          %%                     ^^^ warning: W0025: Consider using the short-circuit expression 'andalso' instead of 'and'.
-          %%                       | Or add parentheses to avoid potential ambiguity.
+          %%                     ^^^ warning: W0025: 'and' has higher precedence than the operator around it, so this may not be grouped as intended.
+          %%                       | Use 'andalso' instead, or add parentheses to make the grouping explicit.
           %%                       | 💡 Replace 'and' with 'andalso'
           %%                       | 💡 Add parens to RHS
           %%                       | 💡 <suppression>
@@ -370,8 +370,8 @@ mod tests {
             -module(main).
             foo(X) ->
               predicate(X) or X > 10.
-          %%               ^^ warning: W0025: Consider using the short-circuit expression 'orelse' instead of 'or'.
-          %%                | Or add parentheses to avoid potential ambiguity.
+          %%               ^^ warning: W0025: 'or' has higher precedence than the operator around it, so this may not be grouped as intended.
+          %%                | Use 'orelse' instead, or add parentheses to make the grouping explicit.
           %%                | 💡 Replace 'or' with 'orelse'
           %%                | 💡 Add parens to RHS
           %%                | 💡 <suppression>
@@ -388,8 +388,8 @@ mod tests {
             -module(main).
             foo(S,P) ->
                 (S or P > 3).
-          %%       ^^ warning: W0025: Consider using the short-circuit expression 'orelse' instead of 'or'.
-          %%        | Or add parentheses to avoid potential ambiguity.
+          %%       ^^ warning: W0025: 'or' has higher precedence than the operator around it, so this may not be grouped as intended.
+          %%        | Use 'orelse' instead, or add parentheses to make the grouping explicit.
           %%        | 💡 Replace 'or' with 'orelse'
           %%        | 💡 Add parens to RHS
           %%        | 💡 <suppression>
@@ -404,8 +404,8 @@ mod tests {
             -module(main).
             foo(S,P) ->
                 ((S or P > 3)).
-          %%        ^^ warning: W0025: Consider using the short-circuit expression 'orelse' instead of 'or'.
-          %%         | Or add parentheses to avoid potential ambiguity.
+          %%        ^^ warning: W0025: 'or' has higher precedence than the operator around it, so this may not be grouped as intended.
+          %%         | Use 'orelse' instead, or add parentheses to make the grouping explicit.
           %%         | 💡 Replace 'or' with 'orelse'
           %%         | 💡 Add parens to RHS
           %%         | 💡 <suppression>
@@ -422,8 +422,8 @@ mod tests {
                 foo() ->
                   F = fun(X) ->
                     my_is_integer(X) a~nd X > 0 end,
-                %%                   ^^^ warning: W0025: Consider using the short-circuit expression 'andalso' instead of 'and'.
-                %%                     | Or add parentheses to avoid potential ambiguity.
+                %%                   ^^^ warning: W0025: 'and' has higher precedence than the operator around it, so this may not be grouped as intended.
+                %%                     | Use 'andalso' instead, or add parentheses to make the grouping explicit.
                 %%                     | 💡 Replace 'and' with 'andalso'
                 %%                     | 💡 Add parens to RHS
                 %%                     | 💡 <suppression>
@@ -453,8 +453,8 @@ mod tests {
             foo() ->
               F = fun(X) ->
                 my_is_integer(X) a~nd X > 0 end,
-            %%                   ^^^ warning: W0025: Consider using the short-circuit expression 'andalso' instead of 'and'.
-            %%                     | Or add parentheses to avoid potential ambiguity.
+            %%                   ^^^ warning: W0025: 'and' has higher precedence than the operator around it, so this may not be grouped as intended.
+            %%                     | Use 'andalso' instead, or add parentheses to make the grouping explicit.
             %%                     | 💡 Replace 'and' with 'andalso'
             %%                     | 💡 Add parens to RHS
             %%                     | 💡 <suppression>
@@ -479,8 +479,8 @@ mod tests {
             r#"
             -module(main).
             foo(X) when X < 10 a~nd X > 0 ->
-            %%                 ^^^ warning: W0025: Consider using the short-circuit expression ',' instead of 'and'.
-            %%                   | Or add parentheses to avoid potential ambiguity.
+            %%                 ^^^ warning: W0025: 'and' has higher precedence than the operator around it, so this may not be grouped as intended.
+            %%                   | Use ',' instead, or add parentheses to make the grouping explicit.
             %%                   | 💡 Replace 'and' with ','
             %%                   | 💡 Add parens to LHS
             %%                   | 💡 <suppression>
@@ -503,8 +503,8 @@ mod tests {
             foo() ->
               F = fun(X) ->
                 my_is_integer(X) a~nd X > 0 end,
-            %%                   ^^^ warning: W0025: Consider using the short-circuit expression 'andalso' instead of 'and'.
-            %%                     | Or add parentheses to avoid potential ambiguity.
+            %%                   ^^^ warning: W0025: 'and' has higher precedence than the operator around it, so this may not be grouped as intended.
+            %%                     | Use 'andalso' instead, or add parentheses to make the grouping explicit.
             %%                     | 💡 Replace 'and' with 'andalso'
             %%                     | 💡 Add parens to RHS
             %%                     | 💡 <suppression>
@@ -531,8 +531,8 @@ mod tests {
             foo() ->
               F = fun(X) ->
                 X < 0 o~r X > 10 end,
-            %%        ^^ warning: W0025: Consider using the short-circuit expression 'orelse' instead of 'or'.
-            %%         | Or add parentheses to avoid potential ambiguity.
+            %%        ^^ warning: W0025: 'or' has higher precedence than the operator around it, so this may not be grouped as intended.
+            %%         | Use 'orelse' instead, or add parentheses to make the grouping explicit.
             %%         | 💡 Replace 'or' with 'orelse'
             %%         | 💡 Add parens to LHS
             %%         | 💡 <suppression>
@@ -558,8 +558,8 @@ mod tests {
             -module(main).
             foo(X) ->
               predicate(X) o~r X > 10.
-            %%             ^^ warning: W0025: Consider using the short-circuit expression 'orelse' instead of 'or'.
-            %%              | Or add parentheses to avoid potential ambiguity.
+            %%             ^^ warning: W0025: 'or' has higher precedence than the operator around it, so this may not be grouped as intended.
+            %%              | Use 'orelse' instead, or add parentheses to make the grouping explicit.
             %%              | 💡 Replace 'or' with 'orelse'
             %%              | 💡 Add parens to RHS
             %%              | 💡 <suppression>
