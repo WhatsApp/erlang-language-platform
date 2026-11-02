@@ -75,6 +75,7 @@ and must be opted into explicitly; see for example
 | include_headers    | Boolean          | If `true`, run the linter on header files as well. Some linters skip headers by default, because linting a header in isolation is not meaningful for them. |
 | experimental       | Boolean          | Override the linter's experimental flag. If `true`, the linter only runs when the `--experimental` flag is passed; if `false`, it runs unconditionally even if it is experimental by default. |
 | exclude_apps       | Array of Strings | List of application name [glob patterns](https://docs.rs/glob/latest/glob/struct.Pattern.html) for which this linter should be skipped. A pattern with no metacharacter matches that application name exactly. |
+| exclude_modules    | Array of Strings | List of module name [glob patterns](https://docs.rs/glob/latest/glob/struct.Pattern.html) for which this linter should be skipped. A pattern with no metacharacter matches that module name exactly. Header files are not modules and are not affected. |
 | runs_on_save_only  | Boolean          | If `true`, the linter only runs when a file is saved (rather than on every keystroke). Useful for expensive linters. |
 
 ### Examples
@@ -104,10 +105,17 @@ after the suite module, so excluding `my_app` alone leaves the suites under
 exclude_apps = ["my_app*"]
 ```
 
+Skip a linter for individual modules, by name or by pattern:
+
+```toml
+[linters.no_persistent_term]
+exclude_modules = ["my_cache", "legacy_*"]
+```
+
 :::caution
 
-`*`, `?`, `[` and `]` are glob metacharacters, so an application name that
-contains one is no longer compared as plain text. The effect depends on the
+`*`, `?`, `[` and `]` are glob metacharacters, so an application or module name
+that contains one is no longer compared as plain text. The effect depends on the
 character:
 
 - `*` and `?` widen the match. `my_app?` still matches an application literally
@@ -118,7 +126,7 @@ character:
 - An unbalanced `[` is not a valid pattern at all, and is reported as an error
   when the configuration is loaded.
 
-Application names do not normally contain these characters. If one does, escape
+Application and module names do not normally contain these characters. If one does, escape
 it by wrapping each metacharacter in a bracket pair — `my_[ab]` is written as
 `my_[[]ab[]]`.
 
@@ -220,7 +228,7 @@ exclude_apps = ["legacy_app"]
 ```
 
 `enabled`, `severity`, `include_tests`, `include_generated`, `include_headers`,
-`experimental` and `exclude_apps` all apply. Ad-hoc lints run on test modules
+`experimental`, `exclude_apps` and `exclude_modules` all apply. Ad-hoc lints run on test modules
 and header files by default, so `include_tests = false` and
 `include_headers = false` are the way to keep one out of test code and headers
 respectively.
