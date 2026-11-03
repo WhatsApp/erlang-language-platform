@@ -72,7 +72,11 @@ impl JsonProjectAppData {
             ),
             None => None,
         };
-        let include_dirs = self.include_dirs.iter().map(|inc| dir.join(inc)).collect();
+        let include_dirs = self
+            .include_dirs
+            .iter()
+            .map(|inc| dir.absolutize(inc))
+            .collect();
         let abs_src_dirs = self.src_dirs.iter().map(|src| dir.join(src)).collect();
         let macros = self
             .macros
@@ -150,12 +154,28 @@ fn abs_path_buf_to_relative_string(abs_path: &AbsPathBuf, base: &AbsPathBuf) -> 
     if let Some(relative) = abs_path.strip_prefix(base) {
         relative.as_str().to_string()
     } else {
-        let str = abs_path.as_os_str().to_string_lossy().to_string();
-        if let Some(stripped) = str.strip_prefix('/') {
-            stripped.to_string()
-        } else {
-            str
+        // `abs_path` is outside `base`: climb from `base` up to their common
+        // ancestor, then descend into `abs_path`. Use path components rather
+        // than splitting the string on '/', so the result is also correct for
+        // non-Unix separators.
+        let abs_components: Vec<_> = abs_path.components().collect();
+        let base_components: Vec<_> = base.components().collect();
+        if abs_components.first() != base_components.first() {
+            // The two paths do not share a root (e.g. different Windows
+            // drives), so no relative path exists; keep the absolute one.
+            return abs_path.as_str().to_string();
         }
+
+        let common = abs_components
+            .iter()
+            .zip(base_components.iter())
+            .take_while(|(a, b)| a == b)
+            .count();
+
+        let ups = base_components.len() - common;
+        let mut parts: Vec<&str> = vec![".."; ups];
+        parts.extend(abs_components[common..].iter().map(|c| c.as_str()));
+        parts.join("/")
     }
 }
 
@@ -231,4 +251,80 @@ pub fn canonicalize(path: impl AsRef<Utf8Path>) -> Result<AbsPathBuf> {
     Ok(AbsPathBuf::assert(
         Utf8PathBuf::from_path_buf(abs).expect("Could not convert to UTF8"),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use elp_base_db::assert_eq_expected;
+
+    use super::*;
+    use crate::temp_dir::TempDir;
+
+    fn abs(p: &str) -> AbsPathBuf {
+        AbsPathBuf::assert(Utf8PathBuf::from(p))
+    }
+
+    /// `abs_path_buf_to_relative_string` must emit a real `../`-relative path
+    /// when `abs_path` is not under `base`, not a root-relative string.
+    #[test]
+    fn relative_string_outside_base() {
+        // Under-base: unchanged behavior (strip_prefix happy path).
+        assert_eq_expected!(
+            "d",
+            abs_path_buf_to_relative_string(&abs("/a/b/c/d"), &abs("/a/b/c"))
+        );
+        // Two levels up: include dir shared at the project root.
+        assert_eq_expected!(
+            "../../inc",
+            abs_path_buf_to_relative_string(&abs("/a/b/inc"), &abs("/a/b/apps/appA"))
+        );
+        // Three levels up: the base has 5 components (a, b, apps, appA, src) and
+        // shares only 2 with the absolute path (a, b), so ups = 5 - 2 = 3.
+        assert_eq_expected!(
+            "../../../other",
+            abs_path_buf_to_relative_string(&abs("/a/b/other"), &abs("/a/b/apps/appA/src"))
+        );
+        // Disjoint roots: up every remaining base component, then descend.
+        assert_eq_expected!(
+            "../../x/inc",
+            abs_path_buf_to_relative_string(&abs("/x/inc"), &abs("/a/b"))
+        );
+        // Equal paths: the relative path is empty.
+        assert_eq_expected!(
+            "",
+            abs_path_buf_to_relative_string(&abs("/a/b"), &abs("/a/b"))
+        );
+        // `abs_path` is an ancestor of `base`: climb up to it.
+        assert_eq_expected!(
+            "..",
+            abs_path_buf_to_relative_string(&abs("/a"), &abs("/a/b"))
+        );
+    }
+
+    /// The regression this PR fixes: an include dir that lives outside the app
+    /// directory must survive the JSON round-trip exactly.
+    #[test]
+    fn include_dirs_round_trip_outside_app_dir() {
+        let temp = TempDir::new();
+        let root = Utf8PathBuf::from_path_buf(temp.path().to_path_buf()).expect("temp dir is utf8");
+        let root = canonicalize(root).unwrap();
+        fs::create_dir_all(root.join("apps/appA")).unwrap();
+
+        let app_dir = root.join("apps/appA");
+        let expected_inc = root.join("inc");
+        let project_data = ProjectAppData::fixture_app_data(
+            AppName("appA".to_string()),
+            app_dir.clone(),
+            vec![expected_inc.clone()],
+            vec![app_dir.join("src")],
+            vec![],
+        );
+
+        let json = JsonProjectAppData::from_project_app_data(&root, &project_data);
+        assert_eq_expected!("apps/appA", json.dir);
+        assert_eq_expected!(vec!["../../inc".to_string()], json.include_dirs);
+
+        let round_tripped = json.to_project_app_data(&root, false).unwrap();
+        assert_eq_expected!(vec![expected_inc], round_tripped.include_dirs);
+    }
 }
