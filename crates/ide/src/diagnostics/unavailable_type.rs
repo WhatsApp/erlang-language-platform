@@ -268,7 +268,11 @@ impl Checker<'_, '_> {
     /// and reaching any one of them is enough.
     fn is_file_reachable(&self, file_id: FileId) -> bool {
         let sema = self.sema;
-        any_owning_app(sema.db.upcast(), file_id, |app| self.is_app_reachable(app)).unwrap_or(true)
+        let project = self.referencing_app_data.project;
+        any_owning_app(sema.db.upcast(), project, file_id, |app| {
+            self.is_app_reachable(app)
+        })
+        .unwrap_or(true)
     }
 
     fn is_app_reachable(&self, defining_app: &AppName) -> bool {

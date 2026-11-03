@@ -1188,7 +1188,7 @@ mod tests {
         // Collect defines from included files
         for (idx, _include) in form_list.includes() {
             if let Some(included_file_id) =
-                db.resolve_include(db.app_data_id_by_file(file_id), InFile::new(file_id, idx))
+                db.resolve_include(db.file_app(file_id), InFile::new(file_id, idx))
                 && included_file_id != file_id
             {
                 // Guard against cycles

@@ -8,7 +8,7 @@
  * above-listed licenses.
  */
 
-use elp_base_db::AppDataId;
+use elp_base_db::App;
 use elp_base_db::FileId;
 use elp_base_db::IncludeCtx;
 
@@ -20,7 +20,7 @@ use crate::db::DefDatabase;
 
 pub(crate) fn resolve_dispatch(
     db: &dyn DefDatabase,
-    orig_app: Option<AppDataId>,
+    orig_app: Option<App>,
     include_id: InFile<IncludeAttributeId>,
 ) -> Option<FileId> {
     db.resolve_include_interned(InternedResolveInclude::new(db, orig_app, include_id))
@@ -65,7 +65,7 @@ mod tests {
             .includes()
             .map(|(idx, include)| {
                 let resolved = db
-                    .resolve_include(db.app_data_id_by_file(file_id), InFile::new(file_id, idx))
+                    .resolve_include(db.file_app(file_id), InFile::new(file_id, idx))
                     .unwrap_or_else(|| panic!("unresolved include: {include:?}"));
                 let resolved_path = db
                     .source_root(db.file_source_root(resolved).source_root_id(&db))

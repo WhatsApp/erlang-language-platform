@@ -168,7 +168,7 @@ impl<'a> Ctx<'a> {
         // Post-processing: resolve includes in condition_envs
         let include_ctx = IncludeCtx::new(
             self.db.upcast(),
-            self.db.app_data_id_by_file(self.file_id),
+            self.db.file_app(self.file_id),
             self.file_id,
         );
         let env_ids: Vec<_> = self.data.condition_envs.iter().map(|(id, _)| id).collect();

@@ -13,7 +13,7 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use elp_base_db::AppDataId;
+use elp_base_db::App;
 use elp_base_db::FileId;
 use elp_base_db::salsa;
 use elp_syntax::ast;
@@ -51,10 +51,10 @@ pub struct MacroEnvironment {
     /// typically via project configuration.
     pub externally_defined: BTreeSet<MacroName>,
     pub module_name: Option<Name>,
-    /// The originating app's `AppDataId` for include resolution.
+    /// The originating app for include resolution.
     /// Used to resolve cross-app `include_lib` directives using the
     /// originating app's dependency graph instead of the current file's.
-    pub orig_app_data_id: Option<AppDataId>,
+    pub orig_app: Option<App>,
 }
 
 impl MacroEnvironment {
@@ -766,7 +766,7 @@ fn process_pp_directive(
         PPDirective::Include(include_id) => {
             // Resolve the include and process it recursively
             if let Some(included_file_id) =
-                db.resolve_include(env.orig_app_data_id, InFile::new(file_id, *include_id))
+                db.resolve_include(env.orig_app, InFile::new(file_id, *include_id))
             {
                 // Guard against cycles
                 if included_file_id != file_id {
@@ -774,7 +774,7 @@ fn process_pp_directive(
                     // the current module name context and originating app identity
                     let mut include_env = MacroEnvironment::new();
                     include_env.externally_defined = state.defined_macros().clone();
-                    include_env.orig_app_data_id = env.orig_app_data_id;
+                    include_env.orig_app = env.orig_app;
                     if let Some(module_name) = env.module_name() {
                         include_env.set_module_name(module_name.clone());
                     } else if let Some(module_name) = state.module_name() {
@@ -1516,7 +1516,7 @@ this_is_inactive() -> ok.
 
     #[test]
     fn test_preprocessor_chained_cross_app_include_lib_buck() {
-        // Tests that orig_app_data_id propagation in the preprocessor
+        // Tests that orig_app propagation in the preprocessor
         // enables chained cross-app includes through the buck
         // IncludeMapping resolution path.
         //
@@ -1532,10 +1532,10 @@ this_is_inactive() -> ok.
         // Only the buck IncludeMapping remote path works, which
         // requires the dep check to pass.
         //
-        // Without orig_app_data_id propagation, the nested include_lib
+        // Without orig_app propagation, the nested include_lib
         // from app_b's header uses file_app_data(bridge.hrl) → app_b's
         // deps (no app_c) → dep check fails → include unresolved.
-        // With the fix, orig_app_data_id carries app_a's identity
+        // With the fix, orig_app carries app_a's identity
         // through the recursive include → app_a's deps (includes
         // app_c) → dep check passes → include resolved.
         let fixture = r#"
@@ -1567,7 +1567,7 @@ guarded() -> from_app_c.
         assert!(
             final_state.defined.contains(&macro_name("FROM_APP_C")),
             "FROM_APP_C should be defined after chained cross-app include_lib.\n\
-             This requires orig_app_data_id propagation: app_a deps include app_c,\n\
+             This requires orig_app propagation: app_a deps include app_c,\n\
              but app_b (the intermediate header's app) does not depend on app_c."
         );
     }

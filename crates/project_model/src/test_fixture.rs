@@ -122,7 +122,7 @@ pub struct Fixture {
     /// When set, places this file into the named app's SourceRoot/FileSet
     /// instead of its own app's. This models the buck scenario where
     /// lib + test targets share the same directory (== source root).
-    /// The file's `app:` annotation still controls its AppDataId via
+    /// The file's `app:` annotation still controls its app via
     /// `applicable_files`.
     pub src_app: Option<String>,
     /// Further apps this file is compiled into, on top of its own `app:`.

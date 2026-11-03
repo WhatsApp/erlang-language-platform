@@ -245,7 +245,7 @@ pub fn project_macro_environment_inner(
     }
 
     // Set originating app identity for include resolution
-    env.orig_app_data_id = db.app_data_id_by_file(file_id);
+    env.orig_app = db.file_app(file_id);
 
     Arc::new(env)
 }

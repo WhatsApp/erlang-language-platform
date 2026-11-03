@@ -90,17 +90,12 @@ fn resolve_include(
 ) -> Option<(String, FileId, Arc<str>)> {
     let include_file_id = match include_type {
         IncludeType::Normal => {
-            IncludeCtx::new(db, db.app_data_id_by_file(orig_file_id), current_file_id)
-                .resolve_include(path)?
+            IncludeCtx::new(db, db.file_app(orig_file_id), current_file_id).resolve_include(path)?
         }
-        IncludeType::Lib => {
-            IncludeCtx::new(db, db.app_data_id_by_file(orig_file_id), current_file_id)
-                .resolve_include_lib(path)?
-        }
-        IncludeType::Doc => {
-            IncludeCtx::new(db, db.app_data_id_by_file(orig_file_id), current_file_id)
-                .resolve_include_doc(path)?
-        }
+        IncludeType::Lib => IncludeCtx::new(db, db.file_app(orig_file_id), current_file_id)
+            .resolve_include_lib(path)?,
+        IncludeType::Doc => IncludeCtx::new(db, db.file_app(orig_file_id), current_file_id)
+            .resolve_include_doc(path)?,
     };
     let file = db.file(include_file_id);
     Some((

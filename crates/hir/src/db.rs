@@ -10,7 +10,7 @@
 
 use std::sync::Arc;
 
-use elp_base_db::AppDataId;
+use elp_base_db::App;
 use elp_base_db::FileId;
 use elp_base_db::InternedFileId;
 use elp_base_db::RootQueryDb;
@@ -299,7 +299,7 @@ pub trait DefDatabase:
     #[salsa::invoke(include::resolve_dispatch)]
     fn resolve_include(
         &self,
-        orig_app: Option<AppDataId>,
+        orig_app: Option<App>,
         include_id: InFile<IncludeAttributeId>,
     ) -> Option<FileId>;
 

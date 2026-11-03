@@ -432,6 +432,25 @@ fn a_created_module_becomes_visible() {
 }
 
 #[test]
+fn opening_a_file_of_another_project_loads_it() {
+    let first = TestProject::new(&[("src/a.erl", "-module(a).\nf() -> ok.\n")]);
+    let second = TestProject::new(&[("src/a.erl", CALLER), ("src/b.erl", CALLEE)]);
+    let mut server = TestServer::start(&first);
+    let first_a = first.path("src/a.erl");
+    server.open(&first_a, "-module(a).\nf() -> ok.\n");
+    server.wait_for("loading", |server| server.symbols(&first_a));
+
+    let (a, b) = (second.path("src/a.erl"), second.path("src/b.erl"));
+    server.open(&a, CALLER);
+
+    server.wait_for("the second project to load", |server| {
+        server
+            .definitions(&a, CALL)
+            .filter(|files| files == std::slice::from_ref(&b))
+    });
+}
+
+#[test]
 fn a_deleted_module_disappears() {
     let project = TestProject::new(&[("src/a.erl", CALLER), ("src/b.erl", CALLEE)]);
     let mut server = TestServer::start(&project);

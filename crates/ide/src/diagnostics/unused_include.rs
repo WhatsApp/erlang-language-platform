@@ -19,7 +19,7 @@ use std::sync::LazyLock;
 use elp_ide_assists::helpers::extend_range;
 use elp_ide_db::SearchScope;
 use elp_ide_db::SymbolDefinition;
-use elp_ide_db::elp_base_db::AppDataId;
+use elp_ide_db::elp_base_db::App;
 use elp_ide_db::elp_base_db::FileId;
 use elp_ide_db::elp_base_db::FileRange;
 use elp_ide_db::source_change::SourceChange;
@@ -107,9 +107,9 @@ impl GenericLinter for UnusedIncludeLinter {
         let env = db.project_macro_environment(ctx.file_id);
         let analysis = db.file_preprocessor_analysis(ctx.file_id, Arc::clone(&env));
         let target_def_map = db.def_map(ctx.file_id);
-        let app_data_id = db.app_data_id_by_file(ctx.file_id);
+        let orig_app = db.file_app(ctx.file_id);
         let direct_include_files =
-            direct_include_files(db, ctx.file_id, &form_list, &analysis, app_data_id);
+            direct_include_files(db, ctx.file_id, &form_list, &analysis, orig_app);
 
         for (include_idx, attr) in form_list.includes() {
             if !EXCLUDES.contains(attr.path()) {
@@ -117,7 +117,7 @@ impl GenericLinter for UnusedIncludeLinter {
                 let Some(include_env) = analysis.include_env(include_idx) else {
                     continue;
                 };
-                let Some(include_file_id) = db.resolve_include(app_data_id, in_file) else {
+                let Some(include_file_id) = db.resolve_include(orig_app, in_file) else {
                     continue;
                 };
                 // Cheap first: a header that affects compilation by its
@@ -209,13 +209,13 @@ fn direct_include_files(
     file_id: FileId,
     form_list: &FormList,
     analysis: &PreprocessorAnalysis,
-    app_data_id: Option<AppDataId>,
+    orig_app: Option<App>,
 ) -> FxHashSet<FileId> {
     form_list
         .includes()
         .filter_map(|(include_idx, _)| {
             analysis.include_env(include_idx)?;
-            db.resolve_include(app_data_id, InFile::new(file_id, include_idx))
+            db.resolve_include(orig_app, InFile::new(file_id, include_idx))
         })
         .collect()
 }

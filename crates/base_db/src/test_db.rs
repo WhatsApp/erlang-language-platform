@@ -14,15 +14,13 @@ use std::sync::Arc;
 
 use vfs::FileId;
 
-use crate::AppData;
-use crate::AppDataId;
-use crate::AppDataInput;
+use crate::App;
 use crate::File;
 use crate::FileSourceRootInput;
 use crate::Files;
-use crate::SourceAppDataInput;
 use crate::SourceDatabase;
 use crate::SourceRoot;
+use crate::SourceRootAppInput;
 use crate::SourceRootId;
 use crate::SourceRootInput;
 
@@ -64,21 +62,12 @@ impl SourceDatabase for TestDB {
         files.set_file_source_root(self, id, source_root_id);
     }
 
-    fn app_data_by_id(&self, id: AppDataId) -> AppDataInput {
-        self.files.app_data(id)
+    fn source_root_app(&self, id: SourceRootId) -> SourceRootAppInput {
+        self.files.source_root_app(id)
     }
 
-    fn set_app_data_by_id(&mut self, id: AppDataId, app_data: Option<Arc<AppData>>) {
+    fn set_source_root_app(&mut self, id: SourceRootId, app: Option<App>) {
         let files = self.files.clone();
-        files.set_app_data(self, id, app_data)
-    }
-
-    fn app_data_id(&self, source_root_id: SourceRootId) -> SourceAppDataInput {
-        self.files.source_app_data(source_root_id)
-    }
-
-    fn set_app_data_id(&mut self, id: SourceRootId, app_data_id: AppDataId) {
-        let files = self.files.clone();
-        files.set_source_app_data(self, id, app_data_id)
+        files.set_source_root_app(self, id, app);
     }
 }

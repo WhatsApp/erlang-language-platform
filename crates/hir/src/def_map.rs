@@ -544,7 +544,7 @@ impl DefMap {
             .into_iter()
             .filter_map(|idx| {
                 let included_file_id =
-                    db.resolve_include(env.orig_app_data_id, InFile::new(file_id, idx))?;
+                    db.resolve_include(env.orig_app, InFile::new(file_id, idx))?;
                 // Guard against naive cycles of headers including themselves
                 if included_file_id == file_id {
                     return None;
@@ -1516,10 +1516,10 @@ bar() -> ok.
     #[test]
     fn cross_app_include_lib_in_def_map_buck() {
         // In a buck project with include_mapping and applicable_files,
-        // def_map_query must pass the originating file's AppDataId to
+        // def_map_query must pass the originating file's app to
         // resolve_include so that the buck dependency check in
         // resolve_remote_query uses the correct app's buck_target_name.
-        // Without the AppDataId, the include resolution takes the
+        // Without the app, the include resolution takes the
         // file_app_data fallback which may return wrong app data
         // when source roots don't uniquely identify the app.
         check_functions(
@@ -1548,7 +1548,7 @@ bar() -> ok.
         // the same directory.
         //
         // test_mod.erl uses src_app:app_lib to place it into app_lib's
-        // SourceRoot, while app:app_test controls its AppDataId via
+        // SourceRoot, while app:app_test controls its app via
         // applicable_files. The test target has a dep on app_dep
         // that the lib target does not.
         check_functions(

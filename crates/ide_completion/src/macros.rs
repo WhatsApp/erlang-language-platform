@@ -245,8 +245,8 @@ fn try_include_from_app_dir(
 
     let candidate = format!("{}/{}", inc_app_data.name, candidate_path.as_str());
     // Check that it is valid
-    let resolved_file_id = IncludeCtx::new(db, db.app_data_id_by_file(file_id), file_id)
-        .resolve_include_lib(&candidate)?;
+    let resolved_file_id =
+        IncludeCtx::new(db, db.file_app(file_id), file_id).resolve_include_lib(&candidate)?;
     if resolved_file_id == included_file_id {
         // We have an equivalent include
         Some(IncludeFile {

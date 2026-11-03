@@ -28,6 +28,7 @@ use elp_syntax::ast::SourceFile;
 use fxhash::FxHashMap;
 use fxhash::FxHasher;
 use regex::Regex;
+use smallvec::SmallVec;
 
 mod dynamic_calls;
 mod file_map;
@@ -37,6 +38,7 @@ mod input;
 mod line_endings;
 mod lower;
 mod module_index;
+mod ownership;
 #[cfg(test)]
 mod test_db;
 
@@ -62,9 +64,8 @@ pub use file_set_config::FileSetConfig;
 pub use file_set_config::FileSetConfigBuilder;
 pub use include::IncludeCtx;
 pub use include::generated_file_include_lib;
+pub use input::App;
 pub use input::AppData;
-pub use input::AppDataId;
-pub use input::AppStructure;
 pub use input::FileSource;
 pub use input::IncludeOtp;
 pub use input::Project;
@@ -191,8 +192,7 @@ pub struct Files {
     files: Arc<DashMap<FileId, File, BuildHasherDefault<FxHasher>>>,
     source_roots: Arc<DashMap<SourceRootId, SourceRootInput, BuildHasherDefault<FxHasher>>>,
     file_source_roots: Arc<DashMap<FileId, FileSourceRootInput, BuildHasherDefault<FxHasher>>>,
-    app_datas: Arc<DashMap<AppDataId, AppDataInput, BuildHasherDefault<FxHasher>>>,
-    source_app_datas: Arc<DashMap<SourceRootId, SourceAppDataInput, BuildHasherDefault<FxHasher>>>,
+    source_root_apps: Arc<DashMap<SourceRootId, SourceRootAppInput, BuildHasherDefault<FxHasher>>>,
 }
 
 impl std::fmt::Debug for Files {
@@ -270,58 +270,36 @@ impl Files {
         };
     }
 
-    pub fn app_data(&self, app_data_id: AppDataId) -> AppDataInput {
-        let app_data = self
-            .app_datas
-            .get(&app_data_id)
-            .expect("Unable to fetch app data id; this is a bug");
-
-        *app_data
-    }
-
-    pub fn set_app_data(
-        &self,
-        db: &mut dyn SourceDatabase,
-        app_data_id: AppDataId,
-        app_data: Option<Arc<AppData>>,
-    ) {
-        let app_datas = Arc::clone(&self.app_datas);
-        match app_datas.entry(app_data_id) {
-            Entry::Occupied(mut occupied) => {
-                occupied.get_mut().set_app_data(db).to(app_data);
-            }
-            Entry::Vacant(vacant) => {
-                let app_data = AppDataInput::builder(app_data).new(db);
-                vacant.insert(app_data);
-            }
-        };
-    }
-
-    pub fn source_app_data(&self, source_root_id: SourceRootId) -> SourceAppDataInput {
-        let source_app_data = self
-            .source_app_datas
+    pub fn source_root_app(&self, source_root_id: SourceRootId) -> SourceRootAppInput {
+        let source_root_app = self
+            .source_root_apps
             .get(&source_root_id)
-            .expect("Unable to fetch source app data; this is a bug");
-
-        *source_app_data
+            .expect("Unable to fetch the app of a source root; this is a bug");
+        *source_root_app
     }
 
-    pub fn set_source_app_data(
+    /// Sets the app of a source root, if it changed.
+    pub fn set_source_root_app(
         &self,
         db: &mut dyn SourceDatabase,
         source_root_id: SourceRootId,
-        app_data_id: AppDataId,
+        app: Option<App>,
     ) {
-        let source_app_datas = Arc::clone(&self.source_app_datas);
-        match source_app_datas.entry(source_root_id) {
-            Entry::Occupied(mut occupied) => {
-                occupied.get_mut().set_app_data_id(db).to(app_data_id);
+        let existing = self
+            .source_root_apps
+            .get(&source_root_id)
+            .map(|input| *input);
+        match existing {
+            Some(input) => {
+                if input.app(db) != app {
+                    input.set_app(db).to(app);
+                }
             }
-            Entry::Vacant(vacant) => {
-                let source_app_data = SourceAppDataInput::builder(app_data_id).new(db);
-                vacant.insert(source_app_data);
+            None => {
+                let input = SourceRootAppInput::builder(app).new(db);
+                self.source_root_apps.insert(source_root_id, input);
             }
-        };
+        }
     }
 }
 
@@ -389,14 +367,11 @@ pub struct SourceRootInput {
     pub source_root: Arc<SourceRoot>,
 }
 
+/// The app of a source root, `None` for the source root of files outside
+/// every app.
 #[salsa::input]
-pub struct AppDataInput {
-    pub app_data: Option<Arc<AppData>>,
-}
-
-#[salsa::input]
-pub struct SourceAppDataInput {
-    pub app_data_id: AppDataId,
+pub struct SourceRootAppInput {
+    pub app: Option<App>,
 }
 
 /// Salsa-interned wrapper around `vfs::FileId`. Used to satisfy salsa 0.25's
@@ -414,21 +389,21 @@ pub struct InternedFileId {
 /// model. Everything else in ELP is derived from these queries.
 #[ra_ap_query_group_macro::query_group]
 pub trait RootQueryDb: SourceDatabase + salsa::Database {
-    #[salsa::input]
-    fn catch_all_source_root(&self) -> SourceRootId;
-
-    /// The data for a given application. We can access this either
-    /// from the `FileId` or by `SourceRootId`, so introduce an
-    /// intermediate `AppDataId` to map from the two sources.
+    /// The data of the app of a source root.
     #[salsa::invoke_interned(app_data)]
     fn app_data(&self, id: SourceRootId) -> Option<Arc<AppData>>;
 
-    #[salsa::transparent]
-    #[salsa::invoke(app_data_id_by_file_dispatch)]
-    fn app_data_id_by_file(&self, id: FileId) -> Option<AppDataId>;
+    /// The apps of `project` that list the file, the primary owner first. A
+    /// query about one file depends on this rather than on the project's whole
+    /// index, so it runs again only when that file's owners change.
+    #[salsa::invoke(ownership::file_apps)]
+    fn file_apps(&self, project: Project, file_id: FileId) -> SmallVec<[App; 1]>;
 
-    #[salsa::invoke(app_data_id_by_file_inner)]
-    fn app_data_id_by_file_interned(&self, fid: InternedFileId) -> Option<AppDataId>;
+    /// The primary owner of the file: in the first project whose apps list
+    /// it, else the app of its source root.
+    #[salsa::transparent]
+    #[salsa::invoke(ownership::file_app)]
+    fn file_app(&self, file_id: FileId) -> Option<App>;
 
     fn include_file_id(&self, project: Project, path: VfsPath) -> Option<FileId>;
 
@@ -471,11 +446,6 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     fn module_index(&self, project: Project) -> Arc<ModuleIndex>;
 
     fn include_file_index(&self, project: Project) -> Arc<IncludeFileIndex>;
-
-    /// Returns a map from FileId to the AppDataId of the app the file
-    /// belongs to.
-    #[salsa::input]
-    fn app_index(&self) -> Arc<AppDataIndex>;
 
     /// Parse the file_id to AST
     #[salsa::transparent]
@@ -585,7 +555,7 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     #[salsa::invoke_interned(IncludeCtx::resolve_remote_query)]
     fn resolve_remote(
         &self,
-        orig_app_data_id: Option<AppDataId>,
+        orig_app: Option<App>,
         current_file_id: FileId,
         path: SmolStr,
     ) -> Option<FileId>;
@@ -608,18 +578,14 @@ pub trait SourceDatabase: salsa::Database {
 
     fn set_file_source_root(&mut self, id: FileId, source_root_id: SourceRootId);
 
-    fn app_data_by_id(&self, id: AppDataId) -> AppDataInput;
+    /// The app of the source root.
+    fn source_root_app(&self, id: SourceRootId) -> SourceRootAppInput;
 
-    fn set_app_data_by_id(&mut self, id: AppDataId, app_data: Option<Arc<AppData>>);
-
-    fn app_data_id(&self, id: SourceRootId) -> SourceAppDataInput;
-
-    fn set_app_data_id(&mut self, id: SourceRootId, app_data_id: AppDataId);
+    fn set_source_root_app(&mut self, id: SourceRootId, app: Option<App>);
 }
 
 fn app_data(db: &dyn RootQueryDb, id: SourceRootId) -> Option<Arc<AppData>> {
-    db.app_data_by_id(db.app_data_id(id).app_data_id(db))
-        .app_data(db)
+    Some(db.source_root_app(id).app(db)?.app_data(db))
 }
 
 fn file_app_data_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<Arc<AppData>> {
@@ -627,19 +593,7 @@ fn file_app_data_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<Arc<A
 }
 
 fn file_app_data_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<Arc<AppData>> {
-    let file_id = fid.file_id(db);
-    let lookup = if let Some(id) = db.app_data_id_by_file(file_id) {
-        db.app_data_by_id(id).app_data(db)
-    } else {
-        None
-    };
-    lookup
-        // We need this fallback to cope with new files added in IDE
-        // mode, and OTP files
-        .or_else(|| {
-            let source_root_id = db.file_source_root(file_id);
-            db.app_data(source_root_id.source_root_id(db))
-        })
+    Some(db.file_app(fid.file_id(db))?.app_data(db))
 }
 
 fn module_index(db: &dyn RootQueryDb, project: Project) -> Arc<ModuleIndex> {
@@ -717,30 +671,21 @@ fn reachable_targets(
     ))
 }
 
-/// Whether `pred` holds for any application `file_id` is compiled into, or
-/// `None` when no application for the file is known, in which case there is
-/// nothing to check reachability against.
-///
-/// Owners are visited lazily and by reference: this runs for every reference a
-/// dependency diagnostic resolves, and nearly every file has a single owner.
+/// Whether `pred` holds for any application of `project` that `file_id` is
+/// compiled into, else for the file's own application, or `None` when no
+/// application for the file is known, in which case there is nothing to check
+/// reachability against.
 pub fn any_owning_app(
     db: &dyn RootQueryDb,
+    project: Project,
     file_id: FileId,
     mut pred: impl FnMut(&AppName) -> bool,
 ) -> Option<bool> {
-    let app_index = db.app_index();
-    let mut owners = app_index
-        .owners(file_id)
-        .filter_map(|app_data_id| db.app_data_by_id(app_data_id).app_data(db))
-        .peekable();
-    if owners.peek().is_none() {
-        // No indexed owner (IDE-mode additions, OTP), so `file_app_data` fell
-        // back to the source root. Nothing to widen the check with.
-        return db
-            .file_app_data(file_id)
-            .map(|app_data| pred(&app_data.name));
+    let owners = db.file_apps(project, file_id);
+    if owners.is_empty() {
+        return db.file_app(file_id).map(|app| pred(app.name(db)));
     }
-    Some(owners.any(|app_data| pred(&app_data.name)))
+    Some(owners.iter().any(|app| pred(app.name(db))))
 }
 
 /// Whether any application `callee_file` is compiled into is reachable from
@@ -755,7 +700,7 @@ pub fn is_any_owner_reachable(
     callee_file: FileId,
     dep_kind: DepKind,
 ) -> bool {
-    any_owning_app(db, callee_file, |app| {
+    any_owning_app(db, referencing_app_data.project, callee_file, |app| {
         is_app_reachable(db, referencing_app_data, app, dep_kind)
     })
     .unwrap_or(true)
@@ -831,56 +776,6 @@ fn mapped_include_file(
         .path_to_file_id
         .get(&VfsPath::from(file_path.clone()))
         .copied()
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct AppDataIndex {
-    pub map: FxHashMap<FileId, AppDataId>,
-    /// A source file can be compiled into several Buck targets, each of which
-    /// is its own application. `map` holds one of them; the others are here.
-    /// Populated only for such files, which are a fraction of a percent.
-    pub extra_owners: FxHashMap<FileId, Vec<AppDataId>>,
-}
-
-impl AppDataIndex {
-    /// Record that `app_data_id` claims `file_id`. A file compiled into several
-    /// targets is claimed by each of their apps; which one lands in `map` is
-    /// arbitrary, so a displaced claim moves to `extra_owners` rather than
-    /// being lost. Repeating a claim is a no-op.
-    pub fn insert_owner(&mut self, file_id: FileId, app_data_id: AppDataId) {
-        let Some(displaced) = self.map.insert(file_id, app_data_id) else {
-            return;
-        };
-        if displaced == app_data_id {
-            return;
-        }
-        let extra = self.extra_owners.entry(file_id).or_default();
-        extra.retain(|id| *id != app_data_id);
-        if !extra.contains(&displaced) {
-            extra.push(displaced);
-        }
-    }
-
-    /// Every application the file is compiled into, the one in `map` first.
-    pub fn owners(&self, file_id: FileId) -> impl Iterator<Item = AppDataId> + '_ {
-        self.map.get(&file_id).copied().into_iter().chain(
-            self.extra_owners
-                .get(&file_id)
-                .into_iter()
-                .flatten()
-                .copied(),
-        )
-    }
-}
-
-fn app_data_id_by_file_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Option<AppDataId> {
-    db.app_data_id_by_file_interned(InternedFileId::new(db, file_id))
-}
-
-fn app_data_id_by_file_inner(db: &dyn RootQueryDb, fid: InternedFileId) -> Option<AppDataId> {
-    let file_id = fid.file_id(db);
-    let app_data_index = db.app_index();
-    app_data_index.map.get(&file_id).copied()
 }
 
 fn parse_dispatch(db: &dyn RootQueryDb, file_id: FileId) -> Parse<SourceFile> {

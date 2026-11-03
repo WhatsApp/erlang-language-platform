@@ -621,6 +621,7 @@ dependencies = [
  "regex",
  "salsa",
  "salsa-macros",
+ "smallvec",
  "stdx",
  "vfs",
 ]

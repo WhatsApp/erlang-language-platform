@@ -42,7 +42,7 @@ use elp_ide::diagnostics::LintConfig;
 use elp_ide::diagnostics_collection::DiagnosticCollection;
 use elp_ide::elp_ide_db::elp_base_db::AbsPath;
 use elp_ide::elp_ide_db::elp_base_db::AbsPathBuf;
-use elp_ide::elp_ide_db::elp_base_db::AppDataId;
+use elp_ide::elp_ide_db::elp_base_db::App;
 use elp_ide::elp_ide_db::elp_base_db::ChangeKind;
 use elp_ide::elp_ide_db::elp_base_db::FileId;
 use elp_ide::elp_ide_db::elp_base_db::FileKind;
@@ -53,6 +53,7 @@ use elp_ide::elp_ide_db::elp_base_db::ProjectApps;
 use elp_ide::elp_ide_db::elp_base_db::RootQueryDb;
 use elp_ide::elp_ide_db::elp_base_db::SourceDatabase;
 use elp_ide::elp_ide_db::elp_base_db::VfsPath;
+use elp_ide::elp_ide_db::elp_base_db::Workspace;
 use elp_ide::elp_ide_db::elp_base_db::loader;
 use elp_ide::elp_ide_db::elp_base_db::lower;
 use elp_log::Logger;
@@ -300,7 +301,7 @@ pub struct Server {
     initial_load_status: InitialLoading,
     reload_manager: Arc<Mutex<ReloadManager>>,
     dynamic_registrations_done: bool,
-    generated_app_inputs: Arc<FxHashMap<AbsPathBuf, AppDataId>>,
+    generated_app_inputs: Arc<FxHashMap<AbsPathBuf, App>>,
     reset_source_roots: bool,
     native_diagnostics_requested: bool,
     eqwalizer_and_erlang_service_diagnostics_requested: bool,
@@ -740,10 +741,6 @@ impl Server {
                     // contents match what was loaded, and no change is
                     // recorded.
                     this.newly_opened_documents.push(file_id);
-                    if this.status != Status::Running || this.analysis_host.raw_database().app_data_id_by_file(file_id).is_none() {
-                        // We do not have a project associated with this file
-                        this.fetch_projects_if_needed(&path);
-                    }
                 } else {
                     log::error!(
                         "DidOpenTextDocument: could not get vfs path for {}",
@@ -1027,7 +1024,8 @@ impl Server {
             .iter()
             .map(|change| (change.file_id, change.kind))
             .collect();
-        for file_id in mem::take(&mut self.newly_opened_documents) {
+        let opened = mem::take(&mut self.newly_opened_documents);
+        for &file_id in &opened {
             if !changed_files.iter().any(|(id, _)| *id == file_id) {
                 changed_files.push((file_id, ChangeKind::Modify));
             }
@@ -1110,6 +1108,23 @@ impl Server {
             true
         };
 
+        // Only once its change is applied does a file opened for the first
+        // time have a source root, and so an app if a loaded project has it.
+        for file_id in opened {
+            let db = self.analysis_host.raw_database();
+            if self.status != Status::Running || db.file_app(file_id).is_none() {
+                let path = db
+                    .file(file_id)
+                    .path(db)
+                    .as_path()
+                    .map(AbsPath::to_path_buf);
+                if let Some(path) = path {
+                    // We do not have a project associated with this file
+                    self.fetch_projects_if_needed(&path);
+                }
+            }
+        }
+
         // The loaded VFS changes (if any) are now applied to the salsa DB.
         // Finish the initial-load handshake; on first completion this promotes
         // the server to Running, deferred to here so requests are only served
@@ -1118,12 +1133,14 @@ impl Server {
         if self.initial_load_status == InitialLoading::DoneButVfsChanges {
             self.initial_load_status = InitialLoading::Done;
             let db = self.analysis_host.raw_database();
-            let missing = db
-                .app_index()
-                .map
-                .keys()
-                .filter(|file_id| !db.file(**file_id).exists(db))
-                .count();
+            let missing = Workspace::get(db)
+                .projects(db)
+                .iter()
+                .flat_map(|project| project.apps(db).iter())
+                .flat_map(|app| app.files(db).iter())
+                .filter(|file| !file.exists(db))
+                .collect::<FxHashSet<_>>()
+                .len();
             if missing > 0 {
                 log::warn!("Loading finished with {missing} listed files that do not exist");
             }
@@ -1750,13 +1767,9 @@ impl Server {
         let paths: FxHashSet<AbsPathBuf> = paths
             .into_iter()
             .map(|path| {
-                if let Some(app_data_id) = self.generated_app_inputs.get(&path) {
+                if let Some(app) = self.generated_app_inputs.get(&path) {
                     let db = self.analysis_host.raw_database();
-                    if let Some(app_data) = db.app_data_by_id(*app_data_id).app_data(db) {
-                        app_data.project.root_dir(db).to_path_buf()
-                    } else {
-                        path
-                    }
+                    app.project(db).root_dir(db).to_path_buf()
                 } else {
                     path
                 }

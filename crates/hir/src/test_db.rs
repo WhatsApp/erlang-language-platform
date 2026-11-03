@@ -14,18 +14,16 @@ use std::fmt;
 use std::panic;
 use std::sync::Arc;
 
-use elp_base_db::AppData;
-use elp_base_db::AppDataId;
-use elp_base_db::AppDataInput;
+use elp_base_db::App;
 use elp_base_db::File;
 use elp_base_db::FileId;
 use elp_base_db::FileRange;
 use elp_base_db::FileSourceRootInput;
 use elp_base_db::Files;
 use elp_base_db::RootQueryDb;
-use elp_base_db::SourceAppDataInput;
 use elp_base_db::SourceDatabase;
 use elp_base_db::SourceRoot;
+use elp_base_db::SourceRootAppInput;
 use elp_base_db::SourceRootId;
 use elp_base_db::SourceRootInput;
 use elp_base_db::Upcast;
@@ -91,22 +89,13 @@ impl SourceDatabase for TestDB {
         files.set_file_source_root(self, id, source_root_id);
     }
 
-    fn app_data_by_id(&self, id: AppDataId) -> AppDataInput {
-        self.files.app_data(id)
+    fn source_root_app(&self, id: SourceRootId) -> SourceRootAppInput {
+        self.files.source_root_app(id)
     }
 
-    fn set_app_data_by_id(&mut self, id: AppDataId, app_data: Option<Arc<AppData>>) {
+    fn set_source_root_app(&mut self, id: SourceRootId, app: Option<App>) {
         let files = self.files.clone();
-        files.set_app_data(self, id, app_data)
-    }
-
-    fn app_data_id(&self, source_root_id: SourceRootId) -> SourceAppDataInput {
-        self.files.source_app_data(source_root_id)
-    }
-
-    fn set_app_data_id(&mut self, id: SourceRootId, app_data_id: AppDataId) {
-        let files = self.files.clone();
-        files.set_source_app_data(self, id, app_data_id)
+        files.set_source_root_app(self, id, app);
     }
 }
 

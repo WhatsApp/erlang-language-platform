@@ -181,6 +181,26 @@ mod tests {
     }
 
     #[test]
+    fn call_into_a_file_no_target_lists_is_reported() {
+        // No target lists `app_c.erl`, as for a file created since the
+        // project loaded, so its owner is the app of its source root.
+        check_diagnostics(
+            r#"
+//- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib
+  -module(main).
+  main() ->
+    app_c:exists().
+%%  ^^^^^^^^^^^^ warning: W0085: The function 'app_c:exists/0' is defined in application 'app_c', but the application is not a dependency of 'app_a' (defined in 'cell//app_a:lib').
+%%             | 💡 <suppression>
+//- /app_c/src/app_c.erl app:app_c
+  -module(app_c).
+  -compile(export_all).
+  exists() -> ok.
+            "#,
+        )
+    }
+
+    #[test]
     fn call_into_distributed_dep_is_reported() {
         // A `distributed_dependency` relaxes `unavailable_type` (W0059), but
         // not this one: a call still has to find the beam in this VM.

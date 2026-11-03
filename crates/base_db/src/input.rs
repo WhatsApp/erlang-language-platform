@@ -18,8 +18,6 @@ use elp_project_model::EqwalizerConfig;
 use elp_project_model::ProjectAppData;
 use elp_project_model::buck::BuckProjectIndex;
 use elp_project_model::buck::TargetFullName;
-use fxhash::FxHashMap;
-use fxhash::FxHashSet;
 use paths::RelPath;
 use paths::Utf8Path;
 use salsa::plumbing::AsId;
@@ -29,8 +27,7 @@ use vfs::FileId;
 use vfs::VfsPath;
 use vfs::file_set::FileSet;
 
-use crate::AppDataIndex;
-use crate::FileMap;
+use crate::File;
 use crate::RootQueryDb;
 
 /// Files are grouped into source roots. A source root is a directory on the
@@ -90,16 +87,8 @@ impl SourceRoot {
         app_data: &AppData,
     ) -> Option<(FileId, FileSource, &VfsPath)> {
         let path = self.path_for_file(&file_id)?;
-        if app_data.is_src_file(path) {
-            Some((file_id, FileSource::Src, path))
-        } else if app_data.is_extra_src_file(path) {
-            Some((file_id, FileSource::Extra, path))
-        } else if app_data.is_test_target == Some(true) {
-            // buck test target source file. It only has one.
-            Some((file_id, FileSource::Extra, path))
-        } else {
-            None
-        }
+        let source = app_data.file_source(path)?;
+        Some((file_id, source, path))
     }
 }
 
@@ -123,6 +112,15 @@ pub struct Workspace {
 pub struct Project {
     #[returns(ref)]
     pub root: VfsPath,
+    /// Sorted by the key lowering gives each app, so that identical reloads
+    /// compare equal.
+    #[returns(ref)]
+    pub apps: Arc<[App]>,
+    /// The inputs of the project's apps that are no longer loaded, with their
+    /// large fields cleared, for lowering to give back to an app that returns.
+    /// No query reads them.
+    #[returns(ref)]
+    pub removed_apps: Arc<[App]>,
     /// The OTP project, whose own link is to itself; `None` when OTP isn't
     /// loaded.
     pub otp: Option<Project>,
@@ -139,6 +137,60 @@ pub struct Project {
     pub source_roots: Arc<[SourceRootId]>,
 }
 
+#[salsa::input]
+pub struct App {
+    pub project: Project,
+    #[returns(ref)]
+    pub name: AppName,
+    pub app_type: AppType,
+    #[returns(ref)]
+    pub dir: VfsPath,
+    /// The files the loader lists for the app, sorted by path. Only the Buck
+    /// loaders list them.
+    #[returns(ref)]
+    pub files: Arc<[File]>,
+    #[returns(ref)]
+    pub macros: Arc<[eetf::Term]>,
+    #[returns(ref)]
+    pub parse_transforms: Arc<[eetf::Term]>,
+    #[returns(ref)]
+    pub ebin: Option<AbsPathBuf>,
+    #[returns(ref)]
+    pub buck_target_name: Option<TargetFullName>,
+    #[returns(ref)]
+    pub include_dirs: Arc<[AbsPathBuf]>,
+    #[returns(ref)]
+    pub include_path: Arc<[AbsPathBuf]>,
+    #[returns(ref)]
+    pub src_dirs: Arc<[AbsPathBuf]>,
+    #[returns(ref)]
+    pub extra_src_dirs: Arc<[String]>,
+    pub is_test_target: Option<bool>,
+}
+
+#[salsa::tracked]
+impl App {
+    /// The app's fields as [`AppData`].
+    #[salsa::tracked]
+    pub fn app_data(self, db: &dyn RootQueryDb) -> Arc<AppData> {
+        Arc::new(AppData {
+            project: self.project(db),
+            name: self.name(db).clone(),
+            buck_target_name: self.buck_target_name(db).clone(),
+            dir: as_real_path(self.dir(db)).to_path_buf(),
+            include_dirs: self.include_dirs(db).to_vec(),
+            include_path: self.include_path(db).to_vec(),
+            src_path: self.src_dirs(db).to_vec(),
+            extra_src_dirs: self.extra_src_dirs(db).to_vec(),
+            macros: self.macros(db).to_vec(),
+            parse_transforms: self.parse_transforms(db).to_vec(),
+            app_type: self.app_type(db),
+            ebin_path: self.ebin(db).clone(),
+            is_test_target: self.is_test_target(db),
+        })
+    }
+}
+
 #[salsa::tracked]
 impl Project {
     /// The project's root, which lowering gives as a real path.
@@ -146,36 +198,44 @@ impl Project {
         as_real_path(self.root(db))
     }
 
-    /// The source root of the app `name` refers to in the project: the last
-    /// app of the project with that name, in the order the loader gave them,
-    /// else the OTP app with that name.
+    /// The app `name` refers to in the project: the last of the project's apps
+    /// with that name, else the OTP app with that name.
     #[salsa::tracked]
-    pub fn app_named(self, db: &dyn RootQueryDb, name: AppName) -> Option<SourceRootId> {
+    pub fn app_named(self, db: &dyn RootQueryDb, name: AppName) -> Option<App> {
         let find = |project: Project| {
             project
-                .source_roots(db)
+                .apps(db)
                 .iter()
                 .rev()
+                .find(|app| *app.name(db) == name)
                 .copied()
-                .find(|&source_root_id| {
-                    db.app_data(source_root_id)
-                        .is_some_and(|app_data| app_data.name == name)
-                })
         };
         find(self).or_else(|| self.otp(db).filter(|&otp| otp != self).and_then(find))
     }
 }
 
-// Only the id: the OTP project links to itself, and salsa's derived `Debug`
-// would follow that cycle.
+// The id, and the name while a database is attached, as it is inside every
+// query. Not salsa's derived `Debug`: an app's project lists the app, and the
+// derived one would follow that cycle.
+impl fmt::Debug for App {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut app = f.debug_tuple("App");
+        app.field(&self.as_id());
+        if let Some(name) = salsa::with_attached_database(|db| self.name(db).0.clone()) {
+            app.field(&name);
+        }
+        app.finish()
+    }
+}
+
+// Only the id, for the same reason as `App`.
 impl fmt::Debug for Project {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Project").field(&self.as_id()).finish()
     }
 }
 
-/// `AppData` is stored in salsa, indexed by `SourceRootId`.
-/// We create a `SourceRoot` for every app in every `Project`.
+/// The fields of an [`App`], for the consumers that read them this way.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AppData {
     pub project: Project,
@@ -201,6 +261,20 @@ pub struct AppData {
 }
 
 impl AppData {
+    /// Whether `path` is one of the app's sources or extra sources, or neither.
+    pub(crate) fn file_source(&self, path: &VfsPath) -> Option<FileSource> {
+        if self.is_src_file(path) {
+            Some(FileSource::Src)
+        } else if self.is_extra_src_file(path) {
+            Some(FileSource::Extra)
+        } else if self.is_test_target == Some(true) {
+            // buck test target source file. It only has one.
+            Some(FileSource::Extra)
+        } else {
+            None
+        }
+    }
+
     fn is_src_file(&self, path: &VfsPath) -> bool {
         if let Some(path) = path.as_path() {
             // src_dirs are recursive, check path begins with one
@@ -231,76 +305,7 @@ impl AppData {
     }
 }
 
-/// Note that `AppStructure` is build-system agnostic
-#[derive(Debug, Clone, Default /* Serialize, Deserialize */)]
-pub struct AppStructure {
-    pub(crate) app_map: FxHashMap<SourceRootId, AppMapData>,
-    pub(crate) catch_all_source_root: SourceRootId,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct AppMapData {
-    app_data: Option<AppData>, // TODO: should this be Arc?
-    applicable_files: Option<FxHashSet<AbsPathBuf>>,
-    gen_src_files: Option<FxHashSet<AbsPathBuf>>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct AppDataId(pub u32);
-
-impl AppStructure {
-    pub fn add_app_data(
-        &mut self,
-        source_root_id: SourceRootId,
-        app_data: Option<AppData>,
-        applicable_files: Option<FxHashSet<AbsPathBuf>>,
-        gen_src_files: Option<FxHashSet<AbsPathBuf>>,
-    ) {
-        let prev = self.app_map.insert(
-            source_root_id,
-            AppMapData {
-                app_data,
-                applicable_files,
-                gen_src_files,
-            },
-        );
-        assert!(prev.is_none());
-    }
-
-    /// Set the salsa inputs according to this AppStructure, and return the app
-    /// of each generated source file. Each path an app lists gets a `FileId`
-    /// from `file_map`, whether or not the file has loaded.
-    pub fn apply(
-        self,
-        db: &mut dyn RootQueryDb,
-        file_map: &FileMap,
-    ) -> FxHashMap<AbsPathBuf, AppDataId> {
-        let mut app_index = AppDataIndex::default();
-        let mut app_data_id = AppDataId(0);
-        let mut gen_src_inputs = FxHashMap::default();
-        for (source_root_id, app_map_data) in self.app_map {
-            let arc_data = app_map_data.app_data.map(Arc::new);
-            db.set_app_data_by_id(app_data_id, arc_data);
-            db.set_app_data_id(source_root_id, app_data_id);
-            for path in app_map_data.applicable_files.into_iter().flatten() {
-                let file_id = file_map.intern(db, VfsPath::from(path));
-                app_index.insert_owner(file_id, app_data_id);
-            }
-            if let Some(files) = app_map_data.gen_src_files {
-                for file in files {
-                    gen_src_inputs.insert(file.clone(), app_data_id);
-                }
-            }
-            app_data_id = AppDataId(app_data_id.0 + 1);
-        }
-        db.set_app_index(Arc::new(app_index));
-        db.set_catch_all_source_root(self.catch_all_source_root);
-
-        gen_src_inputs
-    }
-}
-
-/// Lowering gives projects only real paths.
+/// Lowering gives apps and projects only real paths.
 fn as_real_path(path: &VfsPath) -> &AbsPath {
     path.as_path()
         .expect("lowering should give only real paths")
@@ -371,58 +376,5 @@ impl<'a> ProjectApps<'a> {
             otp_project_idx,
             projects,
         }
-    }
-
-    /// The apps of `projects`, the inputs lowering made of `self.projects`.
-    pub fn app_structure(&self, projects: &[Project]) -> AppStructure {
-        let mut app_structure = AppStructure::default();
-        let mut app_idx = 0;
-
-        // Reconstruct the per-project list
-        let mut apps_by_project: FxHashMap<usize, Vec<&ProjectAppData>> = FxHashMap::default();
-
-        for (project_idx, appdata) in self.all_apps.iter() {
-            apps_by_project
-                .entry(*project_idx)
-                .or_default()
-                .push(appdata);
-        }
-
-        for (project_idx, &project) in projects.iter().enumerate() {
-            let empty = vec![];
-            let apps = apps_by_project.get(&project_idx).unwrap_or(&empty);
-
-            for app in apps {
-                let root_id = SourceRootId(app_idx);
-                app_idx += 1;
-                let input_data = AppData {
-                    project,
-                    name: app.name.clone(),
-                    buck_target_name: app.buck_target_name.clone(),
-                    dir: app.dir.clone(),
-                    include_dirs: app.include_dirs.clone(),
-                    include_path: app.include_path.clone(),
-                    extra_src_dirs: app.extra_src_dirs.clone(),
-                    macros: app.macros.clone(),
-                    parse_transforms: app.parse_transforms.clone(),
-                    app_type: app.app_type,
-                    src_path: app.abs_src_dirs.clone(),
-                    ebin_path: app.ebin.clone(),
-                    is_test_target: app.is_test_target,
-                };
-                app_structure.add_app_data(
-                    root_id,
-                    Some(input_data),
-                    app.applicable_files.clone(),
-                    app.gen_src_files.clone(),
-                );
-            }
-        }
-
-        // Final SourceRoot for out-of-project files
-        log::info!("Final source root: {:?}", SourceRootId(app_idx));
-        app_structure.add_app_data(SourceRootId(app_idx), None, None, None);
-        app_structure.catch_all_source_root = SourceRootId(app_idx);
-        app_structure
     }
 }

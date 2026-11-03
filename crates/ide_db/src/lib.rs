@@ -14,9 +14,7 @@ use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 
 use elp_base_db::AbsPath;
-use elp_base_db::AppData;
-use elp_base_db::AppDataId;
-use elp_base_db::AppDataInput;
+use elp_base_db::App;
 use elp_base_db::File;
 use elp_base_db::FileId;
 use elp_base_db::FilePosition;
@@ -25,9 +23,9 @@ use elp_base_db::FileSourceRootInput;
 use elp_base_db::Files;
 use elp_base_db::Project;
 use elp_base_db::RootQueryDb;
-use elp_base_db::SourceAppDataInput;
 use elp_base_db::SourceDatabase;
 use elp_base_db::SourceRoot;
+use elp_base_db::SourceRootAppInput;
 use elp_base_db::SourceRootId;
 use elp_base_db::SourceRootInput;
 use elp_base_db::Upcast;
@@ -244,22 +242,13 @@ impl SourceDatabase for RootDatabase {
         files.set_file_source_root(self, id, source_root_id);
     }
 
-    fn app_data_by_id(&self, id: AppDataId) -> AppDataInput {
-        self.files.app_data(id)
+    fn source_root_app(&self, id: SourceRootId) -> SourceRootAppInput {
+        self.files.source_root_app(id)
     }
 
-    fn set_app_data_by_id(&mut self, id: AppDataId, app_data: Option<Arc<AppData>>) {
+    fn set_source_root_app(&mut self, id: SourceRootId, app: Option<App>) {
         let files = self.files.clone();
-        files.set_app_data(self, id, app_data)
-    }
-
-    fn app_data_id(&self, source_root_id: SourceRootId) -> SourceAppDataInput {
-        self.files.source_app_data(source_root_id)
-    }
-
-    fn set_app_data_id(&mut self, id: SourceRootId, app_data_id: AppDataId) {
-        let files = self.files.clone();
-        files.set_source_app_data(self, id, app_data_id)
+        files.set_source_root_app(self, id, app);
     }
 }
 
@@ -352,10 +341,8 @@ impl RootDatabase {
         let includes: Vec<_> = form_list
             .includes()
             .filter_map(|(idx, include)| {
-                let resolved = self.resolve_include(
-                    self.app_data_id_by_file(file_id),
-                    InFile::new(file_id, idx),
-                )?;
+                let resolved =
+                    self.resolve_include(self.file_app(file_id), InFile::new(file_id, idx))?;
                 let range = include.form_id().get(&source_file).syntax().text_range();
                 let line_col = line_index.line_col(range.start());
                 if let Some(p) = Includes::app_file_path(self, resolved, root_abs) {
@@ -524,12 +511,8 @@ impl TypedSemantic for RootDatabase {
 mod tests {
     use std::sync::Arc;
 
-    use elp_base_db::AppDataId;
-    use elp_base_db::AppDataIndex;
-    use elp_base_db::FileId;
     use elp_base_db::Project;
     use elp_base_db::RootQueryDb;
-    use elp_base_db::SourceDatabase;
     use elp_base_db::Workspace;
     use elp_base_db::assert_eq_expected;
     use elp_base_db::fixture::WithFixture;
@@ -541,10 +524,9 @@ mod tests {
     use crate::RootDatabase;
     use crate::erl_ast::ErlAstDatabase;
 
-    /// A file compiled into two Buck targets must keep both owners: `map` holds
-    /// an arbitrary one of them, so dropping the rest is unrecoverable.
+    /// A file compiled into two Buck targets must keep both owners.
     #[test]
-    fn app_data_index_keeps_every_owner_of_a_shared_file() {
+    fn a_shared_file_keeps_every_owner() {
         let (db, fixture) = RootDatabase::with_fixture(
             r#"
 //- /app_a/src/main.erl app:app_a buck_target:cell//app_a:lib
@@ -554,32 +536,16 @@ mod tests {
 "#,
         );
         let shared = fixture.files[1];
-        let app_index = db.app_index();
-        let mut owners: Vec<String> = app_index
-            .owners(shared)
-            .filter_map(|id| db.app_data_by_id(id).app_data(&db))
-            .map(|app_data| app_data.name.to_string())
+        let project = Workspace::get(&db).projects(&db)[0];
+        let mut owners: Vec<String> = db
+            .file_apps(project, shared)
+            .iter()
+            .map(|app| app.name(&db).to_string())
             .collect();
         owners.sort();
 
         let expected_owners = vec!["app_a".to_string(), "app_b".to_string()];
         assert_eq_expected!(expected_owners, owners);
-    }
-
-    /// Lowering records a file's owners one claim at a time, one per app that
-    /// lists it. Every claim must survive, and repeating one must not
-    /// duplicate it.
-    #[test]
-    fn app_data_index_insert_owner_keeps_every_claim_once() {
-        let mut index = AppDataIndex::default();
-        let file = FileId::from_raw(0);
-        for id in [1, 2, 1, 2] {
-            index.insert_owner(file, AppDataId(id));
-        }
-        let mut owners: Vec<u32> = index.owners(file).map(|id| id.0).collect();
-        owners.sort();
-
-        assert_eq_expected!(vec![1, 2], owners);
     }
 
     fn vm_keys(db: &RootDatabase) -> FxHashSet<ErlangServiceKey> {
@@ -603,6 +569,8 @@ mod tests {
             projects.push(Project::new(
                 &db,
                 base.root(&db).clone(),
+                Arc::from([]),
+                Arc::from([]),
                 None,
                 None,
                 code_path.into(),

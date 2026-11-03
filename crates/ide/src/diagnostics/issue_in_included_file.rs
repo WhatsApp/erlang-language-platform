@@ -67,7 +67,7 @@ impl GenericLinter for IssueInIncludedFileLinter {
         // Scan included files for PP condition issues
         for (include_id, _include) in form_list.includes() {
             if let Some(included_file_id) = ctx.sema.db.resolve_include(
-                ctx.sema.db.app_data_id_by_file(ctx.file_id),
+                ctx.sema.db.file_app(ctx.file_id),
                 InFile::new(ctx.file_id, include_id),
             ) {
                 // Get all condition diagnostics from the preprocessor analysis for the included file

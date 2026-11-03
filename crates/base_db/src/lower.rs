@@ -14,12 +14,17 @@
 
 use std::sync::Arc;
 
+use elp_project_model::AppType;
+use elp_project_model::ProjectAppData;
+use elp_project_model::buck::TargetFullName;
 use fxhash::FxHashMap;
 use salsa::Setter;
+use salsa::plumbing::AsId;
 use vfs::AbsPathBuf;
 use vfs::VfsPath;
 
-use crate::AppDataId;
+use crate::App;
+use crate::File;
 use crate::FileMap;
 use crate::Project;
 use crate::ProjectApps;
@@ -33,44 +38,60 @@ use crate::Workspace;
 /// changed since the last lowering: salsa's setters bump the revision without
 /// comparing values. A loaded project gets the input the workspace has for its
 /// root, a loaded one before a removed one; projects that share a root take
-/// those inputs in order. Salsa never frees an input: a project that disappears
-/// moves to `Workspace::removed_projects` with its large fields cleared, and
-/// gets its input back if it returns. Every file an app lists gets a `FileId`
-/// from `file_map`, whether or not it has loaded. Returns the app of each
-/// generated source file.
+/// those inputs in order. An app gets the input its project has for its key the
+/// same way. Salsa never frees an input: a project that disappears moves to
+/// `Workspace::removed_projects`, and an app to `Project::removed_apps`, with
+/// their large fields cleared, and gets its input back if it returns. Every
+/// file an app lists gets a `FileId` from `file_map`, whether or not it has
+/// loaded. Returns the app of each generated source file.
 pub fn lower(
     db: &mut dyn RootQueryDb,
     file_map: &FileMap,
     project_apps: &ProjectApps,
-) -> FxHashMap<AbsPathBuf, AppDataId> {
-    let mut known: Vec<Project> = Workspace::try_get(db)
-        .map(|workspace| {
+) -> FxHashMap<AbsPathBuf, App> {
+    let (mut known, previous_source_roots): (Vec<Project>, usize) = match Workspace::try_get(db) {
+        Some(workspace) => {
+            let projects = workspace.projects(db);
             let removed = workspace.removed_projects(db).iter();
-            workspace
-                .projects(db)
-                .iter()
-                .chain(removed)
-                .copied()
-                .collect()
-        })
-        .unwrap_or_default();
+            (
+                projects.iter().chain(removed).copied().collect(),
+                projects
+                    .iter()
+                    .map(|project| project.apps(db).len())
+                    .sum::<usize>()
+                    + 1,
+            )
+        }
+        None => (Vec::new(), 0),
+    };
 
-    let mut source_roots: Vec<Vec<SourceRootId>> = vec![Vec::new(); project_apps.projects.len()];
-    for (idx, (project_idx, _)) in project_apps.all_apps.iter().enumerate() {
-        source_roots[*project_idx].push(SourceRootId(idx as u32));
+    let mut loaded_apps: Vec<Vec<(usize, &ProjectAppData)>> =
+        vec![Vec::new(); project_apps.projects.len()];
+    for (idx, (project_idx, loaded)) in project_apps.all_apps.iter().enumerate() {
+        loaded_apps[*project_idx].push((idx, *loaded));
     }
+    let mut apps: Vec<Option<App>> = vec![None; project_apps.all_apps.len()];
     let mut projects = Vec::with_capacity(project_apps.projects.len());
-    for (loaded, source_roots) in project_apps.projects.iter().zip(source_roots) {
+    // A generated input several apps list goes to the first of them, in the
+    // order of the projects and then of their apps.
+    let mut gen_src_apps = FxHashMap::default();
+    for (loaded, loaded_apps) in project_apps.projects.iter().zip(loaded_apps) {
         let root = VfsPath::from(loaded.root().into_owned());
         let found = known.iter().position(|project| *project.root(db) == root);
         let known_project = found.map(|idx| known.remove(idx));
-        projects.push(lower_project(
-            db,
-            loaded,
-            root,
-            source_roots.into(),
-            known_project,
-        ));
+        let source_roots = loaded_apps
+            .iter()
+            .map(|(idx, _)| SourceRootId(*idx as u32))
+            .collect();
+        let project = lower_project(db, loaded, root, source_roots, known_project);
+        for (idx, app) in lower_apps(db, file_map, project, &loaded_apps) {
+            apps[idx] = Some(app);
+            let (_, loaded) = project_apps.all_apps[idx];
+            for path in loaded.gen_src_files.iter().flatten() {
+                gen_src_apps.entry(path.clone()).or_insert(app);
+            }
+        }
+        projects.push(project);
     }
     let otp = project_apps
         .otp_project_idx
@@ -81,8 +102,23 @@ pub fn lower(
         }
     }
 
-    // Whatever is left is no longer loaded.
+    // Whatever is left is no longer loaded, and neither are its apps.
     for &project in &known {
+        let apps = project.apps(db).clone();
+        for &app in apps.iter() {
+            clear_app(db, app);
+        }
+        let removed_apps: Arc<[App]> = apps
+            .iter()
+            .chain(project.removed_apps(db).iter())
+            .copied()
+            .collect();
+        if !project.apps(db).is_empty() {
+            project.set_apps(db).to(Arc::from([]));
+        }
+        if *project.removed_apps(db) != removed_apps {
+            project.set_removed_apps(db).to(removed_apps);
+        }
         if project.buck_index(db).is_some() {
             project.set_buck_index(db).to(None);
         }
@@ -91,7 +127,20 @@ pub fn lower(
         }
     }
 
-    let app_structure = project_apps.app_structure(&projects);
+    let apps: Vec<App> = apps
+        .into_iter()
+        .map(|app| app.expect("every loaded app should belong to a loaded project"))
+        .collect();
+
+    // The last source root holds the files outside every app.
+    let source_root_apps = apps.iter().map(|&app| Some(app)).chain([None]);
+    for (idx, app) in source_root_apps.enumerate() {
+        db.set_source_root_app(SourceRootId(idx as u32), app);
+    }
+    for idx in apps.len() + 1..previous_source_roots {
+        db.set_source_root_app(SourceRootId(idx as u32), None);
+    }
+
     let projects: Arc<[Project]> = projects.into();
     let removed: Arc<[Project]> = known.into();
     match Workspace::try_get(db) {
@@ -108,11 +157,50 @@ pub fn lower(
         }
     }
 
-    app_structure.apply(db, file_map)
+    gen_src_apps
+}
+
+/// Identifies an app among the apps of its project.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+enum AppKey {
+    /// Overlapping Buck projects can load the same target.
+    Target(TargetFullName),
+    /// The project of an OTP app is its OTP lib directory.
+    Otp(String),
+    /// JSON apps can share a directory.
+    Dir { name: String, dir: VfsPath },
+}
+
+fn app_key(app: &ProjectAppData) -> AppKey {
+    if app.app_type == AppType::Otp {
+        AppKey::Otp(app.name.0.clone())
+    } else if let Some(target) = &app.buck_target_name {
+        AppKey::Target(target.clone())
+    } else {
+        AppKey::Dir {
+            name: app.name.0.clone(),
+            dir: VfsPath::from(app.dir.clone()),
+        }
+    }
+}
+
+/// The key of `app`, as [`app_key`] gives it for the app it was lowered from.
+fn app_key_of(db: &dyn RootQueryDb, app: App) -> AppKey {
+    if app.app_type(db) == AppType::Otp {
+        AppKey::Otp(app.name(db).0.clone())
+    } else if let Some(target) = app.buck_target_name(db) {
+        AppKey::Target(target.clone())
+    } else {
+        AppKey::Dir {
+            name: app.name(db).0.clone(),
+            dir: app.dir(db).clone(),
+        }
+    }
 }
 
 /// The input for `loaded`: `known`, with the fields that changed set, else a
-/// new one. Its OTP project is set once every project has an input.
+/// new one. Its apps are set by [`lower_apps`], and its OTP project once every
+/// project has an input.
 fn lower_project(
     db: &mut dyn RootQueryDb,
     loaded: &elp_project_model::Project,
@@ -127,6 +215,8 @@ fn lower_project(
         return Project::new(
             db,
             root,
+            Arc::from([]),
+            Arc::from([]),
             None,
             buck_index,
             code_path,
@@ -149,6 +239,184 @@ fn lower_project(
     project
 }
 
+/// Sets the apps of `project` from `loaded`, given with their source roots'
+/// indices. A loaded app gets the input the project has for its key, a loaded
+/// one before a removed one; apps that share a key take those inputs in order.
+/// Returns each app with its source root's index, in the order of the project's
+/// apps.
+fn lower_apps(
+    db: &mut dyn RootQueryDb,
+    file_map: &FileMap,
+    project: Project,
+    loaded: &[(usize, &ProjectAppData)],
+) -> Vec<(usize, App)> {
+    // In reverse, so that popping from the back takes the first.
+    let mut known: FxHashMap<AppKey, Vec<App>> = FxHashMap::default();
+    let known_apps: Vec<App> = project
+        .apps(db)
+        .iter()
+        .chain(project.removed_apps(db).iter())
+        .copied()
+        .collect();
+    for &app in known_apps.iter().rev() {
+        known.entry(app_key_of(db, app)).or_default().push(app);
+    }
+
+    let mut own: Vec<(AppKey, usize, App)> = loaded
+        .iter()
+        .map(|&(idx, loaded)| {
+            let key = app_key(loaded);
+            let known_app = known.get_mut(&key).and_then(Vec::pop);
+            (
+                key,
+                idx,
+                lower_app(db, file_map, project, loaded, known_app),
+            )
+        })
+        .collect();
+
+    let mut removed: Vec<App> = known.into_values().flatten().collect();
+    removed.sort_by_key(|app| app.as_id());
+    for &app in &removed {
+        clear_app(db, app);
+    }
+
+    // Sorted by key, so that identical reloads compare equal. The sort is
+    // stable, so apps that share a key stay in the loader's order.
+    own.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
+    let apps: Arc<[App]> = own.iter().map(|(_, _, app)| *app).collect();
+    if *project.apps(db) != apps {
+        project.set_apps(db).to(apps);
+    }
+    let removed: Arc<[App]> = removed.into();
+    if *project.removed_apps(db) != removed {
+        project.set_removed_apps(db).to(removed);
+    }
+    own.into_iter().map(|(_, idx, app)| (idx, app)).collect()
+}
+
+/// The input for `loaded`: `known`, with the fields that changed set, else a
+/// new one.
+fn lower_app(
+    db: &mut dyn RootQueryDb,
+    file_map: &FileMap,
+    project: Project,
+    loaded: &ProjectAppData,
+    known: Option<App>,
+) -> App {
+    let name = loaded.name.clone();
+    let dir = VfsPath::from(loaded.dir.clone());
+    let files = app_files(db, file_map, loaded);
+    let macros: Arc<[eetf::Term]> = loaded.macros.as_slice().into();
+    let parse_transforms: Arc<[eetf::Term]> = loaded.parse_transforms.as_slice().into();
+    let ebin = loaded.ebin.clone();
+    let buck_target_name = loaded.buck_target_name.clone();
+    let include_dirs: Arc<[AbsPathBuf]> = loaded.include_dirs.as_slice().into();
+    let include_path: Arc<[AbsPathBuf]> = loaded.include_path.as_slice().into();
+    let src_dirs: Arc<[AbsPathBuf]> = loaded.abs_src_dirs.as_slice().into();
+    let extra_src_dirs: Arc<[String]> = loaded.extra_src_dirs.as_slice().into();
+    let Some(app) = known else {
+        return App::new(
+            db,
+            project,
+            name,
+            loaded.app_type,
+            dir,
+            files,
+            macros,
+            parse_transforms,
+            ebin,
+            buck_target_name,
+            include_dirs,
+            include_path,
+            src_dirs,
+            extra_src_dirs,
+            loaded.is_test_target,
+        );
+    };
+    if *app.name(db) != name {
+        app.set_name(db).to(name);
+    }
+    if app.app_type(db) != loaded.app_type {
+        app.set_app_type(db).to(loaded.app_type);
+    }
+    if *app.dir(db) != dir {
+        app.set_dir(db).to(dir);
+    }
+    if *app.files(db) != files {
+        app.set_files(db).to(files);
+    }
+    if *app.macros(db) != macros {
+        app.set_macros(db).to(macros);
+    }
+    if *app.parse_transforms(db) != parse_transforms {
+        app.set_parse_transforms(db).to(parse_transforms);
+    }
+    if *app.ebin(db) != ebin {
+        app.set_ebin(db).to(ebin);
+    }
+    if *app.buck_target_name(db) != buck_target_name {
+        app.set_buck_target_name(db).to(buck_target_name);
+    }
+    if *app.include_dirs(db) != include_dirs {
+        app.set_include_dirs(db).to(include_dirs);
+    }
+    if *app.include_path(db) != include_path {
+        app.set_include_path(db).to(include_path);
+    }
+    if *app.src_dirs(db) != src_dirs {
+        app.set_src_dirs(db).to(src_dirs);
+    }
+    if *app.extra_src_dirs(db) != extra_src_dirs {
+        app.set_extra_src_dirs(db).to(extra_src_dirs);
+    }
+    if app.is_test_target(db) != loaded.is_test_target {
+        app.set_is_test_target(db).to(loaded.is_test_target);
+    }
+    app
+}
+
+/// The files `loaded` lists, sorted by path, each with its `FileId` from
+/// `file_map`.
+fn app_files(db: &dyn RootQueryDb, file_map: &FileMap, loaded: &ProjectAppData) -> Arc<[File]> {
+    let mut paths: Vec<VfsPath> = loaded
+        .applicable_files
+        .iter()
+        .flatten()
+        .map(|path| VfsPath::from(path.clone()))
+        .collect();
+    paths.sort();
+    paths
+        .into_iter()
+        .map(|path| db.file(file_map.intern(db, path)))
+        .collect()
+}
+
+/// Clears the large fields of an app that is no longer loaded.
+fn clear_app(db: &mut dyn RootQueryDb, app: App) {
+    if !app.files(db).is_empty() {
+        app.set_files(db).to(Arc::from([]));
+    }
+    if !app.macros(db).is_empty() {
+        app.set_macros(db).to(Arc::from([]));
+    }
+    if !app.parse_transforms(db).is_empty() {
+        app.set_parse_transforms(db).to(Arc::from([]));
+    }
+    if !app.include_dirs(db).is_empty() {
+        app.set_include_dirs(db).to(Arc::from([]));
+    }
+    if !app.include_path(db).is_empty() {
+        app.set_include_path(db).to(Arc::from([]));
+    }
+    if !app.src_dirs(db).is_empty() {
+        app.set_src_dirs(db).to(Arc::from([]));
+    }
+    if !app.extra_src_dirs(db).is_empty() {
+        app.set_extra_src_dirs(db).to(Arc::from([]));
+    }
+}
+
 /// Sets `roots` as the source roots, numbered in order, and the source root of
 /// each of their files.
 pub fn set_source_roots(db: &mut dyn SourceDatabase, roots: Vec<SourceRoot>) {
@@ -162,24 +430,28 @@ pub fn set_source_roots(db: &mut dyn SourceDatabase, roots: Vec<SourceRoot>) {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use std::cell::RefCell;
 
     use elp_project_model::AppName;
     use elp_project_model::AppType;
-    use elp_project_model::EqwalizerConfig;
     use elp_project_model::ProjectAppData;
     use elp_project_model::ProjectBuildData;
     use elp_project_model::StaticProject;
     use elp_project_model::otp::Otp;
+    use fxhash::FxHashSet;
     use vfs::AbsPathBuf;
+    use vfs::FileId;
+    use vfs::VfsPath;
 
     use super::lower;
+    use crate::App;
     use crate::FileMap;
     use crate::IncludeOtp;
     use crate::Project;
     use crate::ProjectApps;
     use crate::RootQueryDb;
+    use crate::SourceDatabase;
     use crate::Workspace;
     use crate::assert_eq_expected;
     use crate::fixture::WithFixture;
@@ -200,40 +472,46 @@ mod tests {
         RUNS.with(|runs| runs.take())
     }
 
-    /// Reads every project input lowering sets.
+    /// Reads every input lowering sets.
     #[salsa::tracked]
-    fn read_projects(db: &dyn RootQueryDb, workspace: Workspace) {
-        ran("read_projects");
+    fn read_model(db: &dyn RootQueryDb, workspace: Workspace) {
+        ran("read_model");
         for project in workspace.projects(db).iter() {
             project.root(db);
             project.otp(db);
             project.buck_index(db);
             project.code_path(db);
             project.eqwalizer_config(db);
-            project.source_roots(db);
+            for source_root_id in project.source_roots(db).iter() {
+                db.source_root_app(*source_root_id).app(db);
+            }
+            for app in project.apps(db).iter() {
+                app.project(db);
+                app.name(db);
+                app.app_type(db);
+                app.dir(db);
+                app.files(db);
+                app.macros(db);
+                app.parse_transforms(db);
+                app.ebin(db);
+                app.buck_target_name(db);
+                app.include_dirs(db);
+                app.include_path(db);
+                app.src_dirs(db);
+                app.extra_src_dirs(db);
+                app.is_test_target(db);
+            }
         }
     }
 
-    #[salsa::tracked]
-    fn project_root(db: &dyn RootQueryDb, project: Project) -> String {
-        ran("project_root");
-        project.root(db).to_string()
-    }
-
-    #[salsa::tracked]
-    fn project_eqwalizer_config(db: &dyn RootQueryDb, project: Project) -> bool {
-        ran("project_eqwalizer_config");
-        project.eqwalizer_config(db).enable_all
-    }
-
     #[derive(Default)]
-    struct Model {
-        db: TestDB,
+    pub(crate) struct Model {
+        pub(crate) db: TestDB,
         file_map: FileMap,
     }
 
     impl Model {
-        fn lower(&mut self, projects: &[elp_project_model::Project]) {
+        pub(crate) fn lower(&mut self, projects: &[elp_project_model::Project]) {
             let project_apps = ProjectApps::new(projects, IncludeOtp::No);
             lower(&mut self.db, &self.file_map, &project_apps);
         }
@@ -241,13 +519,45 @@ mod tests {
         fn projects(&self) -> Vec<Project> {
             Workspace::get(&self.db).projects(&self.db).to_vec()
         }
+
+        pub(crate) fn project(&self, idx: usize) -> Project {
+            Workspace::get(&self.db).projects(&self.db)[idx]
+        }
+
+        fn apps(&self, idx: usize) -> Vec<App> {
+            self.project(idx).apps(&self.db).to_vec()
+        }
+
+        pub(crate) fn app_named(&self, idx: usize, name: &str) -> App {
+            self.apps(idx)
+                .into_iter()
+                .find(|app| app.name(&self.db).0 == name)
+                .unwrap_or_else(|| panic!("project {idx} should have an app {name}"))
+        }
+
+        pub(crate) fn file_id(&self, path: &str) -> FileId {
+            self.file_map
+                .file_id(&VfsPath::new_real_path(path.to_string()))
+                .unwrap_or_else(|| panic!("{path} should be interned"))
+        }
+
+        fn listing_apps(&self, path: &str) -> Vec<App> {
+            let db = &self.db;
+            let file = db.file(self.file_id(path));
+            self.projects()
+                .iter()
+                .flat_map(|project| project.apps(db).iter())
+                .filter(|app| app.files(db).contains(&file))
+                .copied()
+                .collect()
+        }
     }
 
-    fn path(path: &str) -> AbsPathBuf {
+    pub(crate) fn path(path: &str) -> AbsPathBuf {
         AbsPathBuf::assert(path.into())
     }
 
-    fn app(name: &str, dir: &str) -> ProjectAppData {
+    pub(crate) fn app(name: &str, dir: &str) -> ProjectAppData {
         ProjectAppData::fixture_app_data(
             AppName(name.to_string()),
             path(dir),
@@ -257,7 +567,26 @@ mod tests {
         )
     }
 
-    fn json_project(root: &str, apps: Vec<ProjectAppData>) -> elp_project_model::Project {
+    pub(crate) fn listing(mut app: ProjectAppData, files: &[&str]) -> ProjectAppData {
+        app.applicable_files = Some(FxHashSet::from_iter(files.iter().map(|file| path(file))));
+        app
+    }
+
+    fn with_macro(mut app: ProjectAppData, name: &str) -> ProjectAppData {
+        app.macros.push(eetf::Atom::from(name).into());
+        app
+    }
+
+    pub(crate) fn target(mut app: ProjectAppData, label: &str) -> ProjectAppData {
+        app.buck_target_name = Some(label.to_string());
+        app
+    }
+
+    /// A JSON project at `root`.
+    pub(crate) fn json_project(
+        root: &str,
+        apps: Vec<ProjectAppData>,
+    ) -> elp_project_model::Project {
         let mut project = elp_project_model::Project::empty(Otp {
             lib_dir: path("/otp"),
         });
@@ -269,103 +598,187 @@ mod tests {
     }
 
     #[test]
-    fn an_identical_lowering_sets_no_project_field() {
-        let projects = [
-            json_project("/p1", vec![app("a", "/p1/a")]),
-            json_project("/p2", vec![app("b", "/p2/b")]),
-        ];
+    fn an_identical_lowering_sets_nothing() {
+        let projects = [json_project(
+            "/p",
+            vec![
+                listing(with_macro(app("a", "/p/a"), "A"), &["/p/a/src/a.erl"]),
+                app("b", "/p/b"),
+            ],
+        )];
         let mut model = Model::default();
         model.lower(&projects);
         let workspace = Workspace::get(&model.db);
         assert_eq_expected!(
-            vec!["read_projects"],
-            runs(|| read_projects(&model.db, workspace))
+            vec!["read_model"],
+            runs(|| read_model(&model.db, workspace))
         );
 
         model.lower(&projects);
         assert_eq_expected!(
             Vec::<&str>::new(),
-            runs(|| read_projects(&model.db, workspace)),
+            runs(|| read_model(&model.db, workspace)),
             "after an identical lowering"
         );
     }
 
     #[test]
-    fn a_changed_project_field_sets_only_that_field() {
-        let project = |root: &str, enable_all: bool| {
-            let mut project = json_project(root, vec![app("a", &format!("{root}/a"))]);
-            project.eqwalizer_config = EqwalizerConfig {
-                enable_all,
-                ..EqwalizerConfig::default()
-            };
-            project
-        };
+    fn a_removed_app_is_cleared_and_returns_with_its_input() {
+        let with_b = [json_project(
+            "/p",
+            vec![
+                app("a", "/p/a"),
+                listing(with_macro(app("b", "/p/b"), "B"), &["/p/b/src/b.erl"]),
+            ],
+        )];
         let mut model = Model::default();
-        model.lower(&[project("/p1", false), project("/p2", false)]);
-        let [p1, p2] = [model.projects()[0], model.projects()[1]];
-        let db = &model.db;
-        runs(|| {
-            project_root(db, p1);
-            project_eqwalizer_config(db, p1);
-            project_eqwalizer_config(db, p2);
-        });
+        model.lower(&with_b);
+        let [a, b] = [model.app_named(0, "a"), model.app_named(0, "b")];
 
-        model.lower(&[project("/p1", true), project("/p2", false)]);
+        model.lower(&[json_project("/p", vec![app("a", "/p/a")])]);
+        assert_eq_expected!(vec![a], model.apps(0));
         let db = &model.db;
-        let p1_config = runs(|| {
-            project_eqwalizer_config(db, p1);
-        });
-        assert_eq_expected!(
-            vec!["project_eqwalizer_config"],
-            p1_config,
-            "p1's eqWAlizer config changed"
+        assert!(
+            b.files(db).is_empty(),
+            "the removed app's files are cleared"
         );
-        let p2_config = runs(|| {
-            project_eqwalizer_config(db, p2);
-        });
-        assert_eq_expected!(Vec::<&str>::new(), p2_config, "p2's didn't");
-        let p1_root = runs(|| {
-            project_root(db, p1);
-        });
-        assert_eq_expected!(Vec::<&str>::new(), p1_root, "p1's root didn't");
+        assert!(
+            b.macros(db).is_empty(),
+            "the removed app's macros are cleared"
+        );
+        assert!(
+            b.src_dirs(db).is_empty(),
+            "the removed app's source dirs are cleared"
+        );
+        assert_eq_expected!(Vec::<App>::new(), model.listing_apps("/p/b/src/b.erl"));
+
+        model.lower(&with_b);
+        assert_eq_expected!(vec![a, b], model.apps(0), "the app returns with its input");
+        assert_eq_expected!(1, b.macros(&model.db).len());
+        assert_eq_expected!(vec![b], model.listing_apps("/p/b/src/b.erl"));
     }
 
     #[test]
-    fn app_named_finds_the_last_app_with_the_name() {
+    fn apps_sharing_a_directory_stay_distinct() {
         let mut model = Model::default();
         model.lower(&[json_project(
             "/p",
-            vec![app("a", "/p/a1"), app("b", "/p/b"), app("a", "/p/a2")],
+            vec![app("mock", "/p/mock"), app("mock_handler_only", "/p/mock")],
         )]);
-        let project = model.projects()[0];
-        let db = &model.db;
-        let dir = |name: &str| {
-            let source_root_id = project.app_named(db, AppName(name.to_string()))?;
-            Some(db.app_data(source_root_id)?.dir.to_string())
-        };
-        assert_eq_expected!(Some("/p/a2".to_string()), dir("a"), "the last app named a");
-        assert_eq_expected!(Some("/p/b".to_string()), dir("b"));
-        assert_eq_expected!(None, dir("c"), "no app is named c");
+        let mock = model.app_named(0, "mock");
+        let handler_only = model.app_named(0, "mock_handler_only");
+        assert_ne!(mock, handler_only, "each app should have its own input");
+
+        model.lower(&[json_project(
+            "/p",
+            vec![app("mock_handler_only", "/p/mock"), app("mock", "/p/mock")],
+        )]);
+        assert_eq!(
+            mock,
+            model.app_named(0, "mock"),
+            "mock should keep its input after reordering"
+        );
+        assert_eq!(
+            handler_only,
+            model.app_named(0, "mock_handler_only"),
+            "mock_handler_only should keep its input after reordering"
+        );
     }
 
     #[test]
-    fn app_named_falls_back_to_the_otp_app() {
-        let (db, _) = TestDB::with_fixture(
-            r#"
-//- /src/a.erl
--module(a).
-//- /opt/lib/comp-1.3/src/comp.erl otp_app:/opt/lib/comp-1.3
--module(comp).
-"#,
+    fn apps_sharing_a_key_keep_their_inputs_in_order() {
+        let projects = [json_project(
+            "/p",
+            vec![
+                with_macro(app("a", "/p/a"), "FIRST"),
+                with_macro(app("a", "/p/a"), "SECOND"),
+            ],
+        )];
+        let mut model = Model::default();
+        model.lower(&projects);
+        let workspace = Workspace::get(&model.db);
+        runs(|| read_model(&model.db, workspace));
+
+        model.lower(&projects);
+        assert_eq_expected!(
+            Vec::<&str>::new(),
+            runs(|| read_model(&model.db, workspace)),
+            "each app should keep its input"
         );
-        let project = Workspace::get(&db).projects(&db)[0];
-        let source_root_id = project
-            .app_named(&db, AppName("comp".to_string()))
-            .expect("comp should be found in the OTP project");
-        let app_data = db
-            .app_data(source_root_id)
-            .expect("the source root should have an app");
-        assert_eq_expected!(AppType::Otp, app_data.app_type);
+    }
+
+    #[test]
+    fn a_target_in_overlapping_projects_is_an_app_of_each() {
+        let projects = ["/p1", "/p2"]
+            .map(|root| json_project(root, vec![target(app("a", "/cell/a"), "cell//a:a")]));
+        let mut model = Model::default();
+        model.lower(&projects);
+        let [in_p1, in_p2] = [model.apps(0), model.apps(1)];
+        assert_ne!(in_p1, in_p2, "each project should have its own app");
+        assert_eq!(
+            model.project(0),
+            in_p1[0].project(&model.db),
+            "the first project's app should be in the first project"
+        );
+        assert_eq!(
+            model.project(1),
+            in_p2[0].project(&model.db),
+            "the second project's app should be in the second project"
+        );
+
+        model.lower(&projects);
+        assert_eq!(in_p1, model.apps(0), "the apps should keep their inputs");
+        assert_eq!(in_p2, model.apps(1), "the apps should keep their inputs");
+    }
+
+    #[test]
+    fn a_generated_input_goes_to_the_first_project_listing_it() {
+        let generating = |root: &str| {
+            let mut app = target(app("a", "/cell/a"), "cell//a:a");
+            app.gen_src_files = Some(FxHashSet::from_iter([path("/cell/a/a.thrift")]));
+            json_project(root, vec![app])
+        };
+        let mut model = Model::default();
+        let projects = [generating("/p2"), generating("/p1")];
+        let gen_src_apps = lower(
+            &mut model.db,
+            &model.file_map,
+            &ProjectApps::new(&projects, IncludeOtp::No),
+        );
+
+        let owner = gen_src_apps[&path("/cell/a/a.thrift")];
+        assert_eq!(
+            model.project(0),
+            owner.project(&model.db),
+            "the generated input should go to the first project"
+        );
+    }
+
+    #[test]
+    fn apps_are_sorted_by_key_and_files_by_path() {
+        let mut model = Model::default();
+        model.lower(&[json_project(
+            "/p",
+            vec![
+                listing(app("b", "/p/b"), &["/p/b/src/z.erl", "/p/b/src/a.erl"]),
+                app("a", "/p/a"),
+            ],
+        )]);
+        let db = &model.db;
+        let names: Vec<String> = model
+            .apps(0)
+            .iter()
+            .map(|app| app.name(db).0.clone())
+            .collect();
+        assert_eq_expected!(vec!["a".to_string(), "b".to_string()], names);
+        let b = model.app_named(0, "b");
+        let files: Vec<String> = b
+            .files(db)
+            .iter()
+            .map(|file| file.path(db).to_string())
+            .collect();
+        let expected_files = vec!["/p/b/src/a.erl".to_string(), "/p/b/src/z.erl".to_string()];
+        assert_eq_expected!(expected_files, files);
     }
 
     #[test]
@@ -401,12 +814,21 @@ mod tests {
         let mut model = Model::default();
         model.lower(&both);
         let [p1, p2] = [model.projects()[0], model.projects()[1]];
+        let b = model.app_named(1, "b");
 
         model.lower(&both[..1]);
         assert_eq_expected!(vec![p1], model.projects());
         assert!(
             p2.source_roots(&model.db).is_empty(),
             "the removed project's source roots are cleared"
+        );
+        assert!(
+            p2.apps(&model.db).is_empty(),
+            "the removed project's apps are removed"
+        );
+        assert!(
+            b.src_dirs(&model.db).is_empty(),
+            "the removed project's apps are cleared"
         );
 
         model.lower(&both);
@@ -416,5 +838,45 @@ mod tests {
             "the project returns with its input"
         );
         assert_eq_expected!(1, p2.source_roots(&model.db).len());
+        assert_eq_expected!(vec![b], model.apps(1), "its app returns with its input");
+    }
+
+    #[test]
+    fn app_named_finds_the_last_app_with_the_name() {
+        let mut model = Model::default();
+        model.lower(&[json_project(
+            "/p",
+            vec![app("a", "/p/a1"), app("b", "/p/b"), app("a", "/p/a2")],
+        )]);
+        let project = model.projects()[0];
+        let db = &model.db;
+        let dir = |name: &str| {
+            Some(
+                project
+                    .app_named(db, AppName(name.to_string()))?
+                    .dir(db)
+                    .to_string(),
+            )
+        };
+        assert_eq_expected!(Some("/p/a2".to_string()), dir("a"), "the last app named a");
+        assert_eq_expected!(Some("/p/b".to_string()), dir("b"));
+        assert_eq_expected!(None, dir("c"), "no app is named c");
+    }
+
+    #[test]
+    fn app_named_falls_back_to_the_otp_app() {
+        let (db, _) = TestDB::with_fixture(
+            r#"
+//- /src/a.erl
+-module(a).
+//- /opt/lib/comp-1.3/src/comp.erl otp_app:/opt/lib/comp-1.3
+-module(comp).
+"#,
+        );
+        let project = Workspace::get(&db).projects(&db)[0];
+        let app = project
+            .app_named(&db, AppName("comp".to_string()))
+            .expect("comp should be found in the OTP project");
+        assert_eq_expected!(AppType::Otp, app.app_type(&db));
     }
 }

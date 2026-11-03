@@ -242,7 +242,7 @@ pub struct InternedInFileFunctionClause {
 
 #[elp_base_db::salsa::interned(no_lifetime)]
 pub struct InternedResolveInclude {
-    pub orig_app: Option<elp_base_db::AppDataId>,
+    pub orig_app: Option<elp_base_db::App>,
     pub include_id: InFile<IncludeAttributeId>,
 }
 

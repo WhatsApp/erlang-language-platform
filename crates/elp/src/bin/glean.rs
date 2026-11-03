@@ -1276,11 +1276,10 @@ impl GleanIndexer {
                         let include = &form_list[*idx];
                         let ast = include.form_id().get_ast(db, file_id);
                         let range = ast.syntax().text_range().into();
-                        if let Some(file) = db.resolve_include(
-                            db.app_data_id_by_file(file_id),
-                            InFile::new(file_id, *idx),
-                        ) && let Some((name, Some("hrl"))) =
-                            db.file(file).path(db).name_and_extension()
+                        if let Some(file) =
+                            db.resolve_include(db.file_app(file_id), InFile::new(file_id, *idx))
+                            && let Some((name, Some("hrl"))) =
+                                db.file(file).path(db).name_and_extension()
                         {
                             let target = parser::HeaderTarget {
                                 file_id: file.into(),

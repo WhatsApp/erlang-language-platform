@@ -88,9 +88,7 @@ impl GenericLinter for DuplicateIncludeLinter {
         let mut groups: FxHashMap<FileId, Vec<IncludeInfo>> = FxHashMap::default();
         for (include_idx, attr) in form_list.includes() {
             let in_file = InFile::new(ctx.file_id, include_idx);
-            if let Some(include_file_id) =
-                db.resolve_include(db.app_data_id_by_file(ctx.file_id), in_file)
-            {
+            if let Some(include_file_id) = db.resolve_include(db.file_app(ctx.file_id), in_file) {
                 let (is_include_lib, path) = match attr {
                     IncludeAttribute::Include { path, .. } => (false, path.clone()),
                     IncludeAttribute::IncludeLib { path, .. } => (true, path.clone()),
