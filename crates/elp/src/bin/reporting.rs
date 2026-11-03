@@ -118,6 +118,14 @@ impl<'a> Report<'a> {
         self.cli.progress(len, prefix)
     }
 
+    pub(crate) fn simple_progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
+        self.cli.simple_progress(len, prefix)
+    }
+
+    pub(crate) fn spinner(&self, prefix: &'static str) -> ProgressBar {
+        self.cli.spinner(prefix)
+    }
+
     pub(crate) fn write_system_stats(
         &mut self,
         host: AnalysisHost,

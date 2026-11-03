@@ -15,6 +15,7 @@
 
 use std::collections::hash_map::DefaultHasher;
 use std::env;
+use std::fmt;
 use std::fs;
 use std::hash::Hash;
 use std::hash::Hasher;
@@ -22,6 +23,7 @@ use std::io;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::BufWriter;
+use std::io::Read;
 use std::io::Write;
 use std::os::unix::net::UnixListener;
 use std::os::unix::net::UnixStream;
@@ -31,7 +33,10 @@ use std::process;
 use std::process::Child;
 use std::process::ExitStatus;
 use std::process::Stdio;
+use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering;
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
@@ -90,8 +95,10 @@ use elp_project_model::DiscoverConfig;
 use elp_project_model::ElpConfig;
 use elp_project_model::ProjectManifest;
 use elp_project_model::buck::BuckQueryConfig;
+use fxhash::FxHashMap;
 use indicatif::ProgressBar;
 use indicatif::ProgressDrawTarget;
+use indicatif::ProgressState;
 use indicatif::ProgressStyle;
 use indicatif::TermLike;
 use serde::Deserialize;
@@ -101,6 +108,8 @@ use serde::de::DeserializeOwned;
 use crate::args::Format;
 use crate::daemon_protocol::DaemonResponse;
 use crate::daemon_protocol::DoneMessage;
+use crate::daemon_protocol::ProgressKind;
+use crate::daemon_protocol::ProgressMessage;
 use crate::eqwalizer_cli;
 use crate::eqwalizer_cli::Eqwalize;
 use crate::eqwalizer_cli::EqwalizeAll;
@@ -344,17 +353,53 @@ impl Drop for DaemonRequestTelemetry {
 // DaemonCli — Cli implementation for the daemon
 // ---------------------------------------------------------------------------
 
+#[derive(Clone, Debug)]
+struct DaemonWriter(Arc<Mutex<DaemonSink>>);
+
+#[derive(Debug)]
+enum DaemonSink {
+    Client(UnixStream),
+    Startup(fs::File),
+}
+
+impl DaemonWriter {
+    fn new(sink: DaemonSink) -> Self {
+        Self(Arc::new(Mutex::new(sink)))
+    }
+}
+
+impl Write for DaemonWriter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let mut sink = self.0.lock().expect("DaemonWriter poisoned");
+        match &mut *sink {
+            DaemonSink::Client(writer) => writer.write_all(buf),
+            DaemonSink::Startup(writer) => writer.write_all(buf),
+        }?;
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        let mut sink = self.0.lock().expect("DaemonWriter poisoned");
+        match &mut *sink {
+            DaemonSink::Client(writer) => writer.flush(),
+            DaemonSink::Startup(writer) => writer.flush(),
+        }
+    }
+}
+
 /// Where a [`DaemonCli`]'s command results (stdout) go.
 enum DaemonOut {
     /// Running a client's command: results stream to the connected client.
-    Client(BufWriter<UnixStream>),
+    Client(BufWriter<DaemonWriter>),
+    /// Clientless startup: results are logged, progress is replayed to waiting clients.
+    Startup(DaemonWriter),
     /// Clientless project load (daemon startup): results go to the daemon log.
     Log,
 }
 
 /// The one `Cli` the daemon uses, for both project loads and client commands.
-/// Progress always narrates into `daemon.log` (the real `Cli` hides its bars on
-/// a non-TTY); `info()` surfaces user-facing status — to the connected client
+/// Progress narrates into `daemon.log` and streams its state to the
+/// connected client; `info()` surfaces user-facing status — to the connected client
 /// when there is one, always echoed to the log; `err()` and any stray output go
 /// to the log. The `out` sink is the only thing that varies: a client's socket
 /// for a command, or the log for a clientless load.
@@ -368,9 +413,73 @@ impl DaemonCli {
     /// For running a client's command: results stream back over the socket.
     fn client(stream: UnixStream) -> Self {
         Self {
-            out: DaemonOut::Client(BufWriter::new(stream)),
+            out: DaemonOut::Client(BufWriter::new(DaemonWriter::new(DaemonSink::Client(
+                stream,
+            )))),
             stderr: io::stderr(),
         }
+    }
+
+    fn startup(progress_file: fs::File) -> Self {
+        Self {
+            out: DaemonOut::Startup(DaemonWriter::new(DaemonSink::Startup(progress_file))),
+            stderr: io::stderr(),
+        }
+    }
+
+    fn progress_bar(&self, len: u64, prefix: &'static str, kind: ProgressKind) -> ProgressBar {
+        let writer = match &self.out {
+            DaemonOut::Client(writer) => writer.get_ref(),
+            DaemonOut::Startup(writer) => writer,
+            DaemonOut::Log => {
+                return match kind {
+                    ProgressKind::Spinner => log_spinner(prefix),
+                    ProgressKind::Bar | ProgressKind::Simple => log_progress_bar(len, prefix),
+                };
+            }
+        };
+        let pb = match kind {
+            ProgressKind::Spinner => ProgressBar::new_spinner(),
+            ProgressKind::Bar | ProgressKind::Simple => ProgressBar::new(len),
+        };
+        pb.set_prefix(prefix);
+        let forward = Arc::new(ForwardProgress {
+            writer: writer.clone(),
+            progress: Mutex::new(ProgressMessage {
+                id: NEXT_PROGRESS_ID.fetch_add(1, Ordering::Relaxed),
+                kind,
+                prefix: prefix.to_owned(),
+                message: String::new(),
+                len,
+                pos: 0,
+                elapsed_millis: 0,
+                finished: false,
+            }),
+        });
+        let tracker = forward.clone();
+        pb.set_style(
+            ProgressStyle::with_template("{client_progress}{msg}")
+                .expect("BUG: invalid template")
+                .with_key(
+                    "client_progress",
+                    move |state: &ProgressState, _out: &mut dyn fmt::Write| {
+                        let mut progress = tracker.progress.lock().expect("progress poisoned");
+                        progress.len = state.len().unwrap_or(0);
+                        progress.pos = state.pos();
+                        progress.elapsed_millis = state.elapsed().as_millis() as u64;
+                        progress.finished = state.is_finished();
+                    },
+                ),
+        );
+        pb.set_draw_target(ProgressDrawTarget::term_like_with_hz(
+            Box::new(LogProgress {
+                forward: Some(forward),
+                ..LogProgress::new()
+            }),
+            LOG_PROGRESS_HZ,
+        ));
+        pb.force_draw();
+        pb
     }
 
     /// For a clientless project load: everything goes to `daemon.log`.
@@ -386,14 +495,14 @@ impl Write for DaemonCli {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match &mut self.out {
             DaemonOut::Client(writer) => writer.write(buf),
-            DaemonOut::Log => self.stderr.write(buf),
+            DaemonOut::Startup(_) | DaemonOut::Log => self.stderr.write(buf),
         }
     }
 
     fn flush(&mut self) -> io::Result<()> {
         match &mut self.out {
             DaemonOut::Client(writer) => writer.flush(),
-            DaemonOut::Log => self.stderr.flush(),
+            DaemonOut::Startup(_) | DaemonOut::Log => self.stderr.flush(),
         }
     }
 }
@@ -414,15 +523,15 @@ impl WriteColor for DaemonCli {
 
 impl Cli for DaemonCli {
     fn progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
-        log_progress_bar(len, prefix)
+        self.progress_bar(len, prefix, ProgressKind::Bar)
     }
 
     fn simple_progress(&self, len: u64, prefix: &'static str) -> ProgressBar {
-        log_progress_bar(len, prefix)
+        self.progress_bar(len, prefix, ProgressKind::Simple)
     }
 
     fn spinner(&self, prefix: &'static str) -> ProgressBar {
-        log_spinner(prefix)
+        self.progress_bar(0, prefix, ProgressKind::Spinner)
     }
 
     fn err(&mut self) -> &mut dyn Write {
@@ -455,6 +564,38 @@ impl Cli for DaemonCli {
 /// keeps a tight per-item loop (file loading, per-module eqwalizing) from
 /// forcing a synchronous redraw on every update.
 const LOG_PROGRESS_HZ: u8 = 2;
+const STARTUP_PROGRESS_FILE: &str = "startup.progress.jsonl";
+static NEXT_PROGRESS_ID: AtomicU64 = AtomicU64::new(0);
+
+/// The draw target supplies the untruncated `{msg}`; the tracker supplies its state.
+#[derive(Debug)]
+struct ForwardProgress {
+    writer: DaemonWriter,
+    progress: Mutex<ProgressMessage>,
+}
+
+impl ForwardProgress {
+    fn send(&self, message: &str) -> String {
+        let mut progress = self.progress.lock().expect("progress poisoned");
+        progress.message = message.trim_end().to_owned();
+        let log = match progress.kind {
+            ProgressKind::Spinner => format!("{} {}", progress.prefix, progress.message),
+            ProgressKind::Bar | ProgressKind::Simple => {
+                format!("{} {}/{}", progress.prefix, progress.pos, progress.len)
+            }
+        };
+        let response = DaemonResponse::<()>::Progress {
+            progress: progress.clone(),
+        };
+        if let Ok(mut json) = serde_json::to_string(&response) {
+            json.push('\n');
+            let mut writer = self.writer.clone();
+            let _ = writer.write_all(json.as_bytes());
+            let _ = writer.flush();
+        }
+        log
+    }
+}
 
 /// A count-style progress bar (`"{prefix} {pos}/{len}"`) that narrates to the
 /// log. Used for positional phases (loading files, eqwalizing modules), where a
@@ -502,6 +643,7 @@ fn log_spinner(prefix: &'static str) -> ProgressBar {
 struct LogProgress {
     buffer: Mutex<String>,
     last: Mutex<Option<String>>,
+    forward: Option<Arc<ForwardProgress>>,
 }
 
 impl LogProgress {
@@ -509,6 +651,7 @@ impl LogProgress {
         Self {
             buffer: Mutex::new(String::new()),
             last: Mutex::new(None),
+            forward: None,
         }
     }
 
@@ -578,6 +721,10 @@ impl TermLike for LogProgress {
         let content = {
             let mut buffer = self.buffer.lock().expect("LogProgress buffer poisoned");
             std::mem::take(&mut *buffer)
+        };
+        let content = match &self.forward {
+            Some(forward) => forward.send(&content),
+            None => content,
         };
         let mut last = self.last.lock().expect("LogProgress last poisoned");
         for line in Self::distinct_lines(&content, &mut last) {
@@ -675,7 +822,7 @@ fn run_daemon_server(args: &DaemonRun, query_config: &BuckQueryConfig) -> Result
     // Load project from already-discovered manifest (no re-discovery). Narrate
     // progress into daemon.log via a log-backed Cli (the real Cli hides its
     // progress bars when stderr is a redirected file).
-    let mut daemon_cli = DaemonCli::log();
+    let mut daemon_cli = DaemonCli::startup(fs::File::create(dir.join(STARTUP_PROGRESS_FILE))?);
     daemon_cli.info(&format!("Loading project from {}...", root.display()))?;
     let mut loaded = load::load_project_from_manifest(
         &daemon_cli,
@@ -713,6 +860,7 @@ fn run_daemon_server(args: &DaemonRun, query_config: &BuckQueryConfig) -> Result
     // Listen on Unix socket — use a dedicated thread for blocking accept()
     // and a channel to pass connections to the main loop. This avoids the
     // busy-wait of set_nonblocking + sleep and eliminates connection latency.
+    daemon_cli = DaemonCli::log();
     let listener = UnixListener::bind(&sock)?;
     let (conn_tx, conn_rx) = crossbeam_channel::unbounded();
     thread::spawn(move || {
@@ -1080,6 +1228,76 @@ struct DaemonCommandResult<T = ()> {
     outcome: Option<T>,
 }
 
+#[derive(Default)]
+struct DaemonProgress(FxHashMap<u64, ProgressBar>);
+
+impl DaemonProgress {
+    fn update(&mut self, report: &Report<'_>, progress: ProgressMessage) {
+        let pb = self
+            .0
+            .entry(progress.id)
+            .or_insert_with(|| match progress.kind {
+                ProgressKind::Bar => report.progress(progress.len, ""),
+                ProgressKind::Simple => report.simple_progress(progress.len, ""),
+                ProgressKind::Spinner => report.spinner(""),
+            });
+        pb.set_prefix(progress.prefix);
+        pb.set_length(progress.len);
+        pb.set_position(progress.pos);
+        pb.set_elapsed(Duration::from_millis(progress.elapsed_millis));
+        pb.set_message(progress.message);
+        if progress.finished {
+            pb.finish();
+            self.0.remove(&progress.id);
+        }
+    }
+}
+
+impl Drop for DaemonProgress {
+    fn drop(&mut self) {
+        for pb in self.0.values() {
+            pb.finish_and_clear();
+        }
+    }
+}
+
+#[derive(Default)]
+struct StartupProgress {
+    reader: Option<fs::File>,
+    pending: Vec<u8>,
+    progress: DaemonProgress,
+}
+
+impl StartupProgress {
+    fn read(&mut self, dir: &Path, report: &Report<'_>) -> Result<()> {
+        if self.reader.is_none() {
+            self.reader = match fs::File::open(dir.join(STARTUP_PROGRESS_FILE)) {
+                Ok(file) => Some(file),
+                Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+                Err(error) => return Err(error.into()),
+            };
+        }
+        self.reader
+            .as_mut()
+            .expect("reader opened")
+            .read_to_end(&mut self.pending)?;
+        while let Some(end) = self.pending.iter().position(|byte| *byte == b'\n') {
+            let line: Vec<_> = self.pending.drain(..=end).collect();
+            let response = match serde_json::from_slice::<DaemonResponse<()>>(&line) {
+                Ok(response) => response,
+                Err(error) => {
+                    log::warn!("Skipping malformed daemon startup progress record: {error}");
+                    continue;
+                }
+            };
+            if let DaemonResponse::Progress { progress } = response {
+                self.progress.update(report, progress);
+            }
+        }
+        Ok(())
+    }
+}
+
 fn connect_and_run<T>(
     command_line: &str,
     format: Format,
@@ -1152,6 +1370,7 @@ where
     let mut outcome = None;
     let (command_failed, restart_requested) = {
         let mut report = Report::for_command(cli, format);
+        let mut progress = DaemonProgress::default();
         let mut command_failed = false;
         let mut emitted_diagnostic = false;
         let mut received_done = false;
@@ -1162,6 +1381,7 @@ where
             let response: DaemonResponse<T> = serde_json::from_str(&line)?;
             match response {
                 DaemonResponse::Info { message } => report.info(&message)?,
+                DaemonResponse::Progress { progress: update } => progress.update(&report, update),
                 DaemonResponse::Done {
                     message:
                         DoneMessage {
@@ -1283,9 +1503,13 @@ fn wait_for_daemon(
     // Poll at 100ms so the reported startup time is accurate (a coarser
     // interval would round fast starts up to a full tick).
     let start = Instant::now();
+    let mut report = Report::for_command(cli, Format::Human);
+    let mut progress = StartupProgress::default();
     loop {
+        progress.read(&endpoint.dir, &report)?;
         if let Ok(s) = UnixStream::connect(&endpoint.sock) {
-            cli.info(&format!(
+            progress.read(&endpoint.dir, &report)?;
+            report.info(&format!(
                 "elp daemon started in {}",
                 format_duration(start.elapsed())
             ))?;
@@ -1616,6 +1840,7 @@ fn show_status(project: &Path, profile: &str, rebar: bool, cli: &mut dyn Cli) ->
 fn cleanup_stale_in_dir(dir: &Path) {
     let sock = dir.join("daemon.sock");
     let pid_file = dir.join("daemon.pid");
+    let _ = fs::remove_file(dir.join(STARTUP_PROGRESS_FILE));
 
     if sock.exists() {
         let _ = fs::remove_file(&sock);
@@ -1644,6 +1869,291 @@ mod tests {
     use super::*;
     use crate::args::Severity;
     use crate::daemon_protocol::RenderedDiagnostic;
+
+    #[test]
+    fn daemon_progress_streams_updates_and_completion() {
+        let (server, client) = UnixStream::pair().unwrap();
+        client
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        let mut cli = DaemonCli::client(server);
+        let pb = cli.progress(3, "EqWAlizing");
+        let message = "module_name, ".repeat(50);
+        pb.set_message(message.trim_end().to_owned());
+        pb.set_position(1);
+        pb.force_draw();
+        cli.info("status").unwrap();
+        pb.finish();
+        writeln!(
+            cli,
+            "{}",
+            serde_json::to_string(&DaemonResponse::<()>::success(None)).unwrap()
+        )
+        .unwrap();
+        cli.flush().unwrap();
+        drop(pb);
+        drop(cli);
+
+        let responses: Vec<DaemonResponse<()>> = BufReader::new(client)
+            .lines()
+            .map(|line| serde_json::from_str(&line.unwrap()).unwrap())
+            .collect();
+        let updates: Vec<_> = responses
+            .iter()
+            .filter_map(|response| {
+                if let DaemonResponse::Progress { progress } = response {
+                    Some(progress)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        assert_eq_expected!(0, updates.first().unwrap().pos);
+        assert!(
+            updates
+                .iter()
+                .any(|update| update.pos == 1 && !update.finished)
+        );
+        let final_update = updates.last().unwrap();
+        assert_eq_expected!(ProgressKind::Bar, final_update.kind);
+        assert_eq_expected!("EqWAlizing", final_update.prefix.as_str());
+        assert_eq_expected!(message.trim_end(), final_update.message.as_str());
+        assert_eq_expected!(3, final_update.len);
+        assert_eq_expected!(3, final_update.pos);
+        assert!(final_update.finished);
+        assert!(updates.iter().all(|update| update.id == final_update.id));
+        assert!(responses.iter().any(
+            |response| matches!(response, DaemonResponse::Info { message } if message == "status")
+        ));
+        assert!(matches!(
+            responses.last(),
+            Some(DaemonResponse::Done { .. })
+        ));
+    }
+
+    #[test]
+    fn daemon_progress_ignores_disconnected_clients() {
+        let (server, client) = UnixStream::pair().unwrap();
+        drop(client);
+        let cli = DaemonCli::client(server);
+        let pb = cli.progress(2, "EqWAlizing");
+        pb.inc(1);
+        pb.force_draw();
+        pb.finish();
+    }
+
+    fn progress_message(id: u64, kind: ProgressKind, prefix: &str) -> ProgressMessage {
+        ProgressMessage {
+            id,
+            kind,
+            prefix: prefix.to_owned(),
+            message: String::new(),
+            len: 0,
+            pos: 0,
+            elapsed_millis: 0,
+            finished: false,
+        }
+    }
+
+    #[test]
+    fn daemon_progress_updates_client_bar_without_stdout() {
+        let mut cli = elp::cli::Fake::default();
+        {
+            let report = Report::for_command(&mut cli, Format::Json);
+            let mut progress = DaemonProgress::default();
+            let mut update = progress_message(0, ProgressKind::Bar, "EqWAlizing");
+            update.len = 4;
+            update.pos = 2;
+            update.message = "foo, bar".to_owned();
+            progress.update(&report, update.clone());
+            let pb = progress.0[&0].clone();
+            assert_eq_expected!("EqWAlizing", pb.prefix());
+            assert_eq_expected!(Some(4), pb.length());
+            assert_eq_expected!(2, pb.position());
+            assert_eq_expected!("foo, bar", pb.message());
+
+            update.pos = 4;
+            update.finished = true;
+            progress.update(&report, update);
+            assert!(pb.is_finished());
+            assert!(progress.0.is_empty());
+
+            progress.update(
+                &report,
+                progress_message(1, ProgressKind::Simple, "Loading applications"),
+            );
+            progress.update(
+                &report,
+                progress_message(2, ProgressKind::Spinner, "Seeding database"),
+            );
+            let unfinished: Vec<_> = progress.0.values().cloned().collect();
+            assert_eq_expected!(2, unfinished.len());
+            drop(progress);
+            assert!(unfinished.iter().all(ProgressBar::is_finished));
+        }
+        let (stdout, stderr) = cli.to_strings();
+        assert_eq_expected!("", stdout.as_str());
+        assert_eq_expected!("", stderr.as_str());
+    }
+
+    #[test]
+    fn startup_progress_streams_all_loading_styles() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = fs::File::create(dir.path().join(STARTUP_PROGRESS_FILE)).unwrap();
+        let cli = DaemonCli::startup(file);
+        let loading = cli.spinner("Loading build info");
+        loading.set_elapsed(Duration::from_secs(49));
+        loading.set_message("Project info loaded");
+        loading.force_draw();
+        loading.finish();
+        let applications = cli.simple_progress(0, "Loading applications");
+        applications.set_length(12);
+        applications.set_position(6);
+        applications.force_draw();
+        applications.finish();
+        cli.spinner("Seeding database").finish();
+        drop(cli);
+
+        let responses: Vec<DaemonResponse<()>> =
+            fs::read_to_string(dir.path().join(STARTUP_PROGRESS_FILE))
+                .unwrap()
+                .lines()
+                .map(|line| serde_json::from_str(line).unwrap())
+                .collect();
+        let updates: Vec<_> = responses
+            .iter()
+            .filter_map(|response| {
+                if let DaemonResponse::Progress { progress } = response {
+                    Some(progress)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        assert!(
+            updates
+                .iter()
+                .any(|update| update.kind == ProgressKind::Spinner
+                    && update.prefix == "Loading build info"
+                    && update.message == "Project info loaded"
+                    && update.elapsed_millis >= 49_000
+                    && update.finished)
+        );
+        assert!(
+            updates
+                .iter()
+                .any(|update| update.kind == ProgressKind::Simple
+                    && update.prefix == "Loading applications"
+                    && update.len == 12
+                    && update.pos == 6)
+        );
+        assert!(
+            updates
+                .iter()
+                .any(|update| update.kind == ProgressKind::Spinner
+                    && update.prefix == "Seeding database"
+                    && update.finished)
+        );
+
+        let mut cli = elp::cli::Fake::default();
+        let report = Report::for_command(&mut cli, Format::Human);
+        let mut startup = StartupProgress::default();
+        startup.read(dir.path(), &report).unwrap();
+        assert!(startup.progress.0.is_empty());
+        assert!(startup.pending.is_empty());
+    }
+
+    #[test]
+    fn startup_progress_buffers_partial_records_and_does_not_replay() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut writer = fs::File::create(dir.path().join(STARTUP_PROGRESS_FILE)).unwrap();
+        let mut update = progress_message(3, ProgressKind::Spinner, "Loading build info");
+        update.message = "föo".to_owned();
+        update.elapsed_millis = 49_000;
+        let response = DaemonResponse::<()>::Progress {
+            progress: update.clone(),
+        };
+        let line = format!("{}\n", serde_json::to_string(&response).unwrap());
+        let split = line.find('ö').unwrap() + 1;
+        writer.write_all(&line.as_bytes()[..split]).unwrap();
+        writer.flush().unwrap();
+        let mut cli = elp::cli::Fake::default();
+        let report = Report::for_command(&mut cli, Format::Json);
+        let mut startup = StartupProgress::default();
+        startup.read(dir.path(), &report).unwrap();
+        assert!(startup.progress.0.is_empty());
+        writer.write_all(&line.as_bytes()[split..]).unwrap();
+        writer.flush().unwrap();
+        startup.read(dir.path(), &report).unwrap();
+        let pb = startup.progress.0[&3].clone();
+        assert_eq_expected!("Loading build info", pb.prefix());
+        assert_eq_expected!("föo", pb.message());
+        assert!(pb.elapsed() >= Duration::from_secs(49));
+        assert!(startup.pending.is_empty());
+
+        update.finished = true;
+        writeln!(
+            writer,
+            "{}",
+            serde_json::to_string(&DaemonResponse::<()>::Progress { progress: update }).unwrap()
+        )
+        .unwrap();
+        writer.flush().unwrap();
+        startup.read(dir.path(), &report).unwrap();
+        assert!(pb.is_finished());
+        assert!(startup.progress.0.is_empty());
+        startup.read(dir.path(), &report).unwrap();
+        assert!(startup.progress.0.is_empty());
+    }
+
+    #[test]
+    fn startup_progress_skips_malformed_records_and_continues() {
+        for malformed in ["{not JSON}\n", "{\"type\":\"progress\"}\n"] {
+            let dir = tempfile::tempdir().unwrap();
+            let mut writer = fs::File::create(dir.path().join(STARTUP_PROGRESS_FILE)).unwrap();
+            let mut before = progress_message(1, ProgressKind::Spinner, "Loading build info");
+            before.message = "before".to_owned();
+            let mut after = progress_message(2, ProgressKind::Simple, "Loading applications");
+            after.message = "after".to_owned();
+            after.len = 10;
+            after.pos = 3;
+            writeln!(
+                writer,
+                "{}",
+                serde_json::to_string(&DaemonResponse::<()>::Progress { progress: before })
+                    .unwrap()
+            )
+            .unwrap();
+            writer.write_all(malformed.as_bytes()).unwrap();
+            writeln!(
+                writer,
+                "{}",
+                serde_json::to_string(&DaemonResponse::<()>::Progress { progress: after }).unwrap()
+            )
+            .unwrap();
+            writer.flush().unwrap();
+
+            let mut cli = elp::cli::Fake::default();
+            {
+                let report = Report::for_command(&mut cli, Format::Json);
+                let mut startup = StartupProgress::default();
+                startup
+                    .read(dir.path(), &report)
+                    .expect("malformed progress must not abort startup replay");
+                assert_eq_expected!(2, startup.progress.0.len());
+                assert_eq_expected!("before", startup.progress.0[&1].message());
+                assert_eq_expected!("after", startup.progress.0[&2].message());
+                assert_eq_expected!(Some(10), startup.progress.0[&2].length());
+                assert_eq_expected!(3, startup.progress.0[&2].position());
+                assert!(startup.pending.is_empty());
+                startup.read(dir.path(), &report).unwrap();
+                assert_eq_expected!(2, startup.progress.0.len());
+            }
+            let (stdout, stderr) = cli.to_strings();
+            assert_eq_expected!("", stdout.as_str());
+            assert_eq_expected!("", stderr.as_str());
+        }
+    }
 
     #[test]
     fn connection_errors_are_unavailable_only_before_diagnostic_output() {

@@ -43,10 +43,34 @@ pub(crate) enum DaemonResponse<T = ()> {
     Info {
         message: String,
     },
+    Progress {
+        #[serde(flatten)]
+        progress: ProgressMessage,
+    },
     Diagnostic {
         diagnostic: arc_types::Diagnostic,
         rendered: Option<RenderedDiagnostic>,
     },
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum ProgressKind {
+    Bar,
+    Simple,
+    Spinner,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub(crate) struct ProgressMessage {
+    pub(crate) id: u64,
+    pub(crate) kind: ProgressKind,
+    pub(crate) prefix: String,
+    pub(crate) message: String,
+    pub(crate) len: u64,
+    pub(crate) pos: u64,
+    pub(crate) elapsed_millis: u64,
+    pub(crate) finished: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -115,6 +139,40 @@ mod tests {
 
     use super::*;
     use crate::lint_cli::LintOutcome;
+
+    #[test]
+    fn progress_response_round_trips() {
+        let response = DaemonResponse::<()>::Progress {
+            progress: ProgressMessage {
+                id: 7,
+                kind: ProgressKind::Bar,
+                prefix: "EqWAlizing".to_owned(),
+                message: "foo, bar".to_owned(),
+                len: 10,
+                pos: 3,
+                elapsed_millis: 1200,
+                finished: false,
+            },
+        };
+        let json = serde_json::to_string(&response).unwrap();
+        let expected = serde_json::json!({
+            "type": "progress",
+            "id": 7,
+            "kind": "bar",
+            "prefix": "EqWAlizing",
+            "message": "foo, bar",
+            "len": 10,
+            "pos": 3,
+            "elapsed_millis": 1200,
+            "finished": false,
+        });
+        assert_eq_expected!(
+            expected,
+            serde_json::from_str::<serde_json::Value>(&json).unwrap()
+        );
+        let decoded: DaemonResponse<()> = serde_json::from_str(&json).unwrap();
+        assert_eq!(response, decoded, "progress updates should round-trip");
+    }
 
     #[test]
     fn done_response_has_no_payload() {
